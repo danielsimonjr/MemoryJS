@@ -1,0 +1,30 @@
+{
+  "name": "create-dependency-graph",
+  "version": "1.0.0",
+  "description": "Generate dependency graph documentation for TypeScript projects",
+  "scripts": {
+    "build": "npm run build:ts && npm run build:exe",
+    "build:ts": "tsc",
+    "build:exe": "npx @yao-pkg/pkg . --target node22-win-x64 --output create-dependency-graph.exe",
+    "start": "node dist/create-dependency-graph.js"
+  },
+  "bin": {
+    "create-dependency-graph": "./dist/create-dependency-graph.js"
+  },
+  "pkg": {
+    "scripts": ["dist/**/*.js"],
+    "targets": ["node22-win-x64"]
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^25.0.2",
+    "@yao-pkg/pkg": "^6.11.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

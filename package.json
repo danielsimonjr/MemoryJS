@@ -1,0 +1,69 @@
+{
+  "name": "@danielsimonjr/memoryjs",
+  "version": "1.0.0",
+  "description": "Core knowledge graph library with search, storage, and graph algorithms",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "memoryjs": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rimraf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm run test"
+  },
+  "keywords": [
+    "knowledge-graph",
+    "graph-database",
+    "entity-management",
+    "search",
+    "sqlite",
+    "jsonl",
+    "semantic-search",
+    "hybrid-search"
+  ],
+  "author": "Daniel Simon Jr",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danielsimonjr/memoryjs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/danielsimonjr/memoryjs/issues"
+  },
+  "homepage": "https://github.com/danielsimonjr/memoryjs#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@danielsimonjr/workerpool": "^10.0.1",
+    "async-mutex": "^0.5.0",
+    "better-sqlite3": "^11.7.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "@vitest/coverage-v8": "^4.0.16",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.0.16"
+  }
+}

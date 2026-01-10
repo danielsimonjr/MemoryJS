@@ -1,0 +1,27 @@
+{
+  "name": "compress-for-context",
+  "version": "1.0.0",
+  "description": "Compress files for LLM context windows",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:ts && npm run build:exe",
+    "build:ts": "tsc",
+    "build:exe": "npx @yao-pkg/pkg . --target node22-win-x64 --output compress-for-context.exe",
+    "start": "node dist/compress-for-context.js"
+  },
+  "bin": {
+    "compress-for-context": "./dist/compress-for-context.js"
+  },
+  "pkg": {
+    "scripts": ["dist/**/*.js"],
+    "targets": ["node22-win-x64"]
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.2",
+    "@yao-pkg/pkg": "^6.11.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
