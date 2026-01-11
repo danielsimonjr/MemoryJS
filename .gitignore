@@ -1,8 +1,11 @@
 # Dependencies
 node_modules/
+tools/*/node_modules/
 
 # Build output
 dist/
+tools/*/dist/
+tools/*/*.exe
 
 # Test coverage
 coverage/

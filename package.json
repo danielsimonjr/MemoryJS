@@ -27,7 +27,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "clean": "rimraf dist",
-    "prepublishOnly": "npm run clean && npm run build && npm run test"
+    "prepublishOnly": "npm run clean && npm run build && npm run test",
+    "tools:install": "cd tools/chunking-for-files && npm install && cd ../compress-for-context && npm install && cd ../create-dependency-graph && npm install && cd ../migrate-from-jsonl-to-sqlite && npm install",
+    "tools:build": "cd tools/chunking-for-files && npm run build && cd ../compress-for-context && npm run build && cd ../create-dependency-graph && npm run build && cd ../migrate-from-jsonl-to-sqlite && npm run build"
   },
   "keywords": [
     "knowledge-graph",
