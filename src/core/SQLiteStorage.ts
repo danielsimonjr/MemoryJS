@@ -26,7 +26,7 @@ import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import { clearAllSearchCaches } from '../utils/searchCache.js';
 import { NameIndex, TypeIndex } from '../utils/indexes.js';
-import { sanitizeObject } from '../utils/index.js';
+import { sanitizeObject, validateFilePath } from '../utils/index.js';
 
 /**
  * SQLiteStorage manages persistence of the knowledge graph using native SQLite.
@@ -94,11 +94,20 @@ export class SQLiteStorage implements IGraphStorage {
   private bidirectionalRelationCache: Map<string, Relation[]> = new Map();
 
   /**
+   * Validated database file path (after path traversal checks).
+   */
+  private readonly validatedDbFilePath: string;
+
+  /**
    * Create a new SQLiteStorage instance.
    *
    * @param dbFilePath - Absolute path to the SQLite database file
+   * @throws {FileOperationError} If path traversal is detected
    */
-  constructor(private dbFilePath: string) {}
+  constructor(dbFilePath: string) {
+    // Security: Validate path to prevent path traversal attacks
+    this.validatedDbFilePath = validateFilePath(dbFilePath);
+  }
 
   /**
    * Initialize the database connection and schema.
@@ -107,7 +116,7 @@ export class SQLiteStorage implements IGraphStorage {
     if (this.initialized) return;
 
     // Open database (creates file if it doesn't exist)
-    this.db = new Database(this.dbFilePath);
+    this.db = new Database(this.validatedDbFilePath);
 
     // Enable foreign keys and WAL mode for better performance
     this.db.pragma('foreign_keys = ON');
@@ -745,7 +754,7 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns The storage path
    */
   getFilePath(): string {
-    return this.dbFilePath;
+    return this.validatedDbFilePath;
   }
 
   /**
