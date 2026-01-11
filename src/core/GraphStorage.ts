@@ -12,7 +12,7 @@ import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import { clearAllSearchCaches } from '../utils/searchCache.js';
 import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex } from '../utils/indexes.js';
-import { sanitizeObject } from '../utils/index.js';
+import { sanitizeObject, validateFilePath } from '../utils/index.js';
 import { BatchTransaction } from './TransactionManager.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
 
@@ -98,11 +98,20 @@ export class GraphStorage implements IGraphStorage {
   private eventEmitter: GraphEventEmitter = new GraphEventEmitter();
 
   /**
+   * Validated file path (after path traversal checks).
+   */
+  private memoryFilePath: string;
+
+  /**
    * Create a new GraphStorage instance.
    *
    * @param memoryFilePath - Absolute path to the JSONL file
+   * @throws {FileOperationError} If path traversal is detected
    */
-  constructor(private memoryFilePath: string) {}
+  constructor(memoryFilePath: string) {
+    // Security: Validate path to prevent path traversal attacks
+    this.memoryFilePath = validateFilePath(memoryFilePath);
+  }
 
   // ==================== Phase 10 Sprint 2: Event Emitter Access ====================
 

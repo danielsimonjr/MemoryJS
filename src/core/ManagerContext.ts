@@ -25,6 +25,7 @@ import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
+import { validateFilePath } from '../utils/index.js';
 
 /**
  * Context holding all manager instances with lazy initialization.
@@ -53,14 +54,17 @@ export class ManagerContext {
   private _archiveManager?: ArchiveManager;
 
   constructor(memoryFilePath: string) {
+    // Security: Validate path to prevent path traversal attacks
+    const validatedPath = validateFilePath(memoryFilePath);
+
     // Derive paths for saved searches and tag aliases
-    const dir = path.dirname(memoryFilePath);
-    const basename = path.basename(memoryFilePath, path.extname(memoryFilePath));
+    const dir = path.dirname(validatedPath);
+    const basename = path.basename(validatedPath, path.extname(validatedPath));
     this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
-    this.storage = createStorageFromPath(memoryFilePath) as GraphStorage;
+    this.storage = createStorageFromPath(validatedPath) as GraphStorage;
   }
 
   // ==================== MANAGER ACCESSORS ====================
