@@ -5,14 +5,28 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    exclude: ['node_modules', 'dist'],
+    exclude: process.env.SKIP_BENCHMARKS
+      ? ['**/node_modules/**', '**/benchmarks/**']
+      : ['**/node_modules/**'],
+    reporters: [
+      'default',
+      './tests/test-results/per-file-reporter.js',
+    ],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'json-summary', 'html'],
+      reportsDirectory: './coverage',
       include: ['src/**/*.ts'],
-      exclude: ['src/**/*.d.ts', 'src/**/index.ts']
+      exclude: [
+        'node_modules/',
+        'dist/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/tests/**',
+        'src/**/index.ts',
+      ],
     },
     testTimeout: 30000,
-    hookTimeout: 30000
-  }
+    hookTimeout: 30000,
+  },
 });

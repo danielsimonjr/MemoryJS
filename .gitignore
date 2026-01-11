@@ -36,7 +36,9 @@ npm-debug.log*
 *.jsonl
 
 # Test artifacts
-tests/test-results/
+tests/test-results/json/
+tests/test-results/html/
+tests/test-results/summary/
 *.test.db
 
 # Package lock (use npm ci in CI)
