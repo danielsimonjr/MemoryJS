@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `build` - tsup bundled build (ESM + CJS)
   - `build:watch` - tsup watch mode
   - `build:tsc` - original TypeScript compiler build
+- **Worker Files**: Separate worker bundle for dynamic loading by workerpool
 - **Tool Management Scripts**:
   - `tools:install` - install dependencies for all standalone tools
   - `tools:build` - build all standalone tool executables
