@@ -1,17 +1,63 @@
-# @danielsimonjr/memoryjs
+# MemoryJS
 
-Core knowledge graph library for managing entities, relations, and observations with advanced search capabilities.
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
+[![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+
+A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search capabilities**, **hierarchical organization**, and **multiple storage backends**.
+
+> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides 73 TypeScript files, ~29K lines of code, dual storage backends (JSONL/SQLite), and sophisticated search algorithms including BM25, TF-IDF, fuzzy, semantic, and hybrid search.
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Core Concepts](#core-concepts)
+- [Storage Options](#storage-options)
+- [Search Capabilities](#search-capabilities)
+- [Graph Algorithms](#graph-algorithms)
+- [API Reference](#api-reference)
+- [Configuration](#configuration)
+- [Development](#development)
+- [Documentation](#documentation)
+- [License](#license)
 
 ## Features
 
-- **Entity Management**: Create, read, update, delete entities with observations
-- **Relation Management**: Connect entities with typed relationships
-- **Hierarchical Organization**: Parent-child entity nesting
-- **Multiple Storage Backends**: JSONL (default) or SQLite
-- **Advanced Search**: Basic, ranked (TF-IDF), boolean, fuzzy, semantic, and hybrid search
-- **Tag Management**: Tag aliasing, bulk operations
-- **Graph Algorithms**: Shortest path, centrality, connected components
-- **Import/Export**: JSON, CSV, GraphML formats with compression
+### Core Capabilities
+
+- **Knowledge Graph Storage**: Entity-Relation-Observation model for structured data
+- **Dual Storage Backends**: JSONL (human-readable) or SQLite (FTS5, 3-10x faster)
+- **Full CRUD Operations**: Create, read, update, delete entities and relations
+- **Hierarchical Nesting**: Parent-child relationships for tree structures
+- **Timestamps**: Automatic createdAt and lastModified tracking
+
+### Advanced Features
+
+| Category | Description |
+|----------|-------------|
+| **Search Algorithms** | Basic, TF-IDF ranked, BM25, Boolean (AND/OR/NOT), Fuzzy (Levenshtein), Semantic (embeddings), Hybrid |
+| **Graph Algorithms** | Shortest path (BFS), all paths, centrality metrics (degree, betweenness, PageRank), connected components |
+| **Hierarchical Nesting** | Parent-child relationships, ancestor/descendant traversal, subtree operations |
+| **Duplicate Detection** | Intelligent compression with similarity scoring |
+| **Tag Management** | Tags, aliases, bulk operations, importance scores (0-10) |
+| **Import/Export** | JSON, CSV, GraphML formats with Brotli compression |
+| **Analytics** | Graph statistics, validation, integrity checks |
+
+### Module Statistics
+
+| Module | Files | Key Components |
+|--------|-------|----------------|
+| `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
+| `search/` | 29 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner |
+| `features/` | 9 | IOManager, ArchiveManager, CompressionManager, StreamingExporter |
+| `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor |
+| `types/` | 2 | Entity, Relation, KnowledgeGraph interfaces |
+| `workers/` | 2 | Levenshtein distance calculations |
+
+**Total:** 73 TypeScript files | ~29,000 lines of code | 558 exports
 
 ## Installation
 
@@ -19,34 +65,137 @@ Core knowledge graph library for managing entities, relations, and observations 
 npm install @danielsimonjr/memoryjs
 ```
 
+### Requirements
+
+- Node.js >= 18.0.0
+- TypeScript >= 5.0 (for development)
+
 ## Quick Start
+
+### 1. Initialize Storage
 
 ```typescript
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
-// Initialize with JSONL storage (default)
+// JSONL storage (default, human-readable)
 const ctx = new ManagerContext({
   storagePath: './memory.jsonl'
 });
 
-// Create entities
-await ctx.entityManager.createEntities([
-  { name: 'TypeScript', entityType: 'language', observations: ['A typed superset of JavaScript'] },
-  { name: 'Node.js', entityType: 'runtime', observations: ['JavaScript runtime built on V8'] }
-]);
+// Or SQLite storage (faster, FTS5 search)
+const ctx = new ManagerContext({
+  storageType: 'sqlite',
+  storagePath: './memory.db'
+});
+```
 
-// Create relations
+### 2. Create Entities
+
+```typescript
+await ctx.entityManager.createEntities([
+  {
+    name: 'TypeScript',
+    entityType: 'language',
+    observations: ['A typed superset of JavaScript'],
+    tags: ['programming', 'frontend'],
+    importance: 8
+  },
+  {
+    name: 'Node.js',
+    entityType: 'runtime',
+    observations: ['JavaScript runtime built on V8'],
+    tags: ['backend', 'server']
+  }
+]);
+```
+
+### 3. Create Relations
+
+```typescript
 await ctx.relationManager.createRelations([
   { from: 'TypeScript', to: 'Node.js', relationType: 'runs_on' }
 ]);
+```
 
-// Search entities
+### 4. Search
+
+```typescript
+// Basic search
 const results = await ctx.searchManager.search('JavaScript');
+
+// Ranked search (TF-IDF scoring)
+const ranked = await ctx.searchManager.searchRanked('runtime environment', { limit: 10 });
+
+// Boolean search
+const filtered = await ctx.searchManager.booleanSearch('TypeScript AND runtime');
+
+// Fuzzy search (typo-tolerant)
+const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', { threshold: 0.7 });
+```
+
+## Core Concepts
+
+### Entities
+
+Primary nodes in the knowledge graph.
+
+```typescript
+interface Entity {
+  name: string;           // Unique identifier
+  entityType: string;     // Classification (person, project, concept)
+  observations: string[]; // Facts about the entity
+  parentId?: string;      // Parent entity for hierarchical nesting
+  tags?: string[];        // Lowercase tags for categorization
+  importance?: number;    // 0-10 scale for prioritization
+  createdAt?: string;     // ISO 8601 timestamp
+  lastModified?: string;  // ISO 8601 timestamp
+}
+```
+
+### Relations
+
+Directed connections between entities.
+
+```typescript
+interface Relation {
+  from: string;           // Source entity name
+  to: string;             // Target entity name
+  relationType: string;   // Relationship type (active voice)
+}
+```
+
+### Observations
+
+Discrete facts about entities. Each observation should be atomic and independently manageable. Use `addObservations()` to append new facts without overwriting existing ones.
+
+### ManagerContext
+
+Central access point for all managers with lazy initialization:
+
+```typescript
+ctx.entityManager    // Entity CRUD + hierarchy
+ctx.relationManager  // Relation management
+ctx.searchManager    // All search operations
+ctx.tagManager       // Tag aliases and bulk operations
+ctx.ioManager        // Import/export/backup
+ctx.graphTraversal   // Graph algorithms
+ctx.semanticSearch   // Vector similarity search (optional)
 ```
 
 ## Storage Options
 
-### JSONL (Default)
+### Comparison
+
+| Feature | JSONL (Default) | SQLite (better-sqlite3) |
+|---------|-----------------|-------------------------|
+| Format | Human-readable text | Native binary database |
+| Transactions | Basic | Full ACID with WAL mode |
+| Full-Text Search | Basic | FTS5 with BM25 ranking |
+| Performance | Good | 3-10x faster |
+| Concurrency | Single-threaded | Thread-safe with async-mutex |
+| Best For | Small graphs, debugging | Large graphs (10k+ entities) |
+
+### JSONL Storage
 
 ```typescript
 const ctx = new ManagerContext({
@@ -54,7 +203,13 @@ const ctx = new ManagerContext({
 });
 ```
 
-### SQLite
+Features:
+- Human-readable line-delimited JSON
+- In-memory caching with write-through invalidation
+- Atomic writes via temp file + rename
+- Backward compatibility for legacy formats
+
+### SQLite Storage
 
 ```typescript
 const ctx = new ManagerContext({
@@ -63,154 +218,139 @@ const ctx = new ManagerContext({
 });
 ```
 
-SQLite provides:
+Features:
 - FTS5 full-text search with BM25 ranking
-- Referential integrity (ON DELETE CASCADE)
 - WAL mode for better concurrency
+- Referential integrity with ON DELETE CASCADE
 - ACID transactions
 
-## Core Components
+### Storage Files
 
-### ManagerContext
+When using JSONL, related files are automatically created:
 
-Central access point for all managers:
-
-```typescript
-ctx.entityManager    // Entity CRUD + hierarchy
-ctx.relationManager  // Relation management
-ctx.searchManager    // All search operations
-ctx.tagManager       // Tag aliases
-ctx.ioManager        // Import/export/backup
-ctx.graphTraversal   // Graph algorithms
-ctx.semanticSearch   // Vector similarity search (optional)
 ```
-
-### Entity Structure
-
-```typescript
-interface Entity {
-  name: string;           // Unique identifier
-  entityType: string;     // Classification
-  observations: string[]; // Facts about the entity
-  parentId?: string;      // For hierarchy
-  tags?: string[];        // Categories
-  importance?: number;    // 0-10 scale
-  createdAt?: string;     // ISO 8601
-  lastModified?: string;
-}
-```
-
-### Relation Structure
-
-```typescript
-interface Relation {
-  from: string;          // Source entity name
-  to: string;            // Target entity name
-  relationType: string;  // Connection type
-}
+/your/data/directory/
+├── memory.jsonl                    # Main knowledge graph
+├── memory-saved-searches.jsonl     # Saved search queries
+├── memory-tag-aliases.jsonl        # Tag synonym mappings
+└── .backups/                       # Timestamped backups
 ```
 
 ## Search Capabilities
 
+### Search Methods
+
+| Method | Description | Use Case |
+|--------|-------------|----------|
+| `search()` | Basic substring matching | Simple queries |
+| `searchRanked()` | TF-IDF relevance scoring | Finding most relevant results |
+| `booleanSearch()` | AND/OR/NOT operators | Complex filtering |
+| `fuzzySearch()` | Levenshtein distance | Typo tolerance |
+| `hybridSearch()` | Semantic + lexical + symbolic | Multi-signal ranking |
+
 ### Basic Search
 
 ```typescript
-// Find entities by name or observation content
 const results = await ctx.searchManager.search('TypeScript');
 ```
 
 ### Ranked Search (TF-IDF)
 
 ```typescript
-// Get relevance-scored results
-const ranked = await ctx.searchManager.searchRanked('JavaScript runtime', { limit: 10 });
+const ranked = await ctx.searchManager.searchRanked('JavaScript runtime', {
+  limit: 10,
+  minScore: 0.1
+});
 ```
 
 ### Boolean Search
 
 ```typescript
-// AND, OR, NOT operators
+// AND - both terms must match
 const results = await ctx.searchManager.booleanSearch('TypeScript AND runtime');
-const excluded = await ctx.searchManager.booleanSearch('JavaScript NOT browser');
+
+// OR - either term matches
+const results = await ctx.searchManager.booleanSearch('frontend OR backend');
+
+// NOT - exclude term
+const results = await ctx.searchManager.booleanSearch('JavaScript NOT browser');
+
+// Parentheses for grouping
+const results = await ctx.searchManager.booleanSearch('(TypeScript OR JavaScript) AND server');
 ```
 
 ### Fuzzy Search
 
 ```typescript
-// Typo-tolerant search
-const results = await ctx.searchManager.fuzzySearch('Typscript', { threshold: 0.7 });
+// Typo-tolerant search with threshold (0-1, higher = stricter)
+const results = await ctx.searchManager.fuzzySearch('Typscript', {
+  threshold: 0.7
+});
 ```
 
 ### Hybrid Search
 
-Combines semantic (vector), lexical (TF-IDF), and symbolic (metadata) signals:
+Combines three signal layers for sophisticated ranking:
 
 ```typescript
 const results = await ctx.searchManager.hybridSearch('programming concepts', {
-  weights: { semantic: 0.5, lexical: 0.3, symbolic: 0.2 },
-  filters: { entityTypes: ['concept'], minImportance: 5 }
+  weights: {
+    semantic: 0.5,   // Vector similarity (requires embeddings)
+    lexical: 0.3,    // TF-IDF text matching
+    symbolic: 0.2    // Metadata (tags, importance, type)
+  },
+  filters: {
+    entityTypes: ['concept'],
+    minImportance: 5,
+    tags: ['programming']
+  }
 });
 ```
 
 ## Graph Algorithms
 
+### Path Finding
+
 ```typescript
-// Shortest path between entities
+// Shortest path between entities (BFS)
 const path = await ctx.graphTraversal.findShortestPath('A', 'Z');
+// Returns: ['A', 'B', 'C', 'Z']
 
-// All paths up to max depth
+// All paths with max depth
 const paths = await ctx.graphTraversal.findAllPaths('A', 'Z', { maxDepth: 5 });
-
-// Centrality analysis
-const centrality = await ctx.graphTraversal.getCentrality({ algorithm: 'pagerank' });
-
-// Connected components
-const components = await ctx.graphTraversal.getConnectedComponents();
+// Returns: [['A', 'B', 'Z'], ['A', 'C', 'D', 'Z'], ...]
 ```
 
-## Import/Export
+### Centrality Analysis
 
 ```typescript
-// Export to JSON
-const json = await ctx.ioManager.exportGraph('json');
+// Calculate importance metrics
+const centrality = await ctx.graphTraversal.getCentrality({
+  algorithm: 'pagerank'  // or 'degree', 'betweenness'
+});
+// Returns: Map<string, number> with entity scores
+```
 
-// Export to CSV
-const csv = await ctx.ioManager.exportGraph('csv');
+### Connected Components
 
-// Export to GraphML (with compression)
-await ctx.ioManager.exportGraph('graphml', {
-  outputPath: './graph.graphml.br',
-  compress: true
+```typescript
+// Find isolated subgraphs
+const components = await ctx.graphTraversal.getConnectedComponents();
+// Returns: [['A', 'B', 'C'], ['X', 'Y'], ...]
+```
+
+### Traversal
+
+```typescript
+// Breadth-first traversal
+await ctx.graphTraversal.bfs('startNode', (node) => {
+  console.log('Visited:', node.name);
 });
 
-// Import from file
-await ctx.ioManager.importGraph('json', jsonData, { mergeStrategy: 'merge' });
-```
-
-## Hierarchical Organization
-
-```typescript
-// Set parent
-await ctx.entityManager.setEntityParent('Component', 'Module');
-
-// Get hierarchy
-const children = await ctx.entityManager.getChildren('Module');
-const ancestors = await ctx.entityManager.getAncestors('Component');
-const subtree = await ctx.entityManager.getSubtree('Module');
-```
-
-## Tag Management
-
-```typescript
-// Add/remove tags
-await ctx.entityManager.addTags('Entity1', ['tag1', 'tag2']);
-await ctx.entityManager.removeTags('Entity1', ['tag1']);
-
-// Tag aliases (synonyms)
-await ctx.tagManager.addTagAlias('js', 'javascript');
-
-// Bulk operations
-await ctx.entityManager.addTagsToMultipleEntities(['E1', 'E2'], ['shared-tag']);
+// Depth-first traversal
+await ctx.graphTraversal.dfs('startNode', (node) => {
+  console.log('Visited:', node.name);
+});
 ```
 
 ## API Reference
@@ -223,23 +363,31 @@ await ctx.entityManager.addTagsToMultipleEntities(['E1', 'E2'], ['shared-tag']);
 | `deleteEntities(names)` | Delete entities by name |
 | `getEntityByName(name)` | Get single entity |
 | `addObservations(name, observations)` | Add observations to entity |
-| `deleteObservations(name, observations)` | Remove observations |
+| `deleteObservations(name, observations)` | Remove specific observations |
 | `addTags(name, tags)` | Add tags to entity |
 | `removeTags(name, tags)` | Remove tags from entity |
 | `setImportance(name, score)` | Set importance (0-10) |
-| `setEntityParent(name, parentName)` | Set hierarchy parent |
-| `getChildren(name)` | Get child entities |
+| `setEntityParent(name, parentName)` | Set/remove parent |
+| `getChildren(name)` | Get immediate children |
 | `getAncestors(name)` | Get ancestor chain |
 | `getDescendants(name)` | Get all descendants |
+
+### RelationManager
+
+| Method | Description |
+|--------|-------------|
+| `createRelations(relations)` | Create multiple relations |
+| `getRelations(entityName)` | Get incoming/outgoing relations |
+| `deleteRelations(relations)` | Delete specific relations |
 
 ### SearchManager
 
 | Method | Description |
 |--------|-------------|
-| `search(query, options)` | Basic search |
+| `search(query, options)` | Basic substring search |
 | `searchRanked(query, options)` | TF-IDF ranked search |
-| `booleanSearch(query, options)` | Boolean operators |
-| `fuzzySearch(query, options)` | Typo-tolerant |
+| `booleanSearch(query, options)` | Boolean operators (AND/OR/NOT) |
+| `fuzzySearch(query, options)` | Levenshtein-based typo tolerance |
 | `hybridSearch(query, options)` | Multi-signal search |
 | `smartSearch(query, options)` | AI-assisted refinement |
 
@@ -247,20 +395,144 @@ await ctx.entityManager.addTagsToMultipleEntities(['E1', 'E2'], ['shared-tag']);
 
 | Method | Description |
 |--------|-------------|
-| `exportGraph(format, options)` | Export to format |
-| `importGraph(format, data, options)` | Import from format |
-| `createBackup(options)` | Create backup |
+| `exportGraph(format, options)` | Export to JSON/CSV/GraphML |
+| `importGraph(format, data, options)` | Import with merge strategies |
+| `createBackup(options)` | Create timestamped backup |
 | `restoreBackup(path)` | Restore from backup |
 
-## Requirements
+### GraphTraversal
 
-- Node.js >= 18.0.0
-- TypeScript >= 5.0 (for development)
+| Method | Description |
+|--------|-------------|
+| `findShortestPath(from, to)` | BFS shortest path |
+| `findAllPaths(from, to, options)` | All paths with max depth |
+| `getCentrality(options)` | Centrality metrics |
+| `getConnectedComponents()` | Find isolated subgraphs |
+| `bfs(start, visitor)` | Breadth-first traversal |
+| `dfs(start, visitor)` | Depth-first traversal |
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MEMORY_STORAGE_TYPE` | Storage backend: `jsonl` or `sqlite` | `jsonl` |
+| `EMBEDDING_PROVIDER` | Embedding provider: `openai`, `local`, or `none` | `none` |
+| `OPENAI_API_KEY` | OpenAI API key (required if provider is `openai`) | - |
+
+## Development
+
+### Prerequisites
+
+- Node.js 18+
+- npm 9+
+- TypeScript 5.0+
+
+### Build Commands
+
+```bash
+npm install           # Install dependencies
+npm run build         # Build TypeScript to dist/
+npm run build:watch   # Watch mode compilation
+npm test              # Run all tests
+npm run test:watch    # Watch mode testing
+npm run test:coverage # Run with coverage report
+npm run typecheck     # Type checking without emit
+```
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Layer 1: ManagerContext (Central Facade)                   │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ Lazy-initialized access to all managers               │  │
+│  └───────────────────────────────────────────────────────┘  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+┌──────────────────────────┴──────────────────────────────────┐
+│  Layer 2: Specialized Managers                              │
+│  • EntityManager     (CRUD + hierarchy + archive)           │
+│  • RelationManager   (relation CRUD)                        │
+│  • SearchManager     (search + compression + analytics)     │
+│  • IOManager         (import + export + backup)             │
+│  • TagManager        (tag aliases)                          │
+│  • GraphTraversal    (path finding, centrality)             │
+│  • SemanticSearch    (embeddings, similarity)               │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+┌──────────────────────────┴──────────────────────────────────┐
+│  Layer 3: Storage Layer                                     │
+│  GraphStorage (JSONL) or SQLiteStorage (better-sqlite3)     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Project Structure
+
+```
+memoryjs/
+├── src/                            # Source (73 TypeScript files)
+│   ├── index.ts                    # Entry point
+│   ├── core/                       # Core managers (12 files)
+│   │   ├── ManagerContext.ts           # Context holder (lazy init)
+│   │   ├── EntityManager.ts            # Entity CRUD + hierarchy
+│   │   ├── RelationManager.ts          # Relation CRUD
+│   │   ├── GraphStorage.ts             # JSONL I/O + caching
+│   │   ├── SQLiteStorage.ts            # SQLite with better-sqlite3
+│   │   ├── TransactionManager.ts       # ACID transactions
+│   │   └── ...
+│   ├── search/                     # Search implementations (29 files)
+│   │   ├── SearchManager.ts            # Search orchestrator
+│   │   ├── BasicSearch.ts              # Text matching
+│   │   ├── RankedSearch.ts             # TF-IDF scoring
+│   │   ├── BooleanSearch.ts            # AND/OR/NOT logic
+│   │   ├── FuzzySearch.ts              # Typo tolerance
+│   │   ├── SemanticSearch.ts           # Embedding-based
+│   │   ├── HybridSearchManager.ts      # Multi-layer search
+│   │   └── ...
+│   ├── features/                   # Advanced capabilities (9 files)
+│   │   ├── IOManager.ts                # Import/export/backup
+│   │   ├── TagManager.ts               # Tag aliases
+│   │   ├── ArchiveManager.ts           # Entity archival
+│   │   ├── CompressionManager.ts       # Duplicate detection
+│   │   └── ...
+│   ├── types/                      # TypeScript definitions (2 files)
+│   ├── utils/                      # Shared utilities (18 files)
+│   └── workers/                    # Worker pool (2 files)
+├── tests/                          # Test suite
+│   ├── unit/                       # Unit tests
+│   ├── integration/                # Integration tests
+│   └── performance/                # Benchmarks
+├── docs/                           # Documentation
+│   └── architecture/               # Architecture docs
+├── tools/                          # Development utilities
+│   ├── chunking-for-files/         # File splitting tool
+│   └── create-dependency-graph/    # Dependency analyzer
+└── README.md                       # This file
+```
+
+## Documentation
+
+Comprehensive architecture documentation in `docs/architecture/`:
+
+- [OVERVIEW.md](docs/architecture/OVERVIEW.md) - High-level project overview
+- [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) - Technical architecture and design
+- [COMPONENTS.md](docs/architecture/COMPONENTS.md) - Component breakdown
+- [DATAFLOW.md](docs/architecture/DATAFLOW.md) - Data flow patterns
+- [API.md](docs/architecture/API.md) - Complete API documentation
+- [DEPENDENCY_GRAPH.md](docs/architecture/DEPENDENCY_GRAPH.md) - Module dependencies
 
 ## License
 
-MIT
+**MIT License** - see [LICENSE](LICENSE)
 
 ## Related
 
 - [@danielsimonjr/memory-mcp](https://github.com/danielsimonjr/memory-mcp) - MCP server built on this library
+
+---
+
+**Repository:** https://github.com/danielsimonjr/memoryjs
+**NPM:** https://www.npmjs.com/package/@danielsimonjr/memoryjs
+**Issues:** https://github.com/danielsimonjr/memoryjs/issues

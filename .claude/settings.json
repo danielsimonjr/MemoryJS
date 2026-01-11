@@ -1,0 +1,29 @@
+{
+  "project": {
+    "name": "memoryjs",
+    "description": "TypeScript knowledge graph library for managing entities, relations, and observations with advanced search capabilities",
+    "type": "typescript-library"
+  },
+  "enabledServers": [
+    "deepthinking-mcp",
+    "everything-mcp",
+    "fzf-mcp",
+    "memory-mcp"
+  ],
+  "buildRequirements": {
+    "typescript": {
+      "buildCommand": "npm run build",
+      "entryPoint": "dist/",
+      "typecheckCommand": "npm run typecheck"
+    }
+  },
+  "testing": {
+    "framework": "vitest",
+    "command": "npm test",
+    "coverageCommand": "npm run test:coverage"
+  },
+  "documentation": {
+    "claudemd": "CLAUDE.md",
+    "architecture": "docs/architecture/"
+  }
+}

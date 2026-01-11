@@ -1,0 +1,4568 @@
+{
+  "metadata": {
+    "name": "@danielsimonjr/memoryjs",
+    "version": "1.0.0",
+    "lastUpdated": "2026-01-10",
+    "totalFiles": 73,
+    "totalModules": 7,
+    "totalExports": 558
+  },
+  "entryPoints": [
+    {
+      "file": "src/index.ts",
+      "type": "main",
+      "description": "MemoryJS - Knowledge Graph Storage Library"
+    }
+  ],
+  "modules": {
+    "core": {
+      "src/core/EntityManager.ts": {
+        "description": "Entity Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "LongRunningOperationOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "EntityNotFoundError",
+              "InvalidImportanceError",
+              "ValidationError"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "BatchCreateEntitiesSchema",
+              "UpdateEntitySchema",
+              "EntityNamesSchema",
+              "checkCancellation",
+              "createProgressReporter",
+              "createProgress",
+              "sanitizeObject"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "GRAPH_LIMITS"
+            ]
+          }
+        ],
+        "exports": [
+          "EntityManager"
+        ],
+        "classes": [
+          "EntityManager"
+        ]
+      },
+      "src/core/GraphEventEmitter.ts": {
+        "description": "Graph Event Emitter",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "GraphEventType",
+              "GraphEvent",
+              "GraphEventListener",
+              "GraphEventMap",
+              "Entity",
+              "Relation",
+              "EntityCreatedEvent",
+              "EntityUpdatedEvent",
+              "EntityDeletedEvent",
+              "RelationCreatedEvent",
+              "RelationDeletedEvent",
+              "ObservationAddedEvent",
+              "ObservationDeletedEvent",
+              "GraphSavedEvent",
+              "GraphLoadedEvent"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "GraphEventEmitter"
+        ],
+        "classes": [
+          "GraphEventEmitter"
+        ]
+      },
+      "src/core/GraphStorage.ts": {
+        "description": "Graph Storage",
+        "externalDependencies": [
+          {
+            "package": "async-mutex",
+            "imports": [
+              "Mutex"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "KnowledgeGraph",
+              "Entity",
+              "Relation",
+              "ReadonlyKnowledgeGraph",
+              "IGraphStorage",
+              "LowercaseData"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/searchCache.js",
+            "imports": [
+              "clearAllSearchCaches"
+            ]
+          },
+          {
+            "file": "../utils/indexes.js",
+            "imports": [
+              "NameIndex",
+              "TypeIndex",
+              "LowercaseCache",
+              "RelationIndex",
+              "ObservationIndex"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "sanitizeObject"
+            ]
+          },
+          {
+            "file": "./TransactionManager.js",
+            "imports": [
+              "BatchTransaction"
+            ]
+          },
+          {
+            "file": "./GraphEventEmitter.js",
+            "imports": [
+              "GraphEventEmitter"
+            ]
+          }
+        ],
+        "exports": [
+          "GraphStorage"
+        ],
+        "classes": [
+          "GraphStorage"
+        ]
+      },
+      "src/core/GraphTraversal.ts": {
+        "description": "Graph Traversal",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "Relation",
+              "TraversalOptions",
+              "TraversalResult",
+              "PathResult",
+              "ConnectedComponentsResult",
+              "CentralityResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "checkCancellation"
+            ]
+          }
+        ],
+        "exports": [
+          "GraphTraversal"
+        ],
+        "classes": [
+          "GraphTraversal"
+        ]
+      },
+      "src/core/HierarchyManager.ts": {
+        "description": "Hierarchy Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "KnowledgeGraph",
+              "ReadonlyKnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "EntityNotFoundError",
+              "CycleDetectedError"
+            ]
+          }
+        ],
+        "exports": [
+          "HierarchyManager"
+        ],
+        "classes": [
+          "HierarchyManager"
+        ]
+      },
+      "src/core/index.ts": {
+        "description": "Core Module Barrel Export",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SQLiteStorage.js",
+            "imports": [
+              "SQLiteStorage"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ObservationManager.js",
+            "imports": [
+              "ObservationManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./HierarchyManager.js",
+            "imports": [
+              "HierarchyManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ManagerContext.js",
+            "imports": [
+              "ManagerContext"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ManagerContext.js",
+            "imports": [
+              "ManagerContext"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./TransactionManager.js",
+            "imports": [
+              "TransactionManager",
+              "OperationType",
+              "BatchTransaction",
+              "type TransactionOperation",
+              "type TransactionResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./StorageFactory.js",
+            "imports": [
+              "createStorage",
+              "createStorageFromPath"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./GraphEventEmitter.js",
+            "imports": [
+              "GraphEventEmitter"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "GraphStorage",
+          "SQLiteStorage",
+          "EntityManager",
+          "RelationManager",
+          "ObservationManager",
+          "HierarchyManager",
+          "ManagerContext",
+          "GraphTraversal",
+          "TransactionManager",
+          "OperationType",
+          "BatchTransaction",
+          "type TransactionOperation",
+          "type TransactionResult",
+          "createStorage",
+          "createStorageFromPath",
+          "GraphEventEmitter"
+        ],
+        "reExported": [
+          "GraphStorage",
+          "SQLiteStorage",
+          "EntityManager",
+          "RelationManager",
+          "ObservationManager",
+          "HierarchyManager",
+          "ManagerContext",
+          "GraphTraversal",
+          "TransactionManager",
+          "OperationType",
+          "BatchTransaction",
+          "type TransactionOperation",
+          "type TransactionResult",
+          "createStorage",
+          "createStorageFromPath",
+          "GraphEventEmitter"
+        ]
+      },
+      "src/core/ManagerContext.ts": {
+        "description": "Manager Context",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "path",
+            "imports": [
+              "path"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ]
+          },
+          {
+            "file": "./StorageFactory.js",
+            "imports": [
+              "createStorageFromPath"
+            ]
+          },
+          {
+            "file": "./EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ]
+          },
+          {
+            "file": "./RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ]
+          },
+          {
+            "file": "./ObservationManager.js",
+            "imports": [
+              "ObservationManager"
+            ]
+          },
+          {
+            "file": "./HierarchyManager.js",
+            "imports": [
+              "HierarchyManager"
+            ]
+          },
+          {
+            "file": "./GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ]
+          },
+          {
+            "file": "../search/SearchManager.js",
+            "imports": [
+              "SearchManager"
+            ]
+          },
+          {
+            "file": "../search/RankedSearch.js",
+            "imports": [
+              "RankedSearch"
+            ]
+          },
+          {
+            "file": "../search/index.js",
+            "imports": [
+              "SemanticSearch",
+              "createEmbeddingService",
+              "createVectorStore"
+            ]
+          },
+          {
+            "file": "../features/IOManager.js",
+            "imports": [
+              "IOManager"
+            ]
+          },
+          {
+            "file": "../features/TagManager.js",
+            "imports": [
+              "TagManager"
+            ]
+          },
+          {
+            "file": "../features/AnalyticsManager.js",
+            "imports": [
+              "AnalyticsManager"
+            ]
+          },
+          {
+            "file": "../features/CompressionManager.js",
+            "imports": [
+              "CompressionManager"
+            ]
+          },
+          {
+            "file": "../features/ArchiveManager.js",
+            "imports": [
+              "ArchiveManager"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "getEmbeddingConfig"
+            ]
+          }
+        ],
+        "exports": [
+          "ManagerContext"
+        ],
+        "classes": [
+          "ManagerContext"
+        ]
+      },
+      "src/core/ObservationManager.ts": {
+        "description": "Observation Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "EntityNotFoundError"
+            ]
+          }
+        ],
+        "exports": [
+          "ObservationManager"
+        ],
+        "classes": [
+          "ObservationManager"
+        ]
+      },
+      "src/core/RelationManager.ts": {
+        "description": "Relation Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Relation"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "BatchCreateRelationsSchema",
+              "DeleteRelationsSchema"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "GRAPH_LIMITS"
+            ]
+          }
+        ],
+        "exports": [
+          "RelationManager"
+        ],
+        "classes": [
+          "RelationManager"
+        ]
+      },
+      "src/core/SQLiteStorage.ts": {
+        "description": "SQLite Storage",
+        "externalDependencies": [
+          {
+            "package": "better-sqlite3",
+            "imports": [
+              "Database"
+            ]
+          },
+          {
+            "package": "better-sqlite3",
+            "imports": [
+              "Database"
+            ]
+          },
+          {
+            "package": "async-mutex",
+            "imports": [
+              "Mutex"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "KnowledgeGraph",
+              "Entity",
+              "Relation",
+              "ReadonlyKnowledgeGraph",
+              "IGraphStorage",
+              "LowercaseData"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/searchCache.js",
+            "imports": [
+              "clearAllSearchCaches"
+            ]
+          },
+          {
+            "file": "../utils/indexes.js",
+            "imports": [
+              "NameIndex",
+              "TypeIndex"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "sanitizeObject"
+            ]
+          }
+        ],
+        "exports": [
+          "SQLiteStorage"
+        ],
+        "classes": [
+          "SQLiteStorage"
+        ]
+      },
+      "src/core/StorageFactory.ts": {
+        "description": "Storage Factory",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ]
+          },
+          {
+            "file": "./SQLiteStorage.js",
+            "imports": [
+              "SQLiteStorage"
+            ]
+          },
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "IGraphStorage",
+              "StorageConfig"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "createStorage",
+          "createStorageFromPath"
+        ],
+        "functions": [
+          "createStorage",
+          "createStorageFromPath"
+        ]
+      },
+      "src/core/TransactionManager.ts": {
+        "description": "Transaction Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "Relation",
+              "KnowledgeGraph",
+              "LongRunningOperationOptions",
+              "BatchOperation",
+              "BatchResult",
+              "BatchOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../features/IOManager.js",
+            "imports": [
+              "IOManager"
+            ]
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "KnowledgeGraphError"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "checkCancellation",
+              "createProgressReporter",
+              "createProgress",
+              "sanitizeObject"
+            ]
+          }
+        ],
+        "exports": [
+          "TransactionManager",
+          "BatchTransaction",
+          "OperationType"
+        ],
+        "classes": [
+          "TransactionManager",
+          "BatchTransaction"
+        ],
+        "interfaces": [
+          "TransactionResult"
+        ],
+        "enums": [
+          "OperationType"
+        ]
+      }
+    },
+    "features": {
+      "src/features/AnalyticsManager.ts": {
+        "description": "Analytics Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "GraphStats",
+              "ValidationReport",
+              "ValidationIssue",
+              "ValidationWarning"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "AnalyticsManager"
+        ],
+        "classes": [
+          "AnalyticsManager"
+        ]
+      },
+      "src/features/ArchiveManager.ts": {
+        "description": "Archive Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "dirname",
+              "join"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "LongRunningOperationOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "compress",
+              "COMPRESSION_CONFIG",
+              "checkCancellation",
+              "createProgressReporter",
+              "createProgress"
+            ]
+          }
+        ],
+        "exports": [
+          "ArchiveManager"
+        ],
+        "classes": [
+          "ArchiveManager"
+        ],
+        "interfaces": [
+          "ArchiveCriteria",
+          "ArchiveOptions",
+          "ArchiveResult"
+        ]
+      },
+      "src/features/CompressionManager.ts": {
+        "description": "Compression Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "Relation",
+              "GraphCompressionResult",
+              "KnowledgeGraph",
+              "LongRunningOperationOptions",
+              "PreparedEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "levenshteinDistance",
+              "checkCancellation",
+              "createProgressReporter",
+              "createProgress",
+              "fnv1aHash"
+            ]
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "EntityNotFoundError",
+              "InsufficientEntitiesError"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "SIMILARITY_WEIGHTS",
+              "DEFAULT_DUPLICATE_THRESHOLD"
+            ]
+          }
+        ],
+        "exports": [
+          "CompressionManager"
+        ],
+        "classes": [
+          "CompressionManager"
+        ]
+      },
+      "src/features/index.ts": {
+        "description": "Features Module Barrel Export",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./TagManager.js",
+            "imports": [
+              "TagManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./IOManager.js",
+            "imports": [
+              "IOManager",
+              "type ExportFormat",
+              "type ImportFormat",
+              "type MergeStrategy",
+              "type BackupMetadata",
+              "type BackupInfo"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./AnalyticsManager.js",
+            "imports": [
+              "AnalyticsManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./CompressionManager.js",
+            "imports": [
+              "CompressionManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ArchiveManager.js",
+            "imports": [
+              "ArchiveManager",
+              "type ArchiveCriteria",
+              "type ArchiveOptions",
+              "type ArchiveResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./StreamingExporter.js",
+            "imports": [
+              "StreamingExporter",
+              "type StreamResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ObservationNormalizer.js",
+            "imports": [
+              "ObservationNormalizer",
+              "type NormalizationOptions",
+              "type NormalizationResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./KeywordExtractor.js",
+            "imports": [
+              "KeywordExtractor",
+              "type ScoredKeyword"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "TagManager",
+          "IOManager",
+          "type ExportFormat",
+          "type ImportFormat",
+          "type MergeStrategy",
+          "type BackupMetadata",
+          "type BackupInfo",
+          "AnalyticsManager",
+          "CompressionManager",
+          "ArchiveManager",
+          "type ArchiveCriteria",
+          "type ArchiveOptions",
+          "type ArchiveResult",
+          "StreamingExporter",
+          "type StreamResult",
+          "ObservationNormalizer",
+          "type NormalizationOptions",
+          "type NormalizationResult",
+          "KeywordExtractor",
+          "type ScoredKeyword"
+        ],
+        "reExported": [
+          "TagManager",
+          "IOManager",
+          "type ExportFormat",
+          "type ImportFormat",
+          "type MergeStrategy",
+          "type BackupMetadata",
+          "type BackupInfo",
+          "AnalyticsManager",
+          "CompressionManager",
+          "ArchiveManager",
+          "type ArchiveCriteria",
+          "type ArchiveOptions",
+          "type ArchiveResult",
+          "StreamingExporter",
+          "type StreamResult",
+          "ObservationNormalizer",
+          "type NormalizationOptions",
+          "type NormalizationResult",
+          "KeywordExtractor",
+          "type ScoredKeyword"
+        ]
+      },
+      "src/features/IOManager.ts": {
+        "description": "IO Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "dirname",
+              "join"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "Relation",
+              "KnowledgeGraph",
+              "ReadonlyKnowledgeGraph",
+              "ImportResult",
+              "BackupOptions",
+              "BackupResult",
+              "RestoreResult",
+              "ExportOptions",
+              "ExportResult",
+              "LongRunningOperationOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "FileOperationError"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "compress",
+              "decompress",
+              "hasBrotliExtension",
+              "COMPRESSION_CONFIG",
+              "STREAMING_CONFIG",
+              "checkCancellation",
+              "createProgressReporter",
+              "createProgress",
+              "validateFilePath",
+              "sanitizeObject",
+              "escapeCsvFormula"
+            ]
+          },
+          {
+            "file": "./StreamingExporter.js",
+            "imports": [
+              "StreamingExporter",
+              "StreamResult"
+            ]
+          }
+        ],
+        "exports": [
+          "IOManager"
+        ],
+        "classes": [
+          "IOManager"
+        ],
+        "interfaces": [
+          "BackupMetadata",
+          "BackupInfo"
+        ]
+      },
+      "src/features/KeywordExtractor.ts": {
+        "description": "Keyword Extractor",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "KeywordExtractor"
+        ],
+        "classes": [
+          "KeywordExtractor"
+        ],
+        "interfaces": [
+          "ScoredKeyword"
+        ]
+      },
+      "src/features/ObservationNormalizer.ts": {
+        "description": "Observation Normalizer",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ObservationNormalizer"
+        ],
+        "classes": [
+          "ObservationNormalizer"
+        ],
+        "interfaces": [
+          "NormalizationOptions",
+          "NormalizationResult"
+        ]
+      },
+      "src/features/StreamingExporter.ts": {
+        "description": "Streaming Export Module",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "createWriteStream"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "ReadonlyKnowledgeGraph",
+              "LongRunningOperationOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "checkCancellation",
+              "createProgressReporter",
+              "createProgress",
+              "validateFilePath"
+            ]
+          }
+        ],
+        "exports": [
+          "StreamingExporter"
+        ],
+        "classes": [
+          "StreamingExporter"
+        ],
+        "interfaces": [
+          "StreamResult"
+        ]
+      },
+      "src/features/TagManager.ts": {
+        "description": "Tag Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs/promises",
+            "imports": [
+              "* as fs"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "TagAlias"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "TagManager"
+        ],
+        "classes": [
+          "TagManager"
+        ]
+      }
+    },
+    "entry": {
+      "src/index.ts": {
+        "description": "MemoryJS - Knowledge Graph Storage Library",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./types/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./utils/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./core/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./features/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./search/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [],
+        "reExported": [
+          "* from ./types/index.js",
+          "* from ./utils/index.js",
+          "* from ./core/index.js",
+          "* from ./features/index.js",
+          "* from ./search/index.js"
+        ]
+      }
+    },
+    "search": {
+      "src/search/BasicSearch.ts": {
+        "description": "Basic Search",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "KnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "isWithinDateRange",
+              "SEARCH_LIMITS",
+              "searchCaches"
+            ]
+          },
+          {
+            "file": "./SearchFilterChain.js",
+            "imports": [
+              "SearchFilterChain",
+              "SearchFilters"
+            ]
+          }
+        ],
+        "exports": [
+          "BasicSearch"
+        ],
+        "classes": [
+          "BasicSearch"
+        ]
+      },
+      "src/search/BM25Search.ts": {
+        "description": "BM25 Search",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "SearchResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "SEARCH_LIMITS"
+            ]
+          }
+        ],
+        "exports": [
+          "STOPWORDS",
+          "DEFAULT_BM25_CONFIG",
+          "BM25Search"
+        ],
+        "classes": [
+          "BM25Search"
+        ],
+        "interfaces": [
+          "BM25DocumentEntry",
+          "BM25Index",
+          "BM25Config"
+        ],
+        "constants": [
+          "STOPWORDS",
+          "DEFAULT_BM25_CONFIG"
+        ]
+      },
+      "src/search/BooleanSearch.ts": {
+        "description": "Boolean Search",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "BooleanQueryNode",
+              "Entity",
+              "KnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "SEARCH_LIMITS",
+              "QUERY_LIMITS"
+            ]
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          },
+          {
+            "file": "./SearchFilterChain.js",
+            "imports": [
+              "SearchFilterChain",
+              "SearchFilters"
+            ]
+          }
+        ],
+        "exports": [
+          "BooleanSearch"
+        ],
+        "classes": [
+          "BooleanSearch"
+        ]
+      },
+      "src/search/EarlyTerminationManager.ts": {
+        "description": "Early Termination Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "HybridSearchResult",
+              "QueryAnalysis",
+              "ReadonlyKnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./HybridSearchManager.js",
+            "imports": [
+              "HybridSearchManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./QueryCostEstimator.js",
+            "imports": [
+              "SearchLayer"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./QueryCostEstimator.js",
+            "imports": [
+              "QueryCostEstimator"
+            ]
+          }
+        ],
+        "exports": [
+          "EarlyTerminationManager"
+        ],
+        "classes": [
+          "EarlyTerminationManager"
+        ],
+        "interfaces": [
+          "AdequacyCheck",
+          "EarlyTerminationOptions",
+          "EarlyTerminationResult"
+        ]
+      },
+      "src/search/EmbeddingCache.ts": {
+        "description": "Embedding Cache",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "createHash"
+            ]
+          }
+        ],
+        "internalDependencies": [],
+        "exports": [
+          "DEFAULT_EMBEDDING_CACHE_OPTIONS",
+          "EmbeddingCache"
+        ],
+        "classes": [
+          "EmbeddingCache"
+        ],
+        "interfaces": [
+          "EmbeddingCacheStats",
+          "EmbeddingCacheOptions"
+        ],
+        "constants": [
+          "DEFAULT_EMBEDDING_CACHE_OPTIONS"
+        ]
+      },
+      "src/search/EmbeddingService.ts": {
+        "description": "Embedding Service",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "EmbeddingService",
+              "EmbeddingConfig",
+              "EmbeddingMode"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "EMBEDDING_DEFAULTS",
+              "OPENAI_API_CONFIG",
+              "getEmbeddingConfig"
+            ]
+          }
+        ],
+        "exports": [
+          "QUERY_PREFIX",
+          "DOCUMENT_PREFIX",
+          "l2Normalize",
+          "createEmbeddingService",
+          "OpenAIEmbeddingService",
+          "LocalEmbeddingService",
+          "MockEmbeddingService"
+        ],
+        "classes": [
+          "OpenAIEmbeddingService",
+          "LocalEmbeddingService",
+          "MockEmbeddingService"
+        ],
+        "functions": [
+          "l2Normalize",
+          "createEmbeddingService"
+        ],
+        "constants": [
+          "QUERY_PREFIX",
+          "DOCUMENT_PREFIX"
+        ]
+      },
+      "src/search/FuzzySearch.ts": {
+        "description": "Fuzzy Search",
+        "externalDependencies": [
+          {
+            "package": "@danielsimonjr/workerpool",
+            "imports": [
+              "Pool",
+              "workerpool"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "url",
+            "imports": [
+              "fileURLToPath"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "dirname",
+              "join",
+              "sep"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "KnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "levenshteinDistance"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "SEARCH_LIMITS"
+            ]
+          },
+          {
+            "file": "./SearchFilterChain.js",
+            "imports": [
+              "SearchFilterChain",
+              "SearchFilters"
+            ]
+          }
+        ],
+        "exports": [
+          "DEFAULT_FUZZY_THRESHOLD",
+          "FuzzySearch"
+        ],
+        "classes": [
+          "FuzzySearch"
+        ],
+        "interfaces": [
+          "FuzzySearchOptions"
+        ],
+        "constants": [
+          "DEFAULT_FUZZY_THRESHOLD"
+        ]
+      },
+      "src/search/HybridScorer.ts": {
+        "description": "Hybrid Scorer",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_SCORER_WEIGHTS",
+          "HybridScorer"
+        ],
+        "classes": [
+          "HybridScorer"
+        ],
+        "interfaces": [
+          "SemanticLayerResult",
+          "LexicalSearchResult",
+          "SymbolicSearchResult",
+          "ScoredResult",
+          "HybridWeights",
+          "HybridScorerOptions"
+        ],
+        "constants": [
+          "DEFAULT_SCORER_WEIGHTS"
+        ]
+      },
+      "src/search/HybridSearchManager.ts": {
+        "description": "Hybrid Search Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "HybridSearchOptions",
+              "HybridSearchResult",
+              "ReadonlyKnowledgeGraph",
+              "SymbolicFilters"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RankedSearch.js",
+            "imports": [
+              "RankedSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SymbolicSearch.js",
+            "imports": [
+              "SymbolicSearch"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "SEMANTIC_SEARCH_LIMITS"
+            ]
+          }
+        ],
+        "exports": [
+          "DEFAULT_HYBRID_WEIGHTS",
+          "HybridSearchManager"
+        ],
+        "classes": [
+          "HybridSearchManager"
+        ],
+        "constants": [
+          "DEFAULT_HYBRID_WEIGHTS"
+        ]
+      },
+      "src/search/IncrementalIndexer.ts": {
+        "description": "Incremental Indexer",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "EmbeddingService",
+              "EmbeddingMode"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "IVectorStore"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./EmbeddingService.js",
+            "imports": [
+              "EmbeddingProgressCallback"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_INDEXER_OPTIONS",
+          "IncrementalIndexer"
+        ],
+        "classes": [
+          "IncrementalIndexer"
+        ],
+        "interfaces": [
+          "IndexOperation",
+          "IncrementalIndexerOptions",
+          "FlushResult"
+        ],
+        "constants": [
+          "DEFAULT_INDEXER_OPTIONS"
+        ]
+      },
+      "src/search/index.ts": {
+        "description": "Search Module Barrel Export",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./BasicSearch.js",
+            "imports": [
+              "BasicSearch"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./RankedSearch.js",
+            "imports": [
+              "RankedSearch"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./BooleanSearch.js",
+            "imports": [
+              "BooleanSearch"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./FuzzySearch.js",
+            "imports": [
+              "FuzzySearch",
+              "type FuzzySearchOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SearchSuggestions.js",
+            "imports": [
+              "SearchSuggestions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SavedSearchManager.js",
+            "imports": [
+              "SavedSearchManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SearchManager.js",
+            "imports": [
+              "SearchManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SearchFilterChain.js",
+            "imports": [
+              "SearchFilterChain",
+              "type SearchFilters",
+              "type ValidatedPagination"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./EmbeddingService.js",
+            "imports": [
+              "OpenAIEmbeddingService",
+              "LocalEmbeddingService",
+              "MockEmbeddingService",
+              "createEmbeddingService",
+              "l2Normalize",
+              "QUERY_PREFIX",
+              "DOCUMENT_PREFIX",
+              "type EmbeddingProgressCallback"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./EmbeddingCache.js",
+            "imports": [
+              "EmbeddingCache",
+              "DEFAULT_EMBEDDING_CACHE_OPTIONS",
+              "type EmbeddingCacheStats",
+              "type EmbeddingCacheOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./IncrementalIndexer.js",
+            "imports": [
+              "IncrementalIndexer",
+              "DEFAULT_INDEXER_OPTIONS",
+              "type IndexOperationType",
+              "type IndexOperation",
+              "type IncrementalIndexerOptions",
+              "type FlushResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./VectorStore.js",
+            "imports": [
+              "InMemoryVectorStore",
+              "SQLiteVectorStore",
+              "createVectorStore",
+              "cosineSimilarity",
+              "type SQLiteStorageWithEmbeddings"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SemanticSearch.js",
+            "imports": [
+              "SemanticSearch",
+              "entityToText"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./TFIDFIndexManager.js",
+            "imports": [
+              "TFIDFIndexManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./TFIDFEventSync.js",
+            "imports": [
+              "TFIDFEventSync"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./QueryCostEstimator.js",
+            "imports": [
+              "QueryCostEstimator",
+              "type SearchLayer",
+              "type ExtendedQueryCostEstimate",
+              "type LayerRecommendationOptions",
+              "type TokenEstimationOptions",
+              "type AdaptiveDepthConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SymbolicSearch.js",
+            "imports": [
+              "SymbolicSearch",
+              "type SymbolicResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./HybridSearchManager.js",
+            "imports": [
+              "HybridSearchManager",
+              "DEFAULT_HYBRID_WEIGHTS"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./QueryAnalyzer.js",
+            "imports": [
+              "QueryAnalyzer"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./QueryPlanner.js",
+            "imports": [
+              "QueryPlanner"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ReflectionManager.js",
+            "imports": [
+              "ReflectionManager",
+              "type ReflectionOptions",
+              "type ReflectionResult",
+              "type RefinementHistoryEntry"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./BM25Search.js",
+            "imports": [
+              "BM25Search",
+              "STOPWORDS",
+              "DEFAULT_BM25_CONFIG",
+              "type BM25DocumentEntry",
+              "type BM25Index",
+              "type BM25Config"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./OptimizedInvertedIndex.js",
+            "imports": [
+              "OptimizedInvertedIndex",
+              "type IndexMemoryUsage",
+              "type PostingListResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./HybridScorer.js",
+            "imports": [
+              "HybridScorer",
+              "DEFAULT_SCORER_WEIGHTS",
+              "type SemanticLayerResult",
+              "type LexicalSearchResult",
+              "type SymbolicSearchResult",
+              "type ScoredResult",
+              "type HybridWeights",
+              "type HybridScorerOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ParallelSearchExecutor.js",
+            "imports": [
+              "ParallelSearchExecutor",
+              "type LayerTiming",
+              "type ParallelSearchResult",
+              "type ParallelSearchOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./EarlyTerminationManager.js",
+            "imports": [
+              "EarlyTerminationManager",
+              "type AdequacyCheck",
+              "type EarlyTerminationOptions",
+              "type EarlyTerminationResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./QueryPlanCache.js",
+            "imports": [
+              "QueryPlanCache",
+              "type CachedQueryEntry",
+              "type QueryPlanCacheStats",
+              "type QueryPlanCacheOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./QuantizedVectorStore.js",
+            "imports": [
+              "QuantizedVectorStore",
+              "type QuantizationParams",
+              "type QuantizedVectorStoreStats",
+              "type QuantizedSearchResult",
+              "type QuantizedVectorStoreOptions"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "BasicSearch",
+          "RankedSearch",
+          "BooleanSearch",
+          "FuzzySearch",
+          "type FuzzySearchOptions",
+          "SearchSuggestions",
+          "SavedSearchManager",
+          "SearchManager",
+          "SearchFilterChain",
+          "type SearchFilters",
+          "type ValidatedPagination",
+          "OpenAIEmbeddingService",
+          "LocalEmbeddingService",
+          "MockEmbeddingService",
+          "createEmbeddingService",
+          "l2Normalize",
+          "QUERY_PREFIX",
+          "DOCUMENT_PREFIX",
+          "type EmbeddingProgressCallback",
+          "EmbeddingCache",
+          "DEFAULT_EMBEDDING_CACHE_OPTIONS",
+          "type EmbeddingCacheStats",
+          "type EmbeddingCacheOptions",
+          "IncrementalIndexer",
+          "DEFAULT_INDEXER_OPTIONS",
+          "type IndexOperationType",
+          "type IndexOperation",
+          "type IncrementalIndexerOptions",
+          "type FlushResult",
+          "InMemoryVectorStore",
+          "SQLiteVectorStore",
+          "createVectorStore",
+          "cosineSimilarity",
+          "type SQLiteStorageWithEmbeddings",
+          "SemanticSearch",
+          "entityToText",
+          "TFIDFIndexManager",
+          "TFIDFEventSync",
+          "QueryCostEstimator",
+          "type SearchLayer",
+          "type ExtendedQueryCostEstimate",
+          "type LayerRecommendationOptions",
+          "type TokenEstimationOptions",
+          "type AdaptiveDepthConfig",
+          "SymbolicSearch",
+          "type SymbolicResult",
+          "HybridSearchManager",
+          "DEFAULT_HYBRID_WEIGHTS",
+          "QueryAnalyzer",
+          "QueryPlanner",
+          "ReflectionManager",
+          "type ReflectionOptions",
+          "type ReflectionResult",
+          "type RefinementHistoryEntry",
+          "BM25Search",
+          "STOPWORDS",
+          "DEFAULT_BM25_CONFIG",
+          "type BM25DocumentEntry",
+          "type BM25Index",
+          "type BM25Config",
+          "OptimizedInvertedIndex",
+          "type IndexMemoryUsage",
+          "type PostingListResult",
+          "HybridScorer",
+          "DEFAULT_SCORER_WEIGHTS",
+          "type SemanticLayerResult",
+          "type LexicalSearchResult",
+          "type SymbolicSearchResult",
+          "type ScoredResult",
+          "type HybridWeights",
+          "type HybridScorerOptions",
+          "ParallelSearchExecutor",
+          "type LayerTiming",
+          "type ParallelSearchResult",
+          "type ParallelSearchOptions",
+          "EarlyTerminationManager",
+          "type AdequacyCheck",
+          "type EarlyTerminationOptions",
+          "type EarlyTerminationResult",
+          "QueryPlanCache",
+          "type CachedQueryEntry",
+          "type QueryPlanCacheStats",
+          "type QueryPlanCacheOptions",
+          "QuantizedVectorStore",
+          "type QuantizationParams",
+          "type QuantizedVectorStoreStats",
+          "type QuantizedSearchResult",
+          "type QuantizedVectorStoreOptions"
+        ],
+        "reExported": [
+          "BasicSearch",
+          "RankedSearch",
+          "BooleanSearch",
+          "FuzzySearch",
+          "type FuzzySearchOptions",
+          "SearchSuggestions",
+          "SavedSearchManager",
+          "SearchManager",
+          "SearchFilterChain",
+          "type SearchFilters",
+          "type ValidatedPagination",
+          "OpenAIEmbeddingService",
+          "LocalEmbeddingService",
+          "MockEmbeddingService",
+          "createEmbeddingService",
+          "l2Normalize",
+          "QUERY_PREFIX",
+          "DOCUMENT_PREFIX",
+          "type EmbeddingProgressCallback",
+          "EmbeddingCache",
+          "DEFAULT_EMBEDDING_CACHE_OPTIONS",
+          "type EmbeddingCacheStats",
+          "type EmbeddingCacheOptions",
+          "IncrementalIndexer",
+          "DEFAULT_INDEXER_OPTIONS",
+          "type IndexOperationType",
+          "type IndexOperation",
+          "type IncrementalIndexerOptions",
+          "type FlushResult",
+          "InMemoryVectorStore",
+          "SQLiteVectorStore",
+          "createVectorStore",
+          "cosineSimilarity",
+          "type SQLiteStorageWithEmbeddings",
+          "SemanticSearch",
+          "entityToText",
+          "TFIDFIndexManager",
+          "TFIDFEventSync",
+          "QueryCostEstimator",
+          "type SearchLayer",
+          "type ExtendedQueryCostEstimate",
+          "type LayerRecommendationOptions",
+          "type TokenEstimationOptions",
+          "type AdaptiveDepthConfig",
+          "SymbolicSearch",
+          "type SymbolicResult",
+          "HybridSearchManager",
+          "DEFAULT_HYBRID_WEIGHTS",
+          "QueryAnalyzer",
+          "QueryPlanner",
+          "ReflectionManager",
+          "type ReflectionOptions",
+          "type ReflectionResult",
+          "type RefinementHistoryEntry",
+          "BM25Search",
+          "STOPWORDS",
+          "DEFAULT_BM25_CONFIG",
+          "type BM25DocumentEntry",
+          "type BM25Index",
+          "type BM25Config",
+          "OptimizedInvertedIndex",
+          "type IndexMemoryUsage",
+          "type PostingListResult",
+          "HybridScorer",
+          "DEFAULT_SCORER_WEIGHTS",
+          "type SemanticLayerResult",
+          "type LexicalSearchResult",
+          "type SymbolicSearchResult",
+          "type ScoredResult",
+          "type HybridWeights",
+          "type HybridScorerOptions",
+          "ParallelSearchExecutor",
+          "type LayerTiming",
+          "type ParallelSearchResult",
+          "type ParallelSearchOptions",
+          "EarlyTerminationManager",
+          "type AdequacyCheck",
+          "type EarlyTerminationOptions",
+          "type EarlyTerminationResult",
+          "QueryPlanCache",
+          "type CachedQueryEntry",
+          "type QueryPlanCacheStats",
+          "type QueryPlanCacheOptions",
+          "QuantizedVectorStore",
+          "type QuantizationParams",
+          "type QuantizedVectorStoreStats",
+          "type QuantizedSearchResult",
+          "type QuantizedVectorStoreOptions"
+        ]
+      },
+      "src/search/OptimizedInvertedIndex.ts": {
+        "description": "Optimized Inverted Index",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "OptimizedInvertedIndex"
+        ],
+        "classes": [
+          "OptimizedInvertedIndex"
+        ],
+        "interfaces": [
+          "IndexMemoryUsage",
+          "PostingListResult"
+        ]
+      },
+      "src/search/ParallelSearchExecutor.ts": {
+        "description": "Parallel Search Executor",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "ReadonlyKnowledgeGraph",
+              "SymbolicFilters"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RankedSearch.js",
+            "imports": [
+              "RankedSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SymbolicSearch.js",
+            "imports": [
+              "SymbolicSearch"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "SEMANTIC_SEARCH_LIMITS"
+            ]
+          }
+        ],
+        "exports": [
+          "ParallelSearchExecutor"
+        ],
+        "classes": [
+          "ParallelSearchExecutor"
+        ],
+        "interfaces": [
+          "LayerTiming",
+          "ParallelSearchResult",
+          "ParallelSearchOptions"
+        ]
+      },
+      "src/search/QuantizedVectorStore.ts": {
+        "description": "Quantized Vector Store",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "QuantizedVectorStore"
+        ],
+        "classes": [
+          "QuantizedVectorStore"
+        ],
+        "interfaces": [
+          "QuantizationParams",
+          "QuantizedVectorStoreStats",
+          "QuantizedSearchResult",
+          "QuantizedVectorStoreOptions"
+        ]
+      },
+      "src/search/QueryAnalyzer.ts": {
+        "description": "Query Analyzer",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "QueryAnalysis",
+              "ExtractedEntity",
+              "TemporalRange"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "QueryAnalyzer"
+        ],
+        "classes": [
+          "QueryAnalyzer"
+        ]
+      },
+      "src/search/QueryCostEstimator.ts": {
+        "description": "Query Cost Estimator",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "SearchMethod",
+              "QueryCostEstimate",
+              "QueryCostEstimatorOptions",
+              "QueryAnalysis"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "QueryCostEstimator"
+        ],
+        "classes": [
+          "QueryCostEstimator"
+        ],
+        "interfaces": [
+          "ExtendedQueryCostEstimate",
+          "LayerRecommendationOptions",
+          "TokenEstimationOptions",
+          "AdaptiveDepthConfig"
+        ]
+      },
+      "src/search/QueryPlanCache.ts": {
+        "description": "Query Plan Cache",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "QueryAnalysis",
+              "QueryPlan"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "QueryPlanCache"
+        ],
+        "classes": [
+          "QueryPlanCache"
+        ],
+        "interfaces": [
+          "CachedQueryEntry",
+          "QueryPlanCacheStats",
+          "QueryPlanCacheOptions"
+        ]
+      },
+      "src/search/QueryPlanner.ts": {
+        "description": "Query Planner",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "QueryAnalysis",
+              "QueryPlan",
+              "SubQuery",
+              "SymbolicFilters"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "QueryPlanner"
+        ],
+        "classes": [
+          "QueryPlanner"
+        ]
+      },
+      "src/search/RankedSearch.ts": {
+        "description": "Ranked Search",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "SearchResult",
+              "TFIDFIndex",
+              "TokenizedEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "calculateTF",
+              "calculateIDFFromTokenSets",
+              "tokenize"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "SEARCH_LIMITS"
+            ]
+          },
+          {
+            "file": "./TFIDFIndexManager.js",
+            "imports": [
+              "TFIDFIndexManager"
+            ]
+          },
+          {
+            "file": "./SearchFilterChain.js",
+            "imports": [
+              "SearchFilterChain",
+              "SearchFilters"
+            ]
+          }
+        ],
+        "exports": [
+          "RankedSearch"
+        ],
+        "classes": [
+          "RankedSearch"
+        ]
+      },
+      "src/search/ReflectionManager.ts": {
+        "description": "Reflection Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "ReadonlyKnowledgeGraph",
+              "QueryAnalysis",
+              "HybridSearchResult",
+              "HybridSearchOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./HybridSearchManager.js",
+            "imports": [
+              "HybridSearchManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./QueryAnalyzer.js",
+            "imports": [
+              "QueryAnalyzer"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ReflectionManager"
+        ],
+        "classes": [
+          "ReflectionManager"
+        ],
+        "interfaces": [
+          "ReflectionOptions",
+          "RefinementHistoryEntry",
+          "ReflectionResult"
+        ]
+      },
+      "src/search/SavedSearchManager.ts": {
+        "description": "Saved Search Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs/promises",
+            "imports": [
+              "* as fs"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "SavedSearch",
+              "KnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./BasicSearch.js",
+            "imports": [
+              "BasicSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "sanitizeObject"
+            ]
+          }
+        ],
+        "exports": [
+          "SavedSearchManager"
+        ],
+        "classes": [
+          "SavedSearchManager"
+        ]
+      },
+      "src/search/SearchFilterChain.ts": {
+        "description": "Search Filter Chain",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "normalizeTags",
+              "hasMatchingTag",
+              "isWithinImportanceRange",
+              "validatePagination",
+              "applyPagination",
+              "ValidatedPagination"
+            ]
+          }
+        ],
+        "exports": [
+          "SearchFilterChain"
+        ],
+        "classes": [
+          "SearchFilterChain"
+        ],
+        "interfaces": [
+          "SearchFilters"
+        ]
+      },
+      "src/search/SearchManager.ts": {
+        "description": "Search Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "KnowledgeGraph",
+              "SearchResult",
+              "SavedSearch",
+              "AutoSearchResult",
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./BasicSearch.js",
+            "imports": [
+              "BasicSearch"
+            ]
+          },
+          {
+            "file": "./RankedSearch.js",
+            "imports": [
+              "RankedSearch"
+            ]
+          },
+          {
+            "file": "./BooleanSearch.js",
+            "imports": [
+              "BooleanSearch"
+            ]
+          },
+          {
+            "file": "./FuzzySearch.js",
+            "imports": [
+              "FuzzySearch"
+            ]
+          },
+          {
+            "file": "./SearchSuggestions.js",
+            "imports": [
+              "SearchSuggestions"
+            ]
+          },
+          {
+            "file": "./SavedSearchManager.js",
+            "imports": [
+              "SavedSearchManager"
+            ]
+          },
+          {
+            "file": "./QueryCostEstimator.js",
+            "imports": [
+              "QueryCostEstimator"
+            ]
+          }
+        ],
+        "exports": [
+          "SearchManager"
+        ],
+        "classes": [
+          "SearchManager"
+        ]
+      },
+      "src/search/SearchSuggestions.ts": {
+        "description": "Search Suggestions",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "levenshteinDistance"
+            ]
+          }
+        ],
+        "exports": [
+          "SearchSuggestions"
+        ],
+        "classes": [
+          "SearchSuggestions"
+        ]
+      },
+      "src/search/SemanticSearch.ts": {
+        "description": "Semantic Search Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "EmbeddingService",
+              "IVectorStore",
+              "SemanticSearchResult",
+              "SemanticIndexOptions",
+              "ReadonlyKnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./VectorStore.js",
+            "imports": [
+              "InMemoryVectorStore"
+            ]
+          },
+          {
+            "file": "../utils/constants.js",
+            "imports": [
+              "EMBEDDING_DEFAULTS",
+              "SEMANTIC_SEARCH_LIMITS"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "checkCancellation"
+            ]
+          }
+        ],
+        "exports": [
+          "entityToText",
+          "SemanticSearch"
+        ],
+        "classes": [
+          "SemanticSearch"
+        ],
+        "functions": [
+          "entityToText"
+        ]
+      },
+      "src/search/SymbolicSearch.ts": {
+        "description": "Symbolic Search Layer",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "SymbolicFilters"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "SymbolicSearch"
+        ],
+        "classes": [
+          "SymbolicSearch"
+        ],
+        "interfaces": [
+          "SymbolicResult"
+        ]
+      },
+      "src/search/TFIDFEventSync.ts": {
+        "description": "TF-IDF Event Sync",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../core/GraphEventEmitter.js",
+            "imports": [
+              "GraphEventEmitter"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./TFIDFIndexManager.js",
+            "imports": [
+              "TFIDFIndexManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "EntityCreatedEvent",
+              "EntityUpdatedEvent",
+              "EntityDeletedEvent"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "TFIDFEventSync"
+        ],
+        "classes": [
+          "TFIDFEventSync"
+        ]
+      },
+      "src/search/TFIDFIndexManager.ts": {
+        "description": "TF-IDF Index Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs/promises",
+            "imports": [
+              "* as fs"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "* as path"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "TFIDFIndex",
+              "DocumentVector",
+              "KnowledgeGraph",
+              "ReadonlyKnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "calculateIDFFromTokenSets",
+              "tokenize"
+            ]
+          }
+        ],
+        "exports": [
+          "TFIDFIndexManager"
+        ],
+        "classes": [
+          "TFIDFIndexManager"
+        ]
+      },
+      "src/search/VectorStore.ts": {
+        "description": "Vector Store",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "IVectorStore",
+              "VectorSearchResult"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "cosineSimilarity",
+          "createVectorStore",
+          "InMemoryVectorStore",
+          "SQLiteVectorStore"
+        ],
+        "classes": [
+          "InMemoryVectorStore",
+          "SQLiteVectorStore"
+        ],
+        "interfaces": [
+          "SQLiteStorageWithEmbeddings"
+        ],
+        "functions": [
+          "cosineSimilarity",
+          "createVectorStore"
+        ]
+      }
+    },
+    "types": {
+      "src/types/index.ts": {
+        "description": "Types Module - Barrel Export",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./types/index.js",
+            "imports": [
+              "Entity",
+              "Relation",
+              "KnowledgeGraph",
+              "SearchResult"
+            ]
+          }
+        ],
+        "exports": []
+      },
+      "src/types/types.ts": {
+        "description": "Type Definitions",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/taskScheduler.js",
+            "imports": [
+              "ProgressCallback",
+              "TaskPriority"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [],
+        "interfaces": [
+          "Entity",
+          "Relation",
+          "KnowledgeGraph",
+          "FuzzyCacheKey",
+          "BooleanCacheEntry",
+          "PaginatedCacheEntry",
+          "TokenizedEntity",
+          "SearchResult",
+          "SavedSearch",
+          "DocumentVector",
+          "TFIDFIndex",
+          "GraphStats",
+          "ValidationReport",
+          "ValidationIssue",
+          "ValidationWarning",
+          "ExportFilter",
+          "ImportResult",
+          "GraphCompressionResult",
+          "BackupOptions",
+          "BackupResult",
+          "RestoreResult",
+          "BackupMetadataExtended",
+          "BackupInfoExtended",
+          "ExportOptions",
+          "ExportResult",
+          "ArchiveResultExtended",
+          "CacheCompressionStats",
+          "TagAlias",
+          "LowercaseData",
+          "StorageConfig",
+          "IGraphStorage",
+          "TraversalOptions",
+          "TraversalResult",
+          "PathResult",
+          "ConnectedComponentsResult",
+          "CentralityResult",
+          "WeightedRelation",
+          "EmbeddingService",
+          "SemanticSearchResult",
+          "IVectorStore",
+          "VectorSearchResult",
+          "EmbeddingConfig",
+          "SemanticIndexOptions",
+          "LongRunningOperationOptions",
+          "BatchResult",
+          "BatchOptions",
+          "GraphEventBase",
+          "EntityCreatedEvent",
+          "EntityUpdatedEvent",
+          "EntityDeletedEvent",
+          "RelationCreatedEvent",
+          "RelationDeletedEvent",
+          "ObservationAddedEvent",
+          "ObservationDeletedEvent",
+          "GraphSavedEvent",
+          "GraphLoadedEvent",
+          "GraphEventMap",
+          "QueryCostEstimate",
+          "AutoSearchResult",
+          "QueryCostEstimatorOptions",
+          "PreparedEntity",
+          "SymbolicFilters",
+          "HybridSearchOptions",
+          "HybridSearchResult",
+          "ExtractedEntity",
+          "TemporalRange",
+          "QueryAnalysis",
+          "SubQuery",
+          "QueryPlan"
+        ]
+      }
+    },
+    "utils": {
+      "src/utils/BatchProcessor.ts": {
+        "description": "Batch Processor",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "processBatch",
+          "processWithRetry",
+          "chunkArray",
+          "parallelLimit",
+          "mapParallel",
+          "filterParallel",
+          "BatchProcessor"
+        ],
+        "classes": [
+          "BatchProcessor"
+        ],
+        "interfaces": [
+          "BatchProgress",
+          "BatchItemResult",
+          "BatchProcessResult",
+          "BatchProcessorOptions"
+        ],
+        "functions": [
+          "processBatch",
+          "processWithRetry",
+          "chunkArray",
+          "parallelLimit",
+          "mapParallel",
+          "filterParallel"
+        ]
+      },
+      "src/utils/compressedCache.ts": {
+        "description": "Compressed Cache Utility",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "zlib",
+            "imports": [
+              "brotliCompressSync",
+              "brotliDecompressSync",
+              "constants"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./constants.js",
+            "imports": [
+              "COMPRESSION_CONFIG"
+            ]
+          }
+        ],
+        "exports": [
+          "CompressedCache"
+        ],
+        "classes": [
+          "CompressedCache"
+        ],
+        "interfaces": [
+          "CompressedCacheOptions",
+          "CompressedCacheStats"
+        ]
+      },
+      "src/utils/compressionUtil.ts": {
+        "description": "Compression Utility Module",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "zlib",
+            "imports": [
+              "brotliCompress",
+              "brotliDecompress",
+              "constants"
+            ]
+          },
+          {
+            "module": "util",
+            "imports": [
+              "promisify"
+            ]
+          },
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "./constants.js",
+            "imports": [
+              "COMPRESSION_CONFIG"
+            ]
+          }
+        ],
+        "exports": [
+          "hasBrotliExtension",
+          "compress",
+          "decompress",
+          "getCompressionRatio",
+          "compressFile",
+          "decompressFile",
+          "createMetadata",
+          "createUncompressedMetadata",
+          "compressToBase64",
+          "decompressFromBase64"
+        ],
+        "interfaces": [
+          "CompressionOptions",
+          "CompressionResult",
+          "CompressionMetadata"
+        ],
+        "functions": [
+          "hasBrotliExtension",
+          "compress",
+          "decompress",
+          "getCompressionRatio",
+          "compressFile",
+          "decompressFile",
+          "createMetadata",
+          "createUncompressedMetadata",
+          "compressToBase64",
+          "decompressFromBase64"
+        ]
+      },
+      "src/utils/constants.ts": {
+        "description": "Application Constants",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "FILE_EXTENSIONS",
+          "FILE_SUFFIXES",
+          "DEFAULT_FILE_NAMES",
+          "ENV_VARS",
+          "DEFAULT_BASE_DIR",
+          "LOG_PREFIXES",
+          "SIMILARITY_WEIGHTS",
+          "DEFAULT_DUPLICATE_THRESHOLD",
+          "SEARCH_LIMITS",
+          "IMPORTANCE_RANGE",
+          "GRAPH_LIMITS",
+          "QUERY_LIMITS",
+          "COMPRESSION_CONFIG",
+          "EMBEDDING_ENV_VARS",
+          "EMBEDDING_DEFAULTS",
+          "SEMANTIC_SEARCH_LIMITS",
+          "OPENAI_API_CONFIG",
+          "STREAMING_CONFIG",
+          "getEmbeddingConfig"
+        ],
+        "functions": [
+          "getEmbeddingConfig"
+        ],
+        "constants": [
+          "FILE_EXTENSIONS",
+          "FILE_SUFFIXES",
+          "DEFAULT_FILE_NAMES",
+          "ENV_VARS",
+          "DEFAULT_BASE_DIR",
+          "LOG_PREFIXES",
+          "SIMILARITY_WEIGHTS",
+          "DEFAULT_DUPLICATE_THRESHOLD",
+          "SEARCH_LIMITS",
+          "IMPORTANCE_RANGE",
+          "GRAPH_LIMITS",
+          "QUERY_LIMITS",
+          "COMPRESSION_CONFIG",
+          "EMBEDDING_ENV_VARS",
+          "EMBEDDING_DEFAULTS",
+          "SEMANTIC_SEARCH_LIMITS",
+          "OPENAI_API_CONFIG",
+          "STREAMING_CONFIG"
+        ]
+      },
+      "src/utils/entityUtils.ts": {
+        "description": "Entity Utilities",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "path"
+            ]
+          },
+          {
+            "module": "url",
+            "imports": [
+              "fileURLToPath"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "KnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./errors.js",
+            "imports": [
+              "EntityNotFoundError",
+              "FileOperationError"
+            ]
+          }
+        ],
+        "exports": [
+          "defaultMemoryPath",
+          "fnv1aHash",
+          "findEntityByName",
+          "findEntitiesByNames",
+          "entityExists",
+          "getEntityIndex",
+          "removeEntityByName",
+          "getEntityNameSet",
+          "groupEntitiesByType",
+          "touchEntity",
+          "normalizeTag",
+          "normalizeTags",
+          "hasMatchingTag",
+          "hasAllTags",
+          "filterByTags",
+          "addUniqueTags",
+          "removeTags",
+          "isWithinDateRange",
+          "parseDateRange",
+          "isValidISODate",
+          "getCurrentTimestamp",
+          "isWithinImportanceRange",
+          "filterByImportance",
+          "filterByCreatedDate",
+          "filterByModifiedDate",
+          "filterByEntityType",
+          "entityPassesFilters",
+          "sanitizeObject",
+          "escapeCsvFormula",
+          "validateFilePath",
+          "ensureMemoryFilePath"
+        ],
+        "interfaces": [
+          "CommonSearchFilters"
+        ],
+        "functions": [
+          "fnv1aHash",
+          "findEntityByName",
+          "findEntityByName",
+          "findEntityByName",
+          "findEntityByName",
+          "findEntitiesByNames",
+          "entityExists",
+          "getEntityIndex",
+          "removeEntityByName",
+          "getEntityNameSet",
+          "groupEntitiesByType",
+          "touchEntity",
+          "normalizeTag",
+          "normalizeTags",
+          "hasMatchingTag",
+          "hasAllTags",
+          "filterByTags",
+          "addUniqueTags",
+          "removeTags",
+          "isWithinDateRange",
+          "parseDateRange",
+          "isValidISODate",
+          "getCurrentTimestamp",
+          "isWithinImportanceRange",
+          "filterByImportance",
+          "filterByCreatedDate",
+          "filterByModifiedDate",
+          "filterByEntityType",
+          "entityPassesFilters",
+          "sanitizeObject",
+          "escapeCsvFormula",
+          "validateFilePath",
+          "ensureMemoryFilePath"
+        ],
+        "constants": [
+          "defaultMemoryPath"
+        ]
+      },
+      "src/utils/errors.ts": {
+        "description": "Custom Error Types",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "KnowledgeGraphError",
+          "EntityNotFoundError",
+          "RelationNotFoundError",
+          "DuplicateEntityError",
+          "ValidationError",
+          "CycleDetectedError",
+          "InvalidImportanceError",
+          "FileOperationError",
+          "ImportError",
+          "ExportError",
+          "InsufficientEntitiesError",
+          "OperationCancelledError"
+        ],
+        "classes": [
+          "KnowledgeGraphError",
+          "EntityNotFoundError",
+          "RelationNotFoundError",
+          "DuplicateEntityError",
+          "ValidationError",
+          "CycleDetectedError",
+          "InvalidImportanceError",
+          "FileOperationError",
+          "ImportError",
+          "ExportError",
+          "InsufficientEntitiesError",
+          "OperationCancelledError"
+        ]
+      },
+      "src/utils/formatters.ts": {
+        "description": "Response and Pagination Formatters",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./constants.js",
+            "imports": [
+              "SEARCH_LIMITS"
+            ]
+          }
+        ],
+        "exports": [
+          "formatToolResponse",
+          "formatTextResponse",
+          "formatRawResponse",
+          "formatErrorResponse",
+          "validatePagination",
+          "applyPagination",
+          "paginateArray",
+          "getPaginationMeta"
+        ],
+        "interfaces": [
+          "ValidatedPagination"
+        ],
+        "functions": [
+          "formatToolResponse",
+          "formatTextResponse",
+          "formatRawResponse",
+          "formatErrorResponse",
+          "validatePagination",
+          "applyPagination",
+          "paginateArray",
+          "getPaginationMeta"
+        ]
+      },
+      "src/utils/index.ts": {
+        "description": "Utilities Module Barrel Export",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./errors.js",
+            "imports": [
+              "KnowledgeGraphError",
+              "EntityNotFoundError",
+              "RelationNotFoundError",
+              "DuplicateEntityError",
+              "ValidationError",
+              "CycleDetectedError",
+              "InvalidImportanceError",
+              "FileOperationError",
+              "ImportError",
+              "ExportError",
+              "InsufficientEntitiesError",
+              "OperationCancelledError"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./constants.js",
+            "imports": [
+              "FILE_EXTENSIONS",
+              "FILE_SUFFIXES",
+              "DEFAULT_FILE_NAMES",
+              "ENV_VARS",
+              "DEFAULT_BASE_DIR",
+              "LOG_PREFIXES",
+              "SIMILARITY_WEIGHTS",
+              "DEFAULT_DUPLICATE_THRESHOLD",
+              "SEARCH_LIMITS",
+              "IMPORTANCE_RANGE",
+              "GRAPH_LIMITS",
+              "QUERY_LIMITS",
+              "COMPRESSION_CONFIG",
+              "STREAMING_CONFIG",
+              "type CompressionQuality"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./compressionUtil.js",
+            "imports": [
+              "compress",
+              "decompress",
+              "compressFile",
+              "decompressFile",
+              "compressToBase64",
+              "decompressFromBase64",
+              "hasBrotliExtension",
+              "getCompressionRatio",
+              "createMetadata",
+              "createUncompressedMetadata",
+              "type CompressionOptions",
+              "type CompressionResult",
+              "type CompressionMetadata"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./compressedCache.js",
+            "imports": [
+              "CompressedCache",
+              "type CompressedCacheOptions",
+              "type CompressedCacheStats"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./logger.js",
+            "imports": [
+              "logger"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./searchAlgorithms.js",
+            "imports": [
+              "levenshteinDistance",
+              "calculateTF",
+              "calculateIDF",
+              "calculateIDFFromTokenSets",
+              "calculateTFIDF",
+              "tokenize"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./indexes.js",
+            "imports": [
+              "NameIndex",
+              "TypeIndex",
+              "LowercaseCache",
+              "RelationIndex"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./searchCache.js",
+            "imports": [
+              "SearchCache",
+              "searchCaches",
+              "clearAllSearchCaches",
+              "getAllCacheStats",
+              "cleanupAllCaches",
+              "type CacheStats"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./schemas.js",
+            "imports": [
+              "// Zod schemas - Entity/Relation\r\n  EntitySchema",
+              "CreateEntitySchema",
+              "UpdateEntitySchema",
+              "RelationSchema",
+              "CreateRelationSchema",
+              "SearchQuerySchema",
+              "DateRangeSchema",
+              "TagAliasSchema",
+              "ExportFormatSchema",
+              "BatchCreateEntitiesSchema",
+              "BatchCreateRelationsSchema",
+              "EntityNamesSchema",
+              "DeleteRelationsSchema",
+              "// Zod schemas - Observations\r\n  AddObservationInputSchema",
+              "AddObservationsInputSchema",
+              "DeleteObservationInputSchema",
+              "DeleteObservationsInputSchema",
+              "// Zod schemas - Archive\r\n  ArchiveCriteriaSchema",
+              "// Zod schemas - Saved Search\r\n  SavedSearchInputSchema",
+              "SavedSearchUpdateSchema",
+              "// Zod schemas - Import/Export\r\n  ImportFormatSchema",
+              "ExtendedExportFormatSchema",
+              "MergeStrategySchema",
+              "ExportFilterSchema",
+              "// Zod schemas - Search\r\n  OptionalTagsSchema",
+              "OptionalEntityNamesSchema",
+              "// Schema types\r\n  type EntityInput",
+              "type CreateEntityInput",
+              "type UpdateEntityInput",
+              "type RelationInput",
+              "type CreateRelationInput",
+              "type SearchQuery",
+              "type DateRange",
+              "type TagAliasInput",
+              "type AddObservationInput",
+              "type DeleteObservationInput",
+              "type ArchiveCriteriaInput",
+              "type SavedSearchInput",
+              "type SavedSearchUpdateInput",
+              "type ImportFormatInput",
+              "type ExtendedExportFormatInput",
+              "type MergeStrategyInput",
+              "type ExportFilterInput",
+              "// Validation result type\r\n  type ValidationResult",
+              "// Zod helpers\r\n  formatZodErrors",
+              "validateWithSchema",
+              "validateSafe",
+              "validateArrayWithSchema",
+              "// Manual validation functions\r\n  validateEntity",
+              "validateRelation",
+              "validateImportance",
+              "validateTags"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./formatters.js",
+            "imports": [
+              "// Response formatting\r\n  formatToolResponse",
+              "formatTextResponse",
+              "formatRawResponse",
+              "formatErrorResponse",
+              "type ToolResponse",
+              "// Pagination utilities\r\n  validatePagination",
+              "applyPagination",
+              "paginateArray",
+              "getPaginationMeta",
+              "type ValidatedPagination"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./entityUtils.js",
+            "imports": [
+              "// Hash functions (Phase 12 Sprint 1)\r\n  fnv1aHash",
+              "// Entity lookup\r\n  findEntityByName",
+              "findEntitiesByNames",
+              "entityExists",
+              "getEntityIndex",
+              "removeEntityByName",
+              "getEntityNameSet",
+              "groupEntitiesByType",
+              "touchEntity",
+              "// Tag utilities\r\n  normalizeTag",
+              "normalizeTags",
+              "hasMatchingTag",
+              "hasAllTags",
+              "filterByTags",
+              "addUniqueTags",
+              "removeTags",
+              "// Date utilities\r\n  isWithinDateRange",
+              "parseDateRange",
+              "isValidISODate",
+              "getCurrentTimestamp",
+              "// Filter utilities\r\n  isWithinImportanceRange",
+              "filterByImportance",
+              "filterByCreatedDate",
+              "filterByModifiedDate",
+              "filterByEntityType",
+              "entityPassesFilters",
+              "type CommonSearchFilters",
+              "// Path utilities\r\n  validateFilePath",
+              "defaultMemoryPath",
+              "ensureMemoryFilePath",
+              "// Security utilities\r\n  sanitizeObject",
+              "escapeCsvFormula"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./parallelUtils.js",
+            "imports": [
+              "parallelMap",
+              "parallelFilter",
+              "getPoolStats",
+              "shutdownParallelUtils"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./taskScheduler.js",
+            "imports": [
+              "// Types and Enums\r\n  TaskPriority",
+              "TaskStatus",
+              "type Task",
+              "type TaskResult",
+              "type ProgressCallback",
+              "type TaskBatchOptions",
+              "type QueueStats",
+              "// Task Queue\r\n  TaskQueue",
+              "// Batch Processing\r\n  batchProcess",
+              "rateLimitedProcess",
+              "withRetry",
+              "// Rate Limiting\r\n  debounce",
+              "throttle"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./operationUtils.js",
+            "imports": [
+              "checkCancellation",
+              "createProgressReporter",
+              "createProgress",
+              "executeWithPhases",
+              "processBatchesWithProgress",
+              "type PhaseDefinition"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./WorkerPoolManager.js",
+            "imports": [
+              "WorkerPoolManager",
+              "getWorkerPoolManager",
+              "type WorkerPoolConfig",
+              "type ExtendedPoolStats",
+              "type PoolEventCallback"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./BatchProcessor.js",
+            "imports": [
+              "BatchProcessor",
+              "processBatch",
+              "processWithRetry",
+              "chunkArray",
+              "parallelLimit",
+              "mapParallel",
+              "filterParallel",
+              "type BatchProgress",
+              "type BatchProgressCallback",
+              "type BatchItemResult",
+              "type BatchProcessResult",
+              "type BatchProcessorOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./MemoryMonitor.js",
+            "imports": [
+              "MemoryMonitor",
+              "globalMemoryMonitor",
+              "type ComponentMemoryUsage",
+              "type MemoryUsageStats",
+              "type MemoryThresholds",
+              "type MemoryAlert",
+              "type MemoryChangeCallback"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "KnowledgeGraphError",
+          "EntityNotFoundError",
+          "RelationNotFoundError",
+          "DuplicateEntityError",
+          "ValidationError",
+          "CycleDetectedError",
+          "InvalidImportanceError",
+          "FileOperationError",
+          "ImportError",
+          "ExportError",
+          "InsufficientEntitiesError",
+          "OperationCancelledError",
+          "FILE_EXTENSIONS",
+          "FILE_SUFFIXES",
+          "DEFAULT_FILE_NAMES",
+          "ENV_VARS",
+          "DEFAULT_BASE_DIR",
+          "LOG_PREFIXES",
+          "SIMILARITY_WEIGHTS",
+          "DEFAULT_DUPLICATE_THRESHOLD",
+          "SEARCH_LIMITS",
+          "IMPORTANCE_RANGE",
+          "GRAPH_LIMITS",
+          "QUERY_LIMITS",
+          "COMPRESSION_CONFIG",
+          "STREAMING_CONFIG",
+          "type CompressionQuality",
+          "compress",
+          "decompress",
+          "compressFile",
+          "decompressFile",
+          "compressToBase64",
+          "decompressFromBase64",
+          "hasBrotliExtension",
+          "getCompressionRatio",
+          "createMetadata",
+          "createUncompressedMetadata",
+          "type CompressionOptions",
+          "type CompressionResult",
+          "type CompressionMetadata",
+          "CompressedCache",
+          "type CompressedCacheOptions",
+          "type CompressedCacheStats",
+          "logger",
+          "levenshteinDistance",
+          "calculateTF",
+          "calculateIDF",
+          "calculateIDFFromTokenSets",
+          "calculateTFIDF",
+          "tokenize",
+          "NameIndex",
+          "TypeIndex",
+          "LowercaseCache",
+          "RelationIndex",
+          "SearchCache",
+          "searchCaches",
+          "clearAllSearchCaches",
+          "getAllCacheStats",
+          "cleanupAllCaches",
+          "type CacheStats",
+          "// Zod schemas - Entity/Relation\r\n  EntitySchema",
+          "CreateEntitySchema",
+          "UpdateEntitySchema",
+          "RelationSchema",
+          "CreateRelationSchema",
+          "SearchQuerySchema",
+          "DateRangeSchema",
+          "TagAliasSchema",
+          "ExportFormatSchema",
+          "BatchCreateEntitiesSchema",
+          "BatchCreateRelationsSchema",
+          "EntityNamesSchema",
+          "DeleteRelationsSchema",
+          "// Zod schemas - Observations\r\n  AddObservationInputSchema",
+          "AddObservationsInputSchema",
+          "DeleteObservationInputSchema",
+          "DeleteObservationsInputSchema",
+          "// Zod schemas - Archive\r\n  ArchiveCriteriaSchema",
+          "// Zod schemas - Saved Search\r\n  SavedSearchInputSchema",
+          "SavedSearchUpdateSchema",
+          "// Zod schemas - Import/Export\r\n  ImportFormatSchema",
+          "ExtendedExportFormatSchema",
+          "MergeStrategySchema",
+          "ExportFilterSchema",
+          "// Zod schemas - Search\r\n  OptionalTagsSchema",
+          "OptionalEntityNamesSchema",
+          "// Schema types\r\n  type EntityInput",
+          "type CreateEntityInput",
+          "type UpdateEntityInput",
+          "type RelationInput",
+          "type CreateRelationInput",
+          "type SearchQuery",
+          "type DateRange",
+          "type TagAliasInput",
+          "type AddObservationInput",
+          "type DeleteObservationInput",
+          "type ArchiveCriteriaInput",
+          "type SavedSearchInput",
+          "type SavedSearchUpdateInput",
+          "type ImportFormatInput",
+          "type ExtendedExportFormatInput",
+          "type MergeStrategyInput",
+          "type ExportFilterInput",
+          "// Validation result type\r\n  type ValidationResult",
+          "// Zod helpers\r\n  formatZodErrors",
+          "validateWithSchema",
+          "validateSafe",
+          "validateArrayWithSchema",
+          "// Manual validation functions\r\n  validateEntity",
+          "validateRelation",
+          "validateImportance",
+          "validateTags",
+          "// Response formatting\r\n  formatToolResponse",
+          "formatTextResponse",
+          "formatRawResponse",
+          "formatErrorResponse",
+          "type ToolResponse",
+          "// Pagination utilities\r\n  validatePagination",
+          "applyPagination",
+          "paginateArray",
+          "getPaginationMeta",
+          "type ValidatedPagination",
+          "// Hash functions (Phase 12 Sprint 1)\r\n  fnv1aHash",
+          "// Entity lookup\r\n  findEntityByName",
+          "findEntitiesByNames",
+          "entityExists",
+          "getEntityIndex",
+          "removeEntityByName",
+          "getEntityNameSet",
+          "groupEntitiesByType",
+          "touchEntity",
+          "// Tag utilities\r\n  normalizeTag",
+          "normalizeTags",
+          "hasMatchingTag",
+          "hasAllTags",
+          "filterByTags",
+          "addUniqueTags",
+          "removeTags",
+          "// Date utilities\r\n  isWithinDateRange",
+          "parseDateRange",
+          "isValidISODate",
+          "getCurrentTimestamp",
+          "// Filter utilities\r\n  isWithinImportanceRange",
+          "filterByImportance",
+          "filterByCreatedDate",
+          "filterByModifiedDate",
+          "filterByEntityType",
+          "entityPassesFilters",
+          "type CommonSearchFilters",
+          "// Path utilities\r\n  validateFilePath",
+          "defaultMemoryPath",
+          "ensureMemoryFilePath",
+          "// Security utilities\r\n  sanitizeObject",
+          "escapeCsvFormula",
+          "parallelMap",
+          "parallelFilter",
+          "getPoolStats",
+          "shutdownParallelUtils",
+          "// Types and Enums\r\n  TaskPriority",
+          "TaskStatus",
+          "type Task",
+          "type TaskResult",
+          "type ProgressCallback",
+          "type TaskBatchOptions",
+          "type QueueStats",
+          "// Task Queue\r\n  TaskQueue",
+          "// Batch Processing\r\n  batchProcess",
+          "rateLimitedProcess",
+          "withRetry",
+          "// Rate Limiting\r\n  debounce",
+          "throttle",
+          "checkCancellation",
+          "createProgressReporter",
+          "createProgress",
+          "executeWithPhases",
+          "processBatchesWithProgress",
+          "type PhaseDefinition",
+          "WorkerPoolManager",
+          "getWorkerPoolManager",
+          "type WorkerPoolConfig",
+          "type ExtendedPoolStats",
+          "type PoolEventCallback",
+          "BatchProcessor",
+          "processBatch",
+          "processWithRetry",
+          "chunkArray",
+          "parallelLimit",
+          "mapParallel",
+          "filterParallel",
+          "type BatchProgress",
+          "type BatchProgressCallback",
+          "type BatchItemResult",
+          "type BatchProcessResult",
+          "type BatchProcessorOptions",
+          "MemoryMonitor",
+          "globalMemoryMonitor",
+          "type ComponentMemoryUsage",
+          "type MemoryUsageStats",
+          "type MemoryThresholds",
+          "type MemoryAlert",
+          "type MemoryChangeCallback"
+        ],
+        "reExported": [
+          "KnowledgeGraphError",
+          "EntityNotFoundError",
+          "RelationNotFoundError",
+          "DuplicateEntityError",
+          "ValidationError",
+          "CycleDetectedError",
+          "InvalidImportanceError",
+          "FileOperationError",
+          "ImportError",
+          "ExportError",
+          "InsufficientEntitiesError",
+          "OperationCancelledError",
+          "FILE_EXTENSIONS",
+          "FILE_SUFFIXES",
+          "DEFAULT_FILE_NAMES",
+          "ENV_VARS",
+          "DEFAULT_BASE_DIR",
+          "LOG_PREFIXES",
+          "SIMILARITY_WEIGHTS",
+          "DEFAULT_DUPLICATE_THRESHOLD",
+          "SEARCH_LIMITS",
+          "IMPORTANCE_RANGE",
+          "GRAPH_LIMITS",
+          "QUERY_LIMITS",
+          "COMPRESSION_CONFIG",
+          "STREAMING_CONFIG",
+          "type CompressionQuality",
+          "compress",
+          "decompress",
+          "compressFile",
+          "decompressFile",
+          "compressToBase64",
+          "decompressFromBase64",
+          "hasBrotliExtension",
+          "getCompressionRatio",
+          "createMetadata",
+          "createUncompressedMetadata",
+          "type CompressionOptions",
+          "type CompressionResult",
+          "type CompressionMetadata",
+          "CompressedCache",
+          "type CompressedCacheOptions",
+          "type CompressedCacheStats",
+          "logger",
+          "levenshteinDistance",
+          "calculateTF",
+          "calculateIDF",
+          "calculateIDFFromTokenSets",
+          "calculateTFIDF",
+          "tokenize",
+          "NameIndex",
+          "TypeIndex",
+          "LowercaseCache",
+          "RelationIndex",
+          "SearchCache",
+          "searchCaches",
+          "clearAllSearchCaches",
+          "getAllCacheStats",
+          "cleanupAllCaches",
+          "type CacheStats",
+          "// Zod schemas - Entity/Relation\r\n  EntitySchema",
+          "CreateEntitySchema",
+          "UpdateEntitySchema",
+          "RelationSchema",
+          "CreateRelationSchema",
+          "SearchQuerySchema",
+          "DateRangeSchema",
+          "TagAliasSchema",
+          "ExportFormatSchema",
+          "BatchCreateEntitiesSchema",
+          "BatchCreateRelationsSchema",
+          "EntityNamesSchema",
+          "DeleteRelationsSchema",
+          "// Zod schemas - Observations\r\n  AddObservationInputSchema",
+          "AddObservationsInputSchema",
+          "DeleteObservationInputSchema",
+          "DeleteObservationsInputSchema",
+          "// Zod schemas - Archive\r\n  ArchiveCriteriaSchema",
+          "// Zod schemas - Saved Search\r\n  SavedSearchInputSchema",
+          "SavedSearchUpdateSchema",
+          "// Zod schemas - Import/Export\r\n  ImportFormatSchema",
+          "ExtendedExportFormatSchema",
+          "MergeStrategySchema",
+          "ExportFilterSchema",
+          "// Zod schemas - Search\r\n  OptionalTagsSchema",
+          "OptionalEntityNamesSchema",
+          "// Schema types\r\n  type EntityInput",
+          "type CreateEntityInput",
+          "type UpdateEntityInput",
+          "type RelationInput",
+          "type CreateRelationInput",
+          "type SearchQuery",
+          "type DateRange",
+          "type TagAliasInput",
+          "type AddObservationInput",
+          "type DeleteObservationInput",
+          "type ArchiveCriteriaInput",
+          "type SavedSearchInput",
+          "type SavedSearchUpdateInput",
+          "type ImportFormatInput",
+          "type ExtendedExportFormatInput",
+          "type MergeStrategyInput",
+          "type ExportFilterInput",
+          "// Validation result type\r\n  type ValidationResult",
+          "// Zod helpers\r\n  formatZodErrors",
+          "validateWithSchema",
+          "validateSafe",
+          "validateArrayWithSchema",
+          "// Manual validation functions\r\n  validateEntity",
+          "validateRelation",
+          "validateImportance",
+          "validateTags",
+          "// Response formatting\r\n  formatToolResponse",
+          "formatTextResponse",
+          "formatRawResponse",
+          "formatErrorResponse",
+          "type ToolResponse",
+          "// Pagination utilities\r\n  validatePagination",
+          "applyPagination",
+          "paginateArray",
+          "getPaginationMeta",
+          "type ValidatedPagination",
+          "// Hash functions (Phase 12 Sprint 1)\r\n  fnv1aHash",
+          "// Entity lookup\r\n  findEntityByName",
+          "findEntitiesByNames",
+          "entityExists",
+          "getEntityIndex",
+          "removeEntityByName",
+          "getEntityNameSet",
+          "groupEntitiesByType",
+          "touchEntity",
+          "// Tag utilities\r\n  normalizeTag",
+          "normalizeTags",
+          "hasMatchingTag",
+          "hasAllTags",
+          "filterByTags",
+          "addUniqueTags",
+          "removeTags",
+          "// Date utilities\r\n  isWithinDateRange",
+          "parseDateRange",
+          "isValidISODate",
+          "getCurrentTimestamp",
+          "// Filter utilities\r\n  isWithinImportanceRange",
+          "filterByImportance",
+          "filterByCreatedDate",
+          "filterByModifiedDate",
+          "filterByEntityType",
+          "entityPassesFilters",
+          "type CommonSearchFilters",
+          "// Path utilities\r\n  validateFilePath",
+          "defaultMemoryPath",
+          "ensureMemoryFilePath",
+          "// Security utilities\r\n  sanitizeObject",
+          "escapeCsvFormula",
+          "parallelMap",
+          "parallelFilter",
+          "getPoolStats",
+          "shutdownParallelUtils",
+          "// Types and Enums\r\n  TaskPriority",
+          "TaskStatus",
+          "type Task",
+          "type TaskResult",
+          "type ProgressCallback",
+          "type TaskBatchOptions",
+          "type QueueStats",
+          "// Task Queue\r\n  TaskQueue",
+          "// Batch Processing\r\n  batchProcess",
+          "rateLimitedProcess",
+          "withRetry",
+          "// Rate Limiting\r\n  debounce",
+          "throttle",
+          "checkCancellation",
+          "createProgressReporter",
+          "createProgress",
+          "executeWithPhases",
+          "processBatchesWithProgress",
+          "type PhaseDefinition",
+          "WorkerPoolManager",
+          "getWorkerPoolManager",
+          "type WorkerPoolConfig",
+          "type ExtendedPoolStats",
+          "type PoolEventCallback",
+          "BatchProcessor",
+          "processBatch",
+          "processWithRetry",
+          "chunkArray",
+          "parallelLimit",
+          "mapParallel",
+          "filterParallel",
+          "type BatchProgress",
+          "type BatchProgressCallback",
+          "type BatchItemResult",
+          "type BatchProcessResult",
+          "type BatchProcessorOptions",
+          "MemoryMonitor",
+          "globalMemoryMonitor",
+          "type ComponentMemoryUsage",
+          "type MemoryUsageStats",
+          "type MemoryThresholds",
+          "type MemoryAlert",
+          "type MemoryChangeCallback"
+        ]
+      },
+      "src/utils/indexes.ts": {
+        "description": "Search Indexes",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "LowercaseData",
+              "Relation"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "NameIndex",
+          "TypeIndex",
+          "LowercaseCache",
+          "RelationIndex",
+          "ObservationIndex"
+        ],
+        "classes": [
+          "NameIndex",
+          "TypeIndex",
+          "LowercaseCache",
+          "RelationIndex",
+          "ObservationIndex"
+        ]
+      },
+      "src/utils/logger.ts": {
+        "description": "Simple logging utility for the Memory MCP Server",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "logger"
+        ],
+        "constants": [
+          "logger"
+        ]
+      },
+      "src/utils/MemoryMonitor.ts": {
+        "description": "Memory Usage Monitor",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "globalMemoryMonitor",
+          "MemoryMonitor"
+        ],
+        "classes": [
+          "MemoryMonitor"
+        ],
+        "interfaces": [
+          "ComponentMemoryUsage",
+          "MemoryUsageStats",
+          "MemoryThresholds",
+          "MemoryAlert"
+        ],
+        "constants": [
+          "globalMemoryMonitor"
+        ]
+      },
+      "src/utils/operationUtils.ts": {
+        "description": "Operation Utilities",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./errors.js",
+            "imports": [
+              "OperationCancelledError"
+            ]
+          },
+          {
+            "file": "./taskScheduler.js",
+            "imports": [
+              "ProgressCallback"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "checkCancellation",
+          "createProgressReporter",
+          "createProgress",
+          "executeWithPhases",
+          "processBatchesWithProgress"
+        ],
+        "interfaces": [
+          "PhaseDefinition"
+        ],
+        "functions": [
+          "checkCancellation",
+          "createProgressReporter",
+          "createProgress",
+          "executeWithPhases",
+          "processBatchesWithProgress"
+        ]
+      },
+      "src/utils/parallelUtils.ts": {
+        "description": "Parallel Utilities",
+        "externalDependencies": [
+          {
+            "package": "@danielsimonjr/workerpool",
+            "imports": [
+              "workerpool"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "shutdownParallelUtils",
+          "parallelMap",
+          "parallelFilter",
+          "getPoolStats"
+        ],
+        "functions": [
+          "shutdownParallelUtils",
+          "parallelMap",
+          "parallelFilter",
+          "getPoolStats"
+        ]
+      },
+      "src/utils/schemas.ts": {
+        "description": "Validation Schemas and Helpers",
+        "externalDependencies": [
+          {
+            "package": "zod",
+            "imports": [
+              "z",
+              "ZodSchema",
+              "ZodError"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./constants.js",
+            "imports": [
+              "IMPORTANCE_RANGE"
+            ]
+          },
+          {
+            "file": "./errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          }
+        ],
+        "exports": [
+          "EntitySchema",
+          "CreateEntitySchema",
+          "UpdateEntitySchema",
+          "RelationSchema",
+          "CreateRelationSchema",
+          "SearchQuerySchema",
+          "DateRangeSchema",
+          "TagAliasSchema",
+          "ExportFormatSchema",
+          "BatchCreateEntitiesSchema",
+          "BatchCreateRelationsSchema",
+          "EntityNamesSchema",
+          "DeleteRelationsSchema",
+          "AddObservationInputSchema",
+          "AddObservationsInputSchema",
+          "DeleteObservationInputSchema",
+          "DeleteObservationsInputSchema",
+          "ArchiveCriteriaSchema",
+          "SavedSearchInputSchema",
+          "SavedSearchUpdateSchema",
+          "ImportFormatSchema",
+          "ExtendedExportFormatSchema",
+          "MergeStrategySchema",
+          "ExportFilterSchema",
+          "OptionalTagsSchema",
+          "OptionalEntityNamesSchema",
+          "formatZodErrors",
+          "validateWithSchema",
+          "validateSafe",
+          "validateArrayWithSchema",
+          "validateEntity",
+          "validateRelation",
+          "validateImportance",
+          "validateTags"
+        ],
+        "interfaces": [
+          "ValidationResult"
+        ],
+        "functions": [
+          "formatZodErrors",
+          "validateWithSchema",
+          "validateSafe",
+          "validateArrayWithSchema",
+          "validateEntity",
+          "validateRelation",
+          "validateImportance",
+          "validateTags"
+        ],
+        "constants": [
+          "EntitySchema",
+          "CreateEntitySchema",
+          "UpdateEntitySchema",
+          "RelationSchema",
+          "CreateRelationSchema",
+          "SearchQuerySchema",
+          "DateRangeSchema",
+          "TagAliasSchema",
+          "ExportFormatSchema",
+          "BatchCreateEntitiesSchema",
+          "BatchCreateRelationsSchema",
+          "EntityNamesSchema",
+          "DeleteRelationsSchema",
+          "AddObservationInputSchema",
+          "AddObservationsInputSchema",
+          "DeleteObservationInputSchema",
+          "DeleteObservationsInputSchema",
+          "ArchiveCriteriaSchema",
+          "SavedSearchInputSchema",
+          "SavedSearchUpdateSchema",
+          "ImportFormatSchema",
+          "ExtendedExportFormatSchema",
+          "MergeStrategySchema",
+          "ExportFilterSchema",
+          "OptionalTagsSchema",
+          "OptionalEntityNamesSchema"
+        ]
+      },
+      "src/utils/searchAlgorithms.ts": {
+        "description": "Search Algorithms",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "levenshteinDistance",
+          "calculateTF",
+          "calculateIDF",
+          "calculateIDFFromTokenSets",
+          "calculateTFIDF",
+          "tokenize"
+        ],
+        "functions": [
+          "levenshteinDistance",
+          "calculateTF",
+          "calculateIDF",
+          "calculateIDFFromTokenSets",
+          "calculateTFIDF",
+          "tokenize"
+        ]
+      },
+      "src/utils/searchCache.ts": {
+        "description": "Search Result Cache",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "SearchResult",
+              "KnowledgeGraph"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "searchCaches",
+          "clearAllSearchCaches",
+          "getAllCacheStats",
+          "cleanupAllCaches",
+          "SearchCache"
+        ],
+        "classes": [
+          "SearchCache"
+        ],
+        "interfaces": [
+          "CacheStats"
+        ],
+        "functions": [
+          "clearAllSearchCaches",
+          "getAllCacheStats",
+          "cleanupAllCaches"
+        ],
+        "constants": [
+          "searchCaches"
+        ]
+      },
+      "src/utils/taskScheduler.ts": {
+        "description": "Task Scheduler",
+        "externalDependencies": [
+          {
+            "package": "@danielsimonjr/workerpool",
+            "imports": [
+              "workerpool"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "batchProcess",
+          "rateLimitedProcess",
+          "withRetry",
+          "debounce",
+          "throttle",
+          "TaskQueue",
+          "TaskPriority",
+          "TaskStatus"
+        ],
+        "classes": [
+          "TaskQueue"
+        ],
+        "interfaces": [
+          "Task",
+          "TaskResult",
+          "TaskBatchOptions",
+          "QueueStats"
+        ],
+        "functions": [
+          "batchProcess",
+          "rateLimitedProcess",
+          "withRetry",
+          "debounce",
+          "throttle"
+        ],
+        "enums": [
+          "TaskPriority",
+          "TaskStatus"
+        ]
+      },
+      "src/utils/WorkerPoolManager.ts": {
+        "description": "Worker Pool Manager",
+        "externalDependencies": [
+          {
+            "package": "@danielsimonjr/workerpool",
+            "imports": [
+              "workerpool"
+            ]
+          },
+          {
+            "package": "@danielsimonjr/workerpool",
+            "imports": [
+              "Pool",
+              "PoolStats"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "getWorkerPoolManager",
+          "WorkerPoolManager"
+        ],
+        "classes": [
+          "WorkerPoolManager"
+        ],
+        "interfaces": [
+          "WorkerPoolConfig",
+          "ExtendedPoolStats"
+        ],
+        "functions": [
+          "getWorkerPoolManager"
+        ]
+      }
+    },
+    "workers": {
+      "src/workers/index.ts": {
+        "description": "Workers Module",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./levenshteinWorker.js",
+            "imports": [
+              "levenshteinDistance",
+              "similarity",
+              "searchEntities"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "levenshteinDistance",
+          "similarity",
+          "searchEntities"
+        ],
+        "reExported": [
+          "levenshteinDistance",
+          "similarity",
+          "searchEntities"
+        ]
+      },
+      "src/workers/levenshteinWorker.ts": {
+        "description": "Levenshtein Worker",
+        "externalDependencies": [
+          {
+            "package": "@danielsimonjr/workerpool",
+            "imports": [
+              "workerpool"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "levenshteinDistance",
+          "similarity",
+          "searchEntities"
+        ],
+        "interfaces": [
+          "WorkerInput",
+          "MatchResult"
+        ],
+        "functions": [
+          "levenshteinDistance",
+          "similarity",
+          "searchEntities"
+        ]
+      }
+    }
+  },
+  "dependencyGraph": {
+    "circularDependencies": {
+      "runtime": [],
+      "typeOnly": [
+        [
+          "src/core/GraphStorage.ts",
+          "src/core/TransactionManager.ts",
+          "src/core/GraphStorage.ts"
+        ],
+        [
+          "src/core/GraphStorage.ts",
+          "src/core/TransactionManager.ts",
+          "src/features/IOManager.ts",
+          "src/core/GraphStorage.ts"
+        ]
+      ],
+      "total": 2,
+      "runtimeCount": 0,
+      "typeOnlyCount": 2
+    },
+    "layers": [
+      {
+        "name": "Core",
+        "files": [
+          "src/core/EntityManager.ts",
+          "src/core/GraphEventEmitter.ts",
+          "src/core/GraphStorage.ts",
+          "src/core/GraphTraversal.ts",
+          "src/core/HierarchyManager.ts",
+          "src/core/index.ts",
+          "src/core/ManagerContext.ts",
+          "src/core/ObservationManager.ts",
+          "src/core/RelationManager.ts",
+          "src/core/SQLiteStorage.ts",
+          "src/core/StorageFactory.ts",
+          "src/core/TransactionManager.ts"
+        ]
+      },
+      {
+        "name": "Features",
+        "files": [
+          "src/features/AnalyticsManager.ts",
+          "src/features/ArchiveManager.ts",
+          "src/features/CompressionManager.ts",
+          "src/features/index.ts",
+          "src/features/IOManager.ts",
+          "src/features/KeywordExtractor.ts",
+          "src/features/ObservationNormalizer.ts",
+          "src/features/StreamingExporter.ts",
+          "src/features/TagManager.ts"
+        ]
+      },
+      {
+        "name": "Entry",
+        "files": [
+          "src/index.ts"
+        ]
+      },
+      {
+        "name": "Search",
+        "files": [
+          "src/search/BasicSearch.ts",
+          "src/search/BM25Search.ts",
+          "src/search/BooleanSearch.ts",
+          "src/search/EarlyTerminationManager.ts",
+          "src/search/EmbeddingCache.ts",
+          "src/search/EmbeddingService.ts",
+          "src/search/FuzzySearch.ts",
+          "src/search/HybridScorer.ts",
+          "src/search/HybridSearchManager.ts",
+          "src/search/IncrementalIndexer.ts",
+          "src/search/index.ts",
+          "src/search/OptimizedInvertedIndex.ts",
+          "src/search/ParallelSearchExecutor.ts",
+          "src/search/QuantizedVectorStore.ts",
+          "src/search/QueryAnalyzer.ts",
+          "src/search/QueryCostEstimator.ts",
+          "src/search/QueryPlanCache.ts",
+          "src/search/QueryPlanner.ts",
+          "src/search/RankedSearch.ts",
+          "src/search/ReflectionManager.ts",
+          "src/search/SavedSearchManager.ts",
+          "src/search/SearchFilterChain.ts",
+          "src/search/SearchManager.ts",
+          "src/search/SearchSuggestions.ts",
+          "src/search/SemanticSearch.ts",
+          "src/search/SymbolicSearch.ts",
+          "src/search/TFIDFEventSync.ts",
+          "src/search/TFIDFIndexManager.ts",
+          "src/search/VectorStore.ts"
+        ]
+      },
+      {
+        "name": "Types",
+        "files": [
+          "src/types/index.ts",
+          "src/types/types.ts"
+        ]
+      },
+      {
+        "name": "Utils",
+        "files": [
+          "src/utils/BatchProcessor.ts",
+          "src/utils/compressedCache.ts",
+          "src/utils/compressionUtil.ts",
+          "src/utils/constants.ts",
+          "src/utils/entityUtils.ts",
+          "src/utils/errors.ts",
+          "src/utils/formatters.ts",
+          "src/utils/index.ts",
+          "src/utils/indexes.ts",
+          "src/utils/logger.ts",
+          "src/utils/MemoryMonitor.ts",
+          "src/utils/operationUtils.ts",
+          "src/utils/parallelUtils.ts",
+          "src/utils/schemas.ts",
+          "src/utils/searchAlgorithms.ts",
+          "src/utils/searchCache.ts",
+          "src/utils/taskScheduler.ts",
+          "src/utils/WorkerPoolManager.ts"
+        ]
+      },
+      {
+        "name": "Workers",
+        "files": [
+          "src/workers/index.ts",
+          "src/workers/levenshteinWorker.ts"
+        ]
+      }
+    ]
+  },
+  "statistics": {
+    "totalTypeScriptFiles": 73,
+    "totalModules": 7,
+    "totalLinesOfCode": 28939,
+    "totalExports": 558,
+    "totalClasses": 73,
+    "totalInterfaces": 145,
+    "totalFunctions": 100,
+    "totalTypeGuards": 3,
+    "totalEnums": 3,
+    "totalConstants": 57,
+    "totalReExports": 333,
+    "totalTypeOnlyImports": 77,
+    "runtimeCircularDeps": 0,
+    "typeOnlyCircularDeps": 2,
+    "unusedFilesCount": 0,
+    "unusedExportsCount": 198
+  }
+}
