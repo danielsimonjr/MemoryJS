@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-11
+
+### Added
+
+- **Dual Module Format**: Added tsup bundler for ESM and CommonJS output
+  - `dist/index.js` - ES Module format
+  - `dist/index.cjs` - CommonJS format
+  - Proper `exports` field with `import` and `require` conditions
+- **Test Reporter**: Added per-file-reporter for detailed test reports
+  - JSON reports per test file in `tests/test-results/json/`
+  - HTML reports per test file in `tests/test-results/html/`
+  - Summary reports with coverage integration in `tests/test-results/summary/`
+  - Configurable modes via `VITEST_REPORT_MODE` (all, summary, debug)
+- **Build Scripts**:
+  - `build` - tsup bundled build (ESM + CJS)
+  - `build:watch` - tsup watch mode
+  - `build:tsc` - original TypeScript compiler build
+- **Tool Management Scripts**:
+  - `tools:install` - install dependencies for all standalone tools
+  - `tools:build` - build all standalone tool executables
+
+### Changed
+
+- Updated vitest.config.ts with `SKIP_BENCHMARKS` environment variable support
+- Updated vitest.config.ts with `json-summary` coverage reporter for per-file-reporter integration
+- Updated .gitignore to exclude tool build artifacts (`tools/*/node_modules/`, `tools/*/dist/`, `tools/*/*.exe`)
+
 ## [1.0.0] - 2026-01-10
 
 ### Added

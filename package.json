@@ -1,14 +1,16 @@
 {
   "name": "@danielsimonjr/memoryjs",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Core knowledge graph library with search, storage, and graph algorithms",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   },
   "bin": {
@@ -20,8 +22,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
-    "build:watch": "tsc --watch",
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "build:tsc": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -65,6 +68,7 @@
     "@types/node": "^22.10.5",
     "@vitest/coverage-v8": "^4.0.16",
     "rimraf": "^6.0.1",
+    "tsup": "^8.3.5",
     "typescript": "^5.7.2",
     "vitest": "^4.0.16"
   }
