@@ -25,16 +25,54 @@
       "title": "Create ConsolidationPipeline Class Skeleton",
       "description": "Implement ConsolidationPipeline with dependencies on storage, WorkingMemoryManager, and DecayEngine. Define pipeline stages as pluggable processors.",
       "status": "pending",
+      "implementationNotes": null,
       "estimatedHours": 1.25,
       "agent": "claude",
       "files": ["src/agent/ConsolidationPipeline.ts"],
       "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "ConsolidationPipeline orchestrates the transformation of working memories into long-term storage. It coordinates summarization, pattern extraction, and promotion decisions.",
+        "keyDecisions": [
+          "Pipeline stages are pluggable for extensibility",
+          "Dependencies injected for testability",
+          "Configuration drives stage behavior",
+          "Results aggregated across all stages"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/agent/ConsolidationPipeline.ts with imports",
+          "code": "/**\n * Consolidation Pipeline\n *\n * Orchestrates memory transformation from working to long-term storage.\n * Includes summarization, pattern extraction, and promotion stages.\n *\n * @module agent/ConsolidationPipeline\n */\n\nimport type { IGraphStorage, Entity } from '../types/types.js';\nimport type {\n  AgentEntity,\n  ConsolidateOptions,\n  ConsolidationResult,\n  MemoryType,\n} from '../types/agent-memory.js';\nimport { WorkingMemoryManager } from './WorkingMemoryManager.js';\nimport { DecayEngine } from './DecayEngine.js';\nimport { isAgentEntity } from '../types/agent-memory.js';"
+        },
+        {
+          "step": 2,
+          "action": "Define ConsolidationPipelineConfig interface",
+          "code": "/**\n * Configuration for ConsolidationPipeline.\n */\nexport interface ConsolidationPipelineConfig {\n  /** Enable observation summarization (default: true) */\n  summarizationEnabled?: boolean;\n  /** Enable pattern extraction (default: true) */\n  patternExtractionEnabled?: boolean;\n  /** Minimum confidence for promotion (default: 0.7) */\n  minPromotionConfidence?: number;\n  /** Minimum confirmations for promotion (default: 2) */\n  minPromotionConfirmations?: number;\n  /** Preserve originals after promotion (default: false) */\n  preserveOriginals?: boolean;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Define PipelineStage interface",
+          "code": "/**\n * Interface for pluggable pipeline stages.\n */\nexport interface PipelineStage {\n  name: string;\n  process(entities: AgentEntity[], options: ConsolidateOptions): Promise<StageResult>;\n}\n\n/**\n * Result from a single pipeline stage.\n */\nexport interface StageResult {\n  processed: number;\n  transformed: number;\n  errors: string[];\n}"
+        },
+        {
+          "step": 4,
+          "action": "Create ConsolidationPipeline class",
+          "code": "/**\n * Orchestrates memory consolidation from working to long-term storage.\n *\n * @example\n * ```typescript\n * const pipeline = new ConsolidationPipeline(storage, wmm, decay);\n * const result = await pipeline.consolidateSession('session_123');\n * ```\n */\nexport class ConsolidationPipeline {\n  private readonly storage: IGraphStorage;\n  private readonly workingMemory: WorkingMemoryManager;\n  private readonly decayEngine: DecayEngine;\n  private readonly config: Required<ConsolidationPipelineConfig>;\n  private readonly stages: PipelineStage[] = [];\n\n  constructor(\n    storage: IGraphStorage,\n    workingMemory: WorkingMemoryManager,\n    decayEngine: DecayEngine,\n    config: ConsolidationPipelineConfig = {}\n  ) {\n    this.storage = storage;\n    this.workingMemory = workingMemory;\n    this.decayEngine = decayEngine;\n    this.config = {\n      summarizationEnabled: config.summarizationEnabled ?? true,\n      patternExtractionEnabled: config.patternExtractionEnabled ?? true,\n      minPromotionConfidence: config.minPromotionConfidence ?? 0.7,\n      minPromotionConfirmations: config.minPromotionConfirmations ?? 2,\n      preserveOriginals: config.preserveOriginals ?? false,\n    };\n  }\n\n  // Method stubs\n  async consolidateSession(\n    sessionId: string,\n    options?: ConsolidateOptions\n  ): Promise<ConsolidationResult> {\n    throw new Error('Not implemented');\n  }\n\n  async promoteMemory(\n    entityName: string,\n    targetType: MemoryType\n  ): Promise<AgentEntity> {\n    throw new Error('Not implemented');\n  }\n\n  registerStage(stage: PipelineStage): void {\n    this.stages.push(stage);\n  }\n}"
+        },
+        {
+          "step": 5,
+          "action": "Run TypeScript compilation",
+          "details": "npm run typecheck"
+        }
+      ],
       "acceptanceCriteria": [
         "ConsolidationPipeline class created",
         "Dependencies injected properly",
         "Pipeline stage interfaces defined",
         "Configuration interface defined",
-        "Method stubs for all operations"
+        "Method stubs for all operations",
+        "npm run typecheck passes"
       ]
     },
     {
@@ -43,15 +81,39 @@
       "title": "Implement consolidateSession() Method",
       "description": "Process all memories from a session, evaluate promotion criteria, and apply configured transformations.",
       "status": "pending",
+      "implementationNotes": null,
       "estimatedHours": 1.5,
       "agent": "claude",
       "files": ["src/agent/ConsolidationPipeline.ts"],
       "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Session consolidation is the main entry point for converting working memories to long-term storage. It orchestrates all pipeline stages and aggregates results.",
+        "keyDecisions": [
+          "Get all session memories from WorkingMemoryManager",
+          "Filter by promotion eligibility",
+          "Run through pipeline stages",
+          "Aggregate and return results"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement consolidateSession method",
+          "code": "async consolidateSession(\n  sessionId: string,\n  options?: ConsolidateOptions\n): Promise<ConsolidationResult> {\n  const result: ConsolidationResult = {\n    memoriesProcessed: 0,\n    memoriesPromoted: 0,\n    memoriesMerged: 0,\n    patternsExtracted: 0,\n    summariesCreated: 0,\n    errors: [],\n  };\n\n  try {\n    // Get all working memories for session\n    const memories = await this.workingMemory.getSessionMemories(sessionId, {\n      excludeExpired: true,\n    });\n    result.memoriesProcessed = memories.length;\n\n    if (memories.length === 0) {\n      return result;\n    }\n\n    // Merge options with config defaults\n    const effectiveOptions: ConsolidateOptions = {\n      summarize: options?.summarize ?? this.config.summarizationEnabled,\n      extractPatterns: options?.extractPatterns ?? this.config.patternExtractionEnabled,\n      minConfidence: options?.minConfidence ?? this.config.minPromotionConfidence,\n      minConfirmations: options?.minConfirmations ?? this.config.minPromotionConfirmations,\n      preserveOriginals: options?.preserveOriginals ?? this.config.preserveOriginals,\n    };\n\n    // Filter promotion candidates\n    const candidates = memories.filter(m => \n      m.confidence >= effectiveOptions.minConfidence! &&\n      m.confirmationCount >= effectiveOptions.minConfirmations!\n    );\n\n    // Run through registered pipeline stages\n    for (const stage of this.stages) {\n      try {\n        const stageResult = await stage.process(candidates, effectiveOptions);\n        // Aggregate stage results into main result\n        result.memoriesPromoted += stageResult.transformed;\n        result.errors.push(...stageResult.errors);\n      } catch (error) {\n        result.errors.push(`Stage ${stage.name} failed: ${error}`);\n      }\n    }\n\n    // Promote eligible memories\n    for (const candidate of candidates) {\n      try {\n        await this.promoteMemory(candidate.name, 'episodic');\n        result.memoriesPromoted++;\n      } catch (error) {\n        result.errors.push(`Promotion failed for ${candidate.name}: ${error}`);\n      }\n    }\n\n    // Clean up originals if not preserving\n    if (!effectiveOptions.preserveOriginals) {\n      // Working memories will expire naturally via TTL\n    }\n\n  } catch (error) {\n    result.errors.push(`Session consolidation failed: ${error}`);\n  }\n\n  return result;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Create tests/unit/agent/ConsolidationPipeline.test.ts"
+        }
+      ],
       "acceptanceCriteria": [
         "Processes all session memories",
         "Evaluates promotion criteria",
+        "Runs through pipeline stages",
         "Returns ConsolidationResult",
-        "Handles errors gracefully"
+        "Handles errors gracefully",
+        "Unit tests pass"
       ]
     },
     {
@@ -60,14 +122,37 @@
       "title": "Create ConsolidateOptions Type",
       "description": "Define comprehensive options interface for consolidation including summarize, extractPatterns, minConfidence, minConfirmations, and preserveOriginals flags.",
       "status": "pending",
+      "implementationNotes": null,
       "estimatedHours": 0.5,
       "agent": "claude",
       "files": ["src/types/agent-memory.ts"],
       "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "ConsolidateOptions provides fine-grained control over the consolidation process, allowing callers to customize behavior per invocation.",
+        "keyDecisions": [
+          "All options are optional with sensible defaults",
+          "Options mirror pipeline config for consistency",
+          "Support both automatic and manual consolidation modes"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add ConsolidateOptions to agent-memory.ts",
+          "code": "/**\n * Options for memory consolidation operations.\n *\n * Controls how working memories are transformed and promoted\n * to long-term storage.\n *\n * @example\n * ```typescript\n * const options: ConsolidateOptions = {\n *   summarize: true,\n *   extractPatterns: true,\n *   minConfidence: 0.8,\n *   minConfirmations: 3,\n * };\n * ```\n */\nexport interface ConsolidateOptions {\n  /** Enable observation summarization (default: true) */\n  summarize?: boolean;\n  /** Enable pattern extraction (default: true) */\n  extractPatterns?: boolean;\n  /** Minimum confidence for promotion (0-1, default: 0.7) */\n  minConfidence?: number;\n  /** Minimum confirmation count for promotion (default: 2) */\n  minConfirmations?: number;\n  /** Keep original working memories after promotion (default: false) */\n  preserveOriginals?: boolean;\n  /** Target memory type for promotion (default: 'episodic') */\n  targetType?: MemoryType;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from types/index.ts",
+          "details": "Ensure ConsolidateOptions is exported"
+        }
+      ],
       "acceptanceCriteria": [
         "ConsolidateOptions fully typed",
-        "All flags documented",
-        "Exported from types"
+        "All flags documented with JSDoc",
+        "Default values documented",
+        "Exported from types/index.ts",
+        "npm run typecheck passes"
       ]
     },
     {
@@ -76,15 +161,40 @@
       "title": "Implement promoteMemory() with Target Type",
       "description": "Extend promotion to specify target type (episodic/semantic) with type-specific processing rules.",
       "status": "pending",
+      "implementationNotes": null,
       "estimatedHours": 1.25,
       "agent": "claude",
       "files": ["src/agent/ConsolidationPipeline.ts"],
       "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Memory promotion converts working memory to long-term storage. Different target types have different processing: episodic preserves temporal context, semantic abstracts it away.",
+        "keyDecisions": [
+          "Update memoryType to target type",
+          "Clear TTL fields (expiresAt, isWorkingMemory)",
+          "Set promotion metadata (promotedAt, promotedFrom)",
+          "Apply type-specific transformations"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement promoteMemory method",
+          "code": "/**\n * Promote a working memory to long-term storage.\n *\n * @param entityName - Name of entity to promote\n * @param targetType - Target memory type (episodic or semantic)\n * @returns Updated entity\n */\nasync promoteMemory(\n  entityName: string,\n  targetType: MemoryType\n): Promise<AgentEntity> {\n  const entity = this.storage.getEntityByName(entityName);\n  if (!entity) {\n    throw new Error(`Entity not found: ${entityName}`);\n  }\n\n  if (!isAgentEntity(entity)) {\n    throw new Error(`Entity is not an AgentEntity: ${entityName}`);\n  }\n\n  const agentEntity = entity as AgentEntity;\n  if (agentEntity.memoryType !== 'working') {\n    throw new Error(`Entity is not working memory: ${entityName}`);\n  }\n\n  const now = new Date().toISOString();\n  const updates: Partial<AgentEntity> = {\n    // Change memory type\n    memoryType: targetType,\n    \n    // Clear working memory fields\n    isWorkingMemory: false,\n    expiresAt: undefined,\n    \n    // Set promotion metadata\n    promotedAt: now,\n    promotedFrom: agentEntity.sessionId,\n    markedForPromotion: false,\n    \n    // Update timestamp\n    lastModified: now,\n  };\n\n  // Type-specific processing\n  if (targetType === 'semantic') {\n    // For semantic memory, we might want to abstract observations\n    // This is handled by summarization stage\n  } else if (targetType === 'episodic') {\n    // For episodic memory, preserve temporal context\n    // Keep sessionId and timestamps intact\n  }\n\n  await this.storage.updateEntity(entityName, updates as Partial<Entity>);\n\n  // Reinforce the memory to reset decay\n  await this.decayEngine.reinforceMemory(entityName);\n\n  return { ...agentEntity, ...updates } as AgentEntity;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests for promotion",
+          "details": "Test both episodic and semantic promotion paths"
+        }
+      ],
       "acceptanceCriteria": [
-        "Promotion respects target type",
+        "Promotion changes memoryType correctly",
+        "Clears working memory fields",
+        "Sets promotion metadata",
         "Episodic preserves temporal context",
-        "Semantic abstracts observations",
-        "Metadata correctly updated"
+        "Semantic allows abstraction",
+        "Reinforces memory after promotion",
+        "Unit tests pass"
       ]
     },
     {
@@ -93,14 +203,38 @@
       "title": "Create ConsolidationResult Type",
       "description": "Define result structure capturing memoriesProcessed, memoriesPromoted, memoriesMerged, patternsExtracted, summariesCreated, and errors.",
       "status": "pending",
+      "implementationNotes": null,
       "estimatedHours": 0.5,
       "agent": "claude",
       "files": ["src/types/agent-memory.ts"],
       "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "ConsolidationResult provides comprehensive feedback on consolidation operations, enabling monitoring and debugging of the pipeline.",
+        "keyDecisions": [
+          "Track counts for all major operations",
+          "Include error messages for debugging",
+          "Support aggregation across multiple sessions"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add ConsolidationResult to agent-memory.ts",
+          "code": "/**\n * Result of a consolidation operation.\n *\n * Provides detailed statistics about what was processed\n * and any errors encountered.\n *\n * @example\n * ```typescript\n * const result = await pipeline.consolidateSession('session_1');\n * console.log(`Promoted ${result.memoriesPromoted} of ${result.memoriesProcessed}`);\n * ```\n */\nexport interface ConsolidationResult {\n  /** Total memories processed */\n  memoriesProcessed: number;\n  /** Memories successfully promoted to long-term */\n  memoriesPromoted: number;\n  /** Memories merged with existing entities */\n  memoriesMerged: number;\n  /** Patterns extracted from observations */\n  patternsExtracted: number;\n  /** Summary observations created */\n  summariesCreated: number;\n  /** Error messages encountered */\n  errors: string[];\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from types/index.ts",
+          "details": "Ensure ConsolidationResult is exported"
+        }
+      ],
       "acceptanceCriteria": [
         "ConsolidationResult fully typed",
         "All statistics captured",
-        "Error tracking included"
+        "Error tracking included",
+        "JSDoc documentation complete",
+        "Exported from types/index.ts",
+        "npm run typecheck passes"
       ]
     }
   ],
@@ -109,11 +243,12 @@
     "Session consolidation works end-to-end",
     "Types defined and exported",
     "Promotion by target type works",
-    "10+ unit tests pass"
+    "10+ unit tests pass",
+    "npm run typecheck passes"
   ],
-  "filesCreated": ["src/agent/ConsolidationPipeline.ts"],
+  "filesCreated": ["src/agent/ConsolidationPipeline.ts", "tests/unit/agent/ConsolidationPipeline.test.ts"],
   "filesModified": ["src/types/agent-memory.ts"],
   "totalNewTests": 10,
   "totalEstimatedHours": 6,
-  "dependencies": ["Sprint 6-7 - Working Memory", "Sprint 4-5 - Decay Engine"]
+  "dependencies": ["Sprint 6-7 - Working Memory", "Sprint 4-5 - Decay Engine", "Sprint 1 - Type Definitions"]
 }
