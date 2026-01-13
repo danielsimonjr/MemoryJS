@@ -24,6 +24,10 @@ npx vitest run tests/unit/core/EntityManager.test.ts
 
 # Type checking
 npm run typecheck       # Check types without emitting
+
+# Tools (utilities in tools/ directory)
+npm run tools:install   # Install tool subdependencies
+npm run tools:build     # Build all tools
 ```
 
 ## Architecture
@@ -134,4 +138,16 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files.
 
 ## Documentation
 
-Architecture docs in `docs/architecture/` cover design patterns, component interactions, data flow, and dependency graphs.
+```
+docs/
+├── architecture/   # Design patterns, component interactions, data flow
+│   └── AGENT_MEMORY.md  # Agent memory system design (short/long-term)
+├── guides/         # Usage guides (API reference, configuration, recipes)
+├── roadmap/        # Future development roadmap
+└── development/    # Contributing, debugging, architecture decisions
+```
+
+Key documents:
+- `docs/architecture/AGENT_MEMORY.md` - Comprehensive agent memory system design
+- `docs/roadmap/ROADMAP.md` - Feature roadmap with implementation details
+- `docs/guides/IMPLEMENTATION_GUIDE.md` - Detailed implementation patterns
