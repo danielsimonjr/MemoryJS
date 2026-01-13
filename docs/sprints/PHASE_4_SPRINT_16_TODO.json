@@ -1,0 +1,255 @@
+{
+  "phase": 4,
+  "sprint": 16,
+  "title": "Salience Engine Foundation",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Creates context-aware memory relevance scoring for intelligent retrieval",
+  "targetMetrics": {
+    "salienceAccuracy": {
+      "current": "No salience scoring",
+      "target": "Multi-factor salience with component breakdown"
+    },
+    "contextAwareness": {
+      "current": "No context",
+      "target": "Task, session, and query context integration"
+    }
+  },
+  "tasks": [
+    {
+      "id": "4.16.1",
+      "category": "core",
+      "title": "Create SalienceEngine Class Skeleton",
+      "description": "Implement SalienceEngine with configurable weights for recency, frequency, context relevance, and novelty. Inject AccessTracker and DecayEngine dependencies.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "SalienceEngine calculates memory relevance based on multiple factors, enabling intelligent context-aware retrieval that prioritizes the most relevant memories.",
+        "keyDecisions": [
+          "Configurable weights for each salience component",
+          "Inject AccessTracker for recency/frequency data",
+          "Inject DecayEngine for effective importance",
+          "Return component breakdown for transparency"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/agent/SalienceEngine.ts with imports",
+          "code": "/**\n * Salience Engine\n *\n * Calculates context-aware memory relevance scores based on\n * recency, frequency, context, and novelty factors.\n *\n * @module agent/SalienceEngine\n */\n\nimport type { IGraphStorage, Entity } from '../types/types.js';\nimport type {\n  AgentEntity,\n  SalienceContext,\n  ScoredEntity,\n  SalienceWeights,\n} from '../types/agent-memory.js';\nimport { AccessTracker } from './AccessTracker.js';\nimport { DecayEngine } from './DecayEngine.js';\nimport { isAgentEntity } from '../types/agent-memory.js';"
+        },
+        {
+          "step": 2,
+          "action": "Define SalienceEngineConfig interface",
+          "code": "/**\n * Configuration for SalienceEngine.\n */\nexport interface SalienceEngineConfig {\n  /** Weight for base importance (default: 0.25) */\n  importanceWeight?: number;\n  /** Weight for recency boost (default: 0.25) */\n  recencyWeight?: number;\n  /** Weight for frequency boost (default: 0.2) */\n  frequencyWeight?: number;\n  /** Weight for context relevance (default: 0.2) */\n  contextWeight?: number;\n  /** Weight for novelty bonus (default: 0.1) */\n  noveltyWeight?: number;\n  /** Recency decay hours (default: 24) */\n  recencyDecayHours?: number;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Create SalienceEngine class",
+          "code": "/**\n * Calculates multi-factor salience scores for memories.\n *\n * @example\n * ```typescript\n * const engine = new SalienceEngine(storage, accessTracker, decayEngine);\n * const context: SalienceContext = { currentTask: 'booking', queryText: 'hotel' };\n * const scored = await engine.calculateSalience(entity, context);\n * console.log(`Salience: ${scored.salienceScore}`);\n * ```\n */\nexport class SalienceEngine {\n  private readonly storage: IGraphStorage;\n  private readonly accessTracker: AccessTracker;\n  private readonly decayEngine: DecayEngine;\n  private readonly config: Required<SalienceEngineConfig>;\n\n  constructor(\n    storage: IGraphStorage,\n    accessTracker: AccessTracker,\n    decayEngine: DecayEngine,\n    config: SalienceEngineConfig = {}\n  ) {\n    this.storage = storage;\n    this.accessTracker = accessTracker;\n    this.decayEngine = decayEngine;\n    this.config = {\n      importanceWeight: config.importanceWeight ?? 0.25,\n      recencyWeight: config.recencyWeight ?? 0.25,\n      frequencyWeight: config.frequencyWeight ?? 0.2,\n      contextWeight: config.contextWeight ?? 0.2,\n      noveltyWeight: config.noveltyWeight ?? 0.1,\n      recencyDecayHours: config.recencyDecayHours ?? 24,\n    };\n  }\n\n  // Method stubs\n  async calculateSalience(\n    entity: AgentEntity,\n    context: SalienceContext\n  ): Promise<ScoredEntity> {\n    throw new Error('Not implemented');\n  }\n\n  async rankEntitiesBySalience(\n    entities: AgentEntity[],\n    context: SalienceContext\n  ): Promise<ScoredEntity[]> {\n    throw new Error('Not implemented');\n  }\n}"
+        },
+        {
+          "step": 4,
+          "action": "Run TypeScript compilation",
+          "details": "npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SalienceEngine class created",
+        "Configurable weights for all components",
+        "Dependencies injected",
+        "Method stubs defined",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "4.16.2",
+      "category": "types",
+      "title": "Create SalienceContext Type",
+      "description": "Define context interface with currentTask, currentSession, recentEntities, queryText, userIntent, and temporalFocus.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "SalienceContext captures all contextual information needed for relevance scoring, enabling context-aware retrieval.",
+        "keyDecisions": [
+          "Include current task and session",
+          "Track recently accessed entities",
+          "Capture query text and user intent",
+          "Support temporal focus (recent vs historical)"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add SalienceContext to agent-memory.ts",
+          "code": "/**\n * Temporal focus for salience calculation.\n */\nexport type TemporalFocus = 'recent' | 'historical' | 'balanced';\n\n/**\n * Context for salience calculation.\n *\n * @example\n * ```typescript\n * const context: SalienceContext = {\n *   currentTask: 'travel_booking',\n *   currentSession: 'session_123',\n *   queryText: 'hotel preferences',\n *   temporalFocus: 'recent',\n * };\n * ```\n */\nexport interface SalienceContext {\n  /** Current task identifier */\n  currentTask?: string;\n  /** Current session identifier */\n  currentSession?: string;\n  /** Recently accessed entity names */\n  recentEntities?: string[];\n  /** Query text for relevance matching */\n  queryText?: string;\n  /** Inferred user intent */\n  userIntent?: string;\n  /** Temporal focus for scoring */\n  temporalFocus?: TemporalFocus;\n  /** Custom context fields */\n  metadata?: Record<string, unknown>;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add SalienceWeights type",
+          "code": "/**\n * Weights for salience calculation components.\n */\nexport interface SalienceWeights {\n  importance: number;\n  recency: number;\n  frequency: number;\n  context: number;\n  novelty: number;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Export from types/index.ts",
+          "details": "Ensure SalienceContext and related types are exported"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SalienceContext fully typed",
+        "All context factors included",
+        "Temporal focus options defined",
+        "Exported from types/index.ts",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "4.16.3",
+      "category": "core",
+      "title": "Implement calculateSalience() Method",
+      "description": "Calculate salience combining base_importance * decay_factor + recency_boost + frequency_boost + context_relevance + novelty_bonus.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "The salience formula combines multiple signals to produce a single relevance score that accounts for both intrinsic memory importance and contextual relevance.",
+        "keyDecisions": [
+          "Normalize each component to 0-1 range",
+          "Apply configurable weights",
+          "Include component breakdown in result",
+          "Handle missing context gracefully"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement calculateSalience method",
+          "code": "async calculateSalience(\n  entity: AgentEntity,\n  context: SalienceContext\n): Promise<ScoredEntity> {\n  // Calculate component scores (all normalized to 0-1)\n  const baseImportance = this.calculateBaseImportance(entity);\n  const recencyBoost = this.calculateRecencyBoost(entity);\n  const frequencyBoost = await this.calculateFrequencyBoost(entity);\n  const contextRelevance = this.calculateContextRelevance(entity, context);\n  const noveltyBoost = this.calculateNoveltyBoost(entity, context);\n\n  // Apply weights and sum\n  const salienceScore = \n    baseImportance * this.config.importanceWeight +\n    recencyBoost * this.config.recencyWeight +\n    frequencyBoost * this.config.frequencyWeight +\n    contextRelevance * this.config.contextWeight +\n    noveltyBoost * this.config.noveltyWeight;\n\n  return {\n    entity,\n    salienceScore,\n    components: {\n      baseImportance,\n      recencyBoost,\n      frequencyBoost,\n      contextRelevance,\n      noveltyBoost,\n    },\n  };\n}\n\nprivate calculateBaseImportance(entity: AgentEntity): number {\n  // Use effective importance from decay engine\n  const effective = this.decayEngine.calculateEffectiveImportance(entity);\n  return effective / 10; // Normalize to 0-1\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add ranking method",
+          "code": "async rankEntitiesBySalience(\n  entities: AgentEntity[],\n  context: SalienceContext\n): Promise<ScoredEntity[]> {\n  const scored = await Promise.all(\n    entities.map(e => this.calculateSalience(e, context))\n  );\n  return scored.sort((a, b) => b.salienceScore - a.salienceScore);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test salience calculation with various inputs"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Formula correctly implemented",
+        "All components weighted",
+        "Returns normalized score (0-1)",
+        "Component breakdown included",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "4.16.4",
+      "category": "core",
+      "title": "Implement Recency and Frequency Boosts",
+      "description": "Calculate recency_boost from AccessTracker.calculateRecencyScore() and frequency_boost from normalized access count, both scaled by weights.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Recency and frequency boosts ensure recently and frequently accessed memories receive higher salience scores.",
+        "keyDecisions": [
+          "Use AccessTracker for raw recency score",
+          "Normalize frequency by max access count",
+          "Apply temporal focus adjustment",
+          "Handle entities with no access history"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement recency and frequency boost methods",
+          "code": "private calculateRecencyBoost(entity: AgentEntity): number {\n  if (!entity.lastAccessedAt) {\n    // Use creation time if never accessed\n    if (!entity.createdAt) return 0;\n    return this.accessTracker.calculateRecencyScore(\n      entity.name,\n      new Date(entity.createdAt).getTime(),\n      this.config.recencyDecayHours\n    );\n  }\n\n  const lastAccess = new Date(entity.lastAccessedAt).getTime();\n  return this.accessTracker.calculateRecencyScore(\n    entity.name,\n    lastAccess,\n    this.config.recencyDecayHours\n  );\n}\n\nprivate async calculateFrequencyBoost(entity: AgentEntity): Promise<number> {\n  const accessCount = entity.accessCount ?? 0;\n  if (accessCount === 0) return 0;\n\n  // Normalize by finding max access count\n  const maxAccess = await this.getMaxAccessCount();\n  if (maxAccess === 0) return 0;\n\n  // Use logarithmic scaling to prevent dominance\n  return Math.log(accessCount + 1) / Math.log(maxAccess + 1);\n}\n\nprivate async getMaxAccessCount(): Promise<number> {\n  const graph = await this.storage.loadGraph();\n  let max = 0;\n  for (const entity of graph.entities) {\n    if (isAgentEntity(entity)) {\n      const count = (entity as AgentEntity).accessCount ?? 0;\n      if (count > max) max = count;\n    }\n  }\n  return max;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test boost calculations with various access patterns"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Recency boost from AccessTracker",
+        "Frequency boost calculated correctly",
+        "Both scaled to 0-1 range",
+        "Handles missing data",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "4.16.5",
+      "category": "types",
+      "title": "Create ScoredEntity Type",
+      "description": "Define result with entity, salienceScore, and components breakdown (baseImportance, recencyBoost, frequencyBoost, contextRelevance, noveltyBoost).",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "ScoredEntity provides the salience score along with component breakdown for transparency and debugging.",
+        "keyDecisions": [
+          "Include full entity reference",
+          "Provide overall salience score",
+          "Break down component contributions",
+          "Support ranking and filtering"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add ScoredEntity to agent-memory.ts",
+          "code": "/**\n * Component breakdown of salience score.\n */\nexport interface SalienceComponents {\n  /** Base importance after decay */\n  baseImportance: number;\n  /** Recency contribution */\n  recencyBoost: number;\n  /** Frequency contribution */\n  frequencyBoost: number;\n  /** Context relevance contribution */\n  contextRelevance: number;\n  /** Novelty contribution */\n  noveltyBoost: number;\n}\n\n/**\n * Entity with calculated salience score.\n *\n * @example\n * ```typescript\n * const scored = await engine.calculateSalience(entity, context);\n * console.log(`Score: ${scored.salienceScore}`);\n * console.log(`Recency: ${scored.components.recencyBoost}`);\n * ```\n */\nexport interface ScoredEntity {\n  /** The entity being scored */\n  entity: AgentEntity;\n  /** Overall salience score (0-1) */\n  salienceScore: number;\n  /** Component breakdown */\n  components: SalienceComponents;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from types/index.ts",
+          "details": "Ensure ScoredEntity and SalienceComponents are exported"
+        }
+      ],
+      "acceptanceCriteria": [
+        "ScoredEntity fully typed",
+        "Component breakdown included",
+        "Exported from types/index.ts",
+        "npm run typecheck passes"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "SalienceEngine calculates multi-factor scores",
+    "Context type captures all factors",
+    "Component weights configurable",
+    "Score breakdown available",
+    "10+ unit tests pass",
+    "npm run typecheck passes"
+  ],
+  "filesCreated": ["src/agent/SalienceEngine.ts", "tests/unit/agent/SalienceEngine.test.ts"],
+  "filesModified": ["src/types/agent-memory.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 2-3 - Access Tracking", "Sprint 4-5 - Decay Engine", "Sprint 1 - Type Definitions"]
+}

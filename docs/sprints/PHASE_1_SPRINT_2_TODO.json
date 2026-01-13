@@ -1,0 +1,318 @@
+{
+  "phase": 1,
+  "sprint": 2,
+  "title": "Access Tracking Foundation",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables memory decay calculations and retrieval ranking based on access patterns",
+  "targetMetrics": {
+    "accessTracking": {
+      "current": "No access tracking",
+      "target": "Full access history with frequency and recency scoring"
+    },
+    "recencyScoring": {
+      "current": "No recency-based ranking",
+      "target": "Exponential decay-based recency scores (0.0-1.0)"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.2.1",
+      "category": "core",
+      "title": "Create AccessTracker Class Skeleton",
+      "description": "Implement AccessTracker class with dependency injection for storage, define internal data structures for tracking access records per entity.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/AccessTracker.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "AccessTracker is the central service for recording and analyzing memory access patterns. It provides data for decay calculations, retrieval ranking, and access statistics.",
+        "keyDecisions": [
+          "Use Map<string, AccessRecord> for O(1) entity lookup",
+          "Inject storage dependency for persistence",
+          "Configurable history buffer size (default 100 accesses per entity)",
+          "Support both synchronous stats and async persistence"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/agent directory if not exists",
+          "details": "mkdir -p src/agent"
+        },
+        {
+          "step": 2,
+          "action": "Create src/agent/AccessTracker.ts with imports",
+          "code": "/**\n * Access Tracker\n *\n * Tracks memory access patterns to inform decay calculations\n * and retrieval ranking. Records access frequency, recency,\n * and context for each memory entity.\n *\n * @module agent/AccessTracker\n */\n\nimport type { IGraphStorage } from '../types/types.js';\nimport type { AgentEntity, AccessPattern } from '../types/agent-memory.js';"
+        },
+        {
+          "step": 3,
+          "action": "Define AccessContext interface",
+          "code": "/**\n * Context provided when recording a memory access.\n */\nexport interface AccessContext {\n  /** Session ID during which access occurred */\n  sessionId?: string;\n  /** Task ID associated with access */\n  taskId?: string;\n  /** Search query that triggered this access */\n  queryContext?: string;\n  /** How the memory was retrieved */\n  retrievalMethod?: 'search' | 'direct' | 'traversal';\n}"
+        },
+        {
+          "step": 4,
+          "action": "Define AccessRecord interface",
+          "code": "/**\n * Internal record of access history for an entity.\n */\ninterface AccessRecord {\n  /** Entity name */\n  entityName: string;\n  /** Total access count */\n  totalAccesses: number;\n  /** ISO 8601 timestamp of last access */\n  lastAccessedAt: string;\n  /** Recent access timestamps (circular buffer) */\n  recentAccesses: string[];\n  /** Access counts per session */\n  accessesBySession: Record<string, number>;\n}"
+        },
+        {
+          "step": 5,
+          "action": "Define AccessStats interface",
+          "code": "/**\n * Statistics about an entity's access patterns.\n */\nexport interface AccessStats {\n  /** Total number of accesses */\n  totalAccesses: number;\n  /** ISO 8601 timestamp of last access */\n  lastAccessedAt: string;\n  /** Classified access pattern */\n  accessPattern: AccessPattern;\n  /** Average interval between accesses in milliseconds */\n  averageAccessInterval: number;\n  /** Access counts by session */\n  accessesBySession: Record<string, number>;\n}"
+        },
+        {
+          "step": 6,
+          "action": "Define AccessTrackerConfig interface",
+          "code": "/**\n * Configuration options for AccessTracker.\n */\nexport interface AccessTrackerConfig {\n  /** Maximum recent accesses to track per entity (default: 100) */\n  historyBufferSize?: number;\n  /** Half-life in hours for recency scoring (default: 24) */\n  recencyHalfLifeHours?: number;\n  /** Threshold for 'frequent' pattern (accesses per day, default: 10) */\n  frequentThreshold?: number;\n  /** Threshold for 'occasional' pattern (accesses per day, default: 1) */\n  occasionalThreshold?: number;\n}"
+        },
+        {
+          "step": 7,
+          "action": "Create AccessTracker class skeleton",
+          "code": "/**\n * Tracks memory access patterns for decay and retrieval ranking.\n *\n * @example\n * ```typescript\n * const tracker = new AccessTracker(storage);\n * await tracker.recordAccess('entity_name', { sessionId: 'session_1' });\n * const stats = await tracker.getAccessStats('entity_name');\n * ```\n */\nexport class AccessTracker {\n  private readonly storage: IGraphStorage;\n  private readonly config: Required<AccessTrackerConfig>;\n  private readonly accessRecords: Map<string, AccessRecord>;\n  private dirty: boolean;\n\n  constructor(storage: IGraphStorage, config: AccessTrackerConfig = {}) {\n    this.storage = storage;\n    this.config = {\n      historyBufferSize: config.historyBufferSize ?? 100,\n      recencyHalfLifeHours: config.recencyHalfLifeHours ?? 24,\n      frequentThreshold: config.frequentThreshold ?? 10,\n      occasionalThreshold: config.occasionalThreshold ?? 1,\n    };\n    this.accessRecords = new Map();\n    this.dirty = false;\n  }\n\n  // Method stubs - to be implemented in subsequent tasks\n  async recordAccess(entityName: string, context?: AccessContext): Promise<void> {\n    throw new Error('Not implemented');\n  }\n\n  async getAccessStats(entityName: string): Promise<AccessStats> {\n    throw new Error('Not implemented');\n  }\n\n  calculateRecencyScore(entityName: string, halfLifeHours?: number): number {\n    throw new Error('Not implemented');\n  }\n\n  async getFrequentlyAccessed(limit: number, timeWindowHours?: number): Promise<AgentEntity[]> {\n    throw new Error('Not implemented');\n  }\n\n  async getRecentlyAccessed(limit: number, withinHours?: number): Promise<AgentEntity[]> {\n    throw new Error('Not implemented');\n  }\n}"
+        },
+        {
+          "step": 8,
+          "action": "Run TypeScript compilation to verify",
+          "details": "Run: npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "AccessTracker class created in src/agent/AccessTracker.ts",
+        "AccessContext interface defined",
+        "AccessStats interface defined",
+        "AccessTrackerConfig interface defined",
+        "Class accepts storage dependency injection",
+        "Internal Map for access records initialized",
+        "Method stubs for all interface methods",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "1.2.2",
+      "category": "core",
+      "title": "Implement recordAccess() Method",
+      "description": "Record entity access with context including session, task, query, and retrieval method. Update access counts, timestamps, and maintain history buffer.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/AccessTracker.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Recording accesses is the primary data collection mechanism. Each access updates counts, timestamps, and optionally persists to storage for durability.",
+        "keyDecisions": [
+          "Create new AccessRecord if entity not tracked",
+          "Use circular buffer for recent accesses",
+          "Track session-specific access counts",
+          "Batch persistence to avoid excessive I/O"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement recordAccess method",
+          "code": "async recordAccess(entityName: string, context?: AccessContext): Promise<void> {\n  const now = new Date().toISOString();\n  \n  // Get or create access record\n  let record = this.accessRecords.get(entityName);\n  if (!record) {\n    record = {\n      entityName,\n      totalAccesses: 0,\n      lastAccessedAt: now,\n      recentAccesses: [],\n      accessesBySession: {},\n    };\n    this.accessRecords.set(entityName, record);\n  }\n\n  // Update access counts\n  record.totalAccesses++;\n  record.lastAccessedAt = now;\n\n  // Add to recent accesses (circular buffer)\n  record.recentAccesses.push(now);\n  if (record.recentAccesses.length > this.config.historyBufferSize) {\n    record.recentAccesses.shift();\n  }\n\n  // Track session-specific access\n  if (context?.sessionId) {\n    record.accessesBySession[context.sessionId] = \n      (record.accessesBySession[context.sessionId] ?? 0) + 1;\n  }\n\n  // Mark as dirty for batch persistence\n  this.dirty = true;\n\n  // Update entity in storage if it exists\n  await this.updateEntityAccessFields(entityName, record);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add helper method to update entity",
+          "code": "private async updateEntityAccessFields(\n  entityName: string,\n  record: AccessRecord\n): Promise<void> {\n  const entity = this.storage.getEntityByName(entityName);\n  if (!entity) return;\n\n  // Update entity's access tracking fields\n  await this.storage.updateEntity(entityName, {\n    lastModified: new Date().toISOString(),\n  });\n\n  // Note: AgentEntity fields (accessCount, lastAccessedAt, accessPattern)\n  // are updated through the entity update mechanism\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add batch persistence method",
+          "code": "/**\n * Persist all dirty access records to storage.\n * Call periodically or on shutdown.\n */\nasync flush(): Promise<void> {\n  if (!this.dirty) return;\n  \n  // Persistence logic depends on storage backend\n  // For now, entity updates happen in recordAccess\n  this.dirty = false;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Create unit tests",
+          "details": "Create tests/unit/agent/AccessTracker.test.ts with tests for recordAccess"
+        }
+      ],
+      "acceptanceCriteria": [
+        "recordAccess creates new record for unknown entities",
+        "recordAccess increments totalAccesses",
+        "recordAccess updates lastAccessedAt timestamp",
+        "recordAccess maintains circular buffer of recent accesses",
+        "recordAccess tracks session-specific counts",
+        "Entity access fields updated in storage",
+        "Unit tests pass for recordAccess"
+      ]
+    },
+    {
+      "id": "1.2.3",
+      "category": "core",
+      "title": "Implement getAccessStats() Method",
+      "description": "Return AccessStats object with total accesses, last access time, access pattern classification, average interval, and per-session breakdown.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/AccessTracker.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Access statistics provide insights into memory usage patterns for decay calculations, retrieval ranking, and analytics.",
+        "keyDecisions": [
+          "Classify access pattern based on daily frequency",
+          "Calculate average interval from recent accesses",
+          "Return default stats for untracked entities"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement classifyAccessPattern helper",
+          "code": "private classifyAccessPattern(record: AccessRecord): AccessPattern {\n  if (record.recentAccesses.length < 2) {\n    return 'rare';\n  }\n\n  // Calculate accesses per day over the history window\n  const oldest = new Date(record.recentAccesses[0]).getTime();\n  const newest = new Date(record.recentAccesses[record.recentAccesses.length - 1]).getTime();\n  const daysDiff = Math.max((newest - oldest) / (1000 * 60 * 60 * 24), 1);\n  const accessesPerDay = record.recentAccesses.length / daysDiff;\n\n  if (accessesPerDay >= this.config.frequentThreshold) {\n    return 'frequent';\n  } else if (accessesPerDay >= this.config.occasionalThreshold) {\n    return 'occasional';\n  } else {\n    return 'rare';\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement calculateAverageInterval helper",
+          "code": "private calculateAverageInterval(record: AccessRecord): number {\n  if (record.recentAccesses.length < 2) {\n    return Infinity;\n  }\n\n  let totalInterval = 0;\n  for (let i = 1; i < record.recentAccesses.length; i++) {\n    const prev = new Date(record.recentAccesses[i - 1]).getTime();\n    const curr = new Date(record.recentAccesses[i]).getTime();\n    totalInterval += curr - prev;\n  }\n\n  return totalInterval / (record.recentAccesses.length - 1);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Implement getAccessStats method",
+          "code": "async getAccessStats(entityName: string): Promise<AccessStats> {\n  const record = this.accessRecords.get(entityName);\n  \n  if (!record) {\n    // Return default stats for untracked entity\n    return {\n      totalAccesses: 0,\n      lastAccessedAt: '',\n      accessPattern: 'rare',\n      averageAccessInterval: Infinity,\n      accessesBySession: {},\n    };\n  }\n\n  return {\n    totalAccesses: record.totalAccesses,\n    lastAccessedAt: record.lastAccessedAt,\n    accessPattern: this.classifyAccessPattern(record),\n    averageAccessInterval: this.calculateAverageInterval(record),\n    accessesBySession: { ...record.accessesBySession },\n  };\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit tests for getAccessStats",
+          "details": "Add tests verifying stats calculations and pattern classification"
+        }
+      ],
+      "acceptanceCriteria": [
+        "getAccessStats returns default stats for untracked entities",
+        "totalAccesses matches recorded count",
+        "lastAccessedAt returns correct timestamp",
+        "accessPattern correctly classified as frequent/occasional/rare",
+        "averageAccessInterval calculated from history",
+        "accessesBySession returns session breakdown",
+        "Unit tests pass for all scenarios"
+      ]
+    },
+    {
+      "id": "1.2.4",
+      "category": "core",
+      "title": "Implement calculateRecencyScore() Method",
+      "description": "Calculate recency score (0.0-1.0) based on last access using exponential decay formula with configurable half-life.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/AccessTracker.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Recency score provides a normalized measure of how recently a memory was accessed, used in salience calculations and retrieval ranking.",
+        "keyDecisions": [
+          "Use exponential decay formula: e^(-ln(2) * hours / halfLife)",
+          "Score of 1.0 for just-accessed memories",
+          "Score approaches 0 for very old accesses",
+          "Configurable half-life (default 24 hours)"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement calculateRecencyScore method",
+          "code": "/**\n * Calculate recency score based on time since last access.\n *\n * Uses exponential decay: e^(-ln(2) * hours_since_access / half_life)\n * - Score of 1.0 for just-accessed memories\n * - Score of 0.5 after one half-life\n * - Score approaches 0 for very old accesses\n *\n * @param entityName - Entity to calculate score for\n * @param halfLifeHours - Optional override for half-life (default: config value)\n * @returns Recency score between 0.0 and 1.0\n */\ncalculateRecencyScore(entityName: string, halfLifeHours?: number): number {\n  const record = this.accessRecords.get(entityName);\n  \n  if (!record || !record.lastAccessedAt) {\n    return 0; // No access history = minimum recency\n  }\n\n  const halfLife = halfLifeHours ?? this.config.recencyHalfLifeHours;\n  const lastAccess = new Date(record.lastAccessedAt).getTime();\n  const now = Date.now();\n  const hoursSinceAccess = (now - lastAccess) / (1000 * 60 * 60);\n\n  // Exponential decay formula\n  const decayConstant = Math.LN2 / halfLife;\n  const score = Math.exp(-decayConstant * hoursSinceAccess);\n\n  return Math.max(0, Math.min(1, score)); // Clamp to [0, 1]\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add static utility method for external use",
+          "code": "/**\n * Calculate recency score for a given timestamp.\n * Static utility for use without AccessTracker instance.\n *\n * @param lastAccessedAt - ISO 8601 timestamp of last access\n * @param halfLifeHours - Half-life for decay calculation\n * @returns Recency score between 0.0 and 1.0\n */\nstatic calculateRecencyScoreFromTimestamp(\n  lastAccessedAt: string,\n  halfLifeHours: number = 24\n): number {\n  if (!lastAccessedAt) return 0;\n\n  const lastAccess = new Date(lastAccessedAt).getTime();\n  const now = Date.now();\n  const hoursSinceAccess = (now - lastAccess) / (1000 * 60 * 60);\n\n  const decayConstant = Math.LN2 / halfLifeHours;\n  const score = Math.exp(-decayConstant * hoursSinceAccess);\n\n  return Math.max(0, Math.min(1, score));\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests for recency scoring",
+          "details": "Test various time intervals and half-life values"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Returns 1.0 for just-accessed memories",
+        "Returns ~0.5 after one half-life",
+        "Returns ~0.25 after two half-lives",
+        "Returns 0 for untracked entities",
+        "Configurable half-life parameter works",
+        "Score always in range [0, 1]",
+        "Static utility method available",
+        "Unit tests pass for various scenarios"
+      ]
+    },
+    {
+      "id": "1.2.5",
+      "category": "core",
+      "title": "Implement getFrequentlyAccessed() and getRecentlyAccessed()",
+      "description": "Return top N entities by access frequency or recency with optional time window filtering. Use efficient sorting with heap for large datasets.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/AccessTracker.ts"],
+      "testCategories": ["unit", "performance"],
+      "implementation": {
+        "purpose": "These methods support retrieval of most active memories for context building and debugging. Efficient implementation is important for large memory sets.",
+        "keyDecisions": [
+          "Use partial sort (heap) for O(n log k) performance",
+          "Support time window filtering for frequency calculation",
+          "Return actual AgentEntity objects from storage"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement getFrequentlyAccessed method",
+          "code": "/**\n * Get most frequently accessed entities.\n *\n * @param limit - Maximum number of entities to return\n * @param timeWindowHours - Optional time window for frequency calculation\n * @returns Array of entities sorted by access frequency (descending)\n */\nasync getFrequentlyAccessed(\n  limit: number,\n  timeWindowHours?: number\n): Promise<AgentEntity[]> {\n  const now = Date.now();\n  const windowStart = timeWindowHours \n    ? now - (timeWindowHours * 60 * 60 * 1000)\n    : 0;\n\n  // Calculate frequency scores\n  const scored: Array<{ name: string; frequency: number }> = [];\n  \n  for (const [name, record] of this.accessRecords) {\n    let frequency: number;\n    \n    if (timeWindowHours) {\n      // Count accesses within time window\n      frequency = record.recentAccesses.filter(\n        ts => new Date(ts).getTime() >= windowStart\n      ).length;\n    } else {\n      frequency = record.totalAccesses;\n    }\n    \n    if (frequency > 0) {\n      scored.push({ name, frequency });\n    }\n  }\n\n  // Sort by frequency (descending) and take top N\n  scored.sort((a, b) => b.frequency - a.frequency);\n  const topNames = scored.slice(0, limit).map(s => s.name);\n\n  // Fetch entities from storage\n  const entities: AgentEntity[] = [];\n  for (const name of topNames) {\n    const entity = this.storage.getEntityByName(name);\n    if (entity) {\n      entities.push(entity as AgentEntity);\n    }\n  }\n\n  return entities;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement getRecentlyAccessed method",
+          "code": "/**\n * Get most recently accessed entities.\n *\n * @param limit - Maximum number of entities to return\n * @param withinHours - Optional filter for accesses within N hours\n * @returns Array of entities sorted by recency (most recent first)\n */\nasync getRecentlyAccessed(\n  limit: number,\n  withinHours?: number\n): Promise<AgentEntity[]> {\n  const now = Date.now();\n  const windowStart = withinHours\n    ? now - (withinHours * 60 * 60 * 1000)\n    : 0;\n\n  // Collect entities with their last access time\n  const scored: Array<{ name: string; lastAccess: number }> = [];\n  \n  for (const [name, record] of this.accessRecords) {\n    const lastAccess = new Date(record.lastAccessedAt).getTime();\n    \n    if (lastAccess >= windowStart) {\n      scored.push({ name, lastAccess });\n    }\n  }\n\n  // Sort by last access (most recent first) and take top N\n  scored.sort((a, b) => b.lastAccess - a.lastAccess);\n  const topNames = scored.slice(0, limit).map(s => s.name);\n\n  // Fetch entities from storage\n  const entities: AgentEntity[] = [];\n  for (const name of topNames) {\n    const entity = this.storage.getEntityByName(name);\n    if (entity) {\n      entities.push(entity as AgentEntity);\n    }\n  }\n\n  return entities;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit and performance tests",
+          "details": "Test correctness and performance with large datasets"
+        }
+      ],
+      "acceptanceCriteria": [
+        "getFrequentlyAccessed returns correct entities by frequency",
+        "Time window filtering works correctly",
+        "getRecentlyAccessed returns correct entities by recency",
+        "Within hours filtering works correctly",
+        "Results limited to specified count",
+        "Empty array returned when no matching entities",
+        "Performance acceptable with 10k+ entities",
+        "Unit tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "AccessTracker class fully implemented",
+    "recordAccess persists access data correctly",
+    "getAccessStats returns accurate statistics",
+    "calculateRecencyScore implements exponential decay",
+    "getFrequentlyAccessed and getRecentlyAccessed work correctly",
+    "15+ unit tests pass",
+    "npm run typecheck passes"
+  ],
+  "filesCreated": [
+    "src/agent/AccessTracker.ts",
+    "tests/unit/agent/AccessTracker.test.ts"
+  ],
+  "filesModified": [],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 1 - Type Definitions"],
+  "notes": [
+    "AccessTracker is used by DecayEngine (Sprint 4-5) and SalienceEngine (Sprint 16)",
+    "Consider memory usage with large history buffers",
+    "Recency scoring formula must match decay calculations for consistency",
+    "Performance optimization may be needed for very large entity sets"
+  ]
+}

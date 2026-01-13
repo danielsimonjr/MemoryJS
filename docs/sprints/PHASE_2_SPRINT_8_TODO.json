@@ -1,0 +1,301 @@
+{
+  "phase": 2,
+  "sprint": 8,
+  "title": "Session Management",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables full session lifecycle management for conversation/task tracking",
+  "targetMetrics": {
+    "sessionLifecycle": {
+      "current": "No session management",
+      "target": "Full create/update/end lifecycle with cleanup"
+    },
+    "sessionLinking": {
+      "current": "No session continuity",
+      "target": "Chain linked sessions for conversation continuity"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.8.1",
+      "category": "core",
+      "title": "Create SessionManager Class",
+      "description": "Implement SessionManager class for session lifecycle management with WorkingMemoryManager integration.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/SessionManager.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "SessionManager is the primary interface for conversation/task session management. It coordinates with WorkingMemoryManager for memory scoping.",
+        "keyDecisions": [
+          "Maintain active sessions index",
+          "Inject WorkingMemoryManager dependency",
+          "Support multiple concurrent sessions",
+          "Track session statistics"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/agent/SessionManager.ts",
+          "code": "/**\n * Session Manager\n *\n * Manages conversation/task session lifecycle including\n * creation, updates, ending, and session linking.\n *\n * @module agent/SessionManager\n */\n\nimport type { IGraphStorage, Entity } from '../types/types.js';\nimport type {\n  SessionEntity,\n  SessionStatus,\n  AgentEntity,\n} from '../types/agent-memory.js';\nimport { isSessionEntity } from '../types/agent-memory.js';\nimport { WorkingMemoryManager } from './WorkingMemoryManager.js';"
+        },
+        {
+          "step": 2,
+          "action": "Define SessionConfig interface",
+          "code": "/**\n * Configuration for SessionManager.\n */\nexport interface SessionConfig {\n  /** Consolidate memories on session end (default: false) */\n  consolidateOnEnd?: boolean;\n  /** Delete working memories on end (default: false) */\n  cleanupOnEnd?: boolean;\n  /** Promote high-confidence memories on end (default: true) */\n  promoteOnEnd?: boolean;\n  /** Default agent ID for sessions */\n  defaultAgentId?: string;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Define StartSessionOptions interface",
+          "code": "/**\n * Options for starting a new session.\n */\nexport interface StartSessionOptions {\n  /** Description of session goal */\n  goalDescription?: string;\n  /** Type of task being performed */\n  taskType?: string;\n  /** Detected user intent */\n  userIntent?: string;\n  /** Continue from previous session */\n  previousSessionId?: string;\n  /** Agent ID for multi-agent */\n  agentId?: string;\n  /** Custom session ID (default: auto-generated) */\n  sessionId?: string;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Create SessionManager class",
+          "code": "/**\n * Manages session lifecycle for conversations and tasks.\n *\n * @example\n * ```typescript\n * const sm = new SessionManager(storage, workingMemory);\n * const session = await sm.startSession({ goalDescription: 'Plan trip' });\n * // ... conversation ...\n * await sm.endSession(session.sessionId, 'completed');\n * ```\n */\nexport class SessionManager {\n  private readonly storage: IGraphStorage;\n  private readonly workingMemory: WorkingMemoryManager;\n  private readonly config: Required<SessionConfig>;\n  \n  // Active sessions: sessionId -> SessionEntity\n  private activeSessions: Map<string, SessionEntity>;\n\n  constructor(\n    storage: IGraphStorage,\n    workingMemory: WorkingMemoryManager,\n    config: SessionConfig = {}\n  ) {\n    this.storage = storage;\n    this.workingMemory = workingMemory;\n    this.config = {\n      consolidateOnEnd: config.consolidateOnEnd ?? false,\n      cleanupOnEnd: config.cleanupOnEnd ?? false,\n      promoteOnEnd: config.promoteOnEnd ?? true,\n      defaultAgentId: config.defaultAgentId ?? 'default',\n    };\n    this.activeSessions = new Map();\n  }\n\n  // Method stubs\n  async startSession(options?: StartSessionOptions): Promise<SessionEntity> {\n    throw new Error('Not implemented');\n  }\n\n  async endSession(\n    sessionId: string,\n    status: 'completed' | 'abandoned'\n  ): Promise<SessionEntity> {\n    throw new Error('Not implemented');\n  }\n\n  async getActiveSession(sessionId?: string): Promise<SessionEntity | undefined> {\n    throw new Error('Not implemented');\n  }\n\n  async getSessionHistory(options?: SessionHistoryOptions): Promise<SessionEntity[]> {\n    throw new Error('Not implemented');\n  }\n\n  async linkSessions(sessionIds: string[]): Promise<void> {\n    throw new Error('Not implemented');\n  }\n}"
+        },
+        {
+          "step": 5,
+          "action": "Run TypeScript compilation",
+          "details": "npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SessionManager class created",
+        "SessionConfig interface defined",
+        "StartSessionOptions interface defined",
+        "Dependencies injected",
+        "Active sessions map initialized",
+        "Method stubs defined",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "2.8.2",
+      "category": "core",
+      "title": "Implement startSession() Method",
+      "description": "Create new SessionEntity with active status, start timestamp, and goal/task metadata.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/SessionManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Starting a session creates the container for working memories and establishes context for the conversation or task.",
+        "keyDecisions": [
+          "Generate unique session ID",
+          "Create SessionEntity in storage",
+          "Track in active sessions",
+          "Support continuation from previous"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add session ID generator",
+          "code": "private generateSessionId(): string {\n  const timestamp = Date.now();\n  const random = Math.random().toString(36).substring(2, 8);\n  return `session_${timestamp}_${random}`;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement startSession",
+          "code": "/**\n * Start a new session.\n *\n * @param options - Session configuration\n * @returns Created SessionEntity\n */\nasync startSession(options?: StartSessionOptions): Promise<SessionEntity> {\n  const now = new Date().toISOString();\n  const sessionId = options?.sessionId ?? this.generateSessionId();\n\n  // Check if session already exists\n  if (this.activeSessions.has(sessionId)) {\n    throw new Error(`Session already exists: ${sessionId}`);\n  }\n\n  const session: SessionEntity = {\n    // Base Entity fields\n    name: sessionId,\n    entityType: 'session',\n    observations: [],\n    createdAt: now,\n    lastModified: now,\n    importance: 5,\n\n    // AgentEntity fields\n    memoryType: 'episodic',\n    sessionId: sessionId,\n    accessCount: 0,\n    confidence: 1.0,\n    confirmationCount: 0,\n    visibility: 'private',\n    agentId: options?.agentId ?? this.config.defaultAgentId,\n\n    // SessionEntity fields\n    startedAt: now,\n    status: 'active',\n    goalDescription: options?.goalDescription,\n    taskType: options?.taskType,\n    userIntent: options?.userIntent,\n    memoryCount: 0,\n    consolidatedCount: 0,\n    previousSessionId: options?.previousSessionId,\n    relatedSessionIds: options?.previousSessionId ? [options.previousSessionId] : [],\n  };\n\n  // If continuing from previous, link back\n  if (options?.previousSessionId) {\n    const prevSession = this.storage.getEntityByName(options.previousSessionId);\n    if (prevSession && isSessionEntity(prevSession)) {\n      const relatedIds = prevSession.relatedSessionIds ?? [];\n      if (!relatedIds.includes(sessionId)) {\n        await this.storage.updateEntity(options.previousSessionId, {\n          relatedSessionIds: [...relatedIds, sessionId],\n          lastModified: now,\n        });\n      }\n    }\n  }\n\n  // Persist to storage\n  await this.storage.appendEntity(session as Entity);\n\n  // Track as active\n  this.activeSessions.set(sessionId, session);\n\n  return session;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add observation for session start",
+          "code": "// Add to startSession after creating session:\nif (options?.goalDescription) {\n  session.observations.push(`Session goal: ${options.goalDescription}`);\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit tests",
+          "details": "Test session creation scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Creates SessionEntity with unique ID",
+        "Sets status: 'active'",
+        "Sets startedAt timestamp",
+        "Stores goal and task metadata",
+        "Links to previous session if specified",
+        "Persists to storage",
+        "Tracks in active sessions",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.8.3",
+      "category": "core",
+      "title": "Implement endSession() Method",
+      "description": "Update session with end timestamp and status, trigger cleanup and consolidation based on configuration.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/SessionManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Ending a session closes the container, calculates statistics, and optionally triggers memory cleanup or promotion.",
+        "keyDecisions": [
+          "Set endedAt and status",
+          "Calculate memory statistics",
+          "Optional cleanup of working memories",
+          "Optional promotion of candidates"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define EndSessionResult interface",
+          "code": "/**\n * Result of ending a session.\n */\nexport interface EndSessionResult {\n  /** Updated session entity */\n  session: SessionEntity;\n  /** Number of memories cleaned up */\n  memoriesCleaned: number;\n  /** Number of memories promoted */\n  memoriesPromoted: number;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement endSession",
+          "code": "/**\n * End a session.\n *\n * @param sessionId - Session to end\n * @param status - Ending status\n * @returns End session result\n */\nasync endSession(\n  sessionId: string,\n  status: 'completed' | 'abandoned' = 'completed'\n): Promise<EndSessionResult> {\n  const session = this.activeSessions.get(sessionId) ?? \n    this.storage.getEntityByName(sessionId) as SessionEntity;\n\n  if (!session || !isSessionEntity(session)) {\n    throw new Error(`Session not found: ${sessionId}`);\n  }\n\n  if (session.status !== 'active') {\n    throw new Error(`Session is not active: ${sessionId}`);\n  }\n\n  const now = new Date().toISOString();\n  let memoriesCleaned = 0;\n  let memoriesPromoted = 0;\n\n  // Get session memories for statistics\n  const sessionMemories = await this.workingMemory.getSessionMemories(sessionId);\n  const memoryCount = sessionMemories.length;\n\n  // Promote candidates if configured\n  if (this.config.promoteOnEnd) {\n    const candidates = await this.workingMemory.getPromotionCandidates(sessionId);\n    for (const candidate of candidates) {\n      try {\n        await this.workingMemory.promoteMemory(candidate.name, 'episodic');\n        memoriesPromoted++;\n      } catch (e) {\n        // Log but continue\n        console.warn(`Failed to promote ${candidate.name}:`, e);\n      }\n    }\n  }\n\n  // Cleanup working memories if configured\n  if (this.config.cleanupOnEnd) {\n    const remainingMemories = await this.workingMemory.getSessionMemories(sessionId);\n    for (const memory of remainingMemories) {\n      // Delete non-promoted working memories\n      const graph = await this.storage.getGraphForMutation();\n      graph.entities = graph.entities.filter(e => e.name !== memory.name);\n      graph.relations = graph.relations.filter(\n        r => r.from !== memory.name && r.to !== memory.name\n      );\n      await this.storage.saveGraph(graph);\n      memoriesCleaned++;\n    }\n  }\n\n  // Update session\n  const updates: Partial<SessionEntity> = {\n    endedAt: now,\n    status,\n    memoryCount,\n    consolidatedCount: memoriesPromoted,\n    lastModified: now,\n  };\n\n  // Add ending observation\n  const currentObs = session.observations ?? [];\n  updates.observations = [\n    ...currentObs,\n    `Session ended: ${status} at ${now}`,\n  ];\n\n  await this.storage.updateEntity(sessionId, updates as Partial<Entity>);\n\n  // Remove from active sessions\n  this.activeSessions.delete(sessionId);\n\n  // Get updated session\n  const updatedSession = {\n    ...session,\n    ...updates,\n  } as SessionEntity;\n\n  return {\n    session: updatedSession,\n    memoriesCleaned,\n    memoriesPromoted,\n  };\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit and integration tests",
+          "details": "Test session ending scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Sets endedAt timestamp",
+        "Sets status to completed or abandoned",
+        "Calculates memoryCount",
+        "Promotes candidates when configured",
+        "Cleans up memories when configured",
+        "Removes from active sessions",
+        "Returns accurate statistics",
+        "Unit and integration tests pass"
+      ]
+    },
+    {
+      "id": "2.8.4",
+      "category": "core",
+      "title": "Implement getActiveSession() and getSessionHistory()",
+      "description": "Return current active sessions and paginated session history with filtering options.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SessionManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Session queries enable understanding current and historical conversation context.",
+        "keyDecisions": [
+          "Active sessions from in-memory map",
+          "History from storage with filters",
+          "Support pagination for large histories"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define SessionHistoryOptions",
+          "code": "/**\n * Options for querying session history.\n */\nexport interface SessionHistoryOptions {\n  /** Filter by status */\n  status?: SessionStatus;\n  /** Filter by task type */\n  taskType?: string;\n  /** Filter by agent ID */\n  agentId?: string;\n  /** Start date filter (ISO 8601) */\n  startDate?: string;\n  /** End date filter (ISO 8601) */\n  endDate?: string;\n  /** Maximum results */\n  limit?: number;\n  /** Offset for pagination */\n  offset?: number;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement getActiveSession",
+          "code": "/**\n * Get active session(s).\n *\n * @param sessionId - Optional specific session ID\n * @returns Active session or undefined\n */\nasync getActiveSession(sessionId?: string): Promise<SessionEntity | undefined> {\n  if (sessionId) {\n    return this.activeSessions.get(sessionId);\n  }\n\n  // Return first active session if no ID specified\n  const [first] = this.activeSessions.values();\n  return first;\n}\n\n/**\n * Get all active sessions.\n */\ngetActiveSessions(): SessionEntity[] {\n  return Array.from(this.activeSessions.values());\n}"
+        },
+        {
+          "step": 3,
+          "action": "Implement getSessionHistory",
+          "code": "/**\n * Get session history with filtering.\n *\n * @param options - Filter and pagination options\n * @returns Matching sessions\n */\nasync getSessionHistory(options?: SessionHistoryOptions): Promise<SessionEntity[]> {\n  const graph = await this.storage.loadGraph();\n  let sessions: SessionEntity[] = [];\n\n  // Find all sessions\n  for (const entity of graph.entities) {\n    if (!isSessionEntity(entity)) continue;\n    sessions.push(entity);\n  }\n\n  // Apply filters\n  if (options?.status) {\n    sessions = sessions.filter(s => s.status === options.status);\n  }\n  if (options?.taskType) {\n    sessions = sessions.filter(s => s.taskType === options.taskType);\n  }\n  if (options?.agentId) {\n    sessions = sessions.filter(s => s.agentId === options.agentId);\n  }\n  if (options?.startDate) {\n    const startTime = new Date(options.startDate).getTime();\n    sessions = sessions.filter(\n      s => new Date(s.startedAt).getTime() >= startTime\n    );\n  }\n  if (options?.endDate) {\n    const endTime = new Date(options.endDate).getTime();\n    sessions = sessions.filter(\n      s => new Date(s.startedAt).getTime() <= endTime\n    );\n  }\n\n  // Sort by startedAt descending (most recent first)\n  sessions.sort((a, b) => \n    new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()\n  );\n\n  // Apply pagination\n  const offset = options?.offset ?? 0;\n  const limit = options?.limit ?? 100;\n  return sessions.slice(offset, offset + limit);\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit tests",
+          "details": "Test query scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "getActiveSession returns specific or first active",
+        "getActiveSessions returns all active",
+        "getSessionHistory applies filters correctly",
+        "Supports status, taskType, agentId filters",
+        "Supports date range filtering",
+        "Supports pagination",
+        "Sorted by most recent first",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.8.5",
+      "category": "core",
+      "title": "Implement Session Linking",
+      "description": "Support linking sessions for continuity tracking with previousSessionId and relatedSessionIds.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SessionManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Session linking enables tracking conversation continuity across multiple sessions and understanding related contexts.",
+        "keyDecisions": [
+          "Update relatedSessionIds on all sessions",
+          "Support bidirectional linking",
+          "Enable chain traversal"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement linkSessions",
+          "code": "/**\n * Link multiple sessions as related.\n *\n * @param sessionIds - Sessions to link\n */\nasync linkSessions(sessionIds: string[]): Promise<void> {\n  if (sessionIds.length < 2) {\n    throw new Error('At least 2 sessions required for linking');\n  }\n\n  const now = new Date().toISOString();\n\n  // Verify all sessions exist\n  for (const id of sessionIds) {\n    const session = this.storage.getEntityByName(id);\n    if (!session || !isSessionEntity(session)) {\n      throw new Error(`Session not found: ${id}`);\n    }\n  }\n\n  // Update each session with all related IDs\n  for (const id of sessionIds) {\n    const session = this.storage.getEntityByName(id) as SessionEntity;\n    const existingRelated = new Set(session.relatedSessionIds ?? []);\n\n    // Add all other session IDs\n    for (const otherId of sessionIds) {\n      if (otherId !== id) {\n        existingRelated.add(otherId);\n      }\n    }\n\n    await this.storage.updateEntity(id, {\n      relatedSessionIds: Array.from(existingRelated),\n      lastModified: now,\n    });\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add getSessionChain method",
+          "code": "/**\n * Get chain of linked sessions starting from a session.\n *\n * @param sessionId - Starting session\n * @returns Chain of sessions (oldest to newest)\n */\nasync getSessionChain(sessionId: string): Promise<SessionEntity[]> {\n  const visited = new Set<string>();\n  const chain: SessionEntity[] = [];\n\n  const traverse = async (id: string) => {\n    if (visited.has(id)) return;\n    visited.add(id);\n\n    const session = this.storage.getEntityByName(id);\n    if (!session || !isSessionEntity(session)) return;\n\n    // Traverse to previous\n    if (session.previousSessionId && !visited.has(session.previousSessionId)) {\n      await traverse(session.previousSessionId);\n    }\n\n    // Add current\n    chain.push(session);\n\n    // Traverse to related that continue from this\n    for (const relatedId of session.relatedSessionIds ?? []) {\n      const related = this.storage.getEntityByName(relatedId);\n      if (related && isSessionEntity(related) && \n          related.previousSessionId === id) {\n        await traverse(relatedId);\n      }\n    }\n  };\n\n  await traverse(sessionId);\n\n  // Sort by startedAt\n  chain.sort((a, b) => \n    new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()\n  );\n\n  return chain;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit and integration tests",
+          "details": "Test linking and chain traversal"
+        }
+      ],
+      "acceptanceCriteria": [
+        "linkSessions updates relatedSessionIds on all",
+        "Bidirectional linking works",
+        "getSessionChain returns ordered chain",
+        "Chain follows previousSessionId links",
+        "Handles complex relationship graphs",
+        "Unit and integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Sessions can be started with metadata",
+    "Sessions can be ended with cleanup",
+    "Active sessions queryable",
+    "Session history with filtering",
+    "Session linking and chain traversal",
+    "15+ unit tests pass"
+  ],
+  "filesCreated": [
+    "src/agent/SessionManager.ts",
+    "tests/unit/agent/SessionManager.test.ts"
+  ],
+  "filesModified": [],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 6 - Working Memory Manager Foundation"],
+  "notes": [
+    "SessionManager coordinates with WorkingMemoryManager",
+    "Active sessions should be restored from storage on startup",
+    "Consider session timeout for abandoned sessions",
+    "Session chains enable conversation continuity tracking"
+  ]
+}

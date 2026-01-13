@@ -1,0 +1,292 @@
+{
+  "phase": 1,
+  "sprint": 5,
+  "title": "Decay Engine Operations",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Completes DecayEngine with batch operations and scheduled forgetting mechanisms",
+  "targetMetrics": {
+    "batchProcessing": {
+      "current": "No batch decay",
+      "target": "Process 10k entities in <100ms with full statistics"
+    },
+    "scheduledDecay": {
+      "current": "No automatic decay",
+      "target": "Configurable scheduled decay with cron-like intervals"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.5.1",
+      "category": "core",
+      "title": "Implement applyDecay() Batch Method",
+      "description": "Process all memories to update effective importance, returning statistics about decay state including entities processed, average decay, and at-risk memories.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/DecayEngine.ts"],
+      "testCategories": ["unit", "performance"],
+      "implementation": {
+        "purpose": "Batch decay processing allows periodic assessment of all memories without modifying them. This is useful for analytics and identifying memories at risk of being forgotten.",
+        "keyDecisions": [
+          "Process all AgentEntity records",
+          "Calculate effective importance for each",
+          "Track statistics without modifying by default",
+          "Support dry-run mode"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement applyDecay method",
+          "code": "/**\n * Apply decay calculations to all memories.\n *\n * Processes all AgentEntity records, calculating effective\n * importance and collecting statistics about decay state.\n *\n * @param options - Decay operation options\n * @returns Statistics about the decay operation\n */\nasync applyDecay(options?: DecayOptions): Promise<DecayResult> {\n  const startTime = Date.now();\n  const graph = await this.storage.loadGraph();\n  \n  let totalDecay = 0;\n  let entitiesProcessed = 0;\n  let memoriesAtRisk = 0;\n  \n  const effectiveOptions = {\n    halfLifeHours: options?.halfLifeHours ?? this.config.halfLifeHours,\n    importanceModulation: options?.importanceModulation ?? this.config.importanceModulation,\n    accessModulation: options?.accessModulation ?? this.config.accessModulation,\n    minImportance: options?.minImportance ?? this.config.minImportance,\n    dryRun: options?.dryRun ?? true,\n  };\n\n  // Risk threshold - memories below this are at risk of forgetting\n  const riskThreshold = effectiveOptions.minImportance * 2;\n\n  for (const entity of graph.entities) {\n    // Skip non-AgentEntity types\n    if (!this.isAgentEntity(entity)) continue;\n\n    const agentEntity = entity as AgentEntity;\n    entitiesProcessed++;\n\n    // Calculate decay factor\n    const decayTimestamp = agentEntity.lastAccessedAt ?? agentEntity.createdAt;\n    const baseImportance = agentEntity.importance ?? 5;\n    \n    const decayFactor = decayTimestamp\n      ? this.calculateDecayFactor(\n          decayTimestamp,\n          effectiveOptions.halfLifeHours,\n          effectiveOptions.importanceModulation ? baseImportance : undefined\n        )\n      : 1;\n\n    totalDecay += (1 - decayFactor);\n\n    // Calculate effective importance\n    const effectiveImportance = this.calculateEffectiveImportance(agentEntity);\n\n    // Track at-risk memories\n    if (effectiveImportance <= riskThreshold && effectiveImportance > effectiveOptions.minImportance) {\n      memoriesAtRisk++;\n    }\n  }\n\n  const processingTimeMs = Date.now() - startTime;\n\n  return {\n    entitiesProcessed,\n    averageDecay: entitiesProcessed > 0 ? totalDecay / entitiesProcessed : 0,\n    memoriesAtRisk,\n    processingTimeMs,\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add performance tests",
+          "details": "Verify <100ms for 10k entities"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Processes all AgentEntity records",
+        "Returns accurate entitiesProcessed count",
+        "Calculates correct averageDecay",
+        "Identifies memoriesAtRisk correctly",
+        "Reports processingTimeMs",
+        "Supports options override",
+        "Performance <100ms for 10k entities"
+      ]
+    },
+    {
+      "id": "1.5.2",
+      "category": "core",
+      "title": "Implement forgetWeakMemories() Method",
+      "description": "Delete or archive memories below effective importance threshold with support for exclusion filters and dry-run mode.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/DecayEngine.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Forgetting is the natural conclusion of decay. Memories that fall below a threshold should be removed or archived to manage memory size.",
+        "keyDecisions": [
+          "Support threshold-based selection",
+          "Exclude memories with protected tags",
+          "Support age filtering (olderThanHours)",
+          "Dry-run mode for preview",
+          "Return detailed results"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define ForgetOptions interface",
+          "code": "/**\n * Options for forgetting weak memories.\n */\nexport interface ForgetOptions {\n  /** Effective importance threshold - forget below this */\n  effectiveImportanceThreshold: number;\n  /** Only forget memories older than this (hours) */\n  olderThanHours?: number;\n  /** Tags that protect memories from forgetting */\n  excludeTags?: string[];\n  /** Preview mode - don't actually delete */\n  dryRun?: boolean;\n  /** Archive instead of delete */\n  archive?: boolean;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Define ForgetResult interface",
+          "code": "/**\n * Result of a forget operation.\n */\nexport interface ForgetResult {\n  /** Number of memories forgotten */\n  memoriesForgotten: number;\n  /** Names of forgotten entities */\n  forgottenNames: string[];\n  /** Number of memories protected by tags */\n  memoriesProtected: number;\n  /** Number of memories too young to forget */\n  memoriesTooYoung: number;\n  /** Was this a dry run? */\n  dryRun: boolean;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Implement forgetWeakMemories method",
+          "code": "/**\n * Forget (delete or archive) memories below threshold.\n *\n * @param options - Forget operation options\n * @returns Results of the forget operation\n */\nasync forgetWeakMemories(options: ForgetOptions): Promise<ForgetResult> {\n  const graph = await this.storage.loadGraph();\n  const now = Date.now();\n  \n  const forgottenNames: string[] = [];\n  let memoriesProtected = 0;\n  let memoriesTooYoung = 0;\n\n  const excludeTagSet = new Set(\n    (options.excludeTags ?? []).map(t => t.toLowerCase())\n  );\n\n  for (const entity of graph.entities) {\n    if (!this.isAgentEntity(entity)) continue;\n\n    const agentEntity = entity as AgentEntity;\n\n    // Check effective importance\n    const effectiveImportance = this.calculateEffectiveImportance(agentEntity);\n    if (effectiveImportance >= options.effectiveImportanceThreshold) {\n      continue;\n    }\n\n    // Check age filter\n    if (options.olderThanHours) {\n      const createdAt = agentEntity.createdAt \n        ? new Date(agentEntity.createdAt).getTime()\n        : now;\n      const ageHours = (now - createdAt) / (1000 * 60 * 60);\n      \n      if (ageHours < options.olderThanHours) {\n        memoriesTooYoung++;\n        continue;\n      }\n    }\n\n    // Check protected tags\n    const entityTags = new Set(\n      (agentEntity.tags ?? []).map(t => t.toLowerCase())\n    );\n    const hasProtectedTag = [...excludeTagSet].some(tag => entityTags.has(tag));\n    \n    if (hasProtectedTag) {\n      memoriesProtected++;\n      continue;\n    }\n\n    // Mark for forgetting\n    forgottenNames.push(agentEntity.name);\n  }\n\n  // Execute forgetting if not dry run\n  if (!options.dryRun && forgottenNames.length > 0) {\n    const graphMut = await this.storage.getGraphForMutation();\n    \n    if (options.archive) {\n      // Archive logic would go here - mark as archived\n      // For now, we just delete\n    }\n    \n    // Remove forgotten entities\n    graphMut.entities = graphMut.entities.filter(\n      e => !forgottenNames.includes(e.name)\n    );\n    \n    // Remove relations involving forgotten entities\n    const forgottenSet = new Set(forgottenNames);\n    graphMut.relations = graphMut.relations.filter(\n      r => !forgottenSet.has(r.from) && !forgottenSet.has(r.to)\n    );\n    \n    await this.storage.saveGraph(graphMut);\n  }\n\n  return {\n    memoriesForgotten: forgottenNames.length,\n    forgottenNames,\n    memoriesProtected,\n    memoriesTooYoung,\n    dryRun: options.dryRun ?? false,\n  };\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit and integration tests",
+          "details": "Test filtering and deletion"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Selects memories below threshold",
+        "Respects olderThanHours filter",
+        "Respects excludeTags protection",
+        "Dry-run mode doesn't delete",
+        "Actually deletes in non-dry-run mode",
+        "Removes related relations on delete",
+        "Returns accurate statistics",
+        "Unit and integration tests pass"
+      ]
+    },
+    {
+      "id": "1.5.3",
+      "category": "types",
+      "title": "Create DecayOptions and ForgetOptions Types in agent-memory.ts",
+      "description": "Move and enhance option interfaces to shared types file with full validation documentation.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "Centralizing types in the shared types file ensures consistency and enables reuse across modules.",
+        "keyDecisions": [
+          "Move interfaces to agent-memory.ts",
+          "Add comprehensive JSDoc with validation rules",
+          "Export from index.ts"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add types to agent-memory.ts with documentation",
+          "code": "/**\n * Options for decay operations.\n *\n * @remarks\n * - halfLifeHours must be positive\n * - minImportance should be in range [0, 10]\n */\nexport interface DecayOptions {\n  /** Override half-life in hours (must be > 0) */\n  halfLifeHours?: number;\n  /** Enable importance-based half-life modulation */\n  importanceModulation?: boolean;\n  /** Enable access frequency-based modulation */\n  accessModulation?: boolean;\n  /** Minimum importance floor (0-10) */\n  minImportance?: number;\n  /** Dry run - calculate but don't persist */\n  dryRun?: boolean;\n}\n\n/**\n * Options for forgetting weak memories.\n *\n * @remarks\n * - effectiveImportanceThreshold is required and must be in range [0, 10]\n * - olderThanHours must be positive if specified\n */\nexport interface ForgetOptions {\n  /** Threshold - forget memories with effective importance below this (required) */\n  effectiveImportanceThreshold: number;\n  /** Only forget memories older than this many hours */\n  olderThanHours?: number;\n  /** Tags that protect memories from forgetting */\n  excludeTags?: string[];\n  /** Preview mode - calculate but don't delete */\n  dryRun?: boolean;\n  /** Archive instead of hard delete */\n  archive?: boolean;\n}\n\n/**\n * Result of batch decay operation.\n */\nexport interface DecayResult {\n  /** Number of entities processed */\n  entitiesProcessed: number;\n  /** Average decay factor (0-1, higher = more decay) */\n  averageDecay: number;\n  /** Memories below warning threshold but not forgotten */\n  memoriesAtRisk: number;\n  /** Processing time in milliseconds */\n  processingTimeMs: number;\n}\n\n/**\n * Result of forget operation.\n */\nexport interface ForgetResult {\n  /** Number of memories forgotten */\n  memoriesForgotten: number;\n  /** Names of forgotten entities */\n  forgottenNames: string[];\n  /** Memories protected by tags */\n  memoriesProtected: number;\n  /** Memories too young to forget */\n  memoriesTooYoung: number;\n  /** Was this a dry run? */\n  dryRun: boolean;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Update DecayEngine imports",
+          "details": "Import types from agent-memory.ts instead of defining locally"
+        },
+        {
+          "step": 3,
+          "action": "Verify exports",
+          "details": "Ensure types exported from index.ts"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Types defined in agent-memory.ts",
+        "Comprehensive JSDoc documentation",
+        "Validation rules documented in remarks",
+        "Exported from types/index.ts",
+        "DecayEngine updated to use shared types",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "1.5.4",
+      "category": "core",
+      "title": "Add Scheduled Decay Job Support",
+      "description": "Create DecayScheduler utility for running decay and forget operations on configurable intervals.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/DecayScheduler.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Scheduled decay allows autonomous memory management. Memories are periodically processed and weak ones forgotten without manual intervention.",
+        "keyDecisions": [
+          "Use setInterval for basic scheduling",
+          "Support configurable intervals",
+          "Run decay and optionally forget on schedule",
+          "Emit events for monitoring"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create DecayScheduler class",
+          "code": "/**\n * Decay Scheduler\n *\n * Schedules periodic decay and forget operations.\n *\n * @module agent/DecayScheduler\n */\n\nimport { DecayEngine, ForgetOptions } from './DecayEngine.js';\nimport type { DecayResult, ForgetResult } from '../types/agent-memory.js';\n\n/**\n * Configuration for scheduled decay.\n */\nexport interface DecaySchedulerConfig {\n  /** Interval between decay runs in milliseconds */\n  decayIntervalMs?: number;\n  /** Enable automatic forgetting */\n  autoForget?: boolean;\n  /** Options for forget operations */\n  forgetOptions?: ForgetOptions;\n  /** Callback when decay completes */\n  onDecayComplete?: (result: DecayResult) => void;\n  /** Callback when forget completes */\n  onForgetComplete?: (result: ForgetResult) => void;\n}\n\n/**\n * Schedules periodic decay and forget operations.\n *\n * @example\n * ```typescript\n * const scheduler = new DecayScheduler(decayEngine, {\n *   decayIntervalMs: 60 * 60 * 1000, // hourly\n *   autoForget: true,\n *   forgetOptions: { effectiveImportanceThreshold: 0.1 },\n * });\n * scheduler.start();\n * // ... later\n * scheduler.stop();\n * ```\n */\nexport class DecayScheduler {\n  private readonly decayEngine: DecayEngine;\n  private readonly config: Required<Omit<DecaySchedulerConfig, 'forgetOptions' | 'onDecayComplete' | 'onForgetComplete'>> & {\n    forgetOptions?: ForgetOptions;\n    onDecayComplete?: (result: DecayResult) => void;\n    onForgetComplete?: (result: ForgetResult) => void;\n  };\n  private intervalId?: ReturnType<typeof setInterval>;\n  private running: boolean = false;\n\n  constructor(decayEngine: DecayEngine, config: DecaySchedulerConfig = {}) {\n    this.decayEngine = decayEngine;\n    this.config = {\n      decayIntervalMs: config.decayIntervalMs ?? 60 * 60 * 1000, // default 1 hour\n      autoForget: config.autoForget ?? false,\n      forgetOptions: config.forgetOptions,\n      onDecayComplete: config.onDecayComplete,\n      onForgetComplete: config.onForgetComplete,\n    };\n  }\n\n  /**\n   * Start the scheduled decay process.\n   */\n  start(): void {\n    if (this.running) return;\n    \n    this.running = true;\n    this.intervalId = setInterval(\n      () => this.runDecayCycle(),\n      this.config.decayIntervalMs\n    );\n    \n    // Run immediately on start\n    this.runDecayCycle();\n  }\n\n  /**\n   * Stop the scheduled decay process.\n   */\n  stop(): void {\n    if (this.intervalId) {\n      clearInterval(this.intervalId);\n      this.intervalId = undefined;\n    }\n    this.running = false;\n  }\n\n  /**\n   * Check if scheduler is running.\n   */\n  isRunning(): boolean {\n    return this.running;\n  }\n\n  /**\n   * Run a single decay cycle.\n   */\n  async runDecayCycle(): Promise<void> {\n    try {\n      // Run decay analysis\n      const decayResult = await this.decayEngine.applyDecay();\n      this.config.onDecayComplete?.(decayResult);\n\n      // Run forget if enabled and configured\n      if (this.config.autoForget && this.config.forgetOptions) {\n        const forgetResult = await this.decayEngine.forgetWeakMemories(\n          this.config.forgetOptions\n        );\n        this.config.onForgetComplete?.(forgetResult);\n      }\n    } catch (error) {\n      console.error('Decay cycle error:', error);\n    }\n  }\n\n  /**\n   * Run decay cycle manually (on-demand).\n   */\n  async runNow(): Promise<{ decay: DecayResult; forget?: ForgetResult }> {\n    const decay = await this.decayEngine.applyDecay();\n    \n    let forget: ForgetResult | undefined;\n    if (this.config.autoForget && this.config.forgetOptions) {\n      forget = await this.decayEngine.forgetWeakMemories(this.config.forgetOptions);\n    }\n    \n    return { decay, forget };\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test start, stop, and cycle execution"
+        }
+      ],
+      "acceptanceCriteria": [
+        "DecayScheduler class created",
+        "start() begins scheduled execution",
+        "stop() halts scheduled execution",
+        "Configurable interval",
+        "Optional auto-forget on each cycle",
+        "Callbacks for decay and forget completion",
+        "runNow() for manual execution",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "1.5.5",
+      "category": "integration",
+      "title": "Add DecayEngine to ManagerContext",
+      "description": "Lazy-initialize DecayEngine in ManagerContext with AccessTracker dependency and environment variable configuration.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/ManagerContext.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Adding DecayEngine to ManagerContext makes it easily accessible throughout the system and ensures proper dependency wiring.",
+        "keyDecisions": [
+          "Lazy initialization via getter",
+          "Wire AccessTracker dependency",
+          "Support environment variable configuration",
+          "Optionally start scheduler"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add DecayEngine property and getter",
+          "code": "private _decayEngine?: DecayEngine;\n\n/**\n * Get the DecayEngine for memory importance calculations.\n */\nget decayEngine(): DecayEngine {\n  if (!this._decayEngine) {\n    this._decayEngine = new DecayEngine(\n      this.storage,\n      this.accessTracker,\n      {\n        halfLifeHours: this.getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168),\n        minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),\n        importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),\n        accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),\n      }\n    );\n  }\n  return this._decayEngine;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add environment variable helpers",
+          "code": "private getEnvNumber(key: string, defaultValue: number): number {\n  const value = process.env[key];\n  if (value === undefined) return defaultValue;\n  const parsed = parseFloat(value);\n  return isNaN(parsed) ? defaultValue : parsed;\n}\n\nprivate getEnvBool(key: string, defaultValue: boolean): boolean {\n  const value = process.env[key];\n  if (value === undefined) return defaultValue;\n  return value.toLowerCase() === 'true';\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add DecayScheduler getter (optional)",
+          "code": "private _decayScheduler?: DecayScheduler;\n\n/**\n * Get the DecayScheduler for automatic decay management.\n * Returns undefined if auto-decay is not enabled.\n */\nget decayScheduler(): DecayScheduler | undefined {\n  if (this._decayScheduler) return this._decayScheduler;\n  \n  if (this.getEnvBool('MEMORY_AUTO_DECAY', false)) {\n    this._decayScheduler = new DecayScheduler(this.decayEngine, {\n      decayIntervalMs: this.getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000),\n      autoForget: this.getEnvBool('MEMORY_AUTO_FORGET', false),\n      forgetOptions: {\n        effectiveImportanceThreshold: this.getEnvNumber('MEMORY_FORGET_THRESHOLD', 0.05),\n      },\n    });\n  }\n  \n  return this._decayScheduler;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add imports",
+          "details": "Import DecayEngine and DecayScheduler"
+        },
+        {
+          "step": 5,
+          "action": "Add integration tests",
+          "details": "Test context access and configuration"
+        }
+      ],
+      "acceptanceCriteria": [
+        "DecayEngine accessible via ctx.decayEngine",
+        "AccessTracker dependency properly wired",
+        "Configuration via environment variables",
+        "DecayScheduler available when enabled",
+        "Lazy initialization works correctly",
+        "Integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "applyDecay processes entities and returns statistics",
+    "forgetWeakMemories removes memories correctly",
+    "Types defined in shared types file",
+    "DecayScheduler enables automated decay",
+    "DecayEngine accessible via ManagerContext",
+    "Environment variable configuration works",
+    "15+ unit tests pass",
+    "Performance targets met"
+  ],
+  "filesCreated": [
+    "src/agent/DecayScheduler.ts",
+    "tests/unit/agent/DecayScheduler.test.ts"
+  ],
+  "filesModified": [
+    "src/agent/DecayEngine.ts",
+    "src/types/agent-memory.ts",
+    "src/core/ManagerContext.ts"
+  ],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 4 - Decay Engine Foundation"],
+  "notes": [
+    "Forgetting is irreversible - consider archiving first",
+    "Protected tags should include critical system memories",
+    "DecayScheduler should be stopped gracefully on shutdown",
+    "Consider adding metrics/logging for production monitoring"
+  ]
+}

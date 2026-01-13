@@ -1,0 +1,291 @@
+{
+  "phase": 1,
+  "sprint": 4,
+  "title": "Decay Engine Foundation",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Implements time-based memory importance decay for natural forgetting behavior",
+  "targetMetrics": {
+    "decayAccuracy": {
+      "current": "No decay calculations",
+      "target": "Exponential decay with importance and access modulation"
+    },
+    "performanceTarget": {
+      "current": "N/A",
+      "target": "Process 10k entities in <100ms"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.4.1",
+      "category": "core",
+      "title": "Create DecayEngine Class Skeleton",
+      "description": "Implement DecayEngine class with configurable decay parameters including half-life, importance modulation, access modulation, and minimum importance floor.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/DecayEngine.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "DecayEngine is the core service for calculating time-based memory importance decay. It implements cognitive-inspired forgetting where memories weaken over time unless reinforced.",
+        "keyDecisions": [
+          "Default half-life of 168 hours (1 week)",
+          "Importance modulation: high importance decays slower",
+          "Access modulation: frequently accessed decays slower",
+          "Minimum importance floor prevents complete forgetting"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/agent/DecayEngine.ts with imports",
+          "code": "/**\n * Decay Engine\n *\n * Implements time-based memory importance decay with\n * importance and access modulation. Memories weaken over\n * time unless reinforced by access or confirmation.\n *\n * @module agent/DecayEngine\n */\n\nimport type { IGraphStorage } from '../types/types.js';\nimport type { AgentEntity } from '../types/agent-memory.js';\nimport { AccessTracker } from './AccessTracker.js';"
+        },
+        {
+          "step": 2,
+          "action": "Define DecayEngineConfig interface",
+          "code": "/**\n * Configuration options for DecayEngine.\n */\nexport interface DecayEngineConfig {\n  /** Base half-life in hours (default: 168 = 1 week) */\n  halfLifeHours?: number;\n  /** Enable importance-based half-life modulation (default: true) */\n  importanceModulation?: boolean;\n  /** Enable access frequency-based modulation (default: true) */\n  accessModulation?: boolean;\n  /** Minimum importance floor (default: 0.1) */\n  minImportance?: number;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Define DecayOptions interface",
+          "code": "/**\n * Options for batch decay operations.\n */\nexport interface DecayOptions {\n  /** Override half-life for this operation */\n  halfLifeHours?: number;\n  /** Enable importance modulation */\n  importanceModulation?: boolean;\n  /** Enable access modulation */\n  accessModulation?: boolean;\n  /** Minimum importance floor */\n  minImportance?: number;\n  /** Dry run - calculate but don't update */\n  dryRun?: boolean;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Define DecayResult interface",
+          "code": "/**\n * Result of a batch decay operation.\n */\nexport interface DecayResult {\n  /** Number of entities processed */\n  entitiesProcessed: number;\n  /** Average decay factor applied */\n  averageDecay: number;\n  /** Entities below threshold but not yet forgotten */\n  memoriesAtRisk: number;\n  /** Processing time in milliseconds */\n  processingTimeMs: number;\n}"
+        },
+        {
+          "step": 5,
+          "action": "Create DecayEngine class skeleton",
+          "code": "/**\n * Implements time-based memory importance decay.\n *\n * @example\n * ```typescript\n * const decay = new DecayEngine(storage, accessTracker);\n * const effective = decay.calculateEffectiveImportance(entity);\n * const decayed = await decay.getDecayedMemories(0.1);\n * ```\n */\nexport class DecayEngine {\n  private readonly storage: IGraphStorage;\n  private readonly accessTracker: AccessTracker;\n  private readonly config: Required<DecayEngineConfig>;\n\n  constructor(\n    storage: IGraphStorage,\n    accessTracker: AccessTracker,\n    config: DecayEngineConfig = {}\n  ) {\n    this.storage = storage;\n    this.accessTracker = accessTracker;\n    this.config = {\n      halfLifeHours: config.halfLifeHours ?? 168,\n      importanceModulation: config.importanceModulation ?? true,\n      accessModulation: config.accessModulation ?? true,\n      minImportance: config.minImportance ?? 0.1,\n    };\n  }\n\n  // Method stubs - to be implemented\n  calculateDecayFactor(\n    lastAccessedAt: string,\n    halfLifeHours: number,\n    importanceBoost?: number\n  ): number {\n    throw new Error('Not implemented');\n  }\n\n  calculateEffectiveImportance(entity: AgentEntity): number {\n    throw new Error('Not implemented');\n  }\n\n  async getDecayedMemories(threshold: number): Promise<AgentEntity[]> {\n    throw new Error('Not implemented');\n  }\n\n  async reinforceMemory(entityName: string, amount?: number): Promise<void> {\n    throw new Error('Not implemented');\n  }\n}"
+        },
+        {
+          "step": 6,
+          "action": "Run TypeScript compilation",
+          "details": "npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "DecayEngine class created in src/agent/DecayEngine.ts",
+        "DecayEngineConfig interface defined with all parameters",
+        "DecayOptions interface defined",
+        "DecayResult interface defined",
+        "Class accepts storage and accessTracker dependencies",
+        "Configuration with sensible defaults",
+        "Method stubs for all interface methods",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "1.4.2",
+      "category": "core",
+      "title": "Implement calculateDecayFactor() Method",
+      "description": "Calculate decay factor using exponential decay formula with optional importance boost to half-life.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/DecayEngine.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "The decay factor determines how much a memory has weakened over time. It uses exponential decay, the same formula used in radioactive decay and forgetting curves.",
+        "keyDecisions": [
+          "Formula: e^(-ln(2) * age_hours / half_life_hours)",
+          "Importance boost extends half-life: half_life * (1 + importance/10)",
+          "Returns 1.0 for fresh memories, approaches 0 for old ones"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement calculateDecayFactor method",
+          "code": "/**\n * Calculate decay factor based on time since last access.\n *\n * Uses exponential decay: e^(-ln(2) * age_hours / half_life_hours)\n * - Returns 1.0 for just-accessed memories\n * - Returns 0.5 after one half-life\n * - Approaches 0 for very old memories\n *\n * @param lastAccessedAt - ISO 8601 timestamp of last access\n * @param halfLifeHours - Base half-life in hours\n * @param importanceBoost - Optional boost factor (0-10 scale) that extends half-life\n * @returns Decay factor between 0.0 and 1.0\n */\ncalculateDecayFactor(\n  lastAccessedAt: string,\n  halfLifeHours: number,\n  importanceBoost?: number\n): number {\n  if (!lastAccessedAt) {\n    return 0; // No access history = fully decayed\n  }\n\n  const now = Date.now();\n  const lastAccess = new Date(lastAccessedAt).getTime();\n  const ageHours = (now - lastAccess) / (1000 * 60 * 60);\n\n  // Apply importance boost to half-life if provided\n  let effectiveHalfLife = halfLifeHours;\n  if (importanceBoost !== undefined && this.config.importanceModulation) {\n    // Importance of 10 doubles the half-life\n    effectiveHalfLife = halfLifeHours * (1 + importanceBoost / 10);\n  }\n\n  // Exponential decay formula\n  const decayConstant = Math.LN2 / effectiveHalfLife;\n  const decayFactor = Math.exp(-decayConstant * ageHours);\n\n  return Math.max(0, Math.min(1, decayFactor));\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add static utility method",
+          "code": "/**\n * Static utility to calculate decay factor without instance.\n */\nstatic calculateDecayFactorStatic(\n  lastAccessedAt: string,\n  halfLifeHours: number\n): number {\n  if (!lastAccessedAt) return 0;\n\n  const now = Date.now();\n  const lastAccess = new Date(lastAccessedAt).getTime();\n  const ageHours = (now - lastAccess) / (1000 * 60 * 60);\n\n  const decayConstant = Math.LN2 / halfLifeHours;\n  return Math.exp(-decayConstant * ageHours);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test decay calculations at various time intervals"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Returns 1.0 for just-accessed memories (age ~0)",
+        "Returns ~0.5 after one half-life",
+        "Returns ~0.25 after two half-lives",
+        "Returns 0 for memories with no access history",
+        "Importance boost extends half-life correctly",
+        "Values always clamped to [0, 1]",
+        "Unit tests pass for various scenarios"
+      ]
+    },
+    {
+      "id": "1.4.3",
+      "category": "core",
+      "title": "Implement calculateEffectiveImportance() Method",
+      "description": "Calculate effective importance combining base importance, decay factor, and strength multiplier from confirmations and access count.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/DecayEngine.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Effective importance is the computed value used for retrieval ranking and forgetting decisions. It combines multiple factors into a single score.",
+        "keyDecisions": [
+          "Formula: base_importance * decay_factor * strength_multiplier",
+          "Strength multiplier: 1 + (confirmations * 0.1) + (accesses * 0.01)",
+          "Clamp to minimum importance floor",
+          "Use lastAccessedAt or createdAt for decay calculation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement calculateStrengthMultiplier helper",
+          "code": "/**\n * Calculate strength multiplier from confirmations and access count.\n *\n * Formula: 1 + (confirmationCount * 0.1) + (accessCount * 0.01)\n * - Each confirmation adds 10% strength\n * - Each 100 accesses add 1% strength\n */\nprivate calculateStrengthMultiplier(entity: AgentEntity): number {\n  const confirmationBoost = (entity.confirmationCount ?? 0) * 0.1;\n  const accessBoost = (entity.accessCount ?? 0) * 0.01;\n  return 1 + confirmationBoost + accessBoost;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement calculateEffectiveImportance method",
+          "code": "/**\n * Calculate effective importance considering decay and strength.\n *\n * Formula: base_importance * decay_factor * strength_multiplier\n *\n * - base_importance: Entity's stated importance (0-10)\n * - decay_factor: Time-based decay (0-1)\n * - strength_multiplier: Boost from confirmations and accesses\n *\n * Result is clamped to minimum importance floor.\n *\n * @param entity - AgentEntity to calculate importance for\n * @returns Effective importance value\n */\ncalculateEffectiveImportance(entity: AgentEntity): number {\n  // Get base importance (default to 5 if not set)\n  const baseImportance = entity.importance ?? 5;\n\n  // Determine timestamp for decay calculation\n  const decayTimestamp = entity.lastAccessedAt ?? entity.createdAt;\n  if (!decayTimestamp) {\n    // No timestamp = use base importance with min floor\n    return Math.max(baseImportance, this.config.minImportance);\n  }\n\n  // Calculate decay factor with importance modulation\n  const importanceBoost = this.config.importanceModulation ? baseImportance : undefined;\n  const decayFactor = this.calculateDecayFactor(\n    decayTimestamp,\n    this.config.halfLifeHours,\n    importanceBoost\n  );\n\n  // Calculate strength multiplier if access modulation enabled\n  let strengthMultiplier = 1;\n  if (this.config.accessModulation) {\n    strengthMultiplier = this.calculateStrengthMultiplier(entity);\n  }\n\n  // Combine factors\n  const effectiveImportance = baseImportance * decayFactor * strengthMultiplier;\n\n  // Apply minimum floor\n  return Math.max(effectiveImportance, this.config.minImportance);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test various combinations of factors"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Returns base importance for fresh memories",
+        "Decay factor reduces importance over time",
+        "Confirmations increase strength multiplier",
+        "Access count increases strength multiplier",
+        "Never returns below minimum importance floor",
+        "Uses lastAccessedAt or falls back to createdAt",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "1.4.4",
+      "category": "core",
+      "title": "Implement getDecayedMemories() Method",
+      "description": "Query all AgentEntity records and return those with effective importance below specified threshold.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/DecayEngine.ts"],
+      "testCategories": ["unit", "performance"],
+      "implementation": {
+        "purpose": "Finding decayed memories is essential for forgetting operations. This method identifies memories that have weakened below a usability threshold.",
+        "keyDecisions": [
+          "Filter for AgentEntity types only",
+          "Calculate effective importance for each",
+          "Return those below threshold",
+          "Support efficient filtering"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement getDecayedMemories method",
+          "code": "/**\n * Get memories that have decayed below threshold.\n *\n * Queries all AgentEntity records and returns those with\n * effective importance below the specified threshold.\n *\n * @param threshold - Importance threshold (0-10 scale)\n * @returns Array of decayed AgentEntity records\n */\nasync getDecayedMemories(threshold: number): Promise<AgentEntity[]> {\n  const graph = await this.storage.loadGraph();\n  const decayed: AgentEntity[] = [];\n\n  for (const entity of graph.entities) {\n    // Check if this is an AgentEntity (has memoryType)\n    const agentEntity = entity as AgentEntity;\n    if (!agentEntity.memoryType) continue;\n\n    // Calculate effective importance\n    const effectiveImportance = this.calculateEffectiveImportance(agentEntity);\n\n    // Add to results if below threshold\n    if (effectiveImportance < threshold) {\n      decayed.push(agentEntity);\n    }\n  }\n\n  return decayed;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add type guard helper",
+          "code": "/**\n * Check if entity is an AgentEntity.\n */\nprivate isAgentEntity(entity: unknown): entity is AgentEntity {\n  return (\n    entity !== null &&\n    typeof entity === 'object' &&\n    'memoryType' in entity &&\n    typeof (entity as AgentEntity).memoryType === 'string'\n  );\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add performance tests",
+          "details": "Verify performance with 10k+ entities"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Returns only AgentEntity types",
+        "Correctly calculates effective importance for each",
+        "Returns entities below threshold",
+        "Empty array when no decayed memories",
+        "Performance acceptable with large datasets",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "1.4.5",
+      "category": "core",
+      "title": "Implement reinforceMemory() Method",
+      "description": "Strengthen a memory by resetting decay, incrementing confirmation count, and optionally boosting confidence.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/DecayEngine.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Reinforcement is how memories are strengthened. When information is confirmed or heavily used, it should resist decay.",
+        "keyDecisions": [
+          "Reset decay by updating lastAccessedAt",
+          "Increment confirmationCount",
+          "Optionally boost confidence",
+          "Emit reinforcement event"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement reinforceMemory method",
+          "code": "/**\n * Reinforce a memory to strengthen it against decay.\n *\n * Strengthening includes:\n * - Resetting decay timer (updating lastAccessedAt)\n * - Incrementing confirmationCount\n * - Optionally boosting confidence\n *\n * @param entityName - Name of entity to reinforce\n * @param options - Reinforcement options\n */\nasync reinforceMemory(\n  entityName: string,\n  options?: {\n    confirmationBoost?: number;\n    confidenceBoost?: number;\n  }\n): Promise<void> {\n  const entity = this.storage.getEntityByName(entityName) as AgentEntity;\n  if (!entity) {\n    throw new Error(`Entity not found: ${entityName}`);\n  }\n\n  const now = new Date().toISOString();\n  const updates: Partial<AgentEntity> = {\n    lastModified: now,\n  };\n\n  // Reset decay timer\n  updates.lastAccessedAt = now;\n\n  // Increment confirmation count\n  const currentConfirmations = (entity as AgentEntity).confirmationCount ?? 0;\n  const confirmationBoost = options?.confirmationBoost ?? 1;\n  (updates as AgentEntity).confirmationCount = currentConfirmations + confirmationBoost;\n\n  // Optionally boost confidence\n  if (options?.confidenceBoost) {\n    const currentConfidence = (entity as AgentEntity).confidence ?? 0.5;\n    const newConfidence = Math.min(1, currentConfidence + options.confidenceBoost);\n    (updates as AgentEntity).confidence = newConfidence;\n  }\n\n  // Record access via tracker\n  await this.accessTracker.recordAccess(entityName, {\n    retrievalMethod: 'direct',\n  });\n\n  // Persist updates\n  await this.storage.updateEntity(entityName, updates);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit and integration tests",
+          "details": "Test reinforcement effects"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Updates lastAccessedAt to reset decay",
+        "Increments confirmationCount",
+        "Optionally boosts confidence (capped at 1.0)",
+        "Records access via AccessTracker",
+        "Throws error for unknown entities",
+        "Persists changes to storage",
+        "Unit tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "DecayEngine class fully implemented",
+    "calculateDecayFactor implements exponential decay correctly",
+    "calculateEffectiveImportance combines all factors",
+    "getDecayedMemories returns correct entities",
+    "reinforceMemory strengthens memories correctly",
+    "15+ unit tests pass",
+    "Performance acceptable with 10k entities"
+  ],
+  "filesCreated": [
+    "src/agent/DecayEngine.ts",
+    "tests/unit/agent/DecayEngine.test.ts"
+  ],
+  "filesModified": [],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 2 - Access Tracking Foundation"],
+  "notes": [
+    "Decay formula must be consistent with AccessTracker recency scoring",
+    "Default half-life of 1 week is a starting point - may need tuning",
+    "Minimum importance floor prevents complete memory loss",
+    "Consider caching effective importance calculations"
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "phase": 4,
+  "sprint": 17,
+  "title": "Context Relevance Scoring",
+  "priority": "HIGH",
+  "effort": "5 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Adds task and query relevance to salience calculations for targeted retrieval",
+  "targetMetrics": {
+    "taskRelevance": {
+      "current": "No task awareness",
+      "target": "Semantic/keyword task relevance scoring"
+    },
+    "temporalFocus": {
+      "current": "No temporal bias",
+      "target": "Configurable recent/historical/any focus"
+    }
+  },
+  "tasks": [
+    {
+      "id": "4.17.1",
+      "category": "core",
+      "title": "Implement calculateTaskRelevance() Method",
+      "description": "Use semantic similarity (if embeddings available) or keyword matching to score entity relevance to task description.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "Uses embeddings when available",
+        "Falls back to keyword matching",
+        "Returns 0-1 score",
+        "Handles missing task gracefully"
+      ]
+    },
+    {
+      "id": "4.17.2",
+      "category": "core",
+      "title": "Implement Query Text Matching",
+      "description": "Score entity relevance to queryText using existing search infrastructure with normalized 0-1 scores.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "Uses existing search scoring",
+        "Normalized to 0-1",
+        "Efficient calculation",
+        "Handles empty query"
+      ]
+    },
+    {
+      "id": "4.17.3",
+      "category": "core",
+      "title": "Implement Session Context Scoring",
+      "description": "Boost entities from currentSession and recentEntities with configurable session boost factor.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "Session match boosts score",
+        "Recent entities boosted",
+        "Configurable boost factors",
+        "Non-session entities handled"
+      ]
+    },
+    {
+      "id": "4.17.4",
+      "category": "core",
+      "title": "Implement calculateNovelty() Method",
+      "description": "Score novelty based on inverse access frequency, time since last access, and unique observations ratio.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "Rare = more novel",
+        "Long unaccessed = novel",
+        "Unique observations boost",
+        "Score in 0-1 range"
+      ]
+    },
+    {
+      "id": "4.17.5",
+      "category": "core",
+      "title": "Implement Temporal Focus Filtering",
+      "description": "When temporalFocus is 'recent', heavily boost recent memories; 'historical' boosts older; 'any' has no bias.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "Recent focus boosts new",
+        "Historical focus boosts old",
+        "Any focus is neutral",
+        "Configurable thresholds"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Task relevance scoring works",
+    "Query matching integrated",
+    "Session context boosts applied",
+    "Novelty scoring accurate",
+    "Temporal focus affects ranking",
+    "10+ unit tests pass"
+  ],
+  "filesCreated": [],
+  "filesModified": ["src/agent/SalienceEngine.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 16 - Salience Engine Foundation"]
+}

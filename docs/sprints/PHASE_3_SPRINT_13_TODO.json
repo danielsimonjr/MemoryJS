@@ -1,0 +1,236 @@
+{
+  "phase": 3,
+  "sprint": 13,
+  "title": "Pattern Extraction",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables generalization from repeated observations into semantic knowledge",
+  "targetMetrics": {
+    "patternDetection": {
+      "current": "No pattern detection",
+      "target": "Token-based template extraction with variable slots"
+    },
+    "generalization": {
+      "current": "No generalization",
+      "target": "Automatic semantic memory creation from patterns"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.13.1",
+      "category": "core",
+      "title": "Implement extractPatterns() Method",
+      "description": "Analyze entities of specified type for recurring observation patterns with minimum occurrence threshold.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Pattern extraction identifies recurring templates in observations, enabling automatic generalization into semantic memory.",
+        "keyDecisions": [
+          "Analyze observations across multiple entities",
+          "Require minimum occurrence count for pattern validity",
+          "Extract variable slots from templates",
+          "Return patterns with confidence based on frequency"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add extractPatterns method to ConsolidationPipeline",
+          "code": "/**\n * Extract recurring patterns from observations across entities.\n *\n * @param entityType - Type of entities to analyze\n * @param minOccurrences - Minimum times pattern must appear (default: 3)\n * @returns Array of detected patterns\n */\nasync extractPatterns(\n  entityType: string,\n  minOccurrences: number = 3\n): Promise<PatternResult[]> {\n  const graph = await this.storage.loadGraph();\n  const observations: string[] = [];\n\n  // Collect all observations from matching entities\n  for (const entity of graph.entities) {\n    if (entity.entityType === entityType && entity.observations) {\n      observations.push(...entity.observations);\n    }\n  }\n\n  if (observations.length < minOccurrences) {\n    return [];\n  }\n\n  // Detect patterns using PatternDetector\n  const detector = new PatternDetector();\n  return detector.detectPatterns(observations, minOccurrences);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test pattern extraction with various observation sets"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Extracts patterns from observations across entities",
+        "Respects minimum occurrences threshold",
+        "Returns identified patterns with metadata",
+        "Works across different entity types",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.13.2",
+      "category": "core",
+      "title": "Create Pattern Detection Algorithm",
+      "description": "Implement token-based pattern matching that identifies templates with variable slots (e.g., 'User prefers {X}').",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/PatternDetector.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "PatternDetector identifies common templates by comparing tokenized observations and finding shared structure with variable parts.",
+        "keyDecisions": [
+          "Tokenize observations for comparison",
+          "Identify common prefixes/suffixes as template parts",
+          "Mark differing parts as variable slots",
+          "Group observations by detected template"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create PatternDetector class",
+          "code": "/**\n * Pattern Detector\n *\n * Identifies recurring templates in text observations.\n *\n * @module agent/PatternDetector\n */\n\nimport type { PatternResult } from '../types/agent-memory.js';\n\n/**\n * Detects patterns in observations using token-based matching.\n */\nexport class PatternDetector {\n  /**\n   * Detect patterns in a list of observations.\n   *\n   * @param observations - Text observations to analyze\n   * @param minOccurrences - Minimum pattern frequency\n   * @returns Array of detected patterns\n   */\n  detectPatterns(\n    observations: string[],\n    minOccurrences: number\n  ): PatternResult[] {\n    const patterns = new Map<string, PatternCandidate>();\n\n    // Compare each pair of observations\n    for (let i = 0; i < observations.length; i++) {\n      for (let j = i + 1; j < observations.length; j++) {\n        const template = this.extractTemplate(observations[i], observations[j]);\n        if (template) {\n          const key = template.pattern;\n          if (!patterns.has(key)) {\n            patterns.set(key, {\n              pattern: template.pattern,\n              variables: [],\n              occurrences: 0,\n              sourceTexts: [],\n            });\n          }\n          const p = patterns.get(key)!;\n          p.occurrences++;\n          p.variables.push(...template.variables);\n          if (!p.sourceTexts.includes(observations[i])) {\n            p.sourceTexts.push(observations[i]);\n          }\n          if (!p.sourceTexts.includes(observations[j])) {\n            p.sourceTexts.push(observations[j]);\n          }\n        }\n      }\n    }\n\n    // Filter by minimum occurrences\n    return Array.from(patterns.values())\n      .filter(p => p.occurrences >= minOccurrences)\n      .map(p => ({\n        pattern: p.pattern,\n        variables: [...new Set(p.variables)],\n        occurrences: p.occurrences,\n        confidence: Math.min(1, p.occurrences / observations.length),\n        sourceEntities: [],\n      }));\n  }\n\n  private extractTemplate(\n    text1: string,\n    text2: string\n  ): { pattern: string; variables: string[] } | null {\n    const tokens1 = text1.split(/\\s+/);\n    const tokens2 = text2.split(/\\s+/);\n\n    if (tokens1.length !== tokens2.length) return null;\n\n    const pattern: string[] = [];\n    const variables: string[] = [];\n\n    for (let i = 0; i < tokens1.length; i++) {\n      if (tokens1[i] === tokens2[i]) {\n        pattern.push(tokens1[i]);\n      } else {\n        pattern.push('{X}');\n        variables.push(tokens1[i], tokens2[i]);\n      }\n    }\n\n    // Require at least one variable and some fixed tokens\n    const hasVariable = pattern.includes('{X}');\n    const hasFixed = pattern.some(t => t !== '{X}');\n    if (!hasVariable || !hasFixed) return null;\n\n    return { pattern: pattern.join(' '), variables };\n  }\n}\n\ninterface PatternCandidate {\n  pattern: string;\n  variables: string[];\n  occurrences: number;\n  sourceTexts: string[];\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test pattern detection with various inputs"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Token-based pattern matching works",
+        "Variable slots correctly identified",
+        "Template patterns generated",
+        "Values extracted correctly",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.13.3",
+      "category": "core",
+      "title": "Create Semantic Memory from Patterns",
+      "description": "When pattern meets threshold, create semantic memory entity representing the generalization with source linking.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Converting patterns to semantic memories enables long-term storage of generalizations that can be used for future reasoning.",
+        "keyDecisions": [
+          "Create new entity with memoryType: 'semantic'",
+          "Link to source entities via relations",
+          "Set confidence based on pattern frequency",
+          "Store pattern template as observation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement createSemanticFromPattern method",
+          "code": "/**\n * Create a semantic memory entity from a detected pattern.\n *\n * @param pattern - The detected pattern\n * @param sourceEntityNames - Names of entities that contributed to pattern\n * @returns Created semantic memory entity\n */\nasync createSemanticFromPattern(\n  pattern: PatternResult,\n  sourceEntityNames: string[]\n): Promise<AgentEntity> {\n  const now = new Date().toISOString();\n  const name = `semantic_pattern_${Date.now()}_${this.hashPattern(pattern.pattern)}`;\n\n  const entity: AgentEntity = {\n    name,\n    entityType: 'pattern',\n    observations: [\n      `Pattern: ${pattern.pattern}`,\n      `Known values: ${pattern.variables.join(', ')}`,\n    ],\n    createdAt: now,\n    lastModified: now,\n    importance: 7, // Patterns are generally important\n    memoryType: 'semantic',\n    accessCount: 0,\n    confidence: pattern.confidence,\n    confirmationCount: pattern.occurrences,\n    visibility: 'private',\n  };\n\n  await this.storage.appendEntity(entity as Entity);\n\n  // Create relations to source entities\n  for (const sourceName of sourceEntityNames) {\n    await this.storage.appendRelation({\n      from: name,\n      to: sourceName,\n      relationType: 'derived_from',\n    });\n  }\n\n  return entity;\n}\n\nprivate hashPattern(pattern: string): string {\n  let hash = 0;\n  for (let i = 0; i < pattern.length; i++) {\n    hash = ((hash << 5) - hash) + pattern.charCodeAt(i);\n    hash = hash & hash;\n  }\n  return Math.abs(hash).toString(16).slice(0, 8);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test semantic memory creation from patterns"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Semantic entities created from patterns",
+        "Links to source entities via relations",
+        "Confidence derived from pattern frequency",
+        "Proper memoryType: 'semantic' set",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.13.4",
+      "category": "types",
+      "title": "Implement PatternResult Type",
+      "description": "Define result with pattern template, extracted variables, occurrence count, confidence, and source entities.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "PatternResult captures all information about a detected pattern for use in semantic memory creation and pattern-based retrieval.",
+        "keyDecisions": [
+          "Include template string with variable slots",
+          "Track extracted variable values",
+          "Include confidence based on frequency",
+          "Reference source entities"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add PatternResult to agent-memory.ts",
+          "code": "/**\n * Result of pattern detection.\n *\n * @example\n * ```typescript\n * const patterns = await pipeline.extractPatterns('preference');\n * for (const p of patterns) {\n *   console.log(`Pattern: ${p.pattern}, Variables: ${p.variables.join(', ')}`);\n * }\n * ```\n */\nexport interface PatternResult {\n  /** Template pattern with {X} variable slots */\n  pattern: string;\n  /** Extracted variable values */\n  variables: string[];\n  /** Number of times pattern appeared */\n  occurrences: number;\n  /** Confidence score (0-1) */\n  confidence: number;\n  /** Names of source entities */\n  sourceEntities: string[];\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from types/index.ts",
+          "details": "Ensure PatternResult is exported"
+        }
+      ],
+      "acceptanceCriteria": [
+        "PatternResult fully typed",
+        "Variables array included",
+        "Sources tracked",
+        "Exported from types/index.ts",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "3.13.5",
+      "category": "integration",
+      "title": "Add Pattern-based Retrieval",
+      "description": "Enable queries like 'find entities matching pattern X' with variable support.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Pattern-based retrieval allows finding entities that match a known pattern template, enabling generalized queries.",
+        "keyDecisions": [
+          "Support pattern templates in search queries",
+          "Match variable slots against entity observations",
+          "Rank results by match quality",
+          "Integrate with existing search infrastructure"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add searchByPattern method to SearchManager",
+          "code": "/**\n * Search for entities matching a pattern template.\n *\n * @param pattern - Pattern with {X} variable slots\n * @param options - Search options\n * @returns Entities matching the pattern\n */\nasync searchByPattern(\n  pattern: string,\n  options?: { limit?: number }\n): Promise<Entity[]> {\n  const graph = await this.storage.loadGraph();\n  const results: Array<{ entity: Entity; score: number }> = [];\n\n  // Convert pattern to regex\n  const regexPattern = pattern\n    .replace(/\\{X\\}/g, '(.+?)')\n    .replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\n  const regex = new RegExp(regexPattern, 'i');\n\n  for (const entity of graph.entities) {\n    if (!entity.observations) continue;\n\n    for (const obs of entity.observations) {\n      if (regex.test(obs)) {\n        results.push({ entity, score: 1 });\n        break;\n      }\n    }\n  }\n\n  // Sort by score and limit\n  results.sort((a, b) => b.score - a.score);\n  const limit = options?.limit ?? 10;\n  return results.slice(0, limit).map(r => r.entity);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add integration tests",
+          "details": "Test pattern-based search with various patterns"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Pattern-based queries work",
+        "Variable matching supported",
+        "Integration with existing search",
+        "Results ranked appropriately",
+        "Integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Pattern extraction identifies templates",
+    "Variable slots correctly detected",
+    "Semantic memories created from patterns",
+    "Pattern-based search works",
+    "10+ unit tests pass",
+    "npm run typecheck passes"
+  ],
+  "filesCreated": ["src/agent/PatternDetector.ts", "tests/unit/agent/PatternDetector.test.ts"],
+  "filesModified": ["src/agent/ConsolidationPipeline.ts", "src/types/agent-memory.ts", "src/search/SearchManager.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 12 - Observation Summarization", "Sprint 1 - Type Definitions"]
+}

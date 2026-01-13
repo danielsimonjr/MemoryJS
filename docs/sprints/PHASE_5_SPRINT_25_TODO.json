@@ -1,0 +1,116 @@
+{
+  "phase": 5,
+  "sprint": 25,
+  "title": "Integration and Facade",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Creates unified API and integrates all agent memory components",
+  "targetMetrics": {
+    "apiCompleteness": {
+      "current": "Separate managers",
+      "target": "Unified facade with all operations"
+    },
+    "integrationCoverage": {
+      "current": "Partial",
+      "target": "100% component integration"
+    }
+  },
+  "tasks": [
+    {
+      "id": "5.25.1",
+      "category": "core",
+      "title": "Create AgentMemoryManager Facade",
+      "description": "Unified API wrapping all agent memory operations: startSession(), addWorkingMemory(), retrieveForContext(), consolidateSession(), etc.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/AgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "All operations exposed",
+        "Consistent API",
+        "Delegates to managers",
+        "Comprehensive documentation"
+      ]
+    },
+    {
+      "id": "5.25.2",
+      "category": "core",
+      "title": "Implement Configuration Loading",
+      "description": "Create AgentMemoryConfig interface, load from env vars and programmatic config, apply defaults, validate.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/AgentMemoryConfig.ts"],
+      "acceptanceCriteria": [
+        "Config interface complete",
+        "Env var loading",
+        "Programmatic config",
+        "Validation"
+      ]
+    },
+    {
+      "id": "5.25.3",
+      "category": "integration",
+      "title": "Add AgentMemoryManager to ManagerContext",
+      "description": "Expose complete agent memory system via ctx.agentMemory with all dependencies wired and lazy initialization.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/ManagerContext.ts"],
+      "acceptanceCriteria": [
+        "Accessible via context",
+        "Dependencies wired",
+        "Lazy initialization",
+        "Configuration applied"
+      ]
+    },
+    {
+      "id": "5.25.4",
+      "category": "testing",
+      "title": "Create Integration Tests",
+      "description": "End-to-end tests covering session lifecycle, memory consolidation, context retrieval, and multi-agent scenarios.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["tests/integration/agent-memory/"],
+      "acceptanceCriteria": [
+        "Session lifecycle tested",
+        "Consolidation tested",
+        "Context retrieval tested",
+        "Multi-agent tested"
+      ]
+    },
+    {
+      "id": "5.25.5",
+      "category": "documentation",
+      "title": "Create Documentation and Examples",
+      "description": "Write usage documentation with examples for single-agent and multi-agent scenarios. Update CLAUDE.md.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["docs/agent-memory/", "CLAUDE.md"],
+      "acceptanceCriteria": [
+        "Usage docs complete",
+        "Examples for all scenarios",
+        "CLAUDE.md updated",
+        "API reference"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Facade provides unified API",
+    "Configuration system works",
+    "Available via ManagerContext",
+    "Integration tests pass",
+    "Documentation complete",
+    "All components working together"
+  ],
+  "filesCreated": ["src/agent/AgentMemoryManager.ts", "src/agent/AgentMemoryConfig.ts", "tests/integration/agent-memory/full-lifecycle.test.ts"],
+  "filesModified": ["src/core/ManagerContext.ts", "CLAUDE.md"],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 24 - Conflict Resolution", "All previous sprints"]
+}

@@ -1,0 +1,256 @@
+{
+  "phase": 3,
+  "sprint": 12,
+  "title": "Observation Summarization",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables memory compression through intelligent observation grouping and summarization",
+  "targetMetrics": {
+    "compressionRatio": {
+      "current": "No compression",
+      "target": "3-5x reduction in similar observations"
+    },
+    "provenanceTracking": {
+      "current": "No lineage",
+      "target": "Full consolidatedFrom tracking"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.12.1",
+      "category": "core",
+      "title": "Implement summarizeObservations() Method",
+      "description": "Group similar observations using configurable similarity threshold and create summary observations with provenance tracking.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Observation summarization reduces memory footprint by grouping similar observations into summaries while maintaining provenance tracking.",
+        "keyDecisions": [
+          "Use configurable similarity threshold (default 0.8)",
+          "Group observations by semantic similarity",
+          "Create summary observations with consolidatedFrom field",
+          "Preserve original observation IDs for lineage"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add summarizeObservations method to ConsolidationPipeline",
+          "code": "/**\n * Summarize similar observations into consolidated summaries.\n *\n * @param entity - Entity whose observations to summarize\n * @param threshold - Similarity threshold (0-1, default 0.8)\n * @returns Summary result with compression statistics\n */\nasync summarizeObservations(\n  entity: AgentEntity,\n  threshold: number = 0.8\n): Promise<SummarizationResult> {\n  const observations = entity.observations;\n  if (!observations || observations.length < 2) {\n    return {\n      originalCount: observations?.length ?? 0,\n      summaryCount: observations?.length ?? 0,\n      compressionRatio: 1,\n      summaries: [],\n      sourceObservations: [],\n    };\n  }\n\n  // Group similar observations\n  const groups = await this.groupSimilarObservations(observations, threshold);\n  \n  const summaries: string[] = [];\n  const sourceObservations: string[][] = [];\n\n  for (const group of groups) {\n    if (group.length === 1) {\n      summaries.push(group[0]);\n      sourceObservations.push(group);\n    } else {\n      // Create summary of group\n      const summary = await this.createGroupSummary(group);\n      summaries.push(summary);\n      sourceObservations.push(group);\n    }\n  }\n\n  return {\n    originalCount: observations.length,\n    summaryCount: summaries.length,\n    compressionRatio: observations.length / summaries.length,\n    summaries,\n    sourceObservations,\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add grouping helper method",
+          "code": "private async groupSimilarObservations(\n  observations: string[],\n  threshold: number\n): Promise<string[][]> {\n  const groups: string[][] = [];\n  const assigned = new Set<number>();\n\n  for (let i = 0; i < observations.length; i++) {\n    if (assigned.has(i)) continue;\n\n    const group = [observations[i]];\n    assigned.add(i);\n\n    for (let j = i + 1; j < observations.length; j++) {\n      if (assigned.has(j)) continue;\n\n      const similarity = await this.calculateSimilarity(\n        observations[i],\n        observations[j]\n      );\n\n      if (similarity >= threshold) {\n        group.push(observations[j]);\n        assigned.add(j);\n      }\n    }\n\n    groups.push(group);\n  }\n\n  return groups;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test grouping and summarization with various thresholds"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Groups similar observations by threshold",
+        "Creates summary observations",
+        "Tracks consolidatedFrom provenance",
+        "Returns compression statistics",
+        "Handles edge cases (single observation, no observations)",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.12.2",
+      "category": "core",
+      "title": "Add Similarity Detection for Observations",
+      "description": "Implement observation similarity using embeddings (if available) with TF-IDF fallback for text comparison.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Similarity detection enables intelligent grouping of observations. Embeddings provide semantic similarity, while TF-IDF provides lexical similarity as fallback.",
+        "keyDecisions": [
+          "Use embeddings when SemanticSearch is available",
+          "Fall back to TF-IDF cosine similarity",
+          "Cache similarity computations for performance",
+          "Normalize scores to 0-1 range"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement calculateSimilarity method",
+          "code": "private async calculateSimilarity(\n  text1: string,\n  text2: string\n): Promise<number> {\n  // Try embeddings first if available\n  if (this.semanticSearch) {\n    try {\n      return await this.semanticSearch.calculateSimilarity(text1, text2);\n    } catch {\n      // Fall through to TF-IDF\n    }\n  }\n\n  // TF-IDF fallback\n  return this.calculateTFIDFSimilarity(text1, text2);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement TF-IDF similarity",
+          "code": "private calculateTFIDFSimilarity(text1: string, text2: string): number {\n  const tokens1 = this.tokenize(text1);\n  const tokens2 = this.tokenize(text2);\n  \n  const allTokens = new Set([...tokens1, ...tokens2]);\n  \n  // Build term frequency vectors\n  const vec1 = this.buildTFVector(tokens1, allTokens);\n  const vec2 = this.buildTFVector(tokens2, allTokens);\n  \n  // Cosine similarity\n  return this.cosineSimilarity(vec1, vec2);\n}\n\nprivate tokenize(text: string): string[] {\n  return text.toLowerCase()\n    .replace(/[^a-z0-9\\s]/g, '')\n    .split(/\\s+/)\n    .filter(t => t.length > 0);\n}\n\nprivate buildTFVector(tokens: string[], vocab: Set<string>): number[] {\n  const freq = new Map<string, number>();\n  for (const t of tokens) {\n    freq.set(t, (freq.get(t) ?? 0) + 1);\n  }\n  return Array.from(vocab).map(t => freq.get(t) ?? 0);\n}\n\nprivate cosineSimilarity(vec1: number[], vec2: number[]): number {\n  let dot = 0, norm1 = 0, norm2 = 0;\n  for (let i = 0; i < vec1.length; i++) {\n    dot += vec1[i] * vec2[i];\n    norm1 += vec1[i] * vec1[i];\n    norm2 += vec2[i] * vec2[i];\n  }\n  if (norm1 === 0 || norm2 === 0) return 0;\n  return dot / (Math.sqrt(norm1) * Math.sqrt(norm2));\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test similarity with various text pairs"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Uses embeddings when available",
+        "Falls back to TF-IDF correctly",
+        "Returns normalized 0-1 scores",
+        "Performance acceptable for batch operations",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.12.3",
+      "category": "core",
+      "title": "Implement LLM-based Summarization (Optional)",
+      "description": "Create SummarizationService interface with LLM provider support for natural language summarization.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/SummarizationService.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "LLM-based summarization produces more natural and coherent summaries than algorithmic approaches. The service is optional to avoid API costs.",
+        "keyDecisions": [
+          "Interface allows multiple provider implementations",
+          "Fallback to simple concatenation when no provider",
+          "Batch observations for cost efficiency",
+          "Cache summaries to avoid redundant calls"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create SummarizationService interface",
+          "code": "/**\n * Summarization Service\n *\n * Provides text summarization using LLM providers or fallback algorithms.\n *\n * @module agent/SummarizationService\n */\n\n/**\n * Interface for summarization providers.\n */\nexport interface ISummarizationProvider {\n  summarize(texts: string[]): Promise<string>;\n  isAvailable(): boolean;\n}\n\n/**\n * Configuration for SummarizationService.\n */\nexport interface SummarizationConfig {\n  /** Provider name ('openai' or 'none') */\n  provider?: string;\n  /** API key for LLM provider */\n  apiKey?: string;\n  /** Model to use */\n  model?: string;\n  /** Maximum tokens for summary */\n  maxTokens?: number;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement SummarizationService class",
+          "code": "/**\n * Service for summarizing text using LLM or fallback.\n */\nexport class SummarizationService {\n  private provider?: ISummarizationProvider;\n  private readonly config: SummarizationConfig;\n\n  constructor(config: SummarizationConfig = {}) {\n    this.config = config;\n    this.initProvider();\n  }\n\n  private initProvider(): void {\n    if (this.config.provider === 'openai' && this.config.apiKey) {\n      // OpenAI provider would be initialized here\n      // this.provider = new OpenAISummarizer(this.config);\n    }\n  }\n\n  async summarize(texts: string[]): Promise<string> {\n    if (this.provider?.isAvailable()) {\n      return this.provider.summarize(texts);\n    }\n    return this.fallbackSummarize(texts);\n  }\n\n  private fallbackSummarize(texts: string[]): string {\n    if (texts.length === 0) return '';\n    if (texts.length === 1) return texts[0];\n    \n    // Simple fallback: combine unique sentences\n    const sentences = new Set<string>();\n    for (const text of texts) {\n      const parts = text.split(/[.!?]+/).map(s => s.trim()).filter(s => s);\n      parts.forEach(p => sentences.add(p));\n    }\n    return Array.from(sentences).join('. ') + '.';\n  }\n\n  isLLMAvailable(): boolean {\n    return this.provider?.isAvailable() ?? false;\n  }\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test fallback summarization and provider detection"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SummarizationService interface defined",
+        "Provider abstraction works",
+        "Fallback summarization functional",
+        "Cost-aware (no API calls without provider)",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.12.4",
+      "category": "core",
+      "title": "Create Abstraction Levels",
+      "description": "Increment abstractionLevel when summarizing (0=raw, 1=summarized, 2=generalized) with lineage tracking.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Abstraction levels track how far removed an observation is from the original input, enabling queries by specificity level.",
+        "keyDecisions": [
+          "Level 0 = raw user input",
+          "Level 1 = first summarization",
+          "Level 2+ = further generalizations",
+          "Track lineage through consolidatedFrom chain"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add abstraction level tracking to summarization",
+          "code": "private createSummarizedObservation(\n  summary: string,\n  sourceObservations: AgentObservation[],\n  existingLevel: number\n): AgentObservation {\n  const now = new Date().toISOString();\n  return {\n    content: summary,\n    confidence: this.calculateAggregateConfidence(sourceObservations),\n    confirmationCount: sourceObservations.reduce((sum, o) => sum + o.confirmationCount, 0),\n    observedAt: now,\n    source: {\n      type: 'consolidation',\n      agentId: this.agentId,\n      sessionId: this.currentSessionId,\n    },\n    consolidatedFrom: sourceObservations.map(o => o.content),\n    abstractionLevel: existingLevel + 1,\n  };\n}\n\nprivate calculateAggregateConfidence(observations: AgentObservation[]): number {\n  if (observations.length === 0) return 0;\n  const sum = observations.reduce((s, o) => s + o.confidence, 0);\n  return sum / observations.length;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add query by abstraction level",
+          "code": "async getObservationsByAbstractionLevel(\n  entityName: string,\n  level: number\n): Promise<AgentObservation[]> {\n  const entity = this.storage.getEntityByName(entityName);\n  if (!entity || !isAgentEntity(entity)) return [];\n  \n  const agentEntity = entity as AgentEntity;\n  // Filter observations by abstraction level\n  // This requires observations to be stored as AgentObservation objects\n  return [];\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test abstraction level increment and lineage tracking"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Abstraction levels tracked correctly",
+        "Level increments on each summarization",
+        "Lineage chain maintained via consolidatedFrom",
+        "Query by abstraction level works",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.12.5",
+      "category": "types",
+      "title": "Implement SummarizationResult Type",
+      "description": "Define result capturing originalCount, summaryCount, compressionRatio, summaries, and sourceObservations.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "SummarizationResult provides detailed feedback on summarization operations for monitoring and debugging.",
+        "keyDecisions": [
+          "Track original and summary counts for compression ratio",
+          "Include actual summaries for verification",
+          "Track source observations for provenance"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add SummarizationResult to agent-memory.ts",
+          "code": "/**\n * Result of observation summarization.\n *\n * @example\n * ```typescript\n * const result = await pipeline.summarizeObservations(entity);\n * console.log(`Compressed ${result.originalCount} to ${result.summaryCount}`);\n * ```\n */\nexport interface SummarizationResult {\n  /** Number of original observations */\n  originalCount: number;\n  /** Number of summary observations */\n  summaryCount: number;\n  /** Compression ratio (original / summary) */\n  compressionRatio: number;\n  /** The generated summaries */\n  summaries: string[];\n  /** Source observations for each summary */\n  sourceObservations: string[][];\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from types/index.ts",
+          "details": "Ensure SummarizationResult is exported"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SummarizationResult fully typed",
+        "Compression metrics captured",
+        "Source tracking included",
+        "Exported from types/index.ts",
+        "npm run typecheck passes"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Observation summarization works",
+    "Similarity detection accurate",
+    "LLM integration optional but functional",
+    "Abstraction levels tracked",
+    "12+ unit tests pass",
+    "npm run typecheck passes"
+  ],
+  "filesCreated": ["src/agent/SummarizationService.ts", "tests/unit/agent/SummarizationService.test.ts"],
+  "filesModified": ["src/agent/ConsolidationPipeline.ts", "src/types/agent-memory.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 11 - Consolidation Pipeline Foundation", "Sprint 1 - Type Definitions"]
+}

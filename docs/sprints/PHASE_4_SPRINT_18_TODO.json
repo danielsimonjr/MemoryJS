@@ -1,0 +1,114 @@
+{
+  "phase": 4,
+  "sprint": 18,
+  "title": "Context Window Manager Foundation",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Manages memory retrieval within LLM token budget constraints",
+  "targetMetrics": {
+    "tokenAccuracy": {
+      "current": "No token estimation",
+      "target": "±10% token count accuracy"
+    },
+    "budgetCompliance": {
+      "current": "N/A",
+      "target": "100% within specified token budget"
+    }
+  },
+  "tasks": [
+    {
+      "id": "4.18.1",
+      "category": "core",
+      "title": "Create ContextWindowManager Class Skeleton",
+      "description": "Implement class with configurable maxTokens default, token estimation method, and SalienceEngine dependency.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Class created with config",
+        "SalienceEngine injected",
+        "Token budget configurable",
+        "Method stubs defined"
+      ]
+    },
+    {
+      "id": "4.18.2",
+      "category": "core",
+      "title": "Implement estimateTokens() Method",
+      "description": "Estimate token count for entity using simple heuristic (words * 1.3) or tiktoken if available, including name, type, and observations.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Simple heuristic works",
+        "Tiktoken integration optional",
+        "Includes all entity fields",
+        "Reasonably accurate"
+      ]
+    },
+    {
+      "id": "4.18.3",
+      "category": "types",
+      "title": "Create ContextRetrievalOptions Type",
+      "description": "Define options with maxTokens, context, includeWorkingMemory, includeEpisodicRecent, includeSemanticRelevant, and mustInclude.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "Options fully typed",
+        "All retrieval modes included",
+        "mustInclude for required entities"
+      ]
+    },
+    {
+      "id": "4.18.4",
+      "category": "core",
+      "title": "Implement prioritize() Method",
+      "description": "Given entities and budget, select subset maximizing total salience within budget using greedy salience/tokens ratio algorithm.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Greedy algorithm works",
+        "Maximizes salience",
+        "Stays within budget",
+        "Efficient for large sets"
+      ]
+    },
+    {
+      "id": "4.18.5",
+      "category": "types",
+      "title": "Create ContextPackage Type",
+      "description": "Define result with memories, totalTokens, breakdown (by type), excluded (didn't fit), and suggestions (retrieve if more space).",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "ContextPackage fully typed",
+        "Breakdown by memory type",
+        "Excluded tracking",
+        "Suggestions for overflow"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Token estimation reasonably accurate",
+    "Prioritization maximizes salience",
+    "Budget constraints respected",
+    "Types defined and exported",
+    "10+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/ContextWindowManager.ts"],
+  "filesModified": ["src/types/agent-memory.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 16-17 - Salience Engine"]
+}

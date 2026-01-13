@@ -1,0 +1,300 @@
+{
+  "phase": 1,
+  "sprint": 3,
+  "title": "Access Tracking Integration",
+  "priority": "HIGH",
+  "effort": "5 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables automatic access tracking across all memory retrieval operations",
+  "targetMetrics": {
+    "trackingCoverage": {
+      "current": "No automatic tracking",
+      "target": "Optional tracking on search, direct retrieval, and traversal"
+    },
+    "backwardCompatibility": {
+      "current": "N/A",
+      "target": "100% backward compatible - tracking off by default"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.3.1",
+      "category": "types",
+      "title": "Create AccessContext Interface Enhancement",
+      "description": "Enhance AccessContext with builder pattern for easy context construction and add to type exports.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts", "src/agent/AccessTracker.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "AccessContext should be easy to construct with a fluent builder pattern. This encourages proper context tracking without verbose object construction.",
+        "keyDecisions": [
+          "Move AccessContext to shared types file",
+          "Create AccessContextBuilder for fluent construction",
+          "Support partial context building"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Move AccessContext to agent-memory.ts",
+          "code": "/**\n * Context provided when recording a memory access.\n * Used to track how and why a memory was retrieved.\n */\nexport interface AccessContext {\n  /** Session ID during which access occurred */\n  sessionId?: string;\n  /** Task ID associated with access */\n  taskId?: string;\n  /** Search query that triggered this access */\n  queryContext?: string;\n  /** How the memory was retrieved */\n  retrievalMethod?: 'search' | 'direct' | 'traversal';\n}"
+        },
+        {
+          "step": 2,
+          "action": "Create AccessContextBuilder class",
+          "code": "/**\n * Builder for constructing AccessContext objects.\n *\n * @example\n * ```typescript\n * const ctx = new AccessContextBuilder()\n *   .forSession('session_123')\n *   .withQuery('budget hotels')\n *   .viaSearch()\n *   .build();\n * ```\n */\nexport class AccessContextBuilder {\n  private context: AccessContext = {};\n\n  forSession(sessionId: string): this {\n    this.context.sessionId = sessionId;\n    return this;\n  }\n\n  forTask(taskId: string): this {\n    this.context.taskId = taskId;\n    return this;\n  }\n\n  withQuery(queryContext: string): this {\n    this.context.queryContext = queryContext;\n    return this;\n  }\n\n  viaSearch(): this {\n    this.context.retrievalMethod = 'search';\n    return this;\n  }\n\n  viaDirect(): this {\n    this.context.retrievalMethod = 'direct';\n    return this;\n  }\n\n  viaTraversal(): this {\n    this.context.retrievalMethod = 'traversal';\n    return this;\n  }\n\n  build(): AccessContext {\n    return { ...this.context };\n  }\n}"
+        },
+        {
+          "step": 3,
+          "action": "Export from index.ts",
+          "details": "Add AccessContext and AccessContextBuilder to exports"
+        },
+        {
+          "step": 4,
+          "action": "Update AccessTracker to import from types",
+          "details": "Update import to use shared AccessContext type"
+        }
+      ],
+      "acceptanceCriteria": [
+        "AccessContext interface in agent-memory.ts",
+        "AccessContextBuilder class implemented",
+        "Builder supports all context fields",
+        "Exported from types/index.ts",
+        "AccessTracker updated to use shared type",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "1.3.2",
+      "category": "integration",
+      "title": "Integrate with SearchManager",
+      "description": "Modify search methods to optionally record access for returned entities with query context.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Search operations are the primary way memories are retrieved. Tracking search accesses enables understanding which memories are actively useful.",
+        "keyDecisions": [
+          "Add optional trackAccess parameter to search methods",
+          "Tracking is OFF by default for backward compatibility",
+          "Record query context with each access",
+          "Batch record for efficiency on multi-result searches"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add AccessTracker dependency to SearchManager",
+          "code": "// Add to SearchManager constructor\nprivate accessTracker?: AccessTracker;\n\n// Add setter method\nsetAccessTracker(tracker: AccessTracker): void {\n  this.accessTracker = tracker;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Create SearchOptions interface extension",
+          "code": "/**\n * Extended search options with access tracking.\n */\nexport interface SearchOptionsWithTracking {\n  /** Enable access tracking for returned results */\n  trackAccess?: boolean;\n  /** Session ID for access context */\n  sessionId?: string;\n  /** Task ID for access context */\n  taskId?: string;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add tracking to search methods",
+          "code": "// Add to search method (example pattern)\nasync search(\n  query: string,\n  options?: SearchOptionsWithTracking\n): Promise<Entity[]> {\n  const results = await this.performSearch(query);\n  \n  // Track access if enabled\n  if (options?.trackAccess && this.accessTracker) {\n    const context: AccessContext = {\n      queryContext: query,\n      sessionId: options.sessionId,\n      taskId: options.taskId,\n      retrievalMethod: 'search',\n    };\n    \n    // Batch record all results\n    await Promise.all(\n      results.map(entity => \n        this.accessTracker!.recordAccess(entity.name, context)\n      )\n    );\n  }\n  \n  return results;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add integration tests",
+          "details": "Test that search tracks access when enabled"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SearchManager accepts AccessTracker dependency",
+        "trackAccess option available on search methods",
+        "Tracking OFF by default (backward compatible)",
+        "Query context recorded with accesses",
+        "Batch recording for multi-result searches",
+        "Integration tests pass"
+      ]
+    },
+    {
+      "id": "1.3.3",
+      "category": "integration",
+      "title": "Integrate with EntityManager.getEntity()",
+      "description": "Add optional access tracking to direct entity retrieval operations.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/EntityManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Direct entity retrieval by name is common. Tracking these accesses completes the picture of memory usage patterns.",
+        "keyDecisions": [
+          "Add optional trackAccess parameter",
+          "Use retrievalMethod: 'direct'",
+          "Maintain backward compatibility"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add AccessTracker dependency to EntityManager",
+          "code": "// Add to EntityManager\nprivate accessTracker?: AccessTracker;\n\nsetAccessTracker(tracker: AccessTracker): void {\n  this.accessTracker = tracker;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Create GetEntityOptions interface",
+          "code": "/**\n * Options for entity retrieval.\n */\nexport interface GetEntityOptions {\n  /** Enable access tracking */\n  trackAccess?: boolean;\n  /** Session ID for access context */\n  sessionId?: string;\n  /** Task ID for access context */\n  taskId?: string;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Update getEntity method",
+          "code": "async getEntity(\n  name: string,\n  options?: GetEntityOptions\n): Promise<Entity | undefined> {\n  const entity = this.storage.getEntityByName(name);\n  \n  if (entity && options?.trackAccess && this.accessTracker) {\n    await this.accessTracker.recordAccess(name, {\n      sessionId: options.sessionId,\n      taskId: options.taskId,\n      retrievalMethod: 'direct',\n    });\n  }\n  \n  return entity;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit tests",
+          "details": "Test direct retrieval tracking"
+        }
+      ],
+      "acceptanceCriteria": [
+        "EntityManager accepts AccessTracker dependency",
+        "trackAccess option available on getEntity",
+        "Tracking OFF by default",
+        "retrievalMethod: 'direct' recorded",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "1.3.4",
+      "category": "integration",
+      "title": "Integrate with GraphTraversal",
+      "description": "Track access for entities visited during traversal operations with batch recording for efficiency.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/GraphTraversal.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Graph traversal visits many entities. Tracking these accesses shows which memories are connected to active queries.",
+        "keyDecisions": [
+          "Batch record for efficiency",
+          "Use retrievalMethod: 'traversal'",
+          "Optional tracking to avoid overhead"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add AccessTracker dependency to GraphTraversal",
+          "code": "private accessTracker?: AccessTracker;\n\nsetAccessTracker(tracker: AccessTracker): void {\n  this.accessTracker = tracker;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Create TraversalOptionsWithTracking",
+          "code": "export interface TraversalOptionsWithTracking extends TraversalOptions {\n  /** Enable access tracking for visited nodes */\n  trackAccess?: boolean;\n  /** Session ID for access context */\n  sessionId?: string;\n  /** Task ID for access context */\n  taskId?: string;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add batch tracking to traversal methods",
+          "code": "// After traversal completes\nif (options?.trackAccess && this.accessTracker) {\n  const context: AccessContext = {\n    sessionId: options.sessionId,\n    taskId: options.taskId,\n    retrievalMethod: 'traversal',\n  };\n  \n  // Batch record all visited nodes\n  await Promise.all(\n    result.nodes.map(name => \n      this.accessTracker!.recordAccess(name, context)\n    )\n  );\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add integration tests",
+          "details": "Test traversal access tracking"
+        }
+      ],
+      "acceptanceCriteria": [
+        "GraphTraversal accepts AccessTracker dependency",
+        "trackAccess option on traversal methods",
+        "Batch recording for all visited nodes",
+        "retrievalMethod: 'traversal' recorded",
+        "Integration tests pass"
+      ]
+    },
+    {
+      "id": "1.3.5",
+      "category": "integration",
+      "title": "Add AccessTracker to ManagerContext",
+      "description": "Lazy-initialize AccessTracker in ManagerContext and wire up to dependent managers.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/ManagerContext.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "ManagerContext is the central access point. Adding AccessTracker here makes it available throughout the system.",
+        "keyDecisions": [
+          "Lazy initialization via getter",
+          "Wire up to SearchManager, EntityManager, GraphTraversal",
+          "Emit access events for external subscribers"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add AccessTracker property and getter",
+          "code": "private _accessTracker?: AccessTracker;\n\nget accessTracker(): AccessTracker {\n  if (!this._accessTracker) {\n    this._accessTracker = new AccessTracker(this.storage);\n    this.wireAccessTracker();\n  }\n  return this._accessTracker;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add wiring method",
+          "code": "private wireAccessTracker(): void {\n  if (this._accessTracker) {\n    this.searchManager.setAccessTracker(this._accessTracker);\n    this.entityManager.setAccessTracker(this._accessTracker);\n    this.graphTraversal.setAccessTracker(this._accessTracker);\n  }\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add to imports and exports",
+          "details": "Import AccessTracker and export from context"
+        },
+        {
+          "step": 4,
+          "action": "Add integration tests",
+          "details": "Test AccessTracker accessible via context"
+        }
+      ],
+      "acceptanceCriteria": [
+        "AccessTracker lazy-initialized in ManagerContext",
+        "Accessible via ctx.accessTracker getter",
+        "Wired to SearchManager, EntityManager, GraphTraversal",
+        "Integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "AccessContext with builder pattern available",
+    "SearchManager tracks accesses when enabled",
+    "EntityManager tracks direct retrieval",
+    "GraphTraversal tracks visited nodes",
+    "AccessTracker available via ManagerContext",
+    "All tracking OFF by default (backward compatible)",
+    "10+ integration tests pass"
+  ],
+  "filesCreated": [
+    "tests/integration/agent/access-tracking.test.ts"
+  ],
+  "filesModified": [
+    "src/types/agent-memory.ts",
+    "src/agent/AccessTracker.ts",
+    "src/search/SearchManager.ts",
+    "src/core/EntityManager.ts",
+    "src/core/GraphTraversal.ts",
+    "src/core/ManagerContext.ts"
+  ],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 2 - Access Tracking Foundation"],
+  "notes": [
+    "All tracking must be opt-in to maintain backward compatibility",
+    "Consider performance impact of tracking on high-volume searches",
+    "AccessContext builder makes tracking easy to adopt",
+    "Integration tests should verify end-to-end tracking flow"
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "phase": 5,
+  "sprint": 23,
+  "title": "Cross-Agent Operations",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables memory operations across multiple agents",
+  "targetMetrics": {
+    "crossAgentSearch": {
+      "current": "No cross-agent",
+      "target": "Trust-weighted cross-agent search"
+    },
+    "collaboration": {
+      "current": "No collaboration",
+      "target": "Memory sharing and copying"
+    }
+  },
+  "tasks": [
+    {
+      "id": "5.23.1",
+      "category": "core",
+      "title": "Implement getSharedMemories() Method",
+      "description": "Get all memories shared between two or more agents with filtering by type and time range.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Returns shared memories",
+        "Multiple agent support",
+        "Type filtering",
+        "Time range filtering"
+      ]
+    },
+    {
+      "id": "5.23.2",
+      "category": "core",
+      "title": "Implement Cross-Agent Search",
+      "description": "Search across visible memories from multiple agents, ranking by relevance and optionally by trust level.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Searches multiple agents",
+        "Respects visibility",
+        "Relevance ranking",
+        "Trust weighting optional"
+      ]
+    },
+    {
+      "id": "5.23.3",
+      "category": "core",
+      "title": "Add Trust-Weighted Scoring",
+      "description": "When combining memories from multiple agents, weight by agent's trustLevel for ranking.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Trust weighting applied",
+        "Higher trust = higher score",
+        "Configurable weight factor",
+        "Works with salience"
+      ]
+    },
+    {
+      "id": "5.23.4",
+      "category": "core",
+      "title": "Implement Memory Copying",
+      "description": "Allow agent to copy shared memory to own private store with source tracking and annotation support.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Copy to private store",
+        "Source tracked",
+        "Annotation support",
+        "New entity created"
+      ]
+    },
+    {
+      "id": "5.23.5",
+      "category": "core",
+      "title": "Add Collaboration Events",
+      "description": "Emit events when agents share or access each other's memories for audit trail.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Share events emitted",
+        "Access events emitted",
+        "Audit trail created",
+        "Event details complete"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Shared memory queries work",
+    "Cross-agent search works",
+    "Trust weighting applied",
+    "Memory copying works",
+    "Collaboration events emitted",
+    "10+ unit tests pass"
+  ],
+  "filesCreated": [],
+  "filesModified": ["src/agent/MultiAgentMemoryManager.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 22 - Memory Visibility"]
+}

@@ -1,0 +1,255 @@
+{
+  "phase": 5,
+  "sprint": 21,
+  "title": "Agent Identity",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Implements agent registration and identity management for multi-agent scenarios",
+  "targetMetrics": {
+    "agentManagement": {
+      "current": "No agent identity",
+      "target": "Full agent registration with metadata"
+    },
+    "ownership": {
+      "current": "No ownership tracking",
+      "target": "Memory ownership by agent"
+    }
+  },
+  "tasks": [
+    {
+      "id": "5.21.1",
+      "category": "core",
+      "title": "Create MultiAgentMemoryManager Class Skeleton",
+      "description": "Implement class managing multiple agents with metadata storage and default agent for single-agent scenarios.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "MultiAgentMemoryManager enables multiple AI agents to share a memory system with proper ownership and access control.",
+        "keyDecisions": [
+          "Support single-agent mode with default agent",
+          "Store agent metadata in separate collection",
+          "Track memory ownership by agent ID",
+          "Enable agent-scoped queries"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/agent/MultiAgentMemoryManager.ts with imports",
+          "code": "/**\n * Multi-Agent Memory Manager\n *\n * Manages memory for multiple AI agents with ownership tracking,\n * visibility controls, and cross-agent collaboration.\n *\n * @module agent/MultiAgentMemoryManager\n */\n\nimport type { IGraphStorage, Entity } from '../types/types.js';\nimport type {\n  AgentEntity,\n  AgentMetadata,\n  MemoryVisibility,\n} from '../types/agent-memory.js';\nimport { isAgentEntity } from '../types/agent-memory.js';\nimport { EventEmitter } from 'events';"
+        },
+        {
+          "step": 2,
+          "action": "Define MultiAgentConfig interface",
+          "code": "/**\n * Configuration for MultiAgentMemoryManager.\n */\nexport interface MultiAgentConfig {\n  /** Default agent ID for single-agent scenarios */\n  defaultAgentId?: string;\n  /** Default visibility for new memories */\n  defaultVisibility?: MemoryVisibility;\n  /** Allow cross-agent memory access (default: true) */\n  allowCrossAgent?: boolean;\n  /** Require agent registration before use (default: false) */\n  requireRegistration?: boolean;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Create MultiAgentMemoryManager class",
+          "code": "/**\n * Manages memory for multiple AI agents.\n *\n * @example\n * ```typescript\n * const manager = new MultiAgentMemoryManager(storage);\n * await manager.registerAgent('agent_1', { name: 'Assistant', type: 'llm' });\n * const memory = await manager.createAgentMemory('agent_1', entity);\n * ```\n */\nexport class MultiAgentMemoryManager extends EventEmitter {\n  private readonly storage: IGraphStorage;\n  private readonly config: Required<MultiAgentConfig>;\n  private readonly agents: Map<string, AgentMetadata> = new Map();\n\n  constructor(storage: IGraphStorage, config: MultiAgentConfig = {}) {\n    super();\n    this.storage = storage;\n    this.config = {\n      defaultAgentId: config.defaultAgentId ?? 'default',\n      defaultVisibility: config.defaultVisibility ?? 'private',\n      allowCrossAgent: config.allowCrossAgent ?? true,\n      requireRegistration: config.requireRegistration ?? false,\n    };\n\n    // Register default agent\n    this.agents.set(this.config.defaultAgentId, {\n      name: 'Default Agent',\n      type: 'default',\n      trustLevel: 1.0,\n      capabilities: ['read', 'write'],\n      createdAt: new Date().toISOString(),\n      lastActiveAt: new Date().toISOString(),\n    });\n  }\n\n  // Method stubs\n  async registerAgent(agentId: string, metadata: Partial<AgentMetadata>): Promise<AgentMetadata> {\n    throw new Error('Not implemented');\n  }\n\n  getAgent(agentId: string): AgentMetadata | undefined {\n    return this.agents.get(agentId);\n  }\n\n  listAgents(): AgentMetadata[] {\n    return Array.from(this.agents.values());\n  }\n\n  async createAgentMemory(\n    agentId: string,\n    entity: Partial<AgentEntity>\n  ): Promise<AgentEntity> {\n    throw new Error('Not implemented');\n  }\n\n  async getVisibleMemories(agentId: string): Promise<AgentEntity[]> {\n    throw new Error('Not implemented');\n  }\n}"
+        },
+        {
+          "step": 4,
+          "action": "Run TypeScript compilation",
+          "details": "npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "MultiAgentMemoryManager class created",
+        "Agent metadata storage works",
+        "Default agent support",
+        "Method stubs defined",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "5.21.2",
+      "category": "core",
+      "title": "Implement registerAgent() Method",
+      "description": "Register agent with ID and metadata (name, type, trustLevel, capabilities). Validate unique ID and create agent entity.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Agent registration establishes agent identity and capabilities, enabling proper access control and collaboration.",
+        "keyDecisions": [
+          "Validate unique agent ID",
+          "Apply default values for optional fields",
+          "Emit registration event",
+          "Store both in memory and persistently"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement registerAgent method",
+          "code": "/**\n * Register a new agent.\n *\n * @param agentId - Unique agent identifier\n * @param metadata - Agent metadata\n * @returns Complete agent metadata\n * @throws Error if agent ID already exists\n */\nasync registerAgent(\n  agentId: string,\n  metadata: Partial<AgentMetadata>\n): Promise<AgentMetadata> {\n  // Validate unique ID\n  if (this.agents.has(agentId)) {\n    throw new Error(`Agent already registered: ${agentId}`);\n  }\n\n  const now = new Date().toISOString();\n\n  // Build complete metadata with defaults\n  const completeMetadata: AgentMetadata = {\n    name: metadata.name ?? agentId,\n    type: metadata.type ?? 'llm',\n    trustLevel: metadata.trustLevel ?? 0.5,\n    capabilities: metadata.capabilities ?? ['read', 'write'],\n    createdAt: now,\n    lastActiveAt: now,\n  };\n\n  // Store in memory\n  this.agents.set(agentId, completeMetadata);\n\n  // Create agent entity for persistence\n  const agentEntity = {\n    name: `agent:${agentId}`,\n    entityType: 'agent',\n    observations: [\n      `Name: ${completeMetadata.name}`,\n      `Type: ${completeMetadata.type}`,\n      `Trust Level: ${completeMetadata.trustLevel}`,\n      `Capabilities: ${completeMetadata.capabilities.join(', ')}`,\n    ],\n    createdAt: now,\n    lastModified: now,\n    importance: 8,\n  };\n\n  await this.storage.appendEntity(agentEntity);\n\n  // Emit registration event\n  this.emit('agent:registered', agentId, completeMetadata);\n\n  return completeMetadata;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test registration validation and metadata handling"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Agent registration works",
+        "Unique ID validation",
+        "Metadata stored correctly",
+        "Entity created for persistence",
+        "Registration event emitted",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "5.21.3",
+      "category": "types",
+      "title": "Create AgentMetadata Type",
+      "description": "Define metadata with name, type, trustLevel (0-1), capabilities[], createdAt, lastActiveAt.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "AgentMetadata captures agent identity and capabilities for access control and collaboration decisions.",
+        "keyDecisions": [
+          "Trust level as normalized 0-1 value",
+          "Capabilities as string array for flexibility",
+          "Include timestamps for activity tracking",
+          "Support custom metadata extension"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add AgentMetadata to agent-memory.ts",
+          "code": "/**\n * Agent type classifications.\n */\nexport type AgentType = 'llm' | 'tool' | 'human' | 'system' | 'default';\n\n/**\n * Metadata for registered agents.\n *\n * @example\n * ```typescript\n * const metadata: AgentMetadata = {\n *   name: 'Travel Assistant',\n *   type: 'llm',\n *   trustLevel: 0.9,\n *   capabilities: ['read', 'write', 'share'],\n *   createdAt: new Date().toISOString(),\n *   lastActiveAt: new Date().toISOString(),\n * };\n * ```\n */\nexport interface AgentMetadata {\n  /** Human-readable agent name */\n  name: string;\n  /** Agent type classification */\n  type: AgentType;\n  /** Trust level (0-1, higher = more trusted) */\n  trustLevel: number;\n  /** Agent capabilities */\n  capabilities: string[];\n  /** Registration timestamp */\n  createdAt: string;\n  /** Last activity timestamp */\n  lastActiveAt: string;\n  /** Optional custom metadata */\n  metadata?: Record<string, unknown>;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from types/index.ts",
+          "details": "Ensure AgentMetadata and AgentType are exported"
+        }
+      ],
+      "acceptanceCriteria": [
+        "AgentMetadata fully typed",
+        "Trust level defined as 0-1",
+        "Capabilities array included",
+        "Timestamps included",
+        "Exported from types/index.ts",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "5.21.4",
+      "category": "core",
+      "title": "Implement getAgent() and listAgents()",
+      "description": "Retrieve agent metadata by ID and list all registered agents with optional filters.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Agent query methods enable discovering and inspecting registered agents for collaboration and access control.",
+        "keyDecisions": [
+          "Return undefined for unknown agents",
+          "Support filtering by type and capabilities",
+          "Sort by trust level by default",
+          "Update lastActiveAt on access"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement agent query methods",
+          "code": "/**\n * Get agent metadata by ID.\n *\n * @param agentId - Agent identifier\n * @returns Agent metadata or undefined\n */\ngetAgent(agentId: string): AgentMetadata | undefined {\n  return this.agents.get(agentId);\n}\n\n/**\n * List all registered agents.\n *\n * @param filter - Optional filter criteria\n * @returns Array of agent metadata\n */\nlistAgents(filter?: {\n  type?: AgentType;\n  minTrustLevel?: number;\n  capability?: string;\n}): AgentMetadata[] {\n  let agents = Array.from(this.agents.values());\n\n  if (filter?.type) {\n    agents = agents.filter(a => a.type === filter.type);\n  }\n  if (filter?.minTrustLevel !== undefined) {\n    agents = agents.filter(a => a.trustLevel >= filter.minTrustLevel!);\n  }\n  if (filter?.capability) {\n    agents = agents.filter(a => a.capabilities.includes(filter.capability!));\n  }\n\n  // Sort by trust level (highest first)\n  return agents.sort((a, b) => b.trustLevel - a.trustLevel);\n}\n\n/**\n * Update agent's last active timestamp.\n */\nprivate updateLastActive(agentId: string): void {\n  const agent = this.agents.get(agentId);\n  if (agent) {\n    agent.lastActiveAt = new Date().toISOString();\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test agent retrieval and filtering"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Single agent retrieval works",
+        "List all agents works",
+        "Filtering by type works",
+        "Filtering by trust level works",
+        "Filtering by capability works",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "5.21.5",
+      "category": "core",
+      "title": "Add Agent Context to Operations",
+      "description": "Add agentId parameter to memory creation, track owning agent on new memories, support agent context inheritance.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.75,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Agent context tracking ensures all memories have clear ownership and enables proper access control.",
+        "keyDecisions": [
+          "Add agentId to all memory creation methods",
+          "Default to configured default agent",
+          "Validate agent exists if registration required",
+          "Store agentId in entity metadata"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement createAgentMemory method",
+          "code": "/**\n * Create a memory owned by an agent.\n *\n * @param agentId - Owning agent's ID\n * @param entity - Partial entity data\n * @returns Created AgentEntity\n */\nasync createAgentMemory(\n  agentId: string,\n  entity: Partial<AgentEntity>\n): Promise<AgentEntity> {\n  // Validate agent exists if required\n  if (this.config.requireRegistration && !this.agents.has(agentId)) {\n    throw new Error(`Agent not registered: ${agentId}`);\n  }\n\n  // Use default agent if not registered\n  const effectiveAgentId = this.agents.has(agentId) \n    ? agentId \n    : this.config.defaultAgentId;\n\n  const now = new Date().toISOString();\n  const name = entity.name ?? `memory_${effectiveAgentId}_${Date.now()}`;\n\n  const agentEntity: AgentEntity = {\n    // Base entity fields\n    name,\n    entityType: entity.entityType ?? 'memory',\n    observations: entity.observations ?? [],\n    createdAt: now,\n    lastModified: now,\n    importance: entity.importance ?? 5,\n\n    // Agent memory fields\n    agentId: effectiveAgentId,\n    visibility: entity.visibility ?? this.config.defaultVisibility,\n    memoryType: entity.memoryType ?? 'working',\n    accessCount: 0,\n    lastAccessedAt: now,\n    confidence: entity.confidence ?? 0.5,\n    confirmationCount: entity.confirmationCount ?? 0,\n  };\n\n  await this.storage.appendEntity(agentEntity as Entity);\n\n  // Update agent's last active\n  this.updateLastActive(effectiveAgentId);\n\n  // Emit creation event\n  this.emit('memory:created', agentEntity);\n\n  return agentEntity;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add getAgentMemories method",
+          "code": "/**\n * Get all memories owned by an agent.\n *\n * @param agentId - Agent identifier\n * @returns Agent's memories\n */\nasync getAgentMemories(agentId: string): Promise<AgentEntity[]> {\n  const graph = await this.storage.loadGraph();\n  const memories: AgentEntity[] = [];\n\n  for (const entity of graph.entities) {\n    if (!isAgentEntity(entity)) continue;\n    const agentEntity = entity as AgentEntity;\n    \n    if (agentEntity.agentId === agentId) {\n      memories.push(agentEntity);\n    }\n  }\n\n  return memories;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add integration tests",
+          "details": "Test agent context in memory operations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "agentId required on creation",
+        "Ownership tracked correctly",
+        "Agent validation when required",
+        "Default agent fallback works",
+        "Events emitted correctly",
+        "Integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Agent registration works",
+    "Agent metadata stored",
+    "Agent queries work",
+    "Ownership tracking works",
+    "10+ unit tests pass",
+    "npm run typecheck passes"
+  ],
+  "filesCreated": ["src/agent/MultiAgentMemoryManager.ts", "tests/unit/agent/MultiAgentMemoryManager.test.ts"],
+  "filesModified": ["src/types/agent-memory.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 1 - Type Definitions", "Sprint 6 - Working Memory Manager"]
+}

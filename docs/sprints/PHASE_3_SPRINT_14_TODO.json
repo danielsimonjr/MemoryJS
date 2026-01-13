@@ -1,0 +1,236 @@
+{
+  "phase": 3,
+  "sprint": 14,
+  "title": "Memory Merging",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables duplicate detection and memory consolidation through intelligent merging",
+  "targetMetrics": {
+    "duplicateDetection": {
+      "current": "Basic similarity",
+      "target": "Agent-memory-aware duplicate detection"
+    },
+    "mergeIntegrity": {
+      "current": "N/A",
+      "target": "100% data preservation with audit trail"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.14.1",
+      "category": "core",
+      "title": "Implement mergeMemories() Method",
+      "description": "Merge multiple entities using strategy: newest (keep recent), strongest (highest confidence), or merge_observations (combine all).",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Memory merging consolidates duplicate or highly similar memories into a single entity, reducing redundancy while preserving information.",
+        "keyDecisions": [
+          "Support multiple merge strategies",
+          "Preserve all unique observations",
+          "Update metadata (confidence, confirmations)",
+          "Remove merged entities after consolidation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add MergeStrategy type and mergeMemories method",
+          "code": "/**\n * Strategy for merging duplicate memories.\n */\nexport type MergeStrategy = 'newest' | 'strongest' | 'merge_observations';\n\n/**\n * Merge multiple entities into one.\n *\n * @param entityNames - Names of entities to merge\n * @param strategy - Merge strategy to apply\n * @returns The surviving merged entity\n */\nasync mergeMemories(\n  entityNames: string[],\n  strategy: MergeStrategy\n): Promise<AgentEntity> {\n  if (entityNames.length < 2) {\n    throw new Error('Need at least 2 entities to merge');\n  }\n\n  // Load all entities\n  const entities: AgentEntity[] = [];\n  for (const name of entityNames) {\n    const entity = this.storage.getEntityByName(name);\n    if (!entity || !isAgentEntity(entity)) {\n      throw new Error(`Entity not found or not AgentEntity: ${name}`);\n    }\n    entities.push(entity as AgentEntity);\n  }\n\n  // Determine survivor based on strategy\n  let survivor: AgentEntity;\n  switch (strategy) {\n    case 'newest':\n      survivor = this.selectNewest(entities);\n      break;\n    case 'strongest':\n      survivor = this.selectStrongest(entities);\n      break;\n    case 'merge_observations':\n      survivor = entities[0];\n      break;\n  }\n\n  // Merge observations from all entities into survivor\n  const allObservations = new Set<string>();\n  for (const entity of entities) {\n    entity.observations?.forEach(o => allObservations.add(o));\n  }\n\n  // Update survivor with merged data\n  const updates: Partial<AgentEntity> = {\n    observations: Array.from(allObservations),\n    confirmationCount: entities.reduce((sum, e) => sum + (e.confirmationCount ?? 0), 0),\n    accessCount: entities.reduce((sum, e) => sum + (e.accessCount ?? 0), 0),\n    lastModified: new Date().toISOString(),\n  };\n\n  await this.storage.updateEntity(survivor.name, updates as Partial<Entity>);\n\n  // Remove other entities\n  for (const entity of entities) {\n    if (entity.name !== survivor.name) {\n      await this.storage.deleteEntity(entity.name);\n    }\n  }\n\n  return { ...survivor, ...updates } as AgentEntity;\n}\n\nprivate selectNewest(entities: AgentEntity[]): AgentEntity {\n  return entities.reduce((newest, e) => {\n    const newestTime = new Date(newest.lastModified ?? newest.createdAt ?? 0).getTime();\n    const eTime = new Date(e.lastModified ?? e.createdAt ?? 0).getTime();\n    return eTime > newestTime ? e : newest;\n  });\n}\n\nprivate selectStrongest(entities: AgentEntity[]): AgentEntity {\n  return entities.reduce((strongest, e) => {\n    const strongestScore = (strongest.confidence ?? 0) * (strongest.confirmationCount ?? 1);\n    const eScore = (e.confidence ?? 0) * (e.confirmationCount ?? 1);\n    return eScore > strongestScore ? e : strongest;\n  });\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test all merge strategies"
+        }
+      ],
+      "acceptanceCriteria": [
+        "All three strategies work correctly",
+        "Data preserved in survivor entity",
+        "Merged entities deleted",
+        "Observations combined without duplicates",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.14.2",
+      "category": "core",
+      "title": "Implement Duplicate Detection",
+      "description": "Extend CompressionManager duplicate detection for agent memory fields (sessionId, agentId) in similarity calculation.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Duplicate detection identifies memories that represent the same information, enabling automatic merging.",
+        "keyDecisions": [
+          "Use observation similarity as primary metric",
+          "Consider session context in similarity",
+          "Support configurable similarity threshold",
+          "Return pairs of potential duplicates"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement findDuplicates method",
+          "code": "/**\n * Find potential duplicate entities.\n *\n * @param threshold - Similarity threshold (0-1, default 0.9)\n * @returns Array of duplicate pairs with similarity scores\n */\nasync findDuplicates(\n  threshold: number = 0.9\n): Promise<Array<{ entity1: string; entity2: string; similarity: number }>> {\n  const graph = await this.storage.loadGraph();\n  const duplicates: Array<{ entity1: string; entity2: string; similarity: number }> = [];\n\n  const agentEntities = graph.entities.filter(e => isAgentEntity(e)) as AgentEntity[];\n\n  for (let i = 0; i < agentEntities.length; i++) {\n    for (let j = i + 1; j < agentEntities.length; j++) {\n      const e1 = agentEntities[i];\n      const e2 = agentEntities[j];\n\n      // Skip if different sessions (unless both are long-term)\n      if (e1.memoryType === 'working' && e2.memoryType === 'working' &&\n          e1.sessionId !== e2.sessionId) {\n        continue;\n      }\n\n      const similarity = await this.calculateEntitySimilarity(e1, e2);\n      if (similarity >= threshold) {\n        duplicates.push({\n          entity1: e1.name,\n          entity2: e2.name,\n          similarity,\n        });\n      }\n    }\n  }\n\n  return duplicates.sort((a, b) => b.similarity - a.similarity);\n}\n\nprivate async calculateEntitySimilarity(\n  e1: AgentEntity,\n  e2: AgentEntity\n): Promise<number> {\n  // Must have same entity type\n  if (e1.entityType !== e2.entityType) return 0;\n\n  // Compare observations\n  const obs1 = e1.observations?.join(' ') ?? '';\n  const obs2 = e2.observations?.join(' ') ?? '';\n\n  return this.calculateTFIDFSimilarity(obs1, obs2);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test duplicate detection scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Detects duplicates by observation similarity",
+        "Considers session context",
+        "Configurable threshold works",
+        "Returns sorted results",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.14.3",
+      "category": "core",
+      "title": "Implement Observation Merging",
+      "description": "When merging entities, combine observations: remove exact duplicates, merge similar with summarization, preserve provenance.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Observation merging ensures no information is lost during memory consolidation while avoiding redundancy.",
+        "keyDecisions": [
+          "Remove exact duplicate observations",
+          "Optionally summarize similar observations",
+          "Track source observations in provenance",
+          "Preserve unique observations unchanged"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement mergeObservations helper",
+          "code": "/**\n * Merge observations from multiple entities.\n *\n * @param entities - Entities to merge observations from\n * @param summarizeSimilar - Whether to summarize similar observations\n * @returns Merged observation array\n */\nprivate async mergeObservations(\n  entities: AgentEntity[],\n  summarizeSimilar: boolean = false\n): Promise<string[]> {\n  // Collect all observations\n  const allObs: string[] = [];\n  for (const entity of entities) {\n    if (entity.observations) {\n      allObs.push(...entity.observations);\n    }\n  }\n\n  // Remove exact duplicates\n  const unique = [...new Set(allObs)];\n\n  if (!summarizeSimilar || unique.length < 2) {\n    return unique;\n  }\n\n  // Group similar observations and summarize\n  const groups = await this.groupSimilarObservations(unique, 0.8);\n  const merged: string[] = [];\n\n  for (const group of groups) {\n    if (group.length === 1) {\n      merged.push(group[0]);\n    } else {\n      // Summarize the group\n      const summary = await this.createGroupSummary(group);\n      merged.push(summary);\n    }\n  }\n\n  return merged;\n}\n\nprivate async createGroupSummary(observations: string[]): Promise<string> {\n  if (this.summarizationService) {\n    return this.summarizationService.summarize(observations);\n  }\n  // Fallback: keep the longest observation\n  return observations.reduce((a, b) => a.length > b.length ? a : b);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test observation merging scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Exact duplicates removed",
+        "Similar observations summarized when enabled",
+        "Provenance chain preserved",
+        "No data loss",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.14.4",
+      "category": "core",
+      "title": "Update Relations on Merge",
+      "description": "Retarget relations from merged entities to surviving entity, handling duplicate relations and emitting merge events.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Relations must be preserved during merges to maintain graph integrity and knowledge connections.",
+        "keyDecisions": [
+          "Retarget all relations to survivor",
+          "Remove duplicate relations",
+          "Emit merge event for tracking",
+          "Validate graph integrity after merge"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement retargetRelations method",
+          "code": "/**\n * Retarget relations from merged entities to survivor.\n *\n * @param mergedNames - Names of entities being merged\n * @param survivorName - Name of surviving entity\n */\nprivate async retargetRelations(\n  mergedNames: string[],\n  survivorName: string\n): Promise<void> {\n  const graph = await this.storage.getGraphForMutation();\n  const mergedSet = new Set(mergedNames.filter(n => n !== survivorName));\n  const seenRelations = new Set<string>();\n\n  const updatedRelations = graph.relations.filter(r => {\n    let from = r.from;\n    let to = r.to;\n\n    // Retarget from merged entities\n    if (mergedSet.has(from)) from = survivorName;\n    if (mergedSet.has(to)) to = survivorName;\n\n    // Skip self-relations\n    if (from === to) return false;\n\n    // Skip duplicates\n    const key = `${from}|${to}|${r.relationType}`;\n    if (seenRelations.has(key)) return false;\n    seenRelations.add(key);\n\n    // Update relation\n    r.from = from;\n    r.to = to;\n    return true;\n  });\n\n  graph.relations = updatedRelations;\n  await this.storage.saveGraph(graph);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test relation retargeting scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Relations retargeted to survivor",
+        "Duplicate relations removed",
+        "Self-relations eliminated",
+        "Graph integrity maintained",
+        "Integration tests pass"
+      ]
+    },
+    {
+      "id": "3.14.5",
+      "category": "core",
+      "title": "Create Merge Audit Trail",
+      "description": "Store merge history for reversibility: which entities merged, when, by what rule, resulting entity.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Merge audit trail enables debugging, analysis, and potential reversal of merge operations.",
+        "keyDecisions": [
+          "Store merge records as entities",
+          "Include all merge metadata",
+          "Support querying merge history",
+          "Enable soft-delete for reversibility"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement merge audit trail",
+          "code": "/**\n * Record a merge operation in the audit trail.\n */\nprivate async recordMerge(\n  mergedNames: string[],\n  survivorName: string,\n  strategy: MergeStrategy\n): Promise<void> {\n  const now = new Date().toISOString();\n  const auditEntity = {\n    name: `merge_audit_${Date.now()}`,\n    entityType: 'merge_audit',\n    observations: [\n      `Merged: ${mergedNames.join(', ')}`,\n      `Survivor: ${survivorName}`,\n      `Strategy: ${strategy}`,\n      `Timestamp: ${now}`,\n    ],\n    createdAt: now,\n    lastModified: now,\n    importance: 3,\n  };\n\n  await this.storage.appendEntity(auditEntity);\n}\n\n/**\n * Get merge history for an entity.\n */\nasync getMergeHistory(entityName: string): Promise<Entity[]> {\n  const graph = await this.storage.loadGraph();\n  return graph.entities.filter(e => \n    e.entityType === 'merge_audit' &&\n    e.observations?.some(o => o.includes(entityName))\n  );\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test audit trail creation and querying"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Merge history stored as entities",
+        "Queryable audit trail",
+        "All merge metadata preserved",
+        "Unit tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All merge strategies work",
+    "Duplicate detection accurate",
+    "Observation merging preserves data",
+    "Relations correctly retargeted",
+    "Audit trail enables reversibility",
+    "12+ unit tests pass",
+    "npm run typecheck passes"
+  ],
+  "filesCreated": ["tests/unit/agent/MemoryMerging.test.ts"],
+  "filesModified": ["src/agent/ConsolidationPipeline.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 13 - Pattern Extraction", "Sprint 12 - Observation Summarization", "Sprint 1 - Type Definitions"]
+}

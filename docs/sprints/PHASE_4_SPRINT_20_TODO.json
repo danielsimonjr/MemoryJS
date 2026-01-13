@@ -1,0 +1,116 @@
+{
+  "phase": 4,
+  "sprint": 20,
+  "title": "Spillover and Diversity",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Handles context overflow and ensures retrieval diversity",
+  "targetMetrics": {
+    "spilloverTracking": {
+      "current": "No overflow handling",
+      "target": "Full tracking with suggestions"
+    },
+    "diversityScore": {
+      "current": "Possible redundancy",
+      "target": "Minimal redundancy in context"
+    }
+  },
+  "tasks": [
+    {
+      "id": "4.20.1",
+      "category": "core",
+      "title": "Implement handleSpillover() Method",
+      "description": "Track excluded content when budget exceeded, generate suggestions for follow-up retrieval, enable pagination patterns.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Excluded content tracked",
+        "Suggestions generated",
+        "Pagination support",
+        "Priority preserved"
+      ]
+    },
+    {
+      "id": "4.20.2",
+      "category": "core",
+      "title": "Implement Diversity Enforcement",
+      "description": "Detect similarity between included memories and replace duplicates with diverse alternatives.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Similarity detection works",
+        "Duplicates replaced",
+        "Diversity maintained",
+        "Configurable threshold"
+      ]
+    },
+    {
+      "id": "4.20.3",
+      "category": "core",
+      "title": "Add getMostSalient() to SalienceEngine",
+      "description": "Convenience method returning top N most salient entities using heap-based selection for efficiency.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "Returns top N entities",
+        "Heap-based for O(n log k)",
+        "Context-aware scoring",
+        "Efficient implementation"
+      ]
+    },
+    {
+      "id": "4.20.4",
+      "category": "core",
+      "title": "Create Memory Formatting Utilities",
+      "description": "Format memories for LLM consumption with formatForPrompt() and formatAsJSON() respecting token limits.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MemoryFormatter.ts"],
+      "acceptanceCriteria": [
+        "Prompt format works",
+        "JSON format works",
+        "Token limits respected",
+        "Customizable templates"
+      ]
+    },
+    {
+      "id": "4.20.5",
+      "category": "integration",
+      "title": "Add ContextWindowManager and SalienceEngine to ManagerContext",
+      "description": "Lazy-initialize both, expose via ctx.contextWindow and ctx.salienceEngine, add env vars for config.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/ManagerContext.ts"],
+      "acceptanceCriteria": [
+        "Both accessible via context",
+        "Lazy initialization works",
+        "Env var configuration",
+        "Integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Spillover handled with suggestions",
+    "Diversity enforced in context",
+    "getMostSalient efficient",
+    "Formatting utilities work",
+    "Managers in ManagerContext",
+    "10+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/MemoryFormatter.ts"],
+  "filesModified": ["src/agent/ContextWindowManager.ts", "src/agent/SalienceEngine.ts", "src/core/ManagerContext.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 19 - Context-Optimized Retrieval"]
+}

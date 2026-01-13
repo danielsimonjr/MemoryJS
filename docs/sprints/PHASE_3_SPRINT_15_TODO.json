@@ -1,0 +1,238 @@
+{
+  "phase": 3,
+  "sprint": 15,
+  "title": "Auto-Consolidation Rules",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables rule-based automatic memory consolidation without manual intervention",
+  "targetMetrics": {
+    "automationCoverage": {
+      "current": "Manual only",
+      "target": "Trigger-based automatic consolidation"
+    },
+    "ruleFlexibility": {
+      "current": "N/A",
+      "target": "Complex condition support with AND/OR logic"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.15.1",
+      "category": "types",
+      "title": "Create ConsolidationRule Type",
+      "description": "Define rule structure with trigger, conditions (minConfidence, minConfirmations, minAccessCount, memoryType), and action.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "ConsolidationRule defines when and how automatic consolidation should occur, enabling flexible automation.",
+        "keyDecisions": [
+          "Support multiple trigger types",
+          "Allow compound conditions with AND/OR",
+          "Define standard actions (promote, merge, archive)",
+          "Include rule metadata for management"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add ConsolidationRule types to agent-memory.ts",
+          "code": "/**\n * Trigger types for consolidation rules.\n */\nexport type ConsolidationTrigger = \n  | 'session_end'\n  | 'time_elapsed'\n  | 'confirmation_threshold'\n  | 'manual';\n\n/**\n * Actions for consolidation rules.\n */\nexport type ConsolidationAction = \n  | 'promote_to_episodic'\n  | 'promote_to_semantic'\n  | 'merge_duplicates'\n  | 'archive'\n  | 'summarize';\n\n/**\n * Conditions for rule evaluation.\n */\nexport interface RuleConditions {\n  /** Minimum confidence score (0-1) */\n  minConfidence?: number;\n  /** Minimum confirmation count */\n  minConfirmations?: number;\n  /** Minimum access count */\n  minAccessCount?: number;\n  /** Memory type filter */\n  memoryType?: MemoryType;\n  /** Entity type filter */\n  entityType?: string;\n  /** Minimum age in hours */\n  minAgeHours?: number;\n  /** Use AND logic (default: true) */\n  useAnd?: boolean;\n}\n\n/**\n * Rule for automatic consolidation.\n *\n * @example\n * ```typescript\n * const rule: ConsolidationRule = {\n *   name: 'Promote confirmed memories',\n *   trigger: 'session_end',\n *   conditions: {\n *     minConfidence: 0.8,\n *     minConfirmations: 2,\n *     memoryType: 'working',\n *   },\n *   action: 'promote_to_episodic',\n *   enabled: true,\n * };\n * ```\n */\nexport interface ConsolidationRule {\n  /** Rule name for identification */\n  name: string;\n  /** What triggers this rule */\n  trigger: ConsolidationTrigger;\n  /** Conditions that must be met */\n  conditions: RuleConditions;\n  /** Action to take */\n  action: ConsolidationAction;\n  /** Whether rule is active */\n  enabled: boolean;\n  /** Optional priority (higher = processed first) */\n  priority?: number;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from types/index.ts",
+          "details": "Ensure all rule types are exported"
+        }
+      ],
+      "acceptanceCriteria": [
+        "ConsolidationRule fully typed",
+        "All trigger types defined",
+        "Conditions comprehensive",
+        "Actions enumerated",
+        "Exported from types/index.ts",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "3.15.2",
+      "category": "core",
+      "title": "Implement runAutoConsolidation() Method",
+      "description": "Process rules against all memories, execute actions for those meeting conditions, return aggregate result.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "runAutoConsolidation orchestrates rule-based consolidation, processing all rules and executing appropriate actions.",
+        "keyDecisions": [
+          "Process rules in priority order",
+          "Skip disabled rules",
+          "Execute actions for matching memories",
+          "Aggregate results across all rules"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement runAutoConsolidation method",
+          "code": "/**\n * Run automatic consolidation based on configured rules.\n *\n * @param trigger - The trigger that invoked consolidation\n * @returns Aggregate result of all rule executions\n */\nasync runAutoConsolidation(\n  trigger: ConsolidationTrigger\n): Promise<ConsolidationResult> {\n  const result: ConsolidationResult = {\n    memoriesProcessed: 0,\n    memoriesPromoted: 0,\n    memoriesMerged: 0,\n    patternsExtracted: 0,\n    summariesCreated: 0,\n    errors: [],\n  };\n\n  // Get rules matching this trigger, sorted by priority\n  const rules = this.rules\n    .filter(r => r.enabled && r.trigger === trigger)\n    .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));\n\n  if (rules.length === 0) {\n    return result;\n  }\n\n  // Get all agent entities\n  const graph = await this.storage.loadGraph();\n  const entities = graph.entities.filter(e => isAgentEntity(e)) as AgentEntity[];\n  result.memoriesProcessed = entities.length;\n\n  // Process each rule\n  for (const rule of rules) {\n    const ruleResult = await this.executeRule(rule, entities);\n    result.memoriesPromoted += ruleResult.promoted;\n    result.memoriesMerged += ruleResult.merged;\n    result.summariesCreated += ruleResult.summarized;\n    result.errors.push(...ruleResult.errors);\n  }\n\n  return result;\n}\n\nprivate async executeRule(\n  rule: ConsolidationRule,\n  entities: AgentEntity[]\n): Promise<{ promoted: number; merged: number; summarized: number; errors: string[] }> {\n  const result = { promoted: 0, merged: 0, summarized: 0, errors: [] as string[] };\n\n  // Find matching entities\n  const matches = entities.filter(e => this.evaluateConditions(e, rule.conditions));\n\n  // Execute action for matches\n  for (const entity of matches) {\n    try {\n      switch (rule.action) {\n        case 'promote_to_episodic':\n          await this.promoteMemory(entity.name, 'episodic');\n          result.promoted++;\n          break;\n        case 'promote_to_semantic':\n          await this.promoteMemory(entity.name, 'semantic');\n          result.promoted++;\n          break;\n        case 'summarize':\n          await this.summarizeObservations(entity);\n          result.summarized++;\n          break;\n        // Other actions...\n      }\n    } catch (error) {\n      result.errors.push(`Rule ${rule.name} failed for ${entity.name}: ${error}`);\n    }\n  }\n\n  return result;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test rule processing and action execution"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Processes all matching rules",
+        "Executes actions for matching memories",
+        "Returns aggregate result",
+        "Handles errors gracefully",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.15.3",
+      "category": "core",
+      "title": "Add Rule Evaluation Engine",
+      "description": "Evaluate rule conditions against entity with AND/OR logic support and cached evaluation results.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/RuleEvaluator.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "RuleEvaluator provides efficient condition checking with support for complex logic and caching.",
+        "keyDecisions": [
+          "Support AND/OR condition combinations",
+          "Cache evaluation results for performance",
+          "Return detailed evaluation breakdown",
+          "Handle missing fields gracefully"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create RuleEvaluator class",
+          "code": "/**\n * Rule Evaluator\n *\n * Evaluates consolidation rule conditions against entities.\n *\n * @module agent/RuleEvaluator\n */\n\nimport type { AgentEntity, RuleConditions } from '../types/agent-memory.js';\n\n/**\n * Result of condition evaluation.\n */\nexport interface EvaluationResult {\n  passed: boolean;\n  details: Record<string, boolean>;\n}\n\n/**\n * Evaluates rule conditions against entities.\n */\nexport class RuleEvaluator {\n  private cache = new Map<string, EvaluationResult>();\n\n  /**\n   * Evaluate conditions against an entity.\n   */\n  evaluate(entity: AgentEntity, conditions: RuleConditions): EvaluationResult {\n    const cacheKey = `${entity.name}:${JSON.stringify(conditions)}`;\n    if (this.cache.has(cacheKey)) {\n      return this.cache.get(cacheKey)!;\n    }\n\n    const details: Record<string, boolean> = {};\n    const useAnd = conditions.useAnd !== false;\n\n    // Check each condition\n    if (conditions.minConfidence !== undefined) {\n      details.minConfidence = (entity.confidence ?? 0) >= conditions.minConfidence;\n    }\n    if (conditions.minConfirmations !== undefined) {\n      details.minConfirmations = (entity.confirmationCount ?? 0) >= conditions.minConfirmations;\n    }\n    if (conditions.minAccessCount !== undefined) {\n      details.minAccessCount = (entity.accessCount ?? 0) >= conditions.minAccessCount;\n    }\n    if (conditions.memoryType !== undefined) {\n      details.memoryType = entity.memoryType === conditions.memoryType;\n    }\n    if (conditions.entityType !== undefined) {\n      details.entityType = entity.entityType === conditions.entityType;\n    }\n    if (conditions.minAgeHours !== undefined) {\n      const ageHours = this.calculateAgeHours(entity);\n      details.minAgeHours = ageHours >= conditions.minAgeHours;\n    }\n\n    // Combine results\n    const values = Object.values(details);\n    const passed = values.length === 0 ? true :\n      useAnd ? values.every(v => v) : values.some(v => v);\n\n    const result = { passed, details };\n    this.cache.set(cacheKey, result);\n    return result;\n  }\n\n  private calculateAgeHours(entity: AgentEntity): number {\n    const created = entity.createdAt ? new Date(entity.createdAt).getTime() : Date.now();\n    return (Date.now() - created) / (1000 * 60 * 60);\n  }\n\n  clearCache(): void {\n    this.cache.clear();\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test condition evaluation with various scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Evaluates all condition types",
+        "AND/OR logic works correctly",
+        "Caching improves performance",
+        "Returns detailed breakdown",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "3.15.4",
+      "category": "integration",
+      "title": "Implement Trigger Hooks",
+      "description": "Fire consolidation on triggers: session_end (SessionManager hook), time_elapsed (scheduled), confirmation_threshold (entity update hook).",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts", "src/agent/SessionManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Trigger hooks automatically invoke consolidation at appropriate times without manual intervention.",
+        "keyDecisions": [
+          "Hook into SessionManager for session_end",
+          "Use DecayScheduler for time_elapsed",
+          "Listen to entity events for threshold triggers",
+          "Support manual trigger for testing"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add trigger hook setup",
+          "code": "/**\n * Set up trigger hooks for automatic consolidation.\n */\nsetupTriggerHooks(): void {\n  // Session end hook\n  if (this.sessionManager) {\n    this.sessionManager.on('session:end', async (sessionId: string) => {\n      await this.runAutoConsolidation('session_end');\n    });\n  }\n\n  // Time elapsed hook (via interval)\n  if (this.config.autoConsolidationIntervalMs) {\n    this.consolidationInterval = setInterval(\n      () => this.runAutoConsolidation('time_elapsed'),\n      this.config.autoConsolidationIntervalMs\n    );\n  }\n}\n\n/**\n * Clean up trigger hooks.\n */\ncleanupTriggerHooks(): void {\n  if (this.consolidationInterval) {\n    clearInterval(this.consolidationInterval);\n    this.consolidationInterval = undefined;\n  }\n}\n\n/**\n * Manually trigger consolidation.\n */\nasync triggerManualConsolidation(): Promise<ConsolidationResult> {\n  return this.runAutoConsolidation('manual');\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add integration tests",
+          "details": "Test trigger firing and consolidation execution"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Session end trigger works",
+        "Scheduled trigger works",
+        "Manual trigger works",
+        "Hooks can be cleaned up",
+        "Integration tests pass"
+      ]
+    },
+    {
+      "id": "3.15.5",
+      "category": "integration",
+      "title": "Add ConsolidationPipeline to ManagerContext",
+      "description": "Lazy-initialize pipeline with all dependencies, expose via ctx.consolidationPipeline, add env vars for configuration.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/ManagerContext.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Adding ConsolidationPipeline to ManagerContext makes it accessible throughout the system with proper dependency wiring.",
+        "keyDecisions": [
+          "Lazy initialization via getter",
+          "Wire all required dependencies",
+          "Support environment variable configuration",
+          "Load default rules from config"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add consolidationPipeline getter to ManagerContext",
+          "code": "private _consolidationPipeline?: ConsolidationPipeline;\n\n/**\n * Get the ConsolidationPipeline for memory transformation.\n */\nget consolidationPipeline(): ConsolidationPipeline {\n  if (!this._consolidationPipeline) {\n    this._consolidationPipeline = new ConsolidationPipeline(\n      this.storage,\n      this.workingMemoryManager,\n      this.decayEngine,\n      {\n        summarizationEnabled: this.getEnvBool('MEMORY_SUMMARIZATION_ENABLED', true),\n        patternExtractionEnabled: this.getEnvBool('MEMORY_PATTERN_EXTRACTION', true),\n        minPromotionConfidence: this.getEnvNumber('MEMORY_PROMOTION_CONFIDENCE', 0.7),\n        minPromotionConfirmations: this.getEnvNumber('MEMORY_PROMOTION_CONFIRMATIONS', 2),\n        preserveOriginals: this.getEnvBool('MEMORY_PRESERVE_ORIGINALS', false),\n      }\n    );\n\n    // Set up default rules\n    this._consolidationPipeline.addRule({\n      name: 'Auto-promote confirmed memories',\n      trigger: 'session_end',\n      conditions: {\n        minConfidence: 0.8,\n        minConfirmations: 2,\n        memoryType: 'working',\n      },\n      action: 'promote_to_episodic',\n      enabled: this.getEnvBool('MEMORY_AUTO_PROMOTE', true),\n    });\n  }\n  return this._consolidationPipeline;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add imports and integration tests",
+          "details": "Test context access and configuration"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Pipeline accessible via ctx.consolidationPipeline",
+        "Dependencies properly wired",
+        "Env var configuration works",
+        "Default rules loaded",
+        "Integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Rule types defined and exported",
+    "Auto-consolidation runs correctly",
+    "Rule evaluation supports complex conditions",
+    "All triggers fire consolidation",
+    "Pipeline accessible via ManagerContext",
+    "12+ unit tests pass",
+    "npm run typecheck passes"
+  ],
+  "filesCreated": ["src/agent/RuleEvaluator.ts", "tests/unit/agent/RuleEvaluator.test.ts"],
+  "filesModified": ["src/types/agent-memory.ts", "src/agent/ConsolidationPipeline.ts", "src/agent/SessionManager.ts", "src/core/ManagerContext.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 14 - Memory Merging", "Sprint 11 - Consolidation Pipeline Foundation", "Sprint 1 - Type Definitions"]
+}
