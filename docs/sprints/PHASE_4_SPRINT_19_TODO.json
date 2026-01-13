@@ -1,0 +1,115 @@
+{
+  "phase": 4,
+  "sprint": 19,
+  "title": "Context-Optimized Retrieval",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Main retrieval algorithm combining multiple memory sources within token budget",
+  "targetMetrics": {
+    "retrievalCompleteness": {
+      "current": "Single source retrieval",
+      "target": "Multi-source combined retrieval"
+    },
+    "budgetAllocation": {
+      "current": "N/A",
+      "target": "Configurable allocation across memory types"
+    }
+  },
+  "tasks": [
+    {
+      "id": "4.19.1",
+      "category": "core",
+      "title": "Implement retrieveForContext() Method",
+      "description": "Main retrieval combining all sources per options, scoring with SalienceEngine, prioritizing within budget, returning ContextPackage.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Combines all configured sources",
+        "Scores with salience",
+        "Prioritizes within budget",
+        "Returns complete package"
+      ]
+    },
+    {
+      "id": "4.19.2",
+      "category": "core",
+      "title": "Implement Working Memory Retrieval",
+      "description": "When includeWorkingMemory, get session's working memories and reserve configurable budget portion (default 30%).",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Session working memories retrieved",
+        "Budget portion reserved",
+        "Configurable percentage",
+        "Prioritized by salience"
+      ]
+    },
+    {
+      "id": "4.19.3",
+      "category": "core",
+      "title": "Implement Episodic Retrieval",
+      "description": "When includeEpisodicRecent, get recent episodic memories from last N sessions with configurable budget allocation (default 30%).",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Recent episodic retrieved",
+        "Session count configurable",
+        "Budget allocation works",
+        "Chronological preference"
+      ]
+    },
+    {
+      "id": "4.19.4",
+      "category": "core",
+      "title": "Implement Semantic Retrieval",
+      "description": "When includeSemanticRelevant, run semantic/hybrid search with context and reserve budget portion (default 40%).",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "Semantic search executed",
+        "Uses hybrid when available",
+        "Budget allocation works",
+        "Relevance prioritized"
+      ]
+    },
+    {
+      "id": "4.19.5",
+      "category": "core",
+      "title": "Implement mustInclude Handling",
+      "description": "Ensure specified entities always included by subtracting their tokens first and warning if they exceed budget.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ContextWindowManager.ts"],
+      "acceptanceCriteria": [
+        "mustInclude always present",
+        "Tokens subtracted first",
+        "Warning on budget exceed",
+        "Error handling graceful"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Full retrieval pipeline works",
+    "All memory types supported",
+    "Budget allocation configurable",
+    "mustInclude handling correct",
+    "12+ unit tests pass"
+  ],
+  "filesCreated": [],
+  "filesModified": ["src/agent/ContextWindowManager.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 18 - Context Window Manager Foundation"]
+}

@@ -1,0 +1,313 @@
+{
+  "phase": 2,
+  "sprint": 10,
+  "title": "Episodic Memory Structure",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables temporal and causal organization of conversation/event history",
+  "targetMetrics": {
+    "eventSequencing": {
+      "current": "No event ordering",
+      "target": "Full event sequence support with prev/next relations"
+    },
+    "timelineQueries": {
+      "current": "No timeline capability",
+      "target": "Efficient chronological and reverse iteration"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.10.1",
+      "category": "core",
+      "title": "Create EpisodicMemoryManager Class",
+      "description": "Implement manager for episodic memories with temporal ordering and event sequence support.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/EpisodicMemoryManager.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "EpisodicMemoryManager handles conversation history and events with temporal relationships and causal linking.",
+        "keyDecisions": [
+          "Use relations for event sequencing",
+          "Support chronological ordering",
+          "Enable causal chain tracking"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/agent/EpisodicMemoryManager.ts",
+          "code": "/**\n * Episodic Memory Manager\n *\n * Manages episodic memories (conversations, events, experiences)\n * with temporal ordering and causal relationships.\n *\n * @module agent/EpisodicMemoryManager\n */\n\nimport type { IGraphStorage, Entity, Relation } from '../types/types.js';\nimport type {\n  AgentEntity,\n  EpisodicMemoryEntity,\n  SessionEntity,\n} from '../types/agent-memory.js';\nimport { isAgentEntity, isSessionEntity } from '../types/agent-memory.js';"
+        },
+        {
+          "step": 2,
+          "action": "Define relation type constants",
+          "code": "/**\n * Relation types for episodic memory structure.\n */\nexport const EpisodicRelations = {\n  /** Temporal sequence: A occurred before B */\n  PRECEDES: 'precedes',\n  /** Temporal sequence: A occurred after B */\n  FOLLOWS: 'follows',\n  /** Causal: A caused B to happen */\n  CAUSES: 'causes',\n  /** Causal: A was caused by B */\n  CAUSED_BY: 'caused_by',\n  /** Part of event sequence */\n  PART_OF_SEQUENCE: 'part_of_sequence',\n} as const;"
+        },
+        {
+          "step": 3,
+          "action": "Define EpisodicMemoryConfig",
+          "code": "/**\n * Configuration for EpisodicMemoryManager.\n */\nexport interface EpisodicMemoryConfig {\n  /** Auto-create temporal relations (default: true) */\n  autoLinkTemporal?: boolean;\n  /** Max events per sequence (default: 1000) */\n  maxSequenceLength?: number;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Create EpisodicMemoryManager class",
+          "code": "/**\n * Manages episodic memories with temporal and causal structure.\n *\n * @example\n * ```typescript\n * const emm = new EpisodicMemoryManager(storage);\n * const event1 = await emm.createEpisode('User asked about hotels');\n * const event2 = await emm.createEpisode('Found 5 hotels');\n * await emm.linkSequence([event1.name, event2.name]);\n * const timeline = await emm.getTimeline('session_1', 'asc');\n * ```\n */\nexport class EpisodicMemoryManager {\n  private readonly storage: IGraphStorage;\n  private readonly config: Required<EpisodicMemoryConfig>;\n\n  constructor(storage: IGraphStorage, config: EpisodicMemoryConfig = {}) {\n    this.storage = storage;\n    this.config = {\n      autoLinkTemporal: config.autoLinkTemporal ?? true,\n      maxSequenceLength: config.maxSequenceLength ?? 1000,\n    };\n  }\n\n  // Method stubs\n  async createEpisode(\n    content: string,\n    options?: CreateEpisodeOptions\n  ): Promise<AgentEntity> {\n    throw new Error('Not implemented');\n  }\n\n  async linkSequence(entityNames: string[]): Promise<void> {\n    throw new Error('Not implemented');\n  }\n\n  async getTimeline(\n    sessionId: string,\n    order?: 'asc' | 'desc'\n  ): Promise<AgentEntity[]> {\n    throw new Error('Not implemented');\n  }\n\n  async addCausalLink(\n    causeEntity: string,\n    effectEntity: string\n  ): Promise<void> {\n    throw new Error('Not implemented');\n  }\n\n  async getCausalChain(\n    entityName: string,\n    direction: 'causes' | 'caused_by'\n  ): Promise<AgentEntity[]> {\n    throw new Error('Not implemented');\n  }\n}"
+        },
+        {
+          "step": 5,
+          "action": "Run TypeScript compilation",
+          "details": "npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "EpisodicMemoryManager class created",
+        "Episodic relation types defined",
+        "Configuration interface defined",
+        "Method stubs for all operations",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "2.10.2",
+      "category": "core",
+      "title": "Implement Event Sequencing",
+      "description": "Create memories as ordered events with precedes/follows relations and support batch sequence creation.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/EpisodicMemoryManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Event sequences represent the temporal flow of a conversation or process.",
+        "keyDecisions": [
+          "Use relations for prev/next links",
+          "Support batch creation for efficiency",
+          "Auto-link when configured"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define CreateEpisodeOptions",
+          "code": "/**\n * Options for creating an episodic memory.\n */\nexport interface CreateEpisodeOptions {\n  /** Session this episode belongs to */\n  sessionId?: string;\n  /** Previous event in sequence */\n  previousEventId?: string;\n  /** Task ID */\n  taskId?: string;\n  /** Entity type (default: 'episode') */\n  entityType?: string;\n  /** Importance (0-10) */\n  importance?: number;\n  /** Confidence (0-1) */\n  confidence?: number;\n  /** Agent ID */\n  agentId?: string;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement createEpisode",
+          "code": "async createEpisode(\n  content: string,\n  options?: CreateEpisodeOptions\n): Promise<AgentEntity> {\n  const now = new Date().toISOString();\n  const timestamp = Date.now();\n  const name = `episode_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;\n\n  const entity: AgentEntity = {\n    name,\n    entityType: options?.entityType ?? 'episode',\n    observations: [content],\n    createdAt: now,\n    lastModified: now,\n    importance: options?.importance ?? 5,\n    memoryType: 'episodic',\n    sessionId: options?.sessionId,\n    taskId: options?.taskId,\n    accessCount: 0,\n    confidence: options?.confidence ?? 0.8,\n    confirmationCount: 0,\n    visibility: 'private',\n    agentId: options?.agentId,\n  };\n\n  // Persist entity\n  await this.storage.appendEntity(entity as Entity);\n\n  // Link to previous event if specified and auto-link enabled\n  if (options?.previousEventId && this.config.autoLinkTemporal) {\n    await this.linkEvents(options.previousEventId, name);\n  }\n\n  return entity;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Implement linkEvents helper",
+          "code": "/**\n * Link two events in temporal sequence.\n */\nprivate async linkEvents(beforeId: string, afterId: string): Promise<void> {\n  const now = new Date().toISOString();\n\n  // Create precedes relation\n  const precedesRelation: Relation = {\n    from: beforeId,\n    to: afterId,\n    relationType: EpisodicRelations.PRECEDES,\n    createdAt: now,\n  };\n\n  // Create follows relation (reverse)\n  const followsRelation: Relation = {\n    from: afterId,\n    to: beforeId,\n    relationType: EpisodicRelations.FOLLOWS,\n    createdAt: now,\n  };\n\n  await this.storage.appendRelation(precedesRelation);\n  await this.storage.appendRelation(followsRelation);\n}"
+        },
+        {
+          "step": 4,
+          "action": "Implement linkSequence",
+          "code": "/**\n * Link multiple events into a sequence.\n *\n * @param entityNames - Events to link in order\n */\nasync linkSequence(entityNames: string[]): Promise<void> {\n  if (entityNames.length < 2) return;\n  if (entityNames.length > this.config.maxSequenceLength) {\n    throw new Error(`Sequence exceeds max length (${this.config.maxSequenceLength})`);\n  }\n\n  // Link each pair\n  for (let i = 0; i < entityNames.length - 1; i++) {\n    await this.linkEvents(entityNames[i], entityNames[i + 1]);\n  }\n}"
+        },
+        {
+          "step": 5,
+          "action": "Implement createEventSequence helper",
+          "code": "/**\n * Create multiple events as a sequence.\n *\n * @param contents - Event contents in order\n * @param options - Shared options for all events\n * @returns Created events\n */\nasync createEventSequence(\n  contents: string[],\n  options?: Omit<CreateEpisodeOptions, 'previousEventId'>\n): Promise<AgentEntity[]> {\n  const events: AgentEntity[] = [];\n  let previousId: string | undefined;\n\n  for (const content of contents) {\n    const event = await this.createEpisode(content, {\n      ...options,\n      previousEventId: previousId,\n    });\n    events.push(event);\n    previousId = event.name;\n  }\n\n  return events;\n}"
+        },
+        {
+          "step": 6,
+          "action": "Add unit tests",
+          "details": "Test sequence creation and linking"
+        }
+      ],
+      "acceptanceCriteria": [
+        "createEpisode creates episodic memory",
+        "Auto-links to previous event when specified",
+        "linkSequence creates precedes/follows relations",
+        "createEventSequence creates linked batch",
+        "Sequence length limits enforced",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.10.3",
+      "category": "core",
+      "title": "Implement Timeline Queries",
+      "description": "Query episodic memories by time range with chronological ordering.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/EpisodicMemoryManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Timeline queries enable reviewing conversation history in temporal order.",
+        "keyDecisions": [
+          "Support ascending and descending order",
+          "Filter by session",
+          "Efficient sorting by timestamp"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define TimelineOptions",
+          "code": "/**\n * Options for timeline queries.\n */\nexport interface TimelineOptions {\n  /** Order: ascending (oldest first) or descending (newest first) */\n  order?: 'asc' | 'desc';\n  /** Start time filter (ISO 8601) */\n  startTime?: string;\n  /** End time filter (ISO 8601) */\n  endTime?: string;\n  /** Maximum results */\n  limit?: number;\n  /** Offset for pagination */\n  offset?: number;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement getTimeline",
+          "code": "/**\n * Get episodic memories for a session as timeline.\n *\n * @param sessionId - Session to query\n * @param options - Timeline options\n * @returns Episodes in chronological order\n */\nasync getTimeline(\n  sessionId: string,\n  options?: TimelineOptions\n): Promise<AgentEntity[]> {\n  const graph = await this.storage.loadGraph();\n  let episodes: AgentEntity[] = [];\n\n  // Find episodic memories for session\n  for (const entity of graph.entities) {\n    if (!isAgentEntity(entity)) continue;\n    const agentEntity = entity as AgentEntity;\n\n    if (agentEntity.memoryType !== 'episodic') continue;\n    if (agentEntity.sessionId !== sessionId) continue;\n    // Exclude session entities themselves\n    if (agentEntity.entityType === 'session') continue;\n\n    // Apply time filters\n    if (options?.startTime && agentEntity.createdAt) {\n      if (new Date(agentEntity.createdAt) < new Date(options.startTime)) {\n        continue;\n      }\n    }\n    if (options?.endTime && agentEntity.createdAt) {\n      if (new Date(agentEntity.createdAt) > new Date(options.endTime)) {\n        continue;\n      }\n    }\n\n    episodes.push(agentEntity);\n  }\n\n  // Sort by createdAt\n  const order = options?.order ?? 'asc';\n  episodes.sort((a, b) => {\n    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;\n    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;\n    return order === 'asc' ? timeA - timeB : timeB - timeA;\n  });\n\n  // Apply pagination\n  const offset = options?.offset ?? 0;\n  const limit = options?.limit ?? episodes.length;\n  return episodes.slice(offset, offset + limit);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add iterator methods",
+          "code": "/**\n * Iterate through timeline forward (oldest to newest).\n */\nasync *iterateForward(sessionId: string): AsyncGenerator<AgentEntity> {\n  const timeline = await this.getTimeline(sessionId, { order: 'asc' });\n  for (const episode of timeline) {\n    yield episode;\n  }\n}\n\n/**\n * Iterate through timeline backward (newest to oldest).\n */\nasync *iterateBackward(sessionId: string): AsyncGenerator<AgentEntity> {\n  const timeline = await this.getTimeline(sessionId, { order: 'desc' });\n  for (const episode of timeline) {\n    yield episode;\n  }\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit tests",
+          "details": "Test timeline ordering and filtering"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Returns episodes for session",
+        "Ascending order works (oldest first)",
+        "Descending order works (newest first)",
+        "Time range filtering works",
+        "Pagination works",
+        "Iterator methods work",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.10.4",
+      "category": "core",
+      "title": "Add Causal Relationship Tracking",
+      "description": "Track causes and causedBy relations between episodic memories with chain traversal.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/EpisodicMemoryManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Causal relationships capture why events occurred, enabling reasoning about event chains.",
+        "keyDecisions": [
+          "Bidirectional causes/caused_by relations",
+          "Support chain traversal",
+          "Detect cycles to prevent infinite loops"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement addCausalLink",
+          "code": "/**\n * Add causal relationship between events.\n *\n * @param causeEntity - Entity that caused the effect\n * @param effectEntity - Entity that was caused\n */\nasync addCausalLink(\n  causeEntity: string,\n  effectEntity: string\n): Promise<void> {\n  // Verify both entities exist\n  const cause = this.storage.getEntityByName(causeEntity);\n  const effect = this.storage.getEntityByName(effectEntity);\n\n  if (!cause) throw new Error(`Cause entity not found: ${causeEntity}`);\n  if (!effect) throw new Error(`Effect entity not found: ${effectEntity}`);\n\n  const now = new Date().toISOString();\n\n  // Create causes relation\n  const causesRelation: Relation = {\n    from: causeEntity,\n    to: effectEntity,\n    relationType: EpisodicRelations.CAUSES,\n    createdAt: now,\n  };\n\n  // Create caused_by relation (reverse)\n  const causedByRelation: Relation = {\n    from: effectEntity,\n    to: causeEntity,\n    relationType: EpisodicRelations.CAUSED_BY,\n    createdAt: now,\n  };\n\n  await this.storage.appendRelation(causesRelation);\n  await this.storage.appendRelation(causedByRelation);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement getCausalChain",
+          "code": "/**\n * Get causal chain from an event.\n *\n * @param entityName - Starting event\n * @param direction - Follow causes or caused_by\n * @returns Chain of events\n */\nasync getCausalChain(\n  entityName: string,\n  direction: 'causes' | 'caused_by'\n): Promise<AgentEntity[]> {\n  const visited = new Set<string>();\n  const chain: AgentEntity[] = [];\n\n  const relationType = direction === 'causes' \n    ? EpisodicRelations.CAUSES \n    : EpisodicRelations.CAUSED_BY;\n\n  const traverse = async (name: string) => {\n    if (visited.has(name)) return; // Prevent cycles\n    visited.add(name);\n\n    const entity = this.storage.getEntityByName(name);\n    if (!entity || !isAgentEntity(entity)) return;\n\n    chain.push(entity as AgentEntity);\n\n    // Find next in chain\n    const relations = this.storage.getRelationsFrom(name);\n    for (const rel of relations) {\n      if (rel.relationType === relationType) {\n        await traverse(rel.to);\n      }\n    }\n  };\n\n  await traverse(entityName);\n  return chain;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add helper to get direct causes/effects",
+          "code": "/**\n * Get direct causes of an event.\n */\nasync getDirectCauses(entityName: string): Promise<AgentEntity[]> {\n  const relations = this.storage.getRelationsTo(entityName);\n  const causes: AgentEntity[] = [];\n\n  for (const rel of relations) {\n    if (rel.relationType === EpisodicRelations.CAUSES) {\n      const entity = this.storage.getEntityByName(rel.from);\n      if (entity && isAgentEntity(entity)) {\n        causes.push(entity as AgentEntity);\n      }\n    }\n  }\n\n  return causes;\n}\n\n/**\n * Get direct effects of an event.\n */\nasync getDirectEffects(entityName: string): Promise<AgentEntity[]> {\n  const relations = this.storage.getRelationsFrom(entityName);\n  const effects: AgentEntity[] = [];\n\n  for (const rel of relations) {\n    if (rel.relationType === EpisodicRelations.CAUSES) {\n      const entity = this.storage.getEntityByName(rel.to);\n      if (entity && isAgentEntity(entity)) {\n        effects.push(entity as AgentEntity);\n      }\n    }\n  }\n\n  return effects;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit tests",
+          "details": "Test causal linking and traversal"
+        }
+      ],
+      "acceptanceCriteria": [
+        "addCausalLink creates bidirectional relations",
+        "getCausalChain follows causes direction",
+        "getCausalChain follows caused_by direction",
+        "Cycle detection prevents infinite loops",
+        "Direct causes/effects queryable",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.10.5",
+      "category": "integration",
+      "title": "Integrate with Session Lifecycle",
+      "description": "Convert session's event log to episodic memories when session ends.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SessionManager.ts", "src/agent/EpisodicMemoryManager.ts"],
+      "testCategories": ["integration"],
+      "implementation": {
+        "purpose": "Session events should automatically become episodic memories for long-term recall.",
+        "keyDecisions": [
+          "Hook into session end",
+          "Link episodic memories to session",
+          "Preserve temporal structure"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add EpisodicMemoryManager to SessionManager",
+          "code": "// Add to SessionManager constructor\nprivate readonly episodicMemory?: EpisodicMemoryManager;\n\nconstructor(\n  storage: IGraphStorage,\n  workingMemory: WorkingMemoryManager,\n  episodicMemory?: EpisodicMemoryManager,\n  config: SessionConfig = {}\n) {\n  // ... existing code ...\n  this.episodicMemory = episodicMemory;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add session summary creation",
+          "code": "/**\n * Create episodic summary of session.\n */\nprivate async createSessionSummary(\n  session: SessionEntity\n): Promise<AgentEntity | undefined> {\n  if (!this.episodicMemory) return undefined;\n\n  // Get session working memories\n  const memories = await this.workingMemory.getSessionMemories(session.name);\n\n  // Create summary content\n  const summaryContent = [\n    `Session: ${session.goalDescription ?? 'Conversation'}`,\n    `Started: ${session.startedAt}`,\n    `Ended: ${session.endedAt ?? 'N/A'}`,\n    `Status: ${session.status}`,\n    `Memories created: ${memories.length}`,\n  ].join('\\n');\n\n  // Create episodic summary\n  const summary = await this.episodicMemory.createEpisode(summaryContent, {\n    sessionId: session.name,\n    entityType: 'session_summary',\n    importance: 7,\n    confidence: 1.0,\n    agentId: session.agentId,\n  });\n\n  // Link session to summary\n  await this.storage.appendRelation({\n    from: session.name,\n    to: summary.name,\n    relationType: 'has_summary',\n    createdAt: new Date().toISOString(),\n  });\n\n  return summary;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Call from endSession",
+          "code": "// Add to endSession before returning:\nif (this.episodicMemory) {\n  await this.createSessionSummary(updatedSession);\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add integration tests",
+          "details": "Test session-to-episodic conversion"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Session summary created on session end",
+        "Summary linked to session entity",
+        "Summary contains session metadata",
+        "Works when EpisodicMemoryManager provided",
+        "Graceful when not provided",
+        "Integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Episodic memories created with temporal relations",
+    "Event sequences linked correctly",
+    "Timeline queries work in both orders",
+    "Causal chains traversable",
+    "Session lifecycle creates summaries",
+    "15+ unit tests pass"
+  ],
+  "filesCreated": [
+    "src/agent/EpisodicMemoryManager.ts",
+    "tests/unit/agent/EpisodicMemoryManager.test.ts"
+  ],
+  "filesModified": [
+    "src/agent/SessionManager.ts"
+  ],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 8 - Session Management"],
+  "notes": [
+    "Episodic relations are bidirectional for efficient traversal",
+    "Timeline queries should be efficient - consider indexing by session",
+    "Causal chains can form complex graphs - cycle detection essential",
+    "Session summaries provide high-level episodic context"
+  ]
+}

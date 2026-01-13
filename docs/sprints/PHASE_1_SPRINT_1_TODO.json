@@ -1,0 +1,337 @@
+{
+  "phase": 1,
+  "sprint": 1,
+  "title": "Extended Type Definitions",
+  "priority": "HIGH",
+  "effort": "4 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Foundation for entire agent memory system - all subsequent sprints depend on these type definitions",
+  "targetMetrics": {
+    "typeCompleteness": {
+      "current": "Base Entity interface with 9 fields",
+      "target": "AgentEntity with 20+ agent-specific fields"
+    },
+    "typeSafety": {
+      "current": "No memory type discrimination",
+      "target": "Full type guards for memory type narrowing"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.1.1",
+      "category": "types",
+      "title": "Create AgentEntity Interface",
+      "description": "Extend the base Entity interface with agent-specific fields for memory classification, session context, lifecycle management, access tracking, memory strength, and multi-agent support.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "Create the primary interface for agent memories that extends Entity with cognitive memory patterns support. This interface is the foundation for working, episodic, and semantic memory management.",
+        "keyDecisions": [
+          "Extend existing Entity interface to maintain backward compatibility",
+          "memoryType discriminant enables type narrowing for different memory behaviors",
+          "Session/task context enables scoped memory queries",
+          "Access tracking fields support decay and reinforcement calculations",
+          "Visibility field supports multi-agent memory sharing"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create new file src/types/agent-memory.ts",
+          "details": "Create a new TypeScript file for all agent memory type definitions"
+        },
+        {
+          "step": 2,
+          "action": "Add file header and imports",
+          "code": "/**\n * Agent Memory Type Definitions\n *\n * Extended type definitions for AI agent memory systems.\n * Provides interfaces for working, episodic, and semantic memory\n * with lifecycle management and multi-agent support.\n *\n * @module types/agent-memory\n */\n\nimport type { Entity } from './types.js';"
+        },
+        {
+          "step": 3,
+          "action": "Define MemoryType union",
+          "code": "/**\n * Classification of memory types based on cognitive patterns.\n * - working: Short-term, session-scoped, TTL-based\n * - episodic: Conversation history, events, experiences\n * - semantic: Long-term facts, concepts, knowledge\n * - procedural: Skills, patterns, procedures (future)\n */\nexport type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural';"
+        },
+        {
+          "step": 4,
+          "action": "Define AccessPattern union",
+          "code": "/**\n * Classification of memory access frequency.\n * Used for decay calculations and retrieval ranking.\n */\nexport type AccessPattern = 'frequent' | 'occasional' | 'rare';"
+        },
+        {
+          "step": 5,
+          "action": "Define Visibility union",
+          "code": "/**\n * Memory visibility for multi-agent scenarios.\n * - private: Only owning agent can access\n * - shared: Specified agents can access\n * - public: All agents can access\n */\nexport type MemoryVisibility = 'private' | 'shared' | 'public';"
+        },
+        {
+          "step": 6,
+          "action": "Add AgentEntity interface",
+          "code": "/**\n * Extended entity interface for agent memory systems.\n *\n * Extends the base Entity with fields for:\n * - Memory classification (working/episodic/semantic/procedural)\n * - Session and task context\n * - Lifecycle management (TTL, promotion tracking)\n * - Access tracking (frequency, recency, patterns)\n * - Memory strength (confidence, confirmations, decay)\n * - Multi-agent support (ownership, visibility, provenance)\n *\n * @example\n * ```typescript\n * const memory: AgentEntity = {\n *   name: 'user_preference_budget_travel',\n *   entityType: 'preference',\n *   observations: ['User prefers budget travel options'],\n *   memoryType: 'working',\n *   sessionId: 'session_123',\n *   expiresAt: '2024-01-02T00:00:00Z',\n *   accessCount: 5,\n *   confidence: 0.9,\n *   confirmationCount: 2,\n *   visibility: 'private'\n * };\n * ```\n */\nexport interface AgentEntity extends Entity {\n  // === Memory Classification ===\n  /** Type of memory: working, episodic, semantic, or procedural */\n  memoryType: MemoryType;\n\n  // === Session & Context ===\n  /** Session ID grouping related memories */\n  sessionId?: string;\n  /** Specific conversation identifier */\n  conversationId?: string;\n  /** Associated task or goal identifier */\n  taskId?: string;\n\n  // === Lifecycle Management ===\n  /** ISO 8601 timestamp for auto-cleanup (working memory) */\n  expiresAt?: string;\n  /** Flag indicating temporary working memory */\n  isWorkingMemory?: boolean;\n  /** ISO 8601 timestamp when promoted to long-term */\n  promotedAt?: string;\n  /** Source session or entity ID if promoted */\n  promotedFrom?: string;\n  /** Flag indicating memory is marked for promotion consideration */\n  markedForPromotion?: boolean;\n\n  // === Access Tracking ===\n  /** Total number of times this memory was retrieved */\n  accessCount: number;\n  /** ISO 8601 timestamp of most recent access */\n  lastAccessedAt?: string;\n  /** Classified access frequency pattern */\n  accessPattern?: AccessPattern;\n\n  // === Memory Strength ===\n  /** Belief strength / certainty (0.0-1.0) */\n  confidence: number;\n  /** Number of times this memory was verified/reinforced */\n  confirmationCount: number;\n  /** Custom decay rate multiplier (default 1.0) */\n  decayRate?: number;\n\n  // === Multi-Agent ===\n  /** Owning agent identifier */\n  agentId?: string;\n  /** Visibility level for multi-agent access */\n  visibility: MemoryVisibility;\n  /** Provenance tracking for memory origin */\n  source?: MemorySource;\n}"
+        },
+        {
+          "step": 7,
+          "action": "Run TypeScript compilation to verify",
+          "details": "Run: npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "AgentEntity interface extends Entity",
+        "memoryType field with MemoryType union defined",
+        "Session context fields (sessionId, conversationId, taskId) defined",
+        "Lifecycle fields (expiresAt, isWorkingMemory, promotedAt, promotedFrom) defined",
+        "Access tracking fields (accessCount, lastAccessedAt, accessPattern) defined",
+        "Memory strength fields (confidence, confirmationCount, decayRate) defined",
+        "Multi-agent fields (agentId, visibility, source) defined",
+        "All fields have JSDoc documentation",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "1.1.2",
+      "category": "types",
+      "title": "Create AgentObservation Interface",
+      "description": "Define extended observation type with confidence tracking, temporal validity, source provenance, and consolidation metadata.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "Observations in agent memory need additional metadata for confidence tracking, temporal scoping, provenance, and consolidation history. This interface extends beyond simple string content.",
+        "keyDecisions": [
+          "Observations become structured objects instead of plain strings",
+          "Confidence and confirmation enable weighted belief systems",
+          "Temporal validity (validFrom/validUntil) supports time-scoped facts",
+          "Source tracking enables audit trails and trust evaluation",
+          "AbstractionLevel tracks summarization depth for consolidation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add ObservationSource interface",
+          "code": "/**\n * Source tracking for observation provenance.\n *\n * Tracks how an observation was acquired:\n * - user_input: Directly from user conversation\n * - agent_inference: Derived by agent reasoning\n * - external_api: Retrieved from external service\n * - consolidation: Created by summarizing other observations\n */\nexport interface ObservationSource {\n  /** How the observation was acquired */\n  type: 'user_input' | 'agent_inference' | 'external_api' | 'consolidation';\n  /** Agent that created this observation */\n  agentId?: string;\n  /** Session during which observation was created */\n  sessionId?: string;\n  /** Original user input if transformed */\n  rawInput?: string;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add AgentObservation interface",
+          "code": "/**\n * Extended observation with confidence, temporal validity, and provenance.\n *\n * Agent observations go beyond simple strings to include:\n * - Confidence scoring for belief strength\n * - Confirmation counting for verification tracking\n * - Contradiction references for conflicting information\n * - Temporal scoping for time-bounded facts\n * - Source provenance for audit trails\n * - Consolidation metadata for summarization tracking\n *\n * @example\n * ```typescript\n * const observation: AgentObservation = {\n *   content: 'User prefers budget travel under $100/night',\n *   confidence: 0.95,\n *   confirmationCount: 3,\n *   observedAt: '2024-01-15T10:30:00Z',\n *   source: { type: 'user_input', sessionId: 'session_123' },\n *   abstractionLevel: 0\n * };\n * ```\n */\nexport interface AgentObservation {\n  /** The observation content text */\n  content: string;\n\n  // === Confidence & Verification ===\n  /** Certainty level (0.0-1.0) */\n  confidence: number;\n  /** Number of times this observation was confirmed */\n  confirmationCount: number;\n  /** IDs of observations that contradict this one */\n  contradictedBy?: string[];\n\n  // === Temporal Context ===\n  /** ISO 8601 timestamp when this was learned */\n  observedAt: string;\n  /** ISO 8601 timestamp when this fact becomes valid */\n  validFrom?: string;\n  /** ISO 8601 timestamp when this fact expires */\n  validUntil?: string;\n\n  // === Source Tracking ===\n  /** Provenance information */\n  source: ObservationSource;\n\n  // === Consolidation ===\n  /** IDs of observations this was summarized from */\n  consolidatedFrom?: string[];\n  /** Abstraction depth: 0=raw, 1=summarized, 2=generalized */\n  abstractionLevel: number;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Run TypeScript compilation to verify",
+          "details": "Run: npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "ObservationSource interface defined with type discriminant",
+        "AgentObservation interface defined with content field",
+        "Confidence and verification fields defined",
+        "Temporal context fields (observedAt, validFrom, validUntil) defined",
+        "Source tracking field references ObservationSource",
+        "Consolidation fields (consolidatedFrom, abstractionLevel) defined",
+        "All fields have JSDoc documentation",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "1.1.3",
+      "category": "types",
+      "title": "Create SessionEntity Interface",
+      "description": "Extend AgentEntity for session tracking with conversation metadata, status tracking, and session linking capabilities.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "Sessions are special entities that represent conversation/task contexts. They group working memories and provide metadata for session-scoped queries and consolidation triggers.",
+        "keyDecisions": [
+          "SessionEntity extends AgentEntity with fixed entityType and memoryType",
+          "Status tracking (active/completed/abandoned) enables lifecycle queries",
+          "Goal and task metadata supports context-aware retrieval",
+          "Statistics fields track memory creation and consolidation",
+          "Session linking enables continuation and related session queries"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define SessionStatus union",
+          "code": "/**\n * Session lifecycle status.\n * - active: Session is currently in progress\n * - completed: Session ended normally\n * - abandoned: Session ended without proper closure\n */\nexport type SessionStatus = 'active' | 'completed' | 'abandoned';"
+        },
+        {
+          "step": 2,
+          "action": "Add SessionEntity interface",
+          "code": "/**\n * Entity representing a conversation or task session.\n *\n * Sessions group working memories and provide context for:\n * - Memory scoping (all memories in a session)\n * - Consolidation triggers (end of session)\n * - Context continuity (linked sessions)\n * - Goal tracking (task metadata)\n *\n * @example\n * ```typescript\n * const session: SessionEntity = {\n *   name: 'session_trip_planning_2024_01_15',\n *   entityType: 'session',\n *   observations: ['Planning trip to Japan'],\n *   memoryType: 'episodic',\n *   status: 'active',\n *   startedAt: '2024-01-15T10:00:00Z',\n *   goalDescription: 'Help user plan a 2-week trip to Japan',\n *   taskType: 'travel_planning',\n *   memoryCount: 15,\n *   consolidatedCount: 0,\n *   accessCount: 0,\n *   confidence: 1.0,\n *   confirmationCount: 0,\n *   visibility: 'private'\n * };\n * ```\n */\nexport interface SessionEntity extends AgentEntity {\n  /** Fixed entity type for sessions */\n  entityType: 'session';\n  /** Sessions are episodic memory */\n  memoryType: 'episodic';\n\n  // === Session Metadata ===\n  /** ISO 8601 timestamp when session started */\n  startedAt: string;\n  /** ISO 8601 timestamp when session ended */\n  endedAt?: string;\n  /** Current session status */\n  status: SessionStatus;\n\n  // === Context ===\n  /** Description of the session's goal or purpose */\n  goalDescription?: string;\n  /** Type of task being performed */\n  taskType?: string;\n  /** Detected user intent for the session */\n  userIntent?: string;\n\n  // === Statistics ===\n  /** Count of memories created during this session */\n  memoryCount: number;\n  /** Count of memories promoted to long-term storage */\n  consolidatedCount: number;\n\n  // === Relationships ===\n  /** ID of previous session if this is a continuation */\n  previousSessionId?: string;\n  /** IDs of related sessions */\n  relatedSessionIds?: string[];\n}"
+        },
+        {
+          "step": 3,
+          "action": "Run TypeScript compilation to verify",
+          "details": "Run: npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SessionStatus type union defined",
+        "SessionEntity extends AgentEntity",
+        "Fixed entityType: 'session' and memoryType: 'episodic'",
+        "Session metadata fields (startedAt, endedAt, status) defined",
+        "Context fields (goalDescription, taskType, userIntent) defined",
+        "Statistics fields (memoryCount, consolidatedCount) defined",
+        "Relationship fields (previousSessionId, relatedSessionIds) defined",
+        "All fields have JSDoc documentation",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "1.1.4",
+      "category": "types",
+      "title": "Create MemorySource Interface",
+      "description": "Define provenance tracking interfaces for memory origin, including agent attribution, acquisition method, and reliability scoring.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "Memory provenance enables trust evaluation and audit trails. Knowing how a memory was acquired (observed, inferred, told, consolidated) affects its reliability and how conflicts should be resolved.",
+        "keyDecisions": [
+          "MemorySource tracks entity-level provenance",
+          "Method discriminant indicates acquisition type",
+          "Reliability score enables trust-weighted retrieval",
+          "originalEntityId enables consolidation chain tracking"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define MemoryAcquisitionMethod union",
+          "code": "/**\n * How a memory was acquired.\n * - observed: Directly perceived/received\n * - inferred: Derived through reasoning\n * - told: Communicated by another agent\n * - consolidated: Created by merging other memories\n */\nexport type MemoryAcquisitionMethod = 'observed' | 'inferred' | 'told' | 'consolidated';"
+        },
+        {
+          "step": 2,
+          "action": "Add MemorySource interface",
+          "code": "/**\n * Provenance tracking for memory origin.\n *\n * Tracks the complete lineage of a memory:\n * - Which agent created it\n * - When it was created\n * - How it was acquired\n * - How reliable it is\n * - What it was derived from (if consolidated)\n *\n * @example\n * ```typescript\n * const source: MemorySource = {\n *   agentId: 'travel_assistant',\n *   timestamp: '2024-01-15T10:30:00Z',\n *   method: 'observed',\n *   reliability: 0.95\n * };\n * ```\n */\nexport interface MemorySource {\n  /** ID of the agent that created this memory */\n  agentId: string;\n  /** ISO 8601 timestamp when memory was created */\n  timestamp: string;\n  /** How the memory was acquired */\n  method: MemoryAcquisitionMethod;\n  /** Trust/reliability score (0.0-1.0) */\n  reliability: number;\n  /** Original entity ID if consolidated from another memory */\n  originalEntityId?: string;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Run TypeScript compilation to verify",
+          "details": "Run: npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "MemoryAcquisitionMethod type union defined",
+        "MemorySource interface defined with agentId field",
+        "Timestamp field for creation time",
+        "Method field references MemoryAcquisitionMethod",
+        "Reliability field for trust scoring (0.0-1.0)",
+        "Optional originalEntityId for consolidation tracking",
+        "All fields have JSDoc documentation",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "1.1.5",
+      "category": "types",
+      "title": "Export Types and Create Type Guards",
+      "description": "Add exports to barrel file, create type guard functions for runtime type checking, and add utility types for memory type narrowing.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts", "src/types/index.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "Type guards enable runtime type checking and type narrowing in TypeScript. This ensures type safety when working with heterogeneous memory collections.",
+        "keyDecisions": [
+          "Type guards check discriminant fields (memoryType, entityType)",
+          "Utility types provide convenient type narrowing",
+          "Barrel export makes all types importable from main package",
+          "Guards return type predicates for TypeScript narrowing"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add type guard for AgentEntity",
+          "code": "/**\n * Type guard to check if an entity is an AgentEntity.\n *\n * @param entity - Entity to check\n * @returns True if entity has AgentEntity required fields\n *\n * @example\n * ```typescript\n * if (isAgentEntity(entity)) {\n *   console.log(entity.memoryType); // TypeScript knows this exists\n * }\n * ```\n */\nexport function isAgentEntity(entity: unknown): entity is AgentEntity {\n  if (!entity || typeof entity !== 'object') return false;\n  const e = entity as Record<string, unknown>;\n  return (\n    typeof e.name === 'string' &&\n    typeof e.entityType === 'string' &&\n    typeof e.memoryType === 'string' &&\n    ['working', 'episodic', 'semantic', 'procedural'].includes(e.memoryType as string) &&\n    typeof e.accessCount === 'number' &&\n    typeof e.confidence === 'number' &&\n    typeof e.confirmationCount === 'number' &&\n    typeof e.visibility === 'string' &&\n    ['private', 'shared', 'public'].includes(e.visibility as string)\n  );\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add type guard for SessionEntity",
+          "code": "/**\n * Type guard to check if an entity is a SessionEntity.\n *\n * @param entity - Entity to check\n * @returns True if entity is a session\n *\n * @example\n * ```typescript\n * if (isSessionEntity(entity)) {\n *   console.log(entity.status); // TypeScript knows this is SessionEntity\n * }\n * ```\n */\nexport function isSessionEntity(entity: unknown): entity is SessionEntity {\n  if (!isAgentEntity(entity)) return false;\n  const e = entity as AgentEntity;\n  return (\n    e.entityType === 'session' &&\n    e.memoryType === 'episodic' &&\n    typeof (e as SessionEntity).startedAt === 'string' &&\n    typeof (e as SessionEntity).status === 'string' &&\n    ['active', 'completed', 'abandoned'].includes((e as SessionEntity).status) &&\n    typeof (e as SessionEntity).memoryCount === 'number' &&\n    typeof (e as SessionEntity).consolidatedCount === 'number'\n  );\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add type guard for specific memory types",
+          "code": "/**\n * Type guard to check if an entity is working memory.\n */\nexport function isWorkingMemory(entity: unknown): entity is AgentEntity & { memoryType: 'working' } {\n  return isAgentEntity(entity) && entity.memoryType === 'working';\n}\n\n/**\n * Type guard to check if an entity is episodic memory.\n */\nexport function isEpisodicMemory(entity: unknown): entity is AgentEntity & { memoryType: 'episodic' } {\n  return isAgentEntity(entity) && entity.memoryType === 'episodic';\n}\n\n/**\n * Type guard to check if an entity is semantic memory.\n */\nexport function isSemanticMemory(entity: unknown): entity is AgentEntity & { memoryType: 'semantic' } {\n  return isAgentEntity(entity) && entity.memoryType === 'semantic';\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add utility types for memory filtering",
+          "code": "/**\n * Utility type for working memory entities.\n */\nexport type WorkingMemoryEntity = AgentEntity & { memoryType: 'working' };\n\n/**\n * Utility type for episodic memory entities.\n */\nexport type EpisodicMemoryEntity = AgentEntity & { memoryType: 'episodic' };\n\n/**\n * Utility type for semantic memory entities.\n */\nexport type SemanticMemoryEntity = AgentEntity & { memoryType: 'semantic' };\n\n/**\n * Utility type for procedural memory entities (future).\n */\nexport type ProceduralMemoryEntity = AgentEntity & { memoryType: 'procedural' };"
+        },
+        {
+          "step": 5,
+          "action": "Update src/types/index.ts to export agent-memory types",
+          "code": "// Add to src/types/index.ts:\nexport * from './agent-memory.js';"
+        },
+        {
+          "step": 6,
+          "action": "Run TypeScript compilation to verify",
+          "details": "Run: npm run typecheck"
+        },
+        {
+          "step": 7,
+          "action": "Create unit tests for type guards",
+          "details": "Create tests/unit/types/agent-memory.test.ts with tests for all type guards"
+        }
+      ],
+      "acceptanceCriteria": [
+        "isAgentEntity type guard implemented and exported",
+        "isSessionEntity type guard implemented and exported",
+        "isWorkingMemory, isEpisodicMemory, isSemanticMemory guards implemented",
+        "WorkingMemoryEntity, EpisodicMemoryEntity, SemanticMemoryEntity utility types defined",
+        "All types exported from src/types/index.ts",
+        "Type guards return proper type predicates",
+        "Unit tests created for all type guards",
+        "npm run typecheck passes",
+        "npm run test passes for type guard tests"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing typecheck",
+    "AgentEntity interface extends Entity with 20+ new fields",
+    "AgentObservation interface provides structured observation data",
+    "SessionEntity interface enables session tracking",
+    "MemorySource interface enables provenance tracking",
+    "Type guards enable runtime type checking",
+    "All types exportable from main package",
+    "Unit tests pass for type guards",
+    "npm run typecheck passes"
+  ],
+  "filesCreated": [
+    "src/types/agent-memory.ts",
+    "tests/unit/types/agent-memory.test.ts"
+  ],
+  "filesModified": [
+    "src/types/index.ts"
+  ],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 4,
+  "dependencies": [],
+  "notes": [
+    "CRITICAL: These types are the foundation for all subsequent sprints",
+    "AgentEntity must extend Entity to maintain backward compatibility",
+    "Type guards must return proper TypeScript type predicates",
+    "All fields should have comprehensive JSDoc documentation",
+    "Consider using branded types for IDs if needed in future"
+  ]
+}

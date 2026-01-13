@@ -1,0 +1,268 @@
+{
+  "phase": 2,
+  "sprint": 9,
+  "title": "Session-Scoped Queries",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables session-aware search and temporal queries across conversations",
+  "targetMetrics": {
+    "queryCapability": {
+      "current": "No session-scoped search",
+      "target": "Full session filtering and cross-session search"
+    },
+    "temporalQueries": {
+      "current": "No temporal awareness",
+      "target": "Queries by session count and time ranges"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.9.1",
+      "category": "integration",
+      "title": "Add Session Filtering to Search",
+      "description": "Extend search options with sessionId filter to restrict results to specific sessions.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Session-scoped search enables finding memories within a specific conversation context.",
+        "keyDecisions": [
+          "Add sessionId to search options",
+          "Support includeRelatedSessions flag",
+          "Filter results post-search for flexibility"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Extend SearchOptions interface",
+          "code": "/**\n * Session-scoped search options.\n */\nexport interface SessionSearchOptions {\n  /** Restrict to specific session */\n  sessionId?: string;\n  /** Include memories from related sessions */\n  includeRelatedSessions?: boolean;\n  /** Only include memories from active sessions */\n  activeSessionsOnly?: boolean;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add session filtering to search",
+          "code": "// Add to search method after getting results\nif (options?.sessionId) {\n  let sessionIds = new Set([options.sessionId]);\n  \n  // Include related sessions if requested\n  if (options.includeRelatedSessions) {\n    const session = this.storage.getEntityByName(options.sessionId);\n    if (session && isSessionEntity(session)) {\n      for (const related of session.relatedSessionIds ?? []) {\n        sessionIds.add(related);\n      }\n    }\n  }\n  \n  results = results.filter(entity => {\n    const agentEntity = entity as AgentEntity;\n    return agentEntity.sessionId && sessionIds.has(agentEntity.sessionId);\n  });\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add integration tests",
+          "details": "Test session filtering scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "sessionId filter restricts to session",
+        "includeRelatedSessions expands scope",
+        "Works with all search methods",
+        "Non-session entities excluded correctly",
+        "Integration tests pass"
+      ]
+    },
+    {
+      "id": "2.9.2",
+      "category": "core",
+      "title": "Create SessionQueryBuilder",
+      "description": "Implement fluent interface for building session-scoped queries with method chaining.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/SessionQueryBuilder.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Fluent query builder makes complex session queries easy to construct and read.",
+        "keyDecisions": [
+          "Method chaining for all filters",
+          "Execute with search() method",
+          "Support multiple filter combinations"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create SessionQueryBuilder class",
+          "code": "/**\n * Session Query Builder\n *\n * Fluent interface for building session-scoped queries.\n *\n * @module agent/SessionQueryBuilder\n */\n\nimport type { AgentEntity } from '../types/agent-memory.js';\nimport type { SearchManager } from '../search/SearchManager.js';\nimport { SessionManager } from './SessionManager.js';\n\n/**\n * Builds session-scoped queries with fluent API.\n *\n * @example\n * ```typescript\n * const results = await new SessionQueryBuilder(searchManager, sessionManager)\n *   .forSession('session_123')\n *   .withTaskId('trip_planning')\n *   .inTimeRange('2024-01-01', '2024-01-31')\n *   .search('hotels');\n * ```\n */\nexport class SessionQueryBuilder {\n  private readonly searchManager: SearchManager;\n  private readonly sessionManager: SessionManager;\n  \n  private sessionId?: string;\n  private taskId?: string;\n  private includeRelated: boolean = false;\n  private startDate?: string;\n  private endDate?: string;\n  private minImportance?: number;\n  private maxImportance?: number;\n  private memoryTypes?: string[];\n  private limit?: number;\n\n  constructor(searchManager: SearchManager, sessionManager: SessionManager) {\n    this.searchManager = searchManager;\n    this.sessionManager = sessionManager;\n  }\n\n  forSession(sessionId: string): this {\n    this.sessionId = sessionId;\n    return this;\n  }\n\n  withRelatedSessions(): this {\n    this.includeRelated = true;\n    return this;\n  }\n\n  withTaskId(taskId: string): this {\n    this.taskId = taskId;\n    return this;\n  }\n\n  inTimeRange(start: string, end: string): this {\n    this.startDate = start;\n    this.endDate = end;\n    return this;\n  }\n\n  withImportance(min?: number, max?: number): this {\n    this.minImportance = min;\n    this.maxImportance = max;\n    return this;\n  }\n\n  ofTypes(...types: string[]): this {\n    this.memoryTypes = types;\n    return this;\n  }\n\n  withLimit(limit: number): this {\n    this.limit = limit;\n    return this;\n  }\n\n  async search(query: string): Promise<AgentEntity[]> {\n    // Build search options\n    const options = {\n      sessionId: this.sessionId,\n      includeRelatedSessions: this.includeRelated,\n    };\n\n    // Execute search\n    let results = await this.searchManager.search(query, options) as AgentEntity[];\n\n    // Apply additional filters\n    results = this.applyFilters(results);\n\n    // Apply limit\n    if (this.limit) {\n      results = results.slice(0, this.limit);\n    }\n\n    return results;\n  }\n\n  private applyFilters(results: AgentEntity[]): AgentEntity[] {\n    return results.filter(entity => {\n      if (this.taskId && entity.taskId !== this.taskId) return false;\n      \n      if (this.startDate && entity.createdAt) {\n        if (new Date(entity.createdAt) < new Date(this.startDate)) return false;\n      }\n      \n      if (this.endDate && entity.createdAt) {\n        if (new Date(entity.createdAt) > new Date(this.endDate)) return false;\n      }\n      \n      if (this.minImportance !== undefined) {\n        if ((entity.importance ?? 0) < this.minImportance) return false;\n      }\n      \n      if (this.maxImportance !== undefined) {\n        if ((entity.importance ?? 10) > this.maxImportance) return false;\n      }\n      \n      if (this.memoryTypes && this.memoryTypes.length > 0) {\n        if (!this.memoryTypes.includes(entity.memoryType)) return false;\n      }\n      \n      return true;\n    });\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test builder pattern and filtering"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Fluent method chaining works",
+        "forSession sets session filter",
+        "withRelatedSessions includes related",
+        "Time range filtering works",
+        "Importance filtering works",
+        "Memory type filtering works",
+        "Limit applied correctly",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.9.3",
+      "category": "core",
+      "title": "Add Temporal Queries",
+      "description": "Support queries like 'memories from last N sessions' and 'memories created today'.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SessionQueryBuilder.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Temporal queries are common patterns that should be easy to express.",
+        "keyDecisions": [
+          "Add helper methods for common patterns",
+          "Calculate dates dynamically",
+          "Support session count-based queries"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add temporal helper methods",
+          "code": "/**\n * Filter to memories from the last N sessions.\n */\nasync fromLastNSessions(n: number): Promise<this> {\n  const history = await this.sessionManager.getSessionHistory({ limit: n });\n  const sessionIds = history.map(s => s.name);\n  \n  // Store for use in search\n  this._sessionIds = sessionIds;\n  return this;\n}\n\n/**\n * Filter to memories created today.\n */\ncreatedToday(): this {\n  const today = new Date();\n  today.setHours(0, 0, 0, 0);\n  this.startDate = today.toISOString();\n  \n  const tomorrow = new Date(today);\n  tomorrow.setDate(tomorrow.getDate() + 1);\n  this.endDate = tomorrow.toISOString();\n  \n  return this;\n}\n\n/**\n * Filter to memories created in the last N hours.\n */\ncreatedInLastHours(hours: number): this {\n  const now = new Date();\n  const past = new Date(now.getTime() - hours * 60 * 60 * 1000);\n  this.startDate = past.toISOString();\n  return this;\n}\n\n/**\n * Filter to memories created in the last N days.\n */\ncreatedInLastDays(days: number): this {\n  const now = new Date();\n  const past = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);\n  this.startDate = past.toISOString();\n  return this;\n}\n\n/**\n * Filter to memories from the current active session.\n */\nasync fromCurrentSession(): Promise<this> {\n  const active = await this.sessionManager.getActiveSession();\n  if (active) {\n    this.sessionId = active.name;\n  }\n  return this;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Update search to handle multiple sessions",
+          "code": "// Add to class\nprivate _sessionIds?: string[];\n\n// Update search method\nasync search(query: string): Promise<AgentEntity[]> {\n  let results: AgentEntity[] = [];\n  \n  if (this._sessionIds && this._sessionIds.length > 0) {\n    // Search across multiple sessions\n    for (const sessId of this._sessionIds) {\n      const sessResults = await this.searchManager.search(query, {\n        sessionId: sessId,\n      }) as AgentEntity[];\n      results.push(...sessResults);\n    }\n    // Deduplicate by name\n    const seen = new Set<string>();\n    results = results.filter(e => {\n      if (seen.has(e.name)) return false;\n      seen.add(e.name);\n      return true;\n    });\n  } else if (this.sessionId) {\n    results = await this.searchManager.search(query, {\n      sessionId: this.sessionId,\n      includeRelatedSessions: this.includeRelated,\n    }) as AgentEntity[];\n  } else {\n    results = await this.searchManager.search(query) as AgentEntity[];\n  }\n  \n  results = this.applyFilters(results);\n  \n  if (this.limit) {\n    results = results.slice(0, this.limit);\n  }\n  \n  return results;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test temporal query helpers"
+        }
+      ],
+      "acceptanceCriteria": [
+        "fromLastNSessions queries multiple sessions",
+        "createdToday filters to today only",
+        "createdInLastHours calculates correctly",
+        "createdInLastDays calculates correctly",
+        "fromCurrentSession uses active session",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.9.4",
+      "category": "core",
+      "title": "Implement Cross-Session Search",
+      "description": "Search across multiple sessions with relevance ranking that weights recent sessions higher.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts", "src/agent/SessionQueryBuilder.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Cross-session search enables finding relevant memories across conversation history.",
+        "keyDecisions": [
+          "Weight recent sessions higher",
+          "Support session type filtering",
+          "Deduplicate across sessions"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add cross-session search to SearchManager",
+          "code": "/**\n * Search across multiple sessions with recency weighting.\n *\n * @param query - Search query\n * @param sessionIds - Sessions to search (ordered by recency)\n * @param recencyWeight - Weight multiplier for recent sessions (default: 0.1)\n */\nasync searchAcrossSessions(\n  query: string,\n  sessionIds: string[],\n  recencyWeight: number = 0.1\n): Promise<SearchResult[]> {\n  const allResults: Map<string, SearchResult & { recencyBoost: number }> = new Map();\n\n  for (let i = 0; i < sessionIds.length; i++) {\n    const sessionId = sessionIds[i];\n    const recencyBoost = 1 + (recencyWeight * (sessionIds.length - i));\n\n    const results = await this.search(query, { sessionId });\n    \n    for (const result of results) {\n      const existing = allResults.get(result.entity.name);\n      if (existing) {\n        // Take higher score\n        if (result.score * recencyBoost > existing.score * existing.recencyBoost) {\n          allResults.set(result.entity.name, { ...result, recencyBoost });\n        }\n      } else {\n        allResults.set(result.entity.name, { ...result, recencyBoost });\n      }\n    }\n  }\n\n  // Sort by boosted score\n  const sorted = Array.from(allResults.values())\n    .sort((a, b) => (b.score * b.recencyBoost) - (a.score * a.recencyBoost))\n    .map(({ recencyBoost, ...result }) => result);\n\n  return sorted;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add method to SessionQueryBuilder",
+          "code": "/**\n * Execute search across sessions with recency ranking.\n */\nasync searchWithRecencyRanking(query: string): Promise<AgentEntity[]> {\n  const sessionIds = this._sessionIds ?? (this.sessionId ? [this.sessionId] : []);\n  \n  if (sessionIds.length === 0) {\n    // Get recent session history\n    const history = await this.sessionManager.getSessionHistory({ limit: 10 });\n    sessionIds.push(...history.map(s => s.name));\n  }\n\n  const results = await this.searchManager.searchAcrossSessions(\n    query,\n    sessionIds\n  );\n\n  let entities = results.map(r => r.entity as AgentEntity);\n  entities = this.applyFilters(entities);\n\n  if (this.limit) {\n    entities = entities.slice(0, this.limit);\n  }\n\n  return entities;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit and integration tests",
+          "details": "Test cross-session ranking"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Searches across multiple sessions",
+        "Weights recent sessions higher",
+        "Deduplicates results correctly",
+        "Returns ranked results",
+        "Integration tests pass"
+      ]
+    },
+    {
+      "id": "2.9.5",
+      "category": "integration",
+      "title": "Add Session Context to Retrieval",
+      "description": "Optionally include session context when retrieving entities.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/core/EntityManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Session context enriches retrieved entities with their conversation background.",
+        "keyDecisions": [
+          "Add includeSessionContext option",
+          "Fetch session entity with memory",
+          "Return combined result"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define EntityWithContext type",
+          "code": "/**\n * Entity with optional session context.\n */\nexport interface EntityWithContext {\n  entity: AgentEntity;\n  session?: SessionEntity;\n  relatedSessions?: SessionEntity[];\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add getEntityWithContext method",
+          "code": "/**\n * Get entity with session context.\n *\n * @param name - Entity name\n * @param options - Include related sessions\n */\nasync getEntityWithContext(\n  name: string,\n  options?: { includeRelatedSessions?: boolean }\n): Promise<EntityWithContext | undefined> {\n  const entity = this.storage.getEntityByName(name);\n  if (!entity || !isAgentEntity(entity)) {\n    return undefined;\n  }\n\n  const agentEntity = entity as AgentEntity;\n  const result: EntityWithContext = { entity: agentEntity };\n\n  // Get session if entity has one\n  if (agentEntity.sessionId) {\n    const session = this.storage.getEntityByName(agentEntity.sessionId);\n    if (session && isSessionEntity(session)) {\n      result.session = session;\n\n      // Get related sessions if requested\n      if (options?.includeRelatedSessions && session.relatedSessionIds) {\n        result.relatedSessions = [];\n        for (const relatedId of session.relatedSessionIds) {\n          const related = this.storage.getEntityByName(relatedId);\n          if (related && isSessionEntity(related)) {\n            result.relatedSessions.push(related);\n          }\n        }\n      }\n    }\n  }\n\n  return result;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test context retrieval"
+        }
+      ],
+      "acceptanceCriteria": [
+        "EntityWithContext type defined",
+        "Session included when entity has sessionId",
+        "Related sessions included when requested",
+        "Returns undefined for non-existent entities",
+        "Unit tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Session filtering works on search",
+    "SessionQueryBuilder provides fluent API",
+    "Temporal queries work correctly",
+    "Cross-session search ranks by recency",
+    "Session context retrievable with entities",
+    "12+ unit tests pass"
+  ],
+  "filesCreated": [
+    "src/agent/SessionQueryBuilder.ts",
+    "tests/unit/agent/SessionQueryBuilder.test.ts"
+  ],
+  "filesModified": [
+    "src/search/SearchManager.ts",
+    "src/core/EntityManager.ts"
+  ],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 8 - Session Management"],
+  "notes": [
+    "SessionQueryBuilder should be lazy - don't execute until search() called",
+    "Cross-session search may need performance optimization for many sessions",
+    "Temporal helpers should handle timezone considerations",
+    "Consider caching session relationships for frequent queries"
+  ]
+}

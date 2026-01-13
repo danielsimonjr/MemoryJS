@@ -1,0 +1,113 @@
+{
+  "phase": 3,
+  "sprint": 13,
+  "title": "Pattern Extraction",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables generalization from repeated observations into semantic knowledge",
+  "targetMetrics": {
+    "patternDetection": {
+      "current": "No pattern detection",
+      "target": "Token-based template extraction with variable slots"
+    },
+    "generalization": {
+      "current": "No generalization",
+      "target": "Automatic semantic memory creation from patterns"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.13.1",
+      "category": "core",
+      "title": "Implement extractPatterns() Method",
+      "description": "Analyze entities of specified type for recurring observation patterns with minimum occurrence threshold.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Extracts patterns from observations",
+        "Respects minimum occurrences",
+        "Returns identified patterns",
+        "Works across entity types"
+      ]
+    },
+    {
+      "id": "3.13.2",
+      "category": "core",
+      "title": "Create Pattern Detection Algorithm",
+      "description": "Implement token-based pattern matching that identifies templates with variable slots (e.g., 'User prefers {X}').",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/PatternDetector.ts"],
+      "acceptanceCriteria": [
+        "Token-based matching works",
+        "Variable slots identified",
+        "Template patterns generated",
+        "Values extracted correctly"
+      ]
+    },
+    {
+      "id": "3.13.3",
+      "category": "core",
+      "title": "Create Semantic Memory from Patterns",
+      "description": "When pattern meets threshold, create semantic memory entity representing the generalization with source linking.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Semantic entities created from patterns",
+        "Links to source entities",
+        "Confidence from pattern frequency",
+        "Proper memoryType set"
+      ]
+    },
+    {
+      "id": "3.13.4",
+      "category": "types",
+      "title": "Implement PatternResult Type",
+      "description": "Define result with pattern template, extracted variables, occurrence count, confidence, and source entities.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "PatternResult fully typed",
+        "Variables captured",
+        "Sources tracked"
+      ]
+    },
+    {
+      "id": "3.13.5",
+      "category": "integration",
+      "title": "Add Pattern-based Retrieval",
+      "description": "Enable queries like 'find entities matching pattern X' with variable support.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts"],
+      "acceptanceCriteria": [
+        "Pattern-based queries work",
+        "Variable matching supported",
+        "Integration with existing search"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Pattern extraction identifies templates",
+    "Variable slots correctly detected",
+    "Semantic memories created from patterns",
+    "Pattern-based search works",
+    "10+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/PatternDetector.ts"],
+  "filesModified": ["src/agent/ConsolidationPipeline.ts", "src/types/agent-memory.ts", "src/search/SearchManager.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 12 - Observation Summarization"]
+}

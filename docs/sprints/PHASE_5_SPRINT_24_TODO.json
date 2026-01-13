@@ -1,0 +1,115 @@
+{
+  "phase": 5,
+  "sprint": 24,
+  "title": "Conflict Resolution",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Handles conflicting memories from multiple agents",
+  "targetMetrics": {
+    "conflictDetection": {
+      "current": "No detection",
+      "target": "Automated contradiction detection"
+    },
+    "resolutionStrategies": {
+      "current": "N/A",
+      "target": "5 resolution strategies"
+    }
+  },
+  "tasks": [
+    {
+      "id": "5.24.1",
+      "category": "core",
+      "title": "Implement Conflict Detection",
+      "description": "Detect when memories from different agents contradict using observation similarity and negation detection.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ConflictResolver.ts"],
+      "acceptanceCriteria": [
+        "Detects contradictions",
+        "Uses similarity",
+        "Negation detection",
+        "Tracks in contradictedBy"
+      ]
+    },
+    {
+      "id": "5.24.2",
+      "category": "types",
+      "title": "Create ConflictStrategy Type",
+      "description": "Define strategies: most_recent, highest_confidence, most_confirmations, trusted_agent, merge_all.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "All strategies defined",
+        "Clear semantics",
+        "Type exported"
+      ]
+    },
+    {
+      "id": "5.24.3",
+      "category": "core",
+      "title": "Implement resolveConflict() Method",
+      "description": "Apply strategy to conflicting memories, return resolved memory, track in audit trail, support manual override.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts", "src/agent/ConflictResolver.ts"],
+      "acceptanceCriteria": [
+        "All strategies implemented",
+        "Returns resolved memory",
+        "Audit trail updated",
+        "Override support"
+      ]
+    },
+    {
+      "id": "5.24.4",
+      "category": "core",
+      "title": "Implement mergeCrossAgent() Method",
+      "description": "Merge memories from multiple agents with trust weighting, preserve provenance from all sources, handle conflicts.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Cross-agent merge works",
+        "Trust weighted",
+        "Provenance preserved",
+        "Conflicts resolved"
+      ]
+    },
+    {
+      "id": "5.24.5",
+      "category": "core",
+      "title": "Add Conflict Notifications",
+      "description": "Emit memory:conflict event when detected with conflicting entities and suggested resolution.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ConflictResolver.ts"],
+      "acceptanceCriteria": [
+        "Event emitted on detection",
+        "Includes conflicting entities",
+        "Suggests resolution",
+        "Subscribable"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Conflict detection works",
+    "All strategies implemented",
+    "Resolution produces valid memory",
+    "Cross-agent merge works",
+    "Notifications emitted",
+    "12+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/ConflictResolver.ts"],
+  "filesModified": ["src/agent/MultiAgentMemoryManager.ts", "src/types/agent-memory.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 23 - Cross-Agent Operations"]
+}

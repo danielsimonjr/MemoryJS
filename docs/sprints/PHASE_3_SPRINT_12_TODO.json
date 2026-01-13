@@ -1,0 +1,114 @@
+{
+  "phase": 3,
+  "sprint": 12,
+  "title": "Observation Summarization",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables memory compression through intelligent observation grouping and summarization",
+  "targetMetrics": {
+    "compressionRatio": {
+      "current": "No compression",
+      "target": "3-5x reduction in similar observations"
+    },
+    "provenanceTracking": {
+      "current": "No lineage",
+      "target": "Full consolidatedFrom tracking"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.12.1",
+      "category": "core",
+      "title": "Implement summarizeObservations() Method",
+      "description": "Group similar observations using configurable similarity threshold and create summary observations with provenance tracking.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Groups similar observations",
+        "Creates summary observations",
+        "Tracks consolidatedFrom provenance",
+        "Configurable threshold"
+      ]
+    },
+    {
+      "id": "3.12.2",
+      "category": "core",
+      "title": "Add Similarity Detection for Observations",
+      "description": "Implement observation similarity using embeddings (if available) with TF-IDF fallback for text comparison.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Uses embeddings when available",
+        "Falls back to TF-IDF",
+        "Configurable threshold",
+        "Performance acceptable"
+      ]
+    },
+    {
+      "id": "3.12.3",
+      "category": "core",
+      "title": "Implement LLM-based Summarization (Optional)",
+      "description": "Create SummarizationService interface with LLM provider support for natural language summarization.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/SummarizationService.ts"],
+      "acceptanceCriteria": [
+        "SummarizationService interface defined",
+        "LLM provider integration",
+        "Fallback for no provider",
+        "Cost-aware batching"
+      ]
+    },
+    {
+      "id": "3.12.4",
+      "category": "core",
+      "title": "Create Abstraction Levels",
+      "description": "Increment abstractionLevel when summarizing (0=raw, 1=summarized, 2=generalized) with lineage tracking.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Abstraction levels tracked",
+        "Level increments on summarization",
+        "Lineage chain maintained",
+        "Query by abstraction level"
+      ]
+    },
+    {
+      "id": "3.12.5",
+      "category": "types",
+      "title": "Implement SummarizationResult Type",
+      "description": "Define result capturing originalCount, summaryCount, compressionRatio, summaries, and sourceObservations.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "SummarizationResult fully typed",
+        "Compression metrics captured",
+        "Source tracking included"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Observation summarization works",
+    "Similarity detection accurate",
+    "LLM integration optional but functional",
+    "Abstraction levels tracked",
+    "12+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/SummarizationService.ts"],
+  "filesModified": ["src/agent/ConsolidationPipeline.ts", "src/types/agent-memory.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 11 - Consolidation Pipeline Foundation"]
+}

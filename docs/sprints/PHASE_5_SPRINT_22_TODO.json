@@ -1,0 +1,116 @@
+{
+  "phase": 5,
+  "sprint": 22,
+  "title": "Memory Visibility",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Implements visibility controls for agent memories (private/shared/public)",
+  "targetMetrics": {
+    "visibilityEnforcement": {
+      "current": "No visibility",
+      "target": "Full private/shared/public enforcement"
+    },
+    "searchFiltering": {
+      "current": "No agent filtering",
+      "target": "Automatic visibility filtering on search"
+    }
+  },
+  "tasks": [
+    {
+      "id": "5.22.1",
+      "category": "core",
+      "title": "Implement Visibility Field Handling",
+      "description": "Enforce visibility field on AgentEntity: private (owner only), shared (specified agents), public (all). Default from config.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Visibility enforced",
+        "Default from config",
+        "All three modes work",
+        "Validation on set"
+      ]
+    },
+    {
+      "id": "5.22.2",
+      "category": "core",
+      "title": "Implement createAgentMemory() Method",
+      "description": "Create memory with agent ownership and visibility. Validate agent exists. Set default visibility from agent config.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Creates with ownership",
+        "Sets visibility",
+        "Validates agent exists",
+        "Applies defaults"
+      ]
+    },
+    {
+      "id": "5.22.3",
+      "category": "core",
+      "title": "Implement getVisibleMemories() Method",
+      "description": "Return memories visible to agent: own private + shared with agent + public. Efficient indexed query.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Returns own private",
+        "Returns shared-with",
+        "Returns public",
+        "Efficient query"
+      ]
+    },
+    {
+      "id": "5.22.4",
+      "category": "core",
+      "title": "Implement shareMemory() Method",
+      "description": "Change memory visibility: share with specific agents or 'all' (public). Validate owner permission.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Share with specific agents",
+        "Share with all (public)",
+        "Owner validation",
+        "Visibility updated"
+      ]
+    },
+    {
+      "id": "5.22.5",
+      "category": "integration",
+      "title": "Add Visibility Filtering to Search",
+      "description": "Extend search to automatically filter by visibility for requesting agent. Add agentId to search context.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts"],
+      "acceptanceCriteria": [
+        "Automatic visibility filter",
+        "agentId in context",
+        "Only visible results",
+        "Backward compatible"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Visibility enforcement works",
+    "Memory creation with ownership",
+    "Visible memories query works",
+    "Sharing works",
+    "Search respects visibility",
+    "12+ unit tests pass"
+  ],
+  "filesCreated": [],
+  "filesModified": ["src/agent/MultiAgentMemoryManager.ts", "src/search/SearchManager.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 21 - Agent Identity"]
+}

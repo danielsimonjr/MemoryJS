@@ -1,0 +1,266 @@
+{
+  "phase": 2,
+  "sprint": 7,
+  "title": "Working Memory Promotion",
+  "priority": "HIGH",
+  "effort": "5 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables transition from temporary working memory to permanent long-term storage",
+  "targetMetrics": {
+    "promotionAccuracy": {
+      "current": "No promotion pipeline",
+      "target": "Confidence-based and manual promotion pathways"
+    },
+    "dataIntegrity": {
+      "current": "N/A",
+      "target": "100% data preservation during promotion"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.7.1",
+      "category": "core",
+      "title": "Implement markForPromotion() Method",
+      "description": "Set flag on working memory indicating it's a candidate for promotion to long-term storage.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Marking for promotion allows collecting candidates without immediate promotion. This supports batch promotion and review workflows.",
+        "keyDecisions": [
+          "Set markedForPromotion: true flag",
+          "Optionally specify target memory type",
+          "Validate entity is working memory"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define PromotionMark interface",
+          "code": "/**\n * Options for marking memory for promotion.\n */\nexport interface PromotionMarkOptions {\n  /** Target memory type after promotion */\n  targetType?: 'episodic' | 'semantic';\n  /** Priority for promotion (higher = promoted sooner) */\n  priority?: number;\n  /** Reason for marking */\n  reason?: string;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement markForPromotion",
+          "code": "/**\n * Mark a working memory for promotion consideration.\n *\n * @param entityName - Entity to mark\n * @param options - Promotion options\n */\nasync markForPromotion(\n  entityName: string,\n  options?: PromotionMarkOptions\n): Promise<void> {\n  const entity = this.storage.getEntityByName(entityName);\n  if (!entity) {\n    throw new Error(`Entity not found: ${entityName}`);\n  }\n\n  if (!isAgentEntity(entity)) {\n    throw new Error(`Entity is not an AgentEntity: ${entityName}`);\n  }\n\n  const agentEntity = entity as AgentEntity;\n  if (agentEntity.memoryType !== 'working') {\n    throw new Error(`Entity is not working memory: ${entityName}`);\n  }\n\n  const updates: Partial<AgentEntity> = {\n    markedForPromotion: true,\n    lastModified: new Date().toISOString(),\n  };\n\n  // Store target type in a metadata field or tag\n  if (options?.targetType) {\n    // Use a convention: add tag for target type\n    const currentTags = agentEntity.tags ?? [];\n    const targetTag = `promote_to_${options.targetType}`;\n    if (!currentTags.includes(targetTag)) {\n      updates.tags = [...currentTags, targetTag];\n    }\n  }\n\n  await this.storage.updateEntity(entityName, updates as Partial<Entity>);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test marking scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Sets markedForPromotion: true",
+        "Validates entity exists",
+        "Validates entity is working memory",
+        "Supports target type specification",
+        "Persists changes",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.7.2",
+      "category": "core",
+      "title": "Implement getPromotionCandidates() Method",
+      "description": "Return working memories meeting promotion criteria either by explicit marking or threshold criteria.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Finding promotion candidates enables batch promotion workflows and allows review before committing to long-term storage.",
+        "keyDecisions": [
+          "Include explicitly marked memories",
+          "Include memories meeting confidence/confirmation thresholds",
+          "Sort by promotion priority"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define PromotionCriteria interface",
+          "code": "/**\n * Criteria for identifying promotion candidates.\n */\nexport interface PromotionCriteria {\n  /** Include explicitly marked memories */\n  includeMarked?: boolean;\n  /** Minimum confidence for auto-promotion */\n  minConfidence?: number;\n  /** Minimum confirmations for auto-promotion */\n  minConfirmations?: number;\n  /** Minimum access count */\n  minAccessCount?: number;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement getPromotionCandidates",
+          "code": "/**\n * Get working memories that are candidates for promotion.\n *\n * @param sessionId - Session to search\n * @param criteria - Optional criteria override\n * @returns Candidates sorted by promotion priority\n */\nasync getPromotionCandidates(\n  sessionId: string,\n  criteria?: PromotionCriteria\n): Promise<AgentEntity[]> {\n  const effectiveCriteria = {\n    includeMarked: criteria?.includeMarked ?? true,\n    minConfidence: criteria?.minConfidence ?? this.config.autoPromoteConfidenceThreshold,\n    minConfirmations: criteria?.minConfirmations ?? this.config.autoPromoteConfirmationThreshold,\n    minAccessCount: criteria?.minAccessCount ?? 0,\n  };\n\n  const sessionMemories = await this.getSessionMemories(sessionId);\n  const candidates: Array<{ entity: AgentEntity; priority: number }> = [];\n\n  for (const memory of sessionMemories) {\n    let isCandidate = false;\n    let priority = 0;\n\n    // Check if explicitly marked\n    if (effectiveCriteria.includeMarked && memory.markedForPromotion) {\n      isCandidate = true;\n      priority += 100; // High priority for marked\n    }\n\n    // Check threshold criteria\n    const meetsConfidence = memory.confidence >= effectiveCriteria.minConfidence;\n    const meetsConfirmations = memory.confirmationCount >= effectiveCriteria.minConfirmations;\n    const meetsAccess = memory.accessCount >= effectiveCriteria.minAccessCount;\n\n    if (meetsConfidence && meetsConfirmations && meetsAccess) {\n      isCandidate = true;\n      priority += memory.confidence * 50;\n      priority += memory.confirmationCount * 10;\n      priority += memory.accessCount * 1;\n    }\n\n    if (isCandidate) {\n      candidates.push({ entity: memory, priority });\n    }\n  }\n\n  // Sort by priority (descending)\n  candidates.sort((a, b) => b.priority - a.priority);\n\n  return candidates.map(c => c.entity);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests",
+          "details": "Test candidate selection"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Includes explicitly marked memories",
+        "Includes memories meeting thresholds",
+        "Sorted by promotion priority",
+        "Configurable criteria",
+        "Returns empty array when no candidates",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.7.3",
+      "category": "core",
+      "title": "Implement Basic promoteMemory() Method",
+      "description": "Convert working memory to target type by updating memoryType, clearing TTL fields, and setting promotion metadata.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Promotion converts temporary working memory into permanent episodic or semantic memory while preserving all data and adding provenance tracking.",
+        "keyDecisions": [
+          "Update memoryType to target",
+          "Clear expiresAt and isWorkingMemory",
+          "Set promotedAt and promotedFrom",
+          "Keep entity in place (no move/copy)"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define PromotionResult interface",
+          "code": "/**\n * Result of a promotion operation.\n */\nexport interface PromotionResult {\n  /** Name of promoted entity */\n  entityName: string;\n  /** Previous memory type */\n  fromType: 'working';\n  /** New memory type */\n  toType: 'episodic' | 'semantic';\n  /** Timestamp of promotion */\n  promotedAt: string;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement promoteMemory",
+          "code": "/**\n * Promote a working memory to long-term storage.\n *\n * @param entityName - Entity to promote\n * @param targetType - Target memory type\n * @returns Promotion result\n */\nasync promoteMemory(\n  entityName: string,\n  targetType: 'episodic' | 'semantic' = 'episodic'\n): Promise<PromotionResult> {\n  const entity = this.storage.getEntityByName(entityName);\n  if (!entity) {\n    throw new Error(`Entity not found: ${entityName}`);\n  }\n\n  if (!isAgentEntity(entity)) {\n    throw new Error(`Entity is not an AgentEntity: ${entityName}`);\n  }\n\n  const agentEntity = entity as AgentEntity;\n  if (agentEntity.memoryType !== 'working') {\n    throw new Error(`Entity is not working memory: ${entityName}`);\n  }\n\n  const now = new Date().toISOString();\n\n  // Build updates\n  const updates: Partial<AgentEntity> = {\n    // Change memory type\n    memoryType: targetType,\n    \n    // Clear working memory fields\n    expiresAt: undefined,\n    isWorkingMemory: undefined,\n    markedForPromotion: undefined,\n    \n    // Set promotion tracking\n    promotedAt: now,\n    promotedFrom: agentEntity.sessionId,\n    \n    // Update timestamp\n    lastModified: now,\n  };\n\n  // Remove promotion target tags\n  if (agentEntity.tags) {\n    updates.tags = agentEntity.tags.filter(\n      t => !t.startsWith('promote_to_')\n    );\n  }\n\n  // Persist changes\n  await this.storage.updateEntity(entityName, updates as Partial<Entity>);\n\n  // Remove from session index\n  const sessionId = agentEntity.sessionId;\n  if (sessionId && this.sessionIndex.has(sessionId)) {\n    this.sessionIndex.get(sessionId)!.delete(entityName);\n  }\n\n  return {\n    entityName,\n    fromType: 'working',\n    toType: targetType,\n    promotedAt: now,\n  };\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit and integration tests",
+          "details": "Test promotion flow"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Updates memoryType to target",
+        "Clears expiresAt",
+        "Clears isWorkingMemory",
+        "Sets promotedAt timestamp",
+        "Sets promotedFrom with session ID",
+        "Removes from session index",
+        "Preserves all other data",
+        "Unit and integration tests pass"
+      ]
+    },
+    {
+      "id": "2.7.4",
+      "category": "types",
+      "title": "Create WorkingMemoryOptions Type in agent-memory.ts",
+      "description": "Define and export WorkingMemoryOptions interface in shared types file with comprehensive documentation.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "implementation": {
+        "purpose": "Centralizing types ensures consistency and enables reuse across modules.",
+        "keyDecisions": [
+          "Move to shared types file",
+          "Add comprehensive JSDoc",
+          "Export from index.ts"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add WorkingMemoryOptions to agent-memory.ts",
+          "code": "/**\n * Options for creating working memory.\n *\n * @example\n * ```typescript\n * const options: WorkingMemoryOptions = {\n *   ttlHours: 48,\n *   taskId: 'trip_planning',\n *   importance: 7,\n *   confidence: 0.9,\n * };\n * ```\n */\nexport interface WorkingMemoryOptions {\n  /** TTL in hours (default: 24) */\n  ttlHours?: number;\n  /** Enable auto-promotion when thresholds met */\n  autoPromote?: boolean;\n  /** Associated task ID */\n  taskId?: string;\n  /** Initial importance (0-10) */\n  importance?: number;\n  /** Initial confidence (0-1) */\n  confidence?: number;\n  /** Entity type (default: 'working_memory') */\n  entityType?: string;\n  /** Visibility for multi-agent scenarios */\n  visibility?: MemoryVisibility;\n  /** Agent ID for multi-agent scenarios */\n  agentId?: string;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Update WorkingMemoryManager imports",
+          "details": "Import type from agent-memory.ts"
+        }
+      ],
+      "acceptanceCriteria": [
+        "WorkingMemoryOptions in agent-memory.ts",
+        "Comprehensive JSDoc with example",
+        "Exported from types/index.ts",
+        "WorkingMemoryManager updated",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "2.7.5",
+      "category": "core",
+      "title": "Add Auto-Promotion Trigger",
+      "description": "Implement automatic promotion when memory reaches confirmation threshold during update operations.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Auto-promotion reduces manual intervention by automatically promoting high-confidence, well-confirmed memories to long-term storage.",
+        "keyDecisions": [
+          "Trigger on confirmation increment",
+          "Check confidence and confirmation thresholds",
+          "Emit memory:promoted event",
+          "Support opt-out via flag"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add confirmation increment method",
+          "code": "/**\n * Increment confirmation count for a working memory.\n * May trigger auto-promotion if enabled and thresholds met.\n *\n * @param entityName - Entity to confirm\n * @param confidenceBoost - Optional confidence boost (0-1)\n * @returns True if memory was auto-promoted\n */\nasync confirmMemory(\n  entityName: string,\n  confidenceBoost?: number\n): Promise<{ confirmed: boolean; promoted: boolean }> {\n  const entity = this.storage.getEntityByName(entityName);\n  if (!entity || !isAgentEntity(entity)) {\n    throw new Error(`Entity not found or not AgentEntity: ${entityName}`);\n  }\n\n  const agentEntity = entity as AgentEntity;\n  if (agentEntity.memoryType !== 'working') {\n    throw new Error(`Entity is not working memory: ${entityName}`);\n  }\n\n  // Increment confirmation\n  const newConfirmations = (agentEntity.confirmationCount ?? 0) + 1;\n  let newConfidence = agentEntity.confidence ?? 0.5;\n  if (confidenceBoost) {\n    newConfidence = Math.min(1, newConfidence + confidenceBoost);\n  }\n\n  const updates: Partial<AgentEntity> = {\n    confirmationCount: newConfirmations,\n    confidence: newConfidence,\n    lastModified: new Date().toISOString(),\n  };\n\n  await this.storage.updateEntity(entityName, updates as Partial<Entity>);\n\n  // Check auto-promotion\n  let promoted = false;\n  if (this.config.autoPromote) {\n    const meetsConfidence = newConfidence >= this.config.autoPromoteConfidenceThreshold;\n    const meetsConfirmations = newConfirmations >= this.config.autoPromoteConfirmationThreshold;\n\n    if (meetsConfidence && meetsConfirmations) {\n      await this.promoteMemory(entityName, 'semantic');\n      promoted = true;\n    }\n  }\n\n  return { confirmed: true, promoted };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit and integration tests",
+          "details": "Test auto-promotion trigger"
+        }
+      ],
+      "acceptanceCriteria": [
+        "confirmMemory increments confirmation count",
+        "Optional confidence boost applied",
+        "Auto-promotion triggered when thresholds met",
+        "Returns promotion status",
+        "Can be disabled via config",
+        "Unit and integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Memories can be marked for promotion",
+    "Promotion candidates correctly identified",
+    "Working memory successfully promoted to episodic/semantic",
+    "Auto-promotion works when configured",
+    "Data integrity preserved during promotion",
+    "12+ unit tests pass"
+  ],
+  "filesCreated": [
+    "tests/unit/agent/WorkingMemoryPromotion.test.ts"
+  ],
+  "filesModified": [
+    "src/agent/WorkingMemoryManager.ts",
+    "src/types/agent-memory.ts"
+  ],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 6 - Working Memory Manager Foundation"],
+  "notes": [
+    "Promotion is one-way - no demotion back to working memory",
+    "promotedFrom tracks provenance for audit trails",
+    "Auto-promotion should default to semantic for high-confidence facts",
+    "Consider event emission for promotion tracking"
+  ]
+}

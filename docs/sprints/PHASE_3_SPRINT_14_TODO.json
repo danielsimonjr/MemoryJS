@@ -1,0 +1,116 @@
+{
+  "phase": 3,
+  "sprint": 14,
+  "title": "Memory Merging",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables duplicate detection and memory consolidation through intelligent merging",
+  "targetMetrics": {
+    "duplicateDetection": {
+      "current": "Basic similarity",
+      "target": "Agent-memory-aware duplicate detection"
+    },
+    "mergeIntegrity": {
+      "current": "N/A",
+      "target": "100% data preservation with audit trail"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.14.1",
+      "category": "core",
+      "title": "Implement mergeMemories() Method",
+      "description": "Merge multiple entities using strategy: newest (keep recent), strongest (highest confidence), or merge_observations (combine all).",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "All three strategies work",
+        "Data preserved correctly",
+        "Single entity returned",
+        "Others removed"
+      ]
+    },
+    {
+      "id": "3.14.2",
+      "category": "core",
+      "title": "Implement Duplicate Detection",
+      "description": "Extend CompressionManager duplicate detection for agent memory fields (sessionId, agentId) in similarity calculation.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Considers agent memory fields",
+        "Session-aware similarity",
+        "Configurable thresholds",
+        "Performance acceptable"
+      ]
+    },
+    {
+      "id": "3.14.3",
+      "category": "core",
+      "title": "Implement Observation Merging",
+      "description": "When merging entities, combine observations: remove duplicates, merge similar with summarization, preserve provenance.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Exact duplicates removed",
+        "Similar observations merged",
+        "Provenance chain preserved",
+        "No data loss"
+      ]
+    },
+    {
+      "id": "3.14.4",
+      "category": "core",
+      "title": "Update Relations on Merge",
+      "description": "Retarget relations from merged entities to surviving entity, handling duplicate relations and emitting merge events.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Relations retargeted correctly",
+        "Duplicate relations handled",
+        "Merge event emitted",
+        "Graph integrity maintained"
+      ]
+    },
+    {
+      "id": "3.14.5",
+      "category": "core",
+      "title": "Create Merge Audit Trail",
+      "description": "Store merge history for reversibility: which entities merged, when, by what rule, resulting entity.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Merge history stored",
+        "Queryable audit trail",
+        "Soft delete for reversibility",
+        "Unmerge capability"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All merge strategies work",
+    "Duplicate detection accurate",
+    "Observation merging preserves data",
+    "Relations correctly retargeted",
+    "Audit trail enables reversibility",
+    "12+ unit tests pass"
+  ],
+  "filesCreated": [],
+  "filesModified": ["src/agent/ConsolidationPipeline.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 13 - Pattern Extraction"]
+}

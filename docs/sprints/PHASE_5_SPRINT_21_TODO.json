@@ -1,0 +1,115 @@
+{
+  "phase": 5,
+  "sprint": 21,
+  "title": "Agent Identity",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Implements agent registration and identity management for multi-agent scenarios",
+  "targetMetrics": {
+    "agentManagement": {
+      "current": "No agent identity",
+      "target": "Full agent registration with metadata"
+    },
+    "ownership": {
+      "current": "No ownership tracking",
+      "target": "Memory ownership by agent"
+    }
+  },
+  "tasks": [
+    {
+      "id": "5.21.1",
+      "category": "core",
+      "title": "Create MultiAgentMemoryManager Class Skeleton",
+      "description": "Implement class managing multiple agents with metadata storage and default agent for single-agent scenarios.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Class created",
+        "Agent metadata storage",
+        "Default agent support",
+        "Method stubs defined"
+      ]
+    },
+    {
+      "id": "5.21.2",
+      "category": "core",
+      "title": "Implement registerAgent() Method",
+      "description": "Register agent with ID and metadata (name, type, trustLevel, capabilities). Validate unique ID and create agent entity.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Agent registration works",
+        "Unique ID validation",
+        "Metadata stored",
+        "Entity created for tracking"
+      ]
+    },
+    {
+      "id": "5.21.3",
+      "category": "types",
+      "title": "Create AgentMetadata Type",
+      "description": "Define metadata with name, type, trustLevel (0-1), capabilities[], createdAt, lastActiveAt.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "AgentMetadata fully typed",
+        "Trust level defined",
+        "Capabilities array",
+        "Timestamps included"
+      ]
+    },
+    {
+      "id": "5.21.4",
+      "category": "core",
+      "title": "Implement getAgent() and listAgents()",
+      "description": "Retrieve agent metadata by ID and list all registered agents with optional filters.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "Single agent retrieval",
+        "List all agents",
+        "Optional filtering",
+        "Efficient queries"
+      ]
+    },
+    {
+      "id": "5.21.5",
+      "category": "core",
+      "title": "Add Agent Context to Operations",
+      "description": "Add agentId parameter to memory creation, track owning agent on new memories, support agent context inheritance.",
+      "status": "pending",
+      "estimatedHours": 1.75,
+      "agent": "claude",
+      "files": ["src/agent/MultiAgentMemoryManager.ts"],
+      "acceptanceCriteria": [
+        "agentId on creation",
+        "Ownership tracked",
+        "Context inheritance",
+        "Backward compatible"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Agent registration works",
+    "Agent metadata stored",
+    "Agent queries work",
+    "Ownership tracking",
+    "10+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/MultiAgentMemoryManager.ts"],
+  "filesModified": ["src/types/agent-memory.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 1 - Type Definitions"]
+}

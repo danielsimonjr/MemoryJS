@@ -1,0 +1,291 @@
+{
+  "phase": 2,
+  "sprint": 6,
+  "title": "Working Memory Manager Foundation",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables session-scoped, TTL-based short-term memory for AI agents",
+  "targetMetrics": {
+    "memoryLifecycle": {
+      "current": "No TTL-based memory",
+      "target": "Automatic expiration with configurable TTL (default 24h)"
+    },
+    "sessionScoping": {
+      "current": "No session isolation",
+      "target": "Full memory isolation per session"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.6.1",
+      "category": "core",
+      "title": "Create WorkingMemoryManager Class Skeleton",
+      "description": "Implement WorkingMemoryManager class with storage dependency, default TTL configuration, and max memories per session limit.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "implementation": {
+        "purpose": "WorkingMemoryManager handles short-term, session-scoped memories that automatically expire. It's the primary interface for creating and managing temporary memories during active sessions.",
+        "keyDecisions": [
+          "Default TTL of 24 hours",
+          "Max 100 memories per session by default",
+          "Session-to-memories index for efficient lookup",
+          "Integration with existing storage backend"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/agent/WorkingMemoryManager.ts",
+          "code": "/**\n * Working Memory Manager\n *\n * Manages short-term, session-scoped memories with TTL-based expiration.\n * Working memories are temporary and automatically cleaned up after expiry.\n *\n * @module agent/WorkingMemoryManager\n */\n\nimport type { IGraphStorage, Entity } from '../types/types.js';\nimport type {\n  AgentEntity,\n  MemoryVisibility,\n  MemorySource,\n  WorkingMemoryEntity,\n} from '../types/agent-memory.js';\nimport { isAgentEntity } from '../types/agent-memory.js';"
+        },
+        {
+          "step": 2,
+          "action": "Define WorkingMemoryConfig interface",
+          "code": "/**\n * Configuration for WorkingMemoryManager.\n */\nexport interface WorkingMemoryConfig {\n  /** Default TTL in hours (default: 24) */\n  defaultTTLHours?: number;\n  /** Maximum memories per session (default: 100) */\n  maxPerSession?: number;\n  /** Auto-promote memories meeting threshold (default: false) */\n  autoPromote?: boolean;\n  /** Confidence threshold for auto-promotion (default: 0.8) */\n  autoPromoteConfidenceThreshold?: number;\n  /** Confirmation threshold for auto-promotion (default: 2) */\n  autoPromoteConfirmationThreshold?: number;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Define WorkingMemoryOptions interface",
+          "code": "/**\n * Options for creating working memory.\n */\nexport interface WorkingMemoryOptions {\n  /** Override TTL in hours */\n  ttlHours?: number;\n  /** Associated task ID */\n  taskId?: string;\n  /** Initial importance (0-10) */\n  importance?: number;\n  /** Initial confidence (0-1) */\n  confidence?: number;\n  /** Entity type (default: 'working_memory') */\n  entityType?: string;\n  /** Visibility (default: 'private') */\n  visibility?: MemoryVisibility;\n  /** Agent ID for multi-agent scenarios */\n  agentId?: string;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Create WorkingMemoryManager class",
+          "code": "/**\n * Manages session-scoped working memories with TTL expiration.\n *\n * @example\n * ```typescript\n * const wmm = new WorkingMemoryManager(storage);\n * const memory = await wmm.createWorkingMemory('session_1', 'User prefers budget hotels');\n * const memories = await wmm.getSessionMemories('session_1');\n * await wmm.clearExpired();\n * ```\n */\nexport class WorkingMemoryManager {\n  private readonly storage: IGraphStorage;\n  private readonly config: Required<WorkingMemoryConfig>;\n  \n  // Index: sessionId -> Set of entity names\n  private sessionIndex: Map<string, Set<string>>;\n\n  constructor(storage: IGraphStorage, config: WorkingMemoryConfig = {}) {\n    this.storage = storage;\n    this.config = {\n      defaultTTLHours: config.defaultTTLHours ?? 24,\n      maxPerSession: config.maxPerSession ?? 100,\n      autoPromote: config.autoPromote ?? false,\n      autoPromoteConfidenceThreshold: config.autoPromoteConfidenceThreshold ?? 0.8,\n      autoPromoteConfirmationThreshold: config.autoPromoteConfirmationThreshold ?? 2,\n    };\n    this.sessionIndex = new Map();\n  }\n\n  // Method stubs\n  async createWorkingMemory(\n    sessionId: string,\n    content: string,\n    options?: WorkingMemoryOptions\n  ): Promise<AgentEntity> {\n    throw new Error('Not implemented');\n  }\n\n  async getSessionMemories(sessionId: string): Promise<AgentEntity[]> {\n    throw new Error('Not implemented');\n  }\n\n  async clearExpired(): Promise<number> {\n    throw new Error('Not implemented');\n  }\n\n  async extendTTL(entityNames: string[], additionalHours: number): Promise<void> {\n    throw new Error('Not implemented');\n  }\n\n  async markForPromotion(entityName: string): Promise<void> {\n    throw new Error('Not implemented');\n  }\n\n  async getPromotionCandidates(sessionId: string): Promise<AgentEntity[]> {\n    throw new Error('Not implemented');\n  }\n}"
+        },
+        {
+          "step": 5,
+          "action": "Run TypeScript compilation",
+          "details": "npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "WorkingMemoryManager class created",
+        "WorkingMemoryConfig interface defined",
+        "WorkingMemoryOptions interface defined",
+        "Storage dependency injected",
+        "Session index initialized",
+        "Method stubs for all interface methods",
+        "npm run typecheck passes"
+      ]
+    },
+    {
+      "id": "2.6.2",
+      "category": "core",
+      "title": "Implement createWorkingMemory() Method",
+      "description": "Create new AgentEntity with working memory type, session scoping, and calculated expiration timestamp.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Creating working memory is the primary operation. Each memory is tied to a session, has automatic expiration, and tracks confidence and confirmations.",
+        "keyDecisions": [
+          "Auto-generate unique name based on content hash",
+          "Calculate expiresAt from TTL",
+          "Set memoryType: 'working'",
+          "Initialize tracking fields"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add helper to generate unique name",
+          "code": "private generateMemoryName(sessionId: string, content: string): string {\n  const timestamp = Date.now();\n  const contentHash = this.hashContent(content).slice(0, 8);\n  return `wm_${sessionId}_${timestamp}_${contentHash}`;\n}\n\nprivate hashContent(content: string): string {\n  // Simple hash for uniqueness\n  let hash = 0;\n  for (let i = 0; i < content.length; i++) {\n    const char = content.charCodeAt(i);\n    hash = ((hash << 5) - hash) + char;\n    hash = hash & hash; // Convert to 32-bit integer\n  }\n  return Math.abs(hash).toString(16);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add helper to calculate expiration",
+          "code": "private calculateExpiration(ttlHours: number): string {\n  const expiresAt = new Date();\n  expiresAt.setTime(expiresAt.getTime() + ttlHours * 60 * 60 * 1000);\n  return expiresAt.toISOString();\n}"
+        },
+        {
+          "step": 3,
+          "action": "Implement createWorkingMemory",
+          "code": "async createWorkingMemory(\n  sessionId: string,\n  content: string,\n  options?: WorkingMemoryOptions\n): Promise<AgentEntity> {\n  // Check session limit\n  const sessionMemories = this.sessionIndex.get(sessionId);\n  if (sessionMemories && sessionMemories.size >= this.config.maxPerSession) {\n    throw new Error(`Session ${sessionId} has reached maximum memory limit (${this.config.maxPerSession})`);\n  }\n\n  const now = new Date().toISOString();\n  const ttlHours = options?.ttlHours ?? this.config.defaultTTLHours;\n  const name = this.generateMemoryName(sessionId, content);\n\n  const entity: AgentEntity = {\n    // Base Entity fields\n    name,\n    entityType: options?.entityType ?? 'working_memory',\n    observations: [content],\n    createdAt: now,\n    lastModified: now,\n    importance: options?.importance ?? 5,\n\n    // AgentEntity fields\n    memoryType: 'working',\n    sessionId,\n    taskId: options?.taskId,\n    expiresAt: this.calculateExpiration(ttlHours),\n    isWorkingMemory: true,\n    accessCount: 0,\n    lastAccessedAt: now,\n    confidence: options?.confidence ?? 0.5,\n    confirmationCount: 0,\n    visibility: options?.visibility ?? 'private',\n    agentId: options?.agentId,\n  };\n\n  // Persist to storage\n  await this.storage.appendEntity(entity as Entity);\n\n  // Update session index\n  if (!this.sessionIndex.has(sessionId)) {\n    this.sessionIndex.set(sessionId, new Set());\n  }\n  this.sessionIndex.get(sessionId)!.add(name);\n\n  return entity;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit tests",
+          "details": "Test memory creation and session indexing"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Creates entity with memoryType: 'working'",
+        "Sets isWorkingMemory: true",
+        "Calculates correct expiresAt timestamp",
+        "Associates with session via sessionId",
+        "Enforces max memories per session",
+        "Persists to storage",
+        "Updates session index",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.6.3",
+      "category": "core",
+      "title": "Implement getSessionMemories() Method",
+      "description": "Return all working memories for a session with optional filtering by type, task, or importance.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Session memory retrieval is essential for building context during conversations. Efficient filtering helps manage large sessions.",
+        "keyDecisions": [
+          "Use session index for O(1) lookup",
+          "Support multiple filter criteria",
+          "Return empty array for unknown sessions"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define filter options",
+          "code": "/**\n * Filter options for session memory queries.\n */\nexport interface SessionMemoryFilter {\n  /** Filter by entity type */\n  entityType?: string;\n  /** Filter by task ID */\n  taskId?: string;\n  /** Minimum importance */\n  minImportance?: number;\n  /** Maximum importance */\n  maxImportance?: number;\n  /** Include only non-expired */\n  excludeExpired?: boolean;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement getSessionMemories",
+          "code": "async getSessionMemories(\n  sessionId: string,\n  filter?: SessionMemoryFilter\n): Promise<AgentEntity[]> {\n  const memoryNames = this.sessionIndex.get(sessionId);\n  if (!memoryNames || memoryNames.size === 0) {\n    // Try to rebuild index from storage\n    await this.rebuildSessionIndex(sessionId);\n    const rebuilt = this.sessionIndex.get(sessionId);\n    if (!rebuilt || rebuilt.size === 0) {\n      return [];\n    }\n  }\n\n  const now = Date.now();\n  const memories: AgentEntity[] = [];\n\n  for (const name of this.sessionIndex.get(sessionId) ?? []) {\n    const entity = this.storage.getEntityByName(name);\n    if (!entity || !isAgentEntity(entity)) continue;\n\n    const agentEntity = entity as AgentEntity;\n\n    // Apply filters\n    if (filter?.entityType && agentEntity.entityType !== filter.entityType) {\n      continue;\n    }\n    if (filter?.taskId && agentEntity.taskId !== filter.taskId) {\n      continue;\n    }\n    if (filter?.minImportance !== undefined && \n        (agentEntity.importance ?? 0) < filter.minImportance) {\n      continue;\n    }\n    if (filter?.maxImportance !== undefined && \n        (agentEntity.importance ?? 10) > filter.maxImportance) {\n      continue;\n    }\n    if (filter?.excludeExpired && agentEntity.expiresAt) {\n      const expiresAt = new Date(agentEntity.expiresAt).getTime();\n      if (expiresAt < now) continue;\n    }\n\n    memories.push(agentEntity);\n  }\n\n  return memories;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add index rebuild helper",
+          "code": "private async rebuildSessionIndex(sessionId: string): Promise<void> {\n  const graph = await this.storage.loadGraph();\n  const sessionMemories = new Set<string>();\n\n  for (const entity of graph.entities) {\n    if (!isAgentEntity(entity)) continue;\n    const agentEntity = entity as AgentEntity;\n    \n    if (agentEntity.sessionId === sessionId && \n        agentEntity.memoryType === 'working') {\n      sessionMemories.add(agentEntity.name);\n    }\n  }\n\n  if (sessionMemories.size > 0) {\n    this.sessionIndex.set(sessionId, sessionMemories);\n  }\n}"
+        },
+        {
+          "step": 4,
+          "action": "Add unit tests",
+          "details": "Test filtering scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Returns all working memories for session",
+        "Uses session index for efficiency",
+        "Supports entity type filtering",
+        "Supports task ID filtering",
+        "Supports importance range filtering",
+        "Optional expired exclusion",
+        "Returns empty array for unknown sessions",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "2.6.4",
+      "category": "core",
+      "title": "Implement clearExpired() Method",
+      "description": "Query all working memories where expiresAt < now and delete them, returning count of cleared memories.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Automatic expiration cleanup is essential for managing memory size. This should be called periodically to remove stale working memories.",
+        "keyDecisions": [
+          "Query all working memories",
+          "Compare expiresAt to current time",
+          "Batch deletion for efficiency",
+          "Update session index"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement clearExpired",
+          "code": "/**\n * Clear all expired working memories.\n *\n * @returns Number of memories cleared\n */\nasync clearExpired(): Promise<number> {\n  const now = Date.now();\n  const graph = await this.storage.getGraphForMutation();\n  const expiredNames: string[] = [];\n\n  // Find expired working memories\n  for (const entity of graph.entities) {\n    if (!isAgentEntity(entity)) continue;\n    const agentEntity = entity as AgentEntity;\n\n    if (agentEntity.memoryType !== 'working') continue;\n    if (!agentEntity.expiresAt) continue;\n\n    const expiresAt = new Date(agentEntity.expiresAt).getTime();\n    if (expiresAt < now) {\n      expiredNames.push(agentEntity.name);\n    }\n  }\n\n  if (expiredNames.length === 0) {\n    return 0;\n  }\n\n  // Remove expired entities\n  const expiredSet = new Set(expiredNames);\n  graph.entities = graph.entities.filter(e => !expiredSet.has(e.name));\n\n  // Remove relations involving expired entities\n  graph.relations = graph.relations.filter(\n    r => !expiredSet.has(r.from) && !expiredSet.has(r.to)\n  );\n\n  // Persist changes\n  await this.storage.saveGraph(graph);\n\n  // Update session index\n  for (const [sessionId, names] of this.sessionIndex) {\n    for (const name of expiredNames) {\n      names.delete(name);\n    }\n  }\n\n  return expiredNames.length;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit and integration tests",
+          "details": "Test expiration scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Identifies all expired working memories",
+        "Deletes expired entities",
+        "Removes relations involving expired entities",
+        "Updates session index",
+        "Returns accurate count",
+        "Handles edge cases (no expired memories)",
+        "Unit and integration tests pass"
+      ]
+    },
+    {
+      "id": "2.6.5",
+      "category": "core",
+      "title": "Implement extendTTL() Method",
+      "description": "Extend expiration time for specified entities by adding hours to their expiresAt timestamp.",
+      "status": "pending",
+      "implementationNotes": null,
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/WorkingMemoryManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "TTL extension allows keeping important working memories alive longer without promotion. Useful for ongoing tasks.",
+        "keyDecisions": [
+          "Validate entities exist and are working memories",
+          "Add hours to existing expiresAt",
+          "Handle already-expired gracefully"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement extendTTL",
+          "code": "/**\n * Extend TTL for specified working memories.\n *\n * @param entityNames - Names of entities to extend\n * @param additionalHours - Hours to add to TTL\n * @throws Error if any entity doesn't exist or isn't working memory\n */\nasync extendTTL(entityNames: string[], additionalHours: number): Promise<void> {\n  if (additionalHours <= 0) {\n    throw new Error('additionalHours must be positive');\n  }\n\n  for (const name of entityNames) {\n    const entity = this.storage.getEntityByName(name);\n    if (!entity) {\n      throw new Error(`Entity not found: ${name}`);\n    }\n\n    if (!isAgentEntity(entity)) {\n      throw new Error(`Entity is not an AgentEntity: ${name}`);\n    }\n\n    const agentEntity = entity as AgentEntity;\n    if (agentEntity.memoryType !== 'working') {\n      throw new Error(`Entity is not working memory: ${name}`);\n    }\n\n    // Calculate new expiration\n    let currentExpires: Date;\n    if (agentEntity.expiresAt) {\n      currentExpires = new Date(agentEntity.expiresAt);\n      // If already expired, start from now\n      if (currentExpires.getTime() < Date.now()) {\n        currentExpires = new Date();\n      }\n    } else {\n      currentExpires = new Date();\n    }\n\n    const newExpires = new Date(\n      currentExpires.getTime() + additionalHours * 60 * 60 * 1000\n    );\n\n    await this.storage.updateEntity(name, {\n      expiresAt: newExpires.toISOString(),\n      lastModified: new Date().toISOString(),\n    } as Partial<AgentEntity>);\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Test TTL extension scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Extends expiresAt by specified hours",
+        "Validates entities exist",
+        "Validates entities are working memory",
+        "Handles already-expired (starts from now)",
+        "Throws appropriate errors",
+        "Persists changes",
+        "Unit tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "WorkingMemoryManager creates session-scoped memories",
+    "TTL-based expiration works correctly",
+    "Session memory queries efficient",
+    "Expired memories cleaned up",
+    "TTL extension works",
+    "15+ unit tests pass"
+  ],
+  "filesCreated": [
+    "src/agent/WorkingMemoryManager.ts",
+    "tests/unit/agent/WorkingMemoryManager.test.ts"
+  ],
+  "filesModified": [],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 1 - Type Definitions"],
+  "notes": [
+    "Session index should be rebuilt on startup from storage",
+    "Consider background job for clearExpired",
+    "Max memories per session prevents runaway memory usage",
+    "TTL extension is alternative to promotion for temporary persistence"
+  ]
+}

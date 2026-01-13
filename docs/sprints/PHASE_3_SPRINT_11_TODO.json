@@ -1,0 +1,119 @@
+{
+  "phase": 3,
+  "sprint": 11,
+  "title": "Consolidation Pipeline Foundation",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Creates the core infrastructure for memory transformation and long-term storage promotion",
+  "targetMetrics": {
+    "consolidationCapability": {
+      "current": "No consolidation",
+      "target": "Full pipeline with configurable stages"
+    },
+    "promotionAccuracy": {
+      "current": "Manual only",
+      "target": "Criteria-based automatic promotion"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.11.1",
+      "category": "core",
+      "title": "Create ConsolidationPipeline Class Skeleton",
+      "description": "Implement ConsolidationPipeline with dependencies on storage, WorkingMemoryManager, and DecayEngine. Define pipeline stages as pluggable processors.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit", "typecheck"],
+      "acceptanceCriteria": [
+        "ConsolidationPipeline class created",
+        "Dependencies injected properly",
+        "Pipeline stage interfaces defined",
+        "Configuration interface defined",
+        "Method stubs for all operations"
+      ]
+    },
+    {
+      "id": "3.11.2",
+      "category": "core",
+      "title": "Implement consolidateSession() Method",
+      "description": "Process all memories from a session, evaluate promotion criteria, and apply configured transformations.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit", "integration"],
+      "acceptanceCriteria": [
+        "Processes all session memories",
+        "Evaluates promotion criteria",
+        "Returns ConsolidationResult",
+        "Handles errors gracefully"
+      ]
+    },
+    {
+      "id": "3.11.3",
+      "category": "types",
+      "title": "Create ConsolidateOptions Type",
+      "description": "Define comprehensive options interface for consolidation including summarize, extractPatterns, minConfidence, minConfirmations, and preserveOriginals flags.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "acceptanceCriteria": [
+        "ConsolidateOptions fully typed",
+        "All flags documented",
+        "Exported from types"
+      ]
+    },
+    {
+      "id": "3.11.4",
+      "category": "core",
+      "title": "Implement promoteMemory() with Target Type",
+      "description": "Extend promotion to specify target type (episodic/semantic) with type-specific processing rules.",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "testCategories": ["unit"],
+      "acceptanceCriteria": [
+        "Promotion respects target type",
+        "Episodic preserves temporal context",
+        "Semantic abstracts observations",
+        "Metadata correctly updated"
+      ]
+    },
+    {
+      "id": "3.11.5",
+      "category": "types",
+      "title": "Create ConsolidationResult Type",
+      "description": "Define result structure capturing memoriesProcessed, memoriesPromoted, memoriesMerged, patternsExtracted, summariesCreated, and errors.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "testCategories": ["typecheck"],
+      "acceptanceCriteria": [
+        "ConsolidationResult fully typed",
+        "All statistics captured",
+        "Error tracking included"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "ConsolidationPipeline class implemented",
+    "Session consolidation works end-to-end",
+    "Types defined and exported",
+    "Promotion by target type works",
+    "10+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/ConsolidationPipeline.ts"],
+  "filesModified": ["src/types/agent-memory.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 6-7 - Working Memory", "Sprint 4-5 - Decay Engine"]
+}

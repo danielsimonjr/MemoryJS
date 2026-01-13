@@ -1,0 +1,116 @@
+{
+  "phase": 3,
+  "sprint": 15,
+  "title": "Auto-Consolidation Rules",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Enables rule-based automatic memory consolidation without manual intervention",
+  "targetMetrics": {
+    "automationCoverage": {
+      "current": "Manual only",
+      "target": "Trigger-based automatic consolidation"
+    },
+    "ruleFlexibility": {
+      "current": "N/A",
+      "target": "Complex condition support with AND/OR logic"
+    }
+  },
+  "tasks": [
+    {
+      "id": "3.15.1",
+      "category": "types",
+      "title": "Create ConsolidationRule Type",
+      "description": "Define rule structure with trigger, conditions (minConfidence, minConfirmations, minAccessCount, memoryType), and action.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "ConsolidationRule fully typed",
+        "Trigger types defined",
+        "Conditions comprehensive",
+        "Actions enumerated"
+      ]
+    },
+    {
+      "id": "3.15.2",
+      "category": "core",
+      "title": "Implement runAutoConsolidation() Method",
+      "description": "Process rules against all memories, execute actions for those meeting conditions, return aggregate result.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts"],
+      "acceptanceCriteria": [
+        "Processes all rules",
+        "Executes matching actions",
+        "Returns aggregate result",
+        "Handles errors gracefully"
+      ]
+    },
+    {
+      "id": "3.15.3",
+      "category": "core",
+      "title": "Add Rule Evaluation Engine",
+      "description": "Evaluate rule conditions against entity with AND/OR logic support and cached evaluation results.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/RuleEvaluator.ts"],
+      "acceptanceCriteria": [
+        "Evaluates conditions correctly",
+        "AND/OR logic works",
+        "Caching for performance",
+        "Clear pass/fail results"
+      ]
+    },
+    {
+      "id": "3.15.4",
+      "category": "integration",
+      "title": "Implement Trigger Hooks",
+      "description": "Fire consolidation on triggers: session_end (SessionManager hook), time_elapsed (scheduled), confirmation_threshold (entity update hook).",
+      "status": "pending",
+      "estimatedHours": 1.25,
+      "agent": "claude",
+      "files": ["src/agent/ConsolidationPipeline.ts", "src/agent/SessionManager.ts"],
+      "acceptanceCriteria": [
+        "Session end trigger works",
+        "Scheduled trigger works",
+        "Confirmation threshold trigger works",
+        "Manual trigger works"
+      ]
+    },
+    {
+      "id": "3.15.5",
+      "category": "integration",
+      "title": "Add ConsolidationPipeline to ManagerContext",
+      "description": "Lazy-initialize pipeline with all dependencies, expose via ctx.consolidationPipeline, add env vars for configuration.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/ManagerContext.ts"],
+      "acceptanceCriteria": [
+        "Pipeline accessible via context",
+        "Dependencies properly wired",
+        "Env var configuration works",
+        "Integration tests pass"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "Rule types defined",
+    "Auto-consolidation runs correctly",
+    "Rule evaluation supports complex conditions",
+    "All triggers fire consolidation",
+    "Pipeline accessible via ManagerContext",
+    "12+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/RuleEvaluator.ts"],
+  "filesModified": ["src/types/agent-memory.ts", "src/agent/ConsolidationPipeline.ts", "src/agent/SessionManager.ts", "src/core/ManagerContext.ts"],
+  "totalNewTests": 12,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 14 - Memory Merging"]
+}

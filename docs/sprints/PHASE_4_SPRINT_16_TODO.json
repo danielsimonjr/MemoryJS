@@ -1,0 +1,113 @@
+{
+  "phase": 4,
+  "sprint": 16,
+  "title": "Salience Engine Foundation",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "completedAt": null,
+  "implementationNotes": null,
+  "impact": "Creates context-aware memory relevance scoring for intelligent retrieval",
+  "targetMetrics": {
+    "salienceAccuracy": {
+      "current": "No salience scoring",
+      "target": "Multi-factor salience with component breakdown"
+    },
+    "contextAwareness": {
+      "current": "No context",
+      "target": "Task, session, and query context integration"
+    }
+  },
+  "tasks": [
+    {
+      "id": "4.16.1",
+      "category": "core",
+      "title": "Create SalienceEngine Class Skeleton",
+      "description": "Implement SalienceEngine with configurable weights for recency, frequency, context relevance, and novelty. Inject AccessTracker and DecayEngine dependencies.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "SalienceEngine class created",
+        "Configurable weights",
+        "Dependencies injected",
+        "Method stubs defined"
+      ]
+    },
+    {
+      "id": "4.16.2",
+      "category": "types",
+      "title": "Create SalienceContext Type",
+      "description": "Define context interface with currentTask, currentSession, recentEntities, queryText, userIntent, and temporalFocus.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "SalienceContext fully typed",
+        "All context factors included",
+        "Temporal focus options defined"
+      ]
+    },
+    {
+      "id": "4.16.3",
+      "category": "core",
+      "title": "Implement calculateSalience() Method",
+      "description": "Calculate salience combining base_importance * decay_factor + recency_boost + frequency_boost + context_relevance + novelty_bonus.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "Formula correctly implemented",
+        "All components weighted",
+        "Returns normalized score",
+        "Component breakdown available"
+      ]
+    },
+    {
+      "id": "4.16.4",
+      "category": "core",
+      "title": "Implement Recency and Frequency Boosts",
+      "description": "Calculate recency_boost from AccessTracker.calculateRecencyScore() and frequency_boost from normalized access count, both scaled by weights.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/agent/SalienceEngine.ts"],
+      "acceptanceCriteria": [
+        "Recency boost from AccessTracker",
+        "Frequency boost calculated",
+        "Both scaled by weights",
+        "Integration verified"
+      ]
+    },
+    {
+      "id": "4.16.5",
+      "category": "types",
+      "title": "Create ScoredEntity Type",
+      "description": "Define result with entity, salienceScore, and components breakdown (baseImportance, recencyBoost, frequencyBoost, contextRelevance, noveltyBoost).",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/agent-memory.ts"],
+      "acceptanceCriteria": [
+        "ScoredEntity fully typed",
+        "Component breakdown included",
+        "Exported from types"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "SalienceEngine calculates multi-factor scores",
+    "Context type captures all factors",
+    "Component weights configurable",
+    "Score breakdown available",
+    "10+ unit tests pass"
+  ],
+  "filesCreated": ["src/agent/SalienceEngine.ts"],
+  "filesModified": ["src/types/agent-memory.ts"],
+  "totalNewTests": 10,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 2-3 - Access Tracking", "Sprint 4-5 - Decay Engine"]
+}
