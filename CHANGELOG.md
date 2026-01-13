@@ -24,9 +24,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **AccessContextBuilder**: Fluent builder for access context construction
 - **Utility Types**: WorkingMemoryEntity, EpisodicMemoryEntity, SemanticMemoryEntity, ProceduralMemoryEntity
 
+#### Sprint 2: Access Tracking Foundation
+- **AccessTracker Class**: Tracks memory access patterns for decay and ranking
+  - recordAccess() with context (session, task, query, retrieval method)
+  - getAccessStats() with pattern classification (frequent/occasional/rare)
+  - calculateRecencyScore() using exponential decay formula
+  - getFrequentlyAccessed() and getRecentlyAccessed() with time filtering
+  - Static utility calculateRecencyScoreFromTimestamp()
+- **AccessStats Interface**: Statistics including access counts, patterns, intervals
+- **AccessTrackerConfig**: Configurable buffer size, half-life, frequency thresholds
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
+- Added 44 unit tests for AccessTracker
 
 ## [1.1.0] - 2026-01-11
 
