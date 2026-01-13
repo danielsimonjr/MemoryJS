@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - Agent Memory System
+
+### Added
+
+#### Sprint 1: Extended Type Definitions
+- **AgentEntity Interface**: Extended Entity with 20+ fields for AI agent memory systems
+  - Memory classification (working/episodic/semantic/procedural)
+  - Session and task context (sessionId, conversationId, taskId)
+  - Lifecycle management (expiresAt, promotedAt, markedForPromotion)
+  - Access tracking (accessCount, lastAccessedAt, accessPattern)
+  - Memory strength (confidence, confirmationCount, decayRate)
+  - Multi-agent support (agentId, visibility, source)
+- **AgentObservation Interface**: Extended observations with confidence, temporal validity, provenance
+- **SessionEntity Interface**: Session tracking with status, goals, and session linking
+- **MemorySource Interface**: Provenance tracking for memory origin
+- **Type Guards**: isAgentEntity, isSessionEntity, isWorkingMemory, isEpisodicMemory, isSemanticMemory, isProceduralMemory
+- **AccessContextBuilder**: Fluent builder for access context construction
+- **Utility Types**: WorkingMemoryEntity, EpisodicMemoryEntity, SemanticMemoryEntity, ProceduralMemoryEntity
+
+### Testing
+
+- Added 67 unit tests for type guards and AccessContextBuilder
+
 ## [1.1.0] - 2026-01-11
 
 ### Added

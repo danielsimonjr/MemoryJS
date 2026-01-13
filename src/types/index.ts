@@ -108,3 +108,50 @@ export type {
   SubQuery,
   QueryPlan,
 } from './types.js';
+
+// Agent Memory Types (Phase 1 - Agent Memory System)
+export type {
+  // Memory classification types
+  MemoryType,
+  AccessPattern,
+  MemoryVisibility,
+  MemoryAcquisitionMethod,
+  SessionStatus,
+  TemporalFocus,
+  // Memory source types
+  ObservationSource,
+  MemorySource,
+  // Agent entity types
+  AgentEntity,
+  AgentObservation,
+  SessionEntity,
+  // Context types
+  AccessContext,
+  SalienceContext,
+  SalienceWeights,
+  SalienceComponents,
+  ScoredEntity,
+  // Working memory types
+  WorkingMemoryOptions,
+  // Decay types
+  DecayOptions,
+  ForgetOptions,
+  DecayResult,
+  ForgetResult,
+  // Utility types
+  WorkingMemoryEntity,
+  EpisodicMemoryEntity,
+  SemanticMemoryEntity,
+  ProceduralMemoryEntity,
+} from './agent-memory.js';
+
+// Agent Memory Type Guards and Classes
+export {
+  isAgentEntity,
+  isSessionEntity,
+  isWorkingMemory,
+  isEpisodicMemory,
+  isSemanticMemory,
+  isProceduralMemory,
+  AccessContextBuilder,
+} from './agent-memory.js';
