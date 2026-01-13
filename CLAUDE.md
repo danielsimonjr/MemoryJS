@@ -12,6 +12,7 @@ MemoryJS is a TypeScript knowledge graph library for managing entities, relation
 # Build
 npm run build           # Compile TypeScript to dist/
 npm run build:watch     # Watch mode compilation
+npm run clean           # Remove dist/ directory
 
 # Test
 npm run test            # Run all tests once
@@ -44,14 +45,19 @@ src/
 **ManagerContext** (`src/core/ManagerContext.ts`): Central facade providing lazy-initialized access to all managers. Instantiate with a storage path string:
 ```typescript
 const ctx = new ManagerContext('./memory.jsonl');
-ctx.entityManager      // Entity CRUD + tags + hierarchy
-ctx.relationManager    // Relation CRUD
-ctx.observationManager // Observation CRUD
-ctx.searchManager      // All search operations
-ctx.graphTraversal     // Path finding, centrality
-ctx.ioManager          // Import/export/backup
-ctx.tagManager         // Tag aliases
-ctx.semanticSearch     // Vector similarity (optional)
+ctx.entityManager       // Entity CRUD + tags
+ctx.relationManager     // Relation CRUD
+ctx.observationManager  // Observation CRUD
+ctx.hierarchyManager    // Entity hierarchy (parent/child, ancestors, descendants)
+ctx.searchManager       // All search operations
+ctx.rankedSearch        // TF-IDF/BM25 ranked search
+ctx.graphTraversal      // Path finding, centrality, connected components
+ctx.ioManager           // Import/export/backup/restore
+ctx.tagManager          // Tag aliases and management
+ctx.analyticsManager    // Graph statistics and validation
+ctx.compressionManager  // Duplicate detection, entity merging
+ctx.archiveManager      // Entity archival to compressed storage
+ctx.semanticSearch      // Vector similarity (requires embedding provider)
 ```
 
 **Storage Layer** (`src/core/StorageFactory.ts`): Two backends selected via `MEMORY_STORAGE_TYPE` env var:
@@ -61,10 +67,14 @@ ctx.semanticSearch     // Vector similarity (optional)
 **Search System** (`src/search/`):
 - `BasicSearch`: Simple substring matching
 - `RankedSearch`: TF-IDF scoring via `TFIDFIndexManager`
+- `BM25Search`: Okapi BM25 algorithm with stopwords
 - `BooleanSearch`: AND/OR/NOT operators with AST parsing
 - `FuzzySearch`: Levenshtein distance via worker pool
 - `SemanticSearch`: Vector similarity (requires embedding provider)
 - `HybridSearchManager`: Combines semantic, lexical, and symbolic signals with configurable weights
+- `QueryAnalyzer`/`QueryPlanner`: Query understanding, cost estimation, execution planning
+- `ReflectionManager`: Reflection-based retrieval with progressive refinement
+- `SavedSearchManager`: Saved search persistence and execution
 
 ### Data Model
 
@@ -74,6 +84,24 @@ ctx.semanticSearch     // Vector similarity (optional)
 
 **Relation**: Directed edges with `from`, `to`, `relationType` fields.
 
+### Features (`src/features/`)
+
+- `IOManager`: Import/export in JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid formats
+- `StreamingExporter`: Streaming export for large graphs with Brotli compression
+- `AnalyticsManager`: Graph statistics, validation, duplicate detection
+- `CompressionManager`: Entity merging, graph compression
+- `ArchiveManager`: Archive old/low-importance entities
+- `TagManager`: Tag alias management and resolution
+- `ObservationNormalizer`: Pronoun resolution, relative date anchoring
+- `KeywordExtractor`: Keyword extraction from text
+
+### Graph Algorithms (`src/core/GraphTraversal.ts`)
+
+- Shortest path (Dijkstra), all paths enumeration
+- Connected components detection
+- Centrality metrics: degree, betweenness, PageRank
+- Hierarchy traversal: ancestors, descendants, subtrees
+
 ### Key Patterns
 
 - Storage abstraction: Both backends implement same interface via duck typing
@@ -81,6 +109,7 @@ ctx.semanticSearch     // Vector similarity (optional)
 - Event-driven cache invalidation: `GraphEventEmitter` notifies subscribers on changes
 - TF-IDF auto-sync: `TFIDFEventSync` keeps index current with storage
 - Worker pool: CPU-intensive Levenshtein calculations offloaded to workers
+- Transaction support: `TransactionManager` for atomic batch operations
 
 ## Testing
 
@@ -97,8 +126,11 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files.
 | Variable | Values | Default |
 |----------|--------|---------|
 | `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` |
-| `EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `none` |
-| `OPENAI_API_KEY` | API key string | - |
+| `MEMORY_FILE_PATH` | Custom storage file path | - |
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `none` |
+| `MEMORY_OPENAI_API_KEY` | API key string | - |
+| `MEMORY_EMBEDDING_MODEL` | Model name override | - |
+| `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |
 
 ## Documentation
 
