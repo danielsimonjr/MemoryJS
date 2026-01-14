@@ -79,3 +79,8 @@ export {
 export { PatternDetector } from './PatternDetector.js';
 
 export { RuleEvaluator } from './RuleEvaluator.js';
+
+export {
+  SalienceEngine,
+  type SalienceEngineConfig,
+} from './SalienceEngine.js';

@@ -240,6 +240,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Priority-based rule processing (higher priority first)
 - **New Types**: ConsolidationTrigger, ConsolidationAction, RuleConditions, ConsolidationRule, RuleEvaluationResult
 
+#### Sprint 16: Salience Engine Foundation
+- **SalienceEngine Class**: Context-aware memory relevance scoring
+  - calculateSalience() computes multi-factor score with component breakdown
+  - rankEntitiesBySalience() for sorting entities by relevance
+  - getTopSalient() retrieves highest-salience entities from storage
+  - Configurable weights for importance, recency, frequency, context, and novelty
+- **Salience Components**: Five-factor scoring model
+  - baseImportance: DecayEngine effective importance normalized to 0-1
+  - recencyBoost: Exponential decay from last access time with temporal focus
+  - frequencyBoost: Log-normalized access count from AccessTracker
+  - contextRelevance: Task/session/query/intent matching
+  - noveltyBoost: Inverse recency to surface less recently accessed items
+- **Temporal Focus Support**: Adjustable behavior for recent vs historical focus
+  - recent: Boosts recently accessed, reduces novelty
+  - historical: Boosts novelty, reduces recency
+  - balanced: Default equal weighting
+- **New Types**: SalienceContext, SalienceWeights, SalienceComponents, ScoredEntity, TemporalFocus
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -255,6 +273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 30 unit tests for EpisodicMemoryManager
 - Added 78 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13 + 18 Sprint 14 + 14 Sprint 15)
 - Added 15 unit tests for RuleEvaluator
+- Added 24 unit tests for SalienceEngine
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
 

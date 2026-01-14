@@ -4,9 +4,9 @@
   "title": "Salience Engine Foundation",
   "priority": "HIGH",
   "effort": "6 hours",
-  "status": "pending",
-  "completedAt": null,
-  "implementationNotes": null,
+  "status": "completed",
+  "completedAt": "2026-01-13",
+  "implementationNotes": "Created SalienceEngine class with five-factor scoring model (baseImportance, recencyBoost, frequencyBoost, contextRelevance, noveltyBoost). Added calculateSalience(), rankEntitiesBySalience(), and getTopSalient() methods. Implemented temporal focus support (recent/historical/balanced). Added SalienceContext, SalienceWeights, SalienceComponents, ScoredEntity types (pre-existing). Created 24 unit tests.",
   "impact": "Creates context-aware memory relevance scoring for intelligent retrieval",
   "targetMetrics": {
     "salienceAccuracy": {
