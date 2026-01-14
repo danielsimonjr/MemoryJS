@@ -40,11 +40,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **GraphTraversal Integration**: Optional access tracking via TraversalOptionsWithTracking for findShortestPath() and findAllPaths()
 - **ManagerContext Integration**: AccessTracker lazy-initialized and wired to all managers
 
+#### Sprint 4: Decay Engine Foundation
+- **DecayEngine Class**: Time-based memory importance decay with exponential decay formula
+  - calculateDecayFactor() with configurable half-life and importance modulation
+  - calculateEffectiveImportance() combining base importance, decay, and strength multiplier
+  - getDecayedMemories() to find memories below threshold
+  - getMemoriesAtRisk() to identify at-risk memories
+  - reinforceMemory() to strengthen memories against decay
+  - applyDecay() for batch decay analysis
+  - Static calculateDecayFactorStatic() utility
+- **DecayEngineConfig**: Configurable half-life, modulation settings, minimum floor
+- **Strength Multiplier**: Confirmations (+10% each) and accesses (+1% per 100)
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
 - Added 44 unit tests for AccessTracker
 - Added 15 integration tests for access tracking across managers
+- Added 36 unit tests for DecayEngine
 
 ## [1.1.0] - 2026-01-11
 

@@ -12,3 +12,11 @@ export {
   type AccessTrackerConfig,
   type AccessContext,
 } from './AccessTracker.js';
+
+export {
+  DecayEngine,
+  type DecayEngineConfig,
+  type DecayOperationOptions,
+  type ReinforcementOptions,
+  type DecayResult,
+} from './DecayEngine.js';
