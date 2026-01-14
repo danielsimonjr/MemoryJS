@@ -32,6 +32,14 @@ export interface ContextWindowManagerConfig {
   reserveBuffer?: number;
   /** Maximum entities to consider (default: 1000) */
   maxEntitiesToConsider?: number;
+  /** Budget percentage for working memory (default: 0.3 = 30%) */
+  workingBudgetPct?: number;
+  /** Budget percentage for episodic memory (default: 0.3 = 30%) */
+  episodicBudgetPct?: number;
+  /** Budget percentage for semantic memory (default: 0.4 = 40%) */
+  semanticBudgetPct?: number;
+  /** Number of recent sessions to include for episodic (default: 3) */
+  recentSessionCount?: number;
 }
 
 /**
@@ -71,6 +79,10 @@ export class ContextWindowManager {
       tokenMultiplier: config.tokenMultiplier ?? 1.3,
       reserveBuffer: config.reserveBuffer ?? 100,
       maxEntitiesToConsider: config.maxEntitiesToConsider ?? 1000,
+      workingBudgetPct: config.workingBudgetPct ?? 0.3,
+      episodicBudgetPct: config.episodicBudgetPct ?? 0.3,
+      semanticBudgetPct: config.semanticBudgetPct ?? 0.4,
+      recentSessionCount: config.recentSessionCount ?? 3,
     };
   }
 
@@ -269,6 +281,283 @@ export class ContextWindowManager {
       breakdown,
       excluded: [...excluded, ...lowSalienceExcluded],
       suggestions,
+    };
+  }
+
+  // ==================== Type-Specific Retrieval ====================
+
+  /**
+   * Retrieve working memory entities for a session.
+   *
+   * @param sessionId - Session to retrieve working memory for
+   * @param budget - Token budget for working memory
+   * @param context - Salience context
+   * @returns Working memory entities within budget
+   */
+  async retrieveWorkingMemory(
+    sessionId: string | undefined,
+    budget: number,
+    context: SalienceContext = {}
+  ): Promise<{ entities: AgentEntity[]; tokens: number }> {
+    const graph = await this.storage.loadGraph();
+    let candidates = graph.entities
+      .filter(isAgentEntity)
+      .filter((e) => (e as AgentEntity).memoryType === 'working') as AgentEntity[];
+
+    // Filter by session if provided
+    if (sessionId) {
+      candidates = candidates.filter((e) => e.sessionId === sessionId);
+    }
+
+    // Score and select within budget
+    const scored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
+    const selected: AgentEntity[] = [];
+    let usedTokens = 0;
+
+    for (const s of scored) {
+      const tokens = this.estimateTokens(s.entity);
+      if (usedTokens + tokens <= budget) {
+        selected.push(s.entity);
+        usedTokens += tokens;
+      }
+    }
+
+    return { entities: selected, tokens: usedTokens };
+  }
+
+  /**
+   * Retrieve recent episodic memories.
+   *
+   * @param budget - Token budget for episodic memory
+   * @param context - Salience context
+   * @returns Recent episodic entities within budget
+   */
+  async retrieveEpisodicRecent(
+    budget: number,
+    context: SalienceContext = {}
+  ): Promise<{ entities: AgentEntity[]; tokens: number }> {
+    const graph = await this.storage.loadGraph();
+    const episodic = graph.entities
+      .filter(isAgentEntity)
+      .filter((e) => (e as AgentEntity).memoryType === 'episodic') as AgentEntity[];
+
+    // Sort by creation time (most recent first)
+    const sorted = episodic.sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    // Get unique sessions from recent memories
+    const recentSessions = new Set<string>();
+    for (const e of sorted) {
+      if (e.sessionId) {
+        recentSessions.add(e.sessionId);
+        if (recentSessions.size >= this.config.recentSessionCount) break;
+      }
+    }
+
+    // Filter to recent sessions
+    const candidates = recentSessions.size > 0
+      ? sorted.filter((e) => !e.sessionId || recentSessions.has(e.sessionId))
+      : sorted;
+
+    // Score and select within budget
+    const scored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
+    const selected: AgentEntity[] = [];
+    let usedTokens = 0;
+
+    for (const s of scored) {
+      const tokens = this.estimateTokens(s.entity);
+      if (usedTokens + tokens <= budget) {
+        selected.push(s.entity);
+        usedTokens += tokens;
+      }
+    }
+
+    return { entities: selected, tokens: usedTokens };
+  }
+
+  /**
+   * Retrieve semantically relevant memories.
+   *
+   * @param budget - Token budget for semantic memory
+   * @param context - Salience context
+   * @returns Relevant semantic entities within budget
+   */
+  async retrieveSemanticRelevant(
+    budget: number,
+    context: SalienceContext = {}
+  ): Promise<{ entities: AgentEntity[]; tokens: number }> {
+    const graph = await this.storage.loadGraph();
+    const semantic = graph.entities
+      .filter(isAgentEntity)
+      .filter((e) => (e as AgentEntity).memoryType === 'semantic') as AgentEntity[];
+
+    // Score by salience (which includes context relevance)
+    const scored = await this.salienceEngine.rankEntitiesBySalience(semantic, context);
+    const selected: AgentEntity[] = [];
+    let usedTokens = 0;
+
+    for (const s of scored) {
+      const tokens = this.estimateTokens(s.entity);
+      if (usedTokens + tokens <= budget) {
+        selected.push(s.entity);
+        usedTokens += tokens;
+      }
+    }
+
+    return { entities: selected, tokens: usedTokens };
+  }
+
+  /**
+   * Retrieve must-include entities with budget warning.
+   *
+   * @param names - Entity names to include
+   * @param budget - Available budget
+   * @returns Entities, tokens used, and any warnings
+   */
+  async retrieveMustInclude(
+    names: string[],
+    budget: number
+  ): Promise<{ entities: AgentEntity[]; tokens: number; warnings: string[] }> {
+    const warnings: string[] = [];
+    const entities: AgentEntity[] = [];
+    let totalTokens = 0;
+
+    for (const name of names) {
+      const entity = this.storage.getEntityByName(name);
+      if (entity && isAgentEntity(entity)) {
+        const agentEntity = entity as AgentEntity;
+        const tokens = this.estimateTokens(agentEntity);
+        entities.push(agentEntity);
+        totalTokens += tokens;
+      } else {
+        warnings.push(`Must-include entity '${name}' not found`);
+      }
+    }
+
+    if (totalTokens > budget) {
+      warnings.push(
+        `Must-include entities (${totalTokens} tokens) exceed available budget (${budget} tokens)`
+      );
+    }
+
+    return { entities, tokens: totalTokens, warnings };
+  }
+
+  /**
+   * Retrieve memories with budget allocation across memory types.
+   *
+   * Allocates budget percentages to each memory type:
+   * - Working: 30% (configurable)
+   * - Episodic: 30% (configurable)
+   * - Semantic: 40% (configurable)
+   *
+   * Must-include entities are subtracted from total first.
+   *
+   * @param options - Retrieval options
+   * @returns Context package with allocated retrieval
+   */
+  async retrieveWithBudgetAllocation(
+    options: ContextRetrievalOptions
+  ): Promise<ContextPackage> {
+    const {
+      maxTokens = this.config.defaultMaxTokens,
+      context = {},
+      includeWorkingMemory = true,
+      includeEpisodicRecent = true,
+      includeSemanticRelevant = true,
+      mustInclude = [],
+      minSalience = 0,
+    } = options;
+
+    const effectiveBudget = maxTokens - this.config.reserveBuffer;
+    const allSuggestions: string[] = [];
+    const allExcluded: ExcludedEntity[] = [];
+
+    // Handle must-include first
+    const mustIncludeResult = await this.retrieveMustInclude(mustInclude, effectiveBudget);
+    allSuggestions.push(...mustIncludeResult.warnings);
+
+    // Remaining budget after must-include
+    const remainingBudget = Math.max(0, effectiveBudget - mustIncludeResult.tokens);
+
+    // Calculate allocated budgets
+    const workingBudget = includeWorkingMemory
+      ? Math.floor(remainingBudget * this.config.workingBudgetPct)
+      : 0;
+    const episodicBudget = includeEpisodicRecent
+      ? Math.floor(remainingBudget * this.config.episodicBudgetPct)
+      : 0;
+    const semanticBudget = includeSemanticRelevant
+      ? Math.floor(remainingBudget * this.config.semanticBudgetPct)
+      : 0;
+
+    // Retrieve from each source
+    const workingResult = includeWorkingMemory
+      ? await this.retrieveWorkingMemory(context.currentSession, workingBudget, context)
+      : { entities: [], tokens: 0 };
+
+    const episodicResult = includeEpisodicRecent
+      ? await this.retrieveEpisodicRecent(episodicBudget, context)
+      : { entities: [], tokens: 0 };
+
+    const semanticResult = includeSemanticRelevant
+      ? await this.retrieveSemanticRelevant(semanticBudget, context)
+      : { entities: [], tokens: 0 };
+
+    // Combine all memories
+    const allMemories = [
+      ...mustIncludeResult.entities,
+      ...workingResult.entities,
+      ...episodicResult.entities,
+      ...semanticResult.entities,
+    ];
+
+    // Deduplicate by name (must-include takes priority)
+    const seen = new Set<string>();
+    const deduped: AgentEntity[] = [];
+    for (const e of allMemories) {
+      if (!seen.has(e.name)) {
+        seen.add(e.name);
+        deduped.push(e);
+      }
+    }
+
+    // Filter by minimum salience
+    const scored = await this.salienceEngine.rankEntitiesBySalience(deduped, context);
+    const mustIncludeSet = new Set(mustInclude);
+    const filtered = scored.filter(
+      (s) => s.salienceScore >= minSalience || mustIncludeSet.has(s.entity.name)
+    );
+
+    // Track low salience exclusions
+    const lowSalienceExcluded = scored
+      .filter((s) => s.salienceScore < minSalience && !mustIncludeSet.has(s.entity.name))
+      .map((s) => ({
+        entity: s.entity,
+        reason: 'low_salience' as const,
+        tokens: this.estimateTokens(s.entity),
+        salience: s.salienceScore,
+      }));
+    allExcluded.push(...lowSalienceExcluded);
+
+    // Calculate breakdown
+    const breakdown: TokenBreakdown = {
+      working: workingResult.tokens,
+      episodic: episodicResult.tokens,
+      semantic: semanticResult.tokens,
+      procedural: 0,
+      mustInclude: mustIncludeResult.tokens,
+    };
+
+    return {
+      memories: filtered.map((s) => s.entity),
+      totalTokens: this.estimateTotalTokens(filtered.map((s) => s.entity)),
+      breakdown,
+      excluded: allExcluded,
+      suggestions: allSuggestions,
     };
   }
 

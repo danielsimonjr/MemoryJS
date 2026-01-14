@@ -301,6 +301,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Suggestions for high-salience excluded entities
 - **New Types**: ContextRetrievalOptions, TokenBreakdown, ContextPackage, ExcludedEntity
 
+#### Sprint 19: Context-Optimized Retrieval
+- **Budget Allocation Configuration**: Configurable budget percentages per memory type
+  - workingBudgetPct: Working memory allocation (default: 30%)
+  - episodicBudgetPct: Episodic memory allocation (default: 30%)
+  - semanticBudgetPct: Semantic memory allocation (default: 40%)
+  - recentSessionCount: Number of recent sessions for episodic (default: 3)
+- **Type-Specific Retrieval Methods**: Specialized retrieval per memory type
+  - retrieveWorkingMemory() with session filtering and budget constraints
+  - retrieveEpisodicRecent() sorted by recency with session limiting
+  - retrieveSemanticRelevant() prioritized by context salience
+  - retrieveMustInclude() with warning generation for missing/exceeding budget
+- **Budget Allocation Retrieval**: Coordinated multi-type retrieval
+  - retrieveWithBudgetAllocation() allocates budget across memory types
+  - Must-include entities subtracted from total budget first
+  - Deduplication across memory type sources
+  - Minimum salience filtering with must-include protection
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -317,7 +334,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 78 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13 + 18 Sprint 14 + 14 Sprint 15)
 - Added 15 unit tests for RuleEvaluator
 - Added 34 unit tests for SalienceEngine (24 Sprint 16 + 10 Sprint 17)
-- Added 18 unit tests for ContextWindowManager
+- Added 34 unit tests for ContextWindowManager (18 Sprint 18 + 16 Sprint 19)
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
 

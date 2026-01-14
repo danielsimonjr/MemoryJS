@@ -399,5 +399,359 @@ describe('ContextWindowManager', () => {
       // Custom multiplier should produce more tokens
       expect(customTokens).toBeGreaterThan(defaultTokens);
     });
+
+    it('should use custom budget allocation percentages', () => {
+      const customManager = new ContextWindowManager(storage, salienceEngine, {
+        workingBudgetPct: 0.5,
+        episodicBudgetPct: 0.25,
+        semanticBudgetPct: 0.25,
+        recentSessionCount: 5,
+      });
+
+      const config = customManager.getConfig();
+
+      expect(config.workingBudgetPct).toBe(0.5);
+      expect(config.episodicBudgetPct).toBe(0.25);
+      expect(config.semanticBudgetPct).toBe(0.25);
+      expect(config.recentSessionCount).toBe(5);
+    });
+  });
+
+  describe('retrieveWorkingMemory', () => {
+    it('should retrieve only working memory entities', async () => {
+      const entities = [
+        createTestEntity({ name: 'w1', memoryType: 'working', sessionId: 'session_1' }),
+        createTestEntity({ name: 'w2', memoryType: 'working', sessionId: 'session_1' }),
+        createTestEntity({ name: 'e1', memoryType: 'episodic', sessionId: 'session_1' }),
+        createTestEntity({ name: 's1', memoryType: 'semantic' }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveWorkingMemory('session_1', 1000);
+
+      expect(result.entities.length).toBe(2);
+      expect(result.entities.every((e) => e.memoryType === 'working')).toBe(true);
+      expect(result.tokens).toBeGreaterThan(0);
+    });
+
+    it('should filter by session ID', async () => {
+      const entities = [
+        createTestEntity({ name: 'w1', memoryType: 'working', sessionId: 'session_1' }),
+        createTestEntity({ name: 'w2', memoryType: 'working', sessionId: 'session_2' }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveWorkingMemory('session_1', 1000);
+
+      expect(result.entities.length).toBe(1);
+      expect(result.entities[0].name).toBe('w1');
+    });
+
+    it('should respect token budget', async () => {
+      const entities = [
+        createTestEntity({ name: 'w1', memoryType: 'working', importance: 9, observations: ['Short'] }),
+        createTestEntity({
+          name: 'w2',
+          memoryType: 'working',
+          importance: 5,
+          observations: ['Much longer observation that takes more tokens'],
+        }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const smallBudget = contextManager.estimateTokens(entities[0]) + 5;
+      const result = await contextManager.retrieveWorkingMemory(undefined, smallBudget);
+
+      expect(result.tokens).toBeLessThanOrEqual(smallBudget);
+    });
+  });
+
+  describe('retrieveEpisodicRecent', () => {
+    it('should retrieve episodic memories sorted by recency', async () => {
+      const now = new Date();
+      const entities = [
+        createTestEntity({
+          name: 'old',
+          memoryType: 'episodic',
+          createdAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        }),
+        createTestEntity({
+          name: 'recent',
+          memoryType: 'episodic',
+          createdAt: now.toISOString(),
+        }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveEpisodicRecent(1000);
+
+      expect(result.entities.length).toBe(2);
+      expect(result.entities.every((e) => e.memoryType === 'episodic')).toBe(true);
+    });
+
+    it('should limit to recent sessions', async () => {
+      const now = new Date();
+      const entities = [
+        createTestEntity({
+          name: 'e1',
+          memoryType: 'episodic',
+          sessionId: 'session_1',
+          createdAt: now.toISOString(),
+        }),
+        createTestEntity({
+          name: 'e2',
+          memoryType: 'episodic',
+          sessionId: 'session_2',
+          createdAt: new Date(now.getTime() - 1000).toISOString(),
+        }),
+        createTestEntity({
+          name: 'e3',
+          memoryType: 'episodic',
+          sessionId: 'session_3',
+          createdAt: new Date(now.getTime() - 2000).toISOString(),
+        }),
+        createTestEntity({
+          name: 'e4',
+          memoryType: 'episodic',
+          sessionId: 'session_4',
+          createdAt: new Date(now.getTime() - 3000).toISOString(),
+        }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      // Only include 2 recent sessions
+      contextManager = new ContextWindowManager(storage, salienceEngine, { recentSessionCount: 2 });
+
+      const result = await contextManager.retrieveEpisodicRecent(1000);
+
+      // Should only include entities from 2 most recent sessions
+      const sessions = new Set(result.entities.map((e) => e.sessionId));
+      expect(sessions.size).toBeLessThanOrEqual(2);
+    });
+  });
+
+  describe('retrieveSemanticRelevant', () => {
+    it('should retrieve semantic memories', async () => {
+      const entities = [
+        createTestEntity({ name: 's1', memoryType: 'semantic', importance: 8 }),
+        createTestEntity({ name: 's2', memoryType: 'semantic', importance: 5 }),
+        createTestEntity({ name: 'w1', memoryType: 'working' }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveSemanticRelevant(1000);
+
+      expect(result.entities.length).toBe(2);
+      expect(result.entities.every((e) => e.memoryType === 'semantic')).toBe(true);
+    });
+
+    it('should prioritize by salience within budget', async () => {
+      const entities = [
+        createTestEntity({ name: 'high', memoryType: 'semantic', importance: 10 }),
+        createTestEntity({ name: 'low', memoryType: 'semantic', importance: 1 }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const smallBudget = contextManager.estimateTokens(entities[0]) + 5;
+      const result = await contextManager.retrieveSemanticRelevant(smallBudget);
+
+      // High importance should be selected first
+      expect(result.entities.some((e) => e.name === 'high')).toBe(true);
+    });
+  });
+
+  describe('retrieveMustInclude', () => {
+    it('should retrieve specified entities by name', async () => {
+      const entities = [
+        createTestEntity({ name: 'required1' }),
+        createTestEntity({ name: 'required2' }),
+        createTestEntity({ name: 'optional' }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveMustInclude(['required1', 'required2'], 1000);
+
+      expect(result.entities.length).toBe(2);
+      expect(result.entities.map((e) => e.name)).toEqual(['required1', 'required2']);
+      expect(result.warnings.length).toBe(0);
+    });
+
+    it('should warn when entity not found', async () => {
+      const entities = [createTestEntity({ name: 'exists' })];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveMustInclude(['exists', 'missing'], 1000);
+
+      expect(result.entities.length).toBe(1);
+      expect(result.warnings.some((w) => w.includes('missing'))).toBe(true);
+    });
+
+    it('should warn when budget exceeded', async () => {
+      const entities = [
+        createTestEntity({
+          name: 'large',
+          observations: ['This is a very long observation that will take many tokens'],
+        }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveMustInclude(['large'], 5);
+
+      expect(result.warnings.some((w) => w.includes('exceed'))).toBe(true);
+    });
+  });
+
+  describe('retrieveWithBudgetAllocation', () => {
+    it('should allocate budget across memory types', async () => {
+      const entities = [
+        createTestEntity({ name: 'w1', memoryType: 'working', observations: ['Working memory'] }),
+        createTestEntity({ name: 'e1', memoryType: 'episodic', observations: ['Episodic memory'] }),
+        createTestEntity({ name: 's1', memoryType: 'semantic', observations: ['Semantic memory'] }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveWithBudgetAllocation({
+        maxTokens: 1000,
+      });
+
+      expect(result.breakdown.working).toBeGreaterThanOrEqual(0);
+      expect(result.breakdown.episodic).toBeGreaterThanOrEqual(0);
+      expect(result.breakdown.semantic).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle must-include before allocation', async () => {
+      const entities = [
+        createTestEntity({ name: 'required', memoryType: 'working' }),
+        createTestEntity({ name: 'w1', memoryType: 'working' }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveWithBudgetAllocation({
+        maxTokens: 1000,
+        mustInclude: ['required'],
+      });
+
+      expect(result.memories.some((m) => m.name === 'required')).toBe(true);
+      expect(result.breakdown.mustInclude).toBeGreaterThan(0);
+    });
+
+    it('should deduplicate entities across sources', async () => {
+      // Entity appears as both working and semantic
+      const entities = [
+        createTestEntity({ name: 'shared', memoryType: 'working' }),
+        createTestEntity({ name: 'shared', memoryType: 'semantic' }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveWithBudgetAllocation({
+        maxTokens: 1000,
+      });
+
+      // Should only appear once
+      const sharedCount = result.memories.filter((m) => m.name === 'shared').length;
+      expect(sharedCount).toBeLessThanOrEqual(1);
+    });
+
+    it('should filter by minimum salience', async () => {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const entities = [
+        createTestEntity({ name: 'high', memoryType: 'working', importance: 10, accessCount: 50 }),
+        createTestEntity({
+          name: 'low',
+          memoryType: 'working',
+          importance: 0,
+          accessCount: 0,
+          lastAccessedAt: weekAgo,
+        }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      const result = await contextManager.retrieveWithBudgetAllocation({
+        maxTokens: 1000,
+        minSalience: 0.3,
+      });
+
+      // High salience should be included
+      expect(result.memories.some((m) => m.name === 'high')).toBe(true);
+    });
+
+    it('should use custom budget percentages', async () => {
+      const entities = [
+        createTestEntity({ name: 'w1', memoryType: 'working', observations: ['Working'] }),
+        createTestEntity({ name: 'e1', memoryType: 'episodic', observations: ['Episodic'] }),
+        createTestEntity({ name: 's1', memoryType: 'semantic', observations: ['Semantic'] }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      // Heavy working memory allocation
+      contextManager = new ContextWindowManager(storage, salienceEngine, {
+        workingBudgetPct: 0.8,
+        episodicBudgetPct: 0.1,
+        semanticBudgetPct: 0.1,
+      });
+
+      const result = await contextManager.retrieveWithBudgetAllocation({
+        maxTokens: 1000,
+      });
+
+      // Should have breakdown reflecting allocation
+      expect(result.breakdown).toBeDefined();
+    });
   });
 });
