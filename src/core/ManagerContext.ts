@@ -24,6 +24,7 @@ import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
+import { AccessTracker } from '../agent/AccessTracker.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
 
@@ -52,6 +53,7 @@ export class ManagerContext {
   private _analyticsManager?: AnalyticsManager;
   private _compressionManager?: CompressionManager;
   private _archiveManager?: ArchiveManager;
+  private _accessTracker?: AccessTracker;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -147,5 +149,32 @@ export class ManagerContext {
   /** ArchiveManager - Entity archival operations */
   get archiveManager(): ArchiveManager {
     return (this._archiveManager ??= new ArchiveManager(this.storage));
+  }
+
+  /**
+   * AccessTracker - Phase 1 Agent Memory: Access pattern tracking.
+   * Automatically wired to EntityManager, SearchManager, and GraphTraversal.
+   */
+  get accessTracker(): AccessTracker {
+    if (!this._accessTracker) {
+      this._accessTracker = new AccessTracker(this.storage);
+      this.wireAccessTracker();
+    }
+    return this._accessTracker;
+  }
+
+  /**
+   * Wire AccessTracker to managers that support access tracking.
+   * @internal
+   */
+  private wireAccessTracker(): void {
+    if (this._accessTracker) {
+      // Wire to EntityManager
+      this.entityManager.setAccessTracker(this._accessTracker);
+      // Wire to SearchManager
+      this.searchManager.setAccessTracker(this._accessTracker);
+      // Wire to GraphTraversal
+      this.graphTraversal.setAccessTracker(this._accessTracker);
+    }
   }
 }

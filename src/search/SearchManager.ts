@@ -7,7 +7,7 @@
  * @module search/SearchManager
  */
 
-import type { KnowledgeGraph, SearchResult, SavedSearch, AutoSearchResult, Entity } from '../types/index.js';
+import type { KnowledgeGraph, SearchResult, SavedSearch, AutoSearchResult, Entity, AccessContext } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { BasicSearch } from './BasicSearch.js';
 import { RankedSearch } from './RankedSearch.js';
@@ -16,6 +16,19 @@ import { FuzzySearch } from './FuzzySearch.js';
 import { SearchSuggestions } from './SearchSuggestions.js';
 import { SavedSearchManager } from './SavedSearchManager.js';
 import { QueryCostEstimator } from './QueryCostEstimator.js';
+import type { AccessTracker } from '../agent/AccessTracker.js';
+
+/**
+ * Options for search methods with access tracking support.
+ */
+export interface SearchOptionsWithTracking {
+  /** Enable access tracking for returned results */
+  trackAccess?: boolean;
+  /** Session ID for access context */
+  sessionId?: string;
+  /** Task ID for access context */
+  taskId?: string;
+}
 
 /**
  * Unified search manager providing access to all search types.
@@ -31,6 +44,7 @@ export class SearchManager {
   private savedSearchManager: SavedSearchManager;
   private storage: GraphStorage;
   private queryEstimator: QueryCostEstimator;
+  private accessTracker?: AccessTracker;
 
   constructor(storage: GraphStorage, savedSearchesFilePath: string) {
     this.storage = storage;
@@ -41,6 +55,16 @@ export class SearchManager {
     this.searchSuggestions = new SearchSuggestions(storage);
     this.savedSearchManager = new SavedSearchManager(savedSearchesFilePath, this.basicSearch);
     this.queryEstimator = new QueryCostEstimator();
+  }
+
+  /**
+   * Set the AccessTracker for optional access tracking.
+   * When set, search methods can track access to returned entities.
+   *
+   * @param tracker - AccessTracker instance
+   */
+  setAccessTracker(tracker: AccessTracker): void {
+    this.accessTracker = tracker;
   }
 
   // ==================== Cache Management (Phase 4 Sprint 5) ====================
@@ -108,15 +132,53 @@ export class SearchManager {
    *
    * // Combined filters
    * const filtered = await manager.searchNodes('bug', ['backend'], 5, 10);
+   *
+   * // Search with access tracking enabled
+   * const tracked = await manager.searchNodes('Alice', undefined, undefined, undefined, {
+   *   trackAccess: true,
+   *   sessionId: 'session_123'
+   * });
    * ```
    */
   async searchNodes(
     query: string,
     tags?: string[],
     minImportance?: number,
-    maxImportance?: number
+    maxImportance?: number,
+    options?: SearchOptionsWithTracking
   ): Promise<KnowledgeGraph> {
-    return this.basicSearch.searchNodes(query, tags, minImportance, maxImportance);
+    const result = await this.basicSearch.searchNodes(query, tags, minImportance, maxImportance);
+
+    // Track access if enabled
+    if (options?.trackAccess && this.accessTracker) {
+      await this.trackSearchResults(result.entities, query, options);
+    }
+
+    return result;
+  }
+
+  /**
+   * Track access for search results.
+   * @internal
+   */
+  private async trackSearchResults(
+    entities: Entity[],
+    query: string,
+    options: SearchOptionsWithTracking
+  ): Promise<void> {
+    if (!this.accessTracker || entities.length === 0) return;
+
+    const context: AccessContext = {
+      queryContext: query,
+      sessionId: options.sessionId,
+      taskId: options.taskId,
+      retrievalMethod: 'search',
+    };
+
+    // Batch record all results
+    await Promise.all(
+      entities.map((entity) => this.accessTracker!.recordAccess(entity.name, context))
+    );
   }
 
   /**

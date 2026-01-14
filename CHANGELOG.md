@@ -34,10 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **AccessStats Interface**: Statistics including access counts, patterns, intervals
 - **AccessTrackerConfig**: Configurable buffer size, half-life, frequency thresholds
 
+#### Sprint 3: Access Tracking Integration
+- **SearchManager Integration**: Optional access tracking via SearchOptionsWithTracking
+- **EntityManager Integration**: Optional access tracking via GetEntityOptions for getEntity()
+- **GraphTraversal Integration**: Optional access tracking via TraversalOptionsWithTracking for findShortestPath() and findAllPaths()
+- **ManagerContext Integration**: AccessTracker lazy-initialized and wired to all managers
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
 - Added 44 unit tests for AccessTracker
+- Added 15 integration tests for access tracking across managers
 
 ## [1.1.0] - 2026-01-11
 

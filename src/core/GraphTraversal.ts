@@ -15,9 +15,23 @@ import type {
   PathResult,
   ConnectedComponentsResult,
   CentralityResult,
+  AccessContext,
 } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
+import type { AccessTracker } from '../agent/AccessTracker.js';
 import { checkCancellation } from '../utils/index.js';
+
+/**
+ * Extended traversal options with access tracking support.
+ */
+export interface TraversalOptionsWithTracking extends TraversalOptions {
+  /** Enable access tracking for visited nodes */
+  trackAccess?: boolean;
+  /** Session ID for access context */
+  sessionId?: string;
+  /** Task ID for access context */
+  taskId?: string;
+}
 
 /**
  * Phase 4 Sprint 6: Default traversal options.
@@ -36,7 +50,41 @@ const DEFAULT_OPTIONS: Required<TraversalOptions> = {
  * and centrality metrics for analyzing graph structure.
  */
 export class GraphTraversal {
+  private accessTracker?: AccessTracker;
+
   constructor(private storage: GraphStorage) {}
+
+  /**
+   * Set the AccessTracker for optional access tracking.
+   * When set, traversal methods can track access to visited entities.
+   *
+   * @param tracker - AccessTracker instance
+   */
+  setAccessTracker(tracker: AccessTracker): void {
+    this.accessTracker = tracker;
+  }
+
+  /**
+   * Track access for visited nodes during traversal.
+   * @internal
+   */
+  private async trackTraversalAccess(
+    nodes: string[],
+    options: TraversalOptionsWithTracking
+  ): Promise<void> {
+    if (!this.accessTracker || nodes.length === 0) return;
+
+    const context: AccessContext = {
+      sessionId: options.sessionId,
+      taskId: options.taskId,
+      retrievalMethod: 'traversal',
+    };
+
+    // Batch record all visited nodes
+    await Promise.all(
+      nodes.map((name) => this.accessTracker!.recordAccess(name, context))
+    );
+  }
 
   // ==================== Sprint 6: BFS and DFS Traversal ====================
 
@@ -199,13 +247,13 @@ export class GraphTraversal {
    *
    * @param source - Source entity name
    * @param target - Target entity name
-   * @param options - Traversal options
+   * @param options - Traversal options (including optional access tracking)
    * @returns PathResult if path exists, null otherwise
    */
   async findShortestPath(
     source: string,
     target: string,
-    options: TraversalOptions = {}
+    options: TraversalOptionsWithTracking = {}
   ): Promise<PathResult | null> {
     // Ensure graph is loaded to populate indexes
     await this.storage.loadGraph();
@@ -217,7 +265,12 @@ export class GraphTraversal {
 
     // Same source and target
     if (source === target) {
-      return { path: [source], length: 0, relations: [] };
+      const result = { path: [source], length: 0, relations: [] };
+      // Track access if enabled
+      if (options.trackAccess && this.accessTracker) {
+        await this.trackTraversalAccess(result.path, options);
+      }
+      return result;
     }
 
     const opts = { ...DEFAULT_OPTIONS, ...options };
@@ -233,7 +286,12 @@ export class GraphTraversal {
 
       // Found target, reconstruct path
       if (current === target) {
-        return this.reconstructPath(source, target, parents);
+        const result = this.reconstructPath(source, target, parents);
+        // Track access if enabled
+        if (options.trackAccess && this.accessTracker) {
+          await this.trackTraversalAccess(result.path, options);
+        }
+        return result;
       }
 
       // Get neighbors
@@ -289,7 +347,7 @@ export class GraphTraversal {
    * @param source - Source entity name
    * @param target - Target entity name
    * @param maxDepth - Maximum path length (default: 5)
-   * @param options - Traversal options (includes signal for cancellation)
+   * @param options - Traversal options (includes signal for cancellation and access tracking)
    * @returns Array of PathResult objects for all found paths
    * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
    */
@@ -297,7 +355,7 @@ export class GraphTraversal {
     source: string,
     target: string,
     maxDepth: number = 5,
-    options: TraversalOptions & { signal?: AbortSignal } = {}
+    options: TraversalOptionsWithTracking & { signal?: AbortSignal } = {}
   ): Promise<PathResult[]> {
     // Check for early cancellation
     const { signal, ...traversalOptions } = options;
@@ -359,6 +417,18 @@ export class GraphTraversal {
     };
 
     dfsAllPaths(source, 0);
+
+    // Track access if enabled - collect unique nodes from all paths
+    if (options.trackAccess && this.accessTracker && allPaths.length > 0) {
+      const uniqueNodes = new Set<string>();
+      for (const pathResult of allPaths) {
+        for (const node of pathResult.path) {
+          uniqueNodes.add(node);
+        }
+      }
+      await this.trackTraversalAccess(Array.from(uniqueNodes), options);
+    }
+
     return allPaths;
   }
 

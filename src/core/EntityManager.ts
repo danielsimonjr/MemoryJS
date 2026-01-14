@@ -7,9 +7,22 @@
  * @module core/EntityManager
  */
 
-import type { Entity, LongRunningOperationOptions } from '../types/index.js';
+import type { Entity, LongRunningOperationOptions, AccessContext } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
+import type { AccessTracker } from '../agent/AccessTracker.js';
 import { EntityNotFoundError, InvalidImportanceError, ValidationError } from '../utils/errors.js';
+
+/**
+ * Options for entity retrieval with access tracking support.
+ */
+export interface GetEntityOptions {
+  /** Enable access tracking for retrieved entity */
+  trackAccess?: boolean;
+  /** Session ID for access context */
+  sessionId?: string;
+  /** Task ID for access context */
+  taskId?: string;
+}
 import {
   BatchCreateEntitiesSchema,
   UpdateEntitySchema,
@@ -37,7 +50,19 @@ const MAX_IMPORTANCE = 10;
  * Manages entity operations with automatic timestamp handling.
  */
 export class EntityManager {
+  private accessTracker?: AccessTracker;
+
   constructor(private storage: GraphStorage) {}
+
+  /**
+   * Set the AccessTracker for optional access tracking.
+   * When set, getEntity can track access to retrieved entities.
+   *
+   * @param tracker - AccessTracker instance
+   */
+  setAccessTracker(tracker: AccessTracker): void {
+    this.accessTracker = tracker;
+  }
 
   /**
    * Create multiple entities in a single batch operation.
@@ -233,11 +258,29 @@ export class EntityManager {
    * // Handle non-existent entity
    * const missing = await manager.getEntity('NonExistent');
    * console.log(missing); // null
+   *
+   * // Get entity with access tracking
+   * const tracked = await manager.getEntity('Bob', {
+   *   trackAccess: true,
+   *   sessionId: 'session_123'
+   * });
    * ```
    */
-  async getEntity(name: string): Promise<Entity | null> {
+  async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null> {
     const graph = await this.storage.loadGraph();
-    return graph.entities.find(e => e.name === name) || null;
+    const entity = graph.entities.find(e => e.name === name) || null;
+
+    // Track access if enabled
+    if (entity && options?.trackAccess && this.accessTracker) {
+      const context: AccessContext = {
+        sessionId: options.sessionId,
+        taskId: options.taskId,
+        retrievalMethod: 'direct',
+      };
+      await this.accessTracker.recordAccess(name, context);
+    }
+
+    return entity;
   }
 
   /**
