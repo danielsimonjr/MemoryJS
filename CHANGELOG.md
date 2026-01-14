@@ -78,6 +78,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **SessionMemoryFilter**: Filter options for session memory queries
 - **Session Index**: In-memory index for O(1) session lookups
 
+#### Sprint 7: Working Memory Promotion
+- **Enhanced markForPromotion()**: Added PromotionMarkOptions for target type and priority
+  - targetType option to specify 'episodic' or 'semantic' destination
+  - Adds promote_to_{type} tag for promotion workflow tracking
+- **Enhanced getPromotionCandidates()**: Added PromotionCriteria for flexible candidate selection
+  - Priority-based sorting (marked candidates get +100 priority)
+  - Customizable thresholds for confidence, confirmations, and access count
+  - includeMarked option to filter marked-only candidates
+- **promoteMemory() Method**: Convert working memory to long-term storage
+  - Supports promotion to episodic or semantic memory types
+  - Clears TTL-related fields (expiresAt, isWorkingMemory, markedForPromotion)
+  - Sets promotion tracking metadata (promotedAt, promotedFrom)
+  - Removes entity from session index after promotion
+- **confirmMemory() Method**: Strengthen memories with confirmation tracking
+  - Increments confirmationCount on each call
+  - Optional confidence boost parameter
+  - Auto-promotion trigger when thresholds met (if enabled)
+- **New Interfaces**: PromotionMarkOptions, PromotionCriteria, PromotionResult, ConfirmationResult
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -87,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 14 unit tests for forgetWeakMemories
 - Added 21 unit tests for DecayScheduler
 - Added 4 integration tests for DecayEngine context access
-- Added 32 unit tests for WorkingMemoryManager
+- Added 58 unit tests for WorkingMemoryManager (32 Sprint 6 + 26 Sprint 7)
 
 ## [1.1.0] - 2026-01-11
 

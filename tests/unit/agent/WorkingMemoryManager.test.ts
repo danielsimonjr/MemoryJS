@@ -498,6 +498,60 @@ describe('WorkingMemoryManager.markForPromotion', () => {
       'Entity not found: non_existent'
     );
   });
+
+  it('should add target type tag when specified', async () => {
+    const entities = [createAgentEntity('wm_1', 'session_1', { tags: ['existing'] })];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await wmm.markForPromotion('wm_1', { targetType: 'semantic' });
+
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        markedForPromotion: true,
+        tags: expect.arrayContaining(['existing', 'promote_to_semantic']),
+      })
+    );
+  });
+
+  it('should add promote_to_episodic tag when targetType is episodic', async () => {
+    const entities = [createAgentEntity('wm_1', 'session_1')];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await wmm.markForPromotion('wm_1', { targetType: 'episodic' });
+
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        tags: expect.arrayContaining(['promote_to_episodic']),
+      })
+    );
+  });
+
+  it('should throw for non-AgentEntity', async () => {
+    const storage = createMockStorage();
+    const normalEntity = { name: 'normal_1', entityType: 'test', observations: [] };
+    (storage.getEntityByName as ReturnType<typeof vi.fn>).mockReturnValue(normalEntity);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await expect(wmm.markForPromotion('normal_1')).rejects.toThrow(
+      'Entity is not an AgentEntity: normal_1'
+    );
+  });
+
+  it('should throw for non-working memory entity', async () => {
+    const entities = [
+      createAgentEntity('episodic_1', 'session_1', { memoryType: 'episodic' }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await expect(wmm.markForPromotion('episodic_1')).rejects.toThrow(
+      'Entity is not working memory: episodic_1'
+    );
+  });
 });
 
 // ==================== getPromotionCandidates Tests ====================
@@ -517,7 +571,7 @@ describe('WorkingMemoryManager.getPromotionCandidates', () => {
     expect(candidates[0].name).toBe('wm_marked');
   });
 
-  it('should return auto-promotion candidates when enabled', async () => {
+  it('should return auto-promotion candidates when thresholds are met', async () => {
     const entities = [
       createAgentEntity('wm_qualify', 'session_1', {
         confidence: 0.9,
@@ -545,11 +599,346 @@ describe('WorkingMemoryManager.getPromotionCandidates', () => {
     expect(candidates[0].name).toBe('wm_qualify');
   });
 
-  it('should not return auto-promotion candidates when disabled', async () => {
+  it('should use custom criteria when provided', async () => {
     const entities = [
-      createAgentEntity('wm_qualify', 'session_1', {
+      createAgentEntity('wm_1', 'session_1', {
+        confidence: 0.7,
+        confirmationCount: 1,
+        accessCount: 5,
+      }),
+      createAgentEntity('wm_2', 'session_1', {
+        confidence: 0.6,
+        confirmationCount: 1,
+        accessCount: 2,
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    const candidates = await wmm.getPromotionCandidates('session_1', {
+      minConfidence: 0.65,
+      minConfirmations: 1,
+      minAccessCount: 3,
+    });
+
+    expect(candidates.length).toBe(1);
+    expect(candidates[0].name).toBe('wm_1');
+  });
+
+  it('should sort candidates by priority (marked first, then by scores)', async () => {
+    // Marked entity also meets thresholds, so it gets +100 (marked) plus score-based priority
+    const entities = [
+      createAgentEntity('wm_marked', 'session_1', {
+        markedForPromotion: true,
+        confidence: 0.85,
+        confirmationCount: 2,
+        accessCount: 0,
+      }),
+      createAgentEntity('wm_high_score', 'session_1', {
+        confidence: 0.95,
+        confirmationCount: 5,
+        accessCount: 20,
+      }),
+      createAgentEntity('wm_medium_score', 'session_1', {
+        confidence: 0.85,
+        confirmationCount: 3,
+        accessCount: 10,
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage, {
+      autoPromoteConfidenceThreshold: 0.8,
+      autoPromoteConfirmationThreshold: 2,
+    });
+
+    const candidates = await wmm.getPromotionCandidates('session_1');
+
+    // Marked gets +100 priority bonus, so it should be first
+    // wm_marked: 100 + (0.85*50=42.5) + (2*10=20) + 0 = 162.5
+    // wm_high_score: (0.95*50=47.5) + (5*10=50) + 20 = 117.5
+    // wm_medium_score: (0.85*50=42.5) + (3*10=30) + 10 = 82.5
+    expect(candidates.length).toBe(3);
+    expect(candidates[0].name).toBe('wm_marked');
+    expect(candidates[1].name).toBe('wm_high_score');
+    expect(candidates[2].name).toBe('wm_medium_score');
+  });
+
+  it('should exclude marked candidates when includeMarked is false', async () => {
+    // wm_marked_only only qualifies due to being marked, not thresholds
+    // wm_threshold qualifies via thresholds but is not marked
+    const entities = [
+      createAgentEntity('wm_marked_only', 'session_1', {
+        markedForPromotion: true,
+        confidence: 0.5, // Below threshold
+        confirmationCount: 1, // Below threshold
+      }),
+      createAgentEntity('wm_threshold', 'session_1', {
         confidence: 0.9,
         confirmationCount: 3,
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage, {
+      autoPromoteConfidenceThreshold: 0.8,
+      autoPromoteConfirmationThreshold: 2,
+    });
+
+    const candidates = await wmm.getPromotionCandidates('session_1', {
+      includeMarked: false,
+    });
+
+    // Only wm_threshold should be included since includeMarked:false excludes wm_marked_only
+    expect(candidates.length).toBe(1);
+    expect(candidates[0].name).toBe('wm_threshold');
+  });
+
+  it('should return empty when no candidates meet criteria', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', {
+        confidence: 0.5,
+        confirmationCount: 0,
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage, {
+      autoPromoteConfidenceThreshold: 0.8,
+      autoPromoteConfirmationThreshold: 2,
+    });
+
+    const candidates = await wmm.getPromotionCandidates('session_1');
+    expect(candidates.length).toBe(0);
+  });
+});
+
+// ==================== promoteMemory Tests ====================
+
+describe('WorkingMemoryManager.promoteMemory', () => {
+  it('should promote working memory to episodic by default', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', { tags: ['tag1'] }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    const result = await wmm.promoteMemory('wm_1');
+
+    expect(result.entityName).toBe('wm_1');
+    expect(result.fromType).toBe('working');
+    expect(result.toType).toBe('episodic');
+    expect(result.promotedAt).toBeDefined();
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        memoryType: 'episodic',
+        promotedAt: expect.any(String),
+        promotedFrom: 'session_1',
+      })
+    );
+  });
+
+  it('should promote working memory to semantic when specified', async () => {
+    const entities = [createAgentEntity('wm_1', 'session_1')];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    const result = await wmm.promoteMemory('wm_1', 'semantic');
+
+    expect(result.toType).toBe('semantic');
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        memoryType: 'semantic',
+      })
+    );
+  });
+
+  it('should clear working memory fields on promotion', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', {
+        expiresAt: new Date().toISOString(),
+        isWorkingMemory: true,
+        markedForPromotion: true,
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await wmm.promoteMemory('wm_1');
+
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        expiresAt: undefined,
+        isWorkingMemory: undefined,
+        markedForPromotion: undefined,
+      })
+    );
+  });
+
+  it('should remove promotion target tags on promotion', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', {
+        tags: ['keep_tag', 'promote_to_semantic', 'promote_to_episodic'],
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await wmm.promoteMemory('wm_1');
+
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        tags: ['keep_tag'],
+      })
+    );
+  });
+
+  it('should remove entity from session index after promotion', async () => {
+    const storage = createMockStorage();
+    const wmm = new WorkingMemoryManager(storage);
+
+    const memory = await wmm.createWorkingMemory('session_1', 'Test content');
+    expect(wmm.getSessionMemoryCount('session_1')).toBe(1);
+
+    await wmm.promoteMemory(memory.name);
+    expect(wmm.getSessionMemoryCount('session_1')).toBe(0);
+  });
+
+  it('should throw for non-existent entity', async () => {
+    const storage = createMockStorage([]);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await expect(wmm.promoteMemory('non_existent')).rejects.toThrow(
+      'Entity not found: non_existent'
+    );
+  });
+
+  it('should throw for non-AgentEntity', async () => {
+    const storage = createMockStorage();
+    const normalEntity = { name: 'normal_1', entityType: 'test', observations: [] };
+    (storage.getEntityByName as ReturnType<typeof vi.fn>).mockReturnValue(normalEntity);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await expect(wmm.promoteMemory('normal_1')).rejects.toThrow(
+      'Entity is not an AgentEntity: normal_1'
+    );
+  });
+
+  it('should throw for non-working memory entity', async () => {
+    const entities = [
+      createAgentEntity('episodic_1', 'session_1', { memoryType: 'episodic' }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await expect(wmm.promoteMemory('episodic_1')).rejects.toThrow(
+      'Entity is not working memory: episodic_1'
+    );
+  });
+});
+
+// ==================== confirmMemory Tests ====================
+
+describe('WorkingMemoryManager.confirmMemory', () => {
+  it('should increment confirmation count', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', { confirmationCount: 0 }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    const result = await wmm.confirmMemory('wm_1');
+
+    expect(result.confirmed).toBe(true);
+    expect(result.promoted).toBe(false);
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        confirmationCount: 1,
+      })
+    );
+  });
+
+  it('should apply confidence boost when provided', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', { confidence: 0.5 }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await wmm.confirmMemory('wm_1', 0.2);
+
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        confidence: 0.7,
+      })
+    );
+  });
+
+  it('should cap confidence at 1.0', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', { confidence: 0.9 }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await wmm.confirmMemory('wm_1', 0.5);
+
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        confidence: 1.0,
+      })
+    );
+  });
+
+  it('should not apply negative confidence boost', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', { confidence: 0.5 }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await wmm.confirmMemory('wm_1', -0.2);
+
+    expect(storage.updateEntity).toHaveBeenCalledWith(
+      'wm_1',
+      expect.objectContaining({
+        confidence: 0.5, // Unchanged
+      })
+    );
+  });
+
+  it('should trigger auto-promotion when thresholds met and enabled', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', {
+        confidence: 0.8,
+        confirmationCount: 1,
+        sessionId: 'session_1',
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage, {
+      autoPromote: true,
+      autoPromoteConfidenceThreshold: 0.8,
+      autoPromoteConfirmationThreshold: 2,
+    });
+
+    const result = await wmm.confirmMemory('wm_1');
+
+    expect(result.confirmed).toBe(true);
+    expect(result.promoted).toBe(true);
+    // Should have called updateEntity twice: once for confirm, once for promote
+    expect(storage.updateEntity).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not auto-promote when autoPromote is disabled', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', {
+        confidence: 0.9,
+        confirmationCount: 10,
       }),
     ];
     const storage = createMockStorage(entities);
@@ -557,9 +946,81 @@ describe('WorkingMemoryManager.getPromotionCandidates', () => {
       autoPromote: false,
     });
 
-    const candidates = await wmm.getPromotionCandidates('session_1');
+    const result = await wmm.confirmMemory('wm_1');
 
-    expect(candidates.length).toBe(0);
+    expect(result.confirmed).toBe(true);
+    expect(result.promoted).toBe(false);
+    expect(storage.updateEntity).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not auto-promote when confidence threshold not met', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', {
+        confidence: 0.5,
+        confirmationCount: 10,
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage, {
+      autoPromote: true,
+      autoPromoteConfidenceThreshold: 0.8,
+      autoPromoteConfirmationThreshold: 2,
+    });
+
+    const result = await wmm.confirmMemory('wm_1');
+
+    expect(result.promoted).toBe(false);
+  });
+
+  it('should not auto-promote when confirmation threshold not met', async () => {
+    const entities = [
+      createAgentEntity('wm_1', 'session_1', {
+        confidence: 0.9,
+        confirmationCount: 0,
+      }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage, {
+      autoPromote: true,
+      autoPromoteConfidenceThreshold: 0.8,
+      autoPromoteConfirmationThreshold: 3,
+    });
+
+    const result = await wmm.confirmMemory('wm_1');
+
+    expect(result.promoted).toBe(false); // Only 1 confirmation after increment
+  });
+
+  it('should throw for non-existent entity', async () => {
+    const storage = createMockStorage([]);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await expect(wmm.confirmMemory('non_existent')).rejects.toThrow(
+      'Entity not found: non_existent'
+    );
+  });
+
+  it('should throw for non-AgentEntity', async () => {
+    const storage = createMockStorage();
+    const normalEntity = { name: 'normal_1', entityType: 'test', observations: [] };
+    (storage.getEntityByName as ReturnType<typeof vi.fn>).mockReturnValue(normalEntity);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await expect(wmm.confirmMemory('normal_1')).rejects.toThrow(
+      'Entity is not an AgentEntity: normal_1'
+    );
+  });
+
+  it('should throw for non-working memory entity', async () => {
+    const entities = [
+      createAgentEntity('episodic_1', 'session_1', { memoryType: 'episodic' }),
+    ];
+    const storage = createMockStorage(entities);
+    const wmm = new WorkingMemoryManager(storage);
+
+    await expect(wmm.confirmMemory('episodic_1')).rejects.toThrow(
+      'Entity is not working memory: episodic_1'
+    );
   });
 });
 

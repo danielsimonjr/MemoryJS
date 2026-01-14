@@ -33,4 +33,8 @@ export {
   WorkingMemoryManager,
   type WorkingMemoryConfig,
   type SessionMemoryFilter,
+  type PromotionMarkOptions,
+  type PromotionCriteria,
+  type PromotionResult,
+  type ConfirmationResult,
 } from './WorkingMemoryManager.js';

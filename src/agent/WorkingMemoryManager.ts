@@ -47,6 +47,56 @@ export interface SessionMemoryFilter {
 }
 
 /**
+ * Options for marking memory for promotion.
+ */
+export interface PromotionMarkOptions {
+  /** Target memory type after promotion */
+  targetType?: 'episodic' | 'semantic';
+  /** Priority for promotion (higher = promoted sooner) */
+  priority?: number;
+  /** Reason for marking */
+  reason?: string;
+}
+
+/**
+ * Criteria for identifying promotion candidates.
+ */
+export interface PromotionCriteria {
+  /** Include explicitly marked memories (default: true) */
+  includeMarked?: boolean;
+  /** Minimum confidence for auto-promotion */
+  minConfidence?: number;
+  /** Minimum confirmations for auto-promotion */
+  minConfirmations?: number;
+  /** Minimum access count */
+  minAccessCount?: number;
+}
+
+/**
+ * Result of a promotion operation.
+ */
+export interface PromotionResult {
+  /** Name of promoted entity */
+  entityName: string;
+  /** Previous memory type */
+  fromType: 'working';
+  /** New memory type */
+  toType: 'episodic' | 'semantic';
+  /** Timestamp of promotion */
+  promotedAt: string;
+}
+
+/**
+ * Result of a confirmation operation.
+ */
+export interface ConfirmationResult {
+  /** Whether the confirmation was recorded */
+  confirmed: boolean;
+  /** Whether the memory was auto-promoted */
+  promoted: boolean;
+}
+
+/**
  * Manages session-scoped working memories with TTL expiration.
  *
  * Working memories are short-term, temporary memories tied to a specific
@@ -459,9 +509,22 @@ export class WorkingMemoryManager {
    * should be considered for promotion to long-term storage.
    *
    * @param entityName - Name of the entity to mark
+   * @param options - Optional promotion options
    * @throws Error if entity doesn't exist or isn't working memory
+   *
+   * @example
+   * ```typescript
+   * // Mark for promotion to semantic memory
+   * await wmm.markForPromotion('wm_session_1_abc', {
+   *   targetType: 'semantic',
+   *   reason: 'User confirmed this preference multiple times'
+   * });
+   * ```
    */
-  async markForPromotion(entityName: string): Promise<void> {
+  async markForPromotion(
+    entityName: string,
+    options?: PromotionMarkOptions
+  ): Promise<void> {
     const entity = this.storage.getEntityByName(entityName);
     if (!entity) {
       throw new Error(`Entity not found: ${entityName}`);
@@ -476,10 +539,21 @@ export class WorkingMemoryManager {
       throw new Error(`Entity is not working memory: ${entityName}`);
     }
 
-    await this.storage.updateEntity(entityName, {
+    const updates: Record<string, unknown> = {
       markedForPromotion: true,
       lastModified: new Date().toISOString(),
-    } as Record<string, unknown>);
+    };
+
+    // Store target type via tag convention
+    if (options?.targetType) {
+      const currentTags = agentEntity.tags ?? [];
+      const targetTag = `promote_to_${options.targetType}`;
+      if (!currentTags.includes(targetTag)) {
+        updates.tags = [...currentTags, targetTag];
+      }
+    }
+
+    await this.storage.updateEntity(entityName, updates);
   }
 
   /**
@@ -489,34 +563,225 @@ export class WorkingMemoryManager {
    * - Are marked for promotion, or
    * - Meet auto-promotion thresholds (if autoPromote is enabled)
    *
+   * Candidates are sorted by priority (higher = promoted sooner).
+   *
    * @param sessionId - Session identifier
-   * @returns Array of promotion candidate AgentEntities
+   * @param criteria - Optional criteria override
+   * @returns Array of promotion candidate AgentEntities sorted by priority
+   *
+   * @example
+   * ```typescript
+   * // Get candidates using default thresholds
+   * const candidates = await wmm.getPromotionCandidates('session_1');
+   *
+   * // Get candidates with custom criteria
+   * const highConfidence = await wmm.getPromotionCandidates('session_1', {
+   *   minConfidence: 0.9,
+   *   minConfirmations: 3,
+   * });
+   * ```
    */
-  async getPromotionCandidates(sessionId: string): Promise<AgentEntity[]> {
+  async getPromotionCandidates(
+    sessionId: string,
+    criteria?: PromotionCriteria
+  ): Promise<AgentEntity[]> {
+    const effectiveCriteria = {
+      includeMarked: criteria?.includeMarked ?? true,
+      minConfidence:
+        criteria?.minConfidence ?? this.config.autoPromoteConfidenceThreshold,
+      minConfirmations:
+        criteria?.minConfirmations ?? this.config.autoPromoteConfirmationThreshold,
+      minAccessCount: criteria?.minAccessCount ?? 0,
+    };
+
     const memories = await this.getSessionMemories(sessionId);
-    const candidates: AgentEntity[] = [];
+    const candidates: Array<{ entity: AgentEntity; priority: number }> = [];
 
     for (const memory of memories) {
-      // Explicitly marked
-      if (memory.markedForPromotion) {
-        candidates.push(memory);
-        continue;
+      let isCandidate = false;
+      let priority = 0;
+
+      // Check if explicitly marked
+      if (effectiveCriteria.includeMarked && memory.markedForPromotion) {
+        isCandidate = true;
+        priority += 100; // High priority for marked
       }
 
-      // Auto-promotion threshold check
-      if (this.config.autoPromote) {
-        const meetsConfidence =
-          memory.confidence >= this.config.autoPromoteConfidenceThreshold;
-        const meetsConfirmations =
-          memory.confirmationCount >= this.config.autoPromoteConfirmationThreshold;
+      // Check threshold criteria (only if autoPromote enabled or explicitly checking)
+      const meetsConfidence = memory.confidence >= effectiveCriteria.minConfidence;
+      const meetsConfirmations =
+        memory.confirmationCount >= effectiveCriteria.minConfirmations;
+      const meetsAccess = memory.accessCount >= effectiveCriteria.minAccessCount;
 
-        if (meetsConfidence && meetsConfirmations) {
-          candidates.push(memory);
-        }
+      if (meetsConfidence && meetsConfirmations && meetsAccess) {
+        isCandidate = true;
+        priority += memory.confidence * 50;
+        priority += memory.confirmationCount * 10;
+        priority += memory.accessCount * 1;
+      }
+
+      if (isCandidate) {
+        candidates.push({ entity: memory, priority });
       }
     }
 
-    return candidates;
+    // Sort by priority (descending)
+    candidates.sort((a, b) => b.priority - a.priority);
+
+    return candidates.map((c) => c.entity);
+  }
+
+  /**
+   * Promote a working memory to long-term storage.
+   *
+   * Converts the memory from working to episodic or semantic type.
+   * Clears TTL-related fields and sets promotion tracking metadata.
+   *
+   * @param entityName - Entity to promote
+   * @param targetType - Target memory type (default: 'episodic')
+   * @returns Promotion result with details
+   * @throws Error if entity doesn't exist or isn't working memory
+   *
+   * @example
+   * ```typescript
+   * // Promote to episodic memory
+   * const result = await wmm.promoteMemory('wm_session_1_abc');
+   *
+   * // Promote to semantic memory
+   * const result = await wmm.promoteMemory('wm_session_1_xyz', 'semantic');
+   * ```
+   */
+  async promoteMemory(
+    entityName: string,
+    targetType: 'episodic' | 'semantic' = 'episodic'
+  ): Promise<PromotionResult> {
+    const entity = this.storage.getEntityByName(entityName);
+    if (!entity) {
+      throw new Error(`Entity not found: ${entityName}`);
+    }
+
+    if (!isAgentEntity(entity)) {
+      throw new Error(`Entity is not an AgentEntity: ${entityName}`);
+    }
+
+    const agentEntity = entity;
+    if (agentEntity.memoryType !== 'working') {
+      throw new Error(`Entity is not working memory: ${entityName}`);
+    }
+
+    const now = new Date().toISOString();
+
+    // Build updates - clear working memory fields and set promotion tracking
+    const updates: Record<string, unknown> = {
+      // Change memory type
+      memoryType: targetType,
+
+      // Clear working memory fields
+      expiresAt: undefined,
+      isWorkingMemory: undefined,
+      markedForPromotion: undefined,
+
+      // Set promotion tracking
+      promotedAt: now,
+      promotedFrom: agentEntity.sessionId,
+
+      // Update timestamp
+      lastModified: now,
+    };
+
+    // Remove promotion target tags
+    if (agentEntity.tags) {
+      updates.tags = agentEntity.tags.filter((t) => !t.startsWith('promote_to_'));
+    }
+
+    // Persist changes
+    await this.storage.updateEntity(entityName, updates);
+
+    // Remove from session index
+    const sessionId = agentEntity.sessionId;
+    if (sessionId && this.sessionIndex.has(sessionId)) {
+      this.sessionIndex.get(sessionId)!.delete(entityName);
+    }
+
+    return {
+      entityName,
+      fromType: 'working',
+      toType: targetType,
+      promotedAt: now,
+    };
+  }
+
+  /**
+   * Increment confirmation count for a working memory.
+   *
+   * May trigger auto-promotion if enabled and thresholds are met.
+   * This is the primary way to strengthen memories during conversations.
+   *
+   * @param entityName - Entity to confirm
+   * @param confidenceBoost - Optional confidence boost (0-1 range, added to current)
+   * @returns Confirmation result indicating if promoted
+   * @throws Error if entity doesn't exist or isn't working memory
+   *
+   * @example
+   * ```typescript
+   * // Confirm a memory
+   * const result = await wmm.confirmMemory('wm_session_1_abc');
+   * if (result.promoted) {
+   *   console.log('Memory was auto-promoted!');
+   * }
+   *
+   * // Confirm with confidence boost
+   * const result = await wmm.confirmMemory('wm_session_1_xyz', 0.1);
+   * ```
+   */
+  async confirmMemory(
+    entityName: string,
+    confidenceBoost?: number
+  ): Promise<ConfirmationResult> {
+    const entity = this.storage.getEntityByName(entityName);
+    if (!entity) {
+      throw new Error(`Entity not found: ${entityName}`);
+    }
+
+    if (!isAgentEntity(entity)) {
+      throw new Error(`Entity is not an AgentEntity: ${entityName}`);
+    }
+
+    const agentEntity = entity;
+    if (agentEntity.memoryType !== 'working') {
+      throw new Error(`Entity is not working memory: ${entityName}`);
+    }
+
+    // Increment confirmation
+    const newConfirmations = (agentEntity.confirmationCount ?? 0) + 1;
+    let newConfidence = agentEntity.confidence ?? 0.5;
+    if (confidenceBoost !== undefined && confidenceBoost > 0) {
+      newConfidence = Math.min(1, newConfidence + confidenceBoost);
+    }
+
+    const updates: Record<string, unknown> = {
+      confirmationCount: newConfirmations,
+      confidence: newConfidence,
+      lastModified: new Date().toISOString(),
+    };
+
+    await this.storage.updateEntity(entityName, updates);
+
+    // Check auto-promotion
+    let promoted = false;
+    if (this.config.autoPromote) {
+      const meetsConfidence =
+        newConfidence >= this.config.autoPromoteConfidenceThreshold;
+      const meetsConfirmations =
+        newConfirmations >= this.config.autoPromoteConfirmationThreshold;
+
+      if (meetsConfidence && meetsConfirmations) {
+        await this.promoteMemory(entityName, 'semantic');
+        promoted = true;
+      }
+    }
+
+    return { confirmed: true, promoted };
   }
 
   // ==================== Configuration Access ====================
