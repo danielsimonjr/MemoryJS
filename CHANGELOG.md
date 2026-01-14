@@ -258,6 +258,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - balanced: Default equal weighting
 - **New Types**: SalienceContext, SalienceWeights, SalienceComponents, ScoredEntity, TemporalFocus
 
+#### Sprint 17: Context Relevance Scoring
+- **Enhanced Task Relevance**: TF-IDF similarity for semantic task matching
+  - calculateTaskRelevance() uses SummarizationService for cosine similarity
+  - Falls back to keyword matching when semantic similarity disabled
+  - Returns 1.0 for exact task ID match
+- **Query Text Matching**: Semantic query matching via TF-IDF
+  - calculateQueryRelevance() for query text similarity scoring
+  - Uses buildEntityText() to combine name, type, and observations
+- **Session Context Scoring**: Configurable session boost factor
+  - calculateSessionRelevance() with configurable boost factor
+  - recentEntityBoostFactor for recent entity context boost
+- **Intent Relevance**: User intent matching via semantic similarity
+  - calculateIntentRelevance() for user intent scoring
+- **Enhanced Novelty Calculation**: Multi-factor novelty scoring
+  - Time-based novelty (50%): Inverse of recency
+  - Access frequency novelty (30%): Rare access = more novel
+  - Observation uniqueness (20%): Diverse observations = more novel
+  - calculateObservationUniqueness() measures observation diversity
+- **Configuration Options**: New configurable parameters
+  - sessionBoostFactor: Boost for session match (default: 1.0)
+  - recentEntityBoostFactor: Boost for recent entities (default: 0.7)
+  - useSemanticSimilarity: Enable TF-IDF matching (default: true)
+  - uniquenessThreshold: Threshold for observation uniqueness (default: 0.5)
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -273,7 +297,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 30 unit tests for EpisodicMemoryManager
 - Added 78 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13 + 18 Sprint 14 + 14 Sprint 15)
 - Added 15 unit tests for RuleEvaluator
-- Added 24 unit tests for SalienceEngine
+- Added 34 unit tests for SalienceEngine (24 Sprint 16 + 10 Sprint 17)
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
 

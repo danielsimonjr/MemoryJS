@@ -17,6 +17,7 @@ import type {
 import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 import { DecayEngine } from './DecayEngine.js';
+import { SummarizationService } from './SummarizationService.js';
 
 /**
  * Configuration for SalienceEngine.
@@ -34,6 +35,14 @@ export interface SalienceEngineConfig {
   noveltyWeight?: number;
   /** Recency decay hours (default: 24) */
   recencyDecayHours?: number;
+  /** Boost factor for session match (default: 1.0) */
+  sessionBoostFactor?: number;
+  /** Boost factor for recent entities (default: 0.7) */
+  recentEntityBoostFactor?: number;
+  /** Enable TF-IDF similarity for task/query matching (default: true) */
+  useSemanticSimilarity?: boolean;
+  /** Threshold for observation uniqueness (default: 0.5) */
+  uniquenessThreshold?: number;
 }
 
 /**
@@ -61,6 +70,7 @@ export class SalienceEngine {
   private readonly storage: IGraphStorage;
   private readonly accessTracker: AccessTracker;
   private readonly decayEngine: DecayEngine;
+  private readonly summarizationService: SummarizationService;
   private readonly config: Required<SalienceEngineConfig>;
 
   constructor(
@@ -72,6 +82,7 @@ export class SalienceEngine {
     this.storage = storage;
     this.accessTracker = accessTracker;
     this.decayEngine = decayEngine;
+    this.summarizationService = new SummarizationService();
     this.config = {
       importanceWeight: config.importanceWeight ?? 0.25,
       recencyWeight: config.recencyWeight ?? 0.25,
@@ -79,6 +90,10 @@ export class SalienceEngine {
       contextWeight: config.contextWeight ?? 0.2,
       noveltyWeight: config.noveltyWeight ?? 0.1,
       recencyDecayHours: config.recencyDecayHours ?? 24,
+      sessionBoostFactor: config.sessionBoostFactor ?? 1.0,
+      recentEntityBoostFactor: config.recentEntityBoostFactor ?? 0.7,
+      useSemanticSimilarity: config.useSemanticSimilarity ?? true,
+      uniquenessThreshold: config.uniquenessThreshold ?? 0.5,
     };
   }
 
@@ -246,7 +261,8 @@ export class SalienceEngine {
 
   /**
    * Calculate context relevance component.
-   * Matches entity against current task, session, and query.
+   * Matches entity against current task, session, and query using
+   * TF-IDF similarity when enabled.
    *
    * @param entity - Entity to calculate for
    * @param context - Context to match against
@@ -259,59 +275,35 @@ export class SalienceEngine {
     let relevanceScore = 0;
     let factors = 0;
 
-    // Task matching
+    // Task relevance using semantic similarity or keyword matching
     if (context.currentTask) {
       factors++;
-      if (entity.taskId === context.currentTask) {
-        relevanceScore += 1.0;
-      } else if (entity.observations?.some((o) =>
-        o.toLowerCase().includes(context.currentTask!.toLowerCase())
-      )) {
-        relevanceScore += 0.5;
-      }
+      relevanceScore += this.calculateTaskRelevance(entity, context.currentTask);
     }
 
-    // Session matching
+    // Session context scoring with configurable boost
     if (context.currentSession) {
       factors++;
-      if (entity.sessionId === context.currentSession) {
-        relevanceScore += 1.0;
-      }
+      relevanceScore += this.calculateSessionRelevance(entity, context.currentSession);
     }
 
-    // Query text matching
+    // Query text matching using semantic similarity
     if (context.queryText) {
       factors++;
-      const queryLower = context.queryText.toLowerCase();
-      const nameMatch = entity.name.toLowerCase().includes(queryLower);
-      const typeMatch = entity.entityType.toLowerCase().includes(queryLower);
-      const obsMatch = entity.observations?.some((o) =>
-        o.toLowerCase().includes(queryLower)
-      );
-
-      if (nameMatch) relevanceScore += 1.0;
-      else if (typeMatch) relevanceScore += 0.7;
-      else if (obsMatch) relevanceScore += 0.5;
+      relevanceScore += this.calculateQueryRelevance(entity, context.queryText);
     }
 
-    // User intent matching
+    // User intent matching with semantic similarity
     if (context.userIntent) {
       factors++;
-      const intentLower = context.userIntent.toLowerCase();
-      if (
-        entity.observations?.some((o) =>
-          o.toLowerCase().includes(intentLower)
-        )
-      ) {
-        relevanceScore += 0.8;
-      }
+      relevanceScore += this.calculateIntentRelevance(entity, context.userIntent);
     }
 
-    // Recent entities matching (boost if in recent context)
+    // Recent entities matching with configurable boost
     if (context.recentEntities && context.recentEntities.length > 0) {
       factors++;
       if (context.recentEntities.includes(entity.name)) {
-        relevanceScore += 0.7;
+        relevanceScore += this.config.recentEntityBoostFactor;
       }
     }
 
@@ -320,8 +312,133 @@ export class SalienceEngine {
   }
 
   /**
+   * Calculate task relevance score.
+   * Uses TF-IDF similarity when enabled, falls back to keyword matching.
+   *
+   * @param entity - Entity to score
+   * @param taskDescription - Task to match against
+   * @returns Score between 0 and 1
+   */
+  calculateTaskRelevance(entity: AgentEntity, taskDescription: string): number {
+    // Exact task ID match
+    if (entity.taskId === taskDescription) {
+      return 1.0;
+    }
+
+    // Build entity text for comparison
+    const entityText = this.buildEntityText(entity);
+
+    if (this.config.useSemanticSimilarity) {
+      // Use TF-IDF cosine similarity
+      return this.summarizationService.calculateSimilarity(entityText, taskDescription);
+    }
+
+    // Fallback to keyword matching
+    const taskLower = taskDescription.toLowerCase();
+    if (entity.name.toLowerCase().includes(taskLower)) {
+      return 0.8;
+    }
+    if (entity.observations?.some((o) => o.toLowerCase().includes(taskLower))) {
+      return 0.5;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Calculate session relevance score.
+   * Applies configurable boost factor for session matches.
+   *
+   * @param entity - Entity to score
+   * @param sessionId - Session to match
+   * @returns Score between 0 and 1
+   */
+  calculateSessionRelevance(entity: AgentEntity, sessionId: string): number {
+    if (entity.sessionId === sessionId) {
+      return this.config.sessionBoostFactor;
+    }
+    return 0;
+  }
+
+  /**
+   * Calculate query text relevance score.
+   * Uses TF-IDF similarity when enabled for semantic matching.
+   *
+   * @param entity - Entity to score
+   * @param queryText - Query to match
+   * @returns Score between 0 and 1
+   */
+  calculateQueryRelevance(entity: AgentEntity, queryText: string): number {
+    // Build entity text for comparison
+    const entityText = this.buildEntityText(entity);
+
+    if (this.config.useSemanticSimilarity) {
+      // Use TF-IDF cosine similarity for semantic matching
+      return this.summarizationService.calculateSimilarity(entityText, queryText);
+    }
+
+    // Fallback to keyword matching
+    const queryLower = queryText.toLowerCase();
+    if (entity.name.toLowerCase().includes(queryLower)) {
+      return 1.0;
+    }
+    if (entity.entityType.toLowerCase().includes(queryLower)) {
+      return 0.7;
+    }
+    if (entity.observations?.some((o) => o.toLowerCase().includes(queryLower))) {
+      return 0.5;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Calculate user intent relevance score.
+   * Uses semantic similarity to match entity content against intent.
+   *
+   * @param entity - Entity to score
+   * @param userIntent - Intent to match
+   * @returns Score between 0 and 1
+   */
+  calculateIntentRelevance(entity: AgentEntity, userIntent: string): number {
+    const entityText = this.buildEntityText(entity);
+
+    if (this.config.useSemanticSimilarity) {
+      return this.summarizationService.calculateSimilarity(entityText, userIntent);
+    }
+
+    // Fallback to keyword matching
+    const intentLower = userIntent.toLowerCase();
+    if (entity.observations?.some((o) => o.toLowerCase().includes(intentLower))) {
+      return 0.8;
+    }
+
+    return 0;
+  }
+
+  /**
+   * Build searchable text from entity for similarity comparison.
+   *
+   * @param entity - Entity to extract text from
+   * @returns Combined text from entity fields
+   */
+  private buildEntityText(entity: AgentEntity): string {
+    const parts: string[] = [
+      entity.name,
+      entity.entityType,
+      ...(entity.observations ?? []),
+    ];
+    return parts.join(' ');
+  }
+
+  /**
    * Calculate novelty boost component.
-   * Rewards entities that haven't been accessed recently.
+   * Rewards entities that haven't been accessed recently and have unique observations.
+   *
+   * Novelty factors:
+   * - Inverse access frequency (rare = more novel)
+   * - Time since last access (long unaccessed = novel)
+   * - Unique observations ratio (unique content = novel)
    *
    * @param entity - Entity to calculate for
    * @param context - Context with temporal focus
@@ -331,19 +448,28 @@ export class SalienceEngine {
     entity: AgentEntity,
     context: SalienceContext
   ): number {
-    // Novelty is inverse of recency - less recently accessed = more novel
+    // Factor 1: Time-based novelty (inverse of recency)
     const lastAccess = entity.lastAccessedAt ?? entity.createdAt;
+    let timeNovelty: number;
     if (!lastAccess) {
-      return 1.0; // Never accessed = maximum novelty
+      timeNovelty = 1.0; // Never accessed = maximum novelty
+    } else {
+      const recency = AccessTracker.calculateRecencyScoreFromTimestamp(
+        lastAccess,
+        this.config.recencyDecayHours
+      );
+      timeNovelty = 1 - recency;
     }
 
-    const recency = AccessTracker.calculateRecencyScoreFromTimestamp(
-      lastAccess,
-      this.config.recencyDecayHours
-    );
+    // Factor 2: Access frequency novelty (rare = more novel)
+    const accessCount = entity.accessCount ?? 0;
+    const frequencyNovelty = accessCount === 0 ? 1.0 : 1 / (1 + Math.log(accessCount + 1));
 
-    // Base novelty is inverse of recency
-    let novelty = 1 - recency;
+    // Factor 3: Observation uniqueness
+    const uniquenessScore = this.calculateObservationUniqueness(entity);
+
+    // Combine factors (weighted average)
+    let novelty = (timeNovelty * 0.5) + (frequencyNovelty * 0.3) + (uniquenessScore * 0.2);
 
     // Adjust based on temporal focus
     if (context.temporalFocus === 'historical') {
@@ -354,12 +480,52 @@ export class SalienceEngine {
       novelty = Math.pow(novelty, 2); // Square reduces mid values
     }
 
-    // Also consider if entity is in recent context (reduce novelty)
+    // Reduce novelty if entity is in recent context
     if (context.recentEntities?.includes(entity.name)) {
       novelty *= 0.5;
     }
 
-    return novelty;
+    return Math.min(1, novelty);
+  }
+
+  /**
+   * Calculate observation uniqueness score.
+   * Measures how unique the entity's observations are compared to each other.
+   * Higher uniqueness = more novel content.
+   *
+   * @param entity - Entity to evaluate
+   * @returns Score between 0 and 1
+   */
+  private calculateObservationUniqueness(entity: AgentEntity): number {
+    const observations = entity.observations ?? [];
+    if (observations.length <= 1) {
+      return 1.0; // Single or no observations = maximally unique
+    }
+
+    // Calculate average similarity between observations
+    let totalSimilarity = 0;
+    let comparisons = 0;
+
+    for (let i = 0; i < observations.length; i++) {
+      for (let j = i + 1; j < observations.length; j++) {
+        const similarity = this.summarizationService.calculateSimilarity(
+          observations[i],
+          observations[j]
+        );
+        totalSimilarity += similarity;
+        comparisons++;
+      }
+    }
+
+    if (comparisons === 0) {
+      return 1.0;
+    }
+
+    // Average similarity - higher similarity = lower uniqueness
+    const avgSimilarity = totalSimilarity / comparisons;
+
+    // Invert: low similarity = high uniqueness
+    return 1 - avgSimilarity;
   }
 
   // ==================== Helper Methods ====================

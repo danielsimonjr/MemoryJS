@@ -4,9 +4,9 @@
   "title": "Context Relevance Scoring",
   "priority": "HIGH",
   "effort": "5 hours",
-  "status": "pending",
-  "completedAt": null,
-  "implementationNotes": null,
+  "status": "completed",
+  "completedAt": "2026-01-13",
+  "implementationNotes": "Enhanced SalienceEngine with TF-IDF similarity for task/query/intent relevance scoring via SummarizationService. Added calculateTaskRelevance(), calculateQueryRelevance(), calculateSessionRelevance(), calculateIntentRelevance() methods. Enhanced novelty with time-based (50%), frequency-based (30%), and observation uniqueness (20%) factors. Added configurable sessionBoostFactor, recentEntityBoostFactor, useSemanticSimilarity, uniquenessThreshold options. Added 10 new tests (34 total).",
   "impact": "Adds task and query relevance to salience calculations for targeted retrieval",
   "targetMetrics": {
     "taskRelevance": {

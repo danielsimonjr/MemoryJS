@@ -134,9 +134,16 @@ describe('SalienceEngine', () => {
     });
 
     it('should boost context relevance for query text match in name', async () => {
-      const matchEntity = createTestEntity({ name: 'hotel_preferences' });
-      const noMatchEntity = createTestEntity({ name: 'flight_booking' });
-      const context: SalienceContext = { queryText: 'hotel' };
+      const matchEntity = createTestEntity({
+        name: 'hotel_booking_preferences',
+        observations: ['User searches for hotel bookings'],
+      });
+      const noMatchEntity = createTestEntity({
+        name: 'flight_booking_preferences',
+        observations: ['User searches for flight bookings'],
+      });
+      // Use longer query for better TF-IDF similarity
+      const context: SalienceContext = { queryText: 'hotel booking' };
 
       const matchResult = await salienceEngine.calculateSalience(matchEntity, context);
       const noMatchResult = await salienceEngine.calculateSalience(noMatchEntity, context);
@@ -148,14 +155,15 @@ describe('SalienceEngine', () => {
 
     it('should boost context relevance for query text match in observations', async () => {
       const matchEntity = createTestEntity({
-        name: 'pref1',
-        observations: ['User prefers budget hotels'],
+        name: 'preference_1',
+        observations: ['User prefers budget hotels near downtown area'],
       });
       const noMatchEntity = createTestEntity({
-        name: 'pref2',
-        observations: ['User prefers quick flights'],
+        name: 'preference_2',
+        observations: ['User prefers quick direct flights to destination'],
       });
-      const context: SalienceContext = { queryText: 'hotel' };
+      // Use longer query for better TF-IDF similarity
+      const context: SalienceContext = { queryText: 'budget hotels downtown' };
 
       const matchResult = await salienceEngine.calculateSalience(matchEntity, context);
       const noMatchResult = await salienceEngine.calculateSalience(noMatchEntity, context);
@@ -290,11 +298,15 @@ describe('SalienceEngine', () => {
       const entity = createTestEntity({
         lastAccessedAt: undefined,
         createdAt: undefined,
+        accessCount: 0, // Zero access count for max frequency novelty
       });
       const context: SalienceContext = {};
 
       const result = await salienceEngine.calculateSalience(entity, context);
 
+      // Novelty is now a weighted combination: time (0.5), frequency (0.3), uniqueness (0.2)
+      // With accessCount=0: timeNovelty=1.0, frequencyNovelty=1.0, uniqueness=1.0
+      // Total = 0.5*1.0 + 0.3*1.0 + 0.2*1.0 = 1.0
       expect(result.components.noveltyBoost).toBe(1);
     });
 
@@ -432,6 +444,172 @@ describe('SalienceEngine', () => {
       expect(recentResult.components.contextRelevance).toBeGreaterThan(
         otherResult.components.contextRelevance
       );
+    });
+  });
+
+  describe('Sprint 17: enhanced context relevance', () => {
+    it('should calculate task relevance using TF-IDF similarity', async () => {
+      const entity = createTestEntity({
+        name: 'travel_booking',
+        observations: ['User wants to book a hotel for vacation trip'],
+      });
+
+      // Test direct method access
+      const relevance = salienceEngine.calculateTaskRelevance(entity, 'hotel vacation booking');
+
+      expect(relevance).toBeGreaterThan(0);
+      expect(relevance).toBeLessThanOrEqual(1);
+    });
+
+    it('should return 1.0 for exact task ID match', async () => {
+      const entity = createTestEntity({
+        name: 'task_memory',
+        taskId: 'booking_task',
+      });
+
+      const relevance = salienceEngine.calculateTaskRelevance(entity, 'booking_task');
+
+      expect(relevance).toBe(1.0);
+    });
+
+    it('should calculate query relevance using TF-IDF similarity', async () => {
+      const entity = createTestEntity({
+        name: 'preference_entity',
+        observations: ['User prefers budget accommodation near city center'],
+      });
+
+      const relevance = salienceEngine.calculateQueryRelevance(entity, 'budget accommodation city');
+
+      expect(relevance).toBeGreaterThan(0);
+      expect(relevance).toBeLessThanOrEqual(1);
+    });
+
+    it('should apply configurable session boost factor', async () => {
+      const customEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+        sessionBoostFactor: 0.5,
+      });
+
+      const entity = createTestEntity({
+        name: 'session_entity',
+        sessionId: 'session_123',
+      });
+
+      const relevance = customEngine.calculateSessionRelevance(entity, 'session_123');
+
+      expect(relevance).toBe(0.5);
+    });
+
+    it('should calculate intent relevance using TF-IDF similarity', async () => {
+      const entity = createTestEntity({
+        name: 'intent_entity',
+        observations: ['User wants to purchase airline tickets for travel'],
+      });
+
+      const relevance = salienceEngine.calculateIntentRelevance(entity, 'purchase airline tickets');
+
+      expect(relevance).toBeGreaterThan(0);
+      expect(relevance).toBeLessThanOrEqual(1);
+    });
+
+    it('should use keyword matching when semantic similarity disabled', async () => {
+      const keywordEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+        useSemanticSimilarity: false,
+      });
+
+      const entity = createTestEntity({
+        name: 'hotel_preferences',
+        observations: ['User likes hotels'],
+      });
+
+      // Keyword match in name should work
+      const relevance = keywordEngine.calculateQueryRelevance(entity, 'hotel');
+
+      // With keyword matching, name match returns 1.0
+      expect(relevance).toBe(1.0);
+    });
+  });
+
+  describe('Sprint 17: enhanced novelty calculation', () => {
+    it('should consider observation uniqueness in novelty', async () => {
+      // Entity with completely unique/unrelated observations
+      const uniqueEntity = createTestEntity({
+        name: 'unique_obs',
+        observations: [
+          'The weather is sunny and warm today',
+          'Python is a programming language',
+          'Mount Everest is the tallest mountain',
+        ],
+        accessCount: 0,
+        lastAccessedAt: undefined,
+        createdAt: undefined,
+      });
+
+      // Entity with nearly identical observations (high similarity)
+      const similarEntity = createTestEntity({
+        name: 'similar_obs',
+        observations: [
+          'User likes Italian food very much',
+          'User likes Italian food a lot',
+          'User likes Italian food greatly',
+        ],
+        accessCount: 0,
+        lastAccessedAt: undefined,
+        createdAt: undefined,
+      });
+
+      const uniqueResult = await salienceEngine.calculateSalience(uniqueEntity, {});
+      const similarResult = await salienceEngine.calculateSalience(similarEntity, {});
+
+      // Unique observations should have higher novelty
+      expect(uniqueResult.components.noveltyBoost).toBeGreaterThan(
+        similarResult.components.noveltyBoost
+      );
+    });
+
+    it('should factor in access frequency for novelty', async () => {
+      // Low access count = more novel
+      const rareEntity = createTestEntity({
+        name: 'rare',
+        accessCount: 1,
+        lastAccessedAt: undefined,
+        createdAt: undefined,
+      });
+
+      // High access count = less novel
+      const frequentEntity = createTestEntity({
+        name: 'frequent',
+        accessCount: 100,
+        lastAccessedAt: undefined,
+        createdAt: undefined,
+      });
+
+      const rareResult = await salienceEngine.calculateSalience(rareEntity, {});
+      const frequentResult = await salienceEngine.calculateSalience(frequentEntity, {});
+
+      expect(rareResult.components.noveltyBoost).toBeGreaterThan(
+        frequentResult.components.noveltyBoost
+      );
+    });
+  });
+
+  describe('Sprint 17: configurable boost factors', () => {
+    it('should apply custom recent entity boost factor', async () => {
+      const customEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+        recentEntityBoostFactor: 0.9,
+      });
+
+      const config = customEngine.getConfig();
+
+      expect(config.recentEntityBoostFactor).toBe(0.9);
+    });
+
+    it('should have all new configuration options', () => {
+      const config = salienceEngine.getConfig();
+
+      expect(config).toHaveProperty('sessionBoostFactor');
+      expect(config).toHaveProperty('recentEntityBoostFactor');
+      expect(config).toHaveProperty('useSemanticSimilarity');
+      expect(config).toHaveProperty('uniquenessThreshold');
     });
   });
 });
