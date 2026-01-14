@@ -318,6 +318,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Deduplication across memory type sources
   - Minimum salience filtering with must-include protection
 
+#### Sprint 20: Spillover and Diversity
+- **Spillover Handling**: Track and paginate content that exceeds budget
+  - handleSpillover() tracks excluded entities with suggestions
+  - retrieveSpilloverPage() pagination for follow-up retrieval
+  - Cursor-based pagination with salience priority preservation
+  - Generates suggestions for high-salience excluded content
+- **Diversity Enforcement**: Prevent redundant context
+  - enforceDiversity() detects and replaces similar entities
+  - calculateDiversityScore() measures content variety
+  - Configurable diversityThreshold (default: 0.8)
+  - findDiverseReplacement() finds unique alternatives
+- **Heap-Based Selection**: Efficient top-N retrieval
+  - getMostSalient() uses min-heap for O(n log k) selection
+  - calculateEntitySimilarity() for diversity checking
+- **MemoryFormatter Class**: Format memories for LLM consumption
+  - formatForPrompt() human-readable text output
+  - formatAsJSON() structured data for tool use
+  - formatCompact() minimal token format
+  - formatByType() grouped by memory type
+  - formatSummary() context package summary
+  - Customizable templates and token limits
+- **ManagerContext Integration**: Unified access to agent memory components
+  - salienceEngine property with env var configuration
+  - contextWindowManager property with env var configuration
+  - memoryFormatter property with env var configuration
+- **New Types**: SpilloverResult, MemoryFormatterConfig
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -333,8 +360,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 30 unit tests for EpisodicMemoryManager
 - Added 78 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13 + 18 Sprint 14 + 14 Sprint 15)
 - Added 15 unit tests for RuleEvaluator
-- Added 34 unit tests for SalienceEngine (24 Sprint 16 + 10 Sprint 17)
-- Added 34 unit tests for ContextWindowManager (18 Sprint 18 + 16 Sprint 19)
+- Added 39 unit tests for SalienceEngine (24 Sprint 16 + 10 Sprint 17 + 5 Sprint 20)
+- Added 44 unit tests for ContextWindowManager (18 Sprint 18 + 16 Sprint 19 + 10 Sprint 20)
+- Added 19 unit tests for MemoryFormatter
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
 

@@ -27,6 +27,9 @@ import { ArchiveManager } from '../features/ArchiveManager.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
+import { SalienceEngine } from '../agent/SalienceEngine.js';
+import { ContextWindowManager } from '../agent/ContextWindowManager.js';
+import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
 
@@ -58,6 +61,9 @@ export class ManagerContext {
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
+  private _salienceEngine?: SalienceEngine;
+  private _contextWindowManager?: ContextWindowManager;
+  private _memoryFormatter?: MemoryFormatter;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -231,6 +237,73 @@ export class ManagerContext {
     }
 
     return this._decayScheduler;
+  }
+
+  /**
+   * SalienceEngine - Phase 4 Agent Memory: Context-aware relevance scoring.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_SALIENCE_IMPORTANCE_WEIGHT (default: 0.25)
+   * - MEMORY_SALIENCE_RECENCY_WEIGHT (default: 0.25)
+   * - MEMORY_SALIENCE_FREQUENCY_WEIGHT (default: 0.2)
+   * - MEMORY_SALIENCE_CONTEXT_WEIGHT (default: 0.2)
+   * - MEMORY_SALIENCE_NOVELTY_WEIGHT (default: 0.1)
+   */
+  get salienceEngine(): SalienceEngine {
+    if (!this._salienceEngine) {
+      this._salienceEngine = new SalienceEngine(
+        this.storage,
+        this.accessTracker,
+        this.decayEngine,
+        {
+          importanceWeight: this.getEnvNumber('MEMORY_SALIENCE_IMPORTANCE_WEIGHT', 0.25),
+          recencyWeight: this.getEnvNumber('MEMORY_SALIENCE_RECENCY_WEIGHT', 0.25),
+          frequencyWeight: this.getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2),
+          contextWeight: this.getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2),
+          noveltyWeight: this.getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1),
+        }
+      );
+    }
+    return this._salienceEngine;
+  }
+
+  /**
+   * ContextWindowManager - Phase 4 Agent Memory: Token-budgeted memory retrieval.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_CONTEXT_MAX_TOKENS (default: 4000)
+   * - MEMORY_CONTEXT_TOKEN_MULTIPLIER (default: 1.3)
+   * - MEMORY_CONTEXT_RESERVE_BUFFER (default: 100)
+   * - MEMORY_CONTEXT_DIVERSITY_THRESHOLD (default: 0.8)
+   */
+  get contextWindowManager(): ContextWindowManager {
+    if (!this._contextWindowManager) {
+      this._contextWindowManager = new ContextWindowManager(
+        this.storage,
+        this.salienceEngine,
+        {
+          defaultMaxTokens: this.getEnvNumber('MEMORY_CONTEXT_MAX_TOKENS', 4000),
+          tokenMultiplier: this.getEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3),
+          reserveBuffer: this.getEnvNumber('MEMORY_CONTEXT_RESERVE_BUFFER', 100),
+          diversityThreshold: this.getEnvNumber('MEMORY_CONTEXT_DIVERSITY_THRESHOLD', 0.8),
+          enforceDiversity: this.getEnvBool('MEMORY_CONTEXT_ENFORCE_DIVERSITY', true),
+        }
+      );
+    }
+    return this._contextWindowManager;
+  }
+
+  /**
+   * MemoryFormatter - Phase 4 Agent Memory: Format memories for LLM consumption.
+   */
+  get memoryFormatter(): MemoryFormatter {
+    if (!this._memoryFormatter) {
+      this._memoryFormatter = new MemoryFormatter({
+        includeTimestamps: this.getEnvBool('MEMORY_FORMAT_TIMESTAMPS', true),
+        includeMemoryType: this.getEnvBool('MEMORY_FORMAT_MEMORY_TYPE', true),
+      });
+    }
+    return this._memoryFormatter;
   }
 
   // ==================== Environment Variable Helpers ====================

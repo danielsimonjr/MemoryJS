@@ -754,4 +754,171 @@ describe('ContextWindowManager', () => {
       expect(result.breakdown).toBeDefined();
     });
   });
+
+  describe('handleSpillover', () => {
+    it('should track excluded entities with suggestions', () => {
+      const excluded = [
+        { entity: createTestEntity({ name: 'e1', memoryType: 'working' }), reason: 'budget_exceeded' as const, tokens: 50, salience: 0.8 },
+        { entity: createTestEntity({ name: 'e2', memoryType: 'episodic' }), reason: 'budget_exceeded' as const, tokens: 30, salience: 0.6 },
+      ];
+
+      const result = contextManager.handleSpillover(excluded);
+
+      expect(result.spilledEntities.length).toBe(2);
+      expect(result.spilledTokens).toBe(80);
+      expect(result.suggestions.length).toBeGreaterThan(0);
+    });
+
+    it('should generate pagination cursor when entities exceed page size', () => {
+      const excluded = Array.from({ length: 15 }, (_, i) => ({
+        entity: createTestEntity({ name: `e${i}` }),
+        reason: 'budget_exceeded' as const,
+        tokens: 10,
+        salience: 0.5 - i * 0.01,
+      }));
+
+      const result = contextManager.handleSpillover(excluded, {}, 10);
+
+      expect(result.spilledEntities.length).toBe(10);
+      expect(result.nextPageCursor).toBeDefined();
+    });
+
+    it('should sort by salience for priority preservation', () => {
+      const excluded = [
+        { entity: createTestEntity({ name: 'low' }), reason: 'budget_exceeded' as const, tokens: 10, salience: 0.2 },
+        { entity: createTestEntity({ name: 'high' }), reason: 'budget_exceeded' as const, tokens: 10, salience: 0.9 },
+        { entity: createTestEntity({ name: 'mid' }), reason: 'budget_exceeded' as const, tokens: 10, salience: 0.5 },
+      ];
+
+      const result = contextManager.handleSpillover(excluded);
+
+      expect(result.spilledEntities[0].entity.name).toBe('high');
+      expect(result.spilledEntities[1].entity.name).toBe('mid');
+      expect(result.spilledEntities[2].entity.name).toBe('low');
+    });
+  });
+
+  describe('retrieveSpilloverPage', () => {
+    it('should retrieve next page using cursor', async () => {
+      const entities = Array.from({ length: 10 }, (_, i) =>
+        createTestEntity({
+          name: `entity_${i}`,
+          importance: 9 - i,
+        })
+      );
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+
+      // Create a cursor representing salience cutoff
+      const cursor = Buffer.from(JSON.stringify({ maxSalience: 0.5, lastEntity: 'test' })).toString('base64');
+
+      const result = await contextManager.retrieveSpilloverPage(cursor, 500);
+
+      expect(result.tokens).toBeLessThanOrEqual(500);
+    });
+  });
+
+  describe('enforceDiversity', () => {
+    it('should detect and replace similar entities', async () => {
+      const similar1 = createTestEntity({
+        name: 'hotel1',
+        entityType: 'memory',
+        observations: ['User likes budget hotels downtown for business trips'],
+      });
+      const similar2 = createTestEntity({
+        name: 'hotel2',
+        entityType: 'memory',
+        observations: ['User prefers budget hotels in city center for work'],
+      });
+      const different = createTestEntity({
+        name: 'food',
+        entityType: 'memory',
+        observations: ['User enjoys Italian cuisine'],
+      });
+
+      storage = createMockStorage([similar1, similar2, different]);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine, {
+        diversityThreshold: 0.7,
+        enforceDiversity: true,
+      });
+
+      const scored = await salienceEngine.rankEntitiesBySalience(
+        [similar1, similar2],
+        {}
+      );
+      const candidates = await salienceEngine.rankEntitiesBySalience([different], {});
+
+      const result = await contextManager.enforceDiversity(scored, candidates);
+
+      // Should have 2 entities (one replaced or kept)
+      expect(result.diversified.length).toBeLessThanOrEqual(scored.length);
+    });
+
+    it('should return unchanged when diversity disabled', async () => {
+      contextManager = new ContextWindowManager(storage, salienceEngine, {
+        enforceDiversity: false,
+      });
+
+      const entities = [
+        { entity: createTestEntity({ name: 'e1' }), salienceScore: 0.8, components: { baseImportance: 0.5, recencyBoost: 0.5, frequencyBoost: 0.5, contextRelevance: 0.5, noveltyBoost: 0.5 } },
+      ];
+
+      const result = await contextManager.enforceDiversity(entities, []);
+
+      expect(result.diversified).toEqual(entities);
+      expect(result.replaced.length).toBe(0);
+    });
+  });
+
+  describe('calculateDiversityScore', () => {
+    it('should return 1.0 for single entity', () => {
+      const entities = [createTestEntity({ name: 'single' })];
+      const score = contextManager.calculateDiversityScore(entities);
+      expect(score).toBe(1.0);
+    });
+
+    it('should return high score for diverse entities', () => {
+      const entities = [
+        createTestEntity({ name: 'food', observations: ['Italian restaurant'] }),
+        createTestEntity({ name: 'travel', observations: ['Flight booking'] }),
+        createTestEntity({ name: 'work', observations: ['Project deadline'] }),
+      ];
+
+      const score = contextManager.calculateDiversityScore(entities);
+
+      expect(score).toBeGreaterThan(0.5);
+    });
+
+    it('should return lower score for similar entities', () => {
+      const entities = [
+        createTestEntity({ name: 'hotel1', observations: ['Budget hotel booking'] }),
+        createTestEntity({ name: 'hotel2', observations: ['Cheap hotel reservation'] }),
+      ];
+
+      const score = contextManager.calculateDiversityScore(entities);
+
+      // Should have some similarity, so diversity is lower
+      expect(score).toBeLessThan(1.0);
+    });
+  });
+
+  describe('diversity configuration', () => {
+    it('should use custom diversity threshold', () => {
+      const customManager = new ContextWindowManager(storage, salienceEngine, {
+        diversityThreshold: 0.5,
+        enforceDiversity: true,
+      });
+
+      const config = customManager.getConfig();
+
+      expect(config.diversityThreshold).toBe(0.5);
+      expect(config.enforceDiversity).toBe(true);
+    });
+  });
 });

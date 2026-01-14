@@ -40,6 +40,24 @@ export interface ContextWindowManagerConfig {
   semanticBudgetPct?: number;
   /** Number of recent sessions to include for episodic (default: 3) */
   recentSessionCount?: number;
+  /** Similarity threshold for diversity enforcement (default: 0.8) */
+  diversityThreshold?: number;
+  /** Enable diversity enforcement (default: true) */
+  enforceDiversity?: boolean;
+}
+
+/**
+ * Spillover tracking result.
+ */
+export interface SpilloverResult {
+  /** Entities that didn't fit in context */
+  spilledEntities: ExcludedEntity[];
+  /** Suggestions for pagination/follow-up */
+  suggestions: string[];
+  /** Token count of spilled content */
+  spilledTokens: number;
+  /** Next page cursor for pagination */
+  nextPageCursor?: string;
 }
 
 /**
@@ -83,6 +101,8 @@ export class ContextWindowManager {
       episodicBudgetPct: config.episodicBudgetPct ?? 0.3,
       semanticBudgetPct: config.semanticBudgetPct ?? 0.4,
       recentSessionCount: config.recentSessionCount ?? 3,
+      diversityThreshold: config.diversityThreshold ?? 0.8,
+      enforceDiversity: config.enforceDiversity ?? true,
     };
   }
 
@@ -620,6 +640,306 @@ export class ContextWindowManager {
     }
 
     return suggestions;
+  }
+
+  // ==================== Spillover Handling ====================
+
+  /**
+   * Handle spillover when content exceeds budget.
+   * Tracks excluded entities, generates suggestions, and provides pagination cursor.
+   *
+   * @param excluded - Entities that were excluded
+   * @param context - Salience context for prioritization
+   * @param pageSize - Number of entities per page (default: 10)
+   * @returns Spillover result with pagination support
+   */
+  handleSpillover(
+    excluded: ExcludedEntity[],
+    _context: SalienceContext = {},
+    pageSize: number = 10
+  ): SpilloverResult {
+    // Sort by salience for priority preservation
+    const sorted = [...excluded].sort(
+      (a, b) => (b.salience ?? 0) - (a.salience ?? 0)
+    );
+
+    // Calculate total spillover
+    const spilledTokens = sorted.reduce((sum, e) => sum + e.tokens, 0);
+
+    // Generate pagination cursor based on lowest salience entity in current context
+    const nextPageCursor = sorted.length > pageSize
+      ? this.createPageCursor(sorted[pageSize - 1])
+      : undefined;
+
+    // Generate suggestions for follow-up
+    const suggestions = this.generateSpilloverSuggestions(sorted, spilledTokens);
+
+    return {
+      spilledEntities: sorted.slice(0, pageSize),
+      suggestions,
+      spilledTokens,
+      nextPageCursor,
+    };
+  }
+
+  /**
+   * Retrieve next page of spillover content.
+   *
+   * @param cursor - Pagination cursor from previous spillover
+   * @param budget - Token budget for this page
+   * @param context - Salience context
+   * @returns Next page of entities and updated cursor
+   */
+  async retrieveSpilloverPage(
+    cursor: string,
+    budget: number,
+    context: SalienceContext = {}
+  ): Promise<{ entities: AgentEntity[]; nextCursor?: string; tokens: number }> {
+    const { maxSalience } = this.parsePageCursor(cursor);
+
+    // Get all entities below the cursor salience
+    const graph = await this.storage.loadGraph();
+    const allEntities = graph.entities.filter(isAgentEntity) as AgentEntity[];
+
+    // Score and filter by cursor
+    const scored = await this.salienceEngine.rankEntitiesBySalience(allEntities, context);
+    const belowCursor = scored.filter((s) => s.salienceScore < maxSalience);
+
+    // Select within budget
+    const selected: AgentEntity[] = [];
+    let usedTokens = 0;
+    let lastSalience = maxSalience;
+
+    for (const s of belowCursor) {
+      const tokens = this.estimateTokens(s.entity);
+      if (usedTokens + tokens <= budget) {
+        selected.push(s.entity);
+        usedTokens += tokens;
+        lastSalience = s.salienceScore;
+      } else {
+        break;
+      }
+    }
+
+    // Create cursor for next page if more content remains
+    const remaining = belowCursor.filter(
+      (s) => !selected.some((e) => e.name === s.entity.name)
+    );
+    const nextCursor = remaining.length > 0
+      ? this.createPageCursor({
+          entity: selected[selected.length - 1] ?? belowCursor[0].entity,
+          reason: 'budget_exceeded',
+          tokens: 0,
+          salience: lastSalience,
+        })
+      : undefined;
+
+    return {
+      entities: selected,
+      nextCursor,
+      tokens: usedTokens,
+    };
+  }
+
+  /**
+   * Create pagination cursor from excluded entity.
+   * @internal
+   */
+  private createPageCursor(excluded: ExcludedEntity): string {
+    return Buffer.from(
+      JSON.stringify({
+        maxSalience: excluded.salience ?? 0,
+        lastEntity: excluded.entity.name,
+      })
+    ).toString('base64');
+  }
+
+  /**
+   * Parse pagination cursor.
+   * @internal
+   */
+  private parsePageCursor(cursor: string): { maxSalience: number; lastEntity: string } {
+    try {
+      return JSON.parse(Buffer.from(cursor, 'base64').toString('utf-8'));
+    } catch {
+      return { maxSalience: 1.0, lastEntity: '' };
+    }
+  }
+
+  /**
+   * Generate suggestions for spillover content.
+   * @internal
+   */
+  private generateSpilloverSuggestions(
+    spilledEntities: ExcludedEntity[],
+    spilledTokens: number
+  ): string[] {
+    const suggestions: string[] = [];
+
+    if (spilledEntities.length > 0) {
+      // Suggest high-priority content
+      const highPriority = spilledEntities.filter((e) => (e.salience ?? 0) > 0.7);
+      if (highPriority.length > 0) {
+        suggestions.push(
+          `${highPriority.length} high-salience memories available for follow-up retrieval`
+        );
+      }
+
+      // Token summary
+      suggestions.push(
+        `${spilledTokens} tokens of content available in next page(s)`
+      );
+
+      // Memory type breakdown
+      const byType = new Map<string, number>();
+      for (const e of spilledEntities) {
+        const type = e.entity.memoryType ?? 'unknown';
+        byType.set(type, (byType.get(type) ?? 0) + 1);
+      }
+      const typeBreakdown = Array.from(byType.entries())
+        .map(([type, count]) => `${count} ${type}`)
+        .join(', ');
+      suggestions.push(`Spillover breakdown: ${typeBreakdown}`);
+    }
+
+    return suggestions;
+  }
+
+  // ==================== Diversity Enforcement ====================
+
+  /**
+   * Enforce diversity in selected entities by detecting and replacing duplicates.
+   *
+   * @param entities - Selected entities to check
+   * @param candidates - Pool of candidate replacements
+   * @param context - Salience context
+   * @returns Diversified entities and replaced entities
+   */
+  async enforceDiversity(
+    entities: ScoredEntity[],
+    candidates: ScoredEntity[],
+    _context: SalienceContext = {}
+  ): Promise<{ diversified: ScoredEntity[]; replaced: Array<{ original: AgentEntity; replacement: AgentEntity }> }> {
+    if (!this.config.enforceDiversity || entities.length <= 1) {
+      return { diversified: entities, replaced: [] };
+    }
+
+    const diversified: ScoredEntity[] = [];
+    const replaced: Array<{ original: AgentEntity; replacement: AgentEntity }> = [];
+    const usedNames = new Set<string>();
+
+    for (let i = 0; i < entities.length; i++) {
+      const current = entities[i];
+      let isDuplicate = false;
+
+      // Check similarity against already diversified entities
+      for (const included of diversified) {
+        const similarity = this.salienceEngine.calculateEntitySimilarity(
+          current.entity,
+          included.entity
+        );
+
+        if (similarity > this.config.diversityThreshold) {
+          isDuplicate = true;
+          break;
+        }
+      }
+
+      if (!isDuplicate) {
+        diversified.push(current);
+        usedNames.add(current.entity.name);
+      } else {
+        // Find a diverse replacement from candidates
+        const replacement = this.findDiverseReplacement(
+          current,
+          diversified,
+          candidates,
+          usedNames
+        );
+
+        if (replacement) {
+          diversified.push(replacement);
+          usedNames.add(replacement.entity.name);
+          replaced.push({
+            original: current.entity,
+            replacement: replacement.entity,
+          });
+        }
+        // If no replacement found, skip this entity
+      }
+    }
+
+    return { diversified, replaced };
+  }
+
+  /**
+   * Find a diverse replacement for a duplicate entity.
+   * @internal
+   */
+  private findDiverseReplacement(
+    _duplicate: ScoredEntity,
+    diversified: ScoredEntity[],
+    candidates: ScoredEntity[],
+    usedNames: Set<string>
+  ): ScoredEntity | null {
+    // Sort candidates by salience (descending)
+    const sortedCandidates = [...candidates].sort(
+      (a, b) => b.salienceScore - a.salienceScore
+    );
+
+    for (const candidate of sortedCandidates) {
+      // Skip if already used
+      if (usedNames.has(candidate.entity.name)) continue;
+
+      // Check diversity against all diversified entities
+      let isDiverse = true;
+      for (const included of diversified) {
+        const similarity = this.salienceEngine.calculateEntitySimilarity(
+          candidate.entity,
+          included.entity
+        );
+
+        if (similarity > this.config.diversityThreshold) {
+          isDiverse = false;
+          break;
+        }
+      }
+
+      if (isDiverse) {
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Calculate diversity score for a set of entities.
+   * Higher score means more diverse content.
+   *
+   * @param entities - Entities to evaluate
+   * @returns Diversity score between 0 and 1
+   */
+  calculateDiversityScore(entities: AgentEntity[]): number {
+    if (entities.length <= 1) return 1.0;
+
+    let totalSimilarity = 0;
+    let comparisons = 0;
+
+    for (let i = 0; i < entities.length; i++) {
+      for (let j = i + 1; j < entities.length; j++) {
+        const similarity = this.salienceEngine.calculateEntitySimilarity(
+          entities[i],
+          entities[j]
+        );
+        totalSimilarity += similarity;
+        comparisons++;
+      }
+    }
+
+    // Invert: low similarity = high diversity
+    const avgSimilarity = comparisons > 0 ? totalSimilarity / comparisons : 0;
+    return 1 - avgSimilarity;
   }
 
   /**

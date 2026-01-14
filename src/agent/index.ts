@@ -88,4 +88,10 @@ export {
 export {
   ContextWindowManager,
   type ContextWindowManagerConfig,
+  type SpilloverResult,
 } from './ContextWindowManager.js';
+
+export {
+  MemoryFormatter,
+  type MemoryFormatterConfig,
+} from './MemoryFormatter.js';

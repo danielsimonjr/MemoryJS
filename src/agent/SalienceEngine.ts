@@ -554,4 +554,137 @@ export class SalienceEngine {
   getConfig(): Readonly<Required<SalienceEngineConfig>> {
     return { ...this.config };
   }
+
+  /**
+   * Get most salient entities using heap-based selection.
+   * More efficient than getTopSalient for large datasets with small limit.
+   * Time complexity: O(n log k) where n is total entities, k is limit.
+   *
+   * @param context - Context for relevance scoring
+   * @param limit - Maximum number of entities to return (default: 10)
+   * @returns Top entities sorted by salience (descending)
+   */
+  async getMostSalient(
+    context: SalienceContext,
+    limit: number = 10
+  ): Promise<ScoredEntity[]> {
+    const graph = await this.storage.loadGraph();
+    const agentEntities = graph.entities.filter(isAgentEntity) as AgentEntity[];
+
+    if (agentEntities.length === 0) {
+      return [];
+    }
+
+    // For small datasets or large limits, use simple sort
+    if (agentEntities.length <= limit * 3) {
+      return this.getTopSalient(context, limit);
+    }
+
+    // Use min-heap for O(n log k) selection
+    const heap: ScoredEntity[] = [];
+
+    for (const entity of agentEntities) {
+      const scored = await this.calculateSalience(entity, context);
+
+      if (heap.length < limit) {
+        // Heap not full - insert and maintain heap property
+        this.heapInsert(heap, scored);
+      } else if (scored.salienceScore > heap[0].salienceScore) {
+        // New score is higher than minimum in heap - replace minimum
+        heap[0] = scored;
+        this.heapSiftDown(heap, 0);
+      }
+    }
+
+    // Extract sorted results (highest first)
+    const result: ScoredEntity[] = [];
+    while (heap.length > 0) {
+      result.unshift(this.heapExtractMin(heap)!);
+    }
+
+    return result;
+  }
+
+  /**
+   * Calculate similarity between two entities for diversity checking.
+   *
+   * @param entity1 - First entity
+   * @param entity2 - Second entity
+   * @returns Similarity score between 0 and 1
+   */
+  calculateEntitySimilarity(entity1: AgentEntity, entity2: AgentEntity): number {
+    const text1 = this.buildEntityText(entity1);
+    const text2 = this.buildEntityText(entity2);
+    return this.summarizationService.calculateSimilarity(text1, text2);
+  }
+
+  // ==================== Heap Operations ====================
+
+  /**
+   * Insert into min-heap (by salience score).
+   * @internal
+   */
+  private heapInsert(heap: ScoredEntity[], item: ScoredEntity): void {
+    heap.push(item);
+    this.heapSiftUp(heap, heap.length - 1);
+  }
+
+  /**
+   * Extract minimum from heap.
+   * @internal
+   */
+  private heapExtractMin(heap: ScoredEntity[]): ScoredEntity | undefined {
+    if (heap.length === 0) return undefined;
+
+    const min = heap[0];
+    const last = heap.pop()!;
+
+    if (heap.length > 0) {
+      heap[0] = last;
+      this.heapSiftDown(heap, 0);
+    }
+
+    return min;
+  }
+
+  /**
+   * Sift up to maintain heap property.
+   * @internal
+   */
+  private heapSiftUp(heap: ScoredEntity[], index: number): void {
+    while (index > 0) {
+      const parentIndex = Math.floor((index - 1) / 2);
+      if (heap[index].salienceScore >= heap[parentIndex].salienceScore) {
+        break;
+      }
+      [heap[index], heap[parentIndex]] = [heap[parentIndex], heap[index]];
+      index = parentIndex;
+    }
+  }
+
+  /**
+   * Sift down to maintain heap property.
+   * @internal
+   */
+  private heapSiftDown(heap: ScoredEntity[], index: number): void {
+    const length = heap.length;
+
+    while (true) {
+      const leftChild = 2 * index + 1;
+      const rightChild = 2 * index + 2;
+      let smallest = index;
+
+      if (leftChild < length && heap[leftChild].salienceScore < heap[smallest].salienceScore) {
+        smallest = leftChild;
+      }
+      if (rightChild < length && heap[rightChild].salienceScore < heap[smallest].salienceScore) {
+        smallest = rightChild;
+      }
+
+      if (smallest === index) break;
+
+      [heap[index], heap[smallest]] = [heap[smallest], heap[index]];
+      index = smallest;
+    }
+  }
 }

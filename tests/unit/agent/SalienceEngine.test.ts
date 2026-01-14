@@ -612,4 +612,91 @@ describe('SalienceEngine', () => {
       expect(config).toHaveProperty('uniquenessThreshold');
     });
   });
+
+  describe('getMostSalient', () => {
+    it('should return top N entities using heap-based selection', async () => {
+      const entities = Array.from({ length: 20 }, (_, i) =>
+        createTestEntity({
+          name: `entity_${i}`,
+          importance: i % 10,
+        })
+      );
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+
+      const topEntities = await salienceEngine.getMostSalient({}, 5);
+
+      expect(topEntities.length).toBe(5);
+      // Should be sorted by salience descending
+      for (let i = 1; i < topEntities.length; i++) {
+        expect(topEntities[i - 1].salienceScore).toBeGreaterThanOrEqual(
+          topEntities[i].salienceScore
+        );
+      }
+    });
+
+    it('should handle empty entity set', async () => {
+      storage = createMockStorage([]);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+
+      const topEntities = await salienceEngine.getMostSalient({}, 5);
+
+      expect(topEntities.length).toBe(0);
+    });
+
+    it('should return all entities when limit exceeds count', async () => {
+      const entities = [
+        createTestEntity({ name: 'e1', importance: 8 }),
+        createTestEntity({ name: 'e2', importance: 5 }),
+      ];
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+
+      const topEntities = await salienceEngine.getMostSalient({}, 10);
+
+      expect(topEntities.length).toBe(2);
+    });
+  });
+
+  describe('calculateEntitySimilarity', () => {
+    it('should return high similarity for similar entities', () => {
+      const entity1 = createTestEntity({
+        name: 'hotel_pref',
+        entityType: 'preference',
+        observations: ['User likes budget hotels downtown'],
+      });
+      const entity2 = createTestEntity({
+        name: 'hotel_pref2',
+        entityType: 'preference',
+        observations: ['User prefers budget hotels in city center'],
+      });
+
+      const similarity = salienceEngine.calculateEntitySimilarity(entity1, entity2);
+
+      expect(similarity).toBeGreaterThan(0.3);
+    });
+
+    it('should return low similarity for different entities', () => {
+      const entity1 = createTestEntity({
+        name: 'food_pref',
+        entityType: 'preference',
+        observations: ['User likes Italian food'],
+      });
+      const entity2 = createTestEntity({
+        name: 'work_task',
+        entityType: 'task',
+        observations: ['Complete quarterly report by Friday'],
+      });
+
+      const similarity = salienceEngine.calculateEntitySimilarity(entity1, entity2);
+
+      expect(similarity).toBeLessThan(0.5);
+    });
+  });
 });
