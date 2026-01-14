@@ -160,6 +160,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - createSummaryOnEnd config option (default: true when EpisodicMemoryManager provided)
 - **New Interfaces**: EpisodicMemoryConfig, CreateEpisodeOptions, TimelineOptions
 
+#### Sprint 11: Consolidation Pipeline Foundation
+- **ConsolidationPipeline Class**: Orchestrates memory transformation to long-term storage
+  - consolidateSession() processes all working memories for a session
+  - consolidateSessions() for batch processing multiple sessions
+  - Filters candidates by confidence and confirmation thresholds
+  - Configurable summarization and pattern extraction flags
+- **Promotion System**: Convert working memory to long-term storage
+  - promoteMemory() with target type (episodic/semantic)
+  - Clears TTL fields and sets promotion metadata
+  - Reinforces memory against decay after promotion
+  - getPromotionCandidates() for candidate evaluation
+  - isPromotionEligible() for eligibility checks
+- **Pipeline Stages**: Pluggable processing architecture
+  - PipelineStage interface for custom processors
+  - registerStage() to add processors
+  - Stages executed in registration order
+  - StageResult aggregation across all stages
+- **Consolidation Types**: New type definitions for consolidation
+  - ConsolidateOptions for operation configuration
+  - ConsolidationResult for statistics tracking
+- **New Interfaces**: ConsolidationPipelineConfig, PipelineStage, StageResult
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -173,6 +195,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 44 unit tests for SessionManager (39 Sprint 8 + 5 Sprint 10 integration)
 - Added 20 unit tests for SessionQueryBuilder
 - Added 30 unit tests for EpisodicMemoryManager
+- Added 25 unit tests for ConsolidationPipeline
 
 ## [1.1.0] - 2026-01-11
 

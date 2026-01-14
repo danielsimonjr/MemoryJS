@@ -669,3 +669,63 @@ export type SemanticMemoryEntity = AgentEntity & { memoryType: 'semantic' };
  * Utility type for procedural memory entities (future).
  */
 export type ProceduralMemoryEntity = AgentEntity & { memoryType: 'procedural' };
+
+// ==================== Consolidation Types ====================
+
+/**
+ * Options for memory consolidation operations.
+ *
+ * Controls how working memories are transformed and promoted
+ * to long-term storage.
+ *
+ * @example
+ * ```typescript
+ * const options: ConsolidateOptions = {
+ *   summarize: true,
+ *   extractPatterns: true,
+ *   minConfidence: 0.8,
+ *   minConfirmations: 3,
+ * };
+ * ```
+ */
+export interface ConsolidateOptions {
+  /** Enable observation summarization (default: true) */
+  summarize?: boolean;
+  /** Enable pattern extraction (default: true) */
+  extractPatterns?: boolean;
+  /** Minimum confidence for promotion (0-1, default: 0.7) */
+  minConfidence?: number;
+  /** Minimum confirmation count for promotion (default: 2) */
+  minConfirmations?: number;
+  /** Keep original working memories after promotion (default: false) */
+  preserveOriginals?: boolean;
+  /** Target memory type for promotion (default: 'episodic') */
+  targetType?: MemoryType;
+}
+
+/**
+ * Result of a consolidation operation.
+ *
+ * Provides detailed statistics about what was processed
+ * and any errors encountered.
+ *
+ * @example
+ * ```typescript
+ * const result = await pipeline.consolidateSession('session_1');
+ * console.log(`Promoted ${result.memoriesPromoted} of ${result.memoriesProcessed}`);
+ * ```
+ */
+export interface ConsolidationResult {
+  /** Total memories processed */
+  memoriesProcessed: number;
+  /** Memories successfully promoted to long-term */
+  memoriesPromoted: number;
+  /** Memories merged with existing entities */
+  memoriesMerged: number;
+  /** Patterns extracted from observations */
+  patternsExtracted: number;
+  /** Summary observations created */
+  summariesCreated: number;
+  /** Error messages encountered */
+  errors: string[];
+}

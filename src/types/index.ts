@@ -143,6 +143,9 @@ export type {
   EpisodicMemoryEntity,
   SemanticMemoryEntity,
   ProceduralMemoryEntity,
+  // Consolidation types
+  ConsolidateOptions,
+  ConsolidationResult,
 } from './agent-memory.js';
 
 // Agent Memory Type Guards and Classes

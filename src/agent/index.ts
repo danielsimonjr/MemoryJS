@@ -61,3 +61,10 @@ export {
   type CreateEpisodeOptions,
   type TimelineOptions,
 } from './EpisodicMemoryManager.js';
+
+export {
+  ConsolidationPipeline,
+  type ConsolidationPipelineConfig,
+  type PipelineStage,
+  type StageResult,
+} from './ConsolidationPipeline.js';

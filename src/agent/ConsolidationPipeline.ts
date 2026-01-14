@@ -1,0 +1,426 @@
+/**
+ * Consolidation Pipeline
+ *
+ * Orchestrates memory transformation from working to long-term storage.
+ * Includes summarization, pattern extraction, and promotion stages.
+ *
+ * @module agent/ConsolidationPipeline
+ */
+
+import type { IGraphStorage, Entity } from '../types/types.js';
+import type {
+  AgentEntity,
+  ConsolidateOptions,
+  ConsolidationResult,
+  MemoryType,
+} from '../types/agent-memory.js';
+import { isAgentEntity } from '../types/agent-memory.js';
+import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
+import type { DecayEngine } from './DecayEngine.js';
+
+/**
+ * Configuration for ConsolidationPipeline.
+ */
+export interface ConsolidationPipelineConfig {
+  /** Enable observation summarization (default: true) */
+  summarizationEnabled?: boolean;
+  /** Enable pattern extraction (default: true) */
+  patternExtractionEnabled?: boolean;
+  /** Minimum confidence for promotion (default: 0.7) */
+  minPromotionConfidence?: number;
+  /** Minimum confirmations for promotion (default: 2) */
+  minPromotionConfirmations?: number;
+  /** Preserve originals after promotion (default: false) */
+  preserveOriginals?: boolean;
+}
+
+/**
+ * Interface for pluggable pipeline stages.
+ */
+export interface PipelineStage {
+  /** Stage name for logging/debugging */
+  name: string;
+  /** Process entities through this stage */
+  process(
+    entities: AgentEntity[],
+    options: ConsolidateOptions
+  ): Promise<StageResult>;
+}
+
+/**
+ * Result from a single pipeline stage.
+ */
+export interface StageResult {
+  /** Number of entities processed */
+  processed: number;
+  /** Number of entities transformed */
+  transformed: number;
+  /** Error messages from this stage */
+  errors: string[];
+}
+
+/**
+ * Orchestrates memory consolidation from working to long-term storage.
+ *
+ * ConsolidationPipeline is the central coordinator for transforming
+ * working memories into long-term storage. It evaluates promotion
+ * criteria, runs through pluggable pipeline stages, and tracks
+ * results across all operations.
+ *
+ * @example
+ * ```typescript
+ * const pipeline = new ConsolidationPipeline(storage, wmm, decay);
+ *
+ * // Consolidate all memories from a session
+ * const result = await pipeline.consolidateSession('session_123');
+ * console.log(`Promoted ${result.memoriesPromoted} memories`);
+ *
+ * // Promote a specific memory
+ * const promoted = await pipeline.promoteMemory('memory_abc', 'semantic');
+ *
+ * // Register custom pipeline stage
+ * pipeline.registerStage({
+ *   name: 'custom_stage',
+ *   async process(entities, options) {
+ *     // Custom processing logic
+ *     return { processed: entities.length, transformed: 0, errors: [] };
+ *   }
+ * });
+ * ```
+ */
+export class ConsolidationPipeline {
+  private readonly storage: IGraphStorage;
+  private readonly workingMemory: WorkingMemoryManager;
+  private readonly decayEngine: DecayEngine;
+  private readonly config: Required<ConsolidationPipelineConfig>;
+  private readonly stages: PipelineStage[] = [];
+
+  constructor(
+    storage: IGraphStorage,
+    workingMemory: WorkingMemoryManager,
+    decayEngine: DecayEngine,
+    config: ConsolidationPipelineConfig = {}
+  ) {
+    this.storage = storage;
+    this.workingMemory = workingMemory;
+    this.decayEngine = decayEngine;
+    this.config = {
+      summarizationEnabled: config.summarizationEnabled ?? true,
+      patternExtractionEnabled: config.patternExtractionEnabled ?? true,
+      minPromotionConfidence: config.minPromotionConfidence ?? 0.7,
+      minPromotionConfirmations: config.minPromotionConfirmations ?? 2,
+      preserveOriginals: config.preserveOriginals ?? false,
+    };
+  }
+
+  // ==================== Stage Registration ====================
+
+  /**
+   * Register a pipeline stage.
+   *
+   * Stages are executed in registration order during consolidation.
+   * Each stage can transform entities and report results.
+   *
+   * @param stage - Pipeline stage to register
+   */
+  registerStage(stage: PipelineStage): void {
+    this.stages.push(stage);
+  }
+
+  /**
+   * Get registered pipeline stages.
+   */
+  getStages(): readonly PipelineStage[] {
+    return this.stages;
+  }
+
+  /**
+   * Clear all registered stages.
+   */
+  clearStages(): void {
+    this.stages.length = 0;
+  }
+
+  // ==================== Session Consolidation ====================
+
+  /**
+   * Consolidate all memories from a session.
+   *
+   * Processes all working memories for the session, evaluates them
+   * against promotion criteria, runs through pipeline stages, and
+   * promotes eligible memories to long-term storage.
+   *
+   * @param sessionId - Session to consolidate
+   * @param options - Consolidation options
+   * @returns Consolidation result with statistics
+   *
+   * @example
+   * ```typescript
+   * // Default consolidation
+   * const result = await pipeline.consolidateSession('session_123');
+   *
+   * // Custom options
+   * const result = await pipeline.consolidateSession('session_123', {
+   *   minConfidence: 0.9,
+   *   targetType: 'semantic',
+   *   preserveOriginals: true,
+   * });
+   * ```
+   */
+  async consolidateSession(
+    sessionId: string,
+    options?: ConsolidateOptions
+  ): Promise<ConsolidationResult> {
+    const result: ConsolidationResult = {
+      memoriesProcessed: 0,
+      memoriesPromoted: 0,
+      memoriesMerged: 0,
+      patternsExtracted: 0,
+      summariesCreated: 0,
+      errors: [],
+    };
+
+    try {
+      // Get all working memories for session
+      const memories = await this.workingMemory.getSessionMemories(sessionId);
+      result.memoriesProcessed = memories.length;
+
+      if (memories.length === 0) {
+        return result;
+      }
+
+      // Merge options with config defaults
+      const effectiveOptions: Required<ConsolidateOptions> = {
+        summarize: options?.summarize ?? this.config.summarizationEnabled,
+        extractPatterns:
+          options?.extractPatterns ?? this.config.patternExtractionEnabled,
+        minConfidence:
+          options?.minConfidence ?? this.config.minPromotionConfidence,
+        minConfirmations:
+          options?.minConfirmations ?? this.config.minPromotionConfirmations,
+        preserveOriginals:
+          options?.preserveOriginals ?? this.config.preserveOriginals,
+        targetType: options?.targetType ?? 'episodic',
+      };
+
+      // Filter promotion candidates
+      const candidates = memories.filter(
+        (m) =>
+          (m.confidence ?? 0) >= effectiveOptions.minConfidence &&
+          (m.confirmationCount ?? 0) >= effectiveOptions.minConfirmations
+      );
+
+      // Run through registered pipeline stages
+      for (const stage of this.stages) {
+        try {
+          const stageResult = await stage.process(candidates, effectiveOptions);
+          // Aggregate stage results
+          result.patternsExtracted += stageResult.transformed;
+          result.errors.push(...stageResult.errors);
+        } catch (error) {
+          result.errors.push(`Stage ${stage.name} failed: ${error}`);
+        }
+      }
+
+      // Promote eligible memories
+      for (const candidate of candidates) {
+        try {
+          await this.promoteMemory(candidate.name, effectiveOptions.targetType);
+          result.memoriesPromoted++;
+        } catch (error) {
+          result.errors.push(`Promotion failed for ${candidate.name}: ${error}`);
+        }
+      }
+
+      // Clean up originals if not preserving
+      // Working memories will expire naturally via TTL,
+      // but we could actively delete them here if needed
+    } catch (error) {
+      result.errors.push(`Session consolidation failed: ${error}`);
+    }
+
+    return result;
+  }
+
+  // ==================== Individual Memory Promotion ====================
+
+  /**
+   * Promote a working memory to long-term storage.
+   *
+   * Updates the memory type, clears working memory fields,
+   * sets promotion metadata, and reinforces against decay.
+   *
+   * @param entityName - Name of entity to promote
+   * @param targetType - Target memory type (episodic or semantic)
+   * @returns Updated entity
+   * @throws Error if entity not found or not working memory
+   *
+   * @example
+   * ```typescript
+   * // Promote to episodic (default - preserves temporal context)
+   * const episodic = await pipeline.promoteMemory('memory_123', 'episodic');
+   *
+   * // Promote to semantic (abstracts away temporal context)
+   * const semantic = await pipeline.promoteMemory('memory_456', 'semantic');
+   * ```
+   */
+  async promoteMemory(
+    entityName: string,
+    targetType: MemoryType
+  ): Promise<AgentEntity> {
+    const entity = this.storage.getEntityByName(entityName);
+    if (!entity) {
+      throw new Error(`Entity not found: ${entityName}`);
+    }
+
+    if (!isAgentEntity(entity)) {
+      throw new Error(`Entity is not an AgentEntity: ${entityName}`);
+    }
+
+    const agentEntity = entity as AgentEntity;
+    if (agentEntity.memoryType !== 'working') {
+      throw new Error(`Entity is not working memory: ${entityName}`);
+    }
+
+    const now = new Date().toISOString();
+    const updates: Partial<AgentEntity> = {
+      // Change memory type
+      memoryType: targetType,
+
+      // Clear working memory fields
+      isWorkingMemory: false,
+      expiresAt: undefined,
+
+      // Set promotion metadata
+      promotedAt: now,
+      promotedFrom: agentEntity.sessionId,
+      markedForPromotion: false,
+
+      // Update timestamp
+      lastModified: now,
+    };
+
+    // Type-specific processing
+    if (targetType === 'semantic') {
+      // For semantic memory, we might want to:
+      // - Abstract away session-specific context
+      // - Generalize observations
+      // This is typically handled by summarization stages
+    } else if (targetType === 'episodic') {
+      // For episodic memory:
+      // - Preserve temporal context
+      // - Keep sessionId and timestamps intact
+      // This is the default behavior
+    }
+
+    await this.storage.updateEntity(entityName, updates as Partial<Entity>);
+
+    // Reinforce the memory to reset decay
+    await this.decayEngine.reinforceMemory(entityName);
+
+    return { ...agentEntity, ...updates } as AgentEntity;
+  }
+
+  // ==================== Batch Operations ====================
+
+  /**
+   * Consolidate multiple sessions.
+   *
+   * @param sessionIds - Sessions to consolidate
+   * @param options - Shared options for all sessions
+   * @returns Aggregated consolidation result
+   */
+  async consolidateSessions(
+    sessionIds: string[],
+    options?: ConsolidateOptions
+  ): Promise<ConsolidationResult> {
+    const aggregatedResult: ConsolidationResult = {
+      memoriesProcessed: 0,
+      memoriesPromoted: 0,
+      memoriesMerged: 0,
+      patternsExtracted: 0,
+      summariesCreated: 0,
+      errors: [],
+    };
+
+    for (const sessionId of sessionIds) {
+      const result = await this.consolidateSession(sessionId, options);
+      aggregatedResult.memoriesProcessed += result.memoriesProcessed;
+      aggregatedResult.memoriesPromoted += result.memoriesPromoted;
+      aggregatedResult.memoriesMerged += result.memoriesMerged;
+      aggregatedResult.patternsExtracted += result.patternsExtracted;
+      aggregatedResult.summariesCreated += result.summariesCreated;
+      aggregatedResult.errors.push(...result.errors);
+    }
+
+    return aggregatedResult;
+  }
+
+  // ==================== Candidate Evaluation ====================
+
+  /**
+   * Get promotion candidates from a session without promoting them.
+   *
+   * @param sessionId - Session to evaluate
+   * @param options - Criteria for candidate selection
+   * @returns Entities eligible for promotion
+   */
+  async getPromotionCandidates(
+    sessionId: string,
+    options?: Pick<ConsolidateOptions, 'minConfidence' | 'minConfirmations'>
+  ): Promise<AgentEntity[]> {
+    const memories = await this.workingMemory.getSessionMemories(sessionId);
+
+    const minConfidence =
+      options?.minConfidence ?? this.config.minPromotionConfidence;
+    const minConfirmations =
+      options?.minConfirmations ?? this.config.minPromotionConfirmations;
+
+    return memories.filter(
+      (m) =>
+        (m.confidence ?? 0) >= minConfidence &&
+        (m.confirmationCount ?? 0) >= minConfirmations
+    );
+  }
+
+  /**
+   * Check if an entity is eligible for promotion.
+   *
+   * @param entityName - Entity to check
+   * @param options - Criteria for eligibility
+   * @returns True if eligible
+   */
+  async isPromotionEligible(
+    entityName: string,
+    options?: Pick<ConsolidateOptions, 'minConfidence' | 'minConfirmations'>
+  ): Promise<boolean> {
+    const entity = this.storage.getEntityByName(entityName);
+    if (!entity || !isAgentEntity(entity)) {
+      return false;
+    }
+
+    const agentEntity = entity as AgentEntity;
+    if (agentEntity.memoryType !== 'working') {
+      return false;
+    }
+
+    const minConfidence =
+      options?.minConfidence ?? this.config.minPromotionConfidence;
+    const minConfirmations =
+      options?.minConfirmations ?? this.config.minPromotionConfirmations;
+
+    return (
+      (agentEntity.confidence ?? 0) >= minConfidence &&
+      (agentEntity.confirmationCount ?? 0) >= minConfirmations
+    );
+  }
+
+  // ==================== Configuration Access ====================
+
+  /**
+   * Get current configuration.
+   */
+  getConfig(): Readonly<Required<ConsolidationPipelineConfig>> {
+    return { ...this.config };
+  }
+}
