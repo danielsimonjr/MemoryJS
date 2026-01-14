@@ -27,33 +27,35 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Entity-Relation Knowledge Graph**: Store and query interconnected knowledge
 - **Hierarchical Organization**: Parent-child entity relationships
 - **Advanced Search**: Basic, ranked (TF-IDF/BM25), boolean, fuzzy, semantic, and hybrid search
+- **Agent Memory System**: Working memory, episodic memory, decay, and multi-agent support
 - **Compression**: Automatic duplicate detection and merging
 - **Tagging & Importance**: Flexible categorization and prioritization
 - **Timestamps**: Automatic tracking of creation and modification times
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (v1.0.0)
+### Key Statistics (v1.2.0)
 
 | Metric | Value |
 |--------|-------|
-| Source Files | 73 TypeScript files |
-| Lines of Code | ~29,000 lines |
-| Exports | 558 total (333 re-exports) |
-| Classes | 73 |
-| Interfaces | 145 |
-| Functions | 100 |
+| Source Files | 93 TypeScript files |
+| Lines of Code | ~41,000 lines |
+| Exports | 657 total (404 re-exports) |
+| Classes | 91 |
+| Interfaces | 216 |
+| Functions | 109 |
 | Circular Dependencies | 2 (type-only, safe) |
 
 ### Module Distribution
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
+| `agent/` | 19 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager |
 | `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
 | `search/` | 29 | SearchManager, BM25Search, HybridScorer, VectorStore |
 | `features/` | 9 | IOManager, ArchiveManager, StreamingExporter |
 | `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager |
-| `types/` | 2 | Entity, Relation, KnowledgeGraph interfaces |
+| `types/` | 3 | Entity, Relation, AgentEntity, SessionEntity interfaces |
 | `workers/` | 2 | Levenshtein distance calculations |
 
 ---
@@ -93,7 +95,7 @@ MemoryJS is a TypeScript knowledge graph library providing:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                  Application / MCP Server                    │
+│              Application / MCP Server / AI Agent             │
 └───────────────────────────┬──────────────────────────────────┘
                             │ Library API
 ┌───────────────────────────┴──────────────────────────────────┐
@@ -103,21 +105,22 @@ MemoryJS is a TypeScript knowledge graph library providing:
 │  │  Layer 1: ManagerContext (Central Facade)              │ │
 │  │  ┌──────────────────────────────────────────────────┐  │ │
 │  │  │ Lazy-initialized getters for all managers        │  │ │
+│  │  │ ctx.agentMemory() - Agent Memory System          │  │ │
 │  │  └──────────────────────────────────────────────────┘  │ │
 │  └────────────────────────────┬───────────────────────────┘ │
 │                               │                              │
 │  ┌────────────────────────────┴───────────────────────────┐ │
 │  │  Layer 2: Manager Layer                                │ │
-│  │  ┌──────────────┬────────────────┬──────────────────┐  │ │
-│  │  │ core/        │ search/        │ features/        │  │ │
-│  │  │ EntityMgr    │ SearchMgr      │ IOManager        │  │ │
-│  │  │ RelationMgr  │ BasicSearch    │ TagMgr           │  │ │
-│  │  │ HierarchyMgr │ RankedSearch   │ AnalyticsMgr     │  │ │
-│  │  │ TransactMgr  │ BooleanSearch  │ ArchiveMgr       │  │ │
-│  │  │ GraphTraverse│ FuzzySearch    │ CompressionMgr   │  │ │
-│  │  │              │ HybridSearch   │                  │  │ │
-│  │  │              │ SemanticSearch │                  │  │ │
-│  │  └──────────────┴────────────────┴──────────────────┘  │ │
+│  │  ┌───────────┬───────────┬────────────┬─────────────┐  │ │
+│  │  │ agent/    │ core/     │ search/    │ features/   │  │ │
+│  │  │ AgentMem  │ EntityMgr │ SearchMgr  │ IOManager   │  │ │
+│  │  │ SessionMgr│ RelationM │ BasicSearch│ TagMgr      │  │ │
+│  │  │ WorkingMem│ HierarchyM│ RankedSrch │ AnalyticsMgr│  │ │
+│  │  │ DecayEng  │ TransactM │ BooleanSrch│ ArchiveMgr  │  │ │
+│  │  │ SalienceE │ GraphTrav │ FuzzySearch│ CompressMgr │  │ │
+│  │  │ ContextWin│           │ HybridSrch │             │  │ │
+│  │  │ MultiAgent│           │ SemanticSrch             │  │ │
+│  │  └───────────┴───────────┴────────────┴─────────────┘  │ │
 │  └────────────────────────────┬───────────────────────────┘ │
 │                               │                              │
 │  ┌────────────────────────────┴───────────────────────────┐ │
@@ -142,7 +145,8 @@ MemoryJS is a TypeScript knowledge graph library providing:
 
 1. **Application Code**: TypeScript/JavaScript applications using the library
 2. **MCP Servers**: Model Context Protocol servers built on MemoryJS
-3. **File System**: Persistent storage for knowledge graph
+3. **AI Agents**: LLM-powered agents using the Agent Memory System
+4. **File System**: Persistent storage for knowledge graph
 
 ---
 
@@ -163,6 +167,7 @@ export class ManagerContext {
   private _ioManager?: IOManager;
   private _tagManager?: TagManager;
   private _graphTraversal?: GraphTraversal;
+  private _agentMemoryManager?: AgentMemoryManager;
 
   constructor(config: ManagerContextConfig) {
     this.storage = createStorage(config);
@@ -173,6 +178,11 @@ export class ManagerContext {
   get entityManager(): EntityManager {
     return (this._entityManager ??= new EntityManager(this.storage));
   }
+
+  // Agent Memory System access
+  agentMemory(config?: AgentMemoryConfig): AgentMemoryManager {
+    return (this._agentMemoryManager ??= new AgentMemoryManager(this, config));
+  }
 }
 ```
 
@@ -181,6 +191,7 @@ export class ManagerContext {
 - **Lazy Initialization**: Managers created on-demand using `??=`
 - **Dependency Injection**: Storage injected into all managers
 - **Storage Abstraction**: Works with JSONL or SQLite
+- **Agent Memory Access**: `agentMemory()` method for AI agent memory operations
 
 ### Layer 2: Manager Layer
 
@@ -248,6 +259,45 @@ class GraphTraversal {
 }
 ```
 
+#### AgentMemoryManager (`agent/AgentMemoryManager.ts`)
+
+**Responsibility**: Unified facade for AI agent memory operations
+
+```typescript
+class AgentMemoryManager {
+  // Session Management
+  async startSession(options?: SessionOptions): Promise<SessionEntity>
+  async endSession(sessionId: string): Promise<void>
+  async getActiveSession(): Promise<SessionEntity | null>
+
+  // Working Memory
+  async addWorkingMemory(sessionId: string, content: string, options?): Promise<AgentEntity>
+  async getWorkingMemories(sessionId: string): Promise<AgentEntity[]>
+  async clearExpiredMemories(): Promise<number>
+
+  // Memory Lifecycle
+  async reinforceMemory(entityName: string): Promise<void>
+  async promoteToLongTerm(entityName: string): Promise<void>
+  async consolidateSession(sessionId: string, options?): Promise<ConsolidationResult>
+
+  // Context-Aware Retrieval
+  async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
+  async getMostSalient(context: SalienceContext, limit: number): Promise<ScoredEntity[]>
+
+  // Decay Management
+  start(): void   // Start decay scheduler
+  stop(): void    // Stop decay scheduler
+}
+```
+
+**Key Components**:
+- **SessionManager**: Session lifecycle management
+- **WorkingMemoryManager**: Short-term memory with TTL and promotion
+- **DecayEngine**: Time-based importance decay with reinforcement
+- **SalienceEngine**: Context-aware memory scoring
+- **ContextWindowManager**: LLM token budget optimization
+- **MultiAgentMemoryManager**: Shared memory and conflict resolution
+
 ### Layer 3: Storage Layer
 
 #### IGraphStorage Interface
@@ -292,6 +342,21 @@ interface Entity {
   tags?: string[];           // Optional categorization (lowercase)
   importance?: number;       // Optional 0-10 priority
   parentId?: string;         // Optional hierarchical parent
+}
+```
+
+### AgentEntity (extends Entity)
+
+```typescript
+interface AgentEntity extends Entity {
+  memoryType: 'working' | 'episodic' | 'semantic';  // Memory classification
+  sessionId?: string;        // Session grouping
+  expiresAt?: string;        // TTL for working memory
+  accessCount: number;       // Retrieval frequency
+  lastAccessedAt?: string;   // Most recent access
+  confidence: number;        // Belief strength (0.0-1.0)
+  agentId?: string;          // Owning agent
+  visibility: 'private' | 'shared' | 'public';
 }
 ```
 
@@ -367,6 +432,20 @@ interface KnowledgeGraph {
 - Flexibility: Create relations before entities exist
 - Import/Export: Easier to reconstruct graphs
 - Performance: No existence validation overhead
+
+### 6. Why Unified Agent Memory Facade?
+
+**Decision**: Single `AgentMemoryManager` facade for all agent memory operations
+
+**Rationale**:
+- Simplifies AI agent integration (one entry point)
+- Coordinates complex memory lifecycle (decay, consolidation, retrieval)
+- Encapsulates session management and working memory TTL
+- Enables multi-agent support with conflict resolution
+
+**Trade-offs**:
+- Higher-level abstraction may hide granular control
+- Additional complexity for simple use cases
 
 ---
 
@@ -504,6 +583,7 @@ if (!resolvedPath.startsWith(baseDir)) {
 
 | Directory | Purpose |
 |-----------|---------|
+| `tests/unit/agent/` | Agent memory system tests |
 | `tests/unit/core/` | Core manager tests |
 | `tests/unit/search/` | Search implementation tests |
 | `tests/unit/features/` | Feature manager tests |
@@ -529,9 +609,10 @@ The MemoryJS architecture prioritizes:
 - **Testability**: Clean interfaces, dependency injection
 - **Extensibility**: Modular design, clear interfaces
 - **Flexibility**: Multiple storage backends, search strategies
+- **AI Agent Support**: Comprehensive memory lifecycle for LLM-powered agents
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-10
+**Document Version**: 1.2
+**Last Updated**: 2026-01-14
 **Maintained By**: Daniel Simon Jr.

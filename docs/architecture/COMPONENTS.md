@@ -8,12 +8,13 @@
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Core Components](#core-components)
-3. [Search Components](#search-components)
-4. [Feature Components](#feature-components)
-5. [Utility Components](#utility-components)
-6. [Type Definitions](#type-definitions)
-7. [Component Dependencies](#component-dependencies)
+2. [Agent Components](#agent-components)
+3. [Core Components](#core-components)
+4. [Search Components](#search-components)
+5. [Feature Components](#feature-components)
+6. [Utility Components](#utility-components)
+7. [Type Definitions](#type-definitions)
+8. [Component Dependencies](#component-dependencies)
 
 ---
 
@@ -23,6 +24,8 @@ MemoryJS follows a layered architecture with specialized components:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│  agent/            │  Agent memory system (19 files)        │
+├─────────────────────────────────────────────────────────────┤
 │  core/             │  Central managers and storage (12 files)│
 ├─────────────────────────────────────────────────────────────┤
 │  search/           │  Search implementations (29 files)     │
@@ -31,16 +34,305 @@ MemoryJS follows a layered architecture with specialized components:
 ├─────────────────────────────────────────────────────────────┤
 │  utils/            │  Shared utilities (18 files)           │
 ├─────────────────────────────────────────────────────────────┤
-│  types/            │  TypeScript definitions (2 files)      │
+│  types/            │  TypeScript definitions (3 files)      │
 ├─────────────────────────────────────────────────────────────┤
 │  workers/          │  Web workers (2 files)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 73 TypeScript files | 558 exports | ~29,000 lines of code
+**Total:** 93 TypeScript files | 657 exports | ~41,000 lines of code
 
 ---
 
+## Agent Components
+
+### AgentMemoryManager (`agent/AgentMemoryManager.ts`)
+
+**Purpose**: Unified facade for AI agent memory operations
+
+```typescript
+export class AgentMemoryManager {
+  constructor(context: ManagerContext, config?: AgentMemoryConfig)
+
+  // Session Management
+  async startSession(options?: SessionOptions): Promise<SessionEntity>
+  async endSession(sessionId: string): Promise<void>
+  async getActiveSession(): Promise<SessionEntity | null>
+
+  // Working Memory
+  async addWorkingMemory(sessionId: string, content: string, options?): Promise<AgentEntity>
+  async getWorkingMemories(sessionId: string): Promise<AgentEntity[]>
+  async clearExpiredMemories(): Promise<number>
+
+  // Memory Lifecycle
+  async reinforceMemory(entityName: string): Promise<void>
+  async promoteToLongTerm(entityName: string): Promise<void>
+  async consolidateSession(sessionId: string, options?): Promise<ConsolidationResult>
+
+  // Retrieval
+  async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
+  async getMostSalient(context: SalienceContext, limit: number): Promise<ScoredEntity[]>
+
+  // Lifecycle
+  start(): void   // Start decay scheduler
+  stop(): void    // Stop decay scheduler
+}
+```
+
+---
+
+### SessionManager (`agent/SessionManager.ts`)
+
+**Purpose**: Session lifecycle management
+
+```typescript
+export class SessionManager {
+  constructor(storage: IGraphStorage)
+
+  async createSession(options?: SessionOptions): Promise<SessionEntity>
+  async getSession(sessionId: string): Promise<SessionEntity | null>
+  async getActiveSession(): Promise<SessionEntity | null>
+  async endSession(sessionId: string): Promise<void>
+  async listSessions(filter?: SessionFilter): Promise<SessionEntity[]>
+}
+```
+
+---
+
+### WorkingMemoryManager (`agent/WorkingMemoryManager.ts`)
+
+**Purpose**: Short-term memory with TTL and promotion
+
+```typescript
+export class WorkingMemoryManager {
+  constructor(storage: IGraphStorage, config?: WorkingMemoryConfig)
+
+  async createWorkingMemory(sessionId: string, content: string, options?): Promise<AgentEntity>
+  async getSessionMemories(sessionId: string): Promise<AgentEntity[]>
+  async clearExpired(): Promise<number>
+  async extendTTL(entityNames: string[], additionalHours: number): Promise<void>
+  async markForPromotion(entityName: string): Promise<void>
+  async getPromotionCandidates(sessionId: string): Promise<AgentEntity[]>
+}
+```
+
+---
+
+### DecayEngine (`agent/DecayEngine.ts`)
+
+**Purpose**: Time-based importance decay calculations
+
+```typescript
+export class DecayEngine {
+  constructor(config?: DecayConfig)
+
+  calculateEffectiveImportance(entity: AgentEntity): number
+  calculateDecayFactor(lastAccessedAt: string, halfLifeHours: number): number
+  async getDecayedMemories(threshold: number): Promise<AgentEntity[]>
+  async reinforceMemory(entityName: string, amount?: number): Promise<void>
+}
+```
+
+**Decay Formula**:
+```
+effective_importance = base_importance × decay_factor × strength_multiplier
+decay_factor = e^(-ln(2) × age_hours / half_life_hours)
+```
+
+---
+
+### DecayScheduler (`agent/DecayScheduler.ts`)
+
+**Purpose**: Scheduled decay cycle execution
+
+```typescript
+export class DecayScheduler {
+  constructor(decayEngine: DecayEngine, config?: SchedulerConfig)
+
+  start(): void
+  stop(): void
+  runDecayCycle(): Promise<DecayResult>
+  setInterval(intervalMs: number): void
+}
+```
+
+---
+
+### SalienceEngine (`agent/SalienceEngine.ts`)
+
+**Purpose**: Context-aware memory scoring
+
+```typescript
+export class SalienceEngine {
+  constructor(storage: IGraphStorage, accessTracker: AccessTracker)
+
+  calculateSalience(entity: AgentEntity, context: SalienceContext): number
+  async getMostSalient(context: SalienceContext, limit: number): Promise<ScoredEntity[]>
+  calculateNovelty(entity: AgentEntity): number
+  calculateTaskRelevance(entity: AgentEntity, taskDescription: string): Promise<number>
+}
+```
+
+**Salience Components**:
+- Base importance
+- Recency boost
+- Frequency boost
+- Context relevance
+- Novelty bonus
+
+---
+
+### ContextWindowManager (`agent/ContextWindowManager.ts`)
+
+**Purpose**: LLM context window optimization
+
+```typescript
+export class ContextWindowManager {
+  constructor(config?: ContextWindowConfig)
+
+  async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
+  estimateTokens(entity: AgentEntity): number
+  prioritize(entities: AgentEntity[], maxTokens: number): AgentEntity[]
+}
+```
+
+---
+
+### MemoryFormatter (`agent/MemoryFormatter.ts`)
+
+**Purpose**: Memory-to-prompt formatting
+
+```typescript
+export class MemoryFormatter {
+  formatForPrompt(memories: AgentEntity[], options?: FormatOptions): string
+  formatEntity(entity: AgentEntity): string
+  formatObservations(observations: string[], limit?: number): string
+}
+```
+
+---
+
+### MultiAgentMemoryManager (`agent/MultiAgentMemoryManager.ts`)
+
+**Purpose**: Multi-agent shared memory and conflict resolution
+
+```typescript
+export class MultiAgentMemoryManager {
+  constructor(storage: IGraphStorage, config?: MultiAgentConfig)
+
+  async registerAgent(agentId: string, metadata?: AgentMetadata): Promise<void>
+  async createAgentMemory(agentId: string, entity: Partial<AgentEntity>): Promise<AgentEntity>
+  async getVisibleMemories(agentId: string, filter?: MemoryFilter): Promise<AgentEntity[]>
+  async shareMemory(entityName: string, targetAgents: string[] | 'all'): Promise<void>
+  async resolveConflict(conflictingEntities: string[], strategy: ConflictStrategy): Promise<AgentEntity>
+}
+```
+
+---
+
+### ConflictResolver (`agent/ConflictResolver.ts`)
+
+**Purpose**: Conflict resolution strategies
+
+```typescript
+export class ConflictResolver {
+  resolve(entities: AgentEntity[], strategy: ConflictStrategy): AgentEntity
+}
+
+type ConflictStrategy = 'most_recent' | 'highest_confidence' | 'most_confirmations' | 'merge_all';
+```
+
+---
+
+### ConsolidationPipeline (`agent/ConsolidationPipeline.ts`)
+
+**Purpose**: Memory consolidation from working to long-term
+
+```typescript
+export class ConsolidationPipeline {
+  constructor(storage: IGraphStorage, config?: ConsolidationConfig)
+
+  async consolidateSession(sessionId: string, options?: ConsolidateOptions): Promise<ConsolidationResult>
+  async promoteMemory(entityName: string, targetType: MemoryType): Promise<void>
+  async runAutoConsolidation(rules: ConsolidationRule[]): Promise<ConsolidationResult>
+}
+```
+
+---
+
+### AccessTracker (`agent/AccessTracker.ts`)
+
+**Purpose**: Memory access pattern tracking
+
+```typescript
+export class AccessTracker {
+  async recordAccess(entityName: string, context?: AccessContext): Promise<void>
+  async getAccessStats(entityName: string): Promise<AccessStats>
+  calculateRecencyScore(entityName: string, halfLifeHours?: number): number
+  async getFrequentlyAccessed(limit: number): Promise<Entity[]>
+  async getRecentlyAccessed(limit: number): Promise<Entity[]>
+}
+```
+
+---
+
+### EpisodicMemoryManager (`agent/EpisodicMemoryManager.ts`)
+
+**Purpose**: Timeline-based episodic memory
+
+```typescript
+export class EpisodicMemoryManager {
+  constructor(storage: IGraphStorage)
+
+  async addEpisode(sessionId: string, content: string, metadata?: EpisodeMetadata): Promise<AgentEntity>
+  async getSessionEpisodes(sessionId: string): Promise<AgentEntity[]>
+  async getRecentEpisodes(limit: number): Promise<AgentEntity[]>
+  async searchEpisodes(query: string, options?: SearchOptions): Promise<AgentEntity[]>
+}
+```
+
+---
+
+### SummarizationService (`agent/SummarizationService.ts`)
+
+**Purpose**: Memory summarization for consolidation
+
+```typescript
+export class SummarizationService {
+  constructor(config?: SummarizationConfig)
+
+  async summarizeObservations(observations: string[]): Promise<string>
+  async summarizeEntities(entities: AgentEntity[]): Promise<string>
+}
+```
+
+---
+
+### PatternDetector (`agent/PatternDetector.ts`)
+
+**Purpose**: Pattern detection in memories
+
+```typescript
+export class PatternDetector {
+  async detectPatterns(entities: AgentEntity[], minOccurrences: number): Promise<Pattern[]>
+  async extractRules(patterns: Pattern[]): Promise<Rule[]>
+}
+```
+
+---
+
+### RuleEvaluator (`agent/RuleEvaluator.ts`)
+
+**Purpose**: Rule-based memory evaluation
+
+```typescript
+export class RuleEvaluator {
+  async evaluateRules(entity: AgentEntity, rules: ConsolidationRule[]): Promise<RuleResult[]>
+  shouldPromote(entity: AgentEntity, rules: ConsolidationRule[]): boolean
+}
+```
+
+---
 
 ## Core Components
 
@@ -64,6 +356,9 @@ export class ManagerContext {
   get tagManager(): TagManager
   get graphTraversal(): GraphTraversal
 
+  // Agent Memory System
+  agentMemory(config?: AgentMemoryConfig): AgentMemoryManager
+
   // Direct storage access
   get storage(): IGraphStorage
 }
@@ -74,6 +369,12 @@ export class ManagerContext {
 private _entityManager?: EntityManager;
 get entityManager(): EntityManager {
   return (this._entityManager ??= new EntityManager(this.storage, this.eventEmitter));
+}
+
+// Agent Memory accessor
+private _agentMemoryManager?: AgentMemoryManager;
+agentMemory(config?: AgentMemoryConfig): AgentMemoryManager {
+  return (this._agentMemoryManager ??= new AgentMemoryManager(this, config));
 }
 ```
 
@@ -756,6 +1057,45 @@ interface KnowledgeGraph {
 }
 ```
 
+### Agent Memory Types (`types/agent-memory.ts`)
+
+```typescript
+interface AgentEntity extends Entity {
+  memoryType: 'working' | 'episodic' | 'semantic';
+  sessionId?: string;
+  expiresAt?: string;
+  accessCount: number;
+  lastAccessedAt?: string;
+  confidence: number;
+  agentId?: string;
+  visibility: 'private' | 'shared' | 'public';
+}
+
+interface SessionEntity extends AgentEntity {
+  entityType: 'session';
+  memoryType: 'episodic';
+  startedAt: string;
+  endedAt?: string;
+  status: 'active' | 'completed' | 'abandoned';
+  goalDescription?: string;
+  memoryCount: number;
+}
+
+interface SalienceContext {
+  currentTask?: string;
+  currentSession?: string;
+  recentEntities?: string[];
+  queryText?: string;
+  temporalFocus?: 'recent' | 'historical' | 'any';
+}
+
+interface ContextPackage {
+  memories: AgentEntity[];
+  totalTokens: number;
+  excluded: string[];
+}
+```
+
 ### Search Types
 
 ```typescript
@@ -782,7 +1122,16 @@ interface SearchFilters {
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  ManagerContext                                              │
-│    ├── EntityManager ──────────────┐                         │
+│    │                                                         │
+│    ├── AgentMemoryManager ─────────┐                         │
+│    │     ├── SessionManager ───────┤                         │
+│    │     ├── WorkingMemoryMgr ─────┤                         │
+│    │     ├── DecayEngine ──────────┤                         │
+│    │     ├── SalienceEngine ───────┤                         │
+│    │     ├── ContextWindowMgr ─────┤                         │
+│    │     └── MultiAgentMemMgr ─────┤                         │
+│    │                               │                         │
+│    ├── EntityManager ──────────────┤                         │
 │    │                               │                         │
 │    ├── RelationManager ────────────┤                         │
 │    │                               │                         │
@@ -812,9 +1161,10 @@ interface SearchFilters {
 - `utils/schemas.ts` used for input validation across managers
 - `utils/constants.ts` provides shared configuration
 - `utils/searchAlgorithms.ts` provides Levenshtein + TF-IDF algorithms
+- Agent components share `AccessTracker` for memory access patterns
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-10
+**Document Version**: 1.2
+**Last Updated**: 2026-01-14
 **Maintained By**: Daniel Simon Jr.

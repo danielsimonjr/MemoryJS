@@ -1,7 +1,7 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-10
+**Version**: 1.2.0
+**Last Updated**: 2026-01-14
 
 ---
 
@@ -15,8 +15,9 @@
 6. [Hierarchy Operations](#hierarchy-operations)
 7. [Compression Operations](#compression-operations)
 8. [Import/Export Operations](#importexport-operations)
-9. [Caching Strategy](#caching-strategy)
-10. [Error Handling Flow](#error-handling-flow)
+9. [Agent Memory Operations](#agent-memory-operations)
+10. [Caching Strategy](#caching-strategy)
+11. [Error Handling Flow](#error-handling-flow)
 
 ---
 
@@ -772,6 +773,263 @@ importGraph(format, data, options?)
 
 ---
 
+## Agent Memory Operations
+
+### Session Lifecycle Flow
+
+```
+startSession(options)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. GENERATE SESSION ID                                       │
+│    sessionId = generateUniqueId()                            │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. CREATE SESSION ENTITY                                     │
+│    SessionEntity = {                                         │
+│      name: sessionId,                                        │
+│      entityType: 'session',                                  │
+│      memoryType: 'episodic',                                 │
+│      status: 'active',                                       │
+│      startedAt: timestamp,                                   │
+│      goalDescription: options.goal                           │
+│    }                                                         │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. PERSIST SESSION                                           │
+│    entityManager.createEntities([sessionEntity])             │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: SessionEntity
+```
+
+### Working Memory Flow
+
+```
+addWorkingMemory(sessionId, content, options)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. VALIDATE SESSION                                          │
+│    if (!sessionExists(sessionId)) throw SessionNotFoundError │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. CREATE AGENT ENTITY                                       │
+│    AgentEntity = {                                           │
+│      name: generateId(),                                     │
+│      entityType: 'working_memory',                           │
+│      memoryType: 'working',                                  │
+│      sessionId: sessionId,                                   │
+│      observations: [content],                                │
+│      expiresAt: now + ttlHours,                              │
+│      accessCount: 0,                                         │
+│      confidence: options.confidence || 0.5,                  │
+│      visibility: 'private'                                   │
+│    }                                                         │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. PERSIST & RETURN                                          │
+│    entityManager.createEntities([agentEntity])               │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: AgentEntity
+```
+
+### Memory Decay Flow
+
+```
+DecayScheduler.runDecayCycle()
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. LOAD ALL AGENT ENTITIES                                   │
+│    entities = getAllAgentEntities()                          │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. FOR EACH ENTITY: CALCULATE DECAY                          │
+│    For each entity:                                          │
+│    ├── age = now - lastAccessedAt                            │
+│    ├── decayFactor = e^(-ln(2) × age / halfLife)            │
+│    ├── strengthMultiplier = 1 + (confirmations × 0.1)       │
+│    └── effectiveImportance = base × decay × strength        │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. UPDATE IMPORTANCE VALUES                                  │
+│    For entities where importance changed significantly:      │
+│    └── entityManager.setImportance(name, newImportance)     │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. ARCHIVE WEAK MEMORIES                                     │
+│    if (effectiveImportance < forgetThreshold):               │
+│    └── archiveManager.archiveEntities({ names: [entity] })   │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: DecayResult { processed, archived, averageDecay }
+```
+
+### Context-Aware Retrieval Flow
+
+```
+retrieveForContext(options)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. GATHER CANDIDATES                                         │
+│    candidates = []                                           │
+│    ├── Add working memory (current session)                  │
+│    ├── Add recent episodic (last N sessions)                 │
+│    ├── Add semantically similar (embedding search)           │
+│    └── Add graph neighbors (related entities)                │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. CALCULATE SALIENCE SCORES                                 │
+│    For each candidate:                                       │
+│      salience = (                                            │
+│        baseImportance × decayFactor +                        │
+│        recencyBoost +                                        │
+│        frequencyBoost +                                      │
+│        contextRelevance +                                    │
+│        noveltyBonus                                          │
+│      )                                                       │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. PRIORITIZE BY TOKEN BUDGET                                │
+│    sorted = candidates.sort((a,b) => b.salience - a.salience)│
+│    selected = []                                             │
+│    tokensUsed = 0                                            │
+│    For each candidate in sorted:                             │
+│    ├── tokens = estimateTokens(candidate)                    │
+│    ├── if (tokensUsed + tokens <= maxTokens):                │
+│    │   └── selected.push(candidate)                          │
+│    └── tokensUsed += tokens                                  │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. RECORD ACCESS                                             │
+│    For each selected entity:                                 │
+│    └── accessTracker.recordAccess(entity.name, context)      │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: ContextPackage { memories, totalTokens, excluded }
+```
+
+### Consolidation Pipeline Flow
+
+```
+consolidateSession(sessionId, options)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. LOAD SESSION MEMORIES                                     │
+│    memories = getWorkingMemories(sessionId)                  │
+│    Filter by: confidence >= minConfidence                    │
+│               confirmations >= minConfirmations              │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. GROUP SIMILAR MEMORIES                                    │
+│    groups = clusterBySimilarity(memories, threshold)         │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. SUMMARIZE EACH GROUP (if options.summarize)               │
+│    For each group:                                           │
+│    └── summary = summarizationService.summarize(group)       │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. PROMOTE TO LONG-TERM                                      │
+│    For each memory/summary to promote:                       │
+│    ├── Update memoryType: 'working' → 'episodic'/'semantic' │
+│    ├── Remove expiresAt (permanent)                          │
+│    ├── Set promotedAt = timestamp                            │
+│    └── Set promotedFrom = sessionId                          │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 5. CLEANUP WORKING MEMORY                                    │
+│    Delete original working memory entities                   │
+│    (replaced by promoted versions)                           │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: ConsolidationResult { promoted, summarized, merged }
+```
+
+### Multi-Agent Memory Flow
+
+```
+createAgentMemory(agentId, entityData)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. VALIDATE AGENT                                            │
+│    if (!agentRegistered(agentId)) throw AgentNotFoundError   │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. ENRICH ENTITY WITH AGENT METADATA                         │
+│    entity = {                                                │
+│      ...entityData,                                          │
+│      agentId: agentId,                                       │
+│      visibility: entityData.visibility || 'private',         │
+│      source: {                                               │
+│        agentId, timestamp, method: 'observed',               │
+│        reliability: agent.trustLevel                         │
+│      }                                                       │
+│    }                                                         │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. CHECK FOR CONFLICTS                                       │
+│    existing = findSimilarMemories(entity)                    │
+│    if (existing.length > 0 && conflicts(entity, existing)):  │
+│    └── entity = resolveConflict([entity, ...existing],      │
+│                                 config.conflictStrategy)     │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. PERSIST                                                   │
+│    entityManager.createEntities([entity])                    │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: AgentEntity
+```
+
+---
+
 ## Caching Strategy
 
 ### GraphStorage Cache Flow
@@ -875,8 +1133,20 @@ importGraph(format, data, options?)
 
 **Key Optimization**: Batch operations use single read/write cycle regardless of batch size.
 
+### Agent Memory I/O Summary
+
+| Operation | Read Ops | Write Ops | Total I/O |
+|-----------|----------|-----------|-----------|
+| start_session | 1 | 1 | 2 |
+| add_working_memory | 1 | 1 | 2 |
+| retrieve_for_context | 1 (cached) | 0 | 1 |
+| consolidate_session | 1 | 2 | 3 |
+| decay_cycle | 1 | 1 | 2 |
+
+**Agent Memory Optimization**: Decay cycles run on configurable intervals to batch importance updates.
+
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-10
+**Document Version**: 1.2
+**Last Updated**: 2026-01-14
 **Maintained By**: Daniel Simon Jr.

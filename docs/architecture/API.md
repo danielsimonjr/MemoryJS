@@ -1,7 +1,7 @@
 # MemoryJS - API Reference
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-10
+**Version**: 1.2.0
+**Last Updated**: 2026-01-14
 
 Complete reference for the MemoryJS library public API.
 
@@ -10,17 +10,18 @@ Complete reference for the MemoryJS library public API.
 ## Table of Contents
 
 1. [ManagerContext](#managercontext)
-2. [EntityManager](#entitymanager)
-3. [RelationManager](#relationmanager)
-4. [ObservationManager](#observationmanager)
-5. [HierarchyManager](#hierarchymanager)
-6. [SearchManager](#searchmanager)
-7. [GraphTraversal](#graphtraversal)
-8. [IOManager](#iomanager)
-9. [TagManager](#tagmanager)
-10. [CompressionManager](#compressionmanager)
-11. [AnalyticsManager](#analyticsmanager)
-12. [Types](#types)
+2. [AgentMemoryManager](#agentmemorymanager)
+3. [EntityManager](#entitymanager)
+4. [RelationManager](#relationmanager)
+5. [ObservationManager](#observationmanager)
+6. [HierarchyManager](#hierarchymanager)
+7. [SearchManager](#searchmanager)
+8. [GraphTraversal](#graphtraversal)
+9. [IOManager](#iomanager)
+10. [TagManager](#tagmanager)
+11. [CompressionManager](#compressionmanager)
+12. [AnalyticsManager](#analyticsmanager)
+13. [Types](#types)
 
 ---
 
@@ -67,6 +68,279 @@ const ctx = new ManagerContext({
 | `ioManager` | `IOManager` | Import/export |
 | `tagManager` | `TagManager` | Tag aliases |
 | `storage` | `IGraphStorage` | Direct storage access |
+
+### Methods
+
+#### agentMemory
+
+Get the Agent Memory Manager for AI agent memory operations.
+
+```typescript
+agentMemory(config?: AgentMemoryConfig): AgentMemoryManager
+```
+
+**Parameters:**
+```typescript
+interface AgentMemoryConfig {
+  decay?: {
+    enabled?: boolean;
+    halfLifeHours?: number;      // Default: 168 (1 week)
+    forgetThreshold?: number;    // Default: 0.05
+  };
+  workingMemory?: {
+    defaultTTLHours?: number;    // Default: 24
+    maxPerSession?: number;      // Default: 100
+  };
+  retrieval?: {
+    defaultTokenBudget?: number; // Default: 4000
+  };
+}
+```
+
+**Example:**
+```typescript
+const agentMem = ctx.agentMemory({
+  decay: { halfLifeHours: 72 },
+  workingMemory: { defaultTTLHours: 48 }
+});
+```
+
+---
+
+## AgentMemoryManager
+
+Unified facade for AI agent memory operations including sessions, working memory, decay, and context-aware retrieval.
+
+### startSession
+
+Start a new agent session.
+
+```typescript
+async startSession(options?: SessionOptions): Promise<SessionEntity>
+```
+
+**Parameters:**
+```typescript
+interface SessionOptions {
+  goalDescription?: string;
+  taskType?: string;
+  previousSessionId?: string;
+}
+```
+
+**Example:**
+```typescript
+const session = await agentMem.startSession({
+  goalDescription: 'Help user plan a trip to Japan',
+  taskType: 'planning'
+});
+```
+
+### endSession
+
+End an active session.
+
+```typescript
+async endSession(sessionId: string): Promise<void>
+```
+
+### getActiveSession
+
+Get the currently active session.
+
+```typescript
+async getActiveSession(): Promise<SessionEntity | null>
+```
+
+### addWorkingMemory
+
+Add a working memory entry to a session.
+
+```typescript
+async addWorkingMemory(
+  sessionId: string,
+  content: string,
+  options?: WorkingMemoryOptions
+): Promise<AgentEntity>
+```
+
+**Parameters:**
+```typescript
+interface WorkingMemoryOptions {
+  ttlHours?: number;
+  confidence?: number;          // 0.0-1.0
+  importance?: number;          // 0-10
+  autoPromote?: boolean;
+}
+```
+
+**Example:**
+```typescript
+await agentMem.addWorkingMemory(session.id, 'User prefers budget travel', {
+  confidence: 0.9,
+  importance: 7
+});
+```
+
+### getWorkingMemories
+
+Get all working memories for a session.
+
+```typescript
+async getWorkingMemories(sessionId: string): Promise<AgentEntity[]>
+```
+
+### clearExpiredMemories
+
+Remove expired working memories.
+
+```typescript
+async clearExpiredMemories(): Promise<number>
+```
+
+**Returns:** Number of memories cleared
+
+### reinforceMemory
+
+Strengthen a memory (reset decay, increase confirmation count).
+
+```typescript
+async reinforceMemory(entityName: string): Promise<void>
+```
+
+### promoteToLongTerm
+
+Promote a working memory to long-term storage.
+
+```typescript
+async promoteToLongTerm(entityName: string): Promise<void>
+```
+
+### consolidateSession
+
+Consolidate session memories into long-term storage.
+
+```typescript
+async consolidateSession(
+  sessionId: string,
+  options?: ConsolidateOptions
+): Promise<ConsolidationResult>
+```
+
+**Parameters:**
+```typescript
+interface ConsolidateOptions {
+  summarize?: boolean;
+  minConfidence?: number;
+  minConfirmations?: number;
+}
+```
+
+**Returns:**
+```typescript
+interface ConsolidationResult {
+  memoriesProcessed: number;
+  memoriesPromoted: number;
+  memoriesMerged: number;
+  summariesCreated: number;
+}
+```
+
+### retrieveForContext
+
+Retrieve memories optimized for LLM context window.
+
+```typescript
+async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
+```
+
+**Parameters:**
+```typescript
+interface ContextRetrievalOptions {
+  maxTokens: number;
+  context: SalienceContext;
+  includeWorkingMemory?: boolean;
+  includeEpisodicRecent?: boolean;
+  includeSemanticRelevant?: boolean;
+  mustInclude?: string[];
+}
+
+interface SalienceContext {
+  currentTask?: string;
+  currentSession?: string;
+  recentEntities?: string[];
+  queryText?: string;
+  temporalFocus?: 'recent' | 'historical' | 'any';
+}
+```
+
+**Returns:**
+```typescript
+interface ContextPackage {
+  memories: AgentEntity[];
+  totalTokens: number;
+  breakdown: {
+    workingMemory: number;
+    episodic: number;
+    semantic: number;
+  };
+  excluded: string[];
+}
+```
+
+**Example:**
+```typescript
+const pkg = await agentMem.retrieveForContext({
+  maxTokens: 4000,
+  context: {
+    currentTask: 'Recommend hotels in Tokyo',
+    queryText: 'What hotels fit my budget?'
+  },
+  includeWorkingMemory: true
+});
+```
+
+### getMostSalient
+
+Get most salient memories for a context.
+
+```typescript
+async getMostSalient(
+  context: SalienceContext,
+  limit: number
+): Promise<ScoredEntity[]>
+```
+
+**Returns:**
+```typescript
+interface ScoredEntity {
+  entity: AgentEntity;
+  salienceScore: number;
+  components: {
+    baseImportance: number;
+    recencyBoost: number;
+    frequencyBoost: number;
+    contextRelevance: number;
+    noveltyBoost: number;
+  };
+}
+```
+
+### start
+
+Start the decay scheduler.
+
+```typescript
+start(): void
+```
+
+### stop
+
+Stop the decay scheduler.
+
+```typescript
+stop(): void
+```
 
 ---
 
@@ -848,6 +1122,43 @@ interface Entity {
 }
 ```
 
+### AgentEntity
+
+```typescript
+interface AgentEntity extends Entity {
+  memoryType: 'working' | 'episodic' | 'semantic';
+  sessionId?: string;
+  expiresAt?: string;
+  accessCount: number;
+  lastAccessedAt?: string;
+  confidence: number;           // 0.0-1.0
+  agentId?: string;
+  visibility: 'private' | 'shared' | 'public';
+  promotedAt?: string;
+  promotedFrom?: string;
+  source?: {
+    agentId: string;
+    timestamp: string;
+    method: string;
+    reliability: number;
+  };
+}
+```
+
+### SessionEntity
+
+```typescript
+interface SessionEntity extends AgentEntity {
+  entityType: 'session';
+  memoryType: 'episodic';
+  startedAt: string;
+  endedAt?: string;
+  status: 'active' | 'completed' | 'abandoned';
+  goalDescription?: string;
+  memoryCount: number;
+}
+```
+
 ### Relation
 
 ```typescript
@@ -896,6 +1207,6 @@ interface SearchFilters {
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-10
+**Document Version**: 1.2
+**Last Updated**: 2026-01-14
 **Maintained By**: Daniel Simon Jr.
