@@ -148,6 +148,8 @@ export type {
   ConsolidationResult,
   // Summarization types
   SummarizationResult,
+  // Pattern types
+  PatternResult,
 } from './agent-memory.js';
 
 // Agent Memory Type Guards and Classes

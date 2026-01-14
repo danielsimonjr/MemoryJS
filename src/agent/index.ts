@@ -75,3 +75,5 @@ export {
   type SummarizationConfig,
   type GroupingResult,
 } from './SummarizationService.js';
+
+export { PatternDetector } from './PatternDetector.js';

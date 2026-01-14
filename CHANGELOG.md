@@ -196,6 +196,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Compression ratio tracking in SummarizationResult
 - **New Interfaces**: SummarizationConfig, GroupingResult, SummarizationResult, ISummarizationProvider
 
+#### Sprint 13: Pattern Extraction
+- **PatternDetector Class**: Token-based pattern detection for observations
+  - detectPatterns() identifies recurring templates with variable slots
+  - extractTemplate() creates patterns with {X} variable markers
+  - matchesPattern() checks if observation matches a template
+  - calculatePatternSpecificity() measures pattern specificity
+  - mergeConsecutiveVariables() for pattern normalization
+- **ConsolidationPipeline Pattern Methods**: Pattern-based semantic memory creation
+  - extractPatterns() analyzes entity observations by type
+  - createSemanticFromPattern() converts patterns to semantic memories
+  - extractAndCreateSemanticPatterns() end-to-end pattern processing
+  - Creates derived_from relations to source entities
+  - getPatternDetector() accessor for advanced operations
+- **New Types**: PatternResult interface with pattern template, variables, occurrences, confidence, sourceEntities
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -209,8 +224,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 44 unit tests for SessionManager (39 Sprint 8 + 5 Sprint 10 integration)
 - Added 20 unit tests for SessionQueryBuilder
 - Added 30 unit tests for EpisodicMemoryManager
-- Added 37 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 summarization)
+- Added 46 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13)
 - Added 41 unit tests for SummarizationService
+- Added 25 unit tests for PatternDetector
 
 ## [1.1.0] - 2026-01-11
 

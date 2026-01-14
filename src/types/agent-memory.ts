@@ -755,3 +755,32 @@ export interface SummarizationResult {
   /** Source observations for each summary (for provenance) */
   sourceObservations: string[][];
 }
+
+/**
+ * Result of pattern detection in observations.
+ *
+ * Represents a detected template pattern with variable slots.
+ * Used for identifying recurring patterns and creating semantic memories.
+ *
+ * @example
+ * ```typescript
+ * const patterns = await pipeline.extractPatterns('preference');
+ * for (const p of patterns) {
+ *   console.log(`Pattern: ${p.pattern}`);
+ *   console.log(`Variables: ${p.variables.join(', ')}`);
+ *   console.log(`Confidence: ${p.confidence}`);
+ * }
+ * ```
+ */
+export interface PatternResult {
+  /** Template pattern with {X} variable slots (e.g., "User prefers {X}") */
+  pattern: string;
+  /** Extracted variable values from matching observations */
+  variables: string[];
+  /** Number of times pattern appeared */
+  occurrences: number;
+  /** Confidence score based on frequency (0-1) */
+  confidence: number;
+  /** Names of source entities that contain this pattern */
+  sourceEntities: string[];
+}

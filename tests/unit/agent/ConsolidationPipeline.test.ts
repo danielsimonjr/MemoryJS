@@ -20,6 +20,7 @@ import type { DecayEngine } from '../../../src/agent/DecayEngine.js';
  */
 function createMockStorage(entities: Entity[] = []): IGraphStorage {
   const entityMap = new Map<string, Entity>(entities.map((e) => [e.name, e]));
+  const relations: Array<{ from: string; to: string; relationType: string }> = [];
 
   return {
     getEntityByName: vi.fn((name: string) => entityMap.get(name)),
@@ -31,10 +32,13 @@ function createMockStorage(entities: Entity[] = []): IGraphStorage {
     }),
     loadGraph: vi.fn(async () => ({
       entities: Array.from(entityMap.values()),
-      relations: [],
+      relations: [...relations],
     })),
     appendEntity: vi.fn(async (entity: Entity) => {
       entityMap.set(entity.name, entity);
+    }),
+    appendRelation: vi.fn(async (relation: { from: string; to: string; relationType: string }) => {
+      relations.push(relation);
     }),
     saveGraph: vi.fn(async (graph: KnowledgeGraph) => {
       entityMap.clear();
@@ -709,6 +713,223 @@ describe('ConsolidationPipeline', () => {
       expect(service).toBeDefined();
       expect(typeof service.calculateSimilarity).toBe('function');
       expect(typeof service.summarize).toBe('function');
+    });
+  });
+
+  // ==================== Pattern Extraction ====================
+
+  describe('extractPatterns', () => {
+    it('should return empty array when no entities of type exist', async () => {
+      const patterns = await pipeline.extractPatterns('nonexistent', 2);
+      expect(patterns).toEqual([]);
+    });
+
+    it('should extract patterns from entity observations', async () => {
+      const entities = [
+        {
+          name: 'pref1',
+          entityType: 'preference',
+          observations: ['User prefers Italian food'],
+        },
+        {
+          name: 'pref2',
+          entityType: 'preference',
+          observations: ['User prefers Mexican food'],
+        },
+        {
+          name: 'pref3',
+          entityType: 'preference',
+          observations: ['User prefers Japanese food'],
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const patterns = await pipeline.extractPatterns('preference', 2);
+
+      expect(patterns.length).toBeGreaterThan(0);
+      expect(patterns[0].pattern).toBe('User prefers {X} food');
+      expect(patterns[0].sourceEntities).toContain('pref1');
+      expect(patterns[0].sourceEntities).toContain('pref2');
+      expect(patterns[0].sourceEntities).toContain('pref3');
+    });
+
+    it('should only analyze entities of specified type', async () => {
+      const entities = [
+        {
+          name: 'pref1',
+          entityType: 'preference',
+          observations: ['User prefers Italian food'],
+        },
+        {
+          name: 'event1',
+          entityType: 'event',
+          observations: ['User prefers Mexican food'],
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      // Only 1 preference entity, so no pattern can be found
+      const patterns = await pipeline.extractPatterns('preference', 2);
+      expect(patterns.length).toBe(0);
+    });
+
+    it('should return empty when observations below threshold', async () => {
+      const entities = [
+        {
+          name: 'pref1',
+          entityType: 'preference',
+          observations: ['User likes pasta'],
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const patterns = await pipeline.extractPatterns('preference', 3);
+      expect(patterns.length).toBe(0);
+    });
+  });
+
+  describe('createSemanticFromPattern', () => {
+    it('should create semantic memory entity from pattern', async () => {
+      const pattern = {
+        pattern: 'User prefers {X} food',
+        variables: ['Italian', 'Mexican', 'Japanese'],
+        occurrences: 3,
+        confidence: 0.9,
+        sourceEntities: ['pref1', 'pref2', 'pref3'],
+      };
+
+      const entities: Entity[] = [
+        { name: 'pref1', entityType: 'preference', observations: [] },
+        { name: 'pref2', entityType: 'preference', observations: [] },
+        { name: 'pref3', entityType: 'preference', observations: [] },
+      ];
+
+      storage = createMockStorage(entities);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const semantic = await pipeline.createSemanticFromPattern(
+        pattern,
+        ['pref1', 'pref2', 'pref3']
+      );
+
+      expect(semantic.memoryType).toBe('semantic');
+      expect(semantic.entityType).toBe('pattern');
+      expect(semantic.confidence).toBe(0.9);
+      expect(semantic.confirmationCount).toBe(3);
+      expect(semantic.observations).toContain('Pattern: User prefers {X} food');
+    });
+
+    it('should create derived_from relations to source entities', async () => {
+      const pattern = {
+        pattern: 'User prefers {X} food',
+        variables: ['Italian'],
+        occurrences: 2,
+        confidence: 0.5,
+        sourceEntities: ['pref1'],
+      };
+
+      const entities: Entity[] = [
+        { name: 'pref1', entityType: 'preference', observations: [] },
+      ];
+
+      storage = createMockStorage(entities);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      await pipeline.createSemanticFromPattern(pattern, ['pref1']);
+
+      // Verify relation was created
+      expect(storage.appendRelation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: 'pref1',
+          relationType: 'derived_from',
+        })
+      );
+    });
+  });
+
+  describe('extractAndCreateSemanticPatterns', () => {
+    it('should extract patterns and create semantic memories', async () => {
+      const entities = [
+        {
+          name: 'pref1',
+          entityType: 'preference',
+          observations: ['User prefers Italian food'],
+        },
+        {
+          name: 'pref2',
+          entityType: 'preference',
+          observations: ['User prefers Mexican food'],
+        },
+        {
+          name: 'pref3',
+          entityType: 'preference',
+          observations: ['User prefers Japanese food'],
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const semantics = await pipeline.extractAndCreateSemanticPatterns(
+        'preference',
+        2,
+        0.1 // Low confidence threshold
+      );
+
+      expect(semantics.length).toBeGreaterThan(0);
+      expect(semantics[0].memoryType).toBe('semantic');
+    });
+
+    it('should filter patterns by confidence threshold', async () => {
+      const entities = [
+        {
+          name: 'pref1',
+          entityType: 'preference',
+          observations: ['User prefers Italian food'],
+        },
+        {
+          name: 'pref2',
+          entityType: 'preference',
+          observations: ['User prefers Mexican food'],
+        },
+        {
+          name: 'pref3',
+          entityType: 'preference',
+          observations: ['Random unrelated observation here'],
+        },
+        {
+          name: 'pref4',
+          entityType: 'preference',
+          observations: ['Another unrelated note'],
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      // With 4 observations, only 2 match, so confidence is 0.5
+      // With 0.6 threshold, nothing should be created
+      const semantics = await pipeline.extractAndCreateSemanticPatterns(
+        'preference',
+        2,
+        0.6
+      );
+
+      expect(semantics.length).toBe(0);
+    });
+  });
+
+  describe('getPatternDetector', () => {
+    it('should return pattern detector instance', () => {
+      const detector = pipeline.getPatternDetector();
+      expect(detector).toBeDefined();
+      expect(typeof detector.detectPatterns).toBe('function');
     });
   });
 });

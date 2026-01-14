@@ -13,12 +13,14 @@ import type {
   ConsolidateOptions,
   ConsolidationResult,
   SummarizationResult,
+  PatternResult,
   MemoryType,
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
+import { PatternDetector } from './PatternDetector.js';
 
 /**
  * Configuration for ConsolidationPipeline.
@@ -99,6 +101,7 @@ export class ConsolidationPipeline {
   private readonly summarizationService: SummarizationService;
   private readonly config: Required<ConsolidationPipelineConfig>;
   private readonly stages: PipelineStage[] = [];
+  private readonly patternDetector: PatternDetector;
 
   constructor(
     storage: IGraphStorage,
@@ -120,6 +123,7 @@ export class ConsolidationPipeline {
       preserveOriginals: config.preserveOriginals ?? false,
       similarityThreshold: config.similarityThreshold ?? 0.8,
     };
+    this.patternDetector = new PatternDetector();
   }
 
   // ==================== Stage Registration ====================
@@ -532,6 +536,200 @@ export class ConsolidationPipeline {
    */
   getSummarizationService(): SummarizationService {
     return this.summarizationService;
+  }
+
+  // ==================== Pattern Extraction ====================
+
+  /**
+   * Extract recurring patterns from observations across entities.
+   *
+   * Analyzes observations in entities of the specified type to identify
+   * common templates with variable slots. Useful for discovering
+   * generalizations that can be converted to semantic memory.
+   *
+   * @param entityType - Type of entities to analyze
+   * @param minOccurrences - Minimum times pattern must appear (default: 3)
+   * @returns Array of detected patterns
+   *
+   * @example
+   * ```typescript
+   * // Find patterns in preference entities
+   * const patterns = await pipeline.extractPatterns('preference', 3);
+   * for (const p of patterns) {
+   *   console.log(`Pattern: ${p.pattern}`);
+   *   console.log(`Values: ${p.variables.join(', ')}`);
+   * }
+   * ```
+   */
+  async extractPatterns(
+    entityType: string,
+    minOccurrences: number = 3
+  ): Promise<PatternResult[]> {
+    const graph = await this.storage.loadGraph();
+    const observations: string[] = [];
+    const entityNames: string[] = [];
+
+    // Collect all observations from matching entities
+    for (const entity of graph.entities) {
+      if (entity.entityType === entityType && entity.observations) {
+        observations.push(...entity.observations);
+        for (let i = 0; i < entity.observations.length; i++) {
+          entityNames.push(entity.name);
+        }
+      }
+    }
+
+    if (observations.length < minOccurrences) {
+      return [];
+    }
+
+    // Detect patterns using PatternDetector
+    const patterns = this.patternDetector.detectPatterns(observations, minOccurrences);
+
+    // Associate patterns with source entities
+    return patterns.map((pattern) => {
+      const sourceEntities = new Set<string>();
+      const regex = this.patternToRegex(pattern.pattern);
+
+      for (let i = 0; i < observations.length; i++) {
+        if (regex.test(observations[i])) {
+          sourceEntities.add(entityNames[i]);
+        }
+      }
+
+      return {
+        ...pattern,
+        sourceEntities: Array.from(sourceEntities),
+      };
+    });
+  }
+
+  /**
+   * Create a semantic memory entity from a detected pattern.
+   *
+   * Converts a pattern template into a semantic memory that represents
+   * the generalization, with relations to source entities.
+   *
+   * @param pattern - The detected pattern
+   * @param sourceEntityNames - Names of entities that contributed to pattern
+   * @returns Created semantic memory entity
+   *
+   * @example
+   * ```typescript
+   * const patterns = await pipeline.extractPatterns('preference', 3);
+   * for (const p of patterns) {
+   *   const semantic = await pipeline.createSemanticFromPattern(p, p.sourceEntities);
+   *   console.log(`Created semantic memory: ${semantic.name}`);
+   * }
+   * ```
+   */
+  async createSemanticFromPattern(
+    pattern: PatternResult,
+    sourceEntityNames: string[]
+  ): Promise<AgentEntity> {
+    const now = new Date().toISOString();
+    const name = `semantic_pattern_${Date.now()}_${this.hashPattern(pattern.pattern)}`;
+
+    const entity: AgentEntity = {
+      name,
+      entityType: 'pattern',
+      observations: [
+        `Pattern: ${pattern.pattern}`,
+        `Known values: ${pattern.variables.join(', ')}`,
+        `Observed ${pattern.occurrences} times`,
+      ],
+      createdAt: now,
+      lastModified: now,
+      importance: 7, // Patterns are generally important
+      memoryType: 'semantic',
+      accessCount: 0,
+      confidence: pattern.confidence,
+      confirmationCount: pattern.occurrences,
+      visibility: 'private',
+    };
+
+    await this.storage.appendEntity(entity as Entity);
+
+    // Create relations to source entities
+    const graph = await this.storage.loadGraph();
+    const existingRelations = new Set(
+      graph.relations.map((r) => `${r.from}:${r.to}:${r.relationType}`)
+    );
+
+    for (const sourceName of sourceEntityNames) {
+      const relationKey = `${name}:${sourceName}:derived_from`;
+      if (!existingRelations.has(relationKey)) {
+        await this.storage.appendRelation({
+          from: name,
+          to: sourceName,
+          relationType: 'derived_from',
+        });
+      }
+    }
+
+    return entity;
+  }
+
+  /**
+   * Extract patterns and create semantic memories for significant ones.
+   *
+   * Combines pattern extraction and semantic memory creation in one operation.
+   *
+   * @param entityType - Type of entities to analyze
+   * @param minOccurrences - Minimum pattern frequency
+   * @param minConfidence - Minimum confidence for semantic creation (default: 0.5)
+   * @returns Array of created semantic memory entities
+   */
+  async extractAndCreateSemanticPatterns(
+    entityType: string,
+    minOccurrences: number = 3,
+    minConfidence: number = 0.5
+  ): Promise<AgentEntity[]> {
+    const patterns = await this.extractPatterns(entityType, minOccurrences);
+    const semanticEntities: AgentEntity[] = [];
+
+    for (const pattern of patterns) {
+      if (pattern.confidence >= minConfidence) {
+        const semantic = await this.createSemanticFromPattern(
+          pattern,
+          pattern.sourceEntities
+        );
+        semanticEntities.push(semantic);
+      }
+    }
+
+    return semanticEntities;
+  }
+
+  /**
+   * Get the pattern detector for advanced operations.
+   */
+  getPatternDetector(): PatternDetector {
+    return this.patternDetector;
+  }
+
+  /**
+   * Convert a pattern template to a regex for matching.
+   * @internal
+   */
+  private patternToRegex(pattern: string): RegExp {
+    const escaped = pattern
+      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      .replace(/\\{X\\}/g, '.+?');
+    return new RegExp(`^${escaped}$`, 'i');
+  }
+
+  /**
+   * Create a simple hash of a pattern for unique naming.
+   * @internal
+   */
+  private hashPattern(pattern: string): string {
+    let hash = 0;
+    for (let i = 0; i < pattern.length; i++) {
+      hash = ((hash << 5) - hash) + pattern.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return Math.abs(hash).toString(16).slice(0, 8);
   }
 
   // ==================== Configuration Access ====================
