@@ -221,6 +221,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Audit trail creation via merge_audit entities
 - **New Types**: MemoryMergeStrategy type, MergeResult interface, DuplicatePair interface
 
+#### Sprint 15: Auto-Consolidation Rules
+- **RuleEvaluator Class**: Condition evaluation with caching and AND/OR logic
+  - evaluate() checks conditions against entity properties
+  - calculateAgeHours() for age-based condition evaluation
+  - Caching with cache key based on entity name, lastModified, and conditions
+  - clearCache() and getCacheSize() for cache management
+- **ConsolidationPipeline Rule Management**: Rule-based automatic consolidation
+  - addRule() to register consolidation rules
+  - removeRule() to delete rules by name
+  - getRules() returns readonly list of registered rules
+  - clearRules() removes all rules
+  - getRuleEvaluator() accessor for advanced operations
+- **Auto-Consolidation Methods**: Trigger-based rule execution
+  - runAutoConsolidation() processes rules matching trigger type
+  - executeRule() evaluates entities against rule conditions and executes actions
+  - triggerManualConsolidation() convenience method for manual trigger
+  - Priority-based rule processing (higher priority first)
+- **New Types**: ConsolidationTrigger, ConsolidationAction, RuleConditions, ConsolidationRule, RuleEvaluationResult
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -234,7 +253,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 44 unit tests for SessionManager (39 Sprint 8 + 5 Sprint 10 integration)
 - Added 20 unit tests for SessionQueryBuilder
 - Added 30 unit tests for EpisodicMemoryManager
-- Added 64 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13 + 18 Sprint 14)
+- Added 78 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13 + 18 Sprint 14 + 14 Sprint 15)
+- Added 15 unit tests for RuleEvaluator
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
 

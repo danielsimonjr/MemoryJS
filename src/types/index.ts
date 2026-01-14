@@ -154,6 +154,12 @@ export type {
   MemoryMergeStrategy,
   MergeResult,
   DuplicatePair,
+  // Auto-consolidation rule types
+  ConsolidationTrigger,
+  ConsolidationAction,
+  RuleConditions,
+  ConsolidationRule,
+  RuleEvaluationResult,
 } from './agent-memory.js';
 
 // Agent Memory Type Guards and Classes

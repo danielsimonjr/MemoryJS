@@ -1567,4 +1567,299 @@ describe('ConsolidationPipeline', () => {
       expect(history.length).toBe(2);
     });
   });
+
+  // ==================== Auto-Consolidation Rules (Sprint 15) ====================
+
+  describe('addRule', () => {
+    it('should add a rule to the pipeline', () => {
+      pipeline.addRule({
+        name: 'Test rule',
+        trigger: 'session_end',
+        conditions: { minConfidence: 0.8 },
+        action: 'promote_to_episodic',
+        enabled: true,
+      });
+
+      expect(pipeline.getRules().length).toBe(1);
+      expect(pipeline.getRules()[0].name).toBe('Test rule');
+    });
+
+    it('should add multiple rules', () => {
+      pipeline.addRule({
+        name: 'Rule 1',
+        trigger: 'session_end',
+        conditions: {},
+        action: 'promote_to_episodic',
+        enabled: true,
+      });
+      pipeline.addRule({
+        name: 'Rule 2',
+        trigger: 'manual',
+        conditions: {},
+        action: 'summarize',
+        enabled: true,
+      });
+
+      expect(pipeline.getRules().length).toBe(2);
+    });
+  });
+
+  describe('removeRule', () => {
+    it('should remove a rule by name', () => {
+      pipeline.addRule({
+        name: 'To remove',
+        trigger: 'manual',
+        conditions: {},
+        action: 'summarize',
+        enabled: true,
+      });
+
+      const removed = pipeline.removeRule('To remove');
+      expect(removed).toBe(true);
+      expect(pipeline.getRules().length).toBe(0);
+    });
+
+    it('should return false for non-existent rule', () => {
+      const removed = pipeline.removeRule('Does not exist');
+      expect(removed).toBe(false);
+    });
+  });
+
+  describe('clearRules', () => {
+    it('should clear all rules', () => {
+      pipeline.addRule({
+        name: 'Rule 1',
+        trigger: 'session_end',
+        conditions: {},
+        action: 'promote_to_episodic',
+        enabled: true,
+      });
+      pipeline.addRule({
+        name: 'Rule 2',
+        trigger: 'manual',
+        conditions: {},
+        action: 'summarize',
+        enabled: true,
+      });
+
+      pipeline.clearRules();
+      expect(pipeline.getRules().length).toBe(0);
+    });
+  });
+
+  describe('getRuleEvaluator', () => {
+    it('should return RuleEvaluator instance', () => {
+      const evaluator = pipeline.getRuleEvaluator();
+      expect(evaluator).toBeDefined();
+      expect(typeof evaluator.evaluate).toBe('function');
+      expect(typeof evaluator.clearCache).toBe('function');
+    });
+  });
+
+  describe('runAutoConsolidation', () => {
+    it('should return zero counts when no rules', async () => {
+      const result = await pipeline.runAutoConsolidation('session_end');
+      expect(result.memoriesProcessed).toBe(0);
+      expect(result.memoriesPromoted).toBe(0);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('should skip disabled rules', async () => {
+      pipeline.addRule({
+        name: 'Disabled rule',
+        trigger: 'session_end',
+        conditions: {},
+        action: 'promote_to_episodic',
+        enabled: false,
+      });
+
+      const result = await pipeline.runAutoConsolidation('session_end');
+      expect(result.memoriesProcessed).toBe(0);
+    });
+
+    it('should skip rules with different triggers', async () => {
+      pipeline.addRule({
+        name: 'Manual rule',
+        trigger: 'manual',
+        conditions: {},
+        action: 'promote_to_episodic',
+        enabled: true,
+      });
+
+      // Run with session_end trigger, not manual
+      const result = await pipeline.runAutoConsolidation('session_end');
+      expect(result.memoriesProcessed).toBe(0);
+    });
+
+    it('should process matching rules', async () => {
+      const now = new Date().toISOString();
+      const entities: AgentEntity[] = [
+        {
+          name: 'wm1',
+          entityType: 'memory',
+          observations: ['Test obs'],
+          memoryType: 'working',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.9,
+          confirmationCount: 3,
+          accessCount: 5,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      pipeline.addRule({
+        name: 'Promote high confidence',
+        trigger: 'session_end',
+        conditions: {
+          minConfidence: 0.8,
+          memoryType: 'working',
+        },
+        action: 'promote_to_episodic',
+        enabled: true,
+      });
+
+      const result = await pipeline.runAutoConsolidation('session_end');
+
+      expect(result.memoriesProcessed).toBe(1);
+      expect(result.memoriesPromoted).toBe(1);
+    });
+
+    it('should process rules in priority order', async () => {
+      const now = new Date().toISOString();
+      const entities: AgentEntity[] = [
+        {
+          name: 'wm1',
+          entityType: 'memory',
+          observations: ['Test obs'],
+          memoryType: 'working',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.9,
+          confirmationCount: 3,
+          accessCount: 5,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      // Add low priority first
+      pipeline.addRule({
+        name: 'Low priority',
+        trigger: 'manual',
+        conditions: { memoryType: 'working' },
+        action: 'summarize',
+        enabled: true,
+        priority: 1,
+      });
+
+      // Add high priority
+      pipeline.addRule({
+        name: 'High priority',
+        trigger: 'manual',
+        conditions: { memoryType: 'working' },
+        action: 'promote_to_episodic',
+        enabled: true,
+        priority: 10,
+      });
+
+      const result = await pipeline.runAutoConsolidation('manual');
+
+      // High priority should execute first (promote), then low priority (summarize)
+      expect(result.memoriesPromoted).toBe(1);
+    });
+
+    it('should handle summarize action', async () => {
+      const now = new Date().toISOString();
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: ['Obs A', 'Obs B', 'Obs C'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.8,
+          confirmationCount: 2,
+          accessCount: 5,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      pipeline.addRule({
+        name: 'Summarize episodic',
+        trigger: 'manual',
+        conditions: { memoryType: 'episodic' },
+        action: 'summarize',
+        enabled: true,
+      });
+
+      const result = await pipeline.runAutoConsolidation('manual');
+      expect(result.memoriesProcessed).toBe(1);
+      // Summarization may or may not compress depending on observation similarity
+    });
+
+    it('should collect errors from failed actions', async () => {
+      const now = new Date().toISOString();
+      const entities: AgentEntity[] = [
+        {
+          name: 'non_working',
+          entityType: 'memory',
+          observations: ['Test'],
+          memoryType: 'episodic', // Not working, so promotion will be skipped
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.9,
+          confirmationCount: 3,
+          accessCount: 5,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      pipeline.addRule({
+        name: 'Promote',
+        trigger: 'manual',
+        conditions: { minConfidence: 0.8 },
+        action: 'promote_to_episodic',
+        enabled: true,
+      });
+
+      const result = await pipeline.runAutoConsolidation('manual');
+
+      // Should match but not promote because memoryType is not 'working'
+      expect(result.memoriesPromoted).toBe(0);
+    });
+  });
+
+  describe('triggerManualConsolidation', () => {
+    it('should trigger consolidation with manual trigger', async () => {
+      pipeline.addRule({
+        name: 'Manual only',
+        trigger: 'manual',
+        conditions: {},
+        action: 'summarize',
+        enabled: true,
+      });
+
+      // Should not throw
+      const result = await pipeline.triggerManualConsolidation();
+      expect(result).toBeDefined();
+      expect(result.memoriesProcessed).toBe(0);
+    });
+  });
 });

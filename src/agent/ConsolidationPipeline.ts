@@ -18,12 +18,15 @@ import type {
   MemoryMergeStrategy,
   MergeResult,
   DuplicatePair,
+  ConsolidationTrigger,
+  ConsolidationRule,
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
+import { RuleEvaluator } from './RuleEvaluator.js';
 
 /**
  * Configuration for ConsolidationPipeline.
@@ -105,6 +108,8 @@ export class ConsolidationPipeline {
   private readonly config: Required<ConsolidationPipelineConfig>;
   private readonly stages: PipelineStage[] = [];
   private readonly patternDetector: PatternDetector;
+  private readonly ruleEvaluator: RuleEvaluator;
+  private readonly rules: ConsolidationRule[] = [];
 
   constructor(
     storage: IGraphStorage,
@@ -127,6 +132,7 @@ export class ConsolidationPipeline {
       similarityThreshold: config.similarityThreshold ?? 0.8,
     };
     this.patternDetector = new PatternDetector();
+    this.ruleEvaluator = new RuleEvaluator();
   }
 
   // ==================== Stage Registration ====================
@@ -1049,5 +1055,222 @@ export class ConsolidationPipeline {
    */
   getConfig(): Readonly<Required<ConsolidationPipelineConfig>> {
     return { ...this.config };
+  }
+
+  // ==================== Rule Management ====================
+
+  /**
+   * Add a consolidation rule.
+   *
+   * @param rule - Rule to add
+   *
+   * @example
+   * ```typescript
+   * pipeline.addRule({
+   *   name: 'Promote high-confidence memories',
+   *   trigger: 'session_end',
+   *   conditions: { minConfidence: 0.9, memoryType: 'working' },
+   *   action: 'promote_to_episodic',
+   *   enabled: true,
+   * });
+   * ```
+   */
+  addRule(rule: ConsolidationRule): void {
+    this.rules.push(rule);
+  }
+
+  /**
+   * Remove a rule by name.
+   *
+   * @param name - Name of rule to remove
+   * @returns true if rule was found and removed
+   */
+  removeRule(name: string): boolean {
+    const index = this.rules.findIndex((r) => r.name === name);
+    if (index !== -1) {
+      this.rules.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Get all registered rules.
+   */
+  getRules(): readonly ConsolidationRule[] {
+    return this.rules;
+  }
+
+  /**
+   * Clear all rules.
+   */
+  clearRules(): void {
+    this.rules.length = 0;
+  }
+
+  /**
+   * Get the RuleEvaluator instance.
+   */
+  getRuleEvaluator(): RuleEvaluator {
+    return this.ruleEvaluator;
+  }
+
+  // ==================== Auto-Consolidation ====================
+
+  /**
+   * Run automatic consolidation based on configured rules.
+   *
+   * Processes all rules matching the given trigger and executes
+   * actions for entities that meet the rule conditions.
+   *
+   * @param trigger - The trigger that invoked consolidation
+   * @returns Aggregate result of all rule executions
+   *
+   * @example
+   * ```typescript
+   * // Run consolidation triggered by session end
+   * const result = await pipeline.runAutoConsolidation('session_end');
+   * console.log(`Promoted ${result.memoriesPromoted} memories`);
+   *
+   * // Manual trigger for testing
+   * const manualResult = await pipeline.runAutoConsolidation('manual');
+   * ```
+   */
+  async runAutoConsolidation(
+    trigger: ConsolidationTrigger
+  ): Promise<ConsolidationResult> {
+    const result: ConsolidationResult = {
+      memoriesProcessed: 0,
+      memoriesPromoted: 0,
+      memoriesMerged: 0,
+      patternsExtracted: 0,
+      summariesCreated: 0,
+      errors: [],
+    };
+
+    // Get rules matching this trigger, sorted by priority
+    const matchingRules = this.rules
+      .filter((r) => r.enabled && r.trigger === trigger)
+      .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+
+    if (matchingRules.length === 0) {
+      return result;
+    }
+
+    // Get all agent entities
+    const graph = await this.storage.loadGraph();
+    const entities = graph.entities.filter((e) =>
+      isAgentEntity(e)
+    ) as AgentEntity[];
+    result.memoriesProcessed = entities.length;
+
+    // Process each rule
+    for (const rule of matchingRules) {
+      const ruleResult = await this.executeRule(rule, entities);
+      result.memoriesPromoted += ruleResult.promoted;
+      result.memoriesMerged += ruleResult.merged;
+      result.summariesCreated += ruleResult.summarized;
+      result.errors.push(...ruleResult.errors);
+    }
+
+    // Clear evaluation cache after processing
+    this.ruleEvaluator.clearCache();
+
+    return result;
+  }
+
+  /**
+   * Execute a single rule against a set of entities.
+   *
+   * @param rule - Rule to execute
+   * @param entities - Entities to evaluate
+   * @returns Execution results
+   * @internal
+   */
+  private async executeRule(
+    rule: ConsolidationRule,
+    entities: AgentEntity[]
+  ): Promise<{
+    promoted: number;
+    merged: number;
+    summarized: number;
+    errors: string[];
+  }> {
+    const result = {
+      promoted: 0,
+      merged: 0,
+      summarized: 0,
+      errors: [] as string[],
+    };
+
+    // Find matching entities
+    const matches = entities.filter((e) =>
+      this.ruleEvaluator.evaluate(e, rule.conditions).passed
+    );
+
+    // Execute action for matches
+    for (const entity of matches) {
+      try {
+        switch (rule.action) {
+          case 'promote_to_episodic':
+            if (entity.memoryType === 'working') {
+              await this.promoteMemory(entity.name, 'episodic');
+              result.promoted++;
+            }
+            break;
+
+          case 'promote_to_semantic':
+            if (entity.memoryType === 'working') {
+              await this.promoteMemory(entity.name, 'semantic');
+              result.promoted++;
+            }
+            break;
+
+          case 'summarize':
+            const summarized = await this.applySummarizationToEntity(
+              entity.name
+            );
+            if (summarized.compressionRatio > 0) {
+              result.summarized++;
+            }
+            break;
+
+          case 'merge_duplicates':
+            // Skip merge_duplicates action for individual entities
+            // This action is handled separately in autoMergeDuplicates
+            break;
+
+          case 'archive':
+            // Archive action - mark for archival (future implementation)
+            break;
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        result.errors.push(`Rule ${rule.name} failed for ${entity.name}: ${message}`);
+      }
+    }
+
+    // Handle merge_duplicates action at rule level (not per entity)
+    if (rule.action === 'merge_duplicates') {
+      try {
+        const mergeResults = await this.autoMergeDuplicates(0.9, 'strongest');
+        result.merged = mergeResults.length;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        result.errors.push(`Rule ${rule.name} merge failed: ${message}`);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Manually trigger consolidation.
+   *
+   * Convenience method for triggering consolidation without a specific event.
+   */
+  async triggerManualConsolidation(): Promise<ConsolidationResult> {
+    return this.runAutoConsolidation('manual');
   }
 }

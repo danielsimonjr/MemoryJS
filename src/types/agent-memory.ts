@@ -827,3 +827,98 @@ export interface DuplicatePair {
   /** Similarity score between entities (0-1) */
   similarity: number;
 }
+
+// ==================== Auto-Consolidation Rule Types ====================
+
+/**
+ * Trigger types for consolidation rules.
+ */
+export type ConsolidationTrigger =
+  | 'session_end'
+  | 'time_elapsed'
+  | 'confirmation_threshold'
+  | 'manual';
+
+/**
+ * Actions for consolidation rules.
+ */
+export type ConsolidationAction =
+  | 'promote_to_episodic'
+  | 'promote_to_semantic'
+  | 'merge_duplicates'
+  | 'archive'
+  | 'summarize';
+
+/**
+ * Conditions for rule evaluation.
+ *
+ * @example
+ * ```typescript
+ * const conditions: RuleConditions = {
+ *   minConfidence: 0.8,
+ *   minConfirmations: 2,
+ *   memoryType: 'working',
+ *   useAnd: true,
+ * };
+ * ```
+ */
+export interface RuleConditions {
+  /** Minimum confidence score (0-1) */
+  minConfidence?: number;
+  /** Minimum confirmation count */
+  minConfirmations?: number;
+  /** Minimum access count */
+  minAccessCount?: number;
+  /** Memory type filter */
+  memoryType?: MemoryType;
+  /** Entity type filter */
+  entityType?: string;
+  /** Minimum age in hours */
+  minAgeHours?: number;
+  /** Use AND logic (default: true) */
+  useAnd?: boolean;
+}
+
+/**
+ * Rule for automatic consolidation.
+ *
+ * @example
+ * ```typescript
+ * const rule: ConsolidationRule = {
+ *   name: 'Promote confirmed memories',
+ *   trigger: 'session_end',
+ *   conditions: {
+ *     minConfidence: 0.8,
+ *     minConfirmations: 2,
+ *     memoryType: 'working',
+ *   },
+ *   action: 'promote_to_episodic',
+ *   enabled: true,
+ *   priority: 10,
+ * };
+ * ```
+ */
+export interface ConsolidationRule {
+  /** Rule name for identification */
+  name: string;
+  /** What triggers this rule */
+  trigger: ConsolidationTrigger;
+  /** Conditions that must be met */
+  conditions: RuleConditions;
+  /** Action to take */
+  action: ConsolidationAction;
+  /** Whether rule is active */
+  enabled: boolean;
+  /** Optional priority (higher = processed first) */
+  priority?: number;
+}
+
+/**
+ * Result of rule evaluation.
+ */
+export interface RuleEvaluationResult {
+  /** Whether all conditions passed */
+  passed: boolean;
+  /** Per-condition results */
+  details: Record<string, boolean>;
+}
