@@ -28,3 +28,9 @@ export {
   type DecaySchedulerConfig,
   type DecayCycleResult,
 } from './DecayScheduler.js';
+
+export {
+  WorkingMemoryManager,
+  type WorkingMemoryConfig,
+  type SessionMemoryFilter,
+} from './WorkingMemoryManager.js';

@@ -67,6 +67,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Environment variable configuration (MEMORY_DECAY_*, MEMORY_AUTO_DECAY, etc.)
   - Lazy initialization with proper dependency wiring
 
+#### Sprint 6: Working Memory Manager Foundation
+- **WorkingMemoryManager Class**: Session-scoped, TTL-based short-term memory management
+  - createWorkingMemory() with auto-generated unique names
+  - getSessionMemories() with filtering by entityType, taskId, importance
+  - clearExpired() for automatic cleanup of TTL-expired memories
+  - extendTTL() to extend memory lifetime
+  - markForPromotion() and getPromotionCandidates() for promotion workflow
+- **WorkingMemoryConfig**: Configurable defaults (TTL, max per session, auto-promote thresholds)
+- **SessionMemoryFilter**: Filter options for session memory queries
+- **Session Index**: In-memory index for O(1) session lookups
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -76,6 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 14 unit tests for forgetWeakMemories
 - Added 21 unit tests for DecayScheduler
 - Added 4 integration tests for DecayEngine context access
+- Added 32 unit tests for WorkingMemoryManager
 
 ## [1.1.0] - 2026-01-11
 
