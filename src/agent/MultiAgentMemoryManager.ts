@@ -598,6 +598,311 @@ export class MultiAgentMemoryManager extends EventEmitter {
     return matches;
   }
 
+  // ==================== Cross-Agent Operations ====================
+
+  /**
+   * Get memories shared between two or more agents.
+   *
+   * @param agentIds - Array of agent IDs to find shared memories between
+   * @param options - Filter options
+   * @returns Memories accessible to all specified agents
+   */
+  async getSharedMemories(
+    agentIds: string[],
+    options?: {
+      entityType?: string;
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<AgentEntity[]> {
+    if (agentIds.length < 2) {
+      return [];
+    }
+
+    const graph = await this.storage.loadGraph();
+    const shared: AgentEntity[] = [];
+
+    for (const entity of graph.entities) {
+      if (!isAgentEntity(entity)) continue;
+      const agentEntity = entity as AgentEntity;
+
+      // Check if all agents can see this memory
+      const visibleToAll = agentIds.every((agentId) => {
+        // Own memories are visible
+        if (agentEntity.agentId === agentId) return true;
+        // Shared/public memories are visible if cross-agent allowed
+        if (this.config.allowCrossAgent) {
+          return (
+            agentEntity.visibility === 'public' ||
+            agentEntity.visibility === 'shared'
+          );
+        }
+        return false;
+      });
+
+      if (!visibleToAll) continue;
+
+      // Apply optional filters
+      if (options?.entityType && agentEntity.entityType !== options.entityType) {
+        continue;
+      }
+      if (options?.startDate && agentEntity.createdAt && agentEntity.createdAt < options.startDate) {
+        continue;
+      }
+      if (options?.endDate && agentEntity.createdAt && agentEntity.createdAt > options.endDate) {
+        continue;
+      }
+
+      shared.push(agentEntity);
+    }
+
+    return shared;
+  }
+
+  /**
+   * Search across multiple agents' visible memories with optional trust weighting.
+   *
+   * @param requestingAgentId - Agent performing the search
+   * @param query - Search query
+   * @param options - Search options
+   * @returns Ranked search results
+   */
+  async searchCrossAgent(
+    requestingAgentId: string,
+    query: string,
+    options?: {
+      agentIds?: string[];
+      useTrustWeighting?: boolean;
+      trustWeight?: number;
+      entityType?: string;
+    }
+  ): Promise<Array<{
+    memory: AgentEntity;
+    relevanceScore: number;
+    trustScore: number;
+    combinedScore: number;
+  }>> {
+    const useTrustWeighting = options?.useTrustWeighting ?? false;
+    const trustWeight = options?.trustWeight ?? 0.3;
+    const queryLower = query.toLowerCase();
+
+    // Get all visible memories
+    const visibleMemories = await this.getVisibleMemories(requestingAgentId);
+
+    // Filter by agent IDs if specified
+    let filteredMemories = visibleMemories;
+    if (options?.agentIds && options.agentIds.length > 0) {
+      filteredMemories = visibleMemories.filter(
+        (m) => m.agentId && options.agentIds!.includes(m.agentId)
+      );
+    }
+
+    // Filter by entity type if specified
+    if (options?.entityType) {
+      filteredMemories = filteredMemories.filter(
+        (m) => m.entityType === options.entityType
+      );
+    }
+
+    // Search and score results
+    const results: Array<{
+      memory: AgentEntity;
+      relevanceScore: number;
+      trustScore: number;
+      combinedScore: number;
+    }> = [];
+
+    for (const memory of filteredMemories) {
+      // Calculate relevance score (simple TF-style scoring)
+      const nameMatch = memory.name.toLowerCase().includes(queryLower);
+      const obsMatches =
+        memory.observations?.filter((o) => o.toLowerCase().includes(queryLower))
+          .length ?? 0;
+
+      const relevanceScore = nameMatch ? 0.5 : 0;
+      const obsScore = Math.min(obsMatches * 0.1, 0.5);
+      const totalRelevance = relevanceScore + obsScore;
+
+      if (totalRelevance === 0) continue;
+
+      // Get trust score from owning agent
+      const ownerAgent = memory.agentId ? this.agents.get(memory.agentId) : undefined;
+      const trustScore = ownerAgent?.trustLevel ?? 0.5;
+
+      // Calculate combined score
+      let combinedScore = totalRelevance;
+      if (useTrustWeighting) {
+        combinedScore =
+          totalRelevance * (1 - trustWeight) + trustScore * trustWeight;
+      }
+
+      results.push({
+        memory,
+        relevanceScore: totalRelevance,
+        trustScore,
+        combinedScore,
+      });
+    }
+
+    // Sort by combined score (descending)
+    results.sort((a, b) => b.combinedScore - a.combinedScore);
+
+    // Emit search event
+    this.emit('memory:cross_agent_search', requestingAgentId, query, results.length);
+
+    return results;
+  }
+
+  /**
+   * Copy a shared memory to an agent's private store.
+   *
+   * Creates a new entity owned by the requesting agent with source tracking.
+   *
+   * @param memoryName - Memory to copy
+   * @param requestingAgentId - Agent making the copy
+   * @param options - Copy options
+   * @returns New copied memory or null if not accessible
+   */
+  async copyMemory(
+    memoryName: string,
+    requestingAgentId: string,
+    options?: {
+      newName?: string;
+      annotation?: string;
+      visibility?: MemoryVisibility;
+    }
+  ): Promise<AgentEntity | null> {
+    // Check if memory is visible to requesting agent
+    if (!this.isMemoryVisible(memoryName, requestingAgentId)) {
+      return null;
+    }
+
+    const entity = this.storage.getEntityByName(memoryName);
+    if (!entity || !isAgentEntity(entity)) {
+      return null;
+    }
+
+    const sourceMemory = entity as AgentEntity;
+
+    // Create a copy with new ownership
+    const now = new Date().toISOString();
+    const newName =
+      options?.newName ??
+      `copy_${memoryName}_${requestingAgentId}_${Date.now()}`;
+
+    const copiedMemory: AgentEntity = {
+      // Base entity fields
+      name: newName,
+      entityType: sourceMemory.entityType,
+      observations: [...(sourceMemory.observations ?? [])],
+      createdAt: now,
+      lastModified: now,
+      importance: sourceMemory.importance ?? 5,
+
+      // Agent memory fields
+      agentId: requestingAgentId,
+      visibility: options?.visibility ?? 'private',
+      memoryType: sourceMemory.memoryType ?? 'working',
+      accessCount: 0,
+      lastAccessedAt: now,
+      confidence: sourceMemory.confidence ?? 0.5,
+      confirmationCount: 0,
+
+      // Source tracking
+      source: {
+        agentId: sourceMemory.agentId ?? requestingAgentId,
+        timestamp: now,
+        method: 'consolidated',
+        reliability: sourceMemory.source?.reliability ?? 0.8,
+        originalEntityId: memoryName,
+      },
+    };
+
+    // Add annotation if provided
+    if (options?.annotation) {
+      copiedMemory.observations = [
+        ...(copiedMemory.observations ?? []),
+        `[Annotation] ${options.annotation}`,
+      ];
+    }
+
+    await this.storage.appendEntity(copiedMemory as Entity);
+
+    // Update requesting agent's last active
+    this.updateLastActive(requestingAgentId);
+
+    // Emit copy event
+    this.emit(
+      'memory:copied',
+      memoryName,
+      sourceMemory.agentId,
+      requestingAgentId,
+      newName
+    );
+
+    return copiedMemory;
+  }
+
+  /**
+   * Record that an agent accessed another agent's memory.
+   *
+   * Used for audit trail when cross-agent access occurs.
+   *
+   * @param memoryName - Memory that was accessed
+   * @param requestingAgentId - Agent that accessed the memory
+   * @param accessType - Type of access (view, search, copy)
+   */
+  recordCrossAgentAccess(
+    memoryName: string,
+    requestingAgentId: string,
+    accessType: 'view' | 'search' | 'copy'
+  ): void {
+    const entity = this.storage.getEntityByName(memoryName);
+    if (!entity || !isAgentEntity(entity)) return;
+
+    const memory = entity as AgentEntity;
+
+    // Only record if accessing another agent's memory
+    if (memory.agentId === requestingAgentId) return;
+
+    this.emit('memory:cross_agent_access', {
+      memoryName,
+      ownerAgentId: memory.agentId,
+      requestingAgentId,
+      accessType,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Get collaboration statistics between agents.
+   *
+   * @param agentId - Agent to get stats for
+   * @returns Collaboration statistics
+   */
+  async getCollaborationStats(agentId: string): Promise<{
+    sharedMemoryCount: number;
+    publicMemoryCount: number;
+    accessibleFromOthers: number;
+  }> {
+    const ownMemories = await this.getAgentMemories(agentId);
+
+    const sharedCount = ownMemories.filter((m) => m.visibility === 'shared')
+      .length;
+    const publicCount = ownMemories.filter((m) => m.visibility === 'public')
+      .length;
+
+    const visibleMemories = await this.getVisibleMemories(agentId);
+    const fromOthers = visibleMemories.filter((m) => m.agentId !== agentId)
+      .length;
+
+    return {
+      sharedMemoryCount: sharedCount,
+      publicMemoryCount: publicCount,
+      accessibleFromOthers: fromOthers,
+    };
+  }
+
   // ==================== Helper Methods ====================
 
   /**

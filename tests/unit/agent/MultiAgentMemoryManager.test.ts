@@ -569,4 +569,239 @@ describe('MultiAgentMemoryManager', () => {
       expect(results.length).toBe(1);
     });
   });
+
+  // ==================== Sprint 23: Cross-Agent Operations ====================
+
+  describe('getSharedMemories', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+      await manager.registerAgent('agent_3', {});
+    });
+
+    it('should return memories visible to all specified agents', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'shared_mem', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'private_mem', visibility: 'private' });
+
+      const shared = await manager.getSharedMemories(['agent_1', 'agent_2']);
+
+      expect(shared.some((m) => m.name === 'shared_mem')).toBe(true);
+      // Private memory only visible to owner, not to agent_2
+      expect(shared.some((m) => m.name === 'private_mem')).toBe(false);
+    });
+
+    it('should filter out private memories not owned by any specified agent', async () => {
+      await manager.createAgentMemory('agent_3', { name: 'agent3_private', visibility: 'private' });
+      await manager.createAgentMemory('agent_1', { name: 'agent1_shared', visibility: 'shared' });
+
+      const shared = await manager.getSharedMemories(['agent_1', 'agent_2']);
+
+      expect(shared.some((m) => m.name === 'agent3_private')).toBe(false);
+      expect(shared.some((m) => m.name === 'agent1_shared')).toBe(true);
+    });
+
+    it('should filter by entity type', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'task_mem', entityType: 'task', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'note_mem', entityType: 'note', visibility: 'shared' });
+
+      const shared = await manager.getSharedMemories(['agent_1', 'agent_2'], { entityType: 'task' });
+
+      expect(shared.length).toBe(1);
+      expect(shared[0].name).toBe('task_mem');
+    });
+
+    it('should return empty for less than 2 agents', async () => {
+      const shared = await manager.getSharedMemories(['agent_1']);
+
+      expect(shared.length).toBe(0);
+    });
+  });
+
+  describe('searchCrossAgent', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', { trustLevel: 0.9 });
+      await manager.registerAgent('agent_2', { trustLevel: 0.5 });
+    });
+
+    it('should search across visible memories', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'project_alpha', visibility: 'shared' });
+      await manager.createAgentMemory('agent_2', { name: 'project_beta', visibility: 'shared' });
+
+      const results = await manager.searchCrossAgent('default', 'project');
+
+      expect(results.length).toBe(2);
+    });
+
+    it('should rank by relevance without trust weighting', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'data_analysis', visibility: 'shared' });
+      await manager.createAgentMemory('agent_2', { name: 'data', visibility: 'shared' });
+
+      const results = await manager.searchCrossAgent('default', 'data');
+
+      expect(results.length).toBe(2);
+      expect(results.every((r) => r.relevanceScore > 0)).toBe(true);
+    });
+
+    it('should apply trust weighting when enabled', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'high_trust_mem', visibility: 'shared' });
+      await manager.createAgentMemory('agent_2', { name: 'low_trust_mem', visibility: 'shared' });
+
+      const resultsWithTrust = await manager.searchCrossAgent('default', 'trust', {
+        useTrustWeighting: true,
+        trustWeight: 0.5,
+      });
+
+      // Agent_1 has higher trust (0.9) so high_trust_mem should rank higher
+      const highTrustResult = resultsWithTrust.find((r) => r.memory.name === 'high_trust_mem');
+      const lowTrustResult = resultsWithTrust.find((r) => r.memory.name === 'low_trust_mem');
+
+      expect(highTrustResult?.trustScore).toBeGreaterThan(lowTrustResult?.trustScore ?? 0);
+    });
+
+    it('should filter by specific agent IDs', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'agent1_data', visibility: 'shared' });
+      await manager.createAgentMemory('agent_2', { name: 'agent2_data', visibility: 'shared' });
+
+      const results = await manager.searchCrossAgent('default', 'data', {
+        agentIds: ['agent_1'],
+      });
+
+      expect(results.length).toBe(1);
+      expect(results[0].memory.name).toBe('agent1_data');
+    });
+
+    it('should emit search event', async () => {
+      const eventHandler = vi.fn();
+      manager.on('memory:cross_agent_search', eventHandler);
+
+      await manager.createAgentMemory('agent_1', { name: 'searchable', visibility: 'shared' });
+      await manager.searchCrossAgent('default', 'searchable');
+
+      expect(eventHandler).toHaveBeenCalled();
+    });
+  });
+
+  describe('copyMemory', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+    });
+
+    it('should copy shared memory to private store', async () => {
+      await manager.createAgentMemory('agent_1', {
+        name: 'original_mem',
+        observations: ['Important fact'],
+        visibility: 'shared',
+      });
+
+      const copied = await manager.copyMemory('original_mem', 'agent_2');
+
+      expect(copied).not.toBeNull();
+      expect(copied?.agentId).toBe('agent_2');
+      expect(copied?.visibility).toBe('private');
+      expect(copied?.observations).toContain('Important fact');
+    });
+
+    it('should track source information', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'source_mem', visibility: 'shared' });
+
+      const copied = await manager.copyMemory('source_mem', 'agent_2');
+
+      expect(copied?.source?.originalEntityId).toBe('source_mem');
+      expect(copied?.source?.method).toBe('consolidated');
+    });
+
+    it('should add annotation when provided', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'annotate_me', visibility: 'shared' });
+
+      const copied = await manager.copyMemory('annotate_me', 'agent_2', {
+        annotation: 'Copied for review',
+      });
+
+      expect(copied?.observations?.some((o) => o.includes('Copied for review'))).toBe(true);
+    });
+
+    it('should allow custom name', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'orig', visibility: 'shared' });
+
+      const copied = await manager.copyMemory('orig', 'agent_2', {
+        newName: 'my_custom_copy',
+      });
+
+      expect(copied?.name).toBe('my_custom_copy');
+    });
+
+    it('should return null for inaccessible memory', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'private_orig', visibility: 'private' });
+
+      const copied = await manager.copyMemory('private_orig', 'agent_2');
+
+      expect(copied).toBeNull();
+    });
+
+    it('should emit copy event', async () => {
+      const eventHandler = vi.fn();
+      manager.on('memory:copied', eventHandler);
+
+      await manager.createAgentMemory('agent_1', { name: 'copy_event_test', visibility: 'shared' });
+      await manager.copyMemory('copy_event_test', 'agent_2');
+
+      expect(eventHandler).toHaveBeenCalled();
+    });
+  });
+
+  describe('recordCrossAgentAccess', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+    });
+
+    it('should emit access event for cross-agent access', async () => {
+      const eventHandler = vi.fn();
+      manager.on('memory:cross_agent_access', eventHandler);
+
+      await manager.createAgentMemory('agent_1', { name: 'access_mem', visibility: 'shared' });
+      manager.recordCrossAgentAccess('access_mem', 'agent_2', 'view');
+
+      expect(eventHandler).toHaveBeenCalledWith(
+        expect.objectContaining({
+          memoryName: 'access_mem',
+          ownerAgentId: 'agent_1',
+          requestingAgentId: 'agent_2',
+          accessType: 'view',
+        })
+      );
+    });
+
+    it('should not emit event for own memory access', async () => {
+      const eventHandler = vi.fn();
+      manager.on('memory:cross_agent_access', eventHandler);
+
+      await manager.createAgentMemory('agent_1', { name: 'own_mem', visibility: 'private' });
+      manager.recordCrossAgentAccess('own_mem', 'agent_1', 'view');
+
+      expect(eventHandler).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getCollaborationStats', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+    });
+
+    it('should return correct collaboration statistics', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'private_1', visibility: 'private' });
+      await manager.createAgentMemory('agent_1', { name: 'shared_1', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'shared_2', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'public_1', visibility: 'public' });
+      await manager.createAgentMemory('agent_2', { name: 'agent2_shared', visibility: 'shared' });
+
+      const stats = await manager.getCollaborationStats('agent_1');
+
+      expect(stats.sharedMemoryCount).toBe(2);
+      expect(stats.publicMemoryCount).toBe(1);
+      expect(stats.accessibleFromOthers).toBe(1); // agent_2's shared memory
+    });
+  });
 });

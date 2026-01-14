@@ -389,6 +389,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Case-insensitive matching on name and observations
   - Respects private/shared/public visibility rules
 
+#### Sprint 23: Cross-Agent Operations
+- **Shared Memory Queries**: Find memories accessible to multiple agents
+  - getSharedMemories() returns memories visible to all specified agents
+  - Optional filtering by entity type and date range
+  - Respects private/shared/public visibility rules
+- **Cross-Agent Search**: Search across multiple agents with trust weighting
+  - searchCrossAgent() searches visible memories from multiple agents
+  - Optional trust-weighted scoring (useTrustWeighting, trustWeight)
+  - Filter by specific agent IDs and entity type
+  - Ranked results by combined relevance and trust score
+- **Memory Copying**: Copy shared memories to private store
+  - copyMemory() creates owned copy with source tracking
+  - Tracks original entity ID and acquisition method
+  - Optional custom name and annotation
+  - Configurable visibility for the copy
+- **Collaboration Events**: Audit trail for cross-agent operations
+  - memory:cross_agent_search event for search operations
+  - memory:copied event for memory copy operations
+  - memory:cross_agent_access event for access tracking
+  - recordCrossAgentAccess() for manual access recording
+- **Collaboration Statistics**: Track sharing and access patterns
+  - getCollaborationStats() returns sharing metrics
+  - Counts shared, public, and accessible memories
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -409,7 +433,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 19 unit tests for MemoryFormatter
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
-- Added 50 unit tests for MultiAgentMemoryManager (31 Sprint 21 + 19 Sprint 22)
+- Added 68 unit tests for MultiAgentMemoryManager (31 Sprint 21 + 19 Sprint 22 + 18 Sprint 23)
 
 ## [1.1.0] - 2026-01-11
 
