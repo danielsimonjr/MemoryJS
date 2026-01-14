@@ -15,6 +15,9 @@ import type {
   SummarizationResult,
   PatternResult,
   MemoryType,
+  MemoryMergeStrategy,
+  MergeResult,
+  DuplicatePair,
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
@@ -730,6 +733,313 @@ export class ConsolidationPipeline {
       hash = hash & hash;
     }
     return Math.abs(hash).toString(16).slice(0, 8);
+  }
+
+  // ==================== Memory Merging ====================
+
+  /**
+   * Merge multiple entities into one using the specified strategy.
+   *
+   * Strategies:
+   * - newest: Keep the most recently modified entity
+   * - strongest: Keep entity with highest confidence * confirmations
+   * - merge_observations: Combine all observations into first entity
+   *
+   * @param entityNames - Names of entities to merge
+   * @param strategy - Merge strategy to apply
+   * @returns The merge result with survivor entity
+   * @throws Error if less than 2 entities or entity not found
+   *
+   * @example
+   * ```typescript
+   * const result = await pipeline.mergeMemories(
+   *   ['memory_1', 'memory_2', 'memory_3'],
+   *   'strongest'
+   * );
+   * console.log(`Survivor: ${result.survivor.name}`);
+   * ```
+   */
+  async mergeMemories(
+    entityNames: string[],
+    strategy: MemoryMergeStrategy
+  ): Promise<MergeResult> {
+    if (entityNames.length < 2) {
+      throw new Error('Need at least 2 entities to merge');
+    }
+
+    // Load all entities
+    const entities: AgentEntity[] = [];
+    for (const name of entityNames) {
+      const entity = this.storage.getEntityByName(name);
+      if (!entity || !isAgentEntity(entity)) {
+        throw new Error(`Entity not found or not AgentEntity: ${name}`);
+      }
+      entities.push(entity as AgentEntity);
+    }
+
+    // Determine survivor based on strategy
+    let survivor: AgentEntity;
+    switch (strategy) {
+      case 'newest':
+        survivor = this.selectNewest(entities);
+        break;
+      case 'strongest':
+        survivor = this.selectStrongest(entities);
+        break;
+      case 'merge_observations':
+      default:
+        survivor = entities[0];
+        break;
+    }
+
+    // Merge observations from all entities into survivor
+    const allObservations = new Set<string>();
+    for (const entity of entities) {
+      entity.observations?.forEach((o) => allObservations.add(o));
+    }
+
+    const mergedObservations = Array.from(allObservations);
+
+    // Calculate merged metadata
+    const updates: Partial<AgentEntity> = {
+      observations: mergedObservations,
+      confirmationCount: entities.reduce(
+        (sum, e) => sum + (e.confirmationCount ?? 0),
+        0
+      ),
+      accessCount: entities.reduce((sum, e) => sum + (e.accessCount ?? 0), 0),
+      lastModified: new Date().toISOString(),
+    };
+
+    // Update survivor
+    await this.storage.updateEntity(survivor.name, updates as Partial<Entity>);
+
+    // Record merge in audit trail
+    await this.recordMerge(entityNames, survivor.name, strategy);
+
+    // Remove other entities (delete them from storage)
+    const graph = await this.storage.loadGraph();
+    const mergedNames = entityNames.filter((n) => n !== survivor.name);
+
+    // Filter out merged entities and their relations
+    const filteredEntities = graph.entities.filter(
+      (e) => !mergedNames.includes(e.name)
+    );
+
+    // Retarget relations
+    const seenRelations = new Set<string>();
+    const filteredRelations = graph.relations
+      .map((r) => {
+        let from = r.from;
+        let to = r.to;
+
+        // Retarget from merged entities
+        if (mergedNames.includes(from)) from = survivor.name;
+        if (mergedNames.includes(to)) to = survivor.name;
+
+        return { ...r, from, to };
+      })
+      .filter((r) => {
+        // Skip self-relations
+        if (r.from === r.to) return false;
+
+        // Skip duplicates
+        const key = `${r.from}|${r.to}|${r.relationType}`;
+        if (seenRelations.has(key)) return false;
+        seenRelations.add(key);
+
+        return true;
+      });
+
+    await this.storage.saveGraph({
+      entities: filteredEntities,
+      relations: filteredRelations,
+    });
+
+    return {
+      survivor: { ...survivor, ...updates } as AgentEntity,
+      mergedEntities: entityNames,
+      mergedCount: entityNames.length,
+      strategy,
+      observationCount: mergedObservations.length,
+    };
+  }
+
+  /**
+   * Find potential duplicate entities based on similarity.
+   *
+   * @param threshold - Similarity threshold (0-1, default 0.9)
+   * @returns Array of duplicate pairs sorted by similarity
+   *
+   * @example
+   * ```typescript
+   * const duplicates = await pipeline.findDuplicates(0.85);
+   * for (const dup of duplicates) {
+   *   console.log(`${dup.entity1} ~ ${dup.entity2}: ${dup.similarity}`);
+   * }
+   * ```
+   */
+  async findDuplicates(threshold: number = 0.9): Promise<DuplicatePair[]> {
+    const graph = await this.storage.loadGraph();
+    const duplicates: DuplicatePair[] = [];
+
+    const agentEntities = graph.entities.filter((e) =>
+      isAgentEntity(e)
+    ) as AgentEntity[];
+
+    for (let i = 0; i < agentEntities.length; i++) {
+      for (let j = i + 1; j < agentEntities.length; j++) {
+        const e1 = agentEntities[i];
+        const e2 = agentEntities[j];
+
+        // Skip if different sessions for working memories
+        if (
+          e1.memoryType === 'working' &&
+          e2.memoryType === 'working' &&
+          e1.sessionId !== e2.sessionId
+        ) {
+          continue;
+        }
+
+        const similarity = this.calculateEntitySimilarity(e1, e2);
+        if (similarity >= threshold) {
+          duplicates.push({
+            entity1: e1.name,
+            entity2: e2.name,
+            similarity,
+          });
+        }
+      }
+    }
+
+    return duplicates.sort((a, b) => b.similarity - a.similarity);
+  }
+
+  /**
+   * Auto-merge duplicates above threshold.
+   *
+   * @param threshold - Similarity threshold for duplicates
+   * @param strategy - Merge strategy to use
+   * @returns Array of merge results
+   */
+  async autoMergeDuplicates(
+    threshold: number = 0.9,
+    strategy: MemoryMergeStrategy = 'strongest'
+  ): Promise<MergeResult[]> {
+    const duplicates = await this.findDuplicates(threshold);
+    const results: MergeResult[] = [];
+    const mergedEntities = new Set<string>();
+
+    for (const dup of duplicates) {
+      // Skip if either entity was already merged
+      if (mergedEntities.has(dup.entity1) || mergedEntities.has(dup.entity2)) {
+        continue;
+      }
+
+      try {
+        const result = await this.mergeMemories(
+          [dup.entity1, dup.entity2],
+          strategy
+        );
+        results.push(result);
+
+        // Track merged entities
+        mergedEntities.add(dup.entity1);
+        mergedEntities.add(dup.entity2);
+      } catch {
+        // Entity may have been deleted in previous merge
+        continue;
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Get merge history for an entity.
+   *
+   * @param entityName - Name of entity to check history for
+   * @returns Array of merge audit entities
+   */
+  async getMergeHistory(entityName: string): Promise<Entity[]> {
+    const graph = await this.storage.loadGraph();
+    return graph.entities.filter(
+      (e) =>
+        e.entityType === 'merge_audit' &&
+        e.observations?.some((o) => o.includes(entityName))
+    );
+  }
+
+  /**
+   * Select the newest entity from a list.
+   * @internal
+   */
+  private selectNewest(entities: AgentEntity[]): AgentEntity {
+    return entities.reduce((newest, e) => {
+      const newestTime = new Date(
+        newest.lastModified ?? newest.createdAt ?? 0
+      ).getTime();
+      const eTime = new Date(e.lastModified ?? e.createdAt ?? 0).getTime();
+      return eTime > newestTime ? e : newest;
+    });
+  }
+
+  /**
+   * Select the strongest entity from a list.
+   * @internal
+   */
+  private selectStrongest(entities: AgentEntity[]): AgentEntity {
+    return entities.reduce((strongest, e) => {
+      const strongestScore =
+        (strongest.confidence ?? 0) * (strongest.confirmationCount ?? 1);
+      const eScore = (e.confidence ?? 0) * (e.confirmationCount ?? 1);
+      return eScore > strongestScore ? e : strongest;
+    });
+  }
+
+  /**
+   * Calculate similarity between two entities.
+   * @internal
+   */
+  private calculateEntitySimilarity(
+    e1: AgentEntity,
+    e2: AgentEntity
+  ): number {
+    // Must have same entity type
+    if (e1.entityType !== e2.entityType) return 0;
+
+    // Compare observations
+    const obs1 = e1.observations?.join(' ') ?? '';
+    const obs2 = e2.observations?.join(' ') ?? '';
+
+    return this.calculateSimilarity(obs1, obs2);
+  }
+
+  /**
+   * Record a merge operation in the audit trail.
+   * @internal
+   */
+  private async recordMerge(
+    mergedNames: string[],
+    survivorName: string,
+    strategy: MemoryMergeStrategy
+  ): Promise<void> {
+    const now = new Date().toISOString();
+    const auditEntity = {
+      name: `merge_audit_${Date.now()}`,
+      entityType: 'merge_audit',
+      observations: [
+        `Merged: ${mergedNames.join(', ')}`,
+        `Survivor: ${survivorName}`,
+        `Strategy: ${strategy}`,
+        `Timestamp: ${now}`,
+      ],
+      createdAt: now,
+      lastModified: now,
+      importance: 3,
+    };
+
+    await this.storage.appendEntity(auditEntity);
   }
 
   // ==================== Configuration Access ====================

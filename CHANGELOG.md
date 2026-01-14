@@ -211,6 +211,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - getPatternDetector() accessor for advanced operations
 - **New Types**: PatternResult interface with pattern template, variables, occurrences, confidence, sourceEntities
 
+#### Sprint 14: Memory Merging
+- **ConsolidationPipeline Merge Methods**: Duplicate detection and memory consolidation
+  - mergeMemories() with three strategies: newest, strongest, merge_observations
+  - findDuplicates() for similarity-based duplicate detection using TF-IDF
+  - autoMergeDuplicates() for automatic merging above similarity threshold
+  - getMergeHistory() retrieves audit trail for entity merge operations
+  - Automatic relation retargeting when entities are merged
+  - Audit trail creation via merge_audit entities
+- **New Types**: MemoryMergeStrategy type, MergeResult interface, DuplicatePair interface
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -224,7 +234,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 44 unit tests for SessionManager (39 Sprint 8 + 5 Sprint 10 integration)
 - Added 20 unit tests for SessionQueryBuilder
 - Added 30 unit tests for EpisodicMemoryManager
-- Added 46 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13)
+- Added 64 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13 + 18 Sprint 14)
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
 

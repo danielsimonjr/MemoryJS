@@ -784,3 +784,46 @@ export interface PatternResult {
   /** Names of source entities that contain this pattern */
   sourceEntities: string[];
 }
+
+/**
+ * Strategy for merging duplicate memories.
+ * - newest: Keep the most recently modified entity
+ * - strongest: Keep entity with highest confidence * confirmations
+ * - merge_observations: Combine all observations into first entity
+ */
+export type MemoryMergeStrategy = 'newest' | 'strongest' | 'merge_observations';
+
+/**
+ * Result of a memory merge operation.
+ *
+ * @example
+ * ```typescript
+ * const result = await pipeline.mergeMemories(['ent1', 'ent2'], 'newest');
+ * console.log(`Survivor: ${result.survivor.name}`);
+ * console.log(`Merged ${result.mergedCount} entities`);
+ * ```
+ */
+export interface MergeResult {
+  /** The surviving merged entity */
+  survivor: AgentEntity;
+  /** Names of entities that were merged */
+  mergedEntities: string[];
+  /** Number of entities merged */
+  mergedCount: number;
+  /** Strategy used for merge */
+  strategy: MemoryMergeStrategy;
+  /** Combined observation count after dedup */
+  observationCount: number;
+}
+
+/**
+ * Result of duplicate detection.
+ */
+export interface DuplicatePair {
+  /** First entity name */
+  entity1: string;
+  /** Second entity name */
+  entity2: string;
+  /** Similarity score between entities (0-1) */
+  similarity: number;
+}

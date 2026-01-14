@@ -150,6 +150,10 @@ export type {
   SummarizationResult,
   // Pattern types
   PatternResult,
+  // Memory merging types
+  MemoryMergeStrategy,
+  MergeResult,
+  DuplicatePair,
 } from './agent-memory.js';
 
 // Agent Memory Type Guards and Classes

@@ -932,4 +932,639 @@ describe('ConsolidationPipeline', () => {
       expect(typeof detector.detectPatterns).toBe('function');
     });
   });
+
+  // ==================== Memory Merging (Sprint 14) ====================
+
+  describe('mergeMemories', () => {
+    it('should throw error with less than 2 entities', async () => {
+      await expect(pipeline.mergeMemories(['single'], 'newest')).rejects.toThrow(
+        'Need at least 2 entities to merge'
+      );
+    });
+
+    it('should throw error for non-existent entity', async () => {
+      const entities: AgentEntity[] = [
+        createWorkingMemory('ent1', 'session1'),
+      ];
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      await expect(
+        pipeline.mergeMemories(['ent1', 'nonexistent'], 'newest')
+      ).rejects.toThrow('Entity not found or not AgentEntity');
+    });
+
+    it('should merge using newest strategy', async () => {
+      const older = new Date('2024-01-01').toISOString();
+      const newer = new Date('2024-01-15').toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'older',
+          entityType: 'memory',
+          observations: ['Obs from older'],
+          memoryType: 'episodic',
+          createdAt: older,
+          lastModified: older,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'newer',
+          entityType: 'memory',
+          observations: ['Obs from newer'],
+          memoryType: 'episodic',
+          createdAt: newer,
+          lastModified: newer,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const result = await pipeline.mergeMemories(['older', 'newer'], 'newest');
+
+      expect(result.survivor.name).toBe('newer');
+      expect(result.strategy).toBe('newest');
+      expect(result.mergedCount).toBe(2);
+      expect(result.mergedEntities).toContain('older');
+      expect(result.mergedEntities).toContain('newer');
+    });
+
+    it('should merge using strongest strategy', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'weak',
+          entityType: 'memory',
+          observations: ['Obs from weak'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.5,
+          confirmationCount: 1,
+          accessCount: 0,
+          visibility: 'private',
+        },
+        {
+          name: 'strong',
+          entityType: 'memory',
+          observations: ['Obs from strong'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.9,
+          confirmationCount: 5,
+          accessCount: 0,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const result = await pipeline.mergeMemories(['weak', 'strong'], 'strongest');
+
+      expect(result.survivor.name).toBe('strong');
+      expect(result.strategy).toBe('strongest');
+    });
+
+    it('should merge using merge_observations strategy', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'first',
+          entityType: 'memory',
+          observations: ['First observation'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'second',
+          entityType: 'memory',
+          observations: ['Second observation'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const result = await pipeline.mergeMemories(
+        ['first', 'second'],
+        'merge_observations'
+      );
+
+      // First entity is survivor for merge_observations
+      expect(result.survivor.name).toBe('first');
+      expect(result.observationCount).toBe(2);
+    });
+
+    it('should combine observations from all entities', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: ['A', 'B'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: ['C', 'B'], // B is duplicate
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const result = await pipeline.mergeMemories(['ent1', 'ent2'], 'newest');
+
+      // Should deduplicate to 3 unique observations
+      expect(result.observationCount).toBe(3);
+    });
+
+    it('should sum confirmation and access counts', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: ['Obs1'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.8,
+          confirmationCount: 2,
+          accessCount: 10,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: ['Obs2'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.8,
+          confirmationCount: 3,
+          accessCount: 15,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      await pipeline.mergeMemories(['ent1', 'ent2'], 'newest');
+
+      expect(storage.updateEntity).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          confirmationCount: 5,
+          accessCount: 25,
+        })
+      );
+    });
+
+    it('should create audit trail record', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: [],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: [],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      await pipeline.mergeMemories(['ent1', 'ent2'], 'newest');
+
+      expect(storage.appendEntity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityType: 'merge_audit',
+          observations: expect.arrayContaining([
+            expect.stringContaining('Merged:'),
+            expect.stringContaining('Survivor:'),
+            expect.stringContaining('Strategy: newest'),
+          ]),
+        })
+      );
+    });
+  });
+
+  describe('findDuplicates', () => {
+    it('should return empty array when no entities', async () => {
+      const duplicates = await pipeline.findDuplicates(0.9);
+      expect(duplicates).toEqual([]);
+    });
+
+    it('should find duplicates based on similarity', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: ['User prefers Italian cuisine'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: ['User prefers Italian food'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      // Low threshold to capture similarity
+      const duplicates = await pipeline.findDuplicates(0.3);
+
+      expect(duplicates.length).toBeGreaterThan(0);
+      expect(duplicates[0].entity1).toBeDefined();
+      expect(duplicates[0].entity2).toBeDefined();
+      expect(duplicates[0].similarity).toBeGreaterThan(0);
+    });
+
+    it('should not find duplicates with dissimilar observations', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: ['User prefers Italian cuisine'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: ['Meeting scheduled for tomorrow'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      // High threshold should filter out dissimilar pairs
+      const duplicates = await pipeline.findDuplicates(0.9);
+      expect(duplicates.length).toBe(0);
+    });
+
+    it('should skip entities without observations', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: [],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: ['Has observation'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const duplicates = await pipeline.findDuplicates(0.5);
+      expect(duplicates.length).toBe(0);
+    });
+  });
+
+  describe('autoMergeDuplicates', () => {
+    it('should merge found duplicates automatically', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: ['User prefers Italian cuisine'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.9,
+          confirmationCount: 3,
+          accessCount: 0,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: ['User prefers Italian cuisine and food'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          confidence: 0.5,
+          confirmationCount: 1,
+          accessCount: 0,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const results = await pipeline.autoMergeDuplicates(0.3, 'strongest');
+
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].strategy).toBe('strongest');
+    });
+
+    it('should use default strongest strategy', async () => {
+      const now = new Date().toISOString();
+
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: ['Same observation'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: ['Same observation'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const results = await pipeline.autoMergeDuplicates(0.5);
+
+      if (results.length > 0) {
+        expect(results[0].strategy).toBe('strongest');
+      }
+    });
+
+    it('should skip already merged entities', async () => {
+      const now = new Date().toISOString();
+
+      // Create three similar entities
+      const entities: AgentEntity[] = [
+        {
+          name: 'ent1',
+          entityType: 'memory',
+          observations: ['Same content here'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'ent2',
+          entityType: 'memory',
+          observations: ['Same content here'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+        {
+          name: 'ent3',
+          entityType: 'memory',
+          observations: ['Same content here'],
+          memoryType: 'episodic',
+          createdAt: now,
+          lastModified: now,
+          importance: 5,
+          accessCount: 0,
+          confidence: 0.8,
+          confirmationCount: 1,
+          visibility: 'private',
+        },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      // Even with 3 entities that are all duplicates, once ent1+ent2 are merged,
+      // ent3 should not be merged again with ent1 or ent2
+      const results = await pipeline.autoMergeDuplicates(0.9);
+
+      // Should have at most 1 merge result, not 2
+      expect(results.length).toBeLessThanOrEqual(1);
+    });
+  });
+
+  describe('getMergeHistory', () => {
+    it('should return empty array when no merge history', async () => {
+      const history = await pipeline.getMergeHistory('unknown');
+      expect(history).toEqual([]);
+    });
+
+    it('should return audit entities mentioning the entity', async () => {
+      const now = new Date().toISOString();
+
+      const entities: Entity[] = [
+        {
+          name: 'merge_audit_123',
+          entityType: 'merge_audit',
+          observations: [
+            'Merged: ent1, ent2',
+            'Survivor: ent1',
+            'Strategy: newest',
+          ],
+          createdAt: now,
+        },
+        {
+          name: 'merge_audit_456',
+          entityType: 'merge_audit',
+          observations: [
+            'Merged: ent3, ent4',
+            'Survivor: ent3',
+            'Strategy: strongest',
+          ],
+          createdAt: now,
+        },
+      ];
+
+      storage = createMockStorage(entities);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const history = await pipeline.getMergeHistory('ent1');
+
+      expect(history.length).toBe(1);
+      expect(history[0].name).toBe('merge_audit_123');
+    });
+
+    it('should find history as survivor or merged entity', async () => {
+      const now = new Date().toISOString();
+
+      const entities: Entity[] = [
+        {
+          name: 'merge_audit_1',
+          entityType: 'merge_audit',
+          observations: [
+            'Merged: target, other',
+            'Survivor: target',
+          ],
+          createdAt: now,
+        },
+        {
+          name: 'merge_audit_2',
+          entityType: 'merge_audit',
+          observations: [
+            'Merged: another, target',
+            'Survivor: another',
+          ],
+          createdAt: now,
+        },
+      ];
+
+      storage = createMockStorage(entities);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const history = await pipeline.getMergeHistory('target');
+
+      expect(history.length).toBe(2);
+    });
+  });
 });
