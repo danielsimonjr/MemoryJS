@@ -1,11 +1,11 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "version": "1.0.0",
-    "lastUpdated": "2026-01-10",
-    "totalFiles": 73,
-    "totalModules": 7,
-    "totalExports": 558
+    "version": "1.2.0",
+    "lastUpdated": "2026-01-14",
+    "totalFiles": 93,
+    "totalModules": 8,
+    "totalExports": 657
   },
   "entryPoints": [
     {
@@ -15,6 +15,1257 @@
     }
   ],
   "modules": {
+    "agent": {
+      "src/agent/AccessTracker.ts": {
+        "description": "Access Tracker",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "AccessContext",
+              "AccessPattern"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "AccessTracker"
+        ],
+        "classes": [
+          "AccessTracker"
+        ],
+        "interfaces": [
+          "AccessStats",
+          "AccessTrackerConfig"
+        ]
+      },
+      "src/agent/AgentMemoryConfig.ts": {
+        "description": "Agent Memory Configuration",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./WorkingMemoryManager.js",
+            "imports": [
+              "WorkingMemoryConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SessionManager.js",
+            "imports": [
+              "SessionConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./EpisodicMemoryManager.js",
+            "imports": [
+              "EpisodicMemoryConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ConsolidationPipeline.js",
+            "imports": [
+              "ConsolidationPipelineConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SummarizationService.js",
+            "imports": [
+              "SummarizationConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngineConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./DecayScheduler.js",
+            "imports": [
+              "DecaySchedulerConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SalienceEngine.js",
+            "imports": [
+              "SalienceEngineConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ContextWindowManager.js",
+            "imports": [
+              "ContextWindowManagerConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./MemoryFormatter.js",
+            "imports": [
+              "MemoryFormatterConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./MultiAgentMemoryManager.js",
+            "imports": [
+              "MultiAgentConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ConflictResolver.js",
+            "imports": [
+              "ConflictResolverConfig"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "loadConfigFromEnv",
+          "mergeConfig",
+          "validateConfig"
+        ],
+        "interfaces": [
+          "AgentMemoryConfig"
+        ],
+        "functions": [
+          "loadConfigFromEnv",
+          "mergeConfig",
+          "validateConfig"
+        ]
+      },
+      "src/agent/AgentMemoryManager.ts": {
+        "description": "Agent Memory Manager - Unified Facade",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "events",
+            "imports": [
+              "EventEmitter"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "AgentMetadata",
+              "MemoryVisibility",
+              "ConflictStrategy",
+              "ConflictInfo",
+              "SessionEntity",
+              "ForgetResult",
+              "ConsolidationResult",
+              "ContextRetrievalOptions",
+              "ContextPackage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./AccessTracker.js",
+            "imports": [
+              "AccessTracker",
+              "AccessContext"
+            ]
+          },
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngine",
+              "ForgetOptions"
+            ]
+          },
+          {
+            "file": "./DecayScheduler.js",
+            "imports": [
+              "DecayScheduler",
+              "DecayCycleResult"
+            ]
+          },
+          {
+            "file": "./WorkingMemoryManager.js",
+            "imports": [
+              "WorkingMemoryManager",
+              "PromotionResult",
+              "ConfirmationResult"
+            ]
+          },
+          {
+            "file": "./SessionManager.js",
+            "imports": [
+              "SessionManager",
+              "StartSessionOptions",
+              "EndSessionResult"
+            ]
+          },
+          {
+            "file": "./EpisodicMemoryManager.js",
+            "imports": [
+              "EpisodicMemoryManager",
+              "CreateEpisodeOptions",
+              "TimelineOptions"
+            ]
+          },
+          {
+            "file": "./ConsolidationPipeline.js",
+            "imports": [
+              "ConsolidationPipeline"
+            ]
+          },
+          {
+            "file": "./SummarizationService.js",
+            "imports": [
+              "SummarizationService",
+              "ISummarizationProvider"
+            ]
+          },
+          {
+            "file": "./PatternDetector.js",
+            "imports": [
+              "PatternDetector"
+            ]
+          },
+          {
+            "file": "./RuleEvaluator.js",
+            "imports": [
+              "RuleEvaluator"
+            ]
+          },
+          {
+            "file": "./SalienceEngine.js",
+            "imports": [
+              "SalienceEngine"
+            ]
+          },
+          {
+            "file": "./ContextWindowManager.js",
+            "imports": [
+              "ContextWindowManager"
+            ]
+          },
+          {
+            "file": "./MemoryFormatter.js",
+            "imports": [
+              "MemoryFormatter"
+            ]
+          },
+          {
+            "file": "./MultiAgentMemoryManager.js",
+            "imports": [
+              "MultiAgentMemoryManager"
+            ]
+          },
+          {
+            "file": "./ConflictResolver.js",
+            "imports": [
+              "ConflictResolver",
+              "ResolutionResult"
+            ]
+          },
+          {
+            "file": "./AgentMemoryConfig.js",
+            "imports": [
+              "AgentMemoryConfig",
+              "loadConfigFromEnv",
+              "mergeConfig",
+              "validateConfig"
+            ]
+          }
+        ],
+        "exports": [
+          "AgentMemoryManager"
+        ],
+        "classes": [
+          "AgentMemoryManager"
+        ],
+        "interfaces": [
+          "CreateMemoryOptions",
+          "RetrieveContextOptions"
+        ]
+      },
+      "src/agent/ConflictResolver.ts": {
+        "description": "Conflict Resolver",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "events",
+            "imports": [
+              "EventEmitter"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "ConflictInfo",
+              "ConflictStrategy"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentMetadata"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ConflictResolver"
+        ],
+        "classes": [
+          "ConflictResolver"
+        ],
+        "interfaces": [
+          "ConflictResolverConfig",
+          "ResolutionResult"
+        ]
+      },
+      "src/agent/ConsolidationPipeline.ts": {
+        "description": "Consolidation Pipeline",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage",
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "ConsolidateOptions",
+              "ConsolidationResult",
+              "SummarizationResult",
+              "PatternResult",
+              "MemoryType",
+              "MemoryMergeStrategy",
+              "MergeResult",
+              "DuplicatePair",
+              "ConsolidationTrigger",
+              "ConsolidationRule"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          },
+          {
+            "file": "./WorkingMemoryManager.js",
+            "imports": [
+              "WorkingMemoryManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngine"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SummarizationService.js",
+            "imports": [
+              "SummarizationService"
+            ]
+          },
+          {
+            "file": "./PatternDetector.js",
+            "imports": [
+              "PatternDetector"
+            ]
+          },
+          {
+            "file": "./RuleEvaluator.js",
+            "imports": [
+              "RuleEvaluator"
+            ]
+          }
+        ],
+        "exports": [
+          "ConsolidationPipeline"
+        ],
+        "classes": [
+          "ConsolidationPipeline"
+        ],
+        "interfaces": [
+          "ConsolidationPipelineConfig",
+          "PipelineStage",
+          "StageResult"
+        ]
+      },
+      "src/agent/ContextWindowManager.ts": {
+        "description": "Context Window Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "SalienceContext",
+              "ContextRetrievalOptions",
+              "ContextPackage",
+              "TokenBreakdown",
+              "ExcludedEntity",
+              "ScoredEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          },
+          {
+            "file": "./SalienceEngine.js",
+            "imports": [
+              "SalienceEngine"
+            ]
+          }
+        ],
+        "exports": [
+          "ContextWindowManager"
+        ],
+        "classes": [
+          "ContextWindowManager"
+        ],
+        "interfaces": [
+          "ContextWindowManagerConfig",
+          "SpilloverResult"
+        ]
+      },
+      "src/agent/DecayEngine.ts": {
+        "description": "Decay Engine",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "DecayResult",
+              "ForgetOptions",
+              "ForgetResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          },
+          {
+            "file": "./AccessTracker.js",
+            "imports": [
+              "AccessTracker"
+            ]
+          }
+        ],
+        "exports": [
+          "DecayEngine"
+        ],
+        "classes": [
+          "DecayEngine"
+        ],
+        "interfaces": [
+          "DecayEngineConfig",
+          "DecayOperationOptions",
+          "ReinforcementOptions"
+        ]
+      },
+      "src/agent/DecayScheduler.ts": {
+        "description": "Decay Scheduler",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "DecayResult",
+              "ForgetResult",
+              "ForgetOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngine"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DecayScheduler"
+        ],
+        "classes": [
+          "DecayScheduler"
+        ],
+        "interfaces": [
+          "DecaySchedulerConfig",
+          "DecayCycleResult"
+        ]
+      },
+      "src/agent/EpisodicMemoryManager.ts": {
+        "description": "Episodic Memory Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage",
+              "Entity",
+              "Relation"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          }
+        ],
+        "exports": [
+          "EpisodicRelations",
+          "EpisodicMemoryManager"
+        ],
+        "classes": [
+          "EpisodicMemoryManager"
+        ],
+        "interfaces": [
+          "EpisodicMemoryConfig",
+          "CreateEpisodeOptions",
+          "TimelineOptions"
+        ],
+        "constants": [
+          "EpisodicRelations"
+        ]
+      },
+      "src/agent/index.ts": {
+        "description": "Agent Module - Barrel Export",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./AccessTracker.js",
+            "imports": [
+              "AccessTracker",
+              "type AccessStats",
+              "type AccessTrackerConfig",
+              "type AccessContext"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngine",
+              "type DecayEngineConfig",
+              "type DecayOperationOptions",
+              "type ReinforcementOptions",
+              "type DecayResult",
+              "type ForgetOptions",
+              "type ForgetResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./DecayScheduler.js",
+            "imports": [
+              "DecayScheduler",
+              "type DecaySchedulerConfig",
+              "type DecayCycleResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./WorkingMemoryManager.js",
+            "imports": [
+              "WorkingMemoryManager",
+              "type WorkingMemoryConfig",
+              "type SessionMemoryFilter",
+              "type PromotionMarkOptions",
+              "type PromotionCriteria",
+              "type PromotionResult",
+              "type ConfirmationResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SessionManager.js",
+            "imports": [
+              "SessionManager",
+              "type SessionConfig",
+              "type StartSessionOptions",
+              "type SessionHistoryOptions",
+              "type EndSessionResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SessionQueryBuilder.js",
+            "imports": [
+              "SessionQueryBuilder",
+              "type SessionSearchOptions",
+              "type EntityWithContext",
+              "type SearchFunction"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./EpisodicMemoryManager.js",
+            "imports": [
+              "EpisodicMemoryManager",
+              "EpisodicRelations",
+              "type EpisodicMemoryConfig",
+              "type CreateEpisodeOptions",
+              "type TimelineOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ConsolidationPipeline.js",
+            "imports": [
+              "ConsolidationPipeline",
+              "type ConsolidationPipelineConfig",
+              "type PipelineStage",
+              "type StageResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SummarizationService.js",
+            "imports": [
+              "SummarizationService",
+              "type ISummarizationProvider",
+              "type SummarizationConfig",
+              "type GroupingResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./PatternDetector.js",
+            "imports": [
+              "PatternDetector"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./RuleEvaluator.js",
+            "imports": [
+              "RuleEvaluator"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SalienceEngine.js",
+            "imports": [
+              "SalienceEngine",
+              "type SalienceEngineConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ContextWindowManager.js",
+            "imports": [
+              "ContextWindowManager",
+              "type ContextWindowManagerConfig",
+              "type SpilloverResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./MemoryFormatter.js",
+            "imports": [
+              "MemoryFormatter",
+              "type MemoryFormatterConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./MultiAgentMemoryManager.js",
+            "imports": [
+              "MultiAgentMemoryManager",
+              "type MultiAgentConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ConflictResolver.js",
+            "imports": [
+              "ConflictResolver",
+              "type ConflictResolverConfig",
+              "type ResolutionResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./AgentMemoryManager.js",
+            "imports": [
+              "AgentMemoryManager",
+              "type CreateMemoryOptions",
+              "type RetrieveContextOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./AgentMemoryConfig.js",
+            "imports": [
+              "type AgentMemoryConfig",
+              "loadConfigFromEnv",
+              "mergeConfig",
+              "validateConfig"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "AccessTracker",
+          "type AccessStats",
+          "type AccessTrackerConfig",
+          "type AccessContext",
+          "DecayEngine",
+          "type DecayEngineConfig",
+          "type DecayOperationOptions",
+          "type ReinforcementOptions",
+          "type DecayResult",
+          "type ForgetOptions",
+          "type ForgetResult",
+          "DecayScheduler",
+          "type DecaySchedulerConfig",
+          "type DecayCycleResult",
+          "WorkingMemoryManager",
+          "type WorkingMemoryConfig",
+          "type SessionMemoryFilter",
+          "type PromotionMarkOptions",
+          "type PromotionCriteria",
+          "type PromotionResult",
+          "type ConfirmationResult",
+          "SessionManager",
+          "type SessionConfig",
+          "type StartSessionOptions",
+          "type SessionHistoryOptions",
+          "type EndSessionResult",
+          "SessionQueryBuilder",
+          "type SessionSearchOptions",
+          "type EntityWithContext",
+          "type SearchFunction",
+          "EpisodicMemoryManager",
+          "EpisodicRelations",
+          "type EpisodicMemoryConfig",
+          "type CreateEpisodeOptions",
+          "type TimelineOptions",
+          "ConsolidationPipeline",
+          "type ConsolidationPipelineConfig",
+          "type PipelineStage",
+          "type StageResult",
+          "SummarizationService",
+          "type ISummarizationProvider",
+          "type SummarizationConfig",
+          "type GroupingResult",
+          "PatternDetector",
+          "RuleEvaluator",
+          "SalienceEngine",
+          "type SalienceEngineConfig",
+          "ContextWindowManager",
+          "type ContextWindowManagerConfig",
+          "type SpilloverResult",
+          "MemoryFormatter",
+          "type MemoryFormatterConfig",
+          "MultiAgentMemoryManager",
+          "type MultiAgentConfig",
+          "ConflictResolver",
+          "type ConflictResolverConfig",
+          "type ResolutionResult",
+          "AgentMemoryManager",
+          "type CreateMemoryOptions",
+          "type RetrieveContextOptions",
+          "type AgentMemoryConfig",
+          "loadConfigFromEnv",
+          "mergeConfig",
+          "validateConfig"
+        ],
+        "reExported": [
+          "AccessTracker",
+          "type AccessStats",
+          "type AccessTrackerConfig",
+          "type AccessContext",
+          "DecayEngine",
+          "type DecayEngineConfig",
+          "type DecayOperationOptions",
+          "type ReinforcementOptions",
+          "type DecayResult",
+          "type ForgetOptions",
+          "type ForgetResult",
+          "DecayScheduler",
+          "type DecaySchedulerConfig",
+          "type DecayCycleResult",
+          "WorkingMemoryManager",
+          "type WorkingMemoryConfig",
+          "type SessionMemoryFilter",
+          "type PromotionMarkOptions",
+          "type PromotionCriteria",
+          "type PromotionResult",
+          "type ConfirmationResult",
+          "SessionManager",
+          "type SessionConfig",
+          "type StartSessionOptions",
+          "type SessionHistoryOptions",
+          "type EndSessionResult",
+          "SessionQueryBuilder",
+          "type SessionSearchOptions",
+          "type EntityWithContext",
+          "type SearchFunction",
+          "EpisodicMemoryManager",
+          "EpisodicRelations",
+          "type EpisodicMemoryConfig",
+          "type CreateEpisodeOptions",
+          "type TimelineOptions",
+          "ConsolidationPipeline",
+          "type ConsolidationPipelineConfig",
+          "type PipelineStage",
+          "type StageResult",
+          "SummarizationService",
+          "type ISummarizationProvider",
+          "type SummarizationConfig",
+          "type GroupingResult",
+          "PatternDetector",
+          "RuleEvaluator",
+          "SalienceEngine",
+          "type SalienceEngineConfig",
+          "ContextWindowManager",
+          "type ContextWindowManagerConfig",
+          "type SpilloverResult",
+          "MemoryFormatter",
+          "type MemoryFormatterConfig",
+          "MultiAgentMemoryManager",
+          "type MultiAgentConfig",
+          "ConflictResolver",
+          "type ConflictResolverConfig",
+          "type ResolutionResult",
+          "AgentMemoryManager",
+          "type CreateMemoryOptions",
+          "type RetrieveContextOptions",
+          "type AgentMemoryConfig",
+          "loadConfigFromEnv",
+          "mergeConfig",
+          "validateConfig"
+        ]
+      },
+      "src/agent/MemoryFormatter.ts": {
+        "description": "Memory Formatter",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "ContextPackage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "MemoryFormatter"
+        ],
+        "classes": [
+          "MemoryFormatter"
+        ],
+        "interfaces": [
+          "MemoryFormatterConfig"
+        ]
+      },
+      "src/agent/MultiAgentMemoryManager.ts": {
+        "description": "Multi-Agent Memory Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "events",
+            "imports": [
+              "EventEmitter"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage",
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "AgentMetadata",
+              "AgentType",
+              "MemoryVisibility",
+              "ConflictStrategy",
+              "ConflictInfo"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          },
+          {
+            "file": "./ConflictResolver.js",
+            "imports": [
+              "ConflictResolver",
+              "ResolutionResult"
+            ]
+          }
+        ],
+        "exports": [
+          "MultiAgentMemoryManager"
+        ],
+        "classes": [
+          "MultiAgentMemoryManager"
+        ],
+        "interfaces": [
+          "MultiAgentConfig"
+        ]
+      },
+      "src/agent/PatternDetector.ts": {
+        "description": "Pattern Detector",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "PatternResult"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "PatternDetector"
+        ],
+        "classes": [
+          "PatternDetector"
+        ]
+      },
+      "src/agent/RuleEvaluator.ts": {
+        "description": "Rule Evaluator",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "RuleConditions",
+              "RuleEvaluationResult"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "RuleEvaluator"
+        ],
+        "classes": [
+          "RuleEvaluator"
+        ]
+      },
+      "src/agent/SalienceEngine.ts": {
+        "description": "Salience Engine",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "SalienceContext",
+              "ScoredEntity",
+              "SalienceComponents"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          },
+          {
+            "file": "./AccessTracker.js",
+            "imports": [
+              "AccessTracker"
+            ]
+          },
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngine"
+            ]
+          },
+          {
+            "file": "./SummarizationService.js",
+            "imports": [
+              "SummarizationService"
+            ]
+          }
+        ],
+        "exports": [
+          "SalienceEngine"
+        ],
+        "classes": [
+          "SalienceEngine"
+        ],
+        "interfaces": [
+          "SalienceEngineConfig"
+        ]
+      },
+      "src/agent/SessionManager.ts": {
+        "description": "Session Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage",
+              "Entity",
+              "Relation"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "SessionEntity",
+              "SessionStatus"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isSessionEntity"
+            ]
+          },
+          {
+            "file": "./WorkingMemoryManager.js",
+            "imports": [
+              "WorkingMemoryManager"
+            ]
+          },
+          {
+            "file": "./EpisodicMemoryManager.js",
+            "imports": [
+              "EpisodicMemoryManager"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "SessionManager"
+        ],
+        "classes": [
+          "SessionManager"
+        ],
+        "interfaces": [
+          "SessionConfig",
+          "StartSessionOptions",
+          "SessionHistoryOptions",
+          "EndSessionResult"
+        ]
+      },
+      "src/agent/SessionQueryBuilder.ts": {
+        "description": "Session Query Builder",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "SearchResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "SessionEntity",
+              "MemoryType"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity",
+              "isSessionEntity"
+            ]
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SessionManager.js",
+            "imports": [
+              "SessionManager"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "SessionQueryBuilder"
+        ],
+        "classes": [
+          "SessionQueryBuilder"
+        ],
+        "interfaces": [
+          "SessionSearchOptions",
+          "EntityWithContext"
+        ]
+      },
+      "src/agent/SummarizationService.ts": {
+        "description": "Summarization Service",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "SummarizationService"
+        ],
+        "classes": [
+          "SummarizationService"
+        ],
+        "interfaces": [
+          "ISummarizationProvider",
+          "SummarizationConfig",
+          "GroupingResult"
+        ]
+      },
+      "src/agent/WorkingMemoryManager.ts": {
+        "description": "Working Memory Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage",
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "WorkingMemoryOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          }
+        ],
+        "exports": [
+          "WorkingMemoryManager"
+        ],
+        "classes": [
+          "WorkingMemoryManager"
+        ],
+        "interfaces": [
+          "WorkingMemoryConfig",
+          "SessionMemoryFilter",
+          "PromotionMarkOptions",
+          "PromotionCriteria",
+          "PromotionResult",
+          "ConfirmationResult"
+        ]
+      }
+    },
     "core": {
       "src/core/EntityManager.ts": {
         "description": "Entity Manager",
@@ -25,7 +1276,8 @@
             "file": "../types/index.js",
             "imports": [
               "Entity",
-              "LongRunningOperationOptions"
+              "LongRunningOperationOptions",
+              "AccessContext"
             ],
             "typeOnly": true
           },
@@ -33,6 +1285,13 @@
             "file": "./GraphStorage.js",
             "imports": [
               "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/AccessTracker.js",
+            "imports": [
+              "AccessTracker"
             ],
             "typeOnly": true
           },
@@ -68,6 +1327,9 @@
         ],
         "classes": [
           "EntityManager"
+        ],
+        "interfaces": [
+          "GetEntityOptions"
         ]
       },
       "src/core/GraphEventEmitter.ts": {
@@ -154,7 +1416,8 @@
           {
             "file": "../utils/index.js",
             "imports": [
-              "sanitizeObject"
+              "sanitizeObject",
+              "validateFilePath"
             ]
           },
           {
@@ -191,7 +1454,8 @@
               "TraversalResult",
               "PathResult",
               "ConnectedComponentsResult",
-              "CentralityResult"
+              "CentralityResult",
+              "AccessContext"
             ],
             "typeOnly": true
           },
@@ -199,6 +1463,13 @@
             "file": "./GraphStorage.js",
             "imports": [
               "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/AccessTracker.js",
+            "imports": [
+              "AccessTracker"
             ],
             "typeOnly": true
           },
@@ -214,6 +1485,9 @@
         ],
         "classes": [
           "GraphTraversal"
+        ],
+        "interfaces": [
+          "TraversalOptionsWithTracking"
         ]
       },
       "src/core/HierarchyManager.ts": {
@@ -489,9 +1763,64 @@
             ]
           },
           {
+            "file": "../agent/AccessTracker.js",
+            "imports": [
+              "AccessTracker"
+            ]
+          },
+          {
+            "file": "../agent/DecayEngine.js",
+            "imports": [
+              "DecayEngine"
+            ]
+          },
+          {
+            "file": "../agent/DecayScheduler.js",
+            "imports": [
+              "DecayScheduler"
+            ]
+          },
+          {
+            "file": "../agent/SalienceEngine.js",
+            "imports": [
+              "SalienceEngine"
+            ]
+          },
+          {
+            "file": "../agent/ContextWindowManager.js",
+            "imports": [
+              "ContextWindowManager"
+            ]
+          },
+          {
+            "file": "../agent/MemoryFormatter.js",
+            "imports": [
+              "MemoryFormatter"
+            ]
+          },
+          {
+            "file": "../agent/AgentMemoryManager.js",
+            "imports": [
+              "AgentMemoryManager"
+            ]
+          },
+          {
+            "file": "../agent/AgentMemoryConfig.js",
+            "imports": [
+              "AgentMemoryConfig"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../utils/constants.js",
             "imports": [
               "getEmbeddingConfig"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "validateFilePath"
             ]
           }
         ],
@@ -626,7 +1955,8 @@
           {
             "file": "../utils/index.js",
             "imports": [
-              "sanitizeObject"
+              "sanitizeObject",
+              "validateFilePath"
             ]
           }
         ],
@@ -2523,7 +3853,8 @@
               "SearchResult",
               "SavedSearch",
               "AutoSearchResult",
-              "Entity"
+              "Entity",
+              "AccessContext"
             ],
             "typeOnly": true
           },
@@ -2575,6 +3906,13 @@
             "imports": [
               "QueryCostEstimator"
             ]
+          },
+          {
+            "file": "../agent/AccessTracker.js",
+            "imports": [
+              "AccessTracker"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -2582,6 +3920,9 @@
         ],
         "classes": [
           "SearchManager"
+        ],
+        "interfaces": [
+          "SearchOptionsWithTracking"
         ]
       },
       "src/search/SearchSuggestions.ts": {
@@ -2802,6 +4143,72 @@
       }
     },
     "types": {
+      "src/types/agent-memory.ts": {
+        "description": "Agent Memory Type Definitions",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "isAgentEntity",
+          "isSessionEntity",
+          "isWorkingMemory",
+          "isEpisodicMemory",
+          "isSemanticMemory",
+          "isProceduralMemory",
+          "AccessContextBuilder"
+        ],
+        "classes": [
+          "AccessContextBuilder"
+        ],
+        "interfaces": [
+          "ConflictInfo",
+          "ObservationSource",
+          "MemorySource",
+          "AgentEntity",
+          "AgentObservation",
+          "SessionEntity",
+          "AccessContext",
+          "SalienceContext",
+          "SalienceWeights",
+          "SalienceComponents",
+          "ScoredEntity",
+          "WorkingMemoryOptions",
+          "DecayOptions",
+          "ForgetOptions",
+          "DecayResult",
+          "ForgetResult",
+          "ConsolidateOptions",
+          "ConsolidationResult",
+          "SummarizationResult",
+          "PatternResult",
+          "MergeResult",
+          "DuplicatePair",
+          "RuleConditions",
+          "ConsolidationRule",
+          "RuleEvaluationResult",
+          "ContextRetrievalOptions",
+          "TokenBreakdown",
+          "ContextPackage",
+          "ExcludedEntity",
+          "AgentMetadata"
+        ],
+        "functions": [
+          "isAgentEntity",
+          "isSessionEntity",
+          "isWorkingMemory",
+          "isEpisodicMemory",
+          "isSemanticMemory",
+          "isProceduralMemory"
+        ]
+      },
       "src/types/index.ts": {
         "description": "Types Module - Barrel Export",
         "externalDependencies": [],
@@ -2815,9 +4222,39 @@
               "KnowledgeGraph",
               "SearchResult"
             ]
+          },
+          {
+            "file": "./agent-memory.js",
+            "imports": [
+              "isAgentEntity",
+              "isSessionEntity",
+              "isWorkingMemory",
+              "isEpisodicMemory",
+              "isSemanticMemory",
+              "isProceduralMemory",
+              "AccessContextBuilder"
+            ],
+            "reExport": true
           }
         ],
-        "exports": []
+        "exports": [
+          "isAgentEntity",
+          "isSessionEntity",
+          "isWorkingMemory",
+          "isEpisodicMemory",
+          "isSemanticMemory",
+          "isProceduralMemory",
+          "AccessContextBuilder"
+        ],
+        "reExported": [
+          "isAgentEntity",
+          "isSessionEntity",
+          "isWorkingMemory",
+          "isEpisodicMemory",
+          "isSemanticMemory",
+          "isProceduralMemory",
+          "AccessContextBuilder"
+        ]
       },
       "src/types/types.ts": {
         "description": "Type Definitions",
@@ -4438,6 +5875,30 @@
     },
     "layers": [
       {
+        "name": "Agent",
+        "files": [
+          "src/agent/AccessTracker.ts",
+          "src/agent/AgentMemoryConfig.ts",
+          "src/agent/AgentMemoryManager.ts",
+          "src/agent/ConflictResolver.ts",
+          "src/agent/ConsolidationPipeline.ts",
+          "src/agent/ContextWindowManager.ts",
+          "src/agent/DecayEngine.ts",
+          "src/agent/DecayScheduler.ts",
+          "src/agent/EpisodicMemoryManager.ts",
+          "src/agent/index.ts",
+          "src/agent/MemoryFormatter.ts",
+          "src/agent/MultiAgentMemoryManager.ts",
+          "src/agent/PatternDetector.ts",
+          "src/agent/RuleEvaluator.ts",
+          "src/agent/SalienceEngine.ts",
+          "src/agent/SessionManager.ts",
+          "src/agent/SessionQueryBuilder.ts",
+          "src/agent/SummarizationService.ts",
+          "src/agent/WorkingMemoryManager.ts"
+        ]
+      },
+      {
         "name": "Core",
         "files": [
           "src/core/EntityManager.ts",
@@ -4511,6 +5972,7 @@
       {
         "name": "Types",
         "files": [
+          "src/types/agent-memory.ts",
           "src/types/index.ts",
           "src/types/types.ts"
         ]
@@ -4548,21 +6010,21 @@
     ]
   },
   "statistics": {
-    "totalTypeScriptFiles": 73,
-    "totalModules": 7,
-    "totalLinesOfCode": 28939,
-    "totalExports": 558,
-    "totalClasses": 73,
-    "totalInterfaces": 145,
-    "totalFunctions": 100,
-    "totalTypeGuards": 3,
+    "totalTypeScriptFiles": 93,
+    "totalModules": 8,
+    "totalLinesOfCode": 40953,
+    "totalExports": 657,
+    "totalClasses": 91,
+    "totalInterfaces": 216,
+    "totalFunctions": 109,
+    "totalTypeGuards": 9,
     "totalEnums": 3,
-    "totalConstants": 57,
-    "totalReExports": 333,
-    "totalTypeOnlyImports": 77,
+    "totalConstants": 58,
+    "totalReExports": 404,
+    "totalTypeOnlyImports": 128,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 2,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 198
+    "unusedExportsCount": 227
   }
 }

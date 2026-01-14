@@ -1,7 +1,7 @@
 # MemoryJS - Project Overview
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-10
+**Version**: 1.2.0
+**Last Updated**: 2026-01-14
 
 ## What Is This?
 
@@ -15,6 +15,7 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
 | **Multiple Backends** | JSONL (human-readable) or SQLite (indexed, FTS5) storage |
 | **Hierarchical Nesting** | Parent-child relationships for tree organization |
 | **Advanced Search** | Basic, TF-IDF ranked, boolean, fuzzy, semantic, and hybrid search |
+| **Agent Memory System** | Working memory, episodic memory, decay, multi-agent support |
 | **Duplicate Detection** | Intelligent compression with similarity scoring |
 | **Graph Algorithms** | Shortest path, centrality, connected components, BFS/DFS traversal |
 | **Multi-format Export** | JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid |
@@ -24,24 +25,26 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
 
 ```
 ┌────────────────────────────────────────────────────────┐
-│              Application / MCP Server                   │
+│              Application / MCP Server / AI Agent        │
 └───────────────────────┬────────────────────────────────┘
                         │ (library usage)
 ┌───────────────────────┴────────────────────────────────┐
 │  Layer 1: ManagerContext (Central Facade)              │
 │  ┌──────────────────────────────────────────────────┐  │
 │  │ Lazy-initialized access to all managers          │  │
+│  │ ctx.agentMemory() - Agent Memory System          │  │
 │  └──────────────────────────────────────────────────┘  │
 └───────────────────────┬────────────────────────────────┘
                         │ (direct manager access)
 ┌───────────────────────┴────────────────────────────────┐
 │  Layer 2: Specialized Managers                         │
-│  • EntityManager     (CRUD + hierarchy + archive)      │
-│  • RelationManager   (relation CRUD)                   │
-│  • SearchManager     (search + compression + analytics)│
-│  • IOManager         (import + export + backup)        │
-│  • TagManager        (tag aliases)                     │
-│  • GraphTraversal    (graph algorithms)                │
+│  • EntityManager       (CRUD + hierarchy + archive)    │
+│  • RelationManager     (relation CRUD)                 │
+│  • SearchManager       (search + compression + analytics)
+│  • IOManager           (import + export + backup)      │
+│  • TagManager          (tag aliases)                   │
+│  • GraphTraversal      (graph algorithms)              │
+│  • AgentMemoryManager  (session, working memory, decay)│
 └───────────────────────┬────────────────────────────────┘
                         │
 ┌───────────────────────┴────────────────────────────────┐
@@ -78,11 +81,31 @@ interface Relation {
 ## Directory Structure
 
 ```
-src/ (73 TypeScript files, ~29,000 lines of code, 558 exports)
+src/ (93 TypeScript files, ~41,000 lines of code, 657 exports)
 ├── index.ts              # Entry point, main exports
 │
+├── agent/ (19 files)     # Agent Memory System
+│   ├── AgentMemoryManager.ts     # Unified facade for all agent operations
+│   ├── AgentMemoryConfig.ts      # Configuration with env var loading
+│   ├── SessionManager.ts         # Session lifecycle management
+│   ├── WorkingMemoryManager.ts   # Short-term memory with promotion
+│   ├── EpisodicMemoryManager.ts  # Timeline-based episodic memory
+│   ├── DecayEngine.ts            # Time-based importance decay
+│   ├── DecayScheduler.ts         # Scheduled decay cycles
+│   ├── SalienceEngine.ts         # Context-aware memory scoring
+│   ├── ContextWindowManager.ts   # LLM context window management
+│   ├── MemoryFormatter.ts        # Memory-to-prompt formatting
+│   ├── MultiAgentMemoryManager.ts # Multi-agent shared memory
+│   ├── ConflictResolver.ts       # Conflict resolution strategies
+│   ├── ConsolidationPipeline.ts  # Memory consolidation pipeline
+│   ├── SummarizationService.ts   # Memory summarization
+│   ├── PatternDetector.ts        # Pattern detection
+│   ├── RuleEvaluator.ts          # Rule-based evaluation
+│   ├── AccessTracker.ts          # Access pattern tracking
+│   └── index.ts                  # Barrel export
+│
 ├── core/ (12 files)      # Core managers and storage
-│   ├── ManagerContext.ts         # Context holder (lazy init, 7 managers)
+│   ├── ManagerContext.ts         # Context holder (lazy init)
 │   ├── EntityManager.ts          # Entity CRUD operations
 │   ├── RelationManager.ts        # Relation CRUD
 │   ├── ObservationManager.ts     # Observation add/delete
@@ -91,8 +114,8 @@ src/ (73 TypeScript files, ~29,000 lines of code, 558 exports)
 │   ├── SQLiteStorage.ts          # SQLite backend (better-sqlite3)
 │   ├── StorageFactory.ts         # Storage backend factory
 │   ├── TransactionManager.ts     # Batch operations
-│   ├── GraphTraversal.ts         # Graph algorithms (BFS, shortest path, centrality)
-│   ├── GraphEventEmitter.ts      # Event-driven TF-IDF sync
+│   ├── GraphTraversal.ts         # Graph algorithms
+│   ├── GraphEventEmitter.ts      # Event-driven updates
 │   └── index.ts                  # Barrel export
 │
 ├── search/ (29 files)    # Search implementations
@@ -101,52 +124,31 @@ src/ (73 TypeScript files, ~29,000 lines of code, 558 exports)
 │   ├── RankedSearch.ts           # TF-IDF scoring
 │   ├── BM25Search.ts             # BM25 ranking algorithm
 │   ├── BooleanSearch.ts          # AND/OR/NOT logic
-│   ├── FuzzySearch.ts            # Levenshtein matching (uses workerpool)
+│   ├── FuzzySearch.ts            # Levenshtein matching
 │   ├── SemanticSearch.ts         # Vector similarity search
 │   ├── HybridSearchManager.ts    # Three-layer hybrid search
-│   ├── EmbeddingService.ts       # OpenAI/Local/Mock embedding providers
-│   ├── VectorStore.ts            # In-memory/SQLite vector storage
-│   ├── QuantizedVectorStore.ts   # Compressed vector storage
-│   ├── TFIDFIndexManager.ts      # TF-IDF index management
-│   ├── TFIDFEventSync.ts         # Event-driven TF-IDF updates
-│   ├── QueryAnalyzer.ts          # Query understanding + entity extraction
-│   ├── QueryPlanner.ts           # Query decomposition + planning
-│   ├── QueryPlanCache.ts         # Query plan caching
-│   ├── QueryCostEstimator.ts     # Query complexity estimation
-│   ├── ParallelSearchExecutor.ts # Parallel search execution
-│   ├── EarlyTerminationManager.ts # Result early termination
-│   ├── IncrementalIndexer.ts     # Incremental index updates
-│   └── index.ts
+│   └── ...
 │
 ├── features/ (9 files)   # Advanced capabilities
 │   ├── TagManager.ts             # Tag aliases
 │   ├── IOManager.ts              # Import + export + backup
-│   ├── StreamingExporter.ts      # Memory-efficient large exports
-│   ├── AnalyticsManager.ts       # Graph stats and validation
 │   ├── ArchiveManager.ts         # Entity archival
-│   ├── CompressionManager.ts     # Duplicate detection and merging
-│   ├── ObservationNormalizer.ts  # Coreference resolution + temporal anchoring
-│   ├── KeywordExtractor.ts       # Scored keyword extraction
-│   └── index.ts
+│   ├── CompressionManager.ts     # Duplicate detection
+│   └── ...
 │
-├── types/ (2 files)      # TypeScript definitions
-│   ├── types.ts                  # All type definitions
+├── types/ (3 files)      # TypeScript definitions
+│   ├── types.ts                  # Core type definitions
+│   ├── agent-memory.ts           # Agent memory types
 │   └── index.ts                  # Barrel export
 │
 ├── utils/ (18 files)     # Shared utilities
 │   ├── schemas.ts                # Zod validation schemas
-│   ├── constants.ts              # Shared constants
-│   ├── formatters.ts             # Response formatting
-│   ├── entityUtils.ts            # Entity helper functions
-│   ├── searchAlgorithms.ts       # Levenshtein + TF-IDF algorithms
 │   ├── BatchProcessor.ts         # Batch processing utilities
-│   ├── CompressedCache.ts        # Compression-enabled caching
 │   ├── WorkerPoolManager.ts      # Worker pool management
-│   ├── MemoryMonitor.ts          # Memory usage monitoring
-│   └── index.ts
+│   └── ...
 │
 └── workers/ (2 files)    # Web workers for CPU-intensive tasks
-    ├── levenshteinWorker.ts      # Levenshtein distance calculations
+    ├── levenshteinWorker.ts      # Levenshtein calculations
     └── index.ts
 ```
 
@@ -209,8 +211,10 @@ const results = await ctx.searchManager.search('TypeScript');
 
 - **[Architecture Details](./ARCHITECTURE.md)** - In-depth technical architecture
 - **[Component Reference](./COMPONENTS.md)** - Complete component documentation
+- **[Agent Memory System](./AGENT_MEMORY.md)** - AI agent memory documentation
 - **[Data Flow](./DATAFLOW.md)** - Data flow patterns
 - **[API Reference](./API.md)** - Public API documentation
+- **[Dependency Graph](./DEPENDENCY_GRAPH.md)** - Complete dependency analysis
 - **[Test Coverage](./TEST_COVERAGE.md)** - Test coverage analysis
 
 ---

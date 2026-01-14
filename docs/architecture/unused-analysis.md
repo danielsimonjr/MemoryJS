@@ -1,11 +1,11 @@
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-01-10
+**Generated**: 2026-01-14
 
 ## Summary
 
 - **Potentially unused files**: 0
-- **Potentially unused exports**: 198
+- **Potentially unused exports**: 227
 
 ## Potentially Unused Files
 
@@ -15,6 +15,58 @@ These files are not imported by any other file in the codebase:
 ## Potentially Unused Exports
 
 These exports are not imported by any other file in the codebase:
+
+### `src/agent/AccessTracker.ts`
+
+- `AccessStats` (interface)
+- `AccessTrackerConfig` (interface)
+
+### `src/agent/AgentMemoryManager.ts`
+
+- `CreateMemoryOptions` (interface)
+- `RetrieveContextOptions` (interface)
+
+### `src/agent/ConsolidationPipeline.ts`
+
+- `PipelineStage` (interface)
+- `StageResult` (interface)
+
+### `src/agent/ContextWindowManager.ts`
+
+- `SpilloverResult` (interface)
+
+### `src/agent/DecayEngine.ts`
+
+- `DecayOperationOptions` (interface)
+- `ReinforcementOptions` (interface)
+
+### `src/agent/SessionManager.ts`
+
+- `SessionHistoryOptions` (interface)
+
+### `src/agent/SessionQueryBuilder.ts`
+
+- `SessionSearchOptions` (interface)
+- `EntityWithContext` (interface)
+- `SearchFunction` (type)
+
+### `src/agent/SummarizationService.ts`
+
+- `GroupingResult` (interface)
+
+### `src/agent/WorkingMemoryManager.ts`
+
+- `SessionMemoryFilter` (interface)
+- `PromotionMarkOptions` (interface)
+- `PromotionCriteria` (interface)
+
+### `src/core/EntityManager.ts`
+
+- `GetEntityOptions` (interface)
+
+### `src/core/GraphTraversal.ts`
+
+- `TraversalOptionsWithTracking` (interface)
 
 ### `src/core/TransactionManager.ts`
 
@@ -119,6 +171,10 @@ These exports are not imported by any other file in the codebase:
 - `RefinementHistoryEntry` (interface)
 - `ReflectionResult` (interface)
 
+### `src/search/SearchManager.ts`
+
+- `SearchOptionsWithTracking` (interface)
+
 ### `src/search/SymbolicSearch.ts`
 
 - `SymbolicResult` (interface)
@@ -127,15 +183,28 @@ These exports are not imported by any other file in the codebase:
 
 - `SQLiteStorageWithEmbeddings` (interface)
 
+### `src/types/agent-memory.ts`
+
+- `ObservationSource` (interface)
+- `MemorySource` (interface)
+- `AgentObservation` (interface)
+- `SalienceWeights` (interface)
+- `DecayOptions` (interface)
+- `MemoryAcquisitionMethod` (type)
+- `TemporalFocus` (type)
+- `WorkingMemoryEntity` (type)
+- `EpisodicMemoryEntity` (type)
+- `SemanticMemoryEntity` (type)
+- `ProceduralMemoryEntity` (type)
+- `ConsolidationAction` (type)
+
 ### `src/types/types.ts`
 
-- `Relation` (interface)
 - `KnowledgeGraph` (interface)
 - `FuzzyCacheKey` (interface)
 - `BooleanCacheEntry` (interface)
 - `PaginatedCacheEntry` (interface)
 - `TokenizedEntity` (interface)
-- `SearchResult` (interface)
 - `SavedSearch` (interface)
 - `DocumentVector` (interface)
 - `TFIDFIndex` (interface)
@@ -158,7 +227,6 @@ These exports are not imported by any other file in the codebase:
 - `TagAlias` (interface)
 - `LowercaseData` (interface)
 - `StorageConfig` (interface)
-- `IGraphStorage` (interface)
 - `TraversalOptions` (interface)
 - `TraversalResult` (interface)
 - `PathResult` (interface)

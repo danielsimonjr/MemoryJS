@@ -1,13 +1,13 @@
 # MemoryJS
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
 A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search capabilities**, **hierarchical organization**, and **multiple storage backends**.
 
-> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides 73 TypeScript files, ~29K lines of code, dual storage backends (JSONL/SQLite), and sophisticated search algorithms including BM25, TF-IDF, fuzzy, semantic, and hybrid search.
+> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **93 TypeScript files**, **~41K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid), and a complete **Agent Memory System** for AI agents.
 
 ## Table of Contents
 
@@ -18,6 +18,7 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 - [Storage Options](#storage-options)
 - [Search Capabilities](#search-capabilities)
 - [Graph Algorithms](#graph-algorithms)
+- [Agent Memory System](#agent-memory-system)
 - [API Reference](#api-reference)
 - [Configuration](#configuration)
 - [Development](#development)
@@ -50,14 +51,15 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 
 | Module | Files | Key Components |
 |--------|-------|----------------|
+| `agent/` | 19 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager |
 | `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
 | `search/` | 29 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner |
 | `features/` | 9 | IOManager, ArchiveManager, CompressionManager, StreamingExporter |
 | `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor |
-| `types/` | 2 | Entity, Relation, KnowledgeGraph interfaces |
+| `types/` | 3 | Entity, Relation, AgentEntity, SessionEntity interfaces |
 | `workers/` | 2 | Levenshtein distance calculations |
 
-**Total:** 73 TypeScript files | ~29,000 lines of code | 558 exports
+**Total:** 93 TypeScript files | ~41,000 lines of code | 657 exports | 91 classes | 216 interfaces
 
 ## Installation
 
@@ -353,6 +355,110 @@ await ctx.graphTraversal.dfs('startNode', (node) => {
 });
 ```
 
+## Agent Memory System
+
+A complete memory system for AI agents with working memory, episodic memory, decay mechanisms, and multi-agent support.
+
+### Key Components
+
+| Component | Description |
+|-----------|-------------|
+| **AgentMemoryManager** | Unified facade for all agent memory operations |
+| **SessionManager** | Session lifecycle management |
+| **WorkingMemoryManager** | Short-term memory with promotion to long-term |
+| **EpisodicMemoryManager** | Timeline-based episodic memory |
+| **DecayEngine** | Time-based memory importance decay |
+| **SalienceEngine** | Context-aware memory scoring |
+| **MultiAgentMemoryManager** | Shared memory with visibility controls |
+| **ConflictResolver** | Resolution strategies for concurrent updates |
+
+### Quick Start
+
+```typescript
+import { ManagerContext } from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./memory.jsonl');
+const agent = ctx.agentMemory();
+
+// Start a session
+const session = await agent.startSession({ agentId: 'my-agent' });
+
+// Add working memory
+await agent.addWorkingMemory({
+  sessionId: session.name,
+  content: 'User prefers dark mode',
+  importance: 7
+});
+
+// Create episodic memory
+await agent.createEpisode('Completed onboarding flow', {
+  sessionId: session.name,
+  importance: 8
+});
+
+// Retrieve context for LLM prompt
+const context = await agent.retrieveForContext({
+  maxTokens: 2000,
+  includeEpisodic: true
+});
+
+// End session
+await agent.endSession(session.name);
+```
+
+### Memory Types
+
+```typescript
+type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural';
+```
+
+- **Working Memory**: Short-term, session-scoped memories that may be promoted
+- **Episodic Memory**: Timeline-based event memories with temporal ordering
+- **Semantic Memory**: Long-term factual knowledge
+- **Procedural Memory**: Learned behaviors and patterns
+
+### Decay System
+
+Memories naturally decay over time unless reinforced:
+
+```typescript
+// Configure decay behavior
+const agent = ctx.agentMemory({
+  decay: {
+    halfLifeHours: 168,  // 1 week half-life
+    minImportance: 0.1   // Never fully forget
+  },
+  enableAutoDecay: true
+});
+
+// Reinforce important memories
+await agent.confirmMemory('memory_name', 0.1);  // Boost confidence
+await agent.promoteMemory('memory_name', 'episodic');  // Promote to long-term
+```
+
+### Multi-Agent Support
+
+```typescript
+// Register agents
+agent.registerAgent('agent_1', {
+  name: 'Research Agent',
+  type: 'llm',
+  trustLevel: 0.8,
+  capabilities: ['read', 'write']
+});
+
+// Create memories with visibility controls
+await agent.addWorkingMemory({
+  sessionId: session.name,
+  content: 'Shared insight',
+  visibility: 'shared',  // 'private' | 'shared' | 'public'
+  ownerAgentId: 'agent_1'
+});
+
+// Cross-agent search
+const results = await agent.searchCrossAgent('agent_2', 'query');
+```
+
 ## API Reference
 
 ### EntityManager
@@ -472,8 +578,18 @@ npm run typecheck     # Type checking without emit
 
 ```
 memoryjs/
-├── src/                            # Source (73 TypeScript files)
+├── src/                            # Source (93 TypeScript files)
 │   ├── index.ts                    # Entry point
+│   ├── agent/                      # Agent Memory System (19 files)
+│   │   ├── AgentMemoryManager.ts       # Unified facade
+│   │   ├── SessionManager.ts           # Session lifecycle
+│   │   ├── WorkingMemoryManager.ts     # Working memory
+│   │   ├── EpisodicMemoryManager.ts    # Episodic memory
+│   │   ├── DecayEngine.ts              # Memory decay
+│   │   ├── SalienceEngine.ts           # Context scoring
+│   │   ├── MultiAgentMemoryManager.ts  # Multi-agent support
+│   │   ├── ConflictResolver.ts         # Conflict resolution
+│   │   └── ...
 │   ├── core/                       # Core managers (12 files)
 │   │   ├── ManagerContext.ts           # Context holder (lazy init)
 │   │   ├── EntityManager.ts            # Entity CRUD + hierarchy
@@ -497,10 +613,10 @@ memoryjs/
 │   │   ├── ArchiveManager.ts           # Entity archival
 │   │   ├── CompressionManager.ts       # Duplicate detection
 │   │   └── ...
-│   ├── types/                      # TypeScript definitions (2 files)
+│   ├── types/                      # TypeScript definitions (3 files)
 │   ├── utils/                      # Shared utilities (18 files)
 │   └── workers/                    # Worker pool (2 files)
-├── tests/                          # Test suite
+├── tests/                          # Test suite (3600+ tests)
 │   ├── unit/                       # Unit tests
 │   ├── integration/                # Integration tests
 │   └── performance/                # Benchmarks

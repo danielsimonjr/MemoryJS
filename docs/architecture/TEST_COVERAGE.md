@@ -1,13 +1,14 @@
 # Test Coverage Analysis
 
-**Generated**: 2026-01-10
+**Generated**: 2026-01-14
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Total Source Files | ~55 |
-| Total Test Files | 90 |
+| Total Source Files | 93 |
+| Total Test Files | 109 |
+| Total Tests | 3,604 |
 | Test Categories | 5 |
 
 ---

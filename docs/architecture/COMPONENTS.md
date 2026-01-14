@@ -1,7 +1,7 @@
 # MemoryJS - Component Reference
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-10
+**Version**: 1.2.0
+**Last Updated**: 2026-01-14
 
 ---
 
