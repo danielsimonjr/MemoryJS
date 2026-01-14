@@ -30,6 +30,8 @@ import { DecayScheduler } from '../agent/DecayScheduler.js';
 import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
+import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
+import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
 
@@ -64,6 +66,7 @@ export class ManagerContext {
   private _salienceEngine?: SalienceEngine;
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
+  private _agentMemory?: AgentMemoryManager;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -304,6 +307,25 @@ export class ManagerContext {
       });
     }
     return this._memoryFormatter;
+  }
+
+  /**
+   * AgentMemoryManager - Phase 5 Agent Memory: Unified facade for all agent memory operations.
+   *
+   * Provides high-level API for:
+   * - Session lifecycle management
+   * - Working memory creation and management
+   * - Memory consolidation and promotion
+   * - Context retrieval for LLM consumption
+   * - Multi-agent memory coordination
+   *
+   * @param config - Optional configuration override (default: loaded from env vars)
+   */
+  agentMemory(config?: AgentMemoryConfig): AgentMemoryManager {
+    if (!this._agentMemory || config) {
+      this._agentMemory = new AgentMemoryManager(this.storage, config);
+    }
+    return this._agentMemory;
   }
 
   // ==================== Environment Variable Helpers ====================

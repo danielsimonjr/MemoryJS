@@ -106,3 +106,16 @@ export {
   type ConflictResolverConfig,
   type ResolutionResult,
 } from './ConflictResolver.js';
+
+export {
+  AgentMemoryManager,
+  type CreateMemoryOptions,
+  type RetrieveContextOptions,
+} from './AgentMemoryManager.js';
+
+export {
+  type AgentMemoryConfig,
+  loadConfigFromEnv,
+  mergeConfig,
+  validateConfig,
+} from './AgentMemoryConfig.js';

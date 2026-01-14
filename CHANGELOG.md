@@ -437,6 +437,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - memory:merged event on cross-agent merge
 - **New Types**: ConflictStrategy, ConflictInfo, ConflictResolverConfig, ResolutionResult
 
+#### Sprint 25: Integration and Facade
+- **AgentMemoryManager Class**: Unified facade for all agent memory operations
+  - Session lifecycle: startSession(), endSession(), getActiveSession()
+  - Working memory: addWorkingMemory(), getSessionMemories(), confirmMemory(), promoteMemory()
+  - Episodic memory: createEpisode(), getTimeline()
+  - Context retrieval: retrieveForContext(), formatForPrompt()
+  - Decay management: getDecayedMemories(), forgetWeakMemories(), reinforceMemory()
+  - Multi-agent: registerAgent(), getSharedMemories(), searchCrossAgent(), detectConflicts()
+- **AgentMemoryConfig Interface**: Unified configuration for all components
+  - Environment variable loading via loadConfigFromEnv()
+  - Programmatic configuration with mergeConfig()
+  - Configuration validation with validateConfig()
+- **ManagerContext Integration**: agentMemory() accessor for facade
+  - Optional configuration override parameter
+  - Lazy initialization with proper dependency wiring
+- **Component Lazy Loading**: All sub-managers initialized on demand
+  - workingMemory, sessionManager, episodicMemory, consolidationPipeline
+  - salienceEngine, contextWindowManager, memoryFormatter
+  - multiAgentManager, conflictResolver
+- **Event System**: Unified events for memory operations
+  - session:started, session:ended, memory:created, memory:expired
+  - consolidation:complete, memory:forgotten, agent:registered, manager:stopped
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -459,6 +482,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 25 unit tests for PatternDetector
 - Added 13 unit tests for ConflictResolver
 - Added 76 unit tests for MultiAgentMemoryManager (31 Sprint 21 + 19 Sprint 22 + 18 Sprint 23 + 8 Sprint 24)
+- Added 23 unit tests for AgentMemoryManager facade
 
 ## [1.1.0] - 2026-01-11
 
