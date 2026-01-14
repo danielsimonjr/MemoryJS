@@ -53,3 +53,11 @@ export {
   type EntityWithContext,
   type SearchFunction,
 } from './SessionQueryBuilder.js';
+
+export {
+  EpisodicMemoryManager,
+  EpisodicRelations,
+  type EpisodicMemoryConfig,
+  type CreateEpisodeOptions,
+  type TimelineOptions,
+} from './EpisodicMemoryManager.js';

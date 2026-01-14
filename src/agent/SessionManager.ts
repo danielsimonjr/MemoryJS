@@ -7,13 +7,15 @@
  * @module agent/SessionManager
  */
 
-import type { IGraphStorage, Entity } from '../types/types.js';
+import type { IGraphStorage, Entity, Relation } from '../types/types.js';
 import type {
+  AgentEntity,
   SessionEntity,
   SessionStatus,
 } from '../types/agent-memory.js';
 import { isSessionEntity } from '../types/agent-memory.js';
 import { WorkingMemoryManager } from './WorkingMemoryManager.js';
+import type { EpisodicMemoryManager } from './EpisodicMemoryManager.js';
 
 /**
  * Configuration for SessionManager.
@@ -25,6 +27,8 @@ export interface SessionConfig {
   cleanupOnEnd?: boolean;
   /** Promote high-confidence memories on end (default: true) */
   promoteOnEnd?: boolean;
+  /** Create episodic summary on session end (default: true when episodicMemory provided) */
+  createSummaryOnEnd?: boolean;
   /** Default agent ID for sessions */
   defaultAgentId?: string;
 }
@@ -77,6 +81,8 @@ export interface EndSessionResult {
   memoriesCleaned: number;
   /** Number of memories promoted */
   memoriesPromoted: number;
+  /** Episodic summary created (if enabled) */
+  summary?: AgentEntity;
 }
 
 /**
@@ -110,6 +116,7 @@ export interface EndSessionResult {
 export class SessionManager {
   private readonly storage: IGraphStorage;
   private readonly workingMemory: WorkingMemoryManager;
+  private readonly episodicMemory?: EpisodicMemoryManager;
   private readonly config: Required<SessionConfig>;
 
   // Active sessions: sessionId -> SessionEntity
@@ -118,14 +125,17 @@ export class SessionManager {
   constructor(
     storage: IGraphStorage,
     workingMemory: WorkingMemoryManager,
-    config: SessionConfig = {}
+    config: SessionConfig = {},
+    episodicMemory?: EpisodicMemoryManager
   ) {
     this.storage = storage;
     this.workingMemory = workingMemory;
+    this.episodicMemory = episodicMemory;
     this.config = {
       consolidateOnEnd: config.consolidateOnEnd ?? false,
       cleanupOnEnd: config.cleanupOnEnd ?? false,
       promoteOnEnd: config.promoteOnEnd ?? true,
+      createSummaryOnEnd: config.createSummaryOnEnd ?? (episodicMemory !== undefined),
       defaultAgentId: config.defaultAgentId ?? 'default',
     };
     this.activeSessions = new Map();
@@ -355,11 +365,61 @@ export class SessionManager {
       observations: [...currentObs, `Session ended: ${status} at ${now}`],
     };
 
+    // Create episodic summary if configured
+    let summary: AgentEntity | undefined;
+    if (this.config.createSummaryOnEnd && this.episodicMemory) {
+      summary = await this.createSessionSummary(updatedSession);
+    }
+
     return {
       session: updatedSession,
       memoriesCleaned,
       memoriesPromoted,
+      summary,
     };
+  }
+
+  // ==================== Session Summary ====================
+
+  /**
+   * Create episodic summary of session.
+   * @internal
+   */
+  private async createSessionSummary(
+    session: SessionEntity
+  ): Promise<AgentEntity | undefined> {
+    if (!this.episodicMemory) return undefined;
+
+    // Get session working memories
+    const memories = await this.workingMemory.getSessionMemories(session.name);
+
+    // Create summary content
+    const summaryContent = [
+      `Session: ${session.goalDescription ?? 'Conversation'}`,
+      `Started: ${session.startedAt}`,
+      `Ended: ${session.endedAt ?? 'N/A'}`,
+      `Status: ${session.status}`,
+      `Memories created: ${memories.length}`,
+    ].join('\n');
+
+    // Create episodic summary
+    const summaryEntity = await this.episodicMemory.createEpisode(summaryContent, {
+      sessionId: session.name,
+      entityType: 'session_summary',
+      importance: 7,
+      confidence: 1.0,
+      agentId: session.agentId,
+    });
+
+    // Link session to summary
+    await this.storage.appendRelation({
+      from: session.name,
+      to: summaryEntity.name,
+      relationType: 'has_summary',
+      createdAt: new Date().toISOString(),
+    } as Relation);
+
+    return summaryEntity;
   }
 
   // ==================== Session Queries ====================

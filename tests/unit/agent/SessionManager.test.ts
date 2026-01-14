@@ -689,3 +689,138 @@ describe('SessionManager Helpers', () => {
     expect(sm.getActiveSessionCount()).toBe(2);
   });
 });
+
+// ==================== Session Summary Integration Tests ====================
+
+describe('SessionManager with EpisodicMemoryManager', () => {
+  // Mock EpisodicMemoryManager
+  function createMockEpisodicMemory() {
+    const createdEpisodes: AgentEntity[] = [];
+
+    return {
+      createEpisode: vi.fn(async (content: string, options?: Record<string, unknown>) => {
+        const now = new Date().toISOString();
+        const name = `episode_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const episode: AgentEntity = {
+          name,
+          entityType: options?.entityType as string ?? 'episode',
+          observations: [content],
+          createdAt: now,
+          lastModified: now,
+          importance: options?.importance as number ?? 5,
+          memoryType: 'episodic',
+          sessionId: options?.sessionId as string,
+          accessCount: 0,
+          confidence: options?.confidence as number ?? 0.8,
+          confirmationCount: 0,
+          visibility: 'private',
+          agentId: options?.agentId as string,
+        };
+        createdEpisodes.push(episode);
+        return episode;
+      }),
+      getCreatedEpisodes: () => createdEpisodes,
+    };
+  }
+
+  it('should create session summary when ending session with episodicMemory', async () => {
+    const storage = createMockStorage();
+    const wmm = new WorkingMemoryManager(storage);
+    const emm = createMockEpisodicMemory();
+
+    const sm = new SessionManager(
+      storage,
+      wmm,
+      { createSummaryOnEnd: true, promoteOnEnd: false },
+      emm as unknown as import('../../../src/agent/EpisodicMemoryManager.js').EpisodicMemoryManager
+    );
+
+    const session = await sm.startSession({
+      goalDescription: 'Test session for summary',
+    });
+
+    const result = await sm.endSession(session.name, 'completed');
+
+    expect(result.summary).toBeDefined();
+    expect(result.summary?.entityType).toBe('session_summary');
+    expect(result.summary?.observations[0]).toContain('Test session for summary');
+    expect(emm.createEpisode).toHaveBeenCalled();
+  });
+
+  it('should include session metadata in summary', async () => {
+    const storage = createMockStorage();
+    const wmm = new WorkingMemoryManager(storage);
+    const emm = createMockEpisodicMemory();
+
+    const sm = new SessionManager(
+      storage,
+      wmm,
+      { createSummaryOnEnd: true, promoteOnEnd: false },
+      emm as unknown as import('../../../src/agent/EpisodicMemoryManager.js').EpisodicMemoryManager
+    );
+
+    const session = await sm.startSession({
+      goalDescription: 'Detailed session',
+    });
+
+    await sm.endSession(session.name, 'completed');
+
+    const summaryContent = (emm.createEpisode as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(summaryContent).toContain('Session: Detailed session');
+    expect(summaryContent).toContain('Status: completed');
+  });
+
+  it('should not create summary when createSummaryOnEnd is false', async () => {
+    const storage = createMockStorage();
+    const wmm = new WorkingMemoryManager(storage);
+    const emm = createMockEpisodicMemory();
+
+    const sm = new SessionManager(
+      storage,
+      wmm,
+      { createSummaryOnEnd: false, promoteOnEnd: false },
+      emm as unknown as import('../../../src/agent/EpisodicMemoryManager.js').EpisodicMemoryManager
+    );
+
+    const session = await sm.startSession();
+    const result = await sm.endSession(session.name, 'completed');
+
+    expect(result.summary).toBeUndefined();
+    expect(emm.createEpisode).not.toHaveBeenCalled();
+  });
+
+  it('should not create summary when episodicMemory is not provided', async () => {
+    const storage = createMockStorage();
+    const wmm = new WorkingMemoryManager(storage);
+
+    const sm = new SessionManager(storage, wmm, { promoteOnEnd: false });
+
+    const session = await sm.startSession();
+    const result = await sm.endSession(session.name, 'completed');
+
+    expect(result.summary).toBeUndefined();
+  });
+
+  it('should link session to summary via relation', async () => {
+    const storage = createMockStorage();
+    const wmm = new WorkingMemoryManager(storage);
+    const emm = createMockEpisodicMemory();
+
+    const sm = new SessionManager(
+      storage,
+      wmm,
+      { createSummaryOnEnd: true, promoteOnEnd: false },
+      emm as unknown as import('../../../src/agent/EpisodicMemoryManager.js').EpisodicMemoryManager
+    );
+
+    const session = await sm.startSession();
+    await sm.endSession(session.name, 'completed');
+
+    expect(storage.appendRelation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: session.name,
+        relationType: 'has_summary',
+      })
+    );
+  });
+});

@@ -135,6 +135,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - EntityWithContext interface for typed context access
 - **New Interfaces**: SessionSearchOptions, EntityWithContext, SearchFunction
 
+#### Sprint 10: Episodic Memory Structure
+- **EpisodicMemoryManager Class**: Temporal and causal organization of event history
+  - createEpisode() for creating episodic memories with session/task context
+  - createEventSequence() for batch creation of linked events
+  - linkSequence() for linking existing events in temporal order
+- **Temporal Relations**: Bidirectional event sequencing
+  - EpisodicRelations constants (PRECEDES, FOLLOWS, CAUSES, CAUSED_BY, PART_OF_SEQUENCE)
+  - Automatic linking when previousEventId specified
+  - getNextEvent() and getPreviousEvent() for navigation
+- **Timeline Queries**: Chronological retrieval of episodic memories
+  - getTimeline() with ascending/descending order and time range filtering
+  - iterateForward() and iterateBackward() async generators
+  - Pagination support with limit/offset
+  - getAllEpisodes() for cross-session retrieval
+- **Causal Relationship Tracking**: Cause-effect chains between events
+  - addCausalLink() creates bidirectional causes/caused_by relations
+  - getCausalChain() traverses causal chains with cycle detection
+  - getDirectCauses() and getDirectEffects() for immediate relationships
+- **Session Integration**: Automatic session summaries on end
+  - SessionManager creates episodic summary when session ends
+  - Summary includes goal, timestamps, status, and memory count
+  - has_summary relation links session to summary
+  - createSummaryOnEnd config option (default: true when EpisodicMemoryManager provided)
+- **New Interfaces**: EpisodicMemoryConfig, CreateEpisodeOptions, TimelineOptions
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -145,8 +170,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 21 unit tests for DecayScheduler
 - Added 4 integration tests for DecayEngine context access
 - Added 58 unit tests for WorkingMemoryManager (32 Sprint 6 + 26 Sprint 7)
-- Added 39 unit tests for SessionManager
+- Added 44 unit tests for SessionManager (39 Sprint 8 + 5 Sprint 10 integration)
 - Added 20 unit tests for SessionQueryBuilder
+- Added 30 unit tests for EpisodicMemoryManager
 
 ## [1.1.0] - 2026-01-11
 
