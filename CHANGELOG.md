@@ -116,6 +116,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - EndSessionResult with promotion and cleanup statistics
 - **New Interfaces**: SessionConfig, StartSessionOptions, SessionHistoryOptions, EndSessionResult
 
+#### Sprint 9: Session-Scoped Queries
+- **SessionQueryBuilder Class**: Fluent interface for building session-scoped queries
+  - forSession() to restrict to single session
+  - forSessions() to search across multiple sessions
+  - withRelatedSessions() to include related session memories
+  - fromCurrentSession() and fromLastNSessions() for common patterns
+  - Chainable filter methods for task, importance, and memory types
+- **Temporal Query Helpers**: Easy date-based filtering
+  - createdToday() for today's memories only
+  - createdInLastHours(n) and createdInLastDays(n) for relative time
+  - inTimeRange(start, end) for explicit date ranges
+- **Cross-Session Search**: Search across multiple sessions with ranking
+  - searchWithRecencyRanking() applies recency boost to recent sessions
+  - Deduplication across session boundaries
+- **Entity With Context**: Retrieve entities with session metadata
+  - getEntityWithContext() returns entity with session and related sessions
+  - EntityWithContext interface for typed context access
+- **New Interfaces**: SessionSearchOptions, EntityWithContext, SearchFunction
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -127,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 4 integration tests for DecayEngine context access
 - Added 58 unit tests for WorkingMemoryManager (32 Sprint 6 + 26 Sprint 7)
 - Added 39 unit tests for SessionManager
+- Added 20 unit tests for SessionQueryBuilder
 
 ## [1.1.0] - 2026-01-11
 

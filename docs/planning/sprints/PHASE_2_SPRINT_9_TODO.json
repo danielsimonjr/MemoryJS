@@ -4,9 +4,9 @@
   "title": "Session-Scoped Queries",
   "priority": "MEDIUM",
   "effort": "5 hours",
-  "status": "pending",
-  "completedAt": null,
-  "implementationNotes": null,
+  "status": "completed",
+  "completedAt": "2026-01-13",
+  "implementationNotes": "Implemented SessionQueryBuilder as standalone fluent interface using storage directly instead of SearchManager. Added 20 unit tests. All acceptance criteria met.",
   "impact": "Enables session-aware search and temporal queries across conversations",
   "targetMetrics": {
     "queryCapability": {

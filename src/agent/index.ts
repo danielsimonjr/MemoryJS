@@ -46,3 +46,10 @@ export {
   type SessionHistoryOptions,
   type EndSessionResult,
 } from './SessionManager.js';
+
+export {
+  SessionQueryBuilder,
+  type SessionSearchOptions,
+  type EntityWithContext,
+  type SearchFunction,
+} from './SessionQueryBuilder.js';
