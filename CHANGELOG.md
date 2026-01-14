@@ -97,6 +97,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-promotion trigger when thresholds met (if enabled)
 - **New Interfaces**: PromotionMarkOptions, PromotionCriteria, PromotionResult, ConfirmationResult
 
+#### Sprint 8: Session Management
+- **SessionManager Class**: Full session lifecycle management for conversations and tasks
+  - startSession() with auto-generated or custom session IDs
+  - Support for goal description, task type, and user intent metadata
+  - Session continuation via previousSessionId linking
+  - endSession() with configurable cleanup and promotion
+  - getActiveSession() and getActiveSessions() for current session queries
+  - getSessionHistory() with filtering by status, taskType, agentId, date range
+  - Pagination support for session history
+- **Session Linking**: Bidirectional session relationship management
+  - linkSessions() for relating multiple sessions
+  - getSessionChain() for traversing session continuity chains
+  - Automatic linking when continuing from previous session
+- **End Session Options**: Configurable behavior on session end
+  - promoteOnEnd: Promote high-confidence memories to long-term storage
+  - cleanupOnEnd: Delete remaining working memories
+  - EndSessionResult with promotion and cleanup statistics
+- **New Interfaces**: SessionConfig, StartSessionOptions, SessionHistoryOptions, EndSessionResult
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -107,6 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 21 unit tests for DecayScheduler
 - Added 4 integration tests for DecayEngine context access
 - Added 58 unit tests for WorkingMemoryManager (32 Sprint 6 + 26 Sprint 7)
+- Added 39 unit tests for SessionManager
 
 ## [1.1.0] - 2026-01-11
 

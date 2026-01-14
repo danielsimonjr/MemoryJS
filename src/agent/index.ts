@@ -38,3 +38,11 @@ export {
   type PromotionResult,
   type ConfirmationResult,
 } from './WorkingMemoryManager.js';
+
+export {
+  SessionManager,
+  type SessionConfig,
+  type StartSessionOptions,
+  type SessionHistoryOptions,
+  type EndSessionResult,
+} from './SessionManager.js';
