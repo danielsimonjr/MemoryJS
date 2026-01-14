@@ -19,4 +19,12 @@ export {
   type DecayOperationOptions,
   type ReinforcementOptions,
   type DecayResult,
+  type ForgetOptions,
+  type ForgetResult,
 } from './DecayEngine.js';
+
+export {
+  DecayScheduler,
+  type DecaySchedulerConfig,
+  type DecayCycleResult,
+} from './DecayScheduler.js';

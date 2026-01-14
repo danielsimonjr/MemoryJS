@@ -9,12 +9,12 @@
  */
 
 import type { IGraphStorage } from '../types/types.js';
-import type { AgentEntity, DecayResult } from '../types/agent-memory.js';
+import type { AgentEntity, DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 
 // Re-export for convenience
-export type { DecayResult } from '../types/agent-memory.js';
+export type { DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
 
 /**
  * Configuration options for DecayEngine constructor.
@@ -329,6 +329,118 @@ export class DecayEngine {
 
     // Persist updates
     await this.storage.updateEntity(entityName, updates as Record<string, unknown>);
+  }
+
+  // ==================== Forgetting Operations ====================
+
+  /**
+   * Forget (delete or archive) memories below threshold.
+   *
+   * Selects memories based on:
+   * - Effective importance below threshold
+   * - Age filter (olderThanHours)
+   * - Tag exclusions (excludeTags)
+   *
+   * In non-dry-run mode, removes both entities and their relations.
+   *
+   * @param options - Forget operation options
+   * @returns Results of the forget operation
+   *
+   * @example
+   * ```typescript
+   * // Preview what would be forgotten
+   * const preview = await decay.forgetWeakMemories({
+   *   effectiveImportanceThreshold: 0.5,
+   *   excludeTags: ['important', 'permanent'],
+   *   dryRun: true
+   * });
+   *
+   * // Actually forget
+   * const result = await decay.forgetWeakMemories({
+   *   effectiveImportanceThreshold: 0.5,
+   *   olderThanHours: 168 // Only forget if > 1 week old
+   * });
+   * ```
+   */
+  async forgetWeakMemories(options: ForgetOptions): Promise<ForgetResult> {
+    const graph = await this.storage.loadGraph();
+    const now = Date.now();
+
+    const forgottenNames: string[] = [];
+    let memoriesProtected = 0;
+    let memoriesTooYoung = 0;
+
+    const excludeTagSet = new Set(
+      (options.excludeTags ?? []).map(t => t.toLowerCase())
+    );
+
+    for (const entity of graph.entities) {
+      if (!isAgentEntity(entity)) continue;
+
+      const agentEntity = entity;
+
+      // Check effective importance
+      const effectiveImportance = this.calculateEffectiveImportance(agentEntity);
+      if (effectiveImportance >= options.effectiveImportanceThreshold) {
+        continue;
+      }
+
+      // Check age filter
+      if (options.olderThanHours !== undefined) {
+        const createdAt = agentEntity.createdAt
+          ? new Date(agentEntity.createdAt).getTime()
+          : now;
+        const ageHours = (now - createdAt) / (1000 * 60 * 60);
+
+        if (ageHours < options.olderThanHours) {
+          memoriesTooYoung++;
+          continue;
+        }
+      }
+
+      // Check protected tags
+      const entityTags = new Set(
+        (agentEntity.tags ?? []).map(t => t.toLowerCase())
+      );
+      const hasProtectedTag = [...excludeTagSet].some(tag => entityTags.has(tag));
+
+      if (hasProtectedTag) {
+        memoriesProtected++;
+        continue;
+      }
+
+      // Mark for forgetting
+      forgottenNames.push(agentEntity.name);
+    }
+
+    // Execute forgetting if not dry run
+    if (!options.dryRun && forgottenNames.length > 0) {
+      const forgottenSet = new Set(forgottenNames);
+
+      // Remove forgotten entities
+      const updatedEntities = graph.entities.filter(
+        e => !forgottenSet.has(e.name)
+      );
+
+      // Remove relations involving forgotten entities
+      const updatedRelations = graph.relations.filter(
+        r => !forgottenSet.has(r.from) && !forgottenSet.has(r.to)
+      );
+
+      // Save updated graph
+      await this.storage.saveGraph({
+        entities: updatedEntities,
+        relations: updatedRelations,
+      });
+    }
+
+    return {
+      memoriesForgotten: forgottenNames.length,
+      forgottenNames,
+      memoriesProtected,
+      memoriesTooYoung,
+      dryRun: options.dryRun ?? false,
+    };
   }
 
   // ==================== Batch Decay Operations ====================

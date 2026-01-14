@@ -288,4 +288,38 @@ describe('Access Tracking Integration', () => {
       expect(results.entities.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe('DecayEngine Integration', () => {
+    it('should have decayEngine available via context', () => {
+      expect(ctx.decayEngine).toBeDefined();
+    });
+
+    it('should have accessTracker wired to decayEngine', () => {
+      // Access decayEngine, which should trigger accessTracker initialization
+      const decay = ctx.decayEngine;
+      expect(decay).toBeDefined();
+
+      // The config should have default values
+      const config = decay.getConfig();
+      expect(config.halfLifeHours).toBe(168); // Default 1 week
+      expect(config.minImportance).toBe(0.1);
+    });
+
+    it('should run applyDecay on regular entities', async () => {
+      const decay = ctx.decayEngine;
+
+      // Note: Regular entities (not AgentEntity) will be skipped
+      const result = await decay.applyDecay();
+
+      // All test entities are regular entities, so they should be skipped
+      expect(result.entitiesProcessed).toBe(0);
+      expect(result.processingTimeMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should return undefined decayScheduler when auto-decay not enabled', () => {
+      // Without MEMORY_AUTO_DECAY env var, scheduler should be undefined
+      const scheduler = ctx.decayScheduler;
+      expect(scheduler).toBeUndefined();
+    });
+  });
 });

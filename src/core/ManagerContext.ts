@@ -25,6 +25,8 @@ import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
+import { DecayEngine } from '../agent/DecayEngine.js';
+import { DecayScheduler } from '../agent/DecayScheduler.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
 
@@ -54,6 +56,8 @@ export class ManagerContext {
   private _compressionManager?: CompressionManager;
   private _archiveManager?: ArchiveManager;
   private _accessTracker?: AccessTracker;
+  private _decayEngine?: DecayEngine;
+  private _decayScheduler?: DecayScheduler;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -176,5 +180,79 @@ export class ManagerContext {
       // Wire to GraphTraversal
       this.graphTraversal.setAccessTracker(this._accessTracker);
     }
+  }
+
+  /**
+   * DecayEngine - Phase 1 Agent Memory: Memory importance decay calculations.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_DECAY_HALF_LIFE_HOURS (default: 168 = 1 week)
+   * - MEMORY_DECAY_MIN_IMPORTANCE (default: 0.1)
+   * - MEMORY_DECAY_IMPORTANCE_MOD (default: true)
+   * - MEMORY_DECAY_ACCESS_MOD (default: true)
+   */
+  get decayEngine(): DecayEngine {
+    if (!this._decayEngine) {
+      this._decayEngine = new DecayEngine(this.storage, this.accessTracker, {
+        halfLifeHours: this.getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168),
+        minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
+        importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
+        accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
+      });
+    }
+    return this._decayEngine;
+  }
+
+  /**
+   * DecayScheduler - Phase 1 Agent Memory: Scheduled decay and forget operations.
+   *
+   * Returns undefined if auto-decay is not enabled.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_AUTO_DECAY (default: false) - Enable to create scheduler
+   * - MEMORY_DECAY_INTERVAL_MS (default: 3600000 = 1 hour)
+   * - MEMORY_AUTO_FORGET (default: false)
+   * - MEMORY_FORGET_THRESHOLD (default: 0.05)
+   */
+  get decayScheduler(): DecayScheduler | undefined {
+    if (this._decayScheduler) return this._decayScheduler;
+
+    if (this.getEnvBool('MEMORY_AUTO_DECAY', false)) {
+      this._decayScheduler = new DecayScheduler(this.decayEngine, {
+        decayIntervalMs: this.getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000),
+        autoForget: this.getEnvBool('MEMORY_AUTO_FORGET', false),
+        forgetOptions: {
+          effectiveImportanceThreshold: this.getEnvNumber(
+            'MEMORY_FORGET_THRESHOLD',
+            0.05
+          ),
+        },
+      });
+    }
+
+    return this._decayScheduler;
+  }
+
+  // ==================== Environment Variable Helpers ====================
+
+  /**
+   * Get a number from environment variable with default.
+   * @internal
+   */
+  private getEnvNumber(key: string, defaultValue: number): number {
+    const value = process.env[key];
+    if (value === undefined) return defaultValue;
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? defaultValue : parsed;
+  }
+
+  /**
+   * Get a boolean from environment variable with default.
+   * @internal
+   */
+  private getEnvBool(key: string, defaultValue: boolean): boolean {
+    const value = process.env[key];
+    if (value === undefined) return defaultValue;
+    return value.toLowerCase() === 'true';
   }
 }

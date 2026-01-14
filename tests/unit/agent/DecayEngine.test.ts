@@ -682,6 +682,338 @@ describe('DecayEngine.applyDecay', () => {
   });
 });
 
+// ==================== forgetWeakMemories Tests ====================
+
+describe('DecayEngine.forgetWeakMemories', () => {
+  let storage: IGraphStorage;
+  let tracker: AccessTracker;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should return empty result when no memories below threshold', async () => {
+    const entities = [
+      createAgentEntity('strong', {
+        importance: 10,
+        lastAccessedAt: new Date().toISOString(),
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 1.0,
+      dryRun: true,
+    });
+
+    expect(result.memoriesForgotten).toBe(0);
+    expect(result.forgottenNames).toEqual([]);
+    expect(result.dryRun).toBe(true);
+  });
+
+  it('should identify memories below threshold in dry-run mode', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      createAgentEntity('strong', {
+        importance: 10,
+        lastAccessedAt: new Date().toISOString(),
+      }),
+      createAgentEntity('weak', {
+        importance: 0.5,
+        lastAccessedAt: new Date(now - 500 * 60 * 60 * 1000).toISOString(),
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 5.0,
+      dryRun: true,
+    });
+
+    expect(result.forgottenNames).toContain('weak');
+    expect(result.forgottenNames).not.toContain('strong');
+    expect(result.memoriesForgotten).toBe(1);
+    expect(result.dryRun).toBe(true);
+  });
+
+  it('should not delete in dry-run mode', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      createAgentEntity('weak', {
+        importance: 0.1,
+        lastAccessedAt: new Date(now - 1000 * 60 * 60 * 1000).toISOString(),
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    // Add saveGraph mock
+    storage.saveGraph = vi.fn(async () => {});
+
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 5.0,
+      dryRun: true,
+    });
+
+    expect(storage.saveGraph).not.toHaveBeenCalled();
+  });
+
+  it('should actually delete in non-dry-run mode', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      createAgentEntity('weak', {
+        importance: 0.1,
+        lastAccessedAt: new Date(now - 1000 * 60 * 60 * 1000).toISOString(),
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    storage.saveGraph = vi.fn(async () => {});
+
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 5.0,
+      dryRun: false,
+    });
+
+    expect(storage.saveGraph).toHaveBeenCalled();
+    expect(result.dryRun).toBe(false);
+  });
+
+  it('should respect olderThanHours filter', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      // Old and weak - should be forgotten
+      createAgentEntity('oldWeak', {
+        importance: 0.1,
+        createdAt: new Date(now - 200 * 60 * 60 * 1000).toISOString(),
+        lastAccessedAt: new Date(now - 200 * 60 * 60 * 1000).toISOString(),
+      }),
+      // Young and weak - should be protected by age
+      createAgentEntity('youngWeak', {
+        importance: 0.1,
+        createdAt: new Date(now - 10 * 60 * 60 * 1000).toISOString(),
+        lastAccessedAt: new Date(now - 10 * 60 * 60 * 1000).toISOString(),
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    storage.saveGraph = vi.fn(async () => {});
+
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 10.0,
+      olderThanHours: 100, // Must be older than 100 hours
+      dryRun: true,
+    });
+
+    expect(result.forgottenNames).toContain('oldWeak');
+    expect(result.forgottenNames).not.toContain('youngWeak');
+    expect(result.memoriesTooYoung).toBe(1);
+  });
+
+  it('should respect excludeTags protection', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      createAgentEntity('protectedWeak', {
+        importance: 0.1,
+        lastAccessedAt: new Date(now - 500 * 60 * 60 * 1000).toISOString(),
+        tags: ['important', 'preserve'],
+      }),
+      createAgentEntity('unprotectedWeak', {
+        importance: 0.1,
+        lastAccessedAt: new Date(now - 500 * 60 * 60 * 1000).toISOString(),
+        tags: ['temporary'],
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 10.0,
+      excludeTags: ['important', 'permanent'],
+      dryRun: true,
+    });
+
+    expect(result.forgottenNames).not.toContain('protectedWeak');
+    expect(result.forgottenNames).toContain('unprotectedWeak');
+    expect(result.memoriesProtected).toBe(1);
+  });
+
+  it('should be case-insensitive for tag matching', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      createAgentEntity('mixedCaseTags', {
+        importance: 0.1,
+        lastAccessedAt: new Date(now - 500 * 60 * 60 * 1000).toISOString(),
+        tags: ['IMPORTANT', 'Protected'],
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 10.0,
+      excludeTags: ['important'],
+      dryRun: true,
+    });
+
+    expect(result.forgottenNames).not.toContain('mixedCaseTags');
+    expect(result.memoriesProtected).toBe(1);
+  });
+
+  it('should skip non-AgentEntity records', async () => {
+    const entities = [
+      { name: 'regularEntity', entityType: 'test', observations: [] },
+    ] as unknown as AgentEntity[];
+
+    storage = createMockStorage(entities);
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 10.0,
+      dryRun: true,
+    });
+
+    expect(result.memoriesForgotten).toBe(0);
+  });
+
+  it('should combine all filters correctly', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      // Should be forgotten: old, weak, no protected tags
+      createAgentEntity('candidate', {
+        importance: 0.1,
+        createdAt: new Date(now - 200 * 60 * 60 * 1000).toISOString(),
+        lastAccessedAt: new Date(now - 200 * 60 * 60 * 1000).toISOString(),
+        tags: ['temporary'],
+      }),
+      // Should NOT be forgotten: protected by tag
+      createAgentEntity('protectedByTag', {
+        importance: 0.1,
+        createdAt: new Date(now - 200 * 60 * 60 * 1000).toISOString(),
+        lastAccessedAt: new Date(now - 200 * 60 * 60 * 1000).toISOString(),
+        tags: ['permanent'],
+      }),
+      // Should NOT be forgotten: too young
+      createAgentEntity('tooYoung', {
+        importance: 0.1,
+        createdAt: new Date(now - 10 * 60 * 60 * 1000).toISOString(),
+        lastAccessedAt: new Date(now - 10 * 60 * 60 * 1000).toISOString(),
+      }),
+      // Should NOT be forgotten: above threshold
+      createAgentEntity('aboveThreshold', {
+        importance: 10,
+        lastAccessedAt: new Date().toISOString(),
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 5.0,
+      olderThanHours: 100,
+      excludeTags: ['permanent'],
+      dryRun: true,
+    });
+
+    expect(result.forgottenNames).toEqual(['candidate']);
+    expect(result.memoriesForgotten).toBe(1);
+    expect(result.memoriesProtected).toBe(1);
+    expect(result.memoriesTooYoung).toBe(1);
+  });
+
+  it('should default dryRun to false when not specified', async () => {
+    vi.useFakeTimers();
+    const now = Date.now();
+    vi.setSystemTime(now);
+
+    const entities = [
+      createAgentEntity('weak', {
+        importance: 0.1,
+        lastAccessedAt: new Date(now - 1000 * 60 * 60 * 1000).toISOString(),
+      }),
+    ];
+
+    storage = createMockStorage(entities);
+    storage.saveGraph = vi.fn(async () => {});
+
+    tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      halfLifeHours: 24,
+      minImportance: 0.01,
+    });
+
+    const result = await decay.forgetWeakMemories({
+      effectiveImportanceThreshold: 5.0,
+    });
+
+    expect(result.dryRun).toBe(false);
+    expect(storage.saveGraph).toHaveBeenCalled();
+  });
+});
+
 // ==================== getConfig Tests ====================
 
 describe('DecayEngine.getConfig', () => {

@@ -52,12 +52,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **DecayEngineConfig**: Configurable half-life, modulation settings, minimum floor
 - **Strength Multiplier**: Confirmations (+10% each) and accesses (+1% per 100)
 
+#### Sprint 5: Decay Engine Operations
+- **forgetWeakMemories() Method**: Delete or archive memories below effective importance threshold
+  - Support for age filtering (olderThanHours)
+  - Tag exclusion protection (excludeTags)
+  - Dry-run mode for preview
+  - Removes related relations when forgetting
+- **DecayScheduler Class**: Scheduled periodic decay and forget operations
+  - Configurable decay interval (decayIntervalMs)
+  - Optional auto-forget with forgetOptions
+  - Callbacks for monitoring (onDecayComplete, onForgetComplete, onError)
+  - Manual cycle execution via runNow()
+- **ManagerContext Integration**: DecayEngine and DecayScheduler accessible via context
+  - Environment variable configuration (MEMORY_DECAY_*, MEMORY_AUTO_DECAY, etc.)
+  - Lazy initialization with proper dependency wiring
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
 - Added 44 unit tests for AccessTracker
 - Added 15 integration tests for access tracking across managers
 - Added 36 unit tests for DecayEngine
+- Added 14 unit tests for forgetWeakMemories
+- Added 21 unit tests for DecayScheduler
+- Added 4 integration tests for DecayEngine context access
 
 ## [1.1.0] - 2026-01-11
 
