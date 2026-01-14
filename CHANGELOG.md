@@ -413,6 +413,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - getCollaborationStats() returns sharing metrics
   - Counts shared, public, and accessible memories
 
+#### Sprint 24: Conflict Resolution
+- **ConflictResolver Class**: Detect and resolve memory conflicts
+  - detectConflicts() finds contradictions using similarity and negation
+  - Configurable similarityThreshold (default: 0.7)
+  - Negation pattern detection for contradictory observations
+- **Resolution Strategies**: Five strategies for conflict resolution
+  - most_recent: Select by lastModified timestamp
+  - highest_confidence: Select by confidence score
+  - most_confirmations: Select by confirmation count
+  - trusted_agent: Select by agent trustLevel
+  - merge_all: Combine observations from all sources
+- **resolveConflict() Method**: Apply strategy to conflicting memories
+  - Returns resolution result with audit trail
+  - Emits memory:conflict_resolved event
+- **mergeCrossAgent() Method**: Merge memories from multiple agents
+  - Trust-weighted confidence calculation
+  - Preserves provenance from all sources
+  - Optional conflict resolution with configurable strategy
+- **Conflict Events**: Audit trail for conflict operations
+  - memory:conflict event on detection
+  - memory:conflict_resolved event on resolution
+  - memory:merged event on cross-agent merge
+- **New Types**: ConflictStrategy, ConflictInfo, ConflictResolverConfig, ResolutionResult
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -433,7 +457,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 19 unit tests for MemoryFormatter
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
-- Added 68 unit tests for MultiAgentMemoryManager (31 Sprint 21 + 19 Sprint 22 + 18 Sprint 23)
+- Added 13 unit tests for ConflictResolver
+- Added 76 unit tests for MultiAgentMemoryManager (31 Sprint 21 + 19 Sprint 22 + 18 Sprint 23 + 8 Sprint 24)
 
 ## [1.1.0] - 2026-01-11
 

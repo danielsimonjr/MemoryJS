@@ -100,3 +100,9 @@ export {
   MultiAgentMemoryManager,
   type MultiAgentConfig,
 } from './MultiAgentMemoryManager.js';
+
+export {
+  ConflictResolver,
+  type ConflictResolverConfig,
+  type ResolutionResult,
+} from './ConflictResolver.js';

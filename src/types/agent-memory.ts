@@ -57,6 +57,39 @@ export type SessionStatus = 'active' | 'completed' | 'abandoned';
  */
 export type TemporalFocus = 'recent' | 'historical' | 'balanced';
 
+/**
+ * Strategy for resolving conflicts between memories from different agents.
+ * - most_recent: Use the memory with most recent lastModified
+ * - highest_confidence: Use the memory with highest confidence score
+ * - most_confirmations: Use the memory with most confirmations
+ * - trusted_agent: Use the memory from agent with highest trustLevel
+ * - merge_all: Combine observations from all conflicting memories
+ */
+export type ConflictStrategy =
+  | 'most_recent'
+  | 'highest_confidence'
+  | 'most_confirmations'
+  | 'trusted_agent'
+  | 'merge_all';
+
+/**
+ * Information about a detected memory conflict.
+ */
+export interface ConflictInfo {
+  /** Primary memory in the conflict */
+  primaryMemory: string;
+  /** Conflicting memory names */
+  conflictingMemories: string[];
+  /** How conflict was detected */
+  detectionMethod: 'similarity' | 'negation' | 'manual';
+  /** Similarity score between memories (0-1) */
+  similarityScore?: number;
+  /** Suggested resolution strategy */
+  suggestedStrategy: ConflictStrategy;
+  /** Timestamp when conflict was detected */
+  detectedAt: string;
+}
+
 // ==================== Memory Source Types ====================
 
 /**

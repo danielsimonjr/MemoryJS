@@ -13,9 +13,12 @@ import type {
   AgentMetadata,
   AgentType,
   MemoryVisibility,
+  ConflictStrategy,
+  ConflictInfo,
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { EventEmitter } from 'events';
+import { ConflictResolver, type ResolutionResult } from './ConflictResolver.js';
 
 /**
  * Configuration for MultiAgentMemoryManager.
@@ -901,6 +904,241 @@ export class MultiAgentMemoryManager extends EventEmitter {
       publicMemoryCount: publicCount,
       accessibleFromOthers: fromOthers,
     };
+  }
+
+  // ==================== Conflict Resolution ====================
+
+  private _conflictResolver?: ConflictResolver;
+
+  /**
+   * Get or create the conflict resolver instance.
+   */
+  private getConflictResolver(): ConflictResolver {
+    if (!this._conflictResolver) {
+      this._conflictResolver = new ConflictResolver();
+
+      // Forward conflict events
+      this._conflictResolver.on('memory:conflict', (conflict: ConflictInfo) => {
+        this.emit('memory:conflict', conflict);
+      });
+
+      this._conflictResolver.on(
+        'memory:conflict_resolved',
+        (data: { conflict: ConflictInfo; strategy: ConflictStrategy; resolvedMemory: string }) => {
+          this.emit('memory:conflict_resolved', data);
+        }
+      );
+    }
+    return this._conflictResolver;
+  }
+
+  /**
+   * Detect conflicts among a set of memories.
+   *
+   * @param memories - Memories to check for conflicts (defaults to all visible to default agent)
+   * @returns Array of detected conflicts
+   */
+  async detectConflicts(memories?: AgentEntity[]): Promise<ConflictInfo[]> {
+    const resolver = this.getConflictResolver();
+
+    if (!memories) {
+      memories = await this.getVisibleMemories(this.config.defaultAgentId);
+    }
+
+    return resolver.detectConflicts(memories);
+  }
+
+  /**
+   * Resolve a conflict using the specified strategy.
+   *
+   * @param conflict - Conflict information
+   * @param strategy - Resolution strategy (uses suggested if not specified)
+   * @returns Resolution result
+   */
+  async resolveConflict(
+    conflict: ConflictInfo,
+    strategy?: ConflictStrategy
+  ): Promise<ResolutionResult> {
+    const resolver = this.getConflictResolver();
+
+    // Get all memories involved in the conflict
+    const allNames = [conflict.primaryMemory, ...conflict.conflictingMemories];
+    const memories: AgentEntity[] = [];
+
+    for (const name of allNames) {
+      const entity = this.storage.getEntityByName(name);
+      if (entity && isAgentEntity(entity)) {
+        memories.push(entity as AgentEntity);
+      }
+    }
+
+    return resolver.resolveConflict(conflict, memories, this.agents, strategy);
+  }
+
+  /**
+   * Merge memories from multiple agents with trust weighting.
+   *
+   * Creates a new merged memory preserving provenance from all sources.
+   *
+   * @param memoryNames - Names of memories to merge
+   * @param targetAgentId - Agent that will own the merged memory
+   * @param options - Merge options
+   * @returns Merged memory
+   */
+  async mergeCrossAgent(
+    memoryNames: string[],
+    targetAgentId: string,
+    options?: {
+      newName?: string;
+      resolveConflicts?: boolean;
+      conflictStrategy?: ConflictStrategy;
+    }
+  ): Promise<AgentEntity | null> {
+    if (memoryNames.length < 2) {
+      return null;
+    }
+
+    // Gather memories
+    const memories: AgentEntity[] = [];
+    for (const name of memoryNames) {
+      const entity = this.storage.getEntityByName(name);
+      if (entity && isAgentEntity(entity)) {
+        memories.push(entity as AgentEntity);
+      }
+    }
+
+    if (memories.length < 2) {
+      return null;
+    }
+
+    // Check for conflicts if requested
+    if (options?.resolveConflicts) {
+      const resolver = this.getConflictResolver();
+      const conflicts = resolver.detectConflicts(memories);
+
+      if (conflicts.length > 0) {
+        // Resolve the first conflict (which may include all memories)
+        const resolution = resolver.resolveConflict(
+          conflicts[0],
+          memories,
+          this.agents,
+          options.conflictStrategy
+        );
+
+        // Use the resolved memory as the merge result
+        const now = new Date().toISOString();
+        const newName =
+          options.newName ??
+          `merged_${targetAgentId}_${Date.now()}`;
+
+        const mergedMemory: AgentEntity = {
+          ...resolution.resolvedMemory,
+          name: newName,
+          agentId: targetAgentId,
+          visibility: 'private',
+          lastModified: now,
+          source: {
+            agentId: targetAgentId,
+            timestamp: now,
+            method: 'consolidated',
+            reliability: resolution.resolvedMemory.confidence ?? 0.7,
+            originalEntityId: resolution.sourceMemories.join(','),
+          },
+        };
+
+        await this.storage.appendEntity(mergedMemory as Entity);
+
+        // Emit merge event
+        this.emit('memory:merged', {
+          newMemory: newName,
+          sourceMemories: memoryNames,
+          targetAgent: targetAgentId,
+          hadConflicts: true,
+        });
+
+        return mergedMemory;
+      }
+    }
+
+    // No conflicts or not resolving - simple merge
+    const now = new Date().toISOString();
+    const newName = options?.newName ?? `merged_${targetAgentId}_${Date.now()}`;
+
+    // Combine observations
+    const allObservations = new Set<string>();
+    for (const m of memories) {
+      if (m.observations) {
+        for (const o of m.observations) {
+          allObservations.add(o);
+        }
+      }
+    }
+
+    // Calculate weighted confidence based on agent trust
+    let totalWeightedConfidence = 0;
+    let totalWeight = 0;
+    for (const m of memories) {
+      const agentMeta = m.agentId ? this.agents.get(m.agentId) : undefined;
+      const trust = agentMeta?.trustLevel ?? 0.5;
+      const conf = m.confidence ?? 0.5;
+      totalWeightedConfidence += conf * trust;
+      totalWeight += trust;
+    }
+    const avgConfidence = totalWeight > 0 ? totalWeightedConfidence / totalWeight : 0.5;
+
+    // Sum confirmations
+    const totalConfirmations = memories.reduce(
+      (sum, m) => sum + (m.confirmationCount ?? 0),
+      0
+    );
+
+    // Use first memory as base for entity type
+    const baseMemory = memories[0];
+
+    const mergedMemory: AgentEntity = {
+      name: newName,
+      entityType: baseMemory.entityType ?? 'memory',
+      observations: Array.from(allObservations),
+      createdAt: now,
+      lastModified: now,
+      importance: Math.max(...memories.map((m) => m.importance ?? 5)),
+      agentId: targetAgentId,
+      visibility: 'private',
+      memoryType: baseMemory.memoryType ?? 'semantic',
+      accessCount: 0,
+      lastAccessedAt: now,
+      confidence: avgConfidence,
+      confirmationCount: totalConfirmations,
+      source: {
+        agentId: targetAgentId,
+        timestamp: now,
+        method: 'consolidated',
+        reliability: avgConfidence,
+        originalEntityId: memoryNames.join(','),
+      },
+    };
+
+    await this.storage.appendEntity(mergedMemory as Entity);
+
+    // Update target agent's last active
+    this.updateLastActive(targetAgentId);
+
+    // Emit merge event
+    this.emit('memory:merged', {
+      newMemory: newName,
+      sourceMemories: memoryNames,
+      targetAgent: targetAgentId,
+      hadConflicts: false,
+    });
+
+    return mergedMemory;
+  }
+
+  /**
+   * Get the conflict resolver instance for advanced operations.
+   */
+  getConflictResolverInstance(): ConflictResolver {
+    return this.getConflictResolver();
   }
 
   // ==================== Helper Methods ====================
