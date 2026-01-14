@@ -146,6 +146,8 @@ export type {
   // Consolidation types
   ConsolidateOptions,
   ConsolidationResult,
+  // Summarization types
+  SummarizationResult,
 } from './agent-memory.js';
 
 // Agent Memory Type Guards and Classes

@@ -12,11 +12,13 @@ import type {
   AgentEntity,
   ConsolidateOptions,
   ConsolidationResult,
+  SummarizationResult,
   MemoryType,
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
+import { SummarizationService } from './SummarizationService.js';
 
 /**
  * Configuration for ConsolidationPipeline.
@@ -32,6 +34,8 @@ export interface ConsolidationPipelineConfig {
   minPromotionConfirmations?: number;
   /** Preserve originals after promotion (default: false) */
   preserveOriginals?: boolean;
+  /** Similarity threshold for observation grouping (default: 0.8) */
+  similarityThreshold?: number;
 }
 
 /**
@@ -92,6 +96,7 @@ export class ConsolidationPipeline {
   private readonly storage: IGraphStorage;
   private readonly workingMemory: WorkingMemoryManager;
   private readonly decayEngine: DecayEngine;
+  private readonly summarizationService: SummarizationService;
   private readonly config: Required<ConsolidationPipelineConfig>;
   private readonly stages: PipelineStage[] = [];
 
@@ -104,12 +109,16 @@ export class ConsolidationPipeline {
     this.storage = storage;
     this.workingMemory = workingMemory;
     this.decayEngine = decayEngine;
+    this.summarizationService = new SummarizationService({
+      defaultSimilarityThreshold: config.similarityThreshold ?? 0.8,
+    });
     this.config = {
       summarizationEnabled: config.summarizationEnabled ?? true,
       patternExtractionEnabled: config.patternExtractionEnabled ?? true,
       minPromotionConfidence: config.minPromotionConfidence ?? 0.7,
       minPromotionConfirmations: config.minPromotionConfirmations ?? 2,
       preserveOriginals: config.preserveOriginals ?? false,
+      similarityThreshold: config.similarityThreshold ?? 0.8,
     };
   }
 
@@ -413,6 +422,116 @@ export class ConsolidationPipeline {
       (agentEntity.confidence ?? 0) >= minConfidence &&
       (agentEntity.confirmationCount ?? 0) >= minConfirmations
     );
+  }
+
+  // ==================== Observation Summarization ====================
+
+  /**
+   * Summarize similar observations in an entity.
+   *
+   * Groups observations by similarity and creates summaries
+   * for each group. Single-observation groups are preserved unchanged.
+   *
+   * @param entity - Entity whose observations to summarize
+   * @param threshold - Similarity threshold (0-1, default from config)
+   * @returns Summarization result with compression statistics
+   *
+   * @example
+   * ```typescript
+   * const result = await pipeline.summarizeObservations(entity);
+   * console.log(`Compressed ${result.originalCount} to ${result.summaryCount}`);
+   * console.log(`Compression ratio: ${result.compressionRatio.toFixed(2)}x`);
+   * ```
+   */
+  async summarizeObservations(
+    entity: AgentEntity,
+    threshold?: number
+  ): Promise<SummarizationResult> {
+    const observations = entity.observations;
+    if (!observations || observations.length < 2) {
+      return {
+        originalCount: observations?.length ?? 0,
+        summaryCount: observations?.length ?? 0,
+        compressionRatio: 1,
+        summaries: observations ? [...observations] : [],
+        sourceObservations: observations ? observations.map((o) => [o]) : [],
+      };
+    }
+
+    const effectiveThreshold = threshold ?? this.config.similarityThreshold;
+
+    // Group similar observations
+    const groupingResult = await this.summarizationService.groupSimilarObservations(
+      observations,
+      effectiveThreshold
+    );
+
+    // Summarize each group
+    const summaries = await this.summarizationService.summarizeGroups(
+      groupingResult.groups
+    );
+
+    return {
+      originalCount: observations.length,
+      summaryCount: summaries.length,
+      compressionRatio: observations.length / summaries.length,
+      summaries,
+      sourceObservations: groupingResult.groups,
+    };
+  }
+
+  /**
+   * Apply summarization to entity and update storage.
+   *
+   * @param entityName - Name of entity to summarize
+   * @param threshold - Similarity threshold (optional)
+   * @returns Summarization result
+   */
+  async applySummarizationToEntity(
+    entityName: string,
+    threshold?: number
+  ): Promise<SummarizationResult> {
+    const entity = this.storage.getEntityByName(entityName);
+    if (!entity || !isAgentEntity(entity)) {
+      return {
+        originalCount: 0,
+        summaryCount: 0,
+        compressionRatio: 1,
+        summaries: [],
+        sourceObservations: [],
+      };
+    }
+
+    const agentEntity = entity as AgentEntity;
+    const result = await this.summarizeObservations(agentEntity, threshold);
+
+    // Update entity with summarized observations
+    if (result.compressionRatio > 1) {
+      await this.storage.updateEntity(entityName, {
+        observations: result.summaries,
+        lastModified: new Date().toISOString(),
+      } as Partial<Entity>);
+    }
+
+    return result;
+  }
+
+  /**
+   * Calculate similarity between two texts.
+   *
+   * @param text1 - First text
+   * @param text2 - Second text
+   * @returns Similarity score (0-1)
+   */
+  calculateSimilarity(text1: string, text2: string): number {
+    return this.summarizationService.calculateSimilarity(text1, text2);
+  }
+
+  /**
+   * Get the summarization service for advanced operations.
+   */
+  getSummarizationService(): SummarizationService {
+    return this.summarizationService;
   }
 
   // ==================== Configuration Access ====================

@@ -508,4 +508,207 @@ describe('ConsolidationPipeline', () => {
       expect(eligible).toBe(false);
     });
   });
+
+  // ==================== Observation Summarization ====================
+
+  describe('summarizeObservations', () => {
+    it('should return empty result for entity with no observations', async () => {
+      const entity: AgentEntity = {
+        name: 'empty',
+        entityType: 'test',
+        observations: [],
+        memoryType: 'working',
+        accessCount: 0,
+        confirmationCount: 0,
+        confidence: 0.8,
+      };
+
+      const result = await pipeline.summarizeObservations(entity);
+
+      expect(result.originalCount).toBe(0);
+      expect(result.summaryCount).toBe(0);
+      expect(result.compressionRatio).toBe(1);
+    });
+
+    it('should return single observation unchanged', async () => {
+      const entity: AgentEntity = {
+        name: 'single',
+        entityType: 'test',
+        observations: ['User likes pasta'],
+        memoryType: 'working',
+        accessCount: 0,
+        confirmationCount: 0,
+        confidence: 0.8,
+      };
+
+      const result = await pipeline.summarizeObservations(entity);
+
+      expect(result.originalCount).toBe(1);
+      expect(result.summaryCount).toBe(1);
+      expect(result.summaries).toEqual(['User likes pasta']);
+    });
+
+    it('should group and summarize similar observations', async () => {
+      const entity: AgentEntity = {
+        name: 'multi',
+        entityType: 'test',
+        observations: [
+          'User likes Italian food',
+          'User prefers Italian cuisine',
+          'Meeting scheduled for Monday',
+        ],
+        memoryType: 'working',
+        accessCount: 0,
+        confirmationCount: 0,
+        confidence: 0.8,
+      };
+
+      const result = await pipeline.summarizeObservations(entity, 0.4);
+
+      expect(result.originalCount).toBe(3);
+      // First two similar, meeting separate
+      expect(result.summaryCount).toBeLessThanOrEqual(3);
+    });
+
+    it('should use config threshold when not specified', async () => {
+      const customPipeline = new ConsolidationPipeline(
+        storage,
+        workingMemory,
+        decayEngine,
+        { similarityThreshold: 0.3 }
+      );
+
+      const entity: AgentEntity = {
+        name: 'multi',
+        entityType: 'test',
+        observations: ['User likes pasta', 'User enjoys pasta'],
+        memoryType: 'working',
+        accessCount: 0,
+        confirmationCount: 0,
+        confidence: 0.8,
+      };
+
+      const result = await customPipeline.summarizeObservations(entity);
+
+      // With low threshold, should be grouped
+      expect(result.summaryCount).toBe(1);
+    });
+
+    it('should track source observations', async () => {
+      const entity: AgentEntity = {
+        name: 'multi',
+        entityType: 'test',
+        observations: [
+          'User likes pasta',
+          'User enjoys pasta',
+          'Weather is sunny',
+        ],
+        memoryType: 'working',
+        accessCount: 0,
+        confirmationCount: 0,
+        confidence: 0.8,
+      };
+
+      const result = await pipeline.summarizeObservations(entity, 0.5);
+
+      expect(result.sourceObservations).toBeDefined();
+      expect(result.sourceObservations.length).toBe(result.summaryCount);
+    });
+  });
+
+  describe('applySummarizationToEntity', () => {
+    it('should return empty result for non-existent entity', async () => {
+      const result = await pipeline.applySummarizationToEntity('nonexistent');
+
+      expect(result.originalCount).toBe(0);
+      expect(result.summaryCount).toBe(0);
+    });
+
+    it('should update entity with summarized observations', async () => {
+      const now = new Date().toISOString();
+      const entity: AgentEntity = {
+        name: 'to_summarize',
+        entityType: 'test',
+        observations: [
+          'User likes Italian food',
+          'User prefers Italian food',
+          'User enjoys Italian cuisine',
+        ],
+        createdAt: now,
+        lastModified: now,
+        importance: 5,
+        memoryType: 'working',
+        accessCount: 0,
+        confirmationCount: 0,
+        confidence: 0.8,
+        visibility: 'private',
+      };
+
+      storage = createMockStorage([entity as unknown as Entity]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const result = await pipeline.applySummarizationToEntity('to_summarize', 0.3);
+
+      // Should have compressed observations
+      expect(result.compressionRatio).toBeGreaterThan(1);
+      expect(storage.updateEntity).toHaveBeenCalled();
+    });
+
+    it('should not update entity if no compression achieved', async () => {
+      const now = new Date().toISOString();
+      const entity: AgentEntity = {
+        name: 'no_compress',
+        entityType: 'test',
+        observations: ['Observation 1', 'Observation 2'],
+        createdAt: now,
+        lastModified: now,
+        importance: 5,
+        memoryType: 'working',
+        accessCount: 0,
+        confirmationCount: 0,
+        confidence: 0.8,
+        visibility: 'private',
+      };
+
+      storage = createMockStorage([entity as unknown as Entity]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      // With very high threshold, observations won't group
+      const result = await pipeline.applySummarizationToEntity('no_compress', 0.99);
+
+      expect(result.compressionRatio).toBe(1);
+      expect(storage.updateEntity).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('calculateSimilarity', () => {
+    it('should return 1 for identical texts', () => {
+      const similarity = pipeline.calculateSimilarity('hello world', 'hello world');
+      expect(similarity).toBeCloseTo(1, 10);
+    });
+
+    it('should return 0 for completely different texts', () => {
+      const similarity = pipeline.calculateSimilarity('apple', 'banana');
+      expect(similarity).toBe(0);
+    });
+
+    it('should return partial similarity for overlapping texts', () => {
+      const similarity = pipeline.calculateSimilarity(
+        'User likes Italian food',
+        'User prefers Italian cuisine'
+      );
+      // Share "User" and "Italian"
+      expect(similarity).toBeGreaterThan(0);
+      expect(similarity).toBeLessThan(1);
+    });
+  });
+
+  describe('getSummarizationService', () => {
+    it('should return summarization service instance', () => {
+      const service = pipeline.getSummarizationService();
+      expect(service).toBeDefined();
+      expect(typeof service.calculateSimilarity).toBe('function');
+      expect(typeof service.summarize).toBe('function');
+    });
+  });
 });

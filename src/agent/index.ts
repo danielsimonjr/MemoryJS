@@ -68,3 +68,10 @@ export {
   type PipelineStage,
   type StageResult,
 } from './ConsolidationPipeline.js';
+
+export {
+  SummarizationService,
+  type ISummarizationProvider,
+  type SummarizationConfig,
+  type GroupingResult,
+} from './SummarizationService.js';

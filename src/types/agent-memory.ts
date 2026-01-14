@@ -729,3 +729,29 @@ export interface ConsolidationResult {
   /** Error messages encountered */
   errors: string[];
 }
+
+/**
+ * Result of observation summarization.
+ *
+ * Provides detailed statistics about the summarization operation
+ * including compression metrics and provenance tracking.
+ *
+ * @example
+ * ```typescript
+ * const result = await pipeline.summarizeObservations(entity);
+ * console.log(`Compressed ${result.originalCount} to ${result.summaryCount}`);
+ * console.log(`Compression ratio: ${result.compressionRatio.toFixed(2)}x`);
+ * ```
+ */
+export interface SummarizationResult {
+  /** Number of original observations */
+  originalCount: number;
+  /** Number of summary observations */
+  summaryCount: number;
+  /** Compression ratio (original / summary) */
+  compressionRatio: number;
+  /** The generated summaries */
+  summaries: string[];
+  /** Source observations for each summary (for provenance) */
+  sourceObservations: string[][];
+}

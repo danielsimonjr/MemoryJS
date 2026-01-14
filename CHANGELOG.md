@@ -182,6 +182,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ConsolidationResult for statistics tracking
 - **New Interfaces**: ConsolidationPipelineConfig, PipelineStage, StageResult
 
+#### Sprint 12: Observation Summarization
+- **SummarizationService Class**: Text summarization with LLM fallback
+  - summarize() with optional LLM provider or algorithmic fallback
+  - calculateSimilarity() using TF-IDF cosine similarity
+  - groupSimilarObservations() for clustering related observations
+  - summarizeGroups() for batch summarization
+  - Pluggable ISummarizationProvider interface for LLM integration
+- **ConsolidationPipeline Summarization**: Memory observation compression
+  - summarizeObservations() groups and summarizes entity observations
+  - applySummarizationToEntity() updates storage with compressed observations
+  - Configurable similarityThreshold for grouping control
+  - Compression ratio tracking in SummarizationResult
+- **New Interfaces**: SummarizationConfig, GroupingResult, SummarizationResult, ISummarizationProvider
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -195,7 +209,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 44 unit tests for SessionManager (39 Sprint 8 + 5 Sprint 10 integration)
 - Added 20 unit tests for SessionQueryBuilder
 - Added 30 unit tests for EpisodicMemoryManager
-- Added 25 unit tests for ConsolidationPipeline
+- Added 37 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 summarization)
+- Added 41 unit tests for SummarizationService
 
 ## [1.1.0] - 2026-01-11
 
