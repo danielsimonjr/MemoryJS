@@ -359,4 +359,214 @@ describe('MultiAgentMemoryManager', () => {
       expect(manager.getAgentCount()).toBe(3); // 2 + default
     });
   });
+
+  // ==================== Sprint 22: Memory Visibility ====================
+
+  describe('shareMemory', () => {
+    it('should share memory with all registered agents', async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.createAgentMemory('agent_1', { name: 'share_me', visibility: 'private' });
+
+      const result = await manager.shareMemory('share_me', 'agent_1');
+
+      expect(result?.visibility).toBe('shared');
+    });
+
+    it('should return null for non-owner', async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+      await manager.createAgentMemory('agent_1', { name: 'owned' });
+
+      const result = await manager.shareMemory('owned', 'agent_2');
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('makePublic', () => {
+    it('should make memory public', async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.createAgentMemory('agent_1', { name: 'make_public', visibility: 'private' });
+
+      const result = await manager.makePublic('make_public', 'agent_1');
+
+      expect(result?.visibility).toBe('public');
+    });
+  });
+
+  describe('makePrivate', () => {
+    it('should make memory private', async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.createAgentMemory('agent_1', { name: 'make_private', visibility: 'public' });
+
+      const result = await manager.makePrivate('make_private', 'agent_1');
+
+      expect(result?.visibility).toBe('private');
+    });
+  });
+
+  describe('filterByVisibility', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+    });
+
+    it('should return own memories regardless of visibility', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'private_1', visibility: 'private' });
+      await manager.createAgentMemory('agent_1', { name: 'shared_1', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'public_1', visibility: 'public' });
+
+      const graph = await storage.loadGraph();
+      const filtered = manager.filterByVisibility(graph.entities, 'agent_1');
+
+      const ownMemories = filtered.filter((m) => m.agentId === 'agent_1');
+      expect(ownMemories.length).toBe(3);
+    });
+
+    it('should filter out private memories from other agents', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'other_private', visibility: 'private' });
+      await manager.createAgentMemory('agent_1', { name: 'other_shared', visibility: 'shared' });
+
+      const graph = await storage.loadGraph();
+      const filtered = manager.filterByVisibility(graph.entities, 'agent_2');
+
+      expect(filtered.some((m) => m.name === 'other_private')).toBe(false);
+      expect(filtered.some((m) => m.name === 'other_shared')).toBe(true);
+    });
+
+    it('should include public memories from other agents', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'other_public', visibility: 'public' });
+
+      const graph = await storage.loadGraph();
+      const filtered = manager.filterByVisibility(graph.entities, 'agent_2');
+
+      expect(filtered.some((m) => m.name === 'other_public')).toBe(true);
+    });
+  });
+
+  describe('isMemoryVisible', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+    });
+
+    it('should return true for own memory', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'own_mem', visibility: 'private' });
+
+      expect(manager.isMemoryVisible('own_mem', 'agent_1')).toBe(true);
+    });
+
+    it('should return false for other agents private memory', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'other_private', visibility: 'private' });
+
+      expect(manager.isMemoryVisible('other_private', 'agent_2')).toBe(false);
+    });
+
+    it('should return true for shared memory', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'other_shared', visibility: 'shared' });
+
+      expect(manager.isMemoryVisible('other_shared', 'agent_2')).toBe(true);
+    });
+
+    it('should return true for public memory', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'other_public', visibility: 'public' });
+
+      expect(manager.isMemoryVisible('other_public', 'agent_2')).toBe(true);
+    });
+
+    it('should return false for non-existent memory', () => {
+      expect(manager.isMemoryVisible('nonexistent', 'agent_1')).toBe(false);
+    });
+  });
+
+  describe('getVisibleMemoriesByType', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+    });
+
+    it('should filter by entity type', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'mem_a', entityType: 'task', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'mem_b', entityType: 'note', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'mem_c', entityType: 'task', visibility: 'shared' });
+
+      const tasks = await manager.getVisibleMemoriesByType('agent_2', 'task');
+
+      expect(tasks.length).toBe(2);
+      expect(tasks.every((m) => m.entityType === 'task')).toBe(true);
+    });
+
+    it('should respect visibility when filtering by type', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'private_task', entityType: 'task', visibility: 'private' });
+      await manager.createAgentMemory('agent_1', { name: 'shared_task', entityType: 'task', visibility: 'shared' });
+
+      const tasks = await manager.getVisibleMemoriesByType('agent_2', 'task');
+
+      expect(tasks.length).toBe(1);
+      expect(tasks[0].name).toBe('shared_task');
+    });
+  });
+
+  describe('searchVisibleMemories', () => {
+    beforeEach(async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+    });
+
+    it('should search by name', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'project_alpha', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'project_beta', visibility: 'shared' });
+      await manager.createAgentMemory('agent_1', { name: 'other_thing', visibility: 'shared' });
+
+      const results = await manager.searchVisibleMemories('agent_2', 'project');
+
+      expect(results.length).toBe(2);
+      expect(results.every((m) => m.name.includes('project'))).toBe(true);
+    });
+
+    it('should search by observations', async () => {
+      await manager.createAgentMemory('agent_1', {
+        name: 'mem_with_obs',
+        observations: ['Contains important data'],
+        visibility: 'shared',
+      });
+      await manager.createAgentMemory('agent_1', {
+        name: 'other_mem',
+        observations: ['Something else'],
+        visibility: 'shared',
+      });
+
+      const results = await manager.searchVisibleMemories('agent_2', 'important');
+
+      expect(results.length).toBe(1);
+      expect(results[0].name).toBe('mem_with_obs');
+    });
+
+    it('should filter out private memories from search', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'searchable_private', visibility: 'private' });
+      await manager.createAgentMemory('agent_1', { name: 'searchable_shared', visibility: 'shared' });
+
+      const results = await manager.searchVisibleMemories('agent_2', 'searchable');
+
+      expect(results.length).toBe(1);
+      expect(results[0].name).toBe('searchable_shared');
+    });
+
+    it('should include own private memories in search', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'own_private', visibility: 'private' });
+
+      const results = await manager.searchVisibleMemories('agent_1', 'own');
+
+      expect(results.length).toBe(1);
+      expect(results[0].name).toBe('own_private');
+    });
+
+    it('should be case-insensitive', async () => {
+      await manager.createAgentMemory('agent_1', { name: 'CamelCase', visibility: 'shared' });
+
+      const results = await manager.searchVisibleMemories('agent_2', 'camelcase');
+
+      expect(results.length).toBe(1);
+    });
+  });
 });

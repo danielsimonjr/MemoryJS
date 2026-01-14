@@ -375,6 +375,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - memory:created, memory:transferred, memory:visibility_changed events
 - **New Types**: MultiAgentConfig, AgentMetadata, AgentType
 
+#### Sprint 22: Memory Visibility
+- **Visibility Convenience Methods**: Simplified visibility changes
+  - shareMemory() sets visibility to 'shared' for all registered agents
+  - makePublic() sets visibility to 'public' for all including unregistered
+  - makePrivate() sets visibility to 'private' for owner only
+- **Visibility Filtering**: Filter entities by agent permissions
+  - filterByVisibility() filters entity array by agent visibility rules
+  - isMemoryVisible() checks if specific memory is visible to agent
+  - getVisibleMemoriesByType() retrieves visible memories of specific type
+- **Visibility-Aware Search**: Search with automatic visibility filtering
+  - searchVisibleMemories() searches across visible memories only
+  - Case-insensitive matching on name and observations
+  - Respects private/shared/public visibility rules
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -395,7 +409,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 19 unit tests for MemoryFormatter
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
-- Added 31 unit tests for MultiAgentMemoryManager
+- Added 50 unit tests for MultiAgentMemoryManager (31 Sprint 21 + 19 Sprint 22)
 
 ## [1.1.0] - 2026-01-11
 

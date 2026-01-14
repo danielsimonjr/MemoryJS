@@ -423,6 +423,181 @@ export class MultiAgentMemoryManager extends EventEmitter {
     return memory;
   }
 
+  /**
+   * Share a memory with all registered agents.
+   *
+   * Convenience method that sets visibility to 'shared'.
+   *
+   * @param memoryName - Memory to share
+   * @param agentId - Owner agent
+   * @returns Updated memory or null if not found/unauthorized
+   */
+  async shareMemory(
+    memoryName: string,
+    agentId: string
+  ): Promise<AgentEntity | null> {
+    return this.setMemoryVisibility(memoryName, agentId, 'shared');
+  }
+
+  /**
+   * Make a memory public to all agents (including unregistered).
+   *
+   * Convenience method that sets visibility to 'public'.
+   *
+   * @param memoryName - Memory to make public
+   * @param agentId - Owner agent
+   * @returns Updated memory or null if not found/unauthorized
+   */
+  async makePublic(
+    memoryName: string,
+    agentId: string
+  ): Promise<AgentEntity | null> {
+    return this.setMemoryVisibility(memoryName, agentId, 'public');
+  }
+
+  /**
+   * Make a memory private to owner only.
+   *
+   * Convenience method that sets visibility to 'private'.
+   *
+   * @param memoryName - Memory to make private
+   * @param agentId - Owner agent
+   * @returns Updated memory or null if not found/unauthorized
+   */
+  async makePrivate(
+    memoryName: string,
+    agentId: string
+  ): Promise<AgentEntity | null> {
+    return this.setMemoryVisibility(memoryName, agentId, 'private');
+  }
+
+  /**
+   * Filter entities by visibility for a specific agent.
+   *
+   * Returns only entities that the agent is allowed to see:
+   * - Own memories (any visibility)
+   * - 'shared' memories from other agents (if allowCrossAgent)
+   * - 'public' memories from other agents (if allowCrossAgent)
+   *
+   * @param entities - Entities to filter
+   * @param agentId - Requesting agent's ID
+   * @returns Filtered entities
+   */
+  filterByVisibility(entities: Entity[], agentId: string): AgentEntity[] {
+    const visible: AgentEntity[] = [];
+
+    for (const entity of entities) {
+      if (!isAgentEntity(entity)) continue;
+      const agentEntity = entity as AgentEntity;
+
+      // Own memories are always visible
+      if (agentEntity.agentId === agentId) {
+        visible.push(agentEntity);
+        continue;
+      }
+
+      // Cross-agent visibility check
+      if (this.config.allowCrossAgent) {
+        if (
+          agentEntity.visibility === 'public' ||
+          agentEntity.visibility === 'shared'
+        ) {
+          visible.push(agentEntity);
+        }
+      }
+    }
+
+    return visible;
+  }
+
+  /**
+   * Check if a specific memory is visible to an agent.
+   *
+   * @param memoryName - Memory name to check
+   * @param agentId - Agent requesting access
+   * @returns True if visible, false otherwise
+   */
+  isMemoryVisible(memoryName: string, agentId: string): boolean {
+    const entity = this.storage.getEntityByName(memoryName);
+    if (!entity || !isAgentEntity(entity)) {
+      return false;
+    }
+
+    const memory = entity as AgentEntity;
+
+    // Own memories are always visible
+    if (memory.agentId === agentId) {
+      return true;
+    }
+
+    // Cross-agent visibility
+    if (this.config.allowCrossAgent) {
+      return memory.visibility === 'public' || memory.visibility === 'shared';
+    }
+
+    return false;
+  }
+
+  /**
+   * Get memories by type with visibility filtering.
+   *
+   * @param agentId - Requesting agent's ID
+   * @param entityType - Entity type to filter by
+   * @returns Visible memories of specified type
+   */
+  async getVisibleMemoriesByType(
+    agentId: string,
+    entityType: string
+  ): Promise<AgentEntity[]> {
+    const allVisible = await this.getVisibleMemories(agentId);
+    return allVisible.filter((m) => m.entityType === entityType);
+  }
+
+  /**
+   * Search memories with automatic visibility filtering.
+   *
+   * Wraps basic search functionality and filters results based on
+   * the requesting agent's visibility permissions.
+   *
+   * @param agentId - Requesting agent's ID
+   * @param query - Search query (entity name or observation content)
+   * @returns Visible memories matching the query
+   */
+  async searchVisibleMemories(
+    agentId: string,
+    query: string
+  ): Promise<AgentEntity[]> {
+    const graph = await this.storage.loadGraph();
+    const queryLower = query.toLowerCase();
+    const matches: AgentEntity[] = [];
+
+    for (const entity of graph.entities) {
+      if (!isAgentEntity(entity)) continue;
+      const agentEntity = entity as AgentEntity;
+
+      // Check visibility first
+      const isVisible =
+        agentEntity.agentId === agentId ||
+        (this.config.allowCrossAgent &&
+          (agentEntity.visibility === 'public' ||
+            agentEntity.visibility === 'shared'));
+
+      if (!isVisible) continue;
+
+      // Check if entity matches query
+      const nameMatch = agentEntity.name.toLowerCase().includes(queryLower);
+      const obsMatch = agentEntity.observations?.some((o) =>
+        o.toLowerCase().includes(queryLower)
+      );
+
+      if (nameMatch || obsMatch) {
+        matches.push(agentEntity);
+      }
+    }
+
+    return matches;
+  }
+
   // ==================== Helper Methods ====================
 
   /**
