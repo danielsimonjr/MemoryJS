@@ -4,9 +4,9 @@
   "title": "Context Window Manager Foundation",
   "priority": "HIGH",
   "effort": "6 hours",
-  "status": "pending",
-  "completedAt": null,
-  "implementationNotes": null,
+  "status": "completed",
+  "completedAt": "2026-01-13",
+  "implementationNotes": "Created ContextWindowManager class with estimateTokens() using word count heuristic, prioritize() greedy algorithm by salience/token efficiency, and retrieveForContext() for budget-constrained memory retrieval. Added ContextRetrievalOptions, TokenBreakdown, ContextPackage, ExcludedEntity types. Supports memory type filtering, minSalience threshold, must-include entities, and generates suggestions for excluded high-salience entities. 18 unit tests.",
   "impact": "Manages memory retrieval within LLM token budget constraints",
   "targetMetrics": {
     "tokenAccuracy": {

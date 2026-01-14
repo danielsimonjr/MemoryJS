@@ -84,3 +84,8 @@ export {
   SalienceEngine,
   type SalienceEngineConfig,
 } from './SalienceEngine.js';
+
+export {
+  ContextWindowManager,
+  type ContextWindowManagerConfig,
+} from './ContextWindowManager.js';

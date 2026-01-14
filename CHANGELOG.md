@@ -282,6 +282,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - useSemanticSimilarity: Enable TF-IDF matching (default: true)
   - uniquenessThreshold: Threshold for observation uniqueness (default: 0.5)
 
+#### Sprint 18: Context Window Manager Foundation
+- **ContextWindowManager Class**: Token-budgeted memory retrieval
+  - estimateTokens() using word count heuristic (words * 1.3 multiplier)
+  - estimateTotalTokens() for batch estimation
+  - prioritize() greedy algorithm maximizing salience/token efficiency
+  - retrieveForContext() main retrieval method with options
+- **Token Budget Management**: Stay within LLM context limits
+  - Configurable maxTokens with reserve buffer
+  - Greedy selection by salience/token ratio
+  - Must-include entities bypass budget constraints
+- **Memory Type Filtering**: Selective retrieval options
+  - includeWorkingMemory, includeEpisodicRecent, includeSemanticRelevant
+  - minSalience threshold filtering
+- **Result Package**: Detailed retrieval results
+  - Token breakdown by memory type (working, episodic, semantic, procedural)
+  - Excluded entities with reasons (budget_exceeded, low_salience, filtered)
+  - Suggestions for high-salience excluded entities
+- **New Types**: ContextRetrievalOptions, TokenBreakdown, ContextPackage, ExcludedEntity
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -298,6 +317,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 78 unit tests for ConsolidationPipeline (25 Sprint 11 + 12 Sprint 12 + 9 Sprint 13 + 18 Sprint 14 + 14 Sprint 15)
 - Added 15 unit tests for RuleEvaluator
 - Added 34 unit tests for SalienceEngine (24 Sprint 16 + 10 Sprint 17)
+- Added 18 unit tests for ContextWindowManager
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
 

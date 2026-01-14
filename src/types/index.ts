@@ -160,6 +160,11 @@ export type {
   RuleConditions,
   ConsolidationRule,
   RuleEvaluationResult,
+  // Context window management types
+  ContextRetrievalOptions,
+  TokenBreakdown,
+  ContextPackage,
+  ExcludedEntity,
 } from './agent-memory.js';
 
 // Agent Memory Type Guards and Classes

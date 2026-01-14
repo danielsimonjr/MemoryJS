@@ -922,3 +922,93 @@ export interface RuleEvaluationResult {
   /** Per-condition results */
   details: Record<string, boolean>;
 }
+
+// ==================== Context Window Management Types ====================
+
+/**
+ * Options for retrieving memories within a token budget.
+ *
+ * @example
+ * ```typescript
+ * const options: ContextRetrievalOptions = {
+ *   maxTokens: 4000,
+ *   context: { currentTask: 'booking', queryText: 'hotel' },
+ *   includeWorkingMemory: true,
+ *   includeEpisodicRecent: true,
+ *   mustInclude: ['user_preferences'],
+ * };
+ * ```
+ */
+export interface ContextRetrievalOptions {
+  /** Maximum token budget for retrieved memories */
+  maxTokens: number;
+  /** Salience context for relevance scoring */
+  context?: SalienceContext;
+  /** Include working memory entities (default: true) */
+  includeWorkingMemory?: boolean;
+  /** Include recent episodic memories (default: true) */
+  includeEpisodicRecent?: boolean;
+  /** Include semantically relevant memories (default: true) */
+  includeSemanticRelevant?: boolean;
+  /** Entity names that must be included regardless of budget */
+  mustInclude?: string[];
+  /** Minimum salience score to consider (default: 0) */
+  minSalience?: number;
+}
+
+/**
+ * Token breakdown by memory type.
+ */
+export interface TokenBreakdown {
+  /** Tokens used by working memory */
+  working: number;
+  /** Tokens used by episodic memory */
+  episodic: number;
+  /** Tokens used by semantic memory */
+  semantic: number;
+  /** Tokens used by procedural memory */
+  procedural: number;
+  /** Tokens used by must-include entities */
+  mustInclude: number;
+}
+
+/**
+ * Result of context window memory retrieval.
+ *
+ * @example
+ * ```typescript
+ * const result: ContextPackage = {
+ *   memories: [entity1, entity2],
+ *   totalTokens: 3500,
+ *   breakdown: { working: 1000, episodic: 2000, semantic: 500, procedural: 0, mustInclude: 0 },
+ *   excluded: [{ entity: entity3, reason: 'budget_exceeded', tokens: 800 }],
+ *   suggestions: ['Consider retrieving user_history if more space available'],
+ * };
+ * ```
+ */
+export interface ContextPackage {
+  /** Retrieved memory entities */
+  memories: AgentEntity[];
+  /** Total tokens used */
+  totalTokens: number;
+  /** Token breakdown by memory type */
+  breakdown: TokenBreakdown;
+  /** Entities that didn't fit in budget */
+  excluded: ExcludedEntity[];
+  /** Suggestions for additional retrieval if budget increases */
+  suggestions: string[];
+}
+
+/**
+ * Entity excluded from context package with reason.
+ */
+export interface ExcludedEntity {
+  /** The excluded entity */
+  entity: AgentEntity;
+  /** Why it was excluded */
+  reason: 'budget_exceeded' | 'low_salience' | 'filtered';
+  /** Estimated tokens for this entity */
+  tokens: number;
+  /** Salience score at time of exclusion */
+  salience?: number;
+}
