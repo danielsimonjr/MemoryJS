@@ -95,3 +95,8 @@ export {
   MemoryFormatter,
   type MemoryFormatterConfig,
 } from './MemoryFormatter.js';
+
+export {
+  MultiAgentMemoryManager,
+  type MultiAgentConfig,
+} from './MultiAgentMemoryManager.js';

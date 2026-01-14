@@ -345,6 +345,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - memoryFormatter property with env var configuration
 - **New Types**: SpilloverResult, MemoryFormatterConfig
 
+#### Sprint 21: Agent Identity
+- **AgentMetadata Type**: Agent identity and capability tracking
+  - AgentType enum: llm, tool, human, system, default
+  - trustLevel: Normalized 0-1 trust score
+  - capabilities: String array for access control
+  - createdAt/lastActiveAt: Activity timestamps
+  - Optional custom metadata extension
+- **MultiAgentMemoryManager Class**: Multi-agent memory coordination
+  - registerAgent() with ID validation and metadata defaults
+  - unregisterAgent() with default agent protection
+  - getAgent() and hasAgent() for agent lookup
+  - listAgents() with filtering by type, trust level, capability
+  - getAgentCount() for registered agent count
+- **Agent Memory Operations**: Ownership tracking
+  - createAgentMemory() with automatic ownership assignment
+  - getAgentMemories() for agent-owned memory retrieval
+  - getVisibleMemories() respecting visibility rules
+  - transferMemory() for ownership transfer
+  - setMemoryVisibility() to change visibility level
+- **Visibility Controls**: Cross-agent access control
+  - private: Only visible to owning agent
+  - shared: Visible to all registered agents
+  - public: Visible to all including unregistered
+  - allowCrossAgent config option for isolation
+  - requireRegistration config option for strict mode
+- **Event System**: Agent and memory lifecycle events
+  - agent:registered, agent:unregistered events
+  - memory:created, memory:transferred, memory:visibility_changed events
+- **New Types**: MultiAgentConfig, AgentMetadata, AgentType
+
 ### Testing
 
 - Added 67 unit tests for type guards and AccessContextBuilder
@@ -365,6 +395,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 19 unit tests for MemoryFormatter
 - Added 41 unit tests for SummarizationService
 - Added 25 unit tests for PatternDetector
+- Added 31 unit tests for MultiAgentMemoryManager
 
 ## [1.1.0] - 2026-01-11
 

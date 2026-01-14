@@ -1012,3 +1012,42 @@ export interface ExcludedEntity {
   /** Salience score at time of exclusion */
   salience?: number;
 }
+
+// ==================== Multi-Agent Types ====================
+
+/**
+ * Agent type classifications.
+ */
+export type AgentType = 'llm' | 'tool' | 'human' | 'system' | 'default';
+
+/**
+ * Metadata for registered agents.
+ *
+ * @example
+ * ```typescript
+ * const metadata: AgentMetadata = {
+ *   name: 'Travel Assistant',
+ *   type: 'llm',
+ *   trustLevel: 0.9,
+ *   capabilities: ['read', 'write', 'share'],
+ *   createdAt: new Date().toISOString(),
+ *   lastActiveAt: new Date().toISOString(),
+ * };
+ * ```
+ */
+export interface AgentMetadata {
+  /** Human-readable agent name */
+  name: string;
+  /** Agent type classification */
+  type: AgentType;
+  /** Trust level (0-1, higher = more trusted) */
+  trustLevel: number;
+  /** Agent capabilities */
+  capabilities: string[];
+  /** Registration timestamp */
+  createdAt: string;
+  /** Last activity timestamp */
+  lastActiveAt: string;
+  /** Optional custom metadata */
+  metadata?: Record<string, unknown>;
+}
