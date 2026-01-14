@@ -24,8 +24,10 @@ describe('AgentMemoryManager', () => {
     manager = new AgentMemoryManager(storage);
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     manager.stop();
+    // Allow any pending async operations to complete before cleanup
+    await new Promise((resolve) => setTimeout(resolve, 50));
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
