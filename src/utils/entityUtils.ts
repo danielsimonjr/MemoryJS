@@ -13,7 +13,6 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import type { Entity, KnowledgeGraph } from '../types/index.js';
 import { EntityNotFoundError, FileOperationError } from './errors.js';
 
@@ -752,12 +751,11 @@ export function validateFilePath(filePath: string, baseDir: string = process.cwd
 }
 
 /**
- * Default memory file path (in project root directory, outside dist/).
+ * Default memory file path (in current working directory).
+ * Uses process.cwd() to ensure the path is relative to the consuming project,
+ * not the library's installed location.
  */
-export const defaultMemoryPath = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  '../../memory.jsonl'
-);
+export const defaultMemoryPath = path.join(process.cwd(), 'memory.jsonl');
 
 /**
  * Ensure memory file path with backward compatibility migration.
@@ -788,16 +786,14 @@ export const defaultMemoryPath = path.join(
 export async function ensureMemoryFilePath(): Promise<string> {
   if (process.env.MEMORY_FILE_PATH) {
     // Custom path provided, validate and resolve to absolute
-    const baseDir = path.dirname(fileURLToPath(import.meta.url)) + '/../';
-    const validatedPath = validateFilePath(process.env.MEMORY_FILE_PATH, baseDir);
+    // Use process.cwd() as baseDir so paths are relative to consuming project
+    const validatedPath = validateFilePath(process.env.MEMORY_FILE_PATH, process.cwd());
     return validatedPath;
   }
 
   // No custom path set, check for backward compatibility migration
-  const oldMemoryPath = path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '../../memory.json'
-  );
+  // Use process.cwd() so paths are relative to consuming project, not library location
+  const oldMemoryPath = path.join(process.cwd(), 'memory.json');
   const newMemoryPath = defaultMemoryPath;
 
   try {

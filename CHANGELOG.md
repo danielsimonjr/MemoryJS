@@ -484,6 +484,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 76 unit tests for MultiAgentMemoryManager (31 Sprint 21 + 19 Sprint 22 + 18 Sprint 23 + 8 Sprint 24)
 - Added 23 unit tests for AgentMemoryManager facade
 
+## [1.2.1] - 2026-01-18
+
+### Fixed
+
+- **Path Resolution Bug**: Fixed `defaultMemoryPath` and `ensureMemoryFilePath()` to use `process.cwd()` instead of `import.meta.url`
+  - Previously, paths were resolved relative to the library's location in `node_modules/`, causing files to be created in wrong location when used as a dependency
+  - Now correctly resolves paths relative to the consuming project's current working directory
+  - Migration from `memory.json` to `memory.jsonl` now works correctly when library is consumed as npm package
+
 ## [1.1.0] - 2026-01-11
 
 ### Added
