@@ -29,6 +29,11 @@ npm run typecheck       # Check types without emitting
 npm run tools:install   # Install tool subdependencies
 npm run tools:build     # Build all tools
 
+# Run tools directly
+node tools/create-dependency-graph/create-dependency-graph.ts  # Generate dependency docs
+node tools/chunking-for-files/chunking-for-files.ts split <file>  # Split large files
+node tools/chunking-for-files/chunking-for-files.ts merge <manifest.json>  # Merge back
+
 # Skip performance benchmarks
 SKIP_BENCHMARKS=true npm test
 ```
@@ -57,6 +62,9 @@ const ctx = new ManagerContext({ storagePath: './memory.jsonl' });
 
 // SQLite storage
 const ctx = new ManagerContext({ storageType: 'sqlite', storagePath: './memory.db' });
+
+// Or use string path (storage type via MEMORY_STORAGE_TYPE env var)
+const ctx = new ManagerContext('./memory.jsonl');
 
 ctx.entityManager       // Entity CRUD + tags
 ctx.relationManager     // Relation CRUD
@@ -132,8 +140,15 @@ ctx.agentMemory()       // Agent Memory System facade
 - Lazy initialization: Managers created on first access via getters
 - Event-driven cache invalidation: `GraphEventEmitter` notifies subscribers on changes
 - TF-IDF auto-sync: `TFIDFEventSync` keeps index current with storage
-- Worker pool: CPU-intensive Levenshtein calculations offloaded to workers
+- Worker pool: CPU-intensive Levenshtein calculations offloaded to workers (`dist/workers/` built separately by tsup)
 - Transaction support: `TransactionManager` for atomic batch operations
+
+### Build Notes
+
+- Uses `tsup` for bundling (ESM + CJS dual output)
+- Worker files (`levenshteinWorker.ts`) built separately to `dist/workers/` for dynamic loading
+- `better-sqlite3` is externalized (native addon, not bundled)
+- No lint script configured - TypeScript compiler (`npm run typecheck`) catches most issues
 
 ## Testing
 
@@ -147,15 +162,51 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files.
 
 ## Environment Variables
 
+### Core Storage
 | Variable | Values | Default |
 |----------|--------|---------|
 | `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` |
 | `MEMORY_FILE_PATH` | Custom storage file path | - |
+
+### Embedding/Semantic Search
+| Variable | Values | Default |
+|----------|--------|---------|
 | `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `none` |
 | `MEMORY_OPENAI_API_KEY` | API key string | - |
 | `MEMORY_EMBEDDING_MODEL` | Model name override | - |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |
+
+### Agent Memory Decay
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MEMORY_AUTO_DECAY` | `false` | Enable automatic decay scheduling |
+| `MEMORY_DECAY_HALF_LIFE_HOURS` | `168` (1 week) | Half-life for memory importance decay |
+| `MEMORY_DECAY_MIN_IMPORTANCE` | `0.1` | Floor value for decayed importance |
+| `MEMORY_DECAY_INTERVAL_MS` | `3600000` (1 hour) | Interval between decay runs |
+| `MEMORY_AUTO_FORGET` | `false` | Auto-delete memories below threshold |
+| `MEMORY_FORGET_THRESHOLD` | `0.05` | Effective importance threshold for forgetting |
+
+### Agent Memory Salience
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MEMORY_SALIENCE_IMPORTANCE_WEIGHT` | `0.25` | Weight for base importance |
+| `MEMORY_SALIENCE_RECENCY_WEIGHT` | `0.25` | Weight for recency |
+| `MEMORY_SALIENCE_FREQUENCY_WEIGHT` | `0.2` | Weight for access frequency |
+| `MEMORY_SALIENCE_CONTEXT_WEIGHT` | `0.2` | Weight for context relevance |
+| `MEMORY_SALIENCE_NOVELTY_WEIGHT` | `0.1` | Weight for novelty |
+
+### Context Window
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MEMORY_CONTEXT_MAX_TOKENS` | `4000` | Default max tokens for context |
+| `MEMORY_CONTEXT_TOKEN_MULTIPLIER` | `1.3` | Estimation multiplier |
+| `MEMORY_CONTEXT_RESERVE_BUFFER` | `100` | Reserved token buffer |
+
+### Development/Testing
+| Variable | Values | Default |
+|----------|--------|---------|
 | `SKIP_BENCHMARKS` | `true`, `false` | `false` (run benchmarks) |
+| `LOG_LEVEL` | `debug`, `info`, `warn`, `error` | (none) |
 
 ## Documentation
 
@@ -170,5 +221,17 @@ docs/
 
 Key documents:
 - `docs/architecture/AGENT_MEMORY.md` - Comprehensive agent memory system design
+- `docs/architecture/DEPENDENCY_GRAPH.md` - Auto-generated module dependency documentation
 - `docs/roadmap/ROADMAP.md` - Feature roadmap with implementation details
 - `docs/guides/IMPLEMENTATION_GUIDE.md` - Detailed implementation patterns
+
+## Tools
+
+Located in `tools/` directory:
+
+| Tool | Purpose |
+|------|---------|
+| `create-dependency-graph` | Generates DEPENDENCY_GRAPH.md with module dependencies, exports, and Mermaid diagrams |
+| `chunking-for-files` | Splits large files (markdown, JSON, TypeScript) into editable chunks, then merges back |
+| `migrate-from-jsonl-to-sqlite` | Migrates existing JSONL storage to SQLite backend |
+| `compress-for-context` | Compresses graph data for LLM context windows |

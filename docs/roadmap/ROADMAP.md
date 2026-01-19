@@ -2,6 +2,20 @@
 
 This document outlines the strategic development roadmap for MemoryJS, organized by priority phases and feature categories.
 
+## Phase Overview
+
+| Phase | Name | Timeline | Status |
+|-------|------|----------|--------|
+| 1 | Foundation | Months 1-2 | 🔲 Pending |
+| 2 | Developer Experience | Months 2-3 | 🔲 Pending |
+| 3 | Agent Memory System | Months 3-5 | ✅ **Completed** (v1.2.0) |
+| 3B | Memory Intelligence (Reflection & Experience) | Months 5-7 | 🔲 Pending |
+| 4 | Integration & Scale | Months 9-11 | 🔲 Pending |
+| 5 | Advanced Features | Months 11-14 | 🔲 Pending |
+| 6 | Enterprise | Months 14+ | 🔲 Pending |
+
+---
+
 ## Current State Assessment
 
 ### Production-Ready Features
@@ -86,7 +100,9 @@ Medium effort improvements focused on usability and observability.
 
 ---
 
-## Phase 3: Agent Memory System (Months 3-5)
+## Phase 3: Agent Memory System (Months 3-5) ✅ COMPLETED
+
+**Status**: Implemented in v1.2.0
 
 **Priority Track**: Transform MemoryJS into a comprehensive memory system for AI agents supporting short-term (working memory) and long-term (persistent knowledge) memory patterns.
 
@@ -386,7 +402,588 @@ MEMORY_DEFAULT_VISIBILITY=private
 
 ---
 
-## Phase 4: Integration & Scale (Months 5-7)
+## Phase 3B: Memory Intelligence - Reflection & Experience (Months 5-7)
+
+**NEW**: Advanced memory mechanisms based on the evolutionary framework from "From Storage to Experience: A Survey on the Evolution of LLM Agent Memory Mechanisms" (Luo et al., 2026). This phase elevates MemoryJS from the **Storage** stage to the **Reflection** and **Experience** stages of memory evolution.
+
+> **Key Insight**: Memory evolution is about increasing abstraction level and information density, not just storage capacity. These features transform raw trajectories into validated, compressed, and transferable knowledge.
+
+### 3B.1 Memory Validation & Error Rectification (Reflection Stage)
+
+**Purpose**: Prevent hallucinations and logical errors from contaminating memory through self-critique before storage.
+
+**Memory Validator Service**:
+```typescript
+interface MemoryValidator {
+  // Check new observation against existing entity knowledge
+  validateConsistency(newObs: Observation, existing: Entity): Promise<ValidationResult>;
+
+  // Detect contradictory observations within an entity
+  detectContradictions(entity: Entity): Promise<Contradiction[]>;
+
+  // Repair memory based on feedback (self-critique or external)
+  repairMemory(entity: Entity, feedback: string): Promise<Entity>;
+
+  // Validate temporal consistency (e.g., event ordering)
+  validateTemporalOrder(observations: Observation[]): ValidationResult;
+
+  // Score memory reliability based on source and confirmation
+  calculateReliability(entity: Entity): number;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  confidence: number;
+  issues: ValidationIssue[];
+  suggestions: string[];
+}
+
+interface Contradiction {
+  observation1: Observation;
+  observation2: Observation;
+  conflictType: 'factual' | 'temporal' | 'logical';
+  severity: 'low' | 'medium' | 'high';
+  resolution?: string;
+}
+```
+
+**Implementation**:
+- Pre-storage validation hooks
+- Semantic consistency checking via embeddings
+- Temporal logic validation
+- Contradiction detection and resolution strategies
+- Integration with ConflictResolver for automated repair
+
+### 3B.2 Trajectory Compression (Reflection Stage)
+
+**Purpose**: Distill verbose interaction histories into compact, reusable representations to prevent memory bloat.
+
+**Trajectory Compressor Service**:
+```typescript
+interface TrajectoryCompressor {
+  // Compress long observation sequences into summaries
+  distill(observations: Observation[], options?: DistillOptions): Promise<CompressedMemory>;
+
+  // Multi-granularity abstraction
+  abstractAtLevel(
+    memories: Entity[],
+    granularity: 'fine' | 'medium' | 'coarse'
+  ): Promise<Entity[]>;
+
+  // Context folding for working memory (fit into token budget)
+  foldContext(working: WorkingMemory, maxTokens: number): Promise<WorkingMemory>;
+
+  // Identify redundant observations across entities
+  findRedundancies(entities: Entity[]): Promise<RedundancyGroup[]>;
+
+  // Merge redundant information preserving key details
+  mergeRedundant(group: RedundancyGroup, strategy: MergeStrategy): Promise<Entity>;
+}
+
+interface CompressedMemory {
+  summary: string;
+  keyFacts: string[];
+  originalCount: number;
+  compressionRatio: number;
+  preservedDetails: string[];
+  discardedDetails: string[];
+}
+
+interface DistillOptions {
+  preserveTemporalOrder: boolean;
+  maxLength: number;
+  importanceThreshold: number;
+  preserveEntities: string[]; // Always keep these
+}
+```
+
+**Compression Strategies**:
+- `semantic_clustering` - Group similar observations, keep representative
+- `temporal_windowing` - Summarize by time periods
+- `importance_filtering` - Keep only high-importance items
+- `hierarchical` - Multi-level summaries (detail → overview)
+
+**Implementation**:
+- LLM-powered summarization (optional)
+- Embedding-based clustering for grouping
+- Information-theoretic redundancy detection
+- Configurable compression ratios
+- Integration with ContextWindowManager
+
+### 3B.3 Experience Extraction (Experience Stage)
+
+**Purpose**: Abstract universal patterns from clusters of trajectories to enable zero-shot transfer to new scenarios.
+
+**Experience Extractor Service**:
+```typescript
+interface ExperienceExtractor {
+  // Learn from contrasting successful vs failed trajectories
+  extractFromContrastivePairs(
+    success: Trajectory[],
+    failure: Trajectory[]
+  ): Promise<Rule[]>;
+
+  // Detect recurring patterns across similar trajectories
+  abstractPattern(
+    trajectories: Trajectory[],
+    similarityThreshold: number
+  ): Promise<HeuristicGuideline>;
+
+  // Extract decision boundaries from trajectory outcomes
+  learnDecisionBoundary(
+    trajectories: Trajectory[],
+    outcomeField: string
+  ): Promise<DecisionRule>;
+
+  // Cluster trajectories by structural similarity
+  clusterTrajectories(
+    trajectories: Trajectory[],
+    method: 'semantic' | 'structural' | 'outcome'
+  ): Promise<TrajectoryCluster[]>;
+
+  // Generate transferable insights from trajectory cluster
+  synthesizeExperience(cluster: TrajectoryCluster): Promise<Experience>;
+}
+
+interface Trajectory {
+  id: string;
+  sessionId: string;
+  observations: Observation[];
+  actions: Action[];
+  outcome: 'success' | 'failure' | 'partial' | 'unknown';
+  context: Record<string, unknown>;
+  timestamp: string;
+}
+
+interface Rule {
+  condition: string;  // When this applies
+  action: string;     // What to do
+  confidence: number;
+  supportCount: number; // How many trajectories support this
+  contraCount: number;  // How many trajectories contradict this
+}
+
+interface Experience {
+  id: string;
+  type: 'heuristic' | 'procedure' | 'constraint' | 'preference';
+  content: string;
+  applicability: string[]; // Task types this applies to
+  confidence: number;
+  sourceTrajectories: string[];
+  createdAt: string;
+  validatedAt?: string;
+}
+```
+
+**Abstraction Mechanisms** (from paper):
+- **Contrastive Induction**: Learn from success/failure pairs
+- **Action Distillation**: Compress action sequences into patterns
+- **Code Encapsulation**: Convert patterns to executable procedures
+- **Gradient Internalization**: (Future) Fine-tune models on experience
+
+**Implementation**:
+- Trajectory storage and indexing
+- Similarity computation for clustering
+- Pattern mining algorithms
+- Rule confidence scoring
+- Experience lifecycle management
+
+### 3B.4 Procedural Memory Manager (Experience Stage)
+
+**Purpose**: Encapsulate recurring action patterns into reusable procedures (skills).
+
+**Procedural Memory Service**:
+```typescript
+interface ProceduralMemoryManager {
+  // Learn a procedure from observed action sequences
+  learnProcedure(trajectories: Trajectory[], name?: string): Promise<Procedure>;
+
+  // Match current context to known procedures
+  matchProcedure(context: Context): Promise<ProcedureMatch[]>;
+
+  // Execute a procedure (return action sequence)
+  instantiate(procedure: Procedure, parameters: Record<string, unknown>): Action[];
+
+  // Refine procedure based on execution feedback
+  refineProcedure(procedure: Procedure, feedback: ProcedureFeedback): Promise<Procedure>;
+
+  // Compose procedures into higher-level skills
+  composeProcedures(procedures: Procedure[], name: string): Promise<Procedure>;
+
+  // Get all procedures for a task type
+  getProceduresForTask(taskType: string): Promise<Procedure[]>;
+}
+
+interface Procedure {
+  id: string;
+  name: string;
+  description: string;
+  trigger: string;           // When to invoke (natural language condition)
+  preconditions: string[];   // Required state before execution
+  steps: ProcedureStep[];
+  parameters: ProcedureParameter[];
+  postconditions: string[];  // Expected state after execution
+  successRate: number;
+  executionCount: number;
+  lastExecuted?: string;
+  sourceTrajectories: string[];
+}
+
+interface ProcedureStep {
+  order: number;
+  action: string;
+  parameters: Record<string, string>; // Can reference procedure params
+  fallback?: ProcedureStep;
+  timeout?: number;
+}
+
+interface ProcedureParameter {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'entity' | 'list';
+  required: boolean;
+  default?: unknown;
+  description: string;
+}
+
+interface ProcedureFeedback {
+  procedureId: string;
+  executionId: string;
+  success: boolean;
+  failedAtStep?: number;
+  errorMessage?: string;
+  suggestions?: string[];
+}
+```
+
+**Implementation**:
+- Action sequence alignment (find common subsequences)
+- Parameter extraction and generalization
+- Procedure composition and nesting
+- Success rate tracking and decay
+- Procedure versioning
+
+### 3B.5 Heuristic Guidelines Manager (Experience Stage)
+
+**Purpose**: Crystallize implicit patterns into explicit natural language strategies for interpretable self-evolution.
+
+**Heuristic Manager Service**:
+```typescript
+interface HeuristicManager {
+  // Create a new heuristic from experience
+  createHeuristic(heuristic: Partial<HeuristicGuideline>): Promise<HeuristicGuideline>;
+
+  // Find applicable heuristics for current context
+  getApplicableHeuristics(context: Context): Promise<ScoredHeuristic[]>;
+
+  // Update heuristic based on outcome
+  reinforceHeuristic(id: string, outcome: 'success' | 'failure'): Promise<void>;
+
+  // Merge similar heuristics
+  mergeHeuristics(ids: string[]): Promise<HeuristicGuideline>;
+
+  // Detect conflicting heuristics
+  findConflicts(): Promise<HeuristicConflict[]>;
+
+  // Generate heuristics from trajectory analysis
+  induceHeuristics(trajectories: Trajectory[]): Promise<HeuristicGuideline[]>;
+}
+
+interface HeuristicGuideline {
+  id: string;
+  name: string;
+  condition: string;      // When to apply (natural language)
+  action: string;         // What to do
+  rationale: string;      // Why (explanation)
+  priority: number;       // Ordering when multiple apply
+  confidence: number;
+  applicableTasks: string[];
+  contraindications: string[]; // When NOT to apply
+  sourceTrajectories: string[];
+  successCount: number;
+  failureCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ScoredHeuristic {
+  heuristic: HeuristicGuideline;
+  relevanceScore: number;
+  confidenceScore: number;
+  combinedScore: number;
+}
+
+interface HeuristicConflict {
+  heuristic1: HeuristicGuideline;
+  heuristic2: HeuristicGuideline;
+  conflictType: 'contradictory_action' | 'overlapping_condition' | 'priority_ambiguity';
+  resolution?: string;
+}
+```
+
+**Implementation**:
+- Natural language condition parsing
+- Context matching via semantic similarity
+- Conflict detection and resolution
+- Heuristic generalization (broader applicability)
+- Integration with ExperienceExtractor
+
+### 3B.6 Active Retrieval Controller (Experience Stage)
+
+**Purpose**: Transform memory from passive storage to autonomous, context-aware resource invocation.
+
+**Active Retrieval Service**:
+```typescript
+interface ActiveRetrievalController {
+  // Decide if current task requires memory retrieval
+  shouldRetrieve(context: RetrievalContext): Promise<RetrievalDecision>;
+
+  // Select which memory types to query
+  selectMemoryTypes(task: TaskType): MemoryCategory[];
+
+  // Estimate relevance before full retrieval
+  estimateRelevance(query: string, memoryType: MemoryCategory): Promise<number>;
+
+  // Adaptive retrieval based on task complexity
+  adaptiveRetrieve(context: RetrievalContext): Promise<AdaptiveResult>;
+
+  // Learn retrieval patterns from feedback
+  learnRetrievalPattern(feedback: RetrievalFeedback): Promise<void>;
+}
+
+interface RetrievalContext {
+  currentTask: string;
+  taskType: TaskType;
+  currentSession: string;
+  recentActions: string[];
+  currentGoal?: string;
+  availableTokenBudget: number;
+  urgency: 'low' | 'medium' | 'high';
+}
+
+interface RetrievalDecision {
+  shouldRetrieve: boolean;
+  confidence: number;
+  recommendedTypes: MemoryCategory[];
+  estimatedBenefit: number;
+  estimatedCost: number; // tokens, latency
+  rationale: string;
+}
+
+interface AdaptiveResult {
+  memories: Entity[];
+  retrievalStrategy: string;
+  tokenUsage: number;
+  latencyMs: number;
+  confidence: number;
+  suggestions: string[]; // What else might be relevant
+}
+
+type MemoryCategory =
+  | 'working'      // Current session context
+  | 'episodic'     // Past events/experiences
+  | 'semantic'     // Facts and knowledge
+  | 'procedural'   // Skills and procedures
+  | 'heuristic';   // Guidelines and rules
+
+type TaskType =
+  | 'recall'       // Direct fact retrieval
+  | 'reasoning'    // Multi-step inference
+  | 'planning'     // Future action sequence
+  | 'creative'     // Novel generation
+  | 'diagnostic';  // Problem identification
+```
+
+**Implementation**:
+- Task type classification
+- Cost-benefit analysis for retrieval
+- Retrieval pattern learning
+- Dynamic budget allocation
+- Integration with ContextWindowManager
+
+### 3B.7 Causal Relations (Reflection Stage)
+
+**Purpose**: Extend relations to capture causal dependencies with delayed effects and cascading impacts.
+
+**Causal Relation Extensions**:
+```typescript
+interface CausalRelation extends Relation {
+  relationType: 'causes' | 'enables' | 'prevents' | 'precedes' | 'correlates';
+
+  // Causal properties
+  causalStrength: number;     // 0-1, how strongly A causes B
+  delay?: number;             // Time steps between cause and effect
+  probability?: number;       // P(effect | cause)
+
+  // Validation
+  observed: boolean;          // Directly observed vs inferred
+  confirmationCount: number;  // How many times validated
+  contradictionCount: number; // How many times contradicted
+
+  // Context
+  conditions?: string[];      // Conditions under which causation holds
+  mechanism?: string;         // How the causation works (explanation)
+}
+
+interface CausalGraphManager {
+  // Add causal relation with validation
+  addCausalRelation(relation: CausalRelation): Promise<CausalRelation>;
+
+  // Infer potential causes for an observation
+  inferCauses(effect: Entity, maxDepth?: number): Promise<CausalChain[]>;
+
+  // Predict effects of an action/event
+  predictEffects(cause: Entity, maxDepth?: number): Promise<CausalChain[]>;
+
+  // Find causal paths between two entities
+  findCausalPaths(from: Entity, to: Entity): Promise<CausalChain[]>;
+
+  // Validate causal relation with new evidence
+  validateCausation(relationId: string, evidence: Evidence): Promise<void>;
+
+  // Detect causal cycles (potential inconsistencies)
+  detectCycles(): Promise<CausalCycle[]>;
+
+  // Build causal model from observations
+  learnCausalStructure(observations: Observation[]): Promise<CausalRelation[]>;
+}
+
+interface CausalChain {
+  path: CausalRelation[];
+  totalStrength: number;      // Product of individual strengths
+  totalDelay: number;         // Sum of delays
+  confidence: number;
+}
+```
+
+**Implementation**:
+- Extend Relation type in `src/types/types.ts`
+- Add CausalGraphManager to `src/core/`
+- Causal inference algorithms (basic causal discovery)
+- Integration with GraphTraversal for causal path finding
+- Temporal reasoning support
+
+### 3B.8 World Model Manager (Environment Reflection)
+
+**Purpose**: Build and maintain internal models of the environment from observations.
+
+**World Model Service**:
+```typescript
+interface WorldModelManager {
+  // Infer environment rules from observations
+  inferRule(observations: Observation[]): Promise<EnvironmentRule>;
+
+  // Validate rule against new observation
+  validateRule(rule: EnvironmentRule, observation: Observation): ValidationResult;
+
+  // Update model based on environmental feedback
+  updateModel(feedback: EnvironmentFeedback): Promise<void>;
+
+  // Predict outcome of action in current state
+  predictOutcome(state: WorldState, action: Action): Promise<PredictionResult>;
+
+  // Get current world state estimate
+  getCurrentState(): Promise<WorldState>;
+
+  // Detect state changes
+  detectStateChange(before: WorldState, after: WorldState): StateChange[];
+}
+
+interface EnvironmentRule {
+  id: string;
+  name: string;
+  condition: string;          // When rule applies
+  effect: string;             // What happens
+  confidence: number;
+  observationCount: number;
+  validationCount: number;
+  lastValidated?: string;
+  exceptions: string[];       // Known exceptions
+}
+
+interface WorldState {
+  timestamp: string;
+  entities: Record<string, EntityState>;
+  activeRelations: string[];
+  environmentVariables: Record<string, unknown>;
+  confidence: number;
+}
+
+interface PredictionResult {
+  predictedState: WorldState;
+  confidence: number;
+  uncertainties: string[];
+  alternativeOutcomes?: WorldState[];
+}
+```
+
+**Implementation**:
+- State tracking and versioning
+- Rule learning from observation sequences
+- Prediction confidence calibration
+- Integration with CausalGraphManager
+
+### 3B.9 Environment Configuration
+
+**New Environment Variables**:
+```bash
+# Memory Validation
+MEMORY_VALIDATION_ENABLED=true
+MEMORY_VALIDATION_STRICTNESS=medium  # low, medium, high
+MEMORY_AUTO_REPAIR=false
+
+# Trajectory Compression
+MEMORY_COMPRESSION_ENABLED=true
+MEMORY_COMPRESSION_RATIO=0.5
+MEMORY_COMPRESSION_MIN_OBSERVATIONS=10
+
+# Experience Extraction
+MEMORY_EXPERIENCE_EXTRACTION_ENABLED=true
+MEMORY_EXPERIENCE_MIN_TRAJECTORIES=5
+MEMORY_EXPERIENCE_CONFIDENCE_THRESHOLD=0.7
+
+# Procedural Memory
+MEMORY_PROCEDURAL_ENABLED=true
+MEMORY_PROCEDURE_MIN_OCCURRENCES=3
+MEMORY_PROCEDURE_SUCCESS_THRESHOLD=0.6
+
+# Active Retrieval
+MEMORY_ACTIVE_RETRIEVAL_ENABLED=false
+MEMORY_RETRIEVAL_COST_THRESHOLD=0.3
+
+# Causal Relations
+MEMORY_CAUSAL_INFERENCE_ENABLED=false
+MEMORY_CAUSAL_MIN_OBSERVATIONS=5
+
+# World Model
+MEMORY_WORLD_MODEL_ENABLED=false
+MEMORY_STATE_TRACKING_INTERVAL_MS=60000
+```
+
+### 3B.10 Testing Requirements
+
+**Unit Tests**:
+- Memory validation (consistency, contradiction detection)
+- Trajectory compression (ratio, information preservation)
+- Experience extraction (pattern detection, rule confidence)
+- Procedural memory (learning, matching, refinement)
+- Heuristic management (conflict detection, relevance scoring)
+- Causal relations (inference, path finding, cycle detection)
+
+**Integration Tests**:
+- Full experience lifecycle (trajectory → abstraction → application)
+- Validation → compression → experience pipeline
+- Multi-memory type retrieval scenarios
+- Causal chain reasoning
+
+**Performance Tests**:
+- Compression at scale (1000+ observations)
+- Experience extraction from large trajectory sets
+- Active retrieval decision latency
+- Causal inference depth limits
+
+---
+
+## Phase 4: Integration & Scale (Months 9-11)
 
 Medium-high effort features for broader ecosystem integration.
 
@@ -424,7 +1021,7 @@ Medium-high effort features for broader ecosystem integration.
 
 ---
 
-## Phase 5: Advanced Features (Months 7-10)
+## Phase 5: Advanced Features (Months 11-14)
 
 High effort features for sophisticated use cases.
 
@@ -456,7 +1053,7 @@ High effort features for sophisticated use cases.
 
 ---
 
-## Phase 6: Enterprise (Months 10+)
+## Phase 6: Enterprise (Months 14+)
 
 Very high effort features for enterprise deployments.
 
@@ -619,3 +1216,14 @@ The maintainers will review proposals quarterly and update this roadmap accordin
 |---------|------|---------|
 | 1.0 | 2025-01-12 | Initial roadmap creation |
 | 1.1 | 2025-01-13 | Added Phase 3: Agent Memory System with comprehensive short-term and long-term memory support for AI agents. Includes memory lifecycle, decay engine, consolidation pipeline, salience scoring, context window management, session/episodic memory, and multi-agent support. See [Agent Memory Architecture](../architecture/AGENT_MEMORY.md) for detailed specifications. |
+| 1.2 | 2026-01-19 | Marked Phase 3 as COMPLETED (v1.2.0). Added Phase 3B: Memory Intelligence based on "From Storage to Experience: A Survey on the Evolution of LLM Agent Memory Mechanisms" (Luo et al., 2026). New features include: Memory Validation & Error Rectification, Trajectory Compression, Experience Extraction (cross-trajectory abstraction), Procedural Memory Manager, Heuristic Guidelines Manager, Active Retrieval Controller, Causal Relations, and World Model Manager. Adjusted Phase 4-6 timelines accordingly. |
+
+---
+
+## References
+
+### Research Papers
+
+- **Luo, J., Tian, Y., Cao, C., et al. (2026)**. "From Storage to Experience: A Survey on the Evolution of LLM Agent Memory Mechanisms." *Preprints.org*, doi:10.20944/preprints202601.0618.v2. [Paper Link](https://www.preprints.org/manuscript/202601.0618/v2)
+  - Proposes three-stage evolutionary framework: Storage → Reflection → Experience
+  - Key concepts applied to Phase 3B: Error rectification, trajectory compression, cross-trajectory abstraction, procedural primitives, heuristic guidelines, active memory perception, causal structure modeling
