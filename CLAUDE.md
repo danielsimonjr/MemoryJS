@@ -28,6 +28,9 @@ npm run typecheck       # Check types without emitting
 # Tools (utilities in tools/ directory)
 npm run tools:install   # Install tool subdependencies
 npm run tools:build     # Build all tools
+
+# Skip performance benchmarks
+SKIP_BENCHMARKS=true npm test
 ```
 
 ## Architecture
@@ -36,6 +39,7 @@ npm run tools:build     # Build all tools
 
 ```
 src/
+├── agent/     # Agent Memory System (sessions, working memory, episodic, decay)
 ├── core/      # Storage backends, entity/relation/observation managers, transactions
 ├── search/    # Search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid)
 ├── features/  # Import/export, compression, analytics, archiving
@@ -46,9 +50,14 @@ src/
 
 ### Key Components
 
-**ManagerContext** (`src/core/ManagerContext.ts`): Central facade providing lazy-initialized access to all managers. Instantiate with a storage path string:
+**ManagerContext** (`src/core/ManagerContext.ts`): Central facade providing lazy-initialized access to all managers:
 ```typescript
-const ctx = new ManagerContext('./memory.jsonl');
+// JSONL storage (default)
+const ctx = new ManagerContext({ storagePath: './memory.jsonl' });
+
+// SQLite storage
+const ctx = new ManagerContext({ storageType: 'sqlite', storagePath: './memory.db' });
+
 ctx.entityManager       // Entity CRUD + tags
 ctx.relationManager     // Relation CRUD
 ctx.observationManager  // Observation CRUD
@@ -62,6 +71,7 @@ ctx.analyticsManager    // Graph statistics and validation
 ctx.compressionManager  // Duplicate detection, entity merging
 ctx.archiveManager      // Entity archival to compressed storage
 ctx.semanticSearch      // Vector similarity (requires embedding provider)
+ctx.agentMemory()       // Agent Memory System facade
 ```
 
 **Storage Layer** (`src/core/StorageFactory.ts`): Two backends selected via `MEMORY_STORAGE_TYPE` env var:
@@ -79,6 +89,16 @@ ctx.semanticSearch      // Vector similarity (requires embedding provider)
 - `QueryAnalyzer`/`QueryPlanner`: Query understanding, cost estimation, execution planning
 - `ReflectionManager`: Reflection-based retrieval with progressive refinement
 - `SavedSearchManager`: Saved search persistence and execution
+
+**Agent Memory System** (`src/agent/`): Complete memory system for AI agents:
+- `AgentMemoryManager`: Unified facade for agent memory operations
+- `SessionManager`: Session lifecycle (start, end, query sessions)
+- `WorkingMemoryManager`: Short-term memory with TTL and promotion to long-term
+- `EpisodicMemoryManager`: Timeline-based event memories with temporal ordering
+- `DecayEngine`/`DecayScheduler`: Time-based memory importance decay
+- `SalienceEngine`: Context-aware memory scoring based on keywords/relevance
+- `MultiAgentMemoryManager`: Shared memory with visibility controls (private/shared/public)
+- `ConflictResolver`: Resolution strategies for concurrent updates
 
 ### Data Model
 
@@ -135,6 +155,7 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files.
 | `MEMORY_OPENAI_API_KEY` | API key string | - |
 | `MEMORY_EMBEDDING_MODEL` | Model name override | - |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |
+| `SKIP_BENCHMARKS` | `true`, `false` | `false` (run benchmarks) |
 
 ## Documentation
 
