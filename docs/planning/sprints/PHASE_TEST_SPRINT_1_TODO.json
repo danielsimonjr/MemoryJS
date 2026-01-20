@@ -1,0 +1,281 @@
+{
+  "phase": 2,
+  "sprint": 1,
+  "title": "CLI Core Tests",
+  "priority": "CRITICAL",
+  "effort": "6 hours",
+  "status": "pending",
+  "impact": "Establishes test coverage for CLI configuration, options, and output formatters (0% to 90%)",
+  "targetMetrics": {
+    "configCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "optionsCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "formattersCoverage": {
+      "current": "0%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.1.1",
+      "category": "testing",
+      "title": "Test config.ts File Loading",
+      "description": "Test configuration file discovery, parsing, and validation. Test .memoryjsrc, .memoryjsrc.json, and memoryjs.config.json formats.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["tests/unit/cli/config.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure CLI configuration file loading works correctly across all supported formats.",
+        "keyDecisions": [
+          "Test file discovery in current and parent directories",
+          "Test JSON parsing with valid and invalid content",
+          "Test config file priority ordering"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create tests/unit/cli directory",
+          "details": "mkdir -p tests/unit/cli"
+        },
+        {
+          "step": 2,
+          "action": "Create config.test.ts with file discovery tests",
+          "details": "Test findConfigFile() function with mock file system"
+        },
+        {
+          "step": 3,
+          "action": "Add config parsing tests",
+          "details": "Test loadConfig() with valid JSON, invalid JSON, and empty files"
+        },
+        {
+          "step": 4,
+          "action": "Add config format tests",
+          "details": "Test all three config file formats: .memoryjsrc, .memoryjsrc.json, memoryjs.config.json"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Config file discovery finds files in current directory",
+        "Config file discovery traverses parent directories",
+        "Invalid JSON files handled gracefully",
+        "All config formats parsed correctly",
+        "Coverage of config.ts reaches 90%"
+      ]
+    },
+    {
+      "id": "2.1.2",
+      "category": "testing",
+      "title": "Test config.ts Edge Cases",
+      "description": "Test missing config files, invalid JSON, parent directory search, and config merging with CLI args.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/cli/config.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Cover edge cases in configuration file handling.",
+        "keyDecisions": [
+          "Test graceful fallback when no config file exists",
+          "Test malformed JSON error handling",
+          "Test config merge precedence (CLI > config file > defaults)"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add missing file tests",
+          "details": "Test behavior when no config file exists in any searched directory"
+        },
+        {
+          "step": 2,
+          "action": "Add invalid JSON tests",
+          "details": "Test malformed JSON, truncated files, and encoding issues"
+        },
+        {
+          "step": 3,
+          "action": "Add mergeConfig tests",
+          "details": "Test mergeConfig() function with various option combinations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Missing config files return empty config",
+        "Invalid JSON logged as warning, not error",
+        "CLI args override config file values",
+        "Default values applied for missing options",
+        "All error paths tested"
+      ]
+    },
+    {
+      "id": "2.1.3",
+      "category": "testing",
+      "title": "Test options.ts Parsing",
+      "description": "Test global options parsing, validation, and defaults. Test --storage, --format, --quiet, --verbose options.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/cli/options.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure CLI global options are correctly parsed and validated.",
+        "keyDecisions": [
+          "Test parseGlobalOptions() with all option combinations",
+          "Test invalid option values are rejected",
+          "Test environment variable fallbacks"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create options.test.ts",
+          "details": "Set up test file with describe blocks for each option"
+        },
+        {
+          "step": 2,
+          "action": "Add storage option tests",
+          "details": "Test --storage with valid paths, invalid paths, default value"
+        },
+        {
+          "step": 3,
+          "action": "Add format option tests",
+          "details": "Test --format with json, table, csv, and invalid values"
+        },
+        {
+          "step": 4,
+          "action": "Add flag tests",
+          "details": "Test --quiet and --verbose flags, mutually exclusive behavior"
+        }
+      ],
+      "acceptanceCriteria": [
+        "All global options parsed correctly",
+        "Invalid format values rejected with error",
+        "Environment variable fallbacks work",
+        "Default values applied correctly",
+        "Coverage of options.ts reaches 90%"
+      ]
+    },
+    {
+      "id": "2.1.4",
+      "category": "testing",
+      "title": "Test formatters.ts JSON Output",
+      "description": "Test JSON formatting for entities, relations, and search results. Test pretty-printing and compact modes.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["tests/unit/cli/formatters.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure JSON output formatting is correct and consistent.",
+        "keyDecisions": [
+          "Test formatEntities() JSON output",
+          "Test formatRelations() JSON output",
+          "Test empty arrays and single items"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create formatters.test.ts",
+          "details": "Set up test file with mock entities and relations"
+        },
+        {
+          "step": 2,
+          "action": "Add entity JSON formatting tests",
+          "details": "Test formatEntities() with various entity structures"
+        },
+        {
+          "step": 3,
+          "action": "Add relation JSON formatting tests",
+          "details": "Test formatRelations() with various relation types"
+        },
+        {
+          "step": 4,
+          "action": "Add edge case tests",
+          "details": "Test empty arrays, null values, special characters in strings"
+        }
+      ],
+      "acceptanceCriteria": [
+        "JSON output is valid parseable JSON",
+        "Pretty-printing indentation is correct",
+        "Empty arrays formatted correctly",
+        "Special characters properly escaped",
+        "JSON formatter fully tested"
+      ]
+    },
+    {
+      "id": "2.1.5",
+      "category": "testing",
+      "title": "Test formatters.ts Table/CSV Output",
+      "description": "Test table formatting with terminal width detection, column sizing, and word wrapping. Test CSV escaping.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/cli/formatters.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure table and CSV output formatting works correctly.",
+        "keyDecisions": [
+          "Mock process.stdout.columns for terminal width",
+          "Test column width calculations",
+          "Test CSV escaping for commas, quotes, newlines"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add table formatting tests",
+          "details": "Test formatEntities() and formatRelations() with format='table'"
+        },
+        {
+          "step": 2,
+          "action": "Add terminal width tests",
+          "details": "Mock different terminal widths, test column sizing"
+        },
+        {
+          "step": 3,
+          "action": "Add CSV formatting tests",
+          "details": "Test formatEntities() and formatRelations() with format='csv'"
+        },
+        {
+          "step": 4,
+          "action": "Add CSV escaping tests",
+          "details": "Test proper escaping of commas, quotes, and newlines"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Table output uses ASCII borders",
+        "Column widths adapt to terminal size",
+        "Word wrapping works for long content",
+        "CSV values properly escaped",
+        "Table and CSV formatters tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of config.ts reaches 90%",
+    "Coverage of options.ts reaches 90%",
+    "Coverage of formatters.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [
+    "tests/unit/cli/config.test.ts",
+    "tests/unit/cli/options.test.ts",
+    "tests/unit/cli/formatters.test.ts"
+  ],
+  "filesModified": [],
+  "totalNewTests": 60,
+  "totalEstimatedHours": 6,
+  "dependencies": [],
+  "notes": [
+    "Use mock file system for config file tests",
+    "Mock process.stdout for terminal width tests",
+    "Ensure tests are cross-platform compatible"
+  ]
+}

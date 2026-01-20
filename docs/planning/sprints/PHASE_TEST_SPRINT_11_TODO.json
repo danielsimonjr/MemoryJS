@@ -1,0 +1,272 @@
+{
+  "phase": 2,
+  "sprint": 11,
+  "title": "Type Guards & Builders Tests",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Tests type system runtime support (0% to 90%)",
+  "targetMetrics": {
+    "agentMemoryTypesCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "progressTypesCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "searchTypesCoverage": {
+      "current": "0%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.11.1",
+      "category": "testing",
+      "title": "Test agent-memory Type Guards",
+      "description": "Test isAgentEntity(), isSessionEntity(), and memory type guards.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/types/agent-memory.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure type guards correctly narrow types.",
+        "keyDecisions": [
+          "Test positive cases (correct entity types)",
+          "Test negative cases (wrong entity types)",
+          "Test edge cases (null, undefined)"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update agent-memory.test.ts",
+          "details": "Add type guard tests"
+        },
+        {
+          "step": 2,
+          "action": "Add isAgentEntity tests",
+          "details": "Test with agent and non-agent entities"
+        },
+        {
+          "step": 3,
+          "action": "Add isSessionEntity tests",
+          "details": "Test with session and non-session entities"
+        },
+        {
+          "step": 4,
+          "action": "Add memory type guard tests",
+          "details": "Test working/episodic/semantic memory guards"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Type guards return true for correct types",
+        "Type guards return false for incorrect types",
+        "Null/undefined handled safely",
+        "Type guards tested"
+      ]
+    },
+    {
+      "id": "2.11.2",
+      "category": "testing",
+      "title": "Test agent-memory Builders",
+      "description": "Test entity builders, observation builders, and session builders.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/types/agent-memory.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure builders create valid objects.",
+        "keyDecisions": [
+          "Test builder method chaining",
+          "Test default value application",
+          "Test validation in builders"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add entity builder tests",
+          "details": "Test AgentEntityBuilder if exists"
+        },
+        {
+          "step": 2,
+          "action": "Add observation builder tests",
+          "details": "Test observation creation with confidence, source"
+        },
+        {
+          "step": 3,
+          "action": "Add session builder tests",
+          "details": "Test SessionEntity creation"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Builders create valid objects",
+        "Method chaining works",
+        "Defaults applied correctly",
+        "Builders tested"
+      ]
+    },
+    {
+      "id": "2.11.3",
+      "category": "testing",
+      "title": "Test progress.ts Types",
+      "description": "Test progress callback types, ProgressInfo creation, and phase tracking.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/types/progress.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure progress types work correctly.",
+        "keyDecisions": [
+          "Test ProgressInfo structure",
+          "Test phase tracking",
+          "Test percentage calculation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create progress.test.ts",
+          "details": "Set up test file for progress types"
+        },
+        {
+          "step": 2,
+          "action": "Add ProgressInfo tests",
+          "details": "Test progress info creation and fields"
+        },
+        {
+          "step": 3,
+          "action": "Add phase tracking tests",
+          "details": "Test phase field usage"
+        },
+        {
+          "step": 4,
+          "action": "Add percentage tests",
+          "details": "Test percentage calculation from current/total"
+        }
+      ],
+      "acceptanceCriteria": [
+        "ProgressInfo created correctly",
+        "Phases tracked properly",
+        "Percentages accurate",
+        "Progress types tested"
+      ]
+    },
+    {
+      "id": "2.11.4",
+      "category": "testing",
+      "title": "Test search.ts QueryTrace",
+      "description": "Test QueryTraceBuilder, stage tracking, and trace completion.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/types/search.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure QueryTrace types work correctly.",
+        "keyDecisions": [
+          "Test QueryTraceBuilder pattern",
+          "Test stage addition",
+          "Test trace completion"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create search.test.ts",
+          "details": "Set up test file for search types"
+        },
+        {
+          "step": 2,
+          "action": "Add QueryTraceBuilder tests",
+          "details": "Test builder initialization"
+        },
+        {
+          "step": 3,
+          "action": "Add stage tracking tests",
+          "details": "Test startStage()/endStage() methods"
+        },
+        {
+          "step": 4,
+          "action": "Add completion tests",
+          "details": "Test complete() method returns valid trace"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Builder creates trace correctly",
+        "Stages tracked with timing",
+        "Completion returns valid trace",
+        "QueryTrace tested"
+      ]
+    },
+    {
+      "id": "2.11.5",
+      "category": "testing",
+      "title": "Test search.ts SearchExplanation",
+      "description": "Test explanation structure, signal aggregation, and score breakdown.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/types/search.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure SearchExplanation types work correctly.",
+        "keyDecisions": [
+          "Test explanation structure",
+          "Test signal contribution",
+          "Test score breakdown sums"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add SearchExplanation tests",
+          "details": "Test explanation interface structure"
+        },
+        {
+          "step": 2,
+          "action": "Add signal tests",
+          "details": "Test signal contribution tracking"
+        },
+        {
+          "step": 3,
+          "action": "Add score tests",
+          "details": "Test that signal contributions sum to total"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Explanation structure correct",
+        "Signals tracked properly",
+        "Scores sum correctly",
+        "Explanation types tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of types/agent-memory.ts reaches 90%",
+    "Coverage of types/progress.ts reaches 90%",
+    "Coverage of types/search.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [
+    "tests/unit/types/progress.test.ts",
+    "tests/unit/types/search.test.ts"
+  ],
+  "filesModified": [
+    "tests/unit/types/agent-memory.test.ts"
+  ],
+  "totalNewTests": 50,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "Test type narrowing correctness",
+    "Test builder validation",
+    "Test type compatibility"
+  ]
+}

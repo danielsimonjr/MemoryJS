@@ -1,0 +1,268 @@
+{
+  "phase": 2,
+  "sprint": 2,
+  "title": "CLI Interactive & Commands Tests",
+  "priority": "CRITICAL",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Completes CLI test coverage with interactive mode and command registration tests (0% to 90%)",
+  "targetMetrics": {
+    "interactiveCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "commandsCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "indexCoverage": {
+      "current": "0%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.2.1",
+      "category": "testing",
+      "title": "Test interactive.ts REPL Setup",
+      "description": "Test readline interface creation, prompt display, and basic command loop.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/cli/interactive.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure interactive REPL mode initializes correctly.",
+        "keyDecisions": [
+          "Mock readline.createInterface",
+          "Test prompt display and formatting",
+          "Test basic event handling"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create interactive.test.ts",
+          "details": "Set up test file with readline mocks"
+        },
+        {
+          "step": 2,
+          "action": "Add REPL initialization tests",
+          "details": "Test startInteractive() function initialization"
+        },
+        {
+          "step": 3,
+          "action": "Add prompt tests",
+          "details": "Test prompt display, prompt styling"
+        }
+      ],
+      "acceptanceCriteria": [
+        "REPL initializes without errors",
+        "Prompt displays correctly",
+        "readline interface created with correct options",
+        "REPL initialization tested"
+      ]
+    },
+    {
+      "id": "2.2.2",
+      "category": "testing",
+      "title": "Test interactive.ts Command Parsing",
+      "description": "Test command parsing, argument extraction, and help display within REPL.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/cli/interactive.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure REPL correctly parses and executes commands.",
+        "keyDecisions": [
+          "Test command extraction from input line",
+          "Test argument parsing",
+          "Test help command within REPL"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add command parsing tests",
+          "details": "Test parseCommand() or equivalent function"
+        },
+        {
+          "step": 2,
+          "action": "Add argument extraction tests",
+          "details": "Test quoted strings, flags, positional args"
+        },
+        {
+          "step": 3,
+          "action": "Add help command tests",
+          "details": "Test 'help' command output within REPL"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Commands parsed correctly",
+        "Quoted arguments preserved",
+        "Help displays available commands",
+        "Command parsing tested"
+      ]
+    },
+    {
+      "id": "2.2.3",
+      "category": "testing",
+      "title": "Test interactive.ts History",
+      "description": "Test command history navigation, persistence, and tab completion setup.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/cli/interactive.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure REPL history and completion features work correctly.",
+        "keyDecisions": [
+          "Test history buffer management",
+          "Test history file persistence (if implemented)",
+          "Test tab completion configuration"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add history tests",
+          "details": "Test command history storage and retrieval"
+        },
+        {
+          "step": 2,
+          "action": "Add history navigation tests",
+          "details": "Test up/down arrow navigation simulation"
+        },
+        {
+          "step": 3,
+          "action": "Add completion tests",
+          "details": "Test tab completion setup and entity name completion"
+        }
+      ],
+      "acceptanceCriteria": [
+        "History stores previous commands",
+        "History navigation works",
+        "Tab completion configured",
+        "History functionality tested"
+      ]
+    },
+    {
+      "id": "2.2.4",
+      "category": "testing",
+      "title": "Test commands/index.ts Registration",
+      "description": "Test command category registration, help text generation, and subcommand routing.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/cli/commands.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure command registration and routing works correctly.",
+        "keyDecisions": [
+          "Test registerCommands() function",
+          "Test command categories (entity, relation, search, etc.)",
+          "Test help text generation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create commands.test.ts",
+          "details": "Set up test file with commander mock"
+        },
+        {
+          "step": 2,
+          "action": "Add registration tests",
+          "details": "Test registerCommands() adds all expected commands"
+        },
+        {
+          "step": 3,
+          "action": "Add help text tests",
+          "details": "Test that each command has proper description"
+        },
+        {
+          "step": 4,
+          "action": "Add subcommand tests",
+          "details": "Test entity subcommands (create, get, list, update, delete)"
+        }
+      ],
+      "acceptanceCriteria": [
+        "All command categories registered",
+        "Each command has description",
+        "Subcommands properly nested",
+        "Command registration tested"
+      ]
+    },
+    {
+      "id": "2.2.5",
+      "category": "testing",
+      "title": "Test CLI Entry Point",
+      "description": "Test main CLI entry point, version display, and global error handling.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/cli/index.test.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Ensure CLI entry point handles all scenarios correctly.",
+        "keyDecisions": [
+          "Test version flag output",
+          "Test help flag output",
+          "Test unknown command handling",
+          "Test global error handling"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create index.test.ts",
+          "details": "Set up test file for CLI entry point"
+        },
+        {
+          "step": 2,
+          "action": "Add version tests",
+          "details": "Test --version and -v flags"
+        },
+        {
+          "step": 3,
+          "action": "Add help tests",
+          "details": "Test --help and -h flags"
+        },
+        {
+          "step": 4,
+          "action": "Add error handling tests",
+          "details": "Test unknown command error, missing required args"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Version displays correctly",
+        "Help shows all commands",
+        "Unknown commands show error",
+        "Global errors handled gracefully",
+        "Entry point fully tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of interactive.ts reaches 90%",
+    "Coverage of commands/index.ts reaches 90%",
+    "Coverage of cli/index.ts reaches 90%",
+    "CLI module overall coverage reaches 80%+"
+  ],
+  "filesCreated": [
+    "tests/unit/cli/interactive.test.ts",
+    "tests/unit/cli/commands.test.ts",
+    "tests/unit/cli/index.test.ts"
+  ],
+  "filesModified": [],
+  "totalNewTests": 50,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 1"],
+  "notes": [
+    "Mock readline for interactive tests",
+    "Test stdin/stdout piping",
+    "Test error handling and exit codes"
+  ]
+}

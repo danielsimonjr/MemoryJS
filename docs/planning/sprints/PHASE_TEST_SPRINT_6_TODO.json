@@ -1,0 +1,270 @@
+{
+  "phase": 2,
+  "sprint": 6,
+  "title": "CompressedCache & ErrorSuggestions Tests",
+  "priority": "CRITICAL",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Tests cache compression and error handling utilities (0% to 90%)",
+  "targetMetrics": {
+    "compressedCacheCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "errorSuggestionsCoverage": {
+      "current": "0%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.6.1",
+      "category": "testing",
+      "title": "Test compressedCache Core Operations",
+      "description": "Test set, get, delete, clear, has operations with compression enabled.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/compressedCache.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure basic cache operations work correctly.",
+        "keyDecisions": [
+          "Test all CRUD operations",
+          "Test with compression enabled",
+          "Test with various data sizes"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update compressedCache.test.ts",
+          "details": "Add comprehensive CRUD operation tests"
+        },
+        {
+          "step": 2,
+          "action": "Add set/get tests",
+          "details": "Test storing and retrieving various data types"
+        },
+        {
+          "step": 3,
+          "action": "Add delete/clear tests",
+          "details": "Test removal operations"
+        },
+        {
+          "step": 4,
+          "action": "Add has tests",
+          "details": "Test key existence checking"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Set stores data correctly",
+        "Get retrieves data correctly",
+        "Delete removes entries",
+        "Clear empties cache",
+        "Has returns correct boolean",
+        "Core operations tested"
+      ]
+    },
+    {
+      "id": "2.6.2",
+      "category": "testing",
+      "title": "Test compressedCache Compression Logic",
+      "description": "Test adaptive compression triggers, compression ratios, and size thresholds.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/compressedCache.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure compression triggers and behaves correctly.",
+        "keyDecisions": [
+          "Test minCompressionSize threshold",
+          "Test compression ratio validation",
+          "Test adaptive compression behavior"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add compression trigger tests",
+          "details": "Test that compression triggers at correct size"
+        },
+        {
+          "step": 2,
+          "action": "Add ratio tests",
+          "details": "Test compression ratio calculations"
+        },
+        {
+          "step": 3,
+          "action": "Add adaptive tests",
+          "details": "Test maybeCompressOldEntries() logic"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Small data not compressed",
+        "Large data compressed",
+        "Compression ratios calculated correctly",
+        "Adaptive compression triggers appropriately",
+        "Compression logic tested"
+      ]
+    },
+    {
+      "id": "2.6.3",
+      "category": "testing",
+      "title": "Test compressedCache Decompression",
+      "description": "Test on-demand decompression, decompression errors, and cache stats.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/compressedCache.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure decompression works correctly.",
+        "keyDecisions": [
+          "Test on-demand decompression in get()",
+          "Test error handling for corrupt data",
+          "Test stats accuracy"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add decompression tests",
+          "details": "Test that compressed data decompresses correctly"
+        },
+        {
+          "step": 2,
+          "action": "Add error handling tests",
+          "details": "Test handling of corrupt compressed data"
+        },
+        {
+          "step": 3,
+          "action": "Add stats tests",
+          "details": "Test getStats() accuracy"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Compressed data decompresses to original",
+        "Corrupt data handled gracefully",
+        "Stats reflect actual state",
+        "Decompression tested"
+      ]
+    },
+    {
+      "id": "2.6.4",
+      "category": "testing",
+      "title": "Test errorSuggestions Mapping",
+      "description": "Test error-to-suggestion mapping, recovery step generation, and context inclusion.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/errorSuggestions.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure error suggestions are generated correctly.",
+        "keyDecisions": [
+          "Test error code to suggestion mapping",
+          "Test recovery step generation",
+          "Test context inclusion in suggestions"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create errorSuggestions.test.ts",
+          "details": "Set up test file with error examples"
+        },
+        {
+          "step": 2,
+          "action": "Add mapping tests",
+          "details": "Test that error codes map to suggestions"
+        },
+        {
+          "step": 3,
+          "action": "Add recovery step tests",
+          "details": "Test that actionable steps are generated"
+        },
+        {
+          "step": 4,
+          "action": "Add context tests",
+          "details": "Test that context enhances suggestions"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Error codes map to suggestions",
+        "Recovery steps are actionable",
+        "Context included when available",
+        "Suggestion mapping tested"
+      ]
+    },
+    {
+      "id": "2.6.5",
+      "category": "testing",
+      "title": "Test errorSuggestions Categories",
+      "description": "Test suggestions for storage errors, validation errors, search errors, and config errors.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/errorSuggestions.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure all error categories have appropriate suggestions.",
+        "keyDecisions": [
+          "Test storage error suggestions",
+          "Test validation error suggestions",
+          "Test search and config error suggestions"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add storage error tests",
+          "details": "Test file permission, path existence suggestions"
+        },
+        {
+          "step": 2,
+          "action": "Add validation error tests",
+          "details": "Test field-specific validation suggestions"
+        },
+        {
+          "step": 3,
+          "action": "Add search error tests",
+          "details": "Test query syntax and index suggestions"
+        },
+        {
+          "step": 4,
+          "action": "Add config error tests",
+          "details": "Test configuration fix suggestions"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Storage errors have file-related suggestions",
+        "Validation errors have field-specific suggestions",
+        "Search errors have query suggestions",
+        "Config errors have setup suggestions",
+        "All categories tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of compressedCache.ts reaches 90%",
+    "Coverage of errorSuggestions.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [
+    "tests/unit/utils/errorSuggestions.test.ts"
+  ],
+  "filesModified": [
+    "tests/unit/utils/compressedCache.test.ts"
+  ],
+  "totalNewTests": 70,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 5"],
+  "notes": [
+    "Test compression with various data sizes",
+    "Test corrupted compressed data handling",
+    "Test all error type suggestions"
+  ]
+}

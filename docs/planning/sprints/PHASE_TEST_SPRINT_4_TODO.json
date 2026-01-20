@@ -1,0 +1,255 @@
+{
+  "phase": 2,
+  "sprint": 4,
+  "title": "Query Logger & SearchManager Tests",
+  "priority": "HIGH",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Completes QueryLogger tests and enhances SearchManager coverage (2.7%/33% to 90%)",
+  "targetMetrics": {
+    "queryLoggerCoverage": {
+      "current": "2.7%",
+      "target": "90%"
+    },
+    "searchManagerCoverage": {
+      "current": "33%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.4.1",
+      "category": "testing",
+      "title": "Test QueryLogger Core Functionality",
+      "description": "Test log entry creation, log levels, and query ID generation.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/QueryLogger.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure QueryLogger creates and formats log entries correctly.",
+        "keyDecisions": [
+          "Test log entry structure",
+          "Test log level filtering",
+          "Test query ID uniqueness"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create or update QueryLogger.test.ts",
+          "details": "Set up test file with logger configuration"
+        },
+        {
+          "step": 2,
+          "action": "Add log entry tests",
+          "details": "Test logQueryStart(), logQueryEnd() methods"
+        },
+        {
+          "step": 3,
+          "action": "Add level filtering tests",
+          "details": "Test that log levels filter correctly"
+        },
+        {
+          "step": 4,
+          "action": "Add query ID tests",
+          "details": "Test generateQueryId() uniqueness"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Log entries contain all required fields",
+        "Log levels filter correctly",
+        "Query IDs are unique",
+        "Core logging tested"
+      ]
+    },
+    {
+      "id": "2.4.2",
+      "category": "testing",
+      "title": "Test QueryLogger Outputs",
+      "description": "Test console output, file output, and callback notifications.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/QueryLogger.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure all logger output modes work correctly.",
+        "keyDecisions": [
+          "Mock console.log for console tests",
+          "Mock fs for file tests",
+          "Test callback invocation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add console output tests",
+          "details": "Test console logging with mock"
+        },
+        {
+          "step": 2,
+          "action": "Add file output tests",
+          "details": "Test file logging with mock fs"
+        },
+        {
+          "step": 3,
+          "action": "Add callback tests",
+          "details": "Test custom callback invocation"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Console output formatted correctly",
+        "File output appends JSON lines",
+        "Callbacks receive correct entries",
+        "All outputs tested"
+      ]
+    },
+    {
+      "id": "2.4.3",
+      "category": "testing",
+      "title": "Test QueryLogger Tracing",
+      "description": "Test stage timing, trace building, and trace event emission.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/QueryLogger.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure query tracing captures timing accurately.",
+        "keyDecisions": [
+          "Test logStage() method",
+          "Test QueryTraceBuilder integration",
+          "Test trace event emission"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add stage logging tests",
+          "details": "Test logStage() with various stages"
+        },
+        {
+          "step": 2,
+          "action": "Add timing tests",
+          "details": "Test duration calculations"
+        },
+        {
+          "step": 3,
+          "action": "Add trace building tests",
+          "details": "Test complete trace object creation"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Stage timings captured accurately",
+        "Traces contain all stages",
+        "Event emission works",
+        "Tracing functionality tested"
+      ]
+    },
+    {
+      "id": "2.4.4",
+      "category": "testing",
+      "title": "Test SearchManager Cache Management",
+      "description": "Test cache clearing, cache invalidation, and cache hit/miss scenarios.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/SearchManager.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure SearchManager cache operations work correctly.",
+        "keyDecisions": [
+          "Test clearAllCaches() method",
+          "Test individual cache clearing",
+          "Test cache invalidation triggers"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add clearAllCaches tests",
+          "details": "Verify all sub-caches cleared"
+        },
+        {
+          "step": 2,
+          "action": "Add individual clear tests",
+          "details": "Test clearFuzzyCache(), clearBooleanCache(), etc."
+        },
+        {
+          "step": 3,
+          "action": "Add invalidation tests",
+          "details": "Test cache invalidation on data changes"
+        }
+      ],
+      "acceptanceCriteria": [
+        "All caches cleared by clearAllCaches()",
+        "Individual caches clear correctly",
+        "Cache invalidation triggers work",
+        "Cache management 90% covered"
+      ]
+    },
+    {
+      "id": "2.4.5",
+      "category": "testing",
+      "title": "Test SearchManager Auto-Search",
+      "description": "Test automatic search method selection, cost estimation, and query analysis.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/SearchManager.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure auto-search selects optimal search method.",
+        "keyDecisions": [
+          "Test autoSearch() method selection logic",
+          "Test getSearchCostEstimates() accuracy",
+          "Test query analysis for method selection"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add autoSearch tests",
+          "details": "Test method selection for various queries"
+        },
+        {
+          "step": 2,
+          "action": "Add cost estimation tests",
+          "details": "Test cost estimate accuracy"
+        },
+        {
+          "step": 3,
+          "action": "Add query analysis tests",
+          "details": "Test query classification for method selection"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Correct method selected for query types",
+        "Cost estimates reasonable",
+        "Query analysis works correctly",
+        "Auto-search fully tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of QueryLogger.ts reaches 90%",
+    "Coverage of SearchManager.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [],
+  "filesModified": [
+    "tests/unit/search/QueryLogger.test.ts",
+    "tests/unit/search/SearchManager.test.ts"
+  ],
+  "totalNewTests": 60,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 3"],
+  "notes": [
+    "Mock file system for log file tests",
+    "Test concurrent logging scenarios",
+    "Test cache consistency"
+  ]
+}

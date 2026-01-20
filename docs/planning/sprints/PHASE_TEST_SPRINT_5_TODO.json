@@ -1,0 +1,276 @@
+{
+  "phase": 2,
+  "sprint": 5,
+  "title": "Validators & EntityValidator Tests",
+  "priority": "CRITICAL",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Tests validation utilities comprehensively (0% to 90%)",
+  "targetMetrics": {
+    "validatorsCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "entityValidatorCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "schemaValidatorCoverage": {
+      "current": "0%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.5.1",
+      "category": "testing",
+      "title": "Test validators.ts Built-ins",
+      "description": "Test required(), minLength(), maxLength(), pattern(), range(), oneOf() validators.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/validators.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure all built-in validators work correctly.",
+        "keyDecisions": [
+          "Test each validator with valid input",
+          "Test each validator with invalid input",
+          "Test boundary conditions"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create validators.test.ts",
+          "details": "Set up test file with describe blocks for each validator"
+        },
+        {
+          "step": 2,
+          "action": "Add required() tests",
+          "details": "Test with values, empty strings, null, undefined"
+        },
+        {
+          "step": 3,
+          "action": "Add length validators tests",
+          "details": "Test minLength and maxLength with various string lengths"
+        },
+        {
+          "step": 4,
+          "action": "Add pattern/range/oneOf tests",
+          "details": "Test pattern matching, numeric ranges, enum values"
+        }
+      ],
+      "acceptanceCriteria": [
+        "required() validates presence correctly",
+        "Length validators enforce boundaries",
+        "Pattern matcher uses correct regex",
+        "Range validates numeric bounds",
+        "oneOf validates against allowed values",
+        "All built-in validators tested"
+      ]
+    },
+    {
+      "id": "2.5.2",
+      "category": "testing",
+      "title": "Test validators.ts Custom",
+      "description": "Test custom validator creation, async validators, and validator composition.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/validators.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure custom validators can be created and composed.",
+        "keyDecisions": [
+          "Test custom() validator factory",
+          "Test async validator support",
+          "Test validator chaining/composition"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add custom validator tests",
+          "details": "Test custom() with synchronous function"
+        },
+        {
+          "step": 2,
+          "action": "Add async validator tests",
+          "details": "Test validators returning Promise"
+        },
+        {
+          "step": 3,
+          "action": "Add composition tests",
+          "details": "Test combining multiple validators"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Custom validators execute correctly",
+        "Async validators await properly",
+        "Composed validators run in order",
+        "Error messages combined correctly",
+        "Custom validators tested"
+      ]
+    },
+    {
+      "id": "2.5.3",
+      "category": "testing",
+      "title": "Test EntityValidator Rules",
+      "description": "Test rule definition, field targeting, and severity levels.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/EntityValidator.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure EntityValidator rule system works correctly.",
+        "keyDecisions": [
+          "Test rule creation and structure",
+          "Test field targeting",
+          "Test error vs warning severity"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create EntityValidator.test.ts",
+          "details": "Set up test file with sample entities"
+        },
+        {
+          "step": 2,
+          "action": "Add rule definition tests",
+          "details": "Test ValidationRule interface usage"
+        },
+        {
+          "step": 3,
+          "action": "Add field targeting tests",
+          "details": "Test rules targeting specific entity fields"
+        },
+        {
+          "step": 4,
+          "action": "Add severity tests",
+          "details": "Test error vs warning classification"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Rules created with correct structure",
+        "Field targeting works correctly",
+        "Severity levels handled properly",
+        "Rule system tested"
+      ]
+    },
+    {
+      "id": "2.5.4",
+      "category": "testing",
+      "title": "Test EntityValidator Execution",
+      "description": "Test validation execution, error collection, and warning vs error handling.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/EntityValidator.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure EntityValidator executes validation correctly.",
+        "keyDecisions": [
+          "Test validate() method execution",
+          "Test error collection and formatting",
+          "Test validation result structure"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add execution tests",
+          "details": "Test validate() with valid and invalid entities"
+        },
+        {
+          "step": 2,
+          "action": "Add error collection tests",
+          "details": "Test multiple errors collected"
+        },
+        {
+          "step": 3,
+          "action": "Add result structure tests",
+          "details": "Test validation result object format"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Validation executes all rules",
+        "All errors collected",
+        "Warnings separated from errors",
+        "Result structure correct",
+        "Execution paths tested"
+      ]
+    },
+    {
+      "id": "2.5.5",
+      "category": "testing",
+      "title": "Test SchemaValidator Integration",
+      "description": "Test JSON Schema validation, schema loading, and validation error formatting.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/SchemaValidator.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure JSON Schema validation works correctly.",
+        "keyDecisions": [
+          "Test schema compilation",
+          "Test validation against schemas",
+          "Test error message formatting"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create SchemaValidator.test.ts",
+          "details": "Set up test file with sample schemas"
+        },
+        {
+          "step": 2,
+          "action": "Add schema validation tests",
+          "details": "Test valid and invalid data against schemas"
+        },
+        {
+          "step": 3,
+          "action": "Add error formatting tests",
+          "details": "Test that validation errors are user-friendly"
+        },
+        {
+          "step": 4,
+          "action": "Add schema loading tests",
+          "details": "Test loading schemas from definitions"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Schemas compile correctly",
+        "Valid data passes validation",
+        "Invalid data fails with clear errors",
+        "Error messages are user-friendly",
+        "Schema validation tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of validators.ts reaches 90%",
+    "Coverage of EntityValidator.ts reaches 90%",
+    "Coverage of SchemaValidator.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [
+    "tests/unit/utils/validators.test.ts",
+    "tests/unit/utils/EntityValidator.test.ts",
+    "tests/unit/utils/SchemaValidator.test.ts"
+  ],
+  "filesModified": [],
+  "totalNewTests": 80,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "Test all validation error scenarios",
+    "Test async validation timeout",
+    "Test schema format variations"
+  ]
+}

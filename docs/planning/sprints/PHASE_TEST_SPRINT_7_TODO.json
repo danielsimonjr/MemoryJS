@@ -1,0 +1,245 @@
+{
+  "phase": 2,
+  "sprint": 7,
+  "title": "ManagerContext Agent Memory Tests",
+  "priority": "HIGH",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Tests ManagerContext agent memory system initialization (25% to 90%)",
+  "targetMetrics": {
+    "managerContextCoverage": {
+      "current": "25%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.7.1",
+      "category": "testing",
+      "title": "Test decayEngine Initialization",
+      "description": "Test DecayEngine getter, environment variable parsing, and configuration.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/core/ManagerContext.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure DecayEngine initializes correctly from config and env vars.",
+        "keyDecisions": [
+          "Test lazy initialization",
+          "Test env var configuration",
+          "Test default values"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add decayEngine tests to ManagerContext.test.ts",
+          "details": "Test getter returns DecayEngine instance"
+        },
+        {
+          "step": 2,
+          "action": "Add env var tests",
+          "details": "Test MEMORY_DECAY_HALF_LIFE_HOURS, MEMORY_DECAY_MIN_IMPORTANCE"
+        },
+        {
+          "step": 3,
+          "action": "Add config tests",
+          "details": "Test configuration override"
+        }
+      ],
+      "acceptanceCriteria": [
+        "DecayEngine lazily initialized",
+        "Env vars parsed correctly",
+        "Config overrides work",
+        "DecayEngine init tested"
+      ]
+    },
+    {
+      "id": "2.7.2",
+      "category": "testing",
+      "title": "Test salienceEngine Initialization",
+      "description": "Test SalienceEngine getter, weight configuration, and dependency injection.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/core/ManagerContext.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure SalienceEngine initializes with correct dependencies.",
+        "keyDecisions": [
+          "Test weight configuration from env vars",
+          "Test dependency injection",
+          "Test default weights"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add salienceEngine tests",
+          "details": "Test getter returns SalienceEngine instance"
+        },
+        {
+          "step": 2,
+          "action": "Add weight config tests",
+          "details": "Test MEMORY_SALIENCE_*_WEIGHT env vars"
+        },
+        {
+          "step": 3,
+          "action": "Add dependency tests",
+          "details": "Test that required dependencies are injected"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SalienceEngine lazily initialized",
+        "Weights configured from env vars",
+        "Dependencies injected correctly",
+        "SalienceEngine init tested"
+      ]
+    },
+    {
+      "id": "2.7.3",
+      "category": "testing",
+      "title": "Test contextWindowManager",
+      "description": "Test ContextWindowManager getter, token budget configuration.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/core/ManagerContext.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure ContextWindowManager initializes with correct token config.",
+        "keyDecisions": [
+          "Test token budget from env vars",
+          "Test default token limits",
+          "Test multiplier configuration"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add contextWindowManager tests",
+          "details": "Test getter returns ContextWindowManager instance"
+        },
+        {
+          "step": 2,
+          "action": "Add token config tests",
+          "details": "Test MEMORY_CONTEXT_MAX_TOKENS, MEMORY_CONTEXT_TOKEN_MULTIPLIER"
+        },
+        {
+          "step": 3,
+          "action": "Add buffer tests",
+          "details": "Test MEMORY_CONTEXT_RESERVE_BUFFER"
+        }
+      ],
+      "acceptanceCriteria": [
+        "ContextWindowManager lazily initialized",
+        "Token limits configured correctly",
+        "Buffer reserves work",
+        "Context window tested"
+      ]
+    },
+    {
+      "id": "2.7.4",
+      "category": "testing",
+      "title": "Test agentMemory() Facade",
+      "description": "Test AgentMemoryManager creation, optional config override, and lazy initialization.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/core/ManagerContext.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure agentMemory() creates correct facade instance.",
+        "keyDecisions": [
+          "Test facade creation",
+          "Test config override",
+          "Test that all sub-managers accessible"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add agentMemory() tests",
+          "details": "Test method returns AgentMemoryManager"
+        },
+        {
+          "step": 2,
+          "action": "Add config override tests",
+          "details": "Test optional config parameter"
+        },
+        {
+          "step": 3,
+          "action": "Add sub-manager tests",
+          "details": "Test access to session, working memory, etc."
+        }
+      ],
+      "acceptanceCriteria": [
+        "AgentMemoryManager created correctly",
+        "Config override works",
+        "Sub-managers accessible",
+        "Agent memory facade tested"
+      ]
+    },
+    {
+      "id": "2.7.5",
+      "category": "testing",
+      "title": "Test accessTracker Wiring",
+      "description": "Test AccessTracker initialization and wiring to EntityManager and SearchManager.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/core/ManagerContext.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure AccessTracker wires correctly to managers.",
+        "keyDecisions": [
+          "Test accessTracker getter",
+          "Test wireAccessTracker() method",
+          "Test wiring verification"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add accessTracker getter tests",
+          "details": "Test getter returns AccessTracker instance"
+        },
+        {
+          "step": 2,
+          "action": "Add wiring tests",
+          "details": "Test wireAccessTracker() connects to managers"
+        },
+        {
+          "step": 3,
+          "action": "Add verification tests",
+          "details": "Verify tracking works after wiring"
+        }
+      ],
+      "acceptanceCriteria": [
+        "AccessTracker lazily initialized",
+        "Wiring connects to EntityManager",
+        "Wiring connects to SearchManager",
+        "Access tracking tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of ManagerContext.ts reaches 90%",
+    "Agent memory initialization paths tested",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [],
+  "filesModified": [
+    "tests/unit/core/ManagerContext.test.ts"
+  ],
+  "totalNewTests": 50,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "Test all environment variable combinations",
+    "Test initialization order dependencies",
+    "Test null/undefined handling"
+  ]
+}

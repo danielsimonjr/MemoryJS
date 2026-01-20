@@ -1,0 +1,273 @@
+{
+  "phase": 2,
+  "sprint": 12,
+  "title": "Error Handling & Relations Tests",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Tests error hierarchy and relation utilities (68%/0% to 90%)",
+  "targetMetrics": {
+    "errorsCoverage": {
+      "current": "68%",
+      "target": "90%"
+    },
+    "relationHelpersCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "relationValidationCoverage": {
+      "current": "0%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "2.12.1",
+      "category": "testing",
+      "title": "Test errors.ts Hierarchy",
+      "description": "Test MemoryJSError, ValidationError, StorageError, SearchError classes.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/errors.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure error hierarchy works correctly.",
+        "keyDecisions": [
+          "Test error inheritance chain",
+          "Test error properties",
+          "Test error codes"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update errors.test.ts",
+          "details": "Add error hierarchy tests"
+        },
+        {
+          "step": 2,
+          "action": "Add base error tests",
+          "details": "Test MemoryJSError properties"
+        },
+        {
+          "step": 3,
+          "action": "Add specialized error tests",
+          "details": "Test ValidationError, StorageError, SearchError"
+        },
+        {
+          "step": 4,
+          "action": "Add inheritance tests",
+          "details": "Test instanceof checks"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Errors inherit correctly",
+        "Error codes set properly",
+        "Error messages formatted",
+        "Error hierarchy tested"
+      ]
+    },
+    {
+      "id": "2.12.2",
+      "category": "testing",
+      "title": "Test errors.ts Suggestions",
+      "description": "Test error code mapping, suggestion retrieval, and context formatting.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/errors.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure error suggestions work correctly.",
+        "keyDecisions": [
+          "Test suggestion attachment",
+          "Test context inclusion",
+          "Test suggestion formatting"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add suggestion tests",
+          "details": "Test getSuggestions() method"
+        },
+        {
+          "step": 2,
+          "action": "Add context tests",
+          "details": "Test context passed to suggestions"
+        },
+        {
+          "step": 3,
+          "action": "Add formatting tests",
+          "details": "Test suggestion string formatting"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Suggestions retrieved correctly",
+        "Context enhances suggestions",
+        "Formatting is user-friendly",
+        "Suggestions tested"
+      ]
+    },
+    {
+      "id": "2.12.3",
+      "category": "testing",
+      "title": "Test relationHelpers.ts Core",
+      "description": "Test relation creation helpers, type guards, and relation queries.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/relationHelpers.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure relation helper utilities work correctly.",
+        "keyDecisions": [
+          "Test relation creation shortcuts",
+          "Test relation type guards",
+          "Test relation query helpers"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create relationHelpers.test.ts",
+          "details": "Set up test file with sample relations"
+        },
+        {
+          "step": 2,
+          "action": "Add creation helper tests",
+          "details": "Test createRelation() shortcuts"
+        },
+        {
+          "step": 3,
+          "action": "Add type guard tests",
+          "details": "Test isWeightedRelation(), etc."
+        },
+        {
+          "step": 4,
+          "action": "Add query helper tests",
+          "details": "Test relation lookup utilities"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Creation helpers work",
+        "Type guards narrow correctly",
+        "Query helpers find relations",
+        "Core helpers tested"
+      ]
+    },
+    {
+      "id": "2.12.4",
+      "category": "testing",
+      "title": "Test relationHelpers.ts Traversal",
+      "description": "Test relation path finding, bidirectional support, and filtering.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/relationHelpers.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure relation traversal helpers work correctly.",
+        "keyDecisions": [
+          "Test path finding utilities",
+          "Test bidirectional relation handling",
+          "Test relation filtering"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add path finding tests",
+          "details": "Test findRelationPath() if exists"
+        },
+        {
+          "step": 2,
+          "action": "Add bidirectional tests",
+          "details": "Test handling of bidirectional relations"
+        },
+        {
+          "step": 3,
+          "action": "Add filter tests",
+          "details": "Test relation filtering by type, properties"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Paths found correctly",
+        "Bidirectional handled",
+        "Filtering works",
+        "Traversal helpers tested"
+      ]
+    },
+    {
+      "id": "2.12.5",
+      "category": "testing",
+      "title": "Test relationValidation.ts",
+      "description": "Test relation validation rules, circular reference detection, and integrity checks.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/relationValidation.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure relation validation works correctly.",
+        "keyDecisions": [
+          "Test valid relation rules",
+          "Test circular reference detection",
+          "Test referential integrity"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create relationValidation.test.ts",
+          "details": "Set up test file with validation scenarios"
+        },
+        {
+          "step": 2,
+          "action": "Add rule tests",
+          "details": "Test validation rules for relations"
+        },
+        {
+          "step": 3,
+          "action": "Add circular reference tests",
+          "details": "Test detection of circular relations"
+        },
+        {
+          "step": 4,
+          "action": "Add integrity tests",
+          "details": "Test that from/to entities exist"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Valid relations pass",
+        "Invalid relations rejected",
+        "Circular references detected",
+        "Integrity verified",
+        "Relation validation tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of errors.ts reaches 90%",
+    "Coverage of relationHelpers.ts reaches 90%",
+    "Coverage of relationValidation.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [
+    "tests/unit/utils/relationHelpers.test.ts",
+    "tests/unit/utils/relationValidation.test.ts"
+  ],
+  "filesModified": [
+    "tests/unit/utils/errors.test.ts"
+  ],
+  "totalNewTests": 60,
+  "totalEstimatedHours": 5,
+  "dependencies": ["Sprint 11"],
+  "notes": [
+    "Test error inheritance chain",
+    "Test all relation validation scenarios",
+    "Test circular reference edge cases"
+  ]
+}
