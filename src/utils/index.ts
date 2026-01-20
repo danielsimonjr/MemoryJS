@@ -7,8 +7,9 @@
  * @module utils
  */
 
-// ==================== Error Types ====================
+// ==================== Error Types (Phase 1 Sprint 10 Enhanced) ====================
 export {
+  ErrorCode,
   KnowledgeGraphError,
   EntityNotFoundError,
   RelationNotFoundError,
@@ -21,7 +22,11 @@ export {
   ExportError,
   InsufficientEntitiesError,
   OperationCancelledError,
+  type ErrorOptions,
 } from './errors.js';
+
+// ==================== Error Suggestions (Phase 1 Sprint 10) ====================
+export { generateSuggestions, getQuickHint } from './errorSuggestions.js';
 
 // ==================== Constants ====================
 export {
@@ -319,3 +324,37 @@ export {
   type RelationValidationError,
   type RelationValidationWarning,
 } from './relationValidation.js';
+
+// ==================== Entity Validation (Phase 1 Sprint 9) ====================
+export {
+  EntityValidator,
+  type EntityValidatorConfig,
+  type EntityValidationRule,
+  type EntityRuleResult,
+  type EntityValidationIssue,
+  type EntityValidationResult,
+} from './EntityValidator.js';
+
+export {
+  required,
+  minLength,
+  maxLength,
+  pattern,
+  range,
+  min,
+  max,
+  oneOf,
+  minItems,
+  maxItems,
+  email,
+  url,
+  isoDate,
+  typeOf,
+  custom,
+  customSync,
+  asWarning,
+  all,
+  when,
+} from './validators.js';
+
+export { SchemaValidator, type JsonSchema } from './SchemaValidator.js';

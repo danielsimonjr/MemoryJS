@@ -97,6 +97,9 @@ ctx.agentMemory()       // Agent Memory System facade
 - `QueryAnalyzer`/`QueryPlanner`: Query understanding, cost estimation, execution planning
 - `ReflectionManager`: Reflection-based retrieval with progressive refinement
 - `SavedSearchManager`: Saved search persistence and execution
+- `QueryParser`: Advanced query syntax (phrases, wildcards, proximity, field-specific)
+- `ProximitySearch`: Find terms within N words of each other
+- `QueryLogger`: Structured logging for search operations with tracing
 
 **Agent Memory System** (`src/agent/`): Complete memory system for AI agents:
 - `AgentMemoryManager`: Unified facade for agent memory operations
@@ -201,6 +204,13 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files.
 | `MEMORY_CONTEXT_MAX_TOKENS` | `4000` | Default max tokens for context |
 | `MEMORY_CONTEXT_TOKEN_MULTIPLIER` | `1.3` | Estimation multiplier |
 | `MEMORY_CONTEXT_RESERVE_BUFFER` | `100` | Reserved token buffer |
+
+### Query Logging (Phase 1 Sprint 6)
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_QUERY_LOGGING` | `true`, `false` | `false` |
+| `MEMORY_QUERY_LOG_FILE` | File path for log output | - |
+| `MEMORY_QUERY_LOG_LEVEL` | `debug`, `info`, `warn`, `error` | `info` |
 
 ### Development/Testing
 | Variable | Values | Default |

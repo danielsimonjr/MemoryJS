@@ -152,3 +152,14 @@ export {
   type QuantizedSearchResult,
   type QuantizedVectorStoreOptions,
 } from './QuantizedVectorStore.js';
+
+// Phase 1 Sprint 6: Query Logging and Tracing
+export { QueryLogger, type QueryLoggerConfig } from './QueryLogger.js';
+
+// Phase 1 Sprint 8: Full-Text Search Operators
+export { QueryParser, matchesPhrase, isPrefixPattern, matchesPrefix } from './QueryParser.js';
+export {
+  ProximitySearch,
+  type ProximityMatch,
+  type ProximityMatchLocation,
+} from './ProximitySearch.js';

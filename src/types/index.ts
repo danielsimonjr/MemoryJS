@@ -10,6 +10,28 @@
  * ```
  */
 
+// Phase 1 Sprint 6-8: Search Types (Query Logging, Tracing, Explanation, Operators)
+export type {
+  LogLevel,
+  QueryLogEntry,
+  QueryTrace,
+  QueryStage,
+  SearchExplanation,
+  ScoringSignal,
+  MatchedTerm,
+  ScoreBoost,
+  ExplainedSearchResult,
+  QueryNode,
+  TermNode,
+  PhraseNode,
+  WildcardNode,
+  ProximityNode,
+  FieldNode,
+  BooleanOpNode,
+} from './search.js';
+
+export { QueryTraceBuilder } from './search.js';
+
 export type {
   // Entity types
   Entity,
@@ -181,3 +203,12 @@ export {
   isProceduralMemory,
   AccessContextBuilder,
 } from './agent-memory.js';
+
+// Phase 1 Sprint 10: Progress Types
+export type { ProgressInfo, ProgressCallback, ProgressOptions } from './progress.js';
+
+export {
+  createProgressInfo,
+  createThrottledProgress,
+  createProgressReporter,
+} from './progress.js';
