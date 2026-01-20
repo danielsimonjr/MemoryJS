@@ -299,3 +299,23 @@ export {
   type MemoryAlert,
   type MemoryChangeCallback,
 } from './MemoryMonitor.js';
+
+// ==================== Relation Helpers (Phase 1 Sprint 4) ====================
+export {
+  isWeightedRelation,
+  isTemporalRelation,
+  isBidirectionalRelation,
+  hasConfidence,
+  isCurrentlyValid,
+  RelationBuilder,
+} from './relationHelpers.js';
+
+// ==================== Relation Validation (Phase 1 Sprint 4) ====================
+export {
+  validateRelationMetadata,
+  validateRelationsMetadata,
+  allRelationsValidMetadata,
+  type RelationValidationResult,
+  type RelationValidationError,
+  type RelationValidationWarning,
+} from './relationValidation.js';

@@ -53,6 +53,10 @@ export type {
   IGraphStorage,
   StorageConfig,
   LowercaseData,
+  // Phase 1 Sprint 4: Relation metadata types
+  RelationProperties,
+  TemporalRelation,
+  BidirectionalRelation,
   // Phase 4 Sprint 6-9: Graph algorithm types
   TraversalOptions,
   TraversalResult,

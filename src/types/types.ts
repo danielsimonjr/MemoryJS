@@ -58,6 +58,54 @@ export interface Entity {
   parentId?: string;
 }
 
+// ==================== Relation Types (Phase 1 Sprint 4) ====================
+
+/**
+ * Typed properties for relations.
+ * Use this for structured access to common relation attributes.
+ * For arbitrary key-value pairs, use the `metadata` field instead.
+ *
+ * @example
+ * ```typescript
+ * const relation: Relation = {
+ *   from: 'Alice',
+ *   to: 'Bob',
+ *   relationType: 'knows',
+ *   weight: 0.8,
+ *   properties: {
+ *     bidirectional: true,
+ *     validFrom: '2024-01-01',
+ *     source: 'social_network_import',
+ *   },
+ * };
+ * ```
+ */
+export interface RelationProperties {
+  /** Whether this relation is bidirectional (A->B implies B->A) */
+  bidirectional?: boolean;
+
+  /** Temporal validity - when this relation became valid (ISO 8601) */
+  validFrom?: string;
+
+  /** Temporal validity - when this relation stops being valid (ISO 8601) */
+  validUntil?: string;
+
+  /** Source/provenance of this relation */
+  source?: string;
+
+  /** How this relation was established */
+  method?: 'observed' | 'inferred' | 'declared' | 'imported';
+
+  /** Number of times this relation has been confirmed */
+  confirmationCount?: number;
+
+  /** Number of times this relation has been contradicted */
+  contradictionCount?: number;
+
+  /** Custom typed properties for domain-specific extensions */
+  custom?: Record<string, unknown>;
+}
+
 /**
  * Represents a directed relation between two entities.
  *
@@ -90,6 +138,20 @@ export interface Relation {
 
   /** ISO 8601 timestamp when relation was last modified */
   lastModified?: string;
+
+  // New fields for metadata support (Phase 1 Sprint 4)
+
+  /** Relation weight/strength (0-1), useful for weighted graph algorithms */
+  weight?: number;
+
+  /** Confidence score for this relation (0-1) */
+  confidence?: number;
+
+  /** Structured properties for typed access */
+  properties?: RelationProperties;
+
+  /** Arbitrary metadata for custom attributes */
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -1179,13 +1241,35 @@ export interface CentralityResult {
 }
 
 /**
- * Phase 4 Sprint 9: Extended relation with optional weight and metadata.
+ * A relation that has a weight value (required).
+ * Useful for weighted graph algorithms (e.g., shortest path with weights).
+ *
+ * NOTE: The base Relation interface now has optional weight/metadata (Phase 1 Sprint 4).
+ * Use WeightedRelation when weight is required.
  */
 export interface WeightedRelation extends Relation {
-  /** Optional weight for the relation (default: 1.0) */
-  weight?: number;
-  /** Optional metadata for the relation */
-  metadata?: Record<string, unknown>;
+  /** Weight for the relation - required for weighted algorithms (0-1) */
+  weight: number;
+}
+
+/**
+ * A relation with temporal validity.
+ * Use for time-varying knowledge that has a valid date range.
+ */
+export interface TemporalRelation extends Relation {
+  properties: RelationProperties & {
+    validFrom: string;
+  };
+}
+
+/**
+ * A bidirectional relation (symmetric: A->B implies B->A).
+ * Use for symmetric relationships like "married_to", "sibling_of".
+ */
+export interface BidirectionalRelation extends Relation {
+  properties: RelationProperties & {
+    bidirectional: true;
+  };
 }
 
 // ==================== Semantic Search Types (Phase 4 Sprint 10-12) ====================
