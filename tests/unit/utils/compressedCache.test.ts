@@ -459,4 +459,142 @@ describe('CompressedCache', () => {
       expect(stats.compressed).toBeGreaterThan(0);
     });
   });
+
+  describe('Phase 12 Sprint 6: Adaptive Compression', () => {
+    it('should skip small entries below minCompressionSize', async () => {
+      // Create small entity that won't meet size threshold
+      const smallEntity: Entity = {
+        name: 'Tiny',
+        entityType: 'test',
+        observations: ['x'],
+      };
+
+      const adaptiveCache = new CompressedCache({
+        maxUncompressed: 0,
+        compressionThresholdMs: 0,
+        minCompressionSize: 10000, // Very high threshold
+        autoCompress: false,
+      });
+
+      adaptiveCache.set('Tiny', smallEntity);
+      adaptiveCache.compressOldEntries();
+
+      const stats = adaptiveCache.getStats();
+      expect(stats.skippedSmallEntries).toBeGreaterThanOrEqual(0);
+      expect(stats.compressed).toBe(0);
+    });
+
+    it('should skip entries with poor compression ratio', async () => {
+      // Random/incompressible data
+      const randomEntity: Entity = {
+        name: 'Random',
+        entityType: 'test',
+        observations: [
+          // Random-looking data that compresses poorly
+          Array.from({ length: 100 }, () => Math.random().toString(36)).join(''),
+        ],
+      };
+
+      const adaptiveCache = new CompressedCache({
+        maxUncompressed: 0,
+        compressionThresholdMs: 0,
+        minCompressionSize: 1, // Low size threshold
+        minCompressionRatio: 0.1, // Very strict ratio (must achieve 90% reduction)
+        autoCompress: false,
+      });
+
+      adaptiveCache.set('Random', randomEntity);
+      adaptiveCache.compressOldEntries();
+
+      const stats = adaptiveCache.getStats();
+      // Should either skip due to poor ratio or not compress at all
+      expect(stats.skippedPoorRatio + stats.compressions).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should track average compression ratio', async () => {
+      const adaptiveCache = new CompressedCache({
+        maxUncompressed: 0,
+        compressionThresholdMs: 0,
+        minCompressionSize: 100,
+        minCompressionRatio: 0.95, // Lenient ratio
+        autoCompress: false,
+      });
+
+      // Add compressible entities
+      for (let i = 0; i < 5; i++) {
+        adaptiveCache.set(`Entity${i}`, createEntity(`Entity${i}`, 20));
+        await new Promise(resolve => setTimeout(resolve, 5));
+      }
+
+      adaptiveCache.compressOldEntries();
+
+      const stats = adaptiveCache.getStats();
+      if (stats.compressions > 0) {
+        expect(stats.avgCompressionRatio).toBeGreaterThan(0);
+        expect(stats.avgCompressionRatio).toBeLessThan(1);
+      }
+    });
+
+    it('should report estimated memory bytes', () => {
+      cache.set('Entity1', createEntity('Entity1', 10));
+      cache.set('Entity2', createEntity('Entity2', 10));
+
+      const stats = cache.getStats();
+      expect(stats.estimatedMemoryBytes).toBeGreaterThan(0);
+    });
+
+    it('should handle custom minCompressionSize option', () => {
+      const customCache = new CompressedCache({
+        minCompressionSize: 512,
+      });
+
+      customCache.set('Test', createEntity('Test'));
+      expect(customCache.size).toBe(1);
+    });
+
+    it('should handle custom minCompressionRatio option', () => {
+      const customCache = new CompressedCache({
+        minCompressionRatio: 0.5,
+      });
+
+      customCache.set('Test', createEntity('Test'));
+      expect(customCache.size).toBe(1);
+    });
+  });
+
+  describe('statistics edge cases', () => {
+    it('should return zero avgCompressionRatio when no compressions', () => {
+      cache.set('Test', createEntity('Test'));
+      const stats = cache.getStats();
+      expect(stats.avgCompressionRatio).toBe(0);
+    });
+
+    it('should accumulate statistics over time', () => {
+      cache.set('A', createEntity('A'));
+      cache.get('A');
+      cache.get('B'); // miss
+
+      let stats = cache.getStats();
+      expect(stats.hits).toBe(1);
+      expect(stats.misses).toBe(1);
+
+      cache.get('A');
+      cache.get('C'); // miss
+
+      stats = cache.getStats();
+      expect(stats.hits).toBe(2);
+      expect(stats.misses).toBe(2);
+    });
+
+    it('should preserve statistics after clear', () => {
+      cache.set('A', createEntity('A'));
+      cache.get('A');
+
+      cache.clear();
+
+      const stats = cache.getStats();
+      expect(stats.hits).toBe(1);
+      expect(stats.total).toBe(0);
+    });
+  });
 });

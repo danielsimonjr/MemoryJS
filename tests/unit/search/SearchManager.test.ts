@@ -4,7 +4,7 @@
  * Tests for search orchestration and dispatch to specialized search types.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SearchManager } from '../../../src/search/SearchManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { promises as fs } from 'fs';
@@ -324,6 +324,249 @@ describe('SearchManager', () => {
       const results = await manager.searchNodes(longQuery);
 
       expect(Array.isArray(results.entities)).toBe(true);
+    });
+  });
+
+  describe('Cache Management (Phase 4 Sprint 5)', () => {
+    it('should clear all caches without error', () => {
+      // Should not throw
+      expect(() => manager.clearAllCaches()).not.toThrow();
+    });
+
+    it('should clear fuzzy cache without error', () => {
+      expect(() => manager.clearFuzzyCache()).not.toThrow();
+    });
+
+    it('should clear boolean cache without error', () => {
+      expect(() => manager.clearBooleanCache()).not.toThrow();
+    });
+
+    it('should clear ranked cache without error', () => {
+      expect(() => manager.clearRankedCache()).not.toThrow();
+    });
+
+    it('should allow searches after clearing all caches', async () => {
+      // Perform initial search
+      const initial = await manager.searchNodes('Developer');
+      expect(initial.entities.length).toBeGreaterThan(0);
+
+      // Clear caches
+      manager.clearAllCaches();
+
+      // Search should still work
+      const afterClear = await manager.searchNodes('Developer');
+      expect(afterClear.entities.length).toBeGreaterThan(0);
+    });
+
+    it('should allow fuzzy search after clearing fuzzy cache', async () => {
+      // Perform initial fuzzy search
+      const initial = await manager.fuzzySearch('Devloper', 0.7);
+
+      // Clear cache
+      manager.clearFuzzyCache();
+
+      // Search should still work
+      const afterClear = await manager.fuzzySearch('Devloper', 0.7);
+      expect(Array.isArray(afterClear.entities)).toBe(true);
+    });
+
+    it('should allow boolean search after clearing boolean cache', async () => {
+      // Perform initial boolean search
+      const initial = await manager.booleanSearch('Developer AND Frontend');
+
+      // Clear cache
+      manager.clearBooleanCache();
+
+      // Search should still work
+      const afterClear = await manager.booleanSearch('Developer AND Frontend');
+      expect(Array.isArray(afterClear.entities)).toBe(true);
+    });
+
+    it('should allow ranked search after clearing ranked cache', async () => {
+      // Perform initial ranked search
+      const initial = await manager.searchNodesRanked('Developer');
+
+      // Clear cache
+      manager.clearRankedCache();
+
+      // Search should still work
+      const afterClear = await manager.searchNodesRanked('Developer');
+      expect(Array.isArray(afterClear)).toBe(true);
+    });
+  });
+
+  describe('Auto Search (Phase 10 Sprint 4)', () => {
+    it('should select a search method automatically', async () => {
+      const result = await manager.autoSearch('Developer');
+
+      expect(result).toHaveProperty('selectedMethod');
+      expect(result).toHaveProperty('selectionReason');
+      expect(result).toHaveProperty('results');
+      expect(result).toHaveProperty('executionTimeMs');
+    });
+
+    it('should return valid search results', async () => {
+      const result = await manager.autoSearch('Developer');
+
+      expect(Array.isArray(result.results)).toBe(true);
+      if (result.results.length > 0) {
+        expect(result.results[0]).toHaveProperty('entity');
+        expect(result.results[0]).toHaveProperty('score');
+      }
+    });
+
+    it('should respect limit parameter', async () => {
+      const result = await manager.autoSearch('', 2);
+
+      expect(result.results.length).toBeLessThanOrEqual(2);
+    });
+
+    it('should include cost estimates', async () => {
+      const result = await manager.autoSearch('Developer');
+
+      expect(result).toHaveProperty('estimates');
+      expect(Array.isArray(result.estimates)).toBe(true);
+    });
+
+    it('should measure execution time', async () => {
+      const result = await manager.autoSearch('Developer');
+
+      expect(result.executionTimeMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle empty query', async () => {
+      const result = await manager.autoSearch('');
+
+      expect(result).toHaveProperty('selectedMethod');
+      expect(Array.isArray(result.results)).toBe(true);
+    });
+
+    it('should select basic search for simple queries', async () => {
+      const result = await manager.autoSearch('Alice');
+
+      // Basic or ranked should be selected for simple term
+      expect(['basic', 'ranked']).toContain(result.selectedMethod);
+    });
+
+    it('should select boolean search for queries with operators', async () => {
+      const result = await manager.autoSearch('Developer AND Frontend');
+
+      expect(result.selectedMethod).toBe('boolean');
+    });
+
+    it('should provide selection reason', async () => {
+      const result = await manager.autoSearch('Developer');
+
+      expect(typeof result.selectionReason).toBe('string');
+      expect(result.selectionReason.length).toBeGreaterThan(0);
+    });
+
+    it('should handle fuzzy search selection with wildcards', async () => {
+      const result = await manager.autoSearch('Dev*');
+
+      expect(result).toHaveProperty('selectedMethod');
+      expect(result).toHaveProperty('results');
+    });
+
+    it('should execute ranked search via autoSearch', async () => {
+      // Multi-word query should select ranked
+      const result = await manager.autoSearch('Developer Frontend specialist');
+
+      expect(result.results).toBeDefined();
+      expect(Array.isArray(result.results)).toBe(true);
+    });
+
+    it('should handle very long descriptive query', async () => {
+      // Long natural language query
+      const result = await manager.autoSearch(
+        'Find all developers who work on frontend projects and have senior experience'
+      );
+
+      expect(result).toHaveProperty('selectedMethod');
+      expect(result.results).toBeDefined();
+    });
+  });
+
+  describe('Search Cost Estimates', () => {
+    it('should get cost estimates for all methods', async () => {
+      const estimates = await manager.getSearchCostEstimates('Developer');
+
+      expect(Array.isArray(estimates)).toBe(true);
+      expect(estimates.length).toBeGreaterThan(0);
+    });
+
+    it('should include method name in estimates', async () => {
+      const estimates = await manager.getSearchCostEstimates('Developer');
+
+      estimates.forEach(estimate => {
+        expect(estimate).toHaveProperty('method');
+      });
+    });
+
+    it('should include estimated time in estimates', async () => {
+      const estimates = await manager.getSearchCostEstimates('Developer');
+
+      estimates.forEach(estimate => {
+        expect(estimate).toHaveProperty('estimatedTimeMs');
+      });
+    });
+
+    it('should handle empty query', async () => {
+      const estimates = await manager.getSearchCostEstimates('');
+
+      expect(Array.isArray(estimates)).toBe(true);
+    });
+  });
+
+  describe('Query Estimator Access', () => {
+    it('should provide access to query estimator', () => {
+      const estimator = manager.getQueryEstimator();
+
+      expect(estimator).toBeDefined();
+    });
+
+    it('should return consistent estimator instance', () => {
+      const estimator1 = manager.getQueryEstimator();
+      const estimator2 = manager.getQueryEstimator();
+
+      expect(estimator1).toBe(estimator2);
+    });
+  });
+
+  describe('Access Tracker Integration', () => {
+    it('should accept access tracker via setAccessTracker', () => {
+      const mockTracker = {
+        recordAccess: async () => {},
+        getAccessHistory: async () => [],
+      };
+
+      // Should not throw
+      expect(() => manager.setAccessTracker(mockTracker as any)).not.toThrow();
+    });
+
+    it('should search without tracking when tracker not set', async () => {
+      const results = await manager.searchNodes('Developer', undefined, undefined, undefined, {
+        trackAccess: true,
+      });
+
+      // Should still return results
+      expect(results.entities.length).toBeGreaterThan(0);
+    });
+
+    it('should search with tracking options', async () => {
+      const mockTracker = {
+        recordAccess: vi.fn().mockResolvedValue(undefined),
+        getAccessHistory: async () => [],
+      };
+      manager.setAccessTracker(mockTracker as any);
+
+      await manager.searchNodes('Developer', undefined, undefined, undefined, {
+        trackAccess: true,
+        sessionId: 'test-session',
+        taskId: 'test-task',
+      });
+
+      expect(mockTracker.recordAccess).toHaveBeenCalled();
     });
   });
 });
