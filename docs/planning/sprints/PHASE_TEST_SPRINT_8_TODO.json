@@ -1,0 +1,251 @@
+{
+  "phase": "test-coverage",
+  "sprint": 8,
+  "title": "TaskScheduler & BatchProcessor Tests",
+  "priority": "HIGH",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Tests task scheduling and batch processing utilities (7.6%/1% to 90%)",
+  "targetMetrics": {
+    "taskSchedulerCoverage": {
+      "current": "7.6%",
+      "target": "90%"
+    },
+    "batchProcessorCoverage": {
+      "current": "1%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T1.8.1",
+      "category": "testing",
+      "title": "Test taskScheduler Queue Operations",
+      "description": "Test task enqueue, priority sorting, and task cancellation.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/taskScheduler.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure task queue operations work correctly.",
+        "keyDecisions": [
+          "Test enqueue() method",
+          "Test priority ordering",
+          "Test cancel() method"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update taskScheduler.test.ts",
+          "details": "Add queue operation tests"
+        },
+        {
+          "step": 2,
+          "action": "Add priority tests",
+          "details": "Test that higher priority tasks execute first"
+        },
+        {
+          "step": 3,
+          "action": "Add cancellation tests",
+          "details": "Test cancel() before and during execution"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Tasks enqueue correctly",
+        "Priority sorting works",
+        "Cancellation stops tasks",
+        "Queue operations tested"
+      ]
+    },
+    {
+      "id": "T1.8.2",
+      "category": "testing",
+      "title": "Test taskScheduler Execution",
+      "description": "Test task execution, worker pool integration, and result handling.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/taskScheduler.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure tasks execute correctly.",
+        "keyDecisions": [
+          "Mock worker pool for isolation",
+          "Test execution callbacks",
+          "Test result handling"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add execution tests",
+          "details": "Test processNext() logic with mocked workers"
+        },
+        {
+          "step": 2,
+          "action": "Add result tests",
+          "details": "Test task results are returned correctly"
+        },
+        {
+          "step": 3,
+          "action": "Add error tests",
+          "details": "Test execution failure handling"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Tasks execute via worker pool",
+        "Results returned correctly",
+        "Errors handled properly",
+        "Execution paths tested"
+      ]
+    },
+    {
+      "id": "T1.8.3",
+      "category": "testing",
+      "title": "Test taskScheduler Rate Limiting",
+      "description": "Test rateLimitedProcess(), rate enforcement, and burst handling.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/taskScheduler.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure rate limiting works correctly.",
+        "keyDecisions": [
+          "Test rate limit enforcement",
+          "Test burst allowance",
+          "Test timing accuracy"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add rate limit tests",
+          "details": "Test rateLimitedProcess() function"
+        },
+        {
+          "step": 2,
+          "action": "Add burst tests",
+          "details": "Test burst handling within limits"
+        },
+        {
+          "step": 3,
+          "action": "Add timing tests",
+          "details": "Test that rate limits delay correctly"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Rate limits enforced",
+        "Bursts handled correctly",
+        "Timing is accurate",
+        "Rate limiting tested"
+      ]
+    },
+    {
+      "id": "T1.8.4",
+      "category": "testing",
+      "title": "Test taskScheduler Utilities",
+      "description": "Test debounce(), throttle(), and withRetry() functions.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/taskScheduler.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure utility functions work correctly.",
+        "keyDecisions": [
+          "Test debounce timing",
+          "Test throttle limits",
+          "Test retry logic with backoff"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add debounce tests",
+          "details": "Test debounce() delays and cancellation"
+        },
+        {
+          "step": 2,
+          "action": "Add throttle tests",
+          "details": "Test throttle() rate limiting"
+        },
+        {
+          "step": 3,
+          "action": "Add retry tests",
+          "details": "Test withRetry() with various failure scenarios"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Debounce delays correctly",
+        "Throttle limits calls",
+        "Retry respects max attempts",
+        "Backoff increases correctly",
+        "Utility functions tested"
+      ]
+    },
+    {
+      "id": "T1.8.5",
+      "category": "testing",
+      "title": "Test BatchProcessor Edge Cases",
+      "description": "Test memory pressure, very large batches, and mixed async/sync processors.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/BatchProcessor.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Cover edge cases in batch processing.",
+        "keyDecisions": [
+          "Test large batch handling",
+          "Test memory pressure scenarios",
+          "Test mixed processor types"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add large batch tests",
+          "details": "Test with 10k+ items"
+        },
+        {
+          "step": 2,
+          "action": "Add memory tests",
+          "details": "Test behavior under memory pressure"
+        },
+        {
+          "step": 3,
+          "action": "Add mixed processor tests",
+          "details": "Test async and sync processors together"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Large batches processed correctly",
+        "Memory pressure handled",
+        "Mixed processors work",
+        "Edge cases covered"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of taskScheduler.ts reaches 90%",
+    "Coverage of BatchProcessor.ts reaches 90%",
+    "Tests run in under 60 seconds"
+  ],
+  "filesCreated": [],
+  "filesModified": [
+    "tests/unit/utils/taskScheduler.test.ts",
+    "tests/unit/utils/BatchProcessor.test.ts"
+  ],
+  "totalNewTests": 60,
+  "totalEstimatedHours": 5,
+  "dependencies": ["PHASE_TEST_SPRINT_7"],
+  "notes": [
+    "Mock worker pool for isolation",
+    "Test timeout scenarios",
+    "Test concurrent task execution"
+  ]
+}

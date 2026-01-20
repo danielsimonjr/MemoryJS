@@ -1,0 +1,255 @@
+{
+  "phase": "test-coverage",
+  "sprint": 14,
+  "title": "FuzzySearch & Algorithms Tests",
+  "priority": "LOW",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Completes FuzzySearch and search algorithm coverage (71%/72% to 90%)",
+  "targetMetrics": {
+    "fuzzySearchCoverage": {
+      "current": "71%",
+      "target": "90%"
+    },
+    "searchAlgorithmsCoverage": {
+      "current": "72%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T1.14.1",
+      "category": "testing",
+      "title": "Test FuzzySearch Multi-Term",
+      "description": "Test multi-term fuzzy queries, term combination scoring.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/FuzzySearch.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure multi-term fuzzy search works correctly.",
+        "keyDecisions": [
+          "Test multiple search terms",
+          "Test term combination scoring",
+          "Test partial matches"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update FuzzySearch.test.ts",
+          "details": "Add multi-term query tests"
+        },
+        {
+          "step": 2,
+          "action": "Add term combination tests",
+          "details": "Test how multiple terms are scored together"
+        },
+        {
+          "step": 3,
+          "action": "Add partial match tests",
+          "details": "Test when only some terms match"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Multi-term queries work",
+        "Scoring combines terms correctly",
+        "Partial matches scored appropriately",
+        "Multi-term queries tested"
+      ]
+    },
+    {
+      "id": "T1.14.2",
+      "category": "testing",
+      "title": "Test FuzzySearch Observations",
+      "description": "Test observation-level matching accuracy and scoring.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/FuzzySearch.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure observation matching works correctly.",
+        "keyDecisions": [
+          "Test observation text matching",
+          "Test observation vs name priority",
+          "Test multiple observation matches"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add observation matching tests",
+          "details": "Test fuzzy match in observation text"
+        },
+        {
+          "step": 2,
+          "action": "Add priority tests",
+          "details": "Test name matches rank higher than observation"
+        },
+        {
+          "step": 3,
+          "action": "Add multiple observation tests",
+          "details": "Test entities with many observations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Observation text searched",
+        "Name priority respected",
+        "Multiple observations handled",
+        "Observation matching tested"
+      ]
+    },
+    {
+      "id": "T1.14.3",
+      "category": "testing",
+      "title": "Test FuzzySearch Performance",
+      "description": "Test cache effectiveness and large dataset performance.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/FuzzySearch.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure fuzzy search performs well.",
+        "keyDecisions": [
+          "Test cache hit rate",
+          "Test large dataset performance",
+          "Test repeated query optimization"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add cache effectiveness tests",
+          "details": "Test that repeated queries use cache"
+        },
+        {
+          "step": 2,
+          "action": "Add large dataset tests",
+          "details": "Test with 1000+ entities"
+        },
+        {
+          "step": 3,
+          "action": "Add performance baseline tests",
+          "details": "Test search completes within time limit"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Cache reduces computation",
+        "Large datasets searchable",
+        "Performance acceptable",
+        "Performance tested"
+      ]
+    },
+    {
+      "id": "T1.14.4",
+      "category": "testing",
+      "title": "Test searchAlgorithms Core",
+      "description": "Test Levenshtein distance, similarity scoring, and threshold tuning.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/searchAlgorithms.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure core algorithms work correctly.",
+        "keyDecisions": [
+          "Test Levenshtein calculation",
+          "Test similarity score normalization",
+          "Test threshold application"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update searchAlgorithms.test.ts",
+          "details": "Add core algorithm tests"
+        },
+        {
+          "step": 2,
+          "action": "Add Levenshtein tests",
+          "details": "Test distance calculation with known values"
+        },
+        {
+          "step": 3,
+          "action": "Add similarity tests",
+          "details": "Test similarity score normalization"
+        },
+        {
+          "step": 4,
+          "action": "Add threshold tests",
+          "details": "Test threshold filtering"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Levenshtein distances correct",
+        "Similarity scores normalized",
+        "Thresholds filter correctly",
+        "Core algorithms tested"
+      ]
+    },
+    {
+      "id": "T1.14.5",
+      "category": "testing",
+      "title": "Test searchAlgorithms Edge Cases",
+      "description": "Test empty strings, unicode handling, and very long strings.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/searchAlgorithms.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Cover edge cases in search algorithms.",
+        "keyDecisions": [
+          "Test empty string handling",
+          "Test unicode characters",
+          "Test very long strings"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add empty string tests",
+          "details": "Test comparison with empty strings"
+        },
+        {
+          "step": 2,
+          "action": "Add unicode tests",
+          "details": "Test multi-byte character handling"
+        },
+        {
+          "step": 3,
+          "action": "Add long string tests",
+          "details": "Test with 10k+ character strings"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Empty strings handled",
+        "Unicode works correctly",
+        "Long strings don't timeout",
+        "Edge cases tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of FuzzySearch.ts reaches 90%",
+    "Coverage of searchAlgorithms.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [],
+  "filesModified": [
+    "tests/unit/search/FuzzySearch.test.ts",
+    "tests/unit/utils/searchAlgorithms.test.ts"
+  ],
+  "totalNewTests": 50,
+  "totalEstimatedHours": 5,
+  "dependencies": ["PHASE_TEST_SPRINT_13"],
+  "notes": [
+    "Test worker pool integration",
+    "Test scoring consistency",
+    "Performance benchmarks"
+  ]
+}

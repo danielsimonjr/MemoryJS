@@ -1,0 +1,261 @@
+{
+  "phase": "test-coverage",
+  "sprint": 9,
+  "title": "Formatters & EntityUtils Tests",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Enhances formatter and entity utility coverage (28%/32% to 90%)",
+  "targetMetrics": {
+    "formattersCoverage": {
+      "current": "28%",
+      "target": "90%"
+    },
+    "entityUtilsCoverage": {
+      "current": "32%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T1.9.1",
+      "category": "testing",
+      "title": "Test formatters.ts Time Formatting",
+      "description": "Test timestamp formatting, duration formatting, and relative time.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/formatters.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure time formatting functions work correctly.",
+        "keyDecisions": [
+          "Test ISO timestamp formatting",
+          "Test duration display",
+          "Test relative time (e.g., '2 hours ago')"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update formatters.test.ts",
+          "details": "Add time formatting tests"
+        },
+        {
+          "step": 2,
+          "action": "Add timestamp tests",
+          "details": "Test formatTimestamp() with various dates"
+        },
+        {
+          "step": 3,
+          "action": "Add duration tests",
+          "details": "Test formatDuration() with ms, seconds, minutes, hours"
+        },
+        {
+          "step": 4,
+          "action": "Add relative time tests",
+          "details": "Test relative time formatting"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Timestamps formatted correctly",
+        "Durations display human-readable",
+        "Relative times accurate",
+        "Time formatting tested"
+      ]
+    },
+    {
+      "id": "T1.9.2",
+      "category": "testing",
+      "title": "Test formatters.ts Size Formatting",
+      "description": "Test byte size formatting, memory usage display, and precision.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/formatters.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure size formatting functions work correctly.",
+        "keyDecisions": [
+          "Test byte to KB/MB/GB conversion",
+          "Test precision options",
+          "Test edge cases (0, negative, very large)"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add size formatting tests",
+          "details": "Test formatBytes() function"
+        },
+        {
+          "step": 2,
+          "action": "Add unit conversion tests",
+          "details": "Test automatic unit selection (B, KB, MB, GB)"
+        },
+        {
+          "step": 3,
+          "action": "Add precision tests",
+          "details": "Test decimal precision options"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Bytes formatted correctly",
+        "Correct unit selected",
+        "Precision controlled",
+        "Size formatting tested"
+      ]
+    },
+    {
+      "id": "T1.9.3",
+      "category": "testing",
+      "title": "Test entityUtils Validation",
+      "description": "Test entity name validation, type validation, and observation validation.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/entityUtils.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure entity validation utilities work correctly.",
+        "keyDecisions": [
+          "Test name format rules",
+          "Test type constraints",
+          "Test observation content validation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update entityUtils.test.ts",
+          "details": "Add validation function tests"
+        },
+        {
+          "step": 2,
+          "action": "Add name validation tests",
+          "details": "Test valid/invalid entity names"
+        },
+        {
+          "step": 3,
+          "action": "Add type validation tests",
+          "details": "Test entity type constraints"
+        },
+        {
+          "step": 4,
+          "action": "Add observation validation tests",
+          "details": "Test observation content rules"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Valid names accepted",
+        "Invalid names rejected",
+        "Type constraints enforced",
+        "Observations validated",
+        "Validation functions tested"
+      ]
+    },
+    {
+      "id": "T1.9.4",
+      "category": "testing",
+      "title": "Test entityUtils Transformation",
+      "description": "Test entity normalization, merging, and comparison functions.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/entityUtils.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure entity transformation utilities work correctly.",
+        "keyDecisions": [
+          "Test entity normalization",
+          "Test entity merging strategies",
+          "Test entity comparison"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add normalization tests",
+          "details": "Test normalizeEntity() function"
+        },
+        {
+          "step": 2,
+          "action": "Add merge tests",
+          "details": "Test mergeEntities() with various strategies"
+        },
+        {
+          "step": 3,
+          "action": "Add comparison tests",
+          "details": "Test entity equality and similarity"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Normalization standardizes entities",
+        "Merging combines correctly",
+        "Comparison detects differences",
+        "Transformations tested"
+      ]
+    },
+    {
+      "id": "T1.9.5",
+      "category": "testing",
+      "title": "Test entityUtils Helpers",
+      "description": "Test importance calculation, tag manipulation, and hierarchy helpers.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/entityUtils.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure entity helper utilities work correctly.",
+        "keyDecisions": [
+          "Test importance score calculation",
+          "Test tag add/remove operations",
+          "Test hierarchy traversal helpers"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add importance tests",
+          "details": "Test calculateImportance() function"
+        },
+        {
+          "step": 2,
+          "action": "Add tag manipulation tests",
+          "details": "Test addTag(), removeTag(), hasTags()"
+        },
+        {
+          "step": 3,
+          "action": "Add hierarchy tests",
+          "details": "Test parent/child helper functions"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Importance calculated correctly",
+        "Tags manipulated correctly",
+        "Hierarchy helpers work",
+        "Helper functions tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of formatters.ts reaches 90%",
+    "Coverage of entityUtils.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [],
+  "filesModified": [
+    "tests/unit/utils/formatters.test.ts",
+    "tests/unit/utils/entityUtils.test.ts"
+  ],
+  "totalNewTests": 60,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "Test edge cases (empty strings, special chars)",
+    "Test locale-specific formatting",
+    "Test large entity handling"
+  ]
+}

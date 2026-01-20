@@ -1,0 +1,260 @@
+{
+  "phase": "test-coverage",
+  "sprint": 10,
+  "title": "Indexes & ParallelUtils Tests",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Completes index and parallel utility coverage (58%/6.5% to 90%)",
+  "targetMetrics": {
+    "indexesCoverage": {
+      "current": "58%",
+      "target": "90%"
+    },
+    "parallelUtilsCoverage": {
+      "current": "6.5%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T1.10.1",
+      "category": "testing",
+      "title": "Test indexes.ts Name Index",
+      "description": "Test name index creation, lookup, and update operations.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/indexes.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure name index operations work correctly.",
+        "keyDecisions": [
+          "Test O(1) lookup",
+          "Test index creation from entities",
+          "Test index updates"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update indexes.test.ts",
+          "details": "Add name index tests"
+        },
+        {
+          "step": 2,
+          "action": "Add creation tests",
+          "details": "Test buildNameIndex() function"
+        },
+        {
+          "step": 3,
+          "action": "Add lookup tests",
+          "details": "Test fast name lookups"
+        },
+        {
+          "step": 4,
+          "action": "Add update tests",
+          "details": "Test index updates on entity changes"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Name index created correctly",
+        "Lookups are O(1)",
+        "Updates maintain consistency",
+        "Name index tested"
+      ]
+    },
+    {
+      "id": "T1.10.2",
+      "category": "testing",
+      "title": "Test indexes.ts Type Index",
+      "description": "Test type index grouping, filtering, and update operations.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/indexes.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure type index operations work correctly.",
+        "keyDecisions": [
+          "Test entity grouping by type",
+          "Test type filtering",
+          "Test index consistency"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add type index creation tests",
+          "details": "Test buildTypeIndex() function"
+        },
+        {
+          "step": 2,
+          "action": "Add grouping tests",
+          "details": "Test entities grouped by type correctly"
+        },
+        {
+          "step": 3,
+          "action": "Add filter tests",
+          "details": "Test filtering entities by type"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Entities grouped by type",
+        "Filtering works correctly",
+        "Updates maintain consistency",
+        "Type index tested"
+      ]
+    },
+    {
+      "id": "T1.10.3",
+      "category": "testing",
+      "title": "Test indexes.ts Tag Index",
+      "description": "Test tag index multi-value handling and efficient lookups.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/indexes.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure tag index handles multi-value correctly.",
+        "keyDecisions": [
+          "Test entities with multiple tags",
+          "Test tag-based lookups",
+          "Test tag intersection queries"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add tag index creation tests",
+          "details": "Test buildTagIndex() function"
+        },
+        {
+          "step": 2,
+          "action": "Add multi-tag tests",
+          "details": "Test entities with multiple tags"
+        },
+        {
+          "step": 3,
+          "action": "Add intersection tests",
+          "details": "Test finding entities with multiple specific tags"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Multi-tag entities indexed correctly",
+        "Tag lookups work",
+        "Intersection queries work",
+        "Tag index tested"
+      ]
+    },
+    {
+      "id": "T1.10.4",
+      "category": "testing",
+      "title": "Test parallelUtils Chunking",
+      "description": "Test array chunking, work distribution, and concurrency limits.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/parallelUtils.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure chunking utilities work correctly.",
+        "keyDecisions": [
+          "Test chunk size calculation",
+          "Test work distribution",
+          "Test concurrency limit enforcement"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update parallelUtils.test.ts",
+          "details": "Add chunking tests"
+        },
+        {
+          "step": 2,
+          "action": "Add chunk size tests",
+          "details": "Test chunkArray() with various sizes"
+        },
+        {
+          "step": 3,
+          "action": "Add distribution tests",
+          "details": "Test even work distribution"
+        },
+        {
+          "step": 4,
+          "action": "Add concurrency tests",
+          "details": "Test concurrency limit enforcement"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Chunks created correctly",
+        "Work distributed evenly",
+        "Concurrency limits enforced",
+        "Chunking tested"
+      ]
+    },
+    {
+      "id": "T1.10.5",
+      "category": "testing",
+      "title": "Test parallelUtils Execution",
+      "description": "Test parallel map, parallel filter, and error aggregation.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/parallelUtils.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure parallel execution utilities work correctly.",
+        "keyDecisions": [
+          "Test parallelMap() result ordering",
+          "Test parallelFilter() correctness",
+          "Test error aggregation from parallel ops"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add parallelMap tests",
+          "details": "Test map results maintain order"
+        },
+        {
+          "step": 2,
+          "action": "Add parallelFilter tests",
+          "details": "Test filter correctness"
+        },
+        {
+          "step": 3,
+          "action": "Add error tests",
+          "details": "Test error collection from parallel operations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Map results ordered correctly",
+        "Filter works correctly",
+        "Errors aggregated properly",
+        "Parallel execution tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of indexes.ts reaches 90%",
+    "Coverage of parallelUtils.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [],
+  "filesModified": [
+    "tests/unit/utils/indexes.test.ts",
+    "tests/unit/utils/parallelUtils.test.ts"
+  ],
+  "totalNewTests": 55,
+  "totalEstimatedHours": 5,
+  "dependencies": ["PHASE_TEST_SPRINT_9"],
+  "notes": [
+    "Test index consistency after updates",
+    "Test parallel execution ordering",
+    "Test error handling in parallel operations"
+  ]
+}

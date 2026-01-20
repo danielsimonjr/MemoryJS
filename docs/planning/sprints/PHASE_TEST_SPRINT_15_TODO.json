@@ -1,0 +1,279 @@
+{
+  "phase": "test-coverage",
+  "sprint": 15,
+  "title": "Final Coverage Push",
+  "priority": "LOW",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Addresses remaining coverage gaps and verifies 90% target achieved",
+  "targetMetrics": {
+    "memoryMonitorCoverage": {
+      "current": "7.6%",
+      "target": "90%"
+    },
+    "searchCacheCoverage": {
+      "current": "49%",
+      "target": "90%"
+    },
+    "compressionUtilCoverage": {
+      "current": "43%",
+      "target": "90%"
+    },
+    "schemasCoverage": {
+      "current": "33%",
+      "target": "90%"
+    },
+    "overallCoverage": {
+      "current": "~65%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T1.15.1",
+      "category": "testing",
+      "title": "Test MemoryMonitor Comprehensively",
+      "description": "Test heap stats collection, component isolation, and threshold alerts.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/MemoryMonitor.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Complete MemoryMonitor test coverage.",
+        "keyDecisions": [
+          "Test heap stats accuracy",
+          "Test component isolation",
+          "Test threshold alert system"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update MemoryMonitor.test.ts",
+          "details": "Add comprehensive tests"
+        },
+        {
+          "step": 2,
+          "action": "Add heap stats tests",
+          "details": "Test memory stat collection accuracy"
+        },
+        {
+          "step": 3,
+          "action": "Add isolation tests",
+          "details": "Test per-component tracking"
+        },
+        {
+          "step": 4,
+          "action": "Add alert tests",
+          "details": "Test warning and critical thresholds"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Heap stats collected correctly",
+        "Components tracked separately",
+        "Thresholds trigger alerts",
+        "MemoryMonitor 90% covered"
+      ]
+    },
+    {
+      "id": "T1.15.2",
+      "category": "testing",
+      "title": "Test searchCache Completeness",
+      "description": "Test cache policies, eviction strategies, and concurrent access.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/searchCache.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Complete searchCache test coverage.",
+        "keyDecisions": [
+          "Test cache policies",
+          "Test LRU eviction",
+          "Test concurrent access safety"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update searchCache.test.ts",
+          "details": "Add cache policy tests"
+        },
+        {
+          "step": 2,
+          "action": "Add eviction tests",
+          "details": "Test LRU eviction behavior"
+        },
+        {
+          "step": 3,
+          "action": "Add concurrency tests",
+          "details": "Test concurrent access patterns"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Policies enforce limits",
+        "Eviction removes oldest entries",
+        "Concurrent access safe",
+        "SearchCache 90% covered"
+      ]
+    },
+    {
+      "id": "T1.15.3",
+      "category": "testing",
+      "title": "Test compressionUtil Completeness",
+      "description": "Test compression quality levels, streaming compression, and error handling.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/compressionUtil.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Complete compressionUtil test coverage.",
+        "keyDecisions": [
+          "Test quality levels",
+          "Test streaming compression",
+          "Test error handling"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update compressionUtil.test.ts",
+          "details": "Add quality level tests"
+        },
+        {
+          "step": 2,
+          "action": "Add streaming tests",
+          "details": "Test streaming compression/decompression"
+        },
+        {
+          "step": 3,
+          "action": "Add error tests",
+          "details": "Test corrupt data handling"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Quality levels affect output",
+        "Streaming works for large data",
+        "Errors handled gracefully",
+        "CompressionUtil 90% covered"
+      ]
+    },
+    {
+      "id": "T1.15.4",
+      "category": "testing",
+      "title": "Test schemas.ts Validation",
+      "description": "Test all schema definitions, validation error formatting, and custom schemas.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/utils/schemas.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Complete schemas test coverage.",
+        "keyDecisions": [
+          "Test all schema definitions",
+          "Test validation error messages",
+          "Test custom schema support"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update schemas.test.ts",
+          "details": "Add schema definition tests"
+        },
+        {
+          "step": 2,
+          "action": "Add error formatting tests",
+          "details": "Test validation error messages"
+        },
+        {
+          "step": 3,
+          "action": "Add custom schema tests",
+          "details": "Test user-defined schemas"
+        }
+      ],
+      "acceptanceCriteria": [
+        "All schemas validated",
+        "Error messages helpful",
+        "Custom schemas work",
+        "Schemas 90% covered"
+      ]
+    },
+    {
+      "id": "T1.15.5",
+      "category": "testing",
+      "title": "Coverage Verification and Cleanup",
+      "description": "Run full coverage report, identify any remaining gaps, create follow-up issues.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": [],
+      "testCategories": ["integration"],
+      "implementation": {
+        "purpose": "Verify 90% coverage target achieved.",
+        "keyDecisions": [
+          "Run full coverage suite",
+          "Document any exceptions",
+          "Create issues for remaining gaps"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Run full coverage",
+          "details": "npm run test:coverage"
+        },
+        {
+          "step": 2,
+          "action": "Analyze report",
+          "details": "Identify files below 90%"
+        },
+        {
+          "step": 3,
+          "action": "Document exceptions",
+          "details": "Note any intentionally untested code"
+        },
+        {
+          "step": 4,
+          "action": "Create issues",
+          "details": "File issues for any remaining gaps"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Coverage report generated",
+        "90%+ overall coverage achieved",
+        "Exceptions documented",
+        "Follow-up issues created if needed",
+        "Overall coverage 90%+ verified"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of MemoryMonitor.ts reaches 90%",
+    "Coverage of searchCache.ts reaches 90%",
+    "Coverage of compressionUtil.ts reaches 90%",
+    "Coverage of schemas.ts reaches 90%",
+    "Overall codebase coverage reaches 90%+",
+    "Full test suite passes",
+    "Coverage report documents any exceptions"
+  ],
+  "filesCreated": [],
+  "filesModified": [
+    "tests/unit/utils/MemoryMonitor.test.ts",
+    "tests/unit/utils/searchCache.test.ts",
+    "tests/unit/utils/compressionUtil.test.ts",
+    "tests/unit/utils/schemas.test.ts"
+  ],
+  "totalNewTests": 50,
+  "totalEstimatedHours": 5,
+  "dependencies": ["PHASE_TEST_SPRINT_14"],
+  "notes": [
+    "Run full coverage suite",
+    "Document any exceptions",
+    "Create issues for edge cases"
+  ]
+}

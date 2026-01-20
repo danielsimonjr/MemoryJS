@@ -1,0 +1,261 @@
+{
+  "phase": "test-coverage",
+  "sprint": 3,
+  "title": "Query Parser & Proximity Search Tests",
+  "priority": "CRITICAL",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Tests critical search parsing and proximity matching functionality (0% to 90%)",
+  "targetMetrics": {
+    "queryParserCoverage": {
+      "current": "0%",
+      "target": "90%"
+    },
+    "proximitySearchCoverage": {
+      "current": "0%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T1.3.1",
+      "category": "testing",
+      "title": "Test QueryParser Basic Parsing",
+      "description": "Test tokenization, term extraction, and basic query structure.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/QueryParser.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure basic query parsing works correctly.",
+        "keyDecisions": [
+          "Test single word queries",
+          "Test multi-word queries",
+          "Test tokenization rules"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create QueryParser.test.ts",
+          "details": "Set up test file with basic query examples"
+        },
+        {
+          "step": 2,
+          "action": "Add tokenization tests",
+          "details": "Test word splitting, punctuation handling"
+        },
+        {
+          "step": 3,
+          "action": "Add term extraction tests",
+          "details": "Test that search terms are correctly identified"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Single words parsed correctly",
+        "Multi-word queries tokenized",
+        "Punctuation handled appropriately",
+        "Basic parsing 90% covered"
+      ]
+    },
+    {
+      "id": "T1.3.2",
+      "category": "testing",
+      "title": "Test QueryParser Phrase Handling",
+      "description": "Test quoted phrase detection, phrase search generation, and escaping.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/QueryParser.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure phrase search syntax is parsed correctly.",
+        "keyDecisions": [
+          "Test double-quoted phrases",
+          "Test escaped quotes within phrases",
+          "Test mixed phrases and terms"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add phrase detection tests",
+          "details": "Test detection of quoted strings"
+        },
+        {
+          "step": 2,
+          "action": "Add phrase escaping tests",
+          "details": "Test handling of escaped quotes"
+        },
+        {
+          "step": 3,
+          "action": "Add mixed query tests",
+          "details": "Test queries with both phrases and regular terms"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Phrases detected correctly",
+        "Escaped quotes handled",
+        "Mixed queries parsed correctly",
+        "Phrase handling tested"
+      ]
+    },
+    {
+      "id": "T1.3.3",
+      "category": "testing",
+      "title": "Test QueryParser Operators",
+      "description": "Test wildcard (*, ?), field-specific (field:), and proximity (~N) operators.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/QueryParser.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure advanced query operators are parsed correctly.",
+        "keyDecisions": [
+          "Test wildcard expansion",
+          "Test field-specific search syntax",
+          "Test proximity operator parsing"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add wildcard tests",
+          "details": "Test * and ? wildcard patterns"
+        },
+        {
+          "step": 2,
+          "action": "Add field-specific tests",
+          "details": "Test name:, type:, obs:, tag: prefixes"
+        },
+        {
+          "step": 3,
+          "action": "Add proximity tests",
+          "details": "Test ~N syntax parsing"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Wildcards expanded correctly",
+        "Field prefixes recognized",
+        "Proximity distances parsed",
+        "All operators tested"
+      ]
+    },
+    {
+      "id": "T1.3.4",
+      "category": "testing",
+      "title": "Test ProximitySearch Core",
+      "description": "Test proximity matching algorithm, word distance calculation, and scoring.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/ProximitySearch.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure proximity search algorithm works correctly.",
+        "keyDecisions": [
+          "Test word distance calculation",
+          "Test proximity matching logic",
+          "Test scoring based on distance"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create ProximitySearch.test.ts",
+          "details": "Set up test file with test documents"
+        },
+        {
+          "step": 2,
+          "action": "Add distance calculation tests",
+          "details": "Test word position tracking and distance"
+        },
+        {
+          "step": 3,
+          "action": "Add matching tests",
+          "details": "Test that matches within distance are found"
+        },
+        {
+          "step": 4,
+          "action": "Add scoring tests",
+          "details": "Test that closer matches score higher"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Word distances calculated correctly",
+        "Matches within distance found",
+        "Non-matches outside distance excluded",
+        "Core algorithm tested"
+      ]
+    },
+    {
+      "id": "T1.3.5",
+      "category": "testing",
+      "title": "Test ProximitySearch Edge Cases",
+      "description": "Test empty queries, single-word queries, overlapping matches, and large documents.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/ProximitySearch.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Cover edge cases in proximity search.",
+        "keyDecisions": [
+          "Test boundary conditions",
+          "Test performance with large content",
+          "Test edge case inputs"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add empty query tests",
+          "details": "Test empty and whitespace-only queries"
+        },
+        {
+          "step": 2,
+          "action": "Add single-word tests",
+          "details": "Test proximity with single search term"
+        },
+        {
+          "step": 3,
+          "action": "Add overlapping match tests",
+          "details": "Test documents with multiple proximity matches"
+        },
+        {
+          "step": 4,
+          "action": "Add large document tests",
+          "details": "Test performance with 10k+ word documents"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Empty queries handled gracefully",
+        "Single-word queries work correctly",
+        "Overlapping matches detected",
+        "Large documents perform acceptably",
+        "Edge cases covered"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of QueryParser.ts reaches 90%",
+    "Coverage of ProximitySearch.ts reaches 90%",
+    "Tests run in under 30 seconds"
+  ],
+  "filesCreated": [
+    "tests/unit/search/QueryParser.test.ts",
+    "tests/unit/search/ProximitySearch.test.ts"
+  ],
+  "filesModified": [],
+  "totalNewTests": 70,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "Test malformed queries",
+    "Test special characters and unicode",
+    "Performance tests for large documents"
+  ]
+}

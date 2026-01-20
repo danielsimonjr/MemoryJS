@@ -1,0 +1,249 @@
+{
+  "phase": "test-coverage",
+  "sprint": 13,
+  "title": "EmbeddingService Completion Tests",
+  "priority": "LOW",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Completes EmbeddingService test coverage (60% to 90%)",
+  "targetMetrics": {
+    "embeddingServiceCoverage": {
+      "current": "60%",
+      "target": "90%"
+    }
+  },
+  "tasks": [
+    {
+      "id": "T1.13.1",
+      "category": "testing",
+      "title": "Test EmbeddingService Error Handling",
+      "description": "Test API failures, rate limiting, timeout scenarios, and retry logic.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/EmbeddingService.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure error scenarios are handled correctly.",
+        "keyDecisions": [
+          "Mock API failures",
+          "Test rate limit handling",
+          "Test retry mechanism"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update EmbeddingService.test.ts",
+          "details": "Add error handling tests"
+        },
+        {
+          "step": 2,
+          "action": "Add API failure tests",
+          "details": "Test 500, 503 error responses"
+        },
+        {
+          "step": 3,
+          "action": "Add rate limit tests",
+          "details": "Test 429 response handling"
+        },
+        {
+          "step": 4,
+          "action": "Add retry tests",
+          "details": "Test retry logic with backoff"
+        }
+      ],
+      "acceptanceCriteria": [
+        "API failures handled gracefully",
+        "Rate limits trigger backoff",
+        "Retries respect max attempts",
+        "Error handling tested"
+      ]
+    },
+    {
+      "id": "T1.13.2",
+      "category": "testing",
+      "title": "Test EmbeddingService Caching",
+      "description": "Test cache hit/miss behavior, cache invalidation, and memory management.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/EmbeddingService.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure embedding caching works correctly.",
+        "keyDecisions": [
+          "Test cache hit returns cached embedding",
+          "Test cache miss triggers API call",
+          "Test cache invalidation"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add cache hit tests",
+          "details": "Test that cached embeddings returned"
+        },
+        {
+          "step": 2,
+          "action": "Add cache miss tests",
+          "details": "Test that miss triggers API call"
+        },
+        {
+          "step": 3,
+          "action": "Add invalidation tests",
+          "details": "Test cache invalidation mechanism"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Cache hits skip API calls",
+        "Cache misses fetch embeddings",
+        "Invalidation clears cache",
+        "Caching tested"
+      ]
+    },
+    {
+      "id": "T1.13.3",
+      "category": "testing",
+      "title": "Test EmbeddingService Batch Operations",
+      "description": "Test batch embedding efficiency, partial failure handling, and chunking.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/EmbeddingService.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure batch operations work efficiently.",
+        "keyDecisions": [
+          "Test batch embedding call",
+          "Test partial failure handling",
+          "Test batch size chunking"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add batch embedding tests",
+          "details": "Test embedMany() method"
+        },
+        {
+          "step": 2,
+          "action": "Add partial failure tests",
+          "details": "Test handling when some embeddings fail"
+        },
+        {
+          "step": 3,
+          "action": "Add chunking tests",
+          "details": "Test large batches split into chunks"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Batch embeddings work",
+        "Partial failures handled",
+        "Large batches chunked",
+        "Batch operations tested"
+      ]
+    },
+    {
+      "id": "T1.13.4",
+      "category": "testing",
+      "title": "Test EmbeddingService Providers",
+      "description": "Test OpenAI provider, local provider, and provider fallback logic.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/EmbeddingService.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure provider support works correctly.",
+        "keyDecisions": [
+          "Test OpenAI provider configuration",
+          "Test local provider option",
+          "Test provider selection logic"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add OpenAI provider tests",
+          "details": "Test OpenAI API integration"
+        },
+        {
+          "step": 2,
+          "action": "Add local provider tests",
+          "details": "Test local embedding provider"
+        },
+        {
+          "step": 3,
+          "action": "Add provider selection tests",
+          "details": "Test provider selection from config"
+        }
+      ],
+      "acceptanceCriteria": [
+        "OpenAI provider works",
+        "Local provider works",
+        "Provider selection correct",
+        "Provider support tested"
+      ]
+    },
+    {
+      "id": "T1.13.5",
+      "category": "testing",
+      "title": "Test EmbeddingService Config",
+      "description": "Test model selection, dimension configuration, and initialization options.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["tests/unit/search/EmbeddingService.test.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure configuration options work correctly.",
+        "keyDecisions": [
+          "Test model name configuration",
+          "Test embedding dimension setting",
+          "Test initialization options"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add model selection tests",
+          "details": "Test MEMORY_EMBEDDING_MODEL env var"
+        },
+        {
+          "step": 2,
+          "action": "Add dimension tests",
+          "details": "Test embedding dimension configuration"
+        },
+        {
+          "step": 3,
+          "action": "Add init option tests",
+          "details": "Test various initialization options"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Model selection works",
+        "Dimensions configurable",
+        "Init options applied",
+        "Configuration tested"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Coverage of EmbeddingService.ts reaches 90%",
+    "Tests run in under 60 seconds"
+  ],
+  "filesCreated": [],
+  "filesModified": [
+    "tests/unit/search/EmbeddingService.test.ts"
+  ],
+  "totalNewTests": 45,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "Mock external API calls",
+    "Test network error scenarios",
+    "Test various embedding dimensions"
+  ]
+}
