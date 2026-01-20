@@ -484,6 +484,98 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added 76 unit tests for MultiAgentMemoryManager (31 Sprint 21 + 19 Sprint 22 + 18 Sprint 23 + 8 Sprint 24)
 - Added 23 unit tests for AgentMemoryManager facade
 
+## [1.3.0] - 2026-01-20
+
+### Added
+
+#### Phase 1 Foundation: Sprints 6-10
+
+##### Sprint 6: Query Logging and Tracing
+- **QueryLogger Class**: Structured logging for search operations with configurable outputs
+  - Console, file, and callback logging destinations
+  - Log levels: debug, info, warn, error
+  - `MEMORY_QUERY_LOGGING` and `MEMORY_QUERY_LOG_LEVEL` environment variables
+  - `MEMORY_QUERY_LOG_FILE` for file-based logging
+  - Query trace recording with timing and stage information
+- **QueryTrace Interface**: Structured trace data for search operations
+  - queryId, queryText, queryType tracking
+  - Start/end timestamps with duration calculation
+  - Stage-by-stage execution tracing
+- **QueryTraceBuilder Class**: Fluent builder for constructing query traces
+
+##### Sprint 7: Search Explanation
+- **SearchExplanation Interface**: Detailed breakdown of search result scoring
+  - finalScore with scoring signal breakdown
+  - matchedTerms with positions and boost factors
+  - scoreBoosts for bonus/penalty explanations
+- **ScoringSignal Interface**: Individual signal contributions (TF-IDF, BM25, fuzzy, semantic)
+- **ExplainedSearchResult Interface**: SearchResult extended with explanation data
+
+##### Sprint 8: Full-Text Search Operators
+- **QueryParser Class**: Advanced query syntax parsing
+  - Phrase matching with quoted strings (`"exact phrase"`)
+  - Wildcard patterns (`test*`, `*ing`, `te?t`)
+  - Proximity search (`"word1 word2"~5`)
+  - Field-specific queries (`name:value`, `type:Person`)
+  - Boolean operators (AND, OR, NOT)
+  - `hasAdvancedOperators()` for query classification
+- **ProximitySearch Class**: Find entities where terms appear within N words
+  - Configurable word distance threshold
+  - Position-aware term matching
+- **QueryNode Types**: AST representation for parsed queries
+  - TermNode, PhraseNode, WildcardNode, ProximityNode, FieldNode, BooleanOpNode
+
+##### Sprint 9: Entity Validation
+- **EntityValidator Class**: Configurable validation rules for entities
+  - `validate()` async validation with all rules
+  - `validateSync()` for synchronous-only rules
+  - `validateAll()` for batch entity validation
+  - Per-field and cross-field validation support
+- **Built-in Validators**: 15+ composable validation functions
+  - `required()`, `minLength()`, `maxLength()`, `pattern()`
+  - `range()`, `min()`, `max()`, `oneOf()`
+  - `minItems()`, `maxItems()` for arrays
+  - `email()`, `url()`, `isoDate()` format validators
+  - `typeOf()` for type checking
+  - `custom()` and `customSync()` for custom logic
+  - `asWarning()` to convert errors to warnings
+  - `all()` to combine multiple validators
+  - `when()` for conditional validation
+- **SchemaValidator Class**: JSON Schema validation support
+  - Optional ajv integration via dynamic import
+  - Schema registration and validation
+  - Graceful fallback when ajv not installed
+
+##### Sprint 10: Progress Callbacks and Error Handling
+- **Progress Types**: Progress reporting for long-running operations
+  - `ProgressInfo` interface with current, total, percentage, message
+  - `ProgressCallback` type for progress handlers
+  - `ProgressOptions` with phase, estimatedRemainingMs support
+  - `createProgressInfo()` helper function
+  - `createThrottledProgress()` for rate-limited callbacks
+  - `createProgressReporter()` for standardized reporting
+- **ErrorCode Enum**: Centralized error codes for programmatic handling
+  - Validation: VALIDATION_FAILED, REQUIRED_FIELD_MISSING, INVALID_FIELD_VALUE, SCHEMA_VALIDATION_FAILED
+  - Storage: STORAGE_READ_FAILED, STORAGE_WRITE_FAILED, ENTITY_NOT_FOUND, RELATION_NOT_FOUND, DUPLICATE_ENTITY, STORAGE_CORRUPTED, FILE_OPERATION_ERROR
+  - Search: SEARCH_FAILED, INVALID_QUERY, INDEX_NOT_READY, EMBEDDING_FAILED
+  - Configuration: INVALID_CONFIG, MISSING_DEPENDENCY, UNSUPPORTED_FEATURE
+  - Operations: CYCLE_DETECTED, INVALID_IMPORTANCE, INSUFFICIENT_ENTITIES, OPERATION_CANCELLED, IMPORT_ERROR, EXPORT_ERROR
+- **Enhanced KnowledgeGraphError**: Base error class with rich context
+  - `code` property for programmatic handling
+  - `context` property for debugging details
+  - `suggestions` array with recovery hints
+  - `getDetailedMessage()` for formatted output
+  - `toJSON()` for serialization
+- **Error Suggestion System**: Context-aware recovery suggestions
+  - `generateSuggestions()` function for error-specific hints
+  - `getQuickHint()` for single-line recovery hints
+  - All error subclasses enhanced with suggestions
+
+### Testing
+
+- All existing 3604 tests continue to pass
+- Query logging, parsing, and validation modules integrated with existing infrastructure
+
 ## [1.2.2] - 2026-01-18
 
 ### Fixed
