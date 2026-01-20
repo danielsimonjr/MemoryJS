@@ -424,14 +424,21 @@ export class GraphStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      const line = JSON.stringify({
+      // Serialize relation with all fields (Phase 1 Sprint 5: Metadata support)
+      const serialized: Record<string, unknown> = {
         type: 'relation',
         from: relation.from,
         to: relation.to,
         relationType: relation.relationType,
         createdAt: relation.createdAt,
         lastModified: relation.lastModified,
-      });
+      };
+      // Only include optional metadata fields if present
+      if (relation.weight !== undefined) serialized.weight = relation.weight;
+      if (relation.confidence !== undefined) serialized.confidence = relation.confidence;
+      if (relation.properties) serialized.properties = relation.properties;
+      if (relation.metadata) serialized.metadata = relation.metadata;
+      const line = JSON.stringify(serialized);
 
       // Append to file with fsync for durability (write FIRST, then update cache)
       try {
@@ -522,16 +529,23 @@ export class GraphStorage implements IGraphStorage {
 
         return JSON.stringify(entityData);
       }),
-      ...graph.relations.map(r =>
-        JSON.stringify({
+      // Serialize relations with metadata (Phase 1 Sprint 5)
+      ...graph.relations.map(r => {
+        const relationData: Record<string, unknown> = {
           type: 'relation',
           from: r.from,
           to: r.to,
           relationType: r.relationType,
           createdAt: r.createdAt,
           lastModified: r.lastModified,
-        })
-      ),
+        };
+        // Only include optional metadata fields if they exist
+        if (r.weight !== undefined) relationData.weight = r.weight;
+        if (r.confidence !== undefined) relationData.confidence = r.confidence;
+        if (r.properties) relationData.properties = r.properties;
+        if (r.metadata) relationData.metadata = r.metadata;
+        return JSON.stringify(relationData);
+      }),
     ];
 
     await this.durableWriteFile(lines.join('\n'));

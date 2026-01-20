@@ -152,6 +152,7 @@ export class SQLiteStorage implements IGraphStorage {
     `);
 
     // Relations table with referential integrity (CASCADE delete)
+    // Phase 1 Sprint 5: Added weight, confidence, properties, metadata columns
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS relations (
         fromEntity TEXT NOT NULL REFERENCES entities(name) ON DELETE CASCADE,
@@ -159,9 +160,16 @@ export class SQLiteStorage implements IGraphStorage {
         relationType TEXT NOT NULL,
         createdAt TEXT NOT NULL,
         lastModified TEXT NOT NULL,
+        weight REAL,
+        confidence REAL,
+        properties TEXT,
+        metadata TEXT,
         PRIMARY KEY (fromEntity, toEntity, relationType)
       )
     `);
+
+    // Schema migration for existing DBs (Phase 1 Sprint 5)
+    this.migrateRelationsTable();
 
     // Indexes for fast lookups
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_type ON entities(entityType)`);
@@ -174,6 +182,10 @@ export class SQLiteStorage implements IGraphStorage {
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_lastmodified ON entities(lastModified)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_createdat ON entities(createdAt)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_relation_type ON relations(relationType)`);
+
+    // Phase 1 Sprint 5: Indexes for relation metadata queries
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_relation_weight ON relations(weight)`);
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_relation_confidence ON relations(confidence)`);
 
     // Composite index for common query patterns (type + importance filtering)
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_type_importance ON entities(entityType, importance)`);
@@ -214,6 +226,32 @@ export class SQLiteStorage implements IGraphStorage {
         VALUES (NEW.rowid, NEW.name, NEW.entityType, NEW.observations, NEW.tags);
       END
     `);
+  }
+
+  /**
+   * Phase 1 Sprint 5: Migrate relations table to add metadata columns.
+   * Checks if columns exist and adds them if not for backward compatibility.
+   */
+  private migrateRelationsTable(): void {
+    if (!this.db) return;
+
+    // Get current column names
+    const columns = this.db.pragma('table_info(relations)') as Array<{ name: string }>;
+    const columnNames = new Set(columns.map(c => c.name));
+
+    // Add missing columns for metadata support
+    if (!columnNames.has('weight')) {
+      this.db.exec('ALTER TABLE relations ADD COLUMN weight REAL');
+    }
+    if (!columnNames.has('confidence')) {
+      this.db.exec('ALTER TABLE relations ADD COLUMN confidence REAL');
+    }
+    if (!columnNames.has('properties')) {
+      this.db.exec('ALTER TABLE relations ADD COLUMN properties TEXT');
+    }
+    if (!columnNames.has('metadata')) {
+      this.db.exec('ALTER TABLE relations ADD COLUMN metadata TEXT');
+    }
   }
 
   /**
@@ -264,15 +302,24 @@ export class SQLiteStorage implements IGraphStorage {
 
   /**
    * Convert a database row to a Relation object.
+   * Phase 1 Sprint 5: Includes metadata fields.
    */
   private rowToRelation(row: RelationRow): Relation {
-    return {
+    const relation: Relation = {
       from: row.fromEntity,
       to: row.toEntity,
       relationType: row.relationType,
       createdAt: row.createdAt,
       lastModified: row.lastModified,
     };
+
+    // Only include optional metadata fields if present
+    if (row.weight !== null) relation.weight = row.weight;
+    if (row.confidence !== null) relation.confidence = row.confidence;
+    if (row.properties !== null) relation.properties = JSON.parse(row.properties);
+    if (row.metadata !== null) relation.metadata = JSON.parse(row.metadata);
+
+    return relation;
   }
 
   /**
@@ -387,10 +434,10 @@ export class SQLiteStorage implements IGraphStorage {
           );
         }
 
-        // Insert all relations
+        // Insert all relations (Phase 1 Sprint 5: with metadata)
         const relationStmt = this.db!.prepare(`
-          INSERT INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified)
-          VALUES (?, ?, ?, ?, ?)
+          INSERT INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified, weight, confidence, properties, metadata)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         for (const relation of graph.relations) {
@@ -400,6 +447,10 @@ export class SQLiteStorage implements IGraphStorage {
             relation.relationType,
             relation.createdAt || new Date().toISOString(),
             relation.lastModified || new Date().toISOString(),
+            relation.weight ?? null,
+            relation.confidence ?? null,
+            relation.properties ? JSON.stringify(relation.properties) : null,
+            relation.metadata ? JSON.stringify(relation.metadata) : null,
           );
         }
       });
@@ -493,10 +544,10 @@ export class SQLiteStorage implements IGraphStorage {
     return this.mutex.runExclusive(async () => {
       if (!this.db) throw new Error('Database not initialized');
 
-      // Use INSERT OR REPLACE to handle updates
+      // Use INSERT OR REPLACE to handle updates (Phase 1 Sprint 5: with metadata)
       const stmt = this.db.prepare(`
-        INSERT OR REPLACE INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified, weight, confidence, properties, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -505,6 +556,10 @@ export class SQLiteStorage implements IGraphStorage {
         relation.relationType,
         relation.createdAt || new Date().toISOString(),
         relation.lastModified || new Date().toISOString(),
+        relation.weight ?? null,
+        relation.confidence ?? null,
+        relation.properties ? JSON.stringify(relation.properties) : null,
+        relation.metadata ? JSON.stringify(relation.metadata) : null,
       );
 
       // Update cache
@@ -806,19 +861,11 @@ export class SQLiteStorage implements IGraphStorage {
       return this.cache.relations.filter(r => r.from === entityName);
     }
 
-    // Fall back to database query
+    // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
     if (!this.db || !this.initialized) return [];
-    const stmt = this.db.prepare(
-      'SELECT fromEntity, toEntity, relationType, createdAt, lastModified FROM relations WHERE fromEntity = ?'
-    );
+    const stmt = this.db.prepare('SELECT * FROM relations WHERE fromEntity = ?');
     const rows = stmt.all(entityName) as RelationRow[];
-    return rows.map(row => ({
-      from: row.fromEntity,
-      to: row.toEntity,
-      relationType: row.relationType,
-      createdAt: row.createdAt,
-      lastModified: row.lastModified,
-    }));
+    return rows.map(row => this.rowToRelation(row));
   }
 
   /**
@@ -835,19 +882,11 @@ export class SQLiteStorage implements IGraphStorage {
       return this.cache.relations.filter(r => r.to === entityName);
     }
 
-    // Fall back to database query
+    // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
     if (!this.db || !this.initialized) return [];
-    const stmt = this.db.prepare(
-      'SELECT fromEntity, toEntity, relationType, createdAt, lastModified FROM relations WHERE toEntity = ?'
-    );
+    const stmt = this.db.prepare('SELECT * FROM relations WHERE toEntity = ?');
     const rows = stmt.all(entityName) as RelationRow[];
-    return rows.map(row => ({
-      from: row.fromEntity,
-      to: row.toEntity,
-      relationType: row.relationType,
-      createdAt: row.createdAt,
-      lastModified: row.lastModified,
-    }));
+    return rows.map(row => this.rowToRelation(row));
   }
 
   /**
@@ -870,18 +909,10 @@ export class SQLiteStorage implements IGraphStorage {
     if (this.cache) {
       relations = this.cache.relations.filter(r => r.from === entityName || r.to === entityName);
     } else if (this.db && this.initialized) {
-      // Fall back to database query
-      const stmt = this.db.prepare(
-        'SELECT fromEntity, toEntity, relationType, createdAt, lastModified FROM relations WHERE fromEntity = ? OR toEntity = ?'
-      );
+      // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
+      const stmt = this.db.prepare('SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?');
       const rows = stmt.all(entityName, entityName) as RelationRow[];
-      relations = rows.map(row => ({
-        from: row.fromEntity,
-        to: row.toEntity,
-        relationType: row.relationType,
-        createdAt: row.createdAt,
-        lastModified: row.lastModified,
-      }));
+      relations = rows.map(row => this.rowToRelation(row));
     } else {
       return [];
     }
@@ -1105,4 +1136,9 @@ interface RelationRow {
   relationType: string;
   createdAt: string;
   lastModified: string;
+  // Phase 1 Sprint 5: Metadata columns
+  weight: number | null;
+  confidence: number | null;
+  properties: string | null;
+  metadata: string | null;
 }
