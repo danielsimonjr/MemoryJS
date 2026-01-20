@@ -1,0 +1,265 @@
+{
+  "phase": 1,
+  "sprint": 9,
+  "title": "Entity Validation Helpers",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Provides validation utilities to ensure data quality and catch errors early in the development workflow",
+  "targetMetrics": {
+    "dataQuality": {
+      "current": "No validation before storage",
+      "target": "Configurable validation with custom rules"
+    },
+    "developerExperience": {
+      "current": "Silent failures or cryptic errors",
+      "target": "Clear validation errors with suggestions"
+    }
+  },
+  "existingCodeNotes": [
+    "IMPORTANT: ValidationIssue already exists in src/types/types.ts:498 for GRAPH validation (orphaned_relation, duplicate_entity, invalid_data)",
+    "IMPORTANT: ValidationError already exists in src/utils/errors.ts with signature (message: string, errors: string[])",
+    "New entity validation types should use distinct names: EntityValidationIssue, EntityValidationResult, etc.",
+    "Do NOT create src/types/validation.ts - put entity validation types in src/utils/EntityValidator.ts"
+  ],
+  "tasks": [
+    {
+      "id": "1.9.1",
+      "category": "utils",
+      "title": "Create EntityValidator Class with Embedded Types",
+      "description": "Implement validator with configurable rules. Include all validation types directly in the file to avoid type naming conflicts.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/utils/EntityValidator.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Provide flexible entity validation with configurable rules and embedded types.",
+        "keyDecisions": [
+          "All validation types embedded in EntityValidator.ts file",
+          "Types prefixed with 'Entity' to avoid collision with graph ValidationIssue",
+          "Rules are composable and chainable",
+          "Support async validators for complex checks",
+          "Return all errors, not just first",
+          "Severity levels for errors vs warnings"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/utils/EntityValidator.ts with embedded types",
+          "code": "/**\n * Entity Validator\n *\n * Validates entities against configurable rules.\n * Types are embedded to avoid collision with ValidationIssue in types.ts\n *\n * @module utils/EntityValidator\n */\n\nimport type { Entity } from '../types/types.js';\n\n// ==================== Validation Types ====================\n// Note: These are ENTITY validation types, distinct from graph ValidationIssue\n\n/**\n * A validation rule for entities.\n */\nexport interface EntityValidationRule {\n  /** Name of this rule for identification */\n  name: string;\n  /** Field path to validate (e.g., 'name', 'observations.0') */\n  field: string;\n  /** Validation function */\n  validate: (entity: Entity) => EntityRuleResult | Promise<EntityRuleResult>;\n  /** Error message if validation fails */\n  message: string;\n  /** Severity level */\n  severity?: 'error' | 'warning';\n}\n\n/**\n * Result of a single rule validation.\n */\nexport interface EntityRuleResult {\n  /** Whether validation passed */\n  valid: boolean;\n  /** Optional custom message override */\n  message?: string;\n}\n\n/**\n * A validation issue found during entity validation.\n * Named distinctly from ValidationIssue in types.ts (which is for graph validation).\n */\nexport interface EntityValidationIssue {\n  /** Field that failed validation */\n  field: string;\n  /** Error/warning message */\n  message: string;\n  /** Severity level */\n  severity: 'error' | 'warning';\n  /** Current value of the field */\n  value?: unknown;\n  /** Name of the rule that failed */\n  rule?: string;\n  /** Suggestion for fixing the issue */\n  suggestion?: string;\n}\n\n/**\n * Complete validation result for an entity.\n */\nexport interface EntityValidationResult {\n  /** Whether entity is valid */\n  isValid: boolean;\n  /** Validation errors */\n  errors: EntityValidationIssue[];\n  /** Validation warnings */\n  warnings: EntityValidationIssue[];\n  /** The entity that was validated */\n  entity: Entity;\n}\n\n// ==================== Validator Class ====================\n\nexport interface EntityValidatorConfig {\n  /** Rules to apply */\n  rules?: EntityValidationRule[];\n  /** Stop on first error */\n  failFast?: boolean;\n  /** Treat warnings as errors */\n  strict?: boolean;\n}\n\n/**\n * Validates entities against configurable rules.\n *\n * @example\n * ```typescript\n * import { EntityValidator, required, minLength, pattern } from './EntityValidator.js';\n *\n * const validator = new EntityValidator({\n *   rules: [\n *     required('name'),\n *     minLength('name', 3),\n *     pattern('name', /^[a-zA-Z]/),\n *   ],\n * });\n *\n * const result = await validator.validate(entity);\n * if (!result.isValid) {\n *   console.error(result.errors);\n * }\n * ```\n */\nexport class EntityValidator {\n  private readonly config: Required<EntityValidatorConfig>;\n\n  constructor(config: EntityValidatorConfig = {}) {\n    this.config = {\n      rules: config.rules ?? [],\n      failFast: config.failFast ?? false,\n      strict: config.strict ?? false,\n    };\n  }\n\n  /**\n   * Add a validation rule.\n   */\n  addRule(rule: EntityValidationRule): this {\n    this.config.rules.push(rule);\n    return this;\n  }\n\n  /**\n   * Validate an entity against all rules.\n   */\n  async validate(entity: Entity): Promise<EntityValidationResult> {\n    const errors: EntityValidationIssue[] = [];\n    const warnings: EntityValidationIssue[] = [];\n\n    for (const rule of this.config.rules) {\n      try {\n        const result = await rule.validate(entity);\n\n        if (!result.valid) {\n          const issue: EntityValidationIssue = {\n            field: rule.field,\n            message: result.message || rule.message,\n            severity: rule.severity || 'error',\n            value: this.getFieldValue(entity, rule.field),\n            rule: rule.name,\n          };\n\n          if (issue.severity === 'error') {\n            errors.push(issue);\n            if (this.config.failFast) break;\n          } else {\n            warnings.push(issue);\n          }\n        }\n      } catch (error) {\n        errors.push({\n          field: rule.field,\n          message: `Validation error: ${(error as Error).message}`,\n          severity: 'error',\n          rule: rule.name,\n        });\n      }\n    }\n\n    const isValid = errors.length === 0 &&\n      (!this.config.strict || warnings.length === 0);\n\n    return {\n      isValid,\n      errors,\n      warnings,\n      entity,\n    };\n  }\n\n  /**\n   * Validate multiple entities.\n   */\n  async validateAll(entities: Entity[]): Promise<Map<string, EntityValidationResult>> {\n    const results = new Map<string, EntityValidationResult>();\n\n    for (const entity of entities) {\n      const result = await this.validate(entity);\n      results.set(entity.name, result);\n    }\n\n    return results;\n  }\n\n  private getFieldValue(entity: Entity, field: string): unknown {\n    const parts = field.split('.');\n    let value: unknown = entity;\n\n    for (const part of parts) {\n      if (value && typeof value === 'object') {\n        value = (value as Record<string, unknown>)[part];\n      } else {\n        return undefined;\n      }\n    }\n\n    return value;\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Create tests/unit/utils/EntityValidator.test.ts"
+        }
+      ],
+      "acceptanceCriteria": [
+        "EntityValidator class implemented",
+        "EntityValidationRule, EntityValidationIssue, EntityValidationResult types defined",
+        "Types use 'Entity' prefix to avoid collision with graph ValidationIssue",
+        "Rules are configurable and chainable",
+        "async validators supported",
+        "Returns all errors (unless failFast)",
+        "Strict mode treats warnings as errors"
+      ]
+    },
+    {
+      "id": "1.9.2",
+      "category": "utils",
+      "title": "Implement Built-in Validators",
+      "description": "Create validators: required(), minLength(n), maxLength(n), pattern(regex), range(min, max), oneOf(values), custom(fn).",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/utils/validators.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Provide common validators out of the box.",
+        "keyDecisions": [
+          "Factory functions for each validator type",
+          "Import EntityValidationRule from EntityValidator.ts",
+          "Composable and reusable",
+          "Clear error messages by default"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/utils/validators.ts",
+          "code": "/**\n * Built-in Validators\n *\n * Factory functions for common validation rules.\n *\n * @module utils/validators\n */\n\nimport type { Entity } from '../types/types.js';\nimport type { EntityValidationRule, EntityRuleResult } from './EntityValidator.js';\n\n// Helper to get nested field value\nfunction getField(entity: Entity, field: string): unknown {\n  const parts = field.split('.');\n  let value: unknown = entity;\n\n  for (const part of parts) {\n    if (value && typeof value === 'object') {\n      value = (value as Record<string, unknown>)[part];\n    } else {\n      return undefined;\n    }\n  }\n\n  return value;\n}\n\n/**\n * Require a field to have a value.\n */\nexport function required(field: string): EntityValidationRule {\n  return {\n    name: 'required',\n    field,\n    message: `${field} is required`,\n    validate: (entity: Entity): EntityRuleResult => {\n      const value = getField(entity, field);\n      const valid = value !== undefined && value !== null && value !== '';\n      return { valid };\n    },\n  };\n}\n\n/**\n * Require a string field to have minimum length.\n */\nexport function minLength(field: string, min: number): EntityValidationRule {\n  return {\n    name: 'minLength',\n    field,\n    message: `${field} must be at least ${min} characters`,\n    validate: (entity: Entity): EntityRuleResult => {\n      const value = getField(entity, field);\n      if (typeof value !== 'string') return { valid: true }; // Skip if not string\n      return { valid: value.length >= min };\n    },\n  };\n}\n\n/**\n * Require a string field to have maximum length.\n */\nexport function maxLength(field: string, max: number): EntityValidationRule {\n  return {\n    name: 'maxLength',\n    field,\n    message: `${field} must be at most ${max} characters`,\n    validate: (entity: Entity): EntityRuleResult => {\n      const value = getField(entity, field);\n      if (typeof value !== 'string') return { valid: true };\n      return { valid: value.length <= max };\n    },\n  };\n}\n\n/**\n * Require a string field to match a pattern.\n */\nexport function pattern(field: string, regex: RegExp, description?: string): EntityValidationRule {\n  return {\n    name: 'pattern',\n    field,\n    message: `${field} must match ${description || regex.toString()}`,\n    validate: (entity: Entity): EntityRuleResult => {\n      const value = getField(entity, field);\n      if (typeof value !== 'string') return { valid: true };\n      return { valid: regex.test(value) };\n    },\n  };\n}\n\n/**\n * Require a numeric field to be within range.\n */\nexport function range(field: string, min: number, max: number): EntityValidationRule {\n  return {\n    name: 'range',\n    field,\n    message: `${field} must be between ${min} and ${max}`,\n    validate: (entity: Entity): EntityRuleResult => {\n      const value = getField(entity, field);\n      if (typeof value !== 'number') return { valid: true };\n      return { valid: value >= min && value <= max };\n    },\n  };\n}\n\n/**\n * Require a field to be one of specified values.\n */\nexport function oneOf(field: string, values: unknown[]): EntityValidationRule {\n  return {\n    name: 'oneOf',\n    field,\n    message: `${field} must be one of: ${values.join(', ')}`,\n    validate: (entity: Entity): EntityRuleResult => {\n      const value = getField(entity, field);\n      return { valid: values.includes(value) };\n    },\n  };\n}\n\n/**\n * Require array field to have minimum items.\n */\nexport function minItems(field: string, min: number): EntityValidationRule {\n  return {\n    name: 'minItems',\n    field,\n    message: `${field} must have at least ${min} items`,\n    validate: (entity: Entity): EntityRuleResult => {\n      const value = getField(entity, field);\n      if (!Array.isArray(value)) return { valid: true };\n      return { valid: value.length >= min };\n    },\n  };\n}\n\n/**\n * Custom validator with user-provided function.\n */\nexport function custom(\n  field: string,\n  validator: (value: unknown, entity: Entity) => boolean | Promise<boolean>,\n  message: string\n): EntityValidationRule {\n  return {\n    name: 'custom',\n    field,\n    message,\n    validate: async (entity: Entity): Promise<EntityRuleResult> => {\n      const value = getField(entity, field);\n      const valid = await validator(value, entity);\n      return { valid };\n    },\n  };\n}\n\n/**\n * Create a warning (non-blocking) version of a rule.\n */\nexport function asWarning(rule: EntityValidationRule): EntityValidationRule {\n  return { ...rule, severity: 'warning' };\n}\n\n/**\n * Combine multiple rules for the same field.\n */\nexport function all(...rules: EntityValidationRule[]): EntityValidationRule[] {\n  return rules;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests for each validator",
+          "details": "Create tests/unit/utils/validators.test.ts"
+        }
+      ],
+      "acceptanceCriteria": [
+        "required() validates presence",
+        "minLength()/maxLength() validate string length",
+        "pattern() validates regex match",
+        "range() validates numeric range",
+        "oneOf() validates enum values",
+        "custom() supports user functions",
+        "asWarning() downgrades severity"
+      ]
+    },
+    {
+      "id": "1.9.3",
+      "category": "utils",
+      "title": "Add Schema-Based Validation",
+      "description": "Support JSON Schema validation via optional ajv integration. Allow defining entity schemas per type.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/utils/SchemaValidator.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Enable declarative JSON Schema validation for entities.",
+        "keyDecisions": [
+          "ajv is optional peer dependency",
+          "Graceful fallback if ajv not installed",
+          "Schema per entity type",
+          "Convert ajv errors to EntityValidationIssue"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/utils/SchemaValidator.ts with dynamic import",
+          "code": "/**\n * Schema Validator\n *\n * JSON Schema validation for entities using ajv.\n *\n * @module utils/SchemaValidator\n */\n\nimport type { Entity } from '../types/types.js';\nimport type { EntityValidationResult, EntityValidationIssue } from './EntityValidator.js';\n\nexport interface JsonSchema {\n  type?: string;\n  properties?: Record<string, JsonSchema>;\n  required?: string[];\n  additionalProperties?: boolean;\n  minLength?: number;\n  maxLength?: number;\n  minimum?: number;\n  maximum?: number;\n  pattern?: string;\n  enum?: unknown[];\n  items?: JsonSchema;\n  minItems?: number;\n  maxItems?: number;\n  [key: string]: unknown;\n}\n\n/**\n * Validates entities against JSON Schemas.\n * Requires ajv to be installed as optional peer dependency.\n *\n * @example\n * ```typescript\n * const validator = new SchemaValidator();\n * await validator.initialize(); // Load ajv dynamically\n *\n * validator.registerSchema('person', {\n *   type: 'object',\n *   required: ['name', 'entityType'],\n *   properties: {\n *     name: { type: 'string', minLength: 1 },\n *     entityType: { type: 'string', enum: ['person'] },\n *   },\n * });\n *\n * const result = validator.validate(entity);\n * ```\n */\nexport class SchemaValidator {\n  private schemas: Map<string, JsonSchema> = new Map();\n  private ajv: unknown = null;\n  private validators: Map<string, (data: unknown) => boolean> = new Map();\n  private ajvErrors: unknown[] = [];\n  private initialized = false;\n\n  /**\n   * Initialize the validator by loading ajv dynamically.\n   * Call this before using validate() if you want schema validation.\n   */\n  async initialize(): Promise<boolean> {\n    if (this.initialized) return this.isAvailable();\n\n    try {\n      const AjvModule = await import('ajv');\n      const Ajv = AjvModule.default;\n      this.ajv = new Ajv({ allErrors: true, verbose: true });\n      this.initialized = true;\n      return true;\n    } catch {\n      // ajv not installed\n      this.initialized = true;\n      return false;\n    }\n  }\n\n  /**\n   * Check if schema validation is available.\n   */\n  isAvailable(): boolean {\n    return this.ajv !== null;\n  }\n\n  /**\n   * Register a schema for an entity type.\n   */\n  registerSchema(entityType: string, schema: JsonSchema): void {\n    this.schemas.set(entityType, schema);\n\n    if (this.ajv) {\n      const ajvInstance = this.ajv as { compile: (schema: JsonSchema) => (data: unknown) => boolean };\n      const validate = ajvInstance.compile(schema);\n      this.validators.set(entityType, validate);\n    }\n  }\n\n  /**\n   * Validate an entity against its type's schema.\n   */\n  validate(entity: Entity): EntityValidationResult {\n    const errors: EntityValidationIssue[] = [];\n    const warnings: EntityValidationIssue[] = [];\n\n    if (!this.ajv) {\n      warnings.push({\n        field: '_schema',\n        message: 'Schema validation unavailable: ajv not installed. Run: npm install ajv',\n        severity: 'warning',\n      });\n      return { isValid: true, errors, warnings, entity };\n    }\n\n    const validate = this.validators.get(entity.entityType);\n    if (!validate) {\n      // No schema for this type\n      return { isValid: true, errors, warnings, entity };\n    }\n\n    const valid = validate(entity);\n    const ajvInstance = this.ajv as { errors?: Array<{ instancePath: string; message?: string; data?: unknown; keyword?: string; params?: { missingProperty?: string } }> };\n\n    if (!valid && ajvInstance.errors) {\n      for (const error of ajvInstance.errors) {\n        errors.push({\n          field: error.instancePath.replace(/^\\//, '').replace(/\\//g, '.') || error.params?.missingProperty || 'unknown',\n          message: error.message || 'Validation failed',\n          severity: 'error',\n          value: error.data,\n          rule: error.keyword,\n        });\n      }\n    }\n\n    return {\n      isValid: errors.length === 0,\n      errors,\n      warnings,\n      entity,\n    };\n  }\n\n  /**\n   * Get registered schema for entity type.\n   */\n  getSchema(entityType: string): JsonSchema | undefined {\n    return this.schemas.get(entityType);\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add ajv as optional peer dependency",
+          "details": "Update package.json peerDependencies and peerDependenciesMeta"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SchemaValidator works when ajv installed",
+        "Graceful degradation when ajv missing",
+        "Dynamic import pattern works with tsup bundling",
+        "Schemas registered per entity type",
+        "ajv errors converted to EntityValidationIssue",
+        "isAvailable() returns correct status"
+      ]
+    },
+    {
+      "id": "1.9.4",
+      "category": "core",
+      "title": "Integrate with EntityManager",
+      "description": "Add optional validation to createEntity() and updateEntity(). Support validateOnWrite config option.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/core/EntityManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Automatically validate entities on write operations.",
+        "keyDecisions": [
+          "Validation is opt-in via config",
+          "Use EXISTING ValidationError from errors.ts",
+          "Convert EntityValidationIssue[] to string[] for existing ValidationError constructor",
+          "Allow custom validator injection"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add validation config to EntityManager (find EntityManagerConfig or create)",
+          "code": "import { EntityValidator, EntityValidationResult } from '../utils/EntityValidator.js';\nimport { ValidationError } from '../utils/errors.js';\n\nexport interface EntityManagerConfig {\n  // ... existing config\n  /** Validate entities on create/update */\n  validateOnWrite?: boolean;\n  /** Custom validator to use */\n  validator?: EntityValidator;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add validation to createEntity",
+          "code": "async createEntity(entityData: Partial<Entity>): Promise<Entity> {\n  const entity = this.buildEntity(entityData);\n\n  if (this.config.validateOnWrite && this.config.validator) {\n    const result = await this.config.validator.validate(entity);\n    if (!result.isValid) {\n      // Convert EntityValidationIssue[] to string[] for existing ValidationError\n      const errorMessages = result.errors.map(e => `${e.field}: ${e.message}`);\n      throw new ValidationError(\n        `Entity validation failed`,\n        errorMessages\n      );\n    }\n  }\n\n  return this.storage.createEntity(entity);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add env var support",
+          "details": "MEMORY_VALIDATE_ON_WRITE=true enables validation"
+        }
+      ],
+      "acceptanceCriteria": [
+        "validateOnWrite config option works",
+        "Validation runs on createEntity when enabled",
+        "Validation runs on updateEntity when enabled",
+        "Uses existing ValidationError class from errors.ts",
+        "Custom validator injectable"
+      ]
+    },
+    {
+      "id": "1.9.5",
+      "category": "types",
+      "title": "Update Exports",
+      "description": "Export EntityValidator and validators from utils/index.ts. Ensure types are importable.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/utils/index.ts", "package.json"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Make validation utilities available to consumers.",
+        "keyDecisions": [
+          "Export from barrel files",
+          "Add ajv to peerDependencies as optional"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update src/utils/index.ts exports",
+          "code": "// Add to existing exports in src/utils/index.ts\n\n// Entity validation (Phase 1 Sprint 9)\nexport {\n  EntityValidator,\n  type EntityValidatorConfig,\n  type EntityValidationRule,\n  type EntityRuleResult,\n  type EntityValidationIssue,\n  type EntityValidationResult,\n} from './EntityValidator.js';\n\nexport {\n  required,\n  minLength,\n  maxLength,\n  pattern,\n  range,\n  oneOf,\n  minItems,\n  custom,\n  asWarning,\n  all,\n} from './validators.js';\n\nexport {\n  SchemaValidator,\n  type JsonSchema,\n} from './SchemaValidator.js';"
+        },
+        {
+          "step": 2,
+          "action": "Update package.json with optional peer dependency",
+          "code": "{\n  \"peerDependencies\": {\n    \"ajv\": \"^8.0.0\"\n  },\n  \"peerDependenciesMeta\": {\n    \"ajv\": {\n      \"optional\": true\n    }\n  }\n}"
+        }
+      ],
+      "acceptanceCriteria": [
+        "EntityValidator exported",
+        "All built-in validators exported",
+        "SchemaValidator exported",
+        "ajv listed as optional peer dependency",
+        "npm run build succeeds"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "EntityValidator supports configurable rules",
+    "Built-in validators cover common cases",
+    "JSON Schema validation available with ajv",
+    "EntityManager integrates validation",
+    "Validation is opt-in and non-breaking"
+  ],
+  "filesCreated": [
+    "src/utils/EntityValidator.ts",
+    "src/utils/validators.ts",
+    "src/utils/SchemaValidator.ts",
+    "tests/unit/utils/EntityValidator.test.ts",
+    "tests/unit/utils/validators.test.ts"
+  ],
+  "filesModified": [
+    "src/core/EntityManager.ts",
+    "src/utils/index.ts",
+    "package.json"
+  ],
+  "totalNewTests": 25,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "FIXED: Renamed ValidationIssue to EntityValidationIssue to avoid collision with types.ts:498",
+    "FIXED: No separate src/types/validation.ts - types embedded in EntityValidator.ts",
+    "FIXED: Use existing ValidationError from errors.ts when throwing",
+    "FIXED: Dynamic import for ajv works with tsup bundling",
+    "ajv is optional peer dependency",
+    "Validation errors include field paths",
+    "Consider adding validation to CLI in future",
+    "Future: validation reports and statistics"
+  ]
+}

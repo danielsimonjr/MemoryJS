@@ -1,0 +1,275 @@
+{
+  "phase": 1,
+  "sprint": 10,
+  "title": "Progress Callbacks and Error Improvements",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Improves developer experience with progress reporting for batch operations and actionable error messages",
+  "targetMetrics": {
+    "feedback": {
+      "current": "No progress during long operations",
+      "target": "Real-time progress callbacks with percentage and phase"
+    },
+    "errorQuality": {
+      "current": "Generic error messages",
+      "target": "Contextual errors with recovery suggestions"
+    }
+  },
+  "existingCodeNotes": [
+    "IMPORTANT: KnowledgeGraphError base class already exists in src/utils/errors.ts - EXTEND it, don't replace",
+    "IMPORTANT: ValidationError already exists with signature (message: string, errors: string[]) - do NOT change signature",
+    "IMPORTANT: EntityNotFoundError, RelationNotFoundError, DuplicateEntityError, etc. already exist",
+    "Add ErrorCode enum and suggestions[] to EXISTING classes, don't create new parallel hierarchy",
+    "This sprint ENHANCES existing errors, not replaces them"
+  ],
+  "tasks": [
+    {
+      "id": "1.10.1",
+      "category": "types",
+      "title": "Create ProgressCallback Type",
+      "description": "Define callback signature: (progress: ProgressInfo) => void. ProgressInfo includes: current, total, percentage, message, phase.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/progress.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Define types for progress reporting across batch operations.",
+        "keyDecisions": [
+          "Simple callback signature for flexibility",
+          "Include phase for multi-phase operations",
+          "Optional cancellation support via AbortSignal"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/types/progress.ts",
+          "code": "/**\n * Progress Types\n *\n * Type definitions for progress reporting.\n *\n * @module types/progress\n */\n\n/**\n * Progress information for batch operations.\n */\nexport interface ProgressInfo {\n  /** Current item index (0-based) */\n  current: number;\n  /** Total number of items */\n  total: number;\n  /** Percentage complete (0-100) */\n  percentage: number;\n  /** Human-readable progress message */\n  message: string;\n  /** Current phase of operation (for multi-phase operations) */\n  phase?: string;\n  /** Name/identifier of current item being processed */\n  currentItem?: string;\n  /** Estimated time remaining in milliseconds */\n  estimatedRemainingMs?: number;\n  /** Start time of operation (ISO 8601) */\n  startedAt?: string;\n}\n\n/**\n * Callback for receiving progress updates.\n */\nexport type ProgressCallback = (progress: ProgressInfo) => void;\n\n/**\n * Options for operations that support progress reporting.\n */\nexport interface ProgressOptions {\n  /** Callback to receive progress updates */\n  onProgress?: ProgressCallback;\n  /** Minimum interval between progress callbacks (ms) */\n  progressInterval?: number;\n  /** Cancellation token */\n  signal?: AbortSignal;\n}\n\n/**\n * Helper to create progress info.\n */\nexport function createProgressInfo(\n  current: number,\n  total: number,\n  options?: {\n    phase?: string;\n    currentItem?: string;\n    message?: string;\n    startedAt?: Date;\n  }\n): ProgressInfo {\n  const percentage = total > 0 ? Math.round((current / total) * 100) : 0;\n  const message = options?.message ??\n    `Processing ${current}/${total} (${percentage}%)`;\n\n  const progress: ProgressInfo = {\n    current,\n    total,\n    percentage,\n    message,\n  };\n\n  if (options?.phase) progress.phase = options.phase;\n  if (options?.currentItem) progress.currentItem = options.currentItem;\n  if (options?.startedAt) {\n    const elapsedMs = Date.now() - options.startedAt.getTime();\n    if (current > 0) {\n      const msPerItem = elapsedMs / current;\n      const remaining = total - current;\n      progress.estimatedRemainingMs = Math.round(msPerItem * remaining);\n    }\n    progress.startedAt = options.startedAt.toISOString();\n  }\n\n  return progress;\n}\n\n/**\n * Throttle progress callbacks to avoid overwhelming consumers.\n */\nexport function createThrottledProgress(\n  callback: ProgressCallback,\n  intervalMs: number = 100\n): ProgressCallback {\n  let lastCall = 0;\n  let pending: ProgressInfo | null = null;\n\n  return (progress: ProgressInfo) => {\n    const now = Date.now();\n\n    // Always emit first and last\n    if (progress.current === 0 || progress.current === progress.total) {\n      callback(progress);\n      lastCall = now;\n      pending = null;\n      return;\n    }\n\n    // Throttle intermediate updates\n    if (now - lastCall >= intervalMs) {\n      callback(progress);\n      lastCall = now;\n      pending = null;\n    } else {\n      pending = progress;\n    }\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export types from src/types/index.ts",
+          "details": "Add export * from './progress.js';"
+        }
+      ],
+      "acceptanceCriteria": [
+        "ProgressInfo interface defined",
+        "ProgressCallback type defined",
+        "ProgressOptions includes callback and signal",
+        "createProgressInfo helper works",
+        "Throttling utility available"
+      ]
+    },
+    {
+      "id": "1.10.2",
+      "category": "features",
+      "title": "Add Progress to Batch Operations",
+      "description": "Add onProgress callback to: IOManager.import(), CompressionManager.compress(), ArchiveManager.archive(). Call at regular intervals.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/features/IOManager.ts", "src/features/CompressionManager.ts", "src/features/ArchiveManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Report progress during long-running batch operations.",
+        "keyDecisions": [
+          "Progress callback in options object",
+          "Report at regular intervals (not every item)",
+          "Include phase for multi-step operations"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add progress to IOManager.importGraph",
+          "code": "import { ProgressCallback, ProgressOptions, createProgressInfo, createThrottledProgress } from '../types/progress.js';\n\nexport interface ImportOptions extends ProgressOptions {\n  mergeStrategy?: 'replace' | 'skip' | 'merge' | 'fail';\n}\n\nasync importGraph(\n  format: 'json' | 'csv' | 'graphml',\n  data: string,\n  options?: ImportOptions\n): Promise<ImportResult> {\n  const parsed = this.parse(format, data);\n  const entities = parsed.entities || [];\n  const relations = parsed.relations || [];\n  const total = entities.length + relations.length;\n  const startedAt = new Date();\n  let current = 0;\n\n  const reportProgress = options?.onProgress\n    ? createThrottledProgress(options.onProgress, options.progressInterval)\n    : undefined;\n\n  // Import entities\n  for (const entity of entities) {\n    if (options?.signal?.aborted) {\n      throw new OperationCancelledError('importGraph');\n    }\n    await this.importEntity(entity, options?.mergeStrategy);\n    current++;\n    reportProgress?.(createProgressInfo(current, total, {\n      phase: 'entities',\n      currentItem: entity.name,\n      startedAt,\n    }));\n  }\n\n  // Import relations\n  for (const relation of relations) {\n    if (options?.signal?.aborted) {\n      throw new OperationCancelledError('importGraph');\n    }\n    await this.importRelation(relation, options?.mergeStrategy);\n    current++;\n    reportProgress?.(createProgressInfo(current, total, {\n      phase: 'relations',\n      currentItem: `${relation.from} -> ${relation.to}`,\n      startedAt,\n    }));\n  }\n\n  return { entitiesImported: entities.length, relationsImported: relations.length };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add progress to CompressionManager.compressGraph",
+          "details": "Similar pattern for compression operations"
+        },
+        {
+          "step": 3,
+          "action": "Add progress to ArchiveManager.archiveEntities",
+          "details": "Similar pattern for archive operations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "IOManager.importGraph reports progress",
+        "CompressionManager.compress reports progress",
+        "ArchiveManager.archive reports progress",
+        "Progress includes phase information",
+        "Progress is throttled to avoid spam",
+        "AbortSignal cancellation supported"
+      ]
+    },
+    {
+      "id": "1.10.3",
+      "category": "utils",
+      "title": "Add ErrorCode Enum and Enhance KnowledgeGraphError",
+      "description": "Add ErrorCode enum to existing error hierarchy. Enhance KnowledgeGraphError with suggestions[] and context. DO NOT create MemoryJSError - extend existing.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/utils/errors.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Enhance existing error classes with error codes and suggestions.",
+        "keyDecisions": [
+          "EXTEND existing KnowledgeGraphError, don't replace",
+          "Add ErrorCode enum for programmatic handling",
+          "Add suggestions[] property to base class",
+          "Add context property for debugging",
+          "Maintain backward compatibility - existing signatures unchanged"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add ErrorCode enum at top of src/utils/errors.ts",
+          "code": "/**\n * Error codes for programmatic handling.\n */\nexport enum ErrorCode {\n  // Validation errors (1xxx)\n  VALIDATION_FAILED = 'VALIDATION_ERROR',\n  REQUIRED_FIELD_MISSING = 'REQUIRED_FIELD_MISSING',\n  INVALID_FIELD_VALUE = 'INVALID_FIELD_VALUE',\n  SCHEMA_VALIDATION_FAILED = 'SCHEMA_VALIDATION_FAILED',\n\n  // Storage errors (2xxx)\n  STORAGE_READ_FAILED = 'STORAGE_READ_FAILED',\n  STORAGE_WRITE_FAILED = 'STORAGE_WRITE_FAILED',\n  ENTITY_NOT_FOUND = 'ENTITY_NOT_FOUND',\n  RELATION_NOT_FOUND = 'RELATION_NOT_FOUND',\n  DUPLICATE_ENTITY = 'DUPLICATE_ENTITY',\n  STORAGE_CORRUPTED = 'STORAGE_CORRUPTED',\n  FILE_OPERATION_ERROR = 'FILE_OPERATION_ERROR',\n\n  // Search errors (3xxx)\n  SEARCH_FAILED = 'SEARCH_FAILED',\n  INVALID_QUERY = 'INVALID_QUERY',\n  INDEX_NOT_READY = 'INDEX_NOT_READY',\n  EMBEDDING_FAILED = 'EMBEDDING_FAILED',\n\n  // Configuration errors (4xxx)\n  INVALID_CONFIG = 'INVALID_CONFIG',\n  MISSING_DEPENDENCY = 'MISSING_DEPENDENCY',\n  UNSUPPORTED_FEATURE = 'UNSUPPORTED_FEATURE',\n\n  // Operation errors (5xxx)\n  CYCLE_DETECTED = 'CYCLE_DETECTED',\n  INVALID_IMPORTANCE = 'INVALID_IMPORTANCE',\n  INSUFFICIENT_ENTITIES = 'INSUFFICIENT_ENTITIES',\n  OPERATION_CANCELLED = 'OPERATION_CANCELLED',\n  IMPORT_ERROR = 'IMPORT_ERROR',\n  EXPORT_ERROR = 'EXPORT_ERROR',\n}"
+        },
+        {
+          "step": 2,
+          "action": "Enhance KnowledgeGraphError base class (backward compatible)",
+          "code": "/**\n * Base error class for all knowledge graph errors.\n * Extends the native Error class with additional context.\n */\nexport class KnowledgeGraphError extends Error {\n  /** Error code for programmatic handling */\n  readonly code: string;\n  /** Additional context for debugging */\n  readonly context?: Record<string, unknown>;\n  /** Recovery suggestions for the user */\n  readonly suggestions: string[];\n\n  constructor(\n    message: string,\n    code?: string,\n    options?: {\n      context?: Record<string, unknown>;\n      suggestions?: string[];\n      cause?: Error;\n    }\n  ) {\n    super(message);\n    this.name = 'KnowledgeGraphError';\n    this.code = code || 'UNKNOWN_ERROR';\n    this.context = options?.context;\n    this.suggestions = options?.suggestions || [];\n\n    if (options?.cause) {\n      this.cause = options.cause;\n    }\n\n    // Maintains proper stack trace in V8 engines\n    if (Error.captureStackTrace) {\n      Error.captureStackTrace(this, this.constructor);\n    }\n  }\n\n  /**\n   * Get a formatted error message with suggestions.\n   */\n  getDetailedMessage(): string {\n    let msg = `[${this.code}] ${this.message}`;\n\n    if (this.context) {\n      msg += `\\nContext: ${JSON.stringify(this.context, null, 2)}`;\n    }\n\n    if (this.suggestions.length > 0) {\n      msg += `\\nSuggestions:\\n${this.suggestions.map(s => `  - ${s}`).join('\\n')}`;\n    }\n\n    return msg;\n  }\n}"
+        },
+        {
+          "step": 3,
+          "action": "Update existing error subclasses to use ErrorCode and add suggestions",
+          "code": "/**\n * Error thrown when an entity is not found.\n */\nexport class EntityNotFoundError extends KnowledgeGraphError {\n  constructor(entityName: string) {\n    super(\n      `Entity \"${entityName}\" not found`,\n      ErrorCode.ENTITY_NOT_FOUND,\n      {\n        context: { entityName },\n        suggestions: [\n          'Check that the entity name is spelled correctly',\n          'Use searchManager.search() to find similar entities',\n          'Verify the entity was created before accessing it',\n        ],\n      }\n    );\n    this.name = 'EntityNotFoundError';\n  }\n}\n\n// Update other existing errors similarly..."
+        }
+      ],
+      "acceptanceCriteria": [
+        "ErrorCode enum defined with all error types",
+        "KnowledgeGraphError enhanced with suggestions[] and context",
+        "All existing error subclasses updated to include suggestions",
+        "getDetailedMessage() method formats errors nicely",
+        "Backward compatibility maintained - existing code works unchanged",
+        "No new MemoryJSError class created"
+      ]
+    },
+    {
+      "id": "1.10.4",
+      "category": "utils",
+      "title": "Create Suggestion Generator Utility",
+      "description": "Create generateSuggestions() function that returns context-specific recovery suggestions based on error code.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/utils/errorSuggestions.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Centralize suggestion generation for consistent error messages.",
+        "keyDecisions": [
+          "Function returns suggestions based on ErrorCode",
+          "Context-aware suggestions (e.g., include entity name)",
+          "Reusable across error classes"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/utils/errorSuggestions.ts",
+          "code": "/**\n * Error Suggestion Generator\n *\n * Provides context-specific suggestions for error recovery.\n *\n * @module utils/errorSuggestions\n */\n\nimport { ErrorCode } from './errors.js';\n\n/**\n * Generate context-specific suggestions based on error code and context.\n */\nexport function generateSuggestions(\n  code: ErrorCode | string,\n  context?: Record<string, unknown>\n): string[] {\n  const suggestions: string[] = [];\n\n  switch (code) {\n    case ErrorCode.ENTITY_NOT_FOUND:\n      suggestions.push(\n        'Check that the entity name is spelled correctly',\n        'Use searchManager.search() to find similar entities',\n        'Verify the entity was created before accessing it'\n      );\n      if (context?.entityName) {\n        suggestions.push(`Entity \"${context.entityName}\" does not exist`);\n      }\n      break;\n\n    case ErrorCode.DUPLICATE_ENTITY:\n      suggestions.push(\n        'Use a different entity name',\n        'Use updateEntity() to modify the existing entity',\n        'Delete the existing entity first if replacement is intended'\n      );\n      break;\n\n    case ErrorCode.STORAGE_READ_FAILED:\n      suggestions.push(\n        'Check that the storage file exists at the specified path',\n        'Verify read permissions on the file and parent directory',\n        'Ensure the file is not locked by another process'\n      );\n      if (context?.path) {\n        suggestions.push(`Path: ${context.path}`);\n      }\n      break;\n\n    case ErrorCode.STORAGE_WRITE_FAILED:\n      suggestions.push(\n        'Check write permissions on the storage directory',\n        'Ensure sufficient disk space is available',\n        'Verify the file is not read-only'\n      );\n      break;\n\n    case ErrorCode.INVALID_QUERY:\n      suggestions.push(\n        'Check query syntax for unmatched quotes or parentheses',\n        'Escape special characters if searching literal text',\n        'Use simpler query terms to isolate the issue'\n      );\n      if (context?.query) {\n        suggestions.push(`Query: \"${context.query}\"`);\n      }\n      break;\n\n    case ErrorCode.EMBEDDING_FAILED:\n      suggestions.push(\n        'Verify MEMORY_EMBEDDING_PROVIDER is set correctly',\n        'Check that the API key is valid (MEMORY_OPENAI_API_KEY)',\n        'Ensure network connectivity to the embedding service'\n      );\n      break;\n\n    case ErrorCode.MISSING_DEPENDENCY:\n      suggestions.push(\n        'Install the required dependency: npm install <package>',\n        'Check that peer dependencies are installed',\n        'Review the feature documentation for requirements'\n      );\n      if (context?.dependency) {\n        suggestions.push(`Missing: ${context.dependency}`);\n      }\n      break;\n\n    case ErrorCode.CYCLE_DETECTED:\n      suggestions.push(\n        'Review the parent-child relationship being created',\n        'Check for existing ancestor relationships',\n        'Use getAncestors() to verify hierarchy before setting parent'\n      );\n      break;\n\n    case ErrorCode.VALIDATION_FAILED:\n      suggestions.push(\n        'Check the validation errors for specific field issues',\n        'Ensure all required fields are provided',\n        'Verify field values match expected types and constraints'\n      );\n      break;\n\n    default:\n      suggestions.push(\n        'Check the error message for details',\n        'Review the documentation for the operation',\n        'Report the issue if the error persists'\n      );\n  }\n\n  return suggestions;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from src/utils/index.ts",
+          "details": "export { generateSuggestions } from './errorSuggestions.js';"
+        }
+      ],
+      "acceptanceCriteria": [
+        "generateSuggestions() returns relevant suggestions per error code",
+        "Context values included in suggestions",
+        "Suggestions are actionable and specific",
+        "Covers all ErrorCode values",
+        "Exported from utils/index.ts"
+      ]
+    },
+    {
+      "id": "1.10.5",
+      "category": "core",
+      "title": "Update Existing Error Throws with Context",
+      "description": "Audit existing error throws in core modules. Add context to error constructors where missing.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/EntityManager.ts", "src/core/RelationManager.ts", "src/search/SearchManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Ensure all error throws include helpful context.",
+        "keyDecisions": [
+          "Audit existing throw statements",
+          "Add context where it provides value",
+          "Use the enhanced error constructors"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Search for throw statements in core modules",
+          "details": "Find all 'throw new' statements and update them"
+        },
+        {
+          "step": 2,
+          "action": "Update EntityManager error throws",
+          "code": "// Example: Before\nthrow new EntityNotFoundError(name);\n\n// After (if more context available)\nthrow new EntityNotFoundError(name);\n// Note: EntityNotFoundError constructor already includes entityName in context"
+        },
+        {
+          "step": 3,
+          "action": "Verify existing tests still pass",
+          "details": "Run npm run test to ensure no regressions"
+        }
+      ],
+      "acceptanceCriteria": [
+        "All error throws use typed KnowledgeGraphError subclasses",
+        "Errors include relevant context where available",
+        "Error messages are descriptive",
+        "Existing tests still pass",
+        "No breaking changes to error signatures"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Progress callbacks work for batch operations",
+    "ErrorCode enum covers all error types",
+    "Existing errors enhanced with suggestions (not replaced)",
+    "Backward compatibility maintained",
+    "Documentation updated"
+  ],
+  "filesCreated": [
+    "src/types/progress.ts",
+    "src/utils/errorSuggestions.ts",
+    "tests/unit/utils/errors.test.ts",
+    "tests/unit/types/progress.test.ts"
+  ],
+  "filesModified": [
+    "src/utils/errors.ts",
+    "src/features/IOManager.ts",
+    "src/features/CompressionManager.ts",
+    "src/features/ArchiveManager.ts",
+    "src/core/EntityManager.ts",
+    "src/core/RelationManager.ts",
+    "src/search/SearchManager.ts",
+    "src/types/index.ts",
+    "src/utils/index.ts"
+  ],
+  "totalNewTests": 20,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "FIXED: No MemoryJSError - extend existing KnowledgeGraphError hierarchy",
+    "FIXED: ValidationError signature unchanged - don't break existing code",
+    "FIXED: Add ErrorCode, suggestions[], context to EXISTING classes",
+    "FIXED: Removed wrong dependency on Sprint 9 (Sprint 10 doesn't need Sprint 9 types)",
+    "Progress callbacks should be non-blocking",
+    "Error suggestions help reduce support burden",
+    "Consider i18n for error messages in future",
+    "Typed errors enable better error handling patterns"
+  ]
+}

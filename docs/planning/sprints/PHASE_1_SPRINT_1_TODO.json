@@ -1,0 +1,277 @@
+{
+  "phase": 1,
+  "sprint": 1,
+  "title": "CLI Framework Foundation",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "impact": "Establishes CLI infrastructure enabling command-line access to all MemoryJS operations",
+  "targetMetrics": {
+    "cliAccess": {
+      "current": "No CLI interface",
+      "target": "Full CLI with help system and output formatting"
+    },
+    "userExperience": {
+      "current": "Code-only access",
+      "target": "Interactive terminal access for all operations"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.1.1",
+      "category": "cli",
+      "title": "Create CLI Entry Point",
+      "description": "Set up main CLI entry point with commander for argument parsing. Add shebang for direct execution. Configure package.json bin field.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/cli/index.ts", "package.json"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Create the main entry point for the CLI that parses arguments and routes to appropriate commands.",
+        "keyDecisions": [
+          "Use commander for robust argument parsing with auto-help",
+          "Add shebang for direct execution without node prefix",
+          "Configure bin field for npm link / global install"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Install commander dependency",
+          "code": "npm install commander"
+        },
+        {
+          "step": 2,
+          "action": "Create src/cli directory",
+          "details": "mkdir -p src/cli"
+        },
+        {
+          "step": 3,
+          "action": "Create src/cli/index.ts with imports",
+          "code": "#!/usr/bin/env node\n/**\n * MemoryJS CLI\n *\n * Command-line interface for MemoryJS knowledge graph operations.\n * Supports entity/relation CRUD, search, import/export, and interactive mode.\n *\n * @module cli\n */\n\nimport { Command } from 'commander';\nimport { version } from '../../package.json';\n\nconst program = new Command();\n\nprogram\n  .name('memory')\n  .description('MemoryJS - Knowledge Graph CLI')\n  .version(version, '-v, --version', 'Output the current version');\n\n// Global options\nprogram\n  .option('-s, --storage <path>', 'Path to storage file', './memory.jsonl')\n  .option('-f, --format <type>', 'Output format (json|table|csv)', 'json')\n  .option('-q, --quiet', 'Suppress non-essential output')\n  .option('--verbose', 'Enable verbose/debug output');\n\n// Parse and execute\nprogram.parse();"
+        },
+        {
+          "step": 4,
+          "action": "Update package.json with bin field",
+          "code": "{\n  \"bin\": {\n    \"memory\": \"./dist/cli/index.js\",\n    \"memoryjs\": \"./dist/cli/index.js\"\n  }\n}"
+        },
+        {
+          "step": 5,
+          "action": "Build and test CLI execution",
+          "details": "npm run build && node dist/cli/index.js --help"
+        }
+      ],
+      "acceptanceCriteria": [
+        "CLI entry point created in src/cli/index.ts",
+        "Shebang present for direct execution",
+        "package.json bin field configured",
+        "npm run build compiles CLI",
+        "Running dist/cli/index.js --help shows help"
+      ]
+    },
+    {
+      "id": "1.1.2",
+      "category": "cli",
+      "title": "Create Base Command Structure",
+      "description": "Define command categories: entity, relation, search, import, export. Each as subcommand with own help text.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/cli/commands/index.ts", "src/cli/index.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Organize CLI into logical command groups matching MemoryJS capabilities.",
+        "keyDecisions": [
+          "Use commander subcommands for hierarchical organization",
+          "Each category gets its own file for maintainability",
+          "Consistent naming: noun-verb pattern (entity create, entity list)"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/commands directory",
+          "details": "mkdir -p src/cli/commands"
+        },
+        {
+          "step": 2,
+          "action": "Create src/cli/commands/index.ts barrel",
+          "code": "/**\n * CLI Command Registry\n *\n * Registers all command categories with the main program.\n *\n * @module cli/commands\n */\n\nimport { Command } from 'commander';\n\nexport function registerCommands(program: Command): void {\n  // Entity commands\n  const entity = program\n    .command('entity')\n    .description('Manage entities (create, read, update, delete)');\n\n  entity.command('create').description('Create a new entity');\n  entity.command('get').description('Get an entity by name');\n  entity.command('list').description('List entities');\n  entity.command('update').description('Update an entity');\n  entity.command('delete').description('Delete an entity');\n\n  // Relation commands\n  const relation = program\n    .command('relation')\n    .description('Manage relations between entities');\n\n  relation.command('create').description('Create a new relation');\n  relation.command('list').description('List relations');\n  relation.command('delete').description('Delete a relation');\n\n  // Search command\n  program\n    .command('search <query>')\n    .description('Search entities and observations');\n\n  // Import/Export commands\n  program\n    .command('import <file>')\n    .description('Import data from file');\n\n  program\n    .command('export <file>')\n    .description('Export data to file');\n\n  // Interactive mode\n  program\n    .command('interactive')\n    .alias('i')\n    .description('Start interactive REPL mode');\n}"
+        },
+        {
+          "step": 3,
+          "action": "Update src/cli/index.ts to use command registry",
+          "code": "import { registerCommands } from './commands/index.js';\n\n// After program setup, before parse:\nregisterCommands(program);\n\nprogram.parse();"
+        },
+        {
+          "step": 4,
+          "action": "Build and verify command structure",
+          "details": "npm run build && node dist/cli/index.js --help"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Command registry created in src/cli/commands/index.ts",
+        "All command categories registered (entity, relation, search, import, export, interactive)",
+        "memory --help shows all commands",
+        "memory entity --help shows entity subcommands"
+      ]
+    },
+    {
+      "id": "1.1.3",
+      "category": "cli",
+      "title": "Implement Global Options",
+      "description": "Add global options: --storage (storage file), --format (output format), --quiet (suppress output), --verbose (debug). Make available to all commands.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/cli/options.ts", "src/cli/index.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Global options provide consistent behavior across all commands without repetition.",
+        "keyDecisions": [
+          "Store options in shared context accessible by all commands",
+          "Support environment variable fallbacks",
+          "Validate option values before command execution"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/options.ts",
+          "code": "/**\n * CLI Global Options\n *\n * Shared options and context for all CLI commands.\n *\n * @module cli/options\n */\n\nexport interface GlobalOptions {\n  storage: string;\n  format: 'json' | 'table' | 'csv';\n  quiet: boolean;\n  verbose: boolean;\n}\n\nexport const defaultOptions: GlobalOptions = {\n  storage: process.env.MEMORYJS_STORAGE_PATH || './memory.jsonl',\n  format: (process.env.MEMORYJS_OUTPUT_FORMAT as GlobalOptions['format']) || 'json',\n  quiet: false,\n  verbose: false,\n};\n\n/**\n * Parse and validate global options from commander.\n */\nexport function parseGlobalOptions(opts: Record<string, unknown>): GlobalOptions {\n  const format = opts.format as string;\n  if (format && !['json', 'table', 'csv'].includes(format)) {\n    console.error(`Invalid format: ${format}. Use json, table, or csv.`);\n    process.exit(1);\n  }\n\n  return {\n    storage: (opts.storage as string) || defaultOptions.storage,\n    format: (format as GlobalOptions['format']) || defaultOptions.format,\n    quiet: Boolean(opts.quiet),\n    verbose: Boolean(opts.verbose),\n  };\n}\n\n/**\n * Logging utilities that respect quiet/verbose flags.\n */\nexport function createLogger(options: GlobalOptions) {\n  return {\n    info: (msg: string) => !options.quiet && console.log(msg),\n    debug: (msg: string) => options.verbose && console.log(`[DEBUG] ${msg}`),\n    error: (msg: string) => console.error(`[ERROR] ${msg}`),\n    warn: (msg: string) => !options.quiet && console.warn(`[WARN] ${msg}`),\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Update CLI to pass options to commands",
+          "details": "Modify index.ts to parse options and pass to command handlers"
+        },
+        {
+          "step": 3,
+          "action": "Test option parsing",
+          "details": "npm run build && node dist/cli/index.js --storage ./test.jsonl --format table --verbose entity list"
+        }
+      ],
+      "acceptanceCriteria": [
+        "GlobalOptions interface defined",
+        "Options parsed from CLI args and env vars",
+        "Invalid format values rejected with error",
+        "Logger respects quiet/verbose flags",
+        "Options accessible in command handlers"
+      ]
+    },
+    {
+      "id": "1.1.4",
+      "category": "cli",
+      "title": "Create Output Formatters",
+      "description": "Implement output formatters for JSON (pretty-printed), table (ASCII), and CSV. Auto-detect terminal width for table formatting.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/cli/formatters.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Consistent output formatting across all commands with user-selectable format.",
+        "keyDecisions": [
+          "Use cli-table3 for ASCII tables with auto-sizing",
+          "Detect terminal width for responsive tables",
+          "Support streaming output for large datasets"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Install formatting dependencies",
+          "code": "npm install cli-table3 chalk"
+        },
+        {
+          "step": 2,
+          "action": "Create src/cli/formatters.ts",
+          "code": "/**\n * CLI Output Formatters\n *\n * Format data for JSON, table, or CSV output.\n *\n * @module cli/formatters\n */\n\nimport Table from 'cli-table3';\nimport chalk from 'chalk';\nimport type { Entity, Relation } from '../types/types.js';\n\nexport type OutputFormat = 'json' | 'table' | 'csv';\n\n/**\n * Get terminal width, with fallback for non-TTY.\n */\nfunction getTerminalWidth(): number {\n  return process.stdout.columns || 80;\n}\n\n/**\n * Format entities for output.\n */\nexport function formatEntities(\n  entities: Entity[],\n  format: OutputFormat\n): string {\n  if (entities.length === 0) {\n    return format === 'json' ? '[]' : 'No entities found.';\n  }\n\n  switch (format) {\n    case 'json':\n      return JSON.stringify(entities, null, 2);\n\n    case 'table': {\n      const table = new Table({\n        head: [chalk.cyan('Name'), chalk.cyan('Type'), chalk.cyan('Observations'), chalk.cyan('Tags')],\n        colWidths: calculateColWidths(getTerminalWidth(), [0.25, 0.15, 0.4, 0.2]),\n        wordWrap: true,\n      });\n\n      for (const entity of entities) {\n        table.push([\n          entity.name,\n          entity.entityType,\n          (entity.observations || []).slice(0, 3).join('; ') + \n            (entity.observations && entity.observations.length > 3 ? '...' : ''),\n          (entity.tags || []).join(', '),\n        ]);\n      }\n\n      return table.toString();\n    }\n\n    case 'csv': {\n      const header = 'name,entityType,observations,tags';\n      const rows = entities.map(e => [\n        escapeCSV(e.name),\n        escapeCSV(e.entityType),\n        escapeCSV((e.observations || []).join('; ')),\n        escapeCSV((e.tags || []).join(', ')),\n      ].join(','));\n      return [header, ...rows].join('\\n');\n    }\n  }\n}\n\n/**\n * Format relations for output.\n */\nexport function formatRelations(\n  relations: Relation[],\n  format: OutputFormat\n): string {\n  if (relations.length === 0) {\n    return format === 'json' ? '[]' : 'No relations found.';\n  }\n\n  switch (format) {\n    case 'json':\n      return JSON.stringify(relations, null, 2);\n\n    case 'table': {\n      const table = new Table({\n        head: [chalk.cyan('From'), chalk.cyan('Relation'), chalk.cyan('To')],\n        colWidths: calculateColWidths(getTerminalWidth(), [0.35, 0.3, 0.35]),\n      });\n\n      for (const rel of relations) {\n        table.push([rel.from, rel.relationType, rel.to]);\n      }\n\n      return table.toString();\n    }\n\n    case 'csv': {\n      const header = 'from,relationType,to';\n      const rows = relations.map(r => [\n        escapeCSV(r.from),\n        escapeCSV(r.relationType),\n        escapeCSV(r.to),\n      ].join(','));\n      return [header, ...rows].join('\\n');\n    }\n  }\n}\n\nfunction calculateColWidths(totalWidth: number, ratios: number[]): number[] {\n  const padding = 4; // Account for table borders\n  const available = totalWidth - padding;\n  return ratios.map(r => Math.floor(available * r));\n}\n\nfunction escapeCSV(value: string): string {\n  if (value.includes(',') || value.includes('\"') || value.includes('\\n')) {\n    return `\"${value.replace(/\"/g, '\"\"')}\"`;\n  }\n  return value;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests for formatters",
+          "details": "Create tests/unit/cli/formatters.test.ts"
+        }
+      ],
+      "acceptanceCriteria": [
+        "JSON output is pretty-printed",
+        "Table output uses ASCII borders with colors",
+        "CSV output properly escapes values",
+        "Terminal width auto-detected",
+        "Empty results handled gracefully"
+      ]
+    },
+    {
+      "id": "1.1.5",
+      "category": "cli",
+      "title": "Add Configuration File Support",
+      "description": "Support .memoryjsrc or memoryjs.config.json for default options. Merge with CLI args (CLI takes precedence).",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/cli/config.ts", "src/cli/index.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Configuration files allow project-specific defaults without repeated CLI flags.",
+        "keyDecisions": [
+          "Search current directory and parent directories for config",
+          "Support both JSON and JS/TS config formats",
+          "CLI args always override config file values"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/config.ts",
+          "code": "/**\n * CLI Configuration File Support\n *\n * Load configuration from .memoryjsrc or memoryjs.config.json.\n *\n * @module cli/config\n */\n\nimport { existsSync, readFileSync } from 'fs';\nimport { resolve, dirname } from 'path';\nimport type { GlobalOptions } from './options.js';\n\nconst CONFIG_FILES = [\n  '.memoryjsrc',\n  '.memoryjsrc.json',\n  'memoryjs.config.json',\n];\n\n/**\n * Search for config file starting from cwd and moving up.\n */\nexport function findConfigFile(startDir: string = process.cwd()): string | null {\n  let currentDir = startDir;\n  const root = resolve('/');\n\n  while (currentDir !== root) {\n    for (const filename of CONFIG_FILES) {\n      const configPath = resolve(currentDir, filename);\n      if (existsSync(configPath)) {\n        return configPath;\n      }\n    }\n    currentDir = dirname(currentDir);\n  }\n\n  return null;\n}\n\n/**\n * Load configuration from file.\n */\nexport function loadConfig(configPath: string): Partial<GlobalOptions> {\n  try {\n    const content = readFileSync(configPath, 'utf-8');\n    const config = JSON.parse(content);\n    return validateConfig(config);\n  } catch (error) {\n    console.warn(`Warning: Failed to load config from ${configPath}`);\n    return {};\n  }\n}\n\n/**\n * Validate and sanitize config values.\n */\nfunction validateConfig(config: Record<string, unknown>): Partial<GlobalOptions> {\n  const validated: Partial<GlobalOptions> = {};\n\n  if (typeof config.storage === 'string') {\n    validated.storage = config.storage;\n  }\n\n  if (config.format && ['json', 'table', 'csv'].includes(config.format as string)) {\n    validated.format = config.format as GlobalOptions['format'];\n  }\n\n  if (typeof config.quiet === 'boolean') {\n    validated.quiet = config.quiet;\n  }\n\n  if (typeof config.verbose === 'boolean') {\n    validated.verbose = config.verbose;\n  }\n\n  return validated;\n}\n\n/**\n * Merge config file with CLI options. CLI takes precedence.\n */\nexport function mergeConfig(\n  fileConfig: Partial<GlobalOptions>,\n  cliOptions: Partial<GlobalOptions>\n): GlobalOptions {\n  return {\n    storage: cliOptions.storage ?? fileConfig.storage ?? './memory.jsonl',\n    format: cliOptions.format ?? fileConfig.format ?? 'json',\n    quiet: cliOptions.quiet ?? fileConfig.quiet ?? false,\n    verbose: cliOptions.verbose ?? fileConfig.verbose ?? false,\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Integrate config loading in CLI startup",
+          "details": "Load config before parsing CLI args, then merge"
+        },
+        {
+          "step": 3,
+          "action": "Create example config file",
+          "details": "Add .memoryjsrc.example to repo root"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Config file found in current or parent directories",
+        "JSON config parsed correctly",
+        "Invalid config values ignored with warning",
+        "CLI args override config file values",
+        "Works without config file present"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "CLI executable via npx or direct node",
+    "Help system shows all commands and options",
+    "Output formatters work for JSON, table, CSV",
+    "Configuration file support functional",
+    "npm run build includes CLI in dist/"
+  ],
+  "filesCreated": [
+    "src/cli/index.ts",
+    "src/cli/options.ts",
+    "src/cli/formatters.ts",
+    "src/cli/config.ts",
+    "src/cli/commands/index.ts"
+  ],
+  "filesModified": [
+    "package.json"
+  ],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 6,
+  "dependencies": [],
+  "notes": [
+    "CLI is the foundation for all subsequent CLI sprints",
+    "Consider adding shell completion generation later",
+    "Formatters will be reused by all commands",
+    "Config file format may expand in future sprints"
+  ]
+}

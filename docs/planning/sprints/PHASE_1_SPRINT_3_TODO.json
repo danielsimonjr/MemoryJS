@@ -1,0 +1,278 @@
+{
+  "phase": 1,
+  "sprint": 3,
+  "title": "Search, Import/Export, and Interactive Mode",
+  "priority": "HIGH",
+  "effort": "8 hours",
+  "status": "pending",
+  "impact": "Completes CLI with search, I/O operations, and interactive REPL for exploration",
+  "targetMetrics": {
+    "searchAccess": {
+      "current": "No CLI search",
+      "target": "Full search capabilities via CLI with explain option"
+    },
+    "dataPortability": {
+      "current": "No CLI import/export",
+      "target": "Import/export in multiple formats via CLI"
+    },
+    "interactivity": {
+      "current": "Single command execution",
+      "target": "Interactive REPL with history and completion"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.3.1",
+      "category": "cli",
+      "title": "Implement search Command",
+      "description": "Basic search: memory search <query>. Options: --type (search type), --limit, --explain (show scoring). Support all search types.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/cli/commands/search.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Enable all search capabilities from the command line.",
+        "keyDecisions": [
+          "Query is positional argument",
+          "Default to ranked search",
+          "Support all search types via --type flag",
+          "--explain shows scoring breakdown"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/commands/search.ts",
+          "code": "/**\n * Search CLI Command\n *\n * Search entities and observations.\n *\n * @module cli/commands/search\n */\n\nimport { Command } from 'commander';\nimport { ManagerContext } from '../../core/ManagerContext.js';\nimport { formatEntities } from '../formatters.js';\nimport type { GlobalOptions } from '../options.js';\n\nexport function registerSearchCommand(program: Command): void {\n  program\n    .command('search <query>')\n    .description('Search entities and observations')\n    .option('-t, --type <type>', 'Search type (basic|fuzzy|boolean|ranked|bm25)', 'ranked')\n    .option('-l, --limit <n>', 'Maximum results', parseInt, 20)\n    .option('--explain', 'Show scoring explanation')\n    .option('--entity-type <type>', 'Filter by entity type')\n    .option('--tag <tag>', 'Filter by tag')\n    .option('--min-score <n>', 'Minimum score threshold', parseFloat, 0)\n    .action(async (query: string, opts: Record<string, unknown>, cmd: Command) => {\n      const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n      const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n      try {\n        const searchType = opts.type as string;\n        let results: Array<{ entity: unknown; score?: number }>;\n\n        switch (searchType) {\n          case 'basic':\n            results = (await ctx.searchManager.search(query, { limit: opts.limit as number }))\n              .map(e => ({ entity: e }));\n            break;\n\n          case 'fuzzy':\n            results = await ctx.searchManager.fuzzySearch(query, {\n              limit: opts.limit as number,\n            });\n            break;\n\n          case 'boolean':\n            results = (await ctx.searchManager.booleanSearch(query))\n              .map(e => ({ entity: e }));\n            break;\n\n          case 'ranked':\n            results = await ctx.searchManager.rankedSearch(query, {\n              limit: opts.limit as number,\n            });\n            break;\n\n          case 'bm25':\n            results = await ctx.searchManager.bm25Search(query, {\n              limit: opts.limit as number,\n            });\n            break;\n\n          default:\n            console.error(`Unknown search type: ${searchType}`);\n            process.exit(1);\n        }\n\n        // Apply filters\n        if (opts.entityType) {\n          results = results.filter(r => \n            (r.entity as { entityType: string }).entityType === opts.entityType\n          );\n        }\n        if (opts.tag) {\n          results = results.filter(r => \n            (r.entity as { tags?: string[] }).tags?.includes(opts.tag as string)\n          );\n        }\n        if (opts.minScore !== undefined) {\n          results = results.filter(r => (r.score ?? 1) >= (opts.minScore as number));\n        }\n\n        // Format output\n        const entities = results.map(r => r.entity) as any[];\n        \n        if (opts.explain && results.some(r => r.score !== undefined)) {\n          // Show with scores\n          console.log('\\nSearch Results (with scores):\\n');\n          for (const result of results) {\n            console.log(`[Score: ${(result.score ?? 0).toFixed(4)}]`);\n            console.log(formatEntities([result.entity as any], globalOpts.format));\n            console.log('');\n          }\n        } else {\n          console.log(formatEntities(entities, globalOpts.format));\n        }\n\n        if (!globalOpts.quiet) {\n          console.log(`\\nFound ${results.length} results.`);\n        }\n      } catch (error) {\n        console.error(`Search failed: ${(error as Error).message}`);\n        process.exit(1);\n      }\n    });\n}"
+        },
+        {
+          "step": 2,
+          "action": "Register search command in command registry",
+          "details": "Import and call registerSearchCommand in commands/index.ts"
+        },
+        {
+          "step": 3,
+          "action": "Test search command with various types",
+          "details": "Test basic, fuzzy, boolean, ranked searches"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Search executes with query",
+        "All search types supported via --type",
+        "--limit restricts result count",
+        "--explain shows scoring for ranked/fuzzy searches",
+        "Filters work: --entity-type, --tag, --min-score",
+        "Results formatted per global format"
+      ]
+    },
+    {
+      "id": "1.3.2",
+      "category": "cli",
+      "title": "Implement import Command",
+      "description": "Import: memory import <file> --format <json|csv|graphml>. Support --merge vs --replace. Show progress for large imports.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/cli/commands/import.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Import data from various file formats into MemoryJS.",
+        "keyDecisions": [
+          "Auto-detect format from file extension",
+          "--merge updates existing, --replace overwrites",
+          "Progress shown for large files",
+          "Validate data before import"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/commands/import.ts",
+          "code": "/**\n * Import CLI Command\n *\n * Import data from files.\n *\n * @module cli/commands/import\n */\n\nimport { Command } from 'commander';\nimport { readFileSync, statSync } from 'fs';\nimport { extname } from 'path';\nimport { ManagerContext } from '../../core/ManagerContext.js';\nimport type { GlobalOptions } from '../options.js';\n\nexport function registerImportCommand(program: Command): void {\n  program\n    .command('import <file>')\n    .description('Import data from file')\n    .option('-f, --format <type>', 'File format (json|csv|graphml)')\n    .option('--merge', 'Merge with existing data (update on conflict)', true)\n    .option('--replace', 'Replace existing data')\n    .option('--dry-run', 'Show what would be imported without importing')\n    .action(async (file: string, opts: Record<string, unknown>, cmd: Command) => {\n      const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n      const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n      try {\n        // Determine format\n        let format = opts.format as string;\n        if (!format) {\n          const ext = extname(file).toLowerCase();\n          format = ext === '.json' ? 'json' \n            : ext === '.csv' ? 'csv' \n            : ext === '.graphml' ? 'graphml' \n            : 'json';\n        }\n\n        // Get file size for progress\n        const stats = statSync(file);\n        const sizeMB = stats.size / (1024 * 1024);\n        \n        if (!globalOpts.quiet && sizeMB > 1) {\n          console.log(`Importing ${sizeMB.toFixed(2)} MB file...`);\n        }\n\n        // Read file\n        const content = readFileSync(file, 'utf-8');\n\n        // Determine merge strategy\n        const mergeStrategy = opts.replace ? 'replace' : 'merge';\n\n        if (opts.dryRun) {\n          console.log(`Would import from ${file} (format: ${format}, strategy: ${mergeStrategy})`);\n          // Could parse and show summary here\n          return;\n        }\n\n        // Import using IOManager\n        const result = await ctx.ioManager.importGraph(format as 'json' | 'csv' | 'graphml', content, {\n          mergeStrategy: mergeStrategy as 'replace' | 'skip' | 'merge' | 'fail',\n        });\n\n        if (!globalOpts.quiet) {\n          console.log(`Import complete:`);\n          console.log(`  Entities: ${result.entitiesImported}`);\n          console.log(`  Relations: ${result.relationsImported}`);\n          if (result.errors && result.errors.length > 0) {\n            console.log(`  Errors: ${result.errors.length}`);\n            for (const err of result.errors.slice(0, 5)) {\n              console.log(`    - ${err}`);\n            }\n          }\n        }\n      } catch (error) {\n        console.error(`Import failed: ${(error as Error).message}`);\n        process.exit(1);\n      }\n    });\n}"
+        },
+        {
+          "step": 2,
+          "action": "Register import command in command registry",
+          "details": "Import and call registerImportCommand in commands/index.ts"
+        },
+        {
+          "step": 3,
+          "action": "Test import with various formats",
+          "details": "Test JSON, CSV import"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Import reads file and parses format",
+        "Format auto-detected from extension",
+        "--merge and --replace strategies work",
+        "--dry-run shows summary without importing",
+        "Progress shown for large files",
+        "Import result summary displayed"
+      ]
+    },
+    {
+      "id": "1.3.3",
+      "category": "cli",
+      "title": "Implement export Command",
+      "description": "Export: memory export <file> --format <json|csv|graphml|mermaid>. Support --filter for entity type filtering. Support stdout with -.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/cli/commands/export.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Export MemoryJS data to various file formats.",
+        "keyDecisions": [
+          "Support stdout with - as filename",
+          "Auto-detect format from extension",
+          "Filter by entity type, tags",
+          "Support compression for large exports"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/commands/export.ts",
+          "code": "/**\n * Export CLI Command\n *\n * Export data to files.\n *\n * @module cli/commands/export\n */\n\nimport { Command } from 'commander';\nimport { writeFileSync } from 'fs';\nimport { extname } from 'path';\nimport { ManagerContext } from '../../core/ManagerContext.js';\nimport type { GlobalOptions } from '../options.js';\n\nexport function registerExportCommand(program: Command): void {\n  program\n    .command('export <file>')\n    .description('Export data to file (use - for stdout)')\n    .option('-f, --format <type>', 'File format (json|csv|graphml|mermaid|markdown)')\n    .option('--entity-type <type>', 'Filter by entity type')\n    .option('--tag <tag>', 'Filter by tag')\n    .option('--compress', 'Compress output (brotli)')\n    .action(async (file: string, opts: Record<string, unknown>, cmd: Command) => {\n      const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n      const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n      try {\n        // Determine format\n        let format = opts.format as string;\n        if (!format && file !== '-') {\n          const ext = extname(file).toLowerCase();\n          format = ext === '.json' ? 'json'\n            : ext === '.csv' ? 'csv'\n            : ext === '.graphml' ? 'graphml'\n            : ext === '.mermaid' || ext === '.mmd' ? 'mermaid'\n            : ext === '.md' ? 'markdown'\n            : 'json';\n        }\n        format = format || 'json';\n\n        // Build filter\n        const filter: { entityType?: string; tags?: string[] } = {};\n        if (opts.entityType) {\n          filter.entityType = opts.entityType as string;\n        }\n        if (opts.tag) {\n          filter.tags = [opts.tag as string];\n        }\n\n        // Export\n        const result = await ctx.ioManager.exportGraph(\n          format as 'json' | 'csv' | 'graphml' | 'mermaid' | 'markdown',\n          {\n            filter: Object.keys(filter).length > 0 ? filter : undefined,\n            compress: opts.compress as boolean,\n          }\n        );\n\n        // Output\n        if (file === '-') {\n          process.stdout.write(result);\n        } else {\n          writeFileSync(file, result);\n          if (!globalOpts.quiet) {\n            console.log(`Exported to ${file}`);\n          }\n        }\n      } catch (error) {\n        console.error(`Export failed: ${(error as Error).message}`);\n        process.exit(1);\n      }\n    });\n}"
+        },
+        {
+          "step": 2,
+          "action": "Register export command in command registry",
+          "details": "Import and call registerExportCommand in commands/index.ts"
+        },
+        {
+          "step": 3,
+          "action": "Test export with various formats",
+          "details": "Test JSON, CSV, Mermaid exports"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Export writes file in specified format",
+        "Format auto-detected from extension",
+        "stdout supported with - as filename",
+        "--entity-type and --tag filters work",
+        "--compress enables brotli compression",
+        "Multiple export formats work correctly"
+      ]
+    },
+    {
+      "id": "1.3.4",
+      "category": "cli",
+      "title": "Implement Interactive Mode",
+      "description": "Interactive REPL: memory interactive or memory -i. Readline-based with command history, tab completion for entity names, and multi-line input.",
+      "status": "pending",
+      "estimatedHours": 2.5,
+      "agent": "claude",
+      "files": ["src/cli/interactive.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Provide an interactive shell for exploring the knowledge graph.",
+        "keyDecisions": [
+          "Use readline for input with history",
+          "Tab completion for entity names",
+          "Support multi-line input for observations",
+          "Special commands: .help, .exit, .clear"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/interactive.ts",
+          "code": "/**\n * Interactive CLI Mode (REPL)\n *\n * Provides an interactive shell for exploring the knowledge graph.\n *\n * @module cli/interactive\n */\n\nimport * as readline from 'readline';\nimport { ManagerContext } from '../core/ManagerContext.js';\nimport type { GlobalOptions } from './options.js';\nimport chalk from 'chalk';\n\ninterface InteractiveContext {\n  ctx: ManagerContext;\n  options: GlobalOptions;\n  history: string[];\n}\n\nexport async function startInteractiveMode(options: GlobalOptions): Promise<void> {\n  const ctx = new ManagerContext({ storagePath: options.storage });\n  \n  const interactiveCtx: InteractiveContext = {\n    ctx,\n    options,\n    history: [],\n  };\n\n  // Get entity names for completion\n  const entityNames = ctx.entityManager.getAllEntities().map(e => e.name);\n\n  const rl = readline.createInterface({\n    input: process.stdin,\n    output: process.stdout,\n    prompt: chalk.cyan('memory> '),\n    completer: (line: string) => {\n      const completions = [\n        'entity', 'relation', 'search', 'help', 'exit', 'clear',\n        ...entityNames,\n      ];\n      const hits = completions.filter(c => c.startsWith(line));\n      return [hits.length ? hits : completions, line];\n    },\n  });\n\n  console.log(chalk.green('MemoryJS Interactive Mode'));\n  console.log(chalk.gray('Type \"help\" for commands, \"exit\" to quit.\\n'));\n\n  rl.prompt();\n\n  rl.on('line', async (line: string) => {\n    const trimmed = line.trim();\n    \n    if (!trimmed) {\n      rl.prompt();\n      return;\n    }\n\n    interactiveCtx.history.push(trimmed);\n\n    try {\n      await processCommand(trimmed, interactiveCtx, rl);\n    } catch (error) {\n      console.error(chalk.red(`Error: ${(error as Error).message}`));\n    }\n\n    rl.prompt();\n  });\n\n  rl.on('close', () => {\n    console.log(chalk.gray('\\nGoodbye!'));\n    process.exit(0);\n  });\n}\n\nasync function processCommand(\n  input: string,\n  ctx: InteractiveContext,\n  rl: readline.Interface\n): Promise<void> {\n  const [command, ...args] = input.split(/\\s+/);\n\n  switch (command.toLowerCase()) {\n    case 'help':\n    case '.help':\n      showHelp();\n      break;\n\n    case 'exit':\n    case '.exit':\n    case 'quit':\n      rl.close();\n      break;\n\n    case 'clear':\n    case '.clear':\n      console.clear();\n      break;\n\n    case 'entities':\n    case 'ls': {\n      const entities = ctx.ctx.entityManager.getAllEntities();\n      console.log(`\\nEntities (${entities.length}):`);\n      for (const e of entities.slice(0, 20)) {\n        console.log(`  ${chalk.cyan(e.name)} [${e.entityType}]`);\n      }\n      if (entities.length > 20) {\n        console.log(`  ... and ${entities.length - 20} more`);\n      }\n      break;\n    }\n\n    case 'get': {\n      const name = args.join(' ');\n      const entity = ctx.ctx.entityManager.getEntityByName(name);\n      if (entity) {\n        console.log(JSON.stringify(entity, null, 2));\n      } else {\n        console.log(chalk.yellow(`Entity not found: ${name}`));\n      }\n      break;\n    }\n\n    case 'search': {\n      const query = args.join(' ');\n      const results = await ctx.ctx.searchManager.search(query, { limit: 10 });\n      console.log(`\\nSearch results for \"${query}\":`);\n      for (const entity of results) {\n        console.log(`  ${chalk.cyan(entity.name)} [${entity.entityType}]`);\n        if (entity.observations && entity.observations.length > 0) {\n          console.log(`    ${chalk.gray(entity.observations[0].substring(0, 60))}...`);\n        }\n      }\n      break;\n    }\n\n    case 'relations': {\n      const name = args.join(' ');\n      const relations = ctx.ctx.relationManager.getRelationsForEntity(name);\n      console.log(`\\nRelations for \"${name}\":`);\n      for (const rel of relations) {\n        if (rel.from === name) {\n          console.log(`  ${chalk.cyan(name)} --[${rel.relationType}]--> ${rel.to}`);\n        } else {\n          console.log(`  ${rel.from} --[${rel.relationType}]--> ${chalk.cyan(name)}`);\n        }\n      }\n      break;\n    }\n\n    case 'history':\n      console.log('\\nCommand history:');\n      ctx.history.slice(-20).forEach((cmd, i) => {\n        console.log(`  ${i + 1}. ${cmd}`);\n      });\n      break;\n\n    default:\n      console.log(chalk.yellow(`Unknown command: ${command}. Type \"help\" for available commands.`));\n  }\n}\n\nfunction showHelp(): void {\n  console.log(`\n${chalk.green('Available Commands:')}\n\n  ${chalk.cyan('entities')} / ${chalk.cyan('ls')}    List all entities\n  ${chalk.cyan('get <name>')}         Get entity details\n  ${chalk.cyan('search <query>')}     Search entities\n  ${chalk.cyan('relations <name>')}   Show relations for entity\n  ${chalk.cyan('history')}            Show command history\n  ${chalk.cyan('clear')}              Clear screen\n  ${chalk.cyan('help')}               Show this help\n  ${chalk.cyan('exit')}               Exit interactive mode\n\n${chalk.gray('Tab completion available for entity names.')}\n`);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Register interactive mode in CLI",
+          "code": "// In commands/index.ts or index.ts:\nprogram\n  .command('interactive')\n  .alias('i')\n  .description('Start interactive REPL mode')\n  .action(async (opts: Record<string, unknown>, cmd: Command) => {\n    const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n    const { startInteractiveMode } = await import('../interactive.js');\n    await startInteractiveMode(globalOpts);\n  });"
+        },
+        {
+          "step": 3,
+          "action": "Test interactive mode",
+          "details": "Manual testing of REPL functionality"
+        }
+      ],
+      "acceptanceCriteria": [
+        "REPL starts with prompt",
+        "Tab completion for entity names works",
+        "Command history accessible",
+        "help command shows available commands",
+        "entities/search/get/relations commands work",
+        "exit closes cleanly"
+      ]
+    },
+    {
+      "id": "1.3.5",
+      "category": "cli",
+      "title": "Add Pipe/stdin Support",
+      "description": "Support piping: echo '{\"name\":\"test\"}' | memory entity create --stdin. Read from stdin when --stdin flag or data piped.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/cli/stdin.ts", "src/cli/commands/entity.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Enable scripting and piping workflows with the CLI.",
+        "keyDecisions": [
+          "Detect piped input automatically",
+          "--stdin flag for explicit stdin reading",
+          "Support JSON input for entity/relation creation",
+          "Support newline-delimited JSON for batch operations"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/stdin.ts",
+          "code": "/**\n * Stdin Utilities\n *\n * Handle piped input for CLI commands.\n *\n * @module cli/stdin\n */\n\n/**\n * Check if stdin has piped data.\n */\nexport function hasStdin(): boolean {\n  return !process.stdin.isTTY;\n}\n\n/**\n * Read all data from stdin.\n */\nexport async function readStdin(): Promise<string> {\n  return new Promise((resolve, reject) => {\n    let data = '';\n    \n    process.stdin.setEncoding('utf8');\n    \n    process.stdin.on('readable', () => {\n      let chunk;\n      while ((chunk = process.stdin.read()) !== null) {\n        data += chunk;\n      }\n    });\n    \n    process.stdin.on('end', () => {\n      resolve(data.trim());\n    });\n    \n    process.stdin.on('error', reject);\n  });\n}\n\n/**\n * Parse stdin as JSON or newline-delimited JSON.\n */\nexport function parseStdinData(data: string): unknown[] {\n  // Try as single JSON object/array\n  try {\n    const parsed = JSON.parse(data);\n    return Array.isArray(parsed) ? parsed : [parsed];\n  } catch {\n    // Try as newline-delimited JSON\n    const lines = data.split('\\n').filter(line => line.trim());\n    return lines.map(line => JSON.parse(line));\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Update entity create to support --stdin",
+          "code": "// Add to entity create command options:\n.option('--stdin', 'Read entity data from stdin')\n\n// In action handler:\nif (opts.stdin || hasStdin()) {\n  const data = await readStdin();\n  const entities = parseStdinData(data);\n  \n  for (const entityData of entities) {\n    const created = await ctx.entityManager.createEntity(entityData as any);\n    console.log(formatEntities([created], globalOpts.format));\n  }\n  return;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Test piping scenarios",
+          "details": "echo '{...}' | memory entity create --stdin"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Piped input detected automatically",
+        "--stdin flag reads from stdin",
+        "JSON input parsed correctly",
+        "Newline-delimited JSON supported for batch",
+        "Works with entity create, relation create",
+        "Error handling for invalid JSON"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Search command works with all search types",
+    "Import/export work with multiple formats",
+    "Interactive mode provides usable REPL",
+    "Stdin/piping enables scripting workflows",
+    "CLI feature-complete for Phase 1"
+  ],
+  "filesCreated": [
+    "src/cli/commands/search.ts",
+    "src/cli/commands/import.ts",
+    "src/cli/commands/export.ts",
+    "src/cli/interactive.ts",
+    "src/cli/stdin.ts"
+  ],
+  "filesModified": [
+    "src/cli/commands/index.ts",
+    "src/cli/commands/entity.ts"
+  ],
+  "totalNewTests": 25,
+  "totalEstimatedHours": 8,
+  "dependencies": ["Sprint 1 - CLI Framework Foundation", "Sprint 2 - Entity and Relation Commands"],
+  "notes": [
+    "Interactive mode is powerful for exploration",
+    "Piping support enables shell scripting integration",
+    "Consider adding shell completion script generation",
+    "Export formats leverage existing IOManager"
+  ]
+}

@@ -1,0 +1,275 @@
+{
+  "phase": 1,
+  "sprint": 4,
+  "title": "Relation Metadata Types",
+  "priority": "MEDIUM",
+  "effort": "4 hours",
+  "status": "pending",
+  "impact": "Extends relations with metadata support enabling weighted relations, temporal properties, and custom attributes",
+  "targetMetrics": {
+    "relationCapabilities": {
+      "current": "Basic from/to/type relations with timestamps",
+      "target": "Relations with weight, confidence, temporal, and custom metadata"
+    },
+    "backwardCompatibility": {
+      "current": "N/A",
+      "target": "100% backward compatible - existing relations work unchanged"
+    }
+  },
+  "existingCodeNotes": [
+    "IMPORTANT: Relation interface already has createdAt and lastModified fields - do NOT add them again",
+    "IMPORTANT: WeightedRelation interface already exists at types.ts:1184 with optional weight and metadata",
+    "Type guards and RelationBuilder should go in src/utils/relationHelpers.ts, not types.ts"
+  ],
+  "tasks": [
+    {
+      "id": "1.4.1",
+      "category": "types",
+      "title": "Extend Relation Interface with Metadata",
+      "description": "Add optional weight, confidence, properties, and metadata fields to Relation interface. NOTE: createdAt and lastModified already exist.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/types.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Extend the core Relation type to support arbitrary metadata while maintaining backward compatibility.",
+        "keyDecisions": [
+          "All new fields are optional for backward compatibility",
+          "metadata is Record<string, unknown> for flexibility",
+          "weight is separate field for common use case",
+          "properties uses structured type for typed access",
+          "createdAt and lastModified already exist - DO NOT add again"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Locate Relation interface in src/types/types.ts (around line 78)",
+          "details": "Find the existing Relation interface definition - it already has from, to, relationType, createdAt, lastModified"
+        },
+        {
+          "step": 2,
+          "action": "Add ONLY new fields to Relation interface",
+          "code": "/**\n * Represents a directional relationship between two entities.\n *\n * Relations form the edges of the knowledge graph, connecting entities\n * with typed, directed connections. Common examples include \"works_at\",\n * \"knows\", \"manages\", \"causes\", etc.\n */\nexport interface Relation {\n  /** Source entity name */\n  from: string;\n\n  /** Target entity name */\n  to: string;\n\n  /** Type of relationship (should be in active voice, e.g., \"works_at\", \"manages\") */\n  relationType: string;\n\n  /** ISO 8601 timestamp when relation was created */\n  createdAt?: string;\n\n  /** ISO 8601 timestamp when relation was last modified */\n  lastModified?: string;\n\n  // New fields for metadata support (Phase 1 Sprint 4)\n\n  /** Relation weight/strength (0-1), useful for weighted graph algorithms */\n  weight?: number;\n\n  /** Confidence score for this relation (0-1) */\n  confidence?: number;\n\n  /** Structured properties for typed access */\n  properties?: RelationProperties;\n\n  /** Arbitrary metadata for custom attributes */\n  metadata?: Record<string, unknown>;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Run typecheck to verify no breaking changes",
+          "details": "npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Relation interface extended with weight, confidence, properties, metadata fields",
+        "All new fields are optional",
+        "Existing createdAt and lastModified fields preserved",
+        "Existing code using Relation compiles without changes",
+        "npm run typecheck passes",
+        "npm run test passes (existing tests unaffected)"
+      ]
+    },
+    {
+      "id": "1.4.2",
+      "category": "types",
+      "title": "Create RelationProperties Type",
+      "description": "Define typed properties: bidirectional, temporal (validFrom/validUntil), source, method, confirmation counts. Provide structure for common relation attributes.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/types.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Provide structured, typed access to common relation properties beyond simple metadata.",
+        "keyDecisions": [
+          "Separate interface for typed properties vs untyped metadata",
+          "Temporal properties support valid time ranges",
+          "Bidirectional flag indicates symmetric relations",
+          "Custom field for extension"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create RelationProperties interface BEFORE the Relation interface",
+          "code": "/**\n * Typed properties for relations.\n * Use this for structured access to common relation attributes.\n * For arbitrary key-value pairs, use the `metadata` field instead.\n *\n * @example\n * ```typescript\n * const relation: Relation = {\n *   from: 'Alice',\n *   to: 'Bob',\n *   relationType: 'knows',\n *   weight: 0.8,\n *   properties: {\n *     bidirectional: true,\n *     validFrom: '2024-01-01',\n *     source: 'social_network_import',\n *   },\n * };\n * ```\n */\nexport interface RelationProperties {\n  /** Whether this relation is bidirectional (A->B implies B->A) */\n  bidirectional?: boolean;\n\n  /** Temporal validity - when this relation became valid (ISO 8601) */\n  validFrom?: string;\n\n  /** Temporal validity - when this relation stops being valid (ISO 8601) */\n  validUntil?: string;\n\n  /** Source/provenance of this relation */\n  source?: string;\n\n  /** How this relation was established */\n  method?: 'observed' | 'inferred' | 'declared' | 'imported';\n\n  /** Number of times this relation has been confirmed */\n  confirmationCount?: number;\n\n  /** Number of times this relation has been contradicted */\n  contradictionCount?: number;\n\n  /** Custom typed properties for domain-specific extensions */\n  custom?: Record<string, unknown>;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Run typecheck",
+          "details": "npm run typecheck"
+        }
+      ],
+      "acceptanceCriteria": [
+        "RelationProperties interface defined with all specified fields",
+        "Temporal properties (validFrom/validUntil) support ISO 8601 strings",
+        "bidirectional flag defined",
+        "custom field allows extension",
+        "JSDoc with examples provided"
+      ]
+    },
+    {
+      "id": "1.4.3",
+      "category": "utils",
+      "title": "Create Relation Type Guards and Builder",
+      "description": "Add type guards (isWeightedRelation, isTemporalRelation, isBidirectionalRelation) and RelationBuilder class. NOTE: Existing WeightedRelation at types.ts:1184 will be enhanced, not replaced.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/utils/relationHelpers.ts", "src/types/types.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Provide utility functions and builder for working with weighted and typed relations.",
+        "keyDecisions": [
+          "Type guards go in utils/relationHelpers.ts (runtime code)",
+          "Existing WeightedRelation interface is enhanced, not replaced",
+          "Add TemporalRelation and BidirectionalRelation type aliases",
+          "Builder pattern for fluent relation construction"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update existing WeightedRelation in src/types/types.ts to use new RelationProperties",
+          "code": "/**\n * A relation that has a weight value.\n * Useful for weighted graph algorithms (e.g., shortest path with weights).\n * \n * NOTE: This interface already existed, enhanced for Phase 1 Sprint 4.\n */\nexport interface WeightedRelation extends Relation {\n  /** Weight for the relation (required for weighted algorithms) */\n  weight: number;\n}\n\n/**\n * A relation with temporal validity.\n */\nexport interface TemporalRelation extends Relation {\n  properties: RelationProperties & {\n    validFrom: string;\n  };\n}\n\n/**\n * A bidirectional relation (symmetric: A->B implies B->A).\n */\nexport interface BidirectionalRelation extends Relation {\n  properties: RelationProperties & {\n    bidirectional: true;\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Create src/utils/relationHelpers.ts with type guards and builder",
+          "code": "/**\n * Relation Helper Utilities\n *\n * Type guards and builder pattern for working with relations.\n *\n * @module utils/relationHelpers\n */\n\nimport type {\n  Relation,\n  WeightedRelation,\n  TemporalRelation,\n  BidirectionalRelation,\n  RelationProperties,\n} from '../types/types.js';\n\n/**\n * Type guard to check if a relation has a weight.\n */\nexport function isWeightedRelation(relation: Relation): relation is WeightedRelation {\n  return typeof relation.weight === 'number';\n}\n\n/**\n * Type guard to check if a relation has temporal validity.\n */\nexport function isTemporalRelation(relation: Relation): relation is TemporalRelation {\n  return typeof relation.properties?.validFrom === 'string';\n}\n\n/**\n * Type guard to check if a relation is bidirectional.\n */\nexport function isBidirectionalRelation(relation: Relation): relation is BidirectionalRelation {\n  return relation.properties?.bidirectional === true;\n}\n\n/**\n * Fluent builder for constructing relations.\n *\n * @example\n * ```typescript\n * const relation = new RelationBuilder('Alice', 'Bob', 'knows')\n *   .withWeight(0.8)\n *   .withConfidence(0.95)\n *   .bidirectional()\n *   .validFrom('2024-01-01')\n *   .build();\n * ```\n */\nexport class RelationBuilder {\n  private relation: Relation;\n\n  constructor(from: string, to: string, relationType: string) {\n    this.relation = { from, to, relationType };\n  }\n\n  withWeight(weight: number): this {\n    if (weight < 0 || weight > 1) {\n      throw new Error('Weight must be between 0 and 1');\n    }\n    this.relation.weight = weight;\n    return this;\n  }\n\n  withConfidence(confidence: number): this {\n    if (confidence < 0 || confidence > 1) {\n      throw new Error('Confidence must be between 0 and 1');\n    }\n    this.relation.confidence = confidence;\n    return this;\n  }\n\n  bidirectional(value: boolean = true): this {\n    this.relation.properties = {\n      ...this.relation.properties,\n      bidirectional: value,\n    };\n    return this;\n  }\n\n  validFrom(date: string): this {\n    this.relation.properties = {\n      ...this.relation.properties,\n      validFrom: date,\n    };\n    return this;\n  }\n\n  validUntil(date: string): this {\n    this.relation.properties = {\n      ...this.relation.properties,\n      validUntil: date,\n    };\n    return this;\n  }\n\n  withSource(source: string): this {\n    this.relation.properties = {\n      ...this.relation.properties,\n      source,\n    };\n    return this;\n  }\n\n  withMethod(method: RelationProperties['method']): this {\n    this.relation.properties = {\n      ...this.relation.properties,\n      method,\n    };\n    return this;\n  }\n\n  withMetadata(metadata: Record<string, unknown>): this {\n    this.relation.metadata = { ...this.relation.metadata, ...metadata };\n    return this;\n  }\n\n  build(): Relation {\n    this.relation.createdAt = new Date().toISOString();\n    return { ...this.relation };\n  }\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add unit tests for type guards and builder",
+          "details": "Create tests/unit/utils/relationHelpers.test.ts"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Existing WeightedRelation enhanced (not replaced)",
+        "TemporalRelation, BidirectionalRelation types defined",
+        "Type guards work correctly at runtime",
+        "RelationBuilder creates valid relations",
+        "Builder validates weight/confidence ranges",
+        "Unit tests pass for all type guards and builder"
+      ]
+    },
+    {
+      "id": "1.4.4",
+      "category": "utils",
+      "title": "Add Validation for Relation Properties",
+      "description": "Create validateRelation() function. Validate weight range (0-1), confidence range, temporal consistency (validFrom <= validUntil).",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/utils/relationValidation.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Ensure relation properties are valid before storage.",
+        "keyDecisions": [
+          "Return RelationValidationResult with isValid and errors array",
+          "Use distinct type names to avoid collision with existing ValidationIssue",
+          "Validate all typed properties",
+          "Support custom validation rules"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/utils/relationValidation.ts",
+          "code": "/**\n * Relation Validation Utilities\n *\n * Functions for validating relation properties.\n *\n * @module utils/relationValidation\n */\n\nimport type { Relation } from '../types/types.js';\n\n/**\n * A validation error for relation fields.\n * Named distinctly from ValidationIssue in types.ts which is for graph validation.\n */\nexport interface RelationValidationError {\n  field: string;\n  message: string;\n  value?: unknown;\n}\n\n/**\n * A validation warning for relation fields.\n */\nexport interface RelationValidationWarning {\n  field: string;\n  message: string;\n  suggestion?: string;\n}\n\n/**\n * Result of relation validation.\n */\nexport interface RelationValidationResult {\n  isValid: boolean;\n  errors: RelationValidationError[];\n  warnings: RelationValidationWarning[];\n}\n\n/**\n * Validate relation properties.\n *\n * @param relation - The relation to validate\n * @returns Validation result with errors and warnings\n */\nexport function validateRelation(relation: Relation): RelationValidationResult {\n  const errors: RelationValidationError[] = [];\n  const warnings: RelationValidationWarning[] = [];\n\n  // Required fields\n  if (!relation.from || typeof relation.from !== 'string') {\n    errors.push({ field: 'from', message: 'from is required and must be a string' });\n  }\n  if (!relation.to || typeof relation.to !== 'string') {\n    errors.push({ field: 'to', message: 'to is required and must be a string' });\n  }\n  if (!relation.relationType || typeof relation.relationType !== 'string') {\n    errors.push({ field: 'relationType', message: 'relationType is required and must be a string' });\n  }\n\n  // Weight validation\n  if (relation.weight !== undefined) {\n    if (typeof relation.weight !== 'number') {\n      errors.push({ field: 'weight', message: 'weight must be a number', value: relation.weight });\n    } else if (relation.weight < 0 || relation.weight > 1) {\n      errors.push({ field: 'weight', message: 'weight must be between 0 and 1', value: relation.weight });\n    }\n  }\n\n  // Confidence validation\n  if (relation.confidence !== undefined) {\n    if (typeof relation.confidence !== 'number') {\n      errors.push({ field: 'confidence', message: 'confidence must be a number', value: relation.confidence });\n    } else if (relation.confidence < 0 || relation.confidence > 1) {\n      errors.push({ field: 'confidence', message: 'confidence must be between 0 and 1', value: relation.confidence });\n    }\n  }\n\n  // Temporal validation\n  if (relation.properties?.validFrom && relation.properties?.validUntil) {\n    const from = new Date(relation.properties.validFrom);\n    const until = new Date(relation.properties.validUntil);\n\n    if (isNaN(from.getTime())) {\n      errors.push({ field: 'properties.validFrom', message: 'validFrom must be a valid ISO 8601 date' });\n    }\n    if (isNaN(until.getTime())) {\n      errors.push({ field: 'properties.validUntil', message: 'validUntil must be a valid ISO 8601 date' });\n    }\n    if (!isNaN(from.getTime()) && !isNaN(until.getTime()) && from > until) {\n      errors.push({\n        field: 'properties.validFrom/validUntil',\n        message: 'validFrom must be before or equal to validUntil',\n      });\n    }\n  }\n\n  // Self-referential warning\n  if (relation.from === relation.to) {\n    warnings.push({\n      field: 'from/to',\n      message: 'Relation is self-referential (from === to)',\n      suggestion: 'Verify this is intentional',\n    });\n  }\n\n  return {\n    isValid: errors.length === 0,\n    errors,\n    warnings,\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Create tests/unit/utils/relationValidation.test.ts"
+        }
+      ],
+      "acceptanceCriteria": [
+        "validateRelation function implemented",
+        "Weight range (0-1) validated",
+        "Confidence range (0-1) validated",
+        "Temporal consistency checked (validFrom <= validUntil)",
+        "Returns RelationValidationResult with errors and warnings",
+        "Unit tests cover all validation cases"
+      ]
+    },
+    {
+      "id": "1.4.5",
+      "category": "types",
+      "title": "Update Exports",
+      "description": "Export all new types from src/types/index.ts. Export utilities from src/utils/index.ts. Ensure types are importable from main package.",
+      "status": "pending",
+      "estimatedHours": 0.75,
+      "agent": "claude",
+      "files": ["src/types/index.ts", "src/utils/index.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Make all new types and utilities available to consumers.",
+        "keyDecisions": [
+          "Export from barrel files for clean imports",
+          "Group related exports together",
+          "Verify imports work from package root"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update src/types/index.ts exports",
+          "code": "// Add to existing exports in src/types/index.ts\n\n// Relation types (Phase 1 Sprint 4)\nexport type {\n  RelationProperties,\n  TemporalRelation,\n  BidirectionalRelation,\n} from './types.js';\n\n// Note: WeightedRelation already exported if it was before"
+        },
+        {
+          "step": 2,
+          "action": "Update src/utils/index.ts exports",
+          "code": "// Add to existing exports in src/utils/index.ts\n\n// Relation helpers (Phase 1 Sprint 4)\nexport {\n  isWeightedRelation,\n  isTemporalRelation,\n  isBidirectionalRelation,\n  RelationBuilder,\n} from './relationHelpers.js';\n\nexport {\n  validateRelation,\n  type RelationValidationResult,\n  type RelationValidationError,\n  type RelationValidationWarning,\n} from './relationValidation.js';"
+        },
+        {
+          "step": 3,
+          "action": "Test imports from package",
+          "details": "Create a test file that imports from the package root"
+        },
+        {
+          "step": 4,
+          "action": "Run build and verify exports",
+          "details": "npm run build && check dist/ for exported types"
+        }
+      ],
+      "acceptanceCriteria": [
+        "All new types exported from src/types/index.ts",
+        "Relation utilities exported from src/utils/index.ts",
+        "Types importable from '@danielsimonjr/memoryjs'",
+        "npm run build succeeds",
+        "Type definitions included in dist/"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Relation interface extended with metadata support",
+    "RelationProperties type defined with all common properties",
+    "Type guards and RelationBuilder working",
+    "Validation function catches invalid properties",
+    "All new types exported and importable",
+    "100% backward compatible - existing code unchanged"
+  ],
+  "filesCreated": [
+    "src/utils/relationHelpers.ts",
+    "src/utils/relationValidation.ts",
+    "tests/unit/utils/relationHelpers.test.ts",
+    "tests/unit/utils/relationValidation.test.ts"
+  ],
+  "filesModified": [
+    "src/types/types.ts",
+    "src/types/index.ts",
+    "src/utils/index.ts"
+  ],
+  "totalNewTests": 20,
+  "totalEstimatedHours": 4,
+  "dependencies": [],
+  "notes": [
+    "FIXED: Removed duplicate createdAt/lastModified from Relation extension (already exist)",
+    "FIXED: WeightedRelation already exists - we enhance it, not replace",
+    "FIXED: Type guards moved to utils/relationHelpers.ts (runtime code separate from types)",
+    "FIXED: Validation types renamed to avoid collision with ValidationIssue in types.ts",
+    "This sprint focuses on types only - storage integration is Sprint 5",
+    "Temporal relations support time-varying knowledge"
+  ]
+}

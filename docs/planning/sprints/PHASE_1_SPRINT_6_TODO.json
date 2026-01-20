@@ -1,0 +1,256 @@
+{
+  "phase": 1,
+  "sprint": 6,
+  "title": "Query Logging and Tracing",
+  "priority": "MEDIUM",
+  "effort": "5 hours",
+  "status": "pending",
+  "impact": "Enables search debugging, performance analysis, and query analytics through comprehensive logging",
+  "targetMetrics": {
+    "debuggability": {
+      "current": "No query visibility",
+      "target": "Full query lifecycle logging with timing"
+    },
+    "performance": {
+      "current": "No performance data",
+      "target": "Per-stage timing for query optimization"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.6.1",
+      "category": "search",
+      "title": "Create QueryLogger Class",
+      "description": "Implement logger with configurable output: console, file, callback. Log query text, type, duration, result count. Support log levels.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/QueryLogger.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Provide structured logging for all search operations.",
+        "keyDecisions": [
+          "Support multiple output targets (console, file, callback)",
+          "Log levels: debug, info, warn, error",
+          "Structured log format for parsing",
+          "Configurable via env vars"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/search/QueryLogger.ts",
+          "code": "/**\n * Query Logger\n *\n * Provides structured logging for search operations.\n * Supports console, file, and callback outputs.\n *\n * @module search/QueryLogger\n */\n\nimport { appendFileSync } from 'fs';\n\nexport type LogLevel = 'debug' | 'info' | 'warn' | 'error';\n\nexport interface QueryLogEntry {\n  timestamp: string;\n  queryId: string;\n  level: LogLevel;\n  event: string;\n  queryText?: string;\n  queryType?: string;\n  duration?: number;\n  resultCount?: number;\n  metadata?: Record<string, unknown>;\n}\n\nexport interface QueryLoggerConfig {\n  /** Minimum log level to output */\n  level?: LogLevel;\n  /** Log to console */\n  console?: boolean;\n  /** Log to file path */\n  filePath?: string;\n  /** Custom callback for log entries */\n  callback?: (entry: QueryLogEntry) => void;\n  /** Include timestamps in console output */\n  timestamps?: boolean;\n}\n\nconst LOG_LEVELS: Record<LogLevel, number> = {\n  debug: 0,\n  info: 1,\n  warn: 2,\n  error: 3,\n};\n\n/**\n * Query logger for search operations.\n *\n * @example\n * ```typescript\n * const logger = new QueryLogger({ level: 'debug', console: true });\n * logger.logQueryStart('q123', 'hello world', 'ranked');\n * // ... search executes ...\n * logger.logQueryEnd('q123', 150, 10);\n * ```\n */\nexport class QueryLogger {\n  private readonly config: Required<Omit<QueryLoggerConfig, 'callback'>> & { callback?: (entry: QueryLogEntry) => void };\n\n  constructor(config: QueryLoggerConfig = {}) {\n    this.config = {\n      level: config.level ?? (process.env.MEMORY_QUERY_LOG_LEVEL as LogLevel) ?? 'info',\n      console: config.console ?? process.env.MEMORY_QUERY_LOGGING === 'true',\n      filePath: config.filePath ?? process.env.MEMORY_QUERY_LOG_FILE ?? '',\n      callback: config.callback,\n      timestamps: config.timestamps ?? true,\n    };\n  }\n\n  /**\n   * Log the start of a query.\n   */\n  logQueryStart(queryId: string, queryText: string, queryType: string): void {\n    this.log('info', 'query_start', {\n      queryId,\n      queryText,\n      queryType,\n    });\n  }\n\n  /**\n   * Log the end of a query.\n   */\n  logQueryEnd(queryId: string, durationMs: number, resultCount: number): void {\n    this.log('info', 'query_end', {\n      queryId,\n      duration: durationMs,\n      resultCount,\n    });\n  }\n\n  /**\n   * Log a query stage.\n   */\n  logStage(queryId: string, stage: string, durationMs: number, metadata?: Record<string, unknown>): void {\n    this.log('debug', `stage_${stage}`, {\n      queryId,\n      duration: durationMs,\n      metadata,\n    });\n  }\n\n  /**\n   * Log a warning.\n   */\n  warn(queryId: string, message: string, metadata?: Record<string, unknown>): void {\n    this.log('warn', message, { queryId, metadata });\n  }\n\n  /**\n   * Log an error.\n   */\n  error(queryId: string, message: string, error?: Error): void {\n    this.log('error', message, {\n      queryId,\n      metadata: error ? { error: error.message, stack: error.stack } : undefined,\n    });\n  }\n\n  private log(\n    level: LogLevel,\n    event: string,\n    data: Partial<QueryLogEntry>\n  ): void {\n    if (LOG_LEVELS[level] < LOG_LEVELS[this.config.level]) {\n      return;\n    }\n\n    const entry: QueryLogEntry = {\n      timestamp: new Date().toISOString(),\n      queryId: data.queryId ?? 'unknown',\n      level,\n      event,\n      ...data,\n    };\n\n    // Console output\n    if (this.config.console) {\n      const prefix = this.config.timestamps ? `[${entry.timestamp}] ` : '';\n      const msg = `${prefix}[${level.toUpperCase()}] ${event} - ${JSON.stringify(data)}`;\n      console.log(msg);\n    }\n\n    // File output\n    if (this.config.filePath) {\n      appendFileSync(this.config.filePath, JSON.stringify(entry) + '\\n');\n    }\n\n    // Callback\n    if (this.config.callback) {\n      this.config.callback(entry);\n    }\n  }\n\n  /**\n   * Generate a unique query ID.\n   */\n  static generateQueryId(): string {\n    return `q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add unit tests",
+          "details": "Create tests/unit/search/QueryLogger.test.ts"
+        }
+      ],
+      "acceptanceCriteria": [
+        "QueryLogger class implemented",
+        "Console logging works with configurable level",
+        "File logging appends JSON lines",
+        "Callback logging invokes custom function",
+        "Log levels filter appropriately",
+        "Query ID generation works"
+      ]
+    },
+    {
+      "id": "1.6.2",
+      "category": "types",
+      "title": "Create QueryTrace Type",
+      "description": "Define trace structure: queryId, queryText, queryType, startTime, endTime, duration, resultCount, stages[] (per-stage timing).",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/search.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Define structured type for complete query trace information.",
+        "keyDecisions": [
+          "Capture full lifecycle from start to end",
+          "Include per-stage breakdown",
+          "Support metadata for debugging"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/types/search.ts",
+          "code": "/**\n * Search Types\n *\n * Type definitions for search operations, tracing, and explanation.\n *\n * @module types/search\n */\n\n/**\n * Complete trace of a search query execution.\n */\nexport interface QueryTrace {\n  /** Unique identifier for this query */\n  queryId: string;\n  /** Original query text */\n  queryText: string;\n  /** Type of search performed */\n  queryType: 'basic' | 'fuzzy' | 'boolean' | 'ranked' | 'bm25' | 'semantic' | 'hybrid';\n  /** ISO 8601 timestamp when query started */\n  startTime: string;\n  /** ISO 8601 timestamp when query completed */\n  endTime: string;\n  /** Total duration in milliseconds */\n  durationMs: number;\n  /** Number of results returned */\n  resultCount: number;\n  /** Breakdown of time spent in each stage */\n  stages: QueryStage[];\n  /** Additional metadata */\n  metadata?: Record<string, unknown>;\n}\n\n/**\n * A single stage in query execution.\n */\nexport interface QueryStage {\n  /** Name of this stage */\n  name: string;\n  /** Duration in milliseconds */\n  durationMs: number;\n  /** Items processed in this stage */\n  itemsProcessed?: number;\n  /** Additional stage-specific data */\n  metadata?: Record<string, unknown>;\n}\n\n/**\n * Builder for creating QueryTrace objects.\n */\nexport class QueryTraceBuilder {\n  private trace: Partial<QueryTrace>;\n  private stageStart?: number;\n\n  constructor(queryId: string, queryText: string, queryType: QueryTrace['queryType']) {\n    this.trace = {\n      queryId,\n      queryText,\n      queryType,\n      startTime: new Date().toISOString(),\n      stages: [],\n    };\n  }\n\n  startStage(name: string): this {\n    this.stageStart = performance.now();\n    return this;\n  }\n\n  endStage(name: string, metadata?: Record<string, unknown>): this {\n    if (this.stageStart !== undefined) {\n      this.trace.stages!.push({\n        name,\n        durationMs: performance.now() - this.stageStart,\n        metadata,\n      });\n      this.stageStart = undefined;\n    }\n    return this;\n  }\n\n  complete(resultCount: number): QueryTrace {\n    const endTime = new Date();\n    const startTime = new Date(this.trace.startTime!);\n\n    return {\n      ...this.trace,\n      endTime: endTime.toISOString(),\n      durationMs: endTime.getTime() - startTime.getTime(),\n      resultCount,\n    } as QueryTrace;\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export from types/index.ts",
+          "details": "Add export for search types"
+        }
+      ],
+      "acceptanceCriteria": [
+        "QueryTrace interface defined",
+        "QueryStage interface defined",
+        "QueryTraceBuilder works for building traces",
+        "Types exported from types/index.ts"
+      ]
+    },
+    {
+      "id": "1.6.3",
+      "category": "search",
+      "title": "Integrate Logger with SearchManager",
+      "description": "Add optional logger to SearchManager constructor. Log at start and end of each search. Emit trace events for subscribers.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Automatically log all searches through SearchManager.",
+        "keyDecisions": [
+          "Logger is optional (off by default)",
+          "Create trace for each search",
+          "Emit events for trace subscribers"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add logger to SearchManager constructor",
+          "code": "import { QueryLogger } from './QueryLogger.js';\nimport { QueryTrace, QueryTraceBuilder } from '../types/search.js';\n\nexport interface SearchManagerConfig {\n  // ... existing config\n  logger?: QueryLogger;\n  enableTracing?: boolean;\n}\n\nexport class SearchManager {\n  private readonly logger?: QueryLogger;\n  private readonly enableTracing: boolean;\n  private traceListeners: ((trace: QueryTrace) => void)[] = [];\n\n  constructor(storage: IGraphStorage, config?: SearchManagerConfig) {\n    // ... existing init\n    this.logger = config?.logger;\n    this.enableTracing = config?.enableTracing ?? false;\n  }\n\n  /**\n   * Subscribe to query traces.\n   */\n  onTrace(listener: (trace: QueryTrace) => void): () => void {\n    this.traceListeners.push(listener);\n    return () => {\n      const idx = this.traceListeners.indexOf(listener);\n      if (idx >= 0) this.traceListeners.splice(idx, 1);\n    };\n  }\n\n  private emitTrace(trace: QueryTrace): void {\n    for (const listener of this.traceListeners) {\n      listener(trace);\n    }\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Wrap search methods with logging",
+          "code": "async search(query: string, options?: SearchOptions): Promise<Entity[]> {\n  const queryId = QueryLogger.generateQueryId();\n  const traceBuilder = this.enableTracing \n    ? new QueryTraceBuilder(queryId, query, 'basic') \n    : undefined;\n\n  this.logger?.logQueryStart(queryId, query, 'basic');\n  const startTime = performance.now();\n\n  try {\n    traceBuilder?.startStage('search');\n    const results = await this.basicSearch.search(query, options);\n    traceBuilder?.endStage('search', { count: results.length });\n\n    const duration = performance.now() - startTime;\n    this.logger?.logQueryEnd(queryId, duration, results.length);\n\n    if (traceBuilder) {\n      const trace = traceBuilder.complete(results.length);\n      this.emitTrace(trace);\n    }\n\n    return results;\n  } catch (error) {\n    this.logger?.error(queryId, 'Search failed', error as Error);\n    throw error;\n  }\n}"
+        },
+        {
+          "step": 3,
+          "action": "Apply logging to all search methods",
+          "details": "Add logging to rankedSearch, fuzzySearch, booleanSearch, bm25Search, etc."
+        }
+      ],
+      "acceptanceCriteria": [
+        "Logger accepted in SearchManager constructor",
+        "All search methods log start/end",
+        "Trace events emitted to subscribers",
+        "Errors logged appropriately",
+        "Tracing is optional and disabled by default"
+      ]
+    },
+    {
+      "id": "1.6.4",
+      "category": "search",
+      "title": "Add Query Tracing to Search Stages",
+      "description": "Trace each search stage: parsing, index lookup, scoring, ranking, filtering. Record timing for each. Include in QueryTrace.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts", "src/search/RankedSearch.ts", "src/search/BM25Search.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Provide detailed per-stage timing for performance analysis.",
+        "keyDecisions": [
+          "Instrument key stages in each search type",
+          "Keep overhead minimal when tracing disabled",
+          "Include item counts where relevant"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add stage tracing to RankedSearch",
+          "code": "async search(query: string, options?: RankedSearchOptions): Promise<ScoredEntity[]> {\n  const traceBuilder = options?.traceBuilder;\n\n  // Stage 1: Tokenize query\n  traceBuilder?.startStage('tokenize');\n  const tokens = this.tokenize(query);\n  traceBuilder?.endStage('tokenize', { tokenCount: tokens.length });\n\n  // Stage 2: Get candidates from index\n  traceBuilder?.startStage('index_lookup');\n  const candidates = this.getCandidates(tokens);\n  traceBuilder?.endStage('index_lookup', { candidateCount: candidates.length });\n\n  // Stage 3: Score candidates\n  traceBuilder?.startStage('scoring');\n  const scored = this.scoreDocuments(candidates, tokens);\n  traceBuilder?.endStage('scoring', { scoredCount: scored.length });\n\n  // Stage 4: Rank and limit\n  traceBuilder?.startStage('ranking');\n  const ranked = scored\n    .sort((a, b) => b.score - a.score)\n    .slice(0, options?.limit ?? 20);\n  traceBuilder?.endStage('ranking', { resultCount: ranked.length });\n\n  return ranked;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Add stage tracing to other search types",
+          "details": "Similar instrumentation for BM25Search, FuzzySearch, HybridSearchManager"
+        },
+        {
+          "step": 3,
+          "action": "Pass traceBuilder through search pipeline",
+          "details": "Update SearchManager to pass traceBuilder to underlying search implementations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Tokenization stage timed",
+        "Index lookup stage timed",
+        "Scoring stage timed",
+        "Ranking stage timed",
+        "All stages included in QueryTrace",
+        "Item counts recorded per stage"
+      ]
+    },
+    {
+      "id": "1.6.5",
+      "category": "config",
+      "title": "Add Environment Configuration",
+      "description": "Support MEMORY_QUERY_LOGGING=true, MEMORY_QUERY_LOG_FILE=queries.log, MEMORY_QUERY_LOG_LEVEL=debug. Document in CLAUDE.md.",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/search/QueryLogger.ts", "CLAUDE.md"],
+      "testCategories": ["integration"],
+      "implementation": {
+        "purpose": "Enable query logging via environment variables.",
+        "keyDecisions": [
+          "Defaults to disabled for no overhead",
+          "File logging optional",
+          "Level configurable"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Verify env var handling in QueryLogger",
+          "details": "Already implemented in task 1.6.1, verify it works"
+        },
+        {
+          "step": 2,
+          "action": "Update CLAUDE.md with new env vars",
+          "code": "### Query Logging\n| Variable | Values | Default |\n|----------|--------|---------|\n| `MEMORY_QUERY_LOGGING` | `true`, `false` | `false` |\n| `MEMORY_QUERY_LOG_FILE` | File path | - |\n| `MEMORY_QUERY_LOG_LEVEL` | `debug`, `info`, `warn`, `error` | `info` |"
+        },
+        {
+          "step": 3,
+          "action": "Add integration test for env-based logging",
+          "details": "Test that setting env vars enables logging"
+        }
+      ],
+      "acceptanceCriteria": [
+        "MEMORY_QUERY_LOGGING=true enables console logging",
+        "MEMORY_QUERY_LOG_FILE enables file logging",
+        "MEMORY_QUERY_LOG_LEVEL controls verbosity",
+        "CLAUDE.md updated with documentation"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "QueryLogger implemented with multiple outputs",
+    "QueryTrace type captures full search lifecycle",
+    "SearchManager integrates logging",
+    "Per-stage tracing provides timing breakdown",
+    "Environment configuration documented"
+  ],
+  "filesCreated": [
+    "src/search/QueryLogger.ts",
+    "src/types/search.ts",
+    "tests/unit/search/QueryLogger.test.ts"
+  ],
+  "filesModified": [
+    "src/search/SearchManager.ts",
+    "src/search/RankedSearch.ts",
+    "src/search/BM25Search.ts",
+    "src/types/index.ts",
+    "CLAUDE.md"
+  ],
+  "totalNewTests": 15,
+  "totalEstimatedHours": 5,
+  "dependencies": [],
+  "notes": [
+    "Logging is opt-in to avoid performance overhead",
+    "File logging uses append for continuous operation",
+    "Trace listeners enable custom analytics",
+    "Stage timing helps identify bottlenecks"
+  ]
+}

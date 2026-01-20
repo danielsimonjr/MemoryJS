@@ -1,0 +1,282 @@
+{
+  "phase": 1,
+  "sprint": 5,
+  "title": "Relation Properties Storage Integration",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "impact": "Integrates relation metadata with storage backends and CRUD operations enabling weighted and temporal relation queries",
+  "targetMetrics": {
+    "storagePersistence": {
+      "current": "Basic relation fields only",
+      "target": "Full metadata persistence in both JSONL and SQLite"
+    },
+    "queryCapabilities": {
+      "current": "Query by from/to/type only",
+      "target": "Query by weight, properties, temporal validity"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.5.1",
+      "category": "storage",
+      "title": "Update GraphStorage for Relation Metadata",
+      "description": "Modify JSONL storage to persist relation metadata. Ensure backward compatibility (read relations without metadata). Handle serialization.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/core/GraphStorage.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Persist relation metadata to JSONL storage format.",
+        "keyDecisions": [
+          "Metadata serialized as part of relation JSON line",
+          "Old files without metadata load correctly",
+          "Undefined fields not written to save space"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Locate relation serialization in GraphStorage",
+          "details": "Find where relations are written to JSONL"
+        },
+        {
+          "step": 2,
+          "action": "Update relation serialization",
+          "code": "// When writing a relation to JSONL:\nprivate serializeRelation(relation: Relation): string {\n  const serialized: Record<string, unknown> = {\n    type: 'relation',\n    from: relation.from,\n    to: relation.to,\n    relationType: relation.relationType,\n  };\n\n  // Only include optional fields if present\n  if (relation.weight !== undefined) serialized.weight = relation.weight;\n  if (relation.confidence !== undefined) serialized.confidence = relation.confidence;\n  if (relation.properties) serialized.properties = relation.properties;\n  if (relation.metadata) serialized.metadata = relation.metadata;\n  if (relation.createdAt) serialized.createdAt = relation.createdAt;\n  if (relation.lastModified) serialized.lastModified = relation.lastModified;\n\n  return JSON.stringify(serialized);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Update relation deserialization",
+          "code": "// When reading a relation from JSONL:\nprivate deserializeRelation(line: string): Relation {\n  const data = JSON.parse(line);\n  \n  const relation: Relation = {\n    from: data.from,\n    to: data.to,\n    relationType: data.relationType,\n  };\n\n  // Load optional fields if present (backward compatible)\n  if (data.weight !== undefined) relation.weight = data.weight;\n  if (data.confidence !== undefined) relation.confidence = data.confidence;\n  if (data.properties) relation.properties = data.properties;\n  if (data.metadata) relation.metadata = data.metadata;\n  if (data.createdAt) relation.createdAt = data.createdAt;\n  if (data.lastModified) relation.lastModified = data.lastModified;\n\n  return relation;\n}"
+        },
+        {
+          "step": 4,
+          "action": "Test with existing JSONL files",
+          "details": "Verify old files load correctly"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Relation metadata persisted to JSONL",
+        "Old JSONL files without metadata load correctly",
+        "Undefined fields not serialized",
+        "Round-trip preserves all metadata",
+        "npm run test passes"
+      ]
+    },
+    {
+      "id": "1.5.2",
+      "category": "storage",
+      "title": "Update SQLiteStorage for Relation Metadata",
+      "description": "Add metadata column (JSON) to relations table. Handle null for relations without metadata. Add index on weight for weighted queries.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/core/SQLiteStorage.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Persist relation metadata to SQLite with efficient querying.",
+        "keyDecisions": [
+          "Store metadata as JSON text column",
+          "Add separate weight column for efficient queries",
+          "Add confidence column for efficient queries",
+          "Handle schema migration for existing DBs"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update relations table schema",
+          "code": "// Schema update for relations table:\nCREATE TABLE IF NOT EXISTS relations (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  from_entity TEXT NOT NULL,\n  to_entity TEXT NOT NULL,\n  relation_type TEXT NOT NULL,\n  weight REAL,\n  confidence REAL,\n  properties TEXT,  -- JSON\n  metadata TEXT,    -- JSON\n  created_at TEXT,\n  last_modified TEXT,\n  UNIQUE(from_entity, to_entity, relation_type)\n);\n\n-- Index for weighted queries\nCREATE INDEX IF NOT EXISTS idx_relations_weight ON relations(weight);\nCREATE INDEX IF NOT EXISTS idx_relations_confidence ON relations(confidence);"
+        },
+        {
+          "step": 2,
+          "action": "Implement schema migration",
+          "code": "// Check if columns exist and add if not:\nprivate migrateRelationsTable(): void {\n  const columns = this.db.pragma('table_info(relations)') as Array<{ name: string }>;\n  const columnNames = columns.map(c => c.name);\n\n  if (!columnNames.includes('weight')) {\n    this.db.exec('ALTER TABLE relations ADD COLUMN weight REAL');\n  }\n  if (!columnNames.includes('confidence')) {\n    this.db.exec('ALTER TABLE relations ADD COLUMN confidence REAL');\n  }\n  if (!columnNames.includes('properties')) {\n    this.db.exec('ALTER TABLE relations ADD COLUMN properties TEXT');\n  }\n  if (!columnNames.includes('metadata')) {\n    this.db.exec('ALTER TABLE relations ADD COLUMN metadata TEXT');\n  }\n  if (!columnNames.includes('created_at')) {\n    this.db.exec('ALTER TABLE relations ADD COLUMN created_at TEXT');\n  }\n  if (!columnNames.includes('last_modified')) {\n    this.db.exec('ALTER TABLE relations ADD COLUMN last_modified TEXT');\n  }\n}"
+        },
+        {
+          "step": 3,
+          "action": "Update INSERT/UPDATE statements",
+          "code": "// Insert relation with metadata:\nconst insertRelation = this.db.prepare(`\n  INSERT INTO relations (from_entity, to_entity, relation_type, weight, confidence, properties, metadata, created_at, last_modified)\n  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)\n`);\n\ninsertRelation.run(\n  relation.from,\n  relation.to,\n  relation.relationType,\n  relation.weight ?? null,\n  relation.confidence ?? null,\n  relation.properties ? JSON.stringify(relation.properties) : null,\n  relation.metadata ? JSON.stringify(relation.metadata) : null,\n  relation.createdAt ?? new Date().toISOString(),\n  relation.lastModified ?? new Date().toISOString()\n);"
+        },
+        {
+          "step": 4,
+          "action": "Update SELECT statements",
+          "code": "// Read relation with metadata:\nprivate rowToRelation(row: any): Relation {\n  const relation: Relation = {\n    from: row.from_entity,\n    to: row.to_entity,\n    relationType: row.relation_type,\n  };\n\n  if (row.weight !== null) relation.weight = row.weight;\n  if (row.confidence !== null) relation.confidence = row.confidence;\n  if (row.properties) relation.properties = JSON.parse(row.properties);\n  if (row.metadata) relation.metadata = JSON.parse(row.metadata);\n  if (row.created_at) relation.createdAt = row.created_at;\n  if (row.last_modified) relation.lastModified = row.last_modified;\n\n  return relation;\n}"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SQLite schema includes metadata columns",
+        "Schema migration runs for existing DBs",
+        "Metadata stored as JSON",
+        "weight/confidence indexed for queries",
+        "Round-trip preserves all metadata"
+      ]
+    },
+    {
+      "id": "1.5.3",
+      "category": "core",
+      "title": "Update RelationManager CRUD",
+      "description": "Update createRelation() to accept metadata. Update updateRelation() to modify metadata. Add getRelationsByWeight() query.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/RelationManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Enable metadata handling through the RelationManager API.",
+        "keyDecisions": [
+          "createRelation accepts full Relation object",
+          "updateRelation can modify any field",
+          "Add convenience methods for common queries"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update createRelation signature",
+          "code": "/**\n * Create a new relation between entities.\n *\n * @param from - Source entity name\n * @param to - Target entity name\n * @param relationType - Type of relation\n * @param options - Optional metadata and properties\n */\nasync createRelation(\n  from: string,\n  to: string,\n  relationType: string,\n  options?: {\n    weight?: number;\n    confidence?: number;\n    properties?: RelationProperties;\n    metadata?: Record<string, unknown>;\n  }\n): Promise<Relation> {\n  const relation: Relation = {\n    from,\n    to,\n    relationType,\n    ...options,\n    createdAt: new Date().toISOString(),\n  };\n\n  // Validate before creating\n  const validation = validateRelation(relation);\n  if (!validation.isValid) {\n    throw new ValidationError(\n      `Invalid relation: ${validation.errors.map(e => e.message).join(', ')}`\n    );\n  }\n\n  return this.storage.createRelation(relation);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement updateRelation method",
+          "code": "/**\n * Update an existing relation.\n *\n * @param from - Source entity name\n * @param to - Target entity name\n * @param relationType - Type of relation\n * @param updates - Fields to update\n */\nasync updateRelation(\n  from: string,\n  to: string,\n  relationType: string,\n  updates: Partial<Omit<Relation, 'from' | 'to' | 'relationType'>>\n): Promise<Relation> {\n  const existing = this.getRelation(from, to, relationType);\n  if (!existing) {\n    throw new Error(`Relation not found: ${from} --[${relationType}]--> ${to}`);\n  }\n\n  const updated: Relation = {\n    ...existing,\n    ...updates,\n    lastModified: new Date().toISOString(),\n  };\n\n  // Validate before updating\n  const validation = validateRelation(updated);\n  if (!validation.isValid) {\n    throw new ValidationError(\n      `Invalid relation: ${validation.errors.map(e => e.message).join(', ')}`\n    );\n  }\n\n  return this.storage.updateRelation(updated);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add tests for CRUD with metadata",
+          "details": "Test create and update with all metadata fields"
+        }
+      ],
+      "acceptanceCriteria": [
+        "createRelation accepts metadata options",
+        "updateRelation modifies metadata",
+        "Validation runs on create/update",
+        "createdAt/lastModified timestamps set",
+        "Unit tests pass"
+      ]
+    },
+    {
+      "id": "1.5.4",
+      "category": "core",
+      "title": "Add Relation Property Queries",
+      "description": "Add getRelationsWithProperty(key, value). Add getWeightedRelations(minWeight). Add getBidirectionalRelations(). Add getTemporallyValidRelations(date).",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/core/RelationManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Enable querying relations by their metadata properties.",
+        "keyDecisions": [
+          "Efficient filtering using indexes where possible",
+          "Support common query patterns as convenience methods",
+          "Generic getRelationsWithProperty for custom queries"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement getWeightedRelations",
+          "code": "/**\n * Get relations with weight >= minWeight.\n *\n * @param minWeight - Minimum weight threshold (0-1)\n * @returns Relations with weight at or above threshold\n */\ngetWeightedRelations(minWeight: number = 0): Relation[] {\n  return this.getAllRelations().filter(\n    r => r.weight !== undefined && r.weight >= minWeight\n  );\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement getBidirectionalRelations",
+          "code": "/**\n * Get all bidirectional relations.\n *\n * @returns Relations marked as bidirectional\n */\ngetBidirectionalRelations(): Relation[] {\n  return this.getAllRelations().filter(\n    r => r.properties?.bidirectional === true\n  );\n}"
+        },
+        {
+          "step": 3,
+          "action": "Implement getTemporallyValidRelations",
+          "code": "/**\n * Get relations valid at a specific date.\n *\n * @param date - Date to check validity (defaults to now)\n * @returns Relations valid at the specified date\n */\ngetTemporallyValidRelations(date: Date = new Date()): Relation[] {\n  const dateStr = date.toISOString();\n  \n  return this.getAllRelations().filter(r => {\n    const validFrom = r.properties?.validFrom;\n    const validUntil = r.properties?.validUntil;\n\n    // No temporal constraints = always valid\n    if (!validFrom && !validUntil) return true;\n\n    // Check validFrom\n    if (validFrom && dateStr < validFrom) return false;\n\n    // Check validUntil\n    if (validUntil && dateStr > validUntil) return false;\n\n    return true;\n  });\n}"
+        },
+        {
+          "step": 4,
+          "action": "Implement generic property query",
+          "code": "/**\n * Get relations matching a property condition.\n *\n * @param predicate - Function to test each relation\n * @returns Relations matching the predicate\n */\ngetRelationsWhere(predicate: (relation: Relation) => boolean): Relation[] {\n  return this.getAllRelations().filter(predicate);\n}\n\n/**\n * Get relations with specific metadata key-value.\n *\n * @param key - Metadata key to match\n * @param value - Value to match (deep equality)\n */\ngetRelationsWithMetadata(key: string, value: unknown): Relation[] {\n  return this.getAllRelations().filter(\n    r => r.metadata?.[key] === value\n  );\n}"
+        }
+      ],
+      "acceptanceCriteria": [
+        "getWeightedRelations returns relations above threshold",
+        "getBidirectionalRelations returns symmetric relations",
+        "getTemporallyValidRelations filters by date",
+        "Generic query methods work",
+        "Unit tests cover all query methods"
+      ]
+    },
+    {
+      "id": "1.5.5",
+      "category": "cli",
+      "title": "Update CLI for Relation Metadata",
+      "description": "Update relation create to accept --weight, --meta key=value. Update relation list to show metadata in output. Add --weighted filter.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/cli/commands/relation.ts", "src/cli/formatters.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Expose relation metadata capabilities through CLI.",
+        "keyDecisions": [
+          "--weight flag for setting weight",
+          "--meta key=value for arbitrary metadata",
+          "--confidence for confidence score",
+          "Table format shows weight/confidence columns"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Update relation create command",
+          "code": "relation\n  .command('create <from> <to>')\n  .description('Create a new relation')\n  .requiredOption('-t, --type <type>', 'Relation type')\n  .option('-w, --weight <n>', 'Relation weight (0-1)', parseFloat)\n  .option('-c, --confidence <n>', 'Confidence score (0-1)', parseFloat)\n  .option('--bidirectional', 'Mark as bidirectional relation')\n  .option('--meta <key=value>', 'Add metadata (repeatable)', collectKeyValue, {})\n  .action(async (from: string, to: string, opts: Record<string, unknown>, cmd: Command) => {\n    const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n    const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n    try {\n      const properties: RelationProperties = {};\n      if (opts.bidirectional) properties.bidirectional = true;\n\n      const relation = await ctx.relationManager.createRelation(\n        from,\n        to,\n        opts.type as string,\n        {\n          weight: opts.weight as number | undefined,\n          confidence: opts.confidence as number | undefined,\n          properties: Object.keys(properties).length > 0 ? properties : undefined,\n          metadata: Object.keys(opts.meta as object).length > 0 ? opts.meta as Record<string, unknown> : undefined,\n        }\n      );\n\n      console.log(formatRelations([relation], globalOpts.format));\n    } catch (error) {\n      console.error(`Failed to create relation: ${(error as Error).message}`);\n      process.exit(1);\n    }\n  });\n\nfunction collectKeyValue(value: string, previous: Record<string, string>): Record<string, string> {\n  const [key, val] = value.split('=');\n  return { ...previous, [key]: val };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Update relation list with filters",
+          "code": "relation\n  .command('list')\n  .description('List relations')\n  .option('--from <entity>', 'Filter by source entity')\n  .option('--to <entity>', 'Filter by target entity')\n  .option('-t, --type <type>', 'Filter by relation type')\n  .option('--weighted', 'Only show weighted relations')\n  .option('--min-weight <n>', 'Minimum weight', parseFloat)\n  .option('--bidirectional', 'Only show bidirectional relations')\n  .option('-l, --limit <n>', 'Maximum results', parseInt, 50)\n  .action(async (opts: Record<string, unknown>, cmd: Command) => {\n    // ... filtering logic including new metadata filters\n  });"
+        },
+        {
+          "step": 3,
+          "action": "Update formatRelations for metadata display",
+          "code": "// In formatters.ts, update table format:\ncase 'table': {\n  const hasWeights = relations.some(r => r.weight !== undefined);\n  const hasConfidence = relations.some(r => r.confidence !== undefined);\n\n  const head = [chalk.cyan('From'), chalk.cyan('Relation'), chalk.cyan('To')];\n  if (hasWeights) head.push(chalk.cyan('Weight'));\n  if (hasConfidence) head.push(chalk.cyan('Conf'));\n\n  const table = new Table({ head });\n\n  for (const rel of relations) {\n    const row = [rel.from, rel.relationType, rel.to];\n    if (hasWeights) row.push(rel.weight?.toFixed(2) ?? '-');\n    if (hasConfidence) row.push(rel.confidence?.toFixed(2) ?? '-');\n    table.push(row);\n  }\n\n  return table.toString();\n}"
+        }
+      ],
+      "acceptanceCriteria": [
+        "relation create accepts --weight and --confidence",
+        "relation create accepts --meta key=value (repeatable)",
+        "relation create accepts --bidirectional",
+        "relation list shows weight/confidence columns when present",
+        "relation list filters by --weighted, --min-weight, --bidirectional"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "JSONL storage persists relation metadata",
+    "SQLite storage persists relation metadata with indexes",
+    "RelationManager CRUD handles metadata",
+    "Property query methods work correctly",
+    "CLI supports metadata on create and list",
+    "Backward compatible with existing data"
+  ],
+  "filesCreated": [
+    "tests/unit/core/RelationManager.metadata.test.ts",
+    "tests/integration/relation-metadata.test.ts"
+  ],
+  "filesModified": [
+    "src/core/GraphStorage.ts",
+    "src/core/SQLiteStorage.ts",
+    "src/core/RelationManager.ts",
+    "src/cli/commands/relation.ts",
+    "src/cli/formatters.ts"
+  ],
+  "totalNewTests": 25,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 4 - Relation Metadata Types"],
+  "notes": [
+    "SQLite indexes on weight/confidence enable efficient queries",
+    "Schema migration handles existing databases",
+    "Validation runs on all create/update operations",
+    "CLI exposes full metadata capabilities"
+  ]
+}

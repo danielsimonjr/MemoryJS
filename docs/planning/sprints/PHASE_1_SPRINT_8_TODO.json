@@ -1,0 +1,259 @@
+{
+  "phase": 1,
+  "sprint": 8,
+  "title": "Full-Text Search Operators",
+  "priority": "MEDIUM",
+  "effort": "7 hours",
+  "status": "pending",
+  "impact": "Adds powerful search operators for phrase search, wildcards, proximity, and field-specific queries",
+  "targetMetrics": {
+    "searchPrecision": {
+      "current": "Basic term matching only",
+      "target": "Phrase, wildcard, proximity, and field-specific matching"
+    },
+    "queryExpressiveness": {
+      "current": "Simple keyword queries",
+      "target": "Rich query syntax with multiple operators"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.8.1",
+      "category": "search",
+      "title": "Implement Phrase Search",
+      "description": "Support \"exact phrase\" syntax. Match consecutive terms in order. Integrate with existing search parsers.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/QueryParser.ts", "src/search/BooleanSearch.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Enable exact phrase matching in search queries.",
+        "keyDecisions": [
+          "Quotes delimit phrases",
+          "Terms must appear consecutively",
+          "Case insensitive by default",
+          "Works within boolean expressions"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create or update src/search/QueryParser.ts",
+          "code": "/**\n * Query Parser\n *\n * Parses search query strings into structured query objects.\n * Supports: phrases (\"...\"), wildcards (*?), proximity (~N), fields (field:).\n *\n * @module search/QueryParser\n */\n\nexport type QueryNode = \n  | TermNode \n  | PhraseNode \n  | WildcardNode \n  | ProximityNode \n  | FieldNode \n  | BooleanNode;\n\nexport interface TermNode {\n  type: 'term';\n  value: string;\n}\n\nexport interface PhraseNode {\n  type: 'phrase';\n  terms: string[];\n}\n\nexport interface WildcardNode {\n  type: 'wildcard';\n  pattern: string;\n  regex: RegExp;\n}\n\nexport interface ProximityNode {\n  type: 'proximity';\n  terms: string[];\n  distance: number;\n}\n\nexport interface FieldNode {\n  type: 'field';\n  field: string;\n  query: QueryNode;\n}\n\nexport interface BooleanNode {\n  type: 'boolean';\n  operator: 'AND' | 'OR' | 'NOT';\n  operands: QueryNode[];\n}\n\nexport class QueryParser {\n  /**\n   * Parse a query string into a QueryNode tree.\n   */\n  parse(query: string): QueryNode {\n    const tokens = this.tokenize(query);\n    return this.parseTokens(tokens);\n  }\n\n  private tokenize(query: string): string[] {\n    const tokens: string[] = [];\n    let current = '';\n    let inQuotes = false;\n\n    for (let i = 0; i < query.length; i++) {\n      const char = query[i];\n\n      if (char === '\"') {\n        if (inQuotes) {\n          // End of phrase\n          tokens.push(`\"${current}\"`);\n          current = '';\n        }\n        inQuotes = !inQuotes;\n      } else if (char === ' ' && !inQuotes) {\n        if (current) {\n          tokens.push(current);\n          current = '';\n        }\n      } else {\n        current += char;\n      }\n    }\n\n    if (current) {\n      tokens.push(current);\n    }\n\n    return tokens;\n  }\n\n  private parseTokens(tokens: string[]): QueryNode {\n    // Handle single token\n    if (tokens.length === 1) {\n      return this.parseToken(tokens[0]);\n    }\n\n    // Default to AND for multiple tokens\n    const operands = tokens.map(t => this.parseToken(t));\n    return {\n      type: 'boolean',\n      operator: 'AND',\n      operands,\n    };\n  }\n\n  private parseToken(token: string): QueryNode {\n    // Phrase: \"exact phrase\"\n    if (token.startsWith('\"') && token.endsWith('\"')) {\n      const phrase = token.slice(1, -1);\n      return {\n        type: 'phrase',\n        terms: phrase.toLowerCase().split(/\\s+/),\n      };\n    }\n\n    // Proximity: \"term1 term2\"~5\n    const proximityMatch = token.match(/^\"(.+)\"~(\\d+)$/);\n    if (proximityMatch) {\n      return {\n        type: 'proximity',\n        terms: proximityMatch[1].toLowerCase().split(/\\s+/),\n        distance: parseInt(proximityMatch[2]),\n      };\n    }\n\n    // Field: field:value\n    const fieldMatch = token.match(/^(\\w+):(.+)$/);\n    if (fieldMatch) {\n      return {\n        type: 'field',\n        field: fieldMatch[1],\n        query: this.parseToken(fieldMatch[2]),\n      };\n    }\n\n    // Wildcard: contains * or ?\n    if (token.includes('*') || token.includes('?')) {\n      return {\n        type: 'wildcard',\n        pattern: token,\n        regex: this.wildcardToRegex(token),\n      };\n    }\n\n    // Plain term\n    return {\n      type: 'term',\n      value: token.toLowerCase(),\n    };\n  }\n\n  private wildcardToRegex(pattern: string): RegExp {\n    const escaped = pattern\n      .replace(/[.+^${}()|[\\]\\\\]/g, '\\\\$&')\n      .replace(/\\*/g, '.*')\n      .replace(/\\?/g, '.');\n    return new RegExp(`^${escaped}$`, 'i');\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement phrase matching in search",
+          "code": "/**\n * Check if text contains the phrase (terms in order).\n */\nfunction matchesPhrase(text: string, terms: string[]): boolean {\n  const lowerText = text.toLowerCase();\n  const words = lowerText.split(/\\s+/);\n  \n  for (let i = 0; i <= words.length - terms.length; i++) {\n    let match = true;\n    for (let j = 0; j < terms.length; j++) {\n      if (words[i + j] !== terms[j]) {\n        match = false;\n        break;\n      }\n    }\n    if (match) return true;\n  }\n  \n  return false;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Integrate with BooleanSearch",
+          "details": "Update BooleanSearch to use QueryParser and handle PhraseNode"
+        }
+      ],
+      "acceptanceCriteria": [
+        "\"exact phrase\" syntax recognized",
+        "Phrase terms must appear consecutively",
+        "Phrase matching is case insensitive",
+        "Phrases work in boolean expressions",
+        "Unit tests for phrase matching"
+      ]
+    },
+    {
+      "id": "1.8.2",
+      "category": "search",
+      "title": "Implement Wildcard Search",
+      "description": "Support * (any characters) and ? (single character). Convert to regex for matching. Optimize common patterns.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/BasicSearch.ts", "src/search/QueryParser.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Enable pattern matching with wildcards.",
+        "keyDecisions": [
+          "* matches any number of characters",
+          "? matches exactly one character",
+          "Convert to regex for execution",
+          "Optimize prefix patterns (foo*)"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement wildcard matching in BasicSearch",
+          "code": "/**\n * Match entity against wildcard pattern.\n */\nprivate matchesWildcard(entity: Entity, node: WildcardNode): boolean {\n  // Check entity name\n  if (node.regex.test(entity.name)) return true;\n\n  // Check entity type\n  if (node.regex.test(entity.entityType)) return true;\n\n  // Check observations\n  for (const obs of entity.observations || []) {\n    // For wildcard, check each word\n    const words = obs.split(/\\s+/);\n    for (const word of words) {\n      if (node.regex.test(word)) return true;\n    }\n  }\n\n  // Check tags\n  for (const tag of entity.tags || []) {\n    if (node.regex.test(tag)) return true;\n  }\n\n  return false;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Optimize prefix wildcards",
+          "code": "/**\n * Check if pattern is a simple prefix (e.g., 'foo*').\n * Prefix patterns can use faster string operations.\n */\nfunction isPrefixPattern(pattern: string): boolean {\n  const starIndex = pattern.indexOf('*');\n  return starIndex === pattern.length - 1 && !pattern.includes('?');\n}\n\nfunction matchesPrefix(text: string, pattern: string): boolean {\n  const prefix = pattern.slice(0, -1).toLowerCase();\n  return text.toLowerCase().startsWith(prefix);\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add wildcard support to search API",
+          "details": "Ensure wildcards work through SearchManager"
+        }
+      ],
+      "acceptanceCriteria": [
+        "* matches any characters",
+        "? matches single character",
+        "Wildcards work in entity names, types, observations, tags",
+        "Prefix patterns optimized",
+        "Unit tests for wildcard matching"
+      ]
+    },
+    {
+      "id": "1.8.3",
+      "category": "search",
+      "title": "Implement Proximity Search",
+      "description": "Support \"term1 term2\"~N syntax (terms within N words). Calculate word distance. Score based on proximity.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/ProximitySearch.ts", "src/search/QueryParser.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Find documents where terms appear near each other.",
+        "keyDecisions": [
+          "Distance measured in word positions",
+          "Order doesn't matter (unless phrase)",
+          "Closer matches score higher"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/search/ProximitySearch.ts",
+          "code": "/**\n * Proximity Search\n *\n * Finds entities where terms appear within a specified distance.\n *\n * @module search/ProximitySearch\n */\n\nimport type { Entity } from '../types/types.js';\nimport type { ProximityNode } from './QueryParser.js';\n\nexport interface ProximityMatch {\n  entity: Entity;\n  score: number;\n  minDistance: number;\n  matches: ProximityMatchLocation[];\n}\n\nexport interface ProximityMatchLocation {\n  field: string;\n  positions: Map<string, number[]>; // term -> positions\n  distance: number;\n}\n\nexport class ProximitySearch {\n  /**\n   * Search for entities where terms appear within distance.\n   */\n  search(entities: Entity[], node: ProximityNode): ProximityMatch[] {\n    const results: ProximityMatch[] = [];\n\n    for (const entity of entities) {\n      const match = this.matchEntity(entity, node);\n      if (match) {\n        results.push(match);\n      }\n    }\n\n    // Sort by score (closer = higher)\n    return results.sort((a, b) => b.score - a.score);\n  }\n\n  private matchEntity(entity: Entity, node: ProximityNode): ProximityMatch | null {\n    const locations: ProximityMatchLocation[] = [];\n    let minDistance = Infinity;\n\n    // Check observations\n    for (const obs of entity.observations || []) {\n      const distance = this.findProximity(obs, node.terms);\n      if (distance !== null && distance <= node.distance) {\n        locations.push({\n          field: 'observation',\n          positions: this.getPositions(obs, node.terms),\n          distance,\n        });\n        minDistance = Math.min(minDistance, distance);\n      }\n    }\n\n    // Check name (as single text)\n    const nameDistance = this.findProximity(entity.name, node.terms);\n    if (nameDistance !== null && nameDistance <= node.distance) {\n      locations.push({\n        field: 'name',\n        positions: this.getPositions(entity.name, node.terms),\n        distance: nameDistance,\n      });\n      minDistance = Math.min(minDistance, nameDistance);\n    }\n\n    if (locations.length === 0) return null;\n\n    // Score: higher for closer matches\n    const score = 1 / (1 + minDistance);\n\n    return {\n      entity,\n      score,\n      minDistance,\n      matches: locations,\n    };\n  }\n\n  /**\n   * Find minimum distance between all terms.\n   */\n  private findProximity(text: string, terms: string[]): number | null {\n    const words = text.toLowerCase().split(/\\s+/);\n    const positions = new Map<string, number[]>();\n\n    // Find all positions of each term\n    for (const term of terms) {\n      const termPositions: number[] = [];\n      for (let i = 0; i < words.length; i++) {\n        if (words[i] === term || words[i].includes(term)) {\n          termPositions.push(i);\n        }\n      }\n      if (termPositions.length === 0) return null; // Term not found\n      positions.set(term, termPositions);\n    }\n\n    // Find minimum span containing all terms\n    return this.findMinSpan(positions, terms);\n  }\n\n  private findMinSpan(positions: Map<string, number[]>, terms: string[]): number {\n    // Use sliding window to find minimum span\n    // For simplicity, check all combinations\n    const allPositions = terms.map(t => positions.get(t)!);\n    let minSpan = Infinity;\n\n    function findMin(index: number, selected: number[]): void {\n      if (index === allPositions.length) {\n        const span = Math.max(...selected) - Math.min(...selected);\n        minSpan = Math.min(minSpan, span);\n        return;\n      }\n\n      for (const pos of allPositions[index]) {\n        findMin(index + 1, [...selected, pos]);\n      }\n    }\n\n    findMin(0, []);\n    return minSpan;\n  }\n\n  private getPositions(text: string, terms: string[]): Map<string, number[]> {\n    const words = text.toLowerCase().split(/\\s+/);\n    const positions = new Map<string, number[]>();\n\n    for (const term of terms) {\n      const termPositions: number[] = [];\n      for (let i = 0; i < words.length; i++) {\n        if (words[i] === term || words[i].includes(term)) {\n          termPositions.push(i);\n        }\n      }\n      positions.set(term, termPositions);\n    }\n\n    return positions;\n  }\n}"
+        },
+        {
+          "step": 2,
+          "action": "Integrate with SearchManager",
+          "details": "Add proximity search method to SearchManager"
+        }
+      ],
+      "acceptanceCriteria": [
+        "\"term1 term2\"~N syntax parsed correctly",
+        "Distance calculated in word positions",
+        "Returns null if terms not found",
+        "Closer matches score higher",
+        "Unit tests for proximity calculations"
+      ]
+    },
+    {
+      "id": "1.8.4",
+      "category": "search",
+      "title": "Implement Field-Specific Search",
+      "description": "Support field:value syntax. Search specific fields: name:, type:, obs: (observations), tag:.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/QueryParser.ts", "src/search/BasicSearch.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Allow targeting specific entity fields in search.",
+        "keyDecisions": [
+          "Recognize field: prefix",
+          "Map to entity properties",
+          "Support standard field aliases"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Define field mappings",
+          "code": "const FIELD_MAPPINGS: Record<string, (entity: Entity) => string[]> = {\n  name: (e) => [e.name],\n  type: (e) => [e.entityType],\n  entityType: (e) => [e.entityType],\n  obs: (e) => e.observations || [],\n  observation: (e) => e.observations || [],\n  observations: (e) => e.observations || [],\n  tag: (e) => e.tags || [],\n  tags: (e) => e.tags || [],\n};"
+        },
+        {
+          "step": 2,
+          "action": "Implement field-specific matching",
+          "code": "/**\n * Match entity against field-specific query.\n */\nprivate matchesField(entity: Entity, node: FieldNode): boolean {\n  const fieldFn = FIELD_MAPPINGS[node.field.toLowerCase()];\n  \n  if (!fieldFn) {\n    console.warn(`Unknown field: ${node.field}`);\n    return false;\n  }\n\n  const values = fieldFn(entity);\n  \n  // Match the nested query against field values\n  for (const value of values) {\n    if (this.matchesValue(value, node.query)) {\n      return true;\n    }\n  }\n\n  return false;\n}\n\nprivate matchesValue(value: string, query: QueryNode): boolean {\n  switch (query.type) {\n    case 'term':\n      return value.toLowerCase().includes(query.value);\n    case 'phrase':\n      return matchesPhrase(value, query.terms);\n    case 'wildcard':\n      return query.regex.test(value);\n    default:\n      return false;\n  }\n}"
+        },
+        {
+          "step": 3,
+          "action": "Add field search examples to docs",
+          "details": "Document supported field names and aliases"
+        }
+      ],
+      "acceptanceCriteria": [
+        "field:value syntax parsed correctly",
+        "name: searches entity names",
+        "type: searches entity types",
+        "obs: or observation: searches observations",
+        "tag: searches tags",
+        "Unknown fields produce warning"
+      ]
+    },
+    {
+      "id": "1.8.5",
+      "category": "docs",
+      "title": "Update Search Documentation",
+      "description": "Document all operators in search guide. Add examples for each operator. Update CLAUDE.md with new capabilities.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["docs/guides/SEARCH_GUIDE.md", "CLAUDE.md"],
+      "testCategories": [],
+      "implementation": {
+        "purpose": "Provide comprehensive documentation for search operators.",
+        "keyDecisions": [
+          "Include examples for each operator",
+          "Show combination usage",
+          "Document limitations"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create docs/guides/SEARCH_GUIDE.md",
+          "code": "# MemoryJS Search Guide\n\nThis guide covers all search capabilities in MemoryJS.\n\n## Search Types\n\n### Basic Search\nSimple term matching across all entity fields.\n\n```typescript\nawait ctx.searchManager.search('hello world');\n```\n\n### Ranked Search (TF-IDF)\nReturns results scored by term frequency-inverse document frequency.\n\n```typescript\nawait ctx.searchManager.rankedSearch('machine learning');\n```\n\n### BM25 Search\nOkapi BM25 algorithm with term frequency saturation.\n\n```typescript\nawait ctx.searchManager.bm25Search('machine learning');\n```\n\n### Boolean Search\nAND, OR, NOT operators for complex queries.\n\n```typescript\nawait ctx.searchManager.booleanSearch('machine AND learning NOT deep');\n```\n\n### Fuzzy Search\nTypo-tolerant matching using Levenshtein distance.\n\n```typescript\nawait ctx.searchManager.fuzzySearch('machin lerning');\n```\n\n## Query Operators\n\n### Phrase Search\nMatch exact phrases using quotes.\n\n```typescript\n// Find entities containing \"machine learning\" as a phrase\nawait ctx.searchManager.search('\"machine learning\"');\n```\n\n### Wildcards\n- `*` matches any number of characters\n- `?` matches exactly one character\n\n```typescript\n// Find entities starting with 'mach'\nawait ctx.searchManager.search('mach*');\n\n// Find 'cat', 'cot', 'cut', etc.\nawait ctx.searchManager.search('c?t');\n```\n\n### Proximity Search\nFind terms within N words of each other.\n\n```typescript\n// Find 'machine' and 'learning' within 3 words\nawait ctx.searchManager.search('\"machine learning\"~3');\n```\n\n### Field-Specific Search\nSearch specific fields using `field:value` syntax.\n\n| Field | Aliases | Description |\n|-------|---------|-------------|\n| `name` | - | Entity name |\n| `type` | `entityType` | Entity type |\n| `obs` | `observation`, `observations` | Observations |\n| `tag` | `tags` | Tags |\n\n```typescript\n// Search only entity names\nawait ctx.searchManager.search('name:Project');\n\n// Search only observations\nawait ctx.searchManager.search('obs:\"important note\"');\n\n// Search by type\nawait ctx.searchManager.search('type:person');\n```\n\n## Combining Operators\n\nOperators can be combined:\n\n```typescript\n// Phrase in specific field\nawait ctx.searchManager.booleanSearch('name:\"John Doe\" AND type:person');\n\n// Wildcard with field\nawait ctx.searchManager.search('tag:project*');\n```\n\n## Search Options\n\n```typescript\ninterface SearchOptions {\n  limit?: number;      // Max results (default: 20)\n  minScore?: number;   // Minimum score threshold\n  explain?: boolean;   // Include score explanation\n}\n```\n\n## Score Explanation\n\nUse `explain: true` to understand why results ranked as they did:\n\n```typescript\nconst results = await ctx.searchManager.rankedSearch('query', { explain: true });\nfor (const result of results) {\n  console.log(result.explanation.signals); // Scoring breakdown\n}\n```"
+        },
+        {
+          "step": 2,
+          "action": "Update CLAUDE.md with search syntax",
+          "details": "Add brief section on advanced search operators"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SEARCH_GUIDE.md created with all operators",
+        "Examples for each operator type",
+        "Field mappings documented",
+        "Combination usage shown",
+        "CLAUDE.md updated with reference"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Phrase search matches exact sequences",
+    "Wildcards work for pattern matching",
+    "Proximity search finds nearby terms",
+    "Field-specific search targets correct fields",
+    "Documentation complete with examples"
+  ],
+  "filesCreated": [
+    "src/search/QueryParser.ts",
+    "src/search/ProximitySearch.ts",
+    "docs/guides/SEARCH_GUIDE.md",
+    "tests/unit/search/QueryParser.test.ts",
+    "tests/unit/search/ProximitySearch.test.ts"
+  ],
+  "filesModified": [
+    "src/search/BasicSearch.ts",
+    "src/search/BooleanSearch.ts",
+    "src/search/SearchManager.ts",
+    "CLAUDE.md"
+  ],
+  "totalNewTests": 30,
+  "totalEstimatedHours": 7,
+  "dependencies": ["Sprint 6 - Query Logging", "Sprint 7 - Result Explanation"],
+  "notes": [
+    "QueryParser is reusable across search types",
+    "Proximity search can be expensive for long documents",
+    "Consider query syntax highlighting in CLI",
+    "Future: more operators (range, regex)"
+  ]
+}

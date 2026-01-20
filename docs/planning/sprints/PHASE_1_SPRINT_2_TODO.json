@@ -1,0 +1,258 @@
+{
+  "phase": 1,
+  "sprint": 2,
+  "title": "Entity and Relation Commands",
+  "priority": "HIGH",
+  "effort": "6 hours",
+  "status": "pending",
+  "impact": "Enables full CRUD operations on entities and relations via CLI",
+  "targetMetrics": {
+    "entityOperations": {
+      "current": "No CLI access",
+      "target": "Create, read, update, delete entities via CLI"
+    },
+    "relationOperations": {
+      "current": "No CLI access",
+      "target": "Create, list, delete relations via CLI"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.2.1",
+      "category": "cli",
+      "title": "Implement entity create Command",
+      "description": "Create entity from CLI: memory entity create <name> --type <type> --obs \"observation\". Support multiple --obs flags. Output created entity.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/cli/commands/entity.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Allow users to create entities directly from the command line.",
+        "keyDecisions": [
+          "Name is required positional argument",
+          "Type defaults to 'entity' if not specified",
+          "Multiple observations via repeated --obs flags",
+          "Tags via --tag flags"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/commands/entity.ts",
+          "code": "/**\n * Entity CLI Commands\n *\n * Commands for entity CRUD operations.\n *\n * @module cli/commands/entity\n */\n\nimport { Command } from 'commander';\nimport { ManagerContext } from '../../core/ManagerContext.js';\nimport { formatEntities } from '../formatters.js';\nimport type { GlobalOptions } from '../options.js';\n\nexport function registerEntityCommands(program: Command): void {\n  const entity = program\n    .command('entity')\n    .description('Manage entities (create, read, update, delete)');\n\n  entity\n    .command('create <name>')\n    .description('Create a new entity')\n    .option('-t, --type <type>', 'Entity type', 'entity')\n    .option('-o, --obs <observation>', 'Add observation (repeatable)', collect, [])\n    .option('--tag <tag>', 'Add tag (repeatable)', collect, [])\n    .option('-i, --importance <n>', 'Importance score (0-10)', parseFloat)\n    .action(async (name: string, opts: Record<string, unknown>, cmd: Command) => {\n      const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n      const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n      try {\n        const entity = await ctx.entityManager.createEntity({\n          name,\n          entityType: opts.type as string,\n          observations: opts.obs as string[],\n          tags: opts.tag as string[],\n          importance: opts.importance as number | undefined,\n        });\n\n        console.log(formatEntities([entity], globalOpts.format));\n      } catch (error) {\n        console.error(`Failed to create entity: ${(error as Error).message}`);\n        process.exit(1);\n      }\n    });\n}\n\nfunction collect(value: string, previous: string[]): string[] {\n  return previous.concat([value]);\n}"
+        },
+        {
+          "step": 2,
+          "action": "Register entity commands in command registry",
+          "details": "Import and call registerEntityCommands in commands/index.ts"
+        },
+        {
+          "step": 3,
+          "action": "Test entity create command",
+          "details": "npm run build && node dist/cli/index.js entity create test-entity --type person --obs \"First observation\""
+        }
+      ],
+      "acceptanceCriteria": [
+        "Entity created with correct name, type, observations",
+        "Multiple --obs flags accumulate observations",
+        "Tags added via --tag flags",
+        "Output formatted per global --format option",
+        "Errors handled gracefully"
+      ]
+    },
+    {
+      "id": "1.2.2",
+      "category": "cli",
+      "title": "Implement entity get/list Commands",
+      "description": "Get single entity: memory entity get <name>. List entities: memory entity list --type <type> --limit <n>. Support filtering and pagination.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/cli/commands/entity.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Retrieve entities for inspection and listing.",
+        "keyDecisions": [
+          "get command for single entity by exact name",
+          "list command with optional filters",
+          "Pagination via --limit and --offset",
+          "Filter by type, tags, importance range"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add get subcommand to entity.ts",
+          "code": "entity\n  .command('get <name>')\n  .description('Get an entity by name')\n  .action(async (name: string, opts: Record<string, unknown>, cmd: Command) => {\n    const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n    const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n    try {\n      const entity = ctx.entityManager.getEntityByName(name);\n      if (!entity) {\n        console.error(`Entity not found: ${name}`);\n        process.exit(1);\n      }\n      console.log(formatEntities([entity], globalOpts.format));\n    } catch (error) {\n      console.error(`Failed to get entity: ${(error as Error).message}`);\n      process.exit(1);\n    }\n  });"
+        },
+        {
+          "step": 2,
+          "action": "Add list subcommand to entity.ts",
+          "code": "entity\n  .command('list')\n  .description('List entities')\n  .option('-t, --type <type>', 'Filter by entity type')\n  .option('--tag <tag>', 'Filter by tag')\n  .option('-l, --limit <n>', 'Maximum results', parseInt, 50)\n  .option('--offset <n>', 'Skip first N results', parseInt, 0)\n  .option('--min-importance <n>', 'Minimum importance', parseFloat)\n  .option('--max-importance <n>', 'Maximum importance', parseFloat)\n  .action(async (opts: Record<string, unknown>, cmd: Command) => {\n    const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n    const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n    try {\n      let entities = ctx.entityManager.getAllEntities();\n\n      // Apply filters\n      if (opts.type) {\n        entities = entities.filter(e => e.entityType === opts.type);\n      }\n      if (opts.tag) {\n        entities = entities.filter(e => e.tags?.includes(opts.tag as string));\n      }\n      if (opts.minImportance !== undefined) {\n        entities = entities.filter(e => (e.importance ?? 5) >= (opts.minImportance as number));\n      }\n      if (opts.maxImportance !== undefined) {\n        entities = entities.filter(e => (e.importance ?? 5) <= (opts.maxImportance as number));\n      }\n\n      // Apply pagination\n      const offset = opts.offset as number;\n      const limit = opts.limit as number;\n      entities = entities.slice(offset, offset + limit);\n\n      console.log(formatEntities(entities, globalOpts.format));\n    } catch (error) {\n      console.error(`Failed to list entities: ${(error as Error).message}`);\n      process.exit(1);\n    }\n  });"
+        },
+        {
+          "step": 3,
+          "action": "Test get and list commands",
+          "details": "Test with various filter combinations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "get returns single entity by exact name",
+        "get shows error for non-existent entity",
+        "list returns all entities by default",
+        "Filters work: --type, --tag, importance range",
+        "Pagination works: --limit, --offset"
+      ]
+    },
+    {
+      "id": "1.2.3",
+      "category": "cli",
+      "title": "Implement entity update/delete Commands",
+      "description": "Update: memory entity update <name> --add-obs \"obs\" --add-tag \"tag\". Delete: memory entity delete <name> --force. Confirm destructive operations.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/cli/commands/entity.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Complete CRUD with update and delete operations.",
+        "keyDecisions": [
+          "update supports add/remove for observations and tags",
+          "delete requires confirmation unless --force",
+          "Show diff after update"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Install readline for confirmation prompts",
+          "details": "Node built-in readline module"
+        },
+        {
+          "step": 2,
+          "action": "Add update subcommand",
+          "code": "entity\n  .command('update <name>')\n  .description('Update an entity')\n  .option('--add-obs <observation>', 'Add observation (repeatable)', collect, [])\n  .option('--remove-obs <observation>', 'Remove observation (repeatable)', collect, [])\n  .option('--add-tag <tag>', 'Add tag (repeatable)', collect, [])\n  .option('--remove-tag <tag>', 'Remove tag (repeatable)', collect, [])\n  .option('-t, --type <type>', 'Update entity type')\n  .option('-i, --importance <n>', 'Update importance', parseFloat)\n  .action(async (name: string, opts: Record<string, unknown>, cmd: Command) => {\n    const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n    const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n    try {\n      const entity = ctx.entityManager.getEntityByName(name);\n      if (!entity) {\n        console.error(`Entity not found: ${name}`);\n        process.exit(1);\n      }\n\n      // Build updates\n      const observations = [...(entity.observations || [])];\n      for (const obs of opts.addObs as string[]) {\n        if (!observations.includes(obs)) observations.push(obs);\n      }\n      for (const obs of opts.removeObs as string[]) {\n        const idx = observations.indexOf(obs);\n        if (idx >= 0) observations.splice(idx, 1);\n      }\n\n      const tags = [...(entity.tags || [])];\n      for (const tag of opts.addTag as string[]) {\n        if (!tags.includes(tag)) tags.push(tag);\n      }\n      for (const tag of opts.removeTag as string[]) {\n        const idx = tags.indexOf(tag);\n        if (idx >= 0) tags.splice(idx, 1);\n      }\n\n      const updated = await ctx.entityManager.updateEntity(name, {\n        entityType: (opts.type as string) || entity.entityType,\n        observations,\n        tags,\n        importance: opts.importance as number ?? entity.importance,\n      });\n\n      console.log(formatEntities([updated], globalOpts.format));\n    } catch (error) {\n      console.error(`Failed to update entity: ${(error as Error).message}`);\n      process.exit(1);\n    }\n  });"
+        },
+        {
+          "step": 3,
+          "action": "Add delete subcommand with confirmation",
+          "code": "import * as readline from 'readline';\n\nentity\n  .command('delete <name>')\n  .description('Delete an entity')\n  .option('-f, --force', 'Skip confirmation')\n  .action(async (name: string, opts: Record<string, unknown>, cmd: Command) => {\n    const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n    const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n    try {\n      const entity = ctx.entityManager.getEntityByName(name);\n      if (!entity) {\n        console.error(`Entity not found: ${name}`);\n        process.exit(1);\n      }\n\n      if (!opts.force) {\n        const confirmed = await confirm(`Delete entity \"${name}\"? This cannot be undone.`);\n        if (!confirmed) {\n          console.log('Cancelled.');\n          return;\n        }\n      }\n\n      await ctx.entityManager.deleteEntity(name);\n      if (!globalOpts.quiet) {\n        console.log(`Deleted entity: ${name}`);\n      }\n    } catch (error) {\n      console.error(`Failed to delete entity: ${(error as Error).message}`);\n      process.exit(1);\n    }\n  });\n\nasync function confirm(message: string): Promise<boolean> {\n  const rl = readline.createInterface({\n    input: process.stdin,\n    output: process.stdout,\n  });\n\n  return new Promise((resolve) => {\n    rl.question(`${message} [y/N] `, (answer) => {\n      rl.close();\n      resolve(answer.toLowerCase() === 'y');\n    });\n  });\n}"
+        }
+      ],
+      "acceptanceCriteria": [
+        "update adds/removes observations correctly",
+        "update adds/removes tags correctly",
+        "update changes type and importance",
+        "delete prompts for confirmation",
+        "delete --force skips confirmation",
+        "Errors handled for non-existent entities"
+      ]
+    },
+    {
+      "id": "1.2.4",
+      "category": "cli",
+      "title": "Implement relation create/list Commands",
+      "description": "Create: memory relation create <from> <to> --type <relType>. List: memory relation list --from <entity> --type <type>.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/cli/commands/relation.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Create and list relations between entities.",
+        "keyDecisions": [
+          "Positional args for from and to entities",
+          "Relation type is required",
+          "List supports filtering by from, to, and type"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Create src/cli/commands/relation.ts",
+          "code": "/**\n * Relation CLI Commands\n *\n * Commands for relation CRUD operations.\n *\n * @module cli/commands/relation\n */\n\nimport { Command } from 'commander';\nimport { ManagerContext } from '../../core/ManagerContext.js';\nimport { formatRelations } from '../formatters.js';\nimport type { GlobalOptions } from '../options.js';\n\nexport function registerRelationCommands(program: Command): void {\n  const relation = program\n    .command('relation')\n    .description('Manage relations between entities');\n\n  relation\n    .command('create <from> <to>')\n    .description('Create a new relation')\n    .requiredOption('-t, --type <type>', 'Relation type')\n    .option('-w, --weight <n>', 'Relation weight (0-1)', parseFloat)\n    .action(async (from: string, to: string, opts: Record<string, unknown>, cmd: Command) => {\n      const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n      const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n      try {\n        const relation = await ctx.relationManager.createRelation(\n          from,\n          to,\n          opts.type as string\n        );\n\n        console.log(formatRelations([relation], globalOpts.format));\n      } catch (error) {\n        console.error(`Failed to create relation: ${(error as Error).message}`);\n        process.exit(1);\n      }\n    });\n\n  relation\n    .command('list')\n    .description('List relations')\n    .option('--from <entity>', 'Filter by source entity')\n    .option('--to <entity>', 'Filter by target entity')\n    .option('-t, --type <type>', 'Filter by relation type')\n    .option('-l, --limit <n>', 'Maximum results', parseInt, 50)\n    .action(async (opts: Record<string, unknown>, cmd: Command) => {\n      const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n      const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n      try {\n        let relations = ctx.relationManager.getAllRelations();\n\n        if (opts.from) {\n          relations = relations.filter(r => r.from === opts.from);\n        }\n        if (opts.to) {\n          relations = relations.filter(r => r.to === opts.to);\n        }\n        if (opts.type) {\n          relations = relations.filter(r => r.relationType === opts.type);\n        }\n\n        relations = relations.slice(0, opts.limit as number);\n        console.log(formatRelations(relations, globalOpts.format));\n      } catch (error) {\n        console.error(`Failed to list relations: ${(error as Error).message}`);\n        process.exit(1);\n      }\n    });\n}"
+        },
+        {
+          "step": 2,
+          "action": "Register relation commands in command registry",
+          "details": "Import and call registerRelationCommands in commands/index.ts"
+        },
+        {
+          "step": 3,
+          "action": "Test relation commands",
+          "details": "Create and list relations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "create makes relation with correct from/to/type",
+        "create validates entities exist",
+        "list returns all relations by default",
+        "list filters by --from, --to, --type work",
+        "list respects --limit"
+      ]
+    },
+    {
+      "id": "1.2.5",
+      "category": "cli",
+      "title": "Implement relation delete Command",
+      "description": "Delete: memory relation delete <from> <to> <type>. Support --all to delete all relations for an entity (with confirmation).",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/cli/commands/relation.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Complete relation CRUD with delete operation.",
+        "keyDecisions": [
+          "Require all three identifiers to delete specific relation",
+          "--all option deletes all relations for an entity",
+          "Confirm bulk deletions"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add delete subcommand to relation.ts",
+          "code": "import * as readline from 'readline';\n\nrelation\n  .command('delete <from> <to> <type>')\n  .description('Delete a relation')\n  .option('-f, --force', 'Skip confirmation')\n  .action(async (from: string, to: string, type: string, opts: Record<string, unknown>, cmd: Command) => {\n    const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n    const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n    try {\n      if (!opts.force) {\n        const confirmed = await confirm(`Delete relation ${from} --[${type}]--> ${to}?`);\n        if (!confirmed) {\n          console.log('Cancelled.');\n          return;\n        }\n      }\n\n      await ctx.relationManager.deleteRelation(from, to, type);\n      if (!globalOpts.quiet) {\n        console.log(`Deleted relation: ${from} --[${type}]--> ${to}`);\n      }\n    } catch (error) {\n      console.error(`Failed to delete relation: ${(error as Error).message}`);\n      process.exit(1);\n    }\n  });\n\nrelation\n  .command('delete-all <entity>')\n  .description('Delete all relations for an entity')\n  .option('-f, --force', 'Skip confirmation')\n  .action(async (entity: string, opts: Record<string, unknown>, cmd: Command) => {\n    const globalOpts = cmd.optsWithGlobals() as GlobalOptions;\n    const ctx = new ManagerContext({ storagePath: globalOpts.storage });\n\n    try {\n      const relations = ctx.relationManager.getAllRelations()\n        .filter(r => r.from === entity || r.to === entity);\n\n      if (relations.length === 0) {\n        console.log(`No relations found for entity: ${entity}`);\n        return;\n      }\n\n      if (!opts.force) {\n        const confirmed = await confirm(\n          `Delete ${relations.length} relations for entity \"${entity}\"?`\n        );\n        if (!confirmed) {\n          console.log('Cancelled.');\n          return;\n        }\n      }\n\n      for (const rel of relations) {\n        await ctx.relationManager.deleteRelation(rel.from, rel.to, rel.relationType);\n      }\n\n      if (!globalOpts.quiet) {\n        console.log(`Deleted ${relations.length} relations for entity: ${entity}`);\n      }\n    } catch (error) {\n      console.error(`Failed to delete relations: ${(error as Error).message}`);\n      process.exit(1);\n    }\n  });\n\nasync function confirm(message: string): Promise<boolean> {\n  const rl = readline.createInterface({\n    input: process.stdin,\n    output: process.stdout,\n  });\n\n  return new Promise((resolve) => {\n    rl.question(`${message} [y/N] `, (answer) => {\n      rl.close();\n      resolve(answer.toLowerCase() === 'y');\n    });\n  });\n}"
+        },
+        {
+          "step": 2,
+          "action": "Test delete commands",
+          "details": "Test single delete and delete-all"
+        }
+      ],
+      "acceptanceCriteria": [
+        "delete removes specific relation",
+        "delete prompts for confirmation",
+        "delete --force skips confirmation",
+        "delete-all removes all relations for entity",
+        "delete-all shows count and confirms"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "Entity CRUD fully functional via CLI",
+    "Relation CRUD fully functional via CLI",
+    "Confirmations work for destructive operations",
+    "Output formatted correctly for all operations",
+    "npm run build compiles without errors"
+  ],
+  "filesCreated": [
+    "src/cli/commands/entity.ts",
+    "src/cli/commands/relation.ts"
+  ],
+  "filesModified": [
+    "src/cli/commands/index.ts"
+  ],
+  "totalNewTests": 20,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 1 - CLI Framework Foundation"],
+  "notes": [
+    "Commands use ManagerContext for storage access",
+    "Confirmation prompts use readline for consistency",
+    "Consider adding --dry-run option for destructive commands",
+    "Entity/relation validation happens in manager layer"
+  ]
+}

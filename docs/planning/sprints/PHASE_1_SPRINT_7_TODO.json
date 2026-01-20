@@ -1,0 +1,254 @@
+{
+  "phase": 1,
+  "sprint": 7,
+  "title": "Search Result Explanation",
+  "priority": "MEDIUM",
+  "effort": "6 hours",
+  "status": "pending",
+  "impact": "Provides transparency into search scoring, enabling users to understand why results ranked as they did",
+  "targetMetrics": {
+    "explainability": {
+      "current": "Scores returned without breakdown",
+      "target": "Full signal breakdown showing contribution of each factor"
+    },
+    "debugging": {
+      "current": "Hard to understand ranking",
+      "target": "Clear explanation of why result A ranked above B"
+    }
+  },
+  "tasks": [
+    {
+      "id": "1.7.1",
+      "category": "types",
+      "title": "Create SearchExplanation Type",
+      "description": "Define explanation structure: entityName, totalScore, signals[] (name, value, contribution), matchedTerms[], boosts[].",
+      "status": "pending",
+      "estimatedHours": 0.5,
+      "agent": "claude",
+      "files": ["src/types/search.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Define structured type for explaining search result scores.",
+        "keyDecisions": [
+          "Break down score into individual signals",
+          "Show contribution percentage per signal",
+          "Include matched terms for transparency"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add SearchExplanation to src/types/search.ts",
+          "code": "/**\n * Explanation of why an entity matched a search query.\n */\nexport interface SearchExplanation {\n  /** Entity that was matched */\n  entityName: string;\n  /** Final computed score */\n  totalScore: number;\n  /** Breakdown of scoring signals */\n  signals: ScoringSignal[];\n  /** Terms from query that matched */\n  matchedTerms: MatchedTerm[];\n  /** Boost factors applied */\n  boosts: ScoreBoost[];\n  /** Human-readable summary */\n  summary: string;\n}\n\n/**\n * A single scoring signal contributing to the total score.\n */\nexport interface ScoringSignal {\n  /** Name of this signal (e.g., 'tf-idf', 'bm25', 'semantic') */\n  name: string;\n  /** Raw value of this signal */\n  value: number;\n  /** Weight applied to this signal */\n  weight: number;\n  /** Contribution to final score (value * weight) */\n  contribution: number;\n  /** Percentage of total score from this signal */\n  percentage: number;\n  /** Additional signal-specific details */\n  details?: Record<string, unknown>;\n}\n\n/**\n * Information about a matched term.\n */\nexport interface MatchedTerm {\n  /** The term that matched */\n  term: string;\n  /** Where it matched (name, observation, tag) */\n  field: 'name' | 'entityType' | 'observation' | 'tag';\n  /** Number of times it matched */\n  frequency: number;\n  /** TF-IDF or similar score for this term */\n  termScore: number;\n}\n\n/**\n * A boost factor applied to the score.\n */\nexport interface ScoreBoost {\n  /** Name of the boost */\n  name: string;\n  /** Multiplier applied */\n  multiplier: number;\n  /** Reason for the boost */\n  reason: string;\n}\n\n/**\n * Search result with explanation attached.\n */\nexport interface ExplainedSearchResult<T = unknown> {\n  /** The matched entity */\n  entity: T;\n  /** Computed score */\n  score: number;\n  /** Detailed explanation */\n  explanation: SearchExplanation;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Export types",
+          "details": "Add to types/index.ts exports"
+        }
+      ],
+      "acceptanceCriteria": [
+        "SearchExplanation interface defined",
+        "ScoringSignal captures contribution breakdown",
+        "MatchedTerm shows where/how terms matched",
+        "ScoreBoost shows multipliers applied",
+        "ExplainedSearchResult combines entity with explanation"
+      ]
+    },
+    {
+      "id": "1.7.2",
+      "category": "search",
+      "title": "Implement Explanation for TF-IDF Search",
+      "description": "Track term frequencies, IDF values, field boosts. Calculate per-signal contribution to final score.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/RankedSearch.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Generate detailed explanation for TF-IDF ranked search results.",
+        "keyDecisions": [
+          "Collect TF and IDF during scoring",
+          "Track which fields matched",
+          "Calculate percentage contribution per term"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add explain option to RankedSearchOptions",
+          "code": "export interface RankedSearchOptions {\n  limit?: number;\n  minScore?: number;\n  /** Generate explanations for results */\n  explain?: boolean;\n}"
+        },
+        {
+          "step": 2,
+          "action": "Implement explanation generation",
+          "code": "private explainScore(\n  entity: Entity,\n  queryTokens: string[],\n  score: number\n): SearchExplanation {\n  const signals: ScoringSignal[] = [];\n  const matchedTerms: MatchedTerm[] = [];\n  const boosts: ScoreBoost[] = [];\n\n  let totalContribution = 0;\n\n  // Analyze each query term\n  for (const token of queryTokens) {\n    const tf = this.calculateTF(entity, token);\n    const idf = this.getIDF(token);\n    const termScore = tf * idf;\n\n    if (tf > 0) {\n      const contribution = termScore;\n      totalContribution += contribution;\n\n      signals.push({\n        name: `tf-idf:${token}`,\n        value: termScore,\n        weight: 1,\n        contribution,\n        percentage: 0, // Calculate after\n        details: { tf, idf },\n      });\n\n      // Track where it matched\n      if (entity.name.toLowerCase().includes(token)) {\n        matchedTerms.push({\n          term: token,\n          field: 'name',\n          frequency: this.countOccurrences(entity.name, token),\n          termScore,\n        });\n      }\n      for (const obs of entity.observations || []) {\n        if (obs.toLowerCase().includes(token)) {\n          matchedTerms.push({\n            term: token,\n            field: 'observation',\n            frequency: this.countOccurrences(obs, token),\n            termScore,\n          });\n        }\n      }\n    }\n  }\n\n  // Calculate percentages\n  for (const signal of signals) {\n    signal.percentage = totalContribution > 0 \n      ? (signal.contribution / totalContribution) * 100 \n      : 0;\n  }\n\n  // Check for boosts (e.g., name match boost)\n  if (matchedTerms.some(m => m.field === 'name')) {\n    boosts.push({\n      name: 'name_match',\n      multiplier: 1.5,\n      reason: 'Query term found in entity name',\n    });\n  }\n\n  const summary = this.generateSummary(signals, matchedTerms);\n\n  return {\n    entityName: entity.name,\n    totalScore: score,\n    signals,\n    matchedTerms,\n    boosts,\n    summary,\n  };\n}\n\nprivate generateSummary(signals: ScoringSignal[], matchedTerms: MatchedTerm[]): string {\n  const topSignals = signals.sort((a, b) => b.contribution - a.contribution).slice(0, 3);\n  const signalNames = topSignals.map(s => s.name.replace('tf-idf:', '')).join(', ');\n  const fields = [...new Set(matchedTerms.map(m => m.field))].join(', ');\n  \n  return `Matched terms [${signalNames}] in fields [${fields}]`;\n}"
+        },
+        {
+          "step": 3,
+          "action": "Return explanations when explain=true",
+          "code": "async search(query: string, options?: RankedSearchOptions): Promise<ScoredEntity[] | ExplainedSearchResult[]> {\n  // ... existing search logic ...\n\n  if (options?.explain) {\n    return results.map(({ entity, score }) => ({\n      entity,\n      score,\n      explanation: this.explainScore(entity, tokens, score),\n    }));\n  }\n\n  return results;\n}"
+        }
+      ],
+      "acceptanceCriteria": [
+        "TF-IDF components tracked during scoring",
+        "Per-term contribution calculated",
+        "Matched fields identified",
+        "Boosts documented",
+        "Human-readable summary generated"
+      ]
+    },
+    {
+      "id": "1.7.3",
+      "category": "search",
+      "title": "Implement Explanation for BM25 Search",
+      "description": "Track BM25 components: term frequency saturation, document length normalization, IDF. Show per-term contribution.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/BM25Search.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Generate detailed explanation for BM25 search results.",
+        "keyDecisions": [
+          "Show k1, b parameters used",
+          "Explain length normalization effect",
+          "Show saturated TF values"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add explanation generation to BM25Search",
+          "code": "private explainBM25Score(\n  entity: Entity,\n  queryTokens: string[],\n  score: number\n): SearchExplanation {\n  const signals: ScoringSignal[] = [];\n  const matchedTerms: MatchedTerm[] = [];\n\n  const docLength = this.getDocumentLength(entity);\n  const avgDocLength = this.getAverageDocumentLength();\n  const lengthNorm = 1 - this.b + this.b * (docLength / avgDocLength);\n\n  // Add length normalization signal\n  signals.push({\n    name: 'length_normalization',\n    value: lengthNorm,\n    weight: 1,\n    contribution: 0, // Informational\n    percentage: 0,\n    details: { docLength, avgDocLength, b: this.b },\n  });\n\n  let totalContribution = 0;\n\n  for (const token of queryTokens) {\n    const tf = this.getRawTF(entity, token);\n    const idf = this.getIDF(token);\n    \n    // BM25 TF saturation\n    const saturatedTF = (tf * (this.k1 + 1)) / (tf + this.k1 * lengthNorm);\n    const termScore = idf * saturatedTF;\n\n    if (tf > 0) {\n      totalContribution += termScore;\n\n      signals.push({\n        name: `bm25:${token}`,\n        value: termScore,\n        weight: 1,\n        contribution: termScore,\n        percentage: 0,\n        details: {\n          rawTF: tf,\n          saturatedTF,\n          idf,\n          k1: this.k1,\n        },\n      });\n\n      matchedTerms.push({\n        term: token,\n        field: this.findMatchField(entity, token),\n        frequency: tf,\n        termScore,\n      });\n    }\n  }\n\n  // Calculate percentages\n  for (const signal of signals) {\n    if (signal.name !== 'length_normalization') {\n      signal.percentage = totalContribution > 0\n        ? (signal.contribution / totalContribution) * 100\n        : 0;\n    }\n  }\n\n  return {\n    entityName: entity.name,\n    totalScore: score,\n    signals,\n    matchedTerms,\n    boosts: [],\n    summary: `BM25 score with k1=${this.k1}, b=${this.b}. Doc length: ${docLength} (avg: ${avgDocLength.toFixed(1)})`,\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Integrate with search method",
+          "details": "Similar pattern to TF-IDF implementation"
+        }
+      ],
+      "acceptanceCriteria": [
+        "BM25 parameters (k1, b) shown in explanation",
+        "Term frequency saturation calculated",
+        "Document length normalization explained",
+        "Per-term IDF contribution shown",
+        "Summary includes key parameters"
+      ]
+    },
+    {
+      "id": "1.7.4",
+      "category": "search",
+      "title": "Implement Explanation for Hybrid Search",
+      "description": "Show semantic, lexical, and symbolic signal contributions. Show weight applied to each. Show combined scoring.",
+      "status": "pending",
+      "estimatedHours": 1.5,
+      "agent": "claude",
+      "files": ["src/search/HybridSearchManager.ts"],
+      "testCategories": ["unit"],
+      "implementation": {
+        "purpose": "Explain how hybrid search combines multiple signals.",
+        "keyDecisions": [
+          "Show each signal layer's raw score",
+          "Show weights applied",
+          "Show how scores were combined"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Implement hybrid explanation",
+          "code": "private explainHybridScore(\n  entity: Entity,\n  query: string,\n  scores: { semantic?: number; lexical?: number; symbolic?: number },\n  weights: { semantic: number; lexical: number; symbolic: number },\n  totalScore: number\n): SearchExplanation {\n  const signals: ScoringSignal[] = [];\n\n  // Semantic signal\n  if (scores.semantic !== undefined) {\n    signals.push({\n      name: 'semantic_similarity',\n      value: scores.semantic,\n      weight: weights.semantic,\n      contribution: scores.semantic * weights.semantic,\n      percentage: 0,\n      details: { method: 'embedding_cosine' },\n    });\n  }\n\n  // Lexical signal\n  if (scores.lexical !== undefined) {\n    signals.push({\n      name: 'lexical_match',\n      value: scores.lexical,\n      weight: weights.lexical,\n      contribution: scores.lexical * weights.lexical,\n      percentage: 0,\n      details: { method: 'bm25' },\n    });\n  }\n\n  // Symbolic signal (metadata filters)\n  if (scores.symbolic !== undefined) {\n    signals.push({\n      name: 'symbolic_match',\n      value: scores.symbolic,\n      weight: weights.symbolic,\n      contribution: scores.symbolic * weights.symbolic,\n      percentage: 0,\n      details: { method: 'metadata_filter' },\n    });\n  }\n\n  // Calculate percentages\n  const totalContribution = signals.reduce((sum, s) => sum + s.contribution, 0);\n  for (const signal of signals) {\n    signal.percentage = totalContribution > 0\n      ? (signal.contribution / totalContribution) * 100\n      : 0;\n  }\n\n  // Build summary\n  const dominant = signals.reduce((max, s) => \n    s.contribution > max.contribution ? s : max, signals[0]);\n\n  return {\n    entityName: entity.name,\n    totalScore,\n    signals,\n    matchedTerms: [], // Hybrid doesn't have simple term matching\n    boosts: [],\n    summary: `Combined score dominated by ${dominant.name} (${dominant.percentage.toFixed(1)}%)`,\n  };\n}"
+        },
+        {
+          "step": 2,
+          "action": "Pass through sub-search explanations",
+          "details": "Optionally include detailed sub-explanations"
+        }
+      ],
+      "acceptanceCriteria": [
+        "Semantic, lexical, symbolic scores shown separately",
+        "Weights applied to each shown",
+        "Combined score calculation transparent",
+        "Dominant signal identified in summary",
+        "Sub-search details available"
+      ]
+    },
+    {
+      "id": "1.7.5",
+      "category": "search",
+      "title": "Add explain Option to Search API",
+      "description": "Add explain?: boolean to search options. When true, return ExplainedSearchResult[] with explanation attached.",
+      "status": "pending",
+      "estimatedHours": 1.0,
+      "agent": "claude",
+      "files": ["src/search/SearchManager.ts"],
+      "testCategories": ["unit", "integration"],
+      "implementation": {
+        "purpose": "Expose explanation capability through the main search API.",
+        "keyDecisions": [
+          "Return type changes when explain=true",
+          "Backward compatible (explain defaults to false)",
+          "Works with all search types"
+        ]
+      },
+      "stepByStep": [
+        {
+          "step": 1,
+          "action": "Add explain option to SearchOptions",
+          "code": "export interface SearchOptions {\n  limit?: number;\n  minScore?: number;\n  /** Generate detailed explanations for results */\n  explain?: boolean;\n  // ... other options\n}"
+        },
+        {
+          "step": 2,
+          "action": "Update SearchManager methods to pass explain flag",
+          "code": "async rankedSearch(\n  query: string,\n  options?: SearchOptions\n): Promise<ScoredEntity[] | ExplainedSearchResult<Entity>[]> {\n  return this.rankedSearchImpl.search(query, {\n    ...options,\n    explain: options?.explain,\n  });\n}"
+        },
+        {
+          "step": 3,
+          "action": "Update CLI to use --explain flag",
+          "details": "CLI already has --explain, ensure it works"
+        },
+        {
+          "step": 4,
+          "action": "Add integration tests",
+          "details": "Test explain output for all search types"
+        }
+      ],
+      "acceptanceCriteria": [
+        "explain option available on all search methods",
+        "ExplainedSearchResult returned when explain=true",
+        "Regular results returned when explain=false",
+        "CLI --explain flag works",
+        "Integration tests verify explanations"
+      ]
+    }
+  ],
+  "successCriteria": [
+    "All five tasks completed with passing tests",
+    "SearchExplanation type captures all scoring factors",
+    "TF-IDF explanation shows term contributions",
+    "BM25 explanation shows saturation and normalization",
+    "Hybrid explanation shows signal combination",
+    "API supports explain option on all search types"
+  ],
+  "filesCreated": [
+    "tests/unit/search/explanation.test.ts"
+  ],
+  "filesModified": [
+    "src/types/search.ts",
+    "src/search/RankedSearch.ts",
+    "src/search/BM25Search.ts",
+    "src/search/HybridSearchManager.ts",
+    "src/search/SearchManager.ts",
+    "src/types/index.ts"
+  ],
+  "totalNewTests": 20,
+  "totalEstimatedHours": 6,
+  "dependencies": ["Sprint 6 - Query Logging and Tracing"],
+  "notes": [
+    "Explanation generation has some performance cost",
+    "Consider caching term statistics for repeated queries",
+    "Explanations help users tune their queries",
+    "Future: visual explanation rendering"
+  ]
+}

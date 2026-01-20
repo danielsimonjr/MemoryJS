@@ -14,7 +14,8 @@
     }
   },
   "bin": {
-    "memoryjs": "./dist/index.js"
+    "memory": "./dist/cli/index.js",
+    "memoryjs": "./dist/cli/index.js"
   },
   "files": [
     "dist",
@@ -61,6 +62,9 @@
     "@danielsimonjr/workerpool": "^10.0.1",
     "async-mutex": "^0.5.0",
     "better-sqlite3": "^11.7.0",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "commander": "^12.1.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
