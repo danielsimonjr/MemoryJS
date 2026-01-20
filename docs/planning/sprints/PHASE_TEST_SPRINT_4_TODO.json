@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 4,
   "title": "Query Logger & SearchManager Tests",
   "priority": "HIGH",
@@ -18,7 +18,7 @@
   },
   "tasks": [
     {
-      "id": "T1.4.1",
+      "id": "2.4.1",
       "category": "testing",
       "title": "Test QueryLogger Core Functionality",
       "description": "Test log entry creation, log levels, and query ID generation.",
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "id": "T1.4.2",
+      "id": "2.4.2",
       "category": "testing",
       "title": "Test QueryLogger Outputs",
       "description": "Test console output, file output, and callback notifications.",
@@ -107,7 +107,7 @@
       ]
     },
     {
-      "id": "T1.4.3",
+      "id": "2.4.3",
       "category": "testing",
       "title": "Test QueryLogger Tracing",
       "description": "Test stage timing, trace building, and trace event emission.",
@@ -149,7 +149,7 @@
       ]
     },
     {
-      "id": "T1.4.4",
+      "id": "2.4.4",
       "category": "testing",
       "title": "Test SearchManager Cache Management",
       "description": "Test cache clearing, cache invalidation, and cache hit/miss scenarios.",
@@ -191,7 +191,7 @@
       ]
     },
     {
-      "id": "T1.4.5",
+      "id": "2.4.5",
       "category": "testing",
       "title": "Test SearchManager Auto-Search",
       "description": "Test automatic search method selection, cost estimation, and query analysis.",
@@ -246,7 +246,7 @@
   ],
   "totalNewTests": 60,
   "totalEstimatedHours": 5,
-  "dependencies": ["PHASE_TEST_SPRINT_3"],
+  "dependencies": ["Sprint 3"],
   "notes": [
     "Mock file system for log file tests",
     "Test concurrent logging scenarios",

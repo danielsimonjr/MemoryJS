@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 2,
   "title": "CLI Interactive & Commands Tests",
   "priority": "CRITICAL",
@@ -22,7 +22,7 @@
   },
   "tasks": [
     {
-      "id": "T1.2.1",
+      "id": "2.2.1",
       "category": "testing",
       "title": "Test interactive.ts REPL Setup",
       "description": "Test readline interface creation, prompt display, and basic command loop.",
@@ -64,7 +64,7 @@
       ]
     },
     {
-      "id": "T1.2.2",
+      "id": "2.2.2",
       "category": "testing",
       "title": "Test interactive.ts Command Parsing",
       "description": "Test command parsing, argument extraction, and help display within REPL.",
@@ -106,7 +106,7 @@
       ]
     },
     {
-      "id": "T1.2.3",
+      "id": "2.2.3",
       "category": "testing",
       "title": "Test interactive.ts History",
       "description": "Test command history navigation, persistence, and tab completion setup.",
@@ -148,7 +148,7 @@
       ]
     },
     {
-      "id": "T1.2.4",
+      "id": "2.2.4",
       "category": "testing",
       "title": "Test commands/index.ts Registration",
       "description": "Test command category registration, help text generation, and subcommand routing.",
@@ -195,7 +195,7 @@
       ]
     },
     {
-      "id": "T1.2.5",
+      "id": "2.2.5",
       "category": "testing",
       "title": "Test CLI Entry Point",
       "description": "Test main CLI entry point, version display, and global error handling.",
@@ -259,7 +259,7 @@
   "filesModified": [],
   "totalNewTests": 50,
   "totalEstimatedHours": 5,
-  "dependencies": ["PHASE_TEST_SPRINT_1"],
+  "dependencies": ["Sprint 1"],
   "notes": [
     "Mock readline for interactive tests",
     "Test stdin/stdout piping",

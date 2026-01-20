@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 9,
   "title": "Formatters & EntityUtils Tests",
   "priority": "MEDIUM",
@@ -18,7 +18,7 @@
   },
   "tasks": [
     {
-      "id": "T1.9.1",
+      "id": "2.9.1",
       "category": "testing",
       "title": "Test formatters.ts Time Formatting",
       "description": "Test timestamp formatting, duration formatting, and relative time.",
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "id": "T1.9.2",
+      "id": "2.9.2",
       "category": "testing",
       "title": "Test formatters.ts Size Formatting",
       "description": "Test byte size formatting, memory usage display, and precision.",
@@ -107,7 +107,7 @@
       ]
     },
     {
-      "id": "T1.9.3",
+      "id": "2.9.3",
       "category": "testing",
       "title": "Test entityUtils Validation",
       "description": "Test entity name validation, type validation, and observation validation.",
@@ -155,7 +155,7 @@
       ]
     },
     {
-      "id": "T1.9.4",
+      "id": "2.9.4",
       "category": "testing",
       "title": "Test entityUtils Transformation",
       "description": "Test entity normalization, merging, and comparison functions.",
@@ -197,7 +197,7 @@
       ]
     },
     {
-      "id": "T1.9.5",
+      "id": "2.9.5",
       "category": "testing",
       "title": "Test entityUtils Helpers",
       "description": "Test importance calculation, tag manipulation, and hierarchy helpers.",

@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 12,
   "title": "Error Handling & Relations Tests",
   "priority": "MEDIUM",
@@ -22,7 +22,7 @@
   },
   "tasks": [
     {
-      "id": "T1.12.1",
+      "id": "2.12.1",
       "category": "testing",
       "title": "Test errors.ts Hierarchy",
       "description": "Test MemoryJSError, ValidationError, StorageError, SearchError classes.",
@@ -69,7 +69,7 @@
       ]
     },
     {
-      "id": "T1.12.2",
+      "id": "2.12.2",
       "category": "testing",
       "title": "Test errors.ts Suggestions",
       "description": "Test error code mapping, suggestion retrieval, and context formatting.",
@@ -111,7 +111,7 @@
       ]
     },
     {
-      "id": "T1.12.3",
+      "id": "2.12.3",
       "category": "testing",
       "title": "Test relationHelpers.ts Core",
       "description": "Test relation creation helpers, type guards, and relation queries.",
@@ -158,7 +158,7 @@
       ]
     },
     {
-      "id": "T1.12.4",
+      "id": "2.12.4",
       "category": "testing",
       "title": "Test relationHelpers.ts Traversal",
       "description": "Test relation path finding, bidirectional support, and filtering.",
@@ -200,7 +200,7 @@
       ]
     },
     {
-      "id": "T1.12.5",
+      "id": "2.12.5",
       "category": "testing",
       "title": "Test relationValidation.ts",
       "description": "Test relation validation rules, circular reference detection, and integrity checks.",
@@ -264,7 +264,7 @@
   ],
   "totalNewTests": 60,
   "totalEstimatedHours": 5,
-  "dependencies": ["PHASE_TEST_SPRINT_11"],
+  "dependencies": ["Sprint 11"],
   "notes": [
     "Test error inheritance chain",
     "Test all relation validation scenarios",

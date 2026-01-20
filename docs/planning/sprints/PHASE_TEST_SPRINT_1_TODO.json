@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 1,
   "title": "CLI Core Tests",
   "priority": "CRITICAL",
@@ -22,7 +22,7 @@
   },
   "tasks": [
     {
-      "id": "T1.1.1",
+      "id": "2.1.1",
       "category": "testing",
       "title": "Test config.ts File Loading",
       "description": "Test configuration file discovery, parsing, and validation. Test .memoryjsrc, .memoryjsrc.json, and memoryjs.config.json formats.",
@@ -70,7 +70,7 @@
       ]
     },
     {
-      "id": "T1.1.2",
+      "id": "2.1.2",
       "category": "testing",
       "title": "Test config.ts Edge Cases",
       "description": "Test missing config files, invalid JSON, parent directory search, and config merging with CLI args.",
@@ -113,7 +113,7 @@
       ]
     },
     {
-      "id": "T1.1.3",
+      "id": "2.1.3",
       "category": "testing",
       "title": "Test options.ts Parsing",
       "description": "Test global options parsing, validation, and defaults. Test --storage, --format, --quiet, --verbose options.",
@@ -161,7 +161,7 @@
       ]
     },
     {
-      "id": "T1.1.4",
+      "id": "2.1.4",
       "category": "testing",
       "title": "Test formatters.ts JSON Output",
       "description": "Test JSON formatting for entities, relations, and search results. Test pretty-printing and compact modes.",
@@ -209,7 +209,7 @@
       ]
     },
     {
-      "id": "T1.1.5",
+      "id": "2.1.5",
       "category": "testing",
       "title": "Test formatters.ts Table/CSV Output",
       "description": "Test table formatting with terminal width detection, column sizing, and word wrapping. Test CSV escaping.",

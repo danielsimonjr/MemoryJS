@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 10,
   "title": "Indexes & ParallelUtils Tests",
   "priority": "MEDIUM",
@@ -18,7 +18,7 @@
   },
   "tasks": [
     {
-      "id": "T1.10.1",
+      "id": "2.10.1",
       "category": "testing",
       "title": "Test indexes.ts Name Index",
       "description": "Test name index creation, lookup, and update operations.",
@@ -65,7 +65,7 @@
       ]
     },
     {
-      "id": "T1.10.2",
+      "id": "2.10.2",
       "category": "testing",
       "title": "Test indexes.ts Type Index",
       "description": "Test type index grouping, filtering, and update operations.",
@@ -107,7 +107,7 @@
       ]
     },
     {
-      "id": "T1.10.3",
+      "id": "2.10.3",
       "category": "testing",
       "title": "Test indexes.ts Tag Index",
       "description": "Test tag index multi-value handling and efficient lookups.",
@@ -149,7 +149,7 @@
       ]
     },
     {
-      "id": "T1.10.4",
+      "id": "2.10.4",
       "category": "testing",
       "title": "Test parallelUtils Chunking",
       "description": "Test array chunking, work distribution, and concurrency limits.",
@@ -196,7 +196,7 @@
       ]
     },
     {
-      "id": "T1.10.5",
+      "id": "2.10.5",
       "category": "testing",
       "title": "Test parallelUtils Execution",
       "description": "Test parallel map, parallel filter, and error aggregation.",
@@ -251,7 +251,7 @@
   ],
   "totalNewTests": 55,
   "totalEstimatedHours": 5,
-  "dependencies": ["PHASE_TEST_SPRINT_9"],
+  "dependencies": ["Sprint 9"],
   "notes": [
     "Test index consistency after updates",
     "Test parallel execution ordering",

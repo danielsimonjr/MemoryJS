@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 8,
   "title": "TaskScheduler & BatchProcessor Tests",
   "priority": "HIGH",
@@ -18,7 +18,7 @@
   },
   "tasks": [
     {
-      "id": "T1.8.1",
+      "id": "2.8.1",
       "category": "testing",
       "title": "Test taskScheduler Queue Operations",
       "description": "Test task enqueue, priority sorting, and task cancellation.",
@@ -60,7 +60,7 @@
       ]
     },
     {
-      "id": "T1.8.2",
+      "id": "2.8.2",
       "category": "testing",
       "title": "Test taskScheduler Execution",
       "description": "Test task execution, worker pool integration, and result handling.",
@@ -102,7 +102,7 @@
       ]
     },
     {
-      "id": "T1.8.3",
+      "id": "2.8.3",
       "category": "testing",
       "title": "Test taskScheduler Rate Limiting",
       "description": "Test rateLimitedProcess(), rate enforcement, and burst handling.",
@@ -144,7 +144,7 @@
       ]
     },
     {
-      "id": "T1.8.4",
+      "id": "2.8.4",
       "category": "testing",
       "title": "Test taskScheduler Utilities",
       "description": "Test debounce(), throttle(), and withRetry() functions.",
@@ -187,7 +187,7 @@
       ]
     },
     {
-      "id": "T1.8.5",
+      "id": "2.8.5",
       "category": "testing",
       "title": "Test BatchProcessor Edge Cases",
       "description": "Test memory pressure, very large batches, and mixed async/sync processors.",
@@ -242,7 +242,7 @@
   ],
   "totalNewTests": 60,
   "totalEstimatedHours": 5,
-  "dependencies": ["PHASE_TEST_SPRINT_7"],
+  "dependencies": ["Sprint 7"],
   "notes": [
     "Mock worker pool for isolation",
     "Test timeout scenarios",

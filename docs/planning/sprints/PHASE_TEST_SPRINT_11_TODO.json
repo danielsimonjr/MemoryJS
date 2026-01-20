@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 11,
   "title": "Type Guards & Builders Tests",
   "priority": "MEDIUM",
@@ -22,7 +22,7 @@
   },
   "tasks": [
     {
-      "id": "T1.11.1",
+      "id": "2.11.1",
       "category": "testing",
       "title": "Test agent-memory Type Guards",
       "description": "Test isAgentEntity(), isSessionEntity(), and memory type guards.",
@@ -69,7 +69,7 @@
       ]
     },
     {
-      "id": "T1.11.2",
+      "id": "2.11.2",
       "category": "testing",
       "title": "Test agent-memory Builders",
       "description": "Test entity builders, observation builders, and session builders.",
@@ -111,7 +111,7 @@
       ]
     },
     {
-      "id": "T1.11.3",
+      "id": "2.11.3",
       "category": "testing",
       "title": "Test progress.ts Types",
       "description": "Test progress callback types, ProgressInfo creation, and phase tracking.",
@@ -158,7 +158,7 @@
       ]
     },
     {
-      "id": "T1.11.4",
+      "id": "2.11.4",
       "category": "testing",
       "title": "Test search.ts QueryTrace",
       "description": "Test QueryTraceBuilder, stage tracking, and trace completion.",
@@ -205,7 +205,7 @@
       ]
     },
     {
-      "id": "T1.11.5",
+      "id": "2.11.5",
       "category": "testing",
       "title": "Test search.ts SearchExplanation",
       "description": "Test explanation structure, signal aggregation, and score breakdown.",

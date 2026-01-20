@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 3,
   "title": "Query Parser & Proximity Search Tests",
   "priority": "CRITICAL",
@@ -18,7 +18,7 @@
   },
   "tasks": [
     {
-      "id": "T1.3.1",
+      "id": "2.3.1",
       "category": "testing",
       "title": "Test QueryParser Basic Parsing",
       "description": "Test tokenization, term extraction, and basic query structure.",
@@ -60,7 +60,7 @@
       ]
     },
     {
-      "id": "T1.3.2",
+      "id": "2.3.2",
       "category": "testing",
       "title": "Test QueryParser Phrase Handling",
       "description": "Test quoted phrase detection, phrase search generation, and escaping.",
@@ -102,7 +102,7 @@
       ]
     },
     {
-      "id": "T1.3.3",
+      "id": "2.3.3",
       "category": "testing",
       "title": "Test QueryParser Operators",
       "description": "Test wildcard (*, ?), field-specific (field:), and proximity (~N) operators.",
@@ -144,7 +144,7 @@
       ]
     },
     {
-      "id": "T1.3.4",
+      "id": "2.3.4",
       "category": "testing",
       "title": "Test ProximitySearch Core",
       "description": "Test proximity matching algorithm, word distance calculation, and scoring.",
@@ -191,7 +191,7 @@
       ]
     },
     {
-      "id": "T1.3.5",
+      "id": "2.3.5",
       "category": "testing",
       "title": "Test ProximitySearch Edge Cases",
       "description": "Test empty queries, single-word queries, overlapping matches, and large documents.",

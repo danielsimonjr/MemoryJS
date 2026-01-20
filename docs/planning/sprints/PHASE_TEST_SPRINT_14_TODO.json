@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 14,
   "title": "FuzzySearch & Algorithms Tests",
   "priority": "LOW",
@@ -18,7 +18,7 @@
   },
   "tasks": [
     {
-      "id": "T1.14.1",
+      "id": "2.14.1",
       "category": "testing",
       "title": "Test FuzzySearch Multi-Term",
       "description": "Test multi-term fuzzy queries, term combination scoring.",
@@ -60,7 +60,7 @@
       ]
     },
     {
-      "id": "T1.14.2",
+      "id": "2.14.2",
       "category": "testing",
       "title": "Test FuzzySearch Observations",
       "description": "Test observation-level matching accuracy and scoring.",
@@ -102,7 +102,7 @@
       ]
     },
     {
-      "id": "T1.14.3",
+      "id": "2.14.3",
       "category": "testing",
       "title": "Test FuzzySearch Performance",
       "description": "Test cache effectiveness and large dataset performance.",
@@ -144,7 +144,7 @@
       ]
     },
     {
-      "id": "T1.14.4",
+      "id": "2.14.4",
       "category": "testing",
       "title": "Test searchAlgorithms Core",
       "description": "Test Levenshtein distance, similarity scoring, and threshold tuning.",
@@ -191,7 +191,7 @@
       ]
     },
     {
-      "id": "T1.14.5",
+      "id": "2.14.5",
       "category": "testing",
       "title": "Test searchAlgorithms Edge Cases",
       "description": "Test empty strings, unicode handling, and very long strings.",
@@ -246,7 +246,7 @@
   ],
   "totalNewTests": 50,
   "totalEstimatedHours": 5,
-  "dependencies": ["PHASE_TEST_SPRINT_13"],
+  "dependencies": ["Sprint 13"],
   "notes": [
     "Test worker pool integration",
     "Test scoring consistency",

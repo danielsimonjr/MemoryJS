@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 13,
   "title": "EmbeddingService Completion Tests",
   "priority": "LOW",
@@ -14,7 +14,7 @@
   },
   "tasks": [
     {
-      "id": "T1.13.1",
+      "id": "2.13.1",
       "category": "testing",
       "title": "Test EmbeddingService Error Handling",
       "description": "Test API failures, rate limiting, timeout scenarios, and retry logic.",
@@ -61,7 +61,7 @@
       ]
     },
     {
-      "id": "T1.13.2",
+      "id": "2.13.2",
       "category": "testing",
       "title": "Test EmbeddingService Caching",
       "description": "Test cache hit/miss behavior, cache invalidation, and memory management.",
@@ -103,7 +103,7 @@
       ]
     },
     {
-      "id": "T1.13.3",
+      "id": "2.13.3",
       "category": "testing",
       "title": "Test EmbeddingService Batch Operations",
       "description": "Test batch embedding efficiency, partial failure handling, and chunking.",
@@ -145,7 +145,7 @@
       ]
     },
     {
-      "id": "T1.13.4",
+      "id": "2.13.4",
       "category": "testing",
       "title": "Test EmbeddingService Providers",
       "description": "Test OpenAI provider, local provider, and provider fallback logic.",
@@ -187,7 +187,7 @@
       ]
     },
     {
-      "id": "T1.13.5",
+      "id": "2.13.5",
       "category": "testing",
       "title": "Test EmbeddingService Config",
       "description": "Test model selection, dimension configuration, and initialization options.",

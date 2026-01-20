@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 5,
   "title": "Validators & EntityValidator Tests",
   "priority": "CRITICAL",
@@ -22,7 +22,7 @@
   },
   "tasks": [
     {
-      "id": "T1.5.1",
+      "id": "2.5.1",
       "category": "testing",
       "title": "Test validators.ts Built-ins",
       "description": "Test required(), minLength(), maxLength(), pattern(), range(), oneOf() validators.",
@@ -71,7 +71,7 @@
       ]
     },
     {
-      "id": "T1.5.2",
+      "id": "2.5.2",
       "category": "testing",
       "title": "Test validators.ts Custom",
       "description": "Test custom validator creation, async validators, and validator composition.",
@@ -114,7 +114,7 @@
       ]
     },
     {
-      "id": "T1.5.3",
+      "id": "2.5.3",
       "category": "testing",
       "title": "Test EntityValidator Rules",
       "description": "Test rule definition, field targeting, and severity levels.",
@@ -161,7 +161,7 @@
       ]
     },
     {
-      "id": "T1.5.4",
+      "id": "2.5.4",
       "category": "testing",
       "title": "Test EntityValidator Execution",
       "description": "Test validation execution, error collection, and warning vs error handling.",
@@ -204,7 +204,7 @@
       ]
     },
     {
-      "id": "T1.5.5",
+      "id": "2.5.5",
       "category": "testing",
       "title": "Test SchemaValidator Integration",
       "description": "Test JSON Schema validation, schema loading, and validation error formatting.",

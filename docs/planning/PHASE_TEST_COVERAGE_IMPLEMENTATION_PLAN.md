@@ -1,6 +1,8 @@
-# Phase: Test Coverage Implementation Plan
+# Phase 2: Test Coverage Implementation Plan
 
 This document provides a detailed, sprint-based implementation plan for achieving 90%+ test coverage across the MemoryJS codebase. The plan addresses identified coverage gaps through systematic test implementation.
+
+> **Note**: This is Phase 2 of the MemoryJS development roadmap. Phase 1 covered Foundation features (Sprints 1-15). Phase 2 focuses on test coverage (Sprints 1-15, task IDs use 2.x.y format).
 
 ---
 
@@ -11,10 +13,10 @@ This document provides a detailed, sprint-based implementation plan for achievin
 **Current State Analysis**:
 - Overall coverage: ~65% (estimated)
 - Critical gaps: CLI module (0%), validators (0%), search parsers (0%), several utils (<10%)
-- Total lines requiring test coverage: ~4,500+ lines across 25+ files
+- Total lines requiring test coverage: ~5,500+ lines across 28+ files
 
 **Core Testing Areas**:
-- CLI module comprehensive testing (633 lines, 0% coverage)
+- CLI module comprehensive testing (984 lines, 0% coverage)
 - Search subsystem gaps (QueryParser, ProximitySearch, QueryLogger)
 - Utility module critical coverage (validators, cache, schedulers)
 - Core module enhancements (ManagerContext, SearchManager)
@@ -57,46 +59,48 @@ This document provides a detailed, sprint-based implementation plan for achievin
 | src/cli/config.ts | 93 | 0% | 90% | +90% |
 | src/cli/formatters.ts | 229 | 0% | 90% | +90% |
 | src/cli/interactive.ts | 212 | 0% | 90% | +90% |
-| src/cli/options.ts | 48 | 0% | 90% | +90% |
-| src/cli/commands/index.ts | 51 | 0% | 90% | +90% |
-| src/search/ProximitySearch.ts | 180 | 0% | 90% | +90% |
-| src/search/QueryParser.ts | 285 | 0% | 90% | +90% |
-| src/search/QueryLogger.ts | 208 | 2.7% | 90% | +87.3% |
-| src/utils/EntityValidator.ts | 175 | 0% | 90% | +90% |
-| src/utils/SchemaValidator.ts | 242 | 0% | 90% | +90% |
-| src/utils/compressedCache.ts | 484 | 0% | 90% | +90% |
-| src/utils/errorSuggestions.ts | 235 | 0% | 90% | +90% |
-| src/utils/validators.ts | 330 | 0% | 90% | +90% |
-| src/utils/relationHelpers.ts | 222 | 0% | 90% | +90% |
-| src/utils/relationValidation.ts | 180 | 0% | 90% | +90% |
-| src/types/progress.ts | 127 | 0% | 90% | +90% |
-| src/types/search.ts | 52 | 0% | 90% | +90% |
+| src/cli/options.ts | 51 | 0% | 90% | +90% |
+| src/cli/commands/index.ts | 399 | 0% | 90% | +90% |
+| src/search/ProximitySearch.ts | 231 | 0% | 90% | +90% |
+| src/search/QueryParser.ts | 319 | 0% | 90% | +90% |
+| src/search/QueryLogger.ts | 210 | 2.7% | 90% | +87.3% |
+| src/utils/EntityValidator.ts | 286 | 0% | 90% | +90% |
+| src/utils/SchemaValidator.ts | 336 | 0% | 90% | +90% |
+| src/utils/compressedCache.ts | 484 | 0%* | 90% | +90% |
+| src/utils/errorSuggestions.ts | 253 | 0% | 90% | +90% |
+| src/utils/validators.ts | 348 | 0% | 90% | +90% |
+| src/utils/relationHelpers.ts | 253 | 0% | 90% | +90% |
+| src/utils/relationValidation.ts | 256 | 0% | 90% | +90% |
+| src/types/progress.ts | 195 | 0% | 90% | +90% |
+| src/types/search.ts | 290 | 0% | 90% | +90% |
+
+> *Note: compressedCache.test.ts exists but shows 0% coverage - needs enhancement, not creation.
 
 ### High Priority (< 35% Coverage)
 
 | File | Lines | Current | Target | Gap |
 |------|-------|---------|--------|-----|
-| src/core/ManagerContext.ts | 354 | 25% | 90% | +65% |
-| src/search/SearchManager.ts | 593 | 33% | 90% | +57% |
-| src/utils/BatchProcessor.ts | 539 | 1% | 90% | +89% |
+| src/core/ManagerContext.ts | 353 | 25% | 90% | +65% |
+| src/search/SearchManager.ts | 592 | 33% | 90% | +57% |
+| src/utils/BatchProcessor.ts | 538 | 1% | 90% | +89% |
 | src/utils/MemoryMonitor.ts | 410 | 7.6% | 90% | +82.4% |
-| src/utils/taskScheduler.ts | 660 | 7.6% | 90% | +82.4% |
-| src/utils/formatters.ts | 192 | 28% | 90% | +62% |
-| src/utils/entityUtils.ts | 820 | 32% | 90% | +58% |
-| src/utils/logger.ts | 45 | 16% | 90% | +74% |
-| src/utils/parallelUtils.ts | 235 | 6.5% | 90% | +83.5% |
-| src/utils/schemas.ts | 605 | 33% | 90% | +57% |
-| src/utils/searchCache.ts | 260 | 49% | 90% | +41% |
+| src/utils/taskScheduler.ts | 659 | 7.6% | 90% | +82.4% |
+| src/utils/formatters.ts | 196 | 28% | 90% | +62% |
+| src/utils/entityUtils.ts | 819 | 32% | 90% | +58% |
+| src/utils/logger.ts | 44 | 16% | 90% | +74% |
+| src/utils/parallelUtils.ts | 233 | 6.5% | 90% | +83.5% |
+| src/utils/schemas.ts | 601 | 33% | 90% | +57% |
+| src/utils/searchCache.ts | 254 | 49% | 90% | +41% |
 
 ### Medium Priority (35-70% Coverage)
 
 | File | Lines | Current | Target | Gap |
 |------|-------|---------|--------|-----|
-| src/search/EmbeddingService.ts | 620 | 60% | 90% | +30% |
+| src/search/EmbeddingService.ts | 649 | 60% | 90% | +30% |
 | src/search/FuzzySearch.ts | 420 | 71% | 90% | +19% |
-| src/utils/compressionUtil.ts | 330 | 43% | 90% | +47% |
-| src/utils/indexes.ts | 575 | 58% | 90% | +32% |
-| src/utils/searchAlgorithms.ts | 180 | 72% | 90% | +18% |
+| src/utils/compressionUtil.ts | 345 | 43% | 90% | +47% |
+| src/utils/indexes.ts | 588 | 58% | 90% | +32% |
+| src/utils/searchAlgorithms.ts | 191 | 72% | 90% | +18% |
 
 ---
 

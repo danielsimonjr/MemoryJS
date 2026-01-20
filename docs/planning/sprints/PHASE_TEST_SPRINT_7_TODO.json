@@ -1,5 +1,5 @@
 {
-  "phase": "test-coverage",
+  "phase": 2,
   "sprint": 7,
   "title": "ManagerContext Agent Memory Tests",
   "priority": "HIGH",
@@ -14,7 +14,7 @@
   },
   "tasks": [
     {
-      "id": "T1.7.1",
+      "id": "2.7.1",
       "category": "testing",
       "title": "Test decayEngine Initialization",
       "description": "Test DecayEngine getter, environment variable parsing, and configuration.",
@@ -56,7 +56,7 @@
       ]
     },
     {
-      "id": "T1.7.2",
+      "id": "2.7.2",
       "category": "testing",
       "title": "Test salienceEngine Initialization",
       "description": "Test SalienceEngine getter, weight configuration, and dependency injection.",
@@ -98,7 +98,7 @@
       ]
     },
     {
-      "id": "T1.7.3",
+      "id": "2.7.3",
       "category": "testing",
       "title": "Test contextWindowManager",
       "description": "Test ContextWindowManager getter, token budget configuration.",
@@ -140,7 +140,7 @@
       ]
     },
     {
-      "id": "T1.7.4",
+      "id": "2.7.4",
       "category": "testing",
       "title": "Test agentMemory() Facade",
       "description": "Test AgentMemoryManager creation, optional config override, and lazy initialization.",
@@ -182,7 +182,7 @@
       ]
     },
     {
-      "id": "T1.7.5",
+      "id": "2.7.5",
       "category": "testing",
       "title": "Test accessTracker Wiring",
       "description": "Test AccessTracker initialization and wiring to EntityManager and SearchManager.",
