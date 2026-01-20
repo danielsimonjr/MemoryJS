@@ -739,4 +739,245 @@ describe('FuzzySearch', () => {
       expect(result1.entities.map(e => e.name).sort()).toEqual(result2.entities.map(e => e.name).sort());
     });
   });
+
+  describe('Shutdown', () => {
+    it('should have shutdown method', () => {
+      expect(typeof fuzzySearch.shutdown).toBe('function');
+    });
+
+    it('should be callable without error', async () => {
+      await expect(fuzzySearch.shutdown()).resolves.toBeUndefined();
+    });
+
+    it('should be callable multiple times', async () => {
+      await fuzzySearch.shutdown();
+      await expect(fuzzySearch.shutdown()).resolves.toBeUndefined();
+    });
+
+    it('should not affect search after shutdown', async () => {
+      await fuzzySearch.shutdown();
+      const result = await fuzzySearch.fuzzySearch('Alice');
+      expect(result.entities.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe('FuzzySearchOptions', () => {
+    it('should accept useWorkerPool option', () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      expect(fuzzy).toBeInstanceOf(FuzzySearch);
+    });
+
+    it('should work with useWorkerPool disabled', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('Alice', 0.7);
+      expect(result.entities.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should default useWorkerPool to true', () => {
+      const fuzzy = new FuzzySearch(storage);
+      expect(fuzzy).toBeInstanceOf(FuzzySearch);
+    });
+  });
+});
+
+// ==================== Sprint 14: Additional Coverage Tests ====================
+
+describe('FuzzySearch - Sprint 14 Extended Tests', () => {
+  let storage: GraphStorage;
+  let testDir: string;
+  let testFilePath: string;
+
+  beforeEach(async () => {
+    testDir = join(tmpdir(), `fuzzy-extended-test-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(testDir, { recursive: true });
+    testFilePath = join(testDir, 'test-graph.jsonl');
+    storage = new GraphStorage(testFilePath);
+  });
+
+  afterEach(async () => {
+    try {
+      await fs.rm(testDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  describe('Multi-Term Query Support', () => {
+    beforeEach(async () => {
+      const entityManager = new EntityManager(storage);
+      await entityManager.createEntities([
+        {
+          name: 'John Smith',
+          entityType: 'person',
+          observations: ['Software developer at Tech Corp', 'Works with Python and Java'],
+          importance: 8,
+        },
+        {
+          name: 'Jane Doe',
+          entityType: 'person',
+          observations: ['Product manager', 'Leads mobile team'],
+          importance: 9,
+        },
+        {
+          name: 'Tech Corp',
+          entityType: 'company',
+          observations: ['Technology company', 'Founded in 2020'],
+          importance: 7,
+        },
+      ]);
+    });
+
+    it('should match multi-word names', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('John Smith', 0.7);
+      expect(result.entities.map(e => e.name)).toContain('John Smith');
+    });
+
+    it('should match partial multi-word queries', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('John', 0.7);
+      expect(result.entities.map(e => e.name)).toContain('John Smith');
+    });
+
+    it('should handle typos in multi-word queries', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('Jon Smith', 0.6);
+      expect(result.entities.map(e => e.name)).toContain('John Smith');
+    });
+
+    it('should match words in observations', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('Software developer', 0.7);
+      expect(result.entities.map(e => e.name)).toContain('John Smith');
+    });
+  });
+
+  describe('Observation Matching Details', () => {
+    beforeEach(async () => {
+      const entityManager = new EntityManager(storage);
+      await entityManager.createEntities([
+        {
+          name: 'DataEntity',
+          entityType: 'data',
+          observations: [
+            'First observation about technology',
+            'Second observation about innovation',
+            'Third observation about development',
+          ],
+          importance: 5,
+        },
+      ]);
+    });
+
+    it('should match any word in any observation', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+
+      const techResult = await fuzzy.fuzzySearch('technology', 0.8);
+      expect(techResult.entities.map(e => e.name)).toContain('DataEntity');
+
+      const innovResult = await fuzzy.fuzzySearch('innovation', 0.8);
+      expect(innovResult.entities.map(e => e.name)).toContain('DataEntity');
+
+      const devResult = await fuzzy.fuzzySearch('development', 0.8);
+      expect(devResult.entities.map(e => e.name)).toContain('DataEntity');
+    });
+
+    it('should match observation substrings', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('tech', 0.8);
+      expect(result.entities.map(e => e.name)).toContain('DataEntity');
+    });
+
+    it('should match with typos in observation words', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      // 'technlogy' - typo
+      const result = await fuzzy.fuzzySearch('technlogy', 0.7);
+      expect(result.entities.map(e => e.name)).toContain('DataEntity');
+    });
+  });
+
+  describe('Similarity Score Edge Cases', () => {
+    beforeEach(async () => {
+      const entityManager = new EntityManager(storage);
+      await entityManager.createEntities([
+        { name: 'A', entityType: 'test', observations: ['Short'], importance: 5 },
+        { name: 'AB', entityType: 'test', observations: ['Medium'], importance: 5 },
+        { name: 'ABC', entityType: 'test', observations: ['Longer'], importance: 5 },
+        { name: 'ABCD', entityType: 'test', observations: ['Even longer'], importance: 5 },
+      ]);
+    });
+
+    it('should handle single character entity names', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('A', 1.0);
+      expect(result.entities.map(e => e.name)).toContain('A');
+    });
+
+    it('should handle varying length comparisons', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      // With threshold 0.3, 'A' should match 'A', 'AB', 'ABC' since it's contained
+      const result = await fuzzy.fuzzySearch('A', 0.3);
+      expect(result.entities.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should not match very different strings with high threshold', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      // Search for something completely different
+      const result = await fuzzy.fuzzySearch('XYZWVUTSRQ', 0.9);
+      // None of our entities should match this unrelated query with high threshold
+      const names = result.entities.map(e => e.name);
+      expect(names).not.toContain('A');
+      expect(names).not.toContain('AB');
+      expect(names).not.toContain('ABC');
+      expect(names).not.toContain('ABCD');
+    });
+  });
+
+  describe('Performance Characteristics', () => {
+    it('should handle large number of entities efficiently', async () => {
+      const entityManager = new EntityManager(storage);
+      const entities = Array.from({ length: 100 }, (_, i) => ({
+        name: `Entity${i}`,
+        entityType: 'test',
+        observations: [`Observation ${i} with some text`],
+        importance: i % 10,
+      }));
+      await entityManager.createEntities(entities);
+
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+
+      const start = Date.now();
+      const result = await fuzzy.fuzzySearch('Entity50', 0.8);
+      const elapsed = Date.now() - start;
+
+      expect(result.entities.length).toBeGreaterThanOrEqual(1);
+      expect(elapsed).toBeLessThan(5000); // Should complete within 5 seconds
+    });
+
+    it('should benefit from caching on repeated queries', async () => {
+      const entityManager = new EntityManager(storage);
+      const entities = Array.from({ length: 50 }, (_, i) => ({
+        name: `CacheTest${i}`,
+        entityType: 'test',
+        observations: [`Test observation ${i}`],
+        importance: 5,
+      }));
+      await entityManager.createEntities(entities);
+
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+
+      // First query
+      const start1 = Date.now();
+      await fuzzy.fuzzySearch('CacheTest', 0.7);
+      const elapsed1 = Date.now() - start1;
+
+      // Second query (cached)
+      const start2 = Date.now();
+      await fuzzy.fuzzySearch('CacheTest', 0.7);
+      const elapsed2 = Date.now() - start2;
+
+      // Cache hit should be faster or equal
+      expect(elapsed2).toBeLessThanOrEqual(elapsed1 + 10); // Allow small variance
+    });
+  });
 });

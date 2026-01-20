@@ -509,3 +509,237 @@ describe('cleanupAllCaches', () => {
     expect(searchCaches.ranked.size).toBe(1);
   });
 });
+
+// ==================== Sprint 15: Additional Coverage Tests ====================
+
+describe('SearchCache - Sprint 15 Extended Tests', () => {
+  describe('Key Generation Edge Cases', () => {
+    let cache: SearchCache<string>;
+
+    beforeEach(() => {
+      cache = new SearchCache<string>(100, 5000);
+    });
+
+    it('should handle params with special characters', () => {
+      cache.set({ query: 'test"with"quotes' }, 'result');
+      expect(cache.get({ query: 'test"with"quotes' })).toBe('result');
+    });
+
+    it('should handle params with unicode', () => {
+      cache.set({ query: '你好世界' }, 'chinese');
+      cache.set({ query: '🎉emoji' }, 'emoji');
+
+      expect(cache.get({ query: '你好世界' })).toBe('chinese');
+      expect(cache.get({ query: '🎉emoji' })).toBe('emoji');
+    });
+
+    it('should handle deeply nested objects', () => {
+      const params = {
+        filter: {
+          nested: {
+            deep: {
+              deeper: {
+                value: 'test',
+              },
+            },
+          },
+        },
+      };
+      cache.set(params, 'nested result');
+      expect(cache.get(params)).toBe('nested result');
+    });
+
+    it('should handle boolean and number values', () => {
+      cache.set({ active: true, count: 42 }, 'mixed types');
+      expect(cache.get({ active: true, count: 42 })).toBe('mixed types');
+    });
+
+    it('should differentiate between undefined and null', () => {
+      cache.set({ value: null }, 'null');
+      cache.set({ value: undefined }, 'undefined');
+
+      expect(cache.get({ value: null })).toBe('null');
+      expect(cache.get({ value: undefined })).toBe('undefined');
+    });
+  });
+
+  describe('Concurrent Access Patterns', () => {
+    let cache: SearchCache<number>;
+
+    beforeEach(() => {
+      cache = new SearchCache<number>(10, 5000);
+    });
+
+    it('should handle rapid set/get operations', () => {
+      for (let i = 0; i < 100; i++) {
+        cache.set({ id: i % 10 }, i);
+      }
+
+      // Last 10 values should be 90-99
+      for (let i = 0; i < 10; i++) {
+        expect(cache.get({ id: i })).toBe(90 + i);
+      }
+    });
+
+    it('should maintain correct size during churn', () => {
+      for (let i = 0; i < 50; i++) {
+        cache.set({ id: i }, i);
+      }
+      expect(cache.size).toBe(10); // maxSize is 10
+    });
+  });
+
+  describe('Cache Statistics Accuracy', () => {
+    let cache: SearchCache<string>;
+
+    beforeEach(() => {
+      cache = new SearchCache<string>(100, 5000);
+    });
+
+    it('should maintain accurate stats through operations', () => {
+      // 3 misses
+      cache.get({ id: 1 });
+      cache.get({ id: 2 });
+      cache.get({ id: 3 });
+
+      // 3 sets
+      cache.set({ id: 1 }, 'one');
+      cache.set({ id: 2 }, 'two');
+      cache.set({ id: 3 }, 'three');
+
+      // 3 hits
+      cache.get({ id: 1 });
+      cache.get({ id: 2 });
+      cache.get({ id: 3 });
+
+      const stats = cache.getStats();
+      expect(stats.hits).toBe(3);
+      expect(stats.misses).toBe(3);
+      expect(stats.hitRate).toBe(0.5);
+      expect(stats.size).toBe(3);
+    });
+
+    it('should track stats correctly after reset', () => {
+      cache.set({ id: 1 }, 'one');
+      cache.get({ id: 1 }); // hit
+      cache.get({ id: 2 }); // miss
+
+      cache.resetStats();
+
+      cache.get({ id: 1 }); // hit (after reset)
+
+      const stats = cache.getStats();
+      expect(stats.hits).toBe(1);
+      expect(stats.misses).toBe(0);
+    });
+  });
+
+  describe('LRU Order Verification', () => {
+    let cache: SearchCache<number>;
+
+    beforeEach(() => {
+      cache = new SearchCache<number>(3, 5000);
+    });
+
+    it('should correctly evict based on access pattern', () => {
+      cache.set({ id: 1 }, 1);
+      cache.set({ id: 2 }, 2);
+      cache.set({ id: 3 }, 3);
+
+      // Access pattern: 1, 3 (2 becomes LRU)
+      cache.get({ id: 1 });
+      cache.get({ id: 3 });
+
+      // Add new item - should evict 2
+      cache.set({ id: 4 }, 4);
+
+      expect(cache.get({ id: 1 })).toBe(1);
+      expect(cache.get({ id: 2 })).toBeUndefined();
+      expect(cache.get({ id: 3 })).toBe(3);
+      expect(cache.get({ id: 4 })).toBe(4);
+    });
+
+    it('should update order on subsequent set', () => {
+      cache.set({ id: 1 }, 1);
+      cache.set({ id: 2 }, 2);
+      cache.set({ id: 3 }, 3);
+
+      // Update 1, making it most recent
+      cache.set({ id: 1 }, 100);
+
+      // Add new item - should evict 2 (now LRU)
+      cache.set({ id: 4 }, 4);
+
+      expect(cache.get({ id: 1 })).toBe(100);
+      expect(cache.get({ id: 2 })).toBeUndefined();
+      expect(cache.get({ id: 3 })).toBe(3);
+    });
+  });
+
+  describe('TTL Boundary Cases', () => {
+    it('should handle TTL of 0 (immediate expiration)', async () => {
+      const cache = new SearchCache<string>(100, 0);
+      cache.set({ id: 1 }, 'value');
+
+      await new Promise((resolve) => setTimeout(resolve, 1));
+
+      expect(cache.get({ id: 1 })).toBeUndefined();
+    });
+
+    it('should handle very large TTL', () => {
+      const cache = new SearchCache<string>(100, Number.MAX_SAFE_INTEGER);
+      cache.set({ id: 1 }, 'value');
+
+      expect(cache.get({ id: 1 })).toBe('value');
+    });
+  });
+
+  describe('has() Method Details', () => {
+    let cache: SearchCache<string>;
+
+    beforeEach(() => {
+      cache = new SearchCache<string>(100, 5000);
+    });
+
+    it('should not count as hit or miss', () => {
+      cache.set({ id: 1 }, 'value');
+
+      cache.has({ id: 1 }); // Check without affecting stats
+      cache.has({ id: 2 }); // Check non-existent
+
+      const stats = cache.getStats();
+      expect(stats.hits).toBe(0);
+      expect(stats.misses).toBe(0);
+    });
+
+    it('should clean up expired entry', async () => {
+      const shortCache = new SearchCache<string>(100, 50);
+      shortCache.set({ id: 1 }, 'value');
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      shortCache.has({ id: 1 }); // Should clean up
+      expect(shortCache.size).toBe(0);
+    });
+  });
+
+  describe('cleanupExpired Details', () => {
+    it('should clean up multiple expired entries', async () => {
+      const cache = new SearchCache<string>(100, 50);
+
+      cache.set({ id: 1 }, 'one');
+      cache.set({ id: 2 }, 'two');
+      cache.set({ id: 3 }, 'three');
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Add one fresh entry
+      cache.set({ id: 4 }, 'four');
+
+      cache.cleanupExpired();
+
+      expect(cache.size).toBe(1);
+      expect(cache.get({ id: 4 })).toBe('four');
+    });
+  });
+});

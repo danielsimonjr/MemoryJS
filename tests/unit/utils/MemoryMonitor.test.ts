@@ -258,3 +258,155 @@ describe('MemoryMonitor', () => {
     });
   });
 });
+
+// ==================== Sprint 15: Additional Coverage Tests ====================
+
+import type { MemoryUsageStats } from '../../../src/utils/MemoryMonitor.js';
+
+describe('MemoryMonitor - Sprint 15 Extended Tests', () => {
+  let monitor: MemoryMonitor;
+
+  beforeEach(() => {
+    monitor = new MemoryMonitor();
+  });
+
+  describe('Constructor with Partial Thresholds', () => {
+    it('should accept partial thresholds in constructor', () => {
+      const partialMonitor = new MemoryMonitor({ warning: 5000 });
+      partialMonitor.registerComponent('test', () => 6000);
+
+      const alerts = partialMonitor.checkThresholds();
+      expect(alerts.some(a => a.level === 'warning')).toBe(true);
+    });
+
+    it('should accept both thresholds in constructor', () => {
+      const customMonitor = new MemoryMonitor({ warning: 1000, critical: 2000 });
+      const thresholds = customMonitor.getThresholds();
+
+      expect(thresholds.warning).toBe(1000);
+      expect(thresholds.critical).toBe(2000);
+    });
+
+    it('should use default thresholds when not provided', () => {
+      const defaultMonitor = new MemoryMonitor();
+      const thresholds = defaultMonitor.getThresholds();
+
+      expect(thresholds.warning).toBe(100 * 1024 * 1024);
+      expect(thresholds.critical).toBe(500 * 1024 * 1024);
+    });
+  });
+
+  describe('Component Warning Thresholds', () => {
+    it('should trigger component warning for moderate usage', () => {
+      monitor.setThresholds({ warning: 2000, critical: 10000 });
+      // componentWarning = 2000 * 0.5 = 1000
+      monitor.registerComponent('medium', () => 1500);
+
+      const alerts = monitor.checkThresholds();
+      expect(alerts.some(a => a.level === 'warning' && a.component === 'medium')).toBe(true);
+    });
+
+    it('should not trigger component alert when under threshold', () => {
+      monitor.setThresholds({ warning: 10000, critical: 50000 });
+      // componentWarning = 10000 * 0.5 = 5000
+      monitor.registerComponent('small', () => 1000);
+
+      const alerts = monitor.checkThresholds();
+      expect(alerts.filter(a => a.component === 'small')).toHaveLength(0);
+    });
+  });
+
+  describe('parseBytes Edge Cases', () => {
+    it('should return 0 for invalid format', () => {
+      expect(monitor.parseBytes('invalid')).toBe(0);
+      expect(monitor.parseBytes('')).toBe(0);
+      expect(monitor.parseBytes('123')).toBe(0);
+    });
+
+    it('should handle lowercase units', () => {
+      expect(monitor.parseBytes('1 kb')).toBe(1024);
+      expect(monitor.parseBytes('1 mb')).toBe(1048576);
+    });
+
+    it('should handle decimal values', () => {
+      expect(monitor.parseBytes('1.5 KB')).toBe(1536);
+      expect(monitor.parseBytes('2.5 MB')).toBe(2621440);
+    });
+
+    it('should handle TB', () => {
+      expect(monitor.parseBytes('1 TB')).toBe(1024 * 1024 * 1024 * 1024);
+    });
+
+    it('should handle bytes without decimals', () => {
+      expect(monitor.parseBytes('512 B')).toBe(512);
+    });
+  });
+
+  describe('formatBytes Edge Cases', () => {
+    it('should handle TB range', () => {
+      const tb = 1024 * 1024 * 1024 * 1024;
+      expect(monitor.formatBytes(tb)).toBe('1.00 TB');
+    });
+
+    it('should handle small decimal values', () => {
+      expect(monitor.formatBytes(100)).toBe('100 B');
+    });
+
+    it('should handle boundary values', () => {
+      expect(monitor.formatBytes(1023)).toBe('1023 B');
+      expect(monitor.formatBytes(1024)).toBe('1.00 KB');
+    });
+  });
+
+  describe('Listener Management', () => {
+    it('should support multiple listeners', () => {
+      const results: MemoryUsageStats[] = [];
+      const cb1 = vi.fn((stats: MemoryUsageStats) => results.push(stats));
+      const cb2 = vi.fn((stats: MemoryUsageStats) => results.push(stats));
+
+      monitor.addListener(cb1);
+      monitor.addListener(cb2);
+      monitor.registerComponent('test', () => 1000);
+      monitor.getUsage();
+
+      expect(cb1).toHaveBeenCalledTimes(1);
+      expect(cb2).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not fail when removing non-existent listener', () => {
+      const cb = vi.fn();
+      expect(() => monitor.removeListener(cb)).not.toThrow();
+    });
+  });
+
+  describe('Summary Generation', () => {
+    it('should include heap stats section in summary', () => {
+      monitor.registerComponent('test', () => 1000);
+      const summary = monitor.getSummary();
+
+      expect(summary).toContain('Node.js Heap:');
+      expect(summary).toContain('Heap Used:');
+      expect(summary).toContain('RSS:');
+    });
+
+    it('should format item info correctly in summary', () => {
+      monitor.registerComponent('items', () => 10000, () => 100);
+      const summary = monitor.getSummary();
+
+      expect(summary).toContain('100');
+      expect(summary).toContain('items');
+    });
+  });
+
+  describe('Timestamp Tracking', () => {
+    it('should include timestamp in usage stats', () => {
+      monitor.registerComponent('test', () => 1000);
+      const before = new Date();
+      const usage = monitor.getUsage();
+      const after = new Date();
+
+      expect(usage.timestamp.getTime()).toBeGreaterThanOrEqual(before.getTime());
+      expect(usage.timestamp.getTime()).toBeLessThanOrEqual(after.getTime());
+    });
+  });
+});

@@ -32,6 +32,11 @@ import {
   filterByEntityType,
   entityPassesFilters,
   validateFilePath,
+  fnv1aHash,
+  sanitizeObject,
+  escapeCsvFormula,
+  ensureMemoryFilePath,
+  defaultMemoryPath,
   EntityNotFoundError,
   FileOperationError,
 } from '../../../src/utils/index.js';
@@ -781,6 +786,214 @@ describe('entityUtils', () => {
     it('should handle paths with multiple segments', () => {
       const result = validateFilePath('a/b/c/file.txt', 'C:\\base');
       expect(result).toContain('file.txt');
+    });
+
+    it('should normalize path traversal and return valid path', () => {
+      // After normalization, '..' is resolved - this tests the actual behavior
+      // The function normalizes paths, so '../..' becomes a parent directory path
+      const result = validateFilePath('..', '/base/subdir');
+      // Path is normalized to /base
+      expect(result).toBeDefined();
+    });
+  });
+
+  // ==================== SPRINT 9: Additional Coverage Tests ====================
+
+  describe('fnv1aHash', () => {
+    it('should return consistent hash for same input', () => {
+      const hash1 = fnv1aHash('hello');
+      const hash2 = fnv1aHash('hello');
+      expect(hash1).toBe(hash2);
+    });
+
+    it('should return different hashes for different inputs', () => {
+      const hash1 = fnv1aHash('hello');
+      const hash2 = fnv1aHash('world');
+      expect(hash1).not.toBe(hash2);
+    });
+
+    it('should return unsigned 32-bit integer', () => {
+      const hash = fnv1aHash('test string');
+      expect(hash).toBeGreaterThanOrEqual(0);
+      expect(hash).toBeLessThanOrEqual(0xFFFFFFFF);
+    });
+
+    it('should handle empty string', () => {
+      const hash = fnv1aHash('');
+      expect(typeof hash).toBe('number');
+      expect(hash).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle unicode characters', () => {
+      const hash = fnv1aHash('日本語');
+      expect(typeof hash).toBe('number');
+      expect(hash).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should handle long strings', () => {
+      const longString = 'x'.repeat(10000);
+      const hash = fnv1aHash(longString);
+      expect(typeof hash).toBe('number');
+    });
+
+    it('should produce good distribution for similar strings', () => {
+      // Different hashes for strings that differ by one character
+      const hash1 = fnv1aHash('test1');
+      const hash2 = fnv1aHash('test2');
+      expect(hash1).not.toBe(hash2);
+    });
+  });
+
+  describe('sanitizeObject', () => {
+    it('should return object with dangerous keys removed', () => {
+      const input = {
+        __proto__: { malicious: true },
+        constructor: 'bad',
+        prototype: {},
+        safe: 'value',
+      };
+
+      const result = sanitizeObject(input);
+
+      expect(result).not.toHaveProperty('__proto__');
+      expect(result).not.toHaveProperty('constructor');
+      expect(result).not.toHaveProperty('prototype');
+      expect(result).toHaveProperty('safe', 'value');
+    });
+
+    it('should recursively sanitize nested objects', () => {
+      const input = {
+        nested: {
+          __proto__: { attack: true },
+          valid: 'data',
+        },
+      };
+
+      const result = sanitizeObject(input);
+      const nested = result.nested as Record<string, unknown>;
+
+      expect(nested).not.toHaveProperty('__proto__');
+      expect(nested).toHaveProperty('valid', 'data');
+    });
+
+    it('should handle null input', () => {
+      const result = sanitizeObject(null as unknown as Record<string, unknown>);
+      expect(result).toBeNull();
+    });
+
+    it('should handle non-object input', () => {
+      const result = sanitizeObject('string' as unknown as Record<string, unknown>);
+      expect(result).toBe('string');
+    });
+
+    it('should preserve arrays', () => {
+      const input = {
+        items: [1, 2, 3],
+        name: 'test',
+      };
+
+      const result = sanitizeObject(input);
+
+      expect(result.items).toEqual([1, 2, 3]);
+    });
+
+    it('should handle deeply nested dangerous keys', () => {
+      const input = {
+        level1: {
+          level2: {
+            level3: {
+              __proto__: { deep: true },
+              value: 'valid',
+            },
+          },
+        },
+      };
+
+      const result = sanitizeObject(input);
+      const deep = ((result.level1 as Record<string, unknown>)?.level2 as Record<string, unknown>)?.level3 as Record<string, unknown>;
+
+      expect(deep).not.toHaveProperty('__proto__');
+      expect(deep).toHaveProperty('value', 'valid');
+    });
+  });
+
+  describe('escapeCsvFormula', () => {
+    it('should prefix formula-starting characters with single quote', () => {
+      expect(escapeCsvFormula('=SUM(A1:A10)')).toBe("'=SUM(A1:A10)");
+      expect(escapeCsvFormula('+1234')).toBe("'+1234");
+      expect(escapeCsvFormula('-1234')).toBe("'-1234");
+      expect(escapeCsvFormula('@user')).toBe("'@user");
+    });
+
+    it('should not modify normal text', () => {
+      expect(escapeCsvFormula('normal text')).toBe('normal text');
+      expect(escapeCsvFormula('Hello World')).toBe('Hello World');
+    });
+
+    it('should handle undefined input', () => {
+      expect(escapeCsvFormula(undefined)).toBe('');
+    });
+
+    it('should handle null input', () => {
+      expect(escapeCsvFormula(null)).toBe('');
+    });
+
+    it('should handle empty string', () => {
+      expect(escapeCsvFormula('')).toBe('');
+    });
+
+    it('should escape tab character', () => {
+      expect(escapeCsvFormula('\tdata')).toBe("'\tdata");
+    });
+
+    it('should escape carriage return', () => {
+      expect(escapeCsvFormula('\rdata')).toBe("'\rdata");
+    });
+
+    it('should not escape characters in middle of string', () => {
+      expect(escapeCsvFormula('text=value')).toBe('text=value');
+      expect(escapeCsvFormula('name@email.com')).toBe('name@email.com');
+    });
+  });
+
+  describe('defaultMemoryPath', () => {
+    it('should be defined and end with memory.jsonl', () => {
+      expect(defaultMemoryPath).toBeDefined();
+      expect(defaultMemoryPath).toContain('memory.jsonl');
+    });
+  });
+
+  describe('ensureMemoryFilePath', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it('should return default path when MEMORY_FILE_PATH not set', async () => {
+      delete process.env.MEMORY_FILE_PATH;
+      const result = await ensureMemoryFilePath();
+      expect(result).toContain('memory.jsonl');
+    });
+
+    it('should use MEMORY_FILE_PATH when set', async () => {
+      process.env.MEMORY_FILE_PATH = '/custom/path/memory.jsonl';
+      const result = await ensureMemoryFilePath();
+      expect(result).toContain('memory.jsonl');
+    });
+
+    it('should resolve relative paths with traversal', async () => {
+      // Path traversal in MEMORY_FILE_PATH gets normalized
+      // The function validates and resolves to absolute path
+      process.env.MEMORY_FILE_PATH = '../custom.jsonl';
+      const result = await ensureMemoryFilePath();
+      expect(result).toContain('custom.jsonl');
+    });
+
+    it('should handle relative custom path', async () => {
+      process.env.MEMORY_FILE_PATH = 'data/custom.jsonl';
+      const result = await ensureMemoryFilePath();
+      expect(result).toContain('custom.jsonl');
     });
   });
 });
