@@ -32,16 +32,18 @@ export interface ProgressInfo {
 }
 
 /**
- * Callback for receiving progress updates.
+ * Callback for receiving detailed progress updates.
+ * Uses ProgressInfo for rich progress information.
+ * (Note: utils/taskScheduler.ts exports a simpler ProgressInfoCallback type)
  */
-export type ProgressCallback = (progress: ProgressInfo) => void;
+export type ProgressInfoCallback = (progress: ProgressInfo) => void;
 
 /**
  * Options for operations that support progress reporting.
  */
 export interface ProgressOptions {
   /** Callback to receive progress updates */
-  onProgress?: ProgressCallback;
+  onProgress?: ProgressInfoCallback;
   /** Minimum interval between progress callbacks (ms) */
   progressInterval?: number;
   /** Cancellation token */
@@ -93,9 +95,9 @@ export function createProgressInfo(
  * Throttle progress callbacks to avoid overwhelming consumers.
  */
 export function createThrottledProgress(
-  callback: ProgressCallback,
+  callback: ProgressInfoCallback,
   intervalMs: number = 100
-): ProgressCallback {
+): ProgressInfoCallback {
   let lastCall = 0;
   let pending: ProgressInfo | null = null;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -141,11 +143,13 @@ export function createThrottledProgress(
 }
 
 /**
- * Create a progress reporter with automatic throttling.
+ * Create a detailed progress reporter with automatic throttling.
+ * Returns an object with report/complete/cancel methods.
+ * (Note: utils/operationUtils.ts exports a simpler createProgressReporter function)
  */
-export function createProgressReporter(
+export function createDetailedProgressReporter(
   total: number,
-  callback?: ProgressCallback,
+  callback?: ProgressInfoCallback,
   options?: {
     intervalMs?: number;
     phase?: string;

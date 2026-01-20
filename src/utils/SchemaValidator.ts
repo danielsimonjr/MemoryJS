@@ -58,13 +58,8 @@ interface AjvError {
   };
 }
 
-/**
- * AJV instance interface.
- */
-interface AjvInstance {
-  compile: (schema: JsonSchema) => ValidateFunction;
-  errors?: AjvError[] | null;
-}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AjvInstance = any; // Dynamic import, type compatibility handled at runtime
 
 /**
  * AJV validate function interface.

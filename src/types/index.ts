@@ -205,10 +205,12 @@ export {
 } from './agent-memory.js';
 
 // Phase 1 Sprint 10: Progress Types
-export type { ProgressInfo, ProgressCallback, ProgressOptions } from './progress.js';
+// Note: ProgressCallback is exported from utils/taskScheduler.ts (simpler interface)
+// Note: createProgressReporter is exported from utils/operationUtils.ts
+export type { ProgressInfo, ProgressInfoCallback, ProgressOptions } from './progress.js';
 
 export {
   createProgressInfo,
   createThrottledProgress,
-  createProgressReporter,
+  createDetailedProgressReporter,
 } from './progress.js';

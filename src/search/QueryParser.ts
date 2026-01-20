@@ -8,15 +8,7 @@
  * @module search/QueryParser
  */
 
-import type {
-  QueryNode,
-  TermNode,
-  PhraseNode,
-  WildcardNode,
-  ProximityNode,
-  FieldNode,
-  BooleanOpNode,
-} from '../types/search.js';
+import type { QueryNode, BooleanOpNode } from '../types/search.js';
 
 /**
  * Query parser for advanced search syntax.

@@ -226,7 +226,6 @@ export interface BooleanOpNode {
 export class QueryTraceBuilder {
   private trace: Partial<QueryTrace>;
   private stageStart?: number;
-  private currentStageName?: string;
 
   constructor(queryId: string, queryText: string, queryType: QueryTrace['queryType']) {
     this.trace = {
@@ -241,9 +240,8 @@ export class QueryTraceBuilder {
   /**
    * Start timing a stage.
    */
-  startStage(name: string): this {
+  startStage(_name: string): this {
     this.stageStart = performance.now();
-    this.currentStageName = name;
     return this;
   }
 
@@ -258,7 +256,6 @@ export class QueryTraceBuilder {
         metadata,
       });
       this.stageStart = undefined;
-      this.currentStageName = undefined;
     }
     return this;
   }
