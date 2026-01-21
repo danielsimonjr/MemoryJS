@@ -239,14 +239,16 @@ describe('SchemaValidator', () => {
         return;
       }
 
+      // Register schema for 'test' type with a custom property that has enum constraint
       validator.registerSchema('test', {
         type: 'object',
         properties: {
-          entityType: { type: 'string', enum: ['person', 'project'] },
+          status: { type: 'string', enum: ['active', 'inactive'] },
         },
       });
 
-      const entity = createEntity({ entityType: 'unknown' });
+      // Entity with entityType 'test' will match the schema, but status is invalid
+      const entity = createEntity({ entityType: 'test', status: 'unknown' } as any);
       const result = validator.validate(entity);
       expect(result.isValid).toBe(false);
     });

@@ -244,19 +244,21 @@ export class SchemaValidator {
    * Get field path from AJV error.
    */
   private getFieldPath(error: AjvError): string {
+    const instancePath = error.instancePath || '';
+
     if (error.params?.missingProperty) {
-      const basePath = error.instancePath.replace(/^\//, '').replace(/\//g, '.');
+      const basePath = instancePath.replace(/^\//, '').replace(/\//g, '.');
       return basePath ? `${basePath}.${error.params.missingProperty}` : error.params.missingProperty;
     }
 
     if (error.params?.additionalProperty) {
-      const basePath = error.instancePath.replace(/^\//, '').replace(/\//g, '.');
+      const basePath = instancePath.replace(/^\//, '').replace(/\//g, '.');
       return basePath
         ? `${basePath}.${error.params.additionalProperty}`
         : error.params.additionalProperty;
     }
 
-    return error.instancePath.replace(/^\//, '').replace(/\//g, '.') || 'root';
+    return instancePath.replace(/^\//, '').replace(/\//g, '.') || 'root';
   }
 
   /**
