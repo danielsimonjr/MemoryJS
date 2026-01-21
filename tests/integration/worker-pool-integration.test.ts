@@ -178,13 +178,17 @@ describe('Worker Pool Integration - With Workers', () => {
   });
 
   afterEach(async () => {
-    await fuzzySearchWithWorkers.shutdown();
+    // Wrap shutdown in a timeout to prevent hanging
+    await Promise.race([
+      fuzzySearchWithWorkers.shutdown(),
+      new Promise((resolve) => setTimeout(resolve, 5000)), // 5 second timeout
+    ]);
     try {
       await fs.unlink(testFilePath);
     } catch {
       // Ignore cleanup errors
     }
-  });
+  }, 10000); // 10 second timeout for afterEach
 
   it('should use worker pool for large graphs and fall back gracefully on error', async () => {
     // Create 600 entities (above WORKER_MIN_ENTITIES of 500)

@@ -606,4 +606,88 @@ describe('searchAlgorithms - Sprint 14 Extended Tests', () => {
       expect(calculateSimilarity('hello', 'hallo') >= threshold).toBe(true);
     });
   });
+
+  describe('Unicode Support (Sprint 14.5)', () => {
+    it('should handle CJK characters', () => {
+      expect(levenshteinDistance('你好', '你好')).toBe(0);
+      expect(levenshteinDistance('你好', '你们')).toBe(1);
+      expect(levenshteinDistance('日本語', '日本人')).toBe(1);
+    });
+
+    it('should handle Cyrillic characters', () => {
+      expect(levenshteinDistance('привет', 'привет')).toBe(0);
+      expect(levenshteinDistance('привет', 'приват')).toBe(1);
+    });
+
+    it('should handle emoji', () => {
+      expect(levenshteinDistance('🎉', '🎉')).toBe(0);
+      expect(levenshteinDistance('🎉🎊', '🎉🎈')).toBe(1);
+      expect(levenshteinDistance('hello 🌍', 'hello 🌎')).toBe(1);
+    });
+
+    it('should handle mixed scripts', () => {
+      expect(levenshteinDistance('hello世界', 'hello世界')).toBe(0);
+      expect(levenshteinDistance('hello世界', 'hallo世界')).toBe(1);
+    });
+
+    it('should handle accented characters', () => {
+      expect(levenshteinDistance('café', 'cafe')).toBe(1);
+      expect(levenshteinDistance('naïve', 'naive')).toBe(1);
+      expect(levenshteinDistance('über', 'uber')).toBe(1);
+    });
+
+    it('should tokenize ASCII text (CJK/emoji not preserved)', () => {
+      // Note: tokenize uses /[^\w\s]/g which only matches ASCII word chars
+      // CJK and emoji are stripped as non-word characters
+      const tokens = tokenize('hello 世界 🌍 world');
+      expect(tokens).toContain('hello');
+      expect(tokens).toContain('world');
+      // CJK characters are removed by the regex
+      expect(tokens).not.toContain('世界');
+    });
+  });
+
+  describe('Very Long Strings (Sprint 14.5)', () => {
+    it('should handle 10k+ character strings without timeout', () => {
+      const str1 = 'a'.repeat(10000);
+      const str2 = 'a'.repeat(10000);
+
+      const start = Date.now();
+      const distance = levenshteinDistance(str1, str2);
+      const elapsed = Date.now() - start;
+
+      expect(distance).toBe(0);
+      expect(elapsed).toBeLessThan(5000); // Should complete within 5 seconds
+    }, 10000);
+
+    it('should correctly calculate distance for long strings with differences', () => {
+      const str1 = 'a'.repeat(1000);
+      const str2 = 'a'.repeat(999) + 'b';
+
+      const distance = levenshteinDistance(str1, str2);
+      expect(distance).toBe(1);
+    });
+
+    it('should handle TF calculation for long documents', () => {
+      const longDoc = 'word '.repeat(5000) + 'unique term';
+      const tf = calculateTF('unique', longDoc);
+      expect(tf).toBeGreaterThan(0);
+      expect(tf).toBeLessThan(0.001); // Very small TF due to large document
+    });
+
+    it('should handle IDF with large corpus', () => {
+      const largeDocs = Array.from({ length: 1000 }, (_, i) => `document ${i} content`);
+      largeDocs[0] = 'rare unique term';
+
+      const idf = calculateIDF('rare', largeDocs);
+      expect(idf).toBeGreaterThan(0); // Rare term has high IDF
+    });
+
+    it('should tokenize very long text', () => {
+      const longText = 'word '.repeat(10000);
+      const tokens = tokenize(longText);
+      expect(tokens.length).toBe(10000);
+      expect(tokens.every(t => t === 'word')).toBe(true);
+    });
+  });
 });

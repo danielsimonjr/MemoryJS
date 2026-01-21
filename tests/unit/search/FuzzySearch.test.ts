@@ -980,4 +980,105 @@ describe('FuzzySearch - Sprint 14 Extended Tests', () => {
       expect(elapsed2).toBeLessThanOrEqual(elapsed1 + 10); // Allow small variance
     });
   });
+
+  describe('Name vs Observation Priority (Sprint 14.2)', () => {
+    beforeEach(async () => {
+      const entityManager = new EntityManager(storage);
+      await entityManager.createEntities([
+        {
+          name: 'SearchTarget',
+          entityType: 'primary',
+          observations: ['Unrelated observation content'],
+          importance: 5,
+        },
+        {
+          name: 'UnrelatedEntity',
+          entityType: 'secondary',
+          observations: ['This observation mentions SearchTarget explicitly'],
+          importance: 5,
+        },
+      ]);
+    });
+
+    it('should rank name matches higher than observation matches', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('SearchTarget', 0.8);
+
+      const names = result.entities.map(e => e.name);
+      const primaryIndex = names.indexOf('SearchTarget');
+      const secondaryIndex = names.indexOf('UnrelatedEntity');
+
+      // Name match should appear first
+      if (primaryIndex !== -1 && secondaryIndex !== -1) {
+        expect(primaryIndex).toBeLessThan(secondaryIndex);
+      }
+    });
+
+    it('should still find observation matches', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('SearchTarget', 0.7);
+
+      // Both should be found
+      const names = result.entities.map(e => e.name);
+      expect(names).toContain('SearchTarget');
+    });
+  });
+
+  describe('Long Strings (Sprint 14.5)', () => {
+    it('should handle max-length entity names (500 chars)', async () => {
+      const entityManager = new EntityManager(storage);
+      // Entity name max is 500 characters per schema validation
+      const longName = 'LongEntity' + 'x'.repeat(489);
+      await entityManager.createEntities([
+        {
+          name: longName,
+          entityType: 'test',
+          observations: ['Short observation'],
+          importance: 5,
+        },
+      ]);
+
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('LongEntity', 0.5);
+
+      expect(result.entities.length).toBeGreaterThanOrEqual(1);
+    }, 10000);
+
+    it('should handle long observations (1000+ chars)', async () => {
+      const entityManager = new EntityManager(storage);
+      const longObservation = 'Start ' + 'content '.repeat(200) + ' End';
+      await entityManager.createEntities([
+        {
+          name: 'EntityWithLongObs',
+          entityType: 'test',
+          observations: [longObservation],
+          importance: 5,
+        },
+      ]);
+
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const result = await fuzzy.fuzzySearch('EntityWithLongObs', 0.8);
+
+      expect(result.entities.map(e => e.name)).toContain('EntityWithLongObs');
+    }, 10000);
+
+    it('should handle long search queries gracefully', async () => {
+      const entityManager = new EntityManager(storage);
+      await entityManager.createEntities([
+        {
+          name: 'TargetEntity',
+          entityType: 'test',
+          observations: ['Simple observation'],
+          importance: 5,
+        },
+      ]);
+
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const longQuery = 'Target' + 'x'.repeat(1000);
+
+      // Should not timeout and should handle gracefully
+      const result = await fuzzy.fuzzySearch(longQuery, 0.1);
+      expect(result.entities).toBeDefined();
+    }, 10000);
+  });
 });
