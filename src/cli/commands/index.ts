@@ -172,7 +172,7 @@ export function registerCommands(program: Command): void {
     .command('delete <name>')
     .description('Delete an entity')
     .option('-f, --force', 'Skip confirmation')
-    .action(async (name: string, opts: Record<string, unknown>) => {
+    .action(async (name: string, _opts: Record<string, unknown>) => {
       const options = getOptions(program);
       const logger = createLogger(options);
       const ctx = createContext(options);
@@ -319,7 +319,7 @@ export function registerCommands(program: Command): void {
         );
 
         logger.info(formatSuccess(
-          `Imported ${result.entitiesImported} entities and ${result.relationsImported} relations`
+          `Imported ${result.entitiesAdded} entities and ${result.relationsAdded} relations`
         ));
       } catch (error) {
         logger.error(formatError((error as Error).message));
@@ -365,19 +365,35 @@ export function registerCommands(program: Command): void {
 
       try {
         const stats = await ctx.analyticsManager.getGraphStats();
+        const graph = await ctx.storage.loadGraph();
+
+        // Compute additional stats not in GraphStats
+        const observationCount = graph.entities.reduce(
+          (sum, e) => sum + (e.observations?.length || 0),
+          0
+        );
+        const allTags = new Set<string>();
+        graph.entities.forEach(e => {
+          (e.tags || []).forEach(tag => allTags.add(tag));
+        });
+        const uniqueTagCount = allTags.size;
 
         if (options.format === 'json') {
-          console.log(JSON.stringify(stats, null, 2));
+          console.log(JSON.stringify({
+            ...stats,
+            observationCount,
+            uniqueTagCount,
+          }, null, 2));
         } else {
           console.log(`
 Knowledge Graph Statistics
 ==========================
-Entities:    ${stats.entityCount}
-Relations:   ${stats.relationCount}
-Entity Types: ${stats.entityTypeCount}
-Relation Types: ${stats.relationTypeCount}
-Observations: ${stats.observationCount}
-Tags Used:   ${stats.uniqueTagCount}
+Entities:      ${stats.totalEntities}
+Relations:     ${stats.totalRelations}
+Entity Types:  ${Object.keys(stats.entityTypesCounts).length}
+Relation Types: ${Object.keys(stats.relationTypesCounts).length}
+Observations:  ${observationCount}
+Tags Used:     ${uniqueTagCount}
 `);
         }
       } catch (error) {

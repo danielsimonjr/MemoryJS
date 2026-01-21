@@ -117,17 +117,15 @@ describe('CLI Commands', () => {
     });
 
     mockAnalyticsManager.getGraphStats.mockResolvedValue({
-      entityCount: 10,
-      relationCount: 5,
-      entityTypeCount: 3,
-      relationTypeCount: 2,
-      observationCount: 20,
-      uniqueTagCount: 5,
+      totalEntities: 10,
+      totalRelations: 5,
+      entityTypesCounts: { person: 5, organization: 3, project: 2 },
+      relationTypesCounts: { knows: 3, works_at: 2 },
     });
 
     mockIoManager.importGraph.mockResolvedValue({
-      entitiesImported: 5,
-      relationsImported: 3,
+      entitiesAdded: 5,
+      relationsAdded: 3,
     });
 
     mockIoManager.exportGraph.mockReturnValue('{"entities":[],"relations":[]}');
