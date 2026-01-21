@@ -10,6 +10,10 @@ import {
   formatTextResponse,
   formatRawResponse,
   formatErrorResponse,
+  validatePagination,
+  applyPagination,
+  paginateArray,
+  getPaginationMeta,
   ToolResponse
 } from '../../../src/utils/index.js';
 
@@ -297,6 +301,169 @@ describe('responseFormatter', () => {
     it('should handle BigInt by throwing (JSON limitation)', () => {
       const data = { big: BigInt(9007199254740991) };
       expect(() => formatToolResponse(data)).toThrow();
+    });
+  });
+
+  // ==================== SPRINT 9: Pagination Tests ====================
+
+  describe('validatePagination', () => {
+    it('should return default values when called without arguments', () => {
+      const pagination = validatePagination();
+
+      expect(pagination.offset).toBe(0);
+      expect(pagination.limit).toBeGreaterThan(0);
+      expect(typeof pagination.hasMore).toBe('function');
+    });
+
+    it('should normalize negative offset to 0', () => {
+      const pagination = validatePagination(-10, 20);
+      expect(pagination.offset).toBe(0);
+    });
+
+    it('should enforce minimum limit', () => {
+      const pagination = validatePagination(0, 0);
+      expect(pagination.limit).toBeGreaterThan(0);
+    });
+
+    it('should enforce maximum limit', () => {
+      const pagination = validatePagination(0, 100000);
+      // Should be capped to SEARCH_LIMITS.MAX (likely 1000)
+      expect(pagination.limit).toBeLessThanOrEqual(1000);
+    });
+
+    it('should accept valid offset and limit', () => {
+      const pagination = validatePagination(10, 50);
+      expect(pagination.offset).toBe(10);
+      expect(pagination.limit).toBe(50);
+    });
+
+    it('should provide hasMore function that checks if more results exist', () => {
+      const pagination = validatePagination(0, 10);
+      expect(pagination.hasMore(5)).toBe(false);  // 0 + 10 >= 5
+      expect(pagination.hasMore(15)).toBe(true);  // 0 + 10 < 15
+    });
+
+    it('should calculate hasMore correctly with offset', () => {
+      const pagination = validatePagination(10, 10);
+      expect(pagination.hasMore(15)).toBe(false);  // 10 + 10 >= 15
+      expect(pagination.hasMore(25)).toBe(true);   // 10 + 10 < 25
+    });
+  });
+
+  describe('applyPagination', () => {
+    const items = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+
+    it('should return slice based on pagination', () => {
+      const pagination = validatePagination(0, 3);
+      const result = applyPagination(items, pagination);
+      expect(result).toEqual(['a', 'b', 'c']);
+    });
+
+    it('should respect offset', () => {
+      const pagination = validatePagination(3, 3);
+      const result = applyPagination(items, pagination);
+      expect(result).toEqual(['d', 'e', 'f']);
+    });
+
+    it('should handle offset beyond array length', () => {
+      const pagination = validatePagination(100, 10);
+      const result = applyPagination(items, pagination);
+      expect(result).toEqual([]);
+    });
+
+    it('should handle limit beyond remaining items', () => {
+      const pagination = validatePagination(7, 10);
+      const result = applyPagination(items, pagination);
+      expect(result).toEqual(['h', 'i', 'j']);
+    });
+
+    it('should handle empty array', () => {
+      const pagination = validatePagination(0, 10);
+      const result = applyPagination([], pagination);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('paginateArray', () => {
+    const items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    it('should combine validation and application', () => {
+      const result = paginateArray(items, 2, 3);
+      expect(result).toEqual([3, 4, 5]);
+    });
+
+    it('should use defaults when not provided', () => {
+      const result = paginateArray(items);
+      expect(result.length).toBe(10); // All items since default limit is higher
+    });
+
+    it('should normalize invalid offset', () => {
+      const result = paginateArray(items, -5, 3);
+      expect(result).toEqual([1, 2, 3]);
+    });
+
+    it('should handle empty array', () => {
+      const result = paginateArray([], 0, 10);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('getPaginationMeta', () => {
+    it('should return complete pagination metadata', () => {
+      const meta = getPaginationMeta(100, 20, 10);
+
+      expect(meta.totalCount).toBe(100);
+      expect(meta.offset).toBe(20);
+      expect(meta.limit).toBe(10);
+      expect(meta.hasMore).toBe(true);  // 20 + 10 < 100
+      expect(meta.pageNumber).toBe(3);   // floor(20 / 10) + 1
+      expect(meta.totalPages).toBe(10);  // ceil(100 / 10)
+    });
+
+    it('should calculate correct pageNumber for first page', () => {
+      const meta = getPaginationMeta(50, 0, 10);
+      expect(meta.pageNumber).toBe(1);
+    });
+
+    it('should calculate correct pageNumber for middle page', () => {
+      const meta = getPaginationMeta(50, 20, 10);
+      expect(meta.pageNumber).toBe(3);
+    });
+
+    it('should calculate correct totalPages', () => {
+      // 25 items, 10 per page = 3 pages
+      const meta = getPaginationMeta(25, 0, 10);
+      expect(meta.totalPages).toBe(3);
+    });
+
+    it('should handle single page', () => {
+      const meta = getPaginationMeta(5, 0, 10);
+      expect(meta.totalPages).toBe(1);
+      expect(meta.hasMore).toBe(false);
+    });
+
+    it('should handle empty result set', () => {
+      const meta = getPaginationMeta(0, 0, 10);
+      expect(meta.totalCount).toBe(0);
+      expect(meta.totalPages).toBe(0);
+      expect(meta.hasMore).toBe(false);
+    });
+
+    it('should normalize invalid offset', () => {
+      const meta = getPaginationMeta(100, -10, 10);
+      expect(meta.offset).toBe(0);
+    });
+
+    it('should use default values when not provided', () => {
+      const meta = getPaginationMeta(100);
+      expect(meta.offset).toBe(0);
+      expect(meta.limit).toBeGreaterThan(0);
+    });
+
+    it('should correctly detect last page', () => {
+      const meta = getPaginationMeta(100, 90, 10);
+      expect(meta.hasMore).toBe(false);  // 90 + 10 >= 100
+      expect(meta.pageNumber).toBe(10);
     });
   });
 });

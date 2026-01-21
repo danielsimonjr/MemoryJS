@@ -388,3 +388,306 @@ describe('searchAlgorithms', () => {
     });
   });
 });
+
+// ==================== Sprint 14: Additional Coverage Tests ====================
+
+describe('searchAlgorithms - Sprint 14 Extended Tests', () => {
+  describe('levenshteinDistance - Edge Cases', () => {
+    it('should handle single character strings', () => {
+      expect(levenshteinDistance('a', 'b')).toBe(1);
+      expect(levenshteinDistance('a', 'a')).toBe(0);
+    });
+
+    it('should handle strings with only spaces', () => {
+      expect(levenshteinDistance(' ', ' ')).toBe(0);
+      expect(levenshteinDistance('  ', ' ')).toBe(1);
+    });
+
+    it('should handle repeated characters', () => {
+      expect(levenshteinDistance('aaa', 'aa')).toBe(1);
+      expect(levenshteinDistance('aaa', 'aaaa')).toBe(1);
+      expect(levenshteinDistance('aaaa', 'bbbb')).toBe(4);
+    });
+
+    it('should handle prefix strings', () => {
+      expect(levenshteinDistance('test', 'testing')).toBe(3);
+      expect(levenshteinDistance('pre', 'prefix')).toBe(3);
+    });
+
+    it('should handle suffix strings', () => {
+      expect(levenshteinDistance('ing', 'testing')).toBe(4);
+      expect(levenshteinDistance('fix', 'prefix')).toBe(3);
+    });
+
+    it('should handle mixed case consistently', () => {
+      expect(levenshteinDistance('Test', 'test')).toBe(1);
+      expect(levenshteinDistance('TEST', 'test')).toBe(4);
+    });
+
+    it('should handle special characters', () => {
+      expect(levenshteinDistance('hello!', 'hello')).toBe(1);
+      expect(levenshteinDistance('a@b', 'a#b')).toBe(1);
+    });
+
+    it('should handle numeric strings', () => {
+      expect(levenshteinDistance('123', '124')).toBe(1);
+      expect(levenshteinDistance('12345', '54321')).toBe(4);
+    });
+
+    it('should handle whitespace differences', () => {
+      expect(levenshteinDistance('hello world', 'helloworld')).toBe(1);
+      expect(levenshteinDistance('a b c', 'abc')).toBe(2);
+    });
+
+    it('should be symmetric', () => {
+      expect(levenshteinDistance('cat', 'dog')).toBe(levenshteinDistance('dog', 'cat'));
+      expect(levenshteinDistance('hello', 'world')).toBe(levenshteinDistance('world', 'hello'));
+    });
+
+    it('should satisfy triangle inequality', () => {
+      const a = 'cat';
+      const b = 'bat';
+      const c = 'dog';
+      const ab = levenshteinDistance(a, b);
+      const bc = levenshteinDistance(b, c);
+      const ac = levenshteinDistance(a, c);
+      expect(ac).toBeLessThanOrEqual(ab + bc);
+    });
+  });
+
+  describe('tokenize - Extended', () => {
+    it('should handle tabs', () => {
+      expect(tokenize('hello\tworld')).toEqual(['hello', 'world']);
+    });
+
+    it('should handle multiple punctuation marks', () => {
+      expect(tokenize('Wait... What?!')).toEqual(['wait', 'what']);
+    });
+
+    it('should handle underscores (treats as single word)', () => {
+      // tokenize doesn't split on underscores - they're part of the word
+      expect(tokenize('hello_world')).toEqual(['hello_world']);
+    });
+
+    it('should handle camelCase as single token', () => {
+      // Note: tokenize treats camelCase as single word
+      expect(tokenize('helloWorld')).toEqual(['helloworld']);
+    });
+
+    it('should handle URLs (partial)', () => {
+      // URLs get broken into parts
+      const tokens = tokenize('https://example.com/path');
+      expect(tokens).toContain('https');
+      expect(tokens).toContain('example');
+      expect(tokens).toContain('com');
+    });
+
+    it('should handle email addresses (partial)', () => {
+      const tokens = tokenize('user@example.com');
+      expect(tokens).toContain('user');
+      expect(tokens).toContain('example');
+    });
+  });
+
+  describe('TF Calculation - Extended', () => {
+    it('should handle very long documents', () => {
+      const longDoc = Array(1000).fill('word').join(' ') + ' unique';
+      // 'unique' appears 1 time out of 1001 tokens
+      expect(calculateTF('unique', longDoc)).toBeCloseTo(1 / 1001);
+    });
+
+    it('should handle documents with all same words', () => {
+      const doc = 'test test test test';
+      expect(calculateTF('test', doc)).toBe(1);
+    });
+
+    it('should handle documents with punctuation', () => {
+      const doc = 'Hello, world! Hello, again!';
+      expect(calculateTF('hello', doc)).toBeCloseTo(0.5);
+    });
+
+    it('should return 0 for empty term', () => {
+      expect(calculateTF('', 'hello world')).toBe(0);
+    });
+  });
+
+  describe('IDF Calculation - Extended', () => {
+    it('should handle single document corpus', () => {
+      const docs = ['hello world'];
+      expect(calculateIDF('hello', docs)).toBe(0);
+    });
+
+    it('should handle large corpus', () => {
+      const docs = Array(100).fill('common term');
+      docs.push('rare term'); // Add rare doc at end, now 101 docs total
+
+      const commonIDF = calculateIDF('common', docs);
+      const rareIDF = calculateIDF('rare', docs);
+
+      expect(commonIDF).toBeGreaterThan(0); // 'common' appears in 100 of 101 docs
+      expect(rareIDF).toBeGreaterThan(commonIDF); // 'rare' is rarer
+    });
+
+    it('should handle documents with varying lengths', () => {
+      const docs = [
+        'short text',
+        'this is a medium length text',
+        'this is a very long text with many words that spans multiple lines',
+      ];
+
+      const textIDF = calculateIDF('text', docs);
+      // 'text' appears in all documents
+      expect(textIDF).toBe(0);
+    });
+  });
+
+  describe('TF-IDF Integration', () => {
+    it('should give higher scores to distinctive terms', () => {
+      const docs = [
+        'machine learning deep learning neural networks',
+        'deep learning neural networks ai',
+        'quantum computing qubits entanglement',
+      ];
+
+      const quantumScore = calculateTFIDF('quantum', docs[2], docs);
+      const deepScore = calculateTFIDF('deep', docs[0], docs);
+
+      // 'quantum' is unique to one doc, 'deep' appears in two
+      expect(quantumScore).toBeGreaterThan(deepScore);
+    });
+
+    it('should handle repeated terms in document', () => {
+      const docs = [
+        'test test test other',
+        'something else',
+      ];
+
+      const score = calculateTFIDF('test', docs[0], docs);
+      expect(score).toBeGreaterThan(0);
+    });
+
+    it('should handle term present in document but missing from corpus', () => {
+      // Edge case: document has term not in original corpus
+      const docs = ['hello world', 'foo bar'];
+      const newDoc = 'unique term here';
+
+      // 'unique' not in original docs but in newDoc
+      const score = calculateTFIDF('unique', newDoc, docs);
+      expect(score).toBe(0); // IDF is 0 because term not in corpus
+    });
+  });
+
+  describe('Similarity Scoring', () => {
+    it('should calculate similarity from Levenshtein distance', () => {
+      // Helper function to calculate similarity
+      const calculateSimilarity = (s1: string, s2: string): number => {
+        const distance = levenshteinDistance(s1, s2);
+        const maxLength = Math.max(s1.length, s2.length);
+        return maxLength === 0 ? 1 : 1 - distance / maxLength;
+      };
+
+      expect(calculateSimilarity('hello', 'hello')).toBe(1);
+      expect(calculateSimilarity('hello', 'hallo')).toBeCloseTo(0.8);
+      expect(calculateSimilarity('', '')).toBe(1);
+    });
+
+    it('should handle threshold-based matching', () => {
+      const threshold = 0.7;
+      const calculateSimilarity = (s1: string, s2: string): number => {
+        const distance = levenshteinDistance(s1, s2);
+        const maxLength = Math.max(s1.length, s2.length);
+        return maxLength === 0 ? 1 : 1 - distance / maxLength;
+      };
+
+      // 'kitten' vs 'sitting' - similarity ~0.57 (below threshold)
+      expect(calculateSimilarity('kitten', 'sitting') >= threshold).toBe(false);
+
+      // 'hello' vs 'hallo' - similarity 0.8 (above threshold)
+      expect(calculateSimilarity('hello', 'hallo') >= threshold).toBe(true);
+    });
+  });
+
+  describe('Unicode Support (Sprint 14.5)', () => {
+    it('should handle CJK characters', () => {
+      expect(levenshteinDistance('你好', '你好')).toBe(0);
+      expect(levenshteinDistance('你好', '你们')).toBe(1);
+      expect(levenshteinDistance('日本語', '日本人')).toBe(1);
+    });
+
+    it('should handle Cyrillic characters', () => {
+      expect(levenshteinDistance('привет', 'привет')).toBe(0);
+      expect(levenshteinDistance('привет', 'приват')).toBe(1);
+    });
+
+    it('should handle emoji', () => {
+      expect(levenshteinDistance('🎉', '🎉')).toBe(0);
+      expect(levenshteinDistance('🎉🎊', '🎉🎈')).toBe(1);
+      expect(levenshteinDistance('hello 🌍', 'hello 🌎')).toBe(1);
+    });
+
+    it('should handle mixed scripts', () => {
+      expect(levenshteinDistance('hello世界', 'hello世界')).toBe(0);
+      expect(levenshteinDistance('hello世界', 'hallo世界')).toBe(1);
+    });
+
+    it('should handle accented characters', () => {
+      expect(levenshteinDistance('café', 'cafe')).toBe(1);
+      expect(levenshteinDistance('naïve', 'naive')).toBe(1);
+      expect(levenshteinDistance('über', 'uber')).toBe(1);
+    });
+
+    it('should tokenize ASCII text (CJK/emoji not preserved)', () => {
+      // Note: tokenize uses /[^\w\s]/g which only matches ASCII word chars
+      // CJK and emoji are stripped as non-word characters
+      const tokens = tokenize('hello 世界 🌍 world');
+      expect(tokens).toContain('hello');
+      expect(tokens).toContain('world');
+      // CJK characters are removed by the regex
+      expect(tokens).not.toContain('世界');
+    });
+  });
+
+  describe('Very Long Strings (Sprint 14.5)', () => {
+    it('should handle 10k+ character strings without timeout', () => {
+      const str1 = 'a'.repeat(10000);
+      const str2 = 'a'.repeat(10000);
+
+      const start = Date.now();
+      const distance = levenshteinDistance(str1, str2);
+      const elapsed = Date.now() - start;
+
+      expect(distance).toBe(0);
+      expect(elapsed).toBeLessThan(5000); // Should complete within 5 seconds
+    }, 10000);
+
+    it('should correctly calculate distance for long strings with differences', () => {
+      const str1 = 'a'.repeat(1000);
+      const str2 = 'a'.repeat(999) + 'b';
+
+      const distance = levenshteinDistance(str1, str2);
+      expect(distance).toBe(1);
+    });
+
+    it('should handle TF calculation for long documents', () => {
+      const longDoc = 'word '.repeat(5000) + 'unique term';
+      const tf = calculateTF('unique', longDoc);
+      expect(tf).toBeGreaterThan(0);
+      expect(tf).toBeLessThan(0.001); // Very small TF due to large document
+    });
+
+    it('should handle IDF with large corpus', () => {
+      const largeDocs = Array.from({ length: 1000 }, (_, i) => `document ${i} content`);
+      largeDocs[0] = 'rare unique term';
+
+      const idf = calculateIDF('rare', largeDocs);
+      expect(idf).toBeGreaterThan(0); // Rare term has high IDF
+    });
+
+    it('should tokenize very long text', () => {
+      const longText = 'word '.repeat(10000);
+      const tokens = tokenize(longText);
+      expect(tokens.length).toBe(10000);
+      expect(tokens.every(t => t === 'word')).toBe(true);
+    });
+  });
+});

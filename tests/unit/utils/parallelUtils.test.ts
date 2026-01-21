@@ -206,4 +206,119 @@ describe('Parallel Utilities', () => {
       15000 // Increased timeout for potentially slow worker operations
     );
   });
+
+  // ==================== SPRINT 10: Additional Coverage Tests ====================
+
+  describe('Input Validation', () => {
+    it('should reject non-function for parallelMap', async () => {
+      const numbers = [1, 2, 3];
+      await expect(
+        parallelMap(numbers, 'not a function' as unknown as (n: number) => number)
+      ).rejects.toThrow(TypeError);
+    });
+
+    it('should reject non-function for parallelFilter', async () => {
+      const numbers = [1, 2, 3];
+      await expect(
+        parallelFilter(numbers, 'not a function' as unknown as (n: number) => boolean)
+      ).rejects.toThrow(TypeError);
+    });
+
+    it('should reject null function for parallelMap', async () => {
+      const numbers = [1, 2, 3];
+      await expect(
+        parallelMap(numbers, null as unknown as (n: number) => number)
+      ).rejects.toThrow(TypeError);
+    });
+
+    it('should reject undefined function for parallelFilter', async () => {
+      const numbers = [1, 2, 3];
+      await expect(
+        parallelFilter(numbers, undefined as unknown as (n: number) => boolean)
+      ).rejects.toThrow(TypeError);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle single-element arrays', async () => {
+      const result = await parallelMap([42], (n: number) => n * 2);
+      expect(result).toEqual([84]);
+    });
+
+    it('should handle array with undefined values', async () => {
+      const items = [1, undefined, 3];
+      const result = await parallelMap(items, (n: number | undefined) => n ?? 0);
+      expect(result).toEqual([1, 0, 3]);
+    });
+
+    it('should handle array with null values', async () => {
+      const items = [1, null, 3];
+      const result = await parallelFilter(
+        items,
+        (n: number | null) => n !== null
+      );
+      expect(result).toEqual([1, 3]);
+    });
+
+    it('should map strings correctly', async () => {
+      const strings = ['hello', 'world', 'test'];
+      const result = await parallelMap(strings, (s: string) => s.toUpperCase());
+      expect(result).toEqual(['HELLO', 'WORLD', 'TEST']);
+    });
+
+    it('should filter strings correctly', async () => {
+      const strings = ['hello', 'hi', 'world', 'test'];
+      const result = await parallelFilter(
+        strings,
+        (s: string) => s.length > 3
+      );
+      expect(result).toEqual(['hello', 'world', 'test']);
+    });
+  });
+
+  describe('Chunk Size Behavior', () => {
+    it('should respect chunk size of 1', async () => {
+      const numbers = [1, 2, 3, 4, 5];
+      const result = await parallelMap(numbers, (n: number) => n + 1, 1);
+      expect(result).toEqual([2, 3, 4, 5, 6]);
+    });
+
+    it('should handle chunk size larger than array', async () => {
+      const numbers = [1, 2, 3];
+      const result = await parallelMap(numbers, (n: number) => n * 2, 1000);
+      expect(result).toEqual([2, 4, 6]);
+    });
+
+    it('should handle chunk size of array length', async () => {
+      const numbers = [1, 2, 3, 4, 5];
+      const result = await parallelFilter(
+        numbers,
+        (n: number) => n % 2 === 0,
+        5
+      );
+      expect(result).toEqual([2, 4]);
+    });
+  });
+
+  describe('Performance Characteristics', () => {
+    it('should complete map operation in reasonable time', async () => {
+      const start = Date.now();
+      const numbers = Array.from({ length: 1000 }, (_, i) => i);
+      await parallelMap(numbers, (n: number) => n * n);
+      const duration = Date.now() - start;
+
+      // Should complete in under 1 second even with worker overhead
+      expect(duration).toBeLessThan(1000);
+    });
+
+    it('should complete filter operation in reasonable time', async () => {
+      const start = Date.now();
+      const numbers = Array.from({ length: 1000 }, (_, i) => i);
+      await parallelFilter(numbers, (n: number) => n % 2 === 0);
+      const duration = Date.now() - start;
+
+      // Should complete in under 1 second even with worker overhead
+      expect(duration).toBeLessThan(1000);
+    });
+  });
 });

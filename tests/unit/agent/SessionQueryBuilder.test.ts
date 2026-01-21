@@ -231,9 +231,11 @@ describe('SessionQueryBuilder Temporal Queries', () => {
   it('should filter by time range', async () => {
     const now = new Date();
     const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+    // Add 1 second to end date since endDate is exclusive (>=)
+    const endDate = new Date(now.getTime() + 1000);
 
     const results = await builder
-      .inTimeRange(twoDaysAgo.toISOString(), now.toISOString())
+      .inTimeRange(twoDaysAgo.toISOString(), endDate.toISOString())
       .search('hotel');
 
     expect(results.length).toBe(2);

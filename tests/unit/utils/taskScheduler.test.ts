@@ -676,4 +676,348 @@ describe('Task Scheduler', () => {
       expect(TaskStatus.CANCELLED).toBe('cancelled');
     });
   });
+
+  // ==================== SPRINT 8: Additional Coverage Tests ====================
+
+  describe('TaskQueue Additional Edge Cases', () => {
+    let queue: TaskQueue;
+
+    beforeEach(() => {
+      queue = new TaskQueue({ concurrency: 2, timeout: 5000, useWorkerPool: false });
+    });
+
+    afterEach(async () => {
+      try {
+        await Promise.race([
+          queue.shutdown(),
+          new Promise(resolve => setTimeout(resolve, 100)),
+        ]);
+      } catch {
+        // Ignore shutdown errors
+      }
+    });
+
+    it('should reject task.fn that is not a function', () => {
+      expect(() => {
+        queue.enqueue({
+          id: 'invalid-fn',
+          priority: TaskPriority.NORMAL,
+          fn: 'not a function' as unknown as (x: number) => number,
+          input: 1,
+        });
+      }).toThrow('task.fn must be a function');
+    });
+
+    it('should shutdown queue with pending tasks', async () => {
+      // Create a queue with concurrency 1
+      const serialQueue = new TaskQueue({ concurrency: 1, timeout: 5000, useWorkerPool: false });
+
+      // Add a blocking task
+      const blockingTask = serialQueue.enqueue({
+        id: 'blocking',
+        priority: TaskPriority.NORMAL,
+        fn: async () => {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          return 'blocking';
+        },
+        input: null,
+      });
+
+      // Add pending tasks
+      const pendingTask1 = serialQueue.enqueue({
+        id: 'pending1',
+        priority: TaskPriority.NORMAL,
+        fn: () => 'pending1',
+        input: null,
+      });
+
+      const pendingTask2 = serialQueue.enqueue({
+        id: 'pending2',
+        priority: TaskPriority.NORMAL,
+        fn: () => 'pending2',
+        input: null,
+      });
+
+      // Shutdown immediately - should cancel pending tasks
+      await serialQueue.shutdown();
+
+      // Check that pending tasks were cancelled
+      const result1 = await pendingTask1;
+      const result2 = await pendingTask2;
+
+      expect(result1.status).toBe(TaskStatus.CANCELLED);
+      expect(result2.status).toBe(TaskStatus.CANCELLED);
+    });
+
+    it('should handle multiple concurrent tasks with same priority', async () => {
+      const concurrentQueue = new TaskQueue({ concurrency: 4, timeout: 5000, useWorkerPool: false });
+      const completionOrder: string[] = [];
+
+      // Enqueue multiple tasks with same priority
+      const tasks = [];
+      for (let i = 0; i < 8; i++) {
+        tasks.push(concurrentQueue.enqueue({
+          id: `task-${i}`,
+          priority: TaskPriority.NORMAL,
+          fn: (x: number) => {
+            completionOrder.push(`task-${x}`);
+            return x;
+          },
+          input: i,
+        }));
+      }
+
+      await Promise.all(tasks);
+      await concurrentQueue.shutdown();
+
+      // All tasks should complete
+      expect(completionOrder.length).toBe(8);
+    });
+
+    it('should handle very fast task execution', async () => {
+      const results: TaskResult<number>[] = [];
+
+      for (let i = 0; i < 100; i++) {
+        const result = await queue.enqueue({
+          id: `fast-${i}`,
+          priority: TaskPriority.NORMAL,
+          fn: (x: number) => x + 1,
+          input: i,
+        });
+        results.push(result);
+      }
+
+      expect(results.length).toBe(100);
+      expect(results.every(r => r.status === TaskStatus.COMPLETED)).toBe(true);
+      expect(results.every(r => r.duration >= 0)).toBe(true);
+    });
+
+    it('should handle task with non-Error exception', async () => {
+      const result = await queue.enqueue({
+        id: 'string-error',
+        priority: TaskPriority.NORMAL,
+        fn: () => { throw 'string error message'; },
+        input: null,
+      });
+
+      expect(result.status).toBe(TaskStatus.FAILED);
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.error?.message).toBe('string error message');
+    });
+
+    it('should track failed tasks in stats', async () => {
+      // Process some successful and failed tasks
+      await queue.enqueue({
+        id: 'success1',
+        priority: TaskPriority.NORMAL,
+        fn: (x: number) => x * 2,
+        input: 5,
+      });
+
+      await queue.enqueue({
+        id: 'fail1',
+        priority: TaskPriority.NORMAL,
+        fn: () => { throw new Error('Failed'); },
+        input: 5,
+      });
+
+      await queue.enqueue({
+        id: 'success2',
+        priority: TaskPriority.NORMAL,
+        fn: (x: number) => x * 3,
+        input: 5,
+      });
+
+      const stats = queue.getStats();
+      expect(stats.completed).toBe(2);
+      expect(stats.failed).toBe(1);
+      expect(stats.totalProcessed).toBe(3);
+    });
+
+    it('should properly insert tasks by priority in existing queue', async () => {
+      const serialQueue = new TaskQueue({ concurrency: 1, timeout: 5000, useWorkerPool: false });
+      const executionOrder: string[] = [];
+
+      // Start with a slow task
+      serialQueue.enqueue({
+        id: 'slow',
+        priority: TaskPriority.NORMAL,
+        fn: async () => {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          executionOrder.push('slow');
+          return 'slow';
+        },
+        input: null,
+      });
+
+      // Add low priority task (should be at end)
+      serialQueue.enqueue({
+        id: 'low',
+        priority: TaskPriority.LOW,
+        fn: () => { executionOrder.push('low'); return 'low'; },
+        input: null,
+      });
+
+      // Add high priority task (should be before low)
+      serialQueue.enqueue({
+        id: 'high',
+        priority: TaskPriority.HIGH,
+        fn: () => { executionOrder.push('high'); return 'high'; },
+        input: null,
+      });
+
+      // Add critical priority task (should be before high and low)
+      serialQueue.enqueue({
+        id: 'critical',
+        priority: TaskPriority.CRITICAL,
+        fn: () => { executionOrder.push('critical'); return 'critical'; },
+        input: null,
+      });
+
+      await serialQueue.drain();
+      await serialQueue.shutdown();
+
+      // First task started immediately, rest are ordered by priority
+      expect(executionOrder[0]).toBe('slow'); // Already running
+      // Critical > High > Low for remaining tasks
+      expect(executionOrder.slice(1)).toEqual(['critical', 'high', 'low']);
+    });
+  });
+
+  describe('batchProcess Additional Tests', () => {
+    it('should handle mixed success and failure with concurrency', async () => {
+      const items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+      const results = await batchProcess(
+        items,
+        (x: number) => {
+          if (x % 3 === 0) throw new Error(`Failed on ${x}`);
+          return x * 2;
+        },
+        { concurrency: 3, stopOnError: false }
+      );
+
+      const successes = results.filter(r => r.success);
+      const failures = results.filter(r => !r.success);
+
+      expect(successes.length).toBe(7); // All except 3, 6, 9
+      expect(failures.length).toBe(3);
+    });
+
+    it('should call progress callback with currentTaskId', async () => {
+      const items = [1, 2, 3];
+      const taskIds: string[] = [];
+
+      await batchProcess(
+        items,
+        (x: number) => x,
+        {
+          concurrency: 1,
+          onProgress: ({ currentTaskId }) => {
+            if (currentTaskId) taskIds.push(currentTaskId);
+          },
+        }
+      );
+
+      expect(taskIds).toContain('item-0');
+      expect(taskIds).toContain('item-1');
+      expect(taskIds).toContain('item-2');
+    });
+
+    it('should use default concurrency based on CPU count', async () => {
+      const items = [1, 2, 3];
+      const results = await batchProcess(items, (x: number) => x * 2);
+
+      expect(results.every(r => r.success)).toBe(true);
+    });
+  });
+
+  describe('rateLimitedProcess Additional Tests', () => {
+    it('should not delay first item', async () => {
+      const startTime = Date.now();
+
+      await rateLimitedProcess([1], (x: number) => x * 2, 5);
+
+      const duration = Date.now() - startTime;
+      // First item should execute immediately (within 50ms tolerance)
+      expect(duration).toBeLessThan(50);
+    });
+
+    it('should handle high rate limit', async () => {
+      const items = [1, 2, 3, 4, 5];
+      const startTime = Date.now();
+
+      const results = await rateLimitedProcess(items, (x: number) => x, 1000); // 1000/s = 1ms between
+
+      const duration = Date.now() - startTime;
+      expect(results).toEqual([1, 2, 3, 4, 5]);
+      // Should be very fast with high rate limit
+      expect(duration).toBeLessThan(100);
+    });
+  });
+
+  describe('withRetry Additional Tests', () => {
+    it('should handle non-Error exception types', async () => {
+      let attempts = 0;
+
+      await expect(
+        withRetry(
+          () => {
+            attempts++;
+            throw 'string error';
+          },
+          { maxRetries: 1, baseDelay: 10 }
+        )
+      ).rejects.toThrow('string error');
+
+      expect(attempts).toBe(2);
+    });
+
+    it('should work with default options', async () => {
+      let attempts = 0;
+
+      const result = await withRetry(() => {
+        attempts++;
+        if (attempts < 2) throw new Error('Retry');
+        return 'success';
+      });
+
+      expect(result).toBe('success');
+    });
+  });
+
+  describe('debounce Additional Tests', () => {
+    it('should cancel previous pending call', async () => {
+      const results: number[] = [];
+      const fn = debounce((x: number) => {
+        results.push(x);
+        return x;
+      }, 30);
+
+      // Make rapid calls
+      fn(1);
+      fn(2);
+      fn(3);
+
+      // Wait for debounce
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Only last value should be in results
+      expect(results).toEqual([3]);
+    });
+  });
+
+  describe('throttle Additional Tests', () => {
+    it('should return undefined for throttled calls', () => {
+      const fn = throttle((x: number) => x * 2, 100);
+
+      const first = fn(1);
+      const second = fn(2);
+      const third = fn(3);
+
+      expect(first).toBe(2);
+      expect(second).toBeUndefined();
+      expect(third).toBeUndefined();
+    });
+  });
 });

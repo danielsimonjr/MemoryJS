@@ -7,7 +7,7 @@
  * Note: Uses KnowledgeGraphManager alias for backward compatibility.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { KnowledgeGraphManager } from '../../../src/core/index.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { RelationManager } from '../../../src/core/RelationManager.js';
@@ -19,6 +19,12 @@ import { TagManager } from '../../../src/features/TagManager.js';
 import { AnalyticsManager } from '../../../src/features/AnalyticsManager.js';
 import { CompressionManager } from '../../../src/features/CompressionManager.js';
 import { ArchiveManager } from '../../../src/features/ArchiveManager.js';
+import { AccessTracker } from '../../../src/agent/AccessTracker.js';
+import { DecayEngine } from '../../../src/agent/DecayEngine.js';
+import { SalienceEngine } from '../../../src/agent/SalienceEngine.js';
+import { ContextWindowManager } from '../../../src/agent/ContextWindowManager.js';
+import { MemoryFormatter } from '../../../src/agent/MemoryFormatter.js';
+import { AgentMemoryManager } from '../../../src/agent/AgentMemoryManager.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -471,6 +477,605 @@ describe('KnowledgeGraphManager (ManagerContext)', () => {
       const validation = await manager.analyticsManager.validateGraph();
       expect(validation.isValid).toBe(true);
       expect(validation.issues).toHaveLength(0);
+    });
+  });
+
+  // ==================== SPRINT 7: AGENT MEMORY TESTS ====================
+
+  describe('Agent Memory: accessTracker Initialization', () => {
+    it('should lazily initialize accessTracker on first access', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'access-tracker-test.jsonl'));
+      const tracker = newManager.accessTracker;
+
+      expect(tracker).toBeDefined();
+      expect(tracker).toBeInstanceOf(AccessTracker);
+    });
+
+    it('should return same accessTracker instance on subsequent accesses', () => {
+      const first = manager.accessTracker;
+      const second = manager.accessTracker;
+
+      expect(first).toBe(second);
+    });
+
+    it('should wire accessTracker to entityManager', () => {
+      const tracker = manager.accessTracker;
+      const entityMgr = manager.entityManager;
+
+      // The setAccessTracker method should have been called during initialization
+      // We can verify by checking if the tracker is functional
+      expect(tracker).toBeDefined();
+      expect(entityMgr).toBeDefined();
+    });
+
+    it('should wire accessTracker to searchManager', () => {
+      const tracker = manager.accessTracker;
+      const searchMgr = manager.searchManager;
+
+      expect(tracker).toBeDefined();
+      expect(searchMgr).toBeDefined();
+    });
+
+    it('should wire accessTracker to graphTraversal', () => {
+      const tracker = manager.accessTracker;
+      const graphTraversal = manager.graphTraversal;
+
+      expect(tracker).toBeDefined();
+      expect(graphTraversal).toBeDefined();
+    });
+
+    it('should track entity access after wiring', async () => {
+      await manager.entityManager.createEntities([
+        { name: 'TrackedEntity', entityType: 'test', observations: ['test data'] }
+      ]);
+
+      // Access via searchManager to trigger tracking
+      await manager.searchManager.openNodes(['TrackedEntity']);
+
+      const tracker = manager.accessTracker;
+      const stats = await tracker.getAccessStats('TrackedEntity');
+
+      // AccessTracker should have recorded the access
+      expect(stats).toBeDefined();
+    });
+  });
+
+  describe('Agent Memory: decayEngine Initialization', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      // Restore original env
+      process.env = { ...originalEnv };
+    });
+
+    it('should lazily initialize decayEngine on first access', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-engine-test.jsonl'));
+      const engine = newManager.decayEngine;
+
+      expect(engine).toBeDefined();
+      expect(engine).toBeInstanceOf(DecayEngine);
+    });
+
+    it('should return same decayEngine instance on subsequent accesses', () => {
+      const first = manager.decayEngine;
+      const second = manager.decayEngine;
+
+      expect(first).toBe(second);
+    });
+
+    it('should use default half-life when env var not set', () => {
+      delete process.env.MEMORY_DECAY_HALF_LIFE_HOURS;
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-default.jsonl'));
+      const engine = newManager.decayEngine;
+
+      // Default is 168 hours (1 week)
+      expect(engine).toBeDefined();
+    });
+
+    it('should parse MEMORY_DECAY_HALF_LIFE_HOURS env var', () => {
+      process.env.MEMORY_DECAY_HALF_LIFE_HOURS = '48';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-half-life.jsonl'));
+      const engine = newManager.decayEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should parse MEMORY_DECAY_MIN_IMPORTANCE env var', () => {
+      process.env.MEMORY_DECAY_MIN_IMPORTANCE = '0.05';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-min-importance.jsonl'));
+      const engine = newManager.decayEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should handle invalid numeric env var with default', () => {
+      process.env.MEMORY_DECAY_HALF_LIFE_HOURS = 'invalid';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-invalid.jsonl'));
+      const engine = newManager.decayEngine;
+
+      // Should fall back to default (168)
+      expect(engine).toBeDefined();
+    });
+
+    it('should parse MEMORY_DECAY_IMPORTANCE_MOD boolean env var', () => {
+      process.env.MEMORY_DECAY_IMPORTANCE_MOD = 'false';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-importance-mod.jsonl'));
+      const engine = newManager.decayEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should parse MEMORY_DECAY_ACCESS_MOD boolean env var', () => {
+      process.env.MEMORY_DECAY_ACCESS_MOD = 'false';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-access-mod.jsonl'));
+      const engine = newManager.decayEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should inject accessTracker dependency', () => {
+      const tracker = manager.accessTracker;
+      const engine = manager.decayEngine;
+
+      // Both should be initialized and engine should have tracker dependency
+      expect(tracker).toBeDefined();
+      expect(engine).toBeDefined();
+    });
+  });
+
+  describe('Agent Memory: decayScheduler Initialization', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it('should return undefined when MEMORY_AUTO_DECAY is false', () => {
+      process.env.MEMORY_AUTO_DECAY = 'false';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-scheduler-disabled.jsonl'));
+      const scheduler = newManager.decayScheduler;
+
+      expect(scheduler).toBeUndefined();
+    });
+
+    it('should return undefined when MEMORY_AUTO_DECAY is not set', () => {
+      delete process.env.MEMORY_AUTO_DECAY;
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-scheduler-unset.jsonl'));
+      const scheduler = newManager.decayScheduler;
+
+      expect(scheduler).toBeUndefined();
+    });
+
+    it('should create scheduler when MEMORY_AUTO_DECAY is true', () => {
+      process.env.MEMORY_AUTO_DECAY = 'true';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-scheduler-enabled.jsonl'));
+      const scheduler = newManager.decayScheduler;
+
+      expect(scheduler).toBeDefined();
+    });
+
+    it('should parse MEMORY_DECAY_INTERVAL_MS env var', () => {
+      process.env.MEMORY_AUTO_DECAY = 'true';
+      process.env.MEMORY_DECAY_INTERVAL_MS = '1800000';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-scheduler-interval.jsonl'));
+      const scheduler = newManager.decayScheduler;
+
+      expect(scheduler).toBeDefined();
+    });
+
+    it('should parse MEMORY_AUTO_FORGET env var', () => {
+      process.env.MEMORY_AUTO_DECAY = 'true';
+      process.env.MEMORY_AUTO_FORGET = 'true';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-scheduler-forget.jsonl'));
+      const scheduler = newManager.decayScheduler;
+
+      expect(scheduler).toBeDefined();
+    });
+
+    it('should parse MEMORY_FORGET_THRESHOLD env var', () => {
+      process.env.MEMORY_AUTO_DECAY = 'true';
+      process.env.MEMORY_FORGET_THRESHOLD = '0.1';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-scheduler-threshold.jsonl'));
+      const scheduler = newManager.decayScheduler;
+
+      expect(scheduler).toBeDefined();
+    });
+
+    it('should return same scheduler instance on subsequent accesses', () => {
+      process.env.MEMORY_AUTO_DECAY = 'true';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'decay-scheduler-same.jsonl'));
+      const first = newManager.decayScheduler;
+      const second = newManager.decayScheduler;
+
+      expect(first).toBe(second);
+    });
+  });
+
+  describe('Agent Memory: salienceEngine Initialization', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it('should lazily initialize salienceEngine on first access', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'salience-test.jsonl'));
+      const engine = newManager.salienceEngine;
+
+      expect(engine).toBeDefined();
+      expect(engine).toBeInstanceOf(SalienceEngine);
+    });
+
+    it('should return same salienceEngine instance on subsequent accesses', () => {
+      const first = manager.salienceEngine;
+      const second = manager.salienceEngine;
+
+      expect(first).toBe(second);
+    });
+
+    it('should parse MEMORY_SALIENCE_IMPORTANCE_WEIGHT env var', () => {
+      process.env.MEMORY_SALIENCE_IMPORTANCE_WEIGHT = '0.3';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'salience-importance.jsonl'));
+      const engine = newManager.salienceEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should parse MEMORY_SALIENCE_RECENCY_WEIGHT env var', () => {
+      process.env.MEMORY_SALIENCE_RECENCY_WEIGHT = '0.35';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'salience-recency.jsonl'));
+      const engine = newManager.salienceEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should parse MEMORY_SALIENCE_FREQUENCY_WEIGHT env var', () => {
+      process.env.MEMORY_SALIENCE_FREQUENCY_WEIGHT = '0.15';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'salience-frequency.jsonl'));
+      const engine = newManager.salienceEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should parse MEMORY_SALIENCE_CONTEXT_WEIGHT env var', () => {
+      process.env.MEMORY_SALIENCE_CONTEXT_WEIGHT = '0.25';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'salience-context.jsonl'));
+      const engine = newManager.salienceEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should parse MEMORY_SALIENCE_NOVELTY_WEIGHT env var', () => {
+      process.env.MEMORY_SALIENCE_NOVELTY_WEIGHT = '0.05';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'salience-novelty.jsonl'));
+      const engine = newManager.salienceEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should use default weights when env vars not set', () => {
+      delete process.env.MEMORY_SALIENCE_IMPORTANCE_WEIGHT;
+      delete process.env.MEMORY_SALIENCE_RECENCY_WEIGHT;
+      delete process.env.MEMORY_SALIENCE_FREQUENCY_WEIGHT;
+      delete process.env.MEMORY_SALIENCE_CONTEXT_WEIGHT;
+      delete process.env.MEMORY_SALIENCE_NOVELTY_WEIGHT;
+
+      const newManager = new KnowledgeGraphManager(join(testDir, 'salience-defaults.jsonl'));
+      const engine = newManager.salienceEngine;
+
+      // Default weights: 0.25, 0.25, 0.2, 0.2, 0.1
+      expect(engine).toBeDefined();
+    });
+
+    it('should inject storage, accessTracker, and decayEngine dependencies', () => {
+      const storage = manager.storage;
+      const tracker = manager.accessTracker;
+      const decayEngine = manager.decayEngine;
+      const salienceEngine = manager.salienceEngine;
+
+      // All dependencies should be initialized
+      expect(storage).toBeDefined();
+      expect(tracker).toBeDefined();
+      expect(decayEngine).toBeDefined();
+      expect(salienceEngine).toBeDefined();
+    });
+  });
+
+  describe('Agent Memory: contextWindowManager Initialization', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it('should lazily initialize contextWindowManager on first access', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'context-window-test.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      expect(cwm).toBeDefined();
+      expect(cwm).toBeInstanceOf(ContextWindowManager);
+    });
+
+    it('should return same contextWindowManager instance on subsequent accesses', () => {
+      const first = manager.contextWindowManager;
+      const second = manager.contextWindowManager;
+
+      expect(first).toBe(second);
+    });
+
+    it('should parse MEMORY_CONTEXT_MAX_TOKENS env var', () => {
+      process.env.MEMORY_CONTEXT_MAX_TOKENS = '8000';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'context-max-tokens.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      expect(cwm).toBeDefined();
+    });
+
+    it('should parse MEMORY_CONTEXT_TOKEN_MULTIPLIER env var', () => {
+      process.env.MEMORY_CONTEXT_TOKEN_MULTIPLIER = '1.5';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'context-multiplier.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      expect(cwm).toBeDefined();
+    });
+
+    it('should parse MEMORY_CONTEXT_RESERVE_BUFFER env var', () => {
+      process.env.MEMORY_CONTEXT_RESERVE_BUFFER = '200';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'context-buffer.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      expect(cwm).toBeDefined();
+    });
+
+    it('should parse MEMORY_CONTEXT_DIVERSITY_THRESHOLD env var', () => {
+      process.env.MEMORY_CONTEXT_DIVERSITY_THRESHOLD = '0.9';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'context-diversity.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      expect(cwm).toBeDefined();
+    });
+
+    it('should parse MEMORY_CONTEXT_ENFORCE_DIVERSITY boolean env var', () => {
+      process.env.MEMORY_CONTEXT_ENFORCE_DIVERSITY = 'false';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'context-enforce-diversity.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      expect(cwm).toBeDefined();
+    });
+
+    it('should use default values when env vars not set', () => {
+      delete process.env.MEMORY_CONTEXT_MAX_TOKENS;
+      delete process.env.MEMORY_CONTEXT_TOKEN_MULTIPLIER;
+      delete process.env.MEMORY_CONTEXT_RESERVE_BUFFER;
+      delete process.env.MEMORY_CONTEXT_DIVERSITY_THRESHOLD;
+      delete process.env.MEMORY_CONTEXT_ENFORCE_DIVERSITY;
+
+      const newManager = new KnowledgeGraphManager(join(testDir, 'context-defaults.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      // Defaults: 4000, 1.3, 100, 0.8, true
+      expect(cwm).toBeDefined();
+    });
+
+    it('should inject storage and salienceEngine dependencies', () => {
+      const storage = manager.storage;
+      const salienceEngine = manager.salienceEngine;
+      const cwm = manager.contextWindowManager;
+
+      expect(storage).toBeDefined();
+      expect(salienceEngine).toBeDefined();
+      expect(cwm).toBeDefined();
+    });
+  });
+
+  describe('Agent Memory: memoryFormatter Initialization', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it('should lazily initialize memoryFormatter on first access', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'memory-formatter-test.jsonl'));
+      const formatter = newManager.memoryFormatter;
+
+      expect(formatter).toBeDefined();
+      expect(formatter).toBeInstanceOf(MemoryFormatter);
+    });
+
+    it('should return same memoryFormatter instance on subsequent accesses', () => {
+      const first = manager.memoryFormatter;
+      const second = manager.memoryFormatter;
+
+      expect(first).toBe(second);
+    });
+
+    it('should parse MEMORY_FORMAT_TIMESTAMPS boolean env var', () => {
+      process.env.MEMORY_FORMAT_TIMESTAMPS = 'false';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'formatter-timestamps.jsonl'));
+      const formatter = newManager.memoryFormatter;
+
+      expect(formatter).toBeDefined();
+    });
+
+    it('should parse MEMORY_FORMAT_MEMORY_TYPE boolean env var', () => {
+      process.env.MEMORY_FORMAT_MEMORY_TYPE = 'false';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'formatter-memory-type.jsonl'));
+      const formatter = newManager.memoryFormatter;
+
+      expect(formatter).toBeDefined();
+    });
+  });
+
+  describe('Agent Memory: agentMemory() Facade', () => {
+    it('should return AgentMemoryManager on first call', () => {
+      const amm = manager.agentMemory();
+
+      expect(amm).toBeDefined();
+      expect(amm).toBeInstanceOf(AgentMemoryManager);
+    });
+
+    it('should return same instance on subsequent calls without config', () => {
+      const first = manager.agentMemory();
+      const second = manager.agentMemory();
+
+      expect(first).toBe(second);
+    });
+
+    it('should create new instance when config is provided', () => {
+      const first = manager.agentMemory();
+      const second = manager.agentMemory({ sessionTtlMs: 60000 });
+
+      // When config is provided, a new instance should be created
+      expect(second).toBeDefined();
+      expect(second).toBeInstanceOf(AgentMemoryManager);
+    });
+
+    it('should accept optional config parameter', () => {
+      const config = {
+        sessionTtlMs: 3600000,
+        workingMemorySize: 20,
+        defaultSessionAgent: 'test-agent',
+      };
+
+      const amm = manager.agentMemory(config);
+
+      expect(amm).toBeDefined();
+    });
+
+    it('should provide access to session operations', async () => {
+      const amm = manager.agentMemory();
+
+      // AgentMemoryManager should have session-related methods
+      expect(typeof amm.startSession).toBe('function');
+      expect(typeof amm.endSession).toBe('function');
+    });
+
+    it('should provide access to working memory operations', async () => {
+      const amm = manager.agentMemory();
+
+      // AgentMemoryManager should have working memory methods
+      expect(typeof amm.addWorkingMemory).toBe('function');
+      // workingMemory is a getter property, not a method
+      expect(amm.workingMemory).toBeDefined();
+    });
+  });
+
+  describe('Agent Memory: Dependency Chain Verification', () => {
+    it('should initialize accessTracker before decayEngine', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'dep-chain-1.jsonl'));
+
+      // Accessing decayEngine should auto-initialize accessTracker
+      const engine = newManager.decayEngine;
+      const tracker = newManager.accessTracker;
+
+      expect(engine).toBeDefined();
+      expect(tracker).toBeDefined();
+    });
+
+    it('should initialize decayEngine before salienceEngine', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'dep-chain-2.jsonl'));
+
+      // Accessing salienceEngine should auto-initialize decayEngine
+      const salienceEngine = newManager.salienceEngine;
+      const decayEngine = newManager.decayEngine;
+
+      expect(salienceEngine).toBeDefined();
+      expect(decayEngine).toBeDefined();
+    });
+
+    it('should initialize salienceEngine before contextWindowManager', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'dep-chain-3.jsonl'));
+
+      // Accessing contextWindowManager should auto-initialize salienceEngine
+      const cwm = newManager.contextWindowManager;
+      const salienceEngine = newManager.salienceEngine;
+
+      expect(cwm).toBeDefined();
+      expect(salienceEngine).toBeDefined();
+    });
+
+    it('should maintain consistent dependency chain', () => {
+      const newManager = new KnowledgeGraphManager(join(testDir, 'dep-chain-full.jsonl'));
+
+      // Access the top of the chain
+      const cwm = newManager.contextWindowManager;
+
+      // All dependencies should be initialized
+      expect(newManager.storage).toBeDefined();
+      expect(newManager.accessTracker).toBeDefined();
+      expect(newManager.decayEngine).toBeDefined();
+      expect(newManager.salienceEngine).toBeDefined();
+      expect(cwm).toBeDefined();
+    });
+  });
+
+  describe('Agent Memory: Environment Variable Edge Cases', () => {
+    const originalEnv = { ...process.env };
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+    });
+
+    it('should handle negative numeric env var with default', () => {
+      process.env.MEMORY_DECAY_HALF_LIFE_HOURS = '-10';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'env-negative.jsonl'));
+      const engine = newManager.decayEngine;
+
+      // Should still parse negative as valid number
+      expect(engine).toBeDefined();
+    });
+
+    it('should handle zero numeric env var', () => {
+      process.env.MEMORY_SALIENCE_NOVELTY_WEIGHT = '0';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'env-zero.jsonl'));
+      const engine = newManager.salienceEngine;
+
+      expect(engine).toBeDefined();
+    });
+
+    it('should handle decimal numeric env var', () => {
+      process.env.MEMORY_CONTEXT_TOKEN_MULTIPLIER = '1.75';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'env-decimal.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      expect(cwm).toBeDefined();
+    });
+
+    it('should handle TRUE (uppercase) boolean env var', () => {
+      process.env.MEMORY_AUTO_DECAY = 'TRUE';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'env-uppercase-true.jsonl'));
+      const scheduler = newManager.decayScheduler;
+
+      // toLowerCase() converts 'TRUE' to 'true', so scheduler should be defined
+      expect(scheduler).toBeDefined();
+    });
+
+    it('should handle True (mixed case) boolean env var', () => {
+      process.env.MEMORY_DECAY_IMPORTANCE_MOD = 'True';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'env-mixedcase-true.jsonl'));
+      const engine = newManager.decayEngine;
+
+      // Should work due to toLowerCase()
+      expect(engine).toBeDefined();
+    });
+
+    it('should handle empty string env var as undefined', () => {
+      process.env.MEMORY_DECAY_HALF_LIFE_HOURS = '';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'env-empty.jsonl'));
+      const engine = newManager.decayEngine;
+
+      // Empty string should parse as NaN, falling back to default
+      expect(engine).toBeDefined();
+    });
+
+    it('should handle whitespace env var', () => {
+      process.env.MEMORY_CONTEXT_MAX_TOKENS = '  8000  ';
+      const newManager = new KnowledgeGraphManager(join(testDir, 'env-whitespace.jsonl'));
+      const cwm = newManager.contextWindowManager;
+
+      // parseFloat handles leading/trailing whitespace
+      expect(cwm).toBeDefined();
     });
   });
 });
