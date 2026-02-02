@@ -36,6 +36,14 @@ node tools/chunking-for-files/chunking-for-files.ts merge <manifest.json>  # Mer
 
 # Skip performance benchmarks
 SKIP_BENCHMARKS=true npm test
+
+# CLI (after build)
+npx memory --help                           # Show all commands
+npx memory entity create Alice -t person    # Create entity
+npx memory entity list --type person        # List entities
+npx memory search "TypeScript"              # Search
+npx memory stats                            # Graph statistics
+npx memory interactive                      # REPL mode
 ```
 
 ## Architecture
@@ -205,7 +213,7 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files.
 | `MEMORY_CONTEXT_TOKEN_MULTIPLIER` | `1.3` | Estimation multiplier |
 | `MEMORY_CONTEXT_RESERVE_BUFFER` | `100` | Reserved token buffer |
 
-### Query Logging (Phase 1 Sprint 6)
+### Query Logging
 | Variable | Values | Default |
 |----------|--------|---------|
 | `MEMORY_QUERY_LOGGING` | `true`, `false` | `false` |
@@ -245,3 +253,25 @@ Located in `tools/` directory:
 | `chunking-for-files` | Splits large files (markdown, JSON, TypeScript) into editable chunks, then merges back |
 | `migrate-from-jsonl-to-sqlite` | Migrates existing JSONL storage to SQLite backend |
 | `compress-for-context` | Compresses graph data for LLM context windows |
+
+## CLI Reference
+
+The `memory` CLI provides commands for working with the knowledge graph:
+
+| Command | Description |
+|---------|-------------|
+| `memory entity create <name>` | Create entity with `-t type`, `-o obs...`, `--tags`, `-i importance` |
+| `memory entity get <name>` | Get entity details |
+| `memory entity list` | List entities with `--type`, `--tags`, `--limit` filters |
+| `memory entity update <name>` | Update entity fields |
+| `memory entity delete <name>` | Delete entity |
+| `memory relation create <from> <type> <to>` | Create relation |
+| `memory relation list` | List relations with `--from`, `--to`, `--type` filters |
+| `memory relation delete <from> <type> <to>` | Delete relation |
+| `memory search <query>` | Search entities/observations with `-l limit`, `-t type` |
+| `memory import <file>` | Import from file (`-f json|csv|graphml`, `--merge strategy`) |
+| `memory export <file>` | Export to file (`-f json|csv|graphml|markdown|mermaid`) |
+| `memory stats` | Show graph statistics |
+| `memory interactive` | Start REPL mode |
+
+Global options: `-s/--storage <path>`, `-f/--format json|table|csv`, `-q/--quiet`, `--verbose`
