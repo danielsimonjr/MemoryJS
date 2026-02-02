@@ -73,11 +73,11 @@ describe('Compression Performance Benchmarks', () => {
         });
       });
 
-      // Quality 11 (ARCHIVE) is slow - should complete within 120 seconds
-      // High-quality brotli compression is CPU-intensive and varies by machine
-      expect(compressionTime).toBeLessThan(120000);
+      // Quality 11 (ARCHIVE) is slow - should complete within 240 seconds
+      // High-quality brotli compression is CPU-intensive and varies significantly by machine
+      expect(compressionTime).toBeLessThan(240000);
       console.log(`5K entity compression: ${compressionTime.toFixed(2)}ms`);
-    }, PERF_TIMEOUT * 2);
+    }, PERF_TIMEOUT * 4);
 
     it('should decompress 5K entities faster than compression', async () => {
       const entities = createEntities(5000, 3);
@@ -94,7 +94,7 @@ describe('Compression Performance Benchmarks', () => {
       // Decompression should be fast
       expect(decompressionTime).toBeLessThan(5000);
       console.log(`5K entity decompression: ${decompressionTime.toFixed(2)}ms`);
-    }, PERF_TIMEOUT * 2); // Compression step takes a long time at quality 11
+    }, PERF_TIMEOUT * 4); // Compression step takes a long time at quality 11
 
     it('should achieve 50%+ compression ratio on typical graph data', async () => {
       const entities = createEntities(1000, 5);

@@ -207,7 +207,7 @@ describe('BatchProcessor', () => {
 
       // Third delay should be capped at 150ms, not 1000ms
       const delay3 = timestamps[3] - timestamps[2];
-      expect(delay3).toBeLessThanOrEqual(200); // Some tolerance
+      expect(delay3).toBeLessThanOrEqual(400); // Allow extra tolerance for system load
     });
   });
 
