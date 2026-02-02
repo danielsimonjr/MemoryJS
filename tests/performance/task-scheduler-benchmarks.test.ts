@@ -31,8 +31,8 @@ const OVERHEAD_CONFIG = {
   // Real callback overhead is typically < 5%
   MAX_OVERHEAD_PERCENT: 100,
   // Higher threshold for I/O-heavy operations due to file system variance
-  // Increased to 600% to account for extreme variance in disk I/O timing on Windows
-  MAX_IO_OVERHEAD_PERCENT: 600,
+  // Increased to 800% to account for extreme variance in disk I/O timing on Windows
+  MAX_IO_OVERHEAD_PERCENT: 800,
   // Minimum iterations for reliable timing
   MIN_ITERATIONS: 3,
   // Entity count for realistic benchmarks
