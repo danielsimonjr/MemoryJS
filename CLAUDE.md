@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MemoryJS is a TypeScript knowledge graph library for managing entities, relations, and observations with advanced search capabilities. It supports multiple storage backends (JSONL, SQLite) and provides features like hierarchical organization, graph algorithms, and hybrid search.
+MemoryJS is a TypeScript knowledge graph library for managing entities, relations, and observations with advanced search capabilities. It supports multiple storage backends (JSONL, SQLite) and provides features like hierarchical organization, graph algorithms, and hybrid search. Requires Node.js >= 18.0.0.
 
 ## Common Commands
 
@@ -36,14 +36,6 @@ node tools/chunking-for-files/chunking-for-files.ts merge <manifest.json>  # Mer
 
 # Skip performance benchmarks
 SKIP_BENCHMARKS=true npm test
-
-# CLI (after build)
-npx memory --help                           # Show all commands
-npx memory entity create Alice -t person    # Create entity
-npx memory entity list --type person        # List entities
-npx memory search "TypeScript"              # Search
-npx memory stats                            # Graph statistics
-npx memory interactive                      # REPL mode
 ```
 
 ## Architecture
@@ -53,6 +45,7 @@ npx memory interactive                      # REPL mode
 ```
 src/
 ├── agent/     # Agent Memory System (sessions, working memory, episodic, decay)
+├── cli/       # CLI commands (bin: `memory` / `memoryjs`)
 ├── core/      # Storage backends, entity/relation/observation managers, transactions
 ├── search/    # Search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid)
 ├── features/  # Import/export, compression, analytics, archiving
@@ -94,30 +87,25 @@ ctx.agentMemory()       // Agent Memory System facade
 - `GraphStorage` (JSONL, default): Human-readable, in-memory caching, atomic writes via temp file + rename
 - `SQLiteStorage`: FTS5 full-text search with BM25, WAL mode, ACID transactions, better-sqlite3
 
-**Search System** (`src/search/`):
-- `BasicSearch`: Simple substring matching
-- `RankedSearch`: TF-IDF scoring via `TFIDFIndexManager`
-- `BM25Search`: Okapi BM25 algorithm with stopwords
-- `BooleanSearch`: AND/OR/NOT operators with AST parsing
-- `FuzzySearch`: Levenshtein distance via worker pool
-- `SemanticSearch`: Vector similarity (requires embedding provider)
-- `HybridSearchManager`: Combines semantic, lexical, and symbolic signals with configurable weights
-- `QueryAnalyzer`/`QueryPlanner`: Query understanding, cost estimation, execution planning
-- `ReflectionManager`: Reflection-based retrieval with progressive refinement
-- `SavedSearchManager`: Saved search persistence and execution
-- `QueryParser`: Advanced query syntax (phrases, wildcards, proximity, field-specific)
-- `ProximitySearch`: Find terms within N words of each other
-- `QueryLogger`: Structured logging for search operations with tracing
+**Search System** (`src/search/`): Layered search architecture:
+- **Text search**: `BasicSearch` (substring), `BooleanSearch` (AND/OR/NOT with AST), `FuzzySearch` (Levenshtein via worker pool)
+- **Ranked search**: `RankedSearch` (TF-IDF via `TFIDFIndexManager`), `BM25Search` (Okapi BM25 with stopwords)
+- **Semantic search**: `SemanticSearch` + `EmbeddingService` + `VectorStore`/`QuantizedVectorStore` (requires embedding provider)
+- **Hybrid search**: `HybridSearchManager` + `HybridScorer` + `SymbolicSearch` - combines semantic, lexical, and symbolic signals
+- **Query optimization**: `QueryAnalyzer`/`QueryPlanner`, `QueryCostEstimator`, `QueryPlanCache`, `EarlyTerminationManager`, `ParallelSearchExecutor`
+- **Retrieval**: `ReflectionManager` (progressive refinement), `SavedSearchManager`, `SearchSuggestions`
+- **Infrastructure**: `TFIDFEventSync` (auto-sync), `OptimizedInvertedIndex`, `IncrementalIndexer`, `EmbeddingCache`, `SearchFilterChain`
+
+**CLI** (`src/cli/`): Command-line interface exposed as `memory` / `memoryjs` binaries (see `bin` in package.json). Built as separate ESM bundle by tsup.
 
 **Agent Memory System** (`src/agent/`): Complete memory system for AI agents:
-- `AgentMemoryManager`: Unified facade for agent memory operations
-- `SessionManager`: Session lifecycle (start, end, query sessions)
-- `WorkingMemoryManager`: Short-term memory with TTL and promotion to long-term
-- `EpisodicMemoryManager`: Timeline-based event memories with temporal ordering
-- `DecayEngine`/`DecayScheduler`: Time-based memory importance decay
-- `SalienceEngine`: Context-aware memory scoring based on keywords/relevance
-- `MultiAgentMemoryManager`: Shared memory with visibility controls (private/shared/public)
-- `ConflictResolver`: Resolution strategies for concurrent updates
+- **Facade**: `AgentMemoryManager` - unified entry point for all agent memory operations
+- **Session lifecycle**: `SessionManager`, `SessionQueryBuilder` - start/end/query sessions
+- **Memory types**: `WorkingMemoryManager` (short-term with TTL + promotion), `EpisodicMemoryManager` (timeline-based events)
+- **Decay & salience**: `DecayEngine`/`DecayScheduler` (time-based importance decay), `SalienceEngine` (context-aware scoring)
+- **Multi-agent**: `MultiAgentMemoryManager` (visibility controls: private/shared/public), `ConflictResolver`
+- **Processing**: `ConsolidationPipeline`, `SummarizationService`, `PatternDetector`, `RuleEvaluator`
+- **Context**: `ContextWindowManager` (token budgeting), `MemoryFormatter` (output formatting), `AccessTracker`
 
 ### Data Model
 
@@ -156,10 +144,12 @@ ctx.agentMemory()       // Agent Memory System facade
 
 ### Build Notes
 
-- Uses `tsup` for bundling (ESM + CJS dual output)
+- Uses `tsup` for bundling (ESM + CJS dual output) with 3 separate entry points: library, CLI, workers
 - Worker files (`levenshteinWorker.ts`) built separately to `dist/workers/` for dynamic loading
+- CLI built separately to `dist/cli/` with `#!/usr/bin/env node` banner
 - `better-sqlite3` is externalized (native addon, not bundled)
 - No lint script configured - TypeScript compiler (`npm run typecheck`) catches most issues
+- Publishable package: `npm run prepublishOnly` runs clean + build + test
 
 ## Testing
 
@@ -169,15 +159,17 @@ Test organization:
 - `tests/performance/` - Benchmarks
 - `tests/edge-cases/` - Boundary conditions
 
-Vitest with 30s timeout. Coverage excludes `index.ts` barrel files.
+Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-file-reporter.js` outputs results to `tests/test-results/`.
 
 ## Environment Variables
 
-### Core Storage
+### Core
 | Variable | Values | Default |
 |----------|--------|---------|
 | `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` |
 | `MEMORY_FILE_PATH` | Custom storage file path | - |
+| `SKIP_BENCHMARKS` | `true`, `false` | `false` |
+| `LOG_LEVEL` | `debug`, `info`, `warn`, `error` | (none) |
 
 ### Embedding/Semantic Search
 | Variable | Values | Default |
@@ -187,44 +179,15 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files.
 | `MEMORY_EMBEDDING_MODEL` | Model name override | - |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |
 
-### Agent Memory Decay
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MEMORY_AUTO_DECAY` | `false` | Enable automatic decay scheduling |
-| `MEMORY_DECAY_HALF_LIFE_HOURS` | `168` (1 week) | Half-life for memory importance decay |
-| `MEMORY_DECAY_MIN_IMPORTANCE` | `0.1` | Floor value for decayed importance |
-| `MEMORY_DECAY_INTERVAL_MS` | `3600000` (1 hour) | Interval between decay runs |
-| `MEMORY_AUTO_FORGET` | `false` | Auto-delete memories below threshold |
-| `MEMORY_FORGET_THRESHOLD` | `0.05` | Effective importance threshold for forgetting |
+### Agent Memory
 
-### Agent Memory Salience
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MEMORY_SALIENCE_IMPORTANCE_WEIGHT` | `0.25` | Weight for base importance |
-| `MEMORY_SALIENCE_RECENCY_WEIGHT` | `0.25` | Weight for recency |
-| `MEMORY_SALIENCE_FREQUENCY_WEIGHT` | `0.2` | Weight for access frequency |
-| `MEMORY_SALIENCE_CONTEXT_WEIGHT` | `0.2` | Weight for context relevance |
-| `MEMORY_SALIENCE_NOVELTY_WEIGHT` | `0.1` | Weight for novelty |
+Decay: `MEMORY_AUTO_DECAY` (false), `MEMORY_DECAY_HALF_LIFE_HOURS` (168), `MEMORY_DECAY_MIN_IMPORTANCE` (0.1), `MEMORY_DECAY_INTERVAL_MS` (3600000), `MEMORY_AUTO_FORGET` (false), `MEMORY_FORGET_THRESHOLD` (0.05)
 
-### Context Window
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MEMORY_CONTEXT_MAX_TOKENS` | `4000` | Default max tokens for context |
-| `MEMORY_CONTEXT_TOKEN_MULTIPLIER` | `1.3` | Estimation multiplier |
-| `MEMORY_CONTEXT_RESERVE_BUFFER` | `100` | Reserved token buffer |
+Salience weights (all 0-1): `MEMORY_SALIENCE_IMPORTANCE_WEIGHT` (0.25), `MEMORY_SALIENCE_RECENCY_WEIGHT` (0.25), `MEMORY_SALIENCE_FREQUENCY_WEIGHT` (0.2), `MEMORY_SALIENCE_CONTEXT_WEIGHT` (0.2), `MEMORY_SALIENCE_NOVELTY_WEIGHT` (0.1)
 
-### Query Logging
-| Variable | Values | Default |
-|----------|--------|---------|
-| `MEMORY_QUERY_LOGGING` | `true`, `false` | `false` |
-| `MEMORY_QUERY_LOG_FILE` | File path for log output | - |
-| `MEMORY_QUERY_LOG_LEVEL` | `debug`, `info`, `warn`, `error` | `info` |
+Context window: `MEMORY_CONTEXT_MAX_TOKENS` (4000), `MEMORY_CONTEXT_TOKEN_MULTIPLIER` (1.3), `MEMORY_CONTEXT_RESERVE_BUFFER` (100)
 
-### Development/Testing
-| Variable | Values | Default |
-|----------|--------|---------|
-| `SKIP_BENCHMARKS` | `true`, `false` | `false` (run benchmarks) |
-| `LOG_LEVEL` | `debug`, `info`, `warn`, `error` | (none) |
+Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_QUERY_LOG_LEVEL` (info)
 
 ## Documentation
 
@@ -254,24 +217,10 @@ Located in `tools/` directory:
 | `migrate-from-jsonl-to-sqlite` | Migrates existing JSONL storage to SQLite backend |
 | `compress-for-context` | Compresses graph data for LLM context windows |
 
-## CLI Reference
+## Gotchas
 
-The `memory` CLI provides commands for working with the knowledge graph:
-
-| Command | Description |
-|---------|-------------|
-| `memory entity create <name>` | Create entity with `-t type`, `-o obs...`, `--tags`, `-i importance` |
-| `memory entity get <name>` | Get entity details |
-| `memory entity list` | List entities with `--type`, `--tags`, `--limit` filters |
-| `memory entity update <name>` | Update entity fields |
-| `memory entity delete <name>` | Delete entity |
-| `memory relation create <from> <type> <to>` | Create relation |
-| `memory relation list` | List relations with `--from`, `--to`, `--type` filters |
-| `memory relation delete <from> <type> <to>` | Delete relation |
-| `memory search <query>` | Search entities/observations with `-l limit`, `-t type` |
-| `memory import <file>` | Import from file (`-f json|csv|graphml`, `--merge strategy`) |
-| `memory export <file>` | Export to file (`-f json|csv|graphml|markdown|mermaid`) |
-| `memory stats` | Show graph statistics |
-| `memory interactive` | Start REPL mode |
-
-Global options: `-s/--storage <path>`, `-f/--format json|table|csv`, `-q/--quiet`, `--verbose`
+- **Missing source files**: `src/search/index.ts` barrel re-exports `QueryParser`, `ProximitySearch`, and `QueryLogger` but the source `.ts` files don't exist on disk. Build will fail until these are created or the re-exports are removed.
+- **Windows + Dropbox + git**: This repo is synced via Dropbox which can corrupt git objects (e.g., `fatal: bad object HEAD`). If git commands fail, try `git fsck` and `git reflog` to recover.
+- **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `npm install` fails on this, check node-gyp prerequisites.
+- **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `npm run build` (tsup), workers are built. But `npm run build:tsc` (bare tsc) does NOT build workers - use tsup.
+- **`package-lock.json` is gitignored**: Uses `npm install` (not `npm ci`) for development. Dependencies may drift between machines.

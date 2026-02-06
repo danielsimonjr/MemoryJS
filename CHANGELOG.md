@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-02-06
+
+### Fixed
+- **Build: SchemaValidator ajv type error**: Fixed `import('ajv')` breaking `typecheck` and DTS generation since ajv is an optional peer dependency not in package.json. Applied type assertion for the dynamic import.
+- **Git repository corruption recovery**: Recovered from Dropbox-induced git object corruption by re-syncing with remote origin.
+
+### Improved
+- **CLAUDE.md overhaul**: Restructured documentation for better Claude Code productivity
+  - Added Node.js >= 18.0.0 requirement
+  - Added CLI module documentation (`memory` / `memoryjs` binaries)
+  - Reorganized search system into layered architecture groupings (text, ranked, semantic, hybrid, optimization, retrieval, infrastructure)
+  - Reorganized agent memory into concern groupings (facade, sessions, memory types, decay/salience, multi-agent, processing, context)
+  - Documented all 3 tsup entry points (library, CLI, workers) and `prepublishOnly` workflow
+  - Consolidated verbose env var tables into compact format
+  - Added Gotchas section with 5 non-obvious issues
+
 ## [1.4.0] - 2026-01-20 - Agent Memory System
 
 ### Added

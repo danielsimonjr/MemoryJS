@@ -105,7 +105,8 @@ export class SchemaValidator {
 
     try {
       // Dynamic import to avoid bundling ajv if not used
-      const AjvModule = await import('ajv');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const AjvModule = await (import('ajv' as any) as Promise<any>);
       const Ajv = AjvModule.default;
       this.ajv = new Ajv({ allErrors: true, verbose: true });
       this.initialized = true;
