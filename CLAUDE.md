@@ -226,6 +226,10 @@ Located in `tools/` directory:
 
 ## Gotchas
 
+- **Security review iteration**: Run `.claude/agents/security-reviewer.md` iteratively after fixes — fixes can introduce regressions (e.g., destructive sanitization, unvalidated derived paths).
+- **XML import sanitization**: Decode XML entities (`&amp;` -> `&`), never strip characters — stripping corrupts data like "AT&T", "O'Brien".
+- **FTS5/LIKE input sanitization**: FTS5 queries must strip `:{}()"^~*` and boolean keywords. LIKE queries must escape `\%_` with `ESCAPE '\'`.
+- **Path confinement**: When validating derived paths (e.g., appending `.meta.json`), re-validate independently — the derived path may escape the confined directory.
 - **Windows atomic writes**: `fs.rename()` can fail with EPERM in temp directories due to Dropbox/antivirus file locking. `GraphStorage.durableWriteFile` has a fallback that writes directly if rename fails.
 - **Windows + Dropbox + git**: This repo is synced via Dropbox which can corrupt git objects (e.g., `fatal: bad object HEAD`). If git commands fail, try `git fsck` and `git reflog` to recover.
 - **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `npm install` fails on this, check node-gyp prerequisites.
