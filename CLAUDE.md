@@ -93,7 +93,8 @@ ctx.agentMemory()       // Agent Memory System facade
 - **Semantic search**: `SemanticSearch` + `EmbeddingService` + `VectorStore`/`QuantizedVectorStore` (requires embedding provider)
 - **Hybrid search**: `HybridSearchManager` + `HybridScorer` + `SymbolicSearch` - combines semantic, lexical, and symbolic signals
 - **Query optimization**: `QueryAnalyzer`/`QueryPlanner`, `QueryCostEstimator`, `QueryPlanCache`, `EarlyTerminationManager`, `ParallelSearchExecutor`
-- **Retrieval**: `ReflectionManager` (progressive refinement), `SavedSearchManager`, `SearchSuggestions`
+- **Retrieval**: `ReflectionManager` (progressive refinement), `SavedSearchManager`, `SearchSuggestions`, `ProximitySearch` (term proximity scoring)
+- **Parsing & logging**: `QueryParser` (query string parsing), `QueryLogger` (query performance logging)
 - **Infrastructure**: `TFIDFEventSync` (auto-sync), `OptimizedInvertedIndex`, `IncrementalIndexer`, `EmbeddingCache`, `SearchFilterChain`
 
 **CLI** (`src/cli/`): Command-line interface exposed as `memory` / `memoryjs` binaries (see `bin` in package.json). Built as separate ESM bundle by tsup.
@@ -219,7 +220,6 @@ Located in `tools/` directory:
 
 ## Gotchas
 
-- **Missing source files**: `src/search/index.ts` barrel re-exports `QueryParser`, `ProximitySearch`, and `QueryLogger` but the source `.ts` files don't exist on disk. Build will fail until these are created or the re-exports are removed.
 - **Windows + Dropbox + git**: This repo is synced via Dropbox which can corrupt git objects (e.g., `fatal: bad object HEAD`). If git commands fail, try `git fsck` and `git reflog` to recover.
 - **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `npm install` fails on this, check node-gyp prerequisites.
 - **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `npm run build` (tsup), workers are built. But `npm run build:tsc` (bare tsc) does NOT build workers - use tsup.
