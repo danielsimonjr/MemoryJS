@@ -762,6 +762,19 @@ export class SQLiteStorage implements IGraphStorage {
     if (!this.db || !this.initialized) return [];
 
     try {
+      // Sanitize FTS5 special characters to prevent query injection and resource exhaustion
+      const sanitized = query
+        .replace(/["{}()^~]/g, ' ')   // Remove FTS5 operators
+        .replace(/\bNEAR\b/gi, '')     // Remove NEAR operator
+        .replace(/\bAND\b/gi, '')      // Remove AND operator
+        .replace(/\bOR\b/gi, '')       // Remove OR operator
+        .replace(/\bNOT\b/gi, '')      // Remove NOT operator
+        .replace(/\*/g, '')            // Remove wildcard prefix operator
+        .replace(/\s+/g, ' ')         // Collapse whitespace
+        .trim();
+
+      if (!sanitized) return [];
+
       // Use FTS5 MATCH for full-text search with BM25 ranking
       const stmt = this.db.prepare(`
         SELECT name, bm25(entities_fts, 10, 5, 3, 1) as score
@@ -771,7 +784,7 @@ export class SQLiteStorage implements IGraphStorage {
         LIMIT 100
       `);
 
-      const results = stmt.all(query) as Array<{ name: string; score: number }>;
+      const results = stmt.all(sanitized) as Array<{ name: string; score: number }>;
       return results;
     } catch {
       // If FTS query fails (invalid syntax), fall back to empty results
@@ -788,13 +801,15 @@ export class SQLiteStorage implements IGraphStorage {
   simpleSearch(searchTerm: string): string[] {
     if (!this.db || !this.initialized) return [];
 
-    const pattern = `%${searchTerm}%`;
+    // Escape LIKE wildcards to prevent matching manipulation
+    const escaped = searchTerm.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+    const pattern = `%${escaped}%`;
     const stmt = this.db.prepare(`
       SELECT name FROM entities
-      WHERE name LIKE ? COLLATE NOCASE
-         OR entityType LIKE ? COLLATE NOCASE
-         OR observations LIKE ? COLLATE NOCASE
-         OR tags LIKE ? COLLATE NOCASE
+      WHERE name LIKE ? ESCAPE '\\' COLLATE NOCASE
+         OR entityType LIKE ? ESCAPE '\\' COLLATE NOCASE
+         OR observations LIKE ? ESCAPE '\\' COLLATE NOCASE
+         OR tags LIKE ? ESCAPE '\\' COLLATE NOCASE
     `);
 
     const results = stmt.all(pattern, pattern, pattern, pattern) as Array<{ name: string }>;

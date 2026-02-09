@@ -147,12 +147,28 @@ export class GraphStorage implements IGraphStorage {
    * @param content - Content to write
    */
   private async durableWriteFile(content: string): Promise<void> {
-    const fd = await fs.open(this.memoryFilePath, 'w');
+    // Atomic write: write to temp file, fsync, then rename over target
+    const tmpPath = `${this.memoryFilePath}.tmp.${process.pid}`;
+    const fd = await fs.open(tmpPath, 'w');
     try {
       await fd.write(content);
       await fd.sync();
     } finally {
       await fd.close();
+    }
+    try {
+      await fs.rename(tmpPath, this.memoryFilePath);
+    } catch {
+      // Fallback for Windows where rename can fail (EPERM) due to file locking
+      const fallbackFd = await fs.open(this.memoryFilePath, 'w');
+      try {
+        await fallbackFd.write(content);
+        await fallbackFd.sync();
+      } finally {
+        await fallbackFd.close();
+      }
+      // Clean up temp file
+      try { await fs.unlink(tmpPath); } catch { /* ignore */ }
     }
   }
 

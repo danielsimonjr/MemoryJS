@@ -8,7 +8,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import type {
   Entity,
   Relation,
@@ -849,9 +849,14 @@ export class IOManager {
         return match ? match[1] : undefined;
       };
 
+      // Sanitize values extracted from XML to prevent injection on re-export
+      const sanitizeXmlValue = (v: string): string =>
+        v.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+         .replace(/[<>&"']/g, '');
+
       const entity: Entity = {
-        name: nodeId,
-        entityType: getDataValue('d0') || getDataValue('entityType') || 'unknown',
+        name: sanitizeXmlValue(nodeId),
+        entityType: sanitizeXmlValue(getDataValue('d0') || getDataValue('entityType') || 'unknown'),
         observations: (getDataValue('d1') || getDataValue('observations') || '')
           .split(';')
           .map(s => s.trim())
@@ -889,10 +894,14 @@ export class IOManager {
         return match ? match[1] : undefined;
       };
 
+      const sanitizeXmlVal = (v: string): string =>
+        v.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+         .replace(/[<>&"']/g, '');
+
       const relation: Relation = {
-        from: source,
-        to: target,
-        relationType: getDataValue('e0') || getDataValue('relationType') || 'related_to',
+        from: sanitizeXmlVal(source),
+        to: sanitizeXmlVal(target),
+        relationType: sanitizeXmlVal(getDataValue('e0') || getDataValue('relationType') || 'related_to'),
         createdAt: getDataValue('e1') || getDataValue('createdAt'),
         lastModified: getDataValue('e2') || getDataValue('lastModified'),
       };
@@ -1272,6 +1281,12 @@ export class IOManager {
    */
   async restoreFromBackup(backupPath: string): Promise<RestoreResult> {
     try {
+      validateFilePath(backupPath);
+      const resolvedPath = resolve(backupPath);
+      const resolvedBackupDir = resolve(this.backupDir);
+      if (!resolvedPath.startsWith(resolvedBackupDir + '/') && !resolvedPath.startsWith(resolvedBackupDir + '\\')) {
+        throw new FileOperationError('backup path is outside the backup directory', backupPath);
+      }
       await fs.access(backupPath);
 
       const isCompressed = hasBrotliExtension(backupPath);
@@ -1313,6 +1328,12 @@ export class IOManager {
    */
   async deleteBackup(backupPath: string): Promise<void> {
     try {
+      validateFilePath(backupPath);
+      const resolvedPath = resolve(backupPath);
+      const resolvedBackupDir = resolve(this.backupDir);
+      if (!resolvedPath.startsWith(resolvedBackupDir + '/') && !resolvedPath.startsWith(resolvedBackupDir + '\\')) {
+        throw new FileOperationError('backup path is outside the backup directory', backupPath);
+      }
       await fs.unlink(backupPath);
 
       try {

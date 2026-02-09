@@ -14,7 +14,8 @@ import { SEARCH_LIMITS } from '../utils/constants.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import workerpool, { type Pool } from '@danielsimonjr/workerpool';
 import { fileURLToPath } from 'url';
-import { dirname, join, sep } from 'path';
+import { dirname, join, sep, normalize } from 'path';
+import { existsSync } from 'fs';
 
 /**
  * Default fuzzy search similarity threshold (70% match required).
@@ -116,10 +117,15 @@ export class FuzzySearch {
     if (isRunningFromSrc) {
       // During tests, worker is in dist/workers/ relative to project root
       const projectRoot = join(currentDir, '..', '..');
-      this.workerPath = join(projectRoot, 'dist', 'workers', 'levenshteinWorker.js');
+      this.workerPath = normalize(join(projectRoot, 'dist', 'workers', 'levenshteinWorker.js'));
     } else {
       // In production, worker is in dist/workers/ relative to current dist/search/
-      this.workerPath = join(currentDir, '..', 'workers', 'levenshteinWorker.js');
+      this.workerPath = normalize(join(currentDir, '..', 'workers', 'levenshteinWorker.js'));
+    }
+
+    // Validate resolved worker path exists and is within expected package structure
+    if (!existsSync(this.workerPath)) {
+      this.useWorkerPool = false; // Fall back to non-worker mode
     }
   }
 

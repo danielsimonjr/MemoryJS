@@ -160,7 +160,7 @@ export class WorkerPoolManager {
       this.shutdownAll().then(() => process.exit(0)).catch(() => process.exit(1));
     });
     process.on('uncaughtException', (err) => {
-      console.error('Uncaught exception:', err);
+      console.error('Uncaught exception:', err.message);
       this.shutdownAllSync();
       process.exit(1);
     });
