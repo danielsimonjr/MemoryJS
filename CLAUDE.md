@@ -218,8 +218,15 @@ Located in `tools/` directory:
 | `migrate-from-jsonl-to-sqlite` | Migrates existing JSONL storage to SQLite backend |
 | `compress-for-context` | Compresses graph data for LLM context windows |
 
+## Claude Code Automations
+
+- **Hooks** (`.claude/settings.local.json`): PostToolUse auto-typecheck on Edit/Write, PreToolUse blocks .env/.db edits
+- **Agents** (`.claude/agents/`): `test-runner.md` (maps changed files to test dirs), `security-reviewer.md` (OWASP-based review)
+- **Commands** (`.claude/commands/`): COMMIT, DEPS, CHUNK, SEARCH, MEMORY, RELEASE
+
 ## Gotchas
 
+- **Windows atomic writes**: `fs.rename()` can fail with EPERM in temp directories due to Dropbox/antivirus file locking. `GraphStorage.durableWriteFile` has a fallback that writes directly if rename fails.
 - **Windows + Dropbox + git**: This repo is synced via Dropbox which can corrupt git objects (e.g., `fatal: bad object HEAD`). If git commands fail, try `git fsck` and `git reflog` to recover.
 - **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `npm install` fails on this, check node-gyp prerequisites.
 - **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `npm run build` (tsup), workers are built. But `npm run build:tsc` (bare tsc) does NOT build workers - use tsup.
