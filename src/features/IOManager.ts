@@ -8,7 +8,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { dirname, join, resolve } from 'path';
+import { dirname, join } from 'path';
 import type {
   Entity,
   Relation,
@@ -843,27 +843,29 @@ export class IOManager {
       const nodeId = nodeMatch[1];
       const nodeContent = nodeMatch[2];
 
+      // Escape RegExp special chars for safe use in dynamic regex
+      const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
       const getDataValue = (key: string): string | undefined => {
-        const dataRegex = new RegExp(`<data\\s+key="${key}">([^<]*)<\/data>`);
+        const dataRegex = new RegExp(`<data\\s+key="${escapeRegExp(key)}">([^<]*)<\\/data>`);
         const match = dataRegex.exec(nodeContent);
         return match ? match[1] : undefined;
       };
 
-      // Sanitize values extracted from XML to prevent injection on re-export
-      const sanitizeXmlValue = (v: string): string =>
-        v.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
-         .replace(/[<>&"']/g, '');
+      // Decode XML entities without stripping characters (preserves "AT&T", "O'Brien")
+      const decodeXmlEntities = (v: string): string =>
+        v.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
 
       const entity: Entity = {
-        name: sanitizeXmlValue(nodeId),
-        entityType: sanitizeXmlValue(getDataValue('d0') || getDataValue('entityType') || 'unknown'),
-        observations: (getDataValue('d1') || getDataValue('observations') || '')
+        name: decodeXmlEntities(nodeId),
+        entityType: decodeXmlEntities(getDataValue('d0') || getDataValue('entityType') || 'unknown'),
+        observations: decodeXmlEntities(getDataValue('d1') || getDataValue('observations') || '')
           .split(';')
           .map(s => s.trim())
           .filter(s => s),
-        createdAt: getDataValue('d2') || getDataValue('createdAt'),
-        lastModified: getDataValue('d3') || getDataValue('lastModified'),
-        tags: (getDataValue('d4') || getDataValue('tags') || '')
+        createdAt: decodeXmlEntities(getDataValue('d2') || getDataValue('createdAt') || ''),
+        lastModified: decodeXmlEntities(getDataValue('d3') || getDataValue('lastModified') || ''),
+        tags: decodeXmlEntities(getDataValue('d4') || getDataValue('tags') || '')
           .split(';')
           .map(s => s.trim().toLowerCase())
           .filter(s => s),
@@ -888,22 +890,23 @@ export class IOManager {
       const target = edgeMatch[2];
       const edgeContent = edgeMatch[3];
 
+      const escapeRegExpEdge = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
       const getDataValue = (key: string): string | undefined => {
-        const dataRegex = new RegExp(`<data\\s+key="${key}">([^<]*)<\/data>`);
+        const dataRegex = new RegExp(`<data\\s+key="${escapeRegExpEdge(key)}">([^<]*)<\\/data>`);
         const match = dataRegex.exec(edgeContent);
         return match ? match[1] : undefined;
       };
 
-      const sanitizeXmlVal = (v: string): string =>
-        v.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'")
-         .replace(/[<>&"']/g, '');
+      const decodeXmlEnt = (v: string): string =>
+        v.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
 
       const relation: Relation = {
-        from: sanitizeXmlVal(source),
-        to: sanitizeXmlVal(target),
-        relationType: sanitizeXmlVal(getDataValue('e0') || getDataValue('relationType') || 'related_to'),
-        createdAt: getDataValue('e1') || getDataValue('createdAt'),
-        lastModified: getDataValue('e2') || getDataValue('lastModified'),
+        from: decodeXmlEnt(source),
+        to: decodeXmlEnt(target),
+        relationType: decodeXmlEnt(getDataValue('e0') || getDataValue('relationType') || 'related_to'),
+        createdAt: decodeXmlEnt(getDataValue('e1') || getDataValue('createdAt') || ''),
+        lastModified: decodeXmlEnt(getDataValue('e2') || getDataValue('lastModified') || ''),
       };
 
       relations.push(relation);
@@ -1281,12 +1284,7 @@ export class IOManager {
    */
   async restoreFromBackup(backupPath: string): Promise<RestoreResult> {
     try {
-      validateFilePath(backupPath);
-      const resolvedPath = resolve(backupPath);
-      const resolvedBackupDir = resolve(this.backupDir);
-      if (!resolvedPath.startsWith(resolvedBackupDir + '/') && !resolvedPath.startsWith(resolvedBackupDir + '\\')) {
-        throw new FileOperationError('backup path is outside the backup directory', backupPath);
-      }
+      validateFilePath(backupPath, this.backupDir, true);
       await fs.access(backupPath);
 
       const isCompressed = hasBrotliExtension(backupPath);
@@ -1328,12 +1326,7 @@ export class IOManager {
    */
   async deleteBackup(backupPath: string): Promise<void> {
     try {
-      validateFilePath(backupPath);
-      const resolvedPath = resolve(backupPath);
-      const resolvedBackupDir = resolve(this.backupDir);
-      if (!resolvedPath.startsWith(resolvedBackupDir + '/') && !resolvedPath.startsWith(resolvedBackupDir + '\\')) {
-        throw new FileOperationError('backup path is outside the backup directory', backupPath);
-      }
+      validateFilePath(backupPath, this.backupDir, true);
       await fs.unlink(backupPath);
 
       try {

@@ -764,7 +764,7 @@ export class SQLiteStorage implements IGraphStorage {
     try {
       // Sanitize FTS5 special characters to prevent query injection and resource exhaustion
       const sanitized = query
-        .replace(/["{}()^~]/g, ' ')   // Remove FTS5 operators
+        .replace(/["{}()^~:]/g, ' ')  // Remove FTS5 operators and column filter syntax
         .replace(/\bNEAR\b/gi, '')     // Remove NEAR operator
         .replace(/\bAND\b/gi, '')      // Remove AND operator
         .replace(/\bOR\b/gi, '')       // Remove OR operator
