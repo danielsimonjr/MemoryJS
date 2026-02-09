@@ -354,7 +354,8 @@ export class WorkerPoolManager {
     } catch (error) {
       const executionTime = Date.now() - startTime;
       this.recordTaskExecution(poolId, executionTime);
-      throw error;
+      const message = error instanceof Error ? error.message : 'Worker task failed';
+      throw new Error(message);
     }
   }
 

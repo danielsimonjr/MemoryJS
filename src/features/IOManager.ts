@@ -1330,9 +1330,11 @@ export class IOManager {
       await fs.unlink(backupPath);
 
       try {
-        await fs.unlink(`${backupPath}.meta.json`);
+        const metaPath = join(dirname(backupPath), `${backupPath.split(/[/\\]/).pop()}.meta.json`);
+        validateFilePath(metaPath, this.backupDir, true);
+        await fs.unlink(metaPath);
       } catch {
-        // Metadata file doesn't exist - that's ok
+        // Metadata file doesn't exist or is outside backup dir - that's ok
       }
     } catch (error) {
       throw new FileOperationError('delete backup', backupPath, error as Error);
