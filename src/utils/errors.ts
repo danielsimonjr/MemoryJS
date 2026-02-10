@@ -1,16 +1,5 @@
-/**
- * Custom Error Types
- *
- * Defines custom error classes for better error handling and debugging.
- * Phase 1 Sprint 10: Enhanced with ErrorCode enum and suggestions.
- *
- * @module utils/errors
- */
+/** Custom error types for knowledge graph operations. */
 
-/**
- * Error codes for programmatic handling.
- * Phase 1 Sprint 10: Centralized error codes.
- */
 export enum ErrorCode {
   // Validation errors
   VALIDATION_FAILED = 'VALIDATION_ERROR',
@@ -50,29 +39,16 @@ export enum ErrorCode {
   UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
 
-/**
- * Options for enhanced error construction.
- */
 export interface ErrorOptions {
-  /** Additional context for debugging */
   context?: Record<string, unknown>;
-  /** Recovery suggestions for the user */
   suggestions?: string[];
-  /** Original error that caused this one */
   cause?: Error;
 }
 
-/**
- * Base error class for all knowledge graph errors.
- * Extends the native Error class with additional context.
- * Phase 1 Sprint 10: Enhanced with suggestions and context.
- */
+/** Base error class for all knowledge graph errors. */
 export class KnowledgeGraphError extends Error {
-  /** Error code for programmatic handling */
   readonly code: string;
-  /** Additional context for debugging */
   readonly context?: Record<string, unknown>;
-  /** Recovery suggestions for the user */
   readonly suggestions: string[];
 
   constructor(message: string, code?: string, options?: ErrorOptions) {
@@ -92,9 +68,7 @@ export class KnowledgeGraphError extends Error {
     }
   }
 
-  /**
-   * Get a formatted error message with suggestions.
-   */
+  /** Get a formatted error message with suggestions. */
   getDetailedMessage(): string {
     let msg = `[${this.code}] ${this.message}`;
 
@@ -109,9 +83,7 @@ export class KnowledgeGraphError extends Error {
     return msg;
   }
 
-  /**
-   * Convert to a plain object for serialization.
-   */
+  /** Convert to a plain object for serialization. */
   toJSON(): Record<string, unknown> {
     return {
       name: this.name,
@@ -124,9 +96,7 @@ export class KnowledgeGraphError extends Error {
   }
 }
 
-/**
- * Error thrown when an entity is not found.
- */
+/** Error thrown when an entity is not found. */
 export class EntityNotFoundError extends KnowledgeGraphError {
   constructor(entityName: string) {
     super(`Entity "${entityName}" not found`, ErrorCode.ENTITY_NOT_FOUND, {
@@ -141,9 +111,7 @@ export class EntityNotFoundError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when a relation is not found.
- */
+/** Error thrown when a relation is not found. */
 export class RelationNotFoundError extends KnowledgeGraphError {
   constructor(from: string, to: string, relationType?: string) {
     const desc = relationType
@@ -161,9 +129,7 @@ export class RelationNotFoundError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when attempting to create a duplicate entity.
- */
+/** Error thrown when attempting to create a duplicate entity. */
 export class DuplicateEntityError extends KnowledgeGraphError {
   constructor(entityName: string) {
     super(`Entity "${entityName}" already exists`, ErrorCode.DUPLICATE_ENTITY, {
@@ -178,10 +144,7 @@ export class DuplicateEntityError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when validation fails.
- * Note: Maintains backward-compatible signature with errors: string[].
- */
+/** Error thrown when validation fails. */
 export class ValidationError extends KnowledgeGraphError {
   constructor(
     message: string,
@@ -199,9 +162,7 @@ export class ValidationError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when a cycle is detected in hierarchies.
- */
+/** Error thrown when a cycle is detected in hierarchies. */
 export class CycleDetectedError extends KnowledgeGraphError {
   constructor(entityName: string, parentName: string) {
     super(
@@ -220,9 +181,7 @@ export class CycleDetectedError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when an invalid importance value is provided.
- */
+/** Error thrown when an invalid importance value is provided. */
 export class InvalidImportanceError extends KnowledgeGraphError {
   constructor(value: number, min: number = 0, max: number = 10) {
     super(`Importance must be between ${min} and ${max}, got ${value}`, ErrorCode.INVALID_IMPORTANCE, {
@@ -237,9 +196,7 @@ export class InvalidImportanceError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when a file operation fails.
- */
+/** Error thrown when a file operation fails. */
 export class FileOperationError extends KnowledgeGraphError {
   constructor(operation: string, filePath: string, cause?: Error) {
     super(
@@ -259,9 +216,7 @@ export class FileOperationError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when an import operation fails.
- */
+/** Error thrown when an import operation fails. */
 export class ImportError extends KnowledgeGraphError {
   constructor(format: string, message: string) {
     super(`Import failed (${format}): ${message}`, ErrorCode.IMPORT_ERROR, {
@@ -276,9 +231,7 @@ export class ImportError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when an export operation fails.
- */
+/** Error thrown when an export operation fails. */
 export class ExportError extends KnowledgeGraphError {
   constructor(format: string, message: string) {
     super(`Export failed (${format}): ${message}`, ErrorCode.EXPORT_ERROR, {
@@ -293,9 +246,7 @@ export class ExportError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Error thrown when insufficient entities are provided for an operation.
- */
+/** Error thrown when insufficient entities are provided. */
 export class InsufficientEntitiesError extends KnowledgeGraphError {
   constructor(operation: string, required: number, provided: number) {
     super(
@@ -314,21 +265,7 @@ export class InsufficientEntitiesError extends KnowledgeGraphError {
   }
 }
 
-/**
- * Phase 9B: Error thrown when an operation is cancelled via AbortSignal.
- *
- * @example
- * ```typescript
- * const controller = new AbortController();
- * try {
- *   await manager.createEntities(entities, { signal: controller.signal });
- * } catch (error) {
- *   if (error instanceof OperationCancelledError) {
- *     console.log('Operation was cancelled');
- *   }
- * }
- * ```
- */
+/** Error thrown when an operation is cancelled via AbortSignal. */
 export class OperationCancelledError extends KnowledgeGraphError {
   constructor(operation?: string) {
     const message = operation
