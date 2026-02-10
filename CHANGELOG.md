@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Simplify ManagerContext**: Replaced 12 lazy-initialized getter properties with eagerly initialized `readonly` fields for core managers (EntityManager, RelationManager, ObservationManager, HierarchyManager, GraphTraversal, SearchManager, RankedSearch, IOManager, TagManager, AnalyticsManager, CompressionManager, ArchiveManager). Agent memory managers retain lazy initialization due to conditional creation and dependency chains. Moved env var helpers to module-level functions.
+
 ## [1.5.0] - 2026-02-06
 
 ### Fixed

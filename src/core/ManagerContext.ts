@@ -1,9 +1,9 @@
 /**
  * Manager Context
  *
- * Central context holding all manager instances with lazy initialization.
- * Provides direct manager access for toolHandlers.
- * Phase 4: Removed convenience methods - use managers directly.
+ * Central context holding all manager instances.
+ * Core managers are eagerly initialized; agent memory managers
+ * use lazy initialization due to conditional creation and dependency chains.
  *
  * @module core/ManagerContext
  */
@@ -36,30 +36,34 @@ import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
 
 /**
- * Context holding all manager instances with lazy initialization.
- * Provides direct manager access for toolHandlers.
+ * Central context holding all manager instances.
+ * Core managers are eagerly initialized in the constructor.
+ * Agent memory managers use lazy initialization due to dependency chains and conditional creation.
  */
 export class ManagerContext {
   // Type as GraphStorage for manager compatibility; actual instance may be SQLiteStorage
   // which implements the same interface via duck typing
   readonly storage: GraphStorage;
-  private readonly savedSearchesFilePath: string;
-  private readonly tagAliasesFilePath: string;
 
-  // Lazy-initialized managers
-  private _entityManager?: EntityManager;
-  private _relationManager?: RelationManager;
-  private _observationManager?: ObservationManager;
-  private _hierarchyManager?: HierarchyManager;
-  private _graphTraversal?: GraphTraversal;
-  private _searchManager?: SearchManager;
+  // ==================== EAGERLY INITIALIZED CORE MANAGERS ====================
+
+  readonly entityManager: EntityManager;
+  readonly relationManager: RelationManager;
+  readonly observationManager: ObservationManager;
+  readonly hierarchyManager: HierarchyManager;
+  readonly graphTraversal: GraphTraversal;
+  readonly searchManager: SearchManager;
+  readonly rankedSearch: RankedSearch;
+  readonly ioManager: IOManager;
+  readonly tagManager: TagManager;
+  readonly analyticsManager: AnalyticsManager;
+  readonly compressionManager: CompressionManager;
+  readonly archiveManager: ArchiveManager;
+
+  // ==================== LAZY-INITIALIZED AGENT MEMORY MANAGERS ====================
+  // These have conditional creation, env var config, or cross-manager dependency chains.
+
   private _semanticSearch?: SemanticSearch | null;
-  private _rankedSearch?: RankedSearch;
-  private _ioManager?: IOManager;
-  private _tagManager?: TagManager;
-  private _analyticsManager?: AnalyticsManager;
-  private _compressionManager?: CompressionManager;
-  private _archiveManager?: ArchiveManager;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -75,48 +79,32 @@ export class ManagerContext {
     // Derive paths for saved searches and tag aliases
     const dir = path.dirname(validatedPath);
     const basename = path.basename(validatedPath, path.extname(validatedPath));
-    this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
-    this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
+    const savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
+    const tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
+
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
+
+    // Initialize core managers eagerly — all are lightweight
+    this.entityManager = new EntityManager(this.storage);
+    this.relationManager = new RelationManager(this.storage);
+    this.observationManager = new ObservationManager(this.storage);
+    this.hierarchyManager = new HierarchyManager(this.storage);
+    this.graphTraversal = new GraphTraversal(this.storage);
+    this.searchManager = new SearchManager(this.storage, savedSearchesFilePath);
+    this.rankedSearch = new RankedSearch(this.storage);
+    this.ioManager = new IOManager(this.storage);
+    this.tagManager = new TagManager(tagAliasesFilePath);
+    this.analyticsManager = new AnalyticsManager(this.storage);
+    this.compressionManager = new CompressionManager(this.storage);
+    this.archiveManager = new ArchiveManager(this.storage);
   }
 
-  // ==================== MANAGER ACCESSORS ====================
-  // Use these for direct manager access in toolHandlers
-
-  /** EntityManager - Entity CRUD and tag operations */
-  get entityManager(): EntityManager {
-    return (this._entityManager ??= new EntityManager(this.storage));
-  }
-
-  /** RelationManager - Relation CRUD */
-  get relationManager(): RelationManager {
-    return (this._relationManager ??= new RelationManager(this.storage));
-  }
-
-  /** ObservationManager - Observation CRUD */
-  get observationManager(): ObservationManager {
-    return (this._observationManager ??= new ObservationManager(this.storage));
-  }
-
-  /** HierarchyManager - Entity hierarchy operations */
-  get hierarchyManager(): HierarchyManager {
-    return (this._hierarchyManager ??= new HierarchyManager(this.storage));
-  }
-
-  /** GraphTraversal - Phase 4 Sprint 6-8: Graph traversal algorithms */
-  get graphTraversal(): GraphTraversal {
-    return (this._graphTraversal ??= new GraphTraversal(this.storage));
-  }
-
-  /** SearchManager - All search operations */
-  get searchManager(): SearchManager {
-    return (this._searchManager ??= new SearchManager(this.storage, this.savedSearchesFilePath));
-  }
+  // ==================== LAZY ACCESSORS (agent memory + semantic) ====================
 
   /**
-   * SemanticSearch - Phase 4 Sprint 12: Semantic similarity search.
+   * SemanticSearch - Semantic similarity search.
    * Returns null if no embedding provider is configured.
    */
   get semanticSearch(): SemanticSearch | null {
@@ -125,7 +113,7 @@ export class ManagerContext {
       const embeddingService = createEmbeddingService(config);
 
       if (embeddingService) {
-        const vectorStore = createVectorStore('jsonl'); // Use in-memory for now
+        const vectorStore = createVectorStore('jsonl');
         this._semanticSearch = new SemanticSearch(embeddingService, vectorStore);
       } else {
         this._semanticSearch = null;
@@ -134,107 +122,48 @@ export class ManagerContext {
     return this._semanticSearch;
   }
 
-  /** RankedSearch - Phase 11: TF-IDF/BM25 ranked search for hybrid search */
-  get rankedSearch(): RankedSearch {
-    return (this._rankedSearch ??= new RankedSearch(this.storage));
-  }
-
-  /** IOManager - Import, export, and backup operations */
-  get ioManager(): IOManager {
-    return (this._ioManager ??= new IOManager(this.storage));
-  }
-
-  /** TagManager - Tag alias management */
-  get tagManager(): TagManager {
-    return (this._tagManager ??= new TagManager(this.tagAliasesFilePath));
-  }
-
-  /** AnalyticsManager - Graph statistics and validation */
-  get analyticsManager(): AnalyticsManager {
-    return (this._analyticsManager ??= new AnalyticsManager(this.storage));
-  }
-
-  /** CompressionManager - Duplicate detection and entity merging */
-  get compressionManager(): CompressionManager {
-    return (this._compressionManager ??= new CompressionManager(this.storage));
-  }
-
-  /** ArchiveManager - Entity archival operations */
-  get archiveManager(): ArchiveManager {
-    return (this._archiveManager ??= new ArchiveManager(this.storage));
-  }
-
   /**
-   * AccessTracker - Phase 1 Agent Memory: Access pattern tracking.
+   * AccessTracker - Access pattern tracking.
    * Automatically wired to EntityManager, SearchManager, and GraphTraversal.
    */
   get accessTracker(): AccessTracker {
     if (!this._accessTracker) {
       this._accessTracker = new AccessTracker(this.storage);
-      this.wireAccessTracker();
+      this.entityManager.setAccessTracker(this._accessTracker);
+      this.searchManager.setAccessTracker(this._accessTracker);
+      this.graphTraversal.setAccessTracker(this._accessTracker);
     }
     return this._accessTracker;
   }
 
   /**
-   * Wire AccessTracker to managers that support access tracking.
-   * @internal
-   */
-  private wireAccessTracker(): void {
-    if (this._accessTracker) {
-      // Wire to EntityManager
-      this.entityManager.setAccessTracker(this._accessTracker);
-      // Wire to SearchManager
-      this.searchManager.setAccessTracker(this._accessTracker);
-      // Wire to GraphTraversal
-      this.graphTraversal.setAccessTracker(this._accessTracker);
-    }
-  }
-
-  /**
-   * DecayEngine - Phase 1 Agent Memory: Memory importance decay calculations.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_DECAY_HALF_LIFE_HOURS (default: 168 = 1 week)
-   * - MEMORY_DECAY_MIN_IMPORTANCE (default: 0.1)
-   * - MEMORY_DECAY_IMPORTANCE_MOD (default: true)
-   * - MEMORY_DECAY_ACCESS_MOD (default: true)
+   * DecayEngine - Memory importance decay calculations.
    */
   get decayEngine(): DecayEngine {
     if (!this._decayEngine) {
       this._decayEngine = new DecayEngine(this.storage, this.accessTracker, {
-        halfLifeHours: this.getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168),
-        minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
-        importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
-        accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
+        halfLifeHours: getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168),
+        minImportance: getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
+        importanceModulation: getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
+        accessModulation: getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
       });
     }
     return this._decayEngine;
   }
 
   /**
-   * DecayScheduler - Phase 1 Agent Memory: Scheduled decay and forget operations.
-   *
-   * Returns undefined if auto-decay is not enabled.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_AUTO_DECAY (default: false) - Enable to create scheduler
-   * - MEMORY_DECAY_INTERVAL_MS (default: 3600000 = 1 hour)
-   * - MEMORY_AUTO_FORGET (default: false)
-   * - MEMORY_FORGET_THRESHOLD (default: 0.05)
+   * DecayScheduler - Scheduled decay and forget operations.
+   * Returns undefined if auto-decay is not enabled (MEMORY_AUTO_DECAY).
    */
   get decayScheduler(): DecayScheduler | undefined {
     if (this._decayScheduler) return this._decayScheduler;
 
-    if (this.getEnvBool('MEMORY_AUTO_DECAY', false)) {
+    if (getEnvBool('MEMORY_AUTO_DECAY', false)) {
       this._decayScheduler = new DecayScheduler(this.decayEngine, {
-        decayIntervalMs: this.getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000),
-        autoForget: this.getEnvBool('MEMORY_AUTO_FORGET', false),
+        decayIntervalMs: getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000),
+        autoForget: getEnvBool('MEMORY_AUTO_FORGET', false),
         forgetOptions: {
-          effectiveImportanceThreshold: this.getEnvNumber(
-            'MEMORY_FORGET_THRESHOLD',
-            0.05
-          ),
+          effectiveImportanceThreshold: getEnvNumber('MEMORY_FORGET_THRESHOLD', 0.05),
         },
       });
     }
@@ -243,14 +172,7 @@ export class ManagerContext {
   }
 
   /**
-   * SalienceEngine - Phase 4 Agent Memory: Context-aware relevance scoring.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_SALIENCE_IMPORTANCE_WEIGHT (default: 0.25)
-   * - MEMORY_SALIENCE_RECENCY_WEIGHT (default: 0.25)
-   * - MEMORY_SALIENCE_FREQUENCY_WEIGHT (default: 0.2)
-   * - MEMORY_SALIENCE_CONTEXT_WEIGHT (default: 0.2)
-   * - MEMORY_SALIENCE_NOVELTY_WEIGHT (default: 0.1)
+   * SalienceEngine - Context-aware relevance scoring.
    */
   get salienceEngine(): SalienceEngine {
     if (!this._salienceEngine) {
@@ -259,11 +181,11 @@ export class ManagerContext {
         this.accessTracker,
         this.decayEngine,
         {
-          importanceWeight: this.getEnvNumber('MEMORY_SALIENCE_IMPORTANCE_WEIGHT', 0.25),
-          recencyWeight: this.getEnvNumber('MEMORY_SALIENCE_RECENCY_WEIGHT', 0.25),
-          frequencyWeight: this.getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2),
-          contextWeight: this.getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2),
-          noveltyWeight: this.getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1),
+          importanceWeight: getEnvNumber('MEMORY_SALIENCE_IMPORTANCE_WEIGHT', 0.25),
+          recencyWeight: getEnvNumber('MEMORY_SALIENCE_RECENCY_WEIGHT', 0.25),
+          frequencyWeight: getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2),
+          contextWeight: getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2),
+          noveltyWeight: getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1),
         }
       );
     }
@@ -271,13 +193,7 @@ export class ManagerContext {
   }
 
   /**
-   * ContextWindowManager - Phase 4 Agent Memory: Token-budgeted memory retrieval.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_CONTEXT_MAX_TOKENS (default: 4000)
-   * - MEMORY_CONTEXT_TOKEN_MULTIPLIER (default: 1.3)
-   * - MEMORY_CONTEXT_RESERVE_BUFFER (default: 100)
-   * - MEMORY_CONTEXT_DIVERSITY_THRESHOLD (default: 0.8)
+   * ContextWindowManager - Token-budgeted memory retrieval.
    */
   get contextWindowManager(): ContextWindowManager {
     if (!this._contextWindowManager) {
@@ -285,11 +201,11 @@ export class ManagerContext {
         this.storage,
         this.salienceEngine,
         {
-          defaultMaxTokens: this.getEnvNumber('MEMORY_CONTEXT_MAX_TOKENS', 4000),
-          tokenMultiplier: this.getEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3),
-          reserveBuffer: this.getEnvNumber('MEMORY_CONTEXT_RESERVE_BUFFER', 100),
-          diversityThreshold: this.getEnvNumber('MEMORY_CONTEXT_DIVERSITY_THRESHOLD', 0.8),
-          enforceDiversity: this.getEnvBool('MEMORY_CONTEXT_ENFORCE_DIVERSITY', true),
+          defaultMaxTokens: getEnvNumber('MEMORY_CONTEXT_MAX_TOKENS', 4000),
+          tokenMultiplier: getEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3),
+          reserveBuffer: getEnvNumber('MEMORY_CONTEXT_RESERVE_BUFFER', 100),
+          diversityThreshold: getEnvNumber('MEMORY_CONTEXT_DIVERSITY_THRESHOLD', 0.8),
+          enforceDiversity: getEnvBool('MEMORY_CONTEXT_ENFORCE_DIVERSITY', true),
         }
       );
     }
@@ -297,27 +213,20 @@ export class ManagerContext {
   }
 
   /**
-   * MemoryFormatter - Phase 4 Agent Memory: Format memories for LLM consumption.
+   * MemoryFormatter - Format memories for LLM consumption.
    */
   get memoryFormatter(): MemoryFormatter {
     if (!this._memoryFormatter) {
       this._memoryFormatter = new MemoryFormatter({
-        includeTimestamps: this.getEnvBool('MEMORY_FORMAT_TIMESTAMPS', true),
-        includeMemoryType: this.getEnvBool('MEMORY_FORMAT_MEMORY_TYPE', true),
+        includeTimestamps: getEnvBool('MEMORY_FORMAT_TIMESTAMPS', true),
+        includeMemoryType: getEnvBool('MEMORY_FORMAT_MEMORY_TYPE', true),
       });
     }
     return this._memoryFormatter;
   }
 
   /**
-   * AgentMemoryManager - Phase 5 Agent Memory: Unified facade for all agent memory operations.
-   *
-   * Provides high-level API for:
-   * - Session lifecycle management
-   * - Working memory creation and management
-   * - Memory consolidation and promotion
-   * - Context retrieval for LLM consumption
-   * - Multi-agent memory coordination
+   * AgentMemoryManager - Unified facade for all agent memory operations.
    *
    * @param config - Optional configuration override (default: loaded from env vars)
    */
@@ -327,27 +236,19 @@ export class ManagerContext {
     }
     return this._agentMemory;
   }
+}
 
-  // ==================== Environment Variable Helpers ====================
+// ==================== Module-level helpers ====================
 
-  /**
-   * Get a number from environment variable with default.
-   * @internal
-   */
-  private getEnvNumber(key: string, defaultValue: number): number {
-    const value = process.env[key];
-    if (value === undefined) return defaultValue;
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? defaultValue : parsed;
-  }
+function getEnvNumber(key: string, defaultValue: number): number {
+  const value = process.env[key];
+  if (value === undefined) return defaultValue;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
 
-  /**
-   * Get a boolean from environment variable with default.
-   * @internal
-   */
-  private getEnvBool(key: string, defaultValue: boolean): boolean {
-    const value = process.env[key];
-    if (value === undefined) return defaultValue;
-    return value.toLowerCase() === 'true';
-  }
+function getEnvBool(key: string, defaultValue: boolean): boolean {
+  const value = process.env[key];
+  if (value === undefined) return defaultValue;
+  return value.toLowerCase() === 'true';
 }
