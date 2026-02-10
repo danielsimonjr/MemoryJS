@@ -1,9 +1,5 @@
 /**
- * Symbolic Search Layer
- *
- * Phase 11: Provides metadata-based filtering using structured predicates.
- * Part of the three-layer hybrid search architecture.
- *
+ * Symbolic Search Layer - metadata-based filtering using structured predicates.
  * @module search/SymbolicSearch
  */
 
@@ -18,31 +14,9 @@ export interface SymbolicResult {
   matchedFilters: string[];
 }
 
-/**
- * Symbolic Search provides metadata-based filtering.
- *
- * Filters entities using structured predicates on tags, types,
- * dates, importance, and hierarchy.
- *
- * @example
- * ```typescript
- * const symbolic = new SymbolicSearch();
- * const results = symbolic.search(entities, {
- *   tags: ['important'],
- *   entityTypes: ['person'],
- *   importance: { min: 5 }
- * });
- * ```
- */
+/** Filters entities using structured metadata predicates (tags, types, dates, importance, hierarchy). */
 export class SymbolicSearch {
-  /**
-   * Filter entities using structured metadata predicates.
-   * All filters are AND-combined.
-   *
-   * @param entities - Entities to filter
-   * @param filters - Symbolic filter criteria
-   * @returns Filtered entities with match scores
-   */
+  /** Filter entities using AND-combined metadata predicates. */
   search(entities: readonly Entity[], filters: SymbolicFilters): SymbolicResult[] {
     const results: SymbolicResult[] = [];
 
@@ -57,9 +31,7 @@ export class SymbolicSearch {
     return results.sort((a, b) => b.score - a.score);
   }
 
-  /**
-   * Evaluate all filters against an entity.
-   */
+  /** @internal Evaluate all filters against an entity. */
   private evaluateFilters(
     entity: Entity,
     filters: SymbolicFilters
@@ -165,27 +137,21 @@ export class SymbolicSearch {
     return { matches: true, score, matchedFilters };
   }
 
-  /**
-   * Get entities matching a specific tag.
-   */
+  /** Get entities matching a specific tag. */
   byTag(entities: readonly Entity[], tag: string): Entity[] {
     return entities.filter(e =>
       e.tags?.some(t => t.toLowerCase() === tag.toLowerCase())
     );
   }
 
-  /**
-   * Get entities of a specific type.
-   */
+  /** Get entities of a specific type. */
   byType(entities: readonly Entity[], entityType: string): Entity[] {
     return entities.filter(e =>
       e.entityType.toLowerCase() === entityType.toLowerCase()
     );
   }
 
-  /**
-   * Get entities within importance range.
-   */
+  /** Get entities within importance range. */
   byImportance(entities: readonly Entity[], min: number, max: number): Entity[] {
     return entities.filter(e => {
       const imp = e.importance ?? 5;
