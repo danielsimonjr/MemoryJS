@@ -1,55 +1,26 @@
-/**
- * Worker Pool Manager
- *
- * Phase 12 Sprint 2: Unified worker pool management for all parallelizable operations.
- * Provides centralized lifecycle management, configuration, and statistics.
- *
- * @module utils/WorkerPoolManager
- */
+/** Unified worker pool management for parallelizable operations. */
 
 import workerpool from '@danielsimonjr/workerpool';
 import type { Pool, PoolStats } from '@danielsimonjr/workerpool';
 
-/**
- * Configuration options for worker pools.
- */
 export interface WorkerPoolConfig {
-  /** Maximum number of worker threads (default: CPU count - 1) */
   maxWorkers?: number;
-  /** Worker type: 'thread' or 'process' (default: 'thread') */
   workerType?: 'thread' | 'process';
-  /** Optional path to worker script file */
   workerPath?: string;
-  /** Minimum array size to use parallel processing (default: 200) */
   minParallelSize?: number;
-  /** Default task timeout in milliseconds (default: 30000) */
   defaultTimeout?: number;
 }
 
-/**
- * Extended pool statistics with additional metadata.
- */
 export interface ExtendedPoolStats extends PoolStats {
-  /** Pool identifier */
   poolId: string;
-  /** When the pool was created */
   createdAt: number;
-  /** Total tasks executed since creation */
   totalTasksExecuted: number;
-  /** Total execution time in milliseconds */
   totalExecutionTime: number;
-  /** Average task execution time in milliseconds */
   averageExecutionTime: number;
 }
 
-/**
- * Callback for pool events.
- */
 export type PoolEventCallback = (poolId: string, event: 'created' | 'shutdown' | 'error', data?: unknown) => void;
 
-/**
- * Internal pool entry with metadata.
- */
 interface PoolEntry {
   pool: Pool;
   config: WorkerPoolConfig;
@@ -58,9 +29,6 @@ interface PoolEntry {
   totalExecutionTime: number;
 }
 
-/**
- * Default configuration values.
- */
 const DEFAULT_CONFIG: Required<WorkerPoolConfig> = {
   maxWorkers: Math.max(1, workerpool.cpus - 1),
   workerType: 'thread',
@@ -69,36 +37,7 @@ const DEFAULT_CONFIG: Required<WorkerPoolConfig> = {
   defaultTimeout: 30000,
 };
 
-/**
- * WorkerPoolManager - Unified worker pool management
- *
- * Provides centralized management of worker pools for parallel processing.
- * Features:
- * - Named pool registration with automatic lifecycle management
- * - Pool cleanup on process exit
- * - Statistics tracking per pool
- * - Event callbacks for monitoring
- *
- * @example
- * ```typescript
- * const manager = WorkerPoolManager.getInstance();
- *
- * // Get or create a pool
- * const pool = manager.getPool('fuzzySearch', {
- *   maxWorkers: 4,
- *   workerPath: '/path/to/worker.js'
- * });
- *
- * // Execute task
- * const result = await pool.exec('searchEntities', [data]);
- *
- * // Get statistics
- * const stats = manager.getPoolStats('fuzzySearch');
- *
- * // Shutdown all pools on exit
- * await manager.shutdownAll();
- * ```
- */
+/** Centralized management of named worker pools with lifecycle and statistics tracking. */
 export class WorkerPoolManager {
   private static instance: WorkerPoolManager | null = null;
 
@@ -107,18 +46,11 @@ export class WorkerPoolManager {
   private isShuttingDown = false;
   private shutdownRegistered = false;
 
-  /**
-   * Private constructor for singleton pattern.
-   */
   private constructor() {
     this.registerShutdownHandlers();
   }
 
-  /**
-   * Get the singleton instance of WorkerPoolManager.
-   *
-   * @returns The WorkerPoolManager instance
-   */
+  /** Get the singleton instance. */
   static getInstance(): WorkerPoolManager {
     if (!WorkerPoolManager.instance) {
       WorkerPoolManager.instance = new WorkerPoolManager();
@@ -126,9 +58,7 @@ export class WorkerPoolManager {
     return WorkerPoolManager.instance;
   }
 
-  /**
-   * Reset the singleton instance (primarily for testing).
-   */
+  /** Reset the singleton instance (for testing). */
   static resetInstance(): void {
     if (WorkerPoolManager.instance) {
       WorkerPoolManager.instance.shutdownAll().catch(() => {
@@ -138,9 +68,7 @@ export class WorkerPoolManager {
     }
   }
 
-  /**
-   * Register process exit handlers for cleanup.
-   */
+  /** Register process exit handlers for cleanup. */
   private registerShutdownHandlers(): void {
     if (this.shutdownRegistered) return;
     this.shutdownRegistered = true;
@@ -166,16 +94,7 @@ export class WorkerPoolManager {
     });
   }
 
-  /**
-   * Get or create a named worker pool.
-   *
-   * If a pool with the given ID exists, returns the existing pool.
-   * Otherwise, creates a new pool with the provided configuration.
-   *
-   * @param poolId - Unique identifier for the pool
-   * @param config - Pool configuration options
-   * @returns The worker pool instance
-   */
+  /** Get or create a named worker pool. */
   getPool(poolId: string, config: WorkerPoolConfig = {}): Pool {
     const existing = this.pools.get(poolId);
     if (existing) {
@@ -185,14 +104,7 @@ export class WorkerPoolManager {
     return this.createPool(poolId, config);
   }
 
-  /**
-   * Create a new worker pool with the given ID.
-   *
-   * @param poolId - Unique identifier for the pool
-   * @param config - Pool configuration options
-   * @returns The newly created worker pool
-   * @throws Error if a pool with the same ID already exists
-   */
+  /** Create a new worker pool. Throws if poolId already exists. */
   createPool(poolId: string, config: WorkerPoolConfig = {}): Pool {
     if (this.pools.has(poolId)) {
       throw new Error(`Pool with ID '${poolId}' already exists`);
@@ -238,33 +150,18 @@ export class WorkerPoolManager {
     return pool;
   }
 
-  /**
-   * Check if a pool with the given ID exists.
-   *
-   * @param poolId - Pool identifier to check
-   * @returns True if pool exists
-   */
+  /** Check if a pool exists. */
   hasPool(poolId: string): boolean {
     return this.pools.has(poolId);
   }
 
-  /**
-   * Get the configuration for a pool.
-   *
-   * @param poolId - Pool identifier
-   * @returns Pool configuration or undefined if not found
-   */
+  /** Get pool configuration. */
   getPoolConfig(poolId: string): WorkerPoolConfig | undefined {
     const entry = this.pools.get(poolId);
     return entry ? { ...entry.config } : undefined;
   }
 
-  /**
-   * Get extended statistics for a pool.
-   *
-   * @param poolId - Pool identifier
-   * @returns Extended pool statistics or undefined if not found
-   */
+  /** Get extended statistics for a pool. */
   getPoolStats(poolId: string): ExtendedPoolStats | undefined {
     const entry = this.pools.get(poolId);
     if (!entry) return undefined;
@@ -283,11 +180,7 @@ export class WorkerPoolManager {
     };
   }
 
-  /**
-   * Get statistics for all pools.
-   *
-   * @returns Map of pool IDs to their statistics
-   */
+  /** Get statistics for all pools. */
   getAllPoolStats(): Map<string, ExtendedPoolStats> {
     const stats = new Map<string, ExtendedPoolStats>();
     for (const poolId of this.pools.keys()) {
@@ -299,12 +192,7 @@ export class WorkerPoolManager {
     return stats;
   }
 
-  /**
-   * Record task execution for statistics tracking.
-   *
-   * @param poolId - Pool identifier
-   * @param executionTimeMs - Task execution time in milliseconds
-   */
+  /** Record task execution for statistics tracking. */
   recordTaskExecution(poolId: string, executionTimeMs: number): void {
     const entry = this.pools.get(poolId);
     if (entry) {
@@ -313,16 +201,7 @@ export class WorkerPoolManager {
     }
   }
 
-  /**
-   * Execute a task on a pool with automatic statistics tracking.
-   *
-   * @template T - Result type
-   * @param poolId - Pool identifier
-   * @param method - Method name to execute (for worker script pools) or inline function
-   * @param args - Arguments to pass to the method/function
-   * @param timeout - Optional timeout in milliseconds
-   * @returns Promise resolving to the task result
-   */
+  /** Execute a task with automatic statistics tracking. */
   async executeTask<T>(
     poolId: string,
     method: string | ((...args: unknown[]) => T),
@@ -359,13 +238,7 @@ export class WorkerPoolManager {
     }
   }
 
-  /**
-   * Shutdown a specific pool.
-   *
-   * @param poolId - Pool identifier
-   * @param force - If true, forcefully terminate workers (default: false)
-   * @returns Promise resolving when shutdown is complete
-   */
+  /** Shutdown a specific pool. */
   async shutdownPool(poolId: string, force = false): Promise<void> {
     const entry = this.pools.get(poolId);
     if (!entry) return;
@@ -381,12 +254,7 @@ export class WorkerPoolManager {
     }
   }
 
-  /**
-   * Shutdown all pools asynchronously.
-   *
-   * @param force - If true, forcefully terminate workers (default: false)
-   * @returns Promise resolving when all pools are shut down
-   */
+  /** Shutdown all pools. */
   async shutdownAll(force = false): Promise<void> {
     if (this.isShuttingDown) return;
     this.isShuttingDown = true;
@@ -404,10 +272,7 @@ export class WorkerPoolManager {
     }
   }
 
-  /**
-   * Synchronous shutdown for process exit handlers.
-   * Forces immediate termination of all pools.
-   */
+  /** Synchronous shutdown for process exit handlers. */
   private shutdownAllSync(): void {
     if (this.isShuttingDown) return;
     this.isShuttingDown = true;
@@ -425,12 +290,7 @@ export class WorkerPoolManager {
     this.isShuttingDown = false;
   }
 
-  /**
-   * Register an event callback for pool events.
-   *
-   * @param callback - Callback function to invoke on events
-   * @returns Unsubscribe function
-   */
+  /** Register an event callback. Returns unsubscribe function. */
   onEvent(callback: PoolEventCallback): () => void {
     this.eventCallbacks.push(callback);
     return () => {
@@ -441,9 +301,7 @@ export class WorkerPoolManager {
     };
   }
 
-  /**
-   * Emit an event to all registered callbacks.
-   */
+  /** Emit an event to all registered callbacks. */
   private emitEvent(poolId: string, event: 'created' | 'shutdown' | 'error', data?: unknown): void {
     for (const callback of this.eventCallbacks) {
       try {
@@ -454,61 +312,35 @@ export class WorkerPoolManager {
     }
   }
 
-  /**
-   * Get the number of active pools.
-   *
-   * @returns Number of pools currently managed
-   */
+  /** Get the number of active pools. */
   get poolCount(): number {
     return this.pools.size;
   }
 
-  /**
-   * Get all pool IDs.
-   *
-   * @returns Array of pool identifiers
-   */
+  /** Get all pool IDs. */
   getPoolIds(): string[] {
     return Array.from(this.pools.keys());
   }
 
-  /**
-   * Check if the minimum parallel size threshold is met.
-   *
-   * @param poolId - Pool identifier
-   * @param size - Size of the data to process
-   * @returns True if size meets or exceeds minimum threshold
-   */
+  /** Check if data size meets minimum parallel threshold. */
   shouldUseParallel(poolId: string, size: number): boolean {
     const entry = this.pools.get(poolId);
     const minSize = entry?.config.minParallelSize ?? DEFAULT_CONFIG.minParallelSize;
     return size >= minSize;
   }
 
-  /**
-   * Get the default configuration values.
-   *
-   * @returns Copy of default configuration
-   */
+  /** Get the default configuration values. */
   static getDefaultConfig(): Required<WorkerPoolConfig> {
     return { ...DEFAULT_CONFIG };
   }
 
-  /**
-   * Get the CPU count available for workers.
-   *
-   * @returns Number of CPUs
-   */
+  /** Get the CPU count available for workers. */
   static getCpuCount(): number {
     return workerpool.cpus;
   }
 }
 
-/**
- * Convenience function to get the WorkerPoolManager instance.
- *
- * @returns The WorkerPoolManager singleton
- */
+/** Convenience function to get the WorkerPoolManager singleton. */
 export function getWorkerPoolManager(): WorkerPoolManager {
   return WorkerPoolManager.getInstance();
 }
