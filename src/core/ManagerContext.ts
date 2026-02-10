@@ -10,7 +10,7 @@
 
 import path from 'path';
 import { GraphStorage } from './GraphStorage.js';
-import { createStorageFromPath } from './StorageFactory.js';
+import { SQLiteStorage } from './SQLiteStorage.js';
 import { EntityManager } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
@@ -82,9 +82,15 @@ export class ManagerContext {
     const savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     const tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
 
-    // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
-    // Type assertion: SQLiteStorage implements same interface as GraphStorage
-    this.storage = createStorageFromPath(validatedPath) as GraphStorage;
+    // Create storage based on MEMORY_STORAGE_TYPE env var (default: jsonl)
+    const storageType = process.env.MEMORY_STORAGE_TYPE || 'jsonl';
+    if (storageType === 'sqlite') {
+      this.storage = new SQLiteStorage(validatedPath) as unknown as GraphStorage;
+    } else if (storageType === 'jsonl') {
+      this.storage = new GraphStorage(validatedPath);
+    } else {
+      throw new Error(`Unknown storage type: ${storageType}. Supported types: jsonl, sqlite`);
+    }
 
     // Initialize core managers eagerly — all are lightweight
     this.entityManager = new EntityManager(this.storage);
