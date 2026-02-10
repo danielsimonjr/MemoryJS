@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Simplify hybrid search JSDoc**: Trim verbose JSDoc and Phase/Sprint references in HybridSearchManager, HybridScorer, and QueryPlanner (~120 lines reduced).
 - **Trim AgentMemoryConfig JSDoc**: Remove field-level comments and verbose module docs (~40 lines reduced). Config structure and validation preserved.
 - **Trim index class JSDoc**: Remove verbose JSDoc from NameIndex, TypeIndex, LowercaseCache, RelationIndex, and ObservationIndex (~120 lines reduced). All index classes retained with functionality preserved.
+- **Trim IOManager JSDoc**: Remove verbose method-level JSDoc, @example blocks, @param tags, Phase/Sprint references, and interface field comments (~130 lines reduced). Splitting deferred to avoid breaking public API.
 
 ## [1.5.0] - 2026-02-06
 

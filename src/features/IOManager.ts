@@ -1,11 +1,4 @@
-/**
- * IO Manager
- *
- * Unified manager for import, export, and backup operations.
- * Consolidates BackupManager, ExportManager, and ImportManager (Sprint 11.4).
- *
- * @module features/IOManager
- */
+/** Unified manager for import, export, and backup operations. */
 
 import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
@@ -39,79 +32,29 @@ import {
 } from '../utils/index.js';
 import { StreamingExporter, type StreamResult } from './StreamingExporter.js';
 
-// ============================================================
-// TYPE DEFINITIONS
-// ============================================================
-
-/**
- * Supported export formats.
- */
 export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid';
-
-/**
- * Supported import formats.
- */
 export type ImportFormat = 'json' | 'csv' | 'graphml';
-
-/**
- * Merge strategies for handling existing entities during import.
- */
 export type MergeStrategy = 'replace' | 'skip' | 'merge' | 'fail';
 
-/**
- * Metadata stored with each backup.
- * Extended with compression information for Phase 3 Sprint 2.
- */
 export interface BackupMetadata {
-  /** Timestamp when backup was created (ISO 8601) */
   timestamp: string;
-  /** Number of entities in the backup */
   entityCount: number;
-  /** Number of relations in the backup */
   relationCount: number;
-  /** File size in bytes (compressed size if compressed) */
   fileSize: number;
-  /** Optional description/reason for backup */
   description?: string;
-  /** Whether the backup is compressed (default: true for new backups) */
   compressed?: boolean;
-  /** Original size before compression in bytes */
   originalSize?: number;
-  /** Compression ratio achieved (compressedSize / originalSize) */
   compressionRatio?: number;
-  /** Compression format used */
   compressionFormat?: 'brotli' | 'none';
 }
 
-/**
- * Information about a backup file.
- * Extended with compression details for Phase 3 Sprint 2.
- */
 export interface BackupInfo {
-  /** Backup file name */
   fileName: string;
-  /** Full path to backup file */
   filePath: string;
-  /** Backup metadata */
   metadata: BackupMetadata;
-  /** Whether the backup is compressed */
   compressed: boolean;
-  /** File size in bytes */
   size: number;
 }
-
-// ============================================================
-// IO MANAGER CLASS
-// ============================================================
-
-/**
- * Unified manager for import, export, and backup operations.
- *
- * Combines functionality from:
- * - ExportManager: Graph export to various formats
- * - ImportManager: Graph import from various formats
- * - BackupManager: Point-in-time backup and restore
- */
 export class IOManager {
   private readonly backupDir: string;
 
@@ -121,17 +64,11 @@ export class IOManager {
     this.backupDir = join(dir, '.backups');
   }
 
-  // ============================================================
+  // ---
   // EXPORT OPERATIONS
-  // ============================================================
+  // ---
 
-  /**
-   * Export graph to specified format.
-   *
-   * @param graph - Knowledge graph to export
-   * @param format - Export format
-   * @returns Formatted export string
-   */
+  /** Export graph to specified format. */
   exportGraph(graph: ReadonlyKnowledgeGraph, format: ExportFormat): string {
     switch (format) {
       case 'json':
@@ -153,34 +90,7 @@ export class IOManager {
     }
   }
 
-  /**
-   * Export graph with optional brotli compression.
-   *
-   * Compression is applied when:
-   * - `options.compress` is explicitly set to `true`
-   * - The exported content exceeds 100KB (auto-compress threshold)
-   *
-   * Compressed content is returned as base64-encoded string.
-   * Uncompressed content is returned as UTF-8 string.
-   *
-   * @param graph - Knowledge graph to export
-   * @param format - Export format
-   * @param options - Export options including compression settings
-   * @returns Export result with content and compression metadata
-   *
-   * @example
-   * ```typescript
-   * // Export with explicit compression
-   * const result = await manager.exportGraphWithCompression(graph, 'json', {
-   *   compress: true,
-   *   compressionQuality: 11
-   * });
-   *
-   * // Export with auto-compression for large graphs
-   * const result = await manager.exportGraphWithCompression(graph, 'json');
-   * // Compresses automatically if content > 100KB
-   * ```
-   */
+  /** Export graph with optional brotli compression. */
   async exportGraphWithCompression(
     graph: ReadonlyKnowledgeGraph,
     format: ExportFormat,
@@ -240,18 +150,7 @@ export class IOManager {
     };
   }
 
-  /**
-   * Stream export to a file for large graphs.
-   *
-   * Uses StreamingExporter to write entities and relations incrementally
-   * to avoid loading the entire export content into memory.
-   *
-   * @param format - Export format
-   * @param graph - Knowledge graph to export
-   * @param options - Export options with required outputPath
-   * @returns Export result with streaming metadata
-   * @private
-   */
+  /** Stream export to a file for large graphs. */
   private async streamExport(
     format: ExportFormat,
     graph: ReadonlyKnowledgeGraph,
@@ -573,22 +472,12 @@ export class IOManager {
     return lines.join('\n');
   }
 
-  // ============================================================
+  // ---
   // IMPORT OPERATIONS
-  // ============================================================
+  // ---
 
   /**
    * Import graph from formatted data.
-   *
-   * Phase 9B: Supports progress tracking and cancellation via LongRunningOperationOptions.
-   *
-   * @param format - Import format
-   * @param data - Import data string
-   * @param mergeStrategy - How to handle conflicts
-   * @param dryRun - If true, preview changes without applying
-   * @param options - Optional progress/cancellation options (Phase 9B)
-   * @returns Import result with statistics
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
    */
   async importGraph(
     format: ImportFormat,
@@ -1063,13 +952,11 @@ export class IOManager {
     return result;
   }
 
-  // ============================================================
+  // ---
   // BACKUP OPERATIONS
-  // ============================================================
+  // ---
 
-  /**
-   * Ensure backup directory exists.
-   */
+  /** Ensure backup directory exists. */
   private async ensureBackupDir(): Promise<void> {
     try {
       await fs.mkdir(this.backupDir, { recursive: true });
@@ -1078,10 +965,7 @@ export class IOManager {
     }
   }
 
-  /**
-   * Generate backup file name with timestamp.
-   * @param compressed - Whether the backup will be compressed (affects extension)
-   */
+  /** Generate backup file name with timestamp. */
   private generateBackupFileName(compressed: boolean = true): string {
     const now = new Date();
     const timestamp = now.toISOString()
@@ -1093,25 +977,7 @@ export class IOManager {
     return `backup_${timestamp}${extension}`;
   }
 
-  /**
-   * Create a backup of the current knowledge graph.
-   *
-   * By default, backups are compressed with brotli for 50-70% space reduction.
-   * Use `options.compress = false` to create uncompressed backups.
-   *
-   * @param options - Backup options (compress, description) or legacy description string
-   * @returns Promise resolving to BackupResult with compression statistics
-   *
-   * @example
-   * ```typescript
-   * // Compressed backup (default)
-   * const result = await manager.createBackup({ description: 'Pre-migration backup' });
-   * console.log(`Compressed from ${result.originalSize} to ${result.compressedSize} bytes`);
-   *
-   * // Uncompressed backup
-   * const result = await manager.createBackup({ compress: false });
-   * ```
-   */
+  /** Create a backup of the current knowledge graph. */
   async createBackup(options?: BackupOptions | string): Promise<BackupResult> {
     await this.ensureBackupDir();
 
@@ -1193,13 +1059,7 @@ export class IOManager {
     }
   }
 
-  /**
-   * List all available backups, sorted by timestamp (newest first).
-   *
-   * Detects both compressed (.jsonl.br) and uncompressed (.jsonl) backups.
-   *
-   * @returns Promise resolving to array of backup information with compression details
-   */
+  /** List all available backups, sorted by timestamp (newest first). */
   async listBackups(): Promise<BackupInfo[]> {
     try {
       try {
@@ -1263,25 +1123,7 @@ export class IOManager {
     }
   }
 
-  /**
-   * Restore the knowledge graph from a backup file.
-   *
-   * Automatically detects and decompresses brotli-compressed backups (.br extension).
-   * Maintains backward compatibility with uncompressed backups.
-   *
-   * @param backupPath - Path to the backup file to restore from
-   * @returns Promise resolving to RestoreResult with restoration details
-   *
-   * @example
-   * ```typescript
-   * // Restore from compressed backup
-   * const result = await manager.restoreFromBackup('/path/to/backup.jsonl.br');
-   * console.log(`Restored ${result.entityCount} entities from compressed backup`);
-   *
-   * // Restore from uncompressed backup (legacy)
-   * const result = await manager.restoreFromBackup('/path/to/backup.jsonl');
-   * ```
-   */
+  /** Restore the knowledge graph from a backup file. */
   async restoreFromBackup(backupPath: string): Promise<RestoreResult> {
     try {
       validateFilePath(backupPath, this.backupDir, true);
@@ -1319,11 +1161,7 @@ export class IOManager {
     }
   }
 
-  /**
-   * Delete a specific backup file.
-   *
-   * @param backupPath - Path to the backup file to delete
-   */
+  /** Delete a specific backup file. */
   async deleteBackup(backupPath: string): Promise<void> {
     try {
       validateFilePath(backupPath, this.backupDir, true);
@@ -1342,10 +1180,7 @@ export class IOManager {
   }
 
   /**
-   * Clean old backups, keeping only the most recent N backups.
-   *
-   * @param keepCount - Number of recent backups to keep (default: 10)
-   * @returns Promise resolving to number of backups deleted
+   * Clean old backups, keeping only the most recent N.
    */
   async cleanOldBackups(keepCount: number = 10): Promise<number> {
     const backups = await this.listBackups();
