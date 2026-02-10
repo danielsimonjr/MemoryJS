@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Trim AgentMemoryConfig JSDoc**: Remove field-level comments and verbose module docs (~40 lines reduced). Config structure and validation preserved.
 - **Trim index class JSDoc**: Remove verbose JSDoc from NameIndex, TypeIndex, LowercaseCache, RelationIndex, and ObservationIndex (~120 lines reduced). All index classes retained with functionality preserved.
 - **Trim IOManager JSDoc**: Remove verbose method-level JSDoc, @example blocks, @param tags, Phase/Sprint references, and interface field comments (~130 lines reduced). Splitting deferred to avoid breaking public API.
+- **Trim TransactionManager JSDoc**: Remove @example blocks, @param/@returns tags, and Phase references from TransactionManager and BatchTransaction (~250 lines reduced).
 
 ## [1.5.0] - 2026-02-06
 
