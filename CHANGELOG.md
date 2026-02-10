@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Simplify SearchManager**: Expose sub-managers as `readonly` properties for direct access, trim verbose JSDoc examples (~200 lines reduced), remove `getQueryEstimator()` method (use `queryEstimator` property directly).
 - **Simplify AgentMemoryManager**: Trim verbose JSDoc comments and interface docs (~280 lines reduced). Component managers remain accessible via public getters.
 - **Simplify QueryCostEstimator**: Trim verbose JSDoc and remove Phase/Sprint references (826 -> 680 lines). All functionality preserved.
+- **Consolidate validation to Zod schemas**: Rewrite manual `validateEntity`, `validateRelation`, `validateTags` functions in schemas.ts as thin wrappers around Zod schemas, eliminating ~70 lines of duplicate hand-rolled validation logic.
 
 ## [1.5.0] - 2026-02-06
 

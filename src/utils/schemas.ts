@@ -481,98 +481,42 @@ export function validateArrayWithSchema<T>(
 }
 
 // ==================== Manual Validation Functions ====================
+// Thin wrappers around Zod schemas for backward compatibility.
 
-/**
- * Type guard to check if value is a non-null object.
- */
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+/** Non-empty string that rejects whitespace-only (no length limits). */
+const nonEmptyString = z.string().refine(s => s.trim().length > 0, { message: 'Must be a non-empty string' });
 
-/**
- * Validate an entity object.
- *
- * Checks required fields and data types.
- *
- * @param entity - Entity to validate (unknown type for runtime validation)
- * @returns Validation result
- */
+/** Lenient entity schema for validation (allows unknown keys, no length limits). */
+const entityValidationSchema = z.object({
+  name: nonEmptyString,
+  entityType: nonEmptyString,
+  observations: z.array(z.string()),
+  tags: z.array(z.string()).optional(),
+  importance: z.number().min(MIN_IMPORTANCE).max(MAX_IMPORTANCE).optional(),
+}).passthrough();
+
+/** Lenient relation schema for validation (allows unknown keys). */
+const relationValidationSchema = z.object({
+  from: nonEmptyString,
+  to: nonEmptyString,
+  relationType: nonEmptyString,
+}).passthrough();
+
+/** Validate an entity object. */
 export function validateEntity(entity: unknown): ValidationResult {
-  const errors: string[] = [];
-
-  if (!isObject(entity)) {
-    return { valid: false, errors: ['Entity must be an object'] };
-  }
-
-  if (!entity.name || typeof entity.name !== 'string' || entity.name.trim() === '') {
-    errors.push('Entity name is required and must be a non-empty string');
-  }
-
-  if (!entity.entityType || typeof entity.entityType !== 'string' || entity.entityType.trim() === '') {
-    errors.push('Entity type is required and must be a non-empty string');
-  }
-
-  if (!Array.isArray(entity.observations)) {
-    errors.push('Observations must be an array');
-  } else if (!entity.observations.every((o: unknown) => typeof o === 'string')) {
-    errors.push('All observations must be strings');
-  }
-
-  if (entity.tags !== undefined) {
-    if (!Array.isArray(entity.tags)) {
-      errors.push('Tags must be an array');
-    } else if (!entity.tags.every((t: unknown) => typeof t === 'string')) {
-      errors.push('All tags must be strings');
-    }
-  }
-
-  if (entity.importance !== undefined) {
-    if (typeof entity.importance !== 'number') {
-      errors.push('Importance must be a number');
-    } else if (!validateImportance(entity.importance)) {
-      errors.push('Importance must be between 0 and 10');
-    }
-  }
-
-  return { valid: errors.length === 0, errors };
+  const result = entityValidationSchema.safeParse(entity);
+  if (result.success) return { valid: true, errors: [] };
+  return { valid: false, errors: formatZodErrors(result.error) };
 }
 
-/**
- * Validate a relation object.
- *
- * Checks required fields and data types.
- *
- * @param relation - Relation to validate (unknown type for runtime validation)
- * @returns Validation result
- */
+/** Validate a relation object. */
 export function validateRelation(relation: unknown): ValidationResult {
-  const errors: string[] = [];
-
-  if (!isObject(relation)) {
-    return { valid: false, errors: ['Relation must be an object'] };
-  }
-
-  if (!relation.from || typeof relation.from !== 'string' || relation.from.trim() === '') {
-    errors.push('Relation "from" is required and must be a non-empty string');
-  }
-
-  if (!relation.to || typeof relation.to !== 'string' || relation.to.trim() === '') {
-    errors.push('Relation "to" is required and must be a non-empty string');
-  }
-
-  if (!relation.relationType || typeof relation.relationType !== 'string' || relation.relationType.trim() === '') {
-    errors.push('Relation type is required and must be a non-empty string');
-  }
-
-  return { valid: errors.length === 0, errors };
+  const result = relationValidationSchema.safeParse(relation);
+  if (result.success) return { valid: true, errors: [] };
+  return { valid: false, errors: formatZodErrors(result.error) };
 }
 
-/**
- * Validate importance level (must be 0-10).
- *
- * @param importance - Importance value to validate
- * @returns True if valid
- */
+/** Validate importance level (must be 0-10). */
 export function validateImportance(importance: number): boolean {
   return typeof importance === 'number'
     && !isNaN(importance)
@@ -580,22 +524,10 @@ export function validateImportance(importance: number): boolean {
     && importance <= IMPORTANCE_RANGE.MAX;
 }
 
-/**
- * Validate an array of tags.
- *
- * @param tags - Tags array to validate (unknown type for runtime validation)
- * @returns Validation result
- */
+/** Validate an array of tags. */
 export function validateTags(tags: unknown): ValidationResult {
-  const errors: string[] = [];
-
-  if (!Array.isArray(tags)) {
-    return { valid: false, errors: ['Tags must be an array'] };
-  }
-
-  if (!tags.every((t: unknown) => typeof t === 'string' && t.trim() !== '')) {
-    errors.push('All tags must be non-empty strings');
-  }
-
-  return { valid: errors.length === 0, errors };
+  const schema = z.array(z.string().refine(s => s.trim().length > 0, { message: 'Tag must be a non-empty string' }));
+  const result = schema.safeParse(tags);
+  if (result.success) return { valid: true, errors: [] };
+  return { valid: false, errors: formatZodErrors(result.error) };
 }

@@ -383,7 +383,7 @@ describe('schemas', () => {
         const result = validateEntity(entity);
 
         expect(result.valid).toBe(false);
-        expect(result.errors.some(e => e.includes('type'))).toBe(true);
+        expect(result.errors.some(e => e.toLowerCase().includes('required') || e.toLowerCase().includes('type'))).toBe(true);
       });
 
       it('should reject entity with empty entityType', () => {
@@ -421,7 +421,7 @@ describe('schemas', () => {
         const result = validateEntity(entity);
 
         expect(result.valid).toBe(false);
-        expect(result.errors.some(e => e.includes('observations') && e.includes('strings'))).toBe(true);
+        expect(result.errors.some(e => e.toLowerCase().includes('string') || e.includes('observations'))).toBe(true);
       });
 
       it('should allow empty observations array', () => {
@@ -447,7 +447,7 @@ describe('schemas', () => {
         const result = validateEntity(entity);
 
         expect(result.valid).toBe(false);
-        expect(result.errors.some(e => e.includes('Tags'))).toBe(true);
+        expect(result.errors.some(e => e.toLowerCase().includes('array') || e.toLowerCase().includes('tag'))).toBe(true);
       });
 
       it('should reject entity with non-string tags', () => {
@@ -474,7 +474,7 @@ describe('schemas', () => {
         const result = validateEntity(entity);
 
         expect(result.valid).toBe(false);
-        expect(result.errors.some(e => e.includes('Importance'))).toBe(true);
+        expect(result.errors.some(e => e.toLowerCase().includes('number') || e.toLowerCase().includes('importance'))).toBe(true);
       });
 
       it('should reject entity with out-of-range importance', () => {
@@ -609,7 +609,7 @@ describe('schemas', () => {
         const result = validateRelation(relation);
 
         expect(result.valid).toBe(false);
-        expect(result.errors.some(e => e.includes('type'))).toBe(true);
+        expect(result.errors.some(e => e.toLowerCase().includes('required') || e.toLowerCase().includes('type'))).toBe(true);
       });
 
       it('should reject relation with empty relationType', () => {
@@ -717,7 +717,7 @@ describe('schemas', () => {
         const result = validateTags([123, 456]);
 
         expect(result.valid).toBe(false);
-        expect(result.errors.some(e => e.includes('strings'))).toBe(true);
+        expect(result.errors.some(e => e.toLowerCase().includes('string') || e.toLowerCase().includes('tag'))).toBe(true);
       });
 
       it('should reject tags with mixed types', () => {
