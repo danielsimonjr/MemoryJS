@@ -1,36 +1,13 @@
 /**
- * Query Planner
- *
- * Phase 11: Generates execution plans for queries based on analysis.
- *
+ * Query Planner - generates execution plans for queries based on analysis.
  * @module search/QueryPlanner
  */
 
 import type { QueryAnalysis, QueryPlan, SubQuery, SymbolicFilters } from '../types/index.js';
 
-/**
- * Query Planner generates execution plans from query analysis.
- *
- * Creates optimized plans that:
- * - Select appropriate search layers
- * - Determine execution strategy (parallel/sequential)
- * - Set up query dependencies
- * - Configure merge strategies
- *
- * @example
- * ```typescript
- * const analyzer = new QueryAnalyzer();
- * const planner = new QueryPlanner();
- *
- * const analysis = analyzer.analyze('Find projects by Alice');
- * const plan = planner.createPlan('Find projects by Alice', analysis);
- * // { originalQuery: '...', subQueries: [...], executionStrategy: 'iterative', ... }
- * ```
- */
+/** Generates execution plans from query analysis, selecting layers and strategies. */
 export class QueryPlanner {
-  /**
-   * Create an execution plan from query analysis.
-   */
+  /** Create an execution plan from query analysis. */
   createPlan(query: string, analysis: QueryAnalysis): QueryPlan {
     const subQueries = this.createSubQueries(query, analysis);
     const executionStrategy = this.selectExecutionStrategy(subQueries);

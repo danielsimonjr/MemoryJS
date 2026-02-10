@@ -1,9 +1,5 @@
 /**
- * Hybrid Search Manager
- *
- * Phase 11: Orchestrates three-layer hybrid search combining
- * semantic, lexical, and symbolic signals.
- *
+ * Hybrid Search Manager - orchestrates semantic, lexical, and symbolic search.
  * @module search/HybridSearchManager
  */
 
@@ -19,34 +15,13 @@ import type { RankedSearch } from './RankedSearch.js';
 import { SymbolicSearch } from './SymbolicSearch.js';
 import { SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
 
-/**
- * Default weights for hybrid search layers.
- */
 export const DEFAULT_HYBRID_WEIGHTS = {
   semantic: 0.5,
   lexical: 0.3,
   symbolic: 0.2,
 };
 
-/**
- * Hybrid Search Manager
- *
- * Combines three search layers:
- * 1. Semantic: Vector similarity via embeddings
- * 2. Lexical: Keyword matching via TF-IDF/BM25
- * 3. Symbolic: Structured metadata filtering
- *
- * @example
- * ```typescript
- * const hybrid = new HybridSearchManager(semanticSearch, rankedSearch);
- * const results = await hybrid.search(graph, 'machine learning', {
- *   semanticWeight: 0.5,
- *   lexicalWeight: 0.3,
- *   symbolicWeight: 0.2,
- *   symbolic: { tags: ['ai'] }
- * });
- * ```
- */
+/** Combines semantic, lexical, and symbolic search layers with configurable weights. */
 export class HybridSearchManager {
   private symbolicSearch: SymbolicSearch;
 
@@ -57,14 +32,7 @@ export class HybridSearchManager {
     this.symbolicSearch = new SymbolicSearch();
   }
 
-  /**
-   * Perform hybrid search combining all three layers.
-   *
-   * @param graph - Knowledge graph to search
-   * @param query - Search query text
-   * @param options - Hybrid search options with weights
-   * @returns Combined and ranked results
-   */
+  /** Perform hybrid search combining all three layers. */
   async search(
     graph: ReadonlyKnowledgeGraph,
     query: string,
