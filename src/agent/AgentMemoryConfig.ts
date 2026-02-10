@@ -1,9 +1,5 @@
 /**
- * Agent Memory Configuration
- *
- * Unified configuration interface for all agent memory components.
- * Supports both environment variable and programmatic configuration.
- *
+ * Agent Memory Configuration - env var and programmatic config for all agent memory components.
  * @module agent/AgentMemoryConfig
  */
 
@@ -20,72 +16,28 @@ import type { MemoryFormatterConfig } from './MemoryFormatter.js';
 import type { MultiAgentConfig } from './MultiAgentMemoryManager.js';
 import type { ConflictResolverConfig } from './ConflictResolver.js';
 
-/**
- * Configuration for the AgentMemoryManager facade.
- *
- * All sub-configurations are optional - defaults will be applied.
- * Can be loaded from environment variables via loadFromEnv().
- */
+/** All sub-configurations are optional — defaults applied by each component. */
 export interface AgentMemoryConfig {
-  /** Working memory configuration */
   workingMemory?: WorkingMemoryConfig;
-
-  /** Session management configuration */
   session?: SessionConfig;
-
-  /** Episodic memory configuration */
   episodic?: EpisodicMemoryConfig;
-
-  /** Consolidation pipeline configuration */
   consolidation?: ConsolidationPipelineConfig;
-
-  /** Summarization service configuration */
   summarization?: SummarizationConfig;
-
-  /** Decay engine configuration */
   decay?: DecayEngineConfig;
-
-  /** Decay scheduler configuration (optional auto-decay) */
   decayScheduler?: DecaySchedulerConfig;
-
-  /** Salience engine configuration */
   salience?: SalienceEngineConfig;
-
-  /** Context window configuration */
   contextWindow?: ContextWindowManagerConfig;
-
-  /** Memory formatter configuration */
   formatter?: MemoryFormatterConfig;
-
-  /** Multi-agent configuration */
   multiAgent?: MultiAgentConfig;
-
-  /** Conflict resolver configuration */
   conflictResolver?: ConflictResolverConfig;
-
-  /** Enable automatic decay scheduling */
   enableAutoDecay?: boolean;
-
-  /** Enable multi-agent support */
   enableMultiAgent?: boolean;
-
-  /** Default agent ID for single-agent mode */
   defaultAgentId?: string;
 }
 
-/**
- * Environment variable prefix for agent memory configuration.
- */
 const ENV_PREFIX = 'AGENT_MEMORY_';
 
-/**
- * Load configuration from environment variables.
- *
- * Environment variables follow the pattern:
- * - AGENT_MEMORY_DECAY_HALF_LIFE_HOURS
- * - AGENT_MEMORY_CONTEXT_MAX_TOKENS
- * etc.
- */
+/** Load configuration from AGENT_MEMORY_* environment variables. */
 export function loadConfigFromEnv(): AgentMemoryConfig {
   return {
     workingMemory: {
@@ -161,10 +113,7 @@ export function loadConfigFromEnv(): AgentMemoryConfig {
   };
 }
 
-/**
- * Merge user config with defaults.
- * Removes undefined values from env-loaded config.
- */
+/** Merge user config with env config, removing undefined values. */
 export function mergeConfig(
   userConfig: AgentMemoryConfig,
   envConfig: AgentMemoryConfig
@@ -188,10 +137,7 @@ export function mergeConfig(
   };
 }
 
-/**
- * Validate configuration values.
- * @throws Error if configuration is invalid
- */
+/** Validate configuration values. Throws on invalid ranges. */
 export function validateConfig(config: AgentMemoryConfig): void {
   // Validate decay settings
   if (config.decay?.halfLifeHours !== undefined && config.decay.halfLifeHours <= 0) {

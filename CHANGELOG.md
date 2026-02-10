@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Consolidate validation to Zod schemas**: Rewrite manual `validateEntity`, `validateRelation`, `validateTags` functions in schemas.ts as thin wrappers around Zod schemas, eliminating ~70 lines of duplicate hand-rolled validation logic.
 - **Trim search class JSDoc**: Reduce verbose JSDoc in BasicSearch, SymbolicSearch, and SearchSuggestions. Classes retained (public API) with trimmed documentation.
 - **Simplify hybrid search JSDoc**: Trim verbose JSDoc and Phase/Sprint references in HybridSearchManager, HybridScorer, and QueryPlanner (~120 lines reduced).
+- **Trim AgentMemoryConfig JSDoc**: Remove field-level comments and verbose module docs (~40 lines reduced). Config structure and validation preserved.
 
 ## [1.5.0] - 2026-02-06
 
