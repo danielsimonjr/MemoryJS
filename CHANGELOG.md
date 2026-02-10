@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Inline StorageFactory in ManagerContext**: ManagerContext now creates storage directly instead of going through StorageFactory. StorageFactory remains available as a public API export for external consumers.
 - **Simplify SearchManager**: Expose sub-managers as `readonly` properties for direct access, trim verbose JSDoc examples (~200 lines reduced), remove `getQueryEstimator()` method (use `queryEstimator` property directly).
 - **Simplify AgentMemoryManager**: Trim verbose JSDoc comments and interface docs (~280 lines reduced). Component managers remain accessible via public getters.
+- **Simplify QueryCostEstimator**: Trim verbose JSDoc and remove Phase/Sprint references (826 -> 680 lines). All functionality preserved.
 
 ## [1.5.0] - 2026-02-06
 

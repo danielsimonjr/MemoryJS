@@ -1,12 +1,7 @@
 /**
- * Query Cost Estimator
- *
- * Phase 10 Sprint 4: Estimates the cost of different search methods
- * and recommends the optimal method based on query characteristics
- * and graph size.
- *
- * Phase 12 Sprint 4: Enhanced with adaptive depth calculation,
- * layer recommendations, and token estimation.
+ * Estimates the cost of different search methods and recommends the optimal
+ * method based on query characteristics and graph size. Also provides
+ * adaptive depth calculation, layer recommendations, and token estimation.
  *
  * @module search/QueryCostEstimator
  */
@@ -18,14 +13,10 @@ import type {
   QueryAnalysis,
 } from '../types/index.js';
 
-/**
- * Phase 12 Sprint 4: Layer type for hybrid search.
- */
+/** Layer type for hybrid search. */
 export type SearchLayer = 'semantic' | 'lexical' | 'symbolic';
 
-/**
- * Phase 12 Sprint 4: Extended cost estimate with layer recommendations.
- */
+/** Extended cost estimate with layer recommendations. */
 export interface ExtendedQueryCostEstimate extends QueryCostEstimate {
   /** Recommended layers in priority order */
   recommendedLayers: SearchLayer[];
@@ -37,9 +28,7 @@ export interface ExtendedQueryCostEstimate extends QueryCostEstimate {
   layerCosts: Record<SearchLayer, number>;
 }
 
-/**
- * Phase 12 Sprint 4: Layer recommendation options.
- */
+/** Layer recommendation options. */
 export interface LayerRecommendationOptions {
   /** Query analysis from QueryAnalyzer */
   analysis?: QueryAnalysis;
@@ -49,9 +38,7 @@ export interface LayerRecommendationOptions {
   maxLayers?: number;
 }
 
-/**
- * Phase 12 Sprint 4: Token estimation options.
- */
+/** Token estimation options. */
 export interface TokenEstimationOptions {
   /** Average characters per token (default: 4) */
   charsPerToken?: number;
@@ -59,9 +46,7 @@ export interface TokenEstimationOptions {
   includeEntityCount?: boolean;
 }
 
-/**
- * Phase 12 Sprint 4: Adaptive depth calculation parameters.
- */
+/** Adaptive depth calculation parameters. */
 export interface AdaptiveDepthConfig {
   /** Base number of results (k_base, default: 10) */
   kBase?: number;
@@ -71,9 +56,7 @@ export interface AdaptiveDepthConfig {
   maxDepth?: number;
 }
 
-/**
- * Default options for the QueryCostEstimator.
- */
+/** Default options. */
 const DEFAULT_OPTIONS: Required<QueryCostEstimatorOptions> = {
   basicTimePerEntity: 0.01,
   rankedTimePerEntity: 0.05,
@@ -84,55 +67,26 @@ const DEFAULT_OPTIONS: Required<QueryCostEstimatorOptions> = {
   highComplexityThreshold: 1000,
 };
 
-/**
- * Default adaptive depth configuration.
- */
+/** Default adaptive depth config. */
 const DEFAULT_ADAPTIVE_DEPTH: Required<AdaptiveDepthConfig> = {
   kBase: 10,
   delta: 0.5,
   maxDepth: 100,
 };
 
-/**
- * Default token estimation options.
- */
+/** Default token estimation config. */
 const DEFAULT_TOKEN_ESTIMATION: Required<TokenEstimationOptions> = {
   charsPerToken: 4,
   includeEntityCount: true,
 };
 
-/**
- * Phase 10 Sprint 4: Estimates search query costs and recommends optimal methods.
- *
- * Analyzes query characteristics and graph size to estimate execution time
- * and recommend the most appropriate search method.
- *
- * @example
- * ```typescript
- * const estimator = new QueryCostEstimator();
- *
- * // Get estimate for a specific method
- * const estimate = estimator.estimateMethod('ranked', 'test query', 1000);
- *
- * // Get the recommended method for a query
- * const recommendation = estimator.recommendMethod('test query', 1000);
- *
- * // Get estimates for all methods
- * const allEstimates = estimator.estimateAllMethods('test query', 1000);
- * ```
- */
+/** Estimates search query costs and recommends optimal methods. */
 export class QueryCostEstimator {
   private options: Required<QueryCostEstimatorOptions>;
   private adaptiveDepthConfig: Required<AdaptiveDepthConfig>;
   private tokenEstimationConfig: Required<TokenEstimationOptions>;
 
-  /**
-   * Create a new QueryCostEstimator instance.
-   *
-   * @param options - Optional configuration overrides
-   * @param adaptiveDepthConfig - Optional adaptive depth configuration
-   * @param tokenEstimationConfig - Optional token estimation configuration
-   */
+  /** Create a new QueryCostEstimator instance. */
   constructor(
     options?: QueryCostEstimatorOptions,
     adaptiveDepthConfig?: AdaptiveDepthConfig,
@@ -143,14 +97,7 @@ export class QueryCostEstimator {
     this.tokenEstimationConfig = { ...DEFAULT_TOKEN_ESTIMATION, ...tokenEstimationConfig };
   }
 
-  /**
-   * Estimate the cost of a specific search method.
-   *
-   * @param method - The search method to estimate
-   * @param query - The search query
-   * @param entityCount - Number of entities in the graph
-   * @returns Cost estimate for the method
-   */
+  /** Estimate the cost of a specific search method. */
   estimateMethod(
     method: SearchMethod,
     query: string,
@@ -161,10 +108,7 @@ export class QueryCostEstimator {
     return this.estimateMethodInternal(method, query, entityCount, method === recommendedMethod);
   }
 
-  /**
-   * Internal method to estimate without triggering recursion.
-   * @private
-   */
+  /** @internal Estimate without triggering recursion. */
   private estimateMethodInternal(
     method: SearchMethod,
     query: string,
@@ -187,10 +131,7 @@ export class QueryCostEstimator {
     };
   }
 
-  /**
-   * Get just the recommended method without full estimate (avoids recursion).
-   * @private
-   */
+  /** @internal Get recommended method without full estimate (avoids recursion). */
   private getRecommendedMethodOnly(
     query: string,
     entityCount: number,
@@ -213,13 +154,7 @@ export class QueryCostEstimator {
     return bestMethod;
   }
 
-  /**
-   * Get estimates for all available search methods.
-   *
-   * @param query - The search query
-   * @param entityCount - Number of entities in the graph
-   * @returns Array of estimates for all methods
-   */
+  /** Get estimates for all available search methods. */
   estimateAllMethods(query: string, entityCount: number): QueryCostEstimate[] {
     const methods: SearchMethod[] = ['basic', 'ranked', 'boolean', 'fuzzy', 'semantic'];
     const recommendedMethod = this.getRecommendedMethodOnly(query, entityCount);
@@ -228,14 +163,7 @@ export class QueryCostEstimator {
     );
   }
 
-  /**
-   * Recommend the best search method for a query.
-   *
-   * @param query - The search query
-   * @param entityCount - Number of entities in the graph
-   * @param preferredMethods - Optional array of methods to consider (default: all)
-   * @returns The recommended method and reason
-   */
+  /** Recommend the best search method for a query. */
   recommendMethod(
     query: string,
     entityCount: number,
@@ -263,10 +191,7 @@ export class QueryCostEstimator {
     };
   }
 
-  /**
-   * Get the base time per entity for a search method.
-   * @private
-   */
+  /** @internal */
   private getBaseTimeForMethod(method: SearchMethod): number {
     switch (method) {
       case 'basic':
@@ -282,10 +207,7 @@ export class QueryCostEstimator {
     }
   }
 
-  /**
-   * Calculate a complexity factor based on query characteristics.
-   * @private
-   */
+  /** @internal */
   private getQueryComplexityFactor(query: string, method: SearchMethod): number {
     const words = query.trim().split(/\s+/).length;
     const hasOperators = /\b(AND|OR|NOT)\b/.test(query);
@@ -327,10 +249,7 @@ export class QueryCostEstimator {
     return Math.max(0.5, Math.min(factor, 3.0)); // Clamp between 0.5 and 3.0
   }
 
-  /**
-   * Get the complexity level based on entity count.
-   * @private
-   */
+  /** @internal */
   private getComplexity(entityCount: number): 'low' | 'medium' | 'high' {
     if (entityCount <= this.options.lowComplexityThreshold) {
       return 'low';
@@ -341,10 +260,7 @@ export class QueryCostEstimator {
     return 'medium';
   }
 
-  /**
-   * Generate a human-readable recommendation.
-   * @private
-   */
+  /** @internal */
   private getRecommendation(
     method: SearchMethod,
     _query: string,
@@ -372,11 +288,7 @@ export class QueryCostEstimator {
     return recommendation;
   }
 
-  /**
-   * Score a method based on query characteristics and graph size.
-   * Higher score = better fit.
-   * @private
-   */
+  /** @internal Score a method (higher = better fit). */
   private scoreMethod(method: SearchMethod, query: string, entityCount: number): number {
     let score = 50; // Base score
 
@@ -465,10 +377,7 @@ export class QueryCostEstimator {
     return score;
   }
 
-  /**
-   * Get a human-readable reason for why a method was selected.
-   * @private
-   */
+  /** @internal */
   private getSelectionReason(method: SearchMethod, query: string, entityCount: number): string {
     const hasOperators = /\b(AND|OR|NOT)\b/.test(query);
     const hasWildcard = query.includes('*');
@@ -508,21 +417,9 @@ export class QueryCostEstimator {
     }
   }
 
-  // ==================== Phase 12 Sprint 4: Enhanced Features ====================
+  // ==================== Enhanced Features ====================
 
-  /**
-   * Calculate adaptive depth (k_dyn) based on query complexity.
-   *
-   * Formula: k_dyn = k_base × (1 + δ × C_q)
-   * where:
-   *   - k_base: base number of results
-   *   - δ (delta): complexity scaling factor
-   *   - C_q: query complexity score (0-1)
-   *
-   * @param query - The search query
-   * @param analysis - Optional query analysis for more accurate complexity
-   * @returns Adaptive depth value
-   */
+  /** Calculate adaptive depth: k_dyn = k_base × (1 + δ × C_q). */
   calculateAdaptiveDepth(query: string, analysis?: QueryAnalysis): number {
     const { kBase, delta, maxDepth } = this.adaptiveDepthConfig;
 
@@ -536,10 +433,7 @@ export class QueryCostEstimator {
     return Math.min(Math.round(kDyn), maxDepth);
   }
 
-  /**
-   * Calculate query complexity score (0-1).
-   * @private
-   */
+  /** @internal */
   private calculateComplexityScore(query: string, analysis?: QueryAnalysis): number {
     let score = 0;
 
@@ -588,14 +482,7 @@ export class QueryCostEstimator {
     return Math.max(0, Math.min(1, score));
   }
 
-  /**
-   * Estimate tokens for query and expected results.
-   *
-   * @param query - The search query
-   * @param entityCount - Number of entities in the graph
-   * @param expectedResults - Expected number of results (default: 10)
-   * @returns Estimated token count
-   */
+  /** Estimate tokens for query and expected results. */
   estimateTokens(query: string, entityCount: number, expectedResults = 10): number {
     const { charsPerToken, includeEntityCount } = this.tokenEstimationConfig;
 
@@ -617,13 +504,7 @@ export class QueryCostEstimator {
     return totalTokens;
   }
 
-  /**
-   * Recommend search layers based on query characteristics.
-   *
-   * @param query - The search query
-   * @param options - Layer recommendation options
-   * @returns Ordered array of recommended layers (fastest first)
-   */
+  /** Recommend search layers based on query characteristics. */
   recommendLayers(query: string, options: LayerRecommendationOptions = {}): SearchLayer[] {
     const {
       analysis,
@@ -669,10 +550,7 @@ export class QueryCostEstimator {
     return layers.slice(0, maxLayers).map(l => l.layer);
   }
 
-  /**
-   * Estimate cost for a specific layer.
-   * @private
-   */
+  /** @internal */
   private estimateLayerCost(layer: SearchLayer, query: string): number {
     const words = query.trim().split(/\s+/).length;
 
@@ -686,10 +564,7 @@ export class QueryCostEstimator {
     }
   }
 
-  /**
-   * Score lexical layer for query.
-   * @private
-   */
+  /** @internal */
   private scoreLexicalLayer(query: string, analysis?: QueryAnalysis): number {
     let score = 50;
 
@@ -707,10 +582,7 @@ export class QueryCostEstimator {
     return score;
   }
 
-  /**
-   * Score symbolic layer for query.
-   * @private
-   */
+  /** @internal */
   private scoreSymbolicLayer(query: string, analysis?: QueryAnalysis): number {
     let score = 40;
 
@@ -728,10 +600,7 @@ export class QueryCostEstimator {
     return score;
   }
 
-  /**
-   * Score semantic layer for query.
-   * @private
-   */
+  /** @internal */
   private scoreSemanticLayer(query: string, analysis?: QueryAnalysis): number {
     let score = 45;
 
@@ -752,15 +621,7 @@ export class QueryCostEstimator {
     return score;
   }
 
-  /**
-   * Get extended cost estimate with all Phase 12 features.
-   *
-   * @param method - The search method
-   * @param query - The search query
-   * @param entityCount - Number of entities in the graph
-   * @param analysis - Optional query analysis
-   * @returns Extended cost estimate
-   */
+  /** Get extended cost estimate with layer recommendations and adaptive depth. */
   estimateExtended(
     method: SearchMethod,
     query: string,
@@ -790,14 +651,7 @@ export class QueryCostEstimator {
     };
   }
 
-  /**
-   * Get layers sorted by estimated cost (fastest first).
-   *
-   * @param query - The search query
-   * @param entityCount - Number of entities
-   * @param semanticAvailable - Whether semantic search is available
-   * @returns Layers sorted by cost
-   */
+  /** Get layers sorted by estimated cost (fastest first). */
   getLayersByCost(
     query: string,
     entityCount: number,
