@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Simplify ManagerContext**: Replaced 12 lazy-initialized getter properties with eagerly initialized `readonly` fields for core managers (EntityManager, RelationManager, ObservationManager, HierarchyManager, GraphTraversal, SearchManager, RankedSearch, IOManager, TagManager, AnalyticsManager, CompressionManager, ArchiveManager). Agent memory managers retain lazy initialization due to conditional creation and dependency chains. Moved env var helpers to module-level functions.
 - **Inline StorageFactory in ManagerContext**: ManagerContext now creates storage directly instead of going through StorageFactory. StorageFactory remains available as a public API export for external consumers.
+- **Simplify SearchManager**: Expose sub-managers as `readonly` properties for direct access, trim verbose JSDoc examples (~200 lines reduced), remove `getQueryEstimator()` method (use `queryEstimator` property directly).
 
 ## [1.5.0] - 2026-02-06
 

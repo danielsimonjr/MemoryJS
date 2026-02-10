@@ -520,16 +520,11 @@ describe('SearchManager', () => {
 
   describe('Query Estimator Access', () => {
     it('should provide access to query estimator', () => {
-      const estimator = manager.getQueryEstimator();
-
-      expect(estimator).toBeDefined();
+      expect(manager.queryEstimator).toBeDefined();
     });
 
     it('should return consistent estimator instance', () => {
-      const estimator1 = manager.getQueryEstimator();
-      const estimator2 = manager.getQueryEstimator();
-
-      expect(estimator1).toBe(estimator2);
+      expect(manager.queryEstimator).toBe(manager.queryEstimator);
     });
   });
 
