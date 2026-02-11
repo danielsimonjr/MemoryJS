@@ -94,7 +94,7 @@ ctx.agentMemory()       // Agent Memory System facade
 - **Parsing & logging**: `QueryParser` (query string parsing), `QueryLogger` (query performance logging)
 - **Infrastructure**: `TFIDFEventSync` (auto-sync), `OptimizedInvertedIndex`, `IncrementalIndexer`, `EmbeddingCache`, `SearchFilterChain`
 
-**CLI** (`src/cli/`): Command-line interface exposed as `memory` / `memoryjs` binaries (see `bin` in package.json). Built as separate ESM bundle by tsup.
+**CLI** (`src/cli/`): Command-line interface exposed as `memory` / `memoryjs` binaries (see `bin` in package.json). Built as separate ESM bundle by tsup. Commands split into `commands/{entity,relation,search,observation,tag,hierarchy,graph,io,maintenance}.ts` with shared `helpers.ts`.
 
 **Agent Memory System** (`src/agent/`): Complete memory system for AI agents:
 - **Facade**: `AgentMemoryManager` - unified entry point for all agent memory operations
@@ -234,3 +234,5 @@ Located in `tools/` directory:
 - **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `npm run build` (tsup), workers are built. But `npm run build:tsc` (bare tsc) does NOT build workers - use tsup.
 - **`package-lock.json` is gitignored**: Uses `npm install` (not `npm ci`) for development. Dependencies may drift between machines.
 - **Cache TTL boundary**: `SearchCache` uses `>=` for expiration checks. Using `>` causes TTL=0 entries to persist when accessed within the same millisecond (flaky on Windows due to timer resolution).
+- **Performance benchmark flakiness**: Overhead thresholds in `tests/performance/task-scheduler-benchmarks.test.ts` may need widening on Windows/Dropbox due to timing variance from file locking.
+- **Search API return types**: `autoSearch()` returns `{ results: SearchResult[], selectedMethod, selectionReason }`. `booleanSearch()`/`fuzzySearch()` return `KnowledgeGraph` (not `SearchResult[]`) — callers must wrap with scores.
