@@ -358,3 +358,6 @@ export {
 } from './validators.js';
 
 export { SchemaValidator, type JsonSchema } from './SchemaValidator.js';
+
+// ==================== Async Mutex ====================
+export { AsyncMutex } from './AsyncMutex.js';

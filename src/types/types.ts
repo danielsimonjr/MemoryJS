@@ -1605,6 +1605,21 @@ export interface BatchResult {
 
   /** Index of the operation that failed (if applicable) */
   failedOperationIndex?: number;
+
+  /** Per-operation results when stopOnError is false */
+  operationResults?: OperationResult[];
+}
+
+/**
+ * Result of a single operation within a batch transaction.
+ */
+export interface OperationResult {
+  /** Operation index in the batch */
+  index: number;
+  /** Whether this operation succeeded */
+  success: boolean;
+  /** Error message if this operation failed */
+  error?: string;
 }
 
 /**

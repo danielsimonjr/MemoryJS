@@ -442,6 +442,10 @@ export class BatchTransaction {
       }
     }
 
+    // Track per-operation results when stopOnError is false
+    const operationResults: import('../types/index.js').OperationResult[] = [];
+    let failedCount = 0;
+
     // Execute operations
     for (let i = 0; i < this.operations.length; i++) {
       const operation = this.operations[i];
@@ -449,20 +453,35 @@ export class BatchTransaction {
       try {
         this.applyBatchOperation(graph, operation, timestamp, result);
         result.operationsExecuted++;
+        if (!stopOnError) {
+          operationResults.push({ index: i, success: true });
+        }
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
         result.success = false;
-        result.error = error instanceof Error ? error.message : String(error);
-        result.failedOperationIndex = i;
+        result.failedOperationIndex ??= i;
 
         if (stopOnError) {
+          result.error = errorMsg;
           result.executionTimeMs = Date.now() - startTime;
           return result;
         }
+
+        failedCount++;
+        operationResults.push({ index: i, success: false, error: errorMsg });
       }
     }
 
-    // Save the modified graph if successful (or if stopOnError is false)
-    if (result.success || !stopOnError) {
+    // Attach per-operation results when not stopping on error
+    if (!stopOnError && operationResults.length > 0) {
+      result.operationResults = operationResults;
+      if (failedCount > 0) {
+        result.error = `${failedCount} of ${this.operations.length} operations failed`;
+      }
+    }
+
+    // Save the modified graph if any operations succeeded
+    if (result.operationsExecuted > 0) {
       try {
         await this.storage.saveGraph(graph);
       } catch (error) {

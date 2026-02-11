@@ -9,13 +9,15 @@
 import type { Relation } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
 import { ValidationError } from '../utils/errors.js';
-import { BatchCreateRelationsSchema, DeleteRelationsSchema } from '../utils/index.js';
+import { BatchCreateRelationsSchema, DeleteRelationsSchema, AsyncMutex } from '../utils/index.js';
 import { GRAPH_LIMITS } from '../utils/constants.js';
 
 /**
  * Manages relation operations with automatic timestamp handling.
  */
 export class RelationManager {
+  private readonly writeMutex = new AsyncMutex();
+
   constructor(private storage: GraphStorage) {}
 
   /**
@@ -67,61 +69,67 @@ export class RelationManager {
       throw new ValidationError('Invalid relation data', errors);
     }
 
-    // Use read-only graph for checking existing relations and entity existence
-    const readGraph = await this.storage.loadGraph();
-    const timestamp = new Date().toISOString();
+    // Acquire mutex to prevent TOCTOU race between validation and mutation
+    const release = await this.writeMutex.acquire();
+    try {
+      // Use mutable graph for both validation and mutation (eliminates TOCTOU gap)
+      const graph = await this.storage.getGraphForMutation();
+      const timestamp = new Date().toISOString();
 
-    // Build set of existing entity names for O(1) lookup
-    const existingEntityNames = new Set(readGraph.entities.map(e => e.name));
+      // Build set of existing entity names for O(1) lookup
+      const existingEntityNames = new Set(graph.entities.map(e => e.name));
 
-    // Validate that all referenced entities exist (fixes bug 7.2 from analysis)
-    const danglingRelations: string[] = [];
-    for (const relation of relations) {
-      const missingEntities: string[] = [];
-      if (!existingEntityNames.has(relation.from)) {
-        missingEntities.push(relation.from);
+      // Validate that all referenced entities exist
+      const danglingRelations: string[] = [];
+      for (const relation of relations) {
+        const missingEntities: string[] = [];
+        if (!existingEntityNames.has(relation.from)) {
+          missingEntities.push(relation.from);
+        }
+        if (!existingEntityNames.has(relation.to)) {
+          missingEntities.push(relation.to);
+        }
+        if (missingEntities.length > 0) {
+          danglingRelations.push(
+            `Relation from "${relation.from}" to "${relation.to}" references non-existent entities: ${missingEntities.join(', ')}`
+          );
+        }
       }
-      if (!existingEntityNames.has(relation.to)) {
-        missingEntities.push(relation.to);
+
+      if (danglingRelations.length > 0) {
+        throw new ValidationError('Relations reference non-existent entities', danglingRelations);
       }
-      if (missingEntities.length > 0) {
-        danglingRelations.push(
-          `Relation from "${relation.from}" to "${relation.to}" references non-existent entities: ${missingEntities.join(', ')}`
+
+      // Check graph size limits
+      const relationsToAdd = relations.filter(r => !graph.relations.some(existing =>
+        existing.from === r.from &&
+        existing.to === r.to &&
+        existing.relationType === r.relationType
+      ));
+
+      if (graph.relations.length + relationsToAdd.length > GRAPH_LIMITS.MAX_RELATIONS) {
+        throw new ValidationError(
+          'Graph size limit exceeded',
+          [`Adding ${relationsToAdd.length} relations would exceed maximum of ${GRAPH_LIMITS.MAX_RELATIONS} relations`]
         );
       }
+
+      const newRelations = relationsToAdd
+        .map(r => ({
+          ...r,
+          createdAt: r.createdAt || timestamp,
+          lastModified: r.lastModified || timestamp,
+        }));
+
+      if (newRelations.length > 0) {
+        graph.relations.push(...newRelations);
+        await this.storage.saveGraph(graph);
+      }
+
+      return newRelations;
+    } finally {
+      release();
     }
-
-    if (danglingRelations.length > 0) {
-      throw new ValidationError('Relations reference non-existent entities', danglingRelations);
-    }
-
-    // Check graph size limits
-    const relationsToAdd = relations.filter(r => !readGraph.relations.some(existing =>
-      existing.from === r.from &&
-      existing.to === r.to &&
-      existing.relationType === r.relationType
-    ));
-
-    if (readGraph.relations.length + relationsToAdd.length > GRAPH_LIMITS.MAX_RELATIONS) {
-      throw new ValidationError(
-        'Graph size limit exceeded',
-        [`Adding ${relationsToAdd.length} relations would exceed maximum of ${GRAPH_LIMITS.MAX_RELATIONS} relations`]
-      );
-    }
-
-    const newRelations = relationsToAdd
-      .map(r => ({
-        ...r,
-        createdAt: r.createdAt || timestamp,
-        lastModified: r.lastModified || timestamp,
-      }));
-
-    // Get mutable copy for write operation
-    const graph = await this.storage.getGraphForMutation();
-    graph.relations.push(...newRelations);
-    await this.storage.saveGraph(graph);
-
-    return newRelations;
   }
 
   /**

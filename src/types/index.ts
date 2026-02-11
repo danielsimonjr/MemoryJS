@@ -100,6 +100,7 @@ export type {
   BatchOperationType,
   BatchOperation,
   BatchResult,
+  OperationResult,
   BatchOptions,
   // Phase 10 Sprint 2: Graph change events types
   GraphEventType,

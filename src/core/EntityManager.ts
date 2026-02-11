@@ -31,6 +31,7 @@ import {
   createProgressReporter,
   createProgress,
   sanitizeObject,
+  AsyncMutex,
 } from '../utils/index.js';
 import { GRAPH_LIMITS } from '../utils/constants.js';
 
@@ -51,6 +52,7 @@ const MAX_IMPORTANCE = 10;
  */
 export class EntityManager {
   private accessTracker?: AccessTracker;
+  private readonly writeMutex = new AsyncMutex();
 
   constructor(private storage: GraphStorage) {}
 
@@ -127,67 +129,70 @@ export class EntityManager {
     const total = entities.length;
     reportProgress?.(createProgress(0, total, 'createEntities'));
 
-    // Use read-only graph for checking existing entities
-    const readGraph = await this.storage.loadGraph();
-    const timestamp = new Date().toISOString();
+    // Acquire mutex to prevent TOCTOU race between validation and mutation
+    const release = await this.writeMutex.acquire();
+    try {
+      // Use mutable graph for both validation and mutation (eliminates TOCTOU gap)
+      const graph = await this.storage.getGraphForMutation();
+      const timestamp = new Date().toISOString();
 
-    // Check graph size limits
-    const entitiesToAdd = entities.filter(e => !readGraph.entities.some(existing => existing.name === e.name));
-    if (readGraph.entities.length + entitiesToAdd.length > GRAPH_LIMITS.MAX_ENTITIES) {
-      throw new ValidationError(
-        'Graph size limit exceeded',
-        [`Adding ${entitiesToAdd.length} entities would exceed maximum of ${GRAPH_LIMITS.MAX_ENTITIES} entities`]
-      );
-    }
+      // Check graph size limits
+      const existingNames = new Set(graph.entities.map(e => e.name));
+      const entitiesToAdd = entities.filter(e => !existingNames.has(e.name));
+      if (graph.entities.length + entitiesToAdd.length > GRAPH_LIMITS.MAX_ENTITIES) {
+        throw new ValidationError(
+          'Graph size limit exceeded',
+          [`Adding ${entitiesToAdd.length} entities would exceed maximum of ${GRAPH_LIMITS.MAX_ENTITIES} entities`]
+        );
+      }
 
-    // Check for cancellation before processing
-    checkCancellation(options?.signal, 'createEntities');
-
-    const newEntities: Entity[] = [];
-    let processed = 0;
-
-    for (const e of entitiesToAdd) {
-      // Check for cancellation periodically
+      // Check for cancellation before processing
       checkCancellation(options?.signal, 'createEntities');
 
-      const entity: Entity = {
-        ...e,
-        createdAt: e.createdAt || timestamp,
-        lastModified: e.lastModified || timestamp,
-      };
+      const newEntities: Entity[] = [];
+      let processed = 0;
 
-      // Normalize tags to lowercase
-      if (e.tags) {
-        entity.tags = e.tags.map(tag => tag.toLowerCase());
-      }
+      for (const e of entitiesToAdd) {
+        // Check for cancellation periodically
+        checkCancellation(options?.signal, 'createEntities');
 
-      // Validate importance
-      if (e.importance !== undefined) {
-        if (e.importance < MIN_IMPORTANCE || e.importance > MAX_IMPORTANCE) {
-          throw new InvalidImportanceError(e.importance, MIN_IMPORTANCE, MAX_IMPORTANCE);
+        const entity: Entity = {
+          ...e,
+          createdAt: e.createdAt || timestamp,
+          lastModified: e.lastModified || timestamp,
+        };
+
+        // Normalize tags to lowercase
+        if (e.tags) {
+          entity.tags = e.tags.map(tag => tag.toLowerCase());
         }
-        entity.importance = e.importance;
+
+        // Validate importance
+        if (e.importance !== undefined) {
+          if (e.importance < MIN_IMPORTANCE || e.importance > MAX_IMPORTANCE) {
+            throw new InvalidImportanceError(e.importance, MIN_IMPORTANCE, MAX_IMPORTANCE);
+          }
+          entity.importance = e.importance;
+        }
+
+        newEntities.push(entity);
+        processed++;
+        reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
       }
 
-      newEntities.push(entity);
-      processed++;
-      reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
+      // Save all new entities in a single write
+      if (newEntities.length > 0) {
+        graph.entities.push(...newEntities);
+        await this.storage.saveGraph(graph);
+      }
+
+      // Report completion
+      reportProgress?.(createProgress(entitiesToAdd.length, entitiesToAdd.length, 'createEntities'));
+
+      return newEntities;
+    } finally {
+      release();
     }
-
-    // OPTIMIZED: Use append for single entity, bulk save for multiple
-    // (N individual appends is slower than one bulk write)
-    if (newEntities.length === 1) {
-      await this.storage.appendEntity(newEntities[0]);
-    } else if (newEntities.length > 1) {
-      const graph = await this.storage.getGraphForMutation();
-      graph.entities.push(...newEntities);
-      await this.storage.saveGraph(graph);
-    }
-
-    // Report completion
-    reportProgress?.(createProgress(entitiesToAdd.length, entitiesToAdd.length, 'createEntities'));
-
-    return newEntities;
   }
 
   /**
