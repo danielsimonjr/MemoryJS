@@ -2,7 +2,7 @@
 
 Consolidated list of all planned but unimplemented features for MemoryJS, merging the original [ROADMAP.md](./ROADMAP.md) phases with new performance & scale proposals.
 
-> **What's already done**: Phase 1 (95%), Phase 3 (100%). See ROADMAP.md for details on completed work.
+> **What's already done**: Phase 1 (95% — only CLI pipe support remains), Phase 2 (partial — search suggestions and performance metrics exist), Phase 3 (100%). See ROADMAP.md for details on completed work.
 
 ---
 
@@ -277,6 +277,28 @@ Split large JSONL files into segments for parallel reads.
 
 **Expected impact**: 3-5x faster startup for large JSONL graphs.
 
+### 5.4 Memory-Mapped File Support
+
+Use mmap for large graphs to avoid loading everything into heap memory.
+
+**Problem**: JSONL backend loads entire graph into memory on startup. At 100K+ entities this consumes significant heap.
+
+**Proposal**:
+- Memory-mapped file access for read-heavy workloads
+- OS manages paging — only actively used portions in RAM
+- Combine with lazy entity hydration (3.2) for maximum benefit
+
+### 5.5 Index Partitioning by Entity Type
+
+Partition search indexes by entity type for faster filtered queries.
+
+**Problem**: Single monolithic index searched even when query targets a specific entity type.
+
+**Proposal**:
+- Maintain per-type inverted indexes
+- Query planner routes to correct partition based on entity type filter
+- Reduces index scan size proportionally to type distribution
+
 ---
 
 ## 6. Observability & Diagnostics
@@ -504,6 +526,19 @@ Build and maintain internal models of the environment from observations.
 
 ---
 
+## 11B. Query Language (from ROADMAP Feature Categories)
+
+### 11B.1 Domain-Specific Query Language (DSL)
+
+A purpose-built query language for knowledge graph operations.
+
+**Proposal**:
+- SQL-like syntax for familiarity: `SELECT entities WHERE type = 'person' AND tag = 'active'`
+- Graph-specific operators: path queries, neighborhood traversal, pattern matching
+- Visual query builder (browser-based, integrates with graph visualization)
+
+---
+
 ## 12. Integration & Ecosystem (from ROADMAP Phase 4)
 
 ### 12.1 Database Adapters
@@ -544,6 +579,19 @@ Build and maintain internal models of the environment from observations.
 - Query and mutation resolvers
 - Subscription support for real-time graph change notifications
 
+### 12.7 Framework Integrations
+
+- NestJS module with decorators for entity/relation injection
+- Express middleware for REST endpoints
+- Next.js API route helpers
+
+### 12.8 LLM Ecosystem Integrations
+
+- LangChain memory backend adapter (use MemoryJS as LangChain memory)
+- Llama Index data connector
+- Neo4j bridge for graph database interop
+- Redis adapter for distributed caching layer
+
 ---
 
 ## 13. Advanced Features (from ROADMAP Phase 5)
@@ -566,6 +614,8 @@ Build and maintain internal models of the environment from observations.
 - Anomaly detection in relationship patterns
 - Entity clustering by multi-signal similarity
 - Knowledge graph completion (predict missing relations)
+- Locality-Sensitive Hashing (LSH) for approximate fuzzy search
+- Adaptive indexing based on query patterns
 
 ### 13.4 Standards Compliance
 
@@ -642,6 +692,8 @@ Build and maintain internal models of the environment from observations.
 | 4.3 Columnar Observation Storage | Medium | High | **P3** |
 | 5.2 SQLite Partial Indexes | Low | Medium | **P3** |
 | 5.3 JSONL Segment Files | Medium | High | **P3** |
+| 5.4 Memory-Mapped Files | Medium | High | **P3** |
+| 5.5 Index Partitioning | Medium | Medium | **P3** |
 | **Observability** | | | |
 | 6.1 Query Plan Visualization | Medium | Low | **P2** |
 | 6.2 Performance Dashboard | Low | Medium | **P3** |
@@ -671,10 +723,13 @@ Build and maintain internal models of the environment from observations.
 | 12.5 Graph Visualization | Medium | High | **P3** |
 | 12.3 Elasticsearch Integration | Medium | High | **P4** |
 | 12.6 GraphQL Support | Medium | High | **P4** |
+| 12.7 Framework Integrations | Medium | Medium | **P4** |
+| 12.8 LLM Ecosystem Integrations | High | High | **P3** |
+| 11B.1 Query Language DSL | Medium | Very High | **P4** |
 | **Advanced & Enterprise** | | | |
 | 13.1 Vector DB Integration | Medium | High | **P4** |
 | 13.2 Graph Embeddings | Medium | Very High | **P4** |
-| 13.3 ML-Powered Features | Medium | Very High | **P4** |
+| 13.3 ML-Powered Features (incl. LSH, adaptive indexing) | Medium | Very High | **P4** |
 | 13.4 Standards Compliance | Low | High | **P5** |
 | 13.5 Collaboration | Medium | Very High | **P5** |
 | 14.1 Access Control | High | Very High | **P5** |
@@ -693,9 +748,9 @@ Build and maintain internal models of the environment from observations.
 
 **Phase C (P2 — Weeks 8-12)**: Background indexing, LRU caches, SQLite pooling, observability, spell correction, synonym expansion, entity lifecycle, CLI pipe support, memory validation, trajectory compression.
 
-**Phase D (P3 — Months 4-6)**: Experience extraction, procedural memory, heuristics, community detection, database adapters, REST API, temporal versioning, graph visualization.
+**Phase D (P3 — Months 4-6)**: Experience extraction, procedural memory, heuristics, community detection, database adapters, REST API, temporal versioning, graph visualization, LLM ecosystem integrations.
 
-**Phase E (P4 — Months 7-10)**: Causal relations, world model, Elasticsearch, GraphQL, vector DB, graph embeddings, ML features.
+**Phase E (P4 — Months 7-10)**: Causal relations, world model, Elasticsearch, GraphQL, framework integrations, query DSL, vector DB, graph embeddings, ML features (LSH, adaptive indexing).
 
 **Phase F (P5 — Months 11+)**: Standards compliance, collaboration, access control, distributed architecture, security/compliance, cloud-native, GPU acceleration.
 
@@ -710,6 +765,18 @@ Each performance feature should be validated with:
 - **Regression**: Add benchmark to CI to prevent future regressions
 
 Environment variable to enable benchmarks: `SKIP_BENCHMARKS=false`
+
+---
+
+## Test Coverage Expansion (from ROADMAP)
+
+Planned testing improvements beyond the current 4674 tests:
+
+- **Property-based testing** for search algorithms (verify invariants across random inputs)
+- **Chaos engineering** for concurrency (random delays, failures during transactions)
+- **Load testing** for scaling scenarios (10K/50K/100K entity benchmarks)
+- **Security fuzzing** for input validation (fuzz entity names, observations, query strings)
+- **CLI tool testing** (command parsing, output formatting, pipe support)
 
 ---
 
