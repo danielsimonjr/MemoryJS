@@ -677,11 +677,9 @@ describe('SearchCache - Sprint 15 Extended Tests', () => {
   });
 
   describe('TTL Boundary Cases', () => {
-    it('should handle TTL of 0 (immediate expiration)', async () => {
+    it('should handle TTL of 0 (immediate expiration)', () => {
       const cache = new SearchCache<string>(100, 0);
       cache.set({ id: 1 }, 'value');
-
-      await new Promise((resolve) => setTimeout(resolve, 1));
 
       expect(cache.get({ id: 1 })).toBeUndefined();
     });

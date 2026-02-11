@@ -76,7 +76,7 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     }
 
     // Check expiration
-    if (Date.now() > entry.expiresAt) {
+    if (Date.now() >= entry.expiresAt) {
       this.cache.delete(key);
       this.removeFromAccessOrder(key);
       this.misses++;
@@ -199,7 +199,7 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     if (!entry) return false;
 
     // Check expiration
-    if (Date.now() > entry.expiresAt) {
+    if (Date.now() >= entry.expiresAt) {
       this.cache.delete(key);
       this.removeFromAccessOrder(key);
       return false;

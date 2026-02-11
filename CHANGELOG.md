@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Trim WorkerPoolManager JSDoc**: Remove @example blocks, @param/@returns tags, Phase references, and interface field comments (~130 lines reduced).
 - **Trim errors.ts JSDoc**: Remove Phase/Sprint references, @example blocks, and multi-line JSDoc from error classes and ErrorOptions interface (~60 lines reduced). Suggestions system retained (public API).
 
+### Fixed
+- **SearchCache TTL=0 race condition**: Fixed TTL expiration check using `>=` instead of `>`, so entries with TTL=0 expire immediately on the next `get()` call rather than persisting when accessed within the same millisecond.
+
 ## [1.5.0] - 2026-02-06
 
 ### Fixed
