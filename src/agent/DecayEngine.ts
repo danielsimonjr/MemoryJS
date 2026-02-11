@@ -33,11 +33,9 @@ export interface DecayEngineConfig {
 /**
  * Options for batch decay operations.
  * Extends DecayEngineConfig with operation-specific options.
+ * Note: applyDecay is always read-only (never persists changes).
  */
-export interface DecayOperationOptions extends DecayEngineConfig {
-  /** Dry run - calculate but don't update entities */
-  dryRun?: boolean;
-}
+export interface DecayOperationOptions extends DecayEngineConfig {}
 
 /**
  * Options for reinforcing a memory.
@@ -211,11 +209,9 @@ export class DecayEngine {
       strengthMultiplier = this.calculateStrengthMultiplier(entity);
     }
 
-    // Combine factors
+    // Combine factors and clamp to [minImportance, 10]
     const effectiveImportance = baseImportance * decayFactor * strengthMultiplier;
-
-    // Apply minimum floor
-    return Math.max(effectiveImportance, this.config.minImportance);
+    return Math.min(10, Math.max(effectiveImportance, this.config.minImportance));
   }
 
   // ==================== Decayed Memory Queries ====================

@@ -583,9 +583,13 @@ export class EntityManager {
         continue;
       }
 
-      // Replace old tag with new tag
-      const index = entity.tags.indexOf(normalizedOldTag);
-      entity.tags[index] = normalizedNewTag;
+      if (entity.tags.includes(normalizedNewTag)) {
+        // New tag already present — just remove old tag
+        entity.tags = entity.tags.filter(tag => tag !== normalizedOldTag);
+      } else {
+        const index = entity.tags.indexOf(normalizedOldTag);
+        entity.tags[index] = normalizedNewTag;
+      }
       entity.lastModified = timestamp;
       affectedEntities.push(entity.name);
     }

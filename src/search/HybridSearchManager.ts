@@ -150,10 +150,7 @@ export class HybridSearchManager {
     const results = new Map<string, number>();
 
     if (!filters || Object.keys(filters).length === 0) {
-      // No symbolic filters, give all entities base score
-      for (const entity of entities) {
-        results.set(entity.name, 0.5);
-      }
+      // No symbolic filters - return empty (no symbolic signal)
       return results;
     }
 

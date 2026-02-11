@@ -26,6 +26,7 @@ export class RankedSearch {
    */
   private fallbackTokenCache: Map<string, TokenizedEntity> = new Map();
   private cachedEntityCount: number = 0;
+  private cachedEntityNames: string | null = null;
 
   constructor(
     private storage: GraphStorage,
@@ -216,9 +217,12 @@ export class RankedSearch {
     const results: SearchResult[] = [];
 
     // Phase 4 Sprint 2: Check if cache needs invalidation
-    if (entities.length !== this.cachedEntityCount) {
+    // Check both count and entity name set to detect renames/replacements
+    const namesKey = entities.map(e => e.name).join('\0');
+    if (entities.length !== this.cachedEntityCount || namesKey !== this.cachedEntityNames) {
       this.clearTokenCache();
       this.cachedEntityCount = entities.length;
+      this.cachedEntityNames = namesKey;
     }
 
     // Phase 4 Sprint 2: Get or compute tokenized data for each entity

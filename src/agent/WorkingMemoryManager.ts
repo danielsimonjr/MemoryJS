@@ -217,7 +217,10 @@ export class WorkingMemoryManager {
     content: string,
     options?: WorkingMemoryOptions
   ): Promise<AgentEntity> {
-    // Check session limit
+    // Ensure session index is populated before checking limit
+    if (!this.sessionIndex.has(sessionId)) {
+      await this.rebuildSessionIndex(sessionId);
+    }
     const sessionMemories = this.sessionIndex.get(sessionId);
     if (sessionMemories && sessionMemories.size >= this.config.maxPerSession) {
       throw new Error(

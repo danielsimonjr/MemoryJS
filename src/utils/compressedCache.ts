@@ -394,8 +394,11 @@ export class CompressedCache {
             continue;
           }
 
-          // Track compression ratio
+          // Track compression ratio (bounded to last 1000 entries)
           this.compressionRatios.push(ratio);
+          if (this.compressionRatios.length > 1000) {
+            this.compressionRatios = this.compressionRatios.slice(-500);
+          }
 
           entry.compressedData = compressed;
           entry.compressed = true;

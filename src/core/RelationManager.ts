@@ -183,12 +183,12 @@ export class RelationManager {
     // OPTIMIZED: Use Set<string> for O(1) lookup instead of O(n) array.some()
     // Create composite keys for relations to delete
     const relationsToDeleteSet = new Set(
-      relations.map(r => `${r.from}|${r.to}|${r.relationType}`)
+      relations.map(r => `${r.from}\0${r.to}\0${r.relationType}`)
     );
 
     // Remove relations with O(1) Set lookup per relation instead of O(m) array scan
     graph.relations = graph.relations.filter(r =>
-      !relationsToDeleteSet.has(`${r.from}|${r.to}|${r.relationType}`)
+      !relationsToDeleteSet.has(`${r.from}\0${r.to}\0${r.relationType}`)
     );
 
     // Update lastModified for affected entities

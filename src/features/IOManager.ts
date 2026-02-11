@@ -31,6 +31,7 @@ import {
   escapeCsvFormula,
 } from '../utils/index.js';
 import { StreamingExporter, type StreamResult } from './StreamingExporter.js';
+import { EntitySchema, RelationSchema } from '../utils/schemas.js';
 
 export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid';
 export type ImportFormat = 'json' | 'csv' | 'graphml';
@@ -446,8 +447,16 @@ export class IOManager {
     lines.push('');
 
     const nodeIds = new Map<string, string>();
+    const usedIds = new Set<string>();
     for (const entity of graph.entities) {
-      nodeIds.set(entity.name, sanitizeId(entity.name));
+      let id = sanitizeId(entity.name);
+      if (usedIds.has(id)) {
+        let counter = 2;
+        while (usedIds.has(`${id}_${counter}`)) counter++;
+        id = `${id}_${counter}`;
+      }
+      usedIds.add(id);
+      nodeIds.set(entity.name, id);
     }
 
     for (const entity of graph.entities) {
@@ -564,10 +573,25 @@ export class IOManager {
       );
     }
 
-    return {
-      entities: parsed.entities as Entity[],
-      relations: parsed.relations as Relation[],
-    };
+    // Validate and sanitize each entity/relation against schemas
+    const entities: Entity[] = [];
+    for (const raw of parsed.entities) {
+      const result = EntitySchema.safeParse(sanitizeObject(raw));
+      if (result.success) {
+        entities.push(result.data as Entity);
+      }
+      // Skip invalid entities silently (best-effort import)
+    }
+
+    const relations: Relation[] = [];
+    for (const raw of parsed.relations) {
+      const result = RelationSchema.safeParse(sanitizeObject(raw));
+      if (result.success) {
+        relations.push(result.data as Relation);
+      }
+    }
+
+    return { entities, relations };
   }
 
   private parseCsvImport(data: string): KnowledgeGraph {
@@ -662,10 +686,10 @@ export class IOManager {
             tags: fields[5]
               ? fields[5]
                   .split(';')
-                  .map(s => s.trim().toLowerCase())
+                  .map(s => s.trim())
                   .filter(s => s)
               : undefined,
-            importance: fields[6] ? parseFloat(fields[6]) : undefined,
+            importance: fields[6] && !isNaN(parseFloat(fields[6])) ? parseFloat(fields[6]) : undefined,
           };
           entities.push(entity);
         }
@@ -756,15 +780,22 @@ export class IOManager {
         lastModified: decodeXmlEntities(getDataValue('d3') || getDataValue('lastModified') || ''),
         tags: decodeXmlEntities(getDataValue('d4') || getDataValue('tags') || '')
           .split(';')
-          .map(s => s.trim().toLowerCase())
+          .map(s => s.trim())
           .filter(s => s),
-        importance: getDataValue('d5') || getDataValue('importance') ? parseFloat(getDataValue('d5') || getDataValue('importance') || '0') : undefined,
+        importance: (() => {
+          const raw = getDataValue('d5') || getDataValue('importance');
+          if (!raw) return undefined;
+          const val = parseFloat(raw);
+          return isNaN(val) ? undefined : val;
+        })(),
       };
 
       entities.push(entity);
     }
 
-    const edgeRegex = /<edge\s+[^>]*source="([^"]+)"\s+target="([^"]+)"[^>]*>([\s\S]*?)<\/edge>/g;
+    const edgeRegex = /<edge\s+([^>]*?)>([\s\S]*?)<\/edge>/g;
+    const attrSourceRegex = /source="([^"]+)"/;
+    const attrTargetRegex = /target="([^"]+)"/;
     let edgeMatch;
 
     while ((edgeMatch = edgeRegex.exec(data)) !== null) {
@@ -775,9 +806,13 @@ export class IOManager {
           'graphml-import'
         );
       }
-      const source = edgeMatch[1];
-      const target = edgeMatch[2];
-      const edgeContent = edgeMatch[3];
+      const edgeAttrs = edgeMatch[1];
+      const edgeContent = edgeMatch[2];
+      const sourceMatch = attrSourceRegex.exec(edgeAttrs);
+      const targetMatch = attrTargetRegex.exec(edgeAttrs);
+      if (!sourceMatch || !targetMatch) continue;
+      const source = sourceMatch[1];
+      const target = targetMatch[1];
 
       const escapeRegExpEdge = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 

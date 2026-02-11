@@ -326,15 +326,15 @@ export class SessionManager {
     // Cleanup working memories if configured
     if (this.config.cleanupOnEnd) {
       const remainingMemories = await this.workingMemory.getSessionMemories(sessionId);
-      for (const memory of remainingMemories) {
-        // Delete non-promoted working memories
+      if (remainingMemories.length > 0) {
+        const namesToDelete = new Set(remainingMemories.map((m) => m.name));
         const graph = await this.storage.getGraphForMutation();
-        graph.entities = graph.entities.filter((e) => e.name !== memory.name);
+        graph.entities = graph.entities.filter((e) => !namesToDelete.has(e.name));
         graph.relations = graph.relations.filter(
-          (r) => r.from !== memory.name && r.to !== memory.name
+          (r) => !namesToDelete.has(r.from) && !namesToDelete.has(r.to)
         );
         await this.storage.saveGraph(graph);
-        memoriesCleaned++;
+        memoriesCleaned = remainingMemories.length;
       }
     }
 

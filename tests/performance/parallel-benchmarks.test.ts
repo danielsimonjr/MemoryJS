@@ -319,9 +319,10 @@ describe('Parallel Processing Benchmarks', () => {
       expect(result.allSucceeded).toBe(false);
       expect(result.failedLayers).toContain('semantic');
 
-      // Other layers should still have results
+      // Lexical layer should still have results
       expect(result.lexicalResults.size).toBeGreaterThan(0);
-      expect(result.symbolicResults.size).toBeGreaterThan(0);
+      // Symbolic layer returns empty when no filters are provided
+      expect(result.symbolicResults.size).toBe(0);
 
       // Timing should include error info
       const semanticTiming = result.timings.find(t => t.layer === 'semantic');

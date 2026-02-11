@@ -72,6 +72,7 @@ export class SalienceEngine {
   private readonly decayEngine: DecayEngine;
   private readonly summarizationService: SummarizationService;
   private readonly config: Required<SalienceEngineConfig>;
+  private _cachedMaxAccessCount: number | undefined;
 
   constructor(
     storage: IGraphStorage,
@@ -158,10 +159,16 @@ export class SalienceEngine {
     entities: AgentEntity[],
     context: SalienceContext
   ): Promise<ScoredEntity[]> {
-    const scored = await Promise.all(
-      entities.map((e) => this.calculateSalience(e, context))
-    );
-    return scored.sort((a, b) => b.salienceScore - a.salienceScore);
+    // Pre-compute max access count once for all entities
+    this._cachedMaxAccessCount = await this.getMaxAccessCount();
+    try {
+      const scored = await Promise.all(
+        entities.map((e) => this.calculateSalience(e, context))
+      );
+      return scored.sort((a, b) => b.salienceScore - a.salienceScore);
+    } finally {
+      this._cachedMaxAccessCount = undefined;
+    }
   }
 
   /**
@@ -250,8 +257,8 @@ export class SalienceEngine {
 
     if (accessCount === 0) return 0;
 
-    // Get max access count for normalization
-    const maxAccess = await this.getMaxAccessCount();
+    // Get max access count for normalization (use pre-computed cache if available)
+    const maxAccess = this._cachedMaxAccessCount ?? await this.getMaxAccessCount();
     if (maxAccess === 0) return 0;
 
     // Use logarithmic scaling to prevent dominance by high-access entities

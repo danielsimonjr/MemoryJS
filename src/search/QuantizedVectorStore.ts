@@ -337,7 +337,7 @@ export class QuantizedVectorStore {
       }
     }
 
-    const scale = (max - min) / 255;
+    const scale = max === min ? 1 : (max - min) / 255;
 
     return { min, max, scale, dimension };
   }
