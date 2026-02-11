@@ -59,13 +59,10 @@ src/
 **ManagerContext** (`src/core/ManagerContext.ts`): Central facade providing lazy-initialized access to all managers:
 ```typescript
 // JSONL storage (default)
-const ctx = new ManagerContext({ storagePath: './memory.jsonl' });
-
-// SQLite storage
-const ctx = new ManagerContext({ storageType: 'sqlite', storagePath: './memory.db' });
-
-// Or use string path (storage type via MEMORY_STORAGE_TYPE env var)
 const ctx = new ManagerContext('./memory.jsonl');
+
+// SQLite storage (set MEMORY_STORAGE_TYPE=sqlite env var)
+const ctx = new ManagerContext('./memory.db');
 
 ctx.entityManager       // Entity CRUD + tags
 ctx.relationManager     // Relation CRUD
@@ -137,7 +134,8 @@ ctx.agentMemory()       // Agent Memory System facade
 ### Key Patterns
 
 - Storage abstraction: Both backends implement same interface via duck typing
-- Lazy initialization: Managers created on first access via getters
+- Eager core managers: Core managers initialized in constructor as readonly fields
+- Lazy agent managers: Agent memory managers (`semanticSearch`, `agentMemory()`, etc.) created on first access
 - Event-driven cache invalidation: `GraphEventEmitter` notifies subscribers on changes
 - TF-IDF auto-sync: `TFIDFEventSync` keeps index current with storage
 - Worker pool: CPU-intensive Levenshtein calculations offloaded to workers (`dist/workers/` built separately by tsup)
