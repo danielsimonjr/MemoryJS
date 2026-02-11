@@ -597,7 +597,9 @@ describe('CLI Commands', () => {
 
       expect(mockStorage.loadGraph).toHaveBeenCalled();
       expect(mockIoManager.exportGraph).toHaveBeenCalled();
-      expect(fs.writeFileSync).toHaveBeenCalledWith('output.json', expect.any(String), 'utf-8');
+      // Path is now resolved to absolute
+      const { resolve } = await import('path');
+      expect(fs.writeFileSync).toHaveBeenCalledWith(resolve('output.json'), expect.any(String), 'utf-8');
     });
 
     it('should use default json format', async () => {

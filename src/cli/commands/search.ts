@@ -1,8 +1,7 @@
 /**
  * Search CLI Commands
  *
- * Fixed: uses autoSearch with real relevance scores instead of fake scoring.
- * Extended: --ranked, --boolean, --fuzzy, --suggest modes.
+ * Supports multiple search modes: auto (default), ranked, boolean, fuzzy, suggestions.
  *
  * @module cli/commands/search
  */
@@ -53,16 +52,16 @@ export function registerSearchCommands(program: Command): void {
         } else if (opts.boolean) {
           logger.debug('Using boolean search');
           const boolResult = await ctx.searchManager.booleanSearch(query);
-          results = boolResult.entities.map((entity: Entity, idx: number) => ({
+          results = boolResult.entities.map((entity: Entity) => ({
             entity,
-            score: 1.0 - idx * 0.01,
+            score: 1.0,
           }));
         } else if (opts.fuzzy) {
           logger.debug('Using fuzzy search');
           const fuzzyResult = await ctx.searchManager.fuzzySearch(query, opts.threshold as number);
-          results = fuzzyResult.entities.map((entity: Entity, idx: number) => ({
+          results = fuzzyResult.entities.map((entity: Entity) => ({
             entity,
-            score: 1.0 - idx * 0.01,
+            score: 1.0,
           }));
         } else {
           // Default: autoSearch with real relevance scores

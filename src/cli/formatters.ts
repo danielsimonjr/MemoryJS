@@ -337,8 +337,19 @@ export function formatValidation(
     case 'json':
       return JSON.stringify(result, null, 2);
 
-    case 'table':
     case 'csv': {
+      const header = 'severity,type,message';
+      const rows: string[] = [];
+      for (const issue of result.issues) {
+        rows.push(`error,${escapeCSV(issue.type)},${escapeCSV(issue.message)}`);
+      }
+      for (const w of result.warnings) {
+        rows.push(`warning,${escapeCSV(w.type)},${escapeCSV(w.message)}`);
+      }
+      return [header, ...rows].join('\n');
+    }
+
+    case 'table': {
       const lines: string[] = [];
       const status = result.isValid ? chalk.green('VALID') : chalk.red('INVALID');
       lines.push(`Graph validation: ${status}`);
@@ -370,7 +381,7 @@ function calculateColWidths(totalWidth: number, ratios: number[]): number[] {
   return ratios.map(r => Math.max(10, Math.floor(available * r)));
 }
 
-function escapeCSV(value: string): string {
+export function escapeCSV(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n')) {
     return `"${value.replace(/"/g, '""')}"`;
   }

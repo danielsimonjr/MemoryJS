@@ -6,7 +6,7 @@
 
 import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatSuccess, formatError } from '../formatters.js';
+import { formatSuccess, formatError, escapeCSV } from '../formatters.js';
 
 export function registerTagCommands(program: Command): void {
   const tag = program
@@ -83,7 +83,7 @@ export function registerTagCommands(program: Command): void {
         } else if (options.format === 'csv') {
           console.log('alias,canonical,description');
           for (const a of aliases) {
-            console.log(`${a.alias},${a.canonical},${a.description || ''}`);
+            console.log(`${escapeCSV(a.alias)},${escapeCSV(a.canonical)},${escapeCSV(a.description || '')}`);
           }
         } else {
           if (aliases.length === 0) {

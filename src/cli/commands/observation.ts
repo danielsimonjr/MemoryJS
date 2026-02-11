@@ -6,7 +6,7 @@
 
 import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatSuccess, formatError } from '../formatters.js';
+import { formatSuccess, formatError, escapeCSV } from '../formatters.js';
 
 export function registerObservationCommands(program: Command): void {
   const observation = program
@@ -47,6 +47,13 @@ export function registerObservationCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        // Verify entity exists before attempting removal
+        const existing = await ctx.entityManager.getEntity(entity);
+        if (!existing) {
+          logger.error(formatError(`Entity "${entity}" not found`));
+          process.exit(1);
+        }
+
         await ctx.observationManager.deleteObservations([{
           entityName: entity,
           observations: text,
@@ -80,8 +87,7 @@ export function registerObservationCommands(program: Command): void {
         } else if (options.format === 'csv') {
           console.log('index,observation');
           observations.forEach((o, i) => {
-            const escaped = o.includes(',') || o.includes('"') ? `"${o.replace(/"/g, '""')}"` : o;
-            console.log(`${i + 1},${escaped}`);
+            console.log(`${i + 1},${escapeCSV(o)}`);
           });
         } else {
           console.log(`Observations for ${entity} (${observations.length}):`);

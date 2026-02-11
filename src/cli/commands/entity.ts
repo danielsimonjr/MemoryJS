@@ -147,8 +147,7 @@ export function registerEntityCommands(program: Command): void {
   entity
     .command('delete <name>')
     .description('Delete an entity')
-    .option('-f, --force', 'Skip confirmation')
-    .action(async (name: string, _opts: Record<string, unknown>) => {
+    .action(async (name: string) => {
       const options = getOptions(program);
       const logger = createLogger(options);
       const ctx = createContext(options);
