@@ -8,7 +8,14 @@
 
 import Table from 'cli-table3';
 import chalk from 'chalk';
-import type { Entity, Relation } from '../types/types.js';
+import type {
+  Entity,
+  Relation,
+  PathResult,
+  CentralityResult,
+  ConnectedComponentsResult,
+  ValidationReport,
+} from '../types/types.js';
 
 export type OutputFormat = 'json' | 'table' | 'csv';
 
@@ -213,6 +220,148 @@ export function formatSuccess(message: string): string {
  */
 export function formatError(message: string): string {
   return chalk.red('✗') + ' ' + message;
+}
+
+/**
+ * Format a shortest path result.
+ */
+export function formatPath(
+  result: PathResult,
+  format: OutputFormat
+): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify({
+        path: result.path,
+        length: result.length,
+        relations: result.relations,
+      }, null, 2);
+
+    case 'table': {
+      const lines = [
+        `${chalk.bold('Path:')} ${result.path.join(' -> ')}`,
+        `${chalk.bold('Length:')} ${result.length} hop(s)`,
+        '',
+        chalk.bold('Relations:'),
+        ...result.relations.map(r => `  ${r.from} --[${r.relationType}]--> ${r.to}`),
+      ];
+      return lines.join('\n');
+    }
+
+    case 'csv': {
+      const header = 'step,from,relationType,to';
+      const rows = result.relations.map((r, i) =>
+        `${i + 1},${escapeCSV(r.from)},${escapeCSV(r.relationType)},${escapeCSV(r.to)}`
+      );
+      return [header, ...rows].join('\n');
+    }
+  }
+}
+
+/**
+ * Format centrality results.
+ */
+export function formatCentrality(
+  result: CentralityResult,
+  format: OutputFormat
+): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify({
+        algorithm: result.algorithm,
+        topEntities: result.topEntities,
+      }, null, 2);
+
+    case 'table': {
+      const table = new Table({
+        head: [chalk.cyan('#'), chalk.cyan('Entity'), chalk.cyan('Score')],
+        colWidths: calculateColWidths(getTerminalWidth(), [0.1, 0.6, 0.3]),
+      });
+      result.topEntities.forEach((e, i) => {
+        table.push([String(i + 1), e.name, e.score.toFixed(4)]);
+      });
+      return `${chalk.bold(`Centrality (${result.algorithm}):`)}` + '\n' + table.toString();
+    }
+
+    case 'csv': {
+      const header = 'rank,entity,score';
+      const rows = result.topEntities.map((e, i) =>
+        `${i + 1},${escapeCSV(e.name)},${e.score.toFixed(4)}`
+      );
+      return [header, ...rows].join('\n');
+    }
+  }
+}
+
+/**
+ * Format connected components result.
+ */
+export function formatComponents(
+  result: ConnectedComponentsResult,
+  format: OutputFormat
+): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(result, null, 2);
+
+    case 'table': {
+      const lines = [
+        `${chalk.bold('Components:')} ${result.count}`,
+        `${chalk.bold('Largest:')} ${result.largestComponentSize} entities`,
+        '',
+      ];
+      result.components.forEach((comp, i) => {
+        lines.push(`  ${chalk.cyan(`Component ${i + 1}`)} (${comp.length}): ${comp.slice(0, 10).join(', ')}${comp.length > 10 ? '...' : ''}`);
+      });
+      return lines.join('\n');
+    }
+
+    case 'csv': {
+      const header = 'component,size,entities';
+      const rows = result.components.map((comp, i) =>
+        `${i + 1},${comp.length},${escapeCSV(comp.join('; '))}`
+      );
+      return [header, ...rows].join('\n');
+    }
+  }
+}
+
+/**
+ * Format validation report.
+ */
+export function formatValidation(
+  result: ValidationReport,
+  format: OutputFormat
+): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(result, null, 2);
+
+    case 'table':
+    case 'csv': {
+      const lines: string[] = [];
+      const status = result.isValid ? chalk.green('VALID') : chalk.red('INVALID');
+      lines.push(`Graph validation: ${status}`);
+      lines.push(`  Errors: ${result.summary.totalErrors}`);
+      lines.push(`  Warnings: ${result.summary.totalWarnings}`);
+      lines.push(`  Orphaned relations: ${result.summary.orphanedRelationsCount}`);
+      lines.push(`  Isolated entities: ${result.summary.entitiesWithoutRelationsCount}`);
+
+      if (result.issues.length > 0) {
+        lines.push('', chalk.red('Issues:'));
+        for (const issue of result.issues) {
+          lines.push(`  [${issue.type}] ${issue.message}`);
+        }
+      }
+      if (result.warnings.length > 0) {
+        lines.push('', chalk.yellow('Warnings:'));
+        for (const w of result.warnings) {
+          lines.push(`  [${w.type}] ${w.message}`);
+        }
+      }
+      return lines.join('\n');
+    }
+  }
 }
 
 function calculateColWidths(totalWidth: number, ratios: number[]): number[] {

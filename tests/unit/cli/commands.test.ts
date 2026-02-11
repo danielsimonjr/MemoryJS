@@ -33,6 +33,7 @@ const mockRelationManager = {
 
 const mockSearchManager = {
   searchNodes: vi.fn(),
+  autoSearch: vi.fn(),
 };
 
 const mockAnalyticsManager = {
@@ -114,6 +115,13 @@ describe('CLI Commands', () => {
 
     mockSearchManager.searchNodes.mockResolvedValue({
       entities: [{ name: 'Result', entityType: 'test', observations: [] }],
+    });
+
+    mockSearchManager.autoSearch.mockResolvedValue({
+      selectedMethod: 'ranked',
+      selectionReason: 'default',
+      results: [{ entity: { name: 'Result', entityType: 'test', observations: [] }, score: 0.95 }],
+      executionTimeMs: 10,
     });
 
     mockAnalyticsManager.getGraphStats.mockResolvedValue({
@@ -475,16 +483,19 @@ describe('CLI Commands', () => {
       registerCommands(program);
       await program.parseAsync(['node', 'test', 'search', 'test query']);
 
-      expect(mockSearchManager.searchNodes).toHaveBeenCalledWith('test query');
+      expect(mockSearchManager.autoSearch).toHaveBeenCalledWith('test query', 10);
       expect(consoleLogSpy).toHaveBeenCalled();
     });
 
     it('should filter by type', async () => {
-      mockSearchManager.searchNodes.mockResolvedValue({
-        entities: [
-          { name: 'Person1', entityType: 'person', observations: [] },
-          { name: 'Org1', entityType: 'organization', observations: [] },
+      mockSearchManager.autoSearch.mockResolvedValue({
+        selectedMethod: 'ranked',
+        selectionReason: 'default',
+        results: [
+          { entity: { name: 'Person1', entityType: 'person', observations: [] }, score: 0.9 },
+          { entity: { name: 'Org1', entityType: 'organization', observations: [] }, score: 0.8 },
         ],
+        executionTimeMs: 10,
       });
 
       registerCommands(program);
@@ -494,12 +505,14 @@ describe('CLI Commands', () => {
     });
 
     it('should limit results', async () => {
-      mockSearchManager.searchNodes.mockResolvedValue({
-        entities: Array.from({ length: 20 }, (_, i) => ({
-          name: `Entity${i}`,
-          entityType: 'test',
-          observations: [],
+      mockSearchManager.autoSearch.mockResolvedValue({
+        selectedMethod: 'ranked',
+        selectionReason: 'default',
+        results: Array.from({ length: 20 }, (_, i) => ({
+          entity: { name: `Entity${i}`, entityType: 'test', observations: [] },
+          score: 1.0 - i * 0.01,
         })),
+        executionTimeMs: 10,
       });
 
       registerCommands(program);
@@ -509,7 +522,7 @@ describe('CLI Commands', () => {
     });
 
     it('should handle search errors', async () => {
-      mockSearchManager.searchNodes.mockRejectedValue(new Error('Search failed'));
+      mockSearchManager.autoSearch.mockRejectedValue(new Error('Search failed'));
       registerCommands(program);
 
       await expect(

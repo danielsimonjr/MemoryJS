@@ -37,6 +37,7 @@ export async function startInteractiveMode(options: GlobalOptions): Promise<void
     completer: (line: string) => {
       const completions = [
         'entities', 'relations', 'search', 'get', 'stats',
+        'tags', 'path', 'observe', 'delete', 'export',
         'help', 'exit', 'clear', 'history',
         ...entityNames,
       ];
@@ -181,6 +182,74 @@ async function processCommand(
       break;
     }
 
+    case 'tags': {
+      const tagName = args.join(' ');
+      if (!tagName) {
+        console.log(chalk.yellow('Usage: tags <entity-name>'));
+        break;
+      }
+      const tagEntity = await ctx.ctx.entityManager.getEntity(tagName);
+      if (tagEntity) {
+        const tags = tagEntity.tags || [];
+        console.log(`\nTags for "${tagName}": ${tags.length > 0 ? tags.join(', ') : 'None'}`);
+      } else {
+        console.log(chalk.yellow(`Entity not found: ${tagName}`));
+      }
+      break;
+    }
+
+    case 'path': {
+      if (args.length < 2) {
+        console.log(chalk.yellow('Usage: path <from> <to>'));
+        break;
+      }
+      const [pathFrom, pathTo] = args;
+      const pathResult = await ctx.ctx.graphTraversal.findShortestPath(pathFrom, pathTo);
+      if (pathResult) {
+        console.log(`\nPath (${pathResult.length} hops): ${pathResult.path.join(' -> ')}`);
+        for (const rel of pathResult.relations) {
+          console.log(`  ${rel.from} --[${rel.relationType}]--> ${rel.to}`);
+        }
+      } else {
+        console.log(chalk.yellow(`No path found between "${pathFrom}" and "${pathTo}"`));
+      }
+      break;
+    }
+
+    case 'observe': {
+      const obsEntity = args[0];
+      const obsText = args.slice(1).join(' ');
+      if (!obsEntity || !obsText) {
+        console.log(chalk.yellow('Usage: observe <entity> <observation text>'));
+        break;
+      }
+      await ctx.ctx.observationManager.addObservations([{
+        entityName: obsEntity,
+        contents: [obsText],
+      }]);
+      console.log(chalk.green(`Added observation to ${obsEntity}`));
+      break;
+    }
+
+    case 'delete': {
+      const delName = args.join(' ');
+      if (!delName) {
+        console.log(chalk.yellow('Usage: delete <entity-name>'));
+        break;
+      }
+      await ctx.ctx.entityManager.deleteEntities([delName]);
+      console.log(chalk.green(`Deleted entity: ${delName}`));
+      break;
+    }
+
+    case 'export': {
+      const exportFormat = (args[0] || 'json') as 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid';
+      const exportGraph = await ctx.ctx.storage.loadGraph();
+      const output = ctx.ctx.ioManager.exportGraph(exportGraph, exportFormat);
+      console.log(output);
+      break;
+    }
+
     case 'history':
       console.log('\nCommand history:');
       ctx.history.slice(-20).forEach((cmd, i) => {
@@ -201,6 +270,11 @@ ${chalk.green('Available Commands:')}
   ${chalk.cyan('get <name>')}         Get entity details
   ${chalk.cyan('search <query>')}     Search entities
   ${chalk.cyan('relations <name>')}   Show relations for entity
+  ${chalk.cyan('tags <name>')}        Show tags for entity
+  ${chalk.cyan('path <from> <to>')}   Find shortest path
+  ${chalk.cyan('observe <e> <text>')} Add observation to entity
+  ${chalk.cyan('delete <name>')}      Delete entity
+  ${chalk.cyan('export [format]')}    Export graph to stdout
   ${chalk.cyan('stats')}              Show graph statistics
   ${chalk.cyan('history')}            Show command history
   ${chalk.cyan('clear')}              Clear screen
