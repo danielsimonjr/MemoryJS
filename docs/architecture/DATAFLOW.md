@@ -1,7 +1,7 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 1.2.0
-**Last Updated**: 2026-01-14
+**Version**: 1.5.0
+**Last Updated**: 2026-02-11
 
 ---
 
@@ -17,7 +17,8 @@
 8. [Import/Export Operations](#importexport-operations)
 9. [Agent Memory Operations](#agent-memory-operations)
 10. [Caching Strategy](#caching-strategy)
-11. [Error Handling Flow](#error-handling-flow)
+11. [Index Architecture](#index-architecture)
+12. [Error Handling Flow](#error-handling-flow)
 
 ---
 
@@ -496,6 +497,102 @@ hybridSearch(query, options)
       │
       ▼
    Return: HybridSearchResult
+```
+
+### Query Planning Pipeline
+
+The modern search pipeline processes queries through multiple optimization stages:
+
+```
+Query String
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. PARSE                                                     │
+│    QueryParser → AST (Abstract Syntax Tree)                 │
+│    └── Extracts field filters, boolean ops, quoted phrases   │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. ANALYZE                                                   │
+│    QueryAnalyzer → QueryAnalysis                            │
+│    ├── Complexity scoring (simple / moderate / complex)      │
+│    ├── Named entity extraction                               │
+│    ├── Temporal reference detection                          │
+│    └── Question type classification                          │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. PLAN                                                      │
+│    QueryPlanner → ExecutionPlan                              │
+│    ├── Select search methods based on analysis               │
+│    ├── Assign layer weights (semantic, lexical, symbolic)     │
+│    └── QueryCostEstimator → cost estimate for each layer     │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. CACHE CHECK                                               │
+│    QueryPlanCache → cached plan or miss                      │
+│    └── LRU (1000 max), 5 min TTL                             │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 5. EXECUTE                                                   │
+│    ParallelSearchExecutor → concurrent layer results         │
+│    ├── Semantic layer (embedding similarity)                  │
+│    ├── Lexical layer (TF-IDF / BM25)                         │
+│    └── Symbolic layer (metadata filters)                     │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 6. EARLY TERMINATION CHECK                                   │
+│    EarlyTerminationManager → adequate? (threshold 0-1)       │
+│    └── If adequate, skip remaining layers                    │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 7. SCORE FUSION                                              │
+│    HybridScorer → normalized combined scores                 │
+│    └── Weighted sum across layers                            │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 8. REFLECTION (optional)                                     │
+│    ReflectionManager → iterative refinement                  │
+│    ├── Evaluate result adequacy                              │
+│    ├── If inadequate: reformulate query, re-execute          │
+│    └── Max iterations (default: 3)                           │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: HybridSearchResult[]
+```
+
+### TF-IDF Event Sync Flow
+
+`TFIDFEventSync` listens to `GraphEventEmitter` to keep the TF-IDF index current:
+
+```
+GraphEventEmitter
+      │
+      ├── entity:created ──► TFIDFEventSync.addToIndex(entities)
+      │                       └── Index new entity documents
+      │
+      ├── entity:updated ──► TFIDFEventSync.reindex(entities)
+      │                       └── Remove old + add updated documents
+      │
+      ├── entity:deleted ──► TFIDFEventSync.removeFromIndex(names)
+      │                       └── Remove entity documents from index
+      │
+      └── observation:added ─► TFIDFEventSync.reindex(entities)
+                                └── Re-index affected entity documents
 ```
 
 ---
@@ -1079,20 +1176,95 @@ createAgentMemory(agentId, entityData)
 | Deep Copy | Always returns deep copy (prevents mutation) |
 | Memory Impact | Full graph held in memory |
 
+### Multi-Layered Caching
+
+| Cache | Purpose | Eviction | TTL |
+|-------|---------|----------|-----|
+| GraphStorage Cache | Full graph in-memory | Write invalidation | None |
+| SearchCache | Search results (basic/ranked/boolean/fuzzy) | LRU (500 max) | 5 min |
+| EmbeddingCache | Vector embeddings | LRU (1000 max) | 1 hour |
+| CompressedCache | Archived entities with Brotli compression | Adaptive | 5 min uncompressed |
+| QueryPlanCache | Query analysis & execution plans | LRU (1000 max) | 5 min |
+
+All caches use `>=` for TTL expiration checks (not `>`) to avoid boundary issues on Windows timer resolution.
+
+---
+
+## Index Architecture
+
+O(1) lookup indexes maintained by the storage layer for fast access:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ NameIndex                                                    │
+│   Map<string, Entity>                                        │
+│   └── Direct entity lookup by name                           │
+├─────────────────────────────────────────────────────────────┤
+│ TypeIndex                                                    │
+│   Map<string, Entity[]> (case-insensitive keys)              │
+│   └── All entities of a given type                           │
+├─────────────────────────────────────────────────────────────┤
+│ LowercaseCache                                               │
+│   Map<string, string> (name → lowercased name)               │
+│   └── Pre-computed lowercase strings for search matching     │
+├─────────────────────────────────────────────────────────────┤
+│ RelationIndex                                                │
+│   fromIndex: Map<string, Relation[]>                         │
+│   toIndex:   Map<string, Relation[]>                         │
+│   └── Relations by source/target entity name                 │
+├─────────────────────────────────────────────────────────────┤
+│ ObservationIndex (OptimizedInvertedIndex)                     │
+│   Map<keyword, Set<entityName>>                              │
+│   └── Inverted index mapping keywords to entity names        │
+│   └── Maintained by IncrementalIndexer on mutations          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Indexes are rebuilt on `loadGraph()` and incrementally updated on mutations via `GraphEventEmitter`.
+
 ---
 
 ## Error Handling Flow
+
+### Error Class Hierarchy
+
+All errors extend `KnowledgeGraphError` (base class) with an `ErrorCode` enum:
+
+```
+KnowledgeGraphError (base)
+├── EntityNotFoundError         (Validation)
+├── RelationNotFoundError       (Validation)
+├── DuplicateEntityError        (Validation)
+├── ValidationError             (Validation)
+├── CycleDetectedError          (Validation)
+├── InvalidImportanceError      (Validation)
+├── InsufficientEntitiesError   (Validation)
+├── FileOperationError          (Storage)
+├── ImportError                 (Storage)
+├── ExportError                 (Storage)
+└── OperationCancelledError     (Operation)
+```
+
+**ErrorCode enum categories**: Validation, Storage, Search, Configuration, Operation.
 
 ### Error Propagation
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ Manager Layer Errors                                         │
-│ ├── ValidationError (invalid input)                          │
+│ ├── ValidationError (invalid input / Zod schema failure)     │
 │ ├── EntityNotFoundError (missing entity)                     │
-│ ├── InvalidImportanceError (out of range)                    │
+│ ├── RelationNotFoundError (missing relation)                 │
+│ ├── DuplicateEntityError (name collision)                    │
+│ ├── InvalidImportanceError (out of 0-10 range)               │
 │ ├── CycleDetectedError (hierarchy cycle)                     │
-│ └── InsufficientEntitiesError (merge < 2)                   │
+│ ├── InsufficientEntitiesError (merge < 2)                   │
+│ └── OperationCancelledError (cancelled transaction)          │
+├─────────────────────────────────────────────────────────────┤
+│ Storage Layer Errors                                         │
+│ ├── FileOperationError (disk read/write failures)            │
+│ ├── ImportError (parse/validation failures during import)    │
+│ └── ExportError (serialization/write failures during export) │
 └─────────────────────────────────────────────────────────────┘
                           │
                           ▼
@@ -1144,9 +1316,3 @@ createAgentMemory(agentId, entityData)
 | decay_cycle | 1 | 1 | 2 |
 
 **Agent Memory Optimization**: Decay cycles run on configurable intervals to batch importance updates.
-
----
-
-**Document Version**: 1.2
-**Last Updated**: 2026-01-14
-**Maintained By**: Daniel Simon Jr.

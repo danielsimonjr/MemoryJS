@@ -1,13 +1,13 @@
 # MemoryJS
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
 A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search capabilities**, **hierarchical organization**, and **multiple storage backends**.
 
-> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **93 TypeScript files**, **~41K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid), and a complete **Agent Memory System** for AI agents.
+> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **110 TypeScript files**, **~43K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid), and a complete **Agent Memory System** for AI agents.
 
 ## Table of Contents
 
@@ -44,7 +44,7 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 | **Hierarchical Nesting** | Parent-child relationships, ancestor/descendant traversal, subtree operations |
 | **Duplicate Detection** | Intelligent compression with similarity scoring |
 | **Tag Management** | Tags, aliases, bulk operations, importance scores (0-10) |
-| **Import/Export** | JSON, CSV, GraphML formats with Brotli compression |
+| **Import/Export** | JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid formats with Brotli compression |
 | **Analytics** | Graph statistics, validation, integrity checks |
 
 ### Module Statistics
@@ -53,13 +53,14 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 |--------|-------|----------------|
 | `agent/` | 19 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager |
 | `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
-| `search/` | 29 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner |
+| `search/` | 32 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner |
 | `features/` | 9 | IOManager, ArchiveManager, CompressionManager, StreamingExporter |
-| `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor |
-| `types/` | 3 | Entity, Relation, AgentEntity, SessionEntity interfaces |
+| `utils/` | 24 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor |
+| `types/` | 5 | Entity, Relation, AgentEntity, SessionEntity interfaces |
+| `cli/` | 6 | CLI commands, config, formatters, interactive REPL |
 | `workers/` | 2 | Levenshtein distance calculations |
 
-**Total:** 93 TypeScript files | ~41,000 lines of code | 657 exports | 91 classes | 216 interfaces
+**Total:** 110 TypeScript files | ~43,000 lines of code | 770 exports | 98 classes | 249 interfaces
 
 ## Installation
 
@@ -80,15 +81,10 @@ npm install @danielsimonjr/memoryjs
 import { ManagerContext } from '@danielsimonjr/memoryjs';
 
 // JSONL storage (default, human-readable)
-const ctx = new ManagerContext({
-  storagePath: './memory.jsonl'
-});
+const ctx = new ManagerContext('./memory.jsonl');
 
-// Or SQLite storage (faster, FTS5 search)
-const ctx = new ManagerContext({
-  storageType: 'sqlite',
-  storagePath: './memory.db'
-});
+// Or SQLite storage (set MEMORY_STORAGE_TYPE=sqlite env var)
+const ctx = new ManagerContext('./memory.db');
 ```
 
 ### 2. Create Entities
@@ -175,13 +171,17 @@ Discrete facts about entities. Each observation should be atomic and independent
 Central access point for all managers with lazy initialization:
 
 ```typescript
-ctx.entityManager    // Entity CRUD + hierarchy
-ctx.relationManager  // Relation management
-ctx.searchManager    // All search operations
-ctx.tagManager       // Tag aliases and bulk operations
-ctx.ioManager        // Import/export/backup
-ctx.graphTraversal   // Graph algorithms
-ctx.semanticSearch   // Vector similarity search (optional)
+ctx.entityManager       // Entity CRUD + hierarchy
+ctx.relationManager     // Relation management
+ctx.searchManager       // All search operations
+ctx.tagManager          // Tag aliases and bulk operations
+ctx.ioManager           // Import/export/backup
+ctx.graphTraversal      // Graph algorithms
+ctx.archiveManager      // Entity archival
+ctx.analyticsManager    // Graph statistics and validation
+ctx.compressionManager  // Duplicate detection, entity merging
+ctx.semanticSearch      // Vector similarity search (lazy, optional)
+ctx.accessTracker       // Memory access tracking (lazy)
 ```
 
 ## Storage Options
@@ -200,9 +200,7 @@ ctx.semanticSearch   // Vector similarity search (optional)
 ### JSONL Storage
 
 ```typescript
-const ctx = new ManagerContext({
-  storagePath: './memory.jsonl'
-});
+const ctx = new ManagerContext('./memory.jsonl');
 ```
 
 Features:
@@ -214,10 +212,8 @@ Features:
 ### SQLite Storage
 
 ```typescript
-const ctx = new ManagerContext({
-  storageType: 'sqlite',
-  storagePath: './memory.db'
-});
+// Set MEMORY_STORAGE_TYPE=sqlite environment variable
+const ctx = new ManagerContext('./memory.db');
 ```
 
 Features:
@@ -495,13 +491,13 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `booleanSearch(query, options)` | Boolean operators (AND/OR/NOT) |
 | `fuzzySearch(query, options)` | Levenshtein-based typo tolerance |
 | `hybridSearch(query, options)` | Multi-signal search |
-| `smartSearch(query, options)` | AI-assisted refinement |
+| `autoSearch(query, limit?)` | Auto-select best search method |
 
 ### IOManager
 
 | Method | Description |
 |--------|-------------|
-| `exportGraph(format, options)` | Export to JSON/CSV/GraphML |
+| `exportGraph(format, options)` | Export to JSON/CSV/GraphML/GEXF/DOT/Markdown/Mermaid |
 | `importGraph(format, data, options)` | Import with merge strategies |
 | `createBackup(options)` | Create timestamped backup |
 | `restoreBackup(path)` | Restore from backup |
@@ -524,8 +520,8 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `MEMORY_STORAGE_TYPE` | Storage backend: `jsonl` or `sqlite` | `jsonl` |
-| `EMBEDDING_PROVIDER` | Embedding provider: `openai`, `local`, or `none` | `none` |
-| `OPENAI_API_KEY` | OpenAI API key (required if provider is `openai`) | - |
+| `MEMORY_EMBEDDING_PROVIDER` | Embedding provider: `openai`, `local`, or `none` | `none` |
+| `MEMORY_OPENAI_API_KEY` | OpenAI API key (required if provider is `openai`) | - |
 
 ## Development
 
@@ -578,7 +574,7 @@ npm run typecheck     # Type checking without emit
 
 ```
 memoryjs/
-├── src/                            # Source (93 TypeScript files)
+├── src/                            # Source (110 TypeScript files)
 │   ├── index.ts                    # Entry point
 │   ├── agent/                      # Agent Memory System (19 files)
 │   │   ├── AgentMemoryManager.ts       # Unified facade
@@ -598,7 +594,7 @@ memoryjs/
 │   │   ├── SQLiteStorage.ts            # SQLite with better-sqlite3
 │   │   ├── TransactionManager.ts       # ACID transactions
 │   │   └── ...
-│   ├── search/                     # Search implementations (29 files)
+│   ├── search/                     # Search implementations (32 files)
 │   │   ├── SearchManager.ts            # Search orchestrator
 │   │   ├── BasicSearch.ts              # Text matching
 │   │   ├── RankedSearch.ts             # TF-IDF scoring
@@ -613,10 +609,17 @@ memoryjs/
 │   │   ├── ArchiveManager.ts           # Entity archival
 │   │   ├── CompressionManager.ts       # Duplicate detection
 │   │   └── ...
-│   ├── types/                      # TypeScript definitions (3 files)
-│   ├── utils/                      # Shared utilities (18 files)
+│   ├── cli/                        # CLI interface (6 files)
+│   │   ├── index.ts                    # CLI entry point
+│   │   ├── commands/                   # Command implementations
+│   │   ├── config.ts                   # Config file support
+│   │   ├── formatters.ts              # Output formatting
+│   │   ├── interactive.ts             # REPL mode
+│   │   └── options.ts                 # CLI option parsing
+│   ├── types/                      # TypeScript definitions (5 files)
+│   ├── utils/                      # Shared utilities (24 files)
 │   └── workers/                    # Worker pool (2 files)
-├── tests/                          # Test suite (3600+ tests)
+├── tests/                          # Test suite (4674 tests)
 │   ├── unit/                       # Unit tests
 │   ├── integration/                # Integration tests
 │   └── performance/                # Benchmarks
@@ -638,6 +641,8 @@ Comprehensive architecture documentation in `docs/architecture/`:
 - [DATAFLOW.md](docs/architecture/DATAFLOW.md) - Data flow patterns
 - [API.md](docs/architecture/API.md) - Complete API documentation
 - [DEPENDENCY_GRAPH.md](docs/architecture/DEPENDENCY_GRAPH.md) - Module dependencies
+- [TEST_COVERAGE.md](docs/architecture/TEST_COVERAGE.md) - Test coverage analysis
+- [AGENT_MEMORY.md](docs/architecture/AGENT_MEMORY.md) - Agent memory system design
 
 ## License
 

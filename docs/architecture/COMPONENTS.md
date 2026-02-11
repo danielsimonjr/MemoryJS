@@ -1,7 +1,7 @@
 # MemoryJS - Component Reference
 
-**Version**: 1.2.0
-**Last Updated**: 2026-01-14
+**Version**: 1.5.0
+**Last Updated**: 2026-02-11
 
 ---
 
@@ -28,19 +28,19 @@ MemoryJS follows a layered architecture with specialized components:
 ├─────────────────────────────────────────────────────────────┤
 │  core/             │  Central managers and storage (12 files)│
 ├─────────────────────────────────────────────────────────────┤
-│  search/           │  Search implementations (29 files)     │
+│  search/           │  Search implementations (32 files)     │
 ├─────────────────────────────────────────────────────────────┤
 │  features/         │  Advanced capabilities (9 files)       │
 ├─────────────────────────────────────────────────────────────┤
-│  utils/            │  Shared utilities (18 files)           │
+│  utils/            │  Shared utilities (24 files)           │
 ├─────────────────────────────────────────────────────────────┤
-│  types/            │  TypeScript definitions (3 files)      │
+│  types/            │  TypeScript definitions (5 files)      │
 ├─────────────────────────────────────────────────────────────┤
 │  workers/          │  Web workers (2 files)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 93 TypeScript files | 657 exports | ~41,000 lines of code
+**Total:** 110 TypeScript files | 770 exports | ~43,000 lines of code
 
 ---
 
@@ -334,29 +334,53 @@ export class RuleEvaluator {
 
 ---
 
+### SessionQueryBuilder (`agent/SessionQueryBuilder.ts`)
+
+**Purpose**: Builder for constructing session queries with filtering
+
+```typescript
+export class SessionQueryBuilder {
+  forSession(sessionId: string): SessionQueryBuilder
+  forAgent(agentId: string): SessionQueryBuilder
+  inDateRange(start: string, end: string): SessionQueryBuilder
+  withStatus(status: SessionStatus): SessionQueryBuilder
+  withLimit(limit: number): SessionQueryBuilder
+  async execute(): Promise<SessionEntity[]>
+}
+```
+
+---
+
 ## Core Components
 
 ### ManagerContext (`core/ManagerContext.ts`)
 
-**Purpose**: Central context holding all managers with lazy initialization
+**Purpose**: Central context holding all managers
 
-**Pattern**: Context Pattern with Lazy Initialization
+**Pattern**: Core managers are readonly fields (eager init in constructor). Agent memory managers use lazy getters.
 
 ```typescript
 export class ManagerContext {
   constructor(config: ManagerContextConfig)
 
-  // Manager accessors (lazy-initialized via getters)
-  get entityManager(): EntityManager
-  get relationManager(): RelationManager
-  get observationManager(): ObservationManager
-  get hierarchyManager(): HierarchyManager
-  get searchManager(): SearchManager
-  get ioManager(): IOManager
-  get tagManager(): TagManager
-  get graphTraversal(): GraphTraversal
+  // Core managers (readonly, eager init in constructor)
+  readonly entityManager: EntityManager
+  readonly relationManager: RelationManager
+  readonly observationManager: ObservationManager
+  readonly hierarchyManager: HierarchyManager
+  readonly searchManager: SearchManager
+  readonly ioManager: IOManager
+  readonly tagManager: TagManager
+  readonly graphTraversal: GraphTraversal
 
-  // Agent Memory System
+  // Agent Memory System (lazy-initialized via getters)
+  get semanticSearch(): SemanticSearch
+  get accessTracker(): AccessTracker
+  get decayEngine(): DecayEngine
+  get decayScheduler(): DecayScheduler
+  get salienceEngine(): SalienceEngine
+  get contextWindowManager(): ContextWindowManager
+  get memoryFormatter(): MemoryFormatter
   agentMemory(config?: AgentMemoryConfig): AgentMemoryManager
 
   // Direct storage access
@@ -364,14 +388,8 @@ export class ManagerContext {
 }
 ```
 
-**Lazy Initialization**:
+**Lazy Initialization** (agent memory only):
 ```typescript
-private _entityManager?: EntityManager;
-get entityManager(): EntityManager {
-  return (this._entityManager ??= new EntityManager(this.storage, this.eventEmitter));
-}
-
-// Agent Memory accessor
 private _agentMemoryManager?: AgentMemoryManager;
 agentMemory(config?: AgentMemoryConfig): AgentMemoryManager {
   return (this._agentMemoryManager ??= new AgentMemoryManager(this, config));
@@ -584,6 +602,27 @@ export class TransactionManager {
 
 ---
 
+### BatchTransaction (`core/BatchTransaction.ts`)
+
+**Purpose**: Fluent batch operation builder with validation and atomic execution
+
+```typescript
+export class BatchTransaction {
+  constructor(transactionManager: TransactionManager)
+
+  createEntity(entity: Entity): BatchTransaction
+  updateEntity(name: string, updates: Partial<Entity>): BatchTransaction
+  deleteEntity(name: string): BatchTransaction
+  createRelation(relation: Relation): BatchTransaction
+  deleteRelation(relation: Relation): BatchTransaction
+  addObservations(entityName: string, contents: string[]): BatchTransaction
+  deleteObservations(entityName: string, contents: string[]): BatchTransaction
+  async execute(): Promise<BatchResult>
+}
+```
+
+---
+
 ### GraphEventEmitter (`core/GraphEventEmitter.ts`)
 
 **Purpose**: Event-driven updates for TF-IDF sync
@@ -612,20 +651,28 @@ export class SearchManager {
   constructor(storage: IGraphStorage, options?: SearchManagerOptions)
 
   // Search methods
-  async search(query: string, options?: SearchOptions): Promise<KnowledgeGraph>
-  async searchRanked(query: string, options?: RankedSearchOptions): Promise<SearchResult[]>
+  async searchNodes(query: string, options?: SearchOptions): Promise<KnowledgeGraph>
+  async searchNodesRanked(query: string, options?: RankedSearchOptions): Promise<SearchResult[]>
   async booleanSearch(query: string, options?: SearchOptions): Promise<KnowledgeGraph>
   async fuzzySearch(query: string, options?: FuzzySearchOptions): Promise<KnowledgeGraph>
-  async hybridSearch(query: string, options?: HybridSearchOptions): Promise<HybridSearchResult>
-  async smartSearch(query: string, options?: SmartSearchOptions): Promise<SmartSearchResult>
+  async autoSearch(query: string, limit?: number): Promise<KnowledgeGraph>
+
+  // Node retrieval
+  async openNodes(names: string[]): Promise<KnowledgeGraph>
+  async searchByDateRange(options: DateRangeOptions): Promise<KnowledgeGraph>
 
   // Search utilities
   async getSearchSuggestions(query: string, limit?: number): Promise<string[]>
+  async getSearchCostEstimates(query: string): Promise<CostEstimate>
+  async clearAllCaches(): Promise<void>
 
   // Saved searches
   async saveSearch(search: SavedSearchInput): Promise<SavedSearch>
   async executeSavedSearch(name: string): Promise<KnowledgeGraph>
   async listSavedSearches(): Promise<SavedSearch[]>
+  async getSavedSearch(name: string): Promise<SavedSearch | null>
+  async deleteSavedSearch(name: string): Promise<boolean>
+  async updateSavedSearch(name: string, updates: Partial<SavedSearchInput>): Promise<SavedSearch>
 }
 ```
 
@@ -861,6 +908,68 @@ export class SearchFilterChain {
   static filterAndPaginate(entities, filters, offset?, limit?): Entity[]
 }
 ```
+
+---
+
+### Query Optimization
+
+#### QueryParser (`search/QueryParser.ts`)
+Parses query strings into AST nodes (TermNode, PhraseNode, BooleanNode, FieldNode). Used by BooleanSearch and QueryAnalyzer for structured query interpretation.
+
+#### QueryPlanner (`search/QueryPlanner.ts`)
+Generates execution plans from QueryAnalyzer output. Selects optimal search methods and ordering based on query characteristics.
+
+#### QueryPlanCache (`search/QueryPlanCache.ts`)
+LRU cache for query execution plans. Avoids re-planning identical or similar queries within a configurable TTL.
+
+#### QueryCostEstimator (`search/QueryCostEstimator.ts`)
+Estimates execution cost for different search methods based on graph size, query complexity, and index availability. Recommends the cheapest adequate method.
+
+#### EarlyTerminationManager (`search/EarlyTerminationManager.ts`)
+Monitors result quality during search execution and stops early when an adequacy threshold is met. Reduces latency for queries with obvious top results.
+
+#### ParallelSearchExecutor (`search/ParallelSearchExecutor.ts`)
+Executes multiple search layers (semantic, lexical, symbolic) concurrently and merges results. Used by HybridSearchManager.
+
+### Search Infrastructure
+
+#### ReflectionManager (`search/ReflectionManager.ts`)
+Iterative result refinement with adequacy checking. Re-runs search with modified parameters when initial results are insufficient.
+
+#### SavedSearchManager (`search/SavedSearchManager.ts`)
+CRUD for saved search queries. Persists search definitions (query, filters, type) for later re-execution.
+
+#### SearchSuggestions (`search/SearchSuggestions.ts`)
+Query completion and suggestion generation based on entity names, types, tags, and prior queries.
+
+#### SymbolicSearch (`search/SymbolicSearch.ts`)
+Metadata-based filtering by importance range, tags, entity types, and date ranges. Provides the symbolic layer for hybrid search scoring.
+
+#### HybridScorer (`search/HybridScorer.ts`)
+Score fusion for hybrid search results. Normalizes and combines scores from semantic, lexical, and symbolic layers using configurable weights.
+
+#### ProximitySearch (`search/ProximitySearch.ts`)
+Scores entities based on term proximity within observations. Terms appearing closer together receive higher relevance scores.
+
+#### QueryLogger (`search/QueryLogger.ts`)
+Logs query performance metrics (latency, result count, method used) with configurable log levels. Writes to file or stdout.
+
+### Indexing
+
+#### TFIDFIndexManager (`search/TFIDFIndexManager.ts`)
+Manages TF-IDF index lifecycle: build from scratch, incremental updates, and query interface. Provides term frequency and document frequency lookups.
+
+#### TFIDFEventSync (`search/TFIDFEventSync.ts`)
+Listens to GraphEventEmitter events and automatically updates the TF-IDF index when entities are created, modified, or deleted.
+
+#### OptimizedInvertedIndex (`search/OptimizedInvertedIndex.ts`)
+Memory-efficient inverted index with compressed posting lists. Supports fast term lookups and boolean intersection/union operations.
+
+#### IncrementalIndexer (`search/IncrementalIndexer.ts`)
+Batches incremental index updates to avoid rebuilding the full index on every change. Flushes pending updates on a configurable schedule or threshold.
+
+#### EmbeddingCache (`search/EmbeddingCache.ts`)
+LRU cache for embedding vectors with TTL expiration. Reduces redundant embedding API calls for recently seen text.
 
 ---
 
@@ -1163,8 +1272,3 @@ interface SearchFilters {
 - `utils/searchAlgorithms.ts` provides Levenshtein + TF-IDF algorithms
 - Agent components share `AccessTracker` for memory access patterns
 
----
-
-**Document Version**: 1.2
-**Last Updated**: 2026-01-14
-**Maintained By**: Daniel Simon Jr.

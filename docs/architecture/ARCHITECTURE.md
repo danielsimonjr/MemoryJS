@@ -1,7 +1,7 @@
 # MemoryJS - System Architecture
 
-**Version**: 1.2.0
-**Last Updated**: 2026-01-14
+**Version**: 1.5.0
+**Last Updated**: 2026-02-11
 
 ---
 
@@ -34,17 +34,17 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (v1.2.0)
+### Key Statistics (v1.5.0)
 
 | Metric | Value |
 |--------|-------|
-| Source Files | 93 TypeScript files |
-| Lines of Code | ~41,000 lines |
-| Exports | 657 total (404 re-exports) |
-| Classes | 91 |
-| Interfaces | 216 |
-| Functions | 109 |
-| Circular Dependencies | 2 (type-only, safe) |
+| Source Files | 110 TypeScript files |
+| Lines of Code | ~43,000 lines |
+| Exports | 770 total (460 re-exports) |
+| Classes | 98 |
+| Interfaces | 249 |
+| Functions | 157 |
+| Circular Dependencies | 3 (1 runtime, 2 type-only) |
 
 ### Module Distribution
 
@@ -52,10 +52,10 @@ MemoryJS is a TypeScript knowledge graph library providing:
 |--------|-------|-------------|
 | `agent/` | 19 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager |
 | `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
-| `search/` | 29 | SearchManager, BM25Search, HybridScorer, VectorStore |
+| `search/` | 32 | SearchManager, BM25Search, HybridScorer, VectorStore |
 | `features/` | 9 | IOManager, ArchiveManager, StreamingExporter |
-| `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager |
-| `types/` | 3 | Entity, Relation, AgentEntity, SessionEntity interfaces |
+| `utils/` | 24 | BatchProcessor, CompressedCache, WorkerPoolManager |
+| `types/` | 5 | Entity, Relation, AgentEntity, SessionEntity interfaces |
 | `workers/` | 2 | Levenshtein distance calculations |
 
 ---
@@ -298,6 +298,44 @@ class AgentMemoryManager {
 - **ContextWindowManager**: LLM token budget optimization
 - **MultiAgentMemoryManager**: Shared memory and conflict resolution
 
+#### Features Module (`features/`)
+
+**Components**: IOManager, ArchiveManager, StreamingExporter, AnalyticsManager, CompressionManager, TagManager, ObservationNormalizer, KeywordExtractor
+
+#### CLI Module (`cli/`)
+
+**6 files, ~1048 lines**. Binaries: `memory` / `memoryjs`.
+
+- **`index.ts`**: Entry point, command registry and dispatch
+- **`options.ts`**: CLI option parsing and validation
+- **`config.ts`**: Config file support (`.memoryrc`, `memory.config.json`)
+- **`formatters.ts`**: Output formatters (JSON, table, plain text)
+- **`interactive.ts`**: Interactive REPL mode
+- **`commands/index.ts`**: Command definitions and handlers
+
+#### Search Infrastructure (`search/`)
+
+Beyond the primary search classes, the search module includes:
+
+- **Query optimization**: QueryPlanner, QueryCostEstimator, QueryPlanCache, ParallelSearchExecutor, EarlyTerminationManager
+- **Specialized search**: ProximitySearch (term proximity scoring), SymbolicSearch (metadata filtering), SearchSuggestions
+- **Parsing & logging**: QueryParser, QueryLogger
+- **Indexing**: TFIDFIndexManager, TFIDFEventSync, OptimizedInvertedIndex, IncrementalIndexer
+- **Scoring**: HybridScorer, SearchFilterChain
+- **Retrieval**: ReflectionManager (progressive refinement), SavedSearchManager
+- **Vector**: VectorStore, QuantizedVectorStore
+
+#### Utils Infrastructure (`utils/`)
+
+- **O(1) lookup indexes**: NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex
+- **Caching**: SearchCache (LRU + TTL eviction)
+- **Helpers**: RelationBuilder, SchemaValidator, TaskQueue
+
+#### Types (`types/`)
+
+- **`types/progress.ts`**: ProgressCallback, ProgressEvent, CancellationToken
+- **`types/search.ts`**: QueryTrace, SearchExplanation, QueryNode types, QueryLogEntry
+
 ### Layer 3: Storage Layer
 
 #### IGraphStorage Interface
@@ -325,6 +363,10 @@ interface IGraphStorage {
 - WAL mode for better concurrency
 - Referential integrity with ON DELETE CASCADE
 - ACID transactions
+
+#### SQLiteVectorStore
+
+Persists vector embeddings to SQLite for semantic search, avoiding re-computation on restart.
 
 ---
 
@@ -504,6 +546,11 @@ CREATE VIRTUAL TABLE entities_fts USING fts5(
 | Ranked search | 500 entities | <600ms | TF-IDF calculation |
 | Boolean search | 500 entities | <150ms | AST evaluation |
 | Fuzzy search | 500 entities | <200ms | Worker pool |
+| BM25 search | 500 entities | <400ms | Okapi BM25 with stopwords |
+| Hybrid search | 500 entities | <800ms | Combined semantic+lexical+symbolic |
+| Semantic search | 500 entities | <500ms | Vector similarity |
+| Query planning | - | <50ms | Plan generation + caching |
+| Parallel execution | 500 entities | <600ms | Multi-layer concurrent search |
 | Find duplicates | 100 | <300ms | Bucketed comparison |
 
 ### Optimization Strategies
@@ -514,6 +561,10 @@ CREATE VIRTUAL TABLE entities_fts USING fts5(
 4. **Type Bucketing**: Reduce O(n²) to O(n²/k) for similarity
 5. **Lazy Initialization**: Managers created on-demand
 6. **Worker Parallelism**: CPU-intensive operations offloaded
+7. **Query Planning & Caching**: QueryPlanner generates execution plans, QueryPlanCache avoids re-planning
+8. **Parallel Search Layers**: ParallelSearchExecutor runs independent search strategies concurrently
+9. **Early Termination**: EarlyTerminationManager stops search when sufficient results found
+10. **Incremental Indexing**: IncrementalIndexer updates TF-IDF index on entity changes without full rebuild
 
 ### Scalability Limits
 
@@ -529,33 +580,32 @@ CREATE VIRTUAL TABLE entities_fts USING fts5(
 
 ### Input Validation
 
-**All inputs validated using Zod schemas**:
-
-```typescript
-const EntitySchema = z.object({
-  name: z.string().min(1).max(500).trim(),
-  entityType: z.string().min(1).max(100).trim(),
-  observations: z.array(z.string().min(1).max(5000)),
-  tags: z.array(z.string().min(1).max(100)).optional(),
-  importance: z.number().min(0).max(10).int().optional(),
-});
-```
+- All inputs validated using Zod schemas (SchemaValidator)
+- Prototype pollution prevention via `sanitizeObject` function
 
 ### Path Traversal Protection
 
-```typescript
-const resolvedPath = path.resolve(filePath);
-const baseDir = path.resolve('.');
-if (!resolvedPath.startsWith(baseDir)) {
-  throw new SecurityError('Path traversal attempt');
-}
-```
+- `validateFilePath` with `confineToBase` parameter for directory confinement
+- Derived paths (e.g., appending `.meta.json`) re-validated independently to prevent escape
+
+### Query Sanitization
+
+- **FTS5 queries**: Strip `:{}()"^~*` and boolean keywords `NEAR/AND/OR/NOT` before passing to SQLite
+- **LIKE queries**: Escape `\`, `%`, `_` with `ESCAPE '\'` clause
+
+### XML Import Safety
+
+- Decode XML entities (`&amp;` -> `&`, `&lt;` -> `<`, etc.) rather than stripping characters
+- Preserves data integrity for names like "AT&T", "O'Brien"
+
+### Worker Error Handling
+
+- Worker errors wrapped with `new Error(err.message)` before re-throwing to strip internal stack traces
 
 ### No Code Injection
 
 - No `eval()` or `Function()` calls
-- Safe string handling (no template injection)
-- Boolean query parser uses safe tokenization
+- Boolean query parser uses safe AST-based tokenization
 
 ---
 
@@ -611,8 +661,3 @@ The MemoryJS architecture prioritizes:
 - **Flexibility**: Multiple storage backends, search strategies
 - **AI Agent Support**: Comprehensive memory lifecycle for LLM-powered agents
 
----
-
-**Document Version**: 1.2
-**Last Updated**: 2026-01-14
-**Maintained By**: Daniel Simon Jr.
