@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **CLI: New commands**: Added hierarchy (set-parent, children, ancestors, descendants, roots), graph (shortest-path, centrality, components), maintenance (stats, archive, compress, validate), and tag management (add, remove, aliases) commands
+- **CLI: New formatters**: Added `formatPath`, `formatCentrality`, `formatComponents`, `formatValidation` with json/table/csv support
+- **CLI: Interactive mode commands**: Added tags, path, observe, delete, and export commands to the REPL
+- **CLI: Search modes**: Added `--ranked`, `--boolean`, `--fuzzy`, `--suggest` flags to search command
+- **CLI: Import/export formats**: Added gexf and dot format support to import/export commands
+
 ### Changed
+- **CLI: Modular command structure**: Split monolithic `commands/index.ts` into 9 focused files (entity, relation, search, observation, tag, hierarchy, graph, io, maintenance) with shared helpers
+- **CLI: Search uses autoSearch**: Default search now uses `autoSearch()` with real relevance scores instead of `searchNodes()` with fake scoring
 - **Simplify ManagerContext**: Replaced 12 lazy-initialized getter properties with eagerly initialized `readonly` fields for core managers (EntityManager, RelationManager, ObservationManager, HierarchyManager, GraphTraversal, SearchManager, RankedSearch, IOManager, TagManager, AnalyticsManager, CompressionManager, ArchiveManager). Agent memory managers retain lazy initialization due to conditional creation and dependency chains. Moved env var helpers to module-level functions.
 - **Inline StorageFactory in ManagerContext**: ManagerContext now creates storage directly instead of going through StorageFactory. StorageFactory remains available as a public API export for external consumers.
 - **Simplify SearchManager**: Expose sub-managers as `readonly` properties for direct access, trim verbose JSDoc examples (~200 lines reduced), remove `getQueryEstimator()` method (use `queryEstimator` property directly).
@@ -24,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Trim errors.ts JSDoc**: Remove Phase/Sprint references, @example blocks, and multi-line JSDoc from error classes and ErrorOptions interface (~60 lines reduced). Suggestions system retained (public API).
 
 ### Fixed
+- **CLI: Path traversal in import/export**: File paths now resolved with `path.resolve()` and formats validated via `commander Option.choices()`
+- **CLI: CSV injection in tag aliases**: Tag alias CSV output now uses shared `escapeCSV` function
+- **CLI: CSV escaping in observation list**: Observation CSV output now uses shared `escapeCSV` instead of inline escaping that missed newlines
+- **CLI: Observation remove on non-existent entity**: Now checks entity existence before attempting removal
+- **CLI: Unused --force flag on entity delete**: Removed declared but never-used flag
+- **CLI: Fake search scoring**: Boolean/fuzzy search results now use constant `1.0` score instead of misleading `1.0 - idx * 0.01`
+- **CLI: Interactive export format validation**: Export format validated against allowlist before use
+- **Benchmark flakiness**: Increased task-scheduler overhead threshold from 100% to 150% to account for Windows/Dropbox timing variance
 - **SearchCache TTL=0 race condition**: Fixed TTL expiration check using `>=` instead of `>`, so entries with TTL=0 expire immediately on the next `get()` call rather than persisting when accessed within the same millisecond.
 
 ## [1.5.0] - 2026-02-06

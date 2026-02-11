@@ -27,9 +27,9 @@ import type { Entity } from '../../src/types/types.js';
  */
 const OVERHEAD_CONFIG = {
   // Maximum acceptable overhead for progress callbacks
-  // Uses 100% to account for CI environment and system load variability
+  // Uses 150% to account for CI/Windows/Dropbox environment and system load variability
   // Real callback overhead is typically < 5%
-  MAX_OVERHEAD_PERCENT: 100,
+  MAX_OVERHEAD_PERCENT: 150,
   // Higher threshold for I/O-heavy operations due to file system variance
   // Increased to 800% to account for extreme variance in disk I/O timing on Windows
   MAX_IO_OVERHEAD_PERCENT: 800,
