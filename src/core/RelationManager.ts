@@ -9,15 +9,13 @@
 import type { Relation } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
 import { ValidationError } from '../utils/errors.js';
-import { BatchCreateRelationsSchema, DeleteRelationsSchema, AsyncMutex } from '../utils/index.js';
+import { BatchCreateRelationsSchema, DeleteRelationsSchema } from '../utils/index.js';
 import { GRAPH_LIMITS } from '../utils/constants.js';
 
 /**
  * Manages relation operations with automatic timestamp handling.
  */
 export class RelationManager {
-  private readonly writeMutex = new AsyncMutex();
-
   constructor(private storage: GraphStorage) {}
 
   /**
@@ -70,7 +68,7 @@ export class RelationManager {
     }
 
     // Acquire mutex to prevent TOCTOU race between validation and mutation
-    const release = await this.writeMutex.acquire();
+    const release = await this.storage.graphMutex.acquire();
     try {
       // Use mutable graph for both validation and mutation (eliminates TOCTOU gap)
       const graph = await this.storage.getGraphForMutation();
@@ -178,35 +176,40 @@ export class RelationManager {
       throw new ValidationError('Invalid relation data', errors);
     }
 
-    const graph = await this.storage.getGraphForMutation();
-    const timestamp = new Date().toISOString();
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const timestamp = new Date().toISOString();
 
-    // Track affected entities
-    const affectedEntityNames = new Set<string>();
-    relations.forEach(rel => {
-      affectedEntityNames.add(rel.from);
-      affectedEntityNames.add(rel.to);
-    });
+      // Track affected entities
+      const affectedEntityNames = new Set<string>();
+      relations.forEach(rel => {
+        affectedEntityNames.add(rel.from);
+        affectedEntityNames.add(rel.to);
+      });
 
-    // OPTIMIZED: Use Set<string> for O(1) lookup instead of O(n) array.some()
-    // Create composite keys for relations to delete
-    const relationsToDeleteSet = new Set(
-      relations.map(r => `${r.from}\0${r.to}\0${r.relationType}`)
-    );
+      // OPTIMIZED: Use Set<string> for O(1) lookup instead of O(n) array.some()
+      // Create composite keys for relations to delete
+      const relationsToDeleteSet = new Set(
+        relations.map(r => `${r.from}\0${r.to}\0${r.relationType}`)
+      );
 
-    // Remove relations with O(1) Set lookup per relation instead of O(m) array scan
-    graph.relations = graph.relations.filter(r =>
-      !relationsToDeleteSet.has(`${r.from}\0${r.to}\0${r.relationType}`)
-    );
+      // Remove relations with O(1) Set lookup per relation instead of O(m) array scan
+      graph.relations = graph.relations.filter(r =>
+        !relationsToDeleteSet.has(`${r.from}\0${r.to}\0${r.relationType}`)
+      );
 
-    // Update lastModified for affected entities
-    graph.entities.forEach(entity => {
-      if (affectedEntityNames.has(entity.name)) {
-        entity.lastModified = timestamp;
-      }
-    });
+      // Update lastModified for affected entities
+      graph.entities.forEach(entity => {
+        if (affectedEntityNames.has(entity.name)) {
+          entity.lastModified = timestamp;
+        }
+      });
 
-    await this.storage.saveGraph(graph);
+      await this.storage.saveGraph(graph);
+    } finally {
+      release();
+    }
   }
 
   /**

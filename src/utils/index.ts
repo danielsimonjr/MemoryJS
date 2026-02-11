@@ -360,4 +360,4 @@ export {
 export { SchemaValidator, type JsonSchema } from './SchemaValidator.js';
 
 // ==================== Async Mutex ====================
-export { AsyncMutex } from './AsyncMutex.js';
+export { AsyncMutex, type AsyncMutexOptions } from './AsyncMutex.js';

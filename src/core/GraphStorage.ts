@@ -12,7 +12,7 @@ import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import { clearAllSearchCaches } from '../utils/searchCache.js';
 import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex } from '../utils/indexes.js';
-import { sanitizeObject, validateFilePath } from '../utils/index.js';
+import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { BatchTransaction } from './TransactionManager.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
 
@@ -39,6 +39,12 @@ export class GraphStorage implements IGraphStorage {
    * Prevents concurrent writes from corrupting the file or cache.
    */
   private mutex = new Mutex();
+
+  /**
+   * Application-level mutex for managers to serialize validate+mutate+save.
+   * Shared across all managers using this storage instance.
+   */
+  readonly graphMutex = new AsyncMutex();
 
   /**
    * In-memory cache of the knowledge graph.
