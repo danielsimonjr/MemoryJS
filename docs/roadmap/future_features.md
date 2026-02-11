@@ -1,12 +1,12 @@
-# Future Features: Performance & Scale
+# Future Features
 
-Focused proposals for optimizing MemoryJS at the 10K-100K entity scale, with search latency as the primary target.
+Consolidated list of all planned but unimplemented features for MemoryJS, merging the original [ROADMAP.md](./ROADMAP.md) phases with new performance & scale proposals.
 
-> **Context**: These features complement the existing [ROADMAP.md](./ROADMAP.md) phases. They are scoped to single-machine optimizations — no distributed architecture required.
+> **What's already done**: Phase 1 (95%), Phase 3 (100%). See ROADMAP.md for details on completed work.
 
 ---
 
-## 1. Search Latency Optimizations (Highest Priority)
+## 1. Search Latency Optimizations
 
 ### 1.1 Materialized Search Views
 
@@ -281,23 +281,23 @@ Split large JSONL files into segments for parallel reads.
 
 ## 6. Observability & Diagnostics
 
-### 6.1 Search Explain Mode
+### 6.1 Query Plan Visualization
 
-Show exactly how search results were scored and ranked.
+Render query execution plans as visual diagrams for debugging.
 
-**Problem**: When search results are unexpected, there's no way to understand why entities were ranked in a particular order.
+**Problem**: `QueryPlan` type exists in `types/search.ts` but there's no way to visualize or render plans for debugging.
 
 **Proposal**:
-- `searchManager.search(query, { explain: true })` returns `ExplainedResult` with per-signal breakdowns
-- Show: TF-IDF score, BM25 score, semantic similarity, symbolic match, final hybrid score
-- Show which signals dominated, which entities were filtered out and why
-- Output as structured JSON or formatted markdown
+- `searchManager.explainPlan(query)` returns a formatted plan tree
+- Render as ASCII tree, Mermaid diagram, or JSON
+- Show estimated vs actual costs per plan node
+- Highlight the chosen execution path and alternatives considered
 
 ### 6.2 Performance Dashboard
 
 Real-time visibility into search and storage performance.
 
-**Problem**: No way to identify slow queries, cache misses, or index staleness without adding custom logging.
+**Problem**: `MemoryMonitor` and `QueryLogger` collect metrics but there's no aggregated view.
 
 **Proposal**:
 - `ctx.diagnostics()` returns current performance metrics
@@ -319,10 +319,311 @@ Detect and report index degradation before it affects query performance.
 
 ---
 
+## 7. Search Intelligence (from ROADMAP Phase 2)
+
+*`SearchSuggestions` provides basic "Did you mean?" — these features go further.*
+
+### 7.1 Context-Aware Spell Correction
+
+Correct typos using the graph's own vocabulary as a dictionary.
+
+**Problem**: `FuzzySearch` finds close matches but doesn't proactively correct query terms before execution.
+
+**Proposal**:
+- Build a vocabulary index from all entity names, types, and observation terms
+- Before search execution, check each query term against vocabulary
+- If no exact match and Levenshtein distance <= 2, suggest or auto-correct
+- Use entity importance as a tiebreaker (prefer correcting to high-importance terms)
+
+### 7.2 Query Expansion with Synonyms
+
+Automatically expand queries with synonym terms for better recall.
+
+**Problem**: Searching for "car" misses entities about "automobile" or "vehicle".
+
+**Proposal**:
+- Tag alias system (already exists via `TagManager`) extended to observation terms
+- Maintain a synonym map: `Map<string, string[]>` (user-configurable + auto-detected)
+- Auto-detect synonyms from co-occurring observation terms across entities
+- `MEMORY_SYNONYM_EXPANSION=true` env var to enable
+- Expanded terms get lower boost weight than original terms
+
+---
+
+## 8. Advanced Graph Analytics (from ROADMAP Phase 2)
+
+*`GraphTraversal` has degree/betweenness/PageRank centrality — these add more algorithms.*
+
+### 8.1 Clique Detection
+
+Find fully-connected subgraphs (cliques) in the knowledge graph.
+
+**Proposal**:
+- Bron-Kerbosch algorithm for maximal clique enumeration
+- Configurable minimum clique size
+- Return cliques sorted by size
+- Useful for identifying tightly-coupled entity clusters
+
+### 8.2 HITS Algorithm (Hubs & Authorities)
+
+Identify hub entities (link to many) and authority entities (linked to by many).
+
+**Proposal**:
+- Implement Kleinberg's HITS with configurable iteration count
+- Return top-N hubs and authorities
+- Useful for finding "connector" entities vs "expert" entities
+
+### 8.3 Network Modularity & Community Detection
+
+Detect natural communities/clusters in the graph.
+
+**Proposal**:
+- Louvain method for community detection
+- Modularity score calculation
+- Return community assignments per entity
+- Graph density metrics (edges / possible edges)
+
+---
+
+## 9. Entity Lifecycle (from ROADMAP Phase 2)
+
+### 9.1 Entity State Machine
+
+Add draft/published/archived states with transition rules.
+
+**Problem**: Entities are either present or deleted. No way to model a review/approval workflow.
+
+**Proposal**:
+- Add `status: 'draft' | 'published' | 'archived'` to Entity type
+- State transition rules: draft → published, published → archived, archived → published
+- Hooks: `onStateChange(entity, oldState, newState)` callback
+- Default search filters to `published` entities only (configurable)
+- Bulk state change operations: `ctx.entityManager.publishAll(filter)`
+
+---
+
+## 10. CLI Enhancements (from ROADMAP Phase 1)
+
+### 10.1 Pipe Support for Scripting
+
+Enable stdin/stdout piping for composable CLI workflows.
+
+**Problem**: Interactive mode exists but CLI can't be used in Unix-style pipelines.
+
+**Proposal**:
+- Detect non-TTY stdin and read commands from pipe
+- Output structured JSON to stdout when piped (not human-formatted)
+- Support `memoryjs query "..." | jq '.entities[].name'` workflows
+- `--format json|csv|table` flag for output control
+
+---
+
+## 11. Memory Intelligence (from ROADMAP Phase 3B)
+
+*All Phase 3B features are unimplemented. These transform raw storage into validated, compressed, transferable knowledge. See ROADMAP.md for full interface specifications.*
+
+### 11.1 Memory Validation & Error Rectification
+
+Prevent hallucinations and logical errors from contaminating memory through self-critique before storage.
+
+- `MemoryValidator` service with consistency checking against existing entity knowledge
+- Contradiction detection (factual, temporal, logical) within and across entities
+- Temporal consistency validation (event ordering)
+- Reliability scoring based on source and confirmation count
+- Pre-storage validation hooks
+
+### 11.2 Trajectory Compression
+
+Distill verbose interaction histories into compact, reusable representations.
+
+- `TrajectoryCompressor` with multiple strategies: semantic clustering, temporal windowing, importance filtering, hierarchical
+- Multi-granularity abstraction (fine/medium/coarse)
+- Context folding for working memory (fit into token budget)
+- Redundancy detection across entities
+- LLM-powered summarization (optional) + embedding-based clustering
+
+### 11.3 Experience Extraction
+
+Abstract universal patterns from clusters of trajectories for zero-shot transfer.
+
+- `ExperienceExtractor` with contrastive induction (learn from success/failure pairs)
+- Trajectory clustering by semantic, structural, or outcome similarity
+- Decision boundary learning from trajectory outcomes
+- Rule confidence scoring with support/contra counts
+- Experience lifecycle management (creation, validation, application, retirement)
+
+### 11.4 Procedural Memory Manager
+
+Encapsulate recurring action patterns into reusable procedures (skills).
+
+- `ProceduralMemoryManager` — learn procedures from observed action sequences
+- Context-based procedure matching
+- Procedure refinement from execution feedback
+- Procedure composition into higher-level skills
+- Success rate tracking and versioning
+
+### 11.5 Heuristic Guidelines Manager
+
+Crystallize implicit patterns into explicit natural language strategies.
+
+- `HeuristicManager` — create, match, reinforce, and merge heuristics
+- Natural language condition matching via semantic similarity
+- Conflict detection between heuristics (contradictory actions, overlapping conditions)
+- Heuristic induction from trajectory analysis
+- Prioritized application when multiple heuristics match
+
+### 11.6 Active Retrieval Controller
+
+Transform memory from passive storage to autonomous, context-aware resource invocation.
+
+- `ActiveRetrievalController` — decide if/when/what to retrieve based on task context
+- Cost-benefit analysis for retrieval (estimated benefit vs token/latency cost)
+- Adaptive retrieval strategy based on task type (recall, reasoning, planning, creative, diagnostic)
+- Retrieval pattern learning from feedback
+- Dynamic budget allocation across memory types
+
+### 11.7 Causal Relations
+
+Extend relations to capture causal dependencies with delayed effects.
+
+- `CausalRelation` type with strength, delay, probability, conditions, mechanism
+- `CausalGraphManager` — causal inference, effect prediction, causal path finding
+- Cycle detection for inconsistency identification
+- Causal structure learning from observations
+- Integration with `GraphTraversal` for causal path algorithms
+
+### 11.8 World Model Manager
+
+Build and maintain internal models of the environment from observations.
+
+- `WorldModelManager` — infer environment rules, predict outcomes, track state
+- State versioning and change detection
+- Rule learning from observation sequences with confidence calibration
+- Prediction with uncertainty quantification
+- Integration with `CausalGraphManager` for causal reasoning
+
+---
+
+## 12. Integration & Ecosystem (from ROADMAP Phase 4)
+
+### 12.1 Database Adapters
+
+- PostgreSQL adapter with `pg_trgm` for text search
+- MongoDB adapter for document-oriented storage
+- Connection pooling for concurrent operations
+
+### 12.2 REST API Generation
+
+- Fastify plugin for automatic REST API from the graph
+- OpenAPI/Swagger documentation generation
+- Rate limiting and cursor-based pagination
+
+### 12.3 Elasticsearch Integration
+
+- Sync entities to Elasticsearch index for offloaded full-text search
+- Hybrid local + Elasticsearch queries
+- Automatic index mapping from entity types
+
+### 12.4 Temporal Versioning
+
+- Entity/relation change history (append-only audit log)
+- Point-in-time queries: `ctx.entityManager.getAt(name, timestamp)`
+- User attribution on changes
+- Rollback to any previous version
+
+### 12.5 Graph Visualization
+
+- Browser-based graph explorer (standalone HTML + D3.js or Cytoscape.js)
+- Interactive filtering, search, and drill-down
+- Export to SVG/PNG
+- Cluster visualization for communities
+
+### 12.6 GraphQL Support
+
+- Auto-generated GraphQL schema from entity types
+- Query and mutation resolvers
+- Subscription support for real-time graph change notifications
+
+---
+
+## 13. Advanced Features (from ROADMAP Phase 5)
+
+### 13.1 Vector Database Integration
+
+- Weaviate/Pinecone adapters for production semantic search
+- Multi-vector embeddings per entity type
+- Automatic embedding synchronization with graph mutations
+
+### 13.2 Graph Embeddings
+
+- node2vec implementation for entity embeddings based on graph structure
+- GraphSAGE for inductive learning on new entities
+- Embedding-based entity similarity (structural, not just textual)
+
+### 13.3 ML-Powered Features
+
+- Auto-tagging based on observation content
+- Anomaly detection in relationship patterns
+- Entity clustering by multi-signal similarity
+- Knowledge graph completion (predict missing relations)
+
+### 13.4 Standards Compliance
+
+- SPARQL query support
+- RDF import/export
+- Linked Data compatibility
+
+### 13.5 Collaboration Features
+
+- Multi-user graph editing with conflict resolution
+- Change conflict detection and merge strategies
+- Real-time collaboration via WebSocket
+
+---
+
+## 14. Enterprise (from ROADMAP Phase 6)
+
+### 14.1 Access Control
+
+- Role-Based Access Control (RBAC) with entity-level permissions
+- Attribute-Based Access Control (ABAC)
+- Row-level security for entity queries
+- API key management
+
+### 14.2 Distributed Architecture
+
+- Graph sharding by entity type or hierarchy
+- Read replicas for query scaling
+- Write-ahead log for cross-node consistency
+- Conflict-free replicated data types (CRDTs) for eventual consistency
+
+### 14.3 Security & Compliance
+
+- Encryption at rest (AES-256)
+- Encryption in transit (TLS)
+- GDPR compliance tools (right to deletion, data export)
+- PII detection and masking in observations
+- Complete audit logging
+
+### 14.4 Cloud-Native Deployment
+
+- Docker images and Kubernetes Helm charts
+- Serverless adapters (AWS Lambda, Cloud Functions)
+- Cloud storage backends (S3, GCS, Azure Blob)
+
+### 14.5 GPU Acceleration
+
+- CUDA-accelerated similarity search
+- Batch embedding generation
+- Parallel graph algorithm execution
+
+---
+
 ## Priority Matrix
 
 | Feature | Impact | Effort | Priority |
 |---------|--------|--------|----------|
+| **Performance & Scale** | | | |
 | 1.3 Incremental Index Updates | High | Medium | **P0** |
 | 1.1 Materialized Search Views | High | Medium | **P0** |
 | 2.2 Batch Mutation API | High | Low | **P0** |
@@ -333,7 +634,6 @@ Detect and report index degradation before it affects query performance.
 | 2.3 Background Index Maintenance | Medium | Medium | **P2** |
 | 3.3 LRU Cache w/ Pressure Eviction | Medium | Medium | **P2** |
 | 5.1 SQLite Connection Pooling | Medium | Low | **P2** |
-| 6.1 Search Explain Mode | Medium | Low | **P2** |
 | 1.5 Tiered Index Architecture | Medium | High | **P3** |
 | 2.1 WAL for JSONL Backend | Medium | High | **P3** |
 | 3.1 Observation Deduplication | Low | Medium | **P3** |
@@ -342,26 +642,68 @@ Detect and report index degradation before it affects query performance.
 | 4.3 Columnar Observation Storage | Medium | High | **P3** |
 | 5.2 SQLite Partial Indexes | Low | Medium | **P3** |
 | 5.3 JSONL Segment Files | Medium | High | **P3** |
+| **Observability** | | | |
+| 6.1 Query Plan Visualization | Medium | Low | **P2** |
 | 6.2 Performance Dashboard | Low | Medium | **P3** |
 | 6.3 Index Health Monitor | Low | Low | **P3** |
+| **Search & Analytics** | | | |
+| 7.1 Spell Correction | Medium | Medium | **P2** |
+| 7.2 Synonym Expansion | Medium | Medium | **P2** |
+| 8.1 Clique Detection | Low | Medium | **P3** |
+| 8.2 HITS Algorithm | Low | Low | **P3** |
+| 8.3 Community Detection | Medium | Medium | **P3** |
+| **Entity & CLI** | | | |
+| 9.1 Entity State Machine | Medium | Medium | **P2** |
+| 10.1 CLI Pipe Support | Low | Low | **P2** |
+| **Memory Intelligence (Phase 3B)** | | | |
+| 11.1 Memory Validation | High | High | **P2** |
+| 11.2 Trajectory Compression | High | High | **P2** |
+| 11.3 Experience Extraction | High | Very High | **P3** |
+| 11.4 Procedural Memory | Medium | Very High | **P3** |
+| 11.5 Heuristic Manager | Medium | High | **P3** |
+| 11.6 Active Retrieval | Medium | High | **P3** |
+| 11.7 Causal Relations | Medium | Very High | **P4** |
+| 11.8 World Model Manager | Medium | Very High | **P4** |
+| **Integration & Ecosystem** | | | |
+| 12.1 Database Adapters | High | Very High | **P3** |
+| 12.2 REST API Generation | High | High | **P3** |
+| 12.4 Temporal Versioning | Medium | High | **P3** |
+| 12.5 Graph Visualization | Medium | High | **P3** |
+| 12.3 Elasticsearch Integration | Medium | High | **P4** |
+| 12.6 GraphQL Support | Medium | High | **P4** |
+| **Advanced & Enterprise** | | | |
+| 13.1 Vector DB Integration | Medium | High | **P4** |
+| 13.2 Graph Embeddings | Medium | Very High | **P4** |
+| 13.3 ML-Powered Features | Medium | Very High | **P4** |
+| 13.4 Standards Compliance | Low | High | **P5** |
+| 13.5 Collaboration | Medium | Very High | **P5** |
+| 14.1 Access Control | High | Very High | **P5** |
+| 14.2 Distributed Architecture | High | Very High | **P5** |
+| 14.3 Security & Compliance | High | High | **P5** |
+| 14.4 Cloud-Native Deployment | Medium | High | **P5** |
+| 14.5 GPU Acceleration | Low | Very High | **P5** |
 
 ---
 
 ## Implementation Strategy
 
-**Phase A (P0 — Weeks 1-3)**: Incremental indexing, materialized views, batch mutations. These three changes eliminate the most common performance bottlenecks with moderate effort.
+**Phase A (P0 — Weeks 1-3)**: Incremental indexing, materialized views, batch mutations. Eliminate the most common performance bottlenecks.
 
-**Phase B (P1 — Weeks 4-7)**: Streaming results, bloom filters, parallel cancellation, lazy hydration. These reduce worst-case latency and memory usage.
+**Phase B (P1 — Weeks 4-7)**: Streaming results, bloom filters, parallel cancellation, lazy hydration. Reduce worst-case latency and memory usage.
 
-**Phase C (P2 — Weeks 8-10)**: Background indexing, LRU caches, SQLite pooling, explain mode. Polish and observability.
+**Phase C (P2 — Weeks 8-12)**: Background indexing, LRU caches, SQLite pooling, observability, spell correction, synonym expansion, entity lifecycle, CLI pipe support, memory validation, trajectory compression.
 
-**Phase D (P3 — As needed)**: WAL, compression, columnar storage, segmented JSONL. Only pursue these if Phases A-C don't meet performance targets.
+**Phase D (P3 — Months 4-6)**: Experience extraction, procedural memory, heuristics, community detection, database adapters, REST API, temporal versioning, graph visualization.
+
+**Phase E (P4 — Months 7-10)**: Causal relations, world model, Elasticsearch, GraphQL, vector DB, graph embeddings, ML features.
+
+**Phase F (P5 — Months 11+)**: Standards compliance, collaboration, access control, distributed architecture, security/compliance, cloud-native, GPU acceleration.
 
 ---
 
 ## Benchmarking Plan
 
-Each feature should be validated with:
+Each performance feature should be validated with:
 - **Baseline**: Run `tests/performance/` suite before implementation
 - **Target**: Define specific latency/throughput targets per feature (documented in PR)
 - **Measurement**: Before/after comparison at 10K, 50K, and 100K entity scales
@@ -372,4 +714,4 @@ Environment variable to enable benchmarks: `SKIP_BENCHMARKS=false`
 ---
 
 *Generated: 2026-02-10*
-*Complements: [ROADMAP.md](./ROADMAP.md)*
+*Supersedes performance-only version. Consolidates all unimplemented [ROADMAP.md](./ROADMAP.md) features.*
