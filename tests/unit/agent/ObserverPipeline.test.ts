@@ -12,7 +12,6 @@ import {
 } from '../../../src/agent/ObserverPipeline.js';
 import { GraphEventEmitter } from '../../../src/core/GraphEventEmitter.js';
 import type { EntityManager } from '../../../src/core/EntityManager.js';
-import type { ObservationManager } from '../../../src/core/ObservationManager.js';
 
 // ==================== Test Helpers ====================
 
@@ -22,19 +21,13 @@ function createMockEntityManager(): EntityManager {
   } as unknown as EntityManager;
 }
 
-function createMockObservationManager(): ObservationManager {
-  return {} as unknown as ObservationManager;
-}
-
 describe('ObserverPipeline', () => {
   let pipeline: ObserverPipeline;
   let entityManager: EntityManager;
-  let observationManager: ObservationManager;
 
   beforeEach(() => {
     entityManager = createMockEntityManager();
-    observationManager = createMockObservationManager();
-    pipeline = new ObserverPipeline(entityManager, observationManager);
+    pipeline = new ObserverPipeline(entityManager);
   });
 
   // ==================== scoreObservation ====================
@@ -145,7 +138,6 @@ describe('ObserverPipeline', () => {
     it('should include suggestedType when autoRoute is enabled', () => {
       const routingPipeline = new ObserverPipeline(
         entityManager,
-        observationManager,
         { autoRoute: true }
       );
 
@@ -204,7 +196,6 @@ describe('ObserverPipeline', () => {
     it('should use custom category patterns when provided', () => {
       const customPipeline = new ObserverPipeline(
         entityManager,
-        observationManager,
         {
           categoryPatterns: {
             'urgent': /\b(?:URGENT|ASAP|critical|emergency)\b/i,
@@ -282,7 +273,6 @@ describe('ObserverPipeline', () => {
     it('should respect custom threshold', () => {
       const strictPipeline = new ObserverPipeline(
         entityManager,
-        observationManager,
         { minImportanceThreshold: 0.9 }
       );
 
@@ -359,7 +349,6 @@ describe('ObserverPipeline', () => {
     it('should not auto-tag when autoTag is disabled', () => {
       const noTagPipeline = new ObserverPipeline(
         entityManager,
-        observationManager,
         { autoTag: false }
       );
 
@@ -376,7 +365,6 @@ describe('ObserverPipeline', () => {
     it('should track routed observations when autoRoute is enabled', () => {
       const routingPipeline = new ObserverPipeline(
         entityManager,
-        observationManager,
         { autoRoute: true }
       );
 

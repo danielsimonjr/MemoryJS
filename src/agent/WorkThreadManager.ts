@@ -122,6 +122,50 @@ export class WorkThreadManager {
   constructor(private storage: IGraphStorage) {}
 
   /**
+   * Load existing work threads from storage into memory.
+   *
+   * Scans the graph for entities with entityType 'work_thread' and
+   * rehydrates the in-memory Map from their serialized observations.
+   * Must be called after construction to restore state from a previous session.
+   *
+   * @returns Number of threads loaded
+   */
+  async load(): Promise<number> {
+    const graph = await this.storage.loadGraph();
+    let loaded = 0;
+
+    for (const entity of graph.entities) {
+      if (entity.entityType !== WORK_THREAD_ENTITY_TYPE) continue;
+      if (!entity.observations || entity.observations.length === 0) continue;
+
+      try {
+        // Thread state is stored as JSON in the first observation
+        const data = JSON.parse(entity.observations[0]) as Record<string, unknown>;
+        const thread: WorkThread = {
+          id: entity.name,
+          title: data.title as string,
+          description: data.description as string | undefined,
+          status: data.status as WorkThreadStatus,
+          owner: data.owner as string | undefined,
+          parentId: data.parentId as string | undefined,
+          blockedBy: data.blockedBy as string[] | undefined,
+          priority: data.priority as number | undefined,
+          createdAt: data.createdAt as string,
+          updatedAt: data.updatedAt as string,
+          metadata: data.metadata as Record<string, unknown> | undefined,
+        };
+
+        this.threads.set(entity.name, thread);
+        loaded++;
+      } catch {
+        // Skip entities with malformed observation data
+      }
+    }
+
+    return loaded;
+  }
+
+  /**
    * Create a new work thread.
    *
    * @param title - Short title describing the work
@@ -376,12 +420,21 @@ export class WorkThreadManager {
 
     await this.persistThread(thread);
 
-    // Remove blocked_by relations
-    const graph = await this.storage.getGraphForMutation();
-    graph.relations = graph.relations.filter(
-      (r) => !(r.from === threadId && r.relationType === BLOCKED_BY_RELATION)
+    // Remove blocked_by relations via loadGraph (read-only) + targeted save
+    const graph = await this.storage.loadGraph();
+    const relationsToRemove = graph.relations.filter(
+      (r) => r.from === threadId && r.relationType === BLOCKED_BY_RELATION
     );
-    await this.storage.saveGraph(graph);
+    if (relationsToRemove.length > 0) {
+      const mutableGraph = await this.storage.getGraphForMutation();
+      const removeSet = new Set(
+        relationsToRemove.map(r => `${r.from}\0${r.to}\0${r.relationType}`)
+      );
+      mutableGraph.relations = mutableGraph.relations.filter(
+        (r) => !removeSet.has(`${r.from}\0${r.to}\0${r.relationType}`)
+      );
+      await this.storage.saveGraph(mutableGraph);
+    }
 
     return { ...thread };
   }
