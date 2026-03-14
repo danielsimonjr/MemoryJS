@@ -34,6 +34,8 @@ import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
+import { ObserverPipeline } from '../agent/ObserverPipeline.js';
+import type { ObserverPipelineOptions } from '../agent/ObserverPipeline.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
@@ -77,6 +79,7 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
+  private _observerPipeline?: ObserverPipeline;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -277,6 +280,29 @@ export class ManagerContext {
       });
     }
     return this._memoryFormatter;
+  }
+
+  /**
+   * ObserverPipeline - Event-driven observation scoring and categorization.
+   * Returns undefined if not enabled (MEMORY_OBSERVER_PIPELINE env var).
+   */
+  get observerPipeline(): ObserverPipeline | undefined {
+    if (this._observerPipeline) return this._observerPipeline;
+
+    if (getEnvBool('MEMORY_OBSERVER_PIPELINE', false)) {
+      const options: ObserverPipelineOptions = {
+        minImportanceThreshold: getEnvNumber('MEMORY_OBSERVER_MIN_THRESHOLD', 0.3),
+        autoTag: getEnvBool('MEMORY_OBSERVER_AUTO_TAG', true),
+        autoRoute: getEnvBool('MEMORY_OBSERVER_AUTO_ROUTE', false),
+      };
+      this._observerPipeline = new ObserverPipeline(
+        this.entityManager,
+        this.observationManager,
+        options
+      );
+    }
+
+    return this._observerPipeline;
   }
 
   /**

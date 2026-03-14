@@ -124,3 +124,10 @@ export {
   mergeConfig,
   validateConfig,
 } from './AgentMemoryConfig.js';
+
+export {
+  ObserverPipeline,
+  type ObservationScore,
+  type ObserverPipelineOptions,
+  type ObserverPipelineStats,
+} from './ObserverPipeline.js';
