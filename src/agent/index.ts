@@ -108,6 +108,11 @@ export {
 } from './ConflictResolver.js';
 
 export {
+  SessionCheckpointManager,
+  type SessionCheckpointData,
+} from './SessionCheckpoint.js';
+
+export {
   AgentMemoryManager,
   type CreateMemoryOptions,
   type RetrieveContextOptions,
@@ -119,3 +124,10 @@ export {
   mergeConfig,
   validateConfig,
 } from './AgentMemoryConfig.js';
+
+export {
+  ObserverPipeline,
+  type ObservationScore,
+  type ObserverPipelineOptions,
+  type ObserverPipelineStats,
+} from './ObserverPipeline.js';

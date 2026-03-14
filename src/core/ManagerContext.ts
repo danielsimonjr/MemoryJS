@@ -24,6 +24,9 @@ import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
+import { AutoLinker } from '../features/AutoLinker.js';
+import { FactExtractor } from '../features/FactExtractor.js';
+import { TransitionLedger } from './TransitionLedger.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
@@ -31,6 +34,8 @@ import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
+import { ObserverPipeline } from '../agent/ObserverPipeline.js';
+import type { ObserverPipelineOptions } from '../agent/ObserverPipeline.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
@@ -63,6 +68,9 @@ export class ManagerContext {
   // ==================== LAZY-INITIALIZED AGENT MEMORY MANAGERS ====================
   // These have conditional creation, env var config, or cross-manager dependency chains.
 
+  private _autoLinker?: AutoLinker;
+  private _factExtractor?: FactExtractor;
+  private _transitionLedger?: TransitionLedger | null;
   private _semanticSearch?: SemanticSearch | null;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
@@ -71,6 +79,7 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
+  private _observerPipeline?: ObserverPipeline;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -110,6 +119,31 @@ export class ManagerContext {
   // ==================== LAZY ACCESSORS (agent memory + semantic) ====================
 
   /**
+   * AutoLinker - Automatic entity mention detection in observations.
+   * Automatically wired to ObservationManager for auto-link support.
+   */
+  get autoLinker(): AutoLinker {
+    if (!this._autoLinker) {
+      this._autoLinker = new AutoLinker(
+        this.storage,
+        this.relationManager
+      );
+      this.observationManager.setAutoLinker(this._autoLinker);
+    }
+    return this._autoLinker;
+  }
+
+  /**
+   * FactExtractor - Rule-based fact extraction from observation text.
+   */
+  get factExtractor(): FactExtractor {
+    if (!this._factExtractor) {
+      this._factExtractor = new FactExtractor(this.entityManager, this.relationManager);
+    }
+    return this._factExtractor;
+  }
+
+  /**
    * SemanticSearch - Semantic similarity search.
    * Returns null if no embedding provider is configured.
    */
@@ -126,6 +160,23 @@ export class ManagerContext {
       }
     }
     return this._semanticSearch;
+  }
+
+  /**
+   * TransitionLedger - Append-only audit trail for state changes.
+   * Returns null if not enabled via MEMORY_TRANSITION_LEDGER env var.
+   * Auto-attaches to storage event emitter when created.
+   */
+  get transitionLedger(): TransitionLedger | null {
+    if (this._transitionLedger === undefined) {
+      if (getEnvBool('MEMORY_TRANSITION_LEDGER', false)) {
+        this._transitionLedger = new TransitionLedger(this.storage.getFilePath());
+        this._transitionLedger.attachToEmitter(this.storage.events);
+      } else {
+        this._transitionLedger = null;
+      }
+    }
+    return this._transitionLedger;
   }
 
   /**
@@ -229,6 +280,29 @@ export class ManagerContext {
       });
     }
     return this._memoryFormatter;
+  }
+
+  /**
+   * ObserverPipeline - Event-driven observation scoring and categorization.
+   * Returns undefined if not enabled (MEMORY_OBSERVER_PIPELINE env var).
+   */
+  get observerPipeline(): ObserverPipeline | undefined {
+    if (this._observerPipeline) return this._observerPipeline;
+
+    if (getEnvBool('MEMORY_OBSERVER_PIPELINE', false)) {
+      const options: ObserverPipelineOptions = {
+        minImportanceThreshold: getEnvNumber('MEMORY_OBSERVER_MIN_THRESHOLD', 0.3),
+        autoTag: getEnvBool('MEMORY_OBSERVER_AUTO_TAG', true),
+        autoRoute: getEnvBool('MEMORY_OBSERVER_AUTO_ROUTE', false),
+      };
+      this._observerPipeline = new ObserverPipeline(
+        this.entityManager,
+        this.observationManager,
+        options
+      );
+    }
+
+    return this._observerPipeline;
   }
 
   /**
