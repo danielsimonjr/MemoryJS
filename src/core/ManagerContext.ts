@@ -24,6 +24,7 @@ import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
+import { TransitionLedger } from './TransitionLedger.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
@@ -63,6 +64,7 @@ export class ManagerContext {
   // ==================== LAZY-INITIALIZED AGENT MEMORY MANAGERS ====================
   // These have conditional creation, env var config, or cross-manager dependency chains.
 
+  private _transitionLedger?: TransitionLedger | null;
   private _semanticSearch?: SemanticSearch | null;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
@@ -126,6 +128,23 @@ export class ManagerContext {
       }
     }
     return this._semanticSearch;
+  }
+
+  /**
+   * TransitionLedger - Append-only audit trail for state changes.
+   * Returns null if not enabled via MEMORY_TRANSITION_LEDGER env var.
+   * Auto-attaches to storage event emitter when created.
+   */
+  get transitionLedger(): TransitionLedger | null {
+    if (this._transitionLedger === undefined) {
+      if (getEnvBool('MEMORY_TRANSITION_LEDGER', false)) {
+        this._transitionLedger = new TransitionLedger(this.storage.getFilePath());
+        this._transitionLedger.attachToEmitter(this.storage.events);
+      } else {
+        this._transitionLedger = null;
+      }
+    }
+    return this._transitionLedger;
   }
 
   /**
