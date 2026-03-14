@@ -134,6 +134,8 @@ export type {
   QueryAnalysis,
   SubQuery,
   QueryPlan,
+  // Observation deduplication types
+  DeduplicationOptions,
 } from './types.js';
 
 // Agent Memory Types (Phase 1 - Agent Memory System)

@@ -58,6 +58,41 @@ export interface Entity {
   parentId?: string;
 }
 
+// ==================== Observation Deduplication Types ====================
+
+/**
+ * Options for observation deduplication at write time.
+ *
+ * When enabled, new observations are compared against existing observations
+ * using TF-IDF cosine similarity. Near-duplicate observations are handled
+ * according to the specified merge strategy.
+ *
+ * Can be enabled globally via the `MEMORY_OBSERVATION_DEDUP` environment variable
+ * or per-call by passing options to `addObservations()`.
+ *
+ * @example
+ * ```typescript
+ * const dedupOptions: DeduplicationOptions = {
+ *   enabled: true,
+ *   similarityThreshold: 0.85,
+ *   mergeStrategy: 'keep_longest',
+ * };
+ *
+ * await observationManager.addObservations(
+ *   [{ entityName: 'Alice', contents: ['Likes Italian food'] }],
+ *   dedupOptions,
+ * );
+ * ```
+ */
+export interface DeduplicationOptions {
+  /** Whether deduplication is enabled */
+  enabled: boolean;
+  /** Similarity threshold (0-1) above which observations are considered duplicates. Default: 0.85 */
+  similarityThreshold: number;
+  /** Strategy for handling near-duplicate observations */
+  mergeStrategy: 'keep_longest' | 'keep_newest' | 'keep_both';
+}
+
 // ==================== Relation Types (Phase 1 Sprint 4) ====================
 
 /**
