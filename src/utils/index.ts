@@ -366,6 +366,6 @@ export { AsyncMutex, type AsyncMutexOptions } from './AsyncMutex.js';
 export {
   tokenize as textTokenize,
   buildTFVector,
-  cosineSimilarity,
+  cosineSimilarity as textCosineSimilarity,
   calculateTextSimilarity,
 } from './textSimilarity.js';

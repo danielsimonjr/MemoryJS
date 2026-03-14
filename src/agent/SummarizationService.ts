@@ -8,9 +8,6 @@
  */
 
 import {
-  tokenize as sharedTokenize,
-  buildTFVector as sharedBuildTFVector,
-  cosineSimilarity as sharedCosineSimilarity,
   calculateTextSimilarity,
 } from '../utils/textSimilarity.js';
 
@@ -194,30 +191,6 @@ export class SummarizationService {
    */
   calculateSimilarity(text1: string, text2: string): number {
     return calculateTextSimilarity(text1, text2);
-  }
-
-  /**
-   * Tokenize text into words.
-   * @internal
-   */
-  private tokenize(text: string): string[] {
-    return sharedTokenize(text);
-  }
-
-  /**
-   * Build term frequency vector.
-   * @internal
-   */
-  private buildTFVector(tokens: string[], vocab: Set<string>): number[] {
-    return sharedBuildTFVector(tokens, vocab);
-  }
-
-  /**
-   * Calculate cosine similarity between vectors.
-   * @internal
-   */
-  private cosineSimilarity(vec1: number[], vec2: number[]): number {
-    return sharedCosineSimilarity(vec1, vec2);
   }
 
   // ==================== Observation Grouping ====================
