@@ -19,6 +19,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { SalienceEngine } from './SalienceEngine.js';
+import { ContextProfileManager, type ProfileConfig } from './ContextProfileManager.js';
 
 /**
  * Configuration for ContextWindowManager.
@@ -84,6 +85,7 @@ export class ContextWindowManager {
   private readonly storage: IGraphStorage;
   private readonly salienceEngine: SalienceEngine;
   private readonly config: Required<ContextWindowManagerConfig>;
+  private readonly contextProfileManager: ContextProfileManager;
 
   constructor(
     storage: IGraphStorage,
@@ -92,6 +94,7 @@ export class ContextWindowManager {
   ) {
     this.storage = storage;
     this.salienceEngine = salienceEngine;
+    this.contextProfileManager = new ContextProfileManager();
     this.config = {
       defaultMaxTokens: config.defaultMaxTokens ?? 4000,
       tokenMultiplier: config.tokenMultiplier ?? 1.3,
@@ -236,6 +239,11 @@ export class ContextWindowManager {
    * @returns Context package with memories, token info, and suggestions
    */
   async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage> {
+    // Apply profile settings if specified
+    const resolvedOptions = options.profile
+      ? this.applyProfile(options)
+      : options;
+
     const {
       maxTokens = this.config.defaultMaxTokens,
       context = {},
@@ -244,7 +252,7 @@ export class ContextWindowManager {
       includeSemanticRelevant = true,
       mustInclude = [],
       minSalience = 0,
-    } = options;
+    } = resolvedOptions;
 
     // Effective budget after reserve
     const effectiveBudget = maxTokens - this.config.reserveBuffer;
@@ -482,6 +490,11 @@ export class ContextWindowManager {
   async retrieveWithBudgetAllocation(
     options: ContextRetrievalOptions
   ): Promise<ContextPackage> {
+    // Apply profile settings if specified
+    const resolvedOptions = options.profile
+      ? this.applyProfile(options)
+      : options;
+
     const {
       maxTokens = this.config.defaultMaxTokens,
       context = {},
@@ -490,7 +503,7 @@ export class ContextWindowManager {
       includeSemanticRelevant = true,
       mustInclude = [],
       minSalience = 0,
-    } = options;
+    } = resolvedOptions;
 
     const effectiveBudget = maxTokens - this.config.reserveBuffer;
     const allSuggestions: string[] = [];
@@ -940,6 +953,60 @@ export class ContextWindowManager {
     // Invert: low similarity = high diversity
     const avgSimilarity = comparisons > 0 ? totalSimilarity / comparisons : 0;
     return 1 - avgSimilarity;
+  }
+
+  // ==================== Profile Support ====================
+
+  /**
+   * Apply profile settings to retrieval options.
+   *
+   * Resolves 'auto' profiles by inferring from query text, then merges
+   * profile configuration (salience context, budget allocation, max tokens)
+   * with the provided options. Explicit option values take precedence over
+   * profile defaults.
+   *
+   * @param options - Original retrieval options with profile set
+   * @returns Options with profile settings applied
+   * @internal
+   */
+  private applyProfile(options: ContextRetrievalOptions): ContextRetrievalOptions {
+    const profile = options.profile!;
+    const profileName = profile === 'auto'
+      ? this.contextProfileManager.inferProfile(options.context?.queryText ?? '')
+      : profile;
+
+    let profileConfig: ProfileConfig;
+    try {
+      profileConfig = this.contextProfileManager.getProfile(profileName);
+    } catch {
+      // Unknown profile - return options unchanged
+      return options;
+    }
+
+    // Build salience context from profile
+    const profileContext = this.contextProfileManager.buildSalienceContext(
+      profileName,
+      options.context
+    );
+
+    // Merge profile budget allocation with config defaults
+    // Profile values are used unless explicitly provided in options
+    const result: ContextRetrievalOptions = {
+      ...options,
+      context: profileContext,
+      maxTokens: options.maxTokens ?? profileConfig.maxTokens ?? this.config.defaultMaxTokens,
+    };
+
+    return result;
+  }
+
+  /**
+   * Get the context profile manager for registering custom profiles.
+   *
+   * @returns ContextProfileManager instance
+   */
+  getContextProfileManager(): ContextProfileManager {
+    return this.contextProfileManager;
   }
 
   /**

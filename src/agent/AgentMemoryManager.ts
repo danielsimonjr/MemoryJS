@@ -37,6 +37,7 @@ import { ContextWindowManager } from './ContextWindowManager.js';
 import { MemoryFormatter } from './MemoryFormatter.js';
 import { MultiAgentMemoryManager } from './MultiAgentMemoryManager.js';
 import { ConflictResolver, type ResolutionResult } from './ConflictResolver.js';
+import { ContextProfileManager } from './ContextProfileManager.js';
 import {
   type AgentMemoryConfig,
   loadConfigFromEnv,
@@ -89,6 +90,7 @@ export class AgentMemoryManager extends EventEmitter {
   private _memoryFormatter?: MemoryFormatter;
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
+  private _contextProfileManager?: ContextProfileManager;
 
   constructor(storage: IGraphStorage, config: AgentMemoryConfig = {}) {
     super();
@@ -173,6 +175,10 @@ export class AgentMemoryManager extends EventEmitter {
 
   get conflictResolver(): ConflictResolver {
     return (this._conflictResolver ??= new ConflictResolver(this.config.conflictResolver));
+  }
+
+  get contextProfileManager(): ContextProfileManager {
+    return (this._contextProfileManager ??= new ContextProfileManager());
   }
 
   // ==================== Session Lifecycle ====================

@@ -9,6 +9,7 @@
  */
 
 import type { Entity } from './types.js';
+import type { ContextProfile } from '../agent/ContextProfileManager.js';
 
 // ==================== Memory Classification Types ====================
 
@@ -987,6 +988,8 @@ export interface ContextRetrievalOptions {
   mustInclude?: string[];
   /** Minimum salience score to consider (default: 0) */
   minSalience?: number;
+  /** Context profile to tune retrieval strategy. Use 'auto' to infer from query text. */
+  profile?: ContextProfile;
 }
 
 /**

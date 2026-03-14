@@ -108,6 +108,12 @@ export {
 } from './ConflictResolver.js';
 
 export {
+  ContextProfileManager,
+  type ContextProfile,
+  type ProfileConfig,
+} from './ContextProfileManager.js';
+
+export {
   AgentMemoryManager,
   type CreateMemoryOptions,
   type RetrieveContextOptions,
