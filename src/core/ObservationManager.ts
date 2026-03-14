@@ -8,6 +8,7 @@
  */
 
 import type { GraphStorage } from './GraphStorage.js';
+import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/AutoLinker.js';
 import type { DeduplicationOptions } from '../types/types.js';
 import { EntityNotFoundError } from '../utils/errors.js';
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
@@ -25,7 +26,16 @@ const DEFAULT_DEDUP_OPTIONS: DeduplicationOptions = {
  * Manages observation operations for entities in the knowledge graph.
  */
 export class ObservationManager {
+  private _autoLinker?: AutoLinker;
+
   constructor(private storage: GraphStorage) {}
+
+  /**
+   * Set the AutoLinker for optional automatic mention detection.
+   */
+  setAutoLinker(autoLinker: AutoLinker): void {
+    this._autoLinker = autoLinker;
+  }
 
   /**
    * Resolve deduplication options from explicit parameter and environment variable.
@@ -87,8 +97,9 @@ export class ObservationManager {
    */
   async addObservations(
     observations: { entityName: string; contents: string[] }[],
-    dedup?: DeduplicationOptions
-  ): Promise<{ entityName: string; addedObservations: string[] }[]> {
+    dedup?: DeduplicationOptions,
+    options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
+  ): Promise<{ entityName: string; addedObservations: string[]; autoLinkResults?: AutoLinkResult[] }[]> {
     const resolvedDedup = this.resolveDedup(dedup);
 
     // Get mutable graph for atomic update
@@ -135,6 +146,28 @@ export class ObservationManager {
     // Save all changes in a single atomic operation
     if (hasChanges) {
       await this.storage.saveGraph(graph);
+    }
+
+    // Auto-link: detect entity mentions and create relations
+    const shouldAutoLink =
+      (options?.autoLink ?? (process.env.MEMORY_AUTO_LINK === 'true')) && this._autoLinker;
+
+    if (shouldAutoLink && this._autoLinker) {
+      const autoLinkResults: AutoLinkResult[] = [];
+      for (const r of results) {
+        if (r.addedObservations.length > 0) {
+          const linkResult = await this._autoLinker.linkObservations(
+            r.entityName,
+            r.addedObservations,
+            options?.autoLinkOptions
+          );
+          autoLinkResults.push(linkResult);
+        }
+      }
+      return results.map((r) => {
+        const linkResult = autoLinkResults.find(lr => lr.sourceEntity === r.entityName);
+        return linkResult ? { ...r, autoLinkResults: [linkResult] } : r;
+      });
     }
 
     return results;

@@ -24,6 +24,7 @@ import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
+import { AutoLinker } from '../features/AutoLinker.js';
 import { TransitionLedger } from './TransitionLedger.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
@@ -64,6 +65,7 @@ export class ManagerContext {
   // ==================== LAZY-INITIALIZED AGENT MEMORY MANAGERS ====================
   // These have conditional creation, env var config, or cross-manager dependency chains.
 
+  private _autoLinker?: AutoLinker;
   private _transitionLedger?: TransitionLedger | null;
   private _semanticSearch?: SemanticSearch | null;
   private _accessTracker?: AccessTracker;
@@ -110,6 +112,21 @@ export class ManagerContext {
   }
 
   // ==================== LAZY ACCESSORS (agent memory + semantic) ====================
+
+  /**
+   * AutoLinker - Automatic entity mention detection in observations.
+   * Automatically wired to ObservationManager for auto-link support.
+   */
+  get autoLinker(): AutoLinker {
+    if (!this._autoLinker) {
+      this._autoLinker = new AutoLinker(
+        this.storage,
+        this.relationManager
+      );
+      this.observationManager.setAutoLinker(this._autoLinker);
+    }
+    return this._autoLinker;
+  }
 
   /**
    * SemanticSearch - Semantic similarity search.
