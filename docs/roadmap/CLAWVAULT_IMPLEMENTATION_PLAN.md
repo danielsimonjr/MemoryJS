@@ -25,8 +25,8 @@ Review of `CLAWVAULT_IDEAS.md` against the existing MemoryJS codebase, with corr
 ### Idea 2: Context Profiles — Smaller Delta Than Described
 
 **Correction:** The document says "MemoryJS's `ContextWindowManager` does token budgeting but doesn't adjust *what* it retrieves based on task type." This understates existing capabilities. `SalienceEngine` already supports:
-- Context-aware scoring with `taskId`, `sessionId`, `queryText`, `userIntent`, `recentEntities`
-- `temporalFocus: 'recent' | 'historical'` that reshapes recency curves
+- Context-aware scoring with `currentTask`, `currentSession`, `queryText`, `userIntent`, `recentEntities`
+- `temporalFocus: 'recent' | 'historical' | 'balanced'` that reshapes recency curves
 - Configurable weight distributions per call via `SalienceContext`
 
 **What's genuinely new:** Named profile *presets* that bundle these knobs into reusable configurations, plus auto-detection from query content. The "handoff" profile concept (pull last session state + unfinished tasks) is particularly valuable and has no existing equivalent.
@@ -95,7 +95,7 @@ This is closer to **Medium-High** effort and should be built on top of the Trans
 
 **Correction:** The concept is sound but needs guardrails. Naively matching entity names in observation text will create false positives (e.g., entity "Project" matching "This project is..."). Need minimum name length, entity type filtering, and a confidence threshold.
 
-**Revised scope:** An `AutoLinker` that scans observation text for entity name mentions, creates `mentions` relations, but only for entities with names ≥ 3 words or names matching specific types (people, projects, tools). Include a `mentions` relation type with source tracking.
+**Revised scope:** An `AutoLinker` that scans observation text for entity name mentions, creates `mentions` relations, but only for entities with names ≥ 4 characters or names matching specific types (people, projects, tools). Include a `mentions` relation type with source tracking.
 
 ---
 
@@ -136,17 +136,17 @@ Key changes from original ranking:
      mergeStrategy: 'keep_longest' | 'keep_newest' | 'keep_both';
    }
    ```
-2. Extract `calculateSimilarity()` from `SummarizationService` into a standalone `src/utils/textSimilarity.ts` utility (it's currently a method on the class but has no instance dependencies)
+2. Extract `calculateSimilarity()` from `SummarizationService` into a standalone `src/utils/textSimilarity.ts` utility along with its private helpers (`tokenize()`, `buildTFVector()`, `cosineSimilarity()`) — these are all pure functions with no instance dependencies
 3. Add optional `dedup?: DeduplicationOptions` parameter to `ObservationManager.addObservations()`
-4. Before inserting each observation, compare against existing observations on that entity using Jaccard similarity
+4. Before inserting each observation, compare against existing observations on that entity using TF-IDF cosine similarity (via the extracted utility)
 5. If similarity > threshold, apply merge strategy instead of inserting
 6. Add `MEMORY_OBSERVATION_DEDUP` env var (default: `false`) for global opt-in
 7. Wire into `ManagerContext`
 
 **Tests:** `tests/unit/core/ObservationManager.dedup.test.ts`
 - Exact duplicates still filtered (existing behavior)
-- Near-duplicates merged when dedup enabled
-- Threshold respected (0.79 passes, 0.81 merges)
+- Near-duplicates merged when dedup enabled (uses TF-IDF cosine similarity, not Jaccard)
+- Threshold respected (below threshold passes, above threshold merges)
 - Merge strategies work correctly
 - Performance: dedup on 100 observations < 50ms
 
