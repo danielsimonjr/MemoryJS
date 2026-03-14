@@ -303,15 +303,21 @@ export class TransitionLedger {
    * all entity, relation, and observation state changes.
    *
    * @param emitter - The GraphEventEmitter to subscribe to
+   * @param onError - Optional error handler for failed appends (default: no-op)
    * @returns Unsubscribe function to detach all listeners
    */
-  attachToEmitter(emitter: GraphEventEmitter): () => void {
+  attachToEmitter(emitter: GraphEventEmitter, onError?: (error: unknown) => void): () => void {
     const unsubscribers: (() => void)[] = [];
+    const handleAppend = (event: Omit<TransitionEvent, 'id' | 'timestamp'>) => {
+      this.append(event).catch((err) => {
+        if (onError) onError(err);
+      });
+    };
 
     // Entity created
     unsubscribers.push(
       emitter.on('entity:created', (event: EntityCreatedEvent) => {
-        void this.append({
+        handleAppend({
           entityId: event.entity.name,
           field: 'entity',
           from: null,
@@ -333,7 +339,7 @@ export class TransitionLedger {
 
         for (const field of Object.keys(changes) as (keyof typeof changes)[]) {
           if (field === 'lastModified') continue; // Skip timestamp noise
-          void this.append({
+          handleAppend({
             entityId: event.entityName,
             field: String(field),
             from: previous[field] ?? null,
@@ -346,7 +352,7 @@ export class TransitionLedger {
     // Entity deleted
     unsubscribers.push(
       emitter.on('entity:deleted', (event: EntityDeletedEvent) => {
-        void this.append({
+        handleAppend({
           entityId: event.entityName,
           field: 'entity',
           from: event.entity
@@ -365,7 +371,7 @@ export class TransitionLedger {
     // Relation created
     unsubscribers.push(
       emitter.on('relation:created', (event: RelationCreatedEvent) => {
-        void this.append({
+        handleAppend({
           entityId: event.relation.from,
           field: 'relation',
           from: null,
@@ -380,7 +386,7 @@ export class TransitionLedger {
     // Relation deleted
     unsubscribers.push(
       emitter.on('relation:deleted', (event: RelationDeletedEvent) => {
-        void this.append({
+        handleAppend({
           entityId: event.from,
           field: 'relation',
           from: {
@@ -395,7 +401,7 @@ export class TransitionLedger {
     // Observation added
     unsubscribers.push(
       emitter.on('observation:added', (event: ObservationAddedEvent) => {
-        void this.append({
+        handleAppend({
           entityId: event.entityName,
           field: 'observations',
           from: null,
@@ -407,7 +413,7 @@ export class TransitionLedger {
     // Observation deleted
     unsubscribers.push(
       emitter.on('observation:deleted', (event: ObservationDeletedEvent) => {
-        void this.append({
+        handleAppend({
           entityId: event.entityName,
           field: 'observations',
           from: event.observations,

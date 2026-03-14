@@ -131,3 +131,17 @@ export {
   type ObserverPipelineOptions,
   type ObserverPipelineStats,
 } from './ObserverPipeline.js';
+
+export {
+  WorkThreadManager,
+  type WorkThread,
+  type WorkThreadStatus,
+  type WorkThreadFilter,
+  type CreateWorkThreadOptions,
+} from './WorkThreadManager.js';
+
+export {
+  ContextProfileManager,
+  type ContextProfile,
+  type ProfileConfig,
+} from './ContextProfileManager.js';

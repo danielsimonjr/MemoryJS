@@ -8,8 +8,7 @@
  * @module features/AutoLinker
  */
 
-import type { Entity, Relation } from '../types/index.js';
-import type { GraphStorage } from '../core/GraphStorage.js';
+import type { Entity, Relation, IGraphStorage } from '../types/index.js';
 import type { RelationManager } from '../core/RelationManager.js';
 
 /**
@@ -95,7 +94,7 @@ export class AutoLinker {
   private defaultOptions: AutoLinkOptions;
 
   constructor(
-    private storage: GraphStorage,
+    private storage: IGraphStorage,
     private relationManager: RelationManager,
     options?: AutoLinkOptions
   ) {

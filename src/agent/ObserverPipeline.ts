@@ -11,7 +11,6 @@
  */
 
 import type { EntityManager } from '../core/EntityManager.js';
-import type { ObservationManager } from '../core/ObservationManager.js';
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import type { ObservationAddedEvent } from '../types/types.js';
 
@@ -105,7 +104,7 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
  *
  * @example
  * ```typescript
- * const pipeline = new ObserverPipeline(entityManager, observationManager, {
+ * const pipeline = new ObserverPipeline(entityManager, {
  *   minImportanceThreshold: 0.3,
  *   autoTag: true,
  * });
@@ -132,7 +131,6 @@ export class ObserverPipeline {
 
   constructor(
     private entityManager: EntityManager,
-    _observationManager: ObservationManager,
     options?: ObserverPipelineOptions
   ) {
     this.stats = { processed: 0, dropped: 0, tagged: 0, routed: 0 };

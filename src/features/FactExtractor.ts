@@ -267,24 +267,30 @@ export class FactExtractor {
    * Patterns are ordered by specificity (more specific first).
    */
   private buildPatterns(): ExtractionPattern[] {
+    // Object capture group stops at clause boundaries (punctuation, conjunctions,
+    // prepositions) to avoid greedily matching trailing words.
+    // e.g. "Alice works at Google on Mondays" captures "Google" not "Google on Mondays"
+    // Allows hyphens in names (e.g. "US-East", "AT&T") via [\w\s-]
+    const OBJ = '([\\w][\\w\\s-]*?)(?=\\s+(?:on|in|at|for|with|from|since|during|after|before|and|or|but|who|which|that)\\b|[.,;!?]|$)';
+
     return [
       // High confidence (0.85-0.9)
       {
-        pattern: /(\w[\w\s]*?)\s+works?\s+(?:at|for)\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+works?\\s+(?:at|for)\\s+${OBJ}`, 'i'),
         relation: 'works_at',
         confidence: 0.9,
         subjectGroup: 1,
         objectGroup: 2,
       },
       {
-        pattern: /(\w[\w\s]*?)\s+(?:is\s+)?located\s+in\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+(?:is\\s+)?located\\s+in\\s+${OBJ}`, 'i'),
         relation: 'located_in',
         confidence: 0.9,
         subjectGroup: 1,
         objectGroup: 2,
       },
       {
-        pattern: /(\w[\w\s]*?)\s+is\s+(?:a|an)\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+is\\s+(?:a|an)\\s+${OBJ}`, 'i'),
         relation: 'is_a',
         confidence: 0.85,
         subjectGroup: 1,
@@ -293,49 +299,49 @@ export class FactExtractor {
 
       // Medium confidence (0.7-0.8)
       {
-        pattern: /(\w[\w\s]*?)\s+(?:was\s+)?created\s+by\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+(?:was\\s+)?created\\s+by\\s+${OBJ}`, 'i'),
         relation: 'created_by',
         confidence: 0.8,
         subjectGroup: 1,
         objectGroup: 2,
       },
       {
-        pattern: /(\w[\w\s]*?)\s+(?:is\s+)?owned\s+by\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+(?:is\\s+)?owned\\s+by\\s+${OBJ}`, 'i'),
         relation: 'owned_by',
         confidence: 0.8,
         subjectGroup: 1,
         objectGroup: 2,
       },
       {
-        pattern: /(\w[\w\s]*?)\s+(?:is\s+)?part\s+of\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+(?:is\\s+)?part\\s+of\\s+${OBJ}`, 'i'),
         relation: 'part_of',
         confidence: 0.8,
         subjectGroup: 1,
         objectGroup: 2,
       },
       {
-        pattern: /(\w[\w\s]*?)\s+prefers?\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+prefers?\\s+${OBJ}`, 'i'),
         relation: 'prefers',
         confidence: 0.75,
         subjectGroup: 1,
         objectGroup: 2,
       },
       {
-        pattern: /(\w[\w\s]*?)\s+depends?\s+on\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+depends?\\s+on\\s+${OBJ}`, 'i'),
         relation: 'depends_on',
         confidence: 0.75,
         subjectGroup: 1,
         objectGroup: 2,
       },
       {
-        pattern: /(\w[\w\s]*?)\s+uses?\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+uses?\\s+${OBJ}`, 'i'),
         relation: 'uses',
         confidence: 0.7,
         subjectGroup: 1,
         objectGroup: 2,
       },
       {
-        pattern: /(\w[\w\s]*?)\s+manages?\s+(\w[\w\s]+)/i,
+        pattern: new RegExp(`([\\w][\\w\\s-]*?)\\s+manages?\\s+${OBJ}`, 'i'),
         relation: 'manages',
         confidence: 0.7,
         subjectGroup: 1,

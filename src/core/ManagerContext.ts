@@ -297,7 +297,6 @@ export class ManagerContext {
       };
       this._observerPipeline = new ObserverPipeline(
         this.entityManager,
-        this.observationManager,
         options
       );
     }
