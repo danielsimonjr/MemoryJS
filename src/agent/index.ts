@@ -108,10 +108,9 @@ export {
 } from './ConflictResolver.js';
 
 export {
-  ContextProfileManager,
-  type ContextProfile,
-  type ProfileConfig,
-} from './ContextProfileManager.js';
+  SessionCheckpointManager,
+  type SessionCheckpointData,
+} from './SessionCheckpoint.js';
 
 export {
   AgentMemoryManager,

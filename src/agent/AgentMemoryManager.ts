@@ -37,7 +37,7 @@ import { ContextWindowManager } from './ContextWindowManager.js';
 import { MemoryFormatter } from './MemoryFormatter.js';
 import { MultiAgentMemoryManager } from './MultiAgentMemoryManager.js';
 import { ConflictResolver, type ResolutionResult } from './ConflictResolver.js';
-import { ContextProfileManager } from './ContextProfileManager.js';
+import { SessionCheckpointManager, type SessionCheckpointData } from './SessionCheckpoint.js';
 import {
   type AgentMemoryConfig,
   loadConfigFromEnv,
@@ -90,7 +90,7 @@ export class AgentMemoryManager extends EventEmitter {
   private _memoryFormatter?: MemoryFormatter;
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
-  private _contextProfileManager?: ContextProfileManager;
+  private _checkpointManager?: SessionCheckpointManager;
 
   constructor(storage: IGraphStorage, config: AgentMemoryConfig = {}) {
     super();
@@ -177,8 +177,10 @@ export class AgentMemoryManager extends EventEmitter {
     return (this._conflictResolver ??= new ConflictResolver(this.config.conflictResolver));
   }
 
-  get contextProfileManager(): ContextProfileManager {
-    return (this._contextProfileManager ??= new ContextProfileManager());
+  get checkpointManager(): SessionCheckpointManager {
+    return (this._checkpointManager ??= new SessionCheckpointManager(
+      this.storage, this.workingMemory, this.decayEngine
+    ));
   }
 
   // ==================== Session Lifecycle ====================
@@ -359,6 +361,30 @@ export class AgentMemoryManager extends EventEmitter {
     options?: { resolveConflicts?: boolean; conflictStrategy?: ConflictStrategy }
   ): Promise<AgentEntity | null> {
     return this.multiAgentManager.mergeCrossAgent(memoryNames, targetAgentId, options);
+  }
+
+  // ==================== Session Checkpointing ====================
+
+  async checkpointSession(sessionId: string, name?: string): Promise<SessionCheckpointData> {
+    const checkpoint = await this.checkpointManager.checkpoint(sessionId, name);
+    this.emit('session:checkpointed', { sessionId, checkpointId: checkpoint.id });
+    return checkpoint;
+  }
+
+  async restoreSession(checkpointId: string): Promise<void> {
+    await this.checkpointManager.restore(checkpointId);
+    this.emit('session:restored', { checkpointId });
+  }
+
+  async sleepSession(sessionId: string): Promise<string> {
+    const checkpointId = await this.checkpointManager.sleep(sessionId);
+    this.emit('session:slept', { sessionId, checkpointId });
+    return checkpointId;
+  }
+
+  async wakeSession(sessionId: string, checkpointId?: string): Promise<void> {
+    await this.checkpointManager.wake(sessionId, checkpointId);
+    this.emit('session:woken', { sessionId, checkpointId });
   }
 
   // ==================== Configuration & Lifecycle ====================
