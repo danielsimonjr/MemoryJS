@@ -30,6 +30,14 @@ export {
   type AutoLinkResult,
 } from './AutoLinker.js';
 
+// Phase 3B: Fact Extraction
+export {
+  FactExtractor,
+  type ExtractedFact,
+  type FactExtractionOptions,
+  type FactExtractionResult,
+} from './FactExtractor.js';
+
 // Phase 11 Sprint 5: Semantic Compression
 export {
   ObservationNormalizer,

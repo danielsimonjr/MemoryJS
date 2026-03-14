@@ -25,6 +25,7 @@ import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
 import { AutoLinker } from '../features/AutoLinker.js';
+import { FactExtractor } from '../features/FactExtractor.js';
 import { TransitionLedger } from './TransitionLedger.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
@@ -66,6 +67,7 @@ export class ManagerContext {
   // These have conditional creation, env var config, or cross-manager dependency chains.
 
   private _autoLinker?: AutoLinker;
+  private _factExtractor?: FactExtractor;
   private _transitionLedger?: TransitionLedger | null;
   private _semanticSearch?: SemanticSearch | null;
   private _accessTracker?: AccessTracker;
@@ -126,6 +128,16 @@ export class ManagerContext {
       this.observationManager.setAutoLinker(this._autoLinker);
     }
     return this._autoLinker;
+  }
+
+  /**
+   * FactExtractor - Rule-based fact extraction from observation text.
+   */
+  get factExtractor(): FactExtractor {
+    if (!this._factExtractor) {
+      this._factExtractor = new FactExtractor(this.entityManager, this.relationManager);
+    }
+    return this._factExtractor;
   }
 
   /**
