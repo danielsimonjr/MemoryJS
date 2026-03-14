@@ -38,6 +38,7 @@ import { MemoryFormatter } from './MemoryFormatter.js';
 import { MultiAgentMemoryManager } from './MultiAgentMemoryManager.js';
 import { ConflictResolver, type ResolutionResult } from './ConflictResolver.js';
 import { SessionCheckpointManager, type SessionCheckpointData } from './SessionCheckpoint.js';
+import { WorkThreadManager } from './WorkThreadManager.js';
 import {
   type AgentMemoryConfig,
   loadConfigFromEnv,
@@ -90,6 +91,7 @@ export class AgentMemoryManager extends EventEmitter {
   private _memoryFormatter?: MemoryFormatter;
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
+  private _workThreadManager?: WorkThreadManager;
   private _checkpointManager?: SessionCheckpointManager;
 
   constructor(storage: IGraphStorage, config: AgentMemoryConfig = {}) {
@@ -175,6 +177,10 @@ export class AgentMemoryManager extends EventEmitter {
 
   get conflictResolver(): ConflictResolver {
     return (this._conflictResolver ??= new ConflictResolver(this.config.conflictResolver));
+  }
+
+  get workThreadManager(): WorkThreadManager {
+    return (this._workThreadManager ??= new WorkThreadManager(this.storage));
   }
 
   get checkpointManager(): SessionCheckpointManager {
