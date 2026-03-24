@@ -24,7 +24,10 @@ import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
+import { FreshnessManager } from '../features/FreshnessManager.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
+import { DistillationPipeline } from '../agent/DistillationPipeline.js';
+import { DefaultDistillationPolicy } from '../agent/DistillationPolicy.js';
 import { TemporalSearch } from '../search/TemporalSearch.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
@@ -61,6 +64,7 @@ export class ManagerContext {
   private _analyticsManager?: AnalyticsManager;
   private _compressionManager?: CompressionManager;
   private _archiveManager?: ArchiveManager;
+  private _freshnessManager?: FreshnessManager;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -69,6 +73,7 @@ export class ManagerContext {
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
   private _temporalSearch?: TemporalSearch;
+  private _distillationPipeline?: DistillationPipeline;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -164,6 +169,28 @@ export class ManagerContext {
   /** ArchiveManager - Entity archival operations */
   get archiveManager(): ArchiveManager {
     return (this._archiveManager ??= new ArchiveManager(this.storage));
+  }
+
+  /**
+   * FreshnessManager - Feature 5: Temporal Governance & Freshness Auditing.
+   *
+   * Provides freshness scoring, stale/expired entity detection,
+   * entity refresh, and freshness reports.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_FRESHNESS_HALF_LIFE_HOURS (default: 168 = 1 week)
+   * - MEMORY_FRESHNESS_STALE_THRESHOLD (default: 0.3)
+   * - MEMORY_FRESHNESS_TTL_WEIGHT (default: 0.6)
+   */
+  get freshnessManager(): FreshnessManager {
+    if (!this._freshnessManager) {
+      this._freshnessManager = new FreshnessManager(this.storage, {
+        defaultHalfLifeHours: this.getEnvNumber('MEMORY_FRESHNESS_HALF_LIFE_HOURS', 168),
+        defaultStaleThreshold: this.getEnvNumber('MEMORY_FRESHNESS_STALE_THRESHOLD', 0.3),
+        ttlWeight: this.getEnvNumber('MEMORY_FRESHNESS_TTL_WEIGHT', 0.6),
+      });
+    }
+    return this._freshnessManager;
   }
 
   /**
@@ -321,6 +348,31 @@ export class ManagerContext {
    */
   get temporalSearch(): TemporalSearch {
     return (this._temporalSearch ??= new TemporalSearch(this.storage));
+  }
+
+  /**
+   * DistillationPipeline - Feature 4 (Must-Have): Post-retrieval memory distillation.
+   *
+   * Returns a shared pipeline pre-configured with a DefaultDistillationPolicy.
+   * The pipeline is also wired into ContextWindowManager so all context
+   * retrievals pass through distillation automatically.
+   *
+   * @example
+   * ```typescript
+   * ctx.distillationPipeline.addPolicy(new CustomPolicy());
+   * const result = await ctx.distillationPipeline.distill(searchResults, { minScore: 0.4 });
+   * ```
+   */
+  get distillationPipeline(): DistillationPipeline {
+    if (!this._distillationPipeline) {
+      this._distillationPipeline = new DistillationPipeline();
+      this._distillationPipeline.addPolicy(new DefaultDistillationPolicy(this.freshnessManager));
+      // Wire the pipeline into ContextWindowManager via the policy adapter.
+      this.contextWindowManager.setDistillationPolicy(
+        this._distillationPipeline.asPolicyAdapter()
+      );
+    }
+    return this._distillationPipeline;
   }
 
   /**

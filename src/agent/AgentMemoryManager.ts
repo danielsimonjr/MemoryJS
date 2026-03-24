@@ -42,6 +42,7 @@ import {
   mergeConfig,
   validateConfig,
 } from './AgentMemoryConfig.js';
+import type { IDistillationPolicy } from './DistillationPolicy.js';
 
 /**
  * Options for creating working memory.
@@ -270,6 +271,20 @@ export class AgentMemoryManager extends EventEmitter {
   /** Conflict resolver for memory conflicts */
   get conflictResolver(): ConflictResolver {
     return (this._conflictResolver ??= new ConflictResolver(this.config.conflictResolver));
+  }
+
+  // ==================== Distillation ====================
+
+  /**
+   * Set a distillation policy on the underlying ContextWindowManager.
+   *
+   * When set, all calls to `retrieveForContext` will first filter the
+   * candidate memories through this policy before salience scoring.
+   *
+   * @param policy - An IDistillationPolicy implementation, or undefined to disable.
+   */
+  setDistillationPolicy(policy: IDistillationPolicy | undefined): void {
+    this.contextWindowManager.setDistillationPolicy(policy);
   }
 
   // ==================== Session Lifecycle ====================

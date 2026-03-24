@@ -19,6 +19,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { SalienceEngine } from './SalienceEngine.js';
+import type { IDistillationPolicy } from './DistillationPolicy.js';
 
 /**
  * Configuration for ContextWindowManager.
@@ -84,6 +85,8 @@ export class ContextWindowManager {
   private readonly storage: IGraphStorage;
   private readonly salienceEngine: SalienceEngine;
   private readonly config: Required<ContextWindowManagerConfig>;
+  /** Optional distillation policy applied before salience scoring */
+  private distillationPolicy?: IDistillationPolicy;
 
   constructor(
     storage: IGraphStorage,
@@ -104,6 +107,29 @@ export class ContextWindowManager {
       diversityThreshold: config.diversityThreshold ?? 0.8,
       enforceDiversity: config.enforceDiversity ?? true,
     };
+  }
+
+  // ==================== Distillation ====================
+
+  /**
+   * Set an optional distillation policy.
+   *
+   * When set, `retrieveForContext` will apply the policy to the raw candidate
+   * entities (converted to synthetic HybridSearchResult objects) before
+   * salience scoring.  Only memories that survive distillation are scored and
+   * considered for the context window.
+   *
+   * @param policy - A policy implementing IDistillationPolicy, or undefined to disable.
+   */
+  setDistillationPolicy(policy: IDistillationPolicy | undefined): void {
+    this.distillationPolicy = policy;
+  }
+
+  /**
+   * Get the currently configured distillation policy.
+   */
+  getDistillationPolicy(): IDistillationPolicy | undefined {
+    return this.distillationPolicy;
   }
 
   // ==================== Token Estimation ====================
@@ -260,6 +286,23 @@ export class ContextWindowManager {
       if (!includeSemanticRelevant && e.memoryType === 'semantic') return false;
       return true;
     });
+
+    // Apply distillation policy (Feature 4) if configured.
+    // Wrap candidates as synthetic HybridSearchResults (combined score = 1.0).
+    if (this.distillationPolicy) {
+      const hybridInput = candidates.map((e) => ({
+        entity: e as import('../types/types.js').Entity,
+        scores: { semantic: 0, lexical: 0, symbolic: 0, combined: 1.0 },
+        matchedLayers: [] as ('semantic' | 'lexical' | 'symbolic')[],
+      }));
+      const distilled = await this.distillationPolicy.distill(hybridInput, {
+        queryKeywords: context.queryText ? context.queryText.split(/\s+/) : [],
+        sessionId: context.currentSession,
+        taskDescription: context.currentTask,
+      });
+      const keptNames = new Set(distilled.map((d) => d.entity.name));
+      candidates = candidates.filter((e) => keptNames.has(e.name));
+    }
 
     // Limit candidates for performance
     if (candidates.length > this.config.maxEntitiesToConsider) {
