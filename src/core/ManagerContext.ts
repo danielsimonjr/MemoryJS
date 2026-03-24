@@ -18,14 +18,15 @@ import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
 import { SearchManager } from '../search/SearchManager.js';
 import { RankedSearch } from '../search/RankedSearch.js';
+import { LLMQueryPlanner } from '../search/LLMQueryPlanner.js';
+import { LLMSearchExecutor } from '../search/LLMSearchExecutor.js';
+import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
 import { SemanticSearch, createEmbeddingService, createVectorStore } from '../search/index.js';
 import { IOManager } from '../features/IOManager.js';
 import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
-import { AuditLog } from '../features/AuditLog.js';
-import { GovernanceManager } from '../features/GovernanceManager.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
@@ -47,7 +48,6 @@ export class ManagerContext {
   readonly storage: GraphStorage;
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
-  private readonly auditLogFilePath: string;
 
   // Lazy-initialized managers
   private _entityManager?: EntityManager;
@@ -63,8 +63,6 @@ export class ManagerContext {
   private _analyticsManager?: AnalyticsManager;
   private _compressionManager?: CompressionManager;
   private _archiveManager?: ArchiveManager;
-  private _auditLog?: AuditLog;
-  private _governanceManager?: GovernanceManager;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -72,6 +70,8 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
+  private _llmQueryPlanner?: LLMQueryPlanner;
+  private _llmSearchExecutor?: LLMSearchExecutor;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -82,7 +82,6 @@ export class ManagerContext {
     const basename = path.basename(validatedPath, path.extname(validatedPath));
     this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
-    this.auditLogFilePath = path.join(dir, `${basename}-audit.jsonl`);
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
@@ -168,25 +167,6 @@ export class ManagerContext {
   /** ArchiveManager - Entity archival operations */
   get archiveManager(): ArchiveManager {
     return (this._archiveManager ??= new ArchiveManager(this.storage));
-  }
-
-  /**
-   * AuditLog - Feature 8: Persistent audit trail for governance.
-   *
-   * Persists to a JSONL sidecar file: `<basename>-audit.jsonl`.
-   */
-  get auditLog(): AuditLog {
-    return (this._auditLog ??= new AuditLog(this.auditLogFilePath));
-  }
-
-  /**
-   * GovernanceManager - Feature 8: Policy enforcement and rollback.
-   *
-   * Wraps operations with audit logging and policy evaluation.
-   * Wired to the AuditLog automatically.
-   */
-  get governanceManager(): GovernanceManager {
-    return (this._governanceManager ??= new GovernanceManager(this.storage, this.auditLog));
   }
 
   /**
@@ -351,6 +331,46 @@ export class ManagerContext {
       this._agentMemory = new AgentMemoryManager(this.storage, config);
     }
     return this._agentMemory;
+  }
+
+  // ==================== LLM Query Planner ====================
+
+  /**
+   * LLMQueryPlanner - Feature 7: Natural language query decomposition.
+   *
+   * Decomposes free-text queries into structured search plans.
+   * Optionally configured with an LLM provider; falls back to keyword
+   * extraction when no provider is supplied.
+   *
+   * @param config - Optional LLM provider and default limit
+   */
+  llmQueryPlanner(config?: LLMQueryPlannerConfig): LLMQueryPlanner {
+    if (!this._llmQueryPlanner || config) {
+      this._llmQueryPlanner = new LLMQueryPlanner(config);
+      // Reset the executor so it is recreated with the new planner's config
+      this._llmSearchExecutor = undefined;
+    }
+    return this._llmQueryPlanner;
+  }
+
+  /**
+   * Convenience method: decompose a natural language string into Entity results.
+   *
+   * Uses the default (no-LLM) query planner unless a custom planner has
+   * already been initialised via {@link llmQueryPlanner}.
+   *
+   * @param text - Natural language query
+   * @returns Matching entities
+   */
+  async queryNaturalLanguage(text: string): Promise<import('../types/index.js').Entity[]> {
+    const planner = this._llmQueryPlanner ?? this.llmQueryPlanner();
+
+    if (!this._llmSearchExecutor) {
+      this._llmSearchExecutor = new LLMSearchExecutor(this.searchManager);
+    }
+
+    const structured = await planner.planQuery(text);
+    return this._llmSearchExecutor.execute(structured);
   }
 
   // ==================== Environment Variable Helpers ====================
