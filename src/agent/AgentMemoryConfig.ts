@@ -19,6 +19,8 @@ import type { ContextWindowManagerConfig } from './ContextWindowManager.js';
 import type { MemoryFormatterConfig } from './MemoryFormatter.js';
 import type { MultiAgentConfig } from './MultiAgentMemoryManager.js';
 import type { ConflictResolverConfig } from './ConflictResolver.js';
+import type { CollaborativeSynthesisConfig } from './CollaborativeSynthesis.js';
+import type { GraphTraversal } from '../core/GraphTraversal.js';
 
 /**
  * Configuration for the AgentMemoryManager facade.
@@ -62,6 +64,16 @@ export interface AgentMemoryConfig {
 
   /** Conflict resolver configuration */
   conflictResolver?: ConflictResolverConfig;
+
+  /** Collaborative synthesis configuration */
+  collaborativeSynthesis?: CollaborativeSynthesisConfig;
+
+  /**
+   * GraphTraversal instance to use for collaborative synthesis.
+   * When provided, `synthesizeCollaborativeContext` on AgentMemoryManager
+   * will use this traversal instead of requiring one to be passed directly.
+   */
+  graphTraversal?: GraphTraversal;
 
   /** Enable automatic decay scheduling */
   enableAutoDecay?: boolean;
@@ -182,6 +194,11 @@ export function mergeConfig(
     formatter: mergeSubConfig(userConfig.formatter, envConfig.formatter),
     multiAgent: mergeSubConfig(userConfig.multiAgent, envConfig.multiAgent),
     conflictResolver: mergeSubConfig(userConfig.conflictResolver, envConfig.conflictResolver),
+    collaborativeSynthesis: mergeSubConfig(
+      userConfig.collaborativeSynthesis,
+      envConfig.collaborativeSynthesis
+    ),
+    graphTraversal: userConfig.graphTraversal ?? envConfig.graphTraversal,
     enableAutoDecay: userConfig.enableAutoDecay ?? envConfig.enableAutoDecay,
     enableMultiAgent: userConfig.enableMultiAgent ?? envConfig.enableMultiAgent,
     defaultAgentId: userConfig.defaultAgentId ?? envConfig.defaultAgentId,

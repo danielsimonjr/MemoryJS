@@ -114,6 +114,12 @@ export {
 } from './AgentMemoryManager.js';
 
 export {
+  CollaborativeSynthesis,
+  type CollaborativeSynthesisConfig,
+  type SynthesisResult,
+} from './CollaborativeSynthesis.js';
+
+export {
   type AgentMemoryConfig,
   loadConfigFromEnv,
   mergeConfig,
