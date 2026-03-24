@@ -33,3 +33,10 @@ export {
   KeywordExtractor,
   type ScoredKeyword,
 } from './KeywordExtractor.js';
+
+// Feature 5: Temporal Governance & Freshness Auditing
+export {
+  FreshnessManager,
+  type FreshnessReport,
+  type FreshnessManagerConfig,
+} from './FreshnessManager.js';

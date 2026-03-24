@@ -12,7 +12,6 @@ import path from 'path';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
-import { RefIndex } from './RefIndex.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
 import { HierarchyManager } from './HierarchyManager.js';
@@ -25,6 +24,7 @@ import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
+import { FreshnessManager } from '../features/FreshnessManager.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
@@ -32,7 +32,6 @@ import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
-import { ArtifactManager } from '../agent/ArtifactManager.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
@@ -48,11 +47,8 @@ export class ManagerContext {
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
 
-  private readonly refIndexFilePath: string;
-
   // Lazy-initialized managers
   private _entityManager?: EntityManager;
-  private _refIndex?: RefIndex;
   private _relationManager?: RelationManager;
   private _observationManager?: ObservationManager;
   private _hierarchyManager?: HierarchyManager;
@@ -72,18 +68,17 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
-  private _artifactManager?: ArtifactManager;
+  private _freshnessManager?: FreshnessManager;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
     const validatedPath = validateFilePath(memoryFilePath);
 
-    // Derive paths for saved searches, tag aliases, and ref index
+    // Derive paths for saved searches and tag aliases
     const dir = path.dirname(validatedPath);
     const basename = path.basename(validatedPath, path.extname(validatedPath));
     this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
-    this.refIndexFilePath = path.join(dir, `${basename}-refs.jsonl`);
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
@@ -92,21 +87,9 @@ export class ManagerContext {
   // ==================== MANAGER ACCESSORS ====================
   // Use these for direct manager access in toolHandlers
 
-  /** RefIndex - Stable alias → entity-name dereferencing */
-  get refIndex(): RefIndex {
-    if (!this._refIndex) {
-      this._refIndex = new RefIndex(this.refIndexFilePath);
-    }
-    return this._refIndex;
-  }
-
   /** EntityManager - Entity CRUD and tag operations */
   get entityManager(): EntityManager {
-    if (!this._entityManager) {
-      this._entityManager = new EntityManager(this.storage);
-      this._entityManager.setRefIndex(this.refIndex);
-    }
-    return this._entityManager;
+    return (this._entityManager ??= new EntityManager(this.storage));
   }
 
   /** RelationManager - Relation CRUD */
@@ -181,6 +164,28 @@ export class ManagerContext {
   /** ArchiveManager - Entity archival operations */
   get archiveManager(): ArchiveManager {
     return (this._archiveManager ??= new ArchiveManager(this.storage));
+  }
+
+  /**
+   * FreshnessManager - Feature 5: Temporal Governance & Freshness Auditing.
+   *
+   * Provides freshness scoring, stale/expired entity detection,
+   * entity refresh, and freshness reports.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_FRESHNESS_HALF_LIFE_HOURS (default: 168 = 1 week)
+   * - MEMORY_FRESHNESS_STALE_THRESHOLD (default: 0.3)
+   * - MEMORY_FRESHNESS_TTL_WEIGHT (default: 0.6)
+   */
+  get freshnessManager(): FreshnessManager {
+    if (!this._freshnessManager) {
+      this._freshnessManager = new FreshnessManager(this.storage, {
+        defaultHalfLifeHours: this.getEnvNumber('MEMORY_FRESHNESS_HALF_LIFE_HOURS', 168),
+        defaultStaleThreshold: this.getEnvNumber('MEMORY_FRESHNESS_STALE_THRESHOLD', 0.3),
+        ttlWeight: this.getEnvNumber('MEMORY_FRESHNESS_TTL_WEIGHT', 0.6),
+      });
+    }
+    return this._freshnessManager;
   }
 
   /**
@@ -326,23 +331,6 @@ export class ManagerContext {
       });
     }
     return this._memoryFormatter;
-  }
-
-  /**
-   * ArtifactManager - Feature 2: Artifact-Level Granularity.
-   *
-   * Creates and retrieves discrete agent artifacts (tool outputs, code snippets,
-   * API responses, etc.) as stable, named entities with human-readable refs.
-   *
-   * Wired with entityManager and refIndex so that artifact entity names are
-   * automatically registered in the RefIndex for stable cross-turn retrieval.
-   */
-  get artifactManager(): ArtifactManager {
-    return (this._artifactManager ??= new ArtifactManager(
-      this.storage,
-      this.entityManager,
-      this.refIndex
-    ));
   }
 
   /**

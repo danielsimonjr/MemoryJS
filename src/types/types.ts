@@ -56,6 +56,35 @@ export interface Entity {
 
   /** Optional parent entity name for hierarchical nesting */
   parentId?: string;
+
+  // ==================== Feature 5: Temporal Governance ====================
+
+  /**
+   * Time-to-live in milliseconds.
+   * When set, the entity expires at createdAt + ttl.
+   * Entities without ttl never expire based on TTL alone.
+   */
+  ttl?: number;
+
+  /**
+   * Confidence / belief strength (0.0-1.0).
+   * 1.0 = fully certain, 0.0 = completely uncertain.
+   */
+  confidence?: number;
+
+  /**
+   * Computed freshness score (0.0-1.0).
+   * 1.0 = very fresh (just created), approaches 0 as entity ages.
+   * Set by FreshnessManager; not persisted to storage.
+   */
+  freshnessScore?: number;
+
+  /**
+   * Computed expiry timestamp (ISO 8601).
+   * Equals createdAt + ttl when both are present.
+   * Set by FreshnessManager; not persisted to storage.
+   */
+  expiresAt?: string;
 }
 
 // ==================== Relation Types (Phase 1 Sprint 4) ====================
