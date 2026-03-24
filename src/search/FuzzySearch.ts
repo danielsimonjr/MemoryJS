@@ -12,6 +12,7 @@ import type { GraphStorage } from '../core/GraphStorage.js';
 import { levenshteinDistance } from '../utils/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
+import { NGramIndex } from './NGramIndex.js';
 import workerpool, { type Pool } from '@danielsimonjr/workerpool';
 import { fileURLToPath } from 'url';
 import { dirname, join, sep } from 'path';
@@ -75,6 +76,23 @@ export interface FuzzySearchOptions {
    * Default: true
    */
   useWorkerPool?: boolean;
+
+  /**
+   * Optional NGramIndex to use as a prefilter before Levenshtein scoring.
+   * When provided, only documents that share at least one n-gram with the
+   * query (above `ngramThreshold`) are passed to the full fuzzy match.
+   * This is a pure performance optimisation — results should be identical
+   * to running without the prefilter (the Levenshtein step re-validates
+   * every candidate).
+   */
+  ngramIndex?: NGramIndex;
+
+  /**
+   * Jaccard similarity threshold used when querying the NGramIndex prefilter.
+   * Lower values allow more candidates through (safer, less filtering).
+   * Default: 0.1
+   */
+  ngramThreshold?: number;
 }
 
 /**
@@ -104,8 +122,22 @@ export class FuzzySearch {
    */
   private useWorkerPool: boolean;
 
+  /**
+   * Feature 6: Optional NGramIndex used as a prefilter before Levenshtein.
+   * When set, only the candidate set returned by the NGramIndex is passed to
+   * `performFuzzyMatch`, potentially skipping most of the corpus.
+   */
+  private ngramIndex: NGramIndex | null;
+
+  /**
+   * Feature 6: Jaccard threshold for NGramIndex prefilter queries.
+   */
+  private ngramThreshold: number;
+
   constructor(private storage: GraphStorage, options: FuzzySearchOptions = {}) {
     this.useWorkerPool = options.useWorkerPool ?? true;
+    this.ngramIndex = options.ngramIndex ?? null;
+    this.ngramThreshold = options.ngramThreshold ?? 0.1;
     // Calculate worker path using ESM module resolution
     const currentFileUrl = import.meta.url;
     const currentDir = dirname(fileURLToPath(currentFileUrl));
@@ -144,6 +176,30 @@ export class FuzzySearch {
       off: offset,
       lim: limit,
     });
+  }
+
+  /**
+   * Feature 6: Set (or replace) the NGramIndex prefilter.
+   *
+   * The index should already be populated with the same documents that are
+   * stored in the backing `GraphStorage`. Setting this to `null` disables
+   * the prefilter and reverts to a full corpus scan.
+   *
+   * @param index - Populated NGramIndex, or null to disable prefiltering.
+   * @param threshold - Optional Jaccard threshold override (default: 0.1).
+   */
+  setNgramIndex(index: NGramIndex | null, threshold?: number): void {
+    this.ngramIndex = index;
+    if (threshold !== undefined) {
+      this.ngramThreshold = threshold;
+    }
+  }
+
+  /**
+   * Feature 6: Return the currently attached NGramIndex (or null).
+   */
+  getNgramIndex(): NGramIndex | null {
+    return this.ngramIndex;
   }
 
   /**
@@ -228,20 +284,34 @@ export class FuzzySearch {
       }
     }
 
+    // Feature 6: Apply NGramIndex prefilter to reduce candidate set.
+    // This is a pure performance optimisation — the Levenshtein step below
+    // re-validates every candidate so results are identical with or without it.
+    let candidateEntities: readonly Entity[] = graph.entities;
+    if (this.ngramIndex) {
+      const candidateIds = new Set(this.ngramIndex.query(query, this.ngramThreshold));
+      if (candidateIds.size > 0) {
+        candidateEntities = graph.entities.filter(e => candidateIds.has(e.name));
+      }
+      // If the NGramIndex returns zero candidates, fall back to full scan to
+      // avoid missing results (can happen for very short queries or very high
+      // threshold values).
+    }
+
     // Phase 7 Sprint 3: Use worker pool for large graphs with low thresholds
     // Phase 8: Respect useWorkerPool flag for testing
     const shouldUseWorkers =
       this.useWorkerPool &&
-      graph.entities.length >= WORKER_MIN_ENTITIES &&
+      candidateEntities.length >= WORKER_MIN_ENTITIES &&
       threshold < WORKER_MAX_THRESHOLD;
 
     let fuzzyMatched: Entity[];
 
     if (shouldUseWorkers) {
-      fuzzyMatched = await this.searchWithWorkers(query, threshold, graph.entities as Entity[]);
+      fuzzyMatched = await this.searchWithWorkers(query, threshold, candidateEntities as Entity[]);
     } else {
       // Perform single-threaded fuzzy search
-      fuzzyMatched = this.performFuzzyMatch(graph.entities, queryLower, threshold);
+      fuzzyMatched = this.performFuzzyMatch(candidateEntities, queryLower, threshold);
     }
 
     // Apply tag and importance filters using SearchFilterChain
