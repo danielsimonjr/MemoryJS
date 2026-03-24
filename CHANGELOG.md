@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-03-24
+
+### Added
+
+- **Stable Index Dereferencing** (`src/core/RefIndex.ts`): Named reference system for O(1) entity lookup. `RefIndex` class with JSONL sidecar persistence, `register`/`resolve`/`deregister` operations. Integrated into `EntityManager` and `ManagerContext`.
+- **Artifact-Level Granularity** (`src/agent/ArtifactManager.ts`): `createArtifact()` generates stable human-readable names (`toolName-date-shortId`) and auto-registers refs. Introduces `ArtifactEntity` type and `ArtifactType` union.
+- **Temporal Range Queries** (`src/search/TemporalQueryParser.ts`, `src/search/TemporalSearch.ts`): Natural language time expression parsing via `chrono-node` ("10 minutes ago", "last hour", "yesterday"). `SearchManager.searchByTime()` and `ManagerContext.temporalSearch` accessor.
+- **Memory Distillation Policy** (`src/agent/DistillationPolicy.ts`, `src/agent/DistillationPipeline.ts`): Post-retrieval filter with `IDistillationPolicy` interface. Ships with `DefaultDistillationPolicy` (relevance + freshness + dedup), `CompositeDistillationPolicy`, and `NoOpDistillationPolicy`. Wired into `ContextWindowManager`.
+- **Temporal Governance & Freshness** (`src/features/FreshnessManager.ts`): `Entity.ttl` and `Entity.confidence` fields. `FreshnessManager` with `calculateFreshness`, `getStaleEntities`, `getExpiredEntities`, and `generateReport`. `DecayEngine` enhanced with TTL-aware decay. `SalienceEngine` adds `freshnessWeight` scoring component.
+- **N-gram Hashing** (`src/search/NGramIndex.ts`): Trigram index with Jaccard similarity for `FuzzySearch` pre-filtering. Reduces Levenshtein candidate set before worker dispatch.
+- **LLM Query Planner** (`src/search/LLMQueryPlanner.ts`, `src/search/LLMSearchExecutor.ts`): Optional module that decomposes natural language queries into a `StructuredQuery`. `LLMProvider` interface, keyword fallback when no provider configured, JSON validation with recovery. `ManagerContext.queryNaturalLanguage()` entry point.
+- **Dynamic Memory Governance** (`src/features/AuditLog.ts`, `src/features/GovernanceManager.ts`): `AuditLog` with JSONL persistence for immutable operation history. `GovernanceManager` with `withTransaction`/`rollback` semantics. `GovernancePolicy` interface (`canCreate`/`canUpdate`/`canDelete`).
+
 ## [1.5.0] - 2026-02-06
 
 ### Fixed

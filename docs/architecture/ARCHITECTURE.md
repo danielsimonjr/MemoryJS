@@ -1,7 +1,7 @@
 # MemoryJS - System Architecture
 
-**Version**: 1.2.0
-**Last Updated**: 2026-01-14
+**Version**: 1.6.0
+**Last Updated**: 2026-03-24
 
 ---
 
@@ -26,36 +26,37 @@ MemoryJS is a TypeScript knowledge graph library providing:
 
 - **Entity-Relation Knowledge Graph**: Store and query interconnected knowledge
 - **Hierarchical Organization**: Parent-child entity relationships
-- **Advanced Search**: Basic, ranked (TF-IDF/BM25), boolean, fuzzy, semantic, and hybrid search
-- **Agent Memory System**: Working memory, episodic memory, decay, and multi-agent support
+- **Advanced Search**: Basic, ranked (TF-IDF/BM25), boolean, fuzzy, semantic, hybrid, temporal (NL time queries), and LLM-planned search
+- **Agent Memory System**: Working memory, episodic memory, decay, artifacts, distillation, and multi-agent support
+- **Memory Governance**: Audit logging, governance policies, freshness tracking, and stable reference indexing
 - **Compression**: Automatic duplicate detection and merging
 - **Tagging & Importance**: Flexible categorization and prioritization
 - **Timestamps**: Automatic tracking of creation and modification times
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (v1.2.0)
+### Key Statistics (v1.6.0)
 
 | Metric | Value |
 |--------|-------|
-| Source Files | 93 TypeScript files |
-| Lines of Code | ~41,000 lines |
-| Exports | 657 total (404 re-exports) |
-| Classes | 91 |
-| Interfaces | 216 |
-| Functions | 109 |
+| Source Files | 105 TypeScript files |
+| Lines of Code | ~46,000 lines |
+| Exports | 657+ total |
+| Classes | 91+ |
+| Interfaces | 216+ |
+| Functions | 109+ |
 | Circular Dependencies | 2 (type-only, safe) |
 
 ### Module Distribution
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
-| `agent/` | 19 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager |
-| `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
-| `search/` | 29 | SearchManager, BM25Search, HybridScorer, VectorStore |
-| `features/` | 9 | IOManager, ArchiveManager, StreamingExporter |
+| `agent/` | 22 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline |
+| `core/` | 13 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager, RefIndex |
+| `search/` | 34 | SearchManager, BM25Search, HybridScorer, VectorStore, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor |
+| `features/` | 12 | IOManager, ArchiveManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager |
 | `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager |
-| `types/` | 3 | Entity, Relation, AgentEntity, SessionEntity interfaces |
+| `types/` | 4 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity interfaces |
 | `workers/` | 2 | Levenshtein distance calculations |
 
 ---
@@ -118,8 +119,11 @@ MemoryJS is a TypeScript knowledge graph library providing:
 │  │  │ WorkingMem│ HierarchyM│ RankedSrch │ AnalyticsMgr│  │ │
 │  │  │ DecayEng  │ TransactM │ BooleanSrch│ ArchiveMgr  │  │ │
 │  │  │ SalienceE │ GraphTrav │ FuzzySearch│ CompressMgr │  │ │
-│  │  │ ContextWin│           │ HybridSrch │             │  │ │
-│  │  │ MultiAgent│           │ SemanticSrch             │  │ │
+│  │  │ ContextWin│ RefIndex  │ HybridSrch │ FreshnessMgr│  │ │
+│  │  │ MultiAgent│           │ SemanticSrch│ AuditLog   │  │ │
+│  │  │ ArtifactMg│           │ TemporalSrch│ GovernanceMg│ │ │
+│  │  │ Distillati│           │ LLMPlanner │             │  │ │
+│  │  │ on        │           │ NGramIndex │             │  │ │
 │  │  └───────────┴───────────┴────────────┴─────────────┘  │ │
 │  └────────────────────────────┬───────────────────────────┘ │
 │                               │                              │
@@ -293,10 +297,12 @@ class AgentMemoryManager {
 **Key Components**:
 - **SessionManager**: Session lifecycle management
 - **WorkingMemoryManager**: Short-term memory with TTL and promotion
-- **DecayEngine**: Time-based importance decay with reinforcement
-- **SalienceEngine**: Context-aware memory scoring
-- **ContextWindowManager**: LLM token budget optimization
+- **DecayEngine**: TTL-aware importance decay with reinforcement
+- **SalienceEngine**: Context-aware memory scoring with `freshnessWeight`
+- **ContextWindowManager**: LLM token budget optimization + `DistillationPipeline`
 - **MultiAgentMemoryManager**: Shared memory and conflict resolution
+- **ArtifactManager**: Stable artifact creation with auto-registered refs
+- **DistillationPipeline**: Post-retrieval policy-based memory filtering
 
 ### Layer 3: Storage Layer
 
@@ -342,6 +348,9 @@ interface Entity {
   tags?: string[];           // Optional categorization (lowercase)
   importance?: number;       // Optional 0-10 priority
   parentId?: string;         // Optional hierarchical parent
+  // v1.6.0: freshness governance
+  ttl?: number;              // Optional time-to-live in milliseconds
+  confidence?: number;       // Optional belief strength 0.0–1.0
 }
 ```
 

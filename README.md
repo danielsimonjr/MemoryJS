@@ -1,13 +1,13 @@
 # MemoryJS
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
 A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search capabilities**, **hierarchical organization**, and **multiple storage backends**.
 
-> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **93 TypeScript files**, **~41K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid), and a complete **Agent Memory System** for AI agents.
+> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **105 TypeScript files**, **~46K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned), and a complete **Agent Memory System** for AI agents with distillation, freshness governance, and audit logging.
 
 ## Table of Contents
 
@@ -39,27 +39,46 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 
 | Category | Description |
 |----------|-------------|
-| **Search Algorithms** | Basic, TF-IDF ranked, BM25, Boolean (AND/OR/NOT), Fuzzy (Levenshtein), Semantic (embeddings), Hybrid |
+| **Search Algorithms** | Basic, TF-IDF ranked, BM25, Boolean (AND/OR/NOT), Fuzzy (Levenshtein + N-gram pre-filter), Semantic (embeddings), Hybrid |
 | **Graph Algorithms** | Shortest path (BFS), all paths, centrality metrics (degree, betweenness, PageRank), connected components |
 | **Hierarchical Nesting** | Parent-child relationships, ancestor/descendant traversal, subtree operations |
 | **Duplicate Detection** | Intelligent compression with similarity scoring |
 | **Tag Management** | Tags, aliases, bulk operations, importance scores (0-10) |
 | **Import/Export** | JSON, CSV, GraphML formats with Brotli compression |
 | **Analytics** | Graph statistics, validation, integrity checks |
+| **Temporal Queries** | Natural language time parsing ("last hour", "10 minutes ago") via `searchByTime()` and `ManagerContext.temporalSearch` |
+| **Memory Distillation** | Post-retrieval policy filter (relevance + freshness + dedup) wired into `ContextWindowManager` |
+| **Freshness Auditing** | `Entity.ttl` / `Entity.confidence`, `FreshnessManager` reports, TTL-aware decay and salience weighting |
+| **N-gram Search** | Trigram index with Jaccard pre-filtering reduces Levenshtein candidate set in `FuzzySearch` |
+| **LLM Query Planner** | Optional natural language → `StructuredQuery` decomposition via `LLMProvider`; `ManagerContext.queryNaturalLanguage()` |
+| **Governance & Audit** | `AuditLog` (JSONL), `GovernanceManager` (transactions/rollback), `GovernancePolicy` (canCreate/canUpdate/canDelete) |
 
 ### Module Statistics
 
 | Module | Files | Key Components |
 |--------|-------|----------------|
-| `agent/` | 19 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager |
-| `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
-| `search/` | 29 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner |
-| `features/` | 9 | IOManager, ArchiveManager, CompressionManager, StreamingExporter |
+| `agent/` | 22 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline |
+| `core/` | 13 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager, RefIndex |
+| `search/` | 34 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner, TemporalQueryParser, TemporalSearch, NGramIndex, LLMQueryPlanner, LLMSearchExecutor |
+| `features/` | 12 | IOManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager |
 | `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor |
-| `types/` | 3 | Entity, Relation, AgentEntity, SessionEntity interfaces |
+| `types/` | 4 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity interfaces |
 | `workers/` | 2 | Levenshtein distance calculations |
 
-**Total:** 93 TypeScript files | ~41,000 lines of code | 657 exports | 91 classes | 216 interfaces
+**Total:** 105 TypeScript files | ~46,000 lines of code | 657+ exports | 91+ classes | 216+ interfaces
+
+### New in 1.6.0
+
+| Feature | Entry Point |
+|---------|-------------|
+| Stable Index Dereferencing | `ctx.refIndex` — `register` / `resolve` / `deregister` |
+| Artifact-Level Granularity | `ctx.agentMemory().artifactManager.createArtifact()` |
+| Temporal Range Queries | `ctx.searchManager.searchByTime()` / `ctx.temporalSearch` |
+| Memory Distillation Policy | `IDistillationPolicy` — wired into `ContextWindowManager` |
+| Temporal Governance & Freshness | `ctx.freshnessManager` — TTL, confidence, staleness report |
+| N-gram Hashing | Automatic — `FuzzySearch` now pre-filters via `NGramIndex` |
+| LLM Query Planner | `ctx.queryNaturalLanguage(query, llmProvider?)` |
+| Dynamic Memory Governance | `ctx.governanceManager` — `withTransaction` / `GovernancePolicy` |
 
 ## Installation
 
@@ -578,42 +597,54 @@ npm run typecheck     # Type checking without emit
 
 ```
 memoryjs/
-├── src/                            # Source (93 TypeScript files)
+├── src/                            # Source (105 TypeScript files)
 │   ├── index.ts                    # Entry point
-│   ├── agent/                      # Agent Memory System (19 files)
+│   ├── agent/                      # Agent Memory System (22 files)
 │   │   ├── AgentMemoryManager.ts       # Unified facade
 │   │   ├── SessionManager.ts           # Session lifecycle
 │   │   ├── WorkingMemoryManager.ts     # Working memory
 │   │   ├── EpisodicMemoryManager.ts    # Episodic memory
-│   │   ├── DecayEngine.ts              # Memory decay
-│   │   ├── SalienceEngine.ts           # Context scoring
+│   │   ├── DecayEngine.ts              # Memory decay (TTL-aware)
+│   │   ├── SalienceEngine.ts           # Context scoring (freshnessWeight)
 │   │   ├── MultiAgentMemoryManager.ts  # Multi-agent support
 │   │   ├── ConflictResolver.ts         # Conflict resolution
+│   │   ├── ArtifactManager.ts          # Artifact creation + stable refs
+│   │   ├── DistillationPolicy.ts       # Post-retrieval distillation policies
+│   │   ├── DistillationPipeline.ts     # Distillation pipeline executor
 │   │   └── ...
-│   ├── core/                       # Core managers (12 files)
+│   ├── core/                       # Core managers (13 files)
 │   │   ├── ManagerContext.ts           # Context holder (lazy init)
 │   │   ├── EntityManager.ts            # Entity CRUD + hierarchy
 │   │   ├── RelationManager.ts          # Relation CRUD
 │   │   ├── GraphStorage.ts             # JSONL I/O + caching
 │   │   ├── SQLiteStorage.ts            # SQLite with better-sqlite3
 │   │   ├── TransactionManager.ts       # ACID transactions
+│   │   ├── RefIndex.ts                 # Named refs for O(1) entity lookup
 │   │   └── ...
-│   ├── search/                     # Search implementations (29 files)
+│   ├── search/                     # Search implementations (34 files)
 │   │   ├── SearchManager.ts            # Search orchestrator
 │   │   ├── BasicSearch.ts              # Text matching
 │   │   ├── RankedSearch.ts             # TF-IDF scoring
 │   │   ├── BooleanSearch.ts            # AND/OR/NOT logic
-│   │   ├── FuzzySearch.ts              # Typo tolerance
+│   │   ├── FuzzySearch.ts              # Typo tolerance (NGram pre-filtered)
 │   │   ├── SemanticSearch.ts           # Embedding-based
 │   │   ├── HybridSearchManager.ts      # Multi-layer search
+│   │   ├── NGramIndex.ts               # Trigram index + Jaccard pre-filter
+│   │   ├── TemporalQueryParser.ts      # Natural language time parsing
+│   │   ├── TemporalSearch.ts           # Time-range search executor
+│   │   ├── LLMQueryPlanner.ts          # NL → StructuredQuery decomposition
+│   │   ├── LLMSearchExecutor.ts        # LLM-planned search execution
 │   │   └── ...
-│   ├── features/                   # Advanced capabilities (9 files)
+│   ├── features/                   # Advanced capabilities (12 files)
 │   │   ├── IOManager.ts                # Import/export/backup
 │   │   ├── TagManager.ts               # Tag aliases
 │   │   ├── ArchiveManager.ts           # Entity archival
 │   │   ├── CompressionManager.ts       # Duplicate detection
+│   │   ├── FreshnessManager.ts         # TTL/confidence freshness reports
+│   │   ├── AuditLog.ts                 # JSONL immutable audit trail
+│   │   ├── GovernanceManager.ts        # Transactions + policy enforcement
 │   │   └── ...
-│   ├── types/                      # TypeScript definitions (3 files)
+│   ├── types/                      # TypeScript definitions (4 files)
 │   ├── utils/                      # Shared utilities (18 files)
 │   └── workers/                    # Worker pool (2 files)
 ├── tests/                          # Test suite (3600+ tests)

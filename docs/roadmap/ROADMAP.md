@@ -10,6 +10,7 @@ This document outlines the strategic development roadmap for MemoryJS, organized
 | 2 | Developer Experience | Months 2-3 | 🔲 Pending |
 | 3 | Agent Memory System | Months 3-5 | ✅ **Completed** (v1.2.0) |
 | 3B | Memory Intelligence (Reflection & Experience) | Months 5-7 | 🔲 Pending |
+| 3C | Must-Have Infrastructure Features | — | ✅ **Completed** (v1.6.0) |
 | 4 | Integration & Scale | Months 9-11 | 🔲 Pending |
 | 5 | Advanced Features | Months 11-14 | 🔲 Pending |
 | 6 | Enterprise | Months 14+ | 🔲 Pending |
@@ -21,7 +22,7 @@ This document outlines the strategic development roadmap for MemoryJS, organized
 ### Production-Ready Features
 - Entity-Relation-Observation data model with full CRUD operations
 - Dual storage backends (JSONL & SQLite with FTS5)
-- Comprehensive search: TF-IDF, BM25, Boolean, Fuzzy, Semantic, Hybrid
+- Comprehensive search: TF-IDF, BM25, Boolean, Fuzzy (N-gram pre-filtered), Semantic, Hybrid, Temporal, LLM-planned
 - Semantic search with embedding provider abstraction (OpenAI, local, mock)
 - Vector quantization for memory-efficient embeddings
 - Reflection-based query refinement with progressive search
@@ -32,6 +33,11 @@ This document outlines the strategic development roadmap for MemoryJS, organized
 - Tag management with aliases and bulk operations
 - Streaming exports for large graphs (>5000 entities)
 - Transaction management with batch processing
+- Stable reference index (`RefIndex`) for O(1) named entity lookups
+- Artifact management with stable human-readable names (`ArtifactManager`)
+- Memory distillation policies (`IDistillationPolicy`) in context retrieval pipeline
+- Entity freshness governance (`FreshnessManager`, `Entity.ttl`, `Entity.confidence`)
+- Immutable audit logging (`AuditLog`) and governance policies (`GovernanceManager`)
 
 ### Areas for Documentation/Testing Expansion
 - Semantic search configuration guides
@@ -399,6 +405,78 @@ MEMORY_DEFAULT_VISIBILITY=private
 - Retrieval latency with token budgeting
 - Consolidation throughput
 - Concurrent multi-agent access
+
+---
+
+## Phase 3C: Must-Have Infrastructure Features ✅ COMPLETED
+
+**Status**: Implemented in v1.6.0 (2026-03-24)
+
+Eight high-priority features identified as critical infrastructure gaps, implemented on branch `feature/must-have-8`.
+
+### 3C.1 Stable Index Dereferencing ✅
+
+**Implemented**: `src/core/RefIndex.ts`
+
+Named reference system that provides O(1) entity lookup decoupled from entity names. A `RefIndex` JSONL sidecar persists `ref → entityName` mappings. Integrated into `EntityManager` (auto-deregister on delete) and `ManagerContext` (`ctx.refIndex`).
+
+**API**: `register(ref, entityName)` / `resolve(ref)` / `deregister(ref)`
+
+---
+
+### 3C.2 Artifact-Level Granularity ✅
+
+**Implemented**: `src/agent/ArtifactManager.ts`
+
+`createArtifact()` generates stable human-readable artifact names in the format `toolName-YYYY-MM-DD-shortId` and auto-registers them in `RefIndex`. Introduces `ArtifactEntity` type extending `AgentEntity` with an `artifactType` discriminant field (`ArtifactType` union).
+
+---
+
+### 3C.3 Temporal Range Queries ✅
+
+**Implemented**: `src/search/TemporalQueryParser.ts`, `src/search/TemporalSearch.ts`
+
+Natural language time expression parsing via `chrono-node` ("10 minutes ago", "last hour", "yesterday"). Exposed as `SearchManager.searchByTime(expression)` and `ManagerContext.temporalSearch` accessor.
+
+---
+
+### 3C.4 Memory Distillation Policy ✅
+
+**Implemented**: `src/agent/DistillationPolicy.ts`, `src/agent/DistillationPipeline.ts`
+
+Post-retrieval filter applied in `ContextWindowManager` before LLM formatting. `IDistillationPolicy` interface ships with three implementations: `DefaultDistillationPolicy` (relevance threshold + freshness + deduplication), `CompositeDistillationPolicy` (chain multiple policies), `NoOpDistillationPolicy` (pass-through).
+
+---
+
+### 3C.5 Temporal Governance & Freshness ✅
+
+**Implemented**: `src/features/FreshnessManager.ts`
+
+`Entity.ttl` (ms) and `Entity.confidence` (0–1) added as optional fields. `FreshnessManager` exposes `calculateFreshness`, `getStaleEntities`, `getExpiredEntities`, and `generateReport`. `DecayEngine` enhanced with TTL-aware decay logic. `SalienceEngine` gains a `freshnessWeight` scoring component.
+
+---
+
+### 3C.6 N-gram Hashing ✅
+
+**Implemented**: `src/search/NGramIndex.ts`
+
+Trigram index with Jaccard similarity used as a pre-filter in `FuzzySearch`. Reduces the candidate set passed to Levenshtein worker pool, improving fuzzy search performance on large graphs.
+
+---
+
+### 3C.7 LLM Query Planner ✅
+
+**Implemented**: `src/search/LLMQueryPlanner.ts`, `src/search/LLMSearchExecutor.ts`
+
+Optional module decomposing natural language queries into a `StructuredQuery` (keywords, filters, intent, suggested methods) via an `LLMProvider` interface. Falls back to keyword extraction when no provider is configured. JSON responses are validated with recovery via regex fallback. Exposed as `ManagerContext.queryNaturalLanguage(query, provider?)`.
+
+---
+
+### 3C.8 Dynamic Memory Governance ✅
+
+**Implemented**: `src/features/AuditLog.ts`, `src/features/GovernanceManager.ts`
+
+`AuditLog` persists an immutable operation history as JSONL. `GovernanceManager` wraps entity mutations with `GovernancePolicy` checks (`canCreate`/`canUpdate`/`canDelete`) and provides `withTransaction`/`rollback` semantics. Exposed as `ManagerContext.governanceManager`.
 
 ---
 
@@ -1217,6 +1295,7 @@ The maintainers will review proposals quarterly and update this roadmap accordin
 | 1.0 | 2025-01-12 | Initial roadmap creation |
 | 1.1 | 2025-01-13 | Added Phase 3: Agent Memory System with comprehensive short-term and long-term memory support for AI agents. Includes memory lifecycle, decay engine, consolidation pipeline, salience scoring, context window management, session/episodic memory, and multi-agent support. See [Agent Memory Architecture](../architecture/AGENT_MEMORY.md) for detailed specifications. |
 | 1.2 | 2026-01-19 | Marked Phase 3 as COMPLETED (v1.2.0). Added Phase 3B: Memory Intelligence based on "From Storage to Experience: A Survey on the Evolution of LLM Agent Memory Mechanisms" (Luo et al., 2026). New features include: Memory Validation & Error Rectification, Trajectory Compression, Experience Extraction (cross-trajectory abstraction), Procedural Memory Manager, Heuristic Guidelines Manager, Active Retrieval Controller, Causal Relations, and World Model Manager. Adjusted Phase 4-6 timelines accordingly. |
+| 1.3 | 2026-03-24 | Added Phase 3C: Must-Have Infrastructure Features — marked COMPLETED (v1.6.0). Eight features implemented: Stable Index Dereferencing (RefIndex), Artifact-Level Granularity (ArtifactManager), Temporal Range Queries (TemporalQueryParser + TemporalSearch), Memory Distillation Policy (DistillationPolicy + DistillationPipeline), Temporal Governance & Freshness (FreshnessManager, Entity.ttl/confidence), N-gram Hashing (NGramIndex), LLM Query Planner (LLMQueryPlanner + LLMSearchExecutor), Dynamic Memory Governance (AuditLog + GovernanceManager). |
 
 ---
 
