@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-03-24
+
+### Added
+
+- **Role-Aware Memory Customization** (`src/agent/RoleProfiles.ts`): Five built-in role profiles (`researcher`, `planner`, `executor`, `reviewer`, `coordinator`) each with distinct salience weight configurations and token budget splits. `RoleProfileManager` selects and applies profiles to `SalienceEngine` and `ContextWindowManager` at agent instantiation.
+- **Entropy-Aware Filtering** (`src/agent/EntropyFilter.ts`): Shannon entropy gate that drops low-information memories before distillation. `EntropyFilter` computes per-entity entropy scores from observation diversity and rejects entries below a configurable threshold. Integrated as an early stage in `ConsolidationPipeline`.
+- **Recursive Memory Consolidation** (`src/agent/ConsolidationScheduler.ts`): Background scheduler that runs deduplication and merge passes on long-term memory at configurable intervals. `ConsolidationScheduler` invokes `ConsolidationPipeline.runAutoConsolidation()` recursively, merging near-duplicate entities until a fixed point is reached.
+- **Visual Salience Budget Allocation** (`src/agent/MemoryFormatter.ts`): `formatWithSalienceBudget()` method on `MemoryFormatter` that proportionally allocates token budget across memory types (working / episodic / semantic) based on their aggregate salience scores, producing balanced prompt sections.
+- **Collaborative Memory Synthesis** (`src/agent/CollaborativeSynthesis.ts`): Graph-neighbourhood synthesis that merges observations from all agents within N hops of a target entity. `CollaborativeSynthesis.synthesize()` walks the relation graph, collects agent-contributed observations, and returns a unified view with provenance metadata.
+- **Failure-Driven Memory Distillation** (`src/agent/FailureDistillation.ts`): Causal chain analysis that extracts lessons from failed episodes. `FailureDistillation.distill()` reconstructs the event sequence leading to a failure entity, scores each step by causal contribution, and promotes high-scoring observations to semantic memory as reusable lessons.
+- **Cognitive Load Metrics** (`src/agent/CognitiveLoadAnalyzer.ts`): Token density, redundancy ratio, and observation diversity scoring for a memory set. `CognitiveLoadAnalyzer.analyze()` returns a `CognitiveLoadReport` with per-dimension scores and an overall load index, used by `ContextWindowManager` to prune high-load sections before prompting.
+- **Shared Memory Visibility Hierarchies** (`src/agent/VisibilityResolver.ts`): Five-level visibility model (`private` | `team` | `org` | `shared` | `public`) with `GroupMembership` registry. `VisibilityResolver.resolve()` filters memory sets for a requesting agent based on its group memberships and the target entity's visibility level.
+
 ## [1.6.0] - 2026-03-24
 
 ### Added

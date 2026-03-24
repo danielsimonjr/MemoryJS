@@ -44,7 +44,7 @@ SKIP_BENCHMARKS=true npm test
 
 ```
 src/
-├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation)
+├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility)
 ├── cli/       # CLI commands (bin: `memory` / `memoryjs`)
 ├── core/      # Storage backends, entity/relation/observation managers, transactions, RefIndex
 ├── search/    # Search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned)
@@ -113,9 +113,16 @@ ctx.agentMemory()       // Agent Memory System facade
 - **Decay & salience**: `DecayEngine`/`DecayScheduler` (TTL-aware decay), `SalienceEngine` (context-aware scoring with `freshnessWeight`)
 - **Multi-agent**: `MultiAgentMemoryManager` (visibility controls: private/shared/public), `ConflictResolver`
 - **Processing**: `ConsolidationPipeline`, `SummarizationService`, `PatternDetector`, `RuleEvaluator`
-- **Context**: `ContextWindowManager` (token budgeting + distillation), `MemoryFormatter` (output formatting), `AccessTracker`
+- **Context**: `ContextWindowManager` (token budgeting + distillation), `MemoryFormatter` (`formatWithSalienceBudget()` for proportional allocation), `AccessTracker`
 - **Artifacts**: `ArtifactManager` — `createArtifact()` generates stable human-readable names (`toolName-date-shortId`), auto-registers refs; `ArtifactEntity` type + `ArtifactType` union
 - **Distillation**: `IDistillationPolicy` interface + `DefaultDistillationPolicy` (relevance + freshness + dedup), `CompositeDistillationPolicy`, `NoOpDistillationPolicy` — wired into `ContextWindowManager`
+- **Role profiles** (v1.7.0): `RoleProfiles` — five built-in roles (`researcher`, `planner`, `executor`, `reviewer`, `coordinator`) each with salience weight presets and token budget splits; applied via `RoleProfileManager`
+- **Entropy filtering** (v1.7.0): `EntropyFilter` — Shannon entropy gate that drops low-information memories; integrated as an early `ConsolidationPipeline` stage
+- **Consolidation scheduler** (v1.7.0): `ConsolidationScheduler` — background recursive dedup+merge scheduler; runs `ConsolidationPipeline.runAutoConsolidation()` until a fixed point
+- **Collaborative synthesis** (v1.7.0): `CollaborativeSynthesis` — graph-neighbourhood merge across agents within N hops; returns unified view with provenance metadata
+- **Failure distillation** (v1.7.0): `FailureDistillation` — causal chain lesson extraction from failed episodes; promotes high-scoring observations to semantic memory
+- **Cognitive load** (v1.7.0): `CognitiveLoadAnalyzer` — token density + redundancy ratio + observation diversity → `CognitiveLoadReport`; used by `ContextWindowManager` to prune high-load sections
+- **Visibility hierarchies** (v1.7.0): `VisibilityResolver` — five-level model (`private` | `team` | `org` | `shared` | `public`) with `GroupMembership` registry
 
 ### Data Model
 
@@ -160,6 +167,9 @@ ctx.agentMemory()       // Agent Memory System facade
 - Named references: `RefIndex` JSONL sidecar provides O(1) stable-name lookups independent of entity name changes
 - Governance: `GovernanceManager` wraps mutations with policy checks and rollback; `AuditLog` appends every operation immutably
 - Distillation: `IDistillationPolicy` applied post-retrieval in `ContextWindowManager` before formatting for LLM prompts
+- Role-aware salience: `RoleProfileManager` applies role presets to `SalienceEngine` weights and `ContextWindowManager` budget splits
+- Entropy gate: `EntropyFilter` runs before consolidation; drops observations that do not increase information diversity
+- Visibility resolution: `VisibilityResolver` evaluates `GroupMembership` against entity visibility level before returning memories to a requesting agent
 
 ### Build Notes
 
@@ -215,6 +225,17 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 | `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | - |
 | `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168` |
 | `MEMORY_LLM_QUERY_PLANNER_PROVIDER` | Provider name string | - |
+
+### Role Profiles & Advanced Agent Features (v1.7.0)
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_AGENT_ROLE` | `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | - |
+| `MEMORY_ENTROPY_FILTER_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_ENTROPY_THRESHOLD` | Number (0–1) | `0.3` |
+| `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_CONSOLIDATION_INTERVAL_MS` | Number | `3600000` |
+| `MEMORY_COGNITIVE_LOAD_MAX` | Number (0–1) | `0.8` |
+| `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
 
 ## Documentation
 

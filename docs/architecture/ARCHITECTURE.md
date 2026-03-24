@@ -1,6 +1,6 @@
 # MemoryJS - System Architecture
 
-**Version**: 1.6.0
+**Version**: 1.7.0
 **Last Updated**: 2026-03-24
 
 ---
@@ -27,7 +27,7 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Entity-Relation Knowledge Graph**: Store and query interconnected knowledge
 - **Hierarchical Organization**: Parent-child entity relationships
 - **Advanced Search**: Basic, ranked (TF-IDF/BM25), boolean, fuzzy, semantic, hybrid, temporal (NL time queries), and LLM-planned search
-- **Agent Memory System**: Working memory, episodic memory, decay, artifacts, distillation, and multi-agent support
+- **Agent Memory System**: Working memory, episodic memory, decay, artifacts, distillation, role profiles, entropy filtering, recursive consolidation, collaborative synthesis, failure distillation, cognitive load analysis, and shared visibility hierarchies
 - **Memory Governance**: Audit logging, governance policies, freshness tracking, and stable reference indexing
 - **Compression**: Automatic duplicate detection and merging
 - **Tagging & Importance**: Flexible categorization and prioritization
@@ -35,23 +35,23 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (v1.6.0)
+### Key Statistics (v1.7.0)
 
 | Metric | Value |
 |--------|-------|
-| Source Files | 105 TypeScript files |
-| Lines of Code | ~46,000 lines |
-| Exports | 657+ total |
-| Classes | 91+ |
-| Interfaces | 216+ |
-| Functions | 109+ |
+| Source Files | 113 TypeScript files |
+| Lines of Code | ~50,000 lines |
+| Exports | 720+ total |
+| Classes | 99+ |
+| Interfaces | 240+ |
+| Functions | 120+ |
 | Circular Dependencies | 2 (type-only, safe) |
 
 ### Module Distribution
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
-| `agent/` | 22 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline |
+| `agent/` | 30 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver |
 | `core/` | 13 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager, RefIndex |
 | `search/` | 34 | SearchManager, BM25Search, HybridScorer, VectorStore, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor |
 | `features/` | 12 | IOManager, ArchiveManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager |

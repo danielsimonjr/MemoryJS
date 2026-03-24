@@ -1,13 +1,13 @@
 # MemoryJS
 
-[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
+[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
 A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search capabilities**, **hierarchical organization**, and **multiple storage backends**.
 
-> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **105 TypeScript files**, **~46K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned), and a complete **Agent Memory System** for AI agents with distillation, freshness governance, and audit logging.
+> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **113 TypeScript files**, **~50K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned), and a complete **Agent Memory System** for AI agents with role profiles, entropy filtering, recursive consolidation, collaborative synthesis, failure distillation, cognitive load analysis, and shared visibility hierarchies.
 
 ## Table of Contents
 
@@ -57,7 +57,7 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 
 | Module | Files | Key Components |
 |--------|-------|----------------|
-| `agent/` | 22 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline |
+| `agent/` | 30 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver |
 | `core/` | 13 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager, RefIndex |
 | `search/` | 34 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner, TemporalQueryParser, TemporalSearch, NGramIndex, LLMQueryPlanner, LLMSearchExecutor |
 | `features/` | 12 | IOManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager |
@@ -65,7 +65,20 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 | `types/` | 4 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity interfaces |
 | `workers/` | 2 | Levenshtein distance calculations |
 
-**Total:** 105 TypeScript files | ~46,000 lines of code | 657+ exports | 91+ classes | 216+ interfaces
+**Total:** 113 TypeScript files | ~50,000 lines of code | 720+ exports | 99+ classes | 240+ interfaces
+
+### New in 1.7.0
+
+| Feature | Entry Point |
+|---------|-------------|
+| Role-Aware Memory Customization | `RoleProfileManager.apply(role)` — salience weights + budget splits |
+| Entropy-Aware Filtering | `EntropyFilter` — Shannon entropy gate in `ConsolidationPipeline` |
+| Recursive Memory Consolidation | `ConsolidationScheduler` — background dedup + merge to fixed point |
+| Visual Salience Budget Allocation | `MemoryFormatter.formatWithSalienceBudget()` |
+| Collaborative Memory Synthesis | `CollaborativeSynthesis.synthesize(entity, hopDepth)` |
+| Failure-Driven Memory Distillation | `FailureDistillation.distill(failureEntity)` |
+| Cognitive Load Metrics | `CognitiveLoadAnalyzer.analyze(memories)` → `CognitiveLoadReport` |
+| Shared Memory Visibility Hierarchies | `VisibilityResolver.resolve(agentId, memories)` — 5-level model |
 
 ### New in 1.6.0
 
@@ -597,9 +610,9 @@ npm run typecheck     # Type checking without emit
 
 ```
 memoryjs/
-├── src/                            # Source (105 TypeScript files)
+├── src/                            # Source (113 TypeScript files)
 │   ├── index.ts                    # Entry point
-│   ├── agent/                      # Agent Memory System (22 files)
+│   ├── agent/                      # Agent Memory System (30 files)
 │   │   ├── AgentMemoryManager.ts       # Unified facade
 │   │   ├── SessionManager.ts           # Session lifecycle
 │   │   ├── WorkingMemoryManager.ts     # Working memory
@@ -611,6 +624,14 @@ memoryjs/
 │   │   ├── ArtifactManager.ts          # Artifact creation + stable refs
 │   │   ├── DistillationPolicy.ts       # Post-retrieval distillation policies
 │   │   ├── DistillationPipeline.ts     # Distillation pipeline executor
+│   │   ├── RoleProfiles.ts             # Role profiles + salience weight presets
+│   │   ├── EntropyFilter.ts            # Shannon entropy gate for consolidation
+│   │   ├── ConsolidationScheduler.ts   # Background recursive dedup+merge
+│   │   ├── MemoryFormatter.ts          # formatWithSalienceBudget()
+│   │   ├── CollaborativeSynthesis.ts   # Graph-neighbourhood multi-agent merge
+│   │   ├── FailureDistillation.ts      # Causal chain lesson extraction
+│   │   ├── CognitiveLoadAnalyzer.ts    # Token density + redundancy + diversity
+│   │   ├── VisibilityResolver.ts       # 5-level visibility + GroupMembership
 │   │   └── ...
 │   ├── core/                       # Core managers (13 files)
 │   │   ├── ManagerContext.ts           # Context holder (lazy init)

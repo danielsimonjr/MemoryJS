@@ -1,6 +1,6 @@
 # MemoryJS - Component Reference
 
-**Version**: 1.6.0
+**Version**: 1.7.0
 **Last Updated**: 2026-03-24
 
 ---
@@ -24,7 +24,7 @@ MemoryJS follows a layered architecture with specialized components:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  agent/            │  Agent memory system (22 files)        │
+│  agent/            │  Agent memory system (30 files)        │
 ├─────────────────────────────────────────────────────────────┤
 │  core/             │  Central managers and storage (13 files)│
 ├─────────────────────────────────────────────────────────────┤
@@ -40,7 +40,7 @@ MemoryJS follows a layered architecture with specialized components:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 105 TypeScript files | 657+ exports | ~46,000 lines of code
+**Total:** 113 TypeScript files | 720+ exports | ~50,000 lines of code
 
 ---
 
@@ -392,6 +392,192 @@ export class DistillationPipeline {
 ```
 
 Wired into `ContextWindowManager.retrieveForContext()` — runs after salience scoring and before token budgeting.
+
+---
+
+### RoleProfiles (`agent/RoleProfiles.ts`)
+
+**Purpose**: Role-aware salience weight presets and token budget splits (v1.7.0)
+
+```typescript
+type AgentRole = 'researcher' | 'planner' | 'executor' | 'reviewer' | 'coordinator';
+
+export interface RoleProfile {
+  role: AgentRole;
+  salienceWeights: SalienceWeights;     // importanceWeight, recencyWeight, etc.
+  budgetSplits: BudgetSplits;           // working / episodic / semantic proportions
+}
+
+export class RoleProfileManager {
+  constructor(salienceEngine: SalienceEngine, contextWindowManager: ContextWindowManager)
+
+  apply(role: AgentRole): void          // Sets weights + budget splits
+  getProfile(role: AgentRole): RoleProfile
+  listProfiles(): RoleProfile[]
+}
+```
+
+Five built-in profiles ship with opinionated defaults — e.g. `researcher` boosts semantic weight, `executor` boosts working-memory budget.
+
+---
+
+### EntropyFilter (`agent/EntropyFilter.ts`)
+
+**Purpose**: Shannon entropy gate that removes low-information memories before consolidation (v1.7.0)
+
+```typescript
+export class EntropyFilter {
+  constructor(config?: EntropyFilterConfig)  // threshold: number (default 0.3)
+
+  score(entity: AgentEntity): number          // 0–1 entropy score
+  filter(entities: AgentEntity[]): AgentEntity[]  // drops below-threshold entries
+}
+```
+
+Integrated as an early stage in `ConsolidationPipeline`. Entropy is computed from observation token diversity using the standard Shannon formula over unigram frequencies.
+
+---
+
+### ConsolidationScheduler (`agent/ConsolidationScheduler.ts`)
+
+**Purpose**: Background recursive deduplication and merge scheduler (v1.7.0)
+
+```typescript
+export class ConsolidationScheduler {
+  constructor(pipeline: ConsolidationPipeline, config?: SchedulerConfig)
+  //   intervalMs: number  (default 3_600_000)
+  //   maxIterations: number
+
+  start(): void
+  stop(): void
+  runNow(): Promise<ConsolidationResult>   // Manual one-shot cycle
+}
+```
+
+Each scheduled cycle calls `ConsolidationPipeline.runAutoConsolidation()` and repeats until the result reports zero merges (fixed-point convergence).
+
+---
+
+### MemoryFormatter (`agent/MemoryFormatter.ts`) — updated
+
+**Purpose**: Memory-to-prompt formatting with salience-proportional budget allocation (v1.7.0)
+
+```typescript
+export class MemoryFormatter {
+  formatForPrompt(memories: AgentEntity[], options?: FormatOptions): string
+  formatEntity(entity: AgentEntity): string
+  formatObservations(observations: string[], limit?: number): string
+
+  // v1.7.0
+  formatWithSalienceBudget(
+    memories: AgentEntity[],
+    scores: Map<string, number>,
+    totalTokens: number
+  ): string   // Proportionally allocates tokens across memory-type sections
+}
+```
+
+---
+
+### CollaborativeSynthesis (`agent/CollaborativeSynthesis.ts`)
+
+**Purpose**: Graph-neighbourhood synthesis merging observations from multiple agents (v1.7.0)
+
+```typescript
+export class CollaborativeSynthesis {
+  constructor(storage: IGraphStorage, config?: SynthesisConfig)
+  //   hopDepth: number   (default 2)
+
+  async synthesize(
+    entityName: string,
+    requestingAgentId: string
+  ): Promise<SynthesisResult>
+}
+
+interface SynthesisResult {
+  unified: AgentEntity;          // Merged entity with combined observations
+  provenance: ProvenanceEntry[]; // Per-observation source agent + timestamp
+  agentCount: number;
+  hopDepth: number;
+}
+```
+
+Walks the relation graph up to `hopDepth` hops, collects all agent-contributed observations for reachable entities, and returns a unified view. Visibility rules from `VisibilityResolver` are enforced during traversal.
+
+---
+
+### FailureDistillation (`agent/FailureDistillation.ts`)
+
+**Purpose**: Causal chain lesson extraction from failed episodes (v1.7.0)
+
+```typescript
+export class FailureDistillation {
+  constructor(storage: IGraphStorage, pipeline: ConsolidationPipeline)
+
+  async distill(failureEntityName: string): Promise<DistillationResult>
+}
+
+interface DistillationResult {
+  lessons: AgentEntity[];        // Promoted semantic memories
+  causalChain: string[];         // Ordered entity names in the failure path
+  contributionScores: Map<string, number>;  // Per-step causal weight
+}
+```
+
+Reconstructs the event sequence leading to the failure entity via reverse causal relation traversal, scores each step by causal contribution, and promotes the highest-scoring observations to semantic memory as reusable lessons.
+
+---
+
+### CognitiveLoadAnalyzer (`agent/CognitiveLoadAnalyzer.ts`)
+
+**Purpose**: Multi-dimensional cognitive load scoring for a memory set (v1.7.0)
+
+```typescript
+export class CognitiveLoadAnalyzer {
+  analyze(memories: AgentEntity[]): CognitiveLoadReport
+}
+
+interface CognitiveLoadReport {
+  tokenDensity: number;       // Average tokens per observation
+  redundancyRatio: number;    // Fraction of near-duplicate observations
+  diversityScore: number;     // Observation vocabulary diversity (0–1)
+  loadIndex: number;          // Composite 0–1 score (higher = more loaded)
+}
+```
+
+`ContextWindowManager` consults `loadIndex` before final prompt assembly and prunes the highest-load sections when the index exceeds `MEMORY_COGNITIVE_LOAD_MAX`.
+
+---
+
+### VisibilityResolver (`agent/VisibilityResolver.ts`)
+
+**Purpose**: Five-level shared memory visibility model with group membership (v1.7.0)
+
+```typescript
+type VisibilityLevel = 'private' | 'team' | 'org' | 'shared' | 'public';
+
+export interface GroupMembership {
+  agentId: string;
+  teams: string[];
+  orgs: string[];
+}
+
+export class VisibilityResolver {
+  constructor(memberships: GroupMembership[])
+
+  resolve(
+    requestingAgentId: string,
+    memories: AgentEntity[]
+  ): AgentEntity[]   // Returns only memories visible to the requesting agent
+
+  canAccess(
+    requestingAgentId: string,
+    entity: AgentEntity
+  ): boolean
+}
+```
+
+Visibility rules: `private` → owner only; `team` → same team members; `org` → same org members; `shared` → any registered agent; `public` → unrestricted.
 
 ---
 
