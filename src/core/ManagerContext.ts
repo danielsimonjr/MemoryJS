@@ -30,6 +30,7 @@ import { ArchiveManager } from '../features/ArchiveManager.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
+import { ConsolidationScheduler } from '../agent/ConsolidationScheduler.js';
 import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
@@ -70,6 +71,7 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
+  private _consolidationScheduler?: ConsolidationScheduler;
   private _llmQueryPlanner?: LLMQueryPlanner;
   private _llmSearchExecutor?: LLMSearchExecutor;
 
@@ -245,6 +247,44 @@ export class ManagerContext {
     }
 
     return this._decayScheduler;
+  }
+
+  /**
+   * ConsolidationScheduler - SHOULD-HAVE: Scheduled memory consolidation.
+   *
+   * Returns undefined when MEMORY_AUTO_CONSOLIDATION is not set to 'true'.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_AUTO_CONSOLIDATION (default: false) - Enable to create scheduler
+   * - MEMORY_CONSOLIDATION_INTERVAL_MS (default: 3600000 = 1 hour)
+   * - MEMORY_CONSOLIDATION_MERGE_DUPLICATES (default: false)
+   * - MEMORY_CONSOLIDATION_DUPLICATE_THRESHOLD (default: 0.9)
+   */
+  get consolidationScheduler(): ConsolidationScheduler | undefined {
+    if (this._consolidationScheduler) return this._consolidationScheduler;
+
+    if (this.getEnvBool('MEMORY_AUTO_CONSOLIDATION', false)) {
+      this._consolidationScheduler = new ConsolidationScheduler(
+        this.agentMemory().consolidationPipeline,
+        this.compressionManager,
+        {
+          consolidationIntervalMs: this.getEnvNumber(
+            'MEMORY_CONSOLIDATION_INTERVAL_MS',
+            3600000
+          ),
+          autoMergeDuplicates: this.getEnvBool(
+            'MEMORY_CONSOLIDATION_MERGE_DUPLICATES',
+            false
+          ),
+          duplicateThreshold: this.getEnvNumber(
+            'MEMORY_CONSOLIDATION_DUPLICATE_THRESHOLD',
+            0.9
+          ),
+        }
+      );
+    }
+
+    return this._consolidationScheduler;
   }
 
   /**
