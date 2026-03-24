@@ -24,11 +24,9 @@ import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
-import { FreshnessManager } from '../features/FreshnessManager.js';
+import { AuditLog } from '../features/AuditLog.js';
+import { GovernanceManager } from '../features/GovernanceManager.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
-import { DistillationPipeline } from '../agent/DistillationPipeline.js';
-import { DefaultDistillationPolicy } from '../agent/DistillationPolicy.js';
-import { TemporalSearch } from '../search/TemporalSearch.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
 import { SalienceEngine } from '../agent/SalienceEngine.js';
@@ -49,6 +47,7 @@ export class ManagerContext {
   readonly storage: GraphStorage;
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
+  private readonly auditLogFilePath: string;
 
   // Lazy-initialized managers
   private _entityManager?: EntityManager;
@@ -64,7 +63,8 @@ export class ManagerContext {
   private _analyticsManager?: AnalyticsManager;
   private _compressionManager?: CompressionManager;
   private _archiveManager?: ArchiveManager;
-  private _freshnessManager?: FreshnessManager;
+  private _auditLog?: AuditLog;
+  private _governanceManager?: GovernanceManager;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -72,8 +72,6 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
-  private _temporalSearch?: TemporalSearch;
-  private _distillationPipeline?: DistillationPipeline;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -84,6 +82,7 @@ export class ManagerContext {
     const basename = path.basename(validatedPath, path.extname(validatedPath));
     this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
+    this.auditLogFilePath = path.join(dir, `${basename}-audit.jsonl`);
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
@@ -172,25 +171,22 @@ export class ManagerContext {
   }
 
   /**
-   * FreshnessManager - Feature 5: Temporal Governance & Freshness Auditing.
+   * AuditLog - Feature 8: Persistent audit trail for governance.
    *
-   * Provides freshness scoring, stale/expired entity detection,
-   * entity refresh, and freshness reports.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_FRESHNESS_HALF_LIFE_HOURS (default: 168 = 1 week)
-   * - MEMORY_FRESHNESS_STALE_THRESHOLD (default: 0.3)
-   * - MEMORY_FRESHNESS_TTL_WEIGHT (default: 0.6)
+   * Persists to a JSONL sidecar file: `<basename>-audit.jsonl`.
    */
-  get freshnessManager(): FreshnessManager {
-    if (!this._freshnessManager) {
-      this._freshnessManager = new FreshnessManager(this.storage, {
-        defaultHalfLifeHours: this.getEnvNumber('MEMORY_FRESHNESS_HALF_LIFE_HOURS', 168),
-        defaultStaleThreshold: this.getEnvNumber('MEMORY_FRESHNESS_STALE_THRESHOLD', 0.3),
-        ttlWeight: this.getEnvNumber('MEMORY_FRESHNESS_TTL_WEIGHT', 0.6),
-      });
-    }
-    return this._freshnessManager;
+  get auditLog(): AuditLog {
+    return (this._auditLog ??= new AuditLog(this.auditLogFilePath));
+  }
+
+  /**
+   * GovernanceManager - Feature 8: Policy enforcement and rollback.
+   *
+   * Wraps operations with audit logging and policy evaluation.
+   * Wired to the AuditLog automatically.
+   */
+  get governanceManager(): GovernanceManager {
+    return (this._governanceManager ??= new GovernanceManager(this.storage, this.auditLog));
   }
 
   /**
@@ -336,43 +332,6 @@ export class ManagerContext {
       });
     }
     return this._memoryFormatter;
-  }
-
-  /**
-   * TemporalSearch - Feature 3 (Must-Have): Search entities by natural language time range.
-   *
-   * @example
-   * ```typescript
-   * const results = await ctx.temporalSearch.searchByTimeQuery('last hour');
-   * ```
-   */
-  get temporalSearch(): TemporalSearch {
-    return (this._temporalSearch ??= new TemporalSearch(this.storage));
-  }
-
-  /**
-   * DistillationPipeline - Feature 4 (Must-Have): Post-retrieval memory distillation.
-   *
-   * Returns a shared pipeline pre-configured with a DefaultDistillationPolicy.
-   * The pipeline is also wired into ContextWindowManager so all context
-   * retrievals pass through distillation automatically.
-   *
-   * @example
-   * ```typescript
-   * ctx.distillationPipeline.addPolicy(new CustomPolicy());
-   * const result = await ctx.distillationPipeline.distill(searchResults, { minScore: 0.4 });
-   * ```
-   */
-  get distillationPipeline(): DistillationPipeline {
-    if (!this._distillationPipeline) {
-      this._distillationPipeline = new DistillationPipeline();
-      this._distillationPipeline.addPolicy(new DefaultDistillationPolicy(this.freshnessManager));
-      // Wire the pipeline into ContextWindowManager via the policy adapter.
-      this.contextWindowManager.setDistillationPolicy(
-        this._distillationPipeline.asPolicyAdapter()
-      );
-    }
-    return this._distillationPipeline;
   }
 
   /**

@@ -34,9 +34,17 @@ export {
   type ScoredKeyword,
 } from './KeywordExtractor.js';
 
-// Feature 5: Temporal Governance & Freshness Auditing
+// Feature 8: Dynamic Memory Governance
 export {
-  FreshnessManager,
-  type FreshnessReport,
-  type FreshnessManagerConfig,
-} from './FreshnessManager.js';
+  AuditLog,
+  type AuditEntry,
+  type AuditOperation,
+  type AuditFilter,
+  type AuditStats,
+} from './AuditLog.js';
+export {
+  GovernanceManager,
+  GovernanceTransaction,
+  type GovernancePolicy,
+  type GovernanceOperationOptions,
+} from './GovernanceManager.js';
