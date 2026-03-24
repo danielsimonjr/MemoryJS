@@ -32,6 +32,7 @@ import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
+import { ArtifactManager } from '../agent/ArtifactManager.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
@@ -71,6 +72,7 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
+  private _artifactManager?: ArtifactManager;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -324,6 +326,23 @@ export class ManagerContext {
       });
     }
     return this._memoryFormatter;
+  }
+
+  /**
+   * ArtifactManager - Feature 2: Artifact-Level Granularity.
+   *
+   * Creates and retrieves discrete agent artifacts (tool outputs, code snippets,
+   * API responses, etc.) as stable, named entities with human-readable refs.
+   *
+   * Wired with entityManager and refIndex so that artifact entity names are
+   * automatically registered in the RefIndex for stable cross-turn retrieval.
+   */
+  get artifactManager(): ArtifactManager {
+    return (this._artifactManager ??= new ArtifactManager(
+      this.storage,
+      this.entityManager,
+      this.refIndex
+    ));
   }
 
   /**
