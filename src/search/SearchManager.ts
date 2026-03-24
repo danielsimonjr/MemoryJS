@@ -9,6 +9,7 @@
 
 import type { KnowledgeGraph, SearchResult, SavedSearch, AutoSearchResult, Entity, AccessContext } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import { TemporalSearch, type TemporalSearchOptions } from './TemporalSearch.js';
 import { BasicSearch } from './BasicSearch.js';
 import { RankedSearch } from './RankedSearch.js';
 import { BooleanSearch } from './BooleanSearch.js';
@@ -45,6 +46,7 @@ export class SearchManager {
   private storage: GraphStorage;
   private queryEstimator: QueryCostEstimator;
   private accessTracker?: AccessTracker;
+  private temporalSearch: TemporalSearch;
 
   constructor(storage: GraphStorage, savedSearchesFilePath: string) {
     this.storage = storage;
@@ -55,6 +57,7 @@ export class SearchManager {
     this.searchSuggestions = new SearchSuggestions(storage);
     this.savedSearchManager = new SavedSearchManager(savedSearchesFilePath, this.basicSearch);
     this.queryEstimator = new QueryCostEstimator();
+    this.temporalSearch = new TemporalSearch(storage);
   }
 
   /**
@@ -588,5 +591,30 @@ export class SearchManager {
    */
   getQueryEstimator(): QueryCostEstimator {
     return this.queryEstimator;
+  }
+
+  // ==================== Temporal Search (Feature 3) ====================
+
+  /**
+   * Feature 3 (Must-Have): Search entities by a natural language time expression.
+   *
+   * Parses the query using chrono-node and returns entities whose
+   * `createdAt` or `lastModified` timestamp falls within the resolved range.
+   *
+   * Returns an empty array if the expression cannot be parsed.
+   *
+   * @param query - Natural language temporal expression, e.g. "last hour", "since yesterday"
+   * @param options - Optional field and undated-entity configuration
+   * @returns Entities matching the time range, sorted oldest-first
+   *
+   * @example
+   * ```typescript
+   * const recentEntities = await manager.searchByTime('last 10 minutes');
+   * const todayEntities  = await manager.searchByTime('today');
+   * const rangedEntities = await manager.searchByTime('between Monday and Wednesday');
+   * ```
+   */
+  async searchByTime(query: string, options?: TemporalSearchOptions): Promise<Entity[]> {
+    return this.temporalSearch.searchByTimeQuery(query, options);
   }
 }

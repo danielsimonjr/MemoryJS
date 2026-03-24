@@ -24,8 +24,8 @@ import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
 import { ArchiveManager } from '../features/ArchiveManager.js';
-import { FreshnessManager } from '../features/FreshnessManager.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
+import { TemporalSearch } from '../search/TemporalSearch.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
 import { SalienceEngine } from '../agent/SalienceEngine.js';
@@ -68,7 +68,7 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
-  private _freshnessManager?: FreshnessManager;
+  private _temporalSearch?: TemporalSearch;
 
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks
@@ -164,28 +164,6 @@ export class ManagerContext {
   /** ArchiveManager - Entity archival operations */
   get archiveManager(): ArchiveManager {
     return (this._archiveManager ??= new ArchiveManager(this.storage));
-  }
-
-  /**
-   * FreshnessManager - Feature 5: Temporal Governance & Freshness Auditing.
-   *
-   * Provides freshness scoring, stale/expired entity detection,
-   * entity refresh, and freshness reports.
-   *
-   * Configurable via environment variables:
-   * - MEMORY_FRESHNESS_HALF_LIFE_HOURS (default: 168 = 1 week)
-   * - MEMORY_FRESHNESS_STALE_THRESHOLD (default: 0.3)
-   * - MEMORY_FRESHNESS_TTL_WEIGHT (default: 0.6)
-   */
-  get freshnessManager(): FreshnessManager {
-    if (!this._freshnessManager) {
-      this._freshnessManager = new FreshnessManager(this.storage, {
-        defaultHalfLifeHours: this.getEnvNumber('MEMORY_FRESHNESS_HALF_LIFE_HOURS', 168),
-        defaultStaleThreshold: this.getEnvNumber('MEMORY_FRESHNESS_STALE_THRESHOLD', 0.3),
-        ttlWeight: this.getEnvNumber('MEMORY_FRESHNESS_TTL_WEIGHT', 0.6),
-      });
-    }
-    return this._freshnessManager;
   }
 
   /**
@@ -331,6 +309,18 @@ export class ManagerContext {
       });
     }
     return this._memoryFormatter;
+  }
+
+  /**
+   * TemporalSearch - Feature 3 (Must-Have): Search entities by natural language time range.
+   *
+   * @example
+   * ```typescript
+   * const results = await ctx.temporalSearch.searchByTimeQuery('last hour');
+   * ```
+   */
+  get temporalSearch(): TemporalSearch {
+    return (this._temporalSearch ??= new TemporalSearch(this.storage));
   }
 
   /**

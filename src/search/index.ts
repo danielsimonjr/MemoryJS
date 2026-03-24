@@ -94,9 +94,6 @@ export {
   type RefinementHistoryEntry,
 } from './ReflectionManager.js';
 
-// Feature 6: N-gram Hashing Index for approximate string matching
-export { NGramIndex, type NGramIndexStats } from './NGramIndex.js';
-
 // Phase 12 Sprint 3: Search Algorithm Optimization
 export {
   BM25Search,
@@ -166,3 +163,14 @@ export {
   type ProximityMatch,
   type ProximityMatchLocation,
 } from './ProximitySearch.js';
+
+// Feature 3 (Must-Have): Temporal Range Queries
+export {
+  TemporalQueryParser,
+  type ParsedTemporalRange,
+} from './TemporalQueryParser.js';
+export {
+  TemporalSearch,
+  type TemporalFilterField,
+  type TemporalSearchOptions,
+} from './TemporalSearch.js';
