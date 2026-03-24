@@ -1083,4 +1083,10 @@ export interface AgentMetadata {
   lastActiveAt: string;
   /** Optional custom metadata */
   metadata?: Record<string, unknown>;
+  /**
+   * Role profile attached at registration time.
+   * Provides salience weight overrides and context window budget
+   * percentages tuned for the agent's functional role.
+   */
+  roleProfile?: import('../agent/RoleProfiles.js').RoleProfile;
 }

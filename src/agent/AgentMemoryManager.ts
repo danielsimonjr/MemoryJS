@@ -43,6 +43,7 @@ import {
   validateConfig,
 } from './AgentMemoryConfig.js';
 import type { IDistillationPolicy } from './DistillationPolicy.js';
+import { resolveRoleProfile } from './RoleProfiles.js';
 
 /**
  * Options for creating working memory.
@@ -648,6 +649,62 @@ export class AgentMemoryManager extends EventEmitter {
    */
   getConfig(): AgentMemoryConfig {
     return { ...this.config };
+  }
+
+  // ==================== Role-Aware Factory Methods ====================
+
+  /**
+   * Create a SalienceEngine tuned to the registered agent's role profile.
+   *
+   * Looks up the agent's roleProfile (attached at registration time by
+   * MultiAgentMemoryManager) and merges its salience weight overrides on top
+   * of the global configuration. Falls back to the 'default' profile when the
+   * agent is unknown.
+   *
+   * @param agentId - ID of the registered agent
+   * @returns SalienceEngine configured for the agent's role
+   *
+   * @example
+   * ```typescript
+   * const engine = manager.createRoleAwareSalienceEngine('planner_agent');
+   * const scored = await engine.scoreEntities(memories, context);
+   * ```
+   */
+  createRoleAwareSalienceEngine(agentId: string): SalienceEngine {
+    const meta = this.multiAgentManager.getAgent(agentId);
+    const profile = meta?.roleProfile ?? resolveRoleProfile('default');
+    return new SalienceEngine(
+      this.storage,
+      this.accessTracker,
+      this.decayEngine,
+      { ...this.config.salience, ...profile.salienceConfig }
+    );
+  }
+
+  /**
+   * Create a ContextWindowManager tuned to the registered agent's role profile.
+   *
+   * Uses a role-aware SalienceEngine (see {@link createRoleAwareSalienceEngine})
+   * and applies the role's context budget percentages for working / episodic /
+   * semantic memory split.
+   *
+   * @param agentId - ID of the registered agent
+   * @returns ContextWindowManager configured for the agent's role
+   *
+   * @example
+   * ```typescript
+   * const cwm = manager.createRoleAwareContextWindowManager('researcher_agent');
+   * const pkg = await cwm.retrieveForContext({ maxTokens: 2000 });
+   * ```
+   */
+  createRoleAwareContextWindowManager(agentId: string): ContextWindowManager {
+    const meta = this.multiAgentManager.getAgent(agentId);
+    const profile = meta?.roleProfile ?? resolveRoleProfile('default');
+    return new ContextWindowManager(
+      this.storage,
+      this.createRoleAwareSalienceEngine(agentId),
+      { ...this.config.contextWindow, ...profile.contextConfig }
+    );
   }
 
   // ==================== Lifecycle ====================

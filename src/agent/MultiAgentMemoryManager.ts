@@ -19,6 +19,7 @@ import type {
 import { isAgentEntity } from '../types/agent-memory.js';
 import { EventEmitter } from 'events';
 import { ConflictResolver, type ResolutionResult } from './ConflictResolver.js';
+import { resolveRoleProfile } from './RoleProfiles.js';
 
 /**
  * Configuration for MultiAgentMemoryManager.
@@ -98,14 +99,17 @@ export class MultiAgentMemoryManager extends EventEmitter {
     const now = new Date().toISOString();
 
     // Build complete metadata with defaults
+    const agentType = metadata.type ?? 'llm';
     const completeMetadata: AgentMetadata = {
       name: metadata.name ?? agentId,
-      type: metadata.type ?? 'llm',
+      type: agentType,
       trustLevel: metadata.trustLevel ?? 0.5,
       capabilities: metadata.capabilities ?? ['read', 'write'],
       createdAt: now,
       lastActiveAt: now,
       metadata: metadata.metadata,
+      // Attach role profile resolved from agent type (or explicit override)
+      roleProfile: metadata.roleProfile ?? resolveRoleProfile(agentType),
     };
 
     // Store in memory
