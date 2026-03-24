@@ -349,6 +349,30 @@ export class RefNotFoundError extends KnowledgeGraphError {
 }
 
 /**
+ * Error thrown when content is rejected because its Shannon entropy is too low.
+ *
+ * Low entropy typically means the content is highly repetitive or contains
+ * very little information (e.g. a string of repeated characters).
+ *
+ * @example
+ * ```typescript
+ * throw new LowEntropyContentError('Content rejected: entropy 0.8 below threshold 1.5');
+ * ```
+ */
+export class LowEntropyContentError extends Error {
+  /** Stable error code for programmatic handling */
+  readonly code = 'LOW_ENTROPY_CONTENT';
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'LowEntropyContentError';
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+}
+
+/**
  * Phase 9B: Error thrown when an operation is cancelled via AbortSignal.
  *
  * @example
