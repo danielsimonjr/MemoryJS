@@ -12,6 +12,7 @@ import type {
   AgentEntity,
   SessionEntity,
   SessionStatus,
+  SessionOutcome,
 } from '../types/agent-memory.js';
 import { isSessionEntity } from '../types/agent-memory.js';
 import { WorkingMemoryManager } from './WorkingMemoryManager.js';
@@ -283,7 +284,8 @@ export class SessionManager {
    */
   async endSession(
     sessionId: string,
-    status: 'completed' | 'abandoned' = 'completed'
+    status: 'completed' | 'abandoned' = 'completed',
+    outcome?: SessionOutcome
   ): Promise<EndSessionResult> {
     // Try to get from active sessions first, then storage
     let session = this.activeSessions.get(sessionId);
@@ -349,6 +351,10 @@ export class SessionManager {
       observations: [...currentObs, `Session ended: ${status} at ${now}`],
     };
 
+    if (outcome !== undefined) {
+      updates.outcome = outcome;
+    }
+
     await this.storage.updateEntity(sessionId, updates);
 
     // Remove from active sessions
@@ -363,6 +369,7 @@ export class SessionManager {
       consolidatedCount: memoriesPromoted,
       lastModified: now,
       observations: [...currentObs, `Session ended: ${status} at ${now}`],
+      ...(outcome !== undefined ? { outcome } : {}),
     };
 
     // Create episodic summary if configured
