@@ -19,7 +19,7 @@ import type {
 import { isAgentEntity } from '../types/agent-memory.js';
 import { EventEmitter } from 'events';
 import { ConflictResolver, type ResolutionResult } from './ConflictResolver.js';
-import { resolveRoleProfile } from './RoleProfiles.js';
+import { VisibilityResolver } from './VisibilityResolver.js';
 
 /**
  * Configuration for MultiAgentMemoryManager.
@@ -55,6 +55,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
   private readonly storage: IGraphStorage;
   private readonly config: Required<MultiAgentConfig>;
   private readonly agents: Map<string, AgentMetadata> = new Map();
+  private readonly visibilityResolver = new VisibilityResolver();
 
   constructor(storage: IGraphStorage, config: MultiAgentConfig = {}) {
     super();
@@ -99,17 +100,14 @@ export class MultiAgentMemoryManager extends EventEmitter {
     const now = new Date().toISOString();
 
     // Build complete metadata with defaults
-    const agentType = metadata.type ?? 'llm';
     const completeMetadata: AgentMetadata = {
       name: metadata.name ?? agentId,
-      type: agentType,
+      type: metadata.type ?? 'llm',
       trustLevel: metadata.trustLevel ?? 0.5,
       capabilities: metadata.capabilities ?? ['read', 'write'],
       createdAt: now,
       lastActiveAt: now,
       metadata: metadata.metadata,
-      // Attach role profile resolved from agent type (or explicit override)
-      roleProfile: metadata.roleProfile ?? resolveRoleProfile(agentType),
     };
 
     // Store in memory
@@ -318,24 +316,17 @@ export class MultiAgentMemoryManager extends EventEmitter {
   async getVisibleMemories(agentId: string): Promise<AgentEntity[]> {
     const graph = await this.storage.loadGraph();
     const memories: AgentEntity[] = [];
+    const requestingMeta = this.agents.get(agentId);
 
     for (const entity of graph.entities) {
       if (!isAgentEntity(entity)) continue;
       const agentEntity = entity as AgentEntity;
 
-      // Own memories are always visible
-      if (agentEntity.agentId === agentId) {
-        memories.push(agentEntity);
-        continue;
-      }
+      if (!this.config.allowCrossAgent && agentEntity.agentId !== agentId) continue;
 
-      // Check visibility for cross-agent access
-      if (this.config.allowCrossAgent) {
-        if (agentEntity.visibility === 'public') {
-          memories.push(agentEntity);
-        } else if (agentEntity.visibility === 'shared') {
-          memories.push(agentEntity);
-        }
+      const ownerMeta = agentEntity.agentId ? this.agents.get(agentEntity.agentId) : undefined;
+      if (this.visibilityResolver.canAccess(agentEntity, agentId, requestingMeta, ownerMeta)) {
+        memories.push(agentEntity);
       }
     }
 
@@ -492,25 +483,17 @@ export class MultiAgentMemoryManager extends EventEmitter {
    */
   filterByVisibility(entities: Entity[], agentId: string): AgentEntity[] {
     const visible: AgentEntity[] = [];
+    const requestingMeta = this.agents.get(agentId);
 
     for (const entity of entities) {
       if (!isAgentEntity(entity)) continue;
       const agentEntity = entity as AgentEntity;
 
-      // Own memories are always visible
-      if (agentEntity.agentId === agentId) {
-        visible.push(agentEntity);
-        continue;
-      }
+      if (!this.config.allowCrossAgent && agentEntity.agentId !== agentId) continue;
 
-      // Cross-agent visibility check
-      if (this.config.allowCrossAgent) {
-        if (
-          agentEntity.visibility === 'public' ||
-          agentEntity.visibility === 'shared'
-        ) {
-          visible.push(agentEntity);
-        }
+      const ownerMeta = agentEntity.agentId ? this.agents.get(agentEntity.agentId) : undefined;
+      if (this.visibilityResolver.canAccess(agentEntity, agentId, requestingMeta, ownerMeta)) {
+        visible.push(agentEntity);
       }
     }
 
@@ -532,17 +515,13 @@ export class MultiAgentMemoryManager extends EventEmitter {
 
     const memory = entity as AgentEntity;
 
-    // Own memories are always visible
-    if (memory.agentId === agentId) {
-      return true;
+    if (!this.config.allowCrossAgent && memory.agentId !== agentId) {
+      return memory.agentId === agentId;
     }
 
-    // Cross-agent visibility
-    if (this.config.allowCrossAgent) {
-      return memory.visibility === 'public' || memory.visibility === 'shared';
-    }
-
-    return false;
+    const requestingMeta = this.agents.get(agentId);
+    const ownerMeta = memory.agentId ? this.agents.get(memory.agentId) : undefined;
+    return this.visibilityResolver.canAccess(memory, agentId, requestingMeta, ownerMeta);
   }
 
   /**
@@ -577,19 +556,18 @@ export class MultiAgentMemoryManager extends EventEmitter {
     const graph = await this.storage.loadGraph();
     const queryLower = query.toLowerCase();
     const matches: AgentEntity[] = [];
+    const requestingMeta = this.agents.get(agentId);
 
     for (const entity of graph.entities) {
       if (!isAgentEntity(entity)) continue;
       const agentEntity = entity as AgentEntity;
 
-      // Check visibility first
-      const isVisible =
-        agentEntity.agentId === agentId ||
-        (this.config.allowCrossAgent &&
-          (agentEntity.visibility === 'public' ||
-            agentEntity.visibility === 'shared'));
+      if (!this.config.allowCrossAgent && agentEntity.agentId !== agentId) continue;
 
-      if (!isVisible) continue;
+      const ownerMeta = agentEntity.agentId ? this.agents.get(agentEntity.agentId) : undefined;
+      if (!this.visibilityResolver.canAccess(agentEntity, agentId, requestingMeta, ownerMeta)) {
+        continue;
+      }
 
       // Check if entity matches query
       const nameMatch = agentEntity.name.toLowerCase().includes(queryLower);
@@ -635,16 +613,10 @@ export class MultiAgentMemoryManager extends EventEmitter {
 
       // Check if all agents can see this memory
       const visibleToAll = agentIds.every((agentId) => {
-        // Own memories are visible
-        if (agentEntity.agentId === agentId) return true;
-        // Shared/public memories are visible if cross-agent allowed
-        if (this.config.allowCrossAgent) {
-          return (
-            agentEntity.visibility === 'public' ||
-            agentEntity.visibility === 'shared'
-          );
-        }
-        return false;
+        if (!this.config.allowCrossAgent && agentEntity.agentId !== agentId) return false;
+        const requestingMeta = this.agents.get(agentId);
+        const ownerMeta = agentEntity.agentId ? this.agents.get(agentEntity.agentId) : undefined;
+        return this.visibilityResolver.canAccess(agentEntity, agentId, requestingMeta, ownerMeta);
       });
 
       if (!visibleToAll) continue;
