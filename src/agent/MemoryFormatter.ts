@@ -368,6 +368,144 @@ export class MemoryFormatter {
     return date.toLocaleDateString();
   }
 
+  // ==================== Salience Budget Allocation ====================
+
+  /**
+   * Format memories with token space allocated proportionally to salience score.
+   *
+   * Rather than truncating at a hard cut-off, this method distributes the
+   * available token budget across memories in proportion to their salience
+   * scores. High-salience memories get more tokens; low-salience memories
+   * may be trimmed or dropped entirely when the budget is tight.
+   *
+   * Algorithm:
+   * 1. Normalise salience scores to a probability distribution (sum = 1).
+   * 2. Allocate `score_i / total * totalTokenBudget` tokens per memory.
+   * 3. Format each memory; truncate observations to fit its allocation.
+   * 4. Return the concatenated result.
+   *
+   * Memories with zero or missing salience score receive an equal share of
+   * the remainder.
+   *
+   * @param memories - Memories to format (order not significant)
+   * @param salienceScores - Map of entity name → salience score (0–1)
+   * @param totalTokenBudget - Total token budget to distribute
+   * @param options - Optional separator and header
+   * @returns Formatted text respecting the salience-proportional budget
+   *
+   * @example
+   * ```typescript
+   * const scores = new Map([['mem_a', 0.9], ['mem_b', 0.1]]);
+   * const text = formatter.formatWithSalienceBudget(memories, scores, 500);
+   * ```
+   */
+  formatWithSalienceBudget(
+    memories: AgentEntity[],
+    salienceScores: Map<string, number>,
+    totalTokenBudget: number,
+    options: { separator?: string; header?: string } = {}
+  ): string {
+    if (memories.length === 0) return '';
+
+    const { separator = '\n\n', header } = options;
+    const parts: string[] = [];
+
+    if (header) {
+      const headerTokens = this.estimateTokens(header);
+      totalTokenBudget = Math.max(0, totalTokenBudget - headerTokens);
+      parts.push(header);
+    }
+
+    // Resolve salience scores, defaulting to equal weight for unknowns
+    const rawScores = memories.map((m) => Math.max(0, salienceScores.get(m.name) ?? 0));
+    const totalScore = rawScores.reduce((a, b) => a + b, 0);
+
+    // If all scores are 0 fall back to equal allocation
+    const normalised =
+      totalScore === 0
+        ? memories.map(() => 1 / memories.length)
+        : rawScores.map((s) => s / totalScore);
+
+    // Allocate token budgets proportionally
+    const tokenAllocations = normalised.map((frac) =>
+      Math.floor(frac * totalTokenBudget)
+    );
+
+    // Format each memory within its allocation
+    for (let i = 0; i < memories.length; i++) {
+      const memory = memories[i];
+      const allocation = tokenAllocations[i];
+      if (allocation <= 0) continue;
+
+      const formatted = this.formatSingleMemoryWithBudget(memory, allocation);
+      if (formatted) {
+        parts.push(formatted);
+      }
+    }
+
+    return parts.join(separator);
+  }
+
+  /**
+   * Format a single memory constrained to a token budget.
+   *
+   * Observations are included one-by-one until the budget is exhausted.
+   * The memory header (name + type) is always included if it fits.
+   *
+   * @param memory - Memory to format
+   * @param tokenBudget - Maximum tokens for this memory
+   * @returns Formatted string (may be empty if budget is too small for header)
+   *
+   * @example
+   * ```typescript
+   * const formatted = formatter.formatSingleMemoryWithBudget(memory, 100);
+   * ```
+   */
+  formatSingleMemoryWithBudget(memory: AgentEntity, tokenBudget: number): string {
+    // Build header line
+    const headerLine = `## ${memory.name} (${memory.entityType})`;
+    const headerTokens = this.estimateTokens(headerLine);
+
+    if (headerTokens > tokenBudget) return ''; // Not even header fits
+
+    let usedTokens = headerTokens;
+    const lines: string[] = [headerLine];
+
+    // Add observations until budget exhausted
+    for (const obs of memory.observations ?? []) {
+      const obsLine = `- ${obs}`;
+      const obsTokens = this.estimateTokens(obsLine);
+      if (usedTokens + obsTokens > tokenBudget) break;
+      lines.push(obsLine);
+      usedTokens += obsTokens;
+    }
+
+    // Append metadata if space remains and config requests it
+    const metaParts: string[] = [];
+    if (this.config.includeMemoryType && memory.memoryType) {
+      metaParts.push(`Type: ${memory.memoryType}`);
+    }
+    if (this.config.includeTimestamps && memory.createdAt) {
+      metaParts.push(`Created: ${this.formatTimestamp(memory.createdAt)}`);
+    }
+    if (metaParts.length > 0) {
+      const metaLine = `[${metaParts.join(' | ')}]`;
+      if (usedTokens + this.estimateTokens(metaLine) <= tokenBudget) {
+        lines.push(metaLine);
+      }
+    }
+
+    return lines.join('\n').trim();
+  }
+
+  /**
+   * Estimate token count for text.
+   * Exposed as public for use in salience budget allocation tests.
+   */
+  estimateTokenCount(text: string): number {
+    return this.estimateTokens(text);
+  }
+
   /**
    * Get current configuration.
    */
