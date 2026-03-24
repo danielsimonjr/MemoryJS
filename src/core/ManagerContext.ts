@@ -12,6 +12,7 @@ import path from 'path';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
+import { RefIndex } from './RefIndex.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
 import { HierarchyManager } from './HierarchyManager.js';
@@ -46,8 +47,11 @@ export class ManagerContext {
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
 
+  private readonly refIndexFilePath: string;
+
   // Lazy-initialized managers
   private _entityManager?: EntityManager;
+  private _refIndex?: RefIndex;
   private _relationManager?: RelationManager;
   private _observationManager?: ObservationManager;
   private _hierarchyManager?: HierarchyManager;
@@ -72,11 +76,12 @@ export class ManagerContext {
     // Security: Validate path to prevent path traversal attacks
     const validatedPath = validateFilePath(memoryFilePath);
 
-    // Derive paths for saved searches and tag aliases
+    // Derive paths for saved searches, tag aliases, and ref index
     const dir = path.dirname(validatedPath);
     const basename = path.basename(validatedPath, path.extname(validatedPath));
     this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
+    this.refIndexFilePath = path.join(dir, `${basename}-refs.jsonl`);
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
@@ -85,9 +90,21 @@ export class ManagerContext {
   // ==================== MANAGER ACCESSORS ====================
   // Use these for direct manager access in toolHandlers
 
+  /** RefIndex - Stable alias → entity-name dereferencing */
+  get refIndex(): RefIndex {
+    if (!this._refIndex) {
+      this._refIndex = new RefIndex(this.refIndexFilePath);
+    }
+    return this._refIndex;
+  }
+
   /** EntityManager - Entity CRUD and tag operations */
   get entityManager(): EntityManager {
-    return (this._entityManager ??= new EntityManager(this.storage));
+    if (!this._entityManager) {
+      this._entityManager = new EntityManager(this.storage);
+      this._entityManager.setRefIndex(this.refIndex);
+    }
+    return this._entityManager;
   }
 
   /** RelationManager - Relation CRUD */

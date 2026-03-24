@@ -315,6 +315,40 @@ export class InsufficientEntitiesError extends KnowledgeGraphError {
 }
 
 /**
+ * Error thrown when a ref alias is already registered.
+ */
+export class RefConflictError extends KnowledgeGraphError {
+  constructor(ref: string) {
+    super(`Ref '${ref}' is already registered`, 'REF_CONFLICT', {
+      context: { ref },
+      suggestions: [
+        'Choose a different alias for the new ref',
+        'Deregister the existing ref first if replacement is intended',
+        'Use listRefs() to inspect all currently registered aliases',
+      ],
+    });
+    this.name = 'RefConflictError';
+  }
+}
+
+/**
+ * Error thrown when a ref alias cannot be found.
+ */
+export class RefNotFoundError extends KnowledgeGraphError {
+  constructor(ref: string) {
+    super(`Ref '${ref}' not found`, 'REF_NOT_FOUND', {
+      context: { ref },
+      suggestions: [
+        'Check the alias spelling',
+        'Use listRefs() to see all registered aliases',
+        'Register the alias first with registerRef()',
+      ],
+    });
+    this.name = 'RefNotFoundError';
+  }
+}
+
+/**
  * Phase 9B: Error thrown when an operation is cancelled via AbortSignal.
  *
  * @example

@@ -11,6 +11,7 @@ import type { Entity, LongRunningOperationOptions, AccessContext } from '../type
 import type { GraphStorage } from './GraphStorage.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
 import { EntityNotFoundError, InvalidImportanceError, ValidationError } from '../utils/errors.js';
+import type { RefIndex, RefEntry } from './RefIndex.js';
 
 /**
  * Options for entity retrieval with access tracking support.
@@ -51,6 +52,7 @@ const MAX_IMPORTANCE = 10;
  */
 export class EntityManager {
   private accessTracker?: AccessTracker;
+  private refIndex?: RefIndex;
 
   constructor(private storage: GraphStorage) {}
 
@@ -62,6 +64,83 @@ export class EntityManager {
    */
   setAccessTracker(tracker: AccessTracker): void {
     this.accessTracker = tracker;
+  }
+
+  /**
+   * Set the RefIndex for stable alias dereferencing.
+   *
+   * @param index - RefIndex instance
+   */
+  setRefIndex(index: RefIndex): void {
+    this.refIndex = index;
+  }
+
+  /**
+   * Resolve a stable alias (ref) to the full entity it points to.
+   *
+   * @param ref - The alias to resolve
+   * @returns The entity, or null if the alias is unknown or entity no longer exists
+   * @throws {ValidationError} If no RefIndex is configured
+   */
+  async resolveRef(ref: string): Promise<Entity | null> {
+    if (!this.refIndex) {
+      throw new ValidationError('RefIndex not configured', [
+        'Call setRefIndex() before using resolveRef()',
+      ]);
+    }
+    const entityName = await this.refIndex.resolve(ref);
+    if (entityName === null) return null;
+    return this.getEntity(entityName);
+  }
+
+  /**
+   * Register a stable alias pointing to an entity.
+   *
+   * @param ref - The alias string
+   * @param entityName - Entity name the alias points to
+   * @param description - Optional human-readable description
+   * @returns The created RefEntry
+   * @throws {ValidationError} If no RefIndex is configured
+   * @throws {RefConflictError} If the alias is already registered
+   */
+  async registerRef(ref: string, entityName: string, description?: string): Promise<RefEntry> {
+    if (!this.refIndex) {
+      throw new ValidationError('RefIndex not configured', [
+        'Call setRefIndex() before using registerRef()',
+      ]);
+    }
+    return this.refIndex.register(ref, entityName, description);
+  }
+
+  /**
+   * Remove a stable alias.
+   *
+   * @param ref - The alias to remove
+   * @throws {ValidationError} If no RefIndex is configured
+   */
+  async deregisterRef(ref: string): Promise<void> {
+    if (!this.refIndex) {
+      throw new ValidationError('RefIndex not configured', [
+        'Call setRefIndex() before using deregisterRef()',
+      ]);
+    }
+    return this.refIndex.deregister(ref);
+  }
+
+  /**
+   * List all registered aliases, optionally filtered by entity name.
+   *
+   * @param filter - Optional filter criteria
+   * @returns Array of RefEntry objects
+   * @throws {ValidationError} If no RefIndex is configured
+   */
+  async listRefs(filter?: { entityName?: string }): Promise<RefEntry[]> {
+    if (!this.refIndex) {
+      throw new ValidationError('RefIndex not configured', [
+        'Call setRefIndex() before using listRefs()',
+      ]);
+    }
+    return this.refIndex.listRefs(filter);
   }
 
   /**
@@ -233,6 +312,13 @@ export class EntityManager {
     );
 
     await this.storage.saveGraph(graph);
+
+    // Purge all aliases for deleted entities from the ref index
+    if (this.refIndex) {
+      for (const name of namesToDelete) {
+        await this.refIndex.purgeEntity(name);
+      }
+    }
   }
 
   /**
