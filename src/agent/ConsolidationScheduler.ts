@@ -88,6 +88,11 @@ export class ConsolidationScheduler extends EventEmitter {
 
   private intervalId?: ReturnType<typeof setInterval>;
   private running = false;
+  /**
+   * Promise for the immediate cycle launched by start().
+   * Exposed so callers (e.g., tests) can await the first cycle during teardown.
+   */
+  initialCyclePromise?: Promise<void>;
 
   constructor(
     pipeline: ConsolidationPipeline,
@@ -119,12 +124,15 @@ export class ConsolidationScheduler extends EventEmitter {
 
     this.running = true;
     this.intervalId = setInterval(
-      () => this.runConsolidationCycle(),
+      () => { void /* fire-and-forget interval tick */ this.runConsolidationCycle(); },
       this.config.consolidationIntervalMs
     );
+    // Prevent the interval from keeping the Node.js process alive when the
+    // event loop would otherwise exit (mirrors DecayScheduler pattern).
+    this.intervalId.unref();
 
-    // Run immediately on start
-    this.runConsolidationCycle();
+    // Run immediately on start; store promise so callers can await teardown if needed
+    this.initialCyclePromise = this.runConsolidationCycle();
   }
 
   /**
@@ -194,6 +202,8 @@ export class ConsolidationScheduler extends EventEmitter {
    * @internal
    */
   private async runConsolidationCycle(): Promise<void> {
+    // Guard: if stop() was called before this cycle started executing, skip it
+    if (!this.running) return;
     try {
       const result = await this.runNow();
       this.config.onConsolidationComplete?.(result);

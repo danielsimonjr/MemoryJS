@@ -7,6 +7,7 @@
  * @module agent/FailureDistillation
  */
 
+import { randomUUID } from 'crypto';
 import type { IGraphStorage, Entity } from '../types/types.js';
 import type {
   AgentEntity,
@@ -30,7 +31,7 @@ export interface FailureDistillationConfig {
 /**
  * Result of a distillation operation.
  */
-export interface DistillationResult {
+export interface FailureDistillationResult {
   /** Session ID that was analyzed */
   sessionId: string;
   /** Distilled lessons produced */
@@ -83,8 +84,8 @@ export class FailureDistillation {
    * @param sessionId - ID of the session to analyze
    * @returns Distillation result with lessons and created entity names
    */
-  async distillFromSession(sessionId: string): Promise<DistillationResult> {
-    const emptyResult: DistillationResult = {
+  async distillFromSession(sessionId: string): Promise<FailureDistillationResult> {
+    const emptyResult: FailureDistillationResult = {
       sessionId,
       lessons: [],
       createdEntities: [],
@@ -253,8 +254,21 @@ export class FailureDistillation {
     sessionId: string
   ): Promise<string> {
     const now = new Date().toISOString();
-    const timestamp = Date.now();
-    const name = `lesson_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
+
+    // Use crypto.randomUUID() for collision-resistant unique names, with a
+    // retry loop to handle the (extremely rare) case of a pre-existing entity.
+    const MAX_ATTEMPTS = 10;
+    let name: string | undefined;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const candidate = `lesson_${randomUUID()}`;
+      if (!this.storage.getEntityByName(candidate)) {
+        name = candidate;
+        break;
+      }
+    }
+    if (!name) {
+      throw new Error('FailureDistillation: could not generate unique lesson entity name');
+    }
 
     const observations = [
       lesson.failureDescription,

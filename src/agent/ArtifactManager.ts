@@ -17,6 +17,7 @@
 import type { IGraphStorage, Entity } from '../types/types.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { RefIndex } from '../core/RefIndex.js';
+import { RefConflictError } from '../utils/errors.js';
 import type {
   ArtifactType,
   CreateArtifactOptions,
@@ -157,7 +158,11 @@ export class ArtifactManager {
           entityName,
           description ?? `Artifact: ${artifactType} from ${toolName}`
         );
-      } catch {
+      } catch (err) {
+        // Only treat ref collisions as a retry signal; rethrow real I/O errors
+        if (!(err instanceof RefConflictError)) {
+          throw err;
+        }
         // Ref already exists — remove the entity we just appended and retry
         const graph = await this.storage.getGraphForMutation();
         graph.entities = graph.entities.filter((e) => e.name !== entityName);

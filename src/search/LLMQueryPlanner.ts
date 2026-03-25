@@ -254,12 +254,13 @@ export class LLMQueryPlanner {
 
     const obj = raw as Record<string, unknown>;
 
-    // keywords is required and must be a non-empty string array
+    // keywords is required and must be a non-empty string array (cap at 20)
     const rawKeywords = obj['keywords'];
     if (!Array.isArray(rawKeywords)) {
       return null;
     }
     const keywords = rawKeywords
+      .slice(0, 20)
       .filter((k): k is string => typeof k === 'string' && k.trim().length > 0)
       .map(k => k.trim().toLowerCase());
 
@@ -269,10 +270,11 @@ export class LLMQueryPlanner {
 
     const result: StructuredQuery = { keywords };
 
-    // entityTypes
+    // entityTypes (cap at 10)
     const rawEntityTypes = obj['entityTypes'];
     if (Array.isArray(rawEntityTypes)) {
       const entityTypes = rawEntityTypes
+        .slice(0, 10)
         .filter((e): e is string => typeof e === 'string' && e.trim().length > 0)
         .map(e => e.trim());
       if (entityTypes.length > 0) {
@@ -305,10 +307,11 @@ export class LLMQueryPlanner {
       }
     }
 
-    // tags
+    // tags (cap at 20)
     const rawTags = obj['tags'];
     if (Array.isArray(rawTags)) {
       const tags = rawTags
+        .slice(0, 20)
         .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
         .map(t => t.trim().toLowerCase());
       if (tags.length > 0) {
@@ -316,10 +319,11 @@ export class LLMQueryPlanner {
       }
     }
 
-    // relations
+    // relations (cap at 10)
     const rawRelations = obj['relations'];
     if (Array.isArray(rawRelations)) {
       const relations = rawRelations
+        .slice(0, 10)
         .filter(
           (r): r is { type: string; target?: string } =>
             r !== null &&
@@ -342,10 +346,10 @@ export class LLMQueryPlanner {
       }
     }
 
-    // limit
+    // limit (cap at 200 to prevent unbounded result sets from LLM output)
     const rawLimit = obj['limit'];
     if (typeof rawLimit === 'number' && Number.isInteger(rawLimit) && rawLimit > 0) {
-      result.limit = rawLimit;
+      result.limit = Math.min(rawLimit, 200);
     }
 
     return result;

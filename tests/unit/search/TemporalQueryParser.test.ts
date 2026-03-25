@@ -183,17 +183,17 @@ describe('TemporalQueryParser', () => {
       const range = parser.parseTemporalExpression('today', REF);
       expect(range).not.toBeNull();
       expect(range!.start <= range!.end).toBe(true);
-      // start should be midnight of the ref date (local time)
-      expect(range!.start.getHours()).toBe(0);
-      expect(range!.start.getMinutes()).toBe(0);
+      // start should be UTC midnight of the ref date (UTC-based to match ISO timestamps)
+      expect(range!.start.getUTCHours()).toBe(0);
+      expect(range!.start.getUTCMinutes()).toBe(0);
     });
 
     it('should handle "yesterday" as full-day range', () => {
       const range = parser.parseTemporalExpression('yesterday', REF);
       expect(range).not.toBeNull();
       expect(range!.start <= range!.end).toBe(true);
-      expect(range!.start.getHours()).toBe(0);
-      expect(range!.end.getHours()).toBe(23);
+      expect(range!.start.getUTCHours()).toBe(0);
+      expect(range!.end.getUTCHours()).toBe(23);
     });
 
     it('should accept a custom referenceDate', () => {
@@ -234,21 +234,23 @@ describe('TemporalQueryParser', () => {
       const range = parser.parseTemporalExpression('this week', REF);
       expect(range).not.toBeNull();
       expect(range!.start.getTime()).toBeLessThanOrEqual(range!.end.getTime());
-      // Start should be Sunday (day 0)
-      expect(range!.start.getDay()).toBe(0);
+      // Start should be Sunday (UTC day 0) — REF is 2024-06-15 (Saturday UTC)
+      expect(range!.start.getUTCDay()).toBe(0);
     });
 
     it('should handle "this month" as a range', () => {
       const range = parser.parseTemporalExpression('this month', REF);
       expect(range).not.toBeNull();
-      expect(range!.start.getDate()).toBe(1);
+      // First day of the month in UTC
+      expect(range!.start.getUTCDate()).toBe(1);
     });
 
     it('should handle "this year" as a range', () => {
       const range = parser.parseTemporalExpression('this year', REF);
       expect(range).not.toBeNull();
-      expect(range!.start.getFullYear()).toBe(REF.getFullYear());
-      expect(range!.end.getFullYear()).toBe(REF.getFullYear());
+      // Year check in UTC to match the implementation
+      expect(range!.start.getUTCFullYear()).toBe(REF.getUTCFullYear());
+      expect(range!.end.getUTCFullYear()).toBe(REF.getUTCFullYear());
     });
 
     it('should handle "in the past 30 days"', () => {

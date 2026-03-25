@@ -48,3 +48,10 @@ export {
   type GovernancePolicy,
   type GovernanceOperationOptions,
 } from './GovernanceManager.js';
+
+// Freshness Management
+export {
+  FreshnessManager,
+  type FreshnessManagerConfig,
+  type FreshnessReport,
+} from './FreshnessManager.js';

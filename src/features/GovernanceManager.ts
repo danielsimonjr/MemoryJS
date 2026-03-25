@@ -366,8 +366,13 @@ export class GovernanceManager {
       const result = await fn(tx);
       return result;
     } catch (error) {
-      // Mark all entries created in this transaction as rolled back
-      await tx.markRolledBack();
+      // Mark all entries created in this transaction as rolled back.
+      // Swallow any error from markRolledBack so the original error is preserved.
+      try {
+        await tx.markRolledBack();
+      } catch {
+        // Intentionally ignored — audit log failure must not obscure the original error
+      }
       throw error;
     }
   }
@@ -425,6 +430,7 @@ export class GovernanceManager {
         if (!graph.entities.some(e => e.name === target.entityName)) {
           const restored: Entity = {
             ...(target.before as Entity),
+            ...pickEntityFields(target.before),
             lastModified: timestamp,
           };
           graph.entities.push(restored);
@@ -442,16 +448,18 @@ export class GovernanceManager {
             'MISSING_SNAPSHOT'
           );
         }
-        const entity = graph.entities.find(e => e.name === target.entityName);
-        if (entity) {
-          Object.assign(entity, target.before as Partial<Entity>);
-          entity.lastModified = timestamp;
+        const entityIdx = graph.entities.findIndex(e => e.name === target.entityName);
+        const safeSnapshot = pickEntityFields(target.before);
+        const restored: Entity = {
+          ...(target.before as Entity),
+          ...safeSnapshot,
+          lastModified: timestamp,
+        };
+        if (entityIdx !== -1) {
+          // Replace the entity entirely from the snapshot to avoid stale fields
+          graph.entities[entityIdx] = restored;
         } else {
           // Entity was removed after the update — recreate from before snapshot
-          const restored: Entity = {
-            ...(target.before as Entity),
-            lastModified: timestamp,
-          };
           graph.entities.push(restored);
         }
         break;
@@ -470,4 +478,44 @@ export class GovernanceManager {
       status: 'rolled_back',
     });
   }
+}
+
+// ==================== Helpers ====================
+
+/**
+ * Safe field whitelist for audit snapshot restoration.
+ *
+ * Copies only known Entity fields from an unvalidated audit snapshot to prevent
+ * prototype pollution (e.g., `__proto__`, `constructor`) from being spread
+ * onto live graph entities.
+ */
+function pickEntityFields(snapshot: object): Partial<Entity> {
+  const src = snapshot as Record<string, unknown>;
+  const safe: Partial<Entity> = {};
+
+  // Scalar primitive fields
+  const scalarFields = [
+    'name', 'entityType', 'parentId', 'importance',
+    'createdAt', 'lastModified', 'ttl', 'confidence', 'freshnessScore',
+    'expiresAt', 'visibility',
+  ] as const;
+
+  for (const field of scalarFields) {
+    if (Object.prototype.hasOwnProperty.call(src, field)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (safe as any)[field] = src[field];
+    }
+  }
+
+  // Array fields — only accept plain arrays
+  if (Array.isArray(src['observations'])) {
+    safe.observations = (src['observations'] as unknown[])
+      .filter((o): o is string => typeof o === 'string');
+  }
+  if (Array.isArray(src['tags'])) {
+    safe.tags = (src['tags'] as unknown[])
+      .filter((t): t is string => typeof t === 'string');
+  }
+
+  return safe;
 }

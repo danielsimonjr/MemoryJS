@@ -174,3 +174,19 @@ export {
   type TemporalFilterField,
   type TemporalSearchOptions,
 } from './TemporalSearch.js';
+
+// Feature 8 (Must-Have): N-gram index, LLM Query Planner and Executor
+export {
+  NGramIndex,
+  type NGramIndexStats,
+} from './NGramIndex.js';
+export {
+  LLMQueryPlanner,
+  type LLMProvider,
+  type StructuredQuery,
+  type LLMQueryPlannerConfig,
+} from './LLMQueryPlanner.js';
+export {
+  LLMSearchExecutor,
+  type LLMSearchExecutorOptions,
+} from './LLMSearchExecutor.js';

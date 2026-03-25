@@ -125,3 +125,61 @@ export {
   mergeConfig,
   validateConfig,
 } from './AgentMemoryConfig.js';
+
+// v1.7.0 Features
+export {
+  ArtifactManager,
+} from './ArtifactManager.js';
+
+export {
+  type IDistillationPolicy,
+  type DistilledMemory,
+  type DistillationConfig,
+  NoOpDistillationPolicy,
+  DefaultDistillationPolicy,
+  CompositeDistillationPolicy,
+} from './DistillationPolicy.js';
+
+export {
+  DistillationPipeline,
+  type DistillationStats,
+  type DistillationResult,
+} from './DistillationPipeline.js';
+
+export {
+  type AgentRole,
+  type RoleProfile,
+  getRoleProfile,
+  listRoleProfiles,
+  resolveRoleProfile,
+  createCustomProfile,
+} from './RoleProfiles.js';
+
+export {
+  EntropyFilterStage,
+  computeEntropy,
+  passesEntropyFilter,
+  type EntropyFilterConfig,
+  LowEntropyContentError,
+} from './EntropyFilter.js';
+
+export {
+  FailureDistillation,
+  type FailureDistillationResult,
+  type FailureDistillationConfig,
+} from './FailureDistillation.js';
+
+export {
+  CognitiveLoadAnalyzer,
+  type CognitiveLoadConfig,
+} from './CognitiveLoadAnalyzer.js';
+
+export {
+  VisibilityResolver,
+} from './VisibilityResolver.js';
+
+export {
+  ConsolidationScheduler,
+  type ConsolidationSchedulerConfig,
+  type ConsolidationCycleResult,
+} from './ConsolidationScheduler.js';

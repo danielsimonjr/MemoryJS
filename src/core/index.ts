@@ -24,3 +24,5 @@ export {
 export { createStorage, createStorageFromPath } from './StorageFactory.js';
 // Phase 10 Sprint 2: Graph change events
 export { GraphEventEmitter } from './GraphEventEmitter.js';
+// Named reference index
+export { RefIndex, type RefEntry, type RefIndexStats } from './RefIndex.js';

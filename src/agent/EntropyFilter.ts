@@ -121,7 +121,15 @@ export class EntropyFilterStage implements PipelineStage {
   private readonly config: Required<EntropyFilterConfig>;
 
   /** Names of entities rejected in the most recent `process()` call */
-  readonly rejectedNames: string[] = [];
+  private readonly _rejectedNames: string[] = [];
+
+  /**
+   * Returns a snapshot copy of the names rejected in the most recent `process()` call.
+   * A copy is returned to prevent external mutation of the internal array.
+   */
+  get rejectedNames(): string[] {
+    return [...this._rejectedNames];
+  }
 
   constructor(config: EntropyFilterConfig = {}) {
     this.config = {
@@ -141,7 +149,7 @@ export class EntropyFilterStage implements PipelineStage {
     entities: AgentEntity[],
     _options: ConsolidateOptions
   ): Promise<StageResult> {
-    this.rejectedNames.length = 0; // Reset for this run
+    this._rejectedNames.length = 0; // Reset for this run
 
     let passedCount = 0;
 
@@ -150,7 +158,7 @@ export class EntropyFilterStage implements PipelineStage {
       if (passesEntropyFilter(combinedText, this.config.minEntropy, this.config.minLength)) {
         passedCount++;
       } else {
-        this.rejectedNames.push(entity.name);
+        this._rejectedNames.push(entity.name);
       }
     }
 

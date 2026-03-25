@@ -118,8 +118,8 @@ export class DefaultDistillationPolicy implements IDistillationPolicy {
 
   constructor(freshnessManager?: FreshnessManager) {
     // Create a minimal FreshnessManager when none is provided.
-    // We only use isExpired() which needs no storage.
-    this.freshnessManager = freshnessManager ?? new FreshnessManager({} as never);
+    // Storage is optional in FreshnessManager (unused by isExpired()).
+    this.freshnessManager = freshnessManager ?? new FreshnessManager();
   }
 
   async distill(

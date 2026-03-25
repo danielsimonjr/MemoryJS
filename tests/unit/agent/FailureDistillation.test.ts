@@ -163,9 +163,9 @@ describe('FailureDistillation', () => {
       expect(result.lessons.length).toBeGreaterThanOrEqual(1);
       expect(result.createdEntities.length).toBe(result.lessons.length);
 
-      // All created entities should be named lesson_*
+      // All created entities should be named lesson_<uuid>
       for (const name of result.createdEntities) {
-        expect(name).toMatch(/^lesson_\d+_[a-z0-9]+$/);
+        expect(name).toMatch(/^lesson_[0-9a-f-]+$/);
       }
     });
 

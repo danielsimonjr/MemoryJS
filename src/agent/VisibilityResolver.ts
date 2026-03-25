@@ -47,7 +47,8 @@ export class VisibilityResolver {
       return true;
     }
 
-    const visibility = memory.visibility;
+    // Default undefined/empty visibility to 'private' to fail-safe
+    const visibility: string = memory.visibility ?? 'private';
 
     // Rule 2: public — anyone can access
     if (visibility === 'public') {

@@ -96,11 +96,12 @@ export class RefIndex {
         ...(description !== undefined ? { description } : {}),
       };
 
+      // Append to JSONL sidecar BEFORE updating in-memory state so that a
+      // disk-write failure leaves the in-memory map consistent (no phantom entry).
+      await this.appendEntry(entry);
+
       this.entries.set(ref, entry);
       this.addToReverseIndex(entityName, ref);
-
-      // Append to JSONL sidecar (fast path — no full rewrite)
-      await this.appendEntry(entry);
 
       return entry;
     });

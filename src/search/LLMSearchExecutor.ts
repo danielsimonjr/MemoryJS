@@ -67,7 +67,7 @@ export class LLMSearchExecutor {
       const dateResult = await this.searchManager.searchByDateRange(
         start.toISOString(),
         end.toISOString(),
-        query.entityTypes?.[0], // SearchManager supports a single entityType filter
+        undefined, // entityType post-filtered below to support multiple types
         query.tags
       );
       for (const entity of dateResult.entities) {

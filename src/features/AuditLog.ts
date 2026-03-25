@@ -222,7 +222,15 @@ export class AuditLog {
     }
 
     const lines = data.split('\n').filter(line => line.trim() !== '');
-    return lines.map(line => JSON.parse(line) as AuditEntry);
+    const entries: AuditEntry[] = [];
+    for (const line of lines) {
+      try {
+        entries.push(JSON.parse(line) as AuditEntry);
+      } catch {
+        // Skip malformed JSONL lines rather than crashing all audit reads
+      }
+    }
+    return entries;
   }
 }
 

@@ -72,7 +72,7 @@ export interface FreshnessManagerConfig {
 export class FreshnessManager {
   private readonly config: Required<FreshnessManagerConfig>;
 
-  constructor(_storage: IGraphStorage, config: FreshnessManagerConfig = {}) {
+  constructor(_storage?: IGraphStorage | null, config: FreshnessManagerConfig = {}) {
     this.config = {
       defaultHalfLifeHours: config.defaultHalfLifeHours ?? 168,
       defaultStaleThreshold: config.defaultStaleThreshold ?? 0.3,
@@ -223,14 +223,14 @@ export class FreshnessManager {
 
     const now = new Date().toISOString();
     const updates: Partial<Entity> = {
-      createdAt: now,
+      // Preserve original createdAt — only update lastModified and confidence
       lastModified: now,
       confidence: 1.0,
     };
 
     await storage.updateEntity(entityName, updates as Record<string, unknown>);
 
-    // Return the annotated refreshed entity
+    // Return the annotated refreshed entity (createdAt kept from original entity)
     const refreshed: Entity = { ...entity, ...updates };
     return this.annotateEntity(refreshed);
   }

@@ -95,11 +95,13 @@ export class TemporalQueryParser {
     const lower = text.toLowerCase();
 
     // "in the past N unit(s)" or "past N unit(s)" or "last N unit(s)"
+    // \d{1,6} bounds the digit run to avoid ReDoS on pathological input
     const pastNMatch = lower.match(
-      /^(?:in\s+the\s+)?(?:past|last)\s+(\d+)\s+(second|minute|hour|day|week|month|year)s?$/
+      /^(?:in\s+the\s+)?(?:past|last)\s+(\d{1,6})\s+(second|minute|hour|day|week|month|year)s?$/
     );
     if (pastNMatch) {
       const n = parseInt(pastNMatch[1], 10);
+      if (n > 1_000_000) return null; // reject absurd values
       const unit = pastNMatch[2];
       const start = this.subtractUnit(ref, n, unit);
       return { start, end: new Date(ref), originalExpression: text };
@@ -148,43 +150,40 @@ export class TemporalQueryParser {
       return { start, end, originalExpression: text };
     }
 
-    // "this month" → start of month to end of month
+    // "this month" → start of month to end of month (UTC)
     if (/^this\s+month$/.test(lower)) {
-      const start = new Date(ref.getFullYear(), ref.getMonth(), 1, 0, 0, 0, 0);
-      const end = new Date(ref.getFullYear(), ref.getMonth() + 1, 0, 23, 59, 59, 999);
+      const y = ref.getUTCFullYear();
+      const m = ref.getUTCMonth();
+      const start = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0));
+      const end = new Date(Date.UTC(y, m + 1, 0, 23, 59, 59, 999));
       return { start, end, originalExpression: text };
     }
 
-    // "this year" → start of year to end of year
+    // "this year" → start of year to end of year (UTC)
     if (/^this\s+year$/.test(lower)) {
-      const start = new Date(ref.getFullYear(), 0, 1, 0, 0, 0, 0);
-      const end = new Date(ref.getFullYear(), 11, 31, 23, 59, 59, 999);
+      const y = ref.getUTCFullYear();
+      const start = new Date(Date.UTC(y, 0, 1, 0, 0, 0, 0));
+      const end = new Date(Date.UTC(y, 11, 31, 23, 59, 59, 999));
       return { start, end, originalExpression: text };
     }
 
-    // "today" → start of today to end of today
+    // "today" → start of today to end of today (UTC)
     if (/^today$/.test(lower)) {
-      const start = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), 0, 0, 0, 0);
-      const end = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), 23, 59, 59, 999);
+      const y = ref.getUTCFullYear();
+      const m = ref.getUTCMonth();
+      const d = ref.getUTCDate();
+      const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+      const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
       return { start, end, originalExpression: text };
     }
 
-    // "yesterday" → start of yesterday to end of yesterday
+    // "yesterday" → start of yesterday to end of yesterday (UTC)
     if (/^yesterday$/.test(lower)) {
-      const yesterday = new Date(ref);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const start = new Date(
-        yesterday.getFullYear(),
-        yesterday.getMonth(),
-        yesterday.getDate(),
-        0, 0, 0, 0
-      );
-      const end = new Date(
-        yesterday.getFullYear(),
-        yesterday.getMonth(),
-        yesterday.getDate(),
-        23, 59, 59, 999
-      );
+      const y = ref.getUTCFullYear();
+      const m = ref.getUTCMonth();
+      const d = ref.getUTCDate() - 1;
+      const start = new Date(Date.UTC(y, m, d, 0, 0, 0, 0));
+      const end = new Date(Date.UTC(y, m, d, 23, 59, 59, 999));
       return { start, end, originalExpression: text };
     }
 
@@ -198,11 +197,13 @@ export class TemporalQueryParser {
     }
 
     // "N minutes/hours/days ago" → [parsedDate, now]
+    // \d{1,6} bounds the digit run to avoid ReDoS on pathological input
     const agoMatch = lower.match(
-      /^(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/
+      /^(\d{1,6})\s+(second|minute|hour|day|week|month|year)s?\s+ago$/
     );
     if (agoMatch) {
       const n = parseInt(agoMatch[1], 10);
+      if (n > 1_000_000) return null; // reject absurd values
       const unit = agoMatch[2];
       const start = this.subtractUnit(ref, n, unit);
       return { start, end: new Date(ref), originalExpression: text };
@@ -293,25 +294,25 @@ export class TemporalQueryParser {
   }
 
   /**
-   * Get the start of the week (Sunday at midnight) for a given date.
+   * Get the start of the week (Sunday at midnight UTC) for a given date.
    * @internal
    */
   private startOfWeek(d: Date): Date {
-    const result = new Date(d);
-    result.setDate(result.getDate() - result.getDay());
-    result.setHours(0, 0, 0, 0);
-    return result;
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    const day = d.getUTCDate() - d.getUTCDay(); // back to Sunday
+    return new Date(Date.UTC(y, m, day, 0, 0, 0, 0));
   }
 
   /**
-   * Get the end of the week (Saturday at 23:59:59.999) for a given date.
+   * Get the end of the week (Saturday at 23:59:59.999 UTC) for a given date.
    * @internal
    */
   private endOfWeek(d: Date): Date {
-    const result = new Date(d);
-    result.setDate(result.getDate() + (6 - result.getDay()));
-    result.setHours(23, 59, 59, 999);
-    return result;
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    const day = d.getUTCDate() + (6 - d.getUTCDay()); // forward to Saturday
+    return new Date(Date.UTC(y, m, day, 23, 59, 59, 999));
   }
 
   /**
