@@ -302,20 +302,23 @@ describe('FreshnessManager', () => {
   // ------------------------------------------------------------------
 
   describe('refreshEntity', () => {
-    it('should reset createdAt to now and return entity with high freshness', async () => {
+    it('should update lastModified and confidence without changing createdAt', async () => {
       const old = makeEntity('old_entity', { msAgo: 86_400_000, confidence: 0.3 });
+      const originalCreatedAt = old.createdAt;
       await storage.saveGraph({ entities: [old], relations: [] });
 
       const refreshed = await fm.refreshEntity('old_entity', storage);
 
-      expect(refreshed.freshnessScore).toBeGreaterThan(0.9);
       expect(refreshed.confidence).toBe(1.0);
 
       // Verify that the stored entity was updated
       const stored = storage.getEntityByName('old_entity');
       expect(stored).toBeDefined();
-      const storedAt = stored!.createdAt ? new Date(stored!.createdAt).getTime() : 0;
-      expect(Date.now() - storedAt).toBeLessThan(5000); // refreshed within 5s
+      // createdAt should be preserved (not reset)
+      expect(stored!.createdAt).toBe(originalCreatedAt);
+      // lastModified should be recent
+      const modifiedAt = stored!.lastModified ? new Date(stored!.lastModified).getTime() : 0;
+      expect(Date.now() - modifiedAt).toBeLessThan(5000);
     });
 
     it('should throw if entity does not exist', async () => {
@@ -325,31 +328,26 @@ describe('FreshnessManager', () => {
       );
     });
 
-    it('should make previously expired entity no longer expired after refresh (when TTL is reasonable)', async () => {
-      // Use a generous TTL so the entity stays fresh after refresh
-      const expiredEntity = makeEntity('expired', { ttl: 1, msAgo: 10_000 });
+    it('should refresh confidence and lastModified for previously expired entity', async () => {
+      // Entity with generous TTL but old enough to be expired
+      const expiredEntity = makeEntity('expired', { ttl: 5000, msAgo: 10_000 });
       await storage.saveGraph({ entities: [expiredEntity], relations: [] });
 
       // Confirm expired before refresh
       expect(fm.isExpired(expiredEntity)).toBe(true);
 
-      // Refresh resets createdAt to now; the stored entity has a new createdAt
+      // Refresh updates lastModified and confidence
       await fm.refreshEntity('expired', storage);
 
       // Now check the stored entity directly
       const stored = storage.getEntityByName('expired');
       expect(stored).toBeDefined();
 
-      // Because the original ttl=1ms will immediately expire again, the key
-      // assertion is that createdAt was reset (indicating the refresh occurred)
-      const storedAt = stored!.createdAt ? new Date(stored!.createdAt).getTime() : 0;
-      expect(Date.now() - storedAt).toBeLessThan(5000);
-
-      // With confidence=1 (reset) and createdAt=now, the raw confidence component
-      // is healthy. The overall freshness score (with ttlWeight=0.6) has a confidence
-      // component of 1*0.4=0.4 minimum regardless of the tiny TTL.
-      const refreshed = fm.annotateEntity(stored!);
-      expect(refreshed.freshnessScore).toBeGreaterThanOrEqual(0.4);
+      // Confidence should be reset to 1.0
+      expect(stored!.confidence).toBe(1.0);
+      // lastModified should be recent
+      const modifiedAt = stored!.lastModified ? new Date(stored!.lastModified).getTime() : 0;
+      expect(Date.now() - modifiedAt).toBeLessThan(5000);
     });
   });
 

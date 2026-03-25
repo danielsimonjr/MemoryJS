@@ -35,6 +35,8 @@ import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
+import { ArtifactManager } from '../agent/ArtifactManager.js';
+import { RefIndex } from './RefIndex.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
@@ -71,6 +73,7 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
+  private _artifactManager?: ArtifactManager;
   private _consolidationScheduler?: ConsolidationScheduler;
   private _llmQueryPlanner?: LLMQueryPlanner;
   private _llmSearchExecutor?: LLMSearchExecutor;
@@ -169,6 +172,16 @@ export class ManagerContext {
   /** ArchiveManager - Entity archival operations */
   get archiveManager(): ArchiveManager {
     return (this._archiveManager ??= new ArchiveManager(this.storage));
+  }
+
+  /**
+   * ArtifactManager - v1.7.0: Stable artifact entities with auto-generated names and ref registration.
+   */
+  get artifactManager(): ArtifactManager {
+    if (!this._artifactManager) {
+      this._artifactManager = new ArtifactManager(this.storage, this.entityManager, this.refIndex);
+    }
+    return this._artifactManager;
   }
 
   /**
