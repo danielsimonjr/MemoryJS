@@ -44,6 +44,7 @@ import {
 } from './AgentMemoryConfig.js';
 import type { IDistillationPolicy } from './DistillationPolicy.js';
 import { resolveRoleProfile } from './RoleProfiles.js';
+import { DreamEngine, type DreamEngineConfig, type DreamCycleResult } from './DreamEngine.js';
 
 /**
  * Options for creating working memory.
@@ -141,6 +142,7 @@ export class AgentMemoryManager extends EventEmitter {
   private _memoryFormatter?: MemoryFormatter;
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
+  private _dreamEngine?: DreamEngine;
 
   constructor(storage: IGraphStorage, config: AgentMemoryConfig = {}) {
     super();
@@ -315,6 +317,14 @@ export class AgentMemoryManager extends EventEmitter {
   ): Promise<EndSessionResult> {
     const result = await this.sessionManager.endSession(sessionId, status);
     this.emit('session:ended', { sessionId, result });
+
+    // If a DreamEngine has been created and runOnSessionEnd is the default (true),
+    // fire a maintenance cycle asynchronously.  The cycle runs fire-and-forget
+    // so it does not block session teardown.
+    if (this._dreamEngine) {
+      void this._dreamEngine.runDreamCycle().catch(() => undefined);
+    }
+
     return result;
   }
 
@@ -707,14 +717,59 @@ export class AgentMemoryManager extends EventEmitter {
     );
   }
 
+  // ==================== Dream Engine ====================
+
+  /**
+   * Start the DreamEngine periodic maintenance timer.
+   *
+   * @param config - Optional DreamEngine configuration override.
+   */
+  startDreaming(config: DreamEngineConfig = {}): void {
+    if (!this._dreamEngine) {
+      this._dreamEngine = new DreamEngine(
+        this.storage,
+        this.consolidationPipeline,
+        config
+      );
+    }
+    this._dreamEngine.start();
+    this.emit('dream:started');
+  }
+
+  /**
+   * Stop the DreamEngine periodic timer.
+   */
+  stopDreaming(): void {
+    if (this._dreamEngine) {
+      this._dreamEngine.stop();
+      this.emit('dream:stopped');
+    }
+  }
+
+  /**
+   * Run one dream cycle immediately, without affecting the timer.
+   */
+  async runDreamCycle(): Promise<DreamCycleResult> {
+    if (!this._dreamEngine) {
+      this._dreamEngine = new DreamEngine(
+        this.storage,
+        this.consolidationPipeline
+      );
+    }
+    return this._dreamEngine.runDreamCycle();
+  }
+
   // ==================== Lifecycle ====================
 
   /**
-   * Stop all background operations (decay scheduler).
+   * Stop all background operations (decay scheduler, dream engine).
    */
   stop(): void {
     if (this._decayScheduler) {
       this._decayScheduler.stop();
+    }
+    if (this._dreamEngine) {
+      this._dreamEngine.stop();
     }
     this.emit('manager:stopped');
   }

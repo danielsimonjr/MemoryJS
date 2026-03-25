@@ -183,3 +183,12 @@ export {
   type ConsolidationSchedulerConfig,
   type ConsolidationCycleResult,
 } from './ConsolidationScheduler.js';
+
+export {
+  DreamEngine,
+  type DreamEngineConfig,
+  type DreamPhaseConfig,
+  type DreamEngineCallbacks,
+  type DreamPhaseResult,
+  type DreamCycleResult,
+} from './DreamEngine.js';

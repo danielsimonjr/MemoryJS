@@ -36,6 +36,7 @@ import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
 import { ArtifactManager } from '../agent/ArtifactManager.js';
+import { DreamEngine, type DreamEngineConfig } from '../agent/DreamEngine.js';
 import { RefIndex } from './RefIndex.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
@@ -75,6 +76,7 @@ export class ManagerContext {
   private _agentMemory?: AgentMemoryManager;
   private _artifactManager?: ArtifactManager;
   private _consolidationScheduler?: ConsolidationScheduler;
+  private _dreamEngine?: DreamEngine;
   private _llmQueryPlanner?: LLMQueryPlanner;
   private _llmSearchExecutor?: LLMSearchExecutor;
 
@@ -298,6 +300,30 @@ export class ManagerContext {
     }
 
     return this._consolidationScheduler;
+  }
+
+  /**
+   * DreamEngine — Background memory maintenance.
+   *
+   * Returns a DreamEngine instance.  The timer is NOT auto-started.
+   * Call `.start()` to activate periodic cycles, or use `agentMemory()` helper
+   * methods `startDreaming()` / `stopDreaming()`.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_DREAM_INTERVAL_MS (default: 14400000 = 4 hours)
+   */
+  dreamEngine(config: DreamEngineConfig = {}): DreamEngine {
+    if (!this._dreamEngine || Object.keys(config).length > 0) {
+      this._dreamEngine = new DreamEngine(
+        this.storage,
+        this.agentMemory().consolidationPipeline,
+        {
+          intervalMs: this.getEnvNumber('MEMORY_DREAM_INTERVAL_MS', 4 * 60 * 60 * 1000),
+          ...config,
+        }
+      );
+    }
+    return this._dreamEngine;
   }
 
   /**
