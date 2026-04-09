@@ -6,6 +6,7 @@
 export { GraphStorage } from './GraphStorage.js';
 export { SQLiteStorage } from './SQLiteStorage.js';
 export { EntityManager } from './EntityManager.js';
+export type { EntityManagerOptions } from './EntityManager.js';
 export { RelationManager } from './RelationManager.js';
 export { ObservationManager } from './ObservationManager.js';
 export { HierarchyManager } from './HierarchyManager.js';

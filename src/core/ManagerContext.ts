@@ -119,7 +119,10 @@ export class ManagerContext {
 
   /** EntityManager - Entity CRUD and tag operations */
   get entityManager(): EntityManager {
-    return (this._entityManager ??= new EntityManager(this.storage));
+    return (this._entityManager ??= new EntityManager(
+      this.storage,
+      { defaultProjectId: this.defaultProjectId }
+    ));
   }
 
   /** RelationManager - Relation CRUD */

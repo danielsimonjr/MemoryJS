@@ -14,6 +14,14 @@ import { EntityNotFoundError, InvalidImportanceError, ValidationError } from '..
 import type { RefIndex, RefEntry } from './RefIndex.js';
 
 /**
+ * Options for constructing an EntityManager.
+ */
+export interface EntityManagerOptions {
+  /** Default projectId to stamp on new entities without an explicit projectId. */
+  defaultProjectId?: string;
+}
+
+/**
  * Options for entity retrieval with access tracking support.
  */
 export interface GetEntityOptions {
@@ -53,8 +61,14 @@ const MAX_IMPORTANCE = 10;
 export class EntityManager {
   private accessTracker?: AccessTracker;
   private refIndex?: RefIndex;
+  private defaultProjectId?: string;
 
-  constructor(private storage: GraphStorage) {}
+  constructor(
+    private storage: GraphStorage,
+    options?: EntityManagerOptions
+  ) {
+    this.defaultProjectId = options?.defaultProjectId;
+  }
 
   /**
    * Set the AccessTracker for optional access tracking.
@@ -246,6 +260,11 @@ export class EntityManager {
           throw new InvalidImportanceError(e.importance, MIN_IMPORTANCE, MAX_IMPORTANCE);
         }
         entity.importance = e.importance;
+      }
+
+      // Auto-stamp projectId from context default if not explicit
+      if (entity.projectId === undefined && this.defaultProjectId !== undefined) {
+        entity.projectId = this.defaultProjectId;
       }
 
       newEntities.push(entity);

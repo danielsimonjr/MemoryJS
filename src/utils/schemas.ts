@@ -110,6 +110,7 @@ export const CreateEntitySchema = z.object({
   tags: z.array(tagSchema).optional(),
   importance: importanceSchema.optional(),
   parentId: entityNameSchema.optional(),
+  projectId: z.string().optional(),
   createdAt: isoDateSchema.optional(),
   lastModified: isoDateSchema.optional(),
 }).strict();
