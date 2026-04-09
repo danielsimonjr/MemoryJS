@@ -43,6 +43,16 @@ import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
 
 /**
+ * Options for constructing a ManagerContext.
+ */
+export interface ManagerContextOptions {
+  storagePath: string;
+  storageType?: 'jsonl' | 'sqlite';
+  /** Default project scope for this context. */
+  defaultProjectId?: string;
+}
+
+/**
  * Context holding all manager instances with lazy initialization.
  * Provides direct manager access for toolHandlers.
  */
@@ -50,6 +60,7 @@ export class ManagerContext {
   // Type as GraphStorage for manager compatibility; actual instance may be SQLiteStorage
   // which implements the same interface via duck typing
   readonly storage: GraphStorage;
+  public readonly defaultProjectId?: string;
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
   private readonly refIndexFilePath: string;
@@ -82,9 +93,15 @@ export class ManagerContext {
   private _llmQueryPlanner?: LLMQueryPlanner;
   private _llmSearchExecutor?: LLMSearchExecutor;
 
-  constructor(memoryFilePath: string) {
+  constructor(pathOrOptions: string | ManagerContextOptions) {
+    const opts: ManagerContextOptions =
+      typeof pathOrOptions === 'string'
+        ? { storagePath: pathOrOptions }
+        : pathOrOptions;
+    this.defaultProjectId = opts.defaultProjectId;
+
     // Security: Validate path to prevent path traversal attacks
-    const validatedPath = validateFilePath(memoryFilePath);
+    const validatedPath = validateFilePath(opts.storagePath);
 
     // Derive paths for saved searches and tag aliases
     const dir = path.dirname(validatedPath);
