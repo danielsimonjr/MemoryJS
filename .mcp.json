@@ -1,0 +1,43 @@
+{
+  "mcpServers": {
+    "deepthinking-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:/mcp-servers/deepthinking-mcp/dist/index.js"
+      ],
+      "env": {
+        "MCP_EXPORT_PATH": "C:\\mcp-servers\\deepthinking-mcp\\output\\"
+      }
+    },
+    "everything-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:/mcp-servers/everything-mcp/index.js"
+      ],
+      "env": {
+        "ES_PATH": "C:\\Program Files\\Everything\\es.exe"
+      }
+    },
+    "fzf-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:/mcp-servers/fzf-mcp/index.js"
+      ],
+      "env": {}
+    },
+    "memory-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "C:/mcp-servers/memory-mcp/dist/index.js"
+      ],
+      "env": {
+        "MEMORY_FILE_PATH": "C:/Users/danie/.claude/memoryjs-memory.jsonl",
+        "MEMORY_STORAGE_TYPE": "jsonl"
+      }
+    }
+  }
+}

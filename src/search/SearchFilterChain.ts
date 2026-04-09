@@ -39,6 +39,8 @@ export interface SearchFilters {
   modifiedAfter?: string;
   /** Modified before date (ISO 8601, inclusive) */
   modifiedBefore?: string;
+  /** Project scope (exact match). Undefined = match all projects. */
+  projectId?: string;
 }
 
 /**
@@ -142,6 +144,11 @@ export class SearchFilterChain {
       }
     }
 
+    // Project scope filter
+    if (filters.projectId !== undefined && entity.projectId !== filters.projectId) {
+      return false;
+    }
+
     return true;
   }
 
@@ -161,7 +168,8 @@ export class SearchFilterChain {
       filters.createdAfter ||
       filters.createdBefore ||
       filters.modifiedAfter ||
-      filters.modifiedBefore
+      filters.modifiedBefore ||
+      filters.projectId !== undefined
     );
   }
 
