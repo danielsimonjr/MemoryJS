@@ -370,6 +370,12 @@ export class GraphStorage implements IGraphStorage {
       if (entity.tags !== undefined) entityData.tags = entity.tags;
       if (entity.importance !== undefined) entityData.importance = entity.importance;
       if (entity.parentId !== undefined) entityData.parentId = entity.parentId;
+      if (entity.projectId !== undefined) entityData.projectId = entity.projectId;
+      if (entity.version !== undefined) entityData.version = entity.version;
+      if (entity.parentEntityName !== undefined) entityData.parentEntityName = entity.parentEntityName;
+      if (entity.rootEntityName !== undefined) entityData.rootEntityName = entity.rootEntityName;
+      if (entity.isLatest !== undefined) entityData.isLatest = entity.isLatest;
+      if (entity.supersededBy !== undefined) entityData.supersededBy = entity.supersededBy;
 
       const line = JSON.stringify(entityData);
 
@@ -526,6 +532,12 @@ export class GraphStorage implements IGraphStorage {
         if (e.tags !== undefined) entityData.tags = e.tags;
         if (e.importance !== undefined) entityData.importance = e.importance;
         if (e.parentId !== undefined) entityData.parentId = e.parentId;
+        if (e.projectId !== undefined) entityData.projectId = e.projectId;
+        if (e.version !== undefined) entityData.version = e.version;
+        if (e.parentEntityName !== undefined) entityData.parentEntityName = e.parentEntityName;
+        if (e.rootEntityName !== undefined) entityData.rootEntityName = e.rootEntityName;
+        if (e.isLatest !== undefined) entityData.isLatest = e.isLatest;
+        if (e.supersededBy !== undefined) entityData.supersededBy = e.supersededBy;
 
         return JSON.stringify(entityData);
       }),
@@ -630,6 +642,12 @@ export class GraphStorage implements IGraphStorage {
       if (updatedEntity.tags !== undefined) entityData.tags = updatedEntity.tags;
       if (updatedEntity.importance !== undefined) entityData.importance = updatedEntity.importance;
       if (updatedEntity.parentId !== undefined) entityData.parentId = updatedEntity.parentId;
+      if (updatedEntity.projectId !== undefined) entityData.projectId = updatedEntity.projectId;
+      if (updatedEntity.version !== undefined) entityData.version = updatedEntity.version;
+      if (updatedEntity.parentEntityName !== undefined) entityData.parentEntityName = updatedEntity.parentEntityName;
+      if (updatedEntity.rootEntityName !== undefined) entityData.rootEntityName = updatedEntity.rootEntityName;
+      if (updatedEntity.isLatest !== undefined) entityData.isLatest = updatedEntity.isLatest;
+      if (updatedEntity.supersededBy !== undefined) entityData.supersededBy = updatedEntity.supersededBy;
 
       const line = JSON.stringify(entityData);
 
