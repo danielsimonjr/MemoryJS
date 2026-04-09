@@ -85,6 +85,28 @@ export interface Entity {
    * Set by FreshnessManager; not persisted to storage.
    */
   expiresAt?: string;
+
+  // ==================== v1.8.0: Project Scoping ====================
+
+  /** Project/container scope identifier. Undefined = global/unscoped. */
+  projectId?: string;
+
+  // ==================== v1.8.0: Memory Versioning ====================
+
+  /** Version number in the contradiction-resolution chain. Starts at 1. */
+  version?: number;
+
+  /** Name of the immediate parent version (previous version). */
+  parentEntityName?: string;
+
+  /** Name of the root entity in the version chain. */
+  rootEntityName?: string;
+
+  /** Whether this is the latest version in its chain. Default: true. */
+  isLatest?: boolean;
+
+  /** Name of the entity that superseded this one. */
+  supersededBy?: string;
 }
 
 // ==================== Relation Types (Phase 1 Sprint 4) ====================
