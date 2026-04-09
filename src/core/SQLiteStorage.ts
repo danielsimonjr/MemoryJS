@@ -147,7 +147,13 @@ export class SQLiteStorage implements IGraphStorage {
         importance INTEGER,
         parentId TEXT REFERENCES entities(name) ON DELETE SET NULL,
         createdAt TEXT NOT NULL,
-        lastModified TEXT NOT NULL
+        lastModified TEXT NOT NULL,
+        projectId TEXT,
+        version INTEGER DEFAULT 1,
+        parentEntityName TEXT,
+        rootEntityName TEXT,
+        isLatest INTEGER DEFAULT 1,
+        supersededBy TEXT
       )
     `);
 
@@ -171,9 +177,14 @@ export class SQLiteStorage implements IGraphStorage {
     // Schema migration for existing DBs (Phase 1 Sprint 5)
     this.migrateRelationsTable();
 
+    // Schema migration for existing DBs (v1.8.0)
+    this.migrateEntitiesTable();
+
     // Indexes for fast lookups
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_type ON entities(entityType)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_parent ON entities(parentId)`);
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`);
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_isLatest ON entities(isLatest)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_relation_from ON relations(fromEntity)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_relation_to ON relations(toEntity)`);
 
@@ -255,6 +266,42 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
+   * v1.8.0: Migrate entities table to add version chain and projectId columns.
+   * Checks if columns exist and adds them if not for backward compatibility.
+   */
+  private migrateEntitiesTable(): void {
+    if (!this.db) return;
+
+    // Get current column names
+    const columns = this.db.pragma('table_info(entities)') as Array<{ name: string }>;
+    const columnNames = new Set(columns.map(c => c.name));
+
+    // Add missing columns for v1.8.0 fields
+    if (!columnNames.has('projectId')) {
+      this.db.exec('ALTER TABLE entities ADD COLUMN projectId TEXT');
+    }
+    if (!columnNames.has('version')) {
+      this.db.exec('ALTER TABLE entities ADD COLUMN version INTEGER DEFAULT 1');
+    }
+    if (!columnNames.has('parentEntityName')) {
+      this.db.exec('ALTER TABLE entities ADD COLUMN parentEntityName TEXT');
+    }
+    if (!columnNames.has('rootEntityName')) {
+      this.db.exec('ALTER TABLE entities ADD COLUMN rootEntityName TEXT');
+    }
+    if (!columnNames.has('isLatest')) {
+      this.db.exec('ALTER TABLE entities ADD COLUMN isLatest INTEGER DEFAULT 1');
+    }
+    if (!columnNames.has('supersededBy')) {
+      this.db.exec('ALTER TABLE entities ADD COLUMN supersededBy TEXT');
+    }
+
+    // Create indexes (idempotent)
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`);
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_isLatest ON entities(isLatest)`);
+  }
+
+  /**
    * Load all data from SQLite into memory cache.
    */
   private loadCache(): void {
@@ -288,7 +335,7 @@ export class SQLiteStorage implements IGraphStorage {
    * Convert a database row to an Entity object.
    */
   private rowToEntity(row: EntityRow): Entity {
-    return {
+    const entity: Entity = {
       name: row.name,
       entityType: row.entityType,
       observations: JSON.parse(row.observations),
@@ -298,6 +345,16 @@ export class SQLiteStorage implements IGraphStorage {
       createdAt: row.createdAt,
       lastModified: row.lastModified,
     };
+
+    // v1.8.0: version chain and projectId fields
+    if (row.projectId != null) entity.projectId = row.projectId;
+    if (row.version != null) entity.version = row.version;
+    if (row.parentEntityName != null) entity.parentEntityName = row.parentEntityName;
+    if (row.rootEntityName != null) entity.rootEntityName = row.rootEntityName;
+    if (row.isLatest != null) entity.isLatest = row.isLatest === 1;
+    if (row.supersededBy != null) entity.supersededBy = row.supersededBy;
+
+    return entity;
   }
 
   /**
@@ -417,8 +474,8 @@ export class SQLiteStorage implements IGraphStorage {
 
         // Insert all entities
         const entityStmt = this.db!.prepare(`
-          INSERT INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         for (const entity of graph.entities) {
@@ -431,6 +488,12 @@ export class SQLiteStorage implements IGraphStorage {
             entity.parentId ?? null,
             entity.createdAt || new Date().toISOString(),
             entity.lastModified || new Date().toISOString(),
+            entity.projectId ?? null,
+            entity.version ?? 1,
+            entity.parentEntityName ?? null,
+            entity.rootEntityName ?? null,
+            entity.isLatest === false ? 0 : 1,
+            entity.supersededBy ?? null,
           );
         }
 
@@ -497,8 +560,8 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Use INSERT OR REPLACE to handle updates
       const stmt = this.db.prepare(`
-        INSERT OR REPLACE INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -510,6 +573,12 @@ export class SQLiteStorage implements IGraphStorage {
         entity.parentId ?? null,
         entity.createdAt || new Date().toISOString(),
         entity.lastModified || new Date().toISOString(),
+        entity.projectId ?? null,
+        entity.version ?? 1,
+        entity.parentEntityName ?? null,
+        entity.rootEntityName ?? null,
+        entity.isLatest === false ? 0 : 1,
+        entity.supersededBy ?? null,
       );
 
       // Update cache
@@ -618,7 +687,13 @@ export class SQLiteStorage implements IGraphStorage {
           tags = ?,
           importance = ?,
           parentId = ?,
-          lastModified = ?
+          lastModified = ?,
+          projectId = ?,
+          version = ?,
+          parentEntityName = ?,
+          rootEntityName = ?,
+          isLatest = ?,
+          supersededBy = ?
         WHERE name = ?
       `);
 
@@ -629,6 +704,12 @@ export class SQLiteStorage implements IGraphStorage {
         entity.importance ?? null,
         entity.parentId ?? null,
         entity.lastModified,
+        entity.projectId ?? null,
+        entity.version ?? 1,
+        entity.parentEntityName ?? null,
+        entity.rootEntityName ?? null,
+        entity.isLatest === false ? 0 : 1,
+        entity.supersededBy ?? null,
         entityName,
       );
 
@@ -1128,6 +1209,13 @@ interface EntityRow {
   parentId: string | null;
   createdAt: string;
   lastModified: string;
+  // v1.8.0: version chain and projectId fields
+  projectId: string | null;
+  version: number | null;
+  parentEntityName: string | null;
+  rootEntityName: string | null;
+  isLatest: number | null;
+  supersededBy: string | null;
 }
 
 interface RelationRow {
