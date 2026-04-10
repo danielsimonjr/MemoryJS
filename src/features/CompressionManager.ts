@@ -435,6 +435,89 @@ export class CompressionManager {
   }
 
   /**
+   * Priority-based deduplication. When duplicates are found, keeps the
+   * entity with the highest priority score. Priority is computed from:
+   * importance (weight 0.4) > recency (0.3) > observation count (0.2) > tag count (0.1)
+   *
+   * @param options.threshold - Similarity threshold, default 0.7
+   * @param options.dryRun - Preview without merging
+   * @returns Summary of groups kept/removed and total removal count
+   */
+  async priorityDedup(options?: {
+    threshold?: number;
+    dryRun?: boolean;
+  }): Promise<{
+    groups: Array<{ kept: string; removed: string[]; score: number }>;
+    totalRemoved: number;
+  }> {
+    const threshold = options?.threshold ?? DEFAULT_DUPLICATE_THRESHOLD;
+    const dryRun = options?.dryRun ?? false;
+
+    // Step 1: Find duplicate groups using existing method
+    const duplicateGroups = await this.findDuplicates(threshold);
+
+    if (duplicateGroups.length === 0) {
+      return { groups: [], totalRemoved: 0 };
+    }
+
+    // Load graph once for entity data
+    const graph = await this.storage.loadGraph();
+    const entityMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      entityMap.set(entity.name, entity);
+    }
+
+    const now = Date.now();
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+    const ONE_WEEK_MS = 7 * ONE_DAY_MS;
+
+    const scoreEntity = (entity: Entity): number => {
+      const importance = (entity.importance ?? 0) / 10; // normalize 0-10 → 0-1
+
+      const lastModifiedStr = entity.lastModified ?? entity.createdAt;
+      let recencyScore = 0.1;
+      if (lastModifiedStr) {
+        const age = now - new Date(lastModifiedStr).getTime();
+        if (age <= ONE_DAY_MS) recencyScore = 1.0;
+        else if (age <= ONE_WEEK_MS) recencyScore = 0.5;
+        else recencyScore = 0.1;
+      }
+
+      const obsScore = (entity.observations.length / 10) * 0.2;
+      const tagScore = ((entity.tags?.length ?? 0) / 5) * 0.1;
+
+      return importance * 0.4 + recencyScore * 0.3 + obsScore + tagScore;
+    };
+
+    const resultGroups: Array<{ kept: string; removed: string[]; score: number }> = [];
+    let totalRemoved = 0;
+
+    for (const group of duplicateGroups) {
+      // Score each entity in the group
+      const scored = group
+        .map(name => {
+          const entity = entityMap.get(name);
+          return { name, score: entity ? scoreEntity(entity) : 0 };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      const kept = scored[0];
+      const removed = scored.slice(1).map(s => s.name);
+
+      resultGroups.push({ kept: kept.name, removed, score: kept.score });
+      totalRemoved += removed.length;
+
+      if (!dryRun) {
+        // Merge: put highest-priority entity first so mergeEntities() keeps it
+        const mergeOrder = [kept.name, ...removed];
+        await this.mergeEntities(mergeOrder);
+      }
+    }
+
+    return { groups: resultGroups, totalRemoved };
+  }
+
+  /**
    * Compress the knowledge graph by finding and merging duplicates.
    * OPTIMIZED: Loads graph once, performs all merges, saves once.
    *
