@@ -7,10 +7,11 @@
  * @module agent/ProfileManager
  */
 
-import type { GraphStorage } from '../core/GraphStorage.js';
+import type { IGraphStorage } from '../types/types.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { ObservationManager } from '../core/ObservationManager.js';
 import type { SessionManager } from './SessionManager.js';
+import { isSessionEntity } from '../types/agent-memory.js';
 import type { SalienceEngine } from './SalienceEngine.js';
 
 const STATIC_PREFIX = '[static] ';
@@ -39,7 +40,7 @@ export interface ProfileOptions {
 
 export class ProfileManager {
   constructor(
-    _storage: GraphStorage,
+    private storage: IGraphStorage,
     private entityManager: EntityManager,
     private observationManager: ObservationManager,
     private sessionManager?: SessionManager,
@@ -143,7 +144,15 @@ export class ProfileManager {
       return [];
     }
 
-    const session = await (this.sessionManager as any).getSession(sessionId);
+    // Prefer active session; fall back to storage for ended sessions.
+    let session: { observations?: string[] } | undefined =
+      await this.sessionManager.getActiveSession(sessionId);
+    if (!session) {
+      const stored = this.storage.getEntityByName(sessionId);
+      if (stored && isSessionEntity(stored)) {
+        session = stored;
+      }
+    }
     if (!session) return [];
 
     const observations = (session as any).observations ?? [];

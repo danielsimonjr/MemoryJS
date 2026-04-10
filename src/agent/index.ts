@@ -192,3 +192,10 @@ export {
   type DreamPhaseResult,
   type DreamCycleResult,
 } from './DreamEngine.js';
+
+export {
+  ProfileManager,
+  type ProfileResponse,
+  type ProfileManagerConfig,
+  type ProfileOptions,
+} from './ProfileManager.js';

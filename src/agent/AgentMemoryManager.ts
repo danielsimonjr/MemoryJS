@@ -9,6 +9,9 @@
 
 import { EventEmitter } from 'events';
 import type { IGraphStorage } from '../types/types.js';
+import type { GraphStorage } from '../core/GraphStorage.js';
+import { EntityManager } from '../core/EntityManager.js';
+import { ObservationManager } from '../core/ObservationManager.js';
 import type {
   AgentEntity,
   AgentMetadata,
@@ -45,6 +48,7 @@ import {
 import type { IDistillationPolicy } from './DistillationPolicy.js';
 import { resolveRoleProfile } from './RoleProfiles.js';
 import { DreamEngine, type DreamEngineConfig, type DreamCycleResult } from './DreamEngine.js';
+import { ProfileManager } from './ProfileManager.js';
 
 /**
  * Options for creating working memory.
@@ -143,6 +147,9 @@ export class AgentMemoryManager extends EventEmitter {
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
   private _dreamEngine?: DreamEngine;
+  private _profileManager?: ProfileManager;
+  private _entityManager?: EntityManager;
+  private _observationManager?: ObservationManager;
 
   constructor(storage: IGraphStorage, config: AgentMemoryConfig = {}) {
     super();
@@ -158,6 +165,17 @@ export class AgentMemoryManager extends EventEmitter {
     // Initialize auto-decay if enabled
     if (this.config.enableAutoDecay && this.config.decayScheduler) {
       this.decayScheduler.start();
+    }
+
+    // Wire profile auto-extraction on session end (opt-out via config.profile.autoExtract=false)
+    if (this.config.profile?.autoExtract !== false) {
+      this.on('session:ended', async ({ sessionId }: { sessionId: string }) => {
+        try {
+          await this.profileManager.extractFromSession(sessionId);
+        } catch (err) {
+          console.error('ProfileManager auto-extract failed:', err);
+        }
+      });
     }
   }
 
@@ -274,6 +292,36 @@ export class AgentMemoryManager extends EventEmitter {
   /** Conflict resolver for memory conflicts */
   get conflictResolver(): ConflictResolver {
     return (this._conflictResolver ??= new ConflictResolver(this.config.conflictResolver));
+  }
+
+  // ==================== Profile Manager ====================
+
+  /**
+   * Internal EntityManager, created on demand from the underlying storage.
+   * Cast is safe: the storage passed to AgentMemoryManager is always a
+   * GraphStorage (or duck-typed equivalent) created by StorageFactory.
+   */
+  private get entityManager(): EntityManager {
+    return (this._entityManager ??= new EntityManager(this.storage as GraphStorage));
+  }
+
+  /**
+   * Internal ObservationManager, created on demand from the underlying storage.
+   */
+  private get observationManager(): ObservationManager {
+    return (this._observationManager ??= new ObservationManager(this.storage as GraphStorage));
+  }
+
+  /** Profile manager for persistent user/agent profile facts */
+  get profileManager(): ProfileManager {
+    return (this._profileManager ??= new ProfileManager(
+      this.storage,
+      this.entityManager,
+      this.observationManager,
+      this.sessionManager,
+      this.salienceEngine,
+      this.config.profile ?? {}
+    ));
   }
 
   // ==================== Distillation ====================

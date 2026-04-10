@@ -21,6 +21,7 @@ import type { MultiAgentConfig } from './MultiAgentMemoryManager.js';
 import type { ConflictResolverConfig } from './ConflictResolver.js';
 import type { CollaborativeSynthesisConfig } from './CollaborativeSynthesis.js';
 import type { GraphTraversal } from '../core/GraphTraversal.js';
+import type { ProfileManagerConfig } from './ProfileManager.js';
 
 /**
  * Configuration for the AgentMemoryManager facade.
@@ -74,6 +75,9 @@ export interface AgentMemoryConfig {
    * will use this traversal instead of requiring one to be passed directly.
    */
   graphTraversal?: GraphTraversal;
+
+  /** Profile manager configuration */
+  profile?: ProfileManagerConfig;
 
   /** Enable automatic decay scheduling */
   enableAutoDecay?: boolean;
@@ -198,6 +202,7 @@ export function mergeConfig(
       userConfig.collaborativeSynthesis,
       envConfig.collaborativeSynthesis
     ),
+    profile: mergeSubConfig(userConfig.profile, envConfig.profile),
     graphTraversal: userConfig.graphTraversal ?? envConfig.graphTraversal,
     enableAutoDecay: userConfig.enableAutoDecay ?? envConfig.enableAutoDecay,
     enableMultiAgent: userConfig.enableMultiAgent ?? envConfig.enableMultiAgent,

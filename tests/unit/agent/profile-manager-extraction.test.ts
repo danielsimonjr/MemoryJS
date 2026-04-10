@@ -22,8 +22,11 @@ describe('ProfileManager.extractFromSession', () => {
 
   it('classifies high-importance low-recency facts as static', async () => {
     const mockSession = {
-      getSession: vi.fn(async () => ({
-        id: 'sess-1',
+      getActiveSession: vi.fn(async () => ({
+        name: 'sess-1',
+        entityType: 'session',
+        status: 'active',
+        startedAt: new Date().toISOString(),
         observations: ['User prefers TypeScript', 'Currently debugging auth'],
       })),
     } as unknown as SessionManager;
@@ -54,8 +57,11 @@ describe('ProfileManager.extractFromSession', () => {
 
   it('dedupes against existing profile facts', async () => {
     const mockSession = {
-      getSession: vi.fn(async () => ({
-        id: 'sess-1',
+      getActiveSession: vi.fn(async () => ({
+        name: 'sess-1',
+        entityType: 'session',
+        status: 'active',
+        startedAt: new Date().toISOString(),
         observations: ['Fact A'],
       })),
     } as unknown as SessionManager;
