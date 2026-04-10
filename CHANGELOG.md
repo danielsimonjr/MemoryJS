@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Conversation Ingestion**: `IOManager.ingest()` — format-agnostic pipeline accepting pre-normalized messages. Exchange-pair chunking, dedup, dryRun support. Creates entities with verbatim observations.
 - **Agent Diary**: `AgentMemoryManager.writeDiary()` / `readDiary()` — per-agent persistent journal with timestamped, topic-tagged entries. `diary-*` namespace reserved in EntityManager.
 - **Zero-Config Semantic Search**: Default embedding provider changed from `none` to `local`. Semantic search works out of the box with bundled ONNX MiniLM model, no API keys needed.
+- **Context Compression**: `ContextWindowManager.compressForContext()` and `compressEntitiesForContext()` — n-gram abbreviation with §-code legend, three compression levels (light/medium/aggressive). `wakeUp()` accepts optional `compress` parameter.
 - **Auto-Save Hooks**: `hooks/memoryjs_save_hook.sh` and `hooks/memoryjs_precompact_hook.sh` for Claude Code session preservation.
 
 ### Related

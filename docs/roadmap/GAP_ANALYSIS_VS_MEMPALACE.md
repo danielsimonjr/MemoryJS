@@ -274,7 +274,7 @@ Configured via Claude Code's `hooks` settings.
 | 5 | Auto-Save Hooks | S | Medium | **SHOULD** | ✅ v1.9.0 |
 | 6 | Benchmarking Suite (LongMemEval) | L | Medium | **SHOULD** | Not started |
 | 7 | Zero-Config Semantic Search (default local embeddings) | S | Medium | **SHOULD** | ✅ v1.9.0 |
-| 8 | AAAK-style Compression | M | Low | **COULD** | Not started |
+| 8 | AAAK-style Compression | M | Low | **COULD** | ✅ v1.9.0 (as compressForContext) |
 | 9 | Mega-File Splitting | S | Low | **COULD** | Not started |
 
 **Sprint 1** (MUST, ~2-3 weeks): Memory Stack, Ingestion Pipeline, Temporal KG Methods

@@ -1,8 +1,8 @@
 # Design: compressForContext() on ContextWindowManager
 
 **Date:** 2026-04-10
-**Status:** Approved, not yet implemented
-**Branch:** TBD (future work)
+**Status:** Implemented (commit 5d8f08b)
+**Branch:** master
 **Related:** `tools/compress-for-context/compress-for-context.ts` (1460-line standalone tool)
 
 ## Goal

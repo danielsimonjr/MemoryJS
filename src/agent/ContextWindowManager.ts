@@ -1176,10 +1176,16 @@ export class ContextWindowManager {
 
     // Apply compression if requested (only if it actually saves tokens)
     if (options.compress && l1) {
-      const level = typeof options.compress === 'string' ? options.compress : 'medium';
-      const compressResult = this.compressForContext(l1, { level });
-      if (compressResult.stats.savedTokens > 0) {
-        l1 = compressResult.compressed;
+      try {
+        const level = typeof options.compress === 'string' ? options.compress : 'medium';
+        const compressResult = this.compressForContext(l1, { level });
+        if (compressResult.stats.savedTokens > 0) {
+          l1 = compressResult.compressed;
+        }
+        // else: compression skipped — legend overhead exceeds savings
+      } catch (err) {
+        console.error('[ContextWindowManager.wakeUp] Compression failed, using uncompressed:', err);
+        // Fall through with uncompressed l1
       }
     }
 
@@ -1265,7 +1271,8 @@ export class ContextWindowManager {
     // Find and replace repeated substrings
     const minLength = level === 'light' ? 8 : level === 'medium' ? 6 : 5;
     const minOccurrences = level === 'light' ? 4 : 3;
-    const maxSubstrings = level === 'light' ? 20 : level === 'medium' ? 30 : 50;
+    // Cap at 36 so abbreviation codes stay single-character (§0–§z in base-36)
+    const maxSubstrings = level === 'light' ? 20 : level === 'medium' ? 30 : 36;
 
     const substrings = this.findRepeatedSubstrings(compressed, minLength, minOccurrences, maxSubstrings);
 

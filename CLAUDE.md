@@ -90,7 +90,9 @@ ctx.agentMemory()       // Agent Memory System facade
 - `RelationManager.invalidateRelation()` — mark relations as ended (temporal validity)
 - `RelationManager.queryAsOf(entity, date)` — time-travel queries
 - `RelationManager.timeline(entity)` — chronological relation history
-- `ContextWindowManager.wakeUp()` — 4-layer memory stack (~600 token wake-up context)
+- `ContextWindowManager.wakeUp()` — 4-layer memory stack (~600 token wake-up context); accepts optional `compress` parameter for token-efficient loading
+- `ContextWindowManager.compressForContext()` — n-gram context compression with §-code legend, three levels (light/medium/aggressive)
+- `ContextWindowManager.compressEntitiesForContext()` — entity-aware compression wrapper
 - `IOManager.ingest(input, options)` — conversation ingestion pipeline (format-agnostic)
 - `AgentMemoryManager.writeDiary() / readDiary()` — per-agent persistent journal
 - Default embedding provider: `local` (zero-config semantic search, no API key needed)
