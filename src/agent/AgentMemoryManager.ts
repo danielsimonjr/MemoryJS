@@ -98,15 +98,12 @@ export class AgentMemoryManager extends EventEmitter {
   private _memoryFormatter?: MemoryFormatter;
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
-<<<<<<< HEAD
   private _dreamEngine?: DreamEngine;
   private _profileManager?: ProfileManager;
   private _entityManager?: EntityManager;
   private _observationManager?: ObservationManager;
-=======
   private _workThreadManager?: WorkThreadManager;
   private _checkpointManager?: SessionCheckpointManager;
->>>>>>> origin/master
 
   constructor(storage: IGraphStorage, config: AgentMemoryConfig = {}) {
     super();
@@ -204,7 +201,6 @@ export class AgentMemoryManager extends EventEmitter {
     return (this._conflictResolver ??= new ConflictResolver(this.config.conflictResolver));
   }
 
-<<<<<<< HEAD
   // ==================== Profile Manager ====================
 
   /**
@@ -249,7 +245,7 @@ export class AgentMemoryManager extends EventEmitter {
     this.contextWindowManager.setDistillationPolicy(policy);
   }
 
-=======
+
   get workThreadManager(): WorkThreadManager {
     return (this._workThreadManager ??= new WorkThreadManager(this.storage));
   }
@@ -260,7 +256,6 @@ export class AgentMemoryManager extends EventEmitter {
     ));
   }
 
->>>>>>> origin/master
   // ==================== Session Lifecycle ====================
 
   async startSession(options: StartSessionOptions = {}): Promise<SessionEntity> {
@@ -483,7 +478,6 @@ export class AgentMemoryManager extends EventEmitter {
     return { ...this.config };
   }
 
-<<<<<<< HEAD
   // ==================== Role-Aware Factory Methods ====================
 
   /**
@@ -594,10 +588,6 @@ export class AgentMemoryManager extends EventEmitter {
     if (this._dreamEngine) {
       this._dreamEngine.stop();
     }
-=======
-  stop(): void {
-    if (this._decayScheduler) this._decayScheduler.stop();
->>>>>>> origin/master
     this.emit('manager:stopped');
   }
 }

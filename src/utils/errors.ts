@@ -265,7 +265,6 @@ export class InsufficientEntitiesError extends KnowledgeGraphError {
   }
 }
 
-<<<<<<< HEAD
 /**
  * Error thrown when a ref alias is already registered.
  */
@@ -339,9 +338,6 @@ export class LowEntropyContentError extends Error {
  * }
  * ```
  */
-=======
-/** Error thrown when an operation is cancelled via AbortSignal. */
->>>>>>> origin/master
 export class OperationCancelledError extends KnowledgeGraphError {
   constructor(operation?: string) {
     const message = operation

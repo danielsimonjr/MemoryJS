@@ -229,7 +229,6 @@ export class WorkingMemoryManager {
     content: string,
     options?: WorkingMemoryOptions
   ): Promise<AgentEntity> {
-<<<<<<< HEAD
     // Entropy gate (optional) — reject low-information content early
     if (this.config.entropyFilter) {
       const { minEntropy = 1.5, minLength = 10 } = this.config.entropyFilter;
@@ -241,12 +240,10 @@ export class WorkingMemoryManager {
     }
 
     // Check session limit
-=======
     // Ensure session index is populated before checking limit
     if (!this.sessionIndex.has(sessionId)) {
       await this.rebuildSessionIndex(sessionId);
     }
->>>>>>> origin/master
     const sessionMemories = this.sessionIndex.get(sessionId);
     if (sessionMemories && sessionMemories.size >= this.config.maxPerSession) {
       throw new Error(

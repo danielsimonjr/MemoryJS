@@ -19,11 +19,8 @@ import type {
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { SalienceEngine } from './SalienceEngine.js';
-<<<<<<< HEAD
 import type { IDistillationPolicy } from './DistillationPolicy.js';
-=======
 import { ContextProfileManager, type ProfileConfig } from './ContextProfileManager.js';
->>>>>>> origin/master
 
 /**
  * Configuration for ContextWindowManager.
@@ -89,12 +86,9 @@ export class ContextWindowManager {
   private readonly storage: IGraphStorage;
   private readonly salienceEngine: SalienceEngine;
   private readonly config: Required<ContextWindowManagerConfig>;
-<<<<<<< HEAD
   /** Optional distillation policy applied before salience scoring */
   private distillationPolicy?: IDistillationPolicy;
-=======
   private readonly contextProfileManager: ContextProfileManager;
->>>>>>> origin/master
 
   constructor(
     storage: IGraphStorage,

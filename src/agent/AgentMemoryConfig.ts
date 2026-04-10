@@ -33,7 +33,7 @@ export interface AgentMemoryConfig {
   formatter?: MemoryFormatterConfig;
   multiAgent?: MultiAgentConfig;
   conflictResolver?: ConflictResolverConfig;
-<<<<<<< HEAD
+
 
   /** Collaborative synthesis configuration */
   collaborativeSynthesis?: CollaborativeSynthesisConfig;
@@ -49,8 +49,6 @@ export interface AgentMemoryConfig {
   profile?: ProfileManagerConfig;
 
   /** Enable automatic decay scheduling */
-=======
->>>>>>> origin/master
   enableAutoDecay?: boolean;
   enableMultiAgent?: boolean;
   defaultAgentId?: string;

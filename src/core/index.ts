@@ -26,11 +26,8 @@ export {
 export { createStorage, createStorageFromPath } from './StorageFactory.js';
 // Phase 10 Sprint 2: Graph change events
 export { GraphEventEmitter } from './GraphEventEmitter.js';
-<<<<<<< HEAD
 // Named reference index
 export { RefIndex, type RefEntry, type RefIndexStats } from './RefIndex.js';
-=======
 // Phase 2B: Transition ledger for state change auditing
 export { TransitionLedger } from './TransitionLedger.js';
 export type { TransitionEvent, TransitionFilter } from './TransitionLedger.js';
->>>>>>> origin/master

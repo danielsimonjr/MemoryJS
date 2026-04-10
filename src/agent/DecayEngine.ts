@@ -254,7 +254,6 @@ export class DecayEngine {
       strengthMultiplier = this.calculateStrengthMultiplier(entity);
     }
 
-<<<<<<< HEAD
     // Confidence decay: optionally fold confidence into importance
     const confidenceFactor = this.config.applyConfidenceToImportance
       ? this.calculateConfidenceFactor(entity)
@@ -264,12 +263,7 @@ export class DecayEngine {
     const effectiveImportance = baseImportance * decayFactor * strengthMultiplier * confidenceFactor;
 
     // Apply minimum floor
-    return Math.max(effectiveImportance, this.config.minImportance);
-=======
-    // Combine factors and clamp to [minImportance, 10]
-    const effectiveImportance = baseImportance * decayFactor * strengthMultiplier;
     return Math.min(10, Math.max(effectiveImportance, this.config.minImportance));
->>>>>>> origin/master
   }
 
   /**
