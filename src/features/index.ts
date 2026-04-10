@@ -59,3 +59,7 @@ export {
 // Feature 2: Contradiction Detection (v1.8.0)
 export { ContradictionDetector } from './ContradictionDetector.js';
 export type { Contradiction } from './ContradictionDetector.js';
+
+// Feature 3: Semantic Forget (v1.8.0)
+export { SemanticForget } from './SemanticForget.js';
+export type { SemanticForgetResult, SemanticForgetOptions } from './SemanticForget.js';
