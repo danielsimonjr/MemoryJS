@@ -1250,7 +1250,6 @@ export class ContextWindowManager {
     const level = options?.level ?? 'medium';
     let compressed = text;
     const legend: Record<string, string> = {};
-    const existingAbbrevs = new Set<string>();
 
     // Normalize whitespace
     if (level !== 'light') {
@@ -1263,9 +1262,6 @@ export class ContextWindowManager {
       const patternResult = this.applyCommonPatterns(compressed);
       compressed = patternResult.text;
       Object.assign(legend, patternResult.legend);
-      for (const key of Object.keys(patternResult.legend)) {
-        existingAbbrevs.add(key);
-      }
     }
 
     // Find and replace repeated substrings
@@ -1279,7 +1275,7 @@ export class ContextWindowManager {
     if (substrings.length > 0) {
       const totalSavings = substrings.reduce((sum, s) => sum + s.savings, 0);
       if (totalSavings > 5) {
-        const result = this.applySubstringCompression(compressed, substrings, existingAbbrevs);
+        const result = this.applySubstringCompression(compressed, substrings);
         Object.assign(legend, result.legend);
         compressed = result.compressed;
       }
@@ -1328,7 +1324,7 @@ export class ContextWindowManager {
   ): ContextCompressionResult & { entityCount: number } {
     const sorted = [...entities]
       .filter((e) => e.entityType !== 'profile' && e.entityType !== 'diary')
-      .sort((a, b) => ((b as any).importance ?? 0) - ((a as any).importance ?? 0));
+      .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0));
 
     const lines: string[] = [];
     let tokenCount = 0;
@@ -1361,15 +1357,19 @@ export class ContextWindowManager {
     text: string,
     minLength: number,
     minOccurrences: number,
-    maxSubstrings: number = 50
+    maxSubstrings: number = 36
   ): Array<{ substring: string; count: number; savings: number }> {
+    // Early return for text that can't possibly have repeated substrings
+    if (text.length < minLength * 2) return [];
+
     const substringCounts = new Map<string, number>();
+    const MAX_MAP_SIZE = 10000;
 
     // Split text into tokens at natural break points
     const tokens = text.split(/(\s+|[{}()\[\]<>:;,."'`|=])/);
 
     // Build n-grams of consecutive tokens
-    for (let n = 1; n <= 6; n++) {
+    outer: for (let n = 1; n <= 6; n++) {
       for (let i = 0; i <= tokens.length - n; i++) {
         const ngram = tokens.slice(i, i + n).join('');
 
@@ -1382,6 +1382,7 @@ export class ContextWindowManager {
         if (opens !== closes) continue;
 
         substringCounts.set(ngram, (substringCounts.get(ngram) || 0) + 1);
+        if (substringCounts.size >= MAX_MAP_SIZE) break outer;
       }
     }
 
@@ -1390,23 +1391,25 @@ export class ContextWindowManager {
     let pathMatch;
     while ((pathMatch = pathRe.exec(text)) !== null) {
       const p = pathMatch[0];
-      if (p.length >= minLength) {
+      if (p.length >= minLength && substringCounts.size < MAX_MAP_SIZE) {
         substringCounts.set(p, (substringCounts.get(p) || 0) + 1);
       }
     }
 
-    // Calculate savings for each substring
+    // Calculate savings for each substring, verifying count with actual text occurrences
     const candidates: Array<{ substring: string; count: number; savings: number }> = [];
 
-    for (const [substring, count] of substringCounts.entries()) {
-      if (count >= minOccurrences) {
+    for (const [substring, _mapCount] of substringCounts.entries()) {
+      // Verify count using actual text occurrences (fixes n-gram overcounting)
+      const actualCount = text.split(substring).length - 1;
+      if (actualCount >= minOccurrences) {
         const abbrevLength = 2; // §X
         const legendCost = abbrevLength + substring.length + 4;
         const savingsPerOccurrence = substring.length - abbrevLength;
-        const netSavings = savingsPerOccurrence * count - legendCost;
+        const netSavings = savingsPerOccurrence * actualCount - legendCost;
 
         if (netSavings > 5) {
-          candidates.push({ substring, count, savings: netSavings });
+          candidates.push({ substring, count: actualCount, savings: netSavings });
         }
       }
     }
@@ -1462,21 +1465,20 @@ export class ContextWindowManager {
 
   /**
    * Apply substring replacements to text.
+   * Applies replacements in savings-descending order (as returned by findRepeatedSubstrings).
    * @internal
    */
   private applySubstringCompression(
     text: string,
-    substrings: Array<{ substring: string; count: number; savings: number }>,
-    _existingAbbrevs: Set<string>
+    substrings: Array<{ substring: string; count: number; savings: number }>
   ): { compressed: string; legend: Record<string, string> } {
     const legend: Record<string, string> = {};
     let compressed = text;
 
-    // Sort by length descending to replace longer substrings first
-    const sortedSubs = [...substrings].sort((a, b) => b.substring.length - a.substring.length);
-
-    sortedSubs.forEach((item, index) => {
-      const abbrev = `\u00a7${index.toString(36)}`; // §0, §1, ... §a, §b, etc.
+    // Keep savings-descending order — do NOT re-sort by length,
+    // which would break priority ordering and cause cascading issues.
+    substrings.forEach((item, index) => {
+      const abbrev = `\u00a7${index.toString(36)}`; // §0, §1, ... §z (capped at 36)
       legend[abbrev] = item.substring;
       compressed = compressed.split(item.substring).join(abbrev);
     });
@@ -1493,23 +1495,23 @@ export class ContextWindowManager {
     const legend: Record<string, string> = {};
 
     for (const [pattern, replacement] of Object.entries(ContextWindowManager.COMMON_PATTERNS)) {
-      const count = (result.match(new RegExp(this.escapeRegex(pattern), 'g')) || []).length;
-      const savings = (pattern.length - replacement.length) * count;
+      try {
+        if (!result.includes(pattern)) continue;
+        const count = result.split(pattern).length - 1;
+        const savings = (pattern.length - replacement.length) * count;
 
-      if (savings > pattern.length + replacement.length + 5) {
-        legend[replacement] = pattern;
-        result = result.split(pattern).join(replacement);
+        if (savings > pattern.length + replacement.length + 5) {
+          legend[replacement] = pattern;
+          result = result.split(pattern).join(replacement);
+        }
+      } catch {
+        // Skip this pattern if it fails
+        continue;
       }
     }
 
     return { text: result, legend };
   }
 
-  /**
-   * Escape special regex characters.
-   * @internal
-   */
-  private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
 }
+

@@ -63,6 +63,26 @@ describe('ContextWindowManager.compressForContext', () => {
       0
     );
   });
+
+  it('handles empty string input', () => {
+    const amm = ctx.agentMemory();
+    const result = amm.contextWindowManager.compressForContext('');
+    expect(result.compressed).toBe('');
+    expect(result.stats.savedTokens).toBe(0);
+  });
+
+  it('handles single-word input', () => {
+    const amm = ctx.agentMemory();
+    const result = amm.contextWindowManager.compressForContext('hello');
+    expect(result.compressed).toBe('hello');
+    expect(result.stats.savedTokens).toBe(0);
+  });
+
+  it('handles text shorter than minLength', () => {
+    const amm = ctx.agentMemory();
+    const result = amm.contextWindowManager.compressForContext('ab cd', { level: 'light' });
+    expect(result.compressed).toBe('ab cd');
+  });
 });
 
 describe('ContextWindowManager.compressEntitiesForContext', () => {
