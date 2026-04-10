@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] - 2026-04-10
+
+### Added
+- **Context Compression**: `ContextWindowManager.compressForContext()` and `compressEntitiesForContext()` — n-gram abbreviation with §-code legend, three compression levels (light/medium/aggressive). `wakeUp()` accepts optional `compress` parameter for token-efficient context loading.
+- **Smart Priority Dedup**: `CompressionManager.priorityDedup()` — priority-based deduplication (importance > recency > observation count > tags). Keeps highest-scored entity per duplicate group.
+- **Interactive Graph Visualization**: `IOManager.visualizeGraph()` — generates self-contained HTML with D3.js force-directed graph. Nodes colored by type, sized by importance.
+- **Mega-File Splitting**: `IOManager.splitTranscript()` — splits concatenated multi-session transcripts into per-session chunks via delimiter detection.
+- **Benchmarking Suite**: `benchmarks/synthetic-bench.ts` — synthetic R@5/R@10 recall benchmark across basic, fuzzy, and boolean search modes.
+
+### Fixed
+- Resolved 30 merge conflict markers from PR #14 squash merge across 14 files
+- Fixed 9 compressForContext review findings (n-gram overcounting, abbreviation code cap, wakeUp try-catch, Map size cap, Entity type cast, edge-case tests)
+- Fixed 12 v1.9.0 review findings (wakeUp error logging, DreamEngine failure logging, ingest EntityManager reuse, writeDiary TOCTOU handling, topic filter precision, SHA-256 dedup keys)
+- Exported WakeUp types from agent barrel
+- Fixed ArtifactManager test mock (graphMutex)
+
 ## [1.9.0] - 2026-04-10
 
 ### Added — MemPalace Gap-Closing
