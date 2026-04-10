@@ -10,7 +10,7 @@
 
 import path from 'path';
 import { GraphStorage } from './GraphStorage.js';
-import { SQLiteStorage } from './SQLiteStorage.js';
+import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
@@ -38,14 +38,11 @@ import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
-<<<<<<< HEAD
 import { ArtifactManager } from '../agent/ArtifactManager.js';
 import { DreamEngine, type DreamEngineConfig } from '../agent/DreamEngine.js';
 import { RefIndex } from './RefIndex.js';
-=======
 import { ObserverPipeline } from '../agent/ObserverPipeline.js';
 import type { ObserverPipelineOptions } from '../agent/ObserverPipeline.js';
->>>>>>> origin/master
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
@@ -75,32 +72,25 @@ export class ManagerContext {
   // Type as GraphStorage for manager compatibility; actual instance may be SQLiteStorage
   // which implements the same interface via duck typing
   readonly storage: GraphStorage;
-<<<<<<< HEAD
   public readonly defaultProjectId?: string;
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
   private readonly refIndexFilePath: string;
-=======
->>>>>>> origin/master
+  private _observerPipeline?: ObserverPipeline;
 
-  // ==================== EAGERLY INITIALIZED CORE MANAGERS ====================
-
-  readonly entityManager: EntityManager;
-  readonly relationManager: RelationManager;
-  readonly observationManager: ObservationManager;
-  readonly hierarchyManager: HierarchyManager;
-  readonly graphTraversal: GraphTraversal;
-  readonly searchManager: SearchManager;
-  readonly rankedSearch: RankedSearch;
-  readonly ioManager: IOManager;
-  readonly tagManager: TagManager;
-  readonly analyticsManager: AnalyticsManager;
-  readonly compressionManager: CompressionManager;
-  readonly archiveManager: ArchiveManager;
-
-  // ==================== LAZY-INITIALIZED AGENT MEMORY MANAGERS ====================
-  // These have conditional creation, env var config, or cross-manager dependency chains.
-
+  // ==================== LAZY-INITIALIZED CORE MANAGERS ====================
+  private _entityManager?: EntityManager;
+  private _relationManager?: RelationManager;
+  private _observationManager?: ObservationManager;
+  private _hierarchyManager?: HierarchyManager;
+  private _graphTraversal?: GraphTraversal;
+  private _searchManager?: SearchManager;
+  private _rankedSearch?: RankedSearch;
+  private _ioManager?: IOManager;
+  private _tagManager?: TagManager;
+  private _analyticsManager?: AnalyticsManager;
+  private _compressionManager?: CompressionManager;
+  private _archiveManager?: ArchiveManager;
   private _autoLinker?: AutoLinker;
   private _factExtractor?: FactExtractor;
   private _transitionLedger?: TransitionLedger | null;
@@ -112,7 +102,6 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
-<<<<<<< HEAD
   private _refIndex?: RefIndex;
   private _artifactManager?: ArtifactManager;
   private _consolidationScheduler?: ConsolidationScheduler;
@@ -127,9 +116,6 @@ export class ManagerContext {
         ? { storagePath: pathOrOptions }
         : pathOrOptions;
     this.defaultProjectId = opts.defaultProjectId;
-=======
-  private _observerPipeline?: ObserverPipeline;
->>>>>>> origin/master
 
     // Security: Validate path to prevent path traversal attacks
     const validatedPath = validateFilePath(opts.storagePath);
@@ -137,7 +123,6 @@ export class ManagerContext {
     // Derive paths for saved searches and tag aliases
     const dir = path.dirname(validatedPath);
     const basename = path.basename(validatedPath, path.extname(validatedPath));
-<<<<<<< HEAD
     this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
     this.refIndexFilePath = path.join(dir, `${basename}-ref-index.jsonl`);
@@ -174,39 +159,10 @@ export class ManagerContext {
         err instanceof Error ? err.message : String(err)
       );
     }
-=======
-    const savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
-    const tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
-
-    // Create storage based on MEMORY_STORAGE_TYPE env var (default: jsonl)
-    const storageType = process.env.MEMORY_STORAGE_TYPE || 'jsonl';
-    if (storageType === 'sqlite') {
-      this.storage = new SQLiteStorage(validatedPath) as unknown as GraphStorage;
-    } else if (storageType === 'jsonl') {
-      this.storage = new GraphStorage(validatedPath);
-    } else {
-      throw new Error(`Unknown storage type: ${storageType}. Supported types: jsonl, sqlite`);
-    }
-
-    // Initialize core managers eagerly — all are lightweight
-    this.entityManager = new EntityManager(this.storage);
-    this.relationManager = new RelationManager(this.storage);
-    this.observationManager = new ObservationManager(this.storage);
-    this.hierarchyManager = new HierarchyManager(this.storage);
-    this.graphTraversal = new GraphTraversal(this.storage);
-    this.searchManager = new SearchManager(this.storage, savedSearchesFilePath);
-    this.rankedSearch = new RankedSearch(this.storage);
-    this.ioManager = new IOManager(this.storage);
-    this.tagManager = new TagManager(tagAliasesFilePath);
-    this.analyticsManager = new AnalyticsManager(this.storage);
-    this.compressionManager = new CompressionManager(this.storage);
-    this.archiveManager = new ArchiveManager(this.storage);
->>>>>>> origin/master
   }
 
   // ==================== LAZY ACCESSORS (agent memory + semantic) ====================
 
-<<<<<<< HEAD
   /** EntityManager - Entity CRUD and tag operations */
   get entityManager(): EntityManager {
     return (this._entityManager ??= new EntityManager(
@@ -238,7 +194,38 @@ export class ManagerContext {
   /** SearchManager - All search operations */
   get searchManager(): SearchManager {
     return (this._searchManager ??= new SearchManager(this.storage, this.savedSearchesFilePath));
-=======
+  }
+
+  /** RankedSearch - TF-IDF/BM25 ranked search */
+  get rankedSearch(): RankedSearch {
+    return (this._rankedSearch ??= new RankedSearch(this.storage));
+  }
+
+  /** IOManager - Import/export/backup/restore */
+  get ioManager(): IOManager {
+    return (this._ioManager ??= new IOManager(this.storage));
+  }
+
+  /** TagManager - Tag alias management */
+  get tagManager(): TagManager {
+    return (this._tagManager ??= new TagManager(this.tagAliasesFilePath));
+  }
+
+  /** AnalyticsManager - Graph statistics and validation */
+  get analyticsManager(): AnalyticsManager {
+    return (this._analyticsManager ??= new AnalyticsManager(this.storage));
+  }
+
+  /** CompressionManager - Duplicate detection and entity merging */
+  get compressionManager(): CompressionManager {
+    return (this._compressionManager ??= new CompressionManager(this.storage));
+  }
+
+  /** ArchiveManager - Entity archival to compressed storage */
+  get archiveManager(): ArchiveManager {
+    return (this._archiveManager ??= new ArchiveManager(this.storage));
+  }
+
   /**
    * AutoLinker - Automatic entity mention detection in observations.
    * Automatically wired to ObservationManager for auto-link support.
@@ -252,7 +239,6 @@ export class ManagerContext {
       this.observationManager.setAutoLinker(this._autoLinker);
     }
     return this._autoLinker;
->>>>>>> origin/master
   }
 
   /**
@@ -291,7 +277,7 @@ export class ManagerContext {
    */
   get transitionLedger(): TransitionLedger | null {
     if (this._transitionLedger === undefined) {
-      if (getEnvBool('MEMORY_TRANSITION_LEDGER', false)) {
+      if (this.getEnvBool('MEMORY_TRANSITION_LEDGER', false)) {
         this._transitionLedger = new TransitionLedger(this.storage.getFilePath());
         this._transitionLedger.attachToEmitter(this.storage.events);
       } else {
@@ -347,10 +333,10 @@ export class ManagerContext {
   get decayEngine(): DecayEngine {
     if (!this._decayEngine) {
       this._decayEngine = new DecayEngine(this.storage, this.accessTracker, {
-        halfLifeHours: getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168),
-        minImportance: getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
-        importanceModulation: getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
-        accessModulation: getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
+        halfLifeHours: this.getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168),
+        minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
+        importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
+        accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
       });
     }
     return this._decayEngine;
@@ -363,12 +349,12 @@ export class ManagerContext {
   get decayScheduler(): DecayScheduler | undefined {
     if (this._decayScheduler) return this._decayScheduler;
 
-    if (getEnvBool('MEMORY_AUTO_DECAY', false)) {
+    if (this.getEnvBool('MEMORY_AUTO_DECAY', false)) {
       this._decayScheduler = new DecayScheduler(this.decayEngine, {
-        decayIntervalMs: getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000),
-        autoForget: getEnvBool('MEMORY_AUTO_FORGET', false),
+        decayIntervalMs: this.getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000),
+        autoForget: this.getEnvBool('MEMORY_AUTO_FORGET', false),
         forgetOptions: {
-          effectiveImportanceThreshold: getEnvNumber('MEMORY_FORGET_THRESHOLD', 0.05),
+          effectiveImportanceThreshold: this.getEnvNumber('MEMORY_FORGET_THRESHOLD', 0.05),
         },
       });
     }
@@ -377,7 +363,6 @@ export class ManagerContext {
   }
 
   /**
-<<<<<<< HEAD
    * ConsolidationScheduler - SHOULD-HAVE: Scheduled memory consolidation.
    *
    * Returns undefined when MEMORY_AUTO_CONSOLIDATION is not set to 'true'.
@@ -448,9 +433,6 @@ export class ManagerContext {
    * - MEMORY_SALIENCE_FREQUENCY_WEIGHT (default: 0.2)
    * - MEMORY_SALIENCE_CONTEXT_WEIGHT (default: 0.2)
    * - MEMORY_SALIENCE_NOVELTY_WEIGHT (default: 0.1)
-=======
-   * SalienceEngine - Context-aware relevance scoring.
->>>>>>> origin/master
    */
   get salienceEngine(): SalienceEngine {
     if (!this._salienceEngine) {
@@ -459,11 +441,11 @@ export class ManagerContext {
         this.accessTracker,
         this.decayEngine,
         {
-          importanceWeight: getEnvNumber('MEMORY_SALIENCE_IMPORTANCE_WEIGHT', 0.25),
-          recencyWeight: getEnvNumber('MEMORY_SALIENCE_RECENCY_WEIGHT', 0.25),
-          frequencyWeight: getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2),
-          contextWeight: getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2),
-          noveltyWeight: getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1),
+          importanceWeight: this.getEnvNumber('MEMORY_SALIENCE_IMPORTANCE_WEIGHT', 0.25),
+          recencyWeight: this.getEnvNumber('MEMORY_SALIENCE_RECENCY_WEIGHT', 0.25),
+          frequencyWeight: this.getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2),
+          contextWeight: this.getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2),
+          noveltyWeight: this.getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1),
         }
       );
     }
@@ -479,11 +461,11 @@ export class ManagerContext {
         this.storage,
         this.salienceEngine,
         {
-          defaultMaxTokens: getEnvNumber('MEMORY_CONTEXT_MAX_TOKENS', 4000),
-          tokenMultiplier: getEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3),
-          reserveBuffer: getEnvNumber('MEMORY_CONTEXT_RESERVE_BUFFER', 100),
-          diversityThreshold: getEnvNumber('MEMORY_CONTEXT_DIVERSITY_THRESHOLD', 0.8),
-          enforceDiversity: getEnvBool('MEMORY_CONTEXT_ENFORCE_DIVERSITY', true),
+          defaultMaxTokens: this.getEnvNumber('MEMORY_CONTEXT_MAX_TOKENS', 4000),
+          tokenMultiplier: this.getEnvNumber('MEMORY_CONTEXT_TOKEN_MULTIPLIER', 1.3),
+          reserveBuffer: this.getEnvNumber('MEMORY_CONTEXT_RESERVE_BUFFER', 100),
+          diversityThreshold: this.getEnvNumber('MEMORY_CONTEXT_DIVERSITY_THRESHOLD', 0.8),
+          enforceDiversity: this.getEnvBool('MEMORY_CONTEXT_ENFORCE_DIVERSITY', true),
         }
       );
     }
@@ -496,8 +478,8 @@ export class ManagerContext {
   get memoryFormatter(): MemoryFormatter {
     if (!this._memoryFormatter) {
       this._memoryFormatter = new MemoryFormatter({
-        includeTimestamps: getEnvBool('MEMORY_FORMAT_TIMESTAMPS', true),
-        includeMemoryType: getEnvBool('MEMORY_FORMAT_MEMORY_TYPE', true),
+        includeTimestamps: this.getEnvBool('MEMORY_FORMAT_TIMESTAMPS', true),
+        includeMemoryType: this.getEnvBool('MEMORY_FORMAT_MEMORY_TYPE', true),
       });
     }
     return this._memoryFormatter;
@@ -510,11 +492,11 @@ export class ManagerContext {
   get observerPipeline(): ObserverPipeline | undefined {
     if (this._observerPipeline) return this._observerPipeline;
 
-    if (getEnvBool('MEMORY_OBSERVER_PIPELINE', false)) {
+    if (this.getEnvBool('MEMORY_OBSERVER_PIPELINE', false)) {
       const options: ObserverPipelineOptions = {
-        minImportanceThreshold: getEnvNumber('MEMORY_OBSERVER_MIN_THRESHOLD', 0.3),
-        autoTag: getEnvBool('MEMORY_OBSERVER_AUTO_TAG', true),
-        autoRoute: getEnvBool('MEMORY_OBSERVER_AUTO_ROUTE', false),
+        minImportanceThreshold: this.getEnvNumber('MEMORY_OBSERVER_MIN_THRESHOLD', 0.3),
+        autoTag: this.getEnvBool('MEMORY_OBSERVER_AUTO_TAG', true),
+        autoRoute: this.getEnvBool('MEMORY_OBSERVER_AUTO_ROUTE', false),
       };
       this._observerPipeline = new ObserverPipeline(
         this.entityManager,
@@ -536,7 +518,6 @@ export class ManagerContext {
     }
     return this._agentMemory;
   }
-<<<<<<< HEAD
 
   // ==================== LLM Query Planner ====================
 
@@ -600,21 +581,4 @@ export class ManagerContext {
     if (value === undefined) return defaultValue;
     return value.toLowerCase() === 'true';
   }
-=======
-}
-
-// ==================== Module-level helpers ====================
-
-function getEnvNumber(key: string, defaultValue: number): number {
-  const value = process.env[key];
-  if (value === undefined) return defaultValue;
-  const parsed = parseFloat(value);
-  return isNaN(parsed) ? defaultValue : parsed;
-}
-
-function getEnvBool(key: string, defaultValue: boolean): boolean {
-  const value = process.env[key];
-  if (value === undefined) return defaultValue;
-  return value.toLowerCase() === 'true';
->>>>>>> origin/master
 }

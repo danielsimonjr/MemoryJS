@@ -5,7 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-<<<<<<< HEAD
+## [1.9.0] - 2026-04-10
+
+### Added — MemPalace Gap-Closing
+
+- **Temporal KG Methods**: `RelationManager.invalidateRelation()`, `queryAsOf()`, `timeline()` — temporal validity convenience methods over existing Relation properties. Time-travel queries and chronological entity stories.
+- **Memory Stack Wake-up**: `ContextWindowManager.wakeUp()` — 4-layer memory stack inspired by mempalace. L0 (~100 tokens) loads profile identity, L1 (~500 tokens) loads top entities by importance. Total wake-up cost ~600 tokens.
+- **Conversation Ingestion**: `IOManager.ingest()` — format-agnostic pipeline accepting pre-normalized messages. Exchange-pair chunking, dedup, dryRun support. Creates entities with verbatim observations.
+- **Agent Diary**: `AgentMemoryManager.writeDiary()` / `readDiary()` — per-agent persistent journal with timestamped, topic-tagged entries. `diary-*` namespace reserved in EntityManager.
+- **Zero-Config Semantic Search**: Default embedding provider changed from `none` to `local`. Semantic search works out of the box with bundled ONNX MiniLM model, no API keys needed.
+- **Auto-Save Hooks**: `hooks/memoryjs_save_hook.sh` and `hooks/memoryjs_precompact_hook.sh` for Claude Code session preservation.
+
+### Related
+- Gap analysis: `docs/roadmap/GAP_ANALYSIS_VS_MEMPALACE.md`
+- Design spec: `docs/superpowers/specs/2026-04-10-mempalace-gap-closing-design.md`
+
 ## [1.8.0] - 2026-04-09
 
 ### Added — Supermemory Gap-Closing (Sprint 1)
@@ -85,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **N-gram Hashing** (`src/search/NGramIndex.ts`): Trigram index with Jaccard similarity for `FuzzySearch` pre-filtering. Reduces Levenshtein candidate set before worker dispatch.
 - **LLM Query Planner** (`src/search/LLMQueryPlanner.ts`, `src/search/LLMSearchExecutor.ts`): Optional module that decomposes natural language queries into a `StructuredQuery`. `LLMProvider` interface, keyword fallback when no provider configured, JSON validation with recovery. `ManagerContext.queryNaturalLanguage()` entry point.
 - **Dynamic Memory Governance** (`src/features/AuditLog.ts`, `src/features/GovernanceManager.ts`): `AuditLog` with JSONL persistence for immutable operation history. `GovernanceManager` with `withTransaction`/`rollback` semantics. `GovernancePolicy` interface (`canCreate`/`canUpdate`/`canDelete`).
-=======
+
 ## [Unreleased]
 
 ### Added
@@ -123,7 +137,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI: Interactive export format validation**: Export format validated against allowlist before use
 - **Benchmark flakiness**: Increased task-scheduler overhead threshold from 100% to 150% to account for Windows/Dropbox timing variance
 - **SearchCache TTL=0 race condition**: Fixed TTL expiration check using `>=` instead of `>`, so entries with TTL=0 expire immediately on the next `get()` call rather than persisting when accessed within the same millisecond.
->>>>>>> origin/master
 
 ## [1.5.0] - 2026-02-06
 

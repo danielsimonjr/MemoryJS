@@ -98,15 +98,12 @@ export class AgentMemoryManager extends EventEmitter {
   private _memoryFormatter?: MemoryFormatter;
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
-<<<<<<< HEAD
   private _dreamEngine?: DreamEngine;
   private _profileManager?: ProfileManager;
   private _entityManager?: EntityManager;
   private _observationManager?: ObservationManager;
-=======
   private _workThreadManager?: WorkThreadManager;
   private _checkpointManager?: SessionCheckpointManager;
->>>>>>> origin/master
 
   constructor(storage: IGraphStorage, config: AgentMemoryConfig = {}) {
     super();
@@ -204,7 +201,6 @@ export class AgentMemoryManager extends EventEmitter {
     return (this._conflictResolver ??= new ConflictResolver(this.config.conflictResolver));
   }
 
-<<<<<<< HEAD
   // ==================== Profile Manager ====================
 
   /**
@@ -249,7 +245,7 @@ export class AgentMemoryManager extends EventEmitter {
     this.contextWindowManager.setDistillationPolicy(policy);
   }
 
-=======
+
   get workThreadManager(): WorkThreadManager {
     return (this._workThreadManager ??= new WorkThreadManager(this.storage));
   }
@@ -260,7 +256,6 @@ export class AgentMemoryManager extends EventEmitter {
     ));
   }
 
->>>>>>> origin/master
   // ==================== Session Lifecycle ====================
 
   async startSession(options: StartSessionOptions = {}): Promise<SessionEntity> {
@@ -277,7 +272,7 @@ export class AgentMemoryManager extends EventEmitter {
     // fire a maintenance cycle asynchronously.  The cycle runs fire-and-forget
     // so it does not block session teardown.
     if (this._dreamEngine) {
-      void this._dreamEngine.runDreamCycle().catch(() => undefined);
+      void this._dreamEngine.runDreamCycle().catch((err) => { console.error('[AgentMemoryManager] Dream cycle failed:', err); });
     }
 
     return result;
@@ -483,7 +478,6 @@ export class AgentMemoryManager extends EventEmitter {
     return { ...this.config };
   }
 
-<<<<<<< HEAD
   // ==================== Role-Aware Factory Methods ====================
 
   /**
@@ -582,6 +576,73 @@ export class AgentMemoryManager extends EventEmitter {
     return this._dreamEngine.runDreamCycle();
   }
 
+  // ==================== Diary ====================
+
+  /**
+   * Write a timestamped diary entry for a specialist agent.
+   * Stored as an observation on entity 'diary-{agentId}'.
+   */
+  async writeDiary(
+    agentId: string,
+    entry: string,
+    options?: { topic?: string; tags?: string[] }
+  ): Promise<void> {
+    if (!agentId || !/^[a-zA-Z0-9_-]+$/.test(agentId)) {
+      throw new Error(`Invalid agentId: '${agentId}'. Must be alphanumeric with hyphens/underscores.`);
+    }
+    const entityName = `diary-${agentId}`;
+    const timestamp = new Date().toISOString();
+    const topicPrefix = options?.topic ? ` [${options.topic}]` : '';
+    const formatted = `[${timestamp}]${topicPrefix} ${entry}`;
+
+    const graph = await this.storage.loadGraph();
+    const existing = graph.entities.find((e: any) => e.name === entityName);
+
+    if (!existing) {
+      try {
+        await this.entityManager.createEntities([{
+          name: entityName,
+          entityType: 'diary',
+          observations: [formatted],
+          importance: 8,
+          tags: options?.tags ?? [],
+        }]);
+      } catch (_err) {
+        // Handle TOCTOU race: entity may have been created concurrently
+        await this.observationManager.addObservations([{ entityName, contents: [formatted] }]);
+      }
+    } else {
+      await this.observationManager.addObservations([{ entityName, contents: [formatted] }]);
+    }
+  }
+
+  /**
+   * Read recent diary entries for a specialist agent.
+   * Returns entries in reverse chronological order.
+   */
+  async readDiary(
+    agentId: string,
+    options?: { lastN?: number; topic?: string }
+  ): Promise<string[]> {
+    const entityName = `diary-${agentId}`;
+    const graph = await this.storage.loadGraph();
+    const entity = graph.entities.find((e: any) => e.name === entityName);
+
+    if (!entity) return [];
+
+    let entries = [...entity.observations];
+
+    if (options?.topic) {
+      const topicTag = `] [${options.topic}]`;
+      entries = entries.filter(e => e.includes(topicTag));
+    }
+
+    entries.sort((a, b) => b.localeCompare(a));
+
+    const limit = options?.lastN ?? 10;
+    return entries.slice(0, limit);
+  }
+
   // ==================== Lifecycle ====================
 
   /**
@@ -594,10 +655,6 @@ export class AgentMemoryManager extends EventEmitter {
     if (this._dreamEngine) {
       this._dreamEngine.stop();
     }
-=======
-  stop(): void {
-    if (this._decayScheduler) this._decayScheduler.stop();
->>>>>>> origin/master
     this.emit('manager:stopped');
   }
 }

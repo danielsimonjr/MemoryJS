@@ -1,21 +1,13 @@
 # MemoryJS
 
-<<<<<<< HEAD
-[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
-=======
-[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
->>>>>>> origin/master
+[![Version](https://img.shields.io/badge/version-1.8.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 
 A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search capabilities**, **hierarchical organization**, and **multiple storage backends**.
 
-<<<<<<< HEAD
 > **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **113 TypeScript files**, **~50K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned), and a complete **Agent Memory System** for AI agents with role profiles, entropy filtering, recursive consolidation, collaborative synthesis, failure distillation, cognitive load analysis, and shared visibility hierarchies.
-=======
-> **Core library** powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). Provides **110 TypeScript files**, **~43K lines of code**, dual storage backends (JSONL/SQLite), sophisticated search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid), and a complete **Agent Memory System** for AI agents.
->>>>>>> origin/master
 
 ## Table of Contents
 
@@ -65,7 +57,6 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 
 | Module | Files | Key Components |
 |--------|-------|----------------|
-<<<<<<< HEAD
 | `agent/` | 30 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver |
 | `core/` | 13 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager, RefIndex |
 | `search/` | 34 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner, TemporalQueryParser, TemporalSearch, NGramIndex, LLMQueryPlanner, LLMSearchExecutor |
@@ -101,18 +92,6 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 | N-gram Hashing | Automatic — `FuzzySearch` now pre-filters via `NGramIndex` |
 | LLM Query Planner | `ctx.queryNaturalLanguage(query, llmProvider?)` |
 | Dynamic Memory Governance | `ctx.governanceManager` — `withTransaction` / `GovernancePolicy` |
-=======
-| `agent/` | 19 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager |
-| `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
-| `search/` | 32 | SearchManager, BM25Search, HybridScorer, VectorStore, QueryPlanner |
-| `features/` | 9 | IOManager, ArchiveManager, CompressionManager, StreamingExporter |
-| `utils/` | 24 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor |
-| `types/` | 5 | Entity, Relation, AgentEntity, SessionEntity interfaces |
-| `cli/` | 6 | CLI commands, config, formatters, interactive REPL |
-| `workers/` | 2 | Levenshtein distance calculations |
-
-**Total:** 110 TypeScript files | ~43,000 lines of code | 770 exports | 98 classes | 249 interfaces
->>>>>>> origin/master
 
 ## Installation
 
@@ -626,11 +605,7 @@ npm run typecheck     # Type checking without emit
 
 ```
 memoryjs/
-<<<<<<< HEAD
 ├── src/                            # Source (113 TypeScript files)
-=======
-├── src/                            # Source (110 TypeScript files)
->>>>>>> origin/master
 │   ├── index.ts                    # Entry point
 │   ├── agent/                      # Agent Memory System (30 files)
 │   │   ├── AgentMemoryManager.ts       # Unified facade
@@ -662,11 +637,7 @@ memoryjs/
 │   │   ├── TransactionManager.ts       # ACID transactions
 │   │   ├── RefIndex.ts                 # Named refs for O(1) entity lookup
 │   │   └── ...
-<<<<<<< HEAD
 │   ├── search/                     # Search implementations (34 files)
-=======
-│   ├── search/                     # Search implementations (32 files)
->>>>>>> origin/master
 │   │   ├── SearchManager.ts            # Search orchestrator
 │   │   ├── BasicSearch.ts              # Text matching
 │   │   ├── RankedSearch.ts             # TF-IDF scoring
@@ -689,10 +660,6 @@ memoryjs/
 │   │   ├── AuditLog.ts                 # JSONL immutable audit trail
 │   │   ├── GovernanceManager.ts        # Transactions + policy enforcement
 │   │   └── ...
-<<<<<<< HEAD
-│   ├── types/                      # TypeScript definitions (4 files)
-│   ├── utils/                      # Shared utilities (18 files)
-=======
 │   ├── cli/                        # CLI interface (6 files)
 │   │   ├── index.ts                    # CLI entry point
 │   │   ├── commands/                   # Command implementations
@@ -700,9 +667,8 @@ memoryjs/
 │   │   ├── formatters.ts              # Output formatting
 │   │   ├── interactive.ts             # REPL mode
 │   │   └── options.ts                 # CLI option parsing
-│   ├── types/                      # TypeScript definitions (5 files)
-│   ├── utils/                      # Shared utilities (24 files)
->>>>>>> origin/master
+│   ├── types/                      # TypeScript definitions (4 files)
+│   ├── utils/                      # Shared utilities (18 files)
 │   └── workers/                    # Worker pool (2 files)
 ├── tests/                          # Test suite (4674 tests)
 │   ├── unit/                       # Unit tests

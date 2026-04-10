@@ -81,9 +81,19 @@ ctx.temporalSearch      // Natural language time-range search (chrono-node)
 ctx.freshnessManager    // TTL/confidence freshness reporting
 ctx.governanceManager   // Governance policies + audit transaction support
 ctx.refIndex            // Named reference index for O(1) entity lookup
+ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
 ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider)
 ctx.agentMemory()       // Agent Memory System facade
 ```
+
+**v1.9.0 Additions:**
+- `RelationManager.invalidateRelation()` — mark relations as ended (temporal validity)
+- `RelationManager.queryAsOf(entity, date)` — time-travel queries
+- `RelationManager.timeline(entity)` — chronological relation history
+- `ContextWindowManager.wakeUp()` — 4-layer memory stack (~600 token wake-up context)
+- `IOManager.ingest(input, options)` — conversation ingestion pipeline (format-agnostic)
+- `AgentMemoryManager.writeDiary() / readDiary()` — per-agent persistent journal
+- Default embedding provider: `local` (zero-config semantic search, no API key needed)
 
 **Storage Layer** (`src/core/StorageFactory.ts`): Two backends selected via `MEMORY_STORAGE_TYPE` env var:
 - `GraphStorage` (JSONL, default): Human-readable, in-memory caching, atomic writes via temp file + rename
@@ -128,6 +138,7 @@ ctx.agentMemory()       // Agent Memory System facade
 - `name` (unique identifier), `entityType`, `observations[]`
 - Optional: `parentId` (hierarchy), `tags[]`, `importance` (0-10), timestamps
 - Optional (v1.6.0): `ttl` (time-to-live for freshness), `confidence` (0.0–1.0 belief strength)
+- Optional (v1.8.0): `projectId` (project scoping), `version`/`parentEntityName`/`rootEntityName`/`isLatest`/`supersededBy` (memory versioning)
 
 **ArtifactEntity** (`src/types/artifact.ts`): Extends `AgentEntity` with `artifactType` (`ArtifactType` union) and stable auto-generated name (`toolName-date-shortId`).
 
@@ -135,7 +146,9 @@ ctx.agentMemory()       // Agent Memory System facade
 
 ### Features (`src/features/`)
 
-- `IOManager`: Import/export in JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid formats
+- `IOManager`: Import/export in JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid formats; `ingest()` for conversation ingestion (v1.9.0)
+- `SemanticForget` (v1.8.0): Two-tier deletion (exact match → 0.85 semantic fallback) with audit logging
+- `ContradictionDetector` (v1.8.0): Semantic similarity-based contradiction detection with entity versioning
 - `StreamingExporter`: Streaming export for large graphs with Brotli compression
 - `AnalyticsManager`: Graph statistics, validation, duplicate detection
 - `CompressionManager`: Entity merging, graph compression
@@ -202,7 +215,7 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 ### Embedding/Semantic Search
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `none` |
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `local` |
 | `MEMORY_OPENAI_API_KEY` | API key string | - |
 | `MEMORY_EMBEDDING_MODEL` | Model name override | - |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |

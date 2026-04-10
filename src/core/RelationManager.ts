@@ -8,7 +8,7 @@
 
 import type { Relation } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
-import { ValidationError } from '../utils/errors.js';
+import { ValidationError, RelationNotFoundError } from '../utils/errors.js';
 import { BatchCreateRelationsSchema, DeleteRelationsSchema } from '../utils/index.js';
 import { GRAPH_LIMITS } from '../utils/constants.js';
 
@@ -248,5 +248,154 @@ export class RelationManager {
     // OPTIMIZED: Uses RelationIndex for O(1) lookup instead of O(n) array scan
     await this.storage.ensureLoaded();
     return this.storage.getRelationsFor(entityName);
+  }
+
+  /**
+   * Mark a temporal relation as no longer valid by setting validUntil.
+   *
+   * This method finds an active (non-terminated) relation matching the specified
+   * from, relationType, and to parameters, then sets its properties.validUntil
+   * to indicate when the relation ended.
+   *
+   * @param from - Source entity name
+   * @param relationType - Type of the relation
+   * @param to - Target entity name
+   * @param ended - ISO 8601 timestamp when the relation ended (defaults to current time)
+   * @returns Promise that resolves when invalidation is complete
+   * @throws {Error} If no active relation is found matching the criteria
+   *
+   * @example
+   * ```typescript
+   * const manager = new RelationManager(storage);
+   *
+   * // Mark a relation as ended (using custom date)
+   * await manager.invalidateRelation('kai', 'works_on', 'orion', '2026-03-01');
+   *
+   * // Mark a relation as ended (using current time)
+   * await manager.invalidateRelation('kai', 'works_on', 'orion');
+   * ```
+   */
+  async invalidateRelation(
+    from: string,
+    relationType: string,
+    to: string,
+    ended?: string
+  ): Promise<void> {
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const match = graph.relations.find(
+        r =>
+          r.from === from &&
+          r.relationType === relationType &&
+          r.to === to &&
+          !r.properties?.validUntil
+      );
+      if (!match) {
+        throw new RelationNotFoundError(from, to, relationType);
+      }
+      if (!match.properties) {
+        match.properties = {};
+      }
+      match.properties.validUntil = ended ?? new Date().toISOString();
+      match.lastModified = new Date().toISOString();
+      await this.storage.saveGraph(graph);
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Query relations valid at a specific point in time.
+   *
+   * This method returns relations involving an entity that are valid at the specified
+   * date. A relation is considered valid if:
+   * - validFrom is undefined OR validFrom <= asOf
+   * - validUntil is undefined OR validUntil >= asOf
+   *
+   * @param entityName - The entity to query relations for
+   * @param asOf - ISO 8601 date string to query at
+   * @param options - Optional filters: direction ('outgoing' | 'incoming' | 'both', default: 'both')
+   * @returns Promise resolving to array of relations valid at the given date
+   *
+   * @example
+   * ```typescript
+   * const manager = new RelationManager(storage);
+   *
+   * // Get relations valid in June 2025
+   * const mid2025 = await manager.queryAsOf('kai', '2025-06-15');
+   *
+   * // Get only outgoing relations at a point in time
+   * const outgoing = await manager.queryAsOf('kai', '2026-01-01', { direction: 'outgoing' });
+   * ```
+   */
+  async queryAsOf(
+    entityName: string,
+    asOf: string,
+    options?: { direction?: 'outgoing' | 'incoming' | 'both' }
+  ): Promise<Relation[]> {
+    if (asOf && !/^\d{4}-\d{2}-\d{2}/.test(asOf)) {
+      throw new ValidationError(`asOf must be an ISO 8601 date string, got: '${asOf}'`, []);
+    }
+    const direction = options?.direction ?? 'both';
+    const graph = await this.storage.loadGraph();
+    return graph.relations.filter(r => {
+      const matchesDirection =
+        direction === 'both'
+          ? r.from === entityName || r.to === entityName
+          : direction === 'outgoing'
+            ? r.from === entityName
+            : r.to === entityName;
+      if (!matchesDirection) return false;
+      const vf = r.properties?.validFrom;
+      const vu = r.properties?.validUntil;
+      if (vf && vf > asOf) return false;
+      if (vu && vu < asOf) return false;
+      return true;
+    });
+  }
+
+  /**
+   * Get all relations for an entity in chronological order.
+   *
+   * This method returns all relations involving an entity, sorted chronologically
+   * by their validFrom timestamp. Relations without a validFrom date are sorted
+   * to the end.
+   *
+   * @param entityName - The entity to get timeline for
+   * @param options - Optional filters: direction ('outgoing' | 'incoming' | 'both', default: 'both')
+   * @returns Promise resolving to relations sorted by validFrom
+   *
+   * @example
+   * ```typescript
+   * const manager = new RelationManager(storage);
+   *
+   * // Get timeline of all relations for an entity
+   * const timeline = await manager.timeline('kai');
+   *
+   * // Get only outgoing relations in chronological order
+   * const outgoing = await manager.timeline('kai', { direction: 'outgoing' });
+   * ```
+   */
+  async timeline(
+    entityName: string,
+    options?: { direction?: 'outgoing' | 'incoming' | 'both' }
+  ): Promise<Relation[]> {
+    const direction = options?.direction ?? 'both';
+    const graph = await this.storage.loadGraph();
+    const rels = graph.relations.filter(r => {
+      if (direction === 'both') return r.from === entityName || r.to === entityName;
+      if (direction === 'outgoing') return r.from === entityName;
+      return r.to === entityName;
+    });
+    rels.sort((a, b) => {
+      const aFrom = a.properties?.validFrom ?? '';
+      const bFrom = b.properties?.validFrom ?? '';
+      if (!aFrom && !bFrom) return 0;
+      if (!aFrom) return 1;
+      if (!bFrom) return -1;
+      return aFrom.localeCompare(bFrom);
+    });
+    return rels;
   }
 }

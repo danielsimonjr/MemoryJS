@@ -1,0 +1,219 @@
+{
+  "version": "1.1.0",
+  "source_file": "C:\\Users\\danie\\Dropbox\\Github\\memoryjs\\docs\\superpowers\\plans\\2026-04-10-mempalace-gap-closing.md",
+  "source_hash": "3af5666c",
+  "created_at": "2026-04-10T14:40:13.281161+00:00",
+  "file_type": "markdown",
+  "split_level": 2,
+  "chunks": [
+    {
+      "index": 1,
+      "filename": "001-mempalace-gap-closing-v1-9-0-implementation-plan.md",
+      "title": "MemPalace Gap-Closing (v1.9.0) Implementation Plan",
+      "level": 1,
+      "start_line": 1,
+      "end_line": 14,
+      "line_count": 14,
+      "hash": "710c91ae",
+      "modified": false
+    },
+    {
+      "index": 2,
+      "filename": "002-prerequisites.md",
+      "title": "Prerequisites",
+      "level": 2,
+      "start_line": 15,
+      "end_line": 25,
+      "line_count": 11,
+      "hash": "44cd5a42",
+      "modified": false
+    },
+    {
+      "index": 3,
+      "filename": "003-task-1-add-invalidaterelation-to-relationmanager.md",
+      "title": "Task 1: Add `invalidateRelation` to RelationManager",
+      "level": 2,
+      "start_line": 26,
+      "end_line": 150,
+      "line_count": 125,
+      "hash": "d63b0027",
+      "modified": false
+    },
+    {
+      "index": 4,
+      "filename": "004-task-2-add-queryasof-and-timeline-to-relationmanag.md",
+      "title": "Task 2: Add `queryAsOf` and `timeline` to RelationManager",
+      "level": 2,
+      "start_line": 151,
+      "end_line": 356,
+      "line_count": 206,
+      "hash": "096f58bb",
+      "modified": false
+    },
+    {
+      "index": 5,
+      "filename": "005-task-3-add-wakeup-to-contextwindowmanager.md",
+      "title": "Task 3: Add `wakeUp` to ContextWindowManager",
+      "level": 2,
+      "start_line": 357,
+      "end_line": 566,
+      "line_count": 210,
+      "hash": "c29ad98b",
+      "modified": false
+    },
+    {
+      "index": 6,
+      "filename": "006-task-4-add-ingest-to-iomanager.md",
+      "title": "Task 4: Add `ingest` to IOManager",
+      "level": 2,
+      "start_line": 567,
+      "end_line": 870,
+      "line_count": 304,
+      "hash": "daeba054",
+      "modified": false
+    },
+    {
+      "index": 7,
+      "filename": "007-task-5-add-writediary-and-readdiary-to-agentmemory.md",
+      "title": "Task 5: Add `writeDiary` and `readDiary` to AgentMemoryManager",
+      "level": 2,
+      "start_line": 871,
+      "end_line": 1071,
+      "line_count": 201,
+      "hash": "6220879e",
+      "modified": false
+    },
+    {
+      "index": 8,
+      "filename": "008-task-6-zero-config-semantic-search.md",
+      "title": "Task 6: Zero-config semantic search",
+      "level": 2,
+      "start_line": 1072,
+      "end_line": 1157,
+      "line_count": 86,
+      "hash": "cea49eb7",
+      "modified": false
+    },
+    {
+      "index": 9,
+      "filename": "009-task-7-auto-save-hooks.md",
+      "title": "Task 7: Auto-save hooks",
+      "level": 2,
+      "start_line": 1158,
+      "end_line": 1170,
+      "line_count": 13,
+      "hash": "b9510091",
+      "modified": false
+    },
+    {
+      "index": 10,
+      "filename": "010-auto-save-hook-for-claude-code-fires-on-stop-event.md",
+      "title": "Auto-save hook for Claude Code — fires on Stop event",
+      "level": 1,
+      "start_line": 1171,
+      "end_line": 1171,
+      "line_count": 1,
+      "hash": "396b9d6b",
+      "modified": false
+    },
+    {
+      "index": 11,
+      "filename": "011-creates-a-session-save-entity-with-timestamp.md",
+      "title": "Creates a session-save entity with timestamp",
+      "level": 1,
+      "start_line": 1172,
+      "end_line": 1190,
+      "line_count": 19,
+      "hash": "0c7411e8",
+      "modified": false
+    },
+    {
+      "index": 12,
+      "filename": "012-emergency-save-hook-fires-before-context-compressi.md",
+      "title": "Emergency save hook — fires before context compression",
+      "level": 1,
+      "start_line": 1191,
+      "end_line": 1191,
+      "line_count": 1,
+      "hash": "dc9c4549",
+      "modified": false
+    },
+    {
+      "index": 13,
+      "filename": "013-synchronous-blocks-until-complete.md",
+      "title": "Synchronous (blocks until complete)",
+      "level": 1,
+      "start_line": 1192,
+      "end_line": 1209,
+      "line_count": 18,
+      "hash": "1960f17a",
+      "modified": false
+    },
+    {
+      "index": 14,
+      "filename": "014-memoryjs-auto-save-hooks.md",
+      "title": "MemoryJS Auto-Save Hooks",
+      "level": 1,
+      "start_line": 1210,
+      "end_line": 1213,
+      "line_count": 4,
+      "hash": "fbff301a",
+      "modified": false
+    },
+    {
+      "index": 15,
+      "filename": "015-setup.md",
+      "title": "Setup",
+      "level": 2,
+      "start_line": 1214,
+      "end_line": 1226,
+      "line_count": 13,
+      "hash": "62eaab07",
+      "modified": false
+    },
+    {
+      "index": 16,
+      "filename": "016-hooks.md",
+      "title": "Hooks",
+      "level": 2,
+      "start_line": 1227,
+      "end_line": 1253,
+      "line_count": 27,
+      "hash": "4c62c431",
+      "modified": false
+    },
+    {
+      "index": 17,
+      "filename": "017-task-8-release-prep-v1-9-0.md",
+      "title": "Task 8: Release prep (v1.9.0)",
+      "level": 2,
+      "start_line": 1254,
+      "end_line": 1269,
+      "line_count": 16,
+      "hash": "fc918f53",
+      "modified": false
+    },
+    {
+      "index": 18,
+      "filename": "018-1-9-0-2026-04-10.md",
+      "title": "[1.9.0] - 2026-04-10",
+      "level": 2,
+      "start_line": 1270,
+      "end_line": 1311,
+      "line_count": 42,
+      "hash": "27720bda",
+      "modified": false
+    },
+    {
+      "index": 19,
+      "filename": "019-self-review.md",
+      "title": "Self-Review",
+      "level": 2,
+      "start_line": 1312,
+      "end_line": 1319,
+      "line_count": 8,
+      "hash": "60848f6a",
+      "modified": false
+    }
+  ]
+}

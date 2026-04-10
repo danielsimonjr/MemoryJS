@@ -1,0 +1,1 @@
+# Auto-save hook for Claude Code — fires on Stop event

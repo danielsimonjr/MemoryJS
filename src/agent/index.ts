@@ -131,7 +131,6 @@ export {
   validateConfig,
 } from './AgentMemoryConfig.js';
 
-<<<<<<< HEAD
 // v1.7.0 Features
 export {
   ArtifactManager,
@@ -205,7 +204,7 @@ export {
   type ProfileManagerConfig,
   type ProfileOptions,
 } from './ProfileManager.js';
-=======
+
 export {
   ObserverPipeline,
   type ObservationScore,
@@ -226,4 +225,3 @@ export {
   type ContextProfile,
   type ProfileConfig,
 } from './ContextProfileManager.js';
->>>>>>> origin/master

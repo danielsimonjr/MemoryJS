@@ -207,8 +207,8 @@ export const EMBEDDING_ENV_VARS = {
  * Default embedding configuration values.
  */
 export const EMBEDDING_DEFAULTS = {
-  /** Default provider (disabled by default) */
-  PROVIDER: 'none' as const,
+  /** Default provider (local ONNX MiniLM model enabled by default) */
+  PROVIDER: 'local' as const,
   /** Default OpenAI model for embeddings (1536 dimensions) */
   OPENAI_MODEL: 'text-embedding-3-small',
   /** Default local model for embeddings (384 dimensions) */

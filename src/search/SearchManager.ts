@@ -196,7 +196,6 @@ export class SearchManager {
 
   // ==================== Ranked Search ====================
 
-<<<<<<< HEAD
   /**
    * Perform TF-IDF ranked search with relevance scoring.
    *
@@ -234,11 +233,7 @@ export class SearchManager {
    * );
    * ```
    */
-  searchNodesRanked(
-=======
-  /** Perform TF-IDF ranked search with relevance scoring. */
   async searchNodesRanked(
->>>>>>> origin/master
     query: string,
     tags?: string[],
     minImportance?: number,
@@ -465,7 +460,6 @@ export class SearchManager {
     return this.queryEstimator.estimateAllMethods(query, entityCount);
   }
 
-<<<<<<< HEAD
   /**
    * Phase 10 Sprint 4: Get the query cost estimator instance.
    *
@@ -499,6 +493,4 @@ export class SearchManager {
   async searchByTime(query: string, options?: TemporalSearchOptions): Promise<Entity[]> {
     return this.temporalSearch.searchByTimeQuery(query, options);
   }
-=======
->>>>>>> origin/master
 }

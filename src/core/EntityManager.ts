@@ -224,6 +224,13 @@ export class EntityManager {
           []
         );
       }
+      if (e.name.startsWith('diary-') && e.entityType !== 'diary') {
+        throw new ValidationError(
+          `Entity name '${e.name}' is reserved for the diary system. ` +
+          `Use entityType='diary' or choose a different name.`,
+          []
+        );
+      }
     }
 
     // Setup progress reporter
@@ -277,21 +284,16 @@ export class EntityManager {
           entity.importance = e.importance;
         }
 
+        // Auto-stamp projectId from context default if not explicit
+        if (entity.projectId === undefined && this.defaultProjectId !== undefined) {
+          entity.projectId = this.defaultProjectId;
+        }
+
         newEntities.push(entity);
         processed++;
         reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
       }
 
-<<<<<<< HEAD
-      // Auto-stamp projectId from context default if not explicit
-      if (entity.projectId === undefined && this.defaultProjectId !== undefined) {
-        entity.projectId = this.defaultProjectId;
-      }
-
-      newEntities.push(entity);
-      processed++;
-      reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
-=======
       // Save all new entities in a single write
       if (newEntities.length > 0) {
         graph.entities.push(...newEntities);
@@ -304,7 +306,6 @@ export class EntityManager {
       return newEntities;
     } finally {
       release();
->>>>>>> origin/master
     }
   }
 
@@ -352,19 +353,16 @@ export class EntityManager {
         r => !namesToDelete.has(r.from) && !namesToDelete.has(r.to)
       );
 
-<<<<<<< HEAD
-    await this.storage.saveGraph(graph);
-
-    // Purge all aliases for deleted entities from the ref index
-    if (this.refIndex) {
-      for (const name of namesToDelete) {
-        await this.refIndex.purgeEntity(name);
-      }
-=======
       await this.storage.saveGraph(graph);
+
+      // Purge all aliases for deleted entities from the ref index
+      if (this.refIndex) {
+        for (const name of namesToDelete) {
+          await this.refIndex.purgeEntity(name);
+        }
+      }
     } finally {
       release();
->>>>>>> origin/master
     }
   }
 

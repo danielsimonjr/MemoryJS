@@ -19,11 +19,8 @@ import type {
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { SalienceEngine } from './SalienceEngine.js';
-<<<<<<< HEAD
 import type { IDistillationPolicy } from './DistillationPolicy.js';
-=======
 import { ContextProfileManager, type ProfileConfig } from './ContextProfileManager.js';
->>>>>>> origin/master
 
 /**
  * Configuration for ContextWindowManager.
@@ -49,6 +46,26 @@ export interface ContextWindowManagerConfig {
   diversityThreshold?: number;
   /** Enable diversity enforcement (default: true) */
   enforceDiversity?: boolean;
+}
+
+/**
+ * Options for the wakeUp method.
+ */
+export interface WakeUpOptions {
+  projectId?: string;
+  maxL0Tokens?: number;
+  maxL1Tokens?: number;
+  includeL1?: boolean;
+}
+
+/**
+ * Result from the wakeUp method.
+ */
+export interface WakeUpResult {
+  l0: string;
+  l1: string;
+  totalTokens: number;
+  entityCount: number;
 }
 
 /**
@@ -89,12 +106,9 @@ export class ContextWindowManager {
   private readonly storage: IGraphStorage;
   private readonly salienceEngine: SalienceEngine;
   private readonly config: Required<ContextWindowManagerConfig>;
-<<<<<<< HEAD
   /** Optional distillation policy applied before salience scoring */
   private distillationPolicy?: IDistillationPolicy;
-=======
   private readonly contextProfileManager: ContextProfileManager;
->>>>>>> origin/master
 
   constructor(
     storage: IGraphStorage,
@@ -1063,5 +1077,87 @@ export class ContextWindowManager {
    */
   getConfig(): Readonly<Required<ContextWindowManagerConfig>> {
     return { ...this.config };
+  }
+
+  // ==================== Wake-Up Context ====================
+
+  /**
+   * Estimate token count for a plain string.
+   * Uses the same word-count heuristic as estimateTokens(entity).
+   */
+  private estimateStringTokens(text: string): number {
+    const wordCount = text.split(/\s+/).filter((w) => w.length > 0).length;
+    return Math.ceil(wordCount * this.config.tokenMultiplier);
+  }
+
+  /**
+   * Generate compact wake-up context for LLM system prompts.
+   * L0 (~100 tokens): identity from ProfileManager static facts.
+   * L1 (~500 tokens): top entities by importance, formatted compactly.
+   */
+  async wakeUp(options: WakeUpOptions = {}): Promise<WakeUpResult> {
+    const maxL0 = options.maxL0Tokens ?? 100;
+    const maxL1 = options.maxL1Tokens ?? 500;
+    const includeL1 = options.includeL1 ?? true;
+
+    // L0: Profile static facts
+    let l0 = '';
+    try {
+      const { ProfileManager } = await import('./ProfileManager.js');
+      const { EntityManager } = await import('../core/EntityManager.js');
+      const { ObservationManager } = await import('../core/ObservationManager.js');
+      const pm = new ProfileManager(
+        this.storage as any,
+        new EntityManager(this.storage as any),
+        new ObservationManager(this.storage as any),
+      );
+      const profile = await pm.getProfile({ projectId: options.projectId });
+      if (profile.static.length > 0) {
+        l0 = profile.static.join('. ') + '.';
+        while (this.estimateStringTokens(l0) > maxL0 && l0.length > 10) {
+          const lastDot = l0.lastIndexOf('.', l0.length - 2);
+          if (lastDot <= 0) break;
+          l0 = l0.slice(0, lastDot + 1);
+        }
+      }
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
+        console.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
+      }
+    }
+
+    // L1: Top entities by importance
+    let l1 = '';
+    let entityCount = 0;
+    if (includeL1) {
+      try {
+        const graph = await this.storage.loadGraph();
+        let entities = graph.entities.filter(
+          (e: any) => e.isLatest !== false && e.entityType !== 'profile' && e.entityType !== 'diary'
+        );
+        if (options.projectId) {
+          entities = entities.filter((e: any) => e.projectId === options.projectId);
+        }
+        const sorted = [...entities].sort((a: any, b: any) => (b.importance ?? 0) - (a.importance ?? 0));
+
+        const lines: string[] = [];
+        let tokenCount = 0;
+        for (const e of sorted) {
+          const obs = e.observations?.slice(0, 3).join('; ') ?? '';
+          const line = `[${e.entityType}] ${e.name}: ${obs}`;
+          const lineTokens = this.estimateStringTokens(line);
+          if (tokenCount + lineTokens > maxL1) break;
+          lines.push(line);
+          tokenCount += lineTokens;
+          entityCount++;
+        }
+        l1 = lines.join('\n');
+      } catch (err) {
+        console.error('[ContextWindowManager.wakeUp] L1 entity loading failed:', err);
+      }
+    }
+
+    const totalTokens = this.estimateStringTokens(l0) + this.estimateStringTokens(l1);
+    return { l0, l1, totalTokens, entityCount };
   }
 }
