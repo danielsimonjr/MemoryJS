@@ -89,6 +89,8 @@ export {
   ContextWindowManager,
   type ContextWindowManagerConfig,
   type SpilloverResult,
+  type WakeUpOptions,
+  type WakeUpResult,
 } from './ContextWindowManager.js';
 
 export {
