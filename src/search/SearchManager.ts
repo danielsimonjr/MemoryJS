@@ -281,14 +281,48 @@ export class SearchManager {
    * );
    * ```
    */
-  async searchNodesRanked(
+  searchNodesRanked(
     query: string,
     tags?: string[],
     minImportance?: number,
     maxImportance?: number,
     limit?: number
-  ): Promise<SearchResult[]> {
-    return this.rankedSearch.searchNodesRanked(query, tags, minImportance, maxImportance, limit);
+  ): Promise<SearchResult[]>;
+  searchNodesRanked(
+    query: string,
+    options: SearchOptionsWithTracking
+  ): Promise<KnowledgeGraph>;
+  async searchNodesRanked(
+    query: string,
+    tagsOrOptions?: string[] | SearchOptionsWithTracking,
+    minImportance?: number,
+    maxImportance?: number,
+    limit?: number
+  ): Promise<SearchResult[] | KnowledgeGraph> {
+    // Support both positional (tags, minImportance, maxImportance, limit) and
+    // unified options-object (SearchOptionsWithTracking) as second argument.
+    if (Array.isArray(tagsOrOptions) || tagsOrOptions === undefined) {
+      // Positional form — keep original return type (SearchResult[]) for backward compat.
+      return this.rankedSearch.searchNodesRanked(
+        query,
+        tagsOrOptions as string[] | undefined,
+        minImportance,
+        maxImportance,
+        limit
+      );
+    }
+    // Options-object form — extract fields and return KnowledgeGraph for consistency
+    // with searchNodes / booleanSearch / fuzzySearch.
+    const opts = tagsOrOptions;
+    const rankedResults = await this.rankedSearch.searchNodesRanked(
+      query,
+      opts.tags,
+      opts.minImportance,
+      opts.maxImportance,
+      limit,
+      opts.projectId
+    );
+    return { entities: rankedResults.map(r => r.entity), relations: [] };
   }
 
   // ==================== Boolean Search ====================
