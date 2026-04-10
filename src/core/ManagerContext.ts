@@ -42,6 +42,7 @@ import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
 import { ContradictionDetector } from '../features/ContradictionDetector.js';
+import { SemanticForget } from '../features/SemanticForget.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -97,6 +98,7 @@ export class ManagerContext {
   private _dreamEngine?: DreamEngine;
   private _llmQueryPlanner?: LLMQueryPlanner;
   private _llmSearchExecutor?: LLMSearchExecutor;
+  private _semanticForget?: SemanticForget;
 
   constructor(pathOrOptions: string | ManagerContextOptions) {
     const opts: ManagerContextOptions =
@@ -237,6 +239,17 @@ export class ManagerContext {
   /** RefIndex - Named reference index for O(1) stable entity lookups */
   get refIndex(): RefIndex {
     return (this._refIndex ??= new RefIndex(this.refIndexFilePath));
+  }
+
+  /** SemanticForget - Feature 3 (v1.8.0): Two-tier deletion with semantic fallback */
+  get semanticForget(): SemanticForget {
+    return (this._semanticForget ??= new SemanticForget(
+      this.storage,
+      this.observationManager,
+      this.entityManager,
+      this.semanticSearch ?? undefined,
+      undefined // auditLog not yet exposed by GovernanceManager
+    ));
   }
 
   /**
