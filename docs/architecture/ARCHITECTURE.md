@@ -1,12 +1,7 @@
 # MemoryJS - System Architecture
 
-<<<<<<< HEAD
 **Version**: 1.7.0
 **Last Updated**: 2026-03-24
-=======
-**Version**: 1.5.0
-**Last Updated**: 2026-02-11
->>>>>>> origin/master
 
 ---
 
@@ -40,7 +35,6 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-<<<<<<< HEAD
 ### Key Statistics (v1.7.0)
 
 | Metric | Value |
@@ -52,39 +46,17 @@ MemoryJS is a TypeScript knowledge graph library providing:
 | Interfaces | 240+ |
 | Functions | 120+ |
 | Circular Dependencies | 2 (type-only, safe) |
-=======
-### Key Statistics (v1.5.0)
-
-| Metric | Value |
-|--------|-------|
-| Source Files | 110 TypeScript files |
-| Lines of Code | ~43,000 lines |
-| Exports | 770 total (460 re-exports) |
-| Classes | 98 |
-| Interfaces | 249 |
-| Functions | 157 |
-| Circular Dependencies | 3 (1 runtime, 2 type-only) |
->>>>>>> origin/master
 
 ### Module Distribution
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
-<<<<<<< HEAD
 | `agent/` | 30 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver |
 | `core/` | 13 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager, RefIndex |
 | `search/` | 34 | SearchManager, BM25Search, HybridScorer, VectorStore, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor |
 | `features/` | 12 | IOManager, ArchiveManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager |
 | `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager |
 | `types/` | 4 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity interfaces |
-=======
-| `agent/` | 19 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager |
-| `core/` | 12 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager |
-| `search/` | 32 | SearchManager, BM25Search, HybridScorer, VectorStore |
-| `features/` | 9 | IOManager, ArchiveManager, StreamingExporter |
-| `utils/` | 24 | BatchProcessor, CompressedCache, WorkerPoolManager |
-| `types/` | 5 | Entity, Relation, AgentEntity, SessionEntity interfaces |
->>>>>>> origin/master
 | `workers/` | 2 | Levenshtein distance calculations |
 
 ---

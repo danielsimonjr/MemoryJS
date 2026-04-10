@@ -1,12 +1,7 @@
 # MemoryJS - Component Reference
 
-<<<<<<< HEAD
-**Version**: 1.7.0
-**Last Updated**: 2026-03-24
-=======
-**Version**: 1.5.0
-**Last Updated**: 2026-02-11
->>>>>>> origin/master
+**Version**: 1.8.0
+**Last Updated**: 2026-04-09
 
 ---
 
@@ -33,31 +28,19 @@ MemoryJS follows a layered architecture with specialized components:
 ├─────────────────────────────────────────────────────────────┤
 │  core/             │  Central managers and storage (13 files)│
 ├─────────────────────────────────────────────────────────────┤
-<<<<<<< HEAD
 │  search/           │  Search implementations (34 files)     │
-=======
-│  search/           │  Search implementations (32 files)     │
->>>>>>> origin/master
 ├─────────────────────────────────────────────────────────────┤
 │  features/         │  Advanced capabilities (12 files)      │
 ├─────────────────────────────────────────────────────────────┤
 │  utils/            │  Shared utilities (24 files)           │
 ├─────────────────────────────────────────────────────────────┤
-<<<<<<< HEAD
 │  types/            │  TypeScript definitions (4 files)      │
-=======
-│  types/            │  TypeScript definitions (5 files)      │
->>>>>>> origin/master
 ├─────────────────────────────────────────────────────────────┤
 │  workers/          │  Web workers (2 files)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-<<<<<<< HEAD
 **Total:** 113 TypeScript files | 720+ exports | ~50,000 lines of code
-=======
-**Total:** 110 TypeScript files | 770 exports | ~43,000 lines of code
->>>>>>> origin/master
 
 ---
 
@@ -351,7 +334,6 @@ export class RuleEvaluator {
 
 ---
 
-<<<<<<< HEAD
 ### ArtifactManager (`agent/ArtifactManager.ts`)
 
 **Purpose**: Create and track artifacts with stable, human-readable names
@@ -391,7 +373,9 @@ export class CompositeDistillationPolicy implements IDistillationPolicy {
 
 export class NoOpDistillationPolicy implements IDistillationPolicy {
   // Pass-through; used when distillation is disabled
-=======
+
+---
+
 ### SessionQueryBuilder (`agent/SessionQueryBuilder.ts`)
 
 **Purpose**: Builder for constructing session queries with filtering
@@ -404,13 +388,11 @@ export class SessionQueryBuilder {
   withStatus(status: SessionStatus): SessionQueryBuilder
   withLimit(limit: number): SessionQueryBuilder
   async execute(): Promise<SessionEntity[]>
->>>>>>> origin/master
 }
 ```
 
 ---
 
-<<<<<<< HEAD
 ### DistillationPipeline (`agent/DistillationPipeline.ts`)
 
 **Purpose**: Orchestrates ordered distillation policy execution
@@ -614,301 +596,6 @@ Visibility rules: `private` → owner only; `team` → same team members; `org` 
 
 ---
 
-=======
->>>>>>> origin/master
-## Core Components
-
-### ManagerContext (`core/ManagerContext.ts`)
-
-**Purpose**: Central context holding all managers
-
-**Pattern**: Core managers are readonly fields (eager init in constructor). Agent memory managers use lazy getters.
-
-```typescript
-export class ManagerContext {
-  constructor(config: ManagerContextConfig)
-
-  // Core managers (readonly, eager init in constructor)
-  readonly entityManager: EntityManager
-  readonly relationManager: RelationManager
-  readonly observationManager: ObservationManager
-  readonly hierarchyManager: HierarchyManager
-  readonly searchManager: SearchManager
-  readonly ioManager: IOManager
-  readonly tagManager: TagManager
-  readonly graphTraversal: GraphTraversal
-
-  // Agent Memory System (lazy-initialized via getters)
-  get semanticSearch(): SemanticSearch
-  get accessTracker(): AccessTracker
-  get decayEngine(): DecayEngine
-  get decayScheduler(): DecayScheduler
-  get salienceEngine(): SalienceEngine
-  get contextWindowManager(): ContextWindowManager
-  get memoryFormatter(): MemoryFormatter
-  agentMemory(config?: AgentMemoryConfig): AgentMemoryManager
-
-  // Direct storage access
-  get storage(): IGraphStorage
-}
-```
-
-**Lazy Initialization** (agent memory only):
-```typescript
-private _agentMemoryManager?: AgentMemoryManager;
-agentMemory(config?: AgentMemoryConfig): AgentMemoryManager {
-  return (this._agentMemoryManager ??= new AgentMemoryManager(this, config));
-}
-```
-
----
-
-### EntityManager (`core/EntityManager.ts`)
-
-**Purpose**: Entity CRUD operations with validation
-
-```typescript
-export class EntityManager {
-  constructor(storage: IGraphStorage, eventEmitter?: GraphEventEmitter)
-
-  // Core CRUD
-  async createEntities(entities: Entity[]): Promise<Entity[]>
-  async getEntityByName(name: string): Promise<Entity | null>
-  async getAllEntities(): Promise<Entity[]>
-  async deleteEntities(entityNames: string[]): Promise<void>
-
-  // Tag operations
-  async addTags(entityName: string, tags: string[]): Promise<Entity>
-  async removeTags(entityName: string, tags: string[]): Promise<Entity>
-  async setImportance(entityName: string, importance: number): Promise<Entity>
-  async addTagsToMultipleEntities(entityNames: string[], tags: string[]): Promise<Entity[]>
-  async replaceTag(oldTag: string, newTag: string): Promise<number>
-  async mergeTags(tag1: string, tag2: string, targetTag: string): Promise<number>
-}
-```
-
-**Key Features**:
-- Automatic timestamp management (createdAt, lastModified)
-- Tag normalization (lowercase)
-- Importance validation (0-10 range)
-- Batch operations (single I/O)
-- Zod schema validation
-- Event emission for TF-IDF sync
-
----
-
-### RelationManager (`core/RelationManager.ts`)
-
-**Purpose**: Relation CRUD operations
-
-```typescript
-export class RelationManager {
-  constructor(storage: IGraphStorage)
-
-  async createRelations(relations: Relation[]): Promise<Relation[]>
-  async getRelationsForEntity(entityName: string): Promise<{
-    incoming: Relation[];
-    outgoing: Relation[];
-  }>
-  async deleteRelations(relations: Relation[]): Promise<void>
-  async getAllRelations(): Promise<Relation[]>
-}
-```
-
-**Key Features**:
-- Automatic timestamp management
-- Duplicate relation prevention
-- Deferred integrity (relations to non-existent entities allowed)
-
----
-
-### ObservationManager (`core/ObservationManager.ts`)
-
-**Purpose**: Observation add/delete operations
-
-```typescript
-export class ObservationManager {
-  constructor(storage: IGraphStorage, eventEmitter?: GraphEventEmitter)
-
-  async addObservations(additions: ObservationAddition[]): Promise<ObservationResult[]>
-  async deleteObservations(deletions: ObservationDeletion[]): Promise<ObservationResult[]>
-}
-
-interface ObservationAddition {
-  entityName: string;
-  contents: string[];
-}
-```
-
----
-
-### HierarchyManager (`core/HierarchyManager.ts`)
-
-**Purpose**: Parent-child entity relationships
-
-```typescript
-export class HierarchyManager {
-  constructor(storage: IGraphStorage)
-
-  async setEntityParent(entityName: string, parentName: string | null): Promise<Entity>
-  async getChildren(entityName: string): Promise<Entity[]>
-  async getParent(entityName: string): Promise<Entity | null>
-  async getAncestors(entityName: string): Promise<Entity[]>
-  async getDescendants(entityName: string): Promise<Entity[]>
-  async getSubtree(entityName: string): Promise<KnowledgeGraph>
-  async getRootEntities(): Promise<Entity[]>
-  async getEntityDepth(entityName: string): Promise<number>
-  async moveEntity(entityName: string, newParentName: string | null): Promise<Entity>
-}
-```
-
-**Key Features**:
-- Cycle detection (prevents infinite loops)
-- Recursive traversal for ancestors/descendants
-- Subtree extraction with relations
-
----
-
-### GraphStorage (`core/GraphStorage.ts`)
-
-**Purpose**: JSONL file I/O with in-memory caching
-
-```typescript
-export class GraphStorage implements IGraphStorage {
-  constructor(memoryFilePath: string)
-
-  async loadGraph(): Promise<KnowledgeGraph>
-  async saveGraph(graph: KnowledgeGraph): Promise<void>
-  invalidateCache(): void
-}
-```
-
-**Key Features**:
-- JSONL format (line-delimited JSON)
-- In-memory cache with write-through invalidation
-- Deep copy on cache reads (prevents mutation)
-- Backward compatibility for missing timestamps
-
----
-
-### SQLiteStorage (`core/SQLiteStorage.ts`)
-
-**Purpose**: SQLite database storage with FTS5 search
-
-```typescript
-export class SQLiteStorage implements IGraphStorage {
-  constructor(dbPath: string)
-
-  async loadGraph(): Promise<KnowledgeGraph>
-  async saveGraph(graph: KnowledgeGraph): Promise<void>
-
-  // SQLite-specific methods
-  searchFTS(query: string): Entity[]
-  close(): void
-}
-```
-
-**Key Features**:
-- FTS5 full-text search with BM25 ranking
-- WAL mode for better concurrency
-- Referential integrity with ON DELETE CASCADE
-- ACID transactions
-
----
-
-### GraphTraversal (`core/GraphTraversal.ts`)
-
-**Purpose**: Graph algorithms
-
-```typescript
-export class GraphTraversal {
-  constructor(storage: IGraphStorage)
-
-  // Path finding
-  async findShortestPath(from: string, to: string): Promise<string[] | null>
-  async findAllPaths(from: string, to: string, options?: PathOptions): Promise<string[][]>
-
-  // Centrality
-  async getCentrality(options?: CentralityOptions): Promise<Map<string, number>>
-
-  // Components
-  async getConnectedComponents(): Promise<string[][]>
-
-  // Traversal
-  async bfs(startNode: string, visitor: (node: string) => void): Promise<void>
-  async dfs(startNode: string, visitor: (node: string) => void): Promise<void>
-}
-```
-
-**Centrality Algorithms**:
-- `degree`: Node connection count
-- `betweenness`: Node importance in paths
-- `pagerank`: Recursive importance measure
-
----
-
-### TransactionManager (`core/TransactionManager.ts`)
-
-**Purpose**: Batch operations and transactions
-
-```typescript
-export class TransactionManager {
-  constructor(storage: IGraphStorage, eventEmitter?: GraphEventEmitter)
-
-  // Batch operations
-  async executeBatch(operations: BatchOperation[]): Promise<BatchResult>
-
-  // Transaction control
-  beginTransaction(): void
-  commitTransaction(): Promise<void>
-  rollbackTransaction(): void
-}
-```
-
----
-
-<<<<<<< HEAD
-### RefIndex (`core/RefIndex.ts`)
-
-**Purpose**: Named stable reference index for O(1) entity lookup, persisted as JSONL sidecar
-
-```typescript
-export class RefIndex {
-  constructor(sidecarPath: string)
-
-  async register(ref: string, entityName: string): Promise<void>
-  async resolve(ref: string): Promise<string | null>
-  async deregister(ref: string): Promise<void>
-  async listRefs(): Promise<Map<string, string>>
-}
-```
-
-**Key Features**:
-- JSONL sidecar file for persistence (e.g., `memory-refs.jsonl`)
-- Stable ref names survive entity renames
-- Integrated into `EntityManager` (auto-deregister on delete) and `ManagerContext` (`ctx.refIndex`)
-
-=======
-### BatchTransaction (`core/BatchTransaction.ts`)
-
-**Purpose**: Fluent batch operation builder with validation and atomic execution
-
-```typescript
-export class BatchTransaction {
-  constructor(transactionManager: TransactionManager)
-
-  createEntity(entity: Entity): BatchTransaction
-  updateEntity(name: string, updates: Partial<Entity>): BatchTransaction
-  deleteEntity(name: string): BatchTransaction
-  createRelation(relation: Relation): BatchTransaction
-  deleteRelation(relation: Relation): BatchTransaction
-  addObservations(entityName: string, contents: string[]): BatchTransaction
-  deleteObservations(entityName: string, contents: string[]): BatchTransaction
-  async execute(): Promise<BatchResult>
-}
-```
-
->>>>>>> origin/master
 ---
 
 ### GraphEventEmitter (`core/GraphEventEmitter.ts`)
@@ -1199,7 +886,6 @@ export class SearchFilterChain {
 
 ---
 
-<<<<<<< HEAD
 ### NGramIndex (`search/NGramIndex.ts`)
 
 **Purpose**: Trigram index providing Jaccard-based pre-filtering for FuzzySearch
@@ -1295,7 +981,9 @@ export class LLMSearchExecutor {
 ```
 
 Exposed as `ManagerContext.queryNaturalLanguage(query, llmProvider?)`.
-=======
+
+---
+
 ### Query Optimization
 
 #### QueryParser (`search/QueryParser.ts`)
@@ -1355,7 +1043,6 @@ Batches incremental index updates to avoid rebuilding the full index on every ch
 
 #### EmbeddingCache (`search/EmbeddingCache.ts`)
 LRU cache for embedding vectors with TTL expiration. Reduces redundant embedding API calls for recently seen text.
->>>>>>> origin/master
 
 ---
 
@@ -1777,11 +1464,8 @@ interface StructuredQuery {
 - `utils/searchAlgorithms.ts` provides Levenshtein + TF-IDF algorithms
 - Agent components share `AccessTracker` for memory access patterns
 
-<<<<<<< HEAD
 ---
 
-**Document Version**: 1.6
-**Last Updated**: 2026-03-24
+**Document Version**: 1.7
+**Last Updated**: 2026-04-09
 **Maintained By**: Daniel Simon Jr.
-=======
->>>>>>> origin/master

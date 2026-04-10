@@ -88,6 +88,7 @@ function createInMemoryStorage(initial: Entity[] = []): IGraphStorage {
     appendRelation: vi.fn(async () => {}),
     compact: vi.fn(async () => {}),
     clearCache: vi.fn(() => {}),
+    graphMutex: { acquire: vi.fn(async () => () => {}) },
   } as unknown as IGraphStorage;
 }
 
