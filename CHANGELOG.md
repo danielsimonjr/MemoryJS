@@ -5,6 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-04-09
+
+### Added — Supermemory Gap-Closing (Sprint 1)
+
+**Feature 1: Project Scoping**
+- New `projectId?: string` field on Entity enables multi-tenant/project isolation.
+- `SearchFilterChain` propagates `projectId` filter to all search methods.
+- `ManagerContext` accepts `defaultProjectId` option for auto-stamping new entities.
+- New `EntityManager.listProjects()` method returns distinct project IDs.
+- New `EntityManagerOptions` interface exported from `src/core`.
+
+**Feature 2: Memory Versioning / Contradiction Resolution**
+- New Entity fields: `version`, `parentEntityName`, `rootEntityName`, `isLatest`, `supersededBy`.
+- New `ContradictionDetector` class uses semantic similarity (default threshold 0.85) to detect contradicting observations.
+- On contradiction, `addObservations()` creates a new entity version (`alice-v2`, `alice-v3`, ...) via `supersede()` instead of mutating.
+- New `EntityManager.getVersionChain()` and `getLatestVersion()` methods navigate version chains.
+- `CompressionManager.findDuplicates` excludes superseded entities; `mergeEntities` throws on superseded entities.
+- `SearchFilterChain` excludes entities with `isLatest=false` by default; use `includeSuperseded: true` to see history.
+- Opt-in via `enableContradictionDetection` and `contradictionThreshold` options on `ManagerContext`.
+- New `SemanticSearch.calculateSimilarity(a, b)` helper method.
+
+**Feature 3: Semantic Forget**
+- New `SemanticForget` class with `forgetByContent(content, options)` method.
+- Two-tier deletion: exact match first, then semantic search fallback at configurable threshold (default 0.85).
+- Supports `dryRun`, `projectId` scoping, and optional audit logging.
+- Auto-deletes entities with zero remaining observations.
+- New `SemanticForgetResult` and `SemanticForgetOptions` exported types.
+- Exposed via `ManagerContext.semanticForget` lazy getter.
+
+**Feature 4: User Profile (Entity-backed)**
+- New `ProfileManager` class exposed via `AgentMemoryManager.profileManager`.
+- Profiles stored as Entity instances with `entityType='profile'`; observations tagged `[static]` / `[dynamic]`.
+- Methods: `getProfile`, `addFact`, `promoteFact`, `extractFromSession`, `getProfileEntityName`.
+- Auto-extraction from session observations classified via `SalienceEngine` (static vs dynamic based on baseImportance + recencyBoost).
+- Project-scoped profiles via sanitized entity names (`profile-{projectId}` or `profile-global`).
+- Session:ended event hook auto-extracts profile facts when `config.profile.autoExtract !== false`.
+- New `ProfileEntity` type and `isProfileEntity()` guard.
+- `EntityManager.createEntities` reserves the `profile-*` namespace and throws `ValidationError` for non-profile entities using it.
+
+### Changed
+- `Entity` interface gains 6 optional fields (`projectId`, `version`, `parentEntityName`, `rootEntityName`, `isLatest`, `supersededBy`). All backwards-compatible.
+- `ManagerContext` constructor now accepts either a string path (legacy) or a `ManagerContextOptions` object with `defaultProjectId`, `enableContradictionDetection`, `contradictionThreshold`.
+- `SearchFilterChain` early-return optimization removed (always runs filter loop to ensure versioning filter applies).
+- `CreateEntitySchema` and `UpdateEntitySchema` extended to allow new Entity fields.
+
+### Storage
+- SQLite: 6 new columns added to entities table with indexes on `projectId` and `isLatest`. Existing databases are migrated additively via `ALTER TABLE ADD COLUMN` in `migrateEntitiesTable()`.
+- JSONL: New fields serialized alongside existing optional fields in all three serialization paths.
+
+### Related
+- Design spec: `docs/superpowers/specs/2026-04-09-supermemory-gap-closing-design.md`
+- Gap analysis: `docs/roadmap/GAP_ANALYSIS_VS_SUPERMEMORY.md`
+- Implementation plan: `docs/superpowers/plans/2026-04-09-supermemory-gap-closing.md`
+
 ## [1.7.0] - 2026-03-24
 
 ### Added

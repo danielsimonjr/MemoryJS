@@ -334,10 +334,10 @@ These are memoryjs strengths to preserve and emphasize:
 
 | # | Feature | Effort | Value | Priority | Status |
 |---|---------|--------|-------|----------|--------|
-| 1 | Auto-Maintained User Profile | M | High | **MUST** | Not started |
-| 2 | Semantic Forget (Two-Tier Deletion) | M | High | **MUST** | Not started |
-| 3 | Memory Versioning / Contradiction Resolution | L | High | **MUST** | Not started |
-| 4 | Project/Container Scoping | L | High | **MUST** | Not started |
+| 1 | Auto-Maintained User Profile | M | High | **MUST** | ✅ v1.8.0 |
+| 2 | Semantic Forget (Two-Tier Deletion) | M | High | **MUST** | ✅ v1.8.0 |
+| 3 | Memory Versioning / Contradiction Resolution | L | High | **MUST** | ✅ v1.8.0 |
+| 4 | Project/Container Scoping | L | High | **MUST** | ✅ v1.8.0 |
 | 5 | Interactive Graph Visualization | M | Medium | **SHOULD** | Not started |
 | 6 | Smart Memory Deduplication (Priority-Based) | S | Medium | **SHOULD** | Not started |
 | 7 | LLM Middleware Integration (Vercel AI SDK) | L | Medium | **COULD** | Not started |
