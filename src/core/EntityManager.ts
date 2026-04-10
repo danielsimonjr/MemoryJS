@@ -417,6 +417,55 @@ export class EntityManager {
   }
 
   /**
+   * Return all entities in a version chain sorted by version ascending.
+   * Accepts any entity in the chain; resolves to the root via rootEntityName.
+   *
+   * @param entityName - Name of any entity in the version chain
+   * @returns Array of entities in the version chain, sorted by version
+   *
+   * @example
+   * ```typescript
+   * const manager = new EntityManager(storage);
+   *
+   * // Get full version chain from any entity in the chain
+   * const chain = await manager.getVersionChain('alice-v2');
+   * console.log(chain.map(e => e.name)); // ['alice', 'alice-v2', 'alice-v3']
+   * ```
+   */
+  async getVersionChain(entityName: string): Promise<Entity[]> {
+    const entity = await this.getEntity(entityName);
+    if (!entity) return [];
+
+    const rootName = entity.rootEntityName ?? entity.name;
+    const graph = await this.storage.loadGraph();
+    const chain = graph.entities.filter(
+      e => (e.rootEntityName ?? e.name) === rootName
+    );
+    chain.sort((a, b) => (a.version ?? 1) - (b.version ?? 1));
+    return chain;
+  }
+
+  /**
+   * Return the latest version of an entity.
+   *
+   * @param entityName - Name of any entity in the version chain
+   * @returns The latest version entity, or null if the entity doesn't exist
+   *
+   * @example
+   * ```typescript
+   * const manager = new EntityManager(storage);
+   *
+   * const latest = await manager.getLatestVersion('alice');
+   * console.log(latest?.name); // 'alice-v3'
+   * ```
+   */
+  async getLatestVersion(entityName: string): Promise<Entity | null> {
+    const chain = await this.getVersionChain(entityName);
+    if (chain.length === 0) return null;
+    return chain.find(e => e.isLatest !== false) ?? chain[chain.length - 1];
+  }
+
+  /**
    * Update one or more fields of an existing entity.
    *
    * This method allows partial updates - only the fields specified in the updates
