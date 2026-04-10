@@ -39,11 +39,12 @@ export class BasicSearch {
     minImportance?: number,
     maxImportance?: number,
     offset: number = 0,
-    limit: number = SEARCH_LIMITS.DEFAULT
+    limit: number = SEARCH_LIMITS.DEFAULT,
+    projectId?: string
   ): Promise<KnowledgeGraph> {
     // Check cache first
     if (this.enableCache) {
-      const cacheKey = { query, tags, minImportance, maxImportance, offset, limit };
+      const cacheKey = { query, tags, minImportance, maxImportance, offset, limit, projectId };
       const cached = searchCaches.basic.get(cacheKey);
       if (cached) {
         return cached;
@@ -73,7 +74,7 @@ export class BasicSearch {
     });
 
     // Apply tag and importance filters using SearchFilterChain
-    const filters: SearchFilters = { tags, minImportance, maxImportance };
+    const filters: SearchFilters = { tags, minImportance, maxImportance, projectId };
     const filteredEntities = SearchFilterChain.applyFilters(textMatched, filters);
 
     // Apply pagination using SearchFilterChain
@@ -89,7 +90,7 @@ export class BasicSearch {
 
     // Cache the result
     if (this.enableCache) {
-      const cacheKey = { query, tags, minImportance, maxImportance, offset, limit };
+      const cacheKey = { query, tags, minImportance, maxImportance, offset, limit, projectId };
       searchCaches.basic.set(cacheKey, result);
     }
 

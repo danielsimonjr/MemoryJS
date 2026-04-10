@@ -165,7 +165,8 @@ export class FuzzySearch {
     minImportance?: number,
     maxImportance?: number,
     offset?: number,
-    limit?: number
+    limit?: number,
+    projectId?: string
   ): string {
     return JSON.stringify({
       q: query.toLowerCase(),
@@ -175,6 +176,7 @@ export class FuzzySearch {
       max: maxImportance,
       off: offset,
       lim: limit,
+      pid: projectId,
     });
   }
 
@@ -260,13 +262,14 @@ export class FuzzySearch {
     minImportance?: number,
     maxImportance?: number,
     offset: number = 0,
-    limit: number = SEARCH_LIMITS.DEFAULT
+    limit: number = SEARCH_LIMITS.DEFAULT,
+    projectId?: string
   ): Promise<KnowledgeGraph> {
     const graph = await this.storage.loadGraph();
     const queryLower = query.toLowerCase();
 
     // Phase 4 Sprint 3: Generate cache key and check cache
-    const cacheKey = this.generateCacheKey(query, threshold, tags, minImportance, maxImportance, offset, limit);
+    const cacheKey = this.generateCacheKey(query, threshold, tags, minImportance, maxImportance, offset, limit, projectId);
     const cached = this.fuzzyResultCache.get(cacheKey);
 
     // Check if cache is valid (entity count hasn't changed)
@@ -315,7 +318,7 @@ export class FuzzySearch {
     }
 
     // Apply tag and importance filters using SearchFilterChain
-    const filters: SearchFilters = { tags, minImportance, maxImportance };
+    const filters: SearchFilters = { tags, minImportance, maxImportance, projectId };
     const filteredEntities = SearchFilterChain.applyFilters(fuzzyMatched, filters);
 
     // Apply pagination using SearchFilterChain

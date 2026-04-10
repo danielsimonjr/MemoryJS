@@ -29,6 +29,14 @@ export interface SearchOptionsWithTracking {
   sessionId?: string;
   /** Task ID for access context */
   taskId?: string;
+  /** Project scope filter. Undefined = match all projects. */
+  projectId?: string;
+  /** Tags to filter results (lowercase). */
+  tags?: string[];
+  /** Minimum importance value (0-10). */
+  minImportance?: number;
+  /** Maximum importance value (0-10). */
+  maxImportance?: number;
 }
 
 /**
@@ -145,16 +153,38 @@ export class SearchManager {
    */
   async searchNodes(
     query: string,
-    tags?: string[],
+    tagsOrOptions?: string[] | SearchOptionsWithTracking,
     minImportance?: number,
     maxImportance?: number,
     options?: SearchOptionsWithTracking
   ): Promise<KnowledgeGraph> {
-    const result = await this.basicSearch.searchNodes(query, tags, minImportance, maxImportance);
+    // Support both positional (tags, minImportance, maxImportance, options) and
+    // unified options-object (SearchOptionsWithTracking) as second argument.
+    let tags: string[] | undefined;
+    let resolvedOptions: SearchOptionsWithTracking | undefined;
+    if (Array.isArray(tagsOrOptions) || tagsOrOptions === undefined) {
+      tags = tagsOrOptions as string[] | undefined;
+      resolvedOptions = options;
+    } else {
+      resolvedOptions = tagsOrOptions;
+      tags = tagsOrOptions.tags;
+      minImportance = tagsOrOptions.minImportance;
+      maxImportance = tagsOrOptions.maxImportance;
+    }
+
+    const result = await this.basicSearch.searchNodes(
+      query,
+      tags,
+      minImportance,
+      maxImportance,
+      0,
+      undefined,
+      resolvedOptions?.projectId
+    );
 
     // Track access if enabled
-    if (options?.trackAccess && this.accessTracker) {
-      await this.trackSearchResults(result.entities, query, options);
+    if (resolvedOptions?.trackAccess && this.accessTracker) {
+      await this.trackSearchResults(result.entities, query, resolvedOptions);
     }
 
     return result;
@@ -295,11 +325,23 @@ export class SearchManager {
    */
   async booleanSearch(
     query: string,
-    tags?: string[],
+    tagsOrOptions?: string[] | SearchOptionsWithTracking,
     minImportance?: number,
     maxImportance?: number
   ): Promise<KnowledgeGraph> {
-    return this.booleanSearcher.booleanSearch(query, tags, minImportance, maxImportance);
+    // Support both positional (tags, minImportance, maxImportance) and
+    // unified options-object (SearchOptionsWithTracking) as second argument.
+    let tags: string[] | undefined;
+    let projectId: string | undefined;
+    if (Array.isArray(tagsOrOptions) || tagsOrOptions === undefined) {
+      tags = tagsOrOptions as string[] | undefined;
+    } else {
+      tags = tagsOrOptions.tags;
+      minImportance = tagsOrOptions.minImportance;
+      maxImportance = tagsOrOptions.maxImportance;
+      projectId = tagsOrOptions.projectId;
+    }
+    return this.booleanSearcher.booleanSearch(query, tags, minImportance, maxImportance, 0, undefined, projectId);
   }
 
   // ==================== Fuzzy Search ====================
@@ -335,12 +377,25 @@ export class SearchManager {
    */
   async fuzzySearch(
     query: string,
-    threshold?: number,
+    thresholdOrOptions?: number | SearchOptionsWithTracking,
     tags?: string[],
     minImportance?: number,
     maxImportance?: number
   ): Promise<KnowledgeGraph> {
-    return this.fuzzySearcher.fuzzySearch(query, threshold, tags, minImportance, maxImportance);
+    // Support both positional (threshold, tags, minImportance, maxImportance) and
+    // unified options-object (SearchOptionsWithTracking) as second argument.
+    let threshold: number | undefined;
+    let projectId: string | undefined;
+    if (typeof thresholdOrOptions === 'number' || thresholdOrOptions === undefined) {
+      threshold = thresholdOrOptions as number | undefined;
+    } else {
+      threshold = undefined;
+      tags = thresholdOrOptions.tags;
+      minImportance = thresholdOrOptions.minImportance;
+      maxImportance = thresholdOrOptions.maxImportance;
+      projectId = thresholdOrOptions.projectId;
+    }
+    return this.fuzzySearcher.fuzzySearch(query, threshold, tags, minImportance, maxImportance, 0, undefined, projectId);
   }
 
   // ==================== Search Suggestions ====================
