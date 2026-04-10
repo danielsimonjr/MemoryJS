@@ -7,7 +7,7 @@
  * @module agent/ContextWindowManager
  */
 
-import type { IGraphStorage } from '../types/types.js';
+import type { IGraphStorage, Entity } from '../types/types.js';
 import type {
   AgentEntity,
   SalienceContext,
@@ -48,6 +48,21 @@ export interface ContextWindowManagerConfig {
   enforceDiversity?: boolean;
 }
 
+/** Compression intensity level for compressForContext. */
+export type CompressionLevel = 'light' | 'medium' | 'aggressive';
+
+/** Result from compressForContext. */
+export interface ContextCompressionResult {
+  compressed: string;
+  legend: Record<string, string>;
+  stats: {
+    originalTokens: number;
+    compressedTokens: number;
+    savedTokens: number;
+    savedPercent: number;
+  };
+}
+
 /**
  * Options for the wakeUp method.
  */
@@ -56,6 +71,8 @@ export interface WakeUpOptions {
   maxL0Tokens?: number;
   maxL1Tokens?: number;
   includeL1?: boolean;
+  /** Apply compression to L1 content. Pass a CompressionLevel or true for 'medium'. */
+  compress?: boolean | CompressionLevel;
 }
 
 /**
@@ -1157,7 +1174,335 @@ export class ContextWindowManager {
       }
     }
 
+    // Apply compression if requested (only if it actually saves tokens)
+    if (options.compress && l1) {
+      const level = typeof options.compress === 'string' ? options.compress : 'medium';
+      const compressResult = this.compressForContext(l1, { level });
+      if (compressResult.stats.savedTokens > 0) {
+        l1 = compressResult.compressed;
+      }
+    }
+
     const totalTokens = this.estimateStringTokens(l0) + this.estimateStringTokens(l1);
     return { l0, l1, totalTokens, entityCount };
+  }
+
+  // ==================== Context Compression ====================
+
+  /** Unicode abbreviation map for aggressive-level compression (code keywords). */
+  private static readonly COMMON_PATTERNS: Record<string, string> = {
+    'function ': 'ƒ ',
+    'return ': 'ʀ ',
+    'const ': 'ᴄ ',
+    'export ': 'ᴇ ',
+    'import ': 'ɪ ',
+    'interface ': 'ɪɴᴛ ',
+    'class ': 'ᴄʟs ',
+    'async ': 'ᴀ ',
+    'await ': 'ᴀᴡ ',
+    'undefined': 'ᴜɴᴅ',
+    'null': 'ɴᴜʟ',
+    'true': 'ᴛ',
+    'false': 'ꜰ',
+    '```typescript': '```ts',
+    '```javascript': '```js',
+    '## ': '⸫ ',
+    '### ': '⸬ ',
+    '#### ': '⸭ ',
+    '"description"': '"desc"',
+    '"dependencies"': '"deps"',
+    '"devDependencies"': '"devDeps"',
+    '"repository"': '"repo"',
+    '"homepage"': '"home"',
+    '"keywords"': '"keys"',
+    '"license"': '"lic"',
+    '"version"': '"ver"',
+    '"required"': '"req"',
+    '"optional"': '"opt"',
+    '"default"': '"def"',
+    '"example"': '"ex"',
+    '"properties"': '"props"',
+    '"additionalProperties"': '"addProps"',
+    'node_modules/': 'nm/',
+    'src/': 's/',
+    'dist/': 'd/',
+    'test/': 't/',
+    'tests/': 't/',
+    '.typescript': '.ts',
+    '.javascript': '.js',
+  };
+
+  /**
+   * Compress text for token-efficient context loading.
+   * Finds repeated substrings, replaces with paragraph-sign codes, generates a legend.
+   * Inspired by the CTON compress-for-context tool.
+   */
+  compressForContext(
+    text: string,
+    options?: { level?: CompressionLevel }
+  ): ContextCompressionResult {
+    const level = options?.level ?? 'medium';
+    let compressed = text;
+    const legend: Record<string, string> = {};
+    const existingAbbrevs = new Set<string>();
+
+    // Normalize whitespace
+    if (level !== 'light') {
+      compressed = compressed.replace(/[ \t]+/g, ' ');
+      compressed = compressed.replace(/\n{3,}/g, '\n\n');
+    }
+
+    // Apply common keyword patterns at aggressive level
+    if (level === 'aggressive') {
+      const patternResult = this.applyCommonPatterns(compressed);
+      compressed = patternResult.text;
+      Object.assign(legend, patternResult.legend);
+      for (const key of Object.keys(patternResult.legend)) {
+        existingAbbrevs.add(key);
+      }
+    }
+
+    // Find and replace repeated substrings
+    const minLength = level === 'light' ? 8 : level === 'medium' ? 6 : 5;
+    const minOccurrences = level === 'light' ? 4 : 3;
+    const maxSubstrings = level === 'light' ? 20 : level === 'medium' ? 30 : 50;
+
+    const substrings = this.findRepeatedSubstrings(compressed, minLength, minOccurrences, maxSubstrings);
+
+    if (substrings.length > 0) {
+      const totalSavings = substrings.reduce((sum, s) => sum + s.savings, 0);
+      if (totalSavings > 5) {
+        const result = this.applySubstringCompression(compressed, substrings, existingAbbrevs);
+        Object.assign(legend, result.legend);
+        compressed = result.compressed;
+      }
+    }
+
+    // Prepend legend if any abbreviations were made
+    if (Object.keys(legend).length > 0) {
+      const legendStr =
+        '=== Legend ===\n' +
+        Object.entries(legend)
+          .map(([a, f]) => `${a} = ${f}`)
+          .join('\n') +
+        '\n=============\n\n';
+      compressed = legendStr + compressed;
+    }
+
+    const originalTokens = this.estimateStringTokens(text);
+    const hasLegend = Object.keys(legend).length > 0;
+    const compressedTokens = hasLegend
+      ? this.estimateStringTokens(compressed)
+      : originalTokens;
+    const savedTokens = Math.max(0, originalTokens - compressedTokens);
+
+    return {
+      compressed: hasLegend ? compressed : text,
+      legend,
+      stats: {
+        originalTokens,
+        compressedTokens,
+        savedTokens,
+        savedPercent:
+          originalTokens > 0
+            ? Math.round((savedTokens / originalTokens) * 100)
+            : 0,
+      },
+    };
+  }
+
+  /**
+   * Compress entities for context loading. Formats entities as compact text,
+   * then applies compression. Sorted by importance descending.
+   */
+  compressEntitiesForContext(
+    entities: Entity[],
+    options?: { level?: CompressionLevel; maxTokens?: number }
+  ): ContextCompressionResult & { entityCount: number } {
+    const sorted = [...entities]
+      .filter((e) => e.entityType !== 'profile' && e.entityType !== 'diary')
+      .sort((a, b) => ((b as any).importance ?? 0) - ((a as any).importance ?? 0));
+
+    const lines: string[] = [];
+    let tokenCount = 0;
+    let entityCount = 0;
+    const maxTokens = options?.maxTokens ?? Infinity;
+
+    for (const e of sorted) {
+      const obs = e.observations?.slice(0, 3).join('; ') ?? '';
+      const line = `[${e.entityType}] ${e.name}: ${obs}`;
+      const lineTokens = this.estimateStringTokens(line);
+      if (tokenCount + lineTokens > maxTokens) break;
+      lines.push(line);
+      tokenCount += lineTokens;
+      entityCount++;
+    }
+
+    const raw = lines.join('\n');
+    const result = this.compressForContext(raw, { level: options?.level });
+    return { ...result, entityCount };
+  }
+
+  // ==================== Compression Helpers ====================
+
+  /**
+   * Find repeated substrings and calculate compression potential.
+   * Returns substrings sorted by net savings (highest first).
+   * @internal
+   */
+  private findRepeatedSubstrings(
+    text: string,
+    minLength: number,
+    minOccurrences: number,
+    maxSubstrings: number = 50
+  ): Array<{ substring: string; count: number; savings: number }> {
+    const substringCounts = new Map<string, number>();
+
+    // Split text into tokens at natural break points
+    const tokens = text.split(/(\s+|[{}()\[\]<>:;,."'`|=])/);
+
+    // Build n-grams of consecutive tokens
+    for (let n = 1; n <= 6; n++) {
+      for (let i = 0; i <= tokens.length - n; i++) {
+        const ngram = tokens.slice(i, i + n).join('');
+
+        if (ngram.length < minLength || ngram.length > 50) continue;
+        if (/^\s*$/.test(ngram)) continue;
+        if ((ngram.match(/\s/g) || []).length > ngram.length * 0.5) continue;
+
+        const opens = (ngram.match(/[{(\[<]/g) || []).length;
+        const closes = (ngram.match(/[})\]>]/g) || []).length;
+        if (opens !== closes) continue;
+
+        substringCounts.set(ngram, (substringCounts.get(ngram) || 0) + 1);
+      }
+    }
+
+    // Also find common path patterns
+    const pathRe = /[a-zA-Z0-9_\-./]+\/[a-zA-Z0-9_\-./]+/g;
+    let pathMatch;
+    while ((pathMatch = pathRe.exec(text)) !== null) {
+      const p = pathMatch[0];
+      if (p.length >= minLength) {
+        substringCounts.set(p, (substringCounts.get(p) || 0) + 1);
+      }
+    }
+
+    // Calculate savings for each substring
+    const candidates: Array<{ substring: string; count: number; savings: number }> = [];
+
+    for (const [substring, count] of substringCounts.entries()) {
+      if (count >= minOccurrences) {
+        const abbrevLength = 2; // §X
+        const legendCost = abbrevLength + substring.length + 4;
+        const savingsPerOccurrence = substring.length - abbrevLength;
+        const netSavings = savingsPerOccurrence * count - legendCost;
+
+        if (netSavings > 5) {
+          candidates.push({ substring, count, savings: netSavings });
+        }
+      }
+    }
+
+    candidates.sort((a, b) => b.savings - a.savings);
+
+    // Filter out substrings that overlap significantly with higher-value ones
+    const selected: Array<{ substring: string; count: number; savings: number }> = [];
+    const usedSubstrings: string[] = [];
+
+    for (const candidate of candidates) {
+      let isTooSimilar = false;
+      const candidateTrimmed = candidate.substring.trim();
+
+      if (candidateTrimmed.length < 3) continue;
+
+      for (const used of usedSubstrings) {
+        const usedTrimmed = used.trim();
+
+        if (used.includes(candidate.substring) || candidate.substring.includes(used)) {
+          isTooSimilar = true;
+          break;
+        }
+
+        if (
+          candidateTrimmed === usedTrimmed ||
+          candidateTrimmed.includes(usedTrimmed) ||
+          usedTrimmed.includes(candidateTrimmed)
+        ) {
+          isTooSimilar = true;
+          break;
+        }
+
+        const shorter =
+          candidateTrimmed.length < usedTrimmed.length ? candidateTrimmed : usedTrimmed;
+        const longer =
+          candidateTrimmed.length >= usedTrimmed.length ? candidateTrimmed : usedTrimmed;
+        if (longer.includes(shorter.slice(0, Math.floor(shorter.length * 0.7)))) {
+          isTooSimilar = true;
+          break;
+        }
+      }
+
+      if (!isTooSimilar) {
+        selected.push(candidate);
+        usedSubstrings.push(candidate.substring);
+        if (selected.length >= maxSubstrings) break;
+      }
+    }
+
+    return selected;
+  }
+
+  /**
+   * Apply substring replacements to text.
+   * @internal
+   */
+  private applySubstringCompression(
+    text: string,
+    substrings: Array<{ substring: string; count: number; savings: number }>,
+    _existingAbbrevs: Set<string>
+  ): { compressed: string; legend: Record<string, string> } {
+    const legend: Record<string, string> = {};
+    let compressed = text;
+
+    // Sort by length descending to replace longer substrings first
+    const sortedSubs = [...substrings].sort((a, b) => b.substring.length - a.substring.length);
+
+    sortedSubs.forEach((item, index) => {
+      const abbrev = `\u00a7${index.toString(36)}`; // §0, §1, ... §a, §b, etc.
+      legend[abbrev] = item.substring;
+      compressed = compressed.split(item.substring).join(abbrev);
+    });
+
+    return { compressed, legend };
+  }
+
+  /**
+   * Apply COMMON_PATTERNS unicode abbreviations (aggressive level only).
+   * @internal
+   */
+  private applyCommonPatterns(text: string): { text: string; legend: Record<string, string> } {
+    let result = text;
+    const legend: Record<string, string> = {};
+
+    for (const [pattern, replacement] of Object.entries(ContextWindowManager.COMMON_PATTERNS)) {
+      const count = (result.match(new RegExp(this.escapeRegex(pattern), 'g')) || []).length;
+      const savings = (pattern.length - replacement.length) * count;
+
+      if (savings > pattern.length + replacement.length + 5) {
+        legend[replacement] = pattern;
+        result = result.split(pattern).join(replacement);
+      }
+    }
+
+    return { text: result, legend };
+  }
+
+  /**
+   * Escape special regex characters.
+   * @internal
+   */
+  private escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 }
