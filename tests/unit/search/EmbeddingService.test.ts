@@ -331,6 +331,15 @@ describe('createEmbeddingService factory', () => {
     const { getEmbeddingConfig } = await import('../../../src/utils/constants.js');
     const config = getEmbeddingConfig();
 
+    expect(config.provider).toBe('local');
+  });
+
+  it('should respect none provider when explicitly set', async () => {
+    process.env.MEMORY_EMBEDDING_PROVIDER = 'none';
+
+    const { getEmbeddingConfig } = await import('../../../src/utils/constants.js');
+    const config = getEmbeddingConfig();
+
     expect(config.provider).toBe('none');
   });
 
