@@ -272,7 +272,7 @@ export class AgentMemoryManager extends EventEmitter {
     // fire a maintenance cycle asynchronously.  The cycle runs fire-and-forget
     // so it does not block session teardown.
     if (this._dreamEngine) {
-      void this._dreamEngine.runDreamCycle().catch(() => undefined);
+      void this._dreamEngine.runDreamCycle().catch((err) => { console.error('[AgentMemoryManager] Dream cycle failed:', err); });
     }
 
     return result;
@@ -587,6 +587,9 @@ export class AgentMemoryManager extends EventEmitter {
     entry: string,
     options?: { topic?: string; tags?: string[] }
   ): Promise<void> {
+    if (!agentId || !/^[a-zA-Z0-9_-]+$/.test(agentId)) {
+      throw new Error(`Invalid agentId: '${agentId}'. Must be alphanumeric with hyphens/underscores.`);
+    }
     const entityName = `diary-${agentId}`;
     const timestamp = new Date().toISOString();
     const topicPrefix = options?.topic ? ` [${options.topic}]` : '';
@@ -596,12 +599,18 @@ export class AgentMemoryManager extends EventEmitter {
     const existing = graph.entities.find((e: any) => e.name === entityName);
 
     if (!existing) {
-      await this.entityManager.createEntities([{
-        name: entityName,
-        entityType: 'diary',
-        observations: [formatted],
-        importance: 8,
-      }]);
+      try {
+        await this.entityManager.createEntities([{
+          name: entityName,
+          entityType: 'diary',
+          observations: [formatted],
+          importance: 8,
+          tags: options?.tags ?? [],
+        }]);
+      } catch (_err) {
+        // Handle TOCTOU race: entity may have been created concurrently
+        await this.observationManager.addObservations([{ entityName, contents: [formatted] }]);
+      }
     } else {
       await this.observationManager.addObservations([{ entityName, contents: [formatted] }]);
     }
@@ -624,7 +633,8 @@ export class AgentMemoryManager extends EventEmitter {
     let entries = [...entity.observations];
 
     if (options?.topic) {
-      entries = entries.filter(e => e.includes(`[${options.topic}]`));
+      const topicTag = `] [${options.topic}]`;
+      entries = entries.filter(e => e.includes(topicTag));
     }
 
     entries.sort((a, b) => b.localeCompare(a));

@@ -1294,11 +1294,16 @@ export class IOManager {
       entityNames: [],
     };
 
-    // Build dedup set from existing entities
+    // Build dedup set from existing entities using content hash to avoid || delimiter collisions
+    const { createHash } = await import('crypto');
     const graph = await this.storage.loadGraph();
     const existingObsSet = new Set(
-      graph.entities.map(e => e.observations.join('||'))
+      graph.entities.map(e => createHash('sha256').update(e.observations.join('\n')).digest('hex'))
     );
+
+    // Create EntityManager once, reuse across all chunks
+    const { EntityManager } = await import('../core/EntityManager.js');
+    const em = new EntityManager(this.storage);
 
     for (const inp of inputs) {
       const chunks = this._chunkMessages(inp.messages, chunkBy, options.maxChunkSize);
@@ -1308,7 +1313,7 @@ export class IOManager {
         const chunk = chunks[i];
         const entityName = `${source}-${String(i + 1).padStart(3, '0')}`;
         const observations = chunk.map(m => `[${m.role}] ${m.content}`);
-        const obsKey = observations.join('||');
+        const obsKey = createHash('sha256').update(observations.join('\n')).digest('hex');
 
         if (existingObsSet.has(obsKey)) {
           result.skippedDuplicates++;
@@ -1320,15 +1325,19 @@ export class IOManager {
         result.entityNames.push(entityName);
 
         if (!dryRun) {
-          const { EntityManager } = await import('../core/EntityManager.js');
-          const em = new EntityManager(this.storage);
-          await em.createEntities([{
-            name: entityName,
-            entityType,
-            observations,
-            tags: [...baseTags],
-            projectId: options.projectId,
-          }]);
+          try {
+            await em.createEntities([{
+              name: entityName,
+              entityType,
+              observations,
+              tags: [...baseTags],
+              projectId: options.projectId,
+            }]);
+          } catch (err) {
+            throw new Error(
+              `[ingest] Failed to create entity '${entityName}' (source: ${source}, chunk: ${i + 1}): ${err instanceof Error ? err.message : String(err)}`
+            );
+          }
           existingObsSet.add(obsKey);
         }
       }

@@ -8,7 +8,7 @@
 
 import type { Relation } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
-import { ValidationError } from '../utils/errors.js';
+import { ValidationError, RelationNotFoundError } from '../utils/errors.js';
 import { BatchCreateRelationsSchema, DeleteRelationsSchema } from '../utils/index.js';
 import { GRAPH_LIMITS } from '../utils/constants.js';
 
@@ -292,9 +292,7 @@ export class RelationManager {
           !r.properties?.validUntil
       );
       if (!match) {
-        throw new Error(
-          `No active relation found: ${from} -[${relationType}]-> ${to}`
-        );
+        throw new RelationNotFoundError(from, to, relationType);
       }
       if (!match.properties) {
         match.properties = {};
@@ -336,6 +334,9 @@ export class RelationManager {
     asOf: string,
     options?: { direction?: 'outgoing' | 'incoming' | 'both' }
   ): Promise<Relation[]> {
+    if (asOf && !/^\d{4}-\d{2}-\d{2}/.test(asOf)) {
+      throw new ValidationError(`asOf must be an ISO 8601 date string, got: '${asOf}'`, []);
+    }
     const direction = options?.direction ?? 'both';
     const graph = await this.storage.loadGraph();
     return graph.relations.filter(r => {

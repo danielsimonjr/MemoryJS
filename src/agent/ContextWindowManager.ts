@@ -1120,8 +1120,10 @@ export class ContextWindowManager {
           l0 = l0.slice(0, lastDot + 1);
         }
       }
-    } catch {
-      // ProfileManager not available
+    } catch (err) {
+      if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
+        console.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
+      }
     }
 
     // L1: Top entities by importance
@@ -1150,8 +1152,8 @@ export class ContextWindowManager {
           entityCount++;
         }
         l1 = lines.join('\n');
-      } catch {
-        // Storage not available
+      } catch (err) {
+        console.error('[ContextWindowManager.wakeUp] L1 entity loading failed:', err);
       }
     }
 

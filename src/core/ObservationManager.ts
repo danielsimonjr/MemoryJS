@@ -116,13 +116,13 @@ export class ObservationManager {
     observations: { entityName: string; contents: string[] }[],
     dedup?: DeduplicationOptions,
     options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
-  ): Promise<{ entityName: string; addedObservations: string[]; autoLinkResults?: AutoLinkResult[] }[]> {
+  ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
     const resolvedDedup = this.resolveDedup(dedup);
 
     // Get mutable graph for atomic update
     const graph = await this.storage.getGraphForMutation();
     const timestamp = new Date().toISOString();
-    const results: { entityName: string; addedObservations: string[] }[] = [];
+    const results: { entityName: string; addedObservations: string[]; superseded?: boolean }[] = [];
     let hasChanges = false;
 
     for (const o of observations) {
@@ -147,7 +147,7 @@ export class ObservationManager {
               nonExactDuplicates,
               this.linkedEntityManager
             );
-            results.push({ entityName: o.entityName, addedObservations: [] });
+            results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates, superseded: true });
             continue; // skip normal append for this entity
           }
         }

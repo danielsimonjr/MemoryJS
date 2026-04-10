@@ -105,4 +105,43 @@ describe('IOManager.ingest', () => {
     ]);
     expect(result.entitiesCreated).toBe(2);
   });
+
+  it('paragraph chunking creates one entity per message', async () => {
+    const result = await ctx.ioManager.ingest(
+      {
+        messages: [
+          { role: 'user', content: 'msg1' },
+          { role: 'assistant', content: 'msg2' },
+          { role: 'user', content: 'msg3' },
+        ],
+        source: 'para',
+      },
+      { chunkBy: 'paragraph' }
+    );
+    expect(result.entitiesCreated).toBe(3);
+  });
+
+  it('fixed chunking respects maxChunkSize', async () => {
+    const result = await ctx.ioManager.ingest(
+      {
+        messages: [
+          { role: 'user', content: 'A'.repeat(100) },
+          { role: 'assistant', content: 'B'.repeat(100) },
+          { role: 'user', content: 'C'.repeat(100) },
+        ],
+        source: 'fixed',
+      },
+      { chunkBy: 'fixed', maxChunkSize: 150 }
+    );
+    expect(result.entitiesCreated).toBeGreaterThan(1);
+  });
+
+  it('handles empty messages array', async () => {
+    const result = await ctx.ioManager.ingest({
+      messages: [],
+      source: 'empty',
+    });
+    expect(result.entitiesCreated).toBe(0);
+    expect(result.entityNames).toEqual([]);
+  });
 });
