@@ -389,6 +389,34 @@ export class EntityManager {
   }
 
   /**
+   * List all distinct project IDs in the graph (excluding global entities).
+   *
+   * Scans all entities and collects unique projectId values, excluding
+   * entities that lack a projectId (global/unscoped entities).
+   *
+   * @returns Sorted array of unique projectId values
+   *
+   * @example
+   * ```typescript
+   * const manager = new EntityManager(storage);
+   *
+   * // List all projects
+   * const projects = await manager.listProjects();
+   * console.log(projects); // ['project-a', 'project-b', 'project-c']
+   * ```
+   */
+  async listProjects(): Promise<string[]> {
+    const graph = await this.storage.loadGraph();
+    const projects = new Set<string>();
+    for (const entity of graph.entities) {
+      if (entity.projectId) {
+        projects.add(entity.projectId);
+      }
+    }
+    return Array.from(projects).sort();
+  }
+
+  /**
    * Update one or more fields of an existing entity.
    *
    * This method allows partial updates - only the fields specified in the updates
