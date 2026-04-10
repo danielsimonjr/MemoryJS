@@ -110,10 +110,60 @@ export class SemanticForget {
   }
 
   private async semanticFallback(
-    _content: string,
-    _options: SemanticForgetOptions
+    content: string,
+    options: SemanticForgetOptions
   ): Promise<SemanticForgetResult> {
-    // Implemented in Task 3.2
-    return { method: 'not_found', deletedObservations: [], deletedEntities: [] };
+    if (!this.semanticSearch) {
+      return { method: 'not_found', deletedObservations: [], deletedEntities: [] };
+    }
+
+    const threshold = options.threshold ?? 0.85;
+    const graph = await this.storage.loadGraph();
+
+    // Entity-level semantic search
+    const searchResults = await this.semanticSearch.search(
+      graph,
+      content,
+      5,
+      threshold
+    );
+
+    if (searchResults.length === 0) {
+      return { method: 'not_found', deletedObservations: [], deletedEntities: [] };
+    }
+
+    // Within matching entities, find the best observation match
+    let bestMatch: { entity: Entity; observation: string; similarity: number } | null = null;
+
+    for (const result of searchResults) {
+      // Re-resolve the entity from storage to ensure we have full fields
+      const searchEntity = result.entity as Entity;
+      const entity = graph.entities.find(e => e.name === searchEntity.name);
+      if (!entity) continue;
+
+      if (options.projectId !== undefined && entity.projectId !== options.projectId) {
+        continue;
+      }
+
+      for (const obs of entity.observations) {
+        const sim = await this.semanticSearch.calculateSimilarity(content, obs);
+        if (sim >= threshold && (!bestMatch || sim > bestMatch.similarity)) {
+          bestMatch = { entity, observation: obs, similarity: sim };
+        }
+      }
+    }
+
+    if (!bestMatch) {
+      return { method: 'not_found', deletedObservations: [], deletedEntities: [] };
+    }
+
+    return this.executeDelete(
+      [bestMatch.entity],
+      bestMatch.observation,
+      'semantic',
+      options.dryRun ?? false,
+      options,
+      bestMatch.similarity
+    );
   }
 }
