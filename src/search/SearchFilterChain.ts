@@ -41,6 +41,8 @@ export interface SearchFilters {
   modifiedBefore?: string;
   /** Project scope (exact match). Undefined = match all projects. */
   projectId?: string;
+  /** Include superseded entity versions (isLatest=false). Default false. */
+  includeSuperseded?: boolean;
 }
 
 /**
@@ -65,16 +67,9 @@ export class SearchFilterChain {
    * @returns Filtered entities array
    */
   static applyFilters(entities: readonly Entity[], filters: SearchFilters): Entity[] {
-    // Early return if no filters are active
-    if (!this.hasActiveFilters(filters)) {
-      return [...entities];
-    }
-
-    // Pre-normalize tags once for efficiency
     const normalizedSearchTags = filters.tags?.length
       ? normalizeTags(filters.tags)
       : undefined;
-
     return entities.filter(entity =>
       this.entityPassesFilters(entity, filters, normalizedSearchTags)
     );
@@ -146,6 +141,11 @@ export class SearchFilterChain {
 
     // Project scope filter
     if (filters.projectId !== undefined && entity.projectId !== filters.projectId) {
+      return false;
+    }
+
+    // Versioning filter: exclude superseded entities by default
+    if (!filters.includeSuperseded && entity.isLatest === false) {
       return false;
     }
 
