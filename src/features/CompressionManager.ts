@@ -16,7 +16,7 @@ import {
   createProgress,
   fnv1aHash,
 } from '../utils/index.js';
-import { EntityNotFoundError, InsufficientEntitiesError } from '../utils/errors.js';
+import { EntityNotFoundError, InsufficientEntitiesError, ValidationError } from '../utils/errors.js';
 import { SIMILARITY_WEIGHTS, DEFAULT_DUPLICATE_THRESHOLD } from '../utils/constants.js';
 
 /**
@@ -196,21 +196,24 @@ export class CompressionManager {
     checkCancellation(options?.signal, 'findDuplicates');
 
     const graph = await this.storage.loadGraph();
+    // Versioning guard: skip superseded entities
+    const entities = graph.entities.filter(e => e.isLatest !== false);
+
     const duplicateGroups: string[][] = [];
     const processed = new Set<string>();
 
     // Setup progress reporter
     const reportProgress = createProgressReporter(options?.onProgress);
-    const totalEntities = graph.entities.length;
+    const totalEntities = entities.length;
     let processedCount = 0;
     reportProgress?.(createProgress(0, totalEntities, 'findDuplicates'));
 
     // OPTIMIZATION: Pre-prepare all entities once before comparisons
-    const preparedEntities = this.prepareEntities(graph.entities);
+    const preparedEntities = this.prepareEntities(entities);
 
     // Step 1: Bucket entities by type (reduces comparisons drastically)
     const typeMap = new Map<string, Entity[]>();
-    for (const entity of graph.entities) {
+    for (const entity of entities) {
       const normalizedType = entity.entityType.toLowerCase();
       if (!typeMap.has(normalizedType)) {
         typeMap.set(normalizedType, []);
@@ -332,6 +335,18 @@ export class CompressionManager {
 
     // Use provided graph or load fresh
     const graph = options.graph ?? await this.storage.getGraphForMutation();
+
+    // Versioning guard: prevent merging superseded entities
+    for (const name of entityNames) {
+      const e = graph.entities.find(ent => ent.name === name);
+      if (e && e.isLatest === false) {
+        throw new ValidationError(
+          `Cannot merge superseded entity '${name}'. Use the latest version.`,
+          []
+        );
+      }
+    }
+
     const entitiesToMerge = entityNames.map(name => {
       const entity = graph.entities.find(e => e.name === name);
       if (!entity) {
