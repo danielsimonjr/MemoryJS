@@ -224,6 +224,13 @@ export class EntityManager {
           []
         );
       }
+      if (e.name.startsWith('diary-') && e.entityType !== 'diary') {
+        throw new ValidationError(
+          `Entity name '${e.name}' is reserved for the diary system. ` +
+          `Use entityType='diary' or choose a different name.`,
+          []
+        );
+      }
     }
 
     // Setup progress reporter

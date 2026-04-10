@@ -576,6 +576,63 @@ export class AgentMemoryManager extends EventEmitter {
     return this._dreamEngine.runDreamCycle();
   }
 
+  // ==================== Diary ====================
+
+  /**
+   * Write a timestamped diary entry for a specialist agent.
+   * Stored as an observation on entity 'diary-{agentId}'.
+   */
+  async writeDiary(
+    agentId: string,
+    entry: string,
+    options?: { topic?: string; tags?: string[] }
+  ): Promise<void> {
+    const entityName = `diary-${agentId}`;
+    const timestamp = new Date().toISOString();
+    const topicPrefix = options?.topic ? ` [${options.topic}]` : '';
+    const formatted = `[${timestamp}]${topicPrefix} ${entry}`;
+
+    const graph = await this.storage.loadGraph();
+    const existing = graph.entities.find((e: any) => e.name === entityName);
+
+    if (!existing) {
+      await this.entityManager.createEntities([{
+        name: entityName,
+        entityType: 'diary',
+        observations: [formatted],
+        importance: 8,
+      }]);
+    } else {
+      await this.observationManager.addObservations([{ entityName, contents: [formatted] }]);
+    }
+  }
+
+  /**
+   * Read recent diary entries for a specialist agent.
+   * Returns entries in reverse chronological order.
+   */
+  async readDiary(
+    agentId: string,
+    options?: { lastN?: number; topic?: string }
+  ): Promise<string[]> {
+    const entityName = `diary-${agentId}`;
+    const graph = await this.storage.loadGraph();
+    const entity = graph.entities.find((e: any) => e.name === entityName);
+
+    if (!entity) return [];
+
+    let entries = [...entity.observations];
+
+    if (options?.topic) {
+      entries = entries.filter(e => e.includes(`[${options.topic}]`));
+    }
+
+    entries.sort((a, b) => b.localeCompare(a));
+
+    const limit = options?.lastN ?? 10;
+    return entries.slice(0, limit);
+  }
+
   // ==================== Lifecycle ====================
 
   /**
