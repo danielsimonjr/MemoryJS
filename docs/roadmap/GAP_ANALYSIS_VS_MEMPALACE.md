@@ -265,17 +265,17 @@ Configured via Claude Code's `hooks` settings.
 
 ## Recommended Implementation Order
 
-| # | Feature | Effort | Value | Priority |
-|---|---------|--------|-------|----------|
-| 1 | 4-Layer Memory Stack (wake-up) | M | High | **MUST** |
-| 2 | Conversation Mining / Ingestion Pipeline | L | High | **MUST** |
-| 3 | Temporal KG Convenience Methods (invalidate, asOf, timeline) | S | High | **MUST** |
-| 4 | Specialist Agent Diary System | S | High | **SHOULD** |
-| 5 | Auto-Save Hooks | S | Medium | **SHOULD** |
-| 6 | Benchmarking Suite (LongMemEval) | L | Medium | **SHOULD** |
-| 7 | Zero-Config Semantic Search (default local embeddings) | S | Medium | **SHOULD** |
-| 8 | AAAK-style Compression | M | Low | **COULD** |
-| 9 | Mega-File Splitting | S | Low | **COULD** |
+| # | Feature | Effort | Value | Priority | Status |
+|---|---------|--------|-------|----------|--------|
+| 1 | 4-Layer Memory Stack (wake-up) | M | High | **MUST** | ✅ v1.9.0 |
+| 2 | Conversation Mining / Ingestion Pipeline | L | High | **MUST** | ✅ v1.9.0 |
+| 3 | Temporal KG Convenience Methods (invalidate, asOf, timeline) | S | High | **MUST** | ✅ v1.9.0 |
+| 4 | Specialist Agent Diary System | S | High | **SHOULD** | ✅ v1.9.0 |
+| 5 | Auto-Save Hooks | S | Medium | **SHOULD** | ✅ v1.9.0 |
+| 6 | Benchmarking Suite (LongMemEval) | L | Medium | **SHOULD** | Not started |
+| 7 | Zero-Config Semantic Search (default local embeddings) | S | Medium | **SHOULD** | ✅ v1.9.0 |
+| 8 | AAAK-style Compression | M | Low | **COULD** | Not started |
+| 9 | Mega-File Splitting | S | Low | **COULD** | Not started |
 
 **Sprint 1** (MUST, ~2-3 weeks): Memory Stack, Ingestion Pipeline, Temporal KG Methods
 **Sprint 2** (SHOULD, ~2 weeks): Agent Diary, Auto-Save Hooks, Benchmarks, Zero-Config Semantic
