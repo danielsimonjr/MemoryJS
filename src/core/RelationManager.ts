@@ -249,4 +249,61 @@ export class RelationManager {
     await this.storage.ensureLoaded();
     return this.storage.getRelationsFor(entityName);
   }
+
+  /**
+   * Mark a temporal relation as no longer valid by setting validUntil.
+   *
+   * This method finds an active (non-terminated) relation matching the specified
+   * from, relationType, and to parameters, then sets its properties.validUntil
+   * to indicate when the relation ended.
+   *
+   * @param from - Source entity name
+   * @param relationType - Type of the relation
+   * @param to - Target entity name
+   * @param ended - ISO 8601 timestamp when the relation ended (defaults to current time)
+   * @returns Promise that resolves when invalidation is complete
+   * @throws {Error} If no active relation is found matching the criteria
+   *
+   * @example
+   * ```typescript
+   * const manager = new RelationManager(storage);
+   *
+   * // Mark a relation as ended (using custom date)
+   * await manager.invalidateRelation('kai', 'works_on', 'orion', '2026-03-01');
+   *
+   * // Mark a relation as ended (using current time)
+   * await manager.invalidateRelation('kai', 'works_on', 'orion');
+   * ```
+   */
+  async invalidateRelation(
+    from: string,
+    relationType: string,
+    to: string,
+    ended?: string
+  ): Promise<void> {
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const match = graph.relations.find(
+        r =>
+          r.from === from &&
+          r.relationType === relationType &&
+          r.to === to &&
+          !r.properties?.validUntil
+      );
+      if (!match) {
+        throw new Error(
+          `No active relation found: ${from} -[${relationType}]-> ${to}`
+        );
+      }
+      if (!match.properties) {
+        match.properties = {};
+      }
+      match.properties.validUntil = ended ?? new Date().toISOString();
+      match.lastModified = new Date().toISOString();
+      await this.storage.saveGraph(graph);
+    } finally {
+      release();
+    }
+  }
 }

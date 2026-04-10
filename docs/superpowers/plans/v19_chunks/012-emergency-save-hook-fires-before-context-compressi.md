@@ -1,0 +1,1 @@
+# Emergency save hook — fires before context compression
