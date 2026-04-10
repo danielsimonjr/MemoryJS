@@ -18,6 +18,9 @@ import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
 import { SearchManager } from '../search/SearchManager.js';
 import { RankedSearch } from '../search/RankedSearch.js';
+import { LLMQueryPlanner } from '../search/LLMQueryPlanner.js';
+import { LLMSearchExecutor } from '../search/LLMSearchExecutor.js';
+import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
 import { SemanticSearch, createEmbeddingService, createVectorStore } from '../search/index.js';
 import { IOManager } from '../features/IOManager.js';
 import { TagManager } from '../features/TagManager.js';
@@ -30,15 +33,38 @@ import { TransitionLedger } from './TransitionLedger.js';
 import { AccessTracker } from '../agent/AccessTracker.js';
 import { DecayEngine } from '../agent/DecayEngine.js';
 import { DecayScheduler } from '../agent/DecayScheduler.js';
+import { ConsolidationScheduler } from '../agent/ConsolidationScheduler.js';
 import { SalienceEngine } from '../agent/SalienceEngine.js';
 import { ContextWindowManager } from '../agent/ContextWindowManager.js';
 import { MemoryFormatter } from '../agent/MemoryFormatter.js';
 import { AgentMemoryManager } from '../agent/AgentMemoryManager.js';
+<<<<<<< HEAD
+import { ArtifactManager } from '../agent/ArtifactManager.js';
+import { DreamEngine, type DreamEngineConfig } from '../agent/DreamEngine.js';
+import { RefIndex } from './RefIndex.js';
+=======
 import { ObserverPipeline } from '../agent/ObserverPipeline.js';
 import type { ObserverPipelineOptions } from '../agent/ObserverPipeline.js';
+>>>>>>> origin/master
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
+import { ContradictionDetector } from '../features/ContradictionDetector.js';
+import { SemanticForget } from '../features/SemanticForget.js';
+
+/**
+ * Options for constructing a ManagerContext.
+ */
+export interface ManagerContextOptions {
+  storagePath: string;
+  storageType?: 'jsonl' | 'sqlite';
+  /** Default project scope for this context. */
+  defaultProjectId?: string;
+  /** Enable contradiction detection. Requires embedding provider. */
+  enableContradictionDetection?: boolean;
+  /** Similarity threshold for contradiction detection. Default 0.85. */
+  contradictionThreshold?: number;
+}
 
 /**
  * Central context holding all manager instances.
@@ -49,6 +75,13 @@ export class ManagerContext {
   // Type as GraphStorage for manager compatibility; actual instance may be SQLiteStorage
   // which implements the same interface via duck typing
   readonly storage: GraphStorage;
+<<<<<<< HEAD
+  public readonly defaultProjectId?: string;
+  private readonly savedSearchesFilePath: string;
+  private readonly tagAliasesFilePath: string;
+  private readonly refIndexFilePath: string;
+=======
+>>>>>>> origin/master
 
   // ==================== EAGERLY INITIALIZED CORE MANAGERS ====================
 
@@ -79,15 +112,69 @@ export class ManagerContext {
   private _contextWindowManager?: ContextWindowManager;
   private _memoryFormatter?: MemoryFormatter;
   private _agentMemory?: AgentMemoryManager;
-  private _observerPipeline?: ObserverPipeline;
+<<<<<<< HEAD
+  private _refIndex?: RefIndex;
+  private _artifactManager?: ArtifactManager;
+  private _consolidationScheduler?: ConsolidationScheduler;
+  private _dreamEngine?: DreamEngine;
+  private _llmQueryPlanner?: LLMQueryPlanner;
+  private _llmSearchExecutor?: LLMSearchExecutor;
+  private _semanticForget?: SemanticForget;
 
-  constructor(memoryFilePath: string) {
+  constructor(pathOrOptions: string | ManagerContextOptions) {
+    const opts: ManagerContextOptions =
+      typeof pathOrOptions === 'string'
+        ? { storagePath: pathOrOptions }
+        : pathOrOptions;
+    this.defaultProjectId = opts.defaultProjectId;
+=======
+  private _observerPipeline?: ObserverPipeline;
+>>>>>>> origin/master
+
     // Security: Validate path to prevent path traversal attacks
-    const validatedPath = validateFilePath(memoryFilePath);
+    const validatedPath = validateFilePath(opts.storagePath);
 
     // Derive paths for saved searches and tag aliases
     const dir = path.dirname(validatedPath);
     const basename = path.basename(validatedPath, path.extname(validatedPath));
+<<<<<<< HEAD
+    this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
+    this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
+    this.refIndexFilePath = path.join(dir, `${basename}-ref-index.jsonl`);
+    // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
+    // Type assertion: SQLiteStorage implements same interface as GraphStorage
+    this.storage = createStorageFromPath(validatedPath) as GraphStorage;
+
+    // Wire contradiction detection if enabled (gracefully degrades without embedding provider)
+    if (opts.enableContradictionDetection) {
+      this.initContradictionDetection(opts.contradictionThreshold);
+    }
+  }
+
+  /**
+   * Wire ContradictionDetector to ObservationManager if a semantic search
+   * embedding provider is available. Silently degrades when none is configured.
+   * @internal
+   */
+  private initContradictionDetection(threshold?: number): void {
+    try {
+      const ss = this.semanticSearch;
+      if (!ss) {
+        console.warn(
+          '[ManagerContext] Contradiction detection requested but no embedding provider is configured. ' +
+          'Set MEMORY_EMBEDDING_PROVIDER to enable it.'
+        );
+        return;
+      }
+      const detector = new ContradictionDetector(ss, threshold ?? 0.85);
+      this.observationManager.setContradictionDetector(detector, this.entityManager);
+    } catch (err) {
+      console.warn(
+        '[ManagerContext] Could not initialise contradiction detection:',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+=======
     const savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     const tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
 
@@ -114,10 +201,44 @@ export class ManagerContext {
     this.analyticsManager = new AnalyticsManager(this.storage);
     this.compressionManager = new CompressionManager(this.storage);
     this.archiveManager = new ArchiveManager(this.storage);
+>>>>>>> origin/master
   }
 
   // ==================== LAZY ACCESSORS (agent memory + semantic) ====================
 
+<<<<<<< HEAD
+  /** EntityManager - Entity CRUD and tag operations */
+  get entityManager(): EntityManager {
+    return (this._entityManager ??= new EntityManager(
+      this.storage,
+      { defaultProjectId: this.defaultProjectId }
+    ));
+  }
+
+  /** RelationManager - Relation CRUD */
+  get relationManager(): RelationManager {
+    return (this._relationManager ??= new RelationManager(this.storage));
+  }
+
+  /** ObservationManager - Observation CRUD */
+  get observationManager(): ObservationManager {
+    return (this._observationManager ??= new ObservationManager(this.storage));
+  }
+
+  /** HierarchyManager - Entity hierarchy operations */
+  get hierarchyManager(): HierarchyManager {
+    return (this._hierarchyManager ??= new HierarchyManager(this.storage));
+  }
+
+  /** GraphTraversal - Phase 4 Sprint 6-8: Graph traversal algorithms */
+  get graphTraversal(): GraphTraversal {
+    return (this._graphTraversal ??= new GraphTraversal(this.storage));
+  }
+
+  /** SearchManager - All search operations */
+  get searchManager(): SearchManager {
+    return (this._searchManager ??= new SearchManager(this.storage, this.savedSearchesFilePath));
+=======
   /**
    * AutoLinker - Automatic entity mention detection in observations.
    * Automatically wired to ObservationManager for auto-link support.
@@ -131,6 +252,7 @@ export class ManagerContext {
       this.observationManager.setAutoLinker(this._autoLinker);
     }
     return this._autoLinker;
+>>>>>>> origin/master
   }
 
   /**
@@ -177,6 +299,32 @@ export class ManagerContext {
       }
     }
     return this._transitionLedger;
+  }
+
+  /** RefIndex - Named reference index for O(1) stable entity lookups */
+  get refIndex(): RefIndex {
+    return (this._refIndex ??= new RefIndex(this.refIndexFilePath));
+  }
+
+  /** SemanticForget - Feature 3 (v1.8.0): Two-tier deletion with semantic fallback */
+  get semanticForget(): SemanticForget {
+    return (this._semanticForget ??= new SemanticForget(
+      this.storage,
+      this.observationManager,
+      this.entityManager,
+      this.semanticSearch ?? undefined,
+      undefined // auditLog not yet exposed by GovernanceManager
+    ));
+  }
+
+  /**
+   * ArtifactManager - v1.7.0: Stable artifact entities with auto-generated names and ref registration.
+   */
+  get artifactManager(): ArtifactManager {
+    if (!this._artifactManager) {
+      this._artifactManager = new ArtifactManager(this.storage, this.entityManager, this.refIndex);
+    }
+    return this._artifactManager;
   }
 
   /**
@@ -229,7 +377,80 @@ export class ManagerContext {
   }
 
   /**
+<<<<<<< HEAD
+   * ConsolidationScheduler - SHOULD-HAVE: Scheduled memory consolidation.
+   *
+   * Returns undefined when MEMORY_AUTO_CONSOLIDATION is not set to 'true'.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_AUTO_CONSOLIDATION (default: false) - Enable to create scheduler
+   * - MEMORY_CONSOLIDATION_INTERVAL_MS (default: 3600000 = 1 hour)
+   * - MEMORY_CONSOLIDATION_MERGE_DUPLICATES (default: false)
+   * - MEMORY_CONSOLIDATION_DUPLICATE_THRESHOLD (default: 0.9)
+   */
+  get consolidationScheduler(): ConsolidationScheduler | undefined {
+    if (this._consolidationScheduler) return this._consolidationScheduler;
+
+    if (this.getEnvBool('MEMORY_AUTO_CONSOLIDATION', false)) {
+      this._consolidationScheduler = new ConsolidationScheduler(
+        this.agentMemory().consolidationPipeline,
+        this.compressionManager,
+        {
+          consolidationIntervalMs: this.getEnvNumber(
+            'MEMORY_CONSOLIDATION_INTERVAL_MS',
+            3600000
+          ),
+          autoMergeDuplicates: this.getEnvBool(
+            'MEMORY_CONSOLIDATION_MERGE_DUPLICATES',
+            false
+          ),
+          duplicateThreshold: this.getEnvNumber(
+            'MEMORY_CONSOLIDATION_DUPLICATE_THRESHOLD',
+            0.9
+          ),
+        }
+      );
+    }
+
+    return this._consolidationScheduler;
+  }
+
+  /**
+   * DreamEngine — Background memory maintenance.
+   *
+   * Returns a DreamEngine instance.  The timer is NOT auto-started.
+   * Call `.start()` to activate periodic cycles, or use `agentMemory()` helper
+   * methods `startDreaming()` / `stopDreaming()`.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_DREAM_INTERVAL_MS (default: 14400000 = 4 hours)
+   */
+  dreamEngine(config: DreamEngineConfig = {}): DreamEngine {
+    if (!this._dreamEngine || Object.keys(config).length > 0) {
+      this._dreamEngine = new DreamEngine(
+        this.storage,
+        this.agentMemory().consolidationPipeline,
+        {
+          intervalMs: this.getEnvNumber('MEMORY_DREAM_INTERVAL_MS', 4 * 60 * 60 * 1000),
+          ...config,
+        }
+      );
+    }
+    return this._dreamEngine;
+  }
+
+  /**
+   * SalienceEngine - Phase 4 Agent Memory: Context-aware relevance scoring.
+   *
+   * Configurable via environment variables:
+   * - MEMORY_SALIENCE_IMPORTANCE_WEIGHT (default: 0.25)
+   * - MEMORY_SALIENCE_RECENCY_WEIGHT (default: 0.25)
+   * - MEMORY_SALIENCE_FREQUENCY_WEIGHT (default: 0.2)
+   * - MEMORY_SALIENCE_CONTEXT_WEIGHT (default: 0.2)
+   * - MEMORY_SALIENCE_NOVELTY_WEIGHT (default: 0.1)
+=======
    * SalienceEngine - Context-aware relevance scoring.
+>>>>>>> origin/master
    */
   get salienceEngine(): SalienceEngine {
     if (!this._salienceEngine) {
@@ -315,6 +536,71 @@ export class ManagerContext {
     }
     return this._agentMemory;
   }
+<<<<<<< HEAD
+
+  // ==================== LLM Query Planner ====================
+
+  /**
+   * LLMQueryPlanner - Feature 7: Natural language query decomposition.
+   *
+   * Decomposes free-text queries into structured search plans.
+   * Optionally configured with an LLM provider; falls back to keyword
+   * extraction when no provider is supplied.
+   *
+   * @param config - Optional LLM provider and default limit
+   */
+  llmQueryPlanner(config?: LLMQueryPlannerConfig): LLMQueryPlanner {
+    if (!this._llmQueryPlanner || config) {
+      this._llmQueryPlanner = new LLMQueryPlanner(config);
+      // Reset the executor so it is recreated with the new planner's config
+      this._llmSearchExecutor = undefined;
+    }
+    return this._llmQueryPlanner;
+  }
+
+  /**
+   * Convenience method: decompose a natural language string into Entity results.
+   *
+   * Uses the default (no-LLM) query planner unless a custom planner has
+   * already been initialised via {@link llmQueryPlanner}.
+   *
+   * @param text - Natural language query
+   * @returns Matching entities
+   */
+  async queryNaturalLanguage(text: string): Promise<import('../types/index.js').Entity[]> {
+    const planner = this._llmQueryPlanner ?? this.llmQueryPlanner();
+
+    if (!this._llmSearchExecutor) {
+      this._llmSearchExecutor = new LLMSearchExecutor(this.searchManager);
+    }
+
+    const structured = await planner.planQuery(text);
+    return this._llmSearchExecutor.execute(structured);
+  }
+
+  // ==================== Environment Variable Helpers ====================
+
+  /**
+   * Get a number from environment variable with default.
+   * @internal
+   */
+  private getEnvNumber(key: string, defaultValue: number): number {
+    const value = process.env[key];
+    if (value === undefined) return defaultValue;
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? defaultValue : parsed;
+  }
+
+  /**
+   * Get a boolean from environment variable with default.
+   * @internal
+   */
+  private getEnvBool(key: string, defaultValue: boolean): boolean {
+    const value = process.env[key];
+    if (value === undefined) return defaultValue;
+    return value.toLowerCase() === 'true';
+  }
+=======
 }
 
 // ==================== Module-level helpers ====================
@@ -330,4 +616,5 @@ function getEnvBool(key: string, defaultValue: boolean): boolean {
   const value = process.env[key];
   if (value === undefined) return defaultValue;
   return value.toLowerCase() === 'true';
+>>>>>>> origin/master
 }

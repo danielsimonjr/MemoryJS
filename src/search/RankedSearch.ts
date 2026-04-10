@@ -112,27 +112,42 @@ export class RankedSearch {
     tags?: string[],
     minImportance?: number,
     maxImportance?: number,
-    limit: number = SEARCH_LIMITS.DEFAULT
+    limit: number = SEARCH_LIMITS.DEFAULT,
+    projectId?: string
   ): Promise<SearchResult[]> {
     // Enforce maximum search limit
     const effectiveLimit = Math.min(limit, SEARCH_LIMITS.MAX);
     const graph = await this.storage.loadGraph();
 
-    // Apply tag and importance filters using SearchFilterChain
-    const filters: SearchFilters = { tags, minImportance, maxImportance };
-    const filteredEntities = SearchFilterChain.applyFilters(graph.entities, filters);
+    // Apply tag and importance filters to build the scoring corpus.
+    // projectId is intentionally excluded from the pre-score filter: applying it
+    // here would collapse the corpus to a single project and cause IDF values to
+    // drop to zero (log(N/df) = 0 when N === df), making all scores zero.
+    // Instead we score across the full tag/importance-filtered corpus and apply
+    // the projectId constraint as a post-score filter so rankings stay meaningful.
+    const preFilters: SearchFilters = { tags, minImportance, maxImportance };
+    const candidateEntities = SearchFilterChain.applyFilters(graph.entities, preFilters);
 
     // Try to use pre-calculated index
     const index = await this.ensureIndexLoaded();
     const queryTerms = tokenize(query);
 
+    // Score across the full candidate corpus (no projectId narrowing yet).
+    // Pass a large limit so we capture all matches before post-filtering.
+    const scoringLimit = projectId ? SEARCH_LIMITS.MAX : effectiveLimit;
+    let scored: SearchResult[];
     if (index) {
-      // Use pre-calculated index for fast search
-      return this.searchWithIndex(filteredEntities, queryTerms, index, effectiveLimit);
+      scored = this.searchWithIndex(candidateEntities, queryTerms, index, scoringLimit);
     } else {
-      // Fall back to on-the-fly calculation
-      return this.searchWithoutIndex(filteredEntities, queryTerms, effectiveLimit);
+      scored = this.searchWithoutIndex(candidateEntities, queryTerms, scoringLimit);
     }
+
+    // Apply projectId filter post-scoring to preserve IDF corpus integrity
+    if (projectId) {
+      scored = scored.filter(r => r.entity.projectId === projectId);
+    }
+
+    return scored.slice(0, effectiveLimit);
   }
 
   /**

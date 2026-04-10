@@ -8,6 +8,9 @@
 
 import Table from 'cli-table3';
 import chalk from 'chalk';
+<<<<<<< HEAD
+import type { Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport } from '../types/types.js';
+=======
 import type {
   Entity,
   Relation,
@@ -16,6 +19,7 @@ import type {
   ConnectedComponentsResult,
   ValidationReport,
 } from '../types/types.js';
+>>>>>>> origin/master
 
 export type OutputFormat = 'json' | 'table' | 'csv';
 
@@ -223,6 +227,28 @@ export function formatError(message: string): string {
 }
 
 /**
+<<<<<<< HEAD
+ * Format a path result (shortest path output).
+ */
+export function formatPath(result: PathResult, format: OutputFormat): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(result, null, 2);
+    case 'csv': {
+      const header = 'step,entity';
+      const rows = result.path.map((name, i) => `${i},${escapeCSV(name)}`);
+      return [header, ...rows].join('\n');
+    }
+    default: {
+      const lines = [
+        `${chalk.bold('Path')} (${result.length} hops):`,
+        result.path.join(' → '),
+      ];
+      if (result.relations.length > 0) {
+        lines.push('', chalk.bold('Relations:'));
+        for (const rel of result.relations) {
+          lines.push(`  ${rel.from} --[${rel.relationType}]--> ${rel.to}`);
+=======
  * Format a shortest path result.
  */
 export function formatPath(
@@ -368,6 +394,7 @@ export function formatValidation(
         lines.push('', chalk.yellow('Warnings:'));
         for (const w of result.warnings) {
           lines.push(`  [${w.type}] ${w.message}`);
+>>>>>>> origin/master
         }
       }
       return lines.join('\n');
@@ -375,6 +402,103 @@ export function formatValidation(
   }
 }
 
+<<<<<<< HEAD
+/**
+ * Format centrality analysis results.
+ */
+export function formatCentrality(result: CentralityResult, format: OutputFormat): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(
+        { algorithm: result.algorithm, topEntities: result.topEntities },
+        null,
+        2
+      );
+    case 'csv': {
+      const header = 'rank,name,score';
+      const rows = result.topEntities.map((e, i) =>
+        `${i + 1},${escapeCSV(e.name)},${e.score.toFixed(4)}`
+      );
+      return [header, ...rows].join('\n');
+    }
+    default: {
+      const table = new Table({
+        head: [chalk.cyan('Rank'), chalk.cyan('Entity'), chalk.cyan('Score')],
+        colWidths: calculateColWidths(getTerminalWidth(), [0.1, 0.6, 0.3]),
+      });
+      result.topEntities.forEach((e, i) => {
+        table.push([String(i + 1), e.name, e.score.toFixed(4)]);
+      });
+      return `${chalk.bold(`Centrality (${result.algorithm})`)}\n${table.toString()}`;
+    }
+  }
+}
+
+/**
+ * Format connected-components analysis results.
+ */
+export function formatComponents(result: ConnectedComponentsResult, format: OutputFormat): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(result, null, 2);
+    case 'csv': {
+      const header = 'component,size,entities';
+      const rows = result.components.map(
+        (comp, i) => `${i + 1},${comp.length},${escapeCSV(comp.join('; '))}`
+      );
+      return [header, ...rows].join('\n');
+    }
+    default: {
+      const lines = [
+        `${chalk.bold('Connected Components')}: ${result.count} found`,
+        `Largest component size: ${result.largestComponentSize}`,
+        '',
+      ];
+      result.components.forEach((comp, i) => {
+        lines.push(`  Component ${i + 1} (${comp.length} nodes): ${comp.join(', ')}`);
+      });
+      return lines.join('\n');
+    }
+  }
+}
+
+/**
+ * Format graph validation results.
+ */
+export function formatValidation(result: ValidationReport, format: OutputFormat): string {
+  switch (format) {
+    case 'json':
+      return JSON.stringify(result, null, 2);
+    case 'csv': {
+      const header = 'type,message';
+      const rows: string[] = [];
+      for (const issue of result.issues) {
+        rows.push(`error,${escapeCSV(issue.message)}`);
+      }
+      for (const warn of result.warnings) {
+        rows.push(`warning,${escapeCSV(warn.message)}`);
+      }
+      return [header, ...rows].join('\n');
+    }
+    default: {
+      const status = result.isValid ? chalk.green('✓ Valid') : chalk.red('✗ Invalid');
+      const lines = [
+        `${chalk.bold('Graph Validation')} — ${status}`,
+        `Errors: ${result.summary.totalErrors}  Warnings: ${result.summary.totalWarnings}`,
+      ];
+      for (const issue of result.issues) {
+        lines.push(`  ${chalk.red('ERROR')}: ${issue.message}`);
+      }
+      for (const warn of result.warnings) {
+        lines.push(`  ${chalk.yellow('WARN')}: ${warn.message}`);
+      }
+      return lines.join('\n');
+    }
+  }
+}
+
+=======
+>>>>>>> origin/master
 function calculateColWidths(totalWidth: number, ratios: number[]): number[] {
   const padding = 4; // Account for table borders
   const available = totalWidth - padding;

@@ -10,6 +10,9 @@
 
 import { EventEmitter } from 'events';
 import type { IGraphStorage } from '../types/types.js';
+import type { GraphStorage } from '../core/GraphStorage.js';
+import { EntityManager } from '../core/EntityManager.js';
+import { ObservationManager } from '../core/ObservationManager.js';
 import type {
   AgentEntity,
   AgentMetadata,
@@ -45,6 +48,10 @@ import {
   mergeConfig,
   validateConfig,
 } from './AgentMemoryConfig.js';
+import type { IDistillationPolicy } from './DistillationPolicy.js';
+import { resolveRoleProfile } from './RoleProfiles.js';
+import { DreamEngine, type DreamEngineConfig, type DreamCycleResult } from './DreamEngine.js';
+import { ProfileManager } from './ProfileManager.js';
 
 export interface CreateMemoryOptions {
   sessionId: string;
@@ -91,8 +98,15 @@ export class AgentMemoryManager extends EventEmitter {
   private _memoryFormatter?: MemoryFormatter;
   private _multiAgentManager?: MultiAgentMemoryManager;
   private _conflictResolver?: ConflictResolver;
+<<<<<<< HEAD
+  private _dreamEngine?: DreamEngine;
+  private _profileManager?: ProfileManager;
+  private _entityManager?: EntityManager;
+  private _observationManager?: ObservationManager;
+=======
   private _workThreadManager?: WorkThreadManager;
   private _checkpointManager?: SessionCheckpointManager;
+>>>>>>> origin/master
 
   constructor(storage: IGraphStorage, config: AgentMemoryConfig = {}) {
     super();
@@ -103,6 +117,17 @@ export class AgentMemoryManager extends EventEmitter {
 
     if (this.config.enableAutoDecay && this.config.decayScheduler) {
       this.decayScheduler.start();
+    }
+
+    // Wire profile auto-extraction on session end (opt-out via config.profile.autoExtract=false)
+    if (this.config.profile?.autoExtract !== false) {
+      this.on('session:ended', async ({ sessionId }: { sessionId: string }) => {
+        try {
+          await this.profileManager.extractFromSession(sessionId);
+        } catch (err) {
+          console.error('ProfileManager auto-extract failed:', err);
+        }
+      });
     }
   }
 
@@ -179,6 +204,52 @@ export class AgentMemoryManager extends EventEmitter {
     return (this._conflictResolver ??= new ConflictResolver(this.config.conflictResolver));
   }
 
+<<<<<<< HEAD
+  // ==================== Profile Manager ====================
+
+  /**
+   * Internal EntityManager, created on demand from the underlying storage.
+   * Cast is safe: the storage passed to AgentMemoryManager is always a
+   * GraphStorage (or duck-typed equivalent) created by StorageFactory.
+   */
+  private get entityManager(): EntityManager {
+    return (this._entityManager ??= new EntityManager(this.storage as GraphStorage));
+  }
+
+  /**
+   * Internal ObservationManager, created on demand from the underlying storage.
+   */
+  private get observationManager(): ObservationManager {
+    return (this._observationManager ??= new ObservationManager(this.storage as GraphStorage));
+  }
+
+  /** Profile manager for persistent user/agent profile facts */
+  get profileManager(): ProfileManager {
+    return (this._profileManager ??= new ProfileManager(
+      this.storage,
+      this.entityManager,
+      this.observationManager,
+      this.sessionManager,
+      this.salienceEngine,
+      this.config.profile ?? {}
+    ));
+  }
+
+  // ==================== Distillation ====================
+
+  /**
+   * Set a distillation policy on the underlying ContextWindowManager.
+   *
+   * When set, all calls to `retrieveForContext` will first filter the
+   * candidate memories through this policy before salience scoring.
+   *
+   * @param policy - An IDistillationPolicy implementation, or undefined to disable.
+   */
+  setDistillationPolicy(policy: IDistillationPolicy | undefined): void {
+    this.contextWindowManager.setDistillationPolicy(policy);
+  }
+
+=======
   get workThreadManager(): WorkThreadManager {
     return (this._workThreadManager ??= new WorkThreadManager(this.storage));
   }
@@ -189,6 +260,7 @@ export class AgentMemoryManager extends EventEmitter {
     ));
   }
 
+>>>>>>> origin/master
   // ==================== Session Lifecycle ====================
 
   async startSession(options: StartSessionOptions = {}): Promise<SessionEntity> {
@@ -200,6 +272,14 @@ export class AgentMemoryManager extends EventEmitter {
   async endSession(sessionId: string, status: 'completed' | 'abandoned' = 'completed'): Promise<EndSessionResult> {
     const result = await this.sessionManager.endSession(sessionId, status);
     this.emit('session:ended', { sessionId, result });
+
+    // If a DreamEngine has been created and runOnSessionEnd is the default (true),
+    // fire a maintenance cycle asynchronously.  The cycle runs fire-and-forget
+    // so it does not block session teardown.
+    if (this._dreamEngine) {
+      void this._dreamEngine.runDreamCycle().catch(() => undefined);
+    }
+
     return result;
   }
 
@@ -403,8 +483,121 @@ export class AgentMemoryManager extends EventEmitter {
     return { ...this.config };
   }
 
+<<<<<<< HEAD
+  // ==================== Role-Aware Factory Methods ====================
+
+  /**
+   * Create a SalienceEngine tuned to the registered agent's role profile.
+   *
+   * Looks up the agent's roleProfile (attached at registration time by
+   * MultiAgentMemoryManager) and merges its salience weight overrides on top
+   * of the global configuration. Falls back to the 'default' profile when the
+   * agent is unknown.
+   *
+   * @param agentId - ID of the registered agent
+   * @returns SalienceEngine configured for the agent's role
+   *
+   * @example
+   * ```typescript
+   * const engine = manager.createRoleAwareSalienceEngine('planner_agent');
+   * const scored = await engine.scoreEntities(memories, context);
+   * ```
+   */
+  createRoleAwareSalienceEngine(agentId: string): SalienceEngine {
+    const meta = this.multiAgentManager.getAgent(agentId);
+    const profile = meta?.roleProfile ?? resolveRoleProfile('default');
+    return new SalienceEngine(
+      this.storage,
+      this.accessTracker,
+      this.decayEngine,
+      { ...this.config.salience, ...profile.salienceConfig }
+    );
+  }
+
+  /**
+   * Create a ContextWindowManager tuned to the registered agent's role profile.
+   *
+   * Uses a role-aware SalienceEngine (see {@link createRoleAwareSalienceEngine})
+   * and applies the role's context budget percentages for working / episodic /
+   * semantic memory split.
+   *
+   * @param agentId - ID of the registered agent
+   * @returns ContextWindowManager configured for the agent's role
+   *
+   * @example
+   * ```typescript
+   * const cwm = manager.createRoleAwareContextWindowManager('researcher_agent');
+   * const pkg = await cwm.retrieveForContext({ maxTokens: 2000 });
+   * ```
+   */
+  createRoleAwareContextWindowManager(agentId: string): ContextWindowManager {
+    const meta = this.multiAgentManager.getAgent(agentId);
+    const profile = meta?.roleProfile ?? resolveRoleProfile('default');
+    return new ContextWindowManager(
+      this.storage,
+      this.createRoleAwareSalienceEngine(agentId),
+      { ...this.config.contextWindow, ...profile.contextConfig }
+    );
+  }
+
+  // ==================== Dream Engine ====================
+
+  /**
+   * Start the DreamEngine periodic maintenance timer.
+   *
+   * @param config - Optional DreamEngine configuration override.
+   */
+  startDreaming(config: DreamEngineConfig = {}): void {
+    if (!this._dreamEngine) {
+      this._dreamEngine = new DreamEngine(
+        this.storage,
+        this.consolidationPipeline,
+        config
+      );
+    }
+    this._dreamEngine.start();
+    this.emit('dream:started');
+  }
+
+  /**
+   * Stop the DreamEngine periodic timer.
+   */
+  stopDreaming(): void {
+    if (this._dreamEngine) {
+      this._dreamEngine.stop();
+      this.emit('dream:stopped');
+    }
+  }
+
+  /**
+   * Run one dream cycle immediately, without affecting the timer.
+   */
+  async runDreamCycle(): Promise<DreamCycleResult> {
+    if (!this._dreamEngine) {
+      this._dreamEngine = new DreamEngine(
+        this.storage,
+        this.consolidationPipeline
+      );
+    }
+    return this._dreamEngine.runDreamCycle();
+  }
+
+  // ==================== Lifecycle ====================
+
+  /**
+   * Stop all background operations (decay scheduler, dream engine).
+   */
+  stop(): void {
+    if (this._decayScheduler) {
+      this._decayScheduler.stop();
+    }
+    if (this._dreamEngine) {
+      this._dreamEngine.stop();
+    }
+=======
   stop(): void {
     if (this._decayScheduler) this._decayScheduler.stop();
+>>>>>>> origin/master
     this.emit('manager:stopped');
   }
 }

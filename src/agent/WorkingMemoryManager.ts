@@ -13,6 +13,8 @@ import type {
   WorkingMemoryOptions,
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
+import { passesEntropyFilter, type EntropyFilterConfig } from './EntropyFilter.js';
+import { LowEntropyContentError } from '../utils/errors.js';
 
 /**
  * Configuration for WorkingMemoryManager.
@@ -28,6 +30,13 @@ export interface WorkingMemoryConfig {
   autoPromoteConfidenceThreshold?: number;
   /** Confirmation threshold for auto-promotion (default: 2) */
   autoPromoteConfirmationThreshold?: number;
+  /**
+   * Optional entropy filter configuration.
+   * When provided, content that does not meet the minimum Shannon entropy
+   * threshold will be rejected with a LowEntropyContentError instead of
+   * being stored. Set to null/undefined to disable (default: disabled).
+   */
+  entropyFilter?: EntropyFilterConfig;
 }
 
 /**
@@ -133,7 +142,9 @@ export interface ConfirmationResult {
  */
 export class WorkingMemoryManager {
   private readonly storage: IGraphStorage;
-  private readonly config: Required<WorkingMemoryConfig>;
+  private readonly config: Required<Omit<WorkingMemoryConfig, 'entropyFilter'>> & {
+    entropyFilter?: EntropyFilterConfig;
+  };
 
   // Index: sessionId -> Set of entity names
   private sessionIndex: Map<string, Set<string>>;
@@ -146,6 +157,7 @@ export class WorkingMemoryManager {
       autoPromote: config.autoPromote ?? false,
       autoPromoteConfidenceThreshold: config.autoPromoteConfidenceThreshold ?? 0.8,
       autoPromoteConfirmationThreshold: config.autoPromoteConfirmationThreshold ?? 2,
+      entropyFilter: config.entropyFilter,
     };
     this.sessionIndex = new Map();
   }
@@ -217,10 +229,24 @@ export class WorkingMemoryManager {
     content: string,
     options?: WorkingMemoryOptions
   ): Promise<AgentEntity> {
+<<<<<<< HEAD
+    // Entropy gate (optional) — reject low-information content early
+    if (this.config.entropyFilter) {
+      const { minEntropy = 1.5, minLength = 10 } = this.config.entropyFilter;
+      if (!passesEntropyFilter(content, minEntropy, minLength)) {
+        throw new LowEntropyContentError(
+          `Content rejected: entropy below threshold ${minEntropy}`
+        );
+      }
+    }
+
+    // Check session limit
+=======
     // Ensure session index is populated before checking limit
     if (!this.sessionIndex.has(sessionId)) {
       await this.rebuildSessionIndex(sessionId);
     }
+>>>>>>> origin/master
     const sessionMemories = this.sessionIndex.get(sessionId);
     if (sessionMemories && sessionMemories.size >= this.config.maxPerSession) {
       throw new Error(
@@ -792,7 +818,7 @@ export class WorkingMemoryManager {
   /**
    * Get current configuration.
    */
-  getConfig(): Readonly<Required<WorkingMemoryConfig>> {
+  getConfig(): Readonly<WorkingMemoryConfig> {
     return { ...this.config };
   }
 

@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+<<<<<<< HEAD
+## [1.8.0] - 2026-04-09
+
+### Added — Supermemory Gap-Closing (Sprint 1)
+
+**Feature 1: Project Scoping**
+- New `projectId?: string` field on Entity enables multi-tenant/project isolation.
+- `SearchFilterChain` propagates `projectId` filter to all search methods.
+- `ManagerContext` accepts `defaultProjectId` option for auto-stamping new entities.
+- New `EntityManager.listProjects()` method returns distinct project IDs.
+- New `EntityManagerOptions` interface exported from `src/core`.
+
+**Feature 2: Memory Versioning / Contradiction Resolution**
+- New Entity fields: `version`, `parentEntityName`, `rootEntityName`, `isLatest`, `supersededBy`.
+- New `ContradictionDetector` class uses semantic similarity (default threshold 0.85) to detect contradicting observations.
+- On contradiction, `addObservations()` creates a new entity version (`alice-v2`, `alice-v3`, ...) via `supersede()` instead of mutating.
+- New `EntityManager.getVersionChain()` and `getLatestVersion()` methods navigate version chains.
+- `CompressionManager.findDuplicates` excludes superseded entities; `mergeEntities` throws on superseded entities.
+- `SearchFilterChain` excludes entities with `isLatest=false` by default; use `includeSuperseded: true` to see history.
+- Opt-in via `enableContradictionDetection` and `contradictionThreshold` options on `ManagerContext`.
+- New `SemanticSearch.calculateSimilarity(a, b)` helper method.
+
+**Feature 3: Semantic Forget**
+- New `SemanticForget` class with `forgetByContent(content, options)` method.
+- Two-tier deletion: exact match first, then semantic search fallback at configurable threshold (default 0.85).
+- Supports `dryRun`, `projectId` scoping, and optional audit logging.
+- Auto-deletes entities with zero remaining observations.
+- New `SemanticForgetResult` and `SemanticForgetOptions` exported types.
+- Exposed via `ManagerContext.semanticForget` lazy getter.
+
+**Feature 4: User Profile (Entity-backed)**
+- New `ProfileManager` class exposed via `AgentMemoryManager.profileManager`.
+- Profiles stored as Entity instances with `entityType='profile'`; observations tagged `[static]` / `[dynamic]`.
+- Methods: `getProfile`, `addFact`, `promoteFact`, `extractFromSession`, `getProfileEntityName`.
+- Auto-extraction from session observations classified via `SalienceEngine` (static vs dynamic based on baseImportance + recencyBoost).
+- Project-scoped profiles via sanitized entity names (`profile-{projectId}` or `profile-global`).
+- Session:ended event hook auto-extracts profile facts when `config.profile.autoExtract !== false`.
+- New `ProfileEntity` type and `isProfileEntity()` guard.
+- `EntityManager.createEntities` reserves the `profile-*` namespace and throws `ValidationError` for non-profile entities using it.
+
+### Changed
+- `Entity` interface gains 6 optional fields (`projectId`, `version`, `parentEntityName`, `rootEntityName`, `isLatest`, `supersededBy`). All backwards-compatible.
+- `ManagerContext` constructor now accepts either a string path (legacy) or a `ManagerContextOptions` object with `defaultProjectId`, `enableContradictionDetection`, `contradictionThreshold`.
+- `SearchFilterChain` early-return optimization removed (always runs filter loop to ensure versioning filter applies).
+- `CreateEntitySchema` and `UpdateEntitySchema` extended to allow new Entity fields.
+
+### Storage
+- SQLite: 6 new columns added to entities table with indexes on `projectId` and `isLatest`. Existing databases are migrated additively via `ALTER TABLE ADD COLUMN` in `migrateEntitiesTable()`.
+- JSONL: New fields serialized alongside existing optional fields in all three serialization paths.
+
+### Related
+- Design spec: `docs/superpowers/specs/2026-04-09-supermemory-gap-closing-design.md`
+- Gap analysis: `docs/roadmap/GAP_ANALYSIS_VS_SUPERMEMORY.md`
+- Implementation plan: `docs/superpowers/plans/2026-04-09-supermemory-gap-closing.md`
+
+## [1.7.0] - 2026-03-24
+
+### Added
+
+- **Role-Aware Memory Customization** (`src/agent/RoleProfiles.ts`): Five built-in role profiles (`researcher`, `planner`, `executor`, `reviewer`, `coordinator`) each with distinct salience weight configurations and token budget splits. `RoleProfileManager` selects and applies profiles to `SalienceEngine` and `ContextWindowManager` at agent instantiation.
+- **Entropy-Aware Filtering** (`src/agent/EntropyFilter.ts`): Shannon entropy gate that drops low-information memories before distillation. `EntropyFilter` computes per-entity entropy scores from observation diversity and rejects entries below a configurable threshold. Integrated as an early stage in `ConsolidationPipeline`.
+- **Recursive Memory Consolidation** (`src/agent/ConsolidationScheduler.ts`): Background scheduler that runs deduplication and merge passes on long-term memory at configurable intervals. `ConsolidationScheduler` invokes `ConsolidationPipeline.runAutoConsolidation()` recursively, merging near-duplicate entities until a fixed point is reached.
+- **Visual Salience Budget Allocation** (`src/agent/MemoryFormatter.ts`): `formatWithSalienceBudget()` method on `MemoryFormatter` that proportionally allocates token budget across memory types (working / episodic / semantic) based on their aggregate salience scores, producing balanced prompt sections.
+- **Collaborative Memory Synthesis** (`src/agent/CollaborativeSynthesis.ts`): Graph-neighbourhood synthesis that merges observations from all agents within N hops of a target entity. `CollaborativeSynthesis.synthesize()` walks the relation graph, collects agent-contributed observations, and returns a unified view with provenance metadata.
+- **Failure-Driven Memory Distillation** (`src/agent/FailureDistillation.ts`): Causal chain analysis that extracts lessons from failed episodes. `FailureDistillation.distill()` reconstructs the event sequence leading to a failure entity, scores each step by causal contribution, and promotes high-scoring observations to semantic memory as reusable lessons.
+- **Cognitive Load Metrics** (`src/agent/CognitiveLoadAnalyzer.ts`): Token density, redundancy ratio, and observation diversity scoring for a memory set. `CognitiveLoadAnalyzer.analyze()` returns a `CognitiveLoadReport` with per-dimension scores and an overall load index, used by `ContextWindowManager` to prune high-load sections before prompting.
+- **Shared Memory Visibility Hierarchies** (`src/agent/VisibilityResolver.ts`): Five-level visibility model (`private` | `team` | `org` | `shared` | `public`) with `GroupMembership` registry. `VisibilityResolver.resolve()` filters memory sets for a requesting agent based on its group memberships and the target entity's visibility level.
+
+## [1.6.0] - 2026-03-24
+
+### Added
+
+- **Stable Index Dereferencing** (`src/core/RefIndex.ts`): Named reference system for O(1) entity lookup. `RefIndex` class with JSONL sidecar persistence, `register`/`resolve`/`deregister` operations. Integrated into `EntityManager` and `ManagerContext`.
+- **Artifact-Level Granularity** (`src/agent/ArtifactManager.ts`): `createArtifact()` generates stable human-readable names (`toolName-date-shortId`) and auto-registers refs. Introduces `ArtifactEntity` type and `ArtifactType` union.
+- **Temporal Range Queries** (`src/search/TemporalQueryParser.ts`, `src/search/TemporalSearch.ts`): Natural language time expression parsing via `chrono-node` ("10 minutes ago", "last hour", "yesterday"). `SearchManager.searchByTime()` and `ManagerContext.temporalSearch` accessor.
+- **Memory Distillation Policy** (`src/agent/DistillationPolicy.ts`, `src/agent/DistillationPipeline.ts`): Post-retrieval filter with `IDistillationPolicy` interface. Ships with `DefaultDistillationPolicy` (relevance + freshness + dedup), `CompositeDistillationPolicy`, and `NoOpDistillationPolicy`. Wired into `ContextWindowManager`.
+- **Temporal Governance & Freshness** (`src/features/FreshnessManager.ts`): `Entity.ttl` and `Entity.confidence` fields. `FreshnessManager` with `calculateFreshness`, `getStaleEntities`, `getExpiredEntities`, and `generateReport`. `DecayEngine` enhanced with TTL-aware decay. `SalienceEngine` adds `freshnessWeight` scoring component.
+- **N-gram Hashing** (`src/search/NGramIndex.ts`): Trigram index with Jaccard similarity for `FuzzySearch` pre-filtering. Reduces Levenshtein candidate set before worker dispatch.
+- **LLM Query Planner** (`src/search/LLMQueryPlanner.ts`, `src/search/LLMSearchExecutor.ts`): Optional module that decomposes natural language queries into a `StructuredQuery`. `LLMProvider` interface, keyword fallback when no provider configured, JSON validation with recovery. `ManagerContext.queryNaturalLanguage()` entry point.
+- **Dynamic Memory Governance** (`src/features/AuditLog.ts`, `src/features/GovernanceManager.ts`): `AuditLog` with JSONL persistence for immutable operation history. `GovernanceManager` with `withTransaction`/`rollback` semantics. `GovernancePolicy` interface (`canCreate`/`canUpdate`/`canDelete`).
+=======
 ## [Unreleased]
 
 ### Added
@@ -42,6 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CLI: Interactive export format validation**: Export format validated against allowlist before use
 - **Benchmark flakiness**: Increased task-scheduler overhead threshold from 100% to 150% to account for Windows/Dropbox timing variance
 - **SearchCache TTL=0 race condition**: Fixed TTL expiration check using `>=` instead of `>`, so entries with TTL=0 expire immediately on the next `get()` call rather than persisting when accessed within the same millisecond.
+>>>>>>> origin/master
 
 ## [1.5.0] - 2026-02-06
 

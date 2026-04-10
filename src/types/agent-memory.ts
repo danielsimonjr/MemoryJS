@@ -31,10 +31,12 @@ export type AccessPattern = 'frequent' | 'occasional' | 'rare';
 /**
  * Memory visibility for multi-agent scenarios.
  * - private: Only owning agent can access
- * - shared: Specified agents can access
+ * - team: Agents in the same team can access
+ * - org: Agents in the same organisation can access
+ * - shared: Any registered agent can access
  * - public: All agents can access
  */
-export type MemoryVisibility = 'private' | 'shared' | 'public';
+export type MemoryVisibility = 'private' | 'team' | 'org' | 'shared' | 'public';
 
 /**
  * How a memory was acquired.
@@ -52,6 +54,15 @@ export type MemoryAcquisitionMethod = 'observed' | 'inferred' | 'told' | 'consol
  * - abandoned: Session ended without proper closure
  */
 export type SessionStatus = 'active' | 'completed' | 'abandoned' | 'suspended';
+
+/**
+ * Outcome of a completed session.
+ * - success: Session achieved its goal
+ * - failure: Session failed to achieve its goal
+ * - partial: Session partially achieved its goal
+ * - unknown: Session outcome could not be determined
+ */
+export type SessionOutcome = 'success' | 'failure' | 'partial' | 'unknown';
 
 /**
  * Temporal focus for salience calculation.
@@ -345,6 +356,62 @@ export interface SessionEntity extends AgentEntity {
   previousSessionId?: string;
   /** IDs of related sessions */
   relatedSessionIds?: string[];
+
+  // === Outcome ===
+  /** Outcome of the session (set when session ends) */
+  outcome?: SessionOutcome;
+  /** Reasons for failure if outcome is 'failure' */
+  failureCauses?: string[];
+}
+
+// ==================== Profile Entity Types ====================
+
+/**
+ * Entity representing an agent's profile with static and dynamic facts.
+ *
+ * Profile entities store persistent information about agents, users, or systems.
+ * Observations are prefixed [static] for immutable facts or [dynamic] for
+ * mutable facts that can change over time.
+ *
+ * @example
+ * ```typescript
+ * const profile: ProfileEntity = {
+ *   name: 'profile-alice',
+ *   entityType: 'profile',
+ *   observations: [
+ *     '[static] Name is Alice',
+ *     '[dynamic] Current timezone is EST',
+ *     '[dynamic] Prefers TypeScript'
+ *   ],
+ *   accessCount: 42,
+ *   confidence: 0.95,
+ *   confirmationCount: 5,
+ *   visibility: 'private'
+ * };
+ * ```
+ */
+export interface ProfileEntity extends Entity {
+  /** Fixed entity type for profiles */
+  entityType: 'profile';
+}
+
+/**
+ * Type guard to check if an entity is a ProfileEntity.
+ *
+ * @param entity - Entity to check
+ * @returns True if entity has entityType='profile'
+ *
+ * @example
+ * ```typescript
+ * if (isProfileEntity(entity)) {
+ *   console.log(entity.observations); // TypeScript knows this is ProfileEntity
+ * }
+ * ```
+ */
+export function isProfileEntity(entity: unknown): entity is ProfileEntity {
+  if (!entity || typeof entity !== 'object') return false;
+  const e = entity as Record<string, unknown>;
+  return e.entityType === 'profile';
 }
 
 // ==================== Context Types ====================
@@ -623,7 +690,7 @@ export function isAgentEntity(entity: unknown): entity is AgentEntity {
     typeof e.confidence === 'number' &&
     typeof e.confirmationCount === 'number' &&
     typeof e.visibility === 'string' &&
-    ['private', 'shared', 'public'].includes(e.visibility as string)
+    ['private', 'team', 'org', 'shared', 'public'].includes(e.visibility as string)
   );
 }
 
@@ -862,6 +929,62 @@ export interface DuplicatePair {
   similarity: number;
 }
 
+// ==================== Failure Distillation Types ====================
+
+/**
+ * A lesson distilled from a failure session's causal chain.
+ */
+export interface DistilledLesson {
+  /** Human-readable description of the failure */
+  failureDescription: string;
+  /** Ordered list of entity names forming the causal chain */
+  causeChain: string[];
+  /** Actionable lesson derived from the failure */
+  lesson: string;
+  /** Confidence score for this lesson (0-1) */
+  confidence: number;
+  /** ID of the source session */
+  sourceSessionId: string;
+  /** Names of episode entities used to derive this lesson */
+  sourceEpisodes: string[];
+}
+
+// ==================== Cognitive Load Types ====================
+
+/**
+ * Metrics measuring cognitive load of a set of agent memories.
+ */
+export interface CognitiveLoadMetrics {
+  /** Total estimated token count across all memories */
+  tokenCount: number;
+  /** Average tokens per memory */
+  tokenDensity: number;
+  /** Ratio of redundant observations (0-1, lower is better) */
+  redundancyRatio: number;
+  /** Diversity score across observations (0-1, higher is better) */
+  diversityScore: number;
+  /** Composite load score (0-1, higher = more overloaded) */
+  loadScore: number;
+  /** Whether the load score exceeds the configured threshold */
+  exceedsThreshold: boolean;
+}
+
+/**
+ * Result of an adaptive reduction operation that removes high-load memories.
+ */
+export interface AdaptiveReductionResult {
+  /** Memories retained after reduction */
+  retained: AgentEntity[];
+  /** Memories removed during reduction */
+  removed: AgentEntity[];
+  /** Cognitive load metrics before reduction */
+  beforeMetrics: CognitiveLoadMetrics;
+  /** Cognitive load metrics after reduction */
+  afterMetrics: CognitiveLoadMetrics;
+  /** Number of redundant entity pairs detected */
+  redundantPairsFound: number;
+}
+
 // ==================== Auto-Consolidation Rule Types ====================
 
 /**
@@ -1057,6 +1180,16 @@ export interface ExcludedEntity {
 export type AgentType = 'llm' | 'tool' | 'human' | 'system' | 'default';
 
 /**
+ * Group membership for an agent, used by VisibilityResolver for org/team access control.
+ */
+export interface GroupMembership {
+  /** Organisation the agent belongs to */
+  org?: string;
+  /** Teams the agent is a member of */
+  teams?: string[];
+}
+
+/**
  * Metadata for registered agents.
  *
  * @example
@@ -1086,4 +1219,12 @@ export interface AgentMetadata {
   lastActiveAt: string;
   /** Optional custom metadata */
   metadata?: Record<string, unknown>;
+  /** Group membership for org/team-level visibility resolution */
+  groupMembership?: GroupMembership;
+  /**
+   * Role profile attached at registration time.
+   * Provides salience weight overrides and context window budget
+   * percentages tuned for the agent's functional role.
+   */
+  roleProfile?: import('../agent/RoleProfiles.js').RoleProfile;
 }

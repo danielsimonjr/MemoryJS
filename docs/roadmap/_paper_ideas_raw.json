@@ -1,0 +1,1281 @@
+[
+  {
+    "paper": "A-MEM — Agentic Memory for LLM Agents",
+    "innovation": "A-MEM enables dynamic, autonomous memory organization through automatic link generation and memory evolution mechanisms inspired by Zettelkasten, allowing the memory system itself to discover new connections and update existing memory representations as new experiences are integrated—eliminating the need for predefined memory schemas.",
+    "ideas": [
+      {
+        "idea": "Automatic Contextual Description Generation",
+        "what_it_adds": "When a new memory/observation is added, automatically generate comprehensive contextual descriptions (beyond just raw text) that capture semantic meaning, relevance, and implicit relationships. This goes beyond current CRUD operations to create rich, multi-faceted memory representations.",
+        "priority": "high"
+      },
+      {
+        "idea": "Memory Evolution Engine",
+        "what_it_adds": "Implement a mechanism where adding new memories triggers retroactive updates to existing memory representations. When a new observation arrives, scan historical memories and update their contextual descriptions, tags, and attributes if the new information provides additional context or reveals new patterns. MemoryJS currently has decay/salience but not this bidirectional evolution.",
+        "priority": "high"
+      },
+      {
+        "idea": "Automatic Attribute & Tag Inference",
+        "what_it_adds": "Beyond manual tag management, automatically extract and infer structured attributes (keywords, categories, contextual metadata) from memory content using LLM analysis. These inferred attributes become part of the memory record and drive link generation without requiring predefined schemas.",
+        "priority": "high"
+      },
+      {
+        "idea": "Semantic Similarity-Based Auto-Linking",
+        "what_it_adds": "Implement automatic link generation between memories based on semantic similarity thresholds and shared attributes. When a new memory is added, query the graph for semantically similar memories and automatically establish bidirectional relationships. This is more sophisticated than current search—it's proactive relationship discovery.",
+        "priority": "high"
+      },
+      {
+        "idea": "Dynamic Schema Evolution",
+        "what_it_adds": "Allow the memory graph schema itself to evolve. As new memory types and relationships emerge, the system can dynamically create new relation types and entity categories rather than requiring predefined schemas. This enables the system to adapt to novel task domains without reconfiguration.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Emergent Pattern Detection with Attribute Synthesis",
+        "what_it_adds": "Extend the current pattern detector to not just identify patterns but synthesize new higher-order attributes/tags that represent discovered patterns. For example, if multiple memories share a pattern, create a new synthetic attribute that groups them, making future retrieval more efficient.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Agentic Memory Operation Delegation",
+        "what_it_adds": "Allow the agent itself to decide when and how to write/read/update memories rather than following a fixed workflow. Implement hooks where the agent can request custom memory operations (e.g., 'consolidate all memories about topic X', 'find memories that contradict this new observation'). This requires a memory API that accepts agent-driven queries.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Contextual Representation Versioning",
+        "what_it_adds": "Track how a memory's contextual description and attributes evolve over time as new memories are added. Maintain a version history of how the system's understanding of a memory has changed, enabling agents to understand how their knowledge has been refined.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "AI Agents Need Memory Control Over More Context",
+    "innovation": "Agent Cognitive Compressor (ACC) replaces unbounded transcript replay with a bounded, online-updated internal state (Compressed Cognitive State) that separates artifact recall from state commitment, preventing memory poisoning while maintaining constraint focus across extended multi-turn interactions.",
+    "ideas": [
+      {
+        "idea": "Compressed Cognitive State (CCS) Layer - Implement a dedicated compression engine that maintains a bounded, structured internal state separate from raw observations. CCS should track: active constraints, confirmed decisions, entity identifiers, policy rules, and goals with explicit versioning and commitment timestamps.",
+        "what_it_adds": "MemoryJS currently stores observations as-is; it lacks a formal 'committed state' abstraction that distinguishes between tentative artifacts (retrievable but unverified) and verified persistent facts. This prevents memory poisoning and drift.",
+        "priority": "high"
+      },
+      {
+        "idea": "Constraint Preservation Engine - Add a constraint tracking subsystem that monitors adherence to active rules/policies across turns. Track constraint violations, measure 'constraint retention rate' per turn, and flag when new observations conflict with committed constraints.",
+        "what_it_adds": "MemoryJS has no explicit constraint model or drift detection. This adds measurable constraint fidelity metrics and proactive conflict detection.",
+        "priority": "high"
+      },
+      {
+        "idea": "Online State Compression Pipeline - Implement turn-by-turn compression that: (1) ingests new observations, (2) validates against committed state, (3) updates CCS with only verified facts, (4) archives unverified artifacts separately. Compress using salience + constraint alignment, not just recency/frequency.",
+        "what_it_adds": "MemoryJS has a decay engine and salience engine but no online compression loop that explicitly separates verification from persistence. This adds the control mechanism ACC describes.",
+        "priority": "high"
+      },
+      {
+        "idea": "Hallucination Audit Trail - Track claim provenance: for each fact in CCS, store the turn it was committed, the evidence that justified it, and any subsequent contradictions. Expose a 'claim audit' API that returns confidence scores and contradiction history.",
+        "what_it_adds": "MemoryJS has no claim-level provenance or contradiction tracking. This enables the 'hallucination rate over turns' metric from the paper's evaluation.",
+        "priority": "high"
+      },
+      {
+        "idea": "Artifact vs. State Separation API - Expose two distinct retrieval modes: (1) `retrieve_committed_state()` - returns only CCS facts with high confidence, (2) `retrieve_artifacts()` - returns all observations including unverified ones, with confidence metadata. Agents can choose which to use per query.",
+        "what_it_adds": "MemoryJS treats all stored data equivalently. This adds explicit control over what gets used for conditioning vs. what's available for exploration.",
+        "priority": "high"
+      },
+      {
+        "idea": "Multi-Turn Drift Detector - Measure 'drift rate' by comparing agent behavior consistency against committed constraints across turns. Track: format adherence, goal alignment, entity reference consistency. Flag turns where drift exceeds threshold.",
+        "what_it_adds": "MemoryJS has no drift measurement. This adds the 'drift rate and constraint retention' metric from the paper's evaluation framework.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Bounded Memory Budget Enforcer - Add hard limits on CCS size (e.g., max 50 facts, max 10 active constraints). When budget exceeded, trigger compression: merge similar facts, archive low-salience constraints, summarize entity histories. Expose budget utilization metrics.",
+        "what_it_adds": "MemoryJS has TTL and decay but no hard budget enforcement. This ensures the 'bounded memory' property ACC guarantees.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Constraint Conflict Resolution Rules - Allow agents to define conflict resolution policies (e.g., 'newer evidence overrides older', 'policy constraints override observations', 'confirmed decisions are immutable'). Apply these rules during state updates to prevent contradictory commits.",
+        "what_it_adds": "MemoryJS has no conflict resolution model. This adds explicit control over how contradictions are handled during compression.",
+        "priority": "medium"
+      },
+      {
+        "idea": "CCS Export/Visualization for Debugging - Add export format for Compressed Cognitive State (JSON schema with commitment metadata, constraint graph, decision timeline). Generate Mermaid diagrams showing constraint dependencies and state evolution across turns.",
+        "what_it_adds": "MemoryJS can export observations but not the compressed state abstraction. This aids debugging of multi-turn agent behavior.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "Agentic Learner with Grow-and-Refine Multimodal Semantic Memory (ViLoMem)",
+    "innovation": "A dual-stream semantic memory framework that explicitly separates visual perception errors from logical reasoning errors, enabling agents to learn from multimodal failures through coordinated but distinct representational streams rather than treating all errors uniformly.",
+    "ideas": [
+      {
+        "idea": "Dual-stream error classification and storage",
+        "what_it_adds": "Currently MemoryJS stores observations generically. Add ability to classify and separately index errors by type (visual/perceptual vs. logical/reasoning), enabling targeted error pattern detection and retrieval. Store error schemas with root-cause categorization.",
+        "priority": "high"
+      },
+      {
+        "idea": "Multimodal observation encoding with modality-specific attention masks",
+        "what_it_adds": "Extend observation storage to preserve visual grounding alongside logical traces. Add question-aware attention masks that highlight task-relevant visual regions and suppress distraction patterns, enabling retrieval that respects modality-specific relevance.",
+        "priority": "high"
+      },
+      {
+        "idea": "Cascading failure pattern detection across modalities",
+        "what_it_adds": "Beyond current pattern detector, add ability to trace how visual perception errors propagate into downstream logical hallucinations. Create dependency graphs showing visual→logical error chains to identify root causes rather than treating symptoms.",
+        "priority": "high"
+      },
+      {
+        "idea": "Grow-and-refine consolidation with detail-erosion prevention",
+        "what_it_adds": "Current consolidation pipeline may lose granular details. Add filtering-based update strategies that preserve stable, generalizable patterns while avoiding catastrophic forgetting. Implement add/skip decision logic for similar error patterns to prevent detail erosion during iterative refinement.",
+        "priority": "high"
+      },
+      {
+        "idea": "Modality-specific retrieval strategies with filtering",
+        "what_it_adds": "Current hybrid search treats all modalities equally. Add custom retrieval logic: visual stream uses question-aware attention filtering; logical stream uses precise-positioning constraints. Enable coordinated cross-stream retrieval that respects modality-specific constraints.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Domain-alignment detection for memory interference management",
+        "what_it_adds": "Add capability to detect when retrieved memories are from mismatched domains and flag potential negative transfer. Track domain metadata on observations and implement interference detection to warn when cross-domain memory may cause hallucinations.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Visual distraction pattern library with suppression rules",
+        "what_it_adds": "Create specialized schema for storing recurring visual distraction patterns (e.g., 'triangle orientation confusion') with associated suppression rules. Enable agents to proactively avoid known perceptual traps rather than reactively correcting them.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Multimodal semantic schema representation",
+        "what_it_adds": "Current graph stores entities/relations generically. Add structured schema format for multimodal semantic knowledge that explicitly links visual configurations to logical rules (e.g., 'right triangle shape ↔ leg-as-height formula'). Enable schema-based memory compression.",
+        "priority": "medium"
+      }
+    ]
+  },
+  {
+    "paper": "Beyond RAG for Agent Memory — Retrieval by Decoupling and Aggregation",
+    "innovation": "Replace similarity-based top-k retrieval with hierarchical memory decomposition that organizes memories into semantic components and themes, then performs top-down structure-aware retrieval to avoid redundancy while preserving temporal dependencies.",
+    "ideas": [
+      {
+        "idea": "Implement semantic component extraction layer that disentangles highly correlated memory spans into distinct semantic units before hierarchical organization",
+        "what_it_adds": "Currently MemoryJS stores observations as atomic units. This adds automatic decomposition of raw dialogue/events into reusable semantic facts that can be independently retrieved, reducing redundancy at the source rather than post-retrieval.",
+        "priority": "high"
+      },
+      {
+        "idea": "Add sparsity-semantics objective function to guide memory split/merge operations during consolidation, balancing node density against semantic coherence",
+        "what_it_adds": "MemoryJS has a consolidation pipeline and pattern detector, but no principled objective function that jointly optimizes for both structural efficiency and semantic integrity. This prevents over-fragmentation or over-aggregation.",
+        "priority": "high"
+      },
+      {
+        "idea": "Implement uncertainty-aware expansion in retrieval: only expand from themes→semantics→episodes→messages when added detail reduces reader uncertainty (measurable via LLM confidence or entropy)",
+        "what_it_adds": "Current hybrid search returns fixed result sets. This adds adaptive depth-based retrieval that stops expanding when marginal information gain drops below threshold, reducing token waste.",
+        "priority": "high"
+      },
+      {
+        "idea": "Build four-level hierarchy explicitly: raw messages → episodes (contiguous blocks) → semantics (distilled facts) → themes (grouped semantics), with top-down traversal as primary retrieval path",
+        "what_it_adds": "MemoryJS has episodic memory and working memory but no explicit semantic distillation layer between raw messages and high-level organization. This adds the critical middle abstraction.",
+        "priority": "high"
+      },
+      {
+        "idea": "Add temporal entanglement detection to prevent pruning of co-referenced, elliptical, or timeline-dependent evidence chains during context compression",
+        "what_it_adds": "MemoryJS has decay and salience engines but no explicit temporal dependency graph. This prevents the brittleness of naive pruning that deletes prerequisites in evidence chains.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Implement set-based retrieval at theme/semantic levels for multi-fact queries, selecting compact diverse sets rather than ranked lists",
+        "what_it_adds": "Current search returns ranked lists. This adds set-selection logic that treats theme/semantic retrieval as a coverage problem (which facts needed?) rather than ranking problem (which is most similar?).",
+        "priority": "medium"
+      },
+      {
+        "idea": "Add evidence-density and coverage metrics to search results, showing redundancy concentration and fact coverage across retrieved context",
+        "what_it_adds": "MemoryJS has no built-in metrics for diagnosing retrieval quality beyond relevance. This adds observability into whether retrieved context is redundant or incomplete.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Create semantic unit deduplication during consolidation that merges near-duplicate facts across episodes into single canonical semantics with provenance tracking",
+        "what_it_adds": "MemoryJS consolidation detects patterns but doesn't explicitly deduplicate semantic content. This prevents the 'collapsed similarity region' problem by merging duplicates before retrieval.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "Beyond Words — A Latent Memory Approach to Internal Reasoning in LLMs",
+    "innovation": "An Implicit Memory Module (IMM) that stores and retrieves compressed latent representations during reasoning, reducing computational overhead by 35-57% compared to explicit chain-of-thought approaches while maintaining optional interpretability.",
+    "ideas": [
+      {
+        "idea": "Latent Representation Compression Layer",
+        "what_it_adds": "A learned projection function (f_write) that compresses hidden states into memory slots before storage. MemoryJS currently stores raw observations/entities but lacks automatic dimensionality reduction and learned compression of dense vector representations during write operations.",
+        "priority": "high"
+      },
+      {
+        "idea": "Attention-Based Memory Retrieval with Softmax Ranking",
+        "what_it_adds": "Query-key attention mechanism (softmax(M^T * q_t)) for memory retrieval instead of BM25/semantic similarity alone. This provides learned, context-aware ranking of memory slots weighted by relevance scores, enabling soft retrieval of multiple memory items simultaneously.",
+        "priority": "high"
+      },
+      {
+        "idea": "Implicit vs Explicit Reasoning Dual-Path Architecture",
+        "what_it_adds": "A switchable dual-process system where reasoning can operate on latent memory representations (implicit path) with optional lightweight decoder for generating interpretable explanations (explicit path). MemoryJS lacks this architectural separation and decoder mechanism for converting latent states to natural language.",
+        "priority": "high"
+      },
+      {
+        "idea": "Learnable Memory Write/Query Projection Functions",
+        "what_it_adds": "Trainable f_write and f_query transformations that are jointly optimized with the reasoning process. MemoryJS uses fixed embedding models but doesn't include learnable projections that adapt memory encoding/decoding to task-specific requirements.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Selective Memory Write Gating",
+        "what_it_adds": "Mechanism to write summaries only at 'selected time steps' rather than every step, reducing memory bloat. MemoryJS stores all observations but lacks learned gating to determine which states merit persistent storage.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Memory Slot Allocation Strategy",
+        "what_it_adds": "Fixed N memory slots with index selection (M[i]) creates bounded memory with explicit capacity constraints. MemoryJS has unbounded storage; this adds configurable memory budgets with slot reuse/eviction policies.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Soft Retrieval Weighting (α_i scores)",
+        "what_it_adds": "Normalized attention weights (α_i) that blend multiple memory slots proportionally rather than hard retrieval. MemoryJS returns discrete search results; this enables continuous blending of multiple memory items based on relevance scores.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "From Storage to Experience — A Survey on the Evolution of LLM Agent Memory Mechanisms",
+    "innovation": "Proposes a three-stage evolutionary framework for LLM agent memory: Storage (trajectory preservation) → Reflection (trajectory refinement) → Experience (trajectory abstraction), driven by long-range consistency, dynamic environment adaptation, and continual learning requirements.",
+    "ideas": [
+      {
+        "idea": "Implement dynamic trigger modes based on task types for memory operations",
+        "what_it_adds": "Currently MemoryJS uses fixed TTL and promotion rules. Add task-aware triggers that determine when to consolidate, decay, or promote memories based on task classification (e.g., planning tasks trigger different consolidation than exploration tasks).",
+        "priority": "high"
+      },
+      {
+        "idea": "Add cross-trajectory abstraction engine to extract patterns across multiple interaction sequences",
+        "what_it_adds": "MemoryJS has pattern detection within single sessions. Add capability to identify recurring behavioral patterns, strategies, and decision rules across different episodes/trajectories to build generalizable experience abstractions.",
+        "priority": "high"
+      },
+      {
+        "idea": "Implement proactive exploration tracking and strategy learning",
+        "what_it_adds": "MemoryJS tracks observations passively. Add explicit logging of exploration decisions, their outcomes, and learned heuristics. Build a 'strategy graph' that captures which exploration approaches succeeded in which contexts.",
+        "priority": "high"
+      },
+      {
+        "idea": "Create a Reflection stage with active trajectory refinement loop",
+        "what_it_adds": "MemoryJS has decay/salience but no explicit reflection mechanism. Add periodic reflection queries that evaluate trajectory quality, identify reasoning errors, and flag inconsistencies for correction before consolidation to experience.",
+        "priority": "high"
+      },
+      {
+        "idea": "Build multimodal memory fusion layer for non-text observations",
+        "what_it_adds": "Current system is text-centric (JSONL/embeddings). Add structured support for fusing visual, temporal, and sensory observations alongside semantic embeddings for richer experience abstraction.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Implement distributed shared memory coordination protocol for multi-agent scenarios",
+        "what_it_adds": "MemoryJS has visibility levels (private/shared/public) but no coordination mechanism. Add consensus-building for shared memory updates, conflict resolution, and synchronized consolidation across agent boundaries.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Add long-range consistency validator that checks logical coherence across time windows",
+        "what_it_adds": "MemoryJS has decay engines but no explicit consistency checking. Add a module that detects contradictions between old and new observations, flags them for reflection, and maintains a 'consistency graph' of resolved conflicts.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Create experience abstraction index with hierarchical behavior patterns",
+        "what_it_adds": "MemoryJS has hierarchy in graph structure but not for behavioral abstractions. Build a multi-level index of learned strategies (low-level tactics → mid-level procedures → high-level policies) queryable by context.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Implement dynamic environment adaptation detector",
+        "what_it_adds": "MemoryJS tracks observations but doesn't explicitly detect environment shifts. Add change-point detection that identifies when environment dynamics have shifted and triggers re-evaluation of stored strategies.",
+        "priority": "low"
+      },
+      {
+        "idea": "Add continual learning evaluation metrics and curriculum generation",
+        "what_it_adds": "MemoryJS has consolidation but no learning progress tracking. Add metrics for measuring knowledge retention, forward/backward transfer, and automatic curriculum generation based on memory gaps.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "Hindsight is 20/20 — Building Agent Memory that Retains, Recalls, and Reflects",
+    "innovation": "A unified memory architecture organizing information into four distinct logical networks (world, experience, opinion, observation) with three core operations (retain, recall, reflect) that explicitly separates evidence from inference and maintains evolving beliefs with confidence scores.",
+    "ideas": [
+      {
+        "idea": "Four-Network Memory Separation Layer",
+        "what_it_adds": "Explicit partitioning of memory into world facts, agent experiences, synthesized entity summaries (observations), and subjective beliefs (opinions). MemoryJS currently treats all entities/relations uniformly without distinguishing objective vs. subjective or evidence vs. inference.",
+        "priority": "high"
+      },
+      {
+        "idea": "Confidence-Scored Opinion Network with Belief Evolution",
+        "what_it_adds": "A dedicated belief/opinion graph where each belief node carries a confidence score that updates as new evidence arrives, with explicit traceability of how beliefs changed. MemoryJS has decay/salience but not structured belief tracking with confidence metrics.",
+        "priority": "high"
+      },
+      {
+        "idea": "Temporal Range Extraction for Facts",
+        "what_it_adds": "Automatic extraction of narrative facts with temporal validity ranges (e.g., 'user worked at Company X from 2020-2023') rather than point-in-time observations. MemoryJS timestamps events but doesn't model temporal ranges of fact validity.",
+        "priority": "high"
+      },
+      {
+        "idea": "Entity Resolution & Coreference Linking",
+        "what_it_adds": "Automatic resolution of entity mentions across conversations (e.g., 'John' = 'John Smith' = 'my colleague') with graph link construction. MemoryJS has entity CRUD but no built-in coreference resolution or mention normalization.",
+        "priority": "high"
+      },
+      {
+        "idea": "Disposition-Based Behavioral Parameters",
+        "what_it_adds": "Agent profile system storing configurable behavioral dispositions (personality traits, reasoning style, preferences) that condition all reasoning and response generation. MemoryJS has multi-agent visibility but not behavioral parameter profiles that influence reasoning.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Multi-Strategy Retrieval with Agent Optimization",
+        "what_it_adds": "Retrieval interface specifically optimized for agent reasoning (not just search) that combines temporal, entity-aware, and salience-based strategies. MemoryJS has hybrid search but not agent-specific retrieval optimization.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Epistemically-Traceable Reasoning Layer",
+        "what_it_adds": "Explicit audit trail showing which memory nodes (facts vs. beliefs vs. observations) were used to generate each response, with confidence propagation. MemoryJS has no built-in reasoning traceability or confidence propagation mechanism.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Preference Consistency Validator",
+        "what_it_adds": "Mechanism to detect and flag globally inconsistent responses (same question answered differently across sessions) by checking against opinion network and behavioral parameters. MemoryJS has no consistency checking across multi-session responses.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Narrative Fact Extraction Pipeline",
+        "what_it_adds": "Specialized NLP pipeline to extract structured facts with temporal ranges and entity links from conversational text (not just raw storage). MemoryJS accepts observations but doesn't auto-extract narrative facts.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "LM2 — Large Memory Models",
+    "innovation": "A decoder-only Transformer with an auxiliary memory module that uses cross-attention and gating mechanisms (forget/input/output gates) to maintain a separate memory bank that complements standard attention, enabling superior long-context reasoning without degrading general task performance.",
+    "ideas": [
+      {
+        "idea": "Implement gating mechanisms (forget, input, output gates) for selective memory updates",
+        "what_it_adds": "Currently MemoryJS uses TTL+promotion for working memory decay, but lacks learnable gating that can selectively forget, input, or output specific memory slots based on context. This enables fine-grained control over what gets retained vs. discarded during consolidation.",
+        "priority": "high"
+      },
+      {
+        "idea": "Add cross-attention scoring between query context and memory bank for dynamic retrieval weighting",
+        "what_it_adds": "MemoryJS has semantic search via embeddings but lacks a cross-attention mechanism that dynamically weights memory relevance during retrieval. This would score how much each stored entity/relation should influence the current reasoning step.",
+        "priority": "high"
+      },
+      {
+        "idea": "Implement separate memory information flow pathway parallel to main reasoning flow",
+        "what_it_adds": "MemoryJS treats memory as a single unified graph. LM2's architecture suggests maintaining a complementary memory pathway that updates independently via gating, then merges back. This enables memory to evolve separately from immediate reasoning without contaminating the main inference path.",
+        "priority": "high"
+      },
+      {
+        "idea": "Add learnable output gate that regulates memory contribution to downstream processing",
+        "what_it_adds": "MemoryJS has no mechanism to dynamically control how much historical memory influences the next reasoning step. An output gate would learn when to amplify vs. suppress memory signals based on task context.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Implement multi-hop memory traversal with explicit path tracking and confidence scoring",
+        "what_it_adds": "While MemoryJS has Dijkstra shortest path, LM2's superior multi-hop inference suggests tracking intermediate reasoning steps with confidence scores at each hop. This would expose which memory paths are most reliable for complex reasoning chains.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Add memory interpretability layer that visualizes which entities/relations were accessed during reasoning",
+        "what_it_adds": "MemoryJS has import/export and graph visualization, but LM2 emphasizes memory interpretability. A feature showing which memory slots were gated open/closed and their cross-attention weights during inference would aid debugging and trust.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Implement context-aware memory consolidation that merges similar observations based on reasoning task",
+        "what_it_adds": "MemoryJS has a consolidation pipeline but it's generic. LM2's architecture suggests task-specific consolidation where memory compression varies based on the type of reasoning (numerical vs. relational vs. multi-hop), not just recency/salience.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "MEM1 — Learning to Synergize Memory and Reasoning for Efficient Long-Horizon Agents",
+    "innovation": "MEM1 trains LLM agents via RL to maintain a compact, constantly-updated internal state that consolidates memory and reasoning together, discarding irrelevant information after each turn to achieve O(1) memory usage across arbitrarily long horizons instead of O(N) context growth.",
+    "ideas": [
+      {
+        "idea": "Learned Memory Consolidation Policy via RL",
+        "what_it_adds": "MemoryJS currently uses rule-based decay/salience engines. MEM1 suggests training an RL policy that learns *what* to consolidate and *what* to discard based on task success. Implement a trainable consolidation module that optimizes memory updates end-to-end rather than using fixed heuristics.",
+        "priority": "high"
+      },
+      {
+        "idea": "Unified Reasoning-Memory Representation Space",
+        "what_it_adds": "MemoryJS separates reasoning (agent thoughts) from memory storage. MEM1 unifies these—the internal state IS both the reasoning artifact and the memory. Implement a single 'consolidated state' structure that agents update at each step, where reasoning outputs directly become the next memory state.",
+        "priority": "high"
+      },
+      {
+        "idea": "Constant-Memory Constraint Enforcement",
+        "what_it_adds": "MemoryJS has no hard constraint on memory size. Add a configurable max-size internal state with automatic pruning that learns to discard redundant/irrelevant observations. Track memory usage metrics (current size vs. max) and expose them to agents for optimization.",
+        "priority": "high"
+      },
+      {
+        "idea": "Multi-Turn Task Composition Engine",
+        "what_it_adds": "MemoryJS has no built-in task augmentation. Implement a dataset composition tool that chains single-objective tasks into multi-turn sequences (e.g., compose 3 QA questions into a dependent 3-turn task). This enables training agents on realistic long-horizon scenarios.",
+        "priority": "high"
+      },
+      {
+        "idea": "Verifiable Reward Signals for RL Training",
+        "what_it_adds": "MemoryJS is a library, not an RL trainer. Add optional RL training hooks that compute task-success rewards (e.g., answer correctness, goal completion) and expose them so external RL frameworks can optimize agent policies end-to-end.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Out-of-Distribution Generalization Metrics",
+        "what_it_adds": "MemoryJS has no evaluation framework for horizon generalization. Add metrics that measure agent performance on task sequences longer than training horizon (e.g., trained on 5-turn, test on 10-turn) to detect and quantify OOD degradation.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Inference-Time Reasoning as Working Memory",
+        "what_it_adds": "MemoryJS treats reasoning (agent thoughts) as separate from memory. Implement a mode where extended reasoning/chain-of-thought outputs are automatically mined for key facts, which then update the consolidated state—making reasoning a first-class memory consolidation mechanism.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Context Length Monitoring & Adaptive Consolidation",
+        "what_it_adds": "MemoryJS has TTL-based promotion but no adaptive consolidation trigger. Add real-time context length tracking that triggers aggressive consolidation when approaching a configurable threshold, with metrics on compression ratio and information loss.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "MIRIX — Multi-Agent Memory System for LLM-Based Agents",
+    "innovation": "MIRIX introduces a six-component hierarchical memory architecture (Core, Episodic, Semantic, Procedural, Resource, Knowledge Vault) with specialized Memory Managers and active retrieval mechanisms, enabling multimodal memory processing and 99.9% storage reduction compared to RAG baselines.",
+    "ideas": [
+      {
+        "idea": "Implement Procedural Memory component for storing step-by-step task instructions with execution tracking",
+        "what_it_adds": "MemoryJS lacks a dedicated procedural memory type. This would enable agents to learn and recall how to perform recurring tasks, with versioning and success/failure metrics tied to procedure executions.",
+        "priority": "high"
+      },
+      {
+        "idea": "Add Resource Memory component for managing documents, files, and media artifacts with metadata indexing",
+        "what_it_adds": "Current architecture treats all inputs uniformly. Resource Memory would provide specialized handling for non-text media (PDFs, images, videos) with extraction of key metadata and multimodal embeddings.",
+        "priority": "high"
+      },
+      {
+        "idea": "Create Knowledge Vault for verbatim-preservation facts (addresses, phone numbers, credentials) with immutable storage and access control",
+        "what_it_adds": "MemoryJS has no immutable fact storage. Knowledge Vault would prevent accidental modification of critical data and support fine-grained access policies (private/shared/public per fact).",
+        "priority": "high"
+      },
+      {
+        "idea": "Implement Active Retrieval mechanism where agents generate topic queries before answering, with retrieved context injected into system prompts",
+        "what_it_adds": "Current search is passive (query-driven). Active Retrieval would enable agents to autonomously determine what memories are relevant before responding, improving context relevance.",
+        "priority": "high"
+      },
+      {
+        "idea": "Build multi-agent Memory Manager architecture with specialized managers per memory type and a MetaMemoryManager for routing decisions",
+        "what_it_adds": "MemoryJS uses monolithic CRUD operations. Specialized managers would enable type-specific optimization (e.g., procedural memory with execution graphs, semantic memory with entity resolution).",
+        "priority": "high"
+      },
+      {
+        "idea": "Add multimodal embedding support with vision-language models for screenshot/image understanding and visual memory indexing",
+        "what_it_adds": "MemoryJS semantic search uses text embeddings only. Multimodal embeddings would enable visual memory queries like 'find screenshots where I was working on X' without OCR preprocessing.",
+        "priority": "high"
+      },
+      {
+        "idea": "Implement hierarchical memory organization within each component (e.g., Episodic with summary/details fields, Semantic with name/description)",
+        "what_it_adds": "Current graph structure is flat. Hierarchical organization would enable efficient summarization at multiple abstraction levels and reduce retrieval latency.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Add memory compression/abstraction pipeline that summarizes raw inputs (especially images) into salient facts before storage",
+        "what_it_adds": "MemoryJS stores raw observations. Compression would reduce storage by 99%+ (as MIRIX demonstrates) by extracting key information via vision models before persistence.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Implement multiple specialized retrieval tools that agents can select based on query type (semantic vs. procedural vs. resource lookup)",
+        "what_it_adds": "MemoryJS has unified search interface. Tool selection would allow agents to choose optimal retrieval strategy (e.g., graph traversal for procedural, vector search for semantic).",
+        "priority": "medium"
+      },
+      {
+        "idea": "Add screenshot/visual activity timeline with automatic event extraction and temporal indexing for long-form multimodal sessions",
+        "what_it_adds": "MemoryJS episodic memory is text-centric. Visual timeline would enable queries like 'what was I doing 3 days ago?' with screenshot evidence and extracted activities.",
+        "priority": "medium"
+      }
+    ]
+  },
+  {
+    "paper": "Mem0 — Building Production-Ready AI Agents with Scalable Long-Term Memory",
+    "innovation": "Mem0 introduces a graph-based memory representation that captures complex relational structures among conversational elements, combined with dynamic extraction and consolidation of salient information to overcome LLM context window limitations while achieving 91% lower p95 latency and 90% token savings versus full-context approaches.",
+    "ideas": [
+      {
+        "idea": "Automatic memory consolidation pipeline with thematic clustering",
+        "what_it_adds": "MemoryJS has a consolidation pipeline, but needs intelligent merging of semantically similar observations across time periods. Implement automatic detection of duplicate/redundant facts and consolidate them into canonical representations (e.g., 'user is vegetarian' + 'user avoids meat' → single consolidated fact with confidence score and temporal lineage).",
+        "priority": "high"
+      },
+      {
+        "idea": "Attention degradation compensation in retrieval ranking",
+        "what_it_adds": "Current search doesn't account for the paper's finding that attention mechanisms degrade over distant tokens. Add a 'temporal relevance boost' factor that re-ranks retrieved results based on recency and query-context distance, preventing old but critical facts from being buried in long conversations.",
+        "priority": "high"
+      },
+      {
+        "idea": "Multi-hop reasoning validation across graph paths",
+        "what_it_adds": "MemoryJS has graph algorithms (Dijkstra, PageRank) but no explicit multi-hop query answering. Implement a query planner that: (1) identifies multi-hop paths needed to answer complex questions, (2) validates each hop's confidence, (3) returns both answer and reasoning chain with confidence scores.",
+        "priority": "high"
+      },
+      {
+        "idea": "Temporal constraint enforcement in retrieval",
+        "what_it_adds": "Add temporal reasoning to search: queries like 'what did user mention about X before they mentioned Y?' should enforce ordering constraints. Implement temporal logic operators (before, after, during) in search queries and graph traversal.",
+        "priority": "high"
+      },
+      {
+        "idea": "Context window overflow detection and proactive summarization",
+        "what_it_adds": "Implement a 'context budget manager' that monitors token usage in real-time and triggers selective summarization before overflow occurs. When approaching context limits, automatically consolidate least-salient observations and promote critical facts to working memory.",
+        "priority": "high"
+      },
+      {
+        "idea": "Salience scoring with multi-factor weighting",
+        "what_it_adds": "MemoryJS has a salience engine, but the paper's results suggest it needs refinement. Implement weighted salience combining: (1) recency decay, (2) query relevance, (3) user-interaction frequency, (4) contradiction/update frequency, (5) downstream impact on future queries (measured via query logs).",
+        "priority": "medium"
+      },
+      {
+        "idea": "Graph-based relation type inference and validation",
+        "what_it_adds": "Current graph stores explicit relations. Add automatic relation type inference (e.g., 'user mentioned X, then asked about Y' → infer 'related_to' or 'prerequisite' relation). Validate inferred relations against conversation context with confidence scores.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Benchmark evaluation framework (LOCOMO-style)",
+        "what_it_adds": "Implement built-in evaluation suite for memory quality across question categories: single-hop, temporal, multi-hop, open-domain. Add LLM-as-Judge scoring and latency/token-cost tracking to measure real-world performance improvements.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Thematic continuity tracking across sessions",
+        "what_it_adds": "Add explicit tracking of conversation themes/topics and their temporal gaps. When user returns to a previous topic after unrelated discussions, automatically surface relevant prior context. Implement 'topic resumption detection' that identifies when user switches back to earlier themes.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Contradiction detection and resolution with versioning",
+        "what_it_adds": "Detect when new observations contradict stored facts (e.g., 'I eat chicken' vs. stored 'vegetarian'). Store both versions with timestamps, confidence, and resolution strategy (latest-wins, user-clarification-needed, probabilistic blend). Expose contradictions to agent for clarification.",
+        "priority": "medium"
+      }
+    ]
+  },
+  {
+    "paper": "MemOS — An Operating System for Memory-Augmented Generation (MAG) in Large Language Models",
+    "innovation": "MemOS treats memory as a first-class OS-level resource with unified lifecycle management across parametric, activation, and plaintext memory types, enabling structured tracking, fusion, and migration of heterogeneous memory with version control and access governance.",
+    "ideas": [
+      {
+        "idea": "MemCube: Standardized memory abstraction layer for heterogeneous memory fusion",
+        "what_it_adds": "Currently MemoryJS separates storage backends (JSONL/SQLite) and memory types (episodic/working/parametric). MemCube would provide a unified abstraction that can transparently fuse and migrate memory across different representations (embeddings ↔ structured graphs ↔ parametric weights) with automatic format conversion and consistency guarantees.",
+        "priority": "high"
+      },
+      {
+        "idea": "Memory lifecycle governance with explicit state transitions",
+        "what_it_adds": "MemoryJS has decay/salience engines but lacks formal lifecycle stages (generation → organization → utilization → evolution → archival). Implement state machine tracking: NEW → ACTIVE → CONSOLIDATED → ARCHIVED with explicit transition rules, validation gates, and rollback capabilities.",
+        "priority": "high"
+      },
+      {
+        "idea": "Version control and audit trails for memory mutations",
+        "what_it_adds": "MemoryJS has CRUD operations but no versioning. Add git-like memory versioning: track all entity/relation changes with timestamps, diffs, rollback capability, and branching for A/B testing different memory consolidation strategies.",
+        "priority": "high"
+      },
+      {
+        "idea": "Cross-platform memory migration and reuse framework",
+        "what_it_adds": "MemoryJS is single-instance. Add inter-agent memory migration protocols: standardized export/import with semantic equivalence checking, permission-aware transfer (respecting private/shared/public visibility), and conflict resolution for merged memories from multiple agents.",
+        "priority": "high"
+      },
+      {
+        "idea": "Parametric memory synchronization layer",
+        "what_it_adds": "MemoryJS only handles explicit plaintext/graph memory. Add bidirectional sync with model weights: track which facts are encoded in parametric memory vs. external storage, detect conflicts when external memory contradicts model behavior, and support knowledge editing workflows that update both.",
+        "priority": "high"
+      },
+      {
+        "idea": "Memory scheduling and resource allocation",
+        "what_it_adds": "MemoryJS has TTL and promotion but no resource budgeting. Implement memory budgets (KB/tokens allocated per agent/session), scheduling policies (LRU, priority-based, cost-aware), and automatic spilling to cold storage when limits exceeded.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Activation memory (KV-cache) lifecycle management",
+        "what_it_adds": "MemoryJS focuses on episodic/working memory. Add explicit KV-cache tracking: model which cached activations correspond to which knowledge graph nodes, enable selective cache invalidation on memory updates, and support cache-aware retrieval ranking.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Memory fusion and deduplication across multi-turn conversations",
+        "what_it_adds": "MemoryJS has consolidation pipeline but no explicit fusion. Add semantic deduplication: detect when new observations are equivalent to existing facts (via embedding similarity + graph structure), merge with conflict resolution, and track provenance of merged facts.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Structured access control and memory governance policies",
+        "what_it_adds": "MemoryJS has visibility levels (private/shared/public) but no fine-grained governance. Add role-based access control (RBAC) for memory operations, audit logging of all access, retention policies (auto-delete after N days), and compliance tracking for sensitive data.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Memory-aware context window optimization",
+        "what_it_adds": "MemoryJS has context window manager but it's decoupled from memory lifecycle. Add joint optimization: rank retrieved memories by both relevance AND lifecycle stage (prefer consolidated over raw observations), predict context window overflow and proactively consolidate, support memory summarization to fit budget.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "MemRL — Self-Evolving Agents via Runtime Reinforcement Learning on Episodic Memory",
+    "innovation": "MemRL decouples a frozen LLM backbone from dynamic episodic memory, using Q-value learning to transform passive semantic retrieval into active utility-driven selection that continuously improves without parameter updates or catastrophic forgetting.",
+    "ideas": [
+      {
+        "idea": "Intent-Experience-Utility Triplet Structure",
+        "what_it_adds": "Current observations lack explicit utility scoring. Add a learned Q-value field to each episodic memory entry that tracks expected utility based on environmental feedback. This transforms retrieval from semantic-only to utility-aware ranking.",
+        "priority": "high"
+      },
+      {
+        "idea": "Two-Phase Retrieval Mechanism",
+        "what_it_adds": "Current hybrid search combines multiple methods equally. Implement staged retrieval: Phase 1 filters by semantic relevance (existing BM25/embeddings), Phase 2 re-ranks by learned Q-values. Requires ranking layer above current search backends.",
+        "priority": "high"
+      },
+      {
+        "idea": "Bellman Backup Update Engine for Memory",
+        "what_it_adds": "Current decay/salience engines use heuristics. Add RL-based Q-value updates using Bellman equation: Q(s,a) ← Q(s,a) + α[r + γ·max Q(s',a') - Q(s,a)]. Requires reward signal integration and temporal difference learning.",
+        "priority": "high"
+      },
+      {
+        "idea": "Value-Driven Memory Curation Pipeline",
+        "what_it_adds": "Current consolidation pipeline is rule-based. Add automatic pruning/promotion based on learned utility scores—low-utility entries decay faster, high-utility entries promoted to working memory. Integrates with existing consolidation but adds RL-driven thresholds.",
+        "priority": "high"
+      },
+      {
+        "idea": "Environmental Feedback Integration Layer",
+        "what_it_adds": "No current mechanism to ingest task success/failure signals. Add feedback hooks that capture outcome labels (success/failure/reward) and propagate them backward through episodic memory via Bellman updates to refine Q-values.",
+        "priority": "high"
+      },
+      {
+        "idea": "Utility-Salience Correlation Analysis",
+        "what_it_adds": "Current pattern detector is unsupervised. Add supervised analysis that correlates learned Q-values with task outcomes to validate that utility scores predict actual success. Useful for debugging and transparency.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Multi-Agent Utility Visibility Model",
+        "what_it_adds": "Current multi-agent system uses static visibility (private/shared/public). Extend to track per-agent utility scores—shared memories show utility from multiple agent perspectives, enabling collaborative learning of what's valuable across agents.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Stability-Plasticity Monitoring Dashboard",
+        "what_it_adds": "No metrics for the stability-plasticity tradeoff. Add monitoring that tracks: (1) parameter drift (frozen LLM), (2) memory churn rate, (3) utility convergence, (4) catastrophic forgetting detection via utility distribution shifts.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Intent Classification Layer",
+        "what_it_adds": "Current graph lacks explicit intent nodes. Add intent extraction/classification that groups experiences by goal/intent, enabling Q-learning to operate at intent-level granularity rather than raw observations. Improves generalization across similar tasks.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Offline Q-Value Initialization from Historical Data",
+        "what_it_adds": "Current import/export is static. Add batch RL preprocessing: analyze historical JSONL/CSV imports to pre-compute initial Q-values via offline RL before runtime learning begins. Accelerates convergence on new deployments.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "MemRec — Collaborative Memory-Augmented Agentic Recommender System",
+    "innovation": "MemRec decouples reasoning from memory management via a dedicated Memory Manager LM that synthesizes collaborative context from graph neighborhoods, solving cognitive overload and update bottlenecks through LLM-guided retrieval rules and asynchronous label propagation.",
+    "ideas": [
+      {
+        "idea": "Collaborative Memory Synthesis Engine",
+        "what_it_adds": "A dedicated subsystem that curates neighbor signals from the knowledge graph using LLM-guided domain-adaptive rules to create compact, high-signal collaborative context. MemoryJS currently has isolated entity memories but lacks cross-entity synthesis that distills neighborhood information into unified memory representations for reasoning agents.",
+        "priority": "high"
+      },
+      {
+        "idea": "Asynchronous Graph Propagation Pipeline",
+        "what_it_adds": "Background batch processing inspired by label propagation that evolves memory across graph neighborhoods without synchronous updates for each interaction. MemoryJS has decay/salience engines but lacks efficient asynchronous propagation that batches updates across connected components to avoid redundant LLM calls.",
+        "priority": "high"
+      },
+      {
+        "idea": "Cognitive Load Metrics & Adaptive Context Windowing",
+        "what_it_adds": "Quantifiable measures of information density in retrieved context with automatic reduction strategies when cognitive load exceeds thresholds. MemoryJS has context window management but lacks explicit cognitive load assessment and adaptive filtering based on reasoning agent capacity.",
+        "priority": "high"
+      },
+      {
+        "idea": "Collaborative Neighborhood Indexing",
+        "what_it_adds": "Pre-computed indices of high-order connectivity patterns (k-hop neighborhoods, community clusters) with LLM-guided relevance scoring for rapid retrieval. MemoryJS has graph algorithms (centrality, PageRank) but lacks indexed neighborhood structures optimized for collaborative signal extraction.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Memory Grounding Justification Layer",
+        "what_it_adds": "Explicit tracking of which graph neighbors/relations contributed to synthesized memory, enabling agents to provide grounded explanations for recommendations. MemoryJS stores observations and relations but lacks provenance tracking for synthesized collaborative context.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Dynamic Memory Compaction with Collaborative Signals",
+        "what_it_adds": "Compression that preserves high-signal collaborative patterns (shared preferences, community trends) rather than just temporal decay. MemoryJS has compression and archiving but treats all signals equally; this adds collaborative-aware compaction that retains community-level insights.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Cross-Entity Memory Consistency Validator",
+        "what_it_adds": "Detects and resolves contradictions when synthesizing memories across multiple entities (e.g., user A likes item X but similar user B's memory says X is unpopular). MemoryJS lacks validation logic for consistency across collaborative memory synthesis.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "Memex(RL) — Scaling Long-Horizon LLM Agents via Indexed Experience Memory",
+    "innovation": "Memex separates compact in-context working memory (indexed summaries) from full-fidelity external archives, allowing agents to explicitly dereference indices to recover exact past evidence without lossy compression. MemexRL uses reinforcement learning to train agents on what to summarize, archive, index, and when to retrieve—treating memory operations as first-class decisions.",
+    "ideas": [
+      {
+        "idea": "Explicit Index Dereferencing System",
+        "what_it_adds": "Currently MemoryJS retrieves via semantic/BM25 search. Add a stable indexing layer where agents can create named references (e.g., 'Index_A: tool_output_from_step_5') and later explicitly call ReadExperience(Index_A) to inject exact archived content back into context. This replaces fuzzy retrieval with precise, auditable references.",
+        "priority": "high"
+      },
+      {
+        "idea": "Dual-Layer Memory Architecture with Structured Summaries",
+        "what_it_adds": "Implement a two-tier system: (1) compact working context layer storing structured summaries + index pointers, (2) external full-fidelity archive. Currently MemoryJS treats all observations equally. Add logic to generate concise, actionable summaries (e.g., 'Tool X failed with error Y, see Index_B') that reference archived details without including them in-context.",
+        "priority": "high"
+      },
+      {
+        "idea": "RL-Based Memory Operation Training",
+        "what_it_adds": "MemoryJS has no learning mechanism for memory decisions. Add a MemexRL-style reward shaping framework where agents learn optimal policies for: (a) when to compress experience into indexed summaries, (b) what artifacts to archive vs. keep in-context, (c) when to dereference indices. Reward signal should penalize context overflow while rewarding task success.",
+        "priority": "high"
+      },
+      {
+        "idea": "Context Budget Enforcement with Dereference Tracking",
+        "what_it_adds": "MemoryJS has TTL/promotion but no hard context window budget. Add: (1) strict token-count budget on working memory, (2) tracking of dereference frequency per index (to identify hot/cold references), (3) automatic promotion of frequently-dereferenced indices back to working context, (4) penalties for exceeding budget during RL training.",
+        "priority": "high"
+      },
+      {
+        "idea": "Artifact-Level Granularity with Stable Naming",
+        "what_it_adds": "Current graph stores observations generically. Add artifact-aware indexing: tool outputs, code snippets, API responses, logs each get stable, human-readable index names (e.g., 'api_response_search_query_v2', 'code_error_line_42'). Enable agents to reference specific artifacts by name rather than semantic similarity.",
+        "priority": "high"
+      },
+      {
+        "idea": "Lossless Compression Metrics & Fidelity Tracking",
+        "what_it_adds": "MemoryJS has no mechanism to measure information loss during summarization. Add: (1) fidelity score per indexed summary (how much detail is preserved), (2) metrics comparing task success with/without dereferencing specific indices, (3) alerts when summaries drop below fidelity threshold, enabling agents to decide whether to keep raw evidence in-context.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Multi-Step Trajectory Compression with Branching",
+        "what_it_adds": "Extend consolidation pipeline to compress multi-step trajectories (e.g., 'steps 5-12: explored config space, found constraint at step 8') into single indexed summaries with branch pointers. Currently MemoryJS consolidates individual observations; add support for compressing entire decision trees/workflows into indexed checkpoints.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Explicit Dereference Cost Modeling",
+        "what_it_adds": "MemoryJS has no cost model for retrieval. Add: (1) token cost per dereference operation, (2) latency cost for external store lookups, (3) RL reward shaping that penalizes excessive dereferencing, (4) agent learns to batch-dereference related indices or keep frequently-needed evidence in-context.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Index Lifecycle Management & Garbage Collection",
+        "what_it_adds": "Add automatic lifecycle policies for archived indices: (1) cold indices (never dereferenced) → compress further or delete, (2) warm indices → keep in external store, (3) hot indices → promote to working context. Currently MemoryJS has decay but no index-level lifecycle tied to dereference patterns.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Auditable Memory Access Logs",
+        "what_it_adds": "Add detailed logging of all memory operations: when indices are created, what they contain, when they're dereferenced, by which agent/step, and what decision followed. Enable post-hoc analysis of whether dereferencing decisions were optimal—critical for RL training signal and debugging long-horizon failures.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "Memory in Large Language Models — Mechanisms, Evaluation and Evolution",
+    "innovation": "A unified 'memory quadruple' framework (storage location—persistence—write/access path—controllability) that operationalizes LLM memory across parametric, contextual, external, and procedural/episodic types, with a causal chain of write—read—inhibit/update for governance and auditing.",
+    "ideas": [
+      {
+        "idea": "Temporal Governance & Freshness Auditing Layer",
+        "what_it_adds": "Timestamp-aligned protocols that track when facts become outdated, detect 'freshness hits' (stale answers), and flag refusal slices. Goes beyond TTL decay to actively audit temporal validity of stored knowledge against real-world timelines.",
+        "priority": "high"
+      },
+      {
+        "idea": "Dual-Channel External Memory Evaluation (Retrieval Quality × Faithfulness)",
+        "what_it_adds": "Decouple correctness from attribution—measure both whether retrieved snippets are relevant AND whether the agent's output faithfully reflects the source. Currently MemoryJS has search quality but not passage-level evidence attribution scoring.",
+        "priority": "high"
+      },
+      {
+        "idea": "Dynamic Memory Governance Loop (DMM-Gov)",
+        "what_it_adds": "Formalize an auditable closed-loop for updates/forgetting: admission thresholds → progressive rollout → online monitoring → reversible rollback → change audit certificates. This is a meta-layer above CRUD that tracks why/when/how edits happened.",
+        "priority": "high"
+      },
+      {
+        "idea": "Cross-Session Consistency & Timeline Replay (E-MARS+)",
+        "what_it_adds": "For episodic memory, add ability to replay agent behavior across sessions and detect inconsistencies in how the same entity/relation is recalled. Currently MemoryJS has sessions but not consistency validation across them.",
+        "priority": "high"
+      },
+      {
+        "idea": "Position-Performance Curves & Mid-Sequence Drop Detection",
+        "what_it_adds": "Analyze how retrieval/recall degrades based on position in context window (lost-in-the-middle effect). Add metrics that measure performance sensitivity to where facts appear in the knowledge graph or context.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Leakage Auditing & Privacy Risk Scoring",
+        "what_it_adds": "Systematic auditing for verbatim memorization, membership inference risks, and data extraction vulnerabilities. Add privacy regression tests alongside functional tests when consolidating or archiving memory.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Causal Editing with Side-Effect Boundaries (ROME/MEND/MEMIT/SERAC Integration)",
+        "what_it_adds": "When editing a fact, measure Pareto trade-offs: target suppression vs. neighborhood preservation vs. downstream steady-state. Currently MemoryJS updates facts but doesn't quantify ripple effects on related entities.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Minimum Identifiability & Evaluation Card Standard",
+        "what_it_adds": "Formalize a minimal sufficient evaluation card (metadata template) for any memory operation: what was written, when, by whom, with what confidence, and what tests validate it. Standardizes reproducibility across multi-agent scenarios.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Uncertainty Reporting via Inter-Rater Agreement & Paired Tests",
+        "what_it_adds": "Replace binary correctness with confidence intervals. Use inter-rater agreement and multiple-comparison correction to report uncertainty bounds on retrieved facts, especially for conflicting observations.",
+        "priority": "low"
+      },
+      {
+        "idea": "Retrieval vs. Long-Context Trade-Off Analysis",
+        "what_it_adds": "Add decision logic to recommend when small-window replay (retrieval + short context) outperforms ultra-long-context direct reading. Helps optimize between search cost and context window usage.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "Memory in the Age of AI Agents: A Survey",
+    "innovation": "Proposes a unified taxonomy organizing agent memory across three dimensions (forms: token-level/parametric/latent, functions: factual/experiential/working, dynamics: formation/evolution/retrieval) to resolve conceptual fragmentation in the rapidly expanding agent memory research landscape.",
+    "ideas": [
+      {
+        "idea": "Implement parametric memory layer that distills reusable tools/patterns from past experiences into agent parameters or skill libraries, enabling knowledge transfer across sessions",
+        "what_it_adds": "Currently MemoryJS stores observations/relations but doesn't extract and reify learned patterns into reusable parametric artifacts that persist beyond episodic records",
+        "priority": "high"
+      },
+      {
+        "idea": "Add latent memory representation system using learned embeddings that capture implicit agent knowledge (not explicit facts), with dimensionality reduction for compression",
+        "what_it_adds": "MemoryJS has semantic embeddings for search but lacks a dedicated latent memory layer that compresses and abstracts experiential knowledge into continuous vector spaces",
+        "priority": "high"
+      },
+      {
+        "idea": "Implement memory formation pipeline that automatically categorizes observations into factual (static facts), experiential (event sequences), or working (task-specific) memory with different retention policies",
+        "what_it_adds": "Current decay/salience engines treat all memories uniformly; this adds type-aware lifecycle management where factual memories persist longer, working memories expire faster",
+        "priority": "high"
+      },
+      {
+        "idea": "Build shared memory visibility model for multi-agent systems with inheritance hierarchies (private→team→organization→public) and conflict resolution for concurrent updates",
+        "what_it_adds": "MemoryJS has private/shared/public visibility flags but lacks hierarchical scoping, inheritance rules, or merge strategies for conflicting updates across agent teams",
+        "priority": "high"
+      },
+      {
+        "idea": "Add memory evolution tracking that records how facts/relations change over time with version history, enabling agents to detect contradictions and learn from corrections",
+        "what_it_adds": "Current CRUD operations don't maintain edit history or track belief updates; this enables temporal reasoning about when/why knowledge changed",
+        "priority": "medium"
+      },
+      {
+        "idea": "Implement test-time memory scaling: dynamically expand context window by retrieving and ranking memories by relevance during inference, with adaptive retrieval budgets",
+        "what_it_adds": "MemoryJS has context window management but treats it as static; this adds dynamic, query-aware memory expansion during agent reasoning",
+        "priority": "medium"
+      },
+      {
+        "idea": "Create multimodal memory indexing that stores and retrieves memories across text, embeddings, and structured graphs with cross-modal search (e.g., 'find events similar to this image')",
+        "what_it_adds": "Current search is text/embedding-based; this adds native support for multimodal observations and cross-modal retrieval patterns",
+        "priority": "medium"
+      },
+      {
+        "idea": "Add memory trustworthiness scoring system that tracks confidence/source reliability for each fact, with propagation rules for derived facts and conflict detection",
+        "what_it_adds": "MemoryJS stores facts without provenance or confidence metadata; this enables agents to reason about knowledge reliability and handle contradictions",
+        "priority": "medium"
+      },
+      {
+        "idea": "Implement reinforcement learning integration layer that uses memory as state representation for RL training, with automatic curriculum generation from memory patterns",
+        "what_it_adds": "MemoryJS is currently disconnected from RL loops; this bridges memory and learning by using graph structure as RL state and mining memory for training signals",
+        "priority": "low"
+      },
+      {
+        "idea": "Add memory automation framework that learns optimal retention policies (decay rates, promotion thresholds, consolidation triggers) from agent performance metrics",
+        "what_it_adds": "Current decay/salience engines use fixed parameters; this adds meta-learning to automatically tune memory management based on task outcomes",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "Memory-R1 — Enhancing Large Language Model Agents to Manage and Utilize Memories via Reinforcement Learning",
+    "innovation": "Uses reinforcement learning (PPO/GRPO) to train specialized agents that learn optimal memory operations (ADD, UPDATE, DELETE, NOOP) and memory filtering policies, rather than relying on heuristic-driven or vanilla LLM decision-making for memory management.",
+    "ideas": [
+      {
+        "idea": "RL-trained Memory Manager Agent with outcome-driven optimization",
+        "what_it_adds": "Currently MemoryJS exposes CRUD operations but relies on external logic to decide when to use them. This adds a trainable agent that learns from reward signals which operation is correct (e.g., UPDATE vs DELETE+ADD for consolidation), minimizing supervision needed.",
+        "priority": "high"
+      },
+      {
+        "idea": "Memory Distillation policy for Answer Agent",
+        "what_it_adds": "MemoryJS has hybrid search but no learned filtering layer. This adds a second agent that learns to filter RAG-retrieved memories before reasoning, reducing noise and distraction from irrelevant entries—solving the 'too many results' problem mentioned in the paper.",
+        "priority": "high"
+      },
+      {
+        "idea": "Contradiction detection and consolidation logic",
+        "what_it_adds": "MemoryJS lacks intelligent consolidation of related facts across time. This adds logic to detect when multiple observations describe the same entity/relation (e.g., 'adopted dog Buddy' + 'adopted dog Scout') and consolidate into a single coherent memory rather than fragmenting.",
+        "priority": "high"
+      },
+      {
+        "idea": "Outcome-driven reward signal for memory operations",
+        "what_it_adds": "MemoryJS has no feedback loop to evaluate if memory decisions were correct. This adds a reward mechanism (e.g., based on downstream QA accuracy) that trains agents to optimize for task success, not just heuristic relevance.",
+        "priority": "high"
+      },
+      {
+        "idea": "Data-efficient fine-tuning pipeline (152 QA pairs minimum)",
+        "what_it_adds": "MemoryJS has no built-in training loop. This adds a minimal-supervision fine-tuning strategy using PPO/GRPO that can adapt memory behavior to domain-specific tasks with very few labeled examples.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Multi-turn dialogue memory consolidation across sessions",
+        "what_it_adds": "MemoryJS has episodic timeline events but no cross-session consolidation logic. This adds temporal reasoning to merge related facts mentioned in separate conversations into unified, evolving knowledge.",
+        "priority": "medium"
+      },
+      {
+        "idea": "NOOP (no-operation) as a learned decision",
+        "what_it_adds": "MemoryJS CRUD always performs an operation. This adds the ability to learn when NOT to update memory (e.g., when new info is redundant or contradictory), reducing noise accumulation.",
+        "priority": "medium"
+      }
+    ]
+  },
+  {
+    "paper": "SimpleMem — Efficient Lifelong Memory for LLM Agents",
+    "innovation": "A three-stage semantic compression pipeline (entropy-aware filtering → recursive consolidation → adaptive query-aware retrieval) that reduces token consumption by 30× while maintaining information density through structured memory organization inspired by biological consolidation.",
+    "ideas": [
+      {
+        "idea": "Entropy-Aware Filtering with Information Scoring",
+        "what_it_adds": "MemoryJS lacks automatic detection and exclusion of low-entropy content (phatic dialogue, redundant confirmations). Implement sliding-window analysis with H(W_t) scoring combining: (1) new entity introduction ratio, (2) semantic divergence from recent history using embeddings. Filter windows below configurable τ_redundant threshold before indexing.",
+        "priority": "high"
+      },
+      {
+        "idea": "Recursive Memory Consolidation (Asynchronous Background Process)",
+        "what_it_adds": "MemoryJS has consolidation pipeline but not recursive hierarchical abstraction. Implement async background consolidation that: (1) identifies structurally similar memory units, (2) recursively merges them into higher-level abstract representations, (3) maintains multi-level hierarchy (raw observations → summaries → meta-summaries). Reduces redundancy without blocking agent operations.",
+        "priority": "high"
+      },
+      {
+        "idea": "Query Complexity Estimation for Adaptive Retrieval Scope",
+        "what_it_adds": "MemoryJS retrieval is static. Add query-aware scope adjustment: estimate query complexity (simple fact lookup vs. multi-hop reasoning), dynamically adjust retrieval radius/depth accordingly. Simple queries retrieve fewer, high-precision results; complex queries expand scope. Reduces unnecessary context inflation.",
+        "priority": "high"
+      },
+      {
+        "idea": "Multi-View Indexed Memory Units (Dense + Sparse + Symbolic)",
+        "what_it_adds": "MemoryJS has semantic search but doesn't jointly index observations with dense embeddings + sparse lexical features + symbolic metadata in unified units. Create compound memory units indexed across all three modalities simultaneously, enabling more precise multi-granular retrieval without separate index lookups.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Information Density Metrics & Monitoring Dashboard",
+        "what_it_adds": "MemoryJS lacks visibility into memory efficiency. Add metrics tracking: (1) information density (semantic bits per token), (2) redundancy ratio, (3) retrieval precision vs. token cost trade-off. Expose via dashboard to help users tune compression thresholds and identify bloated memory regions.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Named Entity Novelty Detection in Compression",
+        "what_it_adds": "MemoryJS doesn't explicitly track entity introduction as a compression signal. Integrate NER into the filtering stage: prioritize windows introducing new entities (|E_new|/|W_t|) as high-information, automatically flag entity-free windows as candidates for exclusion or summarization.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Token Budget Enforcement with Adaptive Retrieval",
+        "what_it_adds": "MemoryJS has context window management but not hard token budget constraints with graceful degradation. Implement: (1) set max token budget for context, (2) adaptive retrieval dynamically reduces scope/precision to stay within budget, (3) fallback to summary-only mode if budget exceeded. Prevents token overflow in production.",
+        "priority": "high"
+      }
+    ]
+  },
+  {
+    "paper": "ReasoningBank — Scaling Agent Self-Evolving with Reasoning Memory",
+    "innovation": "ReasoningBank distills generalizable reasoning strategies from both successful AND failed agent experiences through self-judgment, organizing them as actionable principles that agents retrieve and integrate in closed-loop learning cycles. Memory-aware test-time scaling (MaTTS) generates diverse exploration trajectories that provide contrastive signals for synthesizing higher-quality, more transferable memories.",
+    "ideas": [
+      {
+        "idea": "Failure-driven memory distillation pipeline",
+        "what_it_adds": "Currently MemoryJS stores observations passively. Add a post-task analysis engine that automatically extracts preventative lessons from failed trajectories (e.g., 'avoid infinite scrolls, use fallbacks'), not just successful ones. Requires: failure classification, contrastive analysis (success vs. failure paths), and principle extraction.",
+        "priority": "high"
+      },
+      {
+        "idea": "Reasoning strategy abstraction layer",
+        "what_it_adds": "Beyond storing raw trajectories or workflows, add a synthesis engine that abstracts low-level action sequences into high-level reasoning principles (e.g., 'detect pagination type → examine all items → cross-reference'). Requires: action clustering, strategy generalization, and transferability scoring.",
+        "priority": "high"
+      },
+      {
+        "idea": "Self-judged experience quality scoring",
+        "what_it_adds": "MemoryJS has salience engines but no mechanism for agents to self-evaluate task outcomes and assign confidence scores to extracted memories without ground-truth labels. Add: outcome classification (success/failure/partial), confidence estimation, and quality-weighted retrieval ranking.",
+        "priority": "high"
+      },
+      {
+        "idea": "Contrastive memory synthesis from diverse exploration",
+        "what_it_adds": "Add a consolidation mode that accepts multiple diverse trajectories for the same task (from test-time scaling) and synthesizes unified reasoning strategies by comparing success/failure patterns. Requires: trajectory comparison, divergence detection, and multi-path principle extraction.",
+        "priority": "high"
+      },
+      {
+        "idea": "Closed-loop memory feedback integration",
+        "what_it_adds": "Current consolidation pipeline is one-directional. Add bidirectional flow: retrieved memories influence agent decisions → new experiences update memory quality scores → high-quality memories get higher retrieval weights. Requires: decision influence tracking and iterative memory refinement.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Transferability scoring for memory items",
+        "what_it_adds": "Add metadata tracking which task domains/types each reasoning principle applies to, enabling cross-domain transfer detection. Requires: domain tagging, transfer success metrics, and generalization scoring.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Exploration diversity metrics for test-time scaling",
+        "what_it_adds": "Add metrics to measure trajectory diversity during parallel/sequential exploration (action entropy, path divergence) to ensure MaTTS generates sufficiently different experiences for contrastive learning, not just more of the same.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Preventative lesson extraction from failure modes",
+        "what_it_adds": "Structured extraction of 'what NOT to do' patterns (e.g., 'avoid infinite scrolls') as explicit negative principles, separate from positive strategies. Requires: failure mode classification and negative pattern indexing.",
+        "priority": "medium"
+      }
+    ]
+  },
+  {
+    "paper": "ReMEmbR — Building and Reasoning Over Long-Horizon Spatio-Temporal Memory for Robot Navigation",
+    "innovation": "ReMEmbR uses retrieval-augmented LLM-agents to efficiently query continuously-growing robot histories by formulating multi-step text, spatial, and temporal queries, avoiding context window limitations through structured memory building and selective retrieval rather than full history injection.",
+    "ideas": [
+      {
+        "idea": "Spatial coordinate indexing and geometric queries",
+        "what_it_adds": "Store and query entities/observations by (x,y,z) coordinates with spatial range queries, nearest-neighbor lookups, and distance-based filtering. MemoryJS has graph structure but no native spatial indexing for embodied agent trajectories.",
+        "priority": "high"
+      },
+      {
+        "idea": "Temporal range queries with relative time expressions",
+        "what_it_adds": "Query observations by relative temporal expressions ('10 minutes ago', 'last hour', 'since deployment started') not just absolute timestamps. Current TTL/decay is time-aware but doesn't support natural language temporal range queries.",
+        "priority": "high"
+      },
+      {
+        "idea": "Multi-modal observation storage (images + metadata)",
+        "what_it_adds": "Store image references/embeddings alongside observations with lazy-loading capability. Current system stores structured data but not visual content linked to spatio-temporal context.",
+        "priority": "high"
+      },
+      {
+        "idea": "LLM-agent query planner with function calling",
+        "what_it_adds": "Decompose natural language questions into structured retrieval operations (spatial filters → temporal filters → semantic search) using LLM-as-planner. MemoryJS has search methods but no agent-driven multi-step query orchestration.",
+        "priority": "high"
+      },
+      {
+        "idea": "Trajectory reconstruction and path-based queries",
+        "what_it_adds": "Build continuous trajectories from timestamped positions and query 'what did you see along path X' or 'where were you when event Y occurred'. Current graph has path-finding but not trajectory-aware observation retrieval.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Continuous history compression with configurable granularity",
+        "what_it_adds": "Automatically downsample old observations (e.g., aggregate 100 observations into 1 summary per hour) while keeping recent data high-fidelity. Current archiving is manual; ReMEmbR needs automatic temporal bucketing.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Spatial-temporal indexing for efficient range scans",
+        "what_it_adds": "Implement R-tree or quad-tree indexing on (x,y,timestamp) tuples for O(log n) spatial-temporal range queries instead of O(n) filtering. Current backends lack this optimization.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Event-to-location binding with confidence scores",
+        "what_it_adds": "Link observations to spatial regions with uncertainty (e.g., 'phone seen on coffee table ±0.5m') and return actionable coordinates for navigation. Current relations are semantic; this adds grounded spatial semantics.",
+        "priority": "medium"
+      }
+    ]
+  },
+  {
+    "paper": "MemOCR — Layout-Aware Visual Memory for Efficient Long-Horizon Reasoning",
+    "innovation": "Shifts from 1D text-based memory to 2D visual memory representation, enabling adaptive information density through visual layout (typography, sizing, positioning) rather than uniform token allocation. Uses OCR-readable rendered images as the agent's working context, allowing aggressive compression of auxiliary details while keeping critical evidence visually prominent.",
+    "ideas": [
+      {
+        "idea": "Visual Salience-Based Budget Allocation Engine",
+        "what_it_adds": "A memory rendering system that converts knowledge graph entities/relations into structured rich-text (headings, bold, font sizes, layout positioning) based on computed salience scores, then renders to image. Allows non-uniform token budgets where critical facts occupy more visual space than auxiliary details. Decouples storage cost from information content.",
+        "priority": "high"
+      },
+      {
+        "idea": "Budget-Aware Memory Drafting with RL Training",
+        "what_it_adds": "Training pipeline that exposes the memory system to variable context budgets during consolidation, forcing the agent to learn which graph elements must remain readable under extreme compression (e.g., 10% of original size). Currently MemoryJS has decay/salience engines but no budget-constrained optimization during consolidation.",
+        "priority": "high"
+      },
+      {
+        "idea": "Resolution-Based Fidelity Tradeoff Control",
+        "what_it_adds": "Ability to dynamically adjust memory image resolution (downsampling) to meet token budgets without changing underlying content structure. Provides continuous budget-fidelity control. MemoryJS compression is content-based; this adds resolution-based compression orthogonal to archiving.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Visual Layout Hierarchy for Graph Rendering",
+        "what_it_adds": "Structured rendering of knowledge graph as 2D visual layout (not just text export) where node importance determines typography, positioning, and visual prominence. Extends current GraphML/Mermaid export to create OCR-readable memory images optimized for LLM vision consumption.",
+        "priority": "high"
+      },
+      {
+        "idea": "Query-Conditioned Memory Refinement Pipeline",
+        "what_it_adds": "Incremental memory update mechanism that refines graph state M_t based on incoming observations C_t AND current query Q, not just decay/salience. Allows task-specific consolidation where irrelevant subgraphs compress more aggressively for specific reasoning tasks.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Multi-Modal Memory State (Text + Visual Rendering)",
+        "what_it_adds": "Dual representation where knowledge graph maintains structured text form for CRUD/search, but also maintains a rendered visual form as the canonical working context for agents. Requires vision-capable LLM integration for memory reading.",
+        "priority": "medium"
+      }
+    ]
+  },
+  {
+    "paper": "LatentMem: Customizing Latent Memory for Multi-Agent Systems",
+    "innovation": "LatentMem introduces learnable latent memory representations conditioned on agent role profiles, combined with Latent Memory Policy Optimization (LMPO) to automatically distill compact, role-aware memories from raw trajectories without manual engineering. This addresses memory homogenization and information overload in multi-agent systems by encoding memories as fixed-length latent vectors rather than unbounded discrete text.",
+    "ideas": [
+      {
+        "idea": "Role-Aware Memory Customization Layer",
+        "description": "Implement agent role profiles that condition memory composition. Each agent type (e.g., 'planner', 'executor', 'validator') gets a learnable profile vector that shapes which trajectory information gets encoded into that agent's memory. Add a RoleProfileManager that stores and updates these profiles based on agent function.",
+        "what_it_adds": "MemoryJS currently treats all agents homogeneously in multi-agent scenarios. This adds role-specific memory filtering and synthesis, so a 'planner' agent's memory emphasizes strategic decisions while an 'executor' agent's memory emphasizes action outcomes.",
+        "priority": "high"
+      },
+      {
+        "idea": "Latent Vector Memory Encoding",
+        "description": "Add a LatentMemoryComposer that converts trajectory sequences into fixed-length dense vectors (e.g., 768-dim embeddings) instead of storing full text. Implement bidirectional conversion: trajectories → latent vectors (compression) and latent vectors → reconstructed context (expansion for reasoning). Store these vectors alongside traditional JSONL entries.",
+        "what_it_adds": "MemoryJS stores observations as discrete text entries. This adds continuous latent representations that are token-efficient (50% fewer tokens per paper), enable gradient-based optimization, and support fixed-size memory slots regardless of trajectory length.",
+        "priority": "high"
+      },
+      {
+        "idea": "Latent Memory Policy Optimization (LMPO) Training Loop",
+        "description": "Implement LMPO as an optional training mode: (1) collect multi-agent rollouts with task rewards, (2) compute relative advantages between agents' outcomes, (3) backpropagate gradients through the LatentMemoryComposer to optimize which trajectory information gets encoded, (4) update role profiles based on task-level signals. Add a LMPOTrainer class with configurable reward functions.",
+        "what_it_adds": "MemoryJS has no learning mechanism for memory composition. LMPO enables the memory system itself to learn what information matters for each agent role, automatically improving memory utility without manual prompt engineering.",
+        "priority": "high"
+      },
+      {
+        "idea": "Experience Bank with Lightweight Trajectory Storage",
+        "description": "Create an ExperienceBank component that stores raw interaction trajectories in a compressed format (e.g., tokenized + quantized embeddings) separate from the main knowledge graph. Implement similarity-based retrieval that returns relevant trajectory segments, which then feed into the LatentMemoryComposer. Add configurable compression ratios.",
+        "what_it_adds": "MemoryJS stores all observations in the knowledge graph. This adds a separate, lightweight trajectory archive optimized for retrieval and composition rather than querying, reducing storage overhead while maintaining access to raw interaction history.",
+        "priority": "high"
+      },
+      {
+        "idea": "Multi-Granularity Memory Composition",
+        "description": "Extend LatentMemoryComposer to support multiple abstraction levels: (1) raw trajectory tokens, (2) semantic insights (distilled facts), (3) skill schemas (reusable action patterns). Allow agents to request memories at different granularities. Implement a GranularitySelector that chooses which level to encode based on agent role and task context.",
+        "what_it_adds": "MemoryJS has multi-granularity storage (observations, relations, entities) but no mechanism to compose them into role-specific, abstraction-level-aware memory representations. This adds dynamic memory synthesis at the right abstraction level per agent.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Agent Profile Management System",
+        "description": "Build an AgentProfileManager that maintains learnable profiles for each agent: role type, functional specialization, memory preferences (e.g., 'prefers recent events' vs 'prefers high-salience events'), and performance history. Profiles are updated via LMPO and can be exported/imported as JSON for transfer learning across MAS instances.",
+        "what_it_adds": "MemoryJS has agent identity but no persistent, learnable profiles that shape memory behavior. This adds explicit role representation that evolves based on task performance.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Token Budget Enforcement in Memory Composition",
+        "description": "Add a TokenBudgetManager that enforces fixed token limits per agent's memory context. When composing latent memories, the composer must fit representations within the budget (e.g., 'max 512 tokens for agent memory'). Implement a lossy compression strategy that prioritizes high-salience information when budget is exceeded.",
+        "what_it_adds": "MemoryJS has TTL and promotion mechanisms but no hard token budget constraints. This adds explicit token efficiency guarantees, critical for long-running multi-agent systems where context window is limited.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Trajectory Similarity-Based Retrieval for Composition",
+        "description": "Implement a retrieval mechanism that finds similar past trajectories before composing new latent memories. Use embedding-based similarity (already in MemoryJS) to fetch relevant trajectory segments, then condition the LatentMemoryComposer on both the current context and retrieved similar experiences. Add a RetrievalAugmentedComposer class.",
+        "what_it_adds": "MemoryJS has semantic search but doesn't use retrieved trajectories to condition memory composition. This adds in-context learning: agents compose memories informed by similar past experiences, improving memory relevance.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Differentiable Memory Reconstruction",
+        "description": "Make latent memory vectors differentiable end-to-end: implement the LatentMemoryComposer as a neural module (e.g., transformer encoder) that can receive gradients from downstream task losses. Store computation graphs so LMPO can backpropagate through memory composition decisions. Add a GradientTracker for debugging.",
+        "what_it_adds": "MemoryJS memories are static after creation. This adds gradient flow through memory, enabling automatic optimization of what gets remembered based on task outcomes.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Memory Homogenization Detection & Alerting",
+        "description": "Add a MemoryDiversityMonitor that detects when multiple agents' latent memories become too similar (cosine similarity > threshold). Trigger alerts and suggest role profile adjustments. Implement a diversity loss that can be added to LMPO to encourage role-specific memory divergence.",
+        "what_it_adds": "MemoryJS has no mechanism to detect or prevent memory homogenization across agents. This adds observability and automatic correction for the key problem LatentMem solves.",
+        "priority": "low"
+      },
+      {
+        "idea": "Cross-Agent Memory Transfer Learning",
+        "description": "Implement a MemoryTransferModule that allows learned role profiles and latent memory composers from one MAS instance to initialize another. Add fine-tuning capabilities so profiles can adapt to new task domains. Support profile merging for heterogeneous agent teams.",
+        "what_it_adds": "MemoryJS has import/export but no transfer learning for learned memory behaviors. This adds the ability to reuse learned memory strategies across different multi-agent systems.",
+        "priority": "low"
+      }
+    ]
+  },
+  {
+    "paper": "MemMamba — Rethinking Memory Patterns in State Space Model",
+    "innovation": "MemMamba introduces a 'note-taking' mechanism that combines state summarization with cross-layer/cross-token attention to preserve salient information in long sequences while maintaining linear complexity, solving the exponential memory decay problem in state-space models.",
+    "ideas": [
+      {
+        "idea": "Horizontal-Vertical Memory Fidelity Metrics",
+        "what_it_adds": "Quantitative framework to measure information degradation both within layers (horizontal) and across layers (vertical). Currently MemoryJS has decay engines and salience engines but no formal fidelity metrics to diagnose WHERE and HOW information is being lost in the knowledge graph.",
+        "priority": "high",
+        "implementation": "Add fidelity_score calculation to observation/relation tracking; measure semantic transmission loss at each graph depth level; expose metrics in search/retrieval diagnostics"
+      },
+      {
+        "idea": "State Summarization for Long Observation Sequences",
+        "what_it_adds": "Automatic distillation of verbose observation chains into compressed summaries (like 'note-taking'), preserving salient facts while reducing storage/retrieval overhead. MemoryJS has consolidation pipeline but not intelligent summarization that maintains semantic fidelity across long episodic sequences.",
+        "priority": "high",
+        "implementation": "Add summarization layer to episodic memory; compress observation chains >N tokens into salient fact summaries; maintain bidirectional links to original observations; apply during consolidation pipeline"
+      },
+      {
+        "idea": "Cross-Layer Attention Mechanism for Multi-Depth Queries",
+        "what_it_adds": "Enable queries to simultaneously attend to entities/relations at different 'depths' in the knowledge graph hierarchy, not just sequential traversal. Current graph algorithms (Dijkstra, PageRank) don't support attention-weighted cross-depth information fusion.",
+        "priority": "high",
+        "implementation": "Implement cross-layer attention weights in graph traversal; allow semantic search to weight results by depth relevance; add 'depth-aware' ranking to hybrid search combining BM25 + cross-layer attention scores"
+      },
+      {
+        "idea": "Exponential Decay Analysis for Relation Chains",
+        "what_it_adds": "Formal mathematical model of how information degrades through multi-hop relation chains (similar to MemMamba's exponential decay analysis). MemoryJS has decay engine but no analytical framework to predict/measure information loss through N-hop paths.",
+        "priority": "medium",
+        "implementation": "Add decay coefficient calculation for relation chains; expose decay curves in graph analytics; warn when queries traverse paths with >threshold decay; suggest alternative shorter paths"
+      },
+      {
+        "idea": "Salient Information Extraction & Pinning",
+        "what_it_adds": "Automatic identification and 'pinning' of high-salience facts to prevent decay (inspired by MemMamba's salient information preservation). Current salience engine ranks but doesn't actively protect critical facts from TTL/decay.",
+        "priority": "medium",
+        "implementation": "Add 'pin' flag to observations/relations; exempt pinned items from decay; auto-pin based on salience score + query frequency; expose pinning in consolidation pipeline"
+      },
+      {
+        "idea": "Cross-Session Attention for Multi-Agent Memory",
+        "what_it_adds": "Enable agents to attend to relevant facts from other agents' sessions (not just visibility filtering). MemoryJS has multi-agent with visibility levels but no mechanism to weight/attend across private/shared memories based on relevance.",
+        "priority": "medium",
+        "implementation": "Add cross-session semantic attention in multi-agent queries; weight shared/public observations by relevance to current agent's context; expose in agent memory search"
+      },
+      {
+        "idea": "Information Bottleneck Detection",
+        "what_it_adds": "Diagnostic tool to identify where critical information is being lost in the knowledge graph (e.g., bottleneck relations, high-decay paths). MemoryJS has pattern detector but not bottleneck analysis.",
+        "priority": "low",
+        "implementation": "Add bottleneck detection to pattern detector; identify relations with high information loss; suggest graph restructuring; expose in compression/archiving recommendations"
+      }
+    ]
+  },
+  {
+    "paper": "MemGovern — Enhancing Code Agents through Learning from Governed Human Experiences",
+    "innovation": "MemGovern transforms unstructured cross-repository GitHub data into standardized 'experience cards' through multi-stage governance (curation, purification, dual-layer protocol), enabling agents to retrieve and apply human debugging patterns rather than relying on shallow semantic matching.",
+    "ideas": [
+      {
+        "idea": "Experience Card Schema with Standardized Dimensions",
+        "what_it_adds": "A structured template for memory entries capturing: problem signature, modification strategy, validation method, cross-repo applicability score, and repair logic (not just semantic content). Currently MemoryJS stores observations/relations but lacks domain-specific card schemas with repair-pattern metadata.",
+        "priority": "high"
+      },
+      {
+        "idea": "Multi-Stage Data Governance Pipeline",
+        "what_it_adds": "Automated curation layer that: (1) filters noise from raw data sources, (2) purifies heterogeneous content (terminology normalization, style standardization), (3) validates card quality before indexing. MemoryJS has CRUD but no pre-ingestion governance or quality gates.",
+        "priority": "high"
+      },
+      {
+        "idea": "Dual-Layer Retrieval Protocol",
+        "what_it_adds": "Separate retrieval signals (semantic matching, metadata filters) from actionable repair logic (step-by-step fix patterns). Current hybrid search combines signals but doesn't distinguish between 'finding relevant cases' and 'extracting executable reasoning'. Enables logic-driven rather than similarity-driven retrieval.",
+        "priority": "high"
+      },
+      {
+        "idea": "Agentic Multi-Round Search & Browse",
+        "what_it_adds": "Interactive search loop where agents iteratively refine queries based on retrieved results (not one-shot retrieval). Mirrors human exploration of prior cases. MemoryJS search is stateless; this adds session-aware, iterative refinement with context accumulation.",
+        "priority": "high"
+      },
+      {
+        "idea": "Cross-Repository Applicability Scoring",
+        "what_it_adds": "Metadata field quantifying how transferable a repair pattern is across projects (accounting for terminology variance, module organization, coding style differences). MemoryJS has no mechanism to score generalizability of stored experiences.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Repair Pattern Extraction & Normalization",
+        "what_it_adds": "Automated extraction of modification strategies (e.g., 'null-check insertion', 'type-cast addition') and normalization across syntax variations. MemoryJS pattern detector identifies frequency patterns but not repair-specific transformations.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Validation Method Tracking",
+        "what_it_adds": "Store how each repair was validated (test suite, manual verification, CI/CD) as part of experience cards. Enables agents to assess confidence in retrieved solutions. MemoryJS has no validation provenance metadata.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Noise Filtering & Content Purification Operators",
+        "what_it_adds": "Configurable filters to remove social exchanges, procedural noise, and non-technical content from raw sources before graph ingestion. MemoryJS accepts all observations; this adds pre-processing rules for domain-specific noise.",
+        "priority": "medium"
+      }
+    ]
+  },
+  {
+    "paper": "Conditional Memory via Scalable Lookup — A New Axis of Sparsity for Large Language Models",
+    "innovation": "Engram introduces O(1) deterministic N-gram embedding lookup as a complementary sparsity axis to MoE, separating static knowledge retrieval from dynamic computation. This reveals a U-shaped scaling law optimizing the trade-off between neural computation and static memory allocation.",
+    "ideas": [
+      {
+        "idea": "Deterministic N-gram Hashing Layer for Entity/Pattern Lookup",
+        "what_it_adds": "Add a hashed N-gram embedding table (2-gram, 3-gram, etc.) that enables O(1) constant-time retrieval of frequently co-occurring entity patterns and formulaic sequences. Current memoryjs uses semantic embeddings + BM25; this adds deterministic, collision-resistant hashing for stereotyped local dependencies without neural computation.",
+        "priority": "high"
+      },
+      {
+        "idea": "Sparsity Allocation Optimizer (Compute vs Memory Trade-off)",
+        "what_it_adds": "Implement a U-shaped scaling law analyzer that profiles the optimal parameter budget split between dynamic computation (reasoning depth) and static memory (lookup tables). MemoryJS currently has no mechanism to measure or optimize this trade-off; this would auto-tune which entity types/patterns should be stored vs computed.",
+        "priority": "high"
+      },
+      {
+        "idea": "Context-Aware Gating for Memory Fusion",
+        "what_it_adds": "Add a learned gating mechanism that dynamically modulates retrieved static embeddings based on current context (hidden state). This allows the graph to decide when to trust lookup results vs. recompute based on reasoning depth needed—memoryjs currently has no fusion layer between retrieved facts and reasoning context.",
+        "priority": "high"
+      },
+      {
+        "idea": "Infrastructure-Aware Prefetching for Host Memory Offloading",
+        "what_it_adds": "Implement deterministic addressing + runtime prefetching to offload large embedding tables to host memory with <3% overhead. MemoryJS currently stores in SQLite/JSONL but has no prefetch optimization; this enables scaling to 100B+ parameter lookup tables without GPU memory constraints.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Multi-Head Hashing for Collision Resolution",
+        "what_it_adds": "Extend the hashing layer with multiple independent hash functions (multi-head hashing) to reduce collisions in N-gram lookups. Current memoryjs has no hash-based retrieval; this adds robustness for high-cardinality entity patterns.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Mechanistic Analysis Layer (Logit Lens / CKA Integration)",
+        "what_it_adds": "Add introspection tools to measure which layers are performing static reconstruction vs. reasoning, and which attention heads focus on local vs. global context. MemoryJS has no layer-wise analysis; this reveals whether memory lookups are actually freeing up capacity for deeper reasoning.",
+        "priority": "medium"
+      },
+      {
+        "idea": "Long-Context Attention Capacity Analyzer",
+        "what_it_adds": "Track how delegating local dependencies to lookups frees attention for global context. Measure long-context retrieval performance (NIAH, variable tracking) separately from short-context. MemoryJS has context window management but no metric for attention capacity liberation.",
+        "priority": "low"
+      },
+      {
+        "idea": "Tokenizer-Compressed N-gram Indexing",
+        "what_it_adds": "Compress multi-token entities (e.g., 'Alexander the Great') into single hash keys via tokenizer-aware compression before lookup. MemoryJS stores entities as-is; this reduces embedding table size while maintaining retrieval accuracy for multi-token patterns.",
+        "priority": "medium"
+      }
+    ]
+  }
+]

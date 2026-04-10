@@ -146,6 +146,7 @@ export type {
   MemoryVisibility,
   MemoryAcquisitionMethod,
   SessionStatus,
+  SessionOutcome,
   TemporalFocus,
   // Memory source types
   ObservationSource,
@@ -154,6 +155,7 @@ export type {
   AgentEntity,
   AgentObservation,
   SessionEntity,
+  ProfileEntity,
   // Context types
   AccessContext,
   SalienceContext,
@@ -194,18 +196,37 @@ export type {
   TokenBreakdown,
   ContextPackage,
   ExcludedEntity,
+  // Failure distillation types
+  DistilledLesson,
+  // Cognitive load types
+  CognitiveLoadMetrics,
+  AdaptiveReductionResult,
+  // Multi-agent group types
+  GroupMembership,
+  ConflictInfo,
+  ConflictStrategy,
 } from './agent-memory.js';
 
 // Agent Memory Type Guards and Classes
 export {
   isAgentEntity,
   isSessionEntity,
+  isProfileEntity,
   isWorkingMemory,
   isEpisodicMemory,
   isSemanticMemory,
   isProceduralMemory,
   AccessContextBuilder,
 } from './agent-memory.js';
+
+// Artifact Types
+export type {
+  ArtifactType,
+  CreateArtifactOptions,
+  ArtifactEntity,
+  ArtifactFilter,
+} from './artifact.js';
+export { isArtifactEntity } from './artifact.js';
 
 // Phase 1 Sprint 10: Progress Types
 // Note: ProgressCallback is exported from utils/taskScheduler.ts (simpler interface)

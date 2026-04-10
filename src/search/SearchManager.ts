@@ -9,6 +9,7 @@
 
 import type { KnowledgeGraph, SearchResult, SavedSearch, AutoSearchResult, Entity, AccessContext } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import { TemporalSearch, type TemporalSearchOptions } from './TemporalSearch.js';
 import { BasicSearch } from './BasicSearch.js';
 import { RankedSearch } from './RankedSearch.js';
 import { BooleanSearch } from './BooleanSearch.js';
@@ -28,6 +29,14 @@ export interface SearchOptionsWithTracking {
   sessionId?: string;
   /** Task ID for access context */
   taskId?: string;
+  /** Project scope filter. Undefined = match all projects. */
+  projectId?: string;
+  /** Tags to filter results (lowercase). */
+  tags?: string[];
+  /** Minimum importance value (0-10). */
+  minImportance?: number;
+  /** Maximum importance value (0-10). */
+  maxImportance?: number;
 }
 
 /**
@@ -45,6 +54,7 @@ export class SearchManager {
   readonly queryEstimator: QueryCostEstimator;
   private storage: GraphStorage;
   private accessTracker?: AccessTracker;
+  private temporalSearch: TemporalSearch;
 
   constructor(storage: GraphStorage, savedSearchesFilePath: string) {
     this.storage = storage;
@@ -55,6 +65,7 @@ export class SearchManager {
     this.searchSuggestions = new SearchSuggestions(storage);
     this.savedSearchManager = new SavedSearchManager(savedSearchesFilePath, this.basicSearch);
     this.queryEstimator = new QueryCostEstimator();
+    this.temporalSearch = new TemporalSearch(storage);
   }
 
   /**
@@ -107,16 +118,38 @@ export class SearchManager {
   /** Perform a simple text-based search across entity names, observations, and types. */
   async searchNodes(
     query: string,
-    tags?: string[],
+    tagsOrOptions?: string[] | SearchOptionsWithTracking,
     minImportance?: number,
     maxImportance?: number,
     options?: SearchOptionsWithTracking
   ): Promise<KnowledgeGraph> {
-    const result = await this.basicSearch.searchNodes(query, tags, minImportance, maxImportance);
+    // Support both positional (tags, minImportance, maxImportance, options) and
+    // unified options-object (SearchOptionsWithTracking) as second argument.
+    let tags: string[] | undefined;
+    let resolvedOptions: SearchOptionsWithTracking | undefined;
+    if (Array.isArray(tagsOrOptions) || tagsOrOptions === undefined) {
+      tags = tagsOrOptions as string[] | undefined;
+      resolvedOptions = options;
+    } else {
+      resolvedOptions = tagsOrOptions;
+      tags = tagsOrOptions.tags;
+      minImportance = tagsOrOptions.minImportance;
+      maxImportance = tagsOrOptions.maxImportance;
+    }
+
+    const result = await this.basicSearch.searchNodes(
+      query,
+      tags,
+      minImportance,
+      maxImportance,
+      0,
+      undefined,
+      resolvedOptions?.projectId
+    );
 
     // Track access if enabled
-    if (options?.trackAccess && this.accessTracker) {
-      await this.trackSearchResults(result.entities, query, options);
+    if (resolvedOptions?.trackAccess && this.accessTracker) {
+      await this.trackSearchResults(result.entities, query, resolvedOptions);
     }
 
     return result;
@@ -163,15 +196,90 @@ export class SearchManager {
 
   // ==================== Ranked Search ====================
 
+<<<<<<< HEAD
+  /**
+   * Perform TF-IDF ranked search with relevance scoring.
+   *
+   * Uses Term Frequency-Inverse Document Frequency algorithm to rank results
+   * by relevance to the query. Results are sorted by score (highest first).
+   * This is ideal for finding the most relevant entities for a search query.
+   *
+   * @param query - Search query (analyzed for term frequency)
+   * @param tags - Optional array of tags to filter results (lowercase)
+   * @param minImportance - Optional minimum importance value (0-10)
+   * @param maxImportance - Optional maximum importance value (0-10)
+   * @param limit - Maximum number of results to return (default: 50, max: 200)
+   * @returns Array of SearchResult objects sorted by relevance score (descending)
+   *
+   * @example
+   * ```typescript
+   * const manager = new SearchManager(storage, savedSearchesPath);
+   *
+   * // Basic ranked search
+   * const results = await manager.searchNodesRanked('machine learning algorithms');
+   * results.forEach(r => {
+   *   console.log(`${r.entity.name} (score: ${r.score})`);
+   * });
+   *
+   * // Limit to top 10 most relevant results
+   * const top10 = await manager.searchNodesRanked('database optimization', undefined, undefined, undefined, 10);
+   *
+   * // Ranked search with filters
+   * const relevantImportant = await manager.searchNodesRanked(
+   *   'security vulnerability',
+   *   ['security', 'critical'],
+   *   8,
+   *   10,
+   *   20
+   * );
+   * ```
+   */
+  searchNodesRanked(
+=======
   /** Perform TF-IDF ranked search with relevance scoring. */
   async searchNodesRanked(
+>>>>>>> origin/master
     query: string,
     tags?: string[],
     minImportance?: number,
     maxImportance?: number,
     limit?: number
-  ): Promise<SearchResult[]> {
-    return this.rankedSearch.searchNodesRanked(query, tags, minImportance, maxImportance, limit);
+  ): Promise<SearchResult[]>;
+  searchNodesRanked(
+    query: string,
+    options: SearchOptionsWithTracking
+  ): Promise<KnowledgeGraph>;
+  async searchNodesRanked(
+    query: string,
+    tagsOrOptions?: string[] | SearchOptionsWithTracking,
+    minImportance?: number,
+    maxImportance?: number,
+    limit?: number
+  ): Promise<SearchResult[] | KnowledgeGraph> {
+    // Support both positional (tags, minImportance, maxImportance, limit) and
+    // unified options-object (SearchOptionsWithTracking) as second argument.
+    if (Array.isArray(tagsOrOptions) || tagsOrOptions === undefined) {
+      // Positional form — keep original return type (SearchResult[]) for backward compat.
+      return this.rankedSearch.searchNodesRanked(
+        query,
+        tagsOrOptions as string[] | undefined,
+        minImportance,
+        maxImportance,
+        limit
+      );
+    }
+    // Options-object form — extract fields and return KnowledgeGraph for consistency
+    // with searchNodes / booleanSearch / fuzzySearch.
+    const opts = tagsOrOptions;
+    const rankedResults = await this.rankedSearch.searchNodesRanked(
+      query,
+      opts.tags,
+      opts.minImportance,
+      opts.maxImportance,
+      limit,
+      opts.projectId
+    );
+    return { entities: rankedResults.map(r => r.entity), relations: [] };
   }
 
   // ==================== Boolean Search ====================
@@ -179,11 +287,23 @@ export class SearchManager {
   /** Perform boolean search with AND, OR, NOT operators. */
   async booleanSearch(
     query: string,
-    tags?: string[],
+    tagsOrOptions?: string[] | SearchOptionsWithTracking,
     minImportance?: number,
     maxImportance?: number
   ): Promise<KnowledgeGraph> {
-    return this.booleanSearcher.booleanSearch(query, tags, minImportance, maxImportance);
+    // Support both positional (tags, minImportance, maxImportance) and
+    // unified options-object (SearchOptionsWithTracking) as second argument.
+    let tags: string[] | undefined;
+    let projectId: string | undefined;
+    if (Array.isArray(tagsOrOptions) || tagsOrOptions === undefined) {
+      tags = tagsOrOptions as string[] | undefined;
+    } else {
+      tags = tagsOrOptions.tags;
+      minImportance = tagsOrOptions.minImportance;
+      maxImportance = tagsOrOptions.maxImportance;
+      projectId = tagsOrOptions.projectId;
+    }
+    return this.booleanSearcher.booleanSearch(query, tags, minImportance, maxImportance, 0, undefined, projectId);
   }
 
   // ==================== Fuzzy Search ====================
@@ -191,12 +311,25 @@ export class SearchManager {
   /** Perform fuzzy search with Levenshtein distance-based typo tolerance. */
   async fuzzySearch(
     query: string,
-    threshold?: number,
+    thresholdOrOptions?: number | SearchOptionsWithTracking,
     tags?: string[],
     minImportance?: number,
     maxImportance?: number
   ): Promise<KnowledgeGraph> {
-    return this.fuzzySearcher.fuzzySearch(query, threshold, tags, minImportance, maxImportance);
+    // Support both positional (threshold, tags, minImportance, maxImportance) and
+    // unified options-object (SearchOptionsWithTracking) as second argument.
+    let threshold: number | undefined;
+    let projectId: string | undefined;
+    if (typeof thresholdOrOptions === 'number' || thresholdOrOptions === undefined) {
+      threshold = thresholdOrOptions as number | undefined;
+    } else {
+      threshold = undefined;
+      tags = thresholdOrOptions.tags;
+      minImportance = thresholdOrOptions.minImportance;
+      maxImportance = thresholdOrOptions.maxImportance;
+      projectId = thresholdOrOptions.projectId;
+    }
+    return this.fuzzySearcher.fuzzySearch(query, threshold, tags, minImportance, maxImportance, 0, undefined, projectId);
   }
 
   // ==================== Search Suggestions ====================
@@ -332,4 +465,40 @@ export class SearchManager {
     return this.queryEstimator.estimateAllMethods(query, entityCount);
   }
 
+<<<<<<< HEAD
+  /**
+   * Phase 10 Sprint 4: Get the query cost estimator instance.
+   *
+   * @returns The QueryCostEstimator instance
+   */
+  getQueryEstimator(): QueryCostEstimator {
+    return this.queryEstimator;
+  }
+
+  // ==================== Temporal Search (Feature 3) ====================
+
+  /**
+   * Feature 3 (Must-Have): Search entities by a natural language time expression.
+   *
+   * Parses the query using chrono-node and returns entities whose
+   * `createdAt` or `lastModified` timestamp falls within the resolved range.
+   *
+   * Returns an empty array if the expression cannot be parsed.
+   *
+   * @param query - Natural language temporal expression, e.g. "last hour", "since yesterday"
+   * @param options - Optional field and undated-entity configuration
+   * @returns Entities matching the time range, sorted oldest-first
+   *
+   * @example
+   * ```typescript
+   * const recentEntities = await manager.searchByTime('last 10 minutes');
+   * const todayEntities  = await manager.searchByTime('today');
+   * const rangedEntities = await manager.searchByTime('between Monday and Wednesday');
+   * ```
+   */
+  async searchByTime(query: string, options?: TemporalSearchOptions): Promise<Entity[]> {
+    return this.temporalSearch.searchByTimeQuery(query, options);
+  }
+=======
+>>>>>>> origin/master
 }

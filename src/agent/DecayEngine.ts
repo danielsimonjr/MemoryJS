@@ -12,6 +12,7 @@ import type { IGraphStorage } from '../types/types.js';
 import type { AgentEntity, DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
+import { FreshnessManager } from '../features/FreshnessManager.js';
 
 // Re-export for convenience
 export type { DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
@@ -28,6 +29,24 @@ export interface DecayEngineConfig {
   accessModulation?: boolean;
   /** Minimum importance floor (default: 0.1) */
   minImportance?: number;
+  /**
+   * TTL acceleration multiplier for past-TTL entities (default: 3.0).
+   * Entities that have exceeded their TTL decay at this multiple of
+   * the normal decay rate, reflecting that they are overdue for renewal.
+   */
+  ttlExpiredDecayMultiplier?: number;
+  /**
+   * Rate at which confidence decays per hour as a fraction (default: 0.001).
+   * Applied on top of time-based decay so that uncertainty accumulates over time.
+   */
+  confidenceDecayRate?: number;
+  /**
+   * Whether to fold the confidence factor into effective importance (default: false).
+   * When false, confidence is tracked separately via calculateConfidenceFactor()
+   * but does not affect calculateEffectiveImportance().
+   * Enable to make low-confidence memories decay faster in importance.
+   */
+  applyConfidenceToImportance?: boolean;
 }
 
 /**
@@ -73,6 +92,7 @@ export class DecayEngine {
   private readonly storage: IGraphStorage;
   private readonly accessTracker: AccessTracker;
   private readonly config: Required<DecayEngineConfig>;
+  private readonly freshnessManager: FreshnessManager;
 
   constructor(
     storage: IGraphStorage,
@@ -86,7 +106,13 @@ export class DecayEngine {
       importanceModulation: config.importanceModulation ?? true,
       accessModulation: config.accessModulation ?? true,
       minImportance: config.minImportance ?? 0.1,
+      ttlExpiredDecayMultiplier: config.ttlExpiredDecayMultiplier ?? 3.0,
+      confidenceDecayRate: config.confidenceDecayRate ?? 0.001,
+      applyConfidenceToImportance: config.applyConfidenceToImportance ?? false,
     };
+    this.freshnessManager = new FreshnessManager(storage, {
+      defaultHalfLifeHours: this.config.halfLifeHours,
+    });
   }
 
   // ==================== Decay Factor Calculation ====================
@@ -99,15 +125,21 @@ export class DecayEngine {
    * - Returns 0.5 after one half-life
    * - Approaches 0 for very old memories
    *
+   * TTL awareness: when `entity` is provided and the entity has a TTL that has
+   * been exceeded, the effective half-life is divided by `ttlExpiredDecayMultiplier`
+   * so that past-TTL entities decay significantly faster.
+   *
    * @param lastAccessedAt - ISO 8601 timestamp of last access
    * @param halfLifeHours - Base half-life in hours
    * @param importanceBoost - Optional boost factor (0-10 scale) that extends half-life
+   * @param entity - Optional entity for TTL-awareness check
    * @returns Decay factor between 0.0 and 1.0
    */
   calculateDecayFactor(
     lastAccessedAt: string,
     halfLifeHours: number,
-    importanceBoost?: number
+    importanceBoost?: number,
+    entity?: { ttl?: number; createdAt?: string }
   ): number {
     if (!lastAccessedAt) {
       return 0; // No access history = fully decayed
@@ -122,6 +154,17 @@ export class DecayEngine {
     if (importanceBoost !== undefined && this.config.importanceModulation) {
       // Importance of 10 doubles the half-life
       effectiveHalfLife = halfLifeHours * (1 + importanceBoost / 10);
+    }
+
+    // TTL awareness: past-TTL entities decay faster
+    if (entity?.ttl !== undefined && entity.ttl > 0) {
+      const createdAt = entity.createdAt
+        ? new Date(entity.createdAt).getTime()
+        : now;
+      const isPastTtl = now > createdAt + entity.ttl;
+      if (isPastTtl) {
+        effectiveHalfLife = effectiveHalfLife / this.config.ttlExpiredDecayMultiplier;
+      }
     }
 
     // Exponential decay formula
@@ -171,13 +214,14 @@ export class DecayEngine {
   }
 
   /**
-   * Calculate effective importance considering decay and strength.
+   * Calculate effective importance considering decay, TTL, confidence, and strength.
    *
-   * Formula: base_importance * decay_factor * strength_multiplier
+   * Formula: base_importance * decay_factor * strength_multiplier * confidence_factor
    *
    * - base_importance: Entity's stated importance (0-10)
-   * - decay_factor: Time-based decay (0-1)
+   * - decay_factor: Time-based decay (0-1), accelerated for past-TTL entities
    * - strength_multiplier: Boost from confirmations and accesses
+   * - confidence_factor: Decayed confidence based on entity age
    *
    * Result is clamped to minimum importance floor.
    *
@@ -195,12 +239,13 @@ export class DecayEngine {
       return Math.max(baseImportance, this.config.minImportance);
     }
 
-    // Calculate decay factor with importance modulation
+    // Calculate decay factor with importance modulation and TTL awareness
     const importanceBoost = this.config.importanceModulation ? baseImportance : undefined;
     const decayFactor = this.calculateDecayFactor(
       decayTimestamp,
       this.config.halfLifeHours,
-      importanceBoost
+      importanceBoost,
+      entity  // Pass entity for TTL-awareness
     );
 
     // Calculate strength multiplier if access modulation enabled
@@ -209,9 +254,59 @@ export class DecayEngine {
       strengthMultiplier = this.calculateStrengthMultiplier(entity);
     }
 
+<<<<<<< HEAD
+    // Confidence decay: optionally fold confidence into importance
+    const confidenceFactor = this.config.applyConfidenceToImportance
+      ? this.calculateConfidenceFactor(entity)
+      : 1.0;
+
+    // Combine factors
+    const effectiveImportance = baseImportance * decayFactor * strengthMultiplier * confidenceFactor;
+
+    // Apply minimum floor
+    return Math.max(effectiveImportance, this.config.minImportance);
+=======
     // Combine factors and clamp to [minImportance, 10]
     const effectiveImportance = baseImportance * decayFactor * strengthMultiplier;
     return Math.min(10, Math.max(effectiveImportance, this.config.minImportance));
+>>>>>>> origin/master
+  }
+
+  /**
+   * Calculate confidence decay factor based on entity age.
+   *
+   * If the entity has an explicit confidence value, it is decayed over time
+   * at the configured rate. If no confidence is set, returns 1.0 (no penalty).
+   *
+   * Formula: max(0.1, confidence * e^(-confidenceDecayRate * ageHours))
+   *
+   * @param entity - Entity to evaluate
+   * @returns Confidence factor in [0.1, 1.0]
+   */
+  calculateConfidenceFactor(entity: AgentEntity): number {
+    // If no explicit confidence set, no confidence penalty
+    if (entity.confidence === undefined) return 1.0;
+
+    const now = Date.now();
+    const createdAt = entity.createdAt
+      ? new Date(entity.createdAt).getTime()
+      : now;
+    const ageHours = (now - createdAt) / (1000 * 60 * 60);
+
+    // Exponential erosion of confidence over time
+    const decayedConfidence =
+      entity.confidence * Math.exp(-this.config.confidenceDecayRate * ageHours);
+
+    // Floor at 0.1 so a confidence penalty alone never fully destroys importance
+    return Math.max(0.1, Math.min(1, decayedConfidence));
+  }
+
+  /**
+   * Get the FreshnessManager used internally.
+   * Exposed for callers that need freshness calculations alongside decay.
+   */
+  getFreshnessManager(): FreshnessManager {
+    return this.freshnessManager;
   }
 
   // ==================== Decayed Memory Queries ====================

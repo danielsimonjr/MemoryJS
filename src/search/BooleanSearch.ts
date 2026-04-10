@@ -68,7 +68,8 @@ export class BooleanSearch {
     minImportance?: number,
     maxImportance?: number,
     offset?: number,
-    limit?: number
+    limit?: number,
+    projectId?: string
   ): string {
     return JSON.stringify({
       q: query,
@@ -77,6 +78,7 @@ export class BooleanSearch {
       max: maxImportance,
       off: offset,
       lim: limit,
+      pid: projectId,
     });
   }
 
@@ -164,7 +166,8 @@ export class BooleanSearch {
     minImportance?: number,
     maxImportance?: number,
     offset: number = 0,
-    limit: number = SEARCH_LIMITS.DEFAULT
+    limit: number = SEARCH_LIMITS.DEFAULT,
+    projectId?: string
   ): Promise<KnowledgeGraph> {
     // Validate query length
     if (query.length > QUERY_LIMITS.MAX_QUERY_LENGTH) {
@@ -177,7 +180,7 @@ export class BooleanSearch {
     const graph = await this.storage.loadGraph();
 
     // Phase 4 Sprint 4: Check result cache
-    const cacheKey = this.generateCacheKey(query, tags, minImportance, maxImportance, offset, limit);
+    const cacheKey = this.generateCacheKey(query, tags, minImportance, maxImportance, offset, limit, projectId);
     const cached = this.resultCache.get(cacheKey);
 
     if (cached && cached.entityCount === graph.entities.length) {
@@ -212,7 +215,7 @@ export class BooleanSearch {
     );
 
     // Apply tag and importance filters using SearchFilterChain
-    const filters: SearchFilters = { tags, minImportance, maxImportance };
+    const filters: SearchFilters = { tags, minImportance, maxImportance, projectId };
     const filteredEntities = SearchFilterChain.applyFilters(booleanMatched, filters);
 
     // Apply pagination using SearchFilterChain

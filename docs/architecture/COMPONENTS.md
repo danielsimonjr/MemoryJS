@@ -1,7 +1,12 @@
 # MemoryJS - Component Reference
 
+<<<<<<< HEAD
+**Version**: 1.7.0
+**Last Updated**: 2026-03-24
+=======
 **Version**: 1.5.0
 **Last Updated**: 2026-02-11
+>>>>>>> origin/master
 
 ---
 
@@ -24,23 +29,35 @@ MemoryJS follows a layered architecture with specialized components:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  agent/            │  Agent memory system (19 files)        │
+│  agent/            │  Agent memory system (30 files)        │
 ├─────────────────────────────────────────────────────────────┤
-│  core/             │  Central managers and storage (12 files)│
+│  core/             │  Central managers and storage (13 files)│
 ├─────────────────────────────────────────────────────────────┤
+<<<<<<< HEAD
+│  search/           │  Search implementations (34 files)     │
+=======
 │  search/           │  Search implementations (32 files)     │
+>>>>>>> origin/master
 ├─────────────────────────────────────────────────────────────┤
-│  features/         │  Advanced capabilities (9 files)       │
+│  features/         │  Advanced capabilities (12 files)      │
 ├─────────────────────────────────────────────────────────────┤
 │  utils/            │  Shared utilities (24 files)           │
 ├─────────────────────────────────────────────────────────────┤
+<<<<<<< HEAD
+│  types/            │  TypeScript definitions (4 files)      │
+=======
 │  types/            │  TypeScript definitions (5 files)      │
+>>>>>>> origin/master
 ├─────────────────────────────────────────────────────────────┤
 │  workers/          │  Web workers (2 files)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+<<<<<<< HEAD
+**Total:** 113 TypeScript files | 720+ exports | ~50,000 lines of code
+=======
 **Total:** 110 TypeScript files | 770 exports | ~43,000 lines of code
+>>>>>>> origin/master
 
 ---
 
@@ -334,6 +351,47 @@ export class RuleEvaluator {
 
 ---
 
+<<<<<<< HEAD
+### ArtifactManager (`agent/ArtifactManager.ts`)
+
+**Purpose**: Create and track artifacts with stable, human-readable names
+
+```typescript
+export class ArtifactManager {
+  constructor(context: ManagerContext)
+
+  async createArtifact(options: CreateArtifactOptions): Promise<ArtifactEntity>
+  async getArtifact(ref: string): Promise<ArtifactEntity | null>
+  async listArtifacts(filter?: ArtifactFilter): Promise<ArtifactEntity[]>
+}
+```
+
+**Name Format**: `toolName-YYYY-MM-DD-shortId` (e.g., `code-gen-2026-03-24-a1b2c3`)
+
+Auto-registers each artifact in `RefIndex` for stable O(1) lookup.
+
+---
+
+### DistillationPolicy (`agent/DistillationPolicy.ts`)
+
+**Purpose**: Post-retrieval filter that reduces memory sets before LLM formatting
+
+```typescript
+export interface IDistillationPolicy {
+  distill(memories: AgentEntity[], context: SalienceContext): Promise<AgentEntity[]>
+}
+
+export class DefaultDistillationPolicy implements IDistillationPolicy {
+  // Applies: relevance score threshold, freshness filter, deduplication
+}
+
+export class CompositeDistillationPolicy implements IDistillationPolicy {
+  constructor(policies: IDistillationPolicy[])
+}
+
+export class NoOpDistillationPolicy implements IDistillationPolicy {
+  // Pass-through; used when distillation is disabled
+=======
 ### SessionQueryBuilder (`agent/SessionQueryBuilder.ts`)
 
 **Purpose**: Builder for constructing session queries with filtering
@@ -346,11 +404,218 @@ export class SessionQueryBuilder {
   withStatus(status: SessionStatus): SessionQueryBuilder
   withLimit(limit: number): SessionQueryBuilder
   async execute(): Promise<SessionEntity[]>
+>>>>>>> origin/master
 }
 ```
 
 ---
 
+<<<<<<< HEAD
+### DistillationPipeline (`agent/DistillationPipeline.ts`)
+
+**Purpose**: Orchestrates ordered distillation policy execution
+
+```typescript
+export class DistillationPipeline {
+  constructor(policies: IDistillationPolicy[])
+
+  async run(memories: AgentEntity[], context: SalienceContext): Promise<AgentEntity[]>
+  addPolicy(policy: IDistillationPolicy): void
+}
+```
+
+Wired into `ContextWindowManager.retrieveForContext()` — runs after salience scoring and before token budgeting.
+
+---
+
+### RoleProfiles (`agent/RoleProfiles.ts`)
+
+**Purpose**: Role-aware salience weight presets and token budget splits (v1.7.0)
+
+```typescript
+type AgentRole = 'researcher' | 'planner' | 'executor' | 'reviewer' | 'coordinator';
+
+export interface RoleProfile {
+  role: AgentRole;
+  salienceWeights: SalienceWeights;     // importanceWeight, recencyWeight, etc.
+  budgetSplits: BudgetSplits;           // working / episodic / semantic proportions
+}
+
+export class RoleProfileManager {
+  constructor(salienceEngine: SalienceEngine, contextWindowManager: ContextWindowManager)
+
+  apply(role: AgentRole): void          // Sets weights + budget splits
+  getProfile(role: AgentRole): RoleProfile
+  listProfiles(): RoleProfile[]
+}
+```
+
+Five built-in profiles ship with opinionated defaults — e.g. `researcher` boosts semantic weight, `executor` boosts working-memory budget.
+
+---
+
+### EntropyFilter (`agent/EntropyFilter.ts`)
+
+**Purpose**: Shannon entropy gate that removes low-information memories before consolidation (v1.7.0)
+
+```typescript
+export class EntropyFilter {
+  constructor(config?: EntropyFilterConfig)  // threshold: number (default 0.3)
+
+  score(entity: AgentEntity): number          // 0–1 entropy score
+  filter(entities: AgentEntity[]): AgentEntity[]  // drops below-threshold entries
+}
+```
+
+Integrated as an early stage in `ConsolidationPipeline`. Entropy is computed from observation token diversity using the standard Shannon formula over unigram frequencies.
+
+---
+
+### ConsolidationScheduler (`agent/ConsolidationScheduler.ts`)
+
+**Purpose**: Background recursive deduplication and merge scheduler (v1.7.0)
+
+```typescript
+export class ConsolidationScheduler {
+  constructor(pipeline: ConsolidationPipeline, config?: SchedulerConfig)
+  //   intervalMs: number  (default 3_600_000)
+  //   maxIterations: number
+
+  start(): void
+  stop(): void
+  runNow(): Promise<ConsolidationResult>   // Manual one-shot cycle
+}
+```
+
+Each scheduled cycle calls `ConsolidationPipeline.runAutoConsolidation()` and repeats until the result reports zero merges (fixed-point convergence).
+
+---
+
+### MemoryFormatter (`agent/MemoryFormatter.ts`) — updated
+
+**Purpose**: Memory-to-prompt formatting with salience-proportional budget allocation (v1.7.0)
+
+```typescript
+export class MemoryFormatter {
+  formatForPrompt(memories: AgentEntity[], options?: FormatOptions): string
+  formatEntity(entity: AgentEntity): string
+  formatObservations(observations: string[], limit?: number): string
+
+  // v1.7.0
+  formatWithSalienceBudget(
+    memories: AgentEntity[],
+    scores: Map<string, number>,
+    totalTokens: number
+  ): string   // Proportionally allocates tokens across memory-type sections
+}
+```
+
+---
+
+### CollaborativeSynthesis (`agent/CollaborativeSynthesis.ts`)
+
+**Purpose**: Graph-neighbourhood synthesis merging observations from multiple agents (v1.7.0)
+
+```typescript
+export class CollaborativeSynthesis {
+  constructor(storage: IGraphStorage, config?: SynthesisConfig)
+  //   hopDepth: number   (default 2)
+
+  async synthesize(
+    entityName: string,
+    requestingAgentId: string
+  ): Promise<SynthesisResult>
+}
+
+interface SynthesisResult {
+  unified: AgentEntity;          // Merged entity with combined observations
+  provenance: ProvenanceEntry[]; // Per-observation source agent + timestamp
+  agentCount: number;
+  hopDepth: number;
+}
+```
+
+Walks the relation graph up to `hopDepth` hops, collects all agent-contributed observations for reachable entities, and returns a unified view. Visibility rules from `VisibilityResolver` are enforced during traversal.
+
+---
+
+### FailureDistillation (`agent/FailureDistillation.ts`)
+
+**Purpose**: Causal chain lesson extraction from failed episodes (v1.7.0)
+
+```typescript
+export class FailureDistillation {
+  constructor(storage: IGraphStorage, pipeline: ConsolidationPipeline)
+
+  async distill(failureEntityName: string): Promise<DistillationResult>
+}
+
+interface DistillationResult {
+  lessons: AgentEntity[];        // Promoted semantic memories
+  causalChain: string[];         // Ordered entity names in the failure path
+  contributionScores: Map<string, number>;  // Per-step causal weight
+}
+```
+
+Reconstructs the event sequence leading to the failure entity via reverse causal relation traversal, scores each step by causal contribution, and promotes the highest-scoring observations to semantic memory as reusable lessons.
+
+---
+
+### CognitiveLoadAnalyzer (`agent/CognitiveLoadAnalyzer.ts`)
+
+**Purpose**: Multi-dimensional cognitive load scoring for a memory set (v1.7.0)
+
+```typescript
+export class CognitiveLoadAnalyzer {
+  analyze(memories: AgentEntity[]): CognitiveLoadReport
+}
+
+interface CognitiveLoadReport {
+  tokenDensity: number;       // Average tokens per observation
+  redundancyRatio: number;    // Fraction of near-duplicate observations
+  diversityScore: number;     // Observation vocabulary diversity (0–1)
+  loadIndex: number;          // Composite 0–1 score (higher = more loaded)
+}
+```
+
+`ContextWindowManager` consults `loadIndex` before final prompt assembly and prunes the highest-load sections when the index exceeds `MEMORY_COGNITIVE_LOAD_MAX`.
+
+---
+
+### VisibilityResolver (`agent/VisibilityResolver.ts`)
+
+**Purpose**: Five-level shared memory visibility model with group membership (v1.7.0)
+
+```typescript
+type VisibilityLevel = 'private' | 'team' | 'org' | 'shared' | 'public';
+
+export interface GroupMembership {
+  agentId: string;
+  teams: string[];
+  orgs: string[];
+}
+
+export class VisibilityResolver {
+  constructor(memberships: GroupMembership[])
+
+  resolve(
+    requestingAgentId: string,
+    memories: AgentEntity[]
+  ): AgentEntity[]   // Returns only memories visible to the requesting agent
+
+  canAccess(
+    requestingAgentId: string,
+    entity: AgentEntity
+  ): boolean
+}
+```
+
+Visibility rules: `private` → owner only; `team` → same team members; `org` → same org members; `shared` → any registered agent; `public` → unrestricted.
+
+---
+
+=======
+>>>>>>> origin/master
 ## Core Components
 
 ### ManagerContext (`core/ManagerContext.ts`)
@@ -602,6 +867,28 @@ export class TransactionManager {
 
 ---
 
+<<<<<<< HEAD
+### RefIndex (`core/RefIndex.ts`)
+
+**Purpose**: Named stable reference index for O(1) entity lookup, persisted as JSONL sidecar
+
+```typescript
+export class RefIndex {
+  constructor(sidecarPath: string)
+
+  async register(ref: string, entityName: string): Promise<void>
+  async resolve(ref: string): Promise<string | null>
+  async deregister(ref: string): Promise<void>
+  async listRefs(): Promise<Map<string, string>>
+}
+```
+
+**Key Features**:
+- JSONL sidecar file for persistence (e.g., `memory-refs.jsonl`)
+- Stable ref names survive entity renames
+- Integrated into `EntityManager` (auto-deregister on delete) and `ManagerContext` (`ctx.refIndex`)
+
+=======
 ### BatchTransaction (`core/BatchTransaction.ts`)
 
 **Purpose**: Fluent batch operation builder with validation and atomic execution
@@ -621,6 +908,7 @@ export class BatchTransaction {
 }
 ```
 
+>>>>>>> origin/master
 ---
 
 ### GraphEventEmitter (`core/GraphEventEmitter.ts`)
@@ -911,6 +1199,103 @@ export class SearchFilterChain {
 
 ---
 
+<<<<<<< HEAD
+### NGramIndex (`search/NGramIndex.ts`)
+
+**Purpose**: Trigram index providing Jaccard-based pre-filtering for FuzzySearch
+
+```typescript
+export class NGramIndex {
+  constructor(n?: number)  // default: 3 (trigrams)
+
+  index(id: string, text: string): void
+  query(text: string, topK?: number): string[]  // sorted by Jaccard similarity
+  remove(id: string): void
+}
+```
+
+Plugged into `FuzzySearch` to reduce candidate set before Levenshtein worker dispatch.
+
+---
+
+### TemporalQueryParser (`search/TemporalQueryParser.ts`)
+
+**Purpose**: Parses natural language time expressions into structured date ranges
+
+```typescript
+export class TemporalQueryParser {
+  parse(expression: string): TemporalRange | null
+}
+
+interface TemporalRange {
+  start: Date;
+  end: Date;
+  label: string;  // e.g., "last hour", "10 minutes ago"
+}
+```
+
+Uses `chrono-node` for expression parsing. Supports: "10 minutes ago", "last hour", "yesterday", "last week", ISO ranges.
+
+---
+
+### TemporalSearch (`search/TemporalSearch.ts`)
+
+**Purpose**: Execute time-range entity searches using parsed temporal expressions
+
+```typescript
+export class TemporalSearch {
+  constructor(storage: IGraphStorage, parser: TemporalQueryParser)
+
+  async search(expression: string, options?: TemporalSearchOptions): Promise<KnowledgeGraph>
+  async searchRange(range: TemporalRange, options?: TemporalSearchOptions): Promise<KnowledgeGraph>
+}
+```
+
+Exposed as `SearchManager.searchByTime()` and `ManagerContext.temporalSearch`.
+
+---
+
+### LLMQueryPlanner (`search/LLMQueryPlanner.ts`)
+
+**Purpose**: Decomposes natural language queries into structured search plans
+
+```typescript
+export interface LLMProvider {
+  complete(prompt: string): Promise<string>
+}
+
+export class LLMQueryPlanner {
+  constructor(provider?: LLMProvider)
+
+  async plan(query: string): Promise<StructuredQuery>
+}
+
+interface StructuredQuery {
+  keywords: string[];
+  filters: SearchFilters;
+  intent: string;
+  suggestedMethods: string[];
+}
+```
+
+Falls back to keyword extraction when no `LLMProvider` is configured. JSON response validated with recovery.
+
+---
+
+### LLMSearchExecutor (`search/LLMSearchExecutor.ts`)
+
+**Purpose**: Executes a `StructuredQuery` produced by `LLMQueryPlanner`
+
+```typescript
+export class LLMSearchExecutor {
+  constructor(searchManager: SearchManager, planner: LLMQueryPlanner)
+
+  async execute(query: string): Promise<HybridSearchResult>
+}
+```
+
+Exposed as `ManagerContext.queryNaturalLanguage(query, llmProvider?)`.
+=======
 ### Query Optimization
 
 #### QueryParser (`search/QueryParser.ts`)
@@ -970,6 +1355,7 @@ Batches incremental index updates to avoid rebuilding the full index on every ch
 
 #### EmbeddingCache (`search/EmbeddingCache.ts`)
 LRU cache for embedding vectors with TTL expiration. Reduces redundant embedding API calls for recently seen text.
+>>>>>>> origin/master
 
 ---
 
@@ -1089,6 +1475,79 @@ interface ArchiveCriteria {
 
 ---
 
+### FreshnessManager (`features/FreshnessManager.ts`)
+
+**Purpose**: Track and report entity freshness based on TTL and confidence fields
+
+```typescript
+export class FreshnessManager {
+  constructor(storage: IGraphStorage)
+
+  calculateFreshness(entity: Entity): FreshnessScore
+  async getStaleEntities(threshold?: number): Promise<Entity[]>
+  async getExpiredEntities(): Promise<Entity[]>
+  async generateReport(): Promise<FreshnessReport>
+}
+
+interface FreshnessScore {
+  entityName: string;
+  freshnessRatio: number;  // 0.0 = expired, 1.0 = fully fresh
+  ttlRemainingMs: number;
+  confidence: number;
+}
+```
+
+`Entity.ttl` (ms) and `Entity.confidence` (0–1) are new optional fields added in v1.6.0. `DecayEngine` uses TTL for decay calculations; `SalienceEngine` adds `freshnessWeight` to salience score.
+
+---
+
+### AuditLog (`features/AuditLog.ts`)
+
+**Purpose**: Immutable operation history persisted as JSONL
+
+```typescript
+export class AuditLog {
+  constructor(logFilePath: string)
+
+  async append(entry: AuditEntry): Promise<void>
+  async query(filter?: AuditFilter): Promise<AuditEntry[]>
+  async tail(limit: number): Promise<AuditEntry[]>
+}
+
+interface AuditEntry {
+  timestamp: string;
+  operation: 'create' | 'update' | 'delete';
+  entityName?: string;
+  actor?: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+---
+
+### GovernanceManager (`features/GovernanceManager.ts`)
+
+**Purpose**: Policy enforcement and transactional safety for memory mutations
+
+```typescript
+export interface GovernancePolicy {
+  canCreate(entity: Partial<Entity>): boolean | Promise<boolean>
+  canUpdate(entity: Entity, patch: Partial<Entity>): boolean | Promise<boolean>
+  canDelete(entityName: string): boolean | Promise<boolean>
+}
+
+export class GovernanceManager {
+  constructor(storage: IGraphStorage, policy?: GovernancePolicy, auditLog?: AuditLog)
+
+  async withTransaction<T>(fn: () => Promise<T>): Promise<T>
+  async rollback(): Promise<void>
+}
+```
+
+Wraps `EntityManager` mutations with policy checks. `withTransaction` snapshots current state for rollback. Emits to `AuditLog` on every committed operation.
+
+---
+
 ## Utility Components
 
 ### schemas (`utils/schemas.ts`)
@@ -1150,6 +1609,9 @@ interface Entity {
   importance?: number;
   createdAt?: string;
   lastModified?: string;
+  // v1.6.0: freshness governance
+  ttl?: number;           // Time-to-live in milliseconds
+  confidence?: number;    // Belief strength 0.0–1.0
 }
 
 interface Relation {
@@ -1205,6 +1667,26 @@ interface ContextPackage {
 }
 ```
 
+### Artifact Types (`types/artifact.ts`)
+
+```typescript
+type ArtifactType =
+  | 'code'
+  | 'document'
+  | 'image'
+  | 'data'
+  | 'analysis'
+  | 'tool-output'
+  | string;  // open union
+
+interface ArtifactEntity extends AgentEntity {
+  artifactType: ArtifactType;
+  // name format: toolName-YYYY-MM-DD-shortId
+}
+```
+
+---
+
 ### Search Types
 
 ```typescript
@@ -1222,6 +1704,19 @@ interface SearchFilters {
   createdAfter?: string;
   createdBefore?: string;
 }
+
+interface TemporalRange {
+  start: Date;
+  end: Date;
+  label: string;
+}
+
+interface StructuredQuery {
+  keywords: string[];
+  filters: SearchFilters;
+  intent: string;
+  suggestedMethods: string[];
+}
 ```
 
 ---
@@ -1235,12 +1730,14 @@ interface SearchFilters {
 │    ├── AgentMemoryManager ─────────┐                         │
 │    │     ├── SessionManager ───────┤                         │
 │    │     ├── WorkingMemoryMgr ─────┤                         │
-│    │     ├── DecayEngine ──────────┤                         │
-│    │     ├── SalienceEngine ───────┤                         │
-│    │     ├── ContextWindowMgr ─────┤                         │
-│    │     └── MultiAgentMemMgr ─────┤                         │
+│    │     ├── DecayEngine ──────────┤  (TTL-aware)            │
+│    │     ├── SalienceEngine ───────┤  (freshnessWeight)      │
+│    │     ├── ContextWindowMgr ─────┤  (+ DistillationPipeline)│
+│    │     ├── MultiAgentMemMgr ─────┤                         │
+│    │     ├── ArtifactManager ──────┤  ──► RefIndex           │
+│    │     └── DistillationPipeline ─┤                         │
 │    │                               │                         │
-│    ├── EntityManager ──────────────┤                         │
+│    ├── EntityManager ──────────────┤  ──► RefIndex           │
 │    │                               │                         │
 │    ├── RelationManager ────────────┤                         │
 │    │                               │                         │
@@ -1252,14 +1749,22 @@ interface SearchFilters {
 │    │     ├── BasicSearch ──────────┤        │                │
 │    │     ├── RankedSearch ─────────┤        ▼                │
 │    │     ├── BooleanSearch ────────┤   GraphStorage (JSONL)  │
-│    │     ├── FuzzySearch ──────────┤        OR               │
+│    │     ├── FuzzySearch ──────────┤   (+ NGramIndex)   OR   │
 │    │     ├── SemanticSearch ───────┤   SQLiteStorage         │
-│    │     └── HybridSearchMgr ──────┤                         │
+│    │     ├── HybridSearchMgr ──────┤                         │
+│    │     ├── TemporalSearch ───────┤                         │
+│    │     └── LLMSearchExecutor ────┤                         │
 │    │                               │                         │
 │    ├── IOManager ──────────────────┤                         │
 │    │                               │                         │
 │    ├── TagManager ─────────────────► tag-aliases.jsonl       │
-│    │                                                         │
+│    │                               │                         │
+│    ├── FreshnessManager ───────────┤                         │
+│    │                               │                         │
+│    ├── GovernanceManager ──────────┤  ──► AuditLog (JSONL)   │
+│    │                               │                         │
+│    ├── RefIndex ───────────────────► refs.jsonl              │
+│    │                               │                         │
 │    └── GraphTraversal ─────────────┘                         │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -1272,3 +1777,11 @@ interface SearchFilters {
 - `utils/searchAlgorithms.ts` provides Levenshtein + TF-IDF algorithms
 - Agent components share `AccessTracker` for memory access patterns
 
+<<<<<<< HEAD
+---
+
+**Document Version**: 1.6
+**Last Updated**: 2026-03-24
+**Maintained By**: Daniel Simon Jr.
+=======
+>>>>>>> origin/master

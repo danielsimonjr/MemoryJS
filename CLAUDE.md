@@ -44,13 +44,13 @@ SKIP_BENCHMARKS=true npm test
 
 ```
 src/
-├── agent/     # Agent Memory System (sessions, working memory, episodic, decay)
+├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility)
 ├── cli/       # CLI commands (bin: `memory` / `memoryjs`)
-├── core/      # Storage backends, entity/relation/observation managers, transactions
-├── search/    # Search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid)
-├── features/  # Import/export, compression, analytics, archiving
+├── core/      # Storage backends, entity/relation/observation managers, transactions, RefIndex
+├── search/    # Search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned)
+├── features/  # Import/export, compression, analytics, archiving, freshness, audit, governance
 ├── utils/     # Caching, errors, indexing, batch processing
-├── types/     # TypeScript interfaces (Entity, Relation, etc.)
+├── types/     # TypeScript interfaces (Entity, Relation, ArtifactEntity, etc.)
 └── workers/   # Worker pool for CPU-intensive tasks (Levenshtein)
 ```
 
@@ -68,7 +68,7 @@ ctx.entityManager       // Entity CRUD + tags
 ctx.relationManager     // Relation CRUD
 ctx.observationManager  // Observation CRUD
 ctx.hierarchyManager    // Entity hierarchy (parent/child, ancestors, descendants)
-ctx.searchManager       // All search operations
+ctx.searchManager       // All search operations (incl. searchByTime())
 ctx.rankedSearch        // TF-IDF/BM25 ranked search
 ctx.graphTraversal      // Path finding, centrality, connected components
 ctx.ioManager           // Import/export/backup/restore
@@ -77,6 +77,11 @@ ctx.analyticsManager    // Graph statistics and validation
 ctx.compressionManager  // Duplicate detection, entity merging
 ctx.archiveManager      // Entity archival to compressed storage
 ctx.semanticSearch      // Vector similarity (requires embedding provider)
+ctx.temporalSearch      // Natural language time-range search (chrono-node)
+ctx.freshnessManager    // TTL/confidence freshness reporting
+ctx.governanceManager   // Governance policies + audit transaction support
+ctx.refIndex            // Named reference index for O(1) entity lookup
+ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider)
 ctx.agentMemory()       // Agent Memory System facade
 ```
 
@@ -85,10 +90,13 @@ ctx.agentMemory()       // Agent Memory System facade
 - `SQLiteStorage`: FTS5 full-text search with BM25, WAL mode, ACID transactions, better-sqlite3
 
 **Search System** (`src/search/`): Layered search architecture:
-- **Text search**: `BasicSearch` (substring), `BooleanSearch` (AND/OR/NOT with AST), `FuzzySearch` (Levenshtein via worker pool)
+- **Text search**: `BasicSearch` (substring), `BooleanSearch` (AND/OR/NOT with AST), `FuzzySearch` (Levenshtein via worker pool, N-gram pre-filtered)
 - **Ranked search**: `RankedSearch` (TF-IDF via `TFIDFIndexManager`), `BM25Search` (Okapi BM25 with stopwords)
 - **Semantic search**: `SemanticSearch` + `EmbeddingService` + `VectorStore`/`QuantizedVectorStore` (requires embedding provider)
 - **Hybrid search**: `HybridSearchManager` + `HybridScorer` + `SymbolicSearch` - combines semantic, lexical, and symbolic signals
+- **Temporal search**: `TemporalQueryParser` (chrono-node NL time parsing) + `TemporalSearch` — `searchByTime()` on SearchManager
+- **LLM-planned search**: `LLMQueryPlanner` (NL → `StructuredQuery`) + `LLMSearchExecutor` — optional `LLMProvider`, keyword fallback
+- **N-gram index**: `NGramIndex` (trigram + Jaccard similarity) — pre-filter for `FuzzySearch` before Levenshtein
 - **Query optimization**: `QueryAnalyzer`/`QueryPlanner`, `QueryCostEstimator`, `QueryPlanCache`, `EarlyTerminationManager`, `ParallelSearchExecutor`
 - **Retrieval**: `ReflectionManager` (progressive refinement), `SavedSearchManager`, `SearchSuggestions`, `ProximitySearch` (term proximity scoring)
 - **Parsing & logging**: `QueryParser` (query string parsing), `QueryLogger` (query performance logging)
@@ -100,16 +108,28 @@ ctx.agentMemory()       // Agent Memory System facade
 - **Facade**: `AgentMemoryManager` - unified entry point for all agent memory operations
 - **Session lifecycle**: `SessionManager`, `SessionQueryBuilder` - start/end/query sessions
 - **Memory types**: `WorkingMemoryManager` (short-term with TTL + promotion), `EpisodicMemoryManager` (timeline-based events)
-- **Decay & salience**: `DecayEngine`/`DecayScheduler` (time-based importance decay), `SalienceEngine` (context-aware scoring)
+- **Decay & salience**: `DecayEngine`/`DecayScheduler` (TTL-aware decay), `SalienceEngine` (context-aware scoring with `freshnessWeight`)
 - **Multi-agent**: `MultiAgentMemoryManager` (visibility controls: private/shared/public), `ConflictResolver`
 - **Processing**: `ConsolidationPipeline`, `SummarizationService`, `PatternDetector`, `RuleEvaluator`
-- **Context**: `ContextWindowManager` (token budgeting), `MemoryFormatter` (output formatting), `AccessTracker`
+- **Context**: `ContextWindowManager` (token budgeting + distillation), `MemoryFormatter` (`formatWithSalienceBudget()` for proportional allocation), `AccessTracker`
+- **Artifacts**: `ArtifactManager` — `createArtifact()` generates stable human-readable names (`toolName-date-shortId`), auto-registers refs; `ArtifactEntity` type + `ArtifactType` union
+- **Distillation**: `IDistillationPolicy` interface + `DefaultDistillationPolicy` (relevance + freshness + dedup), `CompositeDistillationPolicy`, `NoOpDistillationPolicy` — wired into `ContextWindowManager`
+- **Role profiles** (v1.7.0): `RoleProfiles` — five built-in roles (`researcher`, `planner`, `executor`, `reviewer`, `coordinator`) each with salience weight presets and token budget splits; applied via `RoleProfileManager`
+- **Entropy filtering** (v1.7.0): `EntropyFilter` — Shannon entropy gate that drops low-information memories; integrated as an early `ConsolidationPipeline` stage
+- **Consolidation scheduler** (v1.7.0): `ConsolidationScheduler` — background recursive dedup+merge scheduler; runs `ConsolidationPipeline.runAutoConsolidation()` until a fixed point
+- **Collaborative synthesis** (v1.7.0): `CollaborativeSynthesis` — graph-neighbourhood merge across agents within N hops; returns unified view with provenance metadata
+- **Failure distillation** (v1.7.0): `FailureDistillation` — causal chain lesson extraction from failed episodes; promotes high-scoring observations to semantic memory
+- **Cognitive load** (v1.7.0): `CognitiveLoadAnalyzer` — token density + redundancy ratio + observation diversity → `CognitiveLoadReport`; used by `ContextWindowManager` to prune high-load sections
+- **Visibility hierarchies** (v1.7.0): `VisibilityResolver` — five-level model (`private` | `team` | `org` | `shared` | `public`) with `GroupMembership` registry
 
 ### Data Model
 
 **Entity** (`src/types/types.ts`): Primary graph nodes with:
 - `name` (unique identifier), `entityType`, `observations[]`
 - Optional: `parentId` (hierarchy), `tags[]`, `importance` (0-10), timestamps
+- Optional (v1.6.0): `ttl` (time-to-live for freshness), `confidence` (0.0–1.0 belief strength)
+
+**ArtifactEntity** (`src/types/artifact.ts`): Extends `AgentEntity` with `artifactType` (`ArtifactType` union) and stable auto-generated name (`toolName-date-shortId`).
 
 **Relation**: Directed edges with `from`, `to`, `relationType` fields.
 
@@ -123,6 +143,9 @@ ctx.agentMemory()       // Agent Memory System facade
 - `TagManager`: Tag alias management and resolution
 - `ObservationNormalizer`: Pronoun resolution, relative date anchoring
 - `KeywordExtractor`: Keyword extraction from text
+- `FreshnessManager`: `calculateFreshness`, `getStaleEntities`, `getExpiredEntities`, `generateReport` — uses `Entity.ttl` and `Entity.confidence`
+- `AuditLog`: Immutable JSONL audit trail for all create/update/delete operations
+- `GovernanceManager`: `withTransaction`/`rollback`, `GovernancePolicy` (`canCreate`/`canUpdate`/`canDelete`) enforcement
 
 ### Graph Algorithms (`src/core/GraphTraversal.ts`)
 
@@ -140,6 +163,12 @@ ctx.agentMemory()       // Agent Memory System facade
 - TF-IDF auto-sync: `TFIDFEventSync` keeps index current with storage
 - Worker pool: CPU-intensive Levenshtein calculations offloaded to workers (`dist/workers/` built separately by tsup)
 - Transaction support: `TransactionManager` for atomic batch operations
+- Named references: `RefIndex` JSONL sidecar provides O(1) stable-name lookups independent of entity name changes
+- Governance: `GovernanceManager` wraps mutations with policy checks and rollback; `AuditLog` appends every operation immutably
+- Distillation: `IDistillationPolicy` applied post-retrieval in `ContextWindowManager` before formatting for LLM prompts
+- Role-aware salience: `RoleProfileManager` applies role presets to `SalienceEngine` weights and `ContextWindowManager` budget splits
+- Entropy gate: `EntropyFilter` runs before consolidation; drops observations that do not increase information diversity
+- Visibility resolution: `VisibilityResolver` evaluates `GroupMembership` against entity visibility level before returning memories to a requesting agent
 
 ### Build Notes
 
@@ -187,6 +216,25 @@ Salience weights (all 0-1): `MEMORY_SALIENCE_IMPORTANCE_WEIGHT` (0.25), `MEMORY_
 Context window: `MEMORY_CONTEXT_MAX_TOKENS` (4000), `MEMORY_CONTEXT_TOKEN_MULTIPLIER` (1.3), `MEMORY_CONTEXT_RESERVE_BUFFER` (100)
 
 Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_QUERY_LOG_LEVEL` (info)
+
+### Governance & Freshness (v1.6.0)
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_GOVERNANCE_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | - |
+| `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168` |
+| `MEMORY_LLM_QUERY_PLANNER_PROVIDER` | Provider name string | - |
+
+### Role Profiles & Advanced Agent Features (v1.7.0)
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_AGENT_ROLE` | `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | - |
+| `MEMORY_ENTROPY_FILTER_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_ENTROPY_THRESHOLD` | Number (0–1) | `0.3` |
+| `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_CONSOLIDATION_INTERVAL_MS` | Number | `3600000` |
+| `MEMORY_COGNITIVE_LOAD_MAX` | Number (0–1) | `0.8` |
+| `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
 
 ## Documentation
 

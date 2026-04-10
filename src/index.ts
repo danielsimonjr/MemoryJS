@@ -23,6 +23,10 @@ export * from './features/index.js';
 // Export search system
 export * from './search/index.js';
 
+<<<<<<< HEAD
+// Export agent memory system (v1.7.0)
+export * from './agent/index.js';
+=======
 // Export agent module types and classes
 export { AgentMemoryManager } from './agent/AgentMemoryManager.js';
 export {
@@ -32,3 +36,4 @@ export {
   type WorkThreadFilter,
   type CreateWorkThreadOptions,
 } from './agent/WorkThreadManager.js';
+>>>>>>> origin/master

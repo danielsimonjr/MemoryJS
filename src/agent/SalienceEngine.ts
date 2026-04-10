@@ -18,6 +18,7 @@ import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 import { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
+import { FreshnessManager } from '../features/FreshnessManager.js';
 
 /**
  * Configuration for SalienceEngine.
@@ -43,6 +44,12 @@ export interface SalienceEngineConfig {
   useSemanticSimilarity?: boolean;
   /** Threshold for observation uniqueness (default: 0.5) */
   uniquenessThreshold?: number;
+  /**
+   * Weight given to freshness penalty when scoring salience (default: 0.15).
+   * A higher value makes stale/expired entities rank lower.
+   * The freshness factor is subtracted from the final score proportionally.
+   */
+  freshnessWeight?: number;
 }
 
 /**
@@ -71,6 +78,7 @@ export class SalienceEngine {
   private readonly accessTracker: AccessTracker;
   private readonly decayEngine: DecayEngine;
   private readonly summarizationService: SummarizationService;
+  private readonly freshnessManager: FreshnessManager;
   private readonly config: Required<SalienceEngineConfig>;
   private _cachedMaxAccessCount: number | undefined;
 
@@ -84,6 +92,7 @@ export class SalienceEngine {
     this.accessTracker = accessTracker;
     this.decayEngine = decayEngine;
     this.summarizationService = new SummarizationService();
+    this.freshnessManager = new FreshnessManager(storage);
     this.config = {
       importanceWeight: config.importanceWeight ?? 0.25,
       recencyWeight: config.recencyWeight ?? 0.25,
@@ -95,6 +104,7 @@ export class SalienceEngine {
       recentEntityBoostFactor: config.recentEntityBoostFactor ?? 0.7,
       useSemanticSimilarity: config.useSemanticSimilarity ?? true,
       uniquenessThreshold: config.uniquenessThreshold ?? 0.5,
+      freshnessWeight: config.freshnessWeight ?? 0.15,
     };
   }
 
@@ -125,13 +135,22 @@ export class SalienceEngine {
     const contextRelevance = this.calculateContextRelevance(entity, context);
     const noveltyBoost = this.calculateNoveltyBoost(entity, context);
 
-    // Apply weights and sum
-    const salienceScore =
+    // Apply weights and sum (base salience from existing factors)
+    let salienceScore =
       baseImportance * this.config.importanceWeight +
       recencyBoost * this.config.recencyWeight +
       frequencyBoost * this.config.frequencyWeight +
       contextRelevance * this.config.contextWeight +
       noveltyBoost * this.config.noveltyWeight;
+
+    // Feature 5: Apply freshness penalty.
+    // Expired entities are strongly penalised; stale entities less so.
+    if (this.config.freshnessWeight > 0) {
+      const freshnessScore = this.freshnessManager.calculateFreshness(entity);
+      // freshnessScore=1 → no penalty; freshnessScore=0 → full penalty
+      const freshnessPenalty = (1 - freshnessScore) * this.config.freshnessWeight;
+      salienceScore = Math.max(0, salienceScore - freshnessPenalty);
+    }
 
     const components: SalienceComponents = {
       baseImportance,

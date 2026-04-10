@@ -22,6 +22,8 @@ export {
   ExportError,
   InsufficientEntitiesError,
   OperationCancelledError,
+  RefConflictError,
+  RefNotFoundError,
   type ErrorOptions,
 } from './errors.js';
 

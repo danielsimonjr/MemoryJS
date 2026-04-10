@@ -11,6 +11,15 @@ import type { Entity, LongRunningOperationOptions, AccessContext } from '../type
 import type { GraphStorage } from './GraphStorage.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
 import { EntityNotFoundError, InvalidImportanceError, ValidationError } from '../utils/errors.js';
+import type { RefIndex, RefEntry } from './RefIndex.js';
+
+/**
+ * Options for constructing an EntityManager.
+ */
+export interface EntityManagerOptions {
+  /** Default projectId to stamp on new entities without an explicit projectId. */
+  defaultProjectId?: string;
+}
 
 /**
  * Options for entity retrieval with access tracking support.
@@ -51,8 +60,15 @@ const MAX_IMPORTANCE = 10;
  */
 export class EntityManager {
   private accessTracker?: AccessTracker;
+  private refIndex?: RefIndex;
+  private defaultProjectId?: string;
 
-  constructor(private storage: GraphStorage) {}
+  constructor(
+    private storage: GraphStorage,
+    options?: EntityManagerOptions
+  ) {
+    this.defaultProjectId = options?.defaultProjectId;
+  }
 
   /**
    * Set the AccessTracker for optional access tracking.
@@ -62,6 +78,83 @@ export class EntityManager {
    */
   setAccessTracker(tracker: AccessTracker): void {
     this.accessTracker = tracker;
+  }
+
+  /**
+   * Set the RefIndex for stable alias dereferencing.
+   *
+   * @param index - RefIndex instance
+   */
+  setRefIndex(index: RefIndex): void {
+    this.refIndex = index;
+  }
+
+  /**
+   * Resolve a stable alias (ref) to the full entity it points to.
+   *
+   * @param ref - The alias to resolve
+   * @returns The entity, or null if the alias is unknown or entity no longer exists
+   * @throws {ValidationError} If no RefIndex is configured
+   */
+  async resolveRef(ref: string): Promise<Entity | null> {
+    if (!this.refIndex) {
+      throw new ValidationError('RefIndex not configured', [
+        'Call setRefIndex() before using resolveRef()',
+      ]);
+    }
+    const entityName = await this.refIndex.resolve(ref);
+    if (entityName === null) return null;
+    return this.getEntity(entityName);
+  }
+
+  /**
+   * Register a stable alias pointing to an entity.
+   *
+   * @param ref - The alias string
+   * @param entityName - Entity name the alias points to
+   * @param description - Optional human-readable description
+   * @returns The created RefEntry
+   * @throws {ValidationError} If no RefIndex is configured
+   * @throws {RefConflictError} If the alias is already registered
+   */
+  async registerRef(ref: string, entityName: string, description?: string): Promise<RefEntry> {
+    if (!this.refIndex) {
+      throw new ValidationError('RefIndex not configured', [
+        'Call setRefIndex() before using registerRef()',
+      ]);
+    }
+    return this.refIndex.register(ref, entityName, description);
+  }
+
+  /**
+   * Remove a stable alias.
+   *
+   * @param ref - The alias to remove
+   * @throws {ValidationError} If no RefIndex is configured
+   */
+  async deregisterRef(ref: string): Promise<void> {
+    if (!this.refIndex) {
+      throw new ValidationError('RefIndex not configured', [
+        'Call setRefIndex() before using deregisterRef()',
+      ]);
+    }
+    return this.refIndex.deregister(ref);
+  }
+
+  /**
+   * List all registered aliases, optionally filtered by entity name.
+   *
+   * @param filter - Optional filter criteria
+   * @returns Array of RefEntry objects
+   * @throws {ValidationError} If no RefIndex is configured
+   */
+  async listRefs(filter?: { entityName?: string }): Promise<RefEntry[]> {
+    if (!this.refIndex) {
+      throw new ValidationError('RefIndex not configured', [
+        'Call setRefIndex() before using listRefs()',
+      ]);
+    }
+    return this.refIndex.listRefs(filter);
   }
 
   /**
@@ -122,6 +215,17 @@ export class EntityManager {
       throw new ValidationError('Invalid entity data', errors);
     }
 
+    // Reserve the profile-* namespace for ProfileManager
+    for (const e of validation.data) {
+      if (e.name.startsWith('profile-') && e.entityType !== 'profile') {
+        throw new ValidationError(
+          `Entity name '${e.name}' is reserved for the profile system. ` +
+          `Use entityType='profile' or choose a different name.`,
+          []
+        );
+      }
+    }
+
     // Setup progress reporter
     const reportProgress = createProgressReporter(options?.onProgress);
     const total = entities.length;
@@ -178,6 +282,16 @@ export class EntityManager {
         reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
       }
 
+<<<<<<< HEAD
+      // Auto-stamp projectId from context default if not explicit
+      if (entity.projectId === undefined && this.defaultProjectId !== undefined) {
+        entity.projectId = this.defaultProjectId;
+      }
+
+      newEntities.push(entity);
+      processed++;
+      reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
+=======
       // Save all new entities in a single write
       if (newEntities.length > 0) {
         graph.entities.push(...newEntities);
@@ -190,6 +304,7 @@ export class EntityManager {
       return newEntities;
     } finally {
       release();
+>>>>>>> origin/master
     }
   }
 
@@ -237,9 +352,19 @@ export class EntityManager {
         r => !namesToDelete.has(r.from) && !namesToDelete.has(r.to)
       );
 
+<<<<<<< HEAD
+    await this.storage.saveGraph(graph);
+
+    // Purge all aliases for deleted entities from the ref index
+    if (this.refIndex) {
+      for (const name of namesToDelete) {
+        await this.refIndex.purgeEntity(name);
+      }
+=======
       await this.storage.saveGraph(graph);
     } finally {
       release();
+>>>>>>> origin/master
     }
   }
 
@@ -289,6 +414,83 @@ export class EntityManager {
     }
 
     return entity;
+  }
+
+  /**
+   * List all distinct project IDs in the graph (excluding global entities).
+   *
+   * Scans all entities and collects unique projectId values, excluding
+   * entities that lack a projectId (global/unscoped entities).
+   *
+   * @returns Sorted array of unique projectId values
+   *
+   * @example
+   * ```typescript
+   * const manager = new EntityManager(storage);
+   *
+   * // List all projects
+   * const projects = await manager.listProjects();
+   * console.log(projects); // ['project-a', 'project-b', 'project-c']
+   * ```
+   */
+  async listProjects(): Promise<string[]> {
+    const graph = await this.storage.loadGraph();
+    const projects = new Set<string>();
+    for (const entity of graph.entities) {
+      if (entity.projectId) {
+        projects.add(entity.projectId);
+      }
+    }
+    return Array.from(projects).sort();
+  }
+
+  /**
+   * Return all entities in a version chain sorted by version ascending.
+   * Accepts any entity in the chain; resolves to the root via rootEntityName.
+   *
+   * @param entityName - Name of any entity in the version chain
+   * @returns Array of entities in the version chain, sorted by version
+   *
+   * @example
+   * ```typescript
+   * const manager = new EntityManager(storage);
+   *
+   * // Get full version chain from any entity in the chain
+   * const chain = await manager.getVersionChain('alice-v2');
+   * console.log(chain.map(e => e.name)); // ['alice', 'alice-v2', 'alice-v3']
+   * ```
+   */
+  async getVersionChain(entityName: string): Promise<Entity[]> {
+    const entity = await this.getEntity(entityName);
+    if (!entity) return [];
+
+    const rootName = entity.rootEntityName ?? entity.name;
+    const graph = await this.storage.loadGraph();
+    const chain = graph.entities.filter(
+      e => (e.rootEntityName ?? e.name) === rootName
+    );
+    chain.sort((a, b) => (a.version ?? 1) - (b.version ?? 1));
+    return chain;
+  }
+
+  /**
+   * Return the latest version of an entity.
+   *
+   * @param entityName - Name of any entity in the version chain
+   * @returns The latest version entity, or null if the entity doesn't exist
+   *
+   * @example
+   * ```typescript
+   * const manager = new EntityManager(storage);
+   *
+   * const latest = await manager.getLatestVersion('alice');
+   * console.log(latest?.name); // 'alice-v3'
+   * ```
+   */
+  async getLatestVersion(entityName: string): Promise<Entity | null> {
+    const chain = await this.getVersionChain(entityName);
+    if (chain.length === 0) return null;
+    return chain.find(e => e.isLatest !== false) ?? chain[chain.length - 1];
   }
 
   /**

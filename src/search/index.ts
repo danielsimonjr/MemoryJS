@@ -163,3 +163,30 @@ export {
   type ProximityMatch,
   type ProximityMatchLocation,
 } from './ProximitySearch.js';
+
+// Feature 3 (Must-Have): Temporal Range Queries
+export {
+  TemporalQueryParser,
+  type ParsedTemporalRange,
+} from './TemporalQueryParser.js';
+export {
+  TemporalSearch,
+  type TemporalFilterField,
+  type TemporalSearchOptions,
+} from './TemporalSearch.js';
+
+// Feature 8 (Must-Have): N-gram index, LLM Query Planner and Executor
+export {
+  NGramIndex,
+  type NGramIndexStats,
+} from './NGramIndex.js';
+export {
+  LLMQueryPlanner,
+  type LLMProvider,
+  type StructuredQuery,
+  type LLMQueryPlannerConfig,
+} from './LLMQueryPlanner.js';
+export {
+  LLMSearchExecutor,
+  type LLMSearchExecutorOptions,
+} from './LLMSearchExecutor.js';

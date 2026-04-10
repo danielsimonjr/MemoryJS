@@ -11,6 +11,10 @@ import type { GraphStorage } from './GraphStorage.js';
 import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/AutoLinker.js';
 import type { DeduplicationOptions } from '../types/types.js';
 import { EntityNotFoundError } from '../utils/errors.js';
+<<<<<<< HEAD
+import type { ContradictionDetector } from '../features/ContradictionDetector.js';
+import type { EntityManager } from './EntityManager.js';
+=======
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
 
 /**
@@ -21,16 +25,34 @@ const DEFAULT_DEDUP_OPTIONS: DeduplicationOptions = {
   similarityThreshold: 0.85,
   mergeStrategy: 'keep_longest',
 };
+>>>>>>> origin/master
 
 /**
  * Manages observation operations for entities in the knowledge graph.
  */
 export class ObservationManager {
+<<<<<<< HEAD
+  private contradictionDetector?: ContradictionDetector;
+  private linkedEntityManager?: EntityManager;
+=======
   private _autoLinker?: AutoLinker;
+>>>>>>> origin/master
 
   constructor(private storage: GraphStorage) {}
 
   /**
+<<<<<<< HEAD
+   * Enable contradiction detection on addObservations.
+   * When a new observation is detected as contradicting an existing one,
+   * a new entity version is created instead of appending.
+   */
+  setContradictionDetector(
+    detector: ContradictionDetector,
+    entityManager: EntityManager
+  ): void {
+    this.contradictionDetector = detector;
+    this.linkedEntityManager = entityManager;
+=======
    * Set the AutoLinker for optional automatic mention detection.
    */
   setAutoLinker(autoLinker: AutoLinker): void {
@@ -56,6 +78,7 @@ export class ObservationManager {
       return DEFAULT_DEDUP_OPTIONS;
     }
     return undefined;
+>>>>>>> origin/master
   }
 
   /**
@@ -117,6 +140,29 @@ export class ObservationManager {
       // First pass: filter exact duplicates
       const nonExactDuplicates = o.contents.filter(content => !entity.observations.includes(content));
 
+<<<<<<< HEAD
+      if (newObservations.length > 0) {
+        // Contradiction detection hook (v1.8.0)
+        if (this.contradictionDetector && this.linkedEntityManager) {
+          const contradictions = await this.contradictionDetector.detect(
+            entity,
+            newObservations
+          );
+          if (contradictions.length > 0) {
+            await this.contradictionDetector.supersede(
+              entity,
+              newObservations,
+              this.linkedEntityManager
+            );
+            continue; // skip normal append for this entity
+          }
+        }
+
+        // Add new observations directly to the entity
+        entity.observations.push(...newObservations);
+        entity.lastModified = timestamp;
+        hasChanges = true;
+=======
       if (resolvedDedup) {
         // Second pass: fuzzy dedup against existing observations
         const addedObservations = this.applyFuzzyDedup(
@@ -140,6 +186,7 @@ export class ObservationManager {
         }
 
         results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates });
+>>>>>>> origin/master
       }
     }
 

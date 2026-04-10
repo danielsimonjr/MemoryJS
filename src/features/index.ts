@@ -48,3 +48,33 @@ export {
   KeywordExtractor,
   type ScoredKeyword,
 } from './KeywordExtractor.js';
+
+// Feature 8: Dynamic Memory Governance
+export {
+  AuditLog,
+  type AuditEntry,
+  type AuditOperation,
+  type AuditFilter,
+  type AuditStats,
+} from './AuditLog.js';
+export {
+  GovernanceManager,
+  GovernanceTransaction,
+  type GovernancePolicy,
+  type GovernanceOperationOptions,
+} from './GovernanceManager.js';
+
+// Freshness Management
+export {
+  FreshnessManager,
+  type FreshnessManagerConfig,
+  type FreshnessReport,
+} from './FreshnessManager.js';
+
+// Feature 2: Contradiction Detection (v1.8.0)
+export { ContradictionDetector } from './ContradictionDetector.js';
+export type { Contradiction } from './ContradictionDetector.js';
+
+// Feature 3: Semantic Forget (v1.8.0)
+export { SemanticForget } from './SemanticForget.js';
+export type { SemanticForgetResult, SemanticForgetOptions } from './SemanticForget.js';

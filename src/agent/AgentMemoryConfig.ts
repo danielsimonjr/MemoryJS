@@ -15,6 +15,9 @@ import type { ContextWindowManagerConfig } from './ContextWindowManager.js';
 import type { MemoryFormatterConfig } from './MemoryFormatter.js';
 import type { MultiAgentConfig } from './MultiAgentMemoryManager.js';
 import type { ConflictResolverConfig } from './ConflictResolver.js';
+import type { CollaborativeSynthesisConfig } from './CollaborativeSynthesis.js';
+import type { GraphTraversal } from '../core/GraphTraversal.js';
+import type { ProfileManagerConfig } from './ProfileManager.js';
 
 /** All sub-configurations are optional — defaults applied by each component. */
 export interface AgentMemoryConfig {
@@ -30,6 +33,24 @@ export interface AgentMemoryConfig {
   formatter?: MemoryFormatterConfig;
   multiAgent?: MultiAgentConfig;
   conflictResolver?: ConflictResolverConfig;
+<<<<<<< HEAD
+
+  /** Collaborative synthesis configuration */
+  collaborativeSynthesis?: CollaborativeSynthesisConfig;
+
+  /**
+   * GraphTraversal instance to use for collaborative synthesis.
+   * When provided, `synthesizeCollaborativeContext` on AgentMemoryManager
+   * will use this traversal instead of requiring one to be passed directly.
+   */
+  graphTraversal?: GraphTraversal;
+
+  /** Profile manager configuration */
+  profile?: ProfileManagerConfig;
+
+  /** Enable automatic decay scheduling */
+=======
+>>>>>>> origin/master
   enableAutoDecay?: boolean;
   enableMultiAgent?: boolean;
   defaultAgentId?: string;
@@ -131,6 +152,12 @@ export function mergeConfig(
     formatter: mergeSubConfig(userConfig.formatter, envConfig.formatter),
     multiAgent: mergeSubConfig(userConfig.multiAgent, envConfig.multiAgent),
     conflictResolver: mergeSubConfig(userConfig.conflictResolver, envConfig.conflictResolver),
+    collaborativeSynthesis: mergeSubConfig(
+      userConfig.collaborativeSynthesis,
+      envConfig.collaborativeSynthesis
+    ),
+    profile: mergeSubConfig(userConfig.profile, envConfig.profile),
+    graphTraversal: userConfig.graphTraversal ?? envConfig.graphTraversal,
     enableAutoDecay: userConfig.enableAutoDecay ?? envConfig.enableAutoDecay,
     enableMultiAgent: userConfig.enableMultiAgent ?? envConfig.enableMultiAgent,
     defaultAgentId: userConfig.defaultAgentId ?? envConfig.defaultAgentId,
