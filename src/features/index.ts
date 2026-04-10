@@ -12,6 +12,9 @@ export {
   type MergeStrategy,
   type BackupMetadata,
   type BackupInfo,
+  type IngestInput,
+  type IngestOptions,
+  type IngestResult,
 } from './IOManager.js';
 export { AnalyticsManager } from './AnalyticsManager.js';
 export { CompressionManager } from './CompressionManager.js';

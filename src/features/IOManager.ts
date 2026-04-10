@@ -37,6 +37,33 @@ export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdo
 export type ImportFormat = 'json' | 'csv' | 'graphml';
 export type MergeStrategy = 'replace' | 'skip' | 'merge' | 'fail';
 
+export interface IngestInput {
+  messages: Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp?: string;
+  }>;
+  source?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface IngestOptions {
+  projectId?: string;
+  entityType?: string;
+  tags?: string[];
+  chunkBy?: 'exchange' | 'paragraph' | 'fixed';
+  maxChunkSize?: number;
+  deduplicateThreshold?: number;
+  dryRun?: boolean;
+}
+
+export interface IngestResult {
+  entitiesCreated: number;
+  observationsAdded: number;
+  skippedDuplicates: number;
+  entityNames: string[];
+}
+
 export interface BackupMetadata {
   timestamp: string;
   entityCount: number;
@@ -1244,5 +1271,110 @@ export class IOManager {
    */
   getBackupDir(): string {
     return this.backupDir;
+  }
+
+  /**
+   * Ingest pre-normalized conversation data into the knowledge graph.
+   * Format-agnostic: users normalize chat exports before calling.
+   */
+  async ingest(
+    input: IngestInput | IngestInput[],
+    options: IngestOptions = {}
+  ): Promise<IngestResult> {
+    const inputs = Array.isArray(input) ? input : [input];
+    const entityType = options.entityType ?? 'memory';
+    const chunkBy = options.chunkBy ?? 'exchange';
+    const dryRun = options.dryRun ?? false;
+    const baseTags = [...(options.tags ?? []), 'ingested'];
+
+    const result: IngestResult = {
+      entitiesCreated: 0,
+      observationsAdded: 0,
+      skippedDuplicates: 0,
+      entityNames: [],
+    };
+
+    // Build dedup set from existing entities
+    const graph = await this.storage.loadGraph();
+    const existingObsSet = new Set(
+      graph.entities.map(e => e.observations.join('||'))
+    );
+
+    for (const inp of inputs) {
+      const chunks = this._chunkMessages(inp.messages, chunkBy, options.maxChunkSize);
+      const source = inp.source ?? `ingest-${new Date().toISOString().slice(0, 10)}`;
+
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const entityName = `${source}-${String(i + 1).padStart(3, '0')}`;
+        const observations = chunk.map(m => `[${m.role}] ${m.content}`);
+        const obsKey = observations.join('||');
+
+        if (existingObsSet.has(obsKey)) {
+          result.skippedDuplicates++;
+          continue;
+        }
+
+        result.entitiesCreated++;
+        result.observationsAdded += observations.length;
+        result.entityNames.push(entityName);
+
+        if (!dryRun) {
+          const { EntityManager } = await import('../core/EntityManager.js');
+          const em = new EntityManager(this.storage);
+          await em.createEntities([{
+            name: entityName,
+            entityType,
+            observations,
+            tags: [...baseTags],
+            projectId: options.projectId,
+          }]);
+          existingObsSet.add(obsKey);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private _chunkMessages(
+    messages: IngestInput['messages'],
+    strategy: string,
+    maxSize?: number
+  ): IngestInput['messages'][] {
+    if (strategy === 'exchange') {
+      const chunks: IngestInput['messages'][] = [];
+      let current: IngestInput['messages'] = [];
+      for (const msg of messages) {
+        current.push(msg);
+        if (msg.role === 'assistant' && current.length >= 2) {
+          chunks.push(current);
+          current = [];
+        }
+      }
+      if (current.length > 0) chunks.push(current);
+      return chunks;
+    }
+
+    if (strategy === 'paragraph') {
+      return messages.map(m => [m]);
+    }
+
+    // Fixed size
+    const max = maxSize ?? 2000;
+    const chunks: IngestInput['messages'][] = [];
+    let current: IngestInput['messages'] = [];
+    let size = 0;
+    for (const msg of messages) {
+      if (size + msg.content.length > max && current.length > 0) {
+        chunks.push(current);
+        current = [];
+        size = 0;
+      }
+      current.push(msg);
+      size += msg.content.length;
+    }
+    if (current.length > 0) chunks.push(current);
+    return chunks;
   }
 }
