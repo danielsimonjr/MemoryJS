@@ -215,6 +215,17 @@ export class EntityManager {
       throw new ValidationError('Invalid entity data', errors);
     }
 
+    // Reserve the profile-* namespace for ProfileManager
+    for (const e of validation.data) {
+      if (e.name.startsWith('profile-') && e.entityType !== 'profile') {
+        throw new ValidationError(
+          `Entity name '${e.name}' is reserved for the profile system. ` +
+          `Use entityType='profile' or choose a different name.`,
+          []
+        );
+      }
+    }
+
     // Setup progress reporter
     const reportProgress = createProgressReporter(options?.onProgress);
     const total = entities.length;
