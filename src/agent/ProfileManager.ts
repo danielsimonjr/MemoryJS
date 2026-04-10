@@ -42,8 +42,8 @@ export class ProfileManager {
     _storage: GraphStorage,
     private entityManager: EntityManager,
     private observationManager: ObservationManager,
-    _sessionManager?: SessionManager,
-    _salienceEngine?: SalienceEngine,
+    private sessionManager?: SessionManager,
+    private salienceEngine?: SalienceEngine,
     private config: ProfileManagerConfig = {}
   ) {}
 
@@ -127,6 +127,57 @@ export class ProfileManager {
     await this.observationManager.addObservations([
       { entityName, contents: [STATIC_PREFIX + content] },
     ]);
+  }
+
+  /**
+   * Extract profile-worthy facts from a session's observations and add
+   * them to the profile. Uses SalienceEngine to classify facts as
+   * static (high baseImportance, low recencyBoost) or dynamic.
+   *
+   * Requires SessionManager and SalienceEngine to be configured.
+   *
+   * @returns Array of newly added facts (without prefix)
+   */
+  async extractFromSession(sessionId: string): Promise<string[]> {
+    if (!this.sessionManager || !this.salienceEngine) {
+      return [];
+    }
+
+    const session = await (this.sessionManager as any).getSession(sessionId);
+    if (!session) return [];
+
+    const observations = (session as any).observations ?? [];
+    const staticThreshold = this.config.staticThreshold ?? 0.6;
+    const dynamicRecencyThreshold = this.config.dynamicRecencyThreshold ?? 0.5;
+
+    const existing = await this.getProfile();
+    const existingSet = new Set([...existing.static, ...existing.dynamic]);
+
+    const added: string[] = [];
+    for (const obs of observations) {
+      if (existingSet.has(obs)) continue;
+
+      const salience = await this.salienceEngine.calculateSalience(obs, {
+        temporalFocus: 'recent' as any,
+      });
+      const components = (salience as any).components ?? {};
+      const baseImportance = components.baseImportance ?? 0;
+      const recencyBoost = components.recencyBoost ?? 0;
+
+      let type: 'static' | 'dynamic';
+      if (baseImportance >= staticThreshold && recencyBoost < 0.2) {
+        type = 'static';
+      } else if (recencyBoost >= dynamicRecencyThreshold) {
+        type = 'dynamic';
+      } else {
+        continue;
+      }
+
+      await this.addFact(obs, type);
+      added.push(obs);
+    }
+
+    return added;
   }
 
   private async trimDynamicFacts(entityName: string): Promise<void> {
