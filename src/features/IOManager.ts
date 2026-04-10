@@ -83,6 +83,37 @@ export interface BackupInfo {
   compressed: boolean;
   size: number;
 }
+export interface SplitOptions {
+  /** Minimum messages per session to keep (skip tiny fragments). Default 2. */
+  minMessages?: number;
+  /** Session delimiter patterns to detect. Default: common separators. */
+  delimiters?: RegExp[];
+  /** Preview without writing. */
+  dryRun?: boolean;
+}
+
+export interface SplitResult {
+  sessionsFound: number;
+  sessionsKept: number;
+  sessionsSkipped: number;
+  sessions: Array<{
+    index: number;
+    messageCount: number;
+    preview: string;
+  }>;
+}
+
+export interface VisualizeOptions {
+  /** Max entities to include. Default 100. */
+  maxEntities?: number;
+  /** Filter by project (matches entities with a tag or parentId equal to projectId). */
+  projectId?: string;
+  /** Output file path. If not specified, returns HTML string. */
+  outputPath?: string;
+  /** Graph title. */
+  title?: string;
+}
+
 export class IOManager {
   private readonly backupDir: string;
 
@@ -1385,5 +1416,75 @@ export class IOManager {
     }
     if (current.length > 0) chunks.push(current);
     return chunks;
+  }
+
+  /**
+   * Split a concatenated transcript into per-session chunks.
+   * Detects session boundaries via delimiter patterns (timestamps,
+   * separator lines, "New conversation" markers).
+   *
+   * This is a pure function — it takes a string and returns split results.
+   * It does NOT write to storage. The caller uses `ingest()` to persist each session.
+   */
+  splitTranscript(content: string, options?: SplitOptions): SplitResult {
+    const minMessages = options?.minMessages ?? 2;
+    const delimiters = options?.delimiters ?? [
+      /^-{3,}$/m,
+      /^={3,}$/m,
+      /^#{1,2}\s+(?:New |Session |Conversation)/mi,
+      /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}/m,
+    ];
+
+    // Find the first delimiter that matches and use it to split
+    let rawSessions: string[] = [content];
+
+    for (const delimiter of delimiters) {
+      // Test on the original content to see if this delimiter appears
+      const globalDelimiter = new RegExp(delimiter.source, delimiter.flags.includes('g') ? delimiter.flags : delimiter.flags + 'g');
+      if (globalDelimiter.test(content)) {
+        // Split using this delimiter; for timestamp-style delimiters, keep the delimiter
+        // as the start of the new segment using a lookahead split
+        const lookaheadDelimiter = new RegExp(`(?=${delimiter.source})`, delimiter.flags.replace('g', '').replace('m', '') + 'm');
+        const parts = content.split(lookaheadDelimiter);
+        if (parts.length > 1) {
+          rawSessions = parts;
+          break;
+        }
+        // Fallback: split and discard the delimiter line
+        const splitDelimiter = new RegExp(delimiter.source, delimiter.flags.includes('g') ? delimiter.flags : delimiter.flags + 'g');
+        const splitParts = content.split(splitDelimiter);
+        if (splitParts.length > 1) {
+          rawSessions = splitParts;
+          break;
+        }
+      }
+    }
+
+    const sessionsFound = rawSessions.length;
+    const keptSessions: Array<{ index: number; messageCount: number; preview: string }> = [];
+    let sessionsSkipped = 0;
+
+    rawSessions.forEach((sessionText, idx) => {
+      const trimmed = sessionText.trim();
+      const messageCount = trimmed === '' ? 0 : trimmed.split('\n').filter(line => line.trim().length > 0).length;
+
+      if (messageCount < minMessages) {
+        sessionsSkipped++;
+        return;
+      }
+
+      keptSessions.push({
+        index: idx,
+        messageCount,
+        preview: trimmed.slice(0, 100),
+      });
+    });
+
+    return {
+      sessionsFound,
+      sessionsKept: keptSessions.length,
+      sessionsSkipped,
+      sessions: keptSessions,
+    };
   }
 }
