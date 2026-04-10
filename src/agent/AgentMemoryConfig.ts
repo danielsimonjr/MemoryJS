@@ -48,6 +48,12 @@ export interface AgentMemoryConfig {
   /** Profile manager configuration */
   profile?: ProfileManagerConfig;
 
+  /** Wake-up context configuration */
+  wakeUp?: {
+    defaultMaxL0Tokens?: number;
+    defaultMaxL1Tokens?: number;
+  };
+
   /** Enable automatic decay scheduling */
   enableAutoDecay?: boolean;
   enableMultiAgent?: boolean;
