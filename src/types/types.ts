@@ -109,6 +109,41 @@ export interface Entity {
   supersededBy?: string;
 }
 
+// ==================== Observation Deduplication Types ====================
+
+/**
+ * Options for observation deduplication at write time.
+ *
+ * When enabled, new observations are compared against existing observations
+ * using TF-IDF cosine similarity. Near-duplicate observations are handled
+ * according to the specified merge strategy.
+ *
+ * Can be enabled globally via the `MEMORY_OBSERVATION_DEDUP` environment variable
+ * or per-call by passing options to `addObservations()`.
+ *
+ * @example
+ * ```typescript
+ * const dedupOptions: DeduplicationOptions = {
+ *   enabled: true,
+ *   similarityThreshold: 0.85,
+ *   mergeStrategy: 'keep_longest',
+ * };
+ *
+ * await observationManager.addObservations(
+ *   [{ entityName: 'Alice', contents: ['Likes Italian food'] }],
+ *   dedupOptions,
+ * );
+ * ```
+ */
+export interface DeduplicationOptions {
+  /** Whether deduplication is enabled */
+  enabled: boolean;
+  /** Similarity threshold (0-1) above which observations are considered duplicates. Default: 0.85 */
+  similarityThreshold: number;
+  /** Strategy for handling near-duplicate observations */
+  mergeStrategy: 'keep_longest' | 'keep_newest' | 'keep_both';
+}
+
 // ==================== Relation Types (Phase 1 Sprint 4) ====================
 
 /**
@@ -1656,6 +1691,21 @@ export interface BatchResult {
 
   /** Index of the operation that failed (if applicable) */
   failedOperationIndex?: number;
+
+  /** Per-operation results when stopOnError is false */
+  operationResults?: OperationResult[];
+}
+
+/**
+ * Result of a single operation within a batch transaction.
+ */
+export interface OperationResult {
+  /** Operation index in the batch */
+  index: number;
+  /** Whether this operation succeeded */
+  success: boolean;
+  /** Error message if this operation failed */
+  error?: string;
 }
 
 /**

@@ -1,70 +1,38 @@
 /**
- * Hybrid Scorer
- *
- * Combines semantic, lexical, and symbolic search scores with
- * min-max normalization and configurable weights.
- *
- * Phase 12 Sprint 3: Search Algorithm Optimization
- *
+ * Hybrid Scorer - combines search scores with min-max normalization and configurable weights.
  * @module search/HybridScorer
  */
 
 import type { Entity } from '../types/index.js';
 
-/**
- * Result from semantic search layer.
- */
 export interface SemanticLayerResult {
-  /** Entity name */
   entityName: string;
-  /** Similarity score (typically 0-1 for cosine similarity) */
   similarity: number;
-  /** The matched entity (if resolved) */
   entity?: Entity;
 }
 
-/**
- * Result from lexical search layer (TF-IDF or BM25).
- */
 export interface LexicalSearchResult {
-  /** Entity name */
   entityName: string;
-  /** Relevance score (unbounded, higher is better) */
   score: number;
-  /** The matched entity (if resolved) */
   entity?: Entity;
 }
 
-/**
- * Result from symbolic search layer.
- */
 export interface SymbolicSearchResult {
-  /** Entity name */
   entityName: string;
-  /** Match score (typically 0-1) */
   score: number;
-  /** The matched entity (if resolved) */
   entity?: Entity;
 }
 
-/**
- * Combined result with scores from all layers.
- */
 export interface ScoredResult {
-  /** Entity name */
   entityName: string;
-  /** The matched entity */
   entity: Entity;
-  /** Individual layer scores (normalized 0-1) */
   scores: {
     semantic: number;
     lexical: number;
     symbolic: number;
     combined: number;
   };
-  /** Which layers contributed to this result */
   matchedLayers: ('semantic' | 'lexical' | 'symbolic')[];
-  /** Original raw scores before normalization */
   rawScores: {
     semantic?: number;
     lexical?: number;
@@ -72,62 +40,25 @@ export interface ScoredResult {
   };
 }
 
-/**
- * Configurable weights for hybrid scoring.
- */
 export interface HybridWeights {
-  /** Weight for semantic layer (default: 0.4) */
   semantic: number;
-  /** Weight for lexical layer (default: 0.4) */
   lexical: number;
-  /** Weight for symbolic layer (default: 0.2) */
   symbolic: number;
 }
 
-/**
- * Default weights for hybrid search.
- */
 export const DEFAULT_SCORER_WEIGHTS: HybridWeights = {
   semantic: 0.4,
   lexical: 0.4,
   symbolic: 0.2,
 };
 
-/**
- * Options for the HybridScorer.
- */
 export interface HybridScorerOptions {
-  /** Weights for each layer */
   weights?: Partial<HybridWeights>;
-  /** Minimum score to include in results (default: 0) */
   minScore?: number;
-  /** Whether to normalize weights to sum to 1 (default: true) */
   normalizeWeights?: boolean;
 }
 
-/**
- * HybridScorer combines multiple search signals using min-max normalization.
- *
- * Features:
- * 1. Min-max normalization brings all scores to 0-1 range
- * 2. Configurable weights for each layer
- * 3. Handles missing layers gracefully (redistributes weights)
- * 4. Tracks which layers contributed to each result
- *
- * @example
- * ```typescript
- * const scorer = new HybridScorer({
- *   weights: { semantic: 0.5, lexical: 0.3, symbolic: 0.2 }
- * });
- *
- * const results = scorer.combine(
- *   semanticResults,
- *   lexicalResults,
- *   symbolicResults,
- *   entityMap
- * );
- * ```
- */
+/** Combines multiple search signals using min-max normalization and configurable weights. */
 export class HybridScorer {
   private weights: HybridWeights;
   private minScore: number;
@@ -142,28 +73,17 @@ export class HybridScorer {
     this.normalizeWeights = options.normalizeWeights ?? true;
   }
 
-  /**
-   * Get current weights configuration.
-   */
+  /** Get current weights configuration. */
   getWeights(): HybridWeights {
     return { ...this.weights };
   }
 
-  /**
-   * Update weights configuration.
-   */
+  /** Update weights configuration. */
   setWeights(weights: Partial<HybridWeights>): void {
     this.weights = { ...this.weights, ...weights };
   }
 
-  /**
-   * Perform min-max normalization on scores.
-   *
-   * Formula: normalized = (x - min) / (max - min)
-   *
-   * @param scores - Map of entity name to raw score
-   * @returns Map of entity name to normalized score (0-1)
-   */
+  /** Min-max normalize scores to 0-1 range. */
   minMaxNormalize(scores: Map<string, number>): Map<string, number> {
     if (scores.size === 0) {
       return new Map();
@@ -197,15 +117,7 @@ export class HybridScorer {
     return normalized;
   }
 
-  /**
-   * Combine results from all three search layers.
-   *
-   * @param semanticResults - Results from semantic search
-   * @param lexicalResults - Results from lexical search
-   * @param symbolicResults - Results from symbolic search
-   * @param entityMap - Map of entity names to Entity objects
-   * @returns Array of combined results sorted by score
-   */
+  /** Combine results from all three search layers. */
   combine(
     semanticResults: SemanticLayerResult[],
     lexicalResults: LexicalSearchResult[],
@@ -306,14 +218,7 @@ export class HybridScorer {
     return results.sort((a, b) => b.scores.combined - a.scores.combined);
   }
 
-  /**
-   * Get weights normalized to sum to 1, redistributing for missing layers.
-   *
-   * @param hasSemantic - Whether semantic results are available
-   * @param hasLexical - Whether lexical results are available
-   * @param hasSymbolic - Whether symbolic results are available
-   * @returns Normalized weights
-   */
+  /** Get weights normalized to sum to 1, redistributing for missing layers. */
   getNormalizedWeights(
     hasSemantic: boolean,
     hasLexical: boolean,
@@ -337,15 +242,7 @@ export class HybridScorer {
     };
   }
 
-  /**
-   * Combine scores from maps directly (alternative interface).
-   *
-   * @param semanticScores - Map of entity name to semantic score
-   * @param lexicalScores - Map of entity name to lexical score
-   * @param symbolicScores - Map of entity name to symbolic score
-   * @param entityMap - Map of entity names to Entity objects
-   * @returns Array of combined results sorted by score
-   */
+  /** Combine scores from maps directly (alternative interface). */
   combineFromMaps(
     semanticScores: Map<string, number>,
     lexicalScores: Map<string, number>,
@@ -371,16 +268,7 @@ export class HybridScorer {
     return this.combine(semanticResults, lexicalResults, symbolicResults, entityMap);
   }
 
-  /**
-   * Calculate combined score for a single entity.
-   *
-   * Useful for scoring individual results without full normalization.
-   *
-   * @param semanticScore - Normalized semantic score (0-1)
-   * @param lexicalScore - Normalized lexical score (0-1)
-   * @param symbolicScore - Normalized symbolic score (0-1)
-   * @returns Combined weighted score
-   */
+  /** Calculate combined score for a single entity. */
   calculateScore(
     semanticScore: number,
     lexicalScore: number,

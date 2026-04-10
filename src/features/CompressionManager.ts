@@ -99,10 +99,10 @@ export class CompressionManager {
     score += observationSimilarity * SIMILARITY_WEIGHTS.OBSERVATIONS;
     factors += SIMILARITY_WEIGHTS.OBSERVATIONS;
 
-    // Tag overlap (Jaccard similarity)
-    if (e1.tags && e2.tags && (e1.tags.length > 0 || e2.tags.length > 0)) {
-      const tags1Set = new Set(e1.tags.map(t => t.toLowerCase()));
-      const tags2Set = new Set(e2.tags.map(t => t.toLowerCase()));
+    // Tag overlap (Jaccard similarity) - match prepared version's logic
+    if ((e1.tags?.length ?? 0) > 0 || (e2.tags?.length ?? 0) > 0) {
+      const tags1Set = new Set((e1.tags ?? []).map(t => t.toLowerCase()));
+      const tags2Set = new Set((e2.tags ?? []).map(t => t.toLowerCase()));
       const tagIntersection = new Set([...tags1Set].filter(x => tags2Set.has(x)));
       const tagUnion = new Set([...tags1Set, ...tags2Set]);
       const tagSimilarity = tagUnion.size > 0 ? tagIntersection.size / tagUnion.size : 0;

@@ -9,30 +9,16 @@
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { levenshteinDistance } from '../utils/index.js';
 
-/**
- * Internal suggestion with similarity score.
- */
 interface Suggestion {
   text: string;
   similarity: number;
 }
 
-/**
- * Generates search suggestions based on entity names and types.
- */
+/** Generates "did you mean?" search suggestions based on entity names and types. */
 export class SearchSuggestions {
   constructor(private storage: GraphStorage) {}
 
-  /**
-   * Get "did you mean?" suggestions for a query.
-   *
-   * Returns similar entity names and types that might be what the user intended.
-   * Excludes exact matches (similarity < 1.0) and very dissimilar strings (similarity > 0.5).
-   *
-   * @param query - The search query
-   * @param maxSuggestions - Maximum number of suggestions to return (default 5)
-   * @returns Array of suggested entity/type names sorted by similarity
-   */
+  /** Get suggestions for a query using Levenshtein distance similarity. */
   async getSearchSuggestions(query: string, maxSuggestions: number = 5): Promise<string[]> {
     const graph = await this.storage.loadGraph();
     const queryLower = query.toLowerCase();

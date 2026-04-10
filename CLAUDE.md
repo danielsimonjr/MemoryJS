@@ -59,13 +59,10 @@ src/
 **ManagerContext** (`src/core/ManagerContext.ts`): Central facade providing lazy-initialized access to all managers:
 ```typescript
 // JSONL storage (default)
-const ctx = new ManagerContext({ storagePath: './memory.jsonl' });
-
-// SQLite storage
-const ctx = new ManagerContext({ storageType: 'sqlite', storagePath: './memory.db' });
-
-// Or use string path (storage type via MEMORY_STORAGE_TYPE env var)
 const ctx = new ManagerContext('./memory.jsonl');
+
+// SQLite storage (set MEMORY_STORAGE_TYPE=sqlite env var)
+const ctx = new ManagerContext('./memory.db');
 
 ctx.entityManager       // Entity CRUD + tags
 ctx.relationManager     // Relation CRUD
@@ -101,10 +98,11 @@ ctx.agentMemory()       // Agent Memory System facade
 - **LLM-planned search**: `LLMQueryPlanner` (NL → `StructuredQuery`) + `LLMSearchExecutor` — optional `LLMProvider`, keyword fallback
 - **N-gram index**: `NGramIndex` (trigram + Jaccard similarity) — pre-filter for `FuzzySearch` before Levenshtein
 - **Query optimization**: `QueryAnalyzer`/`QueryPlanner`, `QueryCostEstimator`, `QueryPlanCache`, `EarlyTerminationManager`, `ParallelSearchExecutor`
-- **Retrieval**: `ReflectionManager` (progressive refinement), `SavedSearchManager`, `SearchSuggestions`
+- **Retrieval**: `ReflectionManager` (progressive refinement), `SavedSearchManager`, `SearchSuggestions`, `ProximitySearch` (term proximity scoring)
+- **Parsing & logging**: `QueryParser` (query string parsing), `QueryLogger` (query performance logging)
 - **Infrastructure**: `TFIDFEventSync` (auto-sync), `OptimizedInvertedIndex`, `IncrementalIndexer`, `EmbeddingCache`, `SearchFilterChain`
 
-**CLI** (`src/cli/`): Command-line interface exposed as `memory` / `memoryjs` binaries (see `bin` in package.json). Built as separate ESM bundle by tsup.
+**CLI** (`src/cli/`): Command-line interface exposed as `memory` / `memoryjs` binaries (see `bin` in package.json). Built as separate ESM bundle by tsup. Commands split into `commands/{entity,relation,search,observation,tag,hierarchy,graph,io,maintenance}.ts` with shared `helpers.ts`.
 
 **Agent Memory System** (`src/agent/`): Complete memory system for AI agents:
 - **Facade**: `AgentMemoryManager` - unified entry point for all agent memory operations
@@ -159,7 +157,8 @@ ctx.agentMemory()       // Agent Memory System facade
 ### Key Patterns
 
 - Storage abstraction: Both backends implement same interface via duck typing
-- Lazy initialization: Managers created on first access via getters
+- Eager core managers: Core managers initialized in constructor as readonly fields
+- Lazy agent managers: Agent memory managers (`semanticSearch`, `agentMemory()`, etc.) created on first access
 - Event-driven cache invalidation: `GraphEventEmitter` notifies subscribers on changes
 - TF-IDF auto-sync: `TFIDFEventSync` keeps index current with storage
 - Worker pool: CPU-intensive Levenshtein calculations offloaded to workers (`dist/workers/` built separately by tsup)
@@ -265,10 +264,23 @@ Located in `tools/` directory:
 | `migrate-from-jsonl-to-sqlite` | Migrates existing JSONL storage to SQLite backend |
 | `compress-for-context` | Compresses graph data for LLM context windows |
 
+## Claude Code Automations
+
+- **Hooks** (`.claude/settings.local.json`): PostToolUse auto-typecheck on Edit/Write, PreToolUse blocks .env/.db edits
+- **Agents** (`.claude/agents/`): `test-runner.md` (maps changed files to test dirs), `security-reviewer.md` (OWASP-based review)
+- **Commands** (`.claude/commands/`): COMMIT, DEPS, CHUNK, SEARCH, MEMORY, RELEASE
+
 ## Gotchas
 
-- **Missing source files**: `src/search/index.ts` barrel re-exports `QueryParser`, `ProximitySearch`, and `QueryLogger` but the source `.ts` files don't exist on disk. Build will fail until these are created or the re-exports are removed.
+- **Security review iteration**: Run `.claude/agents/security-reviewer.md` iteratively after fixes — fixes can introduce regressions (e.g., destructive sanitization, unvalidated derived paths).
+- **XML import sanitization**: Decode XML entities (`&amp;` -> `&`), never strip characters — stripping corrupts data like "AT&T", "O'Brien".
+- **FTS5/LIKE input sanitization**: FTS5 queries must strip `:{}()"^~*` and boolean keywords. LIKE queries must escape `\%_` with `ESCAPE '\'`.
+- **Path confinement**: When validating derived paths (e.g., appending `.meta.json`), re-validate independently — the derived path may escape the confined directory.
+- **Windows atomic writes**: `fs.rename()` can fail with EPERM in temp directories due to Dropbox/antivirus file locking. `GraphStorage.durableWriteFile` has a fallback that writes directly if rename fails.
 - **Windows + Dropbox + git**: This repo is synced via Dropbox which can corrupt git objects (e.g., `fatal: bad object HEAD`). If git commands fail, try `git fsck` and `git reflog` to recover.
 - **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `npm install` fails on this, check node-gyp prerequisites.
 - **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `npm run build` (tsup), workers are built. But `npm run build:tsc` (bare tsc) does NOT build workers - use tsup.
 - **`package-lock.json` is gitignored**: Uses `npm install` (not `npm ci`) for development. Dependencies may drift between machines.
+- **Cache TTL boundary**: `SearchCache` uses `>=` for expiration checks. Using `>` causes TTL=0 entries to persist when accessed within the same millisecond (flaky on Windows due to timer resolution).
+- **Performance benchmark flakiness**: Overhead thresholds in `tests/performance/task-scheduler-benchmarks.test.ts` may need widening on Windows/Dropbox due to timing variance from file locking.
+- **Search API return types**: `autoSearch()` returns `{ results: SearchResult[], selectedMethod, selectionReason }`. `booleanSearch()`/`fuzzySearch()` return `KnowledgeGraph` (not `SearchResult[]`) — callers must wrap with scores.

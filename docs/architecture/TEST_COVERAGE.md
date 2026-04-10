@@ -6,9 +6,9 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Source Files | 93 |
-| Total Test Files | 109 |
-| Total Tests | 3,604 |
+| Total Source Files | 110 |
+| Total Test Files | 126 |
+| Total Tests | 4,674 |
 | Test Categories | 5 |
 
 ---
@@ -37,9 +37,9 @@
 
 ## Test Categories
 
-### Unit Tests (68 files)
+### Unit Tests (102 files)
 
-#### Core (16 files)
+#### Core (15 files)
 | Test File | Tests |
 |-----------|-------|
 | `BatchTransaction.test.ts` | Batch transaction operations |
@@ -69,7 +69,7 @@
 | `StreamingExporter.test.ts` | Streaming exports |
 | `TagManager.test.ts` | Tag aliases |
 
-#### Search (27 files)
+#### Search (30 files)
 | Test File | Tests |
 |-----------|-------|
 | `BasicSearch.test.ts` | Text matching |
@@ -100,7 +100,7 @@
 | `TFIDFIndexManager.test.ts` | TF-IDF index |
 | `VectorStore.test.ts` | Vector storage |
 
-#### Utils (16 files)
+#### Utils (22 files)
 | Test File | Tests |
 |-----------|-------|
 | `BatchProcessor.test.ts` | Batch processing |
@@ -126,9 +126,47 @@
 | `levenshteinWorker.test.ts` | Levenshtein worker |
 | `WorkerPool.test.ts` | Worker pool operations |
 
+#### Agent (17 files)
+| Test File | Tests |
+|-----------|-------|
+| `AccessTracker.test.ts` | Access pattern tracking |
+| `AgentMemoryManager.test.ts` | Agent memory facade |
+| `ConflictResolver.test.ts` | Conflict resolution |
+| `ConsolidationPipeline.test.ts` | Memory consolidation |
+| `ContextWindowManager.test.ts` | Context window management |
+| `DecayEngine.test.ts` | Memory decay |
+| `DecayScheduler.test.ts` | Decay scheduling |
+| `EpisodicMemoryManager.test.ts` | Episodic memory |
+| `MemoryFormatter.test.ts` | Memory formatting |
+| `MultiAgentMemoryManager.test.ts` | Multi-agent memory |
+| `PatternDetector.test.ts` | Pattern detection |
+| `RuleEvaluator.test.ts` | Rule evaluation |
+| `SalienceEngine.test.ts` | Salience scoring |
+| `SessionManager.test.ts` | Session lifecycle |
+| `SessionQueryBuilder.test.ts` | Session queries |
+| `SummarizationService.test.ts` | Summarization |
+| `WorkingMemoryManager.test.ts` | Working memory |
+
+#### CLI (6 files)
+| Test File | Tests |
+|-----------|-------|
+| `commands.test.ts` | CLI commands |
+| `config.test.ts` | CLI configuration |
+| `formatters.test.ts` | Output formatting |
+| `index.test.ts` | CLI entry point |
+| `interactive.test.ts` | Interactive mode |
+| `options.test.ts` | CLI options |
+
+#### Types (3 files)
+| Test File | Tests |
+|-----------|-------|
+| `agent-memory.test.ts` | Agent memory types |
+| `progress.test.ts` | Progress types |
+| `search.test.ts` | Search types |
+
 ---
 
-### Integration Tests (8 files)
+### Integration Tests (9 files)
 
 | Test File | Purpose |
 |-----------|---------|
@@ -280,6 +318,6 @@ export default defineConfig({
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-10
+**Document Version**: 1.1
+**Last Updated**: 2026-02-11
 **Maintained By**: Daniel Simon Jr.

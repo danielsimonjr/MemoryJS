@@ -1,7 +1,7 @@
 # MemoryJS - API Reference
 
-**Version**: 1.2.0
-**Last Updated**: 2026-01-14
+**Version**: 1.5.0
+**Last Updated**: 2026-02-11
 
 Complete reference for the MemoryJS library public API.
 
@@ -21,7 +21,13 @@ Complete reference for the MemoryJS library public API.
 10. [TagManager](#tagmanager)
 11. [CompressionManager](#compressionmanager)
 12. [AnalyticsManager](#analyticsmanager)
-13. [Types](#types)
+13. [ArchiveManager](#archivemanager)
+14. [SemanticSearch](#semanticsearch)
+15. [ObservationNormalizer](#observationnormalizer)
+16. [TransactionManager](#transactionmanager)
+17. [BatchTransaction](#batchtransaction)
+18. [StorageFactory](#storagefactory)
+19. [Types](#types)
 
 ---
 
@@ -32,27 +38,21 @@ Central access point for all managers. Provides lazy-initialized access to all s
 ### Constructor
 
 ```typescript
-new ManagerContext(config: ManagerContextConfig)
+new ManagerContext(memoryFilePath: string)
 ```
 
 **Parameters:**
-```typescript
-interface ManagerContextConfig {
-  storagePath: string;          // Path to storage file
-  storageType?: 'jsonl' | 'sqlite';  // Storage backend (default: 'jsonl')
-}
-```
+- `memoryFilePath`: Path to storage file (e.g., `'./memory.jsonl'` or `'./memory.db'`)
+
+Storage backend is selected via the `MEMORY_STORAGE_TYPE` environment variable (`'jsonl'` or `'sqlite'`, default: `'jsonl'`).
 
 **Example:**
 ```typescript
 // JSONL storage (default)
-const ctx = new ManagerContext({ storagePath: './memory.jsonl' });
+const ctx = new ManagerContext('./memory.jsonl');
 
-// SQLite storage
-const ctx = new ManagerContext({
-  storagePath: './memory.db',
-  storageType: 'sqlite'
-});
+// SQLite storage (set MEMORY_STORAGE_TYPE=sqlite)
+const ctx = new ManagerContext('./memory.db');
 ```
 
 ### Properties
@@ -67,6 +67,16 @@ const ctx = new ManagerContext({
 | `graphTraversal` | `GraphTraversal` | Graph algorithms |
 | `ioManager` | `IOManager` | Import/export |
 | `tagManager` | `TagManager` | Tag aliases |
+| `compressionManager` | `CompressionManager` | Duplicate detection, merging |
+| `archiveManager` | `ArchiveManager` | Entity archival |
+| `analyticsManager` | `AnalyticsManager` | Graph statistics, validation |
+| `semanticSearch` | `SemanticSearch` | Vector similarity search |
+| `accessTracker` | `AccessTracker` | Memory access tracking |
+| `decayEngine` | `DecayEngine` | Importance decay |
+| `decayScheduler` | `DecayScheduler` | Scheduled decay |
+| `salienceEngine` | `SalienceEngine` | Context-aware scoring |
+| `contextWindowManager` | `ContextWindowManager` | Token budgeting |
+| `memoryFormatter` | `MemoryFormatter` | Output formatting |
 | `storage` | `IGraphStorage` | Direct storage access |
 
 ### Methods
@@ -497,15 +507,12 @@ await ctx.relationManager.createRelations([
 ]);
 ```
 
-### getRelationsForEntity
+### getRelations
 
 Get all relations for an entity.
 
 ```typescript
-async getRelationsForEntity(entityName: string): Promise<{
-  incoming: Relation[];
-  outgoing: Relation[];
-}>
+async getRelations(entityName: string): Promise<Relation[]>
 ```
 
 ### deleteRelations
@@ -649,12 +656,12 @@ async moveEntity(entityName: string, newParentName: string | null): Promise<Enti
 
 Provides multiple search strategies.
 
-### search
+### searchNodes
 
-Basic text search.
+Basic text search across entities.
 
 ```typescript
-async search(query: string, options?: SearchOptions): Promise<KnowledgeGraph>
+async searchNodes(query: string, options?: SearchOptions): Promise<KnowledgeGraph>
 ```
 
 **Parameters:**
@@ -671,27 +678,34 @@ interface SearchOptions {
 
 **Example:**
 ```typescript
-const results = await ctx.searchManager.search('TypeScript', {
+const results = await ctx.searchManager.searchNodes('TypeScript', {
   tags: ['programming'],
   minImportance: 5
 });
 ```
 
-### searchRanked
+### searchNodesRanked
 
 TF-IDF relevance-ranked search.
 
 ```typescript
-async searchRanked(query: string, options?: RankedSearchOptions): Promise<SearchResult[]>
+async searchNodesRanked(query: string, options?: RankedSearchOptions): Promise<SearchResult[]>
 ```
 
-**Returns:**
+### openNodes
+
+Retrieve specific entities by name with their relations.
+
 ```typescript
-interface SearchResult {
-  entity: Entity;
-  score: number;
-  matchedFields: string[];
-}
+async openNodes(names: string[]): Promise<KnowledgeGraph>
+```
+
+### searchByDateRange
+
+Search entities by creation/modification date.
+
+```typescript
+async searchByDateRange(options: DateRangeOptions): Promise<KnowledgeGraph>
 ```
 
 ### booleanSearch
@@ -731,34 +745,12 @@ interface FuzzySearchOptions extends SearchOptions {
 }
 ```
 
-### hybridSearch
+### autoSearch
 
-Three-layer hybrid search combining semantic, lexical, and symbolic signals.
-
-```typescript
-async hybridSearch(query: string, options?: HybridSearchOptions): Promise<HybridSearchResult>
-```
-
-**Parameters:**
-```typescript
-interface HybridSearchOptions {
-  weights?: {
-    semantic?: number;   // Default: 0.4
-    lexical?: number;    // Default: 0.4
-    symbolic?: number;   // Default: 0.2
-  };
-  filters?: SymbolicFilters;
-  limit?: number;
-  minScore?: number;
-}
-```
-
-### smartSearch
-
-AI-assisted search with query analysis and refinement.
+Automatically select and execute the best search method based on query characteristics.
 
 ```typescript
-async smartSearch(query: string, options?: SmartSearchOptions): Promise<SmartSearchResult>
+async autoSearch(query: string, limit?: number): Promise<SmartSearchResult>
 ```
 
 ### getSearchSuggestions
@@ -769,20 +761,29 @@ Get "did you mean" suggestions.
 async getSearchSuggestions(query: string, limit?: number): Promise<string[]>
 ```
 
-### openNodes
+### getSearchCostEstimates
 
-Retrieve specific entities by name with their relations.
+Get cost estimates for a query across search strategies.
 
 ```typescript
-async openNodes(names: string[]): Promise<KnowledgeGraph>
+async getSearchCostEstimates(query: string): Promise<CostEstimate[]>
 ```
 
-### searchByDateRange
-
-Search entities by creation/modification date.
+### Saved Search Methods
 
 ```typescript
-async searchByDateRange(options: DateRangeOptions): Promise<KnowledgeGraph>
+async getSavedSearch(name: string): Promise<SavedSearch | null>
+async deleteSavedSearch(name: string): Promise<boolean>
+async updateSavedSearch(name: string, updates: Partial<SavedSearch>): Promise<SavedSearch>
+```
+
+### Cache Management
+
+```typescript
+clearAllCaches(): void
+clearFuzzyCache(): void
+clearBooleanCache(): void
+clearRankedCache(): void
 ```
 
 ---
@@ -793,44 +794,53 @@ Graph algorithms and traversal operations.
 
 ### findShortestPath
 
-Find shortest path between two entities.
+Find shortest path between two entities using Dijkstra's algorithm.
 
 ```typescript
-async findShortestPath(from: string, to: string): Promise<string[] | null>
-```
-
-**Returns:** Array of entity names in path, or `null` if no path exists
-
-### findAllPaths
-
-Find all paths between two entities.
-
-```typescript
-async findAllPaths(from: string, to: string, options?: PathOptions): Promise<string[][]>
+async findShortestPath(source: string, target: string, options?: PathOptions): Promise<PathResult | null>
 ```
 
 **Parameters:**
 ```typescript
 interface PathOptions {
-  maxDepth?: number;  // Maximum path length (default: 10)
-  maxPaths?: number;  // Maximum paths to return
+  maxDepth?: number;       // Maximum path length (default: 5)
+  direction?: 'outgoing' | 'incoming' | 'both';
+  relationTypes?: string[];  // Filter by relation types
 }
 ```
 
-### getCentrality
-
-Calculate node centrality.
-
+**Returns:**
 ```typescript
-async getCentrality(options?: CentralityOptions): Promise<Map<string, number>>
+interface PathResult {
+  path: string[];        // Entity names in order
+  relations: Relation[]; // Relations along the path
+  length: number;
+}
 ```
 
-**Parameters:**
+### findAllPaths
+
+Find all paths between two entities up to a maximum depth.
+
 ```typescript
-interface CentralityOptions {
-  algorithm?: 'degree' | 'betweenness' | 'pagerank';  // Default: 'degree'
-  iterations?: number;  // For pagerank (default: 100)
-  dampingFactor?: number;  // For pagerank (default: 0.85)
+async findAllPaths(source: string, target: string, options?: PathOptions): Promise<PathResult[]>
+```
+
+### Centrality Methods
+
+Three separate methods for centrality calculation:
+
+```typescript
+async calculateDegreeCentrality(direction?: 'in' | 'out' | 'both', topN?: number): Promise<CentralityResult[]>
+async calculateBetweennessCentrality(options?: { approximate?: boolean; sampleRate?: number; topN?: number }): Promise<CentralityResult[]>
+async calculatePageRank(dampingFactor?: number, maxIterations?: number, tolerance?: number, topN?: number): Promise<CentralityResult[]>
+```
+
+**Returns:**
+```typescript
+interface CentralityResult {
+  entity: string;
+  score: number;
 }
 ```
 
@@ -839,25 +849,41 @@ interface CentralityOptions {
 Find connected components in the graph.
 
 ```typescript
-async getConnectedComponents(): Promise<string[][]>
+async getConnectedComponents(): Promise<ConnectedComponentsResult>
 ```
 
-**Returns:** Array of components, each an array of entity names
-
-### bfs
-
-Breadth-first traversal.
-
+**Returns:**
 ```typescript
-async bfs(startNode: string, visitor: (node: string) => void): Promise<void>
+interface ConnectedComponentsResult {
+  components: string[][];
+  count: number;
+  largestComponentSize: number;
+}
 ```
 
-### dfs
+### bfs / dfs
 
-Depth-first traversal.
+Breadth-first and depth-first traversal.
 
 ```typescript
-async dfs(startNode: string, visitor: (node: string) => void): Promise<void>
+async bfs(startEntity: string, options?: TraversalOptions): Promise<TraversalResult>
+async dfs(startEntity: string, options?: TraversalOptions): Promise<TraversalResult>
+```
+
+**Returns:**
+```typescript
+interface TraversalResult {
+  visited: string[];
+  edges: Relation[];
+}
+```
+
+### getNeighborsWithRelations
+
+Get all neighbors of an entity with their connecting relations.
+
+```typescript
+async getNeighborsWithRelations(entityName: string, options?: { direction?: 'in' | 'out' | 'both' }): Promise<NeighborResult[]>
 ```
 
 ---
@@ -1105,6 +1131,120 @@ interface ValidationReport {
 
 ---
 
+## ArchiveManager
+
+Archive old or low-importance entities to compressed storage.
+
+### archiveEntities
+
+```typescript
+async archiveEntities(criteria: ArchiveCriteria, options?: { dryRun?: boolean }): Promise<ArchiveResult>
+```
+
+**Parameters:**
+```typescript
+interface ArchiveCriteria {
+  olderThan?: string;          // ISO 8601 date
+  importanceLessThan?: number;
+  tags?: string[];
+}
+```
+
+### listArchives
+
+```typescript
+async listArchives(): Promise<ArchiveInfo[]>
+```
+
+### getArchiveDir
+
+```typescript
+getArchiveDir(): string
+```
+
+---
+
+## SemanticSearch
+
+Vector similarity search using embeddings. Requires `MEMORY_EMBEDDING_PROVIDER` to be configured.
+
+```typescript
+async isAvailable(): Promise<boolean>
+async indexAll(graph: KnowledgeGraph, options?: { forceReindex?: boolean }): Promise<void>
+async search(graph: KnowledgeGraph, query: string, limit?: number, minSimilarity?: number): Promise<SemanticResult[]>
+async findSimilar(graph: KnowledgeGraph, entityName: string, limit?: number): Promise<SemanticResult[]>
+async clearIndex(): Promise<void>
+```
+
+---
+
+## ObservationNormalizer
+
+Normalize entity observations by resolving pronouns and anchoring dates.
+
+```typescript
+async normalizeObservations(entity: Entity, options?: NormalizeOptions): Promise<NormalizedResult>
+resolvePronouns(text: string, entity: Entity): string
+anchorRelativeDates(text: string, refDate: Date): string
+extractKeywords(text: string): string[]
+```
+
+**Parameters:**
+```typescript
+interface NormalizeOptions {
+  resolveCoreferences?: boolean;  // Default: true
+  anchorTimestamps?: boolean;     // Default: true
+  extractKeywords?: boolean;      // Default: false
+}
+```
+
+---
+
+## TransactionManager
+
+Atomic batch operations with rollback support.
+
+```typescript
+begin(): void
+async commit(options?: { force?: boolean }): Promise<void>
+rollback(): void
+async createEntity(entity: CreateEntity): Promise<Entity>
+async updateEntity(name: string, updates: Partial<Entity>): Promise<Entity>
+async deleteEntity(name: string): Promise<void>
+async createRelation(relation: CreateRelation): Promise<Relation>
+async deleteRelation(relation: Relation): Promise<void>
+```
+
+---
+
+## BatchTransaction
+
+Fluent API for building batch operations.
+
+```typescript
+createEntity(entity: CreateEntity): BatchTransaction
+updateEntity(name: string, updates: Partial<Entity>): BatchTransaction
+deleteEntity(name: string): BatchTransaction
+createRelation(relation: CreateRelation): BatchTransaction
+deleteRelation(relation: Relation): BatchTransaction
+addObservations(entityName: string, contents: string[]): BatchTransaction
+deleteObservations(entityName: string, contents: string[]): BatchTransaction
+async execute(options?: { force?: boolean }): Promise<BatchResult>
+```
+
+---
+
+## StorageFactory
+
+Create storage backend instances.
+
+```typescript
+static createStorage(config: { storagePath: string; storageType?: 'jsonl' | 'sqlite' }): IGraphStorage
+static createStorageFromPath(path: string): IGraphStorage
+```
+
+---
+
 ## Types
 
 ### Entity
@@ -1205,8 +1345,3 @@ interface SearchFilters {
 }
 ```
 
----
-
-**Document Version**: 1.2
-**Last Updated**: 2026-01-14
-**Maintained By**: Daniel Simon Jr.

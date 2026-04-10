@@ -1,7 +1,7 @@
 # MemoryJS - Project Overview
 
-**Version**: 1.2.0
-**Last Updated**: 2026-01-14
+**Version**: 1.5.0
+**Last Updated**: 2026-02-11
 
 ## What Is This?
 
@@ -81,7 +81,7 @@ interface Relation {
 ## Directory Structure
 
 ```
-src/ (93 TypeScript files, ~41,000 lines of code, 657 exports)
+src/ (110 TypeScript files, ~43,000 lines of code, 770 exports)
 ├── index.ts              # Entry point, main exports
 │
 ├── agent/ (19 files)     # Agent Memory System
@@ -118,7 +118,7 @@ src/ (93 TypeScript files, ~41,000 lines of code, 657 exports)
 │   ├── GraphEventEmitter.ts      # Event-driven updates
 │   └── index.ts                  # Barrel export
 │
-├── search/ (29 files)    # Search implementations
+├── search/ (32 files)    # Search implementations
 │   ├── SearchManager.ts          # Search orchestrator
 │   ├── BasicSearch.ts            # Text matching
 │   ├── RankedSearch.ts           # TF-IDF scoring
@@ -136,12 +136,12 @@ src/ (93 TypeScript files, ~41,000 lines of code, 657 exports)
 │   ├── CompressionManager.ts     # Duplicate detection
 │   └── ...
 │
-├── types/ (3 files)      # TypeScript definitions
+├── types/ (5 files)      # TypeScript definitions
 │   ├── types.ts                  # Core type definitions
 │   ├── agent-memory.ts           # Agent memory types
 │   └── index.ts                  # Barrel export
 │
-├── utils/ (18 files)     # Shared utilities
+├── utils/ (24 files)     # Shared utilities
 │   ├── schemas.ts                # Zod validation schemas
 │   ├── BatchProcessor.ts         # Batch processing utilities
 │   ├── WorkerPoolManager.ts      # Worker pool management
@@ -204,8 +204,8 @@ const results = await ctx.searchManager.search('TypeScript');
 ## Environment Variables
 
 - `MEMORY_STORAGE_TYPE`: `jsonl` (default) or `sqlite`
-- `EMBEDDING_PROVIDER`: `openai`, `local`, or `none` for semantic search
-- `OPENAI_API_KEY`: Required when using OpenAI embeddings
+- `MEMORY_EMBEDDING_PROVIDER`: `openai`, `local`, or `none` for semantic search
+- `MEMORY_OPENAI_API_KEY`: Required when using OpenAI embeddings
 
 ## Related Documentation
 

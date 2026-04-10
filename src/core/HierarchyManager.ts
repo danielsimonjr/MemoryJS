@@ -151,7 +151,10 @@ export class HierarchyManager {
       throw new EntityNotFoundError(entityName);
     }
 
+    const visited = new Set<string>();
     while (current.parentId) {
+      if (visited.has(current.parentId)) break; // cycle detection
+      visited.add(current.parentId);
       const parent = graph.entities.find(e => e.name === current!.parentId);
       if (!parent) break;
       ancestors.push(parent);

@@ -360,3 +360,14 @@ export {
 } from './validators.js';
 
 export { SchemaValidator, type JsonSchema } from './SchemaValidator.js';
+
+// ==================== Async Mutex ====================
+export { AsyncMutex, type AsyncMutexOptions } from './AsyncMutex.js';
+
+// ==================== Text Similarity ====================
+export {
+  tokenize as textTokenize,
+  buildTFVector,
+  cosineSimilarity as textCosineSimilarity,
+  calculateTextSimilarity,
+} from './textSimilarity.js';

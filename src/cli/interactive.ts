@@ -37,6 +37,7 @@ export async function startInteractiveMode(options: GlobalOptions): Promise<void
     completer: (line: string) => {
       const completions = [
         'entities', 'relations', 'search', 'get', 'stats',
+        'tags', 'path', 'observe', 'delete', 'export',
         'help', 'exit', 'clear', 'history',
         ...entityNames,
       ];
@@ -77,10 +78,11 @@ export async function startInteractiveMode(options: GlobalOptions): Promise<void
 
 async function processCommand(
   input: string,
-  ctx: InteractiveContext,
+  ictx: InteractiveContext,
   rl: readline.Interface
 ): Promise<void> {
   const [command, ...args] = input.split(/\s+/);
+  const ctx = ictx.ctx;
 
   switch (command.toLowerCase()) {
     case 'help':
@@ -101,7 +103,7 @@ async function processCommand(
 
     case 'entities':
     case 'ls': {
-      const graph = await ctx.ctx.storage.loadGraph();
+      const graph = await ctx.storage.loadGraph();
       const entities = graph.entities;
       console.log(`\nEntities (${entities.length}):`);
       for (const e of entities.slice(0, 20)) {
@@ -119,7 +121,7 @@ async function processCommand(
         console.log(chalk.yellow('Usage: get <entity-name>'));
         break;
       }
-      const entity = await ctx.ctx.entityManager.getEntity(name);
+      const entity = await ctx.entityManager.getEntity(name);
       if (entity) {
         console.log(JSON.stringify(entity, null, 2));
       } else {
@@ -134,7 +136,7 @@ async function processCommand(
         console.log(chalk.yellow('Usage: search <query>'));
         break;
       }
-      const result = await ctx.ctx.searchManager.searchNodes(query);
+      const result = await ctx.searchManager.searchNodes(query);
       console.log(`\nSearch results for "${query}":`);
       for (const entity of result.entities.slice(0, 10)) {
         console.log(`  ${chalk.cyan(entity.name)} [${entity.entityType}]`);
@@ -155,7 +157,7 @@ async function processCommand(
         console.log(chalk.yellow('Usage: relations <entity-name>'));
         break;
       }
-      const relations = await ctx.ctx.relationManager.getRelations(name);
+      const relations = await ctx.relationManager.getRelations(name);
       if (relations.length === 0) {
         console.log(chalk.yellow(`No relations found for: ${name}`));
         break;
@@ -172,7 +174,7 @@ async function processCommand(
     }
 
     case 'stats': {
-      const stats = await ctx.ctx.analyticsManager.getGraphStats();
+      const stats = await ctx.analyticsManager.getGraphStats();
       console.log(`\nKnowledge Graph Statistics:`);
       console.log(`  Entities: ${stats.totalEntities}`);
       console.log(`  Relations: ${stats.totalRelations}`);
@@ -181,9 +183,82 @@ async function processCommand(
       break;
     }
 
+    case 'tags': {
+      const tagName = args.join(' ');
+      if (!tagName) {
+        console.log(chalk.yellow('Usage: tags <entity-name>'));
+        break;
+      }
+      const tagEntity = await ctx.entityManager.getEntity(tagName);
+      if (tagEntity) {
+        const tags = tagEntity.tags || [];
+        console.log(`\nTags for "${tagName}": ${tags.length > 0 ? tags.join(', ') : 'None'}`);
+      } else {
+        console.log(chalk.yellow(`Entity not found: ${tagName}`));
+      }
+      break;
+    }
+
+    case 'path': {
+      if (args.length < 2) {
+        console.log(chalk.yellow('Usage: path <from> <to>'));
+        break;
+      }
+      const [pathFrom, pathTo] = args;
+      const pathResult = await ctx.graphTraversal.findShortestPath(pathFrom, pathTo);
+      if (pathResult) {
+        console.log(`\nPath (${pathResult.length} hops): ${pathResult.path.join(' -> ')}`);
+        for (const rel of pathResult.relations) {
+          console.log(`  ${rel.from} --[${rel.relationType}]--> ${rel.to}`);
+        }
+      } else {
+        console.log(chalk.yellow(`No path found between "${pathFrom}" and "${pathTo}"`));
+      }
+      break;
+    }
+
+    case 'observe': {
+      const obsEntity = args[0];
+      const obsText = args.slice(1).join(' ');
+      if (!obsEntity || !obsText) {
+        console.log(chalk.yellow('Usage: observe <entity> <observation text>'));
+        break;
+      }
+      await ctx.observationManager.addObservations([{
+        entityName: obsEntity,
+        contents: [obsText],
+      }]);
+      console.log(chalk.green(`Added observation to ${obsEntity}`));
+      break;
+    }
+
+    case 'delete': {
+      const delName = args.join(' ');
+      if (!delName) {
+        console.log(chalk.yellow('Usage: delete <entity-name>'));
+        break;
+      }
+      await ctx.entityManager.deleteEntities([delName]);
+      console.log(chalk.green(`Deleted entity: ${delName}`));
+      break;
+    }
+
+    case 'export': {
+      const validFormats = ['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid'];
+      const fmt = args[0] || 'json';
+      if (!validFormats.includes(fmt)) {
+        console.log(chalk.yellow(`Invalid format: ${fmt}. Use: ${validFormats.join(', ')}`));
+        break;
+      }
+      const exportGraph = await ctx.storage.loadGraph();
+      const output = ctx.ioManager.exportGraph(exportGraph, fmt as 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid');
+      console.log(output);
+      break;
+    }
+
     case 'history':
       console.log('\nCommand history:');
-      ctx.history.slice(-20).forEach((cmd, i) => {
+      ictx.history.slice(-20).forEach((cmd, i) => {
         console.log(`  ${i + 1}. ${cmd}`);
       });
       break;
@@ -201,6 +276,11 @@ ${chalk.green('Available Commands:')}
   ${chalk.cyan('get <name>')}         Get entity details
   ${chalk.cyan('search <query>')}     Search entities
   ${chalk.cyan('relations <name>')}   Show relations for entity
+  ${chalk.cyan('tags <name>')}        Show tags for entity
+  ${chalk.cyan('path <from> <to>')}   Find shortest path
+  ${chalk.cyan('observe <e> <text>')} Add observation to entity
+  ${chalk.cyan('delete <name>')}      Delete entity
+  ${chalk.cyan('export [format]')}    Export graph to stdout
   ${chalk.cyan('stats')}              Show graph statistics
   ${chalk.cyan('history')}            Show command history
   ${chalk.cyan('clear')}              Clear screen

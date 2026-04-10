@@ -346,21 +346,16 @@ describe('Write Performance', () => {
   });
 
   describe('EntityManager with append operations', () => {
-    it('should create single entity using append', async () => {
-      // Create a single entity - should use append
+    it('should create single entity correctly', async () => {
+      // Create a single entity
       await entityManager.createEntities([
         { name: 'Entity1', entityType: 'test', observations: [] },
       ]);
-
-      // Single entity uses append
-      expect(storage.getPendingAppends()).toBe(1);
 
       // Add another single entity
       await entityManager.createEntities([
         { name: 'Entity2', entityType: 'test', observations: [] },
       ]);
-
-      expect(storage.getPendingAppends()).toBe(2);
 
       // Verify entities exist
       const graph = await storage.loadGraph();

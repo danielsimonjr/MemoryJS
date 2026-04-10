@@ -1,10 +1,10 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  version: 1.2.0
-  lastUpdated: "2026-01-14"
-  totalFiles: 93
-  totalModules: 8
-  totalExports: 657
+  version: 1.5.0
+  lastUpdated: "2026-02-11"
+  totalFiles: 110
+  totalModules: 9
+  totalExports: 770
 entryPoints:
   - file: src/index.ts
     type: main
@@ -34,7 +34,7 @@ modules:
         - AccessStats
         - AccessTrackerConfig
     src/agent/AgentMemoryConfig.ts:
-      description: Agent Memory Configuration
+      description: Agent Memory Configuration - env var and programmatic config for all agent memory components.
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -859,6 +859,155 @@ modules:
         - PromotionCriteria
         - PromotionResult
         - ConfirmationResult
+  cli:
+    src/cli/commands/index.ts:
+      description: CLI Command Registry
+      externalDependencies:
+        - package: commander
+          imports:
+            - Command
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../core/ManagerContext.js
+          imports:
+            - ManagerContext
+        - file: ../options.js
+          imports:
+            - parseGlobalOptions
+            - createLogger
+            - GlobalOptions
+        - file: ../config.js
+          imports:
+            - findConfigFile
+            - loadConfig
+            - mergeConfig
+        - file: ../formatters.js
+          imports:
+            - formatEntities
+            - formatRelations
+            - formatEntityDetail
+            - formatSearchResults
+            - formatSuccess
+            - formatError
+      exports:
+        - registerCommands
+      functions:
+        - registerCommands
+    src/cli/config.ts:
+      description: CLI Configuration File Support
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - existsSync
+            - readFileSync
+        - module: path
+          imports:
+            - resolve
+            - dirname
+      internalDependencies:
+        - file: ./options.js
+          imports:
+            - GlobalOptions
+          typeOnly: true
+      exports:
+        - findConfigFile
+        - loadConfig
+        - mergeConfig
+      functions:
+        - findConfigFile
+        - loadConfig
+        - mergeConfig
+    src/cli/formatters.ts:
+      description: CLI Output Formatters
+      externalDependencies:
+        - package: cli-table3
+          imports:
+            - Table
+        - package: chalk
+          imports:
+            - chalk
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - Relation
+          typeOnly: true
+      exports:
+        - formatEntities
+        - formatRelations
+        - formatSearchResults
+        - formatEntityDetail
+        - formatSuccess
+        - formatError
+      functions:
+        - formatEntities
+        - formatRelations
+        - formatSearchResults
+        - formatEntityDetail
+        - formatSuccess
+        - formatError
+    src/cli/index.ts:
+      description: MemoryJS CLI
+      externalDependencies:
+        - package: commander
+          imports:
+            - Command
+      nodeDependencies:
+        - module: fs
+          imports:
+            - readFileSync
+        - module: url
+          imports:
+            - fileURLToPath
+        - module: path
+          imports:
+            - dirname
+            - join
+      internalDependencies:
+        - file: ./commands/index.js
+          imports:
+            - registerCommands
+      exports: []
+    src/cli/interactive.ts:
+      description: Interactive CLI Mode (REPL)
+      externalDependencies:
+        - package: chalk
+          imports:
+            - chalk
+      nodeDependencies:
+        - module: readline
+          imports:
+            - "* as readline"
+      internalDependencies:
+        - file: ../core/ManagerContext.js
+          imports:
+            - ManagerContext
+        - file: ./options.js
+          imports:
+            - GlobalOptions
+          typeOnly: true
+      exports:
+        - startInteractiveMode
+      functions:
+        - startInteractiveMode
+    src/cli/options.ts:
+      description: CLI Global Options
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - defaultOptions
+        - parseGlobalOptions
+        - createLogger
+      interfaces:
+        - GlobalOptions
+      functions:
+        - parseGlobalOptions
+        - createLogger
+      constants:
+        - defaultOptions
   core:
     src/core/EntityManager.ts:
       description: Entity Manager
@@ -1132,9 +1281,9 @@ modules:
         - file: ./GraphStorage.js
           imports:
             - GraphStorage
-        - file: ./StorageFactory.js
+        - file: ./SQLiteStorage.js
           imports:
-            - createStorageFromPath
+            - SQLiteStorage
         - file: ./EntityManager.js
           imports:
             - EntityManager
@@ -1315,7 +1464,7 @@ modules:
         - createStorage
         - createStorageFromPath
     src/core/TransactionManager.ts:
-      description: Transaction Manager
+      description: Validate all operations before executing.
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -1542,7 +1691,7 @@ modules:
         - KeywordExtractor
         - type ScoredKeyword
     src/features/IOManager.ts:
-      description: IO Manager
+      description: Import graph from formatted data.
       externalDependencies: []
       nodeDependencies:
         - module: fs
@@ -1885,6 +2034,10 @@ modules:
             - dirname
             - join
             - sep
+            - normalize
+        - module: fs
+          imports:
+            - existsSync
       internalDependencies:
         - file: ../types/index.js
           imports:
@@ -1915,7 +2068,7 @@ modules:
       constants:
         - DEFAULT_FUZZY_THRESHOLD
     src/search/HybridScorer.ts:
-      description: Hybrid Scorer
+      description: Hybrid Scorer - combines search scores with min-max normalization and configurable weights.
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -1938,7 +2091,7 @@ modules:
       constants:
         - DEFAULT_SCORER_WEIGHTS
     src/search/HybridSearchManager.ts:
-      description: Hybrid Search Manager
+      description: Hybrid Search Manager - orchestrates semantic, lexical, and symbolic search.
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -2177,6 +2330,24 @@ modules:
             - type QuantizedSearchResult
             - type QuantizedVectorStoreOptions
           reExport: true
+        - file: ./QueryLogger.js
+          imports:
+            - QueryLogger
+            - type QueryLoggerConfig
+          reExport: true
+        - file: ./QueryParser.js
+          imports:
+            - QueryParser
+            - matchesPhrase
+            - isPrefixPattern
+            - matchesPrefix
+          reExport: true
+        - file: ./ProximitySearch.js
+          imports:
+            - ProximitySearch
+            - type ProximityMatch
+            - type ProximityMatchLocation
+          reExport: true
       exports:
         - BasicSearch
         - RankedSearch
@@ -2266,6 +2437,15 @@ modules:
         - type QuantizedVectorStoreStats
         - type QuantizedSearchResult
         - type QuantizedVectorStoreOptions
+        - QueryLogger
+        - type QueryLoggerConfig
+        - QueryParser
+        - matchesPhrase
+        - isPrefixPattern
+        - matchesPrefix
+        - ProximitySearch
+        - type ProximityMatch
+        - type ProximityMatchLocation
       reExported:
         - BasicSearch
         - RankedSearch
@@ -2355,6 +2535,15 @@ modules:
         - type QuantizedVectorStoreStats
         - type QuantizedSearchResult
         - type QuantizedVectorStoreOptions
+        - QueryLogger
+        - type QueryLoggerConfig
+        - QueryParser
+        - matchesPhrase
+        - isPrefixPattern
+        - matchesPrefix
+        - ProximitySearch
+        - type ProximityMatch
+        - type ProximityMatchLocation
     src/search/OptimizedInvertedIndex.ts:
       description: Optimized Inverted Index
       externalDependencies: []
@@ -2400,6 +2589,26 @@ modules:
         - LayerTiming
         - ParallelSearchResult
         - ParallelSearchOptions
+    src/search/ProximitySearch.ts:
+      description: Proximity Search
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+          typeOnly: true
+        - file: ../types/search.js
+          imports:
+            - ProximityNode
+          typeOnly: true
+      exports:
+        - ProximitySearch
+      classes:
+        - ProximitySearch
+      interfaces:
+        - ProximityMatch
+        - ProximityMatchLocation
     src/search/QuantizedVectorStore.ts:
       description: Quantized Vector Store
       externalDependencies: []
@@ -2430,7 +2639,7 @@ modules:
       classes:
         - QueryAnalyzer
     src/search/QueryCostEstimator.ts:
-      description: Query Cost Estimator
+      description: Estimates the cost of different search methods and recommends the optimal
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -2450,6 +2659,46 @@ modules:
         - LayerRecommendationOptions
         - TokenEstimationOptions
         - AdaptiveDepthConfig
+    src/search/QueryLogger.ts:
+      description: Query Logger
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - appendFileSync
+      internalDependencies:
+        - file: ../types/search.js
+          imports:
+            - LogLevel
+            - QueryLogEntry
+          typeOnly: true
+      exports:
+        - QueryLogger
+      classes:
+        - QueryLogger
+      interfaces:
+        - QueryLoggerConfig
+    src/search/QueryParser.ts:
+      description: Query Parser
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/search.js
+          imports:
+            - QueryNode
+            - BooleanOpNode
+          typeOnly: true
+      exports:
+        - matchesPhrase
+        - isPrefixPattern
+        - matchesPrefix
+        - QueryParser
+      classes:
+        - QueryParser
+      functions:
+        - matchesPhrase
+        - isPrefixPattern
+        - matchesPrefix
     src/search/QueryPlanCache.ts:
       description: Query Plan Cache
       externalDependencies: []
@@ -2469,7 +2718,7 @@ modules:
         - QueryPlanCacheStats
         - QueryPlanCacheOptions
     src/search/QueryPlanner.ts:
-      description: Query Planner
+      description: Query Planner - generates execution plans for queries based on analysis.
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -2691,7 +2940,7 @@ modules:
       functions:
         - entityToText
     src/search/SymbolicSearch.ts:
-      description: Symbolic Search Layer
+      description: Symbolic Search Layer - metadata-based filtering using structured predicates.
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -2851,6 +3100,10 @@ modules:
             - Relation
             - KnowledgeGraph
             - SearchResult
+        - file: ./search.js
+          imports:
+            - QueryTraceBuilder
+          reExport: true
         - file: ./agent-memory.js
           imports:
             - isAgentEntity
@@ -2861,7 +3114,14 @@ modules:
             - isProceduralMemory
             - AccessContextBuilder
           reExport: true
+        - file: ./progress.js
+          imports:
+            - createProgressInfo
+            - createThrottledProgress
+            - createDetailedProgressReporter
+          reExport: true
       exports:
+        - QueryTraceBuilder
         - isAgentEntity
         - isSessionEntity
         - isWorkingMemory
@@ -2869,7 +3129,11 @@ modules:
         - isSemanticMemory
         - isProceduralMemory
         - AccessContextBuilder
+        - createProgressInfo
+        - createThrottledProgress
+        - createDetailedProgressReporter
       reExported:
+        - QueryTraceBuilder
         - isAgentEntity
         - isSessionEntity
         - isWorkingMemory
@@ -2877,6 +3141,49 @@ modules:
         - isSemanticMemory
         - isProceduralMemory
         - AccessContextBuilder
+        - createProgressInfo
+        - createThrottledProgress
+        - createDetailedProgressReporter
+    src/types/progress.ts:
+      description: Progress Types
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - createProgressInfo
+        - createThrottledProgress
+        - createDetailedProgressReporter
+      interfaces:
+        - ProgressInfo
+        - ProgressOptions
+      functions:
+        - createProgressInfo
+        - createThrottledProgress
+        - createDetailedProgressReporter
+    src/types/search.ts:
+      description: Search Types
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - QueryTraceBuilder
+      classes:
+        - QueryTraceBuilder
+      interfaces:
+        - QueryLogEntry
+        - QueryTrace
+        - QueryStage
+        - SearchExplanation
+        - ScoringSignal
+        - MatchedTerm
+        - ScoreBoost
+        - ExplainedSearchResult
+        - TermNode
+        - PhraseNode
+        - WildcardNode
+        - ProximityNode
+        - FieldNode
+        - BooleanOpNode
     src/types/types.ts:
       description: Type Definitions
       externalDependencies: []
@@ -2890,6 +3197,7 @@ modules:
       exports: []
       interfaces:
         - Entity
+        - RelationProperties
         - Relation
         - KnowledgeGraph
         - FuzzyCacheKey
@@ -2926,6 +3234,8 @@ modules:
         - ConnectedComponentsResult
         - CentralityResult
         - WeightedRelation
+        - TemporalRelation
+        - BidirectionalRelation
         - EmbeddingService
         - SemanticSearchResult
         - IVectorStore
@@ -3111,9 +3421,6 @@ modules:
         - module: path
           imports:
             - path
-        - module: url
-          imports:
-            - fileURLToPath
       internalDependencies:
         - file: ../types/index.js
           imports:
@@ -3194,8 +3501,33 @@ modules:
         - ensureMemoryFilePath
       constants:
         - defaultMemoryPath
+    src/utils/EntityValidator.ts:
+      description: Entity Validator
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+          typeOnly: true
+        - file: ./EntityValidator.js
+          imports:
+            - EntityValidator
+            - required
+            - minLength
+            - pattern
+      exports:
+        - EntityValidator
+      classes:
+        - EntityValidator
+      interfaces:
+        - EntityValidationRule
+        - EntityRuleResult
+        - EntityValidationIssue
+        - EntityValidationResult
+        - EntityValidatorConfig
     src/utils/errors.ts:
-      description: Custom Error Types
+      description: errors module
       externalDependencies: []
       nodeDependencies: []
       internalDependencies: []
@@ -3212,6 +3544,7 @@ modules:
         - ExportError
         - InsufficientEntitiesError
         - OperationCancelledError
+        - ErrorCode
       classes:
         - KnowledgeGraphError
         - EntityNotFoundError
@@ -3225,6 +3558,24 @@ modules:
         - ExportError
         - InsufficientEntitiesError
         - OperationCancelledError
+      interfaces:
+        - ErrorOptions
+      enums:
+        - ErrorCode
+    src/utils/errorSuggestions.ts:
+      description: Error Suggestion Generator
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./errors.js
+          imports:
+            - ErrorCode
+      exports:
+        - generateSuggestions
+        - getQuickHint
+      functions:
+        - generateSuggestions
+        - getQuickHint
     src/utils/formatters.ts:
       description: Response and Pagination Formatters
       externalDependencies: []
@@ -3260,6 +3611,7 @@ modules:
       internalDependencies:
         - file: ./errors.js
           imports:
+            - ErrorCode
             - KnowledgeGraphError
             - EntityNotFoundError
             - RelationNotFoundError
@@ -3272,6 +3624,12 @@ modules:
             - ExportError
             - InsufficientEntitiesError
             - OperationCancelledError
+            - type ErrorOptions
+          reExport: true
+        - file: ./errorSuggestions.js
+          imports:
+            - generateSuggestions
+            - getQuickHint
           reExport: true
         - file: ./constants.js
           imports:
@@ -3510,7 +3868,62 @@ modules:
             - type MemoryAlert
             - type MemoryChangeCallback
           reExport: true
+        - file: ./relationHelpers.js
+          imports:
+            - isWeightedRelation
+            - isTemporalRelation
+            - isBidirectionalRelation
+            - hasConfidence
+            - isCurrentlyValid
+            - RelationBuilder
+          reExport: true
+        - file: ./relationValidation.js
+          imports:
+            - validateRelationMetadata
+            - validateRelationsMetadata
+            - allRelationsValidMetadata
+            - type RelationValidationResult
+            - type RelationValidationError
+            - type RelationValidationWarning
+          reExport: true
+        - file: ./EntityValidator.js
+          imports:
+            - EntityValidator
+            - type EntityValidatorConfig
+            - type EntityValidationRule
+            - type EntityRuleResult
+            - type EntityValidationIssue
+            - type EntityValidationResult
+          reExport: true
+        - file: ./validators.js
+          imports:
+            - required
+            - minLength
+            - maxLength
+            - pattern
+            - range
+            - min
+            - max
+            - oneOf
+            - minItems
+            - maxItems
+            - email
+            - url
+            - isoDate
+            - typeOf
+            - custom
+            - customSync
+            - asWarning
+            - all
+            - when
+          reExport: true
+        - file: ./SchemaValidator.js
+          imports:
+            - SchemaValidator
+            - type JsonSchema
+          reExport: true
       exports:
+        - ErrorCode
         - KnowledgeGraphError
         - EntityNotFoundError
         - RelationNotFoundError
@@ -3523,6 +3936,9 @@ modules:
         - ExportError
         - InsufficientEntitiesError
         - OperationCancelledError
+        - type ErrorOptions
+        - generateSuggestions
+        - getQuickHint
         - FILE_EXTENSIONS
         - FILE_SUFFIXES
         - DEFAULT_FILE_NAMES
@@ -3712,7 +4128,47 @@ modules:
         - type MemoryThresholds
         - type MemoryAlert
         - type MemoryChangeCallback
+        - isWeightedRelation
+        - isTemporalRelation
+        - isBidirectionalRelation
+        - hasConfidence
+        - isCurrentlyValid
+        - RelationBuilder
+        - validateRelationMetadata
+        - validateRelationsMetadata
+        - allRelationsValidMetadata
+        - type RelationValidationResult
+        - type RelationValidationError
+        - type RelationValidationWarning
+        - EntityValidator
+        - type EntityValidatorConfig
+        - type EntityValidationRule
+        - type EntityRuleResult
+        - type EntityValidationIssue
+        - type EntityValidationResult
+        - required
+        - minLength
+        - maxLength
+        - pattern
+        - range
+        - min
+        - max
+        - oneOf
+        - minItems
+        - maxItems
+        - email
+        - url
+        - isoDate
+        - typeOf
+        - custom
+        - customSync
+        - asWarning
+        - all
+        - when
+        - SchemaValidator
+        - type JsonSchema
       reExported:
+        - ErrorCode
         - KnowledgeGraphError
         - EntityNotFoundError
         - RelationNotFoundError
@@ -3725,6 +4181,9 @@ modules:
         - ExportError
         - InsufficientEntitiesError
         - OperationCancelledError
+        - type ErrorOptions
+        - generateSuggestions
+        - getQuickHint
         - FILE_EXTENSIONS
         - FILE_SUFFIXES
         - DEFAULT_FILE_NAMES
@@ -3914,8 +4373,47 @@ modules:
         - type MemoryThresholds
         - type MemoryAlert
         - type MemoryChangeCallback
+        - isWeightedRelation
+        - isTemporalRelation
+        - isBidirectionalRelation
+        - hasConfidence
+        - isCurrentlyValid
+        - RelationBuilder
+        - validateRelationMetadata
+        - validateRelationsMetadata
+        - allRelationsValidMetadata
+        - type RelationValidationResult
+        - type RelationValidationError
+        - type RelationValidationWarning
+        - EntityValidator
+        - type EntityValidatorConfig
+        - type EntityValidationRule
+        - type EntityRuleResult
+        - type EntityValidationIssue
+        - type EntityValidationResult
+        - required
+        - minLength
+        - maxLength
+        - pattern
+        - range
+        - min
+        - max
+        - oneOf
+        - minItems
+        - maxItems
+        - email
+        - url
+        - isoDate
+        - typeOf
+        - custom
+        - customSync
+        - asWarning
+        - all
+        - when
+        - SchemaValidator
+        - type JsonSchema
     src/utils/indexes.ts:
-      description: Search Indexes
+      description: O(1) lookup indexes for entities, types, relations, and observations.
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -4007,6 +4505,55 @@ modules:
         - parallelMap
         - parallelFilter
         - getPoolStats
+    src/utils/relationHelpers.ts:
+      description: Relation Helper Utilities
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Relation
+            - WeightedRelation
+            - TemporalRelation
+            - BidirectionalRelation
+            - RelationProperties
+          typeOnly: true
+      exports:
+        - isWeightedRelation
+        - isTemporalRelation
+        - isBidirectionalRelation
+        - hasConfidence
+        - isCurrentlyValid
+        - RelationBuilder
+      classes:
+        - RelationBuilder
+      functions:
+        - isWeightedRelation
+        - isTemporalRelation
+        - isBidirectionalRelation
+        - hasConfidence
+        - isCurrentlyValid
+    src/utils/relationValidation.ts:
+      description: Relation Validation Utilities
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Relation
+          typeOnly: true
+      exports:
+        - validateRelationMetadata
+        - validateRelationsMetadata
+        - allRelationsValidMetadata
+      interfaces:
+        - RelationValidationError
+        - RelationValidationWarning
+        - RelationValidationResult
+      functions:
+        - validateRelationMetadata
+        - validateRelationsMetadata
+        - allRelationsValidMetadata
     src/utils/schemas.ts:
       description: Validation Schemas and Helpers
       externalDependencies:
@@ -4096,6 +4643,26 @@ modules:
         - ExportFilterSchema
         - OptionalTagsSchema
         - OptionalEntityNamesSchema
+    src/utils/SchemaValidator.ts:
+      description: Schema Validator
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+          typeOnly: true
+        - file: ./EntityValidator.js
+          imports:
+            - EntityValidationResult
+            - EntityValidationIssue
+          typeOnly: true
+      exports:
+        - SchemaValidator
+      classes:
+        - SchemaValidator
+      interfaces:
+        - JsonSchema
     src/utils/searchAlgorithms.ts:
       description: Search Algorithms
       externalDependencies: []
@@ -4174,8 +4741,62 @@ modules:
       enums:
         - TaskPriority
         - TaskStatus
+    src/utils/validators.ts:
+      description: Built-in Validators
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+          typeOnly: true
+        - file: ./EntityValidator.js
+          imports:
+            - EntityValidationRule
+            - EntityRuleResult
+          typeOnly: true
+      exports:
+        - required
+        - minLength
+        - maxLength
+        - pattern
+        - range
+        - min
+        - max
+        - oneOf
+        - minItems
+        - maxItems
+        - email
+        - url
+        - isoDate
+        - typeOf
+        - custom
+        - customSync
+        - asWarning
+        - all
+        - when
+      functions:
+        - required
+        - minLength
+        - maxLength
+        - pattern
+        - range
+        - min
+        - max
+        - oneOf
+        - minItems
+        - maxItems
+        - email
+        - url
+        - isoDate
+        - typeOf
+        - custom
+        - customSync
+        - asWarning
+        - all
+        - when
     src/utils/WorkerPoolManager.ts:
-      description: Worker Pool Manager
+      description: WorkerPoolManager module
       externalDependencies:
         - package: "@danielsimonjr/workerpool"
           imports:
@@ -4237,7 +4858,9 @@ modules:
         - searchEntities
 dependencyGraph:
   circularDependencies:
-    runtime: []
+    runtime:
+      - - src/utils/EntityValidator.ts
+        - src/utils/EntityValidator.ts
     typeOnly:
       - - src/core/GraphStorage.ts
         - src/core/TransactionManager.ts
@@ -4246,8 +4869,8 @@ dependencyGraph:
         - src/core/TransactionManager.ts
         - src/features/IOManager.ts
         - src/core/GraphStorage.ts
-    total: 2
-    runtimeCount: 0
+    total: 3
+    runtimeCount: 1
     typeOnlyCount: 2
   layers:
     - name: Agent
@@ -4271,6 +4894,14 @@ dependencyGraph:
         - src/agent/SessionQueryBuilder.ts
         - src/agent/SummarizationService.ts
         - src/agent/WorkingMemoryManager.ts
+    - name: Cli
+      files:
+        - src/cli/commands/index.ts
+        - src/cli/config.ts
+        - src/cli/formatters.ts
+        - src/cli/index.ts
+        - src/cli/interactive.ts
+        - src/cli/options.ts
     - name: Core
       files:
         - src/core/EntityManager.ts
@@ -4314,9 +4945,12 @@ dependencyGraph:
         - src/search/index.ts
         - src/search/OptimizedInvertedIndex.ts
         - src/search/ParallelSearchExecutor.ts
+        - src/search/ProximitySearch.ts
         - src/search/QuantizedVectorStore.ts
         - src/search/QueryAnalyzer.ts
         - src/search/QueryCostEstimator.ts
+        - src/search/QueryLogger.ts
+        - src/search/QueryParser.ts
         - src/search/QueryPlanCache.ts
         - src/search/QueryPlanner.ts
         - src/search/RankedSearch.ts
@@ -4334,6 +4968,8 @@ dependencyGraph:
       files:
         - src/types/agent-memory.ts
         - src/types/index.ts
+        - src/types/progress.ts
+        - src/types/search.ts
         - src/types/types.ts
     - name: Utils
       files:
@@ -4342,7 +4978,9 @@ dependencyGraph:
         - src/utils/compressionUtil.ts
         - src/utils/constants.ts
         - src/utils/entityUtils.ts
+        - src/utils/EntityValidator.ts
         - src/utils/errors.ts
+        - src/utils/errorSuggestions.ts
         - src/utils/formatters.ts
         - src/utils/index.ts
         - src/utils/indexes.ts
@@ -4350,29 +4988,33 @@ dependencyGraph:
         - src/utils/MemoryMonitor.ts
         - src/utils/operationUtils.ts
         - src/utils/parallelUtils.ts
+        - src/utils/relationHelpers.ts
+        - src/utils/relationValidation.ts
         - src/utils/schemas.ts
+        - src/utils/SchemaValidator.ts
         - src/utils/searchAlgorithms.ts
         - src/utils/searchCache.ts
         - src/utils/taskScheduler.ts
+        - src/utils/validators.ts
         - src/utils/WorkerPoolManager.ts
     - name: Workers
       files:
         - src/workers/index.ts
         - src/workers/levenshteinWorker.ts
 statistics:
-  totalTypeScriptFiles: 93
-  totalModules: 8
-  totalLinesOfCode: 40953
-  totalExports: 657
-  totalClasses: 91
-  totalInterfaces: 216
-  totalFunctions: 109
-  totalTypeGuards: 9
-  totalEnums: 3
-  totalConstants: 58
-  totalReExports: 404
-  totalTypeOnlyImports: 128
-  runtimeCircularDeps: 0
+  totalTypeScriptFiles: 110
+  totalModules: 9
+  totalLinesOfCode: 43392
+  totalExports: 770
+  totalClasses: 98
+  totalInterfaces: 249
+  totalFunctions: 157
+  totalTypeGuards: 15
+  totalEnums: 4
+  totalConstants: 59
+  totalReExports: 460
+  totalTypeOnlyImports: 142
+  runtimeCircularDeps: 1
   typeOnlyCircularDeps: 2
-  unusedFilesCount: 0
-  unusedExportsCount: 227
+  unusedFilesCount: 2
+  unusedExportsCount: 251

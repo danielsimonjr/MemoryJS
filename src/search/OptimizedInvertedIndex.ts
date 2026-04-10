@@ -94,10 +94,24 @@ export class OptimizedInvertedIndex {
 
     // Get or assign document ID
     let docId = this.entityToId.get(entityName);
+    const isReindex = docId !== undefined;
     if (docId === undefined) {
       docId = this.nextId++;
       this.entityToId.set(entityName, docId);
       this.idToEntity.set(docId, entityName);
+    }
+
+    // Remove old terms before re-indexing to prevent stale posting list entries
+    if (isReindex) {
+      for (const [term, postingList] of this.tempPostingLists) {
+        const idx = postingList.indexOf(docId);
+        if (idx !== -1) {
+          postingList.splice(idx, 1);
+          if (postingList.length === 0) {
+            this.tempPostingLists.delete(term);
+          }
+        }
+      }
     }
 
     // Add unique terms to posting lists

@@ -1,16 +1,18 @@
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-01-14
+**Generated**: 2026-02-11
 
 ## Summary
 
-- **Potentially unused files**: 0
-- **Potentially unused exports**: 227
+- **Potentially unused files**: 2
+- **Potentially unused exports**: 251
 
 ## Potentially Unused Files
 
 These files are not imported by any other file in the codebase:
 
+- `src/cli/index.ts`
+- `src/cli/interactive.ts`
 
 ## Potentially Unused Exports
 
@@ -59,6 +61,14 @@ These exports are not imported by any other file in the codebase:
 - `SessionMemoryFilter` (interface)
 - `PromotionMarkOptions` (interface)
 - `PromotionCriteria` (interface)
+
+### `src/cli/formatters.ts`
+
+- `OutputFormat` (type)
+
+### `src/cli/options.ts`
+
+- `defaultOptions` (constant)
 
 ### `src/core/EntityManager.ts`
 
@@ -145,6 +155,11 @@ These exports are not imported by any other file in the codebase:
 - `ParallelSearchResult` (interface)
 - `ParallelSearchOptions` (interface)
 
+### `src/search/ProximitySearch.ts`
+
+- `ProximityMatch` (interface)
+- `ProximityMatchLocation` (interface)
+
 ### `src/search/QuantizedVectorStore.ts`
 
 - `QuantizationParams` (interface)
@@ -158,6 +173,10 @@ These exports are not imported by any other file in the codebase:
 - `LayerRecommendationOptions` (interface)
 - `TokenEstimationOptions` (interface)
 - `AdaptiveDepthConfig` (interface)
+
+### `src/search/QueryLogger.ts`
+
+- `QueryLoggerConfig` (interface)
 
 ### `src/search/QueryPlanCache.ts`
 
@@ -198,6 +217,26 @@ These exports are not imported by any other file in the codebase:
 - `ProceduralMemoryEntity` (type)
 - `ConsolidationAction` (type)
 
+### `src/types/progress.ts`
+
+- `ProgressInfo` (interface)
+- `ProgressOptions` (interface)
+- `ProgressInfoCallback` (type)
+
+### `src/types/search.ts`
+
+- `QueryTrace` (interface)
+- `QueryStage` (interface)
+- `SearchExplanation` (interface)
+- `ScoringSignal` (interface)
+- `MatchedTerm` (interface)
+- `ScoreBoost` (interface)
+- `ExplainedSearchResult` (interface)
+- `TermNode` (interface)
+- `PhraseNode` (interface)
+- `WildcardNode` (interface)
+- `FieldNode` (interface)
+
 ### `src/types/types.ts`
 
 - `KnowledgeGraph` (interface)
@@ -232,7 +271,6 @@ These exports are not imported by any other file in the codebase:
 - `PathResult` (interface)
 - `ConnectedComponentsResult` (interface)
 - `CentralityResult` (interface)
-- `WeightedRelation` (interface)
 - `EmbeddingService` (interface)
 - `SemanticSearchResult` (interface)
 - `IVectorStore` (interface)
@@ -308,6 +346,14 @@ These exports are not imported by any other file in the codebase:
 - `validateFilePath` (function)
 - `CommonSearchFilters` (interface)
 
+### `src/utils/EntityValidator.ts`
+
+- `EntityValidatorConfig` (interface)
+
+### `src/utils/errors.ts`
+
+- `ErrorOptions` (interface)
+
 ### `src/utils/formatters.ts`
 
 - `formatToolResponse` (function)
@@ -326,6 +372,12 @@ These exports are not imported by any other file in the codebase:
 ### `src/utils/operationUtils.ts`
 
 - `PhaseDefinition` (interface)
+
+### `src/utils/relationValidation.ts`
+
+- `RelationValidationError` (interface)
+- `RelationValidationWarning` (interface)
+- `RelationValidationResult` (interface)
 
 ### `src/utils/schemas.ts`
 
@@ -355,6 +407,10 @@ These exports are not imported by any other file in the codebase:
 - `SavedSearchInputSchema` (constant)
 - `ImportFormatSchema` (constant)
 - `OptionalTagsSchema` (constant)
+
+### `src/utils/SchemaValidator.ts`
+
+- `JsonSchema` (interface)
 
 ### `src/utils/searchCache.ts`
 

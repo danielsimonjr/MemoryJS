@@ -1,6 +1,6 @@
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 1.2.0 | **Last Updated**: 2026-01-14
+**Version**: 1.5.0 | **Last Updated**: 2026-02-11
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -10,17 +10,18 @@ This document provides a comprehensive dependency graph of all files, components
 
 1. [Overview](#overview)
 2. [Agent Dependencies](#agent-dependencies)
-3. [Core Dependencies](#core-dependencies)
-4. [Features Dependencies](#features-dependencies)
-5. [Entry Dependencies](#entry-dependencies)
-6. [Search Dependencies](#search-dependencies)
-7. [Types Dependencies](#types-dependencies)
-8. [Utils Dependencies](#utils-dependencies)
-9. [Workers Dependencies](#workers-dependencies)
-10. [Dependency Matrix](#dependency-matrix)
-11. [Circular Dependency Analysis](#circular-dependency-analysis)
-12. [Visual Dependency Graph](#visual-dependency-graph)
-13. [Summary Statistics](#summary-statistics)
+3. [Cli Dependencies](#cli-dependencies)
+4. [Core Dependencies](#core-dependencies)
+5. [Features Dependencies](#features-dependencies)
+6. [Entry Dependencies](#entry-dependencies)
+7. [Search Dependencies](#search-dependencies)
+8. [Types Dependencies](#types-dependencies)
+9. [Utils Dependencies](#utils-dependencies)
+10. [Workers Dependencies](#workers-dependencies)
+11. [Dependency Matrix](#dependency-matrix)
+12. [Circular Dependency Analysis](#circular-dependency-analysis)
+13. [Visual Dependency Graph](#visual-dependency-graph)
+14. [Summary Statistics](#summary-statistics)
 
 ---
 
@@ -29,12 +30,13 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **agent**: 19 files
+- **cli**: 6 files
 - **core**: 12 files
 - **features**: 9 files
 - **entry**: 1 file
-- **search**: 29 files
-- **types**: 3 files
-- **utils**: 18 files
+- **search**: 32 files
+- **types**: 5 files
+- **utils**: 24 files
 - **workers**: 2 files
 
 ---
@@ -55,7 +57,7 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/agent/AgentMemoryConfig.ts` - Agent Memory Configuration
+### `src/agent/AgentMemoryConfig.ts` - Agent Memory Configuration - env var and programmatic config for all agent memory components.
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -377,6 +379,117 @@ The codebase is organized into the following modules:
 
 ---
 
+## Cli Dependencies
+
+### `src/cli/commands/index.ts` - CLI Command Registry
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `commander` | `Command` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../core/ManagerContext.js` | `ManagerContext` | Import |
+| `../options.js` | `parseGlobalOptions, createLogger, GlobalOptions` | Import |
+| `../config.js` | `findConfigFile, loadConfig, mergeConfig` | Import |
+| `../formatters.js` | `formatEntities, formatRelations, formatEntityDetail, formatSearchResults, formatSuccess, formatError` | Import |
+
+**Exports:**
+- Functions: `registerCommands`
+
+---
+
+### `src/cli/config.ts` - CLI Configuration File Support
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs` | `existsSync, readFileSync` |
+| `path` | `resolve, dirname` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./options.js` | `GlobalOptions` | Import (type-only) |
+
+**Exports:**
+- Functions: `findConfigFile`, `loadConfig`, `mergeConfig`
+
+---
+
+### `src/cli/formatters.ts` - CLI Output Formatters
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `cli-table3` | `Table` |
+| `chalk` | `chalk` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity, Relation` | Import (type-only) |
+
+**Exports:**
+- Functions: `formatEntities`, `formatRelations`, `formatSearchResults`, `formatEntityDetail`, `formatSuccess`, `formatError`
+
+---
+
+### `src/cli/index.ts` - MemoryJS CLI
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `commander` | `Command` |
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs` | `readFileSync` |
+| `url` | `fileURLToPath` |
+| `path` | `dirname, join` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./commands/index.js` | `registerCommands` | Import |
+
+---
+
+### `src/cli/interactive.ts` - Interactive CLI Mode (REPL)
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `chalk` | `chalk` |
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `readline` | `* as readline` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../core/ManagerContext.js` | `ManagerContext` | Import |
+| `./options.js` | `GlobalOptions` | Import (type-only) |
+
+**Exports:**
+- Functions: `startInteractiveMode`
+
+---
+
+### `src/cli/options.ts` - CLI Global Options
+
+**Exports:**
+- Interfaces: `GlobalOptions`
+- Functions: `parseGlobalOptions`, `createLogger`
+- Constants: `defaultOptions`
+
+---
+
 ## Core Dependencies
 
 ### `src/core/EntityManager.ts` - Entity Manager
@@ -500,7 +613,7 @@ The codebase is organized into the following modules:
 | File | Imports | Type |
 |------|---------|------|
 | `./GraphStorage.js` | `GraphStorage` | Import |
-| `./StorageFactory.js` | `createStorageFromPath` | Import |
+| `./SQLiteStorage.js` | `SQLiteStorage` | Import |
 | `./EntityManager.js` | `EntityManager` | Import |
 | `./RelationManager.js` | `RelationManager` | Import |
 | `./ObservationManager.js` | `ObservationManager` | Import |
@@ -595,7 +708,7 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/core/TransactionManager.ts` - Transaction Manager
+### `src/core/TransactionManager.ts` - Validate all operations before executing.
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -684,7 +797,7 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/features/IOManager.ts` - IO Manager
+### `src/features/IOManager.ts` - Import graph from formatted data.
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -887,7 +1000,8 @@ The codebase is organized into the following modules:
 | Module | Import |
 |--------|--------|
 | `url` | `fileURLToPath` |
-| `path` | `dirname, join, sep` |
+| `path` | `dirname, join, sep, normalize` |
+| `fs` | `existsSync` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -905,7 +1019,7 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/search/HybridScorer.ts` - Hybrid Scorer
+### `src/search/HybridScorer.ts` - Hybrid Scorer - combines search scores with min-max normalization and configurable weights.
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -919,7 +1033,7 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/search/HybridSearchManager.ts` - Hybrid Search Manager
+### `src/search/HybridSearchManager.ts` - Hybrid Search Manager - orchestrates semantic, lexical, and symbolic search.
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -985,9 +1099,12 @@ The codebase is organized into the following modules:
 | `./EarlyTerminationManager.js` | `EarlyTerminationManager, type AdequacyCheck, type EarlyTerminationOptions, type EarlyTerminationResult` | Re-export |
 | `./QueryPlanCache.js` | `QueryPlanCache, type CachedQueryEntry, type QueryPlanCacheStats, type QueryPlanCacheOptions` | Re-export |
 | `./QuantizedVectorStore.js` | `QuantizedVectorStore, type QuantizationParams, type QuantizedVectorStoreStats, type QuantizedSearchResult, type QuantizedVectorStoreOptions` | Re-export |
+| `./QueryLogger.js` | `QueryLogger, type QueryLoggerConfig` | Re-export |
+| `./QueryParser.js` | `QueryParser, matchesPhrase, isPrefixPattern, matchesPrefix` | Re-export |
+| `./ProximitySearch.js` | `ProximitySearch, type ProximityMatch, type ProximityMatchLocation` | Re-export |
 
 **Exports:**
-- Re-exports: `BasicSearch`, `RankedSearch`, `BooleanSearch`, `FuzzySearch`, `type FuzzySearchOptions`, `SearchSuggestions`, `SavedSearchManager`, `SearchManager`, `SearchFilterChain`, `type SearchFilters`, `type ValidatedPagination`, `OpenAIEmbeddingService`, `LocalEmbeddingService`, `MockEmbeddingService`, `createEmbeddingService`, `l2Normalize`, `QUERY_PREFIX`, `DOCUMENT_PREFIX`, `type EmbeddingProgressCallback`, `EmbeddingCache`, `DEFAULT_EMBEDDING_CACHE_OPTIONS`, `type EmbeddingCacheStats`, `type EmbeddingCacheOptions`, `IncrementalIndexer`, `DEFAULT_INDEXER_OPTIONS`, `type IndexOperationType`, `type IndexOperation`, `type IncrementalIndexerOptions`, `type FlushResult`, `InMemoryVectorStore`, `SQLiteVectorStore`, `createVectorStore`, `cosineSimilarity`, `type SQLiteStorageWithEmbeddings`, `SemanticSearch`, `entityToText`, `TFIDFIndexManager`, `TFIDFEventSync`, `QueryCostEstimator`, `type SearchLayer`, `type ExtendedQueryCostEstimate`, `type LayerRecommendationOptions`, `type TokenEstimationOptions`, `type AdaptiveDepthConfig`, `SymbolicSearch`, `type SymbolicResult`, `HybridSearchManager`, `DEFAULT_HYBRID_WEIGHTS`, `QueryAnalyzer`, `QueryPlanner`, `ReflectionManager`, `type ReflectionOptions`, `type ReflectionResult`, `type RefinementHistoryEntry`, `BM25Search`, `STOPWORDS`, `DEFAULT_BM25_CONFIG`, `type BM25DocumentEntry`, `type BM25Index`, `type BM25Config`, `OptimizedInvertedIndex`, `type IndexMemoryUsage`, `type PostingListResult`, `HybridScorer`, `DEFAULT_SCORER_WEIGHTS`, `type SemanticLayerResult`, `type LexicalSearchResult`, `type SymbolicSearchResult`, `type ScoredResult`, `type HybridWeights`, `type HybridScorerOptions`, `ParallelSearchExecutor`, `type LayerTiming`, `type ParallelSearchResult`, `type ParallelSearchOptions`, `EarlyTerminationManager`, `type AdequacyCheck`, `type EarlyTerminationOptions`, `type EarlyTerminationResult`, `QueryPlanCache`, `type CachedQueryEntry`, `type QueryPlanCacheStats`, `type QueryPlanCacheOptions`, `QuantizedVectorStore`, `type QuantizationParams`, `type QuantizedVectorStoreStats`, `type QuantizedSearchResult`, `type QuantizedVectorStoreOptions`
+- Re-exports: `BasicSearch`, `RankedSearch`, `BooleanSearch`, `FuzzySearch`, `type FuzzySearchOptions`, `SearchSuggestions`, `SavedSearchManager`, `SearchManager`, `SearchFilterChain`, `type SearchFilters`, `type ValidatedPagination`, `OpenAIEmbeddingService`, `LocalEmbeddingService`, `MockEmbeddingService`, `createEmbeddingService`, `l2Normalize`, `QUERY_PREFIX`, `DOCUMENT_PREFIX`, `type EmbeddingProgressCallback`, `EmbeddingCache`, `DEFAULT_EMBEDDING_CACHE_OPTIONS`, `type EmbeddingCacheStats`, `type EmbeddingCacheOptions`, `IncrementalIndexer`, `DEFAULT_INDEXER_OPTIONS`, `type IndexOperationType`, `type IndexOperation`, `type IncrementalIndexerOptions`, `type FlushResult`, `InMemoryVectorStore`, `SQLiteVectorStore`, `createVectorStore`, `cosineSimilarity`, `type SQLiteStorageWithEmbeddings`, `SemanticSearch`, `entityToText`, `TFIDFIndexManager`, `TFIDFEventSync`, `QueryCostEstimator`, `type SearchLayer`, `type ExtendedQueryCostEstimate`, `type LayerRecommendationOptions`, `type TokenEstimationOptions`, `type AdaptiveDepthConfig`, `SymbolicSearch`, `type SymbolicResult`, `HybridSearchManager`, `DEFAULT_HYBRID_WEIGHTS`, `QueryAnalyzer`, `QueryPlanner`, `ReflectionManager`, `type ReflectionOptions`, `type ReflectionResult`, `type RefinementHistoryEntry`, `BM25Search`, `STOPWORDS`, `DEFAULT_BM25_CONFIG`, `type BM25DocumentEntry`, `type BM25Index`, `type BM25Config`, `OptimizedInvertedIndex`, `type IndexMemoryUsage`, `type PostingListResult`, `HybridScorer`, `DEFAULT_SCORER_WEIGHTS`, `type SemanticLayerResult`, `type LexicalSearchResult`, `type SymbolicSearchResult`, `type ScoredResult`, `type HybridWeights`, `type HybridScorerOptions`, `ParallelSearchExecutor`, `type LayerTiming`, `type ParallelSearchResult`, `type ParallelSearchOptions`, `EarlyTerminationManager`, `type AdequacyCheck`, `type EarlyTerminationOptions`, `type EarlyTerminationResult`, `QueryPlanCache`, `type CachedQueryEntry`, `type QueryPlanCacheStats`, `type QueryPlanCacheOptions`, `QuantizedVectorStore`, `type QuantizationParams`, `type QuantizedVectorStoreStats`, `type QuantizedSearchResult`, `type QuantizedVectorStoreOptions`, `QueryLogger`, `type QueryLoggerConfig`, `QueryParser`, `matchesPhrase`, `isPrefixPattern`, `matchesPrefix`, `ProximitySearch`, `type ProximityMatch`, `type ProximityMatchLocation`
 
 ---
 
@@ -1016,6 +1133,20 @@ The codebase is organized into the following modules:
 
 ---
 
+### `src/search/ProximitySearch.ts` - Proximity Search
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity` | Import (type-only) |
+| `../types/search.js` | `ProximityNode` | Import (type-only) |
+
+**Exports:**
+- Classes: `ProximitySearch`
+- Interfaces: `ProximityMatch`, `ProximityMatchLocation`
+
+---
+
 ### `src/search/QuantizedVectorStore.ts` - Quantized Vector Store
 
 **Exports:**
@@ -1036,7 +1167,7 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/search/QueryCostEstimator.ts` - Query Cost Estimator
+### `src/search/QueryCostEstimator.ts` - Estimates the cost of different search methods and recommends the optimal
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -1046,6 +1177,37 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `QueryCostEstimator`
 - Interfaces: `ExtendedQueryCostEstimate`, `LayerRecommendationOptions`, `TokenEstimationOptions`, `AdaptiveDepthConfig`
+
+---
+
+### `src/search/QueryLogger.ts` - Query Logger
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `fs` | `appendFileSync` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/search.js` | `LogLevel, QueryLogEntry` | Import (type-only) |
+
+**Exports:**
+- Classes: `QueryLogger`
+- Interfaces: `QueryLoggerConfig`
+
+---
+
+### `src/search/QueryParser.ts` - Query Parser
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/search.js` | `QueryNode, BooleanOpNode` | Import (type-only) |
+
+**Exports:**
+- Classes: `QueryParser`
+- Functions: `matchesPhrase`, `isPrefixPattern`, `matchesPrefix`
 
 ---
 
@@ -1062,7 +1224,7 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/search/QueryPlanner.ts` - Query Planner
+### `src/search/QueryPlanner.ts` - Query Planner - generates execution plans for queries based on analysis.
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -1190,7 +1352,7 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/search/SymbolicSearch.ts` - Symbolic Search Layer
+### `src/search/SymbolicSearch.ts` - Symbolic Search Layer - metadata-based filtering using structured predicates.
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -1273,10 +1435,28 @@ The codebase is organized into the following modules:
 | File | Imports | Type |
 |------|---------|------|
 | `./types/index.js` | `Entity, Relation, KnowledgeGraph, SearchResult` | Import |
+| `./search.js` | `QueryTraceBuilder` | Re-export |
 | `./agent-memory.js` | `isAgentEntity, isSessionEntity, isWorkingMemory, isEpisodicMemory, isSemanticMemory, isProceduralMemory, AccessContextBuilder` | Re-export |
+| `./progress.js` | `createProgressInfo, createThrottledProgress, createDetailedProgressReporter` | Re-export |
 
 **Exports:**
-- Re-exports: `isAgentEntity`, `isSessionEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `AccessContextBuilder`
+- Re-exports: `QueryTraceBuilder`, `isAgentEntity`, `isSessionEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `AccessContextBuilder`, `createProgressInfo`, `createThrottledProgress`, `createDetailedProgressReporter`
+
+---
+
+### `src/types/progress.ts` - Progress Types
+
+**Exports:**
+- Interfaces: `ProgressInfo`, `ProgressOptions`
+- Functions: `createProgressInfo`, `createThrottledProgress`, `createDetailedProgressReporter`
+
+---
+
+### `src/types/search.ts` - Search Types
+
+**Exports:**
+- Classes: `QueryTraceBuilder`
+- Interfaces: `QueryLogEntry`, `QueryTrace`, `QueryStage`, `SearchExplanation`, `ScoringSignal`, `MatchedTerm`, `ScoreBoost`, `ExplainedSearchResult`, `TermNode`, `PhraseNode`, `WildcardNode`, `ProximityNode`, `FieldNode`, `BooleanOpNode`
 
 ---
 
@@ -1354,7 +1534,6 @@ The codebase is organized into the following modules:
 |--------|--------|
 | `fs` | `promises` |
 | `path` | `path` |
-| `url` | `fileURLToPath` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -1369,10 +1548,38 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/utils/errors.ts` - Custom Error Types
+### `src/utils/EntityValidator.ts` - Entity Validator
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity` | Import (type-only) |
+| `./EntityValidator.js` | `EntityValidator, required, minLength, pattern` | Import |
+
+**Exports:**
+- Classes: `EntityValidator`
+- Interfaces: `EntityValidationRule`, `EntityRuleResult`, `EntityValidationIssue`, `EntityValidationResult`, `EntityValidatorConfig`
+
+---
+
+### `src/utils/errors.ts` - errors module
 
 **Exports:**
 - Classes: `KnowledgeGraphError`, `EntityNotFoundError`, `RelationNotFoundError`, `DuplicateEntityError`, `ValidationError`, `CycleDetectedError`, `InvalidImportanceError`, `FileOperationError`, `ImportError`, `ExportError`, `InsufficientEntitiesError`, `OperationCancelledError`
+- Interfaces: `ErrorOptions`
+- Enums: `ErrorCode`
+
+---
+
+### `src/utils/errorSuggestions.ts` - Error Suggestion Generator
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./errors.js` | `ErrorCode` | Import |
+
+**Exports:**
+- Functions: `generateSuggestions`, `getQuickHint`
 
 ---
 
@@ -1394,7 +1601,8 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./errors.js` | `KnowledgeGraphError, EntityNotFoundError, RelationNotFoundError, DuplicateEntityError, ValidationError, CycleDetectedError, InvalidImportanceError, FileOperationError, ImportError, ExportError, InsufficientEntitiesError, OperationCancelledError` | Re-export |
+| `./errors.js` | `ErrorCode, KnowledgeGraphError, EntityNotFoundError, RelationNotFoundError, DuplicateEntityError, ValidationError, CycleDetectedError, InvalidImportanceError, FileOperationError, ImportError, ExportError, InsufficientEntitiesError, OperationCancelledError, type ErrorOptions` | Re-export |
+| `./errorSuggestions.js` | `generateSuggestions, getQuickHint` | Re-export |
 | `./constants.js` | `FILE_EXTENSIONS, FILE_SUFFIXES, DEFAULT_FILE_NAMES, ENV_VARS, DEFAULT_BASE_DIR, LOG_PREFIXES, SIMILARITY_WEIGHTS, DEFAULT_DUPLICATE_THRESHOLD, SEARCH_LIMITS, IMPORTANCE_RANGE, GRAPH_LIMITS, QUERY_LIMITS, COMPRESSION_CONFIG, STREAMING_CONFIG, type CompressionQuality` | Re-export |
 | `./compressionUtil.js` | `compress, decompress, compressFile, decompressFile, compressToBase64, decompressFromBase64, hasBrotliExtension, getCompressionRatio, createMetadata, createUncompressedMetadata, type CompressionOptions, type CompressionResult, type CompressionMetadata` | Re-export |
 | `./compressedCache.js` | `CompressedCache, type CompressedCacheOptions, type CompressedCacheStats` | Re-export |
@@ -1434,9 +1642,14 @@ The codebase is organized into the following modules:
 | `./WorkerPoolManager.js` | `WorkerPoolManager, getWorkerPoolManager, type WorkerPoolConfig, type ExtendedPoolStats, type PoolEventCallback` | Re-export |
 | `./BatchProcessor.js` | `BatchProcessor, processBatch, processWithRetry, chunkArray, parallelLimit, mapParallel, filterParallel, type BatchProgress, type BatchProgressCallback, type BatchItemResult, type BatchProcessResult, type BatchProcessorOptions` | Re-export |
 | `./MemoryMonitor.js` | `MemoryMonitor, globalMemoryMonitor, type ComponentMemoryUsage, type MemoryUsageStats, type MemoryThresholds, type MemoryAlert, type MemoryChangeCallback` | Re-export |
+| `./relationHelpers.js` | `isWeightedRelation, isTemporalRelation, isBidirectionalRelation, hasConfidence, isCurrentlyValid, RelationBuilder` | Re-export |
+| `./relationValidation.js` | `validateRelationMetadata, validateRelationsMetadata, allRelationsValidMetadata, type RelationValidationResult, type RelationValidationError, type RelationValidationWarning` | Re-export |
+| `./EntityValidator.js` | `EntityValidator, type EntityValidatorConfig, type EntityValidationRule, type EntityRuleResult, type EntityValidationIssue, type EntityValidationResult` | Re-export |
+| `./validators.js` | `required, minLength, maxLength, pattern, range, min, max, oneOf, minItems, maxItems, email, url, isoDate, typeOf, custom, customSync, asWarning, all, when` | Re-export |
+| `./SchemaValidator.js` | `SchemaValidator, type JsonSchema` | Re-export |
 
 **Exports:**
-- Re-exports: `KnowledgeGraphError`, `EntityNotFoundError`, `RelationNotFoundError`, `DuplicateEntityError`, `ValidationError`, `CycleDetectedError`, `InvalidImportanceError`, `FileOperationError`, `ImportError`, `ExportError`, `InsufficientEntitiesError`, `OperationCancelledError`, `FILE_EXTENSIONS`, `FILE_SUFFIXES`, `DEFAULT_FILE_NAMES`, `ENV_VARS`, `DEFAULT_BASE_DIR`, `LOG_PREFIXES`, `SIMILARITY_WEIGHTS`, `DEFAULT_DUPLICATE_THRESHOLD`, `SEARCH_LIMITS`, `IMPORTANCE_RANGE`, `GRAPH_LIMITS`, `QUERY_LIMITS`, `COMPRESSION_CONFIG`, `STREAMING_CONFIG`, `type CompressionQuality`, `compress`, `decompress`, `compressFile`, `decompressFile`, `compressToBase64`, `decompressFromBase64`, `hasBrotliExtension`, `getCompressionRatio`, `createMetadata`, `createUncompressedMetadata`, `type CompressionOptions`, `type CompressionResult`, `type CompressionMetadata`, `CompressedCache`, `type CompressedCacheOptions`, `type CompressedCacheStats`, `logger`, `levenshteinDistance`, `calculateTF`, `calculateIDF`, `calculateIDFFromTokenSets`, `calculateTFIDF`, `tokenize`, `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `SearchCache`, `searchCaches`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `type CacheStats`, `// Zod schemas - Entity/Relation
+- Re-exports: `ErrorCode`, `KnowledgeGraphError`, `EntityNotFoundError`, `RelationNotFoundError`, `DuplicateEntityError`, `ValidationError`, `CycleDetectedError`, `InvalidImportanceError`, `FileOperationError`, `ImportError`, `ExportError`, `InsufficientEntitiesError`, `OperationCancelledError`, `type ErrorOptions`, `generateSuggestions`, `getQuickHint`, `FILE_EXTENSIONS`, `FILE_SUFFIXES`, `DEFAULT_FILE_NAMES`, `ENV_VARS`, `DEFAULT_BASE_DIR`, `LOG_PREFIXES`, `SIMILARITY_WEIGHTS`, `DEFAULT_DUPLICATE_THRESHOLD`, `SEARCH_LIMITS`, `IMPORTANCE_RANGE`, `GRAPH_LIMITS`, `QUERY_LIMITS`, `COMPRESSION_CONFIG`, `STREAMING_CONFIG`, `type CompressionQuality`, `compress`, `decompress`, `compressFile`, `decompressFile`, `compressToBase64`, `decompressFromBase64`, `hasBrotliExtension`, `getCompressionRatio`, `createMetadata`, `createUncompressedMetadata`, `type CompressionOptions`, `type CompressionResult`, `type CompressionMetadata`, `CompressedCache`, `type CompressedCacheOptions`, `type CompressedCacheStats`, `logger`, `levenshteinDistance`, `calculateTF`, `calculateIDF`, `calculateIDFFromTokenSets`, `calculateTFIDF`, `tokenize`, `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `SearchCache`, `searchCaches`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `type CacheStats`, `// Zod schemas - Entity/Relation
   EntitySchema`, `CreateEntitySchema`, `UpdateEntitySchema`, `RelationSchema`, `CreateRelationSchema`, `SearchQuerySchema`, `DateRangeSchema`, `TagAliasSchema`, `ExportFormatSchema`, `BatchCreateEntitiesSchema`, `BatchCreateRelationsSchema`, `EntityNamesSchema`, `DeleteRelationsSchema`, `// Zod schemas - Observations
   AddObservationInputSchema`, `AddObservationsInputSchema`, `DeleteObservationInputSchema`, `DeleteObservationsInputSchema`, `// Zod schemas - Archive
   ArchiveCriteriaSchema`, `// Zod schemas - Saved Search
@@ -1459,11 +1672,11 @@ The codebase is organized into the following modules:
   TaskPriority`, `TaskStatus`, `type Task`, `type TaskResult`, `type ProgressCallback`, `type TaskBatchOptions`, `type QueueStats`, `// Task Queue
   TaskQueue`, `// Batch Processing
   batchProcess`, `rateLimitedProcess`, `withRetry`, `// Rate Limiting
-  debounce`, `throttle`, `checkCancellation`, `createProgressReporter`, `createProgress`, `executeWithPhases`, `processBatchesWithProgress`, `type PhaseDefinition`, `WorkerPoolManager`, `getWorkerPoolManager`, `type WorkerPoolConfig`, `type ExtendedPoolStats`, `type PoolEventCallback`, `BatchProcessor`, `processBatch`, `processWithRetry`, `chunkArray`, `parallelLimit`, `mapParallel`, `filterParallel`, `type BatchProgress`, `type BatchProgressCallback`, `type BatchItemResult`, `type BatchProcessResult`, `type BatchProcessorOptions`, `MemoryMonitor`, `globalMemoryMonitor`, `type ComponentMemoryUsage`, `type MemoryUsageStats`, `type MemoryThresholds`, `type MemoryAlert`, `type MemoryChangeCallback`
+  debounce`, `throttle`, `checkCancellation`, `createProgressReporter`, `createProgress`, `executeWithPhases`, `processBatchesWithProgress`, `type PhaseDefinition`, `WorkerPoolManager`, `getWorkerPoolManager`, `type WorkerPoolConfig`, `type ExtendedPoolStats`, `type PoolEventCallback`, `BatchProcessor`, `processBatch`, `processWithRetry`, `chunkArray`, `parallelLimit`, `mapParallel`, `filterParallel`, `type BatchProgress`, `type BatchProgressCallback`, `type BatchItemResult`, `type BatchProcessResult`, `type BatchProcessorOptions`, `MemoryMonitor`, `globalMemoryMonitor`, `type ComponentMemoryUsage`, `type MemoryUsageStats`, `type MemoryThresholds`, `type MemoryAlert`, `type MemoryChangeCallback`, `isWeightedRelation`, `isTemporalRelation`, `isBidirectionalRelation`, `hasConfidence`, `isCurrentlyValid`, `RelationBuilder`, `validateRelationMetadata`, `validateRelationsMetadata`, `allRelationsValidMetadata`, `type RelationValidationResult`, `type RelationValidationError`, `type RelationValidationWarning`, `EntityValidator`, `type EntityValidatorConfig`, `type EntityValidationRule`, `type EntityRuleResult`, `type EntityValidationIssue`, `type EntityValidationResult`, `required`, `minLength`, `maxLength`, `pattern`, `range`, `min`, `max`, `oneOf`, `minItems`, `maxItems`, `email`, `url`, `isoDate`, `typeOf`, `custom`, `customSync`, `asWarning`, `all`, `when`, `SchemaValidator`, `type JsonSchema`
 
 ---
 
-### `src/utils/indexes.ts` - Search Indexes
+### `src/utils/indexes.ts` - O(1) lookup indexes for entities, types, relations, and observations.
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -1517,6 +1730,32 @@ The codebase is organized into the following modules:
 
 ---
 
+### `src/utils/relationHelpers.ts` - Relation Helper Utilities
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Relation, WeightedRelation, TemporalRelation, BidirectionalRelation, RelationProperties` | Import (type-only) |
+
+**Exports:**
+- Classes: `RelationBuilder`
+- Functions: `isWeightedRelation`, `isTemporalRelation`, `isBidirectionalRelation`, `hasConfidence`, `isCurrentlyValid`
+
+---
+
+### `src/utils/relationValidation.ts` - Relation Validation Utilities
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Relation` | Import (type-only) |
+
+**Exports:**
+- Interfaces: `RelationValidationError`, `RelationValidationWarning`, `RelationValidationResult`
+- Functions: `validateRelationMetadata`, `validateRelationsMetadata`, `allRelationsValidMetadata`
+
+---
+
 ### `src/utils/schemas.ts` - Validation Schemas and Helpers
 
 **External Dependencies:**
@@ -1534,6 +1773,20 @@ The codebase is organized into the following modules:
 - Interfaces: `ValidationResult`
 - Functions: `formatZodErrors`, `validateWithSchema`, `validateSafe`, `validateArrayWithSchema`, `validateEntity`, `validateRelation`, `validateImportance`, `validateTags`
 - Constants: `EntitySchema`, `CreateEntitySchema`, `UpdateEntitySchema`, `RelationSchema`, `CreateRelationSchema`, `SearchQuerySchema`, `DateRangeSchema`, `TagAliasSchema`, `ExportFormatSchema`, `BatchCreateEntitiesSchema`, `BatchCreateRelationsSchema`, `EntityNamesSchema`, `DeleteRelationsSchema`, `AddObservationInputSchema`, `AddObservationsInputSchema`, `DeleteObservationInputSchema`, `DeleteObservationsInputSchema`, `ArchiveCriteriaSchema`, `SavedSearchInputSchema`, `SavedSearchUpdateSchema`, `ImportFormatSchema`, `ExtendedExportFormatSchema`, `MergeStrategySchema`, `ExportFilterSchema`, `OptionalTagsSchema`, `OptionalEntityNamesSchema`
+
+---
+
+### `src/utils/SchemaValidator.ts` - Schema Validator
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity` | Import (type-only) |
+| `./EntityValidator.js` | `EntityValidationResult, EntityValidationIssue` | Import (type-only) |
+
+**Exports:**
+- Classes: `SchemaValidator`
+- Interfaces: `JsonSchema`
 
 ---
 
@@ -1574,7 +1827,20 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/utils/WorkerPoolManager.ts` - Worker Pool Manager
+### `src/utils/validators.ts` - Built-in Validators
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity` | Import (type-only) |
+| `./EntityValidator.js` | `EntityValidationRule, EntityRuleResult` | Import (type-only) |
+
+**Exports:**
+- Functions: `required`, `minLength`, `maxLength`, `pattern`, `range`, `min`, `max`, `oneOf`, `minItems`, `maxItems`, `email`, `url`, `isoDate`, `typeOf`, `custom`, `customSync`, `asWarning`, `all`, `when`
+
+---
+
+### `src/utils/WorkerPoolManager.ts` - WorkerPoolManager module
 
 **External Dependencies:**
 | Package | Import |
@@ -1641,26 +1907,32 @@ The codebase is organized into the following modules:
 | `SessionQueryBuilder` | 3 files | 1 files |
 | `SummarizationService` | 0 files | 5 files |
 | `WorkingMemoryManager` | 2 files | 5 files |
+| `index` | 4 files | 1 files |
+| `config` | 1 files | 1 files |
+| `formatters` | 1 files | 1 files |
+| `index` | 1 files | 0 files |
+| `interactive` | 2 files | 0 files |
+| `options` | 0 files | 3 files |
 | `EntityManager` | 6 files | 2 files |
 | `GraphEventEmitter` | 1 files | 3 files |
 | `GraphStorage` | 6 files | 20 files |
 | `GraphTraversal` | 4 files | 2 files |
 | `HierarchyManager` | 3 files | 2 files |
-| `index` | 11 files | 1 files |
-| `ManagerContext` | 25 files | 1 files |
-| `ObservationManager` | 2 files | 2 files |
-| `RelationManager` | 5 files | 2 files |
-| `SQLiteStorage` | 4 files | 2 files |
-| `StorageFactory` | 3 files | 2 files |
 
 ---
 
 ## Circular Dependency Analysis
 
-**2 circular dependencies detected:**
+**3 circular dependencies detected:**
 
-- **Runtime cycles**: 0 (require attention)
+- **Runtime cycles**: 1 (require attention)
 - **Type-only cycles**: 2 (safe, no runtime impact)
+
+### Runtime Circular Dependencies
+
+These cycles involve runtime imports and may cause issues:
+
+- src/utils/EntityValidator.ts -> src/utils/EntityValidator.ts
 
 ### Type-Only Circular Dependencies
 
@@ -1684,87 +1956,98 @@ graph TD
         N5[...14 more]
     end
 
+    subgraph Cli
+        N6[index]
+        N7[config]
+        N8[formatters]
+        N9[index]
+        N10[interactive]
+        N11[...1 more]
+    end
+
     subgraph Core
-        N6[EntityManager]
-        N7[GraphEventEmitter]
-        N8[GraphStorage]
-        N9[GraphTraversal]
-        N10[HierarchyManager]
-        N11[...7 more]
+        N12[EntityManager]
+        N13[GraphEventEmitter]
+        N14[GraphStorage]
+        N15[GraphTraversal]
+        N16[HierarchyManager]
+        N17[...7 more]
     end
 
     subgraph Features
-        N12[AnalyticsManager]
-        N13[ArchiveManager]
-        N14[CompressionManager]
-        N15[index]
-        N16[IOManager]
-        N17[...4 more]
+        N18[AnalyticsManager]
+        N19[ArchiveManager]
+        N20[CompressionManager]
+        N21[index]
+        N22[IOManager]
+        N23[...4 more]
     end
 
     subgraph Entry
-        N18[index]
+        N24[index]
     end
 
     subgraph Search
-        N19[BasicSearch]
-        N20[BM25Search]
-        N21[BooleanSearch]
-        N22[EarlyTerminationManager]
-        N23[EmbeddingCache]
-        N24[...24 more]
+        N25[BasicSearch]
+        N26[BM25Search]
+        N27[BooleanSearch]
+        N28[EarlyTerminationManager]
+        N29[EmbeddingCache]
+        N30[...27 more]
     end
 
     subgraph Types
-        N25[agent-memory]
-        N26[index]
-        N27[types]
+        N31[agent-memory]
+        N32[index]
+        N33[progress]
+        N34[search]
+        N35[types]
     end
 
     subgraph Utils
-        N28[BatchProcessor]
-        N29[compressedCache]
-        N30[compressionUtil]
-        N31[constants]
-        N32[entityUtils]
-        N33[...13 more]
+        N36[BatchProcessor]
+        N37[compressedCache]
+        N38[compressionUtil]
+        N39[constants]
+        N40[entityUtils]
+        N41[...19 more]
     end
 
     subgraph Workers
-        N34[index]
-        N35[levenshteinWorker]
+        N42[index]
+        N43[levenshteinWorker]
     end
 
-    N0 --> N27
-    N0 --> N25
+    N0 --> N35
+    N0 --> N31
     N1 --> N4
     N1 --> N3
-    N2 --> N27
-    N2 --> N25
+    N2 --> N35
+    N2 --> N31
     N2 --> N0
     N2 --> N4
     N2 --> N3
     N2 --> N1
-    N3 --> N25
-    N4 --> N27
-    N4 --> N25
-    N6 --> N26
+    N3 --> N31
+    N4 --> N35
+    N4 --> N31
+    N6 --> N7
     N6 --> N8
-    N6 --> N0
-    N6 --> N31
-    N7 --> N26
-    N8 --> N26
-    N8 --> N7
-    N9 --> N26
-    N9 --> N8
-    N9 --> N0
-    N10 --> N26
-    N10 --> N8
-    N12 --> N8
-    N12 --> N26
-    N13 --> N26
-    N13 --> N8
-    N14 --> N26
+    N8 --> N35
+    N9 --> N6
+    N12 --> N32
+    N12 --> N14
+    N12 --> N0
+    N12 --> N39
+    N13 --> N32
+    N14 --> N32
+    N14 --> N13
+    N15 --> N32
+    N15 --> N14
+    N15 --> N0
+    N16 --> N32
+    N16 --> N14
+    N18 --> N14
 ```
 
 ---
@@ -1773,21 +2056,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 93 |
-| Total Modules | 8 |
-| Total Lines of Code | 40953 |
-| Total Exports | 657 |
-| Total Re-exports | 404 |
-| Total Classes | 91 |
-| Total Interfaces | 216 |
-| Total Functions | 109 |
-| Total Type Guards | 9 |
-| Total Enums | 3 |
-| Type-only Imports | 128 |
-| Runtime Circular Deps | 0 |
+| Total TypeScript Files | 110 |
+| Total Modules | 9 |
+| Total Lines of Code | 43392 |
+| Total Exports | 770 |
+| Total Re-exports | 460 |
+| Total Classes | 98 |
+| Total Interfaces | 249 |
+| Total Functions | 157 |
+| Total Type Guards | 15 |
+| Total Enums | 4 |
+| Type-only Imports | 142 |
+| Runtime Circular Deps | 1 |
 | Type-only Circular Deps | 2 |
 
 ---
 
-*Last Updated*: 2026-01-14
-*Version*: 1.2.0
+*Last Updated*: 2026-02-11
+*Version*: 1.5.0

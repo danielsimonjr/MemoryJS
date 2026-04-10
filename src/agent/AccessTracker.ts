@@ -376,20 +376,16 @@ export class AccessTracker {
    */
   private async updateEntityAccessFields(
     entityName: string,
-    _record: AccessRecord
+    record: AccessRecord
   ): Promise<void> {
     const entity = this.storage.getEntityByName(entityName);
     if (!entity) return;
 
-    // Update entity's access tracking fields
-    // Note: This updates the entity's lastModified timestamp
-    // AgentEntity fields (accessCount, lastAccessedAt, accessPattern)
-    // will be managed by higher-level managers that handle AgentEntity
-    // The _record parameter is available for future use when we need
-    // to update AgentEntity-specific fields
     await this.storage.updateEntity(entityName, {
+      accessCount: record.totalAccesses,
+      lastAccessedAt: record.lastAccessedAt,
       lastModified: new Date().toISOString(),
-    });
+    } as Record<string, unknown>);
   }
 
   /**

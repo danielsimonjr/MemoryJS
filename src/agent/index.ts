@@ -108,6 +108,11 @@ export {
 } from './ConflictResolver.js';
 
 export {
+  SessionCheckpointManager,
+  type SessionCheckpointData,
+} from './SessionCheckpoint.js';
+
+export {
   AgentMemoryManager,
   type CreateMemoryOptions,
   type RetrieveContextOptions,
@@ -126,6 +131,7 @@ export {
   validateConfig,
 } from './AgentMemoryConfig.js';
 
+<<<<<<< HEAD
 // v1.7.0 Features
 export {
   ArtifactManager,
@@ -199,3 +205,25 @@ export {
   type ProfileManagerConfig,
   type ProfileOptions,
 } from './ProfileManager.js';
+=======
+export {
+  ObserverPipeline,
+  type ObservationScore,
+  type ObserverPipelineOptions,
+  type ObserverPipelineStats,
+} from './ObserverPipeline.js';
+
+export {
+  WorkThreadManager,
+  type WorkThread,
+  type WorkThreadStatus,
+  type WorkThreadFilter,
+  type CreateWorkThreadOptions,
+} from './WorkThreadManager.js';
+
+export {
+  ContextProfileManager,
+  type ContextProfile,
+  type ProfileConfig,
+} from './ContextProfileManager.js';
+>>>>>>> origin/master

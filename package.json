@@ -14,8 +14,8 @@
     }
   },
   "bin": {
-    "memory": "./dist/cli/index.js",
-    "memoryjs": "./dist/cli/index.js"
+    "memory": "dist/cli/index.js",
+    "memoryjs": "dist/cli/index.js"
   },
   "files": [
     "dist",

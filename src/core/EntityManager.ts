@@ -231,48 +231,58 @@ export class EntityManager {
     const total = entities.length;
     reportProgress?.(createProgress(0, total, 'createEntities'));
 
-    // Use read-only graph for checking existing entities
-    const readGraph = await this.storage.loadGraph();
-    const timestamp = new Date().toISOString();
+    // Acquire shared mutex to prevent TOCTOU race between validation and mutation
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      // Use mutable graph for both validation and mutation (eliminates TOCTOU gap)
+      const graph = await this.storage.getGraphForMutation();
+      const timestamp = new Date().toISOString();
 
-    // Check graph size limits
-    const entitiesToAdd = entities.filter(e => !readGraph.entities.some(existing => existing.name === e.name));
-    if (readGraph.entities.length + entitiesToAdd.length > GRAPH_LIMITS.MAX_ENTITIES) {
-      throw new ValidationError(
-        'Graph size limit exceeded',
-        [`Adding ${entitiesToAdd.length} entities would exceed maximum of ${GRAPH_LIMITS.MAX_ENTITIES} entities`]
-      );
-    }
+      // Check graph size limits
+      const existingNames = new Set(graph.entities.map(e => e.name));
+      const entitiesToAdd = entities.filter(e => !existingNames.has(e.name));
+      if (graph.entities.length + entitiesToAdd.length > GRAPH_LIMITS.MAX_ENTITIES) {
+        throw new ValidationError(
+          'Graph size limit exceeded',
+          [`Adding ${entitiesToAdd.length} entities would exceed maximum of ${GRAPH_LIMITS.MAX_ENTITIES} entities`]
+        );
+      }
 
-    // Check for cancellation before processing
-    checkCancellation(options?.signal, 'createEntities');
-
-    const newEntities: Entity[] = [];
-    let processed = 0;
-
-    for (const e of entitiesToAdd) {
-      // Check for cancellation periodically
+      // Check for cancellation before processing
       checkCancellation(options?.signal, 'createEntities');
 
-      const entity: Entity = {
-        ...e,
-        createdAt: e.createdAt || timestamp,
-        lastModified: e.lastModified || timestamp,
-      };
+      const newEntities: Entity[] = [];
+      let processed = 0;
 
-      // Normalize tags to lowercase
-      if (e.tags) {
-        entity.tags = e.tags.map(tag => tag.toLowerCase());
-      }
+      for (const e of entitiesToAdd) {
+        // Check for cancellation periodically
+        checkCancellation(options?.signal, 'createEntities');
 
-      // Validate importance
-      if (e.importance !== undefined) {
-        if (e.importance < MIN_IMPORTANCE || e.importance > MAX_IMPORTANCE) {
-          throw new InvalidImportanceError(e.importance, MIN_IMPORTANCE, MAX_IMPORTANCE);
+        const entity: Entity = {
+          ...e,
+          createdAt: e.createdAt || timestamp,
+          lastModified: e.lastModified || timestamp,
+        };
+
+        // Normalize tags to lowercase
+        if (e.tags) {
+          entity.tags = e.tags.map(tag => tag.toLowerCase());
         }
-        entity.importance = e.importance;
+
+        // Validate importance
+        if (e.importance !== undefined) {
+          if (e.importance < MIN_IMPORTANCE || e.importance > MAX_IMPORTANCE) {
+            throw new InvalidImportanceError(e.importance, MIN_IMPORTANCE, MAX_IMPORTANCE);
+          }
+          entity.importance = e.importance;
+        }
+
+        newEntities.push(entity);
+        processed++;
+        reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
       }
 
+<<<<<<< HEAD
       // Auto-stamp projectId from context default if not explicit
       if (entity.projectId === undefined && this.defaultProjectId !== undefined) {
         entity.projectId = this.defaultProjectId;
@@ -281,22 +291,21 @@ export class EntityManager {
       newEntities.push(entity);
       processed++;
       reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
+=======
+      // Save all new entities in a single write
+      if (newEntities.length > 0) {
+        graph.entities.push(...newEntities);
+        await this.storage.saveGraph(graph);
+      }
+
+      // Report completion
+      reportProgress?.(createProgress(entitiesToAdd.length, entitiesToAdd.length, 'createEntities'));
+
+      return newEntities;
+    } finally {
+      release();
+>>>>>>> origin/master
     }
-
-    // OPTIMIZED: Use append for single entity, bulk save for multiple
-    // (N individual appends is slower than one bulk write)
-    if (newEntities.length === 1) {
-      await this.storage.appendEntity(newEntities[0]);
-    } else if (newEntities.length > 1) {
-      const graph = await this.storage.getGraphForMutation();
-      graph.entities.push(...newEntities);
-      await this.storage.saveGraph(graph);
-    }
-
-    // Report completion
-    reportProgress?.(createProgress(entitiesToAdd.length, entitiesToAdd.length, 'createEntities'));
-
-    return newEntities;
   }
 
   /**
@@ -332,15 +341,18 @@ export class EntityManager {
       throw new ValidationError('Invalid entity names', errors);
     }
 
-    const graph = await this.storage.getGraphForMutation();
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
 
-    // OPTIMIZED: Use Set for O(1) lookups instead of O(n) includes()
-    const namesToDelete = new Set(entityNames);
-    graph.entities = graph.entities.filter(e => !namesToDelete.has(e.name));
-    graph.relations = graph.relations.filter(
-      r => !namesToDelete.has(r.from) && !namesToDelete.has(r.to)
-    );
+      // OPTIMIZED: Use Set for O(1) lookups instead of O(n) includes()
+      const namesToDelete = new Set(entityNames);
+      graph.entities = graph.entities.filter(e => !namesToDelete.has(e.name));
+      graph.relations = graph.relations.filter(
+        r => !namesToDelete.has(r.from) && !namesToDelete.has(r.to)
+      );
 
+<<<<<<< HEAD
     await this.storage.saveGraph(graph);
 
     // Purge all aliases for deleted entities from the ref index
@@ -348,6 +360,11 @@ export class EntityManager {
       for (const name of namesToDelete) {
         await this.refIndex.purgeEntity(name);
       }
+=======
+      await this.storage.saveGraph(graph);
+    } finally {
+      release();
+>>>>>>> origin/master
     }
   }
 
@@ -521,19 +538,24 @@ export class EntityManager {
       throw new ValidationError('Invalid update data', errors);
     }
 
-    const graph = await this.storage.getGraphForMutation();
-    const entity = graph.entities.find(e => e.name === name);
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const entity = graph.entities.find(e => e.name === name);
 
-    if (!entity) {
-      throw new EntityNotFoundError(name);
+      if (!entity) {
+        throw new EntityNotFoundError(name);
+      }
+
+      // Apply updates (sanitized to prevent prototype pollution)
+      Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
+      entity.lastModified = new Date().toISOString();
+
+      await this.storage.saveGraph(graph);
+      return entity;
+    } finally {
+      release();
     }
-
-    // Apply updates (sanitized to prevent prototype pollution)
-    Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
-    entity.lastModified = new Date().toISOString();
-
-    await this.storage.saveGraph(graph);
-    return entity;
   }
 
   /**
@@ -581,29 +603,34 @@ export class EntityManager {
       }
     }
 
-    const graph = await this.storage.getGraphForMutation();
-    const timestamp = new Date().toISOString();
-    const updatedEntities: Entity[] = [];
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const timestamp = new Date().toISOString();
+      const updatedEntities: Entity[] = [];
 
-    // OPTIMIZED: Build Map for O(1) lookups instead of O(n) find() per update
-    const entityIndex = new Map<string, number>();
-    graph.entities.forEach((e, i) => entityIndex.set(e.name, i));
+      // OPTIMIZED: Build Map for O(1) lookups instead of O(n) find() per update
+      const entityIndex = new Map<string, number>();
+      graph.entities.forEach((e, i) => entityIndex.set(e.name, i));
 
-    for (const { name, updates: updateData } of updates) {
-      const idx = entityIndex.get(name);
-      if (idx === undefined) {
-        throw new EntityNotFoundError(name);
+      for (const { name, updates: updateData } of updates) {
+        const idx = entityIndex.get(name);
+        if (idx === undefined) {
+          throw new EntityNotFoundError(name);
+        }
+        const entity = graph.entities[idx];
+
+        // Apply updates (sanitized to prevent prototype pollution)
+        Object.assign(entity, sanitizeObject(updateData as Record<string, unknown>));
+        entity.lastModified = timestamp;
+        updatedEntities.push(entity);
       }
-      const entity = graph.entities[idx];
 
-      // Apply updates (sanitized to prevent prototype pollution)
-      Object.assign(entity, sanitizeObject(updateData as Record<string, unknown>));
-      entity.lastModified = timestamp;
-      updatedEntities.push(entity);
+      await this.storage.saveGraph(graph);
+      return updatedEntities;
+    } finally {
+      release();
     }
-
-    await this.storage.saveGraph(graph);
-    return updatedEntities;
   }
 
   // ============================================================
@@ -719,42 +746,47 @@ export class EntityManager {
    * @returns Array of results showing which tags were added to each entity
    */
   async addTagsToMultipleEntities(entityNames: string[], tags: string[]): Promise<{ entityName: string; addedTags: string[] }[]> {
-    const graph = await this.storage.getGraphForMutation();
-    const timestamp = new Date().toISOString();
-    const normalizedTags = tags.map(tag => tag.toLowerCase());
-    const results: { entityName: string; addedTags: string[] }[] = [];
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const timestamp = new Date().toISOString();
+      const normalizedTags = tags.map(tag => tag.toLowerCase());
+      const results: { entityName: string; addedTags: string[] }[] = [];
 
-    // OPTIMIZED: Build Map for O(1) lookups instead of O(n) find() per entity
-    const entityMap = new Map<string, Entity>();
-    for (const e of graph.entities) {
-      entityMap.set(e.name, e);
+      // OPTIMIZED: Build Map for O(1) lookups instead of O(n) find() per entity
+      const entityMap = new Map<string, Entity>();
+      for (const e of graph.entities) {
+        entityMap.set(e.name, e);
+      }
+
+      for (const entityName of entityNames) {
+        const entity = entityMap.get(entityName);
+        if (!entity) {
+          continue; // Skip non-existent entities
+        }
+
+        // Initialize tags array if it doesn't exist
+        if (!entity.tags) {
+          entity.tags = [];
+        }
+
+        // Filter out duplicates
+        const newTags = normalizedTags.filter(tag => !entity.tags!.includes(tag));
+        entity.tags.push(...newTags);
+
+        // Update lastModified timestamp if tags were added
+        if (newTags.length > 0) {
+          entity.lastModified = timestamp;
+        }
+
+        results.push({ entityName, addedTags: newTags });
+      }
+
+      await this.storage.saveGraph(graph);
+      return results;
+    } finally {
+      release();
     }
-
-    for (const entityName of entityNames) {
-      const entity = entityMap.get(entityName);
-      if (!entity) {
-        continue; // Skip non-existent entities
-      }
-
-      // Initialize tags array if it doesn't exist
-      if (!entity.tags) {
-        entity.tags = [];
-      }
-
-      // Filter out duplicates
-      const newTags = normalizedTags.filter(tag => !entity.tags!.includes(tag));
-      entity.tags.push(...newTags);
-
-      // Update lastModified timestamp if tags were added
-      if (newTags.length > 0) {
-        entity.lastModified = timestamp;
-      }
-
-      results.push({ entityName, addedTags: newTags });
-    }
-
-    await this.storage.saveGraph(graph);
-    return results;
   }
 
   /**
@@ -765,26 +797,35 @@ export class EntityManager {
    * @returns Result with affected entities and count
    */
   async replaceTag(oldTag: string, newTag: string): Promise<{ affectedEntities: string[]; count: number }> {
-    const graph = await this.storage.getGraphForMutation();
-    const timestamp = new Date().toISOString();
-    const normalizedOldTag = oldTag.toLowerCase();
-    const normalizedNewTag = newTag.toLowerCase();
-    const affectedEntities: string[] = [];
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const timestamp = new Date().toISOString();
+      const normalizedOldTag = oldTag.toLowerCase();
+      const normalizedNewTag = newTag.toLowerCase();
+      const affectedEntities: string[] = [];
 
-    for (const entity of graph.entities) {
-      if (!entity.tags || !entity.tags.includes(normalizedOldTag)) {
-        continue;
+      for (const entity of graph.entities) {
+        if (!entity.tags || !entity.tags.includes(normalizedOldTag)) {
+          continue;
+        }
+
+        if (entity.tags.includes(normalizedNewTag)) {
+          // New tag already present — just remove old tag
+          entity.tags = entity.tags.filter(tag => tag !== normalizedOldTag);
+        } else {
+          const index = entity.tags.indexOf(normalizedOldTag);
+          entity.tags[index] = normalizedNewTag;
+        }
+        entity.lastModified = timestamp;
+        affectedEntities.push(entity.name);
       }
 
-      // Replace old tag with new tag
-      const index = entity.tags.indexOf(normalizedOldTag);
-      entity.tags[index] = normalizedNewTag;
-      entity.lastModified = timestamp;
-      affectedEntities.push(entity.name);
+      await this.storage.saveGraph(graph);
+      return { affectedEntities, count: affectedEntities.length };
+    } finally {
+      release();
     }
-
-    await this.storage.saveGraph(graph);
-    return { affectedEntities, count: affectedEntities.length };
   }
 
   /**
@@ -799,38 +840,43 @@ export class EntityManager {
    * @returns Object with affected entity names and count
    */
   async mergeTags(tag1: string, tag2: string, targetTag: string): Promise<{ affectedEntities: string[]; count: number }> {
-    const graph = await this.storage.getGraphForMutation();
-    const timestamp = new Date().toISOString();
-    const normalizedTag1 = tag1.toLowerCase();
-    const normalizedTag2 = tag2.toLowerCase();
-    const normalizedTargetTag = targetTag.toLowerCase();
-    const affectedEntities: string[] = [];
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const timestamp = new Date().toISOString();
+      const normalizedTag1 = tag1.toLowerCase();
+      const normalizedTag2 = tag2.toLowerCase();
+      const normalizedTargetTag = targetTag.toLowerCase();
+      const affectedEntities: string[] = [];
 
-    for (const entity of graph.entities) {
-      if (!entity.tags) {
-        continue;
+      for (const entity of graph.entities) {
+        if (!entity.tags) {
+          continue;
+        }
+
+        const hasTag1 = entity.tags.includes(normalizedTag1);
+        const hasTag2 = entity.tags.includes(normalizedTag2);
+
+        if (!hasTag1 && !hasTag2) {
+          continue;
+        }
+
+        // Remove both tags
+        entity.tags = entity.tags.filter(tag => tag !== normalizedTag1 && tag !== normalizedTag2);
+
+        // Add target tag if not already present
+        if (!entity.tags.includes(normalizedTargetTag)) {
+          entity.tags.push(normalizedTargetTag);
+        }
+
+        entity.lastModified = timestamp;
+        affectedEntities.push(entity.name);
       }
 
-      const hasTag1 = entity.tags.includes(normalizedTag1);
-      const hasTag2 = entity.tags.includes(normalizedTag2);
-
-      if (!hasTag1 && !hasTag2) {
-        continue;
-      }
-
-      // Remove both tags
-      entity.tags = entity.tags.filter(tag => tag !== normalizedTag1 && tag !== normalizedTag2);
-
-      // Add target tag if not already present
-      if (!entity.tags.includes(normalizedTargetTag)) {
-        entity.tags.push(normalizedTargetTag);
-      }
-
-      entity.lastModified = timestamp;
-      affectedEntities.push(entity.name);
+      await this.storage.saveGraph(graph);
+      return { affectedEntities, count: affectedEntities.length };
+    } finally {
+      release();
     }
-
-    await this.storage.saveGraph(graph);
-    return { affectedEntities, count: affectedEntities.length };
   }
 }

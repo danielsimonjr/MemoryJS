@@ -9,6 +9,7 @@
  */
 
 import type { Entity } from './types.js';
+import type { ContextProfile } from '../agent/ContextProfileManager.js';
 
 // ==================== Memory Classification Types ====================
 
@@ -52,7 +53,7 @@ export type MemoryAcquisitionMethod = 'observed' | 'inferred' | 'told' | 'consol
  * - completed: Session ended normally
  * - abandoned: Session ended without proper closure
  */
-export type SessionStatus = 'active' | 'completed' | 'abandoned';
+export type SessionStatus = 'active' | 'completed' | 'abandoned' | 'suspended';
 
 /**
  * Outcome of a completed session.
@@ -714,7 +715,7 @@ export function isSessionEntity(entity: unknown): entity is SessionEntity {
     e.memoryType === 'episodic' &&
     typeof (e as SessionEntity).startedAt === 'string' &&
     typeof (e as SessionEntity).status === 'string' &&
-    ['active', 'completed', 'abandoned'].includes((e as SessionEntity).status) &&
+    ['active', 'completed', 'abandoned', 'suspended'].includes((e as SessionEntity).status) &&
     typeof (e as SessionEntity).memoryCount === 'number' &&
     typeof (e as SessionEntity).consolidatedCount === 'number'
   );
@@ -1110,6 +1111,8 @@ export interface ContextRetrievalOptions {
   mustInclude?: string[];
   /** Minimum salience score to consider (default: 0) */
   minSalience?: number;
+  /** Context profile to tune retrieval strategy. Use 'auto' to infer from query text. */
+  profile?: ContextProfile;
 }
 
 /**

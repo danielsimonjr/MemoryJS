@@ -100,6 +100,7 @@ export type {
   BatchOperationType,
   BatchOperation,
   BatchResult,
+  OperationResult,
   BatchOptions,
   // Phase 10 Sprint 2: Graph change events types
   GraphEventType,
@@ -133,6 +134,8 @@ export type {
   QueryAnalysis,
   SubQuery,
   QueryPlan,
+  // Observation deduplication types
+  DeduplicationOptions,
 } from './types.js';
 
 // Agent Memory Types (Phase 1 - Agent Memory System)

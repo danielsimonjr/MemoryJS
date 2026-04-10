@@ -57,6 +57,33 @@
     "deny": [],
     "ask": []
   },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npm run typecheck 2>&1 | tail -20",
+            "timeout": 60,
+            "statusMessage": "Type-checking..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const p=process.env.CLAUDE_FILE_PATH||''; if(/\\.(env|db|db-shm|db-wal)$/.test(p)){console.error('Blocked: cannot edit '+p);process.exit(2)}\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "deepthinking-mcp",

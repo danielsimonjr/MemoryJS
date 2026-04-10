@@ -121,9 +121,13 @@ export class StreamingExporter {
 
     const writeStream = createWriteStream(this.filePath);
 
+    // Register error handler before any writes
+    let writeError: Error | null = null;
+    writeStream.on('error', (err) => { writeError = err; });
+
     // Write entities
     for (const entity of graph.entities) {
-      // Check for cancellation periodically
+      if (writeError) throw writeError;
       checkCancellation(options?.signal, 'streamJSONL');
 
       const line = JSON.stringify(entity) + '\n';
@@ -136,7 +140,7 @@ export class StreamingExporter {
 
     // Write relations
     for (const relation of graph.relations) {
-      // Check for cancellation periodically
+      if (writeError) throw writeError;
       checkCancellation(options?.signal, 'streamJSONL');
 
       const line = JSON.stringify(relation) + '\n';
@@ -147,12 +151,14 @@ export class StreamingExporter {
       reportProgress?.(createProgress(processed, total, 'writing relations'));
     }
 
-    // Check for cancellation before finalizing
     checkCancellation(options?.signal, 'streamJSONL');
 
     // Wait for stream to finish
     await new Promise<void>((resolve, reject) => {
-      writeStream.end(() => resolve());
+      writeStream.end(() => {
+        if (writeError) reject(writeError);
+        else resolve();
+      });
       writeStream.on('error', reject);
     });
 
@@ -212,6 +218,10 @@ export class StreamingExporter {
 
     const writeStream = createWriteStream(this.filePath);
 
+    // Register error handler before any writes
+    let writeError: Error | null = null;
+    writeStream.on('error', (err) => { writeError = err; });
+
     // Write header
     const header = 'name,type,observations,tags,importance,createdAt,lastModified\n';
     writeStream.write(header);
@@ -219,7 +229,7 @@ export class StreamingExporter {
 
     // Write entity rows
     for (const entity of graph.entities) {
-      // Check for cancellation periodically
+      if (writeError) throw writeError;
       checkCancellation(options?.signal, 'streamCSV');
 
       const row = this.entityToCSVRow(entity) + '\n';
@@ -230,12 +240,14 @@ export class StreamingExporter {
       reportProgress?.(createProgress(processed, total, 'writing entities'));
     }
 
-    // Check for cancellation before finalizing
     checkCancellation(options?.signal, 'streamCSV');
 
     // Wait for stream to finish
     await new Promise<void>((resolve, reject) => {
-      writeStream.end(() => resolve());
+      writeStream.end(() => {
+        if (writeError) reject(writeError);
+        else resolve();
+      });
       writeStream.on('error', reject);
     });
 

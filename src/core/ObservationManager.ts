@@ -8,20 +8,40 @@
  */
 
 import type { GraphStorage } from './GraphStorage.js';
+import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/AutoLinker.js';
+import type { DeduplicationOptions } from '../types/types.js';
 import { EntityNotFoundError } from '../utils/errors.js';
+<<<<<<< HEAD
 import type { ContradictionDetector } from '../features/ContradictionDetector.js';
 import type { EntityManager } from './EntityManager.js';
+=======
+import { calculateTextSimilarity } from '../utils/textSimilarity.js';
+
+/**
+ * Default deduplication options used when dedup is enabled without explicit config.
+ */
+const DEFAULT_DEDUP_OPTIONS: DeduplicationOptions = {
+  enabled: true,
+  similarityThreshold: 0.85,
+  mergeStrategy: 'keep_longest',
+};
+>>>>>>> origin/master
 
 /**
  * Manages observation operations for entities in the knowledge graph.
  */
 export class ObservationManager {
+<<<<<<< HEAD
   private contradictionDetector?: ContradictionDetector;
   private linkedEntityManager?: EntityManager;
+=======
+  private _autoLinker?: AutoLinker;
+>>>>>>> origin/master
 
   constructor(private storage: GraphStorage) {}
 
   /**
+<<<<<<< HEAD
    * Enable contradiction detection on addObservations.
    * When a new observation is detected as contradicting an existing one,
    * a new entity version is created instead of appending.
@@ -32,6 +52,33 @@ export class ObservationManager {
   ): void {
     this.contradictionDetector = detector;
     this.linkedEntityManager = entityManager;
+=======
+   * Set the AutoLinker for optional automatic mention detection.
+   */
+  setAutoLinker(autoLinker: AutoLinker): void {
+    this._autoLinker = autoLinker;
+  }
+
+  /**
+   * Resolve deduplication options from explicit parameter and environment variable.
+   *
+   * Priority: explicit parameter > env var > disabled (default).
+   * If the env var `MEMORY_OBSERVATION_DEDUP` is set to `'true'` and no explicit
+   * options are provided, dedup is enabled with default settings.
+   *
+   * @param dedup - Explicit deduplication options (if any)
+   * @returns Resolved options, or undefined if dedup is disabled
+   * @internal
+   */
+  private resolveDedup(dedup?: DeduplicationOptions): DeduplicationOptions | undefined {
+    if (dedup) {
+      return dedup.enabled ? dedup : undefined;
+    }
+    if (process.env.MEMORY_OBSERVATION_DEDUP === 'true') {
+      return DEFAULT_DEDUP_OPTIONS;
+    }
+    return undefined;
+>>>>>>> origin/master
   }
 
   /**
@@ -39,11 +86,13 @@ export class ObservationManager {
    *
    * This method performs the following operations:
    * - Adds new observations to specified entities
-   * - Filters out duplicate observations (already present)
+   * - Filters out exact duplicate observations (already present)
+   * - Optionally performs fuzzy deduplication against existing observations
    * - Updates lastModified timestamp only if new observations were added
    * - ATOMIC: All updates are saved in a single operation
    *
    * @param observations - Array of entity names and observations to add
+   * @param dedup - Optional deduplication options for fuzzy matching
    * @returns Promise resolving to array of results showing which observations were added
    * @throws {EntityNotFoundError} If any entity is not found
    *
@@ -61,11 +110,21 @@ export class ObservationManager {
    * results.forEach(r => {
    *   console.log(`${r.entityName}: added ${r.addedObservations.length} new observations`);
    * });
+   *
+   * // With fuzzy deduplication
+   * const dedupResults = await manager.addObservations(
+   *   [{ entityName: 'Alice', contents: ['Completed project X successfully'] }],
+   *   { enabled: true, similarityThreshold: 0.85, mergeStrategy: 'keep_longest' }
+   * );
    * ```
    */
   async addObservations(
-    observations: { entityName: string; contents: string[] }[]
-  ): Promise<{ entityName: string; addedObservations: string[] }[]> {
+    observations: { entityName: string; contents: string[] }[],
+    dedup?: DeduplicationOptions,
+    options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
+  ): Promise<{ entityName: string; addedObservations: string[]; autoLinkResults?: AutoLinkResult[] }[]> {
+    const resolvedDedup = this.resolveDedup(dedup);
+
     // Get mutable graph for atomic update
     const graph = await this.storage.getGraphForMutation();
     const timestamp = new Date().toISOString();
@@ -78,8 +137,10 @@ export class ObservationManager {
         throw new EntityNotFoundError(o.entityName);
       }
 
-      const newObservations = o.contents.filter(content => !entity.observations.includes(content));
+      // First pass: filter exact duplicates
+      const nonExactDuplicates = o.contents.filter(content => !entity.observations.includes(content));
 
+<<<<<<< HEAD
       if (newObservations.length > 0) {
         // Contradiction detection hook (v1.8.0)
         if (this.contradictionDetector && this.linkedEntityManager) {
@@ -101,9 +162,32 @@ export class ObservationManager {
         entity.observations.push(...newObservations);
         entity.lastModified = timestamp;
         hasChanges = true;
-      }
+=======
+      if (resolvedDedup) {
+        // Second pass: fuzzy dedup against existing observations
+        const addedObservations = this.applyFuzzyDedup(
+          nonExactDuplicates,
+          entity.observations,
+          resolvedDedup
+        );
 
-      results.push({ entityName: o.entityName, addedObservations: newObservations });
+        if (addedObservations.length > 0) {
+          hasChanges = true;
+          entity.lastModified = timestamp;
+        }
+
+        results.push({ entityName: o.entityName, addedObservations });
+      } else {
+        // No dedup - original behavior
+        if (nonExactDuplicates.length > 0) {
+          entity.observations.push(...nonExactDuplicates);
+          entity.lastModified = timestamp;
+          hasChanges = true;
+        }
+
+        results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates });
+>>>>>>> origin/master
+      }
     }
 
     // Save all changes in a single atomic operation
@@ -111,7 +195,93 @@ export class ObservationManager {
       await this.storage.saveGraph(graph);
     }
 
+    // Auto-link: detect entity mentions and create relations
+    const shouldAutoLink =
+      (options?.autoLink ?? (process.env.MEMORY_AUTO_LINK === 'true')) && this._autoLinker;
+
+    if (shouldAutoLink && this._autoLinker) {
+      const autoLinkResults: AutoLinkResult[] = [];
+      for (const r of results) {
+        if (r.addedObservations.length > 0) {
+          const linkResult = await this._autoLinker.linkObservations(
+            r.entityName,
+            r.addedObservations,
+            options?.autoLinkOptions
+          );
+          autoLinkResults.push(linkResult);
+        }
+      }
+      return results.map((r) => {
+        const linkResult = autoLinkResults.find(lr => lr.sourceEntity === r.entityName);
+        return linkResult ? { ...r, autoLinkResults: [linkResult] } : r;
+      });
+    }
+
     return results;
+  }
+
+  /**
+   * Apply fuzzy deduplication to new observations against existing ones.
+   *
+   * For each new observation, checks similarity against all existing observations.
+   * If a near-duplicate is found (similarity >= threshold), applies the merge strategy.
+   *
+   * Mutates `existingObservations` in place (may replace or append).
+   *
+   * @param newObservations - New observations to check
+   * @param existingObservations - Existing entity observations (mutated in place)
+   * @param options - Deduplication options
+   * @returns Array of observations that were actually added/kept
+   * @internal
+   */
+  private applyFuzzyDedup(
+    newObservations: string[],
+    existingObservations: string[],
+    options: DeduplicationOptions
+  ): string[] {
+    const added: string[] = [];
+
+    for (const newObs of newObservations) {
+      let isDuplicate = false;
+
+      for (let i = 0; i < existingObservations.length; i++) {
+        const similarity = calculateTextSimilarity(newObs, existingObservations[i]);
+
+        if (similarity >= options.similarityThreshold) {
+          isDuplicate = true;
+
+          switch (options.mergeStrategy) {
+            case 'keep_longest':
+              if (newObs.length > existingObservations[i].length) {
+                existingObservations[i] = newObs;
+                added.push(newObs);
+              }
+              // else: keep existing, don't add new
+              break;
+
+            case 'keep_newest':
+              existingObservations[i] = newObs;
+              added.push(newObs);
+              break;
+
+            case 'keep_both':
+              // Effectively skip dedup for this pair
+              existingObservations.push(newObs);
+              added.push(newObs);
+              break;
+          }
+
+          break; // Only match against the first similar existing observation
+        }
+      }
+
+      if (!isDuplicate) {
+        existingObservations.push(newObs);
+        added.push(newObs);
+      }
+    }
+
+    return added;
   }
 
   /**

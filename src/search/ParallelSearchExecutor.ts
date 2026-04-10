@@ -200,6 +200,7 @@ export class ParallelSearchExecutor {
       };
     }
 
+    const timeout = this.createTimeout<never>(_timeoutMs, 'Semantic search timeout');
     try {
       // Execute semantic search with timeout
       const semanticResults = await Promise.race([
@@ -209,7 +210,7 @@ export class ParallelSearchExecutor {
           options.topK ?? limit,
           options.minSimilarity ?? 0
         ),
-        this.createTimeout<never>(_timeoutMs, 'Semantic search timeout'),
+        timeout.promise,
       ]);
 
       for (const result of semanticResults) {
@@ -218,6 +219,8 @@ export class ParallelSearchExecutor {
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : String(err);
+    } finally {
+      timeout.clear();
     }
 
     const endTime = Date.now();
@@ -250,6 +253,7 @@ export class ParallelSearchExecutor {
     let success = true;
     let error: string | undefined;
 
+    const timeout = this.createTimeout<never>(_timeoutMs, 'Lexical search timeout');
     try {
       // Execute lexical search with timeout
       const lexicalResults = await Promise.race([
@@ -260,7 +264,7 @@ export class ParallelSearchExecutor {
           undefined, // maxImportance
           limit
         ),
-        this.createTimeout<never>(_timeoutMs, 'Lexical search timeout'),
+        timeout.promise,
       ]);
 
       // Normalize scores to 0-1 range
@@ -271,6 +275,8 @@ export class ParallelSearchExecutor {
     } catch (err) {
       success = false;
       error = err instanceof Error ? err.message : String(err);
+    } finally {
+      timeout.clear();
     }
 
     const endTime = Date.now();
@@ -305,10 +311,7 @@ export class ParallelSearchExecutor {
     try {
       // Symbolic search is synchronous but wrap for consistency
       if (!filters || Object.keys(filters).length === 0) {
-        // No filters - give all entities base score
-        for (const entity of entities) {
-          results.set(entity.name, 0.5);
-        }
+        // No filters - return empty (no symbolic signal)
       } else {
         const symbolicResults = this.symbolicSearch.search(entities, filters);
         for (const result of symbolicResults) {
@@ -338,10 +341,12 @@ export class ParallelSearchExecutor {
   /**
    * Create a timeout promise.
    */
-  private createTimeout<T>(ms: number, message: string): Promise<T> {
-    return new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(message)), ms);
+  private createTimeout<T>(ms: number, message: string): { promise: Promise<T>; clear: () => void } {
+    let timer: ReturnType<typeof setTimeout>;
+    const promise = new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
     });
+    return { promise, clear: () => clearTimeout(timer!) };
   }
 
   /**

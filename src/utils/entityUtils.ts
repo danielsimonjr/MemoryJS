@@ -725,7 +725,7 @@ export function escapeCsvFormula(field: string | undefined | null): string {
  * validateFilePath('/var/data/../../../etc/passwd'); // Path traversal detected
  * ```
  */
-export function validateFilePath(filePath: string, baseDir: string = process.cwd()): string {
+export function validateFilePath(filePath: string, baseDir: string = process.cwd(), confineToBase: boolean = false): string {
   // Normalize path to remove redundant separators and resolve . and ..
   const normalized = path.normalize(filePath);
 
@@ -745,6 +745,17 @@ export function validateFilePath(filePath: string, baseDir: string = process.cwd
       `Path traversal detected in file path: ${filePath}`,
       filePath
     );
+  }
+
+  // Optionally confine the resolved path to the base directory
+  if (confineToBase) {
+    const resolvedBase = path.resolve(baseDir) + path.sep;
+    if (!finalNormalized.startsWith(resolvedBase) && finalNormalized !== resolvedBase.slice(0, -1)) {
+      throw new FileOperationError(
+        `Path is outside the allowed directory: ${filePath}`,
+        filePath
+      );
+    }
   }
 
   return finalNormalized;
