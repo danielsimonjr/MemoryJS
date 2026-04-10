@@ -15,7 +15,7 @@ import type {
   SemanticIndexOptions,
   ReadonlyKnowledgeGraph,
 } from '../types/index.js';
-import { InMemoryVectorStore } from './VectorStore.js';
+import { InMemoryVectorStore, cosineSimilarity } from './VectorStore.js';
 import { EMBEDDING_DEFAULTS, SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
 import { checkCancellation } from '../utils/index.js';
 
@@ -358,6 +358,26 @@ export class SemanticSearch {
    */
   getIndexedCount(): number {
     return this.indexedCount;
+  }
+
+  /**
+   * Calculate semantic similarity between two strings.
+   *
+   * Embeds both strings and returns their cosine similarity score (0-1).
+   * Returns 1.0 immediately for identical strings without calling the embedding
+   * service. Throws if the embedding service is not ready.
+   *
+   * @param a - First string
+   * @param b - Second string
+   * @returns Cosine similarity in the range [0, 1]
+   */
+  async calculateSimilarity(a: string, b: string): Promise<number> {
+    if (a === b) return 1.0;
+    const [embA, embB] = await Promise.all([
+      this.embeddingService.embed(a),
+      this.embeddingService.embed(b),
+    ]);
+    return cosineSimilarity(embA, embB);
   }
 
   /**

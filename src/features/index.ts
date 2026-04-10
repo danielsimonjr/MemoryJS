@@ -55,3 +55,7 @@ export {
   type FreshnessManagerConfig,
   type FreshnessReport,
 } from './FreshnessManager.js';
+
+// Feature 2: Contradiction Detection (v1.8.0)
+export { ContradictionDetector } from './ContradictionDetector.js';
+export type { Contradiction } from './ContradictionDetector.js';
