@@ -9,6 +9,7 @@
 
 import type { Entity } from '../types/types.js';
 import type { SemanticSearch } from '../search/SemanticSearch.js';
+import type { EntityManager } from '../core/EntityManager.js';
 
 export interface Contradiction {
   /** Existing observation on the entity */
@@ -59,5 +60,61 @@ export class ContradictionDetector {
     }
 
     return contradictions;
+  }
+
+  /**
+   * Create a new version of an entity that supersedes the old one.
+   * The old entity gets isLatest=false and supersededBy=newName.
+   * The new entity becomes the latest in the chain.
+   *
+   * @param oldEntity - The entity being superseded
+   * @param newObservations - Observations to merge into the new version
+   *   (non-contradicted existing observations are carried over automatically)
+   * @param entityManager - Used to persist both the updated old entity and the new version
+   * @returns The newly created entity
+   */
+  async supersede(
+    oldEntity: Entity,
+    newObservations: string[],
+    entityManager: EntityManager
+  ): Promise<Entity> {
+    const currentVersion = oldEntity.version ?? 1;
+    const nextVersion = currentVersion + 1;
+    const rootName = oldEntity.rootEntityName ?? oldEntity.name;
+    const newName = `${rootName}-v${nextVersion}`;
+
+    // Detect which existing observations are contradicted
+    const contradictions = await this.detect(oldEntity, newObservations);
+    const contradictedSet = new Set(
+      contradictions.map(c => c.existingObservation)
+    );
+    const preserved = oldEntity.observations.filter(
+      o => !contradictedSet.has(o)
+    );
+
+    // Create the new version
+    const newEntity: Entity = {
+      name: newName,
+      entityType: oldEntity.entityType,
+      observations: [...preserved, ...newObservations],
+      tags: oldEntity.tags ? [...oldEntity.tags] : undefined,
+      importance: oldEntity.importance,
+      parentId: oldEntity.parentId,
+      projectId: oldEntity.projectId,
+      version: nextVersion,
+      parentEntityName: oldEntity.name,
+      rootEntityName: rootName,
+      isLatest: true,
+    };
+
+    await entityManager.createEntities([newEntity]);
+
+    // Mark old entity as superseded
+    await entityManager.updateEntity(oldEntity.name, {
+      isLatest: false,
+      supersededBy: newName,
+    });
+
+    return newEntity;
   }
 }
