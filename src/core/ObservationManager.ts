@@ -9,12 +9,30 @@
 
 import type { GraphStorage } from './GraphStorage.js';
 import { EntityNotFoundError } from '../utils/errors.js';
+import type { ContradictionDetector } from '../features/ContradictionDetector.js';
+import type { EntityManager } from './EntityManager.js';
 
 /**
  * Manages observation operations for entities in the knowledge graph.
  */
 export class ObservationManager {
+  private contradictionDetector?: ContradictionDetector;
+  private linkedEntityManager?: EntityManager;
+
   constructor(private storage: GraphStorage) {}
+
+  /**
+   * Enable contradiction detection on addObservations.
+   * When a new observation is detected as contradicting an existing one,
+   * a new entity version is created instead of appending.
+   */
+  setContradictionDetector(
+    detector: ContradictionDetector,
+    entityManager: EntityManager
+  ): void {
+    this.contradictionDetector = detector;
+    this.linkedEntityManager = entityManager;
+  }
 
   /**
    * Add observations to multiple entities in a single batch operation.
@@ -63,6 +81,22 @@ export class ObservationManager {
       const newObservations = o.contents.filter(content => !entity.observations.includes(content));
 
       if (newObservations.length > 0) {
+        // Contradiction detection hook (v1.8.0)
+        if (this.contradictionDetector && this.linkedEntityManager) {
+          const contradictions = await this.contradictionDetector.detect(
+            entity,
+            newObservations
+          );
+          if (contradictions.length > 0) {
+            await this.contradictionDetector.supersede(
+              entity,
+              newObservations,
+              this.linkedEntityManager
+            );
+            continue; // skip normal append for this entity
+          }
+        }
+
         // Add new observations directly to the entity
         entity.observations.push(...newObservations);
         entity.lastModified = timestamp;

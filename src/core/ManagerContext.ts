@@ -41,6 +41,7 @@ import { RefIndex } from './RefIndex.js';
 import type { AgentMemoryConfig } from '../agent/AgentMemoryConfig.js';
 import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
+import { ContradictionDetector } from '../features/ContradictionDetector.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -50,6 +51,10 @@ export interface ManagerContextOptions {
   storageType?: 'jsonl' | 'sqlite';
   /** Default project scope for this context. */
   defaultProjectId?: string;
+  /** Enable contradiction detection. Requires embedding provider. */
+  enableContradictionDetection?: boolean;
+  /** Similarity threshold for contradiction detection. Default 0.85. */
+  contradictionThreshold?: number;
 }
 
 /**
@@ -112,6 +117,36 @@ export class ManagerContext {
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
+
+    // Wire contradiction detection if enabled (gracefully degrades without embedding provider)
+    if (opts.enableContradictionDetection) {
+      this.initContradictionDetection(opts.contradictionThreshold);
+    }
+  }
+
+  /**
+   * Wire ContradictionDetector to ObservationManager if a semantic search
+   * embedding provider is available. Silently degrades when none is configured.
+   * @internal
+   */
+  private initContradictionDetection(threshold?: number): void {
+    try {
+      const ss = this.semanticSearch;
+      if (!ss) {
+        console.warn(
+          '[ManagerContext] Contradiction detection requested but no embedding provider is configured. ' +
+          'Set MEMORY_EMBEDDING_PROVIDER to enable it.'
+        );
+        return;
+      }
+      const detector = new ContradictionDetector(ss, threshold ?? 0.85);
+      this.observationManager.setContradictionDetector(detector, this.entityManager);
+    } catch (err) {
+      console.warn(
+        '[ManagerContext] Could not initialise contradiction detection:',
+        err instanceof Error ? err.message : String(err)
+      );
+    }
   }
 
   // ==================== MANAGER ACCESSORS ====================
