@@ -17,6 +17,7 @@ export {
   type IngestResult,
   type SplitOptions,
   type SplitResult,
+  type VisualizeOptions,
 } from './IOManager.js';
 export { AnalyticsManager } from './AnalyticsManager.js';
 export { CompressionManager } from './CompressionManager.js';

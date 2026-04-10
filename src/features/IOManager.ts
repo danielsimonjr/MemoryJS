@@ -114,6 +114,18 @@ export interface VisualizeOptions {
   title?: string;
 }
 
+
+export interface VisualizeOptions {
+  /** Max entities to include. Default 100. */
+  maxEntities?: number;
+  /** Filter by project (matches entities with a tag or parentId equal to projectId). */
+  projectId?: string;
+  /** Output file path. If not specified, returns HTML string. */
+  outputPath?: string;
+  /** Graph title. */
+  title?: string;
+}
+
 export class IOManager {
   private readonly backupDir: string;
 
@@ -1487,4 +1499,225 @@ export class IOManager {
       sessions: keptSessions,
     };
   }
+
+  /**
+   * Generate a self-contained HTML file with D3.js force-directed
+   * graph visualization of the knowledge graph.
+   */
+  async visualizeGraph(options?: VisualizeOptions): Promise<string> {
+    const maxEntities = options?.maxEntities ?? 100;
+    const title = options?.title ?? 'Knowledge Graph';
+
+    // Load graph data
+    const graph = await this.storage.loadGraph();
+
+    // Filter entities by projectId if provided
+    let entities = graph.entities;
+    if (options?.projectId) {
+      const pid = options.projectId;
+      entities = entities.filter(
+        e =>
+          e.parentId === pid ||
+          (e.tags ?? []).includes(pid)
+      );
+    }
+
+    // Limit to maxEntities by importance (descending), then name for stable order
+    entities = [...entities]
+      .sort((a, b) => {
+        const ia = a.importance ?? 0;
+        const ib = b.importance ?? 0;
+        if (ib !== ia) return ib - ia;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, maxEntities);
+
+    const entityNames = new Set(entities.map(e => e.name));
+
+    // Build nodes
+    const nodes = entities.map(e => ({
+      id: e.name,
+      type: e.entityType,
+      observations: e.observations.length,
+      importance: e.importance ?? 1,
+      observationList: e.observations.slice(0, 3),
+    }));
+
+    // Build links (only where both endpoints are visible)
+    const links = graph.relations
+      .filter(r => entityNames.has(r.from) && entityNames.has(r.to))
+      .map(r => ({
+        source: r.from,
+        target: r.to,
+        type: r.relationType,
+      }));
+
+    const nodesJson = JSON.stringify(nodes);
+    const linksJson = JSON.stringify(links);
+    /* eslint-disable no-template-curly-in-string */
+    const html = [
+      '<!DOCTYPE html>',
+      '<html>',
+      '<head>',
+      '  <meta charset="utf-8">',
+      `  <title>${title}</title>`,
+      '  <script src="https://d3js.org/d3.v7.min.js"><\/script>',
+      '  <style>',
+      '    body { margin: 0; font-family: sans-serif; background: #1a1a2e; }',
+      '    svg { width: 100vw; height: 100vh; }',
+      '    .node circle { stroke: #fff; stroke-width: 1.5px; cursor: grab; }',
+      '    .node circle:active { cursor: grabbing; }',
+      '    .node text { fill: #e0e0e0; font-size: 11px; pointer-events: none; }',
+      '    .link { stroke: #555; stroke-opacity: 0.6; }',
+      '    .link-label { fill: #888; font-size: 9px; pointer-events: none; }',
+      '    .tooltip { position: absolute; background: #16213e; color: #e0e0e0;',
+      '               padding: 8px 12px; border-radius: 4px; font-size: 12px;',
+      '               pointer-events: none; max-width: 300px; border: 1px solid #0f3460;',
+      '               display: none; }',
+      '    h1 { color: #e0e0e0; text-align: center; margin: 10px 0 0 0; font-size: 16px;',
+      '         position: absolute; width: 100%; top: 0; }',
+      '  </style>',
+      '</head>',
+      '<body>',
+      `  <h1>${title}</h1>`,
+      '  <svg></svg>',
+      '  <div class="tooltip" id="tooltip"></div>',
+      '  <script>',
+      `    const nodes = ${nodesJson};`,
+      `    const links = ${linksJson};`,
+      '',
+      '    const width = window.innerWidth;',
+      '    const height = window.innerHeight;',
+      '',
+      '    const color = d3.scaleOrdinal(d3.schemeCategory10);',
+      '',
+      '    const svg = d3.select("svg")',
+      '      .attr("width", width)',
+      '      .attr("height", height);',
+      '',
+      '    const g = svg.append("g");',
+      '',
+      '    svg.call(',
+      '      d3.zoom()',
+      '        .scaleExtent([0.1, 10])',
+      '        .on("zoom", (event) => g.attr("transform", event.transform))',
+      '    );',
+      '',
+      '    const simulation = d3.forceSimulation(nodes)',
+      '      .force("link", d3.forceLink(links).id(d => d.id).distance(120))',
+      '      .force("charge", d3.forceManyBody().strength(-300))',
+      '      .force("center", d3.forceCenter(width / 2, height / 2))',
+      '      .force("collision", d3.forceCollide().radius(d => Math.max(5, (d.importance || 1) * 3) + 10));',
+      '',
+      '    svg.append("defs").append("marker")',
+      '      .attr("id", "arrowhead")',
+      '      .attr("viewBox", "0 -5 10 10")',
+      '      .attr("refX", 20)',
+      '      .attr("refY", 0)',
+      '      .attr("markerWidth", 6)',
+      '      .attr("markerHeight", 6)',
+      '      .attr("orient", "auto")',
+      '      .append("path")',
+      '      .attr("d", "M0,-5L10,0L0,5")',
+      '      .attr("fill", "#555");',
+      '',
+      '    const link = g.append("g")',
+      '      .selectAll("line")',
+      '      .data(links)',
+      '      .enter().append("line")',
+      '      .attr("class", "link")',
+      '      .attr("stroke-width", 1.5)',
+      '      .attr("marker-end", "url(#arrowhead)");',
+      '',
+      '    const linkLabel = g.append("g")',
+      '      .selectAll("text")',
+      '      .data(links)',
+      '      .enter().append("text")',
+      '      .attr("class", "link-label")',
+      '      .text(d => d.type);',
+      '',
+      '    const node = g.append("g")',
+      '      .selectAll("g")',
+      '      .data(nodes)',
+      '      .enter().append("g")',
+      '      .attr("class", "node")',
+      '      .call(',
+      '        d3.drag()',
+      '          .on("start", (event, d) => {',
+      '            if (!event.active) simulation.alphaTarget(0.3).restart();',
+      '            d.fx = d.x; d.fy = d.y;',
+      '          })',
+      '          .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })',
+      '          .on("end", (event, d) => {',
+      '            if (!event.active) simulation.alphaTarget(0);',
+      '            d.fx = null; d.fy = null;',
+      '          })',
+      '      );',
+      '',
+      '    node.append("circle")',
+      '      .attr("r", d => Math.max(5, (d.importance || 1) * 3))',
+      '      .attr("fill", d => color(d.type));',
+      '',
+      '    node.append("text")',
+      '      .attr("dx", d => Math.max(5, (d.importance || 1) * 3) + 3)',
+      '      .attr("dy", 4)',
+      '      .text(d => d.id);',
+      '',
+      '    const tooltip = document.getElementById("tooltip");',
+      '',
+      '    function buildTooltip(d) {',
+      '      while (tooltip.firstChild) tooltip.removeChild(tooltip.firstChild);',
+      '      const header = document.createElement("div");',
+      '      header.textContent = d.id + " (" + d.type + ")";',
+      '      header.style.fontWeight = "bold";',
+      '      tooltip.appendChild(header);',
+      '      const meta = document.createElement("div");',
+      '      meta.textContent = "Importance: " + d.importance + "  Observations: " + d.observations;',
+      '      tooltip.appendChild(meta);',
+      '      d.observationList.forEach(obs => {',
+      '        const item = document.createElement("div");',
+      '        item.style.fontStyle = "italic";',
+      '        item.textContent = obs;',
+      '        tooltip.appendChild(item);',
+      '      });',
+      '    }',
+      '',
+      '    node.on("mouseover", (event, d) => {',
+      '      buildTooltip(d);',
+      '      tooltip.style.display = "block";',
+      '      tooltip.style.left = (event.pageX + 12) + "px";',
+      '      tooltip.style.top = (event.pageY - 10) + "px";',
+      '    })',
+      '    .on("mousemove", (event) => {',
+      '      tooltip.style.left = (event.pageX + 12) + "px";',
+      '      tooltip.style.top = (event.pageY - 10) + "px";',
+      '    })',
+      '    .on("mouseout", () => { tooltip.style.display = "none"; });',
+      '',
+      '    simulation.on("tick", () => {',
+      '      link',
+      '        .attr("x1", d => d.source.x)',
+      '        .attr("y1", d => d.source.y)',
+      '        .attr("x2", d => d.target.x)',
+      '        .attr("y2", d => d.target.y);',
+      '',
+      '      linkLabel',
+      '        .attr("x", d => (d.source.x + d.target.x) / 2)',
+      '        .attr("y", d => (d.source.y + d.target.y) / 2);',
+      '',
+      '      node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");',
+      '    });',
+      '  <\/script>',
+      '</body>',
+      '</html>',
+    ].join('\n');
+    /* eslint-enable no-template-curly-in-string */
+
+    if (options?.outputPath) {
+      await fs.writeFile(options.outputPath, html, 'utf-8');
+    }
+
+    return html;
+  }
+
 }
