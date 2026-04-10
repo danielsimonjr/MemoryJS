@@ -152,6 +152,7 @@ export type {
   AgentEntity,
   AgentObservation,
   SessionEntity,
+  ProfileEntity,
   // Context types
   AccessContext,
   SalienceContext,
@@ -207,6 +208,7 @@ export type {
 export {
   isAgentEntity,
   isSessionEntity,
+  isProfileEntity,
   isWorkingMemory,
   isEpisodicMemory,
   isSemanticMemory,

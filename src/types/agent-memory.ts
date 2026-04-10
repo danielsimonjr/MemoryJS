@@ -363,6 +363,56 @@ export interface SessionEntity extends AgentEntity {
   failureCauses?: string[];
 }
 
+// ==================== Profile Entity Types ====================
+
+/**
+ * Entity representing an agent's profile with static and dynamic facts.
+ *
+ * Profile entities store persistent information about agents, users, or systems.
+ * Observations are prefixed [static] for immutable facts or [dynamic] for
+ * mutable facts that can change over time.
+ *
+ * @example
+ * ```typescript
+ * const profile: ProfileEntity = {
+ *   name: 'profile-alice',
+ *   entityType: 'profile',
+ *   observations: [
+ *     '[static] Name is Alice',
+ *     '[dynamic] Current timezone is EST',
+ *     '[dynamic] Prefers TypeScript'
+ *   ],
+ *   accessCount: 42,
+ *   confidence: 0.95,
+ *   confirmationCount: 5,
+ *   visibility: 'private'
+ * };
+ * ```
+ */
+export interface ProfileEntity extends Entity {
+  /** Fixed entity type for profiles */
+  entityType: 'profile';
+}
+
+/**
+ * Type guard to check if an entity is a ProfileEntity.
+ *
+ * @param entity - Entity to check
+ * @returns True if entity has entityType='profile'
+ *
+ * @example
+ * ```typescript
+ * if (isProfileEntity(entity)) {
+ *   console.log(entity.observations); // TypeScript knows this is ProfileEntity
+ * }
+ * ```
+ */
+export function isProfileEntity(entity: unknown): entity is ProfileEntity {
+  if (!entity || typeof entity !== 'object') return false;
+  const e = entity as Record<string, unknown>;
+  return e.entityType === 'profile';
+}
+
 // ==================== Context Types ====================
 
 /**
