@@ -29,7 +29,15 @@ export class SavedSearchManager {
     try {
       const data = await fs.readFile(this.savedSearchesFilePath, 'utf-8');
       const lines = data.split('\n').filter((line: string) => line.trim() !== '');
-      return lines.map((line: string) => JSON.parse(line) as SavedSearch);
+      const searches: SavedSearch[] = [];
+      for (const line of lines) {
+        try {
+          searches.push(JSON.parse(line) as SavedSearch);
+        } catch {
+          // Skip malformed JSON lines
+        }
+      }
+      return searches;
     } catch (error) {
       if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
         return [];

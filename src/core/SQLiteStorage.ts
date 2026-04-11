@@ -335,11 +335,23 @@ export class SQLiteStorage implements IGraphStorage {
    * Convert a database row to an Entity object.
    */
   private rowToEntity(row: EntityRow): Entity {
+    let observations: string[];
+    let tags: string[] | undefined;
+    try {
+      observations = JSON.parse(row.observations);
+    } catch {
+      observations = [];
+    }
+    try {
+      tags = row.tags ? JSON.parse(row.tags) : undefined;
+    } catch {
+      tags = undefined;
+    }
     const entity: Entity = {
       name: row.name,
       entityType: row.entityType,
-      observations: JSON.parse(row.observations),
-      tags: row.tags ? JSON.parse(row.tags) : undefined,
+      observations,
+      tags,
       importance: row.importance ?? undefined,
       parentId: row.parentId ?? undefined,
       createdAt: row.createdAt,
@@ -373,8 +385,12 @@ export class SQLiteStorage implements IGraphStorage {
     // Only include optional metadata fields if present
     if (row.weight !== null) relation.weight = row.weight;
     if (row.confidence !== null) relation.confidence = row.confidence;
-    if (row.properties !== null) relation.properties = JSON.parse(row.properties);
-    if (row.metadata !== null) relation.metadata = JSON.parse(row.metadata);
+    if (row.properties !== null) {
+      try { relation.properties = JSON.parse(row.properties); } catch { /* skip malformed */ }
+    }
+    if (row.metadata !== null) {
+      try { relation.metadata = JSON.parse(row.metadata); } catch { /* skip malformed */ }
+    }
 
     return relation;
   }

@@ -181,6 +181,8 @@ export class TaskQueue {
   private totalExecutionTime = 0;
   private totalProcessed = 0;
   private useWorkerPool: boolean;
+  private static readonly MAX_COMPLETED = 10_000;
+  private static readonly MAX_QUEUE = 100_000;
 
   constructor(options: { concurrency?: number; timeout?: number; useWorkerPool?: boolean } = {}) {
     this.concurrency = options.concurrency ?? Math.max(1, workerpool.cpus - 1);
@@ -219,6 +221,12 @@ export class TaskQueue {
         resolve: resolve as (result: TaskResult<unknown>) => void,
         reject,
       };
+
+      // Prevent unbounded queue growth
+      if (this.queue.length >= TaskQueue.MAX_QUEUE) {
+        reject(new Error(`Task queue is full (max ${TaskQueue.MAX_QUEUE} pending tasks)`));
+        return;
+      }
 
       // Insert based on priority (higher priority first)
       const insertIndex = this.queue.findIndex(t => t.priority < task.priority);
@@ -263,11 +271,18 @@ export class TaskQueue {
         try {
           const pool = this.getPool();
           const fnString = task.fn.toString();
+          // Security: reject suspiciously large serialized functions
+          if (fnString.length > 100_000) {
+            throw new Error('Serialized function exceeds maximum allowed size');
+          }
           const timeout = task.timeout ?? this.defaultTimeout;
 
           result = await pool
             .exec(
               (input: unknown, fnStr: string) => {
+                // SECURITY NOTE: new Function() is required for worker pool serialization.
+                // Safety is ensured by validateFunction() at enqueue() which guarantees
+                // only real Function objects (not user strings) are serialized here.
                 // eslint-disable-next-line no-new-func
                 const fn = new Function('return ' + fnStr)();
                 return fn(input);
@@ -299,6 +314,10 @@ export class TaskQueue {
       this.totalExecutionTime += duration;
       this.totalProcessed++;
       this.completed.push(taskResult);
+      // Evict oldest completed results to prevent unbounded memory growth
+      if (this.completed.length > TaskQueue.MAX_COMPLETED) {
+        this.completed = this.completed.slice(-TaskQueue.MAX_COMPLETED);
+      }
       this.running.delete(task.id);
       task.resolve(taskResult);
     } catch (error) {
@@ -316,6 +335,9 @@ export class TaskQueue {
 
       this.totalProcessed++;
       this.completed.push(taskResult);
+      if (this.completed.length > TaskQueue.MAX_COMPLETED) {
+        this.completed = this.completed.slice(-TaskQueue.MAX_COMPLETED);
+      }
       this.running.delete(task.id);
       task.resolve(taskResult);
     }

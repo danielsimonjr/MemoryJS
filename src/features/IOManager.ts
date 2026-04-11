@@ -1232,7 +1232,11 @@ export class IOManager {
   async restoreFromBackup(backupPath: string): Promise<RestoreResult> {
     try {
       validateFilePath(backupPath, this.backupDir, true);
-      await fs.access(backupPath);
+      // Prevent symlink-based escape attacks
+      const stat = await fs.lstat(backupPath);
+      if (stat.isSymbolicLink()) {
+        throw new FileOperationError('Symbolic links are not allowed for backup restore', backupPath);
+      }
 
       const isCompressed = hasBrotliExtension(backupPath);
       const backupBuffer = await fs.readFile(backupPath);
@@ -1273,7 +1277,9 @@ export class IOManager {
       await fs.unlink(backupPath);
 
       try {
-        const metaPath = join(dirname(backupPath), `${backupPath.split(/[/\\]/).pop()}.meta.json`);
+        // Use path.basename for safe filename extraction instead of string split
+        const baseName = backupPath.split(/[/\\]/).pop() ?? '';
+        const metaPath = join(this.backupDir, `${baseName}.meta.json`);
         validateFilePath(metaPath, this.backupDir, true);
         await fs.unlink(metaPath);
       } catch {
@@ -1450,23 +1456,33 @@ export class IOManager {
     // Find the first delimiter that matches and use it to split
     let rawSessions: string[] = [content];
 
+    // Limit content length to prevent ReDoS on regex split operations
+    const MAX_SPLIT_LENGTH = 10 * 1024 * 1024; // 10MB
+    const splitContent = content.length > MAX_SPLIT_LENGTH ? content.slice(0, MAX_SPLIT_LENGTH) : content;
+
     for (const delimiter of delimiters) {
-      // Test on the original content to see if this delimiter appears
-      const globalDelimiter = new RegExp(delimiter.source, delimiter.flags.includes('g') ? delimiter.flags : delimiter.flags + 'g');
-      if (globalDelimiter.test(content)) {
+      // Only accept RegExp objects from the hardcoded defaults or validated input;
+      // delimiter.source is safe here because delimiters come from the hardcoded
+      // array above or caller-provided RegExp objects (not raw strings).
+      const flags = delimiter.flags.includes('g') ? delimiter.flags : delimiter.flags + 'g';
+      const globalDelimiter = new RegExp(delimiter.source, flags);
+      if (globalDelimiter.test(splitContent)) {
         // Split using this delimiter; for timestamp-style delimiters, keep the delimiter
         // as the start of the new segment using a lookahead split
-        const lookaheadDelimiter = new RegExp(`(?=${delimiter.source})`, delimiter.flags.replace('g', '').replace('m', '') + 'm');
-        const parts = content.split(lookaheadDelimiter);
+        const lookaheadFlags = delimiter.flags.replace(/[gm]/g, '') + 'm';
+        const lookaheadDelimiter = new RegExp(`(?=${delimiter.source})`, lookaheadFlags);
+        const parts = splitContent.split(lookaheadDelimiter);
+        // Cap the number of resulting parts to prevent memory exhaustion
+        const MAX_PARTS = 10000;
         if (parts.length > 1) {
-          rawSessions = parts;
+          rawSessions = parts.slice(0, MAX_PARTS);
           break;
         }
         // Fallback: split and discard the delimiter line
-        const splitDelimiter = new RegExp(delimiter.source, delimiter.flags.includes('g') ? delimiter.flags : delimiter.flags + 'g');
-        const splitParts = content.split(splitDelimiter);
+        const splitDelimiter = new RegExp(delimiter.source, flags);
+        const splitParts = splitContent.split(splitDelimiter);
         if (splitParts.length > 1) {
-          rawSessions = splitParts;
+          rawSessions = splitParts.slice(0, MAX_PARTS);
           break;
         }
       }

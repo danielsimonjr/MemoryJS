@@ -7,6 +7,7 @@
  * @module agent/SessionManager
  */
 
+import { randomBytes } from 'crypto';
 import type { IGraphStorage, Entity, Relation } from '../types/types.js';
 import type {
   AgentEntity,
@@ -150,7 +151,7 @@ export class SessionManager {
    */
   private generateSessionId(): string {
     const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 8);
+    const random = randomBytes(4).toString('hex');
     return `session_${timestamp}_${random}`;
   }
 

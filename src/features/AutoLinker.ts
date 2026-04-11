@@ -165,6 +165,8 @@ export class AutoLinker {
     candidates.sort((a, b) => b.name.length - a.name.length);
 
     for (const entity of candidates) {
+      // Skip entity names that are too long for safe regex matching
+      if (entity.name.length > 500) continue;
       const escapedName = escapeRegExp(entity.name);
       const flags = opts.caseSensitive ? '' : 'i';
       const pattern = new RegExp(`\\b${escapedName}\\b`, flags);

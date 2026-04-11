@@ -157,7 +157,9 @@ export class QueryAnalyzer {
     const organizations: string[] = [];
 
     for (const indicator of orgIndicators) {
-      const regex = new RegExp(`([A-Z][a-zA-Z]*)\\s*${indicator.replace('.', '\\.')}`, 'g');
+      // Escape all regex special characters, not just '.'
+      const escaped = indicator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`([A-Z][a-zA-Z]*)\\s*${escaped}`, 'g');
       const matches = query.match(regex);
       if (matches) {
         organizations.push(...matches);

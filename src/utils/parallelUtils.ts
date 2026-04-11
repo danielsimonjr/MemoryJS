@@ -122,13 +122,19 @@ export async function parallelMap<T, R>(
 
     // Convert function to string for serialization
     const fnString = fn.toString();
+    // Security: reject suspiciously large serialized functions
+    if (fnString.length > 100_000) {
+      throw new Error('Serialized function exceeds maximum allowed size');
+    }
 
     // Process chunks in parallel using inline function execution
     const results = await Promise.all(
       chunks.map(chunk =>
         pool.exec(
           (chunkData: T[], fnStr: string) => {
-            // Reconstruct function from string
+            // SECURITY NOTE: new Function() is required for worker pool serialization.
+            // Safety is ensured by validateFunction() which guarantees only real
+            // Function objects (not user strings) are serialized here.
             // eslint-disable-next-line no-new-func
             const mapFn = new Function('return ' + fnStr)() as (item: T) => R;
             return chunkData.map(mapFn);
@@ -195,13 +201,19 @@ export async function parallelFilter<T>(
 
     // Convert function to string for serialization
     const predicateString = predicate.toString();
+    // Security: reject suspiciously large serialized functions
+    if (predicateString.length > 100_000) {
+      throw new Error('Serialized function exceeds maximum allowed size');
+    }
 
     // Process chunks in parallel using inline function execution
     const results = await Promise.all(
       chunks.map(chunk =>
         pool.exec(
           (chunkData: T[], predicateStr: string) => {
-            // Reconstruct function from string
+            // SECURITY NOTE: new Function() is required for worker pool serialization.
+            // Safety is ensured by validateFunction() which guarantees only real
+            // Function objects (not user strings) are serialized here.
             // eslint-disable-next-line no-new-func
             const filterFn = new Function('return ' + predicateStr)() as (item: T) => boolean;
             return chunkData.filter(filterFn);
