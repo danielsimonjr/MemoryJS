@@ -9,6 +9,7 @@
  */
 
 import { promises as fs } from 'fs';
+import { randomBytes } from 'crypto';
 import * as path from 'path';
 import type { GraphEventEmitter } from './GraphEventEmitter.js';
 import type {
@@ -123,7 +124,7 @@ export class TransitionLedger {
   async append(event: Omit<TransitionEvent, 'id' | 'timestamp'>): Promise<TransitionEvent> {
     const fullEvent: TransitionEvent = {
       ...event,
-      id: `txn_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      id: `txn_${Date.now()}_${randomBytes(4).toString('hex')}`,
       timestamp: new Date().toISOString(),
     };
 

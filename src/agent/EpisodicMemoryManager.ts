@@ -7,6 +7,7 @@
  * @module agent/EpisodicMemoryManager
  */
 
+import { randomBytes } from 'crypto';
 import type { IGraphStorage, Entity, Relation } from '../types/types.js';
 import type { AgentEntity } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
@@ -136,7 +137,7 @@ export class EpisodicMemoryManager {
   ): Promise<AgentEntity> {
     const now = new Date().toISOString();
     const timestamp = Date.now();
-    const name = `episode_${timestamp}_${Math.random().toString(36).slice(2, 8)}`;
+    const name = `episode_${timestamp}_${randomBytes(4).toString('hex')}`;
 
     const entity: AgentEntity = {
       name,

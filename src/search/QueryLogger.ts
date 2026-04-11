@@ -9,6 +9,7 @@
  */
 
 import { appendFileSync } from 'fs';
+import { randomBytes } from 'crypto';
 import type { LogLevel, QueryLogEntry } from '../types/search.js';
 
 /**
@@ -205,6 +206,6 @@ export class QueryLogger {
    * Generate a unique query ID.
    */
   static generateQueryId(): string {
-    return `q_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    return `q_${Date.now()}_${randomBytes(6).toString('hex')}`;
   }
 }

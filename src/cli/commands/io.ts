@@ -9,6 +9,7 @@ import { resolve } from 'path';
 import { Command, Option } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';
+import { validateFilePath } from '../../utils/entityUtils.js';
 
 const IMPORT_FORMATS = ['json', 'csv', 'graphml'] as const;
 const EXPORT_FORMATS = ['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid'] as const;
@@ -29,7 +30,7 @@ export function registerIOCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
-        const resolvedPath = resolve(file);
+        const resolvedPath = validateFilePath(resolve(file));
         const data = readFileSync(resolvedPath, 'utf-8');
 
         const result = await ctx.ioManager.importGraph(
@@ -61,7 +62,7 @@ export function registerIOCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
-        const resolvedPath = resolve(file);
+        const resolvedPath = validateFilePath(resolve(file));
         const graph = await ctx.storage.loadGraph();
         const data = ctx.ioManager.exportGraph(
           graph,

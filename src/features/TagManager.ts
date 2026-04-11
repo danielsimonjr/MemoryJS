@@ -24,7 +24,15 @@ export class TagManager {
     try {
       const data = await fs.readFile(this.tagAliasesFilePath, 'utf-8');
       const lines = data.split('\n').filter((line: string) => line.trim() !== '');
-      return lines.map((line: string) => JSON.parse(line) as TagAlias);
+      const aliases: TagAlias[] = [];
+      for (const line of lines) {
+        try {
+          aliases.push(JSON.parse(line) as TagAlias);
+        } catch {
+          // Skip malformed JSON lines
+        }
+      }
+      return aliases;
     } catch (error) {
       if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
         return [];

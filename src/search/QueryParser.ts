@@ -271,8 +271,11 @@ export class QueryParser {
    * Convert wildcard pattern to regex.
    */
   private wildcardToRegex(pattern: string): RegExp {
-    const escaped = pattern
+    // Limit pattern length to prevent ReDoS from pathological inputs
+    const safePattern = pattern.length > 200 ? pattern.slice(0, 200) : pattern;
+    const escaped = safePattern
       .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+      .replace(/\*{2,}/g, '*')   // Collapse consecutive wildcards to prevent nested quantifiers
       .replace(/\*/g, '.*')
       .replace(/\?/g, '.');
     return new RegExp(`^${escaped}$`, 'i');

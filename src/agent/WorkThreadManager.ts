@@ -8,6 +8,7 @@
  * @module agent/WorkThreadManager
  */
 
+import { randomBytes } from 'crypto';
 import type { IGraphStorage, Entity, Relation } from '../types/types.js';
 
 // ==================== Types ====================
@@ -185,7 +186,7 @@ export class WorkThreadManager {
     }
 
     const now = new Date().toISOString();
-    const id = `thread_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const id = `thread_${Date.now()}_${randomBytes(4).toString('hex')}`;
 
     const thread: WorkThread = {
       id,

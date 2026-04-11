@@ -14,6 +14,7 @@
  * @module agent/ArtifactManager
  */
 
+import { randomBytes } from 'crypto';
 import type { IGraphStorage, Entity } from '../types/types.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { RefIndex } from '../core/RefIndex.js';
@@ -38,9 +39,7 @@ export type { ArtifactType, CreateArtifactOptions, ArtifactEntity, ArtifactFilte
  * Collisions are resolved by the caller by retrying with a new shortId.
  */
 function generateShortId(): string {
-  return Math.floor(Math.random() * 0xffff)
-    .toString(16)
-    .padStart(4, '0');
+  return randomBytes(2).toString('hex');
 }
 
 /**
