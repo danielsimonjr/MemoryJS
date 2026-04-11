@@ -340,11 +340,13 @@ export class SQLiteStorage implements IGraphStorage {
     try {
       observations = JSON.parse(row.observations);
     } catch {
+      console.warn(`SQLiteStorage: malformed JSON in observations for entity "${row.name}"`);
       observations = [];
     }
     try {
       tags = row.tags ? JSON.parse(row.tags) : undefined;
     } catch {
+      console.warn(`SQLiteStorage: malformed JSON in tags for entity "${row.name}"`);
       tags = undefined;
     }
     const entity: Entity = {
@@ -386,10 +388,14 @@ export class SQLiteStorage implements IGraphStorage {
     if (row.weight !== null) relation.weight = row.weight;
     if (row.confidence !== null) relation.confidence = row.confidence;
     if (row.properties !== null) {
-      try { relation.properties = JSON.parse(row.properties); } catch { /* skip malformed */ }
+      try { relation.properties = JSON.parse(row.properties); } catch {
+        console.warn(`SQLiteStorage: malformed JSON in properties for relation "${row.fromEntity}->${row.toEntity}"`);
+      }
     }
     if (row.metadata !== null) {
-      try { relation.metadata = JSON.parse(row.metadata); } catch { /* skip malformed */ }
+      try { relation.metadata = JSON.parse(row.metadata); } catch {
+        console.warn(`SQLiteStorage: malformed JSON in metadata for relation "${row.fromEntity}->${row.toEntity}"`);
+      }
     }
 
     return relation;

@@ -262,7 +262,13 @@ export class GraphStorage implements IGraphStorage {
       const relationMap = new Map<string, Relation>();
 
       for (const line of lines) {
-        const item = JSON.parse(line);
+        let item: any;
+        try {
+          item = JSON.parse(line);
+        } catch {
+          // Skip malformed JSON lines (e.g., from partial writes or corruption)
+          continue;
+        }
 
         if (item.type === 'entity') {
           // Add createdAt if missing for backward compatibility

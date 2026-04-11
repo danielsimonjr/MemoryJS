@@ -30,6 +30,8 @@ export function registerIOCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        // Defense-in-depth: validate path even after resolve() to catch null bytes
+        // and ensure the path is a normalized absolute path
         const resolvedPath = validateFilePath(resolve(file));
         const data = readFileSync(resolvedPath, 'utf-8');
 

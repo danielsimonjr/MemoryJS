@@ -1,7 +1,7 @@
 /** Unified manager for import, export, and backup operations. */
 
 import { promises as fs } from 'fs';
-import { dirname, join } from 'path';
+import { basename, dirname, join } from 'path';
 import type {
   Entity,
   Relation,
@@ -1235,7 +1235,7 @@ export class IOManager {
       // Prevent symlink-based escape attacks
       const stat = await fs.lstat(backupPath);
       if (stat.isSymbolicLink()) {
-        throw new FileOperationError('Symbolic links are not allowed for backup restore', backupPath);
+        throw new Error('Symbolic links are not allowed for backup restore');
       }
 
       const isCompressed = hasBrotliExtension(backupPath);
@@ -1274,11 +1274,15 @@ export class IOManager {
   async deleteBackup(backupPath: string): Promise<void> {
     try {
       validateFilePath(backupPath, this.backupDir, true);
+      // Prevent symlink-based attacks (consistent with restoreFromBackup)
+      const stat = await fs.lstat(backupPath);
+      if (stat.isSymbolicLink()) {
+        throw new Error('Symbolic links are not allowed for backup deletion');
+      }
       await fs.unlink(backupPath);
 
       try {
-        // Use path.basename for safe filename extraction instead of string split
-        const baseName = backupPath.split(/[/\\]/).pop() ?? '';
+        const baseName = basename(backupPath);
         const metaPath = join(this.backupDir, `${baseName}.meta.json`);
         validateFilePath(metaPath, this.backupDir, true);
         await fs.unlink(metaPath);
@@ -1454,11 +1458,11 @@ export class IOManager {
     ];
 
     // Find the first delimiter that matches and use it to split
-    let rawSessions: string[] = [content];
-
     // Limit content length to prevent ReDoS on regex split operations
     const MAX_SPLIT_LENGTH = 10 * 1024 * 1024; // 10MB
+    const MAX_PARTS = 10000;
     const splitContent = content.length > MAX_SPLIT_LENGTH ? content.slice(0, MAX_SPLIT_LENGTH) : content;
+    let rawSessions: string[] = [splitContent];
 
     for (const delimiter of delimiters) {
       // Only accept RegExp objects from the hardcoded defaults or validated input;
@@ -1472,8 +1476,6 @@ export class IOManager {
         const lookaheadFlags = delimiter.flags.replace(/[gm]/g, '') + 'm';
         const lookaheadDelimiter = new RegExp(`(?=${delimiter.source})`, lookaheadFlags);
         const parts = splitContent.split(lookaheadDelimiter);
-        // Cap the number of resulting parts to prevent memory exhaustion
-        const MAX_PARTS = 10000;
         if (parts.length > 1) {
           rawSessions = parts.slice(0, MAX_PARTS);
           break;

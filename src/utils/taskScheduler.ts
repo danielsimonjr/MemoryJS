@@ -214,6 +214,12 @@ export class TaskQueue {
     validateFunction(task.fn, 'task.fn');
 
     return new Promise((resolve, reject) => {
+      // Prevent unbounded queue growth (check before allocating task object)
+      if (this.queue.length >= TaskQueue.MAX_QUEUE) {
+        reject(new Error(`Task queue is full (max ${TaskQueue.MAX_QUEUE} pending tasks)`));
+        return;
+      }
+
       const queuedTask: QueuedTask<T, R> = {
         ...task,
         status: TaskStatus.PENDING,
@@ -221,12 +227,6 @@ export class TaskQueue {
         resolve: resolve as (result: TaskResult<unknown>) => void,
         reject,
       };
-
-      // Prevent unbounded queue growth
-      if (this.queue.length >= TaskQueue.MAX_QUEUE) {
-        reject(new Error(`Task queue is full (max ${TaskQueue.MAX_QUEUE} pending tasks)`));
-        return;
-      }
 
       // Insert based on priority (higher priority first)
       const insertIndex = this.queue.findIndex(t => t.priority < task.priority);
@@ -313,11 +313,7 @@ export class TaskQueue {
 
       this.totalExecutionTime += duration;
       this.totalProcessed++;
-      this.completed.push(taskResult);
-      // Evict oldest completed results to prevent unbounded memory growth
-      if (this.completed.length > TaskQueue.MAX_COMPLETED) {
-        this.completed = this.completed.slice(-TaskQueue.MAX_COMPLETED);
-      }
+      this.recordCompleted(taskResult);
       this.running.delete(task.id);
       task.resolve(taskResult);
     } catch (error) {
@@ -334,16 +330,23 @@ export class TaskQueue {
       };
 
       this.totalProcessed++;
-      this.completed.push(taskResult);
-      if (this.completed.length > TaskQueue.MAX_COMPLETED) {
-        this.completed = this.completed.slice(-TaskQueue.MAX_COMPLETED);
-      }
+      this.recordCompleted(taskResult);
       this.running.delete(task.id);
       task.resolve(taskResult);
     }
 
     // Process next task
     this.processNext();
+  }
+
+  /**
+   * Record a completed task result, evicting oldest entries if over capacity.
+   */
+  private recordCompleted(result: TaskResult): void {
+    this.completed.push(result);
+    if (this.completed.length > TaskQueue.MAX_COMPLETED) {
+      this.completed = this.completed.slice(-TaskQueue.MAX_COMPLETED);
+    }
   }
 
   /**
