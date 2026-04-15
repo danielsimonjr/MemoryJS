@@ -165,6 +165,22 @@ const EMPTY_SNAPSHOT: Readonly<Record<string, JSONValue>> = Object.freeze({});
  * synchronously with the mutating call, matching JSON-UI's external-store
  * contract.
  *
+ * **Transaction semantics.** `GovernanceManager.withTransaction` is NOT
+ * atomic at the storage level — each `tx.createEntity` / `tx.updateEntity`
+ * / `tx.deleteEntity` call inside the callback calls `storage.saveGraph`
+ * directly, updates the cache synchronously, and emits a `graph:saved`
+ * event. The adapter fires its React subscribers once per op, so a
+ * 5-op transaction causes 5 invalidations + 5 re-renders. React's own
+ * state batching collapses multiple synchronous setState calls in the
+ * same tick, so the actual render count is usually lower. If a transaction
+ * fails partway through, storage keeps the partial mutations (audit
+ * entries are marked `rolled_back` but storage is untouched); the adapter
+ * reflects the current storage state in either case. NC consumers that
+ * need atomic-at-storage-level rollback should explicitly call
+ * `governance.rollback(auditEntryId)` for each committed entry on error,
+ * which also routes through `saveGraph` and fires another adapter
+ * notification with the restored state.
+ *
  * **Cleanup.** The adapter holds one event-emitter subscription for its
  * lifetime. Call `dispose()` on the returned object to release it when the
  * adapter is no longer needed (e.g., on app teardown).
