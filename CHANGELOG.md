@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-04-14
+
+### Added
+
+- **ObservableDataModel Adapter** (`src/features/ObservableDataModelAdapter.ts`) — bridges memoryjs into JSON-UI's `DataProvider` for the Neural Computer runtime's Path C integration (React renderer + headless renderer sharing one durable-state source).
+  - **`createObservableDataModelFromGraph(storage, { projection, onError? })`** — async factory that warms the storage cache once via `loadGraph()` and returns a synchronous adapter satisfying JSON-UI's `ObservableDataModel` structural shape (`get` / `set` / `delete` / `snapshot` / `subscribe` plus an additional `dispose` method).
+  - **Pluggable `GraphProjection`** — caller-provided function `(entities, relations) => Record<string, JSONValue>` that decides which entities and observations surface at which paths. memoryjs does not force a projection rule; the consumer (NC) provides one that matches its UI's needs.
+  - **Read-only at the JSON-UI boundary.** `set()` and `delete()` throw `ReadOnlyMemoryGraphDataError`. Durable-state writes in the NC architecture go through `ctx.governanceManager.withTransaction` / `ctx.entityManager` / `ctx.observationManager` directly, not through `DataProvider`, so the adapter enforces that boundary at runtime with a clear error message pointing at the alternative.
+  - **Synchronous subscribe notification.** The adapter subscribes to `storage.events.onAny` and fires its own subscribers synchronously with the graph mutation event — `GraphEventEmitter.emit` iterates listeners in a plain `for` loop, so the adapter's notifier chain runs before the mutating call returns. Matches JSON-UI's `useSyncExternalStore` tearing-protection contract.
+  - **Identity-stable cached snapshot.** The adapter caches the projection result and invalidates it only on mutation. Two `snapshot()` calls with no intervening mutation return the same reference (`Object.is(a, b) === true`), matching the tearing-protection invariant. The cached value is top-level frozen to prevent consumer mutation from corrupting future renders.
+  - **`Map<symbol, callback>` listener storage** — registering the same callback twice produces two independent subscriptions, matching JSON-UI runtime-types spec. Unsubscribing one has no effect on the other.
+  - **Error isolation.** A throwing projection is logged via `onError` and falls back to an empty snapshot rather than crashing the renderer. A throwing listener is logged and skipped — other listeners continue to fire.
+  - **Idempotent `dispose()`** — releases the storage subscription and makes the adapter inert. Safe to call twice. Not required for normal use (the adapter is long-lived) but useful for hot-reload and teardown paths.
+  - **21 unit tests** in `tests/unit/features/ObservableDataModelAdapter.test.ts`: factory warm-up, initial-state projection, identity stability (with and without mutation), path walking (top-level, nested objects, array indices, missing keys), synchronous fire on all six graph event types, two-subscriber independence, duplicate-callback independent subscription, unsubscribe isolation, read-only enforcement, projection error fallback, listener error isolation, `dispose` idempotency, and an NC-shaped user+messages projection exercising a realistic flow.
+
+- **`GraphStorage.cachedGraph`** — new synchronous getter returning the in-memory cached graph (or `null` if the cache is not yet warm). Added to support the `ObservableDataModelAdapter`'s synchronous `snapshot()` path — `loadGraph()` is async and cannot be awaited inside `useSyncExternalStore`'s `getSnapshot` callback. Consumers should call `loadGraph()` once to warm the cache, then use `cachedGraph` for subsequent sync reads. The returned reference is the live cache object; do not mutate it.
+
+### Upgrading from 1.9.1
+
+No breaking changes. Existing consumers of the features barrel do not need to do anything. The adapter is opt-in — if you do not import `createObservableDataModelFromGraph`, nothing in your existing pipeline changes.
+
+To use the adapter with JSON-UI's `@json-ui/react` v0.1.0+:
+
+```typescript
+import { ManagerContext, createObservableDataModelFromGraph } from '@danielsimonjr/memoryjs';
+import { DataProvider } from '@json-ui/react';
+
+const ctx = new ManagerContext('./memory.jsonl');
+const adapter = await createObservableDataModelFromGraph(ctx.storage, {
+  projection: (entities) => ({
+    userName: entities.find((e) => e.entityType === 'user')?.name ?? null,
+    messageCount: entities.filter((e) => e.entityType === 'message').length,
+  }),
+});
+
+// React tree:
+<DataProvider store={adapter}>{children}</DataProvider>
+```
+
 ## [1.9.1] - 2026-04-10
 
 ### Added

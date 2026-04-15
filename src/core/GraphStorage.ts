@@ -146,6 +146,26 @@ export class GraphStorage implements IGraphStorage {
     return this.eventEmitter;
   }
 
+  /**
+   * Synchronous access to the in-memory cached graph. Returns `null` if the
+   * cache is not yet warm — in which case consumers should call
+   * `loadGraph()` once to populate it and then use this accessor on
+   * subsequent reads.
+   *
+   * Intended for integrations that need a synchronous read path backed by
+   * `GraphStorage`'s already-materialized cache (e.g., the `ObservableDataModel`
+   * adapter consumed by JSON-UI's `DataProvider`, which must supply a
+   * synchronous `snapshot()` to React's `useSyncExternalStore`). Most
+   * callers should prefer `loadGraph()`, which lazy-loads on first call.
+   *
+   * The returned reference is the live cache object — do NOT mutate it.
+   * Use `loadGraph()` for a defensive read or `getGraphForMutation()` for
+   * a mutable copy.
+   */
+  get cachedGraph(): ReadonlyKnowledgeGraph | null {
+    return this.cache;
+  }
+
   // ==================== Durable File Operations ====================
 
   /**

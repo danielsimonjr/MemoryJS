@@ -84,3 +84,14 @@ export type { Contradiction } from './ContradictionDetector.js';
 // Feature 3: Semantic Forget (v1.8.0)
 export { SemanticForget } from './SemanticForget.js';
 export type { SemanticForgetResult, SemanticForgetOptions } from './SemanticForget.js';
+
+// v1.10.0: ObservableDataModel adapter for JSON-UI DataProvider integration
+// (Neural Computer Path C — React + headless renderer sharing state).
+export {
+  createObservableDataModelFromGraph,
+  ReadOnlyMemoryGraphDataError,
+  type ObservableDataModelShape,
+  type ObservableDataModelAdapterOptions,
+  type GraphProjection,
+  type JSONValue,
+} from './ObservableDataModelAdapter.js';
