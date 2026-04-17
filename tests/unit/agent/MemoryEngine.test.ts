@@ -92,3 +92,64 @@ describe('MemoryEngine — checkDuplicate Tier 1 (exact equality)', () => {
     } finally { cleanup(); }
   });
 });
+
+describe('MemoryEngine — checkDuplicate Tier 2 (50% prefix overlap)', () => {
+  it('fires when prefix overlap ratio >= 0.5', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await agent.episodicMemory.createEpisode(
+        '[role=user] The quick brown fox jumps over the lazy dog in the park',
+        { sessionId: 'sess-A' },
+      );
+      const result = await engine.checkDuplicate(
+        'The quick brown fox jumps over the lazy cat',
+        'sess-A',
+      );
+      expect(result.isDuplicate).toBe(true);
+      expect(result.tier).toBe('prefix');
+    } finally { cleanup(); }
+  });
+
+  it('does not fire when prefix overlap < 0.5', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await agent.episodicMemory.createEpisode(
+        '[role=user] alpha beta gamma delta epsilon zeta eta theta iota kappa',
+        { sessionId: 'sess-A' },
+      );
+      const result = await engine.checkDuplicate('zzz different content entirely', 'sess-A');
+      expect(result.isDuplicate).toBe(false);
+    } finally { cleanup(); }
+  });
+
+  it('ignores role prefix when comparing', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await agent.episodicMemory.createEpisode(
+        '[role=user] database migration running smoothly today',
+        { sessionId: 'sess-A' },
+      );
+      const result = await engine.checkDuplicate(
+        'database migration running smoothly today afternoon',
+        'sess-A',
+      );
+      expect(result.isDuplicate).toBe(true);
+      expect(result.tier).toBe('prefix');
+    } finally { cleanup(); }
+  });
+});

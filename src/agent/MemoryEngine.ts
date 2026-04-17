@@ -1,6 +1,19 @@
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 import type { IGraphStorage } from '../types/types.js';
+
+const ROLE_PREFIX_RE = /^\[role=[a-z]+\]\s*/i;
+
+function stripRolePrefix(text: string): string {
+  return text.replace(ROLE_PREFIX_RE, '');
+}
+
+function longestCommonPrefix(a: string, b: string): string {
+  const max = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < max && a[i] === b[i]) i += 1;
+  return a.slice(0, i);
+}
 import type { AgentEntity } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { EpisodicMemoryManager } from './EpisodicMemoryManager.js';
@@ -131,6 +144,9 @@ export class MemoryEngine {
   async checkDuplicate(content: string, sessionId: string): Promise<DuplicateCheckResult> {
     const t1 = await this.checkTierExact(content, sessionId);
     if (t1.isDuplicate) return t1;
+    const recent = await this.getRecentSessionEntities(sessionId, this.cfg.dedupScanWindow);
+    const t2 = this.checkTierPrefix(content, recent);
+    if (t2.isDuplicate) return t2;
     return { isDuplicate: false };
   }
 
@@ -146,6 +162,34 @@ export class MemoryEngine {
     ) as AgentEntity[];
     const match = candidates.find((e) => e.sessionId === sessionId);
     if (match) return { isDuplicate: true, match, tier: 'exact' };
+    return { isDuplicate: false };
+  }
+
+  private async getRecentSessionEntities(
+    sessionId: string,
+    windowSize: number,
+  ): Promise<AgentEntity[]> {
+    const graph = await this.deps.storage.loadGraph();
+    const sessionEntities = graph.entities.filter(
+      (e) => (e as AgentEntity).sessionId === sessionId,
+    ) as AgentEntity[];
+    sessionEntities.sort((a, b) => {
+      const aT = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bT = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bT - aT;
+    });
+    return sessionEntities.slice(0, windowSize);
+  }
+
+  private checkTierPrefix(content: string, candidates: AgentEntity[]): DuplicateCheckResult {
+    for (const candidate of candidates) {
+      const candidateContent = stripRolePrefix(candidate.observations[0] ?? '');
+      const shared = longestCommonPrefix(content, candidateContent);
+      const ratio = shared.length / Math.max(content.length, candidateContent.length);
+      if (ratio >= this.cfg.prefixOverlapThreshold) {
+        return { isDuplicate: true, match: candidate, tier: 'prefix' };
+      }
+    }
     return { isDuplicate: false };
   }
 
