@@ -1,9 +1,31 @@
-# Design: Context Engine — Memory Engine Sub-Feature
+# [SUPERSEDED] Design: Context Engine — Memory Engine Sub-Feature
+
+> **⚠️ SUPERSEDED 2026-04-16**
+> This spec was split into two after two independent subagent reviews (Opus + Sonnet) surfaced 39 findings — 8 of them blockers against the actual memoryjs codebase. Do not implement from this file. Follow the replacement specs:
+>
+> 1. **`2026-04-16-memory-engine-core-design.md`** — dedup (PRD MEM-03), auto-importance (PRD MEM-02), turn storage, events, composition over `EpisodicMemoryManager`. Ships first as v1.11.0.
+> 2. **`2026-04-16-memory-engine-decay-extensions-design.md`** — PRD MEM-01 decay parameters (`decay_rate`, `freshness_coefficient`, `relevance_weight`, `min_importance_threshold`), PRD decay formula, PRD §3 GOAL-03, PRD MEM-04 `IMemoryBackend` + `InMemoryBackend` + `SQLiteBackend`, PRD importance-range `[1.0, 3.0]` mapping. Ships after Core as v1.12.0.
+>
+> Key changes that drove the split and rewrite:
+> - **Dedup tiers realigned with PRD MEM-03 verbatim**: exact equality (narrowed from PRD "containment" with explicit rationale) / 50% prefix overlap / Jaccard ≥ 0.72. The original spec used Levenshtein + semantic-cosine, not PRD semantics.
+> - **Removed `entities.embedding BLOB` migration** — the existing `embeddings` sidecar table at `src/core/SQLiteStorage.ts:1070` is the source of truth; adding a parallel column would create two sources.
+> - **One new persisted column remains (`entities.contentHash TEXT`)** — added via the existing PRAGMA-guarded `migrateEntitiesTable()` pattern; gives O(1) Tier 1 lookup. The original `embedding BLOB` and `role TEXT` additions are both gone.
+> - **`role` stored as an observation-text prefix**, not a schema field — no Entity schema change, no Zod migration.
+> - **Reframed `MemoryEngine` as composition** over `EpisodicMemoryManager` + `WorkingMemoryManager` instead of a new storage paradigm.
+> - **Replaced the proposed `SalienceEngine.scoreOnCreation`** with a focused `ImportanceScorer` class (single responsibility).
+> - **`MemoryEngine` uses its own `node:events` `EventEmitter`** (not the shared `GraphEventEmitter`), because `GraphEvent` in `src/types/types.ts:1917` is a closed discriminated union that would reject new event types.
+> - **PRD MEM-02 "with recent turns" is now implemented literally** — `ImportanceScorer.score(content, { recentTurns })` takes an explicit list; `ManagerContext` auto-fetches from `WorkingMemoryManager`.
+> - **PRD importance range `[1.0, 3.0]` is explicitly owned by the Decay Extensions spec** (formerly unowned).
+> - **Decay formula additions (PRD `recency × freshness + relevance_boost`) live on a NEW `calculatePrdEffectiveImportance` method** — the legacy `calculateEffectiveImportance` semantics are preserved for every existing caller (`DecayScheduler`, `SearchManager`, `SemanticForget`).
+> - **PostgreSQLBackend / VectorMemoryBackend (PRD MEM-05/MEM-06) explicitly out of scope** for both successor specs; no migration path claimed.
+> - **Code-reality fixes** applied to TypeScript snippets: correct import paths (`IGraphStorage` from `types/types.js`, `AgentEntity` from `agent-memory.js`), correct method names (`storage.updateEntity` not `updateEntityMetadata`), correct event routing (`ctx.storage.events` not `ctx.events`), correct embedding access (`embeddingService.embed` not `semanticSearch.embed`), correct `DecayEngineConfig` field list (no `enabled` field; includes `accessModulation` / `confidenceDecayRate` / `applyConfidenceToImportance`), correct ISO-string parsing for timestamp arithmetic.
+
+---
 
 **Date:** 2026-04-16
-**Status:** Approved, not yet implemented
-**Target branch:** `feature/context-engine-memory`
-**Target version:** v1.10.0
+**Status:** Superseded (do not implement)
+**Target branch:** `feature/context-engine-memory` (unused)
+**Target version:** was v1.10.0 (replaced by Core v1.11.0 + Decay Extensions v1.11.1/v1.12.0)
 **Related:**
 - `docs/roadmap/CONTEXT_ENGINE_PRD 2.md` §8 (Memory Engine component)
 - `docs/roadmap/CONTEXT_ENGINE_WHITEPAPER 2.md` (rationale)

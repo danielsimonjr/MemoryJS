@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Specs added (no code changes — design docs only)
+
+- **`docs/superpowers/specs/2026-04-16-memory-engine-core-design.md`** — Context Engine sub-feature #3a. Covers PRD §8 `MEM-02` (auto-importance scoring with recent-turn overlap) and `MEM-03` (three-tier dedup: exact equality / 50% prefix overlap / Jaccard ≥ 0.72). Proposes a new `MemoryEngine` class composing over `EpisodicMemoryManager` + `WorkingMemoryManager`, a new `ImportanceScorer` class, a single additive `Entity.contentHash` field, and a `node:events`-based event emitter independent of the closed `GraphEvent` union. Target release: **v1.11.0**.
+- **`docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md`** — Context Engine sub-feature #3b. Covers PRD §3 `GOAL-03`, §8 `MEM-01` (configurable decay parameters: `decay_rate`, `freshness_coefficient`, `relevance_weight`, `min_importance_threshold`), §8 `MEM-04` (`IMemoryBackend` with `InMemoryBackend` + `SQLiteBackend` adapters), and the deferred PRD importance-range `[1.0, 3.0]` mapping. Adds a new parallel `DecayEngine.calculatePrdEffectiveImportance` method; legacy `calculateEffectiveImportance` semantics preserved for `DecayScheduler` / `SearchManager` / `SemanticForget`. Target release: **v1.12.0** (after Core).
+- **`docs/superpowers/specs/_archived-2026-04-16-context-engine-memory-engine-design.md`** — previous single-spec version, kept with SUPERSEDED banner describing the split rationale and all 11 design changes driven by the review.
+
+Both new specs were reviewed by two independent subagents (Opus + Sonnet, each armed with the RLM skill) producing 39 findings. All 8 blockers were validated against the actual memoryjs codebase via the HonestClaude discipline before fixes were applied. No implementation yet — specs only.
+
 ## [1.10.0] - 2026-04-14
 
 ### Added
