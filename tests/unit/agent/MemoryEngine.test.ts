@@ -153,3 +153,61 @@ describe('MemoryEngine — checkDuplicate Tier 2 (50% prefix overlap)', () => {
     } finally { cleanup(); }
   });
 });
+
+describe('MemoryEngine — checkDuplicate Tier 3 (Jaccard)', () => {
+  it('fires when Jaccard token overlap >= 0.72', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await agent.episodicMemory.createEpisode(
+        '[role=user] alpha beta gamma delta epsilon zeta eta theta iota kappa lambda extra',
+        { sessionId: 'sess-A' },
+      );
+      const result = await engine.checkDuplicate(
+        'lambda kappa iota theta eta zeta epsilon delta gamma beta alpha other',
+        'sess-A',
+      );
+      expect(result.isDuplicate).toBe(true);
+      expect(result.tier).toBe('jaccard');
+    } finally { cleanup(); }
+  });
+
+  it('does not fire when Jaccard < 0.72', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await agent.episodicMemory.createEpisode(
+        '[role=user] one two three four five',
+        { sessionId: 'sess-A' },
+      );
+      const result = await engine.checkDuplicate('six seven eight nine ten one', 'sess-A');
+      expect(result.isDuplicate).toBe(false);
+    } finally { cleanup(); }
+  });
+
+  it('tier short-circuit: exact hit skips prefix and Jaccard', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      const seeded = await agent.episodicMemory.createEpisode('[role=user] exact match', {
+        sessionId: 'sess-A',
+      });
+      await ctx.storage.updateEntity(seeded.name, { contentHash: sha256('exact match') });
+
+      const result = await engine.checkDuplicate('exact match', 'sess-A');
+      expect(result.tier).toBe('exact');
+    } finally { cleanup(); }
+  });
+});

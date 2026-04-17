@@ -14,6 +14,16 @@ function longestCommonPrefix(a: string, b: string): string {
   while (i < max && a[i] === b[i]) i += 1;
   return a.slice(0, i);
 }
+
+function tokeniseForDedup(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      .filter((t) => t.length > 0),
+  );
+}
 import type { AgentEntity } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { EpisodicMemoryManager } from './EpisodicMemoryManager.js';
@@ -147,6 +157,8 @@ export class MemoryEngine {
     const recent = await this.getRecentSessionEntities(sessionId, this.cfg.dedupScanWindow);
     const t2 = this.checkTierPrefix(content, recent);
     if (t2.isDuplicate) return t2;
+    const t3 = this.checkTierJaccard(content, recent);
+    if (t3.isDuplicate) return t3;
     return { isDuplicate: false };
   }
 
@@ -188,6 +200,28 @@ export class MemoryEngine {
       const ratio = shared.length / Math.max(content.length, candidateContent.length);
       if (ratio >= this.cfg.prefixOverlapThreshold) {
         return { isDuplicate: true, match: candidate, tier: 'prefix' };
+      }
+    }
+    return { isDuplicate: false };
+  }
+
+  private checkTierJaccard(content: string, candidates: AgentEntity[]): DuplicateCheckResult {
+    const contentTokens = tokeniseForDedup(content);
+    if (contentTokens.size === 0) return { isDuplicate: false };
+
+    for (const candidate of candidates) {
+      const candidateContent = stripRolePrefix(candidate.observations[0] ?? '');
+      const candidateTokens = tokeniseForDedup(candidateContent);
+      if (candidateTokens.size === 0) continue;
+
+      let intersection = 0;
+      for (const token of contentTokens) {
+        if (candidateTokens.has(token)) intersection += 1;
+      }
+      const union = contentTokens.size + candidateTokens.size - intersection;
+      const jaccard = union === 0 ? 0 : intersection / union;
+      if (jaccard >= this.cfg.jaccardThreshold) {
+        return { isDuplicate: true, match: candidate, tier: 'jaccard' };
       }
     }
     return { isDuplicate: false };
