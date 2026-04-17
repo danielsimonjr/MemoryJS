@@ -152,6 +152,10 @@ export class MemoryEngine {
   }
 
   async checkDuplicate(content: string, sessionId: string): Promise<DuplicateCheckResult> {
+    if (this.cfg.semanticDedupEnabled && this.deps.semanticSearch) {
+      const ts = await this.checkTierSemantic(content, sessionId);
+      if (ts.isDuplicate) return ts;
+    }
     const t1 = await this.checkTierExact(content, sessionId);
     if (t1.isDuplicate) return t1;
     const recent = await this.getRecentSessionEntities(sessionId, this.cfg.dedupScanWindow);
@@ -159,6 +163,20 @@ export class MemoryEngine {
     if (t2.isDuplicate) return t2;
     const t3 = this.checkTierJaccard(content, recent);
     if (t3.isDuplicate) return t3;
+    return { isDuplicate: false };
+  }
+
+  private async checkTierSemantic(content: string, sessionId: string): Promise<DuplicateCheckResult> {
+    if (!this.deps.semanticSearch) return { isDuplicate: false };
+    const graph = await this.deps.storage.loadGraph();
+    const results = await this.deps.semanticSearch.search(graph, content, 5, this.cfg.semanticThreshold);
+    for (const hit of results) {
+      if (hit.similarity < this.cfg.semanticThreshold) continue;
+      const candidate = hit.entity as AgentEntity;
+      if (candidate.sessionId === sessionId) {
+        return { isDuplicate: true, match: candidate, tier: 'semantic' };
+      }
+    }
     return { isDuplicate: false };
   }
 

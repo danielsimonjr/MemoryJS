@@ -211,3 +211,65 @@ describe('MemoryEngine — checkDuplicate Tier 3 (Jaccard)', () => {
     } finally { cleanup(); }
   });
 });
+
+import type { SemanticSearch } from '../../../src/search/SemanticSearch.js';
+import type { Entity } from '../../../src/types/types.js';
+
+function stubSemanticSearch(topResult?: { entity: Entity; similarity: number }) {
+  return {
+    search: async () => (topResult ? [topResult] : []),
+  } as unknown as SemanticSearch;
+}
+
+describe('MemoryEngine — optional semantic tier', () => {
+  it('fires semantic tier as primary when enabled', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const seeded = await agent.episodicMemory.createEpisode('[role=user] what time is it', { sessionId: 'sess-A' });
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+        stubSemanticSearch({ entity: seeded, similarity: 0.95 }), null,
+        { semanticDedupEnabled: true, semanticThreshold: 0.9 },
+      );
+      const result = await engine.checkDuplicate('current time please', 'sess-A');
+      expect(result.isDuplicate).toBe(true);
+      expect(result.tier).toBe('semantic');
+    } finally { cleanup(); }
+  });
+
+  it('skips semantic tier when disabled', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const seeded = await agent.episodicMemory.createEpisode('[role=user] what time is it', { sessionId: 'sess-A' });
+      const spy = { called: 0 };
+      const wrapped = { search: async () => { spy.called += 1; return [{ entity: seeded, similarity: 0.99 }]; } } as unknown as SemanticSearch;
+
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+        wrapped, null, { semanticDedupEnabled: false },
+      );
+      await engine.checkDuplicate('current time please', 'sess-A');
+      expect(spy.called).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('ignores semantic tier match below threshold', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const seeded = await agent.episodicMemory.createEpisode('[role=user] hello', { sessionId: 'sess-A' });
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+        stubSemanticSearch({ entity: seeded, similarity: 0.5 }), null,
+        { semanticDedupEnabled: true, semanticThreshold: 0.9 },
+      );
+      const result = await engine.checkDuplicate('goodbye', 'sess-A');
+      expect(result.isDuplicate).toBe(false);
+    } finally { cleanup(); }
+  });
+});
