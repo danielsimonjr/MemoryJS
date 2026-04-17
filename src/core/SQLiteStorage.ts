@@ -295,10 +295,14 @@ export class SQLiteStorage implements IGraphStorage {
     if (!columnNames.has('supersededBy')) {
       this.db.exec('ALTER TABLE entities ADD COLUMN supersededBy TEXT');
     }
+    if (!columnNames.has('contentHash')) {
+      this.db.exec('ALTER TABLE entities ADD COLUMN contentHash TEXT');
+    }
 
     // Create indexes (idempotent)
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_isLatest ON entities(isLatest)`);
+    this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_content_hash ON entities(contentHash)`);
   }
 
   /**
