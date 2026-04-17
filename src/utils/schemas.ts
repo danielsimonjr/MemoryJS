@@ -96,6 +96,7 @@ export const EntitySchema = z.object({
   tags: z.array(tagSchema).optional(),
   importance: importanceSchema.optional(),
   parentId: entityNameSchema.optional(),
+  contentHash: z.string().length(64).optional(),
 }).strict();
 
 /**
@@ -119,6 +120,8 @@ export const CreateEntitySchema = z.object({
   rootEntityName: z.string().optional(),
   isLatest: z.boolean().optional(),
   supersededBy: z.string().optional(),
+  // v1.11.0: Memory Engine dedup
+  contentHash: z.string().length(64).optional(),
 }).strict();
 
 /**
@@ -135,6 +138,8 @@ export const UpdateEntitySchema = z.object({
   // v1.8.0: Memory versioning fields
   isLatest: z.boolean().optional(),
   supersededBy: z.string().optional(),
+  // v1.11.0: Memory Engine dedup
+  contentHash: z.string().length(64).optional(),
 }).strict();
 
 // ==================== Relation Schemas ====================

@@ -107,6 +107,15 @@ export interface Entity {
 
   /** Name of the entity that superseded this one. */
   supersededBy?: string;
+
+  // ==================== v1.11.0: Memory Engine ====================
+
+  /**
+   * SHA-256 of raw content (pre-role-prefix). Populated by MemoryEngine for
+   * conversation turns to enable O(1) Tier 1 exact-equality dedup. Other
+   * entity types leave this undefined.
+   */
+  contentHash?: string;
 }
 
 // ==================== Observation Deduplication Types ====================
