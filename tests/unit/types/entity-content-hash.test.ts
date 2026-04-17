@@ -32,4 +32,21 @@ describe('Entity.contentHash', () => {
     const result = EntitySchema.safeParse({ ...baseEntity, contentHash: 12345 });
     expect(result.success).toBe(false);
   });
+
+  it('rejects contentHash with wrong length (63 or 65 chars)', () => {
+    const tooShort = EntitySchema.safeParse({
+      name: 'test-entity',
+      entityType: 'conversation-turn',
+      observations: ['x'],
+      contentHash: 'a'.repeat(63),
+    });
+    const tooLong = EntitySchema.safeParse({
+      name: 'test-entity',
+      entityType: 'conversation-turn',
+      observations: ['x'],
+      contentHash: 'a'.repeat(65),
+    });
+    expect(tooShort.success).toBe(false);
+    expect(tooLong.success).toBe(false);
+  });
 });
