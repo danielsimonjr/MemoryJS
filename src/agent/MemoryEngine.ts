@@ -1,6 +1,13 @@
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 import type { IGraphStorage } from '../types/types.js';
+import type { AgentEntity } from '../types/agent-memory.js';
+import type { EntityManager } from '../core/EntityManager.js';
+import type { EpisodicMemoryManager } from './EpisodicMemoryManager.js';
+import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
+import type { SemanticSearch } from '../search/SemanticSearch.js';
+import type { EmbeddingService } from '../types/index.js';
+import type { ImportanceScorer } from './ImportanceScorer.js';
 
 const ROLE_PREFIX_RE = /^\[role=[a-z]+\]\s*/i;
 
@@ -24,13 +31,6 @@ function tokeniseForDedup(text: string): Set<string> {
       .filter((t) => t.length > 0),
   );
 }
-import type { AgentEntity } from '../types/agent-memory.js';
-import type { EntityManager } from '../core/EntityManager.js';
-import type { EpisodicMemoryManager } from './EpisodicMemoryManager.js';
-import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
-import type { SemanticSearch } from '../search/SemanticSearch.js';
-import type { EmbeddingService } from '../types/index.js';
-import type { ImportanceScorer } from './ImportanceScorer.js';
 
 export interface MemoryEngineConfig {
   jaccardThreshold?: number;
