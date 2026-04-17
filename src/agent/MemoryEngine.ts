@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { createHash } from 'node:crypto';
 import type { IGraphStorage } from '../types/types.js';
 import type { AgentEntity } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
@@ -127,8 +128,25 @@ export class MemoryEngine {
     throw new Error('Not implemented — Task 10');
   }
 
-  async checkDuplicate(_content: string, _sessionId: string): Promise<DuplicateCheckResult> {
-    throw new Error('Not implemented — Tasks 5–8');
+  async checkDuplicate(content: string, sessionId: string): Promise<DuplicateCheckResult> {
+    const t1 = await this.checkTierExact(content, sessionId);
+    if (t1.isDuplicate) return t1;
+    return { isDuplicate: false };
+  }
+
+  private computeContentHash(content: string): string {
+    return createHash('sha256').update(content).digest('hex');
+  }
+
+  private async checkTierExact(content: string, sessionId: string): Promise<DuplicateCheckResult> {
+    const hash = this.computeContentHash(content);
+    const graph = await this.deps.storage.loadGraph();
+    const candidates = graph.entities.filter(
+      (e) => (e as AgentEntity).contentHash === hash,
+    ) as AgentEntity[];
+    const match = candidates.find((e) => e.sessionId === sessionId);
+    if (match) return { isDuplicate: true, match, tier: 'exact' };
+    return { isDuplicate: false };
   }
 
   async deleteSession(_sessionId: string): Promise<{ deleted: number }> {
