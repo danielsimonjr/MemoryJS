@@ -13,6 +13,7 @@ import { randomBytes } from 'crypto';
 import * as path from 'path';
 import type { GraphEventEmitter } from './GraphEventEmitter.js';
 import type {
+  Entity,
   EntityCreatedEvent,
   EntityUpdatedEvent,
   EntityDeletedEvent,
@@ -322,12 +323,7 @@ export class TransitionLedger {
           entityId: event.entity.name,
           field: 'entity',
           from: null,
-          to: {
-            entityType: event.entity.entityType,
-            observations: event.entity.observations,
-            tags: event.entity.tags,
-            importance: event.entity.importance,
-          },
+          to: this.mapEntityState(event.entity),
         });
       })
     );
@@ -356,14 +352,7 @@ export class TransitionLedger {
         handleAppend({
           entityId: event.entityName,
           field: 'entity',
-          from: event.entity
-            ? {
-                entityType: event.entity.entityType,
-                observations: event.entity.observations,
-                tags: event.entity.tags,
-                importance: event.entity.importance,
-              }
-            : null,
+          from: event.entity ? this.mapEntityState(event.entity) : null,
           to: null,
         });
       })
@@ -431,6 +420,19 @@ export class TransitionLedger {
   }
 
   // ==================== Private Helpers ====================
+
+  /**
+   * Map entity state to a consistent audit format.
+   * Extracts only the core data fields to avoid metadata noise.
+   */
+  private mapEntityState(entity: Entity) {
+    return {
+      entityType: entity.entityType,
+      observations: entity.observations,
+      tags: entity.tags,
+      importance: entity.importance,
+    };
+  }
 
   /**
    * Deep equality check for transition values.
