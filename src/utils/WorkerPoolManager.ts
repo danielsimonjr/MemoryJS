@@ -46,6 +46,11 @@ export class WorkerPoolManager {
   private isShuttingDown = false;
   private shutdownRegistered = false;
 
+  private exitHandler: (() => void) | null = null;
+  private sigintHandler: (() => void) | null = null;
+  private sigtermHandler: (() => void) | null = null;
+  private uncaughtExceptionHandler: ((err: Error) => void) | null = null;
+
   private constructor() {
     this.registerShutdownHandlers();
   }
@@ -61,6 +66,7 @@ export class WorkerPoolManager {
   /** Reset the singleton instance (for testing). */
   static resetInstance(): void {
     if (WorkerPoolManager.instance) {
+      WorkerPoolManager.instance.unregisterShutdownHandlers();
       WorkerPoolManager.instance.shutdownAll().catch(() => {
         // Ignore errors during reset
       });
@@ -73,25 +79,47 @@ export class WorkerPoolManager {
     if (this.shutdownRegistered) return;
     this.shutdownRegistered = true;
 
-    const shutdownHandler = () => {
+    this.exitHandler = () => {
       if (!this.isShuttingDown) {
         this.shutdownAllSync();
       }
     };
 
-    // Register for various exit signals
-    process.on('exit', shutdownHandler);
-    process.on('SIGINT', () => {
+    this.sigintHandler = () => {
       this.shutdownAll().then(() => process.exit(0)).catch(() => process.exit(1));
-    });
-    process.on('SIGTERM', () => {
+    };
+
+    this.sigtermHandler = () => {
       this.shutdownAll().then(() => process.exit(0)).catch(() => process.exit(1));
-    });
-    process.on('uncaughtException', (err) => {
+    };
+
+    this.uncaughtExceptionHandler = (err: Error) => {
       console.error('Uncaught exception:', err.message);
       this.shutdownAllSync();
       process.exit(1);
-    });
+    };
+
+    // Register for various exit signals
+    process.on('exit', this.exitHandler);
+    process.on('SIGINT', this.sigintHandler);
+    process.on('SIGTERM', this.sigtermHandler);
+    process.on('uncaughtException', this.uncaughtExceptionHandler);
+  }
+
+  /** Unregister process exit handlers to prevent memory leaks during tests. */
+  private unregisterShutdownHandlers(): void {
+    if (!this.shutdownRegistered) return;
+    this.shutdownRegistered = false;
+
+    if (this.exitHandler) process.off('exit', this.exitHandler);
+    if (this.sigintHandler) process.off('SIGINT', this.sigintHandler);
+    if (this.sigtermHandler) process.off('SIGTERM', this.sigtermHandler);
+    if (this.uncaughtExceptionHandler) process.off('uncaughtException', this.uncaughtExceptionHandler);
+
+    this.exitHandler = null;
+    this.sigintHandler = null;
+    this.sigtermHandler = null;
+    this.uncaughtExceptionHandler = null;
   }
 
   /** Get or create a named worker pool. */
