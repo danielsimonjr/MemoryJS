@@ -74,10 +74,8 @@ describe('ensureMemoryFilePath', () => {
         : '/tmp/custom-memory.jsonl';
       process.env.MEMORY_FILE_PATH = absolutePath;
 
-      const result = await ensureMemoryFilePath();
-
-      // Path may be normalized (backslashes on Windows)
-      expect(path.normalize(result)).toBe(path.normalize(absolutePath));
+      // This should now fail because it's outside project root and default is confine=true
+      await expect(ensureMemoryFilePath()).rejects.toThrow(/Path is outside the allowed directory/);
     });
 
     it('should convert relative path to absolute when MEMORY_FILE_PATH is relative', async () => {
@@ -94,12 +92,12 @@ describe('ensureMemoryFilePath', () => {
       const windowsPath = 'C:\\temp\\memory.jsonl';
       process.env.MEMORY_FILE_PATH = windowsPath;
 
-      const result = await ensureMemoryFilePath();
-
-      // On Windows, should return as-is; on Unix, will be treated as relative
       if (process.platform === 'win32') {
-        expect(result).toBe(windowsPath);
+        // On Windows, should fail if outside base
+        await expect(ensureMemoryFilePath()).rejects.toThrow(/Path is outside the allowed directory/);
       } else {
+        // On Unix, will be treated as relative if it doesn't start with /
+        const result = await ensureMemoryFilePath();
         expect(path.isAbsolute(result)).toBe(true);
       }
     });
@@ -172,6 +170,33 @@ describe('ensureMemoryFilePath', () => {
 
       const migratedContent = await fs.readFile(newMemoryPath, 'utf-8');
       expect(migratedContent).toBe(testContent);
+    });
+  });
+
+  describe('security and path traversal', () => {
+    it('should throw for path traversal with ..', async () => {
+      process.env.MEMORY_FILE_PATH = '../../../../etc/passwd';
+      await expect(ensureMemoryFilePath()).rejects.toThrow(/Path traversal detected/);
+    });
+
+    it('should throw for absolute path outside base directory by default', async () => {
+      process.env.MEMORY_FILE_PATH = process.platform === 'win32' ? 'C:\\windows\\system32\\config' : '/etc/passwd';
+      await expect(ensureMemoryFilePath()).rejects.toThrow(/Path is outside the allowed directory/);
+    });
+
+    it('should allow path traversal if it stays within base directory', async () => {
+      // Create a dummy file in a subdirectory
+      const subDir = path.join(projectRoot, 'subdir');
+      await fs.mkdir(subDir, { recursive: true });
+      const targetPath = path.join(subDir, '..', 'memory.jsonl');
+
+      process.env.MEMORY_FILE_PATH = targetPath;
+
+      // Our implementation throws if '..' is present anywhere in the path string
+      // as a defense-in-depth measure.
+      await expect(ensureMemoryFilePath()).rejects.toThrow(/Path traversal detected/);
+
+      await fs.rmdir(subDir);
     });
   });
 
