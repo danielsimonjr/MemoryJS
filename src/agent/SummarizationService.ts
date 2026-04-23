@@ -256,18 +256,14 @@ export class SummarizationService {
    * @returns Array of summaries (one per group)
    */
   async summarizeGroups(groups: string[][]): Promise<string[]> {
-    const summaries: string[] = [];
-
-    for (const group of groups) {
-      if (group.length === 1) {
-        summaries.push(group[0]);
-      } else {
-        const summary = await this.summarize(group);
-        summaries.push(summary);
-      }
-    }
-
-    return summaries;
+    return Promise.all(
+      groups.map((group) => {
+        if (group.length === 1) {
+          return group[0];
+        }
+        return this.summarize(group);
+      })
+    );
   }
 
   // ==================== Configuration Access ====================
