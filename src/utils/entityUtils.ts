@@ -711,38 +711,39 @@ export function escapeCsvFormula(field: string | undefined | null): string {
  *
  * @param filePath - The file path to validate
  * @param baseDir - Optional base directory for relative paths (defaults to process.cwd())
+ * @param confineToBase - Whether to confine the resolved path to the base directory (defaults to true)
  * @returns Validated absolute file path
  * @throws {FileOperationError} If path traversal is detected or path is invalid
  *
  * @example
  * ```typescript
  * // Valid paths
- * validateFilePath('/var/data/memory.jsonl'); // Returns absolute path
+ * validateFilePath('/var/data/memory.jsonl', '/var/data', true); // Returns absolute path
  * validateFilePath('data/memory.jsonl'); // Returns absolute path from cwd
  *
  * // Invalid paths (throws FileOperationError)
  * validateFilePath('../../../etc/passwd'); // Path traversal detected
- * validateFilePath('/var/data/../../../etc/passwd'); // Path traversal detected
+ * validateFilePath('/var/data/../../../etc/passwd', '/var/data', true); // Path is outside the allowed directory
  * ```
  */
-export function validateFilePath(filePath: string, baseDir: string = process.cwd(), confineToBase: boolean = false): string {
-  // Normalize path to remove redundant separators and resolve . and ..
-  const normalized = path.normalize(filePath);
-
-  // Convert to absolute path
-  const absolute = path.isAbsolute(normalized)
-    ? normalized
-    : path.join(baseDir, normalized);
-
-  // After normalization, check if path still contains .. which would indicate
-  // traversal beyond the base directory
-  const finalNormalized = path.normalize(absolute);
-
-  // Split path into segments and check for suspicious patterns
-  const segments = finalNormalized.split(path.sep);
-  if (segments.includes('..')) {
+export function validateFilePath(filePath: string, baseDir: string = process.cwd(), confineToBase: boolean = true): string {
+  // Check for path traversal segments (..) before normalization or resolution
+  // This is a defense-in-depth measure as path.resolve/normalize will resolve these
+  if (filePath.split(/[/\\]/).includes('..')) {
     throw new FileOperationError(
       `Path traversal detected in file path: ${filePath}`,
+      filePath
+    );
+  }
+
+  // Resolve to an absolute path relative to baseDir
+  // Note: If filePath is already absolute, path.resolve will return it as-is
+  const finalNormalized = path.resolve(baseDir, filePath);
+
+  // Double-check for path traversal after resolution (extra safety)
+  if (finalNormalized.split(path.sep).includes('..')) {
+    throw new FileOperationError(
+      `Path traversal detected in file path after resolution: ${filePath}`,
       filePath
     );
   }
