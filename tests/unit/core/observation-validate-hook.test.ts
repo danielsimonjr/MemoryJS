@@ -70,6 +70,45 @@ describe('ObservationManager pre-storage validation hook (T31)', () => {
     expect(result[0].addedObservations).toEqual(['a brand new fact']);
   });
 
+  it('flag on: semantic-contradiction is advisory, not blocking (delegates to v1.8.0 supersede branch)', async () => {
+    // Critical contract from T17-style review of T31:
+    // when both T31 validator hook and v1.8.0 contradiction-detector
+    // hook are wired, the validator MUST NOT filter out
+    // semantic-contradiction observations — that's the supersede
+    // branch's job. The validator only blocks duplicates.
+    process.env.MEMORY_VALIDATE_ON_STORE = 'true';
+    const ctx = new ManagerContext(file);
+
+    // Synthesize a validator whose validateConsistency always reports
+    // a semantic-contradiction issue (we don't have an embedding
+    // backend to do it for real, but the contract is clear).
+    const fakeValidator = {
+      validateConsistency: async () => ({
+        isValid: false,
+        confidence: 0.7,
+        issues: [{ kind: 'semantic-contradiction' as const, message: 'simulated' }],
+        suggestions: ['supersede'],
+      }),
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ctx.observationManager.setMemoryValidator(fakeValidator as any);
+
+    await ctx.entityManager.createEntities([{
+      name: 'e1',
+      entityType: 'note',
+      observations: ['initial fact'],
+    }]);
+
+    // The observation should NOT be silently dropped — it should pass
+    // through the validator hook (advisory only) and reach the
+    // downstream supersede / append path.
+    const result = await ctx.observationManager.addObservations([
+      { entityName: 'e1', contents: ['contradicting fact'] },
+    ]);
+    expect(result[0].addedObservations.length).toBe(1);
+    expect(result[0].addedObservations[0]).toBe('contradicting fact');
+  });
+
   it('flag on without validator wired: addObservations still works (validator missing is non-blocking)', async () => {
     // Sanity: forgetting setMemoryValidator() shouldn't break the path.
     process.env.MEMORY_VALIDATE_ON_STORE = 'true';

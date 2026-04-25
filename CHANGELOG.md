@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-04-25
+
+### Fixed (Phase δ code-reviewer findings)
+
+- **Critical: T31 hook no longer silently disables v1.8.0 supersede branch.** Reviewer caught that filtering `semantic-contradiction` flagged observations at the validator hook would drop them before the existing supersede branch (which creates a proper version chain). Contract tightened: only `duplicate-observation` is now blocking at the validator layer; `semantic-contradiction` is advisory and falls through to the v1.8.0 supersede pipeline. Documented as the canonical contract in both `setMemoryValidator` JSDoc and the hook body. New test in `observation-validate-hook.test.ts` enforces the contract: a stub validator that flags every observation as a contradiction must still allow the observation through (where supersede / append handles it downstream).
+- **Lazy-provider wiring for `setMemoryValidator`.** Was eager (constructed validator at `ManagerContext` construction time, which broke the lazy-getter contract). Now accepts either an instance or a thunk; `ManagerContext` wires `() => this.memoryValidator` so the validator is built only on the first observation that exercises the hook. Side effect: runtime toggling of `MEMORY_VALIDATE_ON_STORE` now works in BOTH directions (was previously OFF-only at runtime).
+- **`mergeRedundant` `keep-newest` epoch fallback.** `Date.parse('0')` is timezone-dependent (V8 parses it as a local-time year-2000 date); replaced with a pinned `1970-01-01T00:00:00Z` fallback that matches `ConflictResolver.resolveMostRecent`'s convention. Also adds `createdAt` as a secondary fallback before the epoch.
+- **Type-collision aliases dropped.** `MemoryValidationResult` / `MemoryValidationIssue` / `TrajectoryMergeStrategy` are now the source-of-truth names exported directly from their modules (was previously aliased in the barrel — created a "two ways to import" pitfall). Old un-aliased names removed; barrel re-exports the canonical names.
+- **`repairWithResolver` parameterized.** `detectionMethod` (defaults `'similarity'`), `strategy` (overrides the 24h-delta heuristic), and `agents` (defaults empty Map) are now caller-controllable via an options object. Backwards compat: the previous positional-args call signature was reshaped, but the only call site in tests was updated in this commit.
+- **JSDoc caveats added.** `findRedundancies` and `clusterTrajectories` both document the greedy-single-link order-dependence — results depend on input order when an item could qualify for multiple seeds. Cohesion field surfaces the issue for downstream filtering.
+
 ### Added (Phase δ — closing T31, T32, T35)
 
 - **Pre-storage validation hook in `ObservationManager`** (T31, Phase δ.1) — opt-in via `MEMORY_VALIDATE_ON_STORE=true` env var. When enabled AND a `MemoryValidator` is wired through `setMemoryValidator(...)`, `addObservations` runs `validateConsistency` on each new observation against its target entity before persisting. Blocking issues (`semantic-contradiction` or `duplicate-observation`) cause the observation to be skipped with a `console.warn` listing the validator's suggestions. Default off — preserves backwards-compat. `ManagerContext` auto-wires when the env var was truthy at construction time. 3 unit tests in `tests/unit/core/observation-validate-hook.test.ts`.

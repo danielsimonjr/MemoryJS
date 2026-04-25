@@ -259,6 +259,18 @@ export class ExperienceExtractor {
    * embeddings — `semantic` and `structural` both use token-Jaccard
    * with different normalization; `outcome` simply groups by the
    * `Outcome` value.
+   *
+   * Algorithmic caveat (greedy single-link for semantic/structural):
+   * a trajectory is absorbed into the FIRST seed it overlaps with
+   * above the configured similarity threshold, regardless of whether
+   * a later seed would match more strongly. Results therefore depend
+   * on input ordering, and "chain" clusters (A↔B, B↔C, but A↔C far
+   * apart) can form under low thresholds. The `cohesion` field on
+   * each `TrajectoryCluster` surfaces this — downstream
+   * `synthesizeExperience` already passes cohesion through to
+   * `Experience.confidence`. For higher-quality clustering, a
+   * complete-link or union-find variant would be the natural
+   * extension.
    */
   async clusterTrajectories(
     trajectories: Trajectory[],

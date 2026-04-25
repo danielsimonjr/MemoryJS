@@ -256,8 +256,8 @@ export { SQLiteBackend, type SQLiteBackendOptions } from './SQLiteBackend.js';
 export {
   MemoryValidator,
   type MemoryValidatorConfig,
-  type ValidationResult as MemoryValidationResult,
-  type ValidationIssue as MemoryValidationIssue,
+  type MemoryValidationResult,
+  type MemoryValidationIssue,
   type Contradiction as MemoryValidatorContradiction,
 } from './MemoryValidator.js';
 
@@ -268,7 +268,7 @@ export {
   type CompressedMemory,
   type Granularity,
   type RedundancyGroup,
-  type MergeStrategy as TrajectoryMergeStrategy,
+  type TrajectoryMergeStrategy,
 } from './TrajectoryCompressor.js';
 
 export {

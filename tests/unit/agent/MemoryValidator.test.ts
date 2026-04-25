@@ -122,7 +122,7 @@ describe('MemoryValidator.repairWithResolver', () => {
     const newer = makeEntity({ name: 'new', confidence: 0.9 }) as AgentEntity;
     newer.lastModified = new Date().toISOString();
 
-    const result = await validator.repairWithResolver(older, newer, resolver, { similarity: 0.92 });
+    const result = await validator.repairWithResolver(older, newer, resolver, { contradiction: { similarity: 0.92 } });
     // 1-week age delta → most_recent strategy → newer wins.
     expect(result.name).toBe('new');
   });
@@ -139,7 +139,7 @@ describe('MemoryValidator.repairWithResolver', () => {
     const highConf = makeEntity({ name: 'high', confidence: 0.95 }) as AgentEntity;
     highConf.lastModified = t;
 
-    const result = await validator.repairWithResolver(lowConf, highConf, resolver, { similarity: 0.88 });
+    const result = await validator.repairWithResolver(lowConf, highConf, resolver, { contradiction: { similarity: 0.88 } });
     expect(result.name).toBe('high');
   });
 });

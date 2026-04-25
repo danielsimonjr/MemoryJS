@@ -20,13 +20,15 @@
  */
 
 import type { Entity } from '../types/types.js';
-import type { AgentEntity, AgentMetadata } from '../types/agent-memory.js';
+import type { AgentEntity, AgentMetadata, ConflictStrategy } from '../types/agent-memory.js';
 import type { ContradictionDetector, Contradiction as DetectorContradiction } from '../features/ContradictionDetector.js';
 import type { ConflictResolver } from './ConflictResolver.js';
 
 /** Per-issue annotation produced by `validateConsistency` /
- * `validateTemporalOrder`. */
-export interface ValidationIssue {
+ * `validateTemporalOrder`. Named `MemoryValidationIssue` to avoid
+ * collision with the existing `ValidationIssue` re-exported under
+ * `src/types/`. */
+export interface MemoryValidationIssue {
   /** Stable kind identifier — useful for filtering in higher layers. */
   kind: 'semantic-contradiction' | 'temporal-disorder' | 'duplicate-observation' | 'low-confidence';
   /** Human-readable description (no localization yet). */
@@ -37,13 +39,15 @@ export interface ValidationIssue {
 
 /** Composite result returned by the `validate*` methods. Distinct from
  * the existing `ContradictionDetector.Contradiction` shape because it
- * spans multiple issue kinds, not just semantic similarity hits. */
-export interface ValidationResult {
+ * spans multiple issue kinds, not just semantic similarity hits. Named
+ * `MemoryValidationResult` to avoid collision with the existing
+ * `MemoryValidationResult` re-exported under `src/utils/`. */
+export interface MemoryValidationResult {
   isValid: boolean;
   /** Confidence in the validation itself (0-1). Reflects how certain we
    * are about the verdict, separate from the entity's own confidence. */
   confidence: number;
-  issues: ValidationIssue[];
+  issues: MemoryValidationIssue[];
   /** Plain-text follow-up actions a higher-level orchestrator might apply
    * (e.g., "drop observation X", "re-confirm with user"). */
   suggestions: string[];
@@ -87,8 +91,8 @@ export class MemoryValidator {
   async validateConsistency(
     newObservation: string,
     existing: Entity,
-  ): Promise<ValidationResult> {
-    const issues: ValidationIssue[] = [];
+  ): Promise<MemoryValidationResult> {
+    const issues: MemoryValidationIssue[] = [];
     const suggestions: string[] = [];
 
     // Duplicate check (cheap; do first).
@@ -202,24 +206,35 @@ export class MemoryValidator {
     entity: AgentEntity,
     competing: AgentEntity,
     resolver: ConflictResolver,
-    contradiction?: { similarity?: number },
-    agents: Map<string, AgentMetadata> = new Map(),
+    options: {
+      contradiction?: { similarity?: number };
+      detectionMethod?: 'similarity' | 'negation' | 'manual';
+      strategy?: ConflictStrategy;
+      agents?: Map<string, AgentMetadata>;
+    } = {},
   ): Promise<AgentEntity> {
-    const sim = contradiction?.similarity ?? 0.85;
+    const sim = options.contradiction?.similarity ?? 0.85;
+    const detectionMethod = options.detectionMethod ?? 'similarity';
+    const agents = options.agents ?? new Map<string, AgentMetadata>();
+
     // Pick a sensible default strategy based on observable signal
     // (newest wins when timestamps are far apart; highest-confidence
-    // otherwise). Caller can override by setting up a default on the
-    // resolver itself.
-    const aTs = entity.lastModified ? Date.parse(entity.lastModified) : 0;
-    const bTs = competing.lastModified ? Date.parse(competing.lastModified) : 0;
-    const ageDeltaSeconds = Math.abs(aTs - bTs) / 1000;
-    const suggestedStrategy = ageDeltaSeconds > 60 * 60 * 24 ? 'most_recent' : 'highest_confidence';
+    // otherwise). Caller overrides via `options.strategy`.
+    let suggestedStrategy: ConflictStrategy;
+    if (options.strategy) {
+      suggestedStrategy = options.strategy;
+    } else {
+      const aTs = entity.lastModified ? Date.parse(entity.lastModified) : 0;
+      const bTs = competing.lastModified ? Date.parse(competing.lastModified) : 0;
+      const ageDeltaSeconds = Math.abs(aTs - bTs) / 1000;
+      suggestedStrategy = ageDeltaSeconds > 60 * 60 * 24 ? 'most_recent' : 'highest_confidence';
+    }
 
     const result = resolver.resolveConflict(
       {
         primaryMemory: entity.name,
         conflictingMemories: [competing.name],
-        detectionMethod: 'similarity',
+        detectionMethod,
         similarityScore: sim,
         suggestedStrategy,
         detectedAt: new Date().toISOString(),
@@ -238,8 +253,8 @@ export class MemoryValidator {
    *
    * Synchronous (no I/O); the spec method is sync.
    */
-  validateTemporalOrder(observations: string[]): ValidationResult {
-    const issues: ValidationIssue[] = [];
+  validateTemporalOrder(observations: string[]): MemoryValidationResult {
+    const issues: MemoryValidationIssue[] = [];
     const stamped: Array<{ idx: number; ts: number; obs: string }> = [];
     for (let i = 0; i < observations.length; i += 1) {
       const m = observations[i].match(/\[T=([^\]]+)\]/);

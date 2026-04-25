@@ -62,7 +62,9 @@ export interface RedundancyGroup {
   avgSimilarity: number;
 }
 
-export type MergeStrategy =
+/** Named `TrajectoryMergeStrategy` to avoid collision with the existing
+ * `MergeStrategy` re-exported under `src/features/`. */
+export type TrajectoryMergeStrategy =
   | 'keep-newest'
   | 'keep-most-confident'
   | 'union-observations';
@@ -200,6 +202,12 @@ export class TrajectoryCompressor {
    * exceeds the configured threshold. O(n²) pairwise; suitable for
    * graphs up to ~1k entities — beyond that, a candidate-blocking
    * pass on tags/projectId would be the natural extension.
+   *
+   * Algorithmic caveat (greedy single-link): an entity is absorbed
+   * into the FIRST seed it overlaps with above threshold; results
+   * therefore depend on input ordering when an entity would qualify
+   * for multiple seeds. For correctness-critical clustering, use
+   * union-find or complete-link clustering instead.
    */
   async findRedundancies(entities: Entity[]): Promise<RedundancyGroup[]> {
     const groups: RedundancyGroup[] = [];
@@ -242,7 +250,7 @@ export class TrajectoryCompressor {
    * `EntityManager.deleteEntities(...)` + `createEntity(merged)` dance
    * if they want the change durable.
    */
-  async mergeRedundant(group: RedundancyGroup, strategy: MergeStrategy): Promise<Entity> {
+  async mergeRedundant(group: RedundancyGroup, strategy: TrajectoryMergeStrategy): Promise<Entity> {
     if (group.entities.length === 0) {
       throw new Error('TrajectoryCompressor.mergeRedundant: empty group');
     }
@@ -250,9 +258,16 @@ export class TrajectoryCompressor {
     let canonical: Entity;
     switch (strategy) {
       case 'keep-newest':
-        canonical = group.entities.reduce((acc, e) =>
-          (Date.parse(e.lastModified ?? '0') > Date.parse(acc.lastModified ?? '0')) ? e : acc,
-        );
+        canonical = group.entities.reduce((acc, e) => {
+          // Match ConflictResolver.resolveMostRecent's epoch fallback so
+          // both keep-newest implementations agree on missing-timestamp
+          // semantics. `Date.parse('0')` is timezone-dependent (V8 parses
+          // it as a year-2000 local-time date), so use a pinned epoch.
+          const epoch = '1970-01-01T00:00:00Z';
+          const accT = Date.parse(acc.lastModified ?? acc.createdAt ?? epoch);
+          const eT = Date.parse(e.lastModified ?? e.createdAt ?? epoch);
+          return Number.isFinite(eT) && eT > (Number.isFinite(accT) ? accT : 0) ? e : acc;
+        });
         break;
       case 'keep-most-confident':
         canonical = group.entities.reduce((acc, e) => {

@@ -153,13 +153,12 @@ export class ManagerContext {
       this.initContradictionDetection(opts.contradictionThreshold);
     }
 
-    // Wire pre-storage validation hook when MEMORY_VALIDATE_ON_STORE is set.
-    // The hook itself reads the env var on every call so toggling at runtime
-    // works; we register the validator unconditionally when the flag was
-    // truthy at construction time so the wiring is in place if needed.
-    if (process.env.MEMORY_VALIDATE_ON_STORE === 'true') {
-      this.observationManager.setMemoryValidator(this.memoryValidator);
-    }
+    // Wire the pre-storage validator hook unconditionally as a lazy
+    // provider thunk. The hook re-reads `MEMORY_VALIDATE_ON_STORE` on
+    // every call so runtime toggling (ON→OFF and OFF→ON) works without
+    // re-construction; the validator object itself is constructed only
+    // on first call with the flag enabled.
+    this.observationManager.setMemoryValidator(() => this.memoryValidator);
   }
 
   /**
