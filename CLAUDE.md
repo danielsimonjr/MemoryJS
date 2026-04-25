@@ -88,6 +88,7 @@ ctx.procedureManager    // 3B.4 Procedural Memory (executable procedures)
 ctx.causalReasoner      // 3B.6 Causal Reasoning (findCauses/findEffects/counterfactual)
 ctx.roleAssignmentStore // η.6.1 RBAC role grants registry
 ctx.rbacMiddleware      // η.6.1 RBAC policy (checkPermission)
+ctx.worldModelManager   // 3B.7 World Model orchestrator (snapshots + diff)
 ```
 
 **v1.9.0 Additions:**

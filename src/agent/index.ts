@@ -293,6 +293,15 @@ export {
   type CollaborationAuditEnforcerOptions,
 } from './collaboration/CollaborationAuditEnforcer.js';
 
+// 3B.7 World Model
+export {
+  WorldStateSnapshot,
+  WorldModelManager,
+  type WorldStateEntity,
+  type WorldStateChange,
+  type WorldModelManagerOptions,
+} from './world/index.js';
+
 // 3B.4 Procedural Memory
 export {
   ProcedureManager,

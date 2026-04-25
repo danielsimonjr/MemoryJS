@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 3B.7 — World Model)
+
+Orchestrator that composes existing services into a single facade for "what does the agent think the world looks like?" New module: `src/agent/world/`.
+
+- **`WorldStateSnapshot`** — immutable value object. `entitiesByName: ReadonlyMap<string, WorldStateEntity>`, `takenAt: ISO8601`. Each `WorldStateEntity` carries `{ name, entityType, importance?, confidence?, observationCount, tags, lastModified? }` — only the fields that drive change detection.
+- **`snapshot.diffTo(next)`** — pure: returns `{ removed[], added[], modified[] }`. `modified[i].fields` lists the differing field names. Tag comparison is set-based (order-insensitive).
+- **`snapshot.toJSON()` / `WorldStateSnapshot.fromJSON()`** — JSON serialization roundtrip.
+- **`WorldModelManager`** — composer.
+  - `getCurrentState()` — fresh snapshot from the live graph; capped at `maxSnapshotSize` (default 1000); over-cap, prefers high-importance entities.
+  - `validateFact(observation, entityName)` — delegates to `MemoryValidator.validateConsistency` if wired, returns `null` otherwise (caller must distinguish "not checked" from "passed").
+  - `predictOutcome(actionEntity, candidates)` — delegates to `CausalReasoner.findEffects` if wired, returns `[]` otherwise.
+  - `detectStateChange(before, after)` — direct passthrough to `WorldStateSnapshot.diffTo`.
+- **`ctx.worldModelManager`** — new lazy getter on `ManagerContext`. Wires `entityManager`, `causalReasoner`, and `memoryValidator` automatically.
+
+13 new tests in `tests/unit/agent/WorldModel.test.ts`. Closes T62 sub-section 3B.7 — only 3B.5 (Active Retrieval) remains in the 3B.4-3B.7 cluster.
+
 ### Added (`ManagerContext` lazy getters for new managers)
 
 Four new managers shipped this round are now reachable from the public `ManagerContext` facade:

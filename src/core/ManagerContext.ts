@@ -61,6 +61,7 @@ import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
 import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
 import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
+import { WorldModelManager } from '../agent/world/WorldModelManager.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -118,6 +119,7 @@ export class ManagerContext {
   private _causalReasoner?: CausalReasoner;
   private _rbacMiddleware?: RbacMiddleware;
   private _roleAssignmentStore?: RoleAssignmentStore;
+  private _worldModelManager?: WorldModelManager;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -487,6 +489,25 @@ export class ManagerContext {
       this._rbacMiddleware = new RbacMiddleware(this.roleAssignmentStore);
     }
     return this._rbacMiddleware;
+  }
+
+  /**
+   * `WorldModelManager` (3B.7) — orchestrator that composes
+   * `causalReasoner`, `memoryValidator`, and `entityManager` into a
+   * single facade for `getCurrentState` / `validateFact` /
+   * `predictOutcome` / `detectStateChange`. Lazy. Causal and validator
+   * dependencies are passed through; methods that need them gracefully
+   * return null/empty when they're not configured.
+   */
+  get worldModelManager(): WorldModelManager {
+    if (!this._worldModelManager) {
+      this._worldModelManager = new WorldModelManager(
+        this.entityManager,
+        this.causalReasoner,
+        this.memoryValidator,
+      );
+    }
+    return this._worldModelManager;
   }
 
   /**
