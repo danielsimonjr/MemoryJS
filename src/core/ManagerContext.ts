@@ -57,6 +57,10 @@ import { MemoryValidator } from '../agent/MemoryValidator.js';
 import { TrajectoryCompressor } from '../agent/TrajectoryCompressor.js';
 import { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
+import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
+import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
+import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
+import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -110,6 +114,10 @@ export class ManagerContext {
   private _trajectoryCompressor?: TrajectoryCompressor;
   private _experienceExtractor?: ExperienceExtractor;
   private _patternDetector?: PatternDetector;
+  private _procedureManager?: ProcedureManager;
+  private _causalReasoner?: CausalReasoner;
+  private _rbacMiddleware?: RbacMiddleware;
+  private _roleAssignmentStore?: RoleAssignmentStore;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -432,6 +440,53 @@ export class ManagerContext {
       this._patternDetector = new PatternDetector();
     }
     return this._patternDetector;
+  }
+
+  /**
+   * `ProcedureManager` (3B.4) — first-class executable procedures.
+   * Lazy. Composes `EntityManager` (persists procedures as
+   * `entityType: 'procedure'`).
+   */
+  get procedureManager(): ProcedureManager {
+    if (!this._procedureManager) {
+      this._procedureManager = new ProcedureManager(this.entityManager);
+    }
+    return this._procedureManager;
+  }
+
+  /**
+   * `CausalReasoner` (3B.6) — symbolic forward / backward / counter-
+   * factual inference over the causal subgraph. Wraps `GraphTraversal`.
+   * Lazy.
+   */
+  get causalReasoner(): CausalReasoner {
+    if (!this._causalReasoner) {
+      this._causalReasoner = new CausalReasoner(this.graphTraversal);
+    }
+    return this._causalReasoner;
+  }
+
+  /**
+   * `RoleAssignmentStore` (η.6.1) — registry of role grants per agent.
+   * Lazy. In-memory only by default; configure persistence via the
+   * direct constructor if a JSONL sidecar is wanted.
+   */
+  get roleAssignmentStore(): RoleAssignmentStore {
+    if (!this._roleAssignmentStore) {
+      this._roleAssignmentStore = new RoleAssignmentStore();
+    }
+    return this._roleAssignmentStore;
+  }
+
+  /**
+   * `RbacMiddleware` (η.6.1) — `RbacPolicy` impl. Backed by the lazy
+   * `roleAssignmentStore`. Lazy.
+   */
+  get rbacMiddleware(): RbacMiddleware {
+    if (!this._rbacMiddleware) {
+      this._rbacMiddleware = new RbacMiddleware(this.roleAssignmentStore);
+    }
+    return this._rbacMiddleware;
   }
 
   /**

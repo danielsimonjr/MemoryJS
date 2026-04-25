@@ -84,6 +84,10 @@ ctx.refIndex            // Named reference index for O(1) entity lookup
 ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
 ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider)
 ctx.agentMemory()       // Agent Memory System facade
+ctx.procedureManager    // 3B.4 Procedural Memory (executable procedures)
+ctx.causalReasoner      // 3B.6 Causal Reasoning (findCauses/findEffects/counterfactual)
+ctx.roleAssignmentStore // η.6.1 RBAC role grants registry
+ctx.rbacMiddleware      // η.6.1 RBAC policy (checkPermission)
 ```
 
 **v1.9.0 Additions:**

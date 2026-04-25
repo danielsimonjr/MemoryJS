@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (`ManagerContext` lazy getters for new managers)
+
+Four new managers shipped this round are now reachable from the public `ManagerContext` facade:
+
+- `ctx.procedureManager` — `ProcedureManager` (3B.4) backed by `ctx.entityManager`.
+- `ctx.causalReasoner` — `CausalReasoner` (3B.6) backed by `ctx.graphTraversal`.
+- `ctx.roleAssignmentStore` — `RoleAssignmentStore` (η.6.1), in-memory only by default.
+- `ctx.rbacMiddleware` — `RbacMiddleware` (η.6.1), backed by `ctx.roleAssignmentStore`.
+
+All four follow the existing lazy-getter pattern: same instance returned on re-access; constructed on first call. They depend only on stable core managers (entity, graphTraversal) — no `agentMemory()` reset is needed when the agent-memory facade is reconstructed.
+
+6 new wiring tests in `tests/unit/core/manager-context-new-managers.test.ts`.
+
 ### Added (Phase 3B.4 — Procedural Memory)
 
 First-class executable-procedure storage and execution. Distinct from semantic facts (what's true) and episodic events (what happened) — procedures are *how* to do things. New module: `src/agent/procedural/` + types in `src/types/procedure.ts`.
