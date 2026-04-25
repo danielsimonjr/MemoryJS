@@ -234,6 +234,35 @@ export interface AgentEntity extends Entity {
   visibility: MemoryVisibility;
   /** Provenance tracking for memory origin */
   source?: MemorySource;
+
+  // === η.5.5.b: Visibility hierarchy expansion ===
+
+  /**
+   * Optional role gate. When set, requesting agents whose
+   * `AgentMetadata.role` is NOT in this list are denied access — even
+   * if the visibility level would otherwise grant it. AND-combined with
+   * the level check; this tightens, never widens.
+   *
+   * Free-form strings; aligns with the five built-in `RoleProfiles`
+   * (`researcher`/`planner`/`executor`/`reviewer`/`coordinator`) but
+   * accepts any caller-defined role.
+   */
+  allowedRoles?: string[];
+
+  /**
+   * ISO 8601 — memory becomes visible at this instant. Absent ⇒ visible
+   * since creation. Evaluated FIRST in the resolver, before owner/level
+   * rules: a memory whose `visibleFrom` is in the future is unreachable
+   * even by its owner until then.
+   */
+  visibleFrom?: string;
+
+  /**
+   * ISO 8601 — memory stops being visible at this instant. Absent ⇒
+   * visible indefinitely. Useful for shared drafts that should expire on
+   * a known handoff date — the entity is still stored, just hidden after.
+   */
+  visibleUntil?: string;
 }
 
 // ==================== Agent Observation Types ====================
@@ -1227,4 +1256,12 @@ export interface AgentMetadata {
    * percentages tuned for the agent's functional role.
    */
   roleProfile?: import('../agent/RoleProfiles.js').RoleProfile;
+  /**
+   * Free-form role string used by `VisibilityResolver` for `allowedRoles`
+   * predicate checks (η.5.5.b). Distinct from `roleProfile` (which is the
+   * built-in salience-tuning profile); a single agent can have a
+   * `roleProfile: 'researcher'` while bearing `role: 'admin'` for
+   * visibility purposes.
+   */
+  role?: string;
 }

@@ -306,4 +306,156 @@ describe('VisibilityResolver', () => {
       expect(resolver.canAccess(memoryA, 'agent_c', metaC, metaA)).toBe(false);
     });
   });
+
+  // ==================== η.5.5.b: Visibility Hierarchy Expansion ====================
+
+  describe('η.5.5.b time-window gate', () => {
+    const resolver = new VisibilityResolver();
+
+    it('denies access before visibleFrom — even to the owner', () => {
+      const memory = makeMemory('agent_a', 'public', {
+        visibleFrom: '2026-06-01T00:00:00Z',
+      });
+      const ownerMeta = makeMeta('A');
+      const allowed = resolver.canAccess(
+        memory, 'agent_a', ownerMeta, ownerMeta, '2026-01-01T00:00:00Z',
+      );
+      expect(allowed).toBe(false);
+    });
+
+    it('allows access when current time is inside the window', () => {
+      const memory = makeMemory('agent_a', 'public', {
+        visibleFrom: '2024-01-01T00:00:00Z',
+        visibleUntil: '2026-12-31T00:00:00Z',
+      });
+      const ownerMeta = makeMeta('A');
+      const allowed = resolver.canAccess(
+        memory, 'agent_b', undefined, ownerMeta, '2025-06-15T00:00:00Z',
+      );
+      expect(allowed).toBe(true);
+    });
+
+    it('denies access after visibleUntil — including to the owner', () => {
+      const memory = makeMemory('agent_a', 'public', {
+        visibleUntil: '2024-12-31T00:00:00Z',
+      });
+      const ownerMeta = makeMeta('A');
+      const allowed = resolver.canAccess(
+        memory, 'agent_a', ownerMeta, ownerMeta, '2025-06-15T00:00:00Z',
+      );
+      expect(allowed).toBe(false);
+    });
+
+    it('treats absent visibleFrom/visibleUntil as unbounded (current behaviour preserved)', () => {
+      const memory = makeMemory('agent_a', 'public');
+      const ownerMeta = makeMeta('A');
+      const allowed = resolver.canAccess(
+        memory, 'agent_b', undefined, ownerMeta, '2099-01-01T00:00:00Z',
+      );
+      expect(allowed).toBe(true);
+    });
+  });
+
+  describe('η.5.5.b allowedRoles predicate', () => {
+    const resolver = new VisibilityResolver();
+
+    it('grants access when requesting agent role is in allowedRoles', () => {
+      const memory = makeMemory('agent_a', 'shared', {
+        allowedRoles: ['admin', 'reviewer'],
+      });
+      const ownerMeta = makeMeta('A');
+      const reviewer = makeMeta('B', undefined, undefined, { role: 'reviewer' });
+      expect(resolver.canAccess(memory, 'agent_b', reviewer, ownerMeta)).toBe(true);
+    });
+
+    it('denies access when requesting agent role is NOT in allowedRoles', () => {
+      const memory = makeMemory('agent_a', 'shared', {
+        allowedRoles: ['admin'],
+      });
+      const ownerMeta = makeMeta('A');
+      const reader = makeMeta('B', undefined, undefined, { role: 'reader' });
+      expect(resolver.canAccess(memory, 'agent_b', reader, ownerMeta)).toBe(false);
+    });
+
+    it('denies access when requesting agent has no role at all', () => {
+      const memory = makeMemory('agent_a', 'shared', {
+        allowedRoles: ['admin'],
+      });
+      const ownerMeta = makeMeta('A');
+      const noRole = makeMeta('B'); // no role field
+      expect(resolver.canAccess(memory, 'agent_b', noRole, ownerMeta)).toBe(false);
+    });
+
+    it('tightens, never widens — a private memory with allowedRoles is still private to others', () => {
+      // INVARIANT: allowedRoles can only narrow access. A 'private' memory
+      // remains inaccessible to non-owners even if their role matches.
+      const memory = makeMemory('agent_a', 'private', {
+        allowedRoles: ['admin'],
+      });
+      const ownerMeta = makeMeta('A');
+      const admin = makeMeta('B', undefined, undefined, { role: 'admin' });
+      expect(resolver.canAccess(memory, 'agent_b', admin, ownerMeta)).toBe(false);
+    });
+
+    it('does not gate the owner — owner access is independent of allowedRoles', () => {
+      const memory = makeMemory('agent_a', 'shared', {
+        allowedRoles: ['nobody'], // owner's role is not in the list
+      });
+      const ownerMeta = makeMeta('A', undefined, undefined, { role: 'creator' });
+      // INVARIANT: an agent never locks itself out of its own data.
+      expect(resolver.canAccess(memory, 'agent_a', ownerMeta, ownerMeta)).toBe(true);
+    });
+
+    it('an empty allowedRoles list is treated as no gate (matches absent field)', () => {
+      const memory = makeMemory('agent_a', 'shared', { allowedRoles: [] });
+      const ownerMeta = makeMeta('A');
+      const reader = makeMeta('B', undefined, undefined, { role: 'reader' });
+      expect(resolver.canAccess(memory, 'agent_b', reader, ownerMeta)).toBe(true);
+    });
+  });
+
+  describe('η.5.5.b time-window AND role gate composition', () => {
+    const resolver = new VisibilityResolver();
+
+    it('denies when time-window passes but role gate fails', () => {
+      const memory = makeMemory('agent_a', 'shared', {
+        visibleFrom: '2024-01-01T00:00:00Z',
+        visibleUntil: '2026-12-31T00:00:00Z',
+        allowedRoles: ['admin'],
+      });
+      const ownerMeta = makeMeta('A');
+      const reader = makeMeta('B', undefined, undefined, { role: 'reader' });
+      const allowed = resolver.canAccess(
+        memory, 'agent_b', reader, ownerMeta, '2025-06-15T00:00:00Z',
+      );
+      expect(allowed).toBe(false);
+    });
+
+    it('denies when role gate would pass but time-window fails', () => {
+      const memory = makeMemory('agent_a', 'shared', {
+        visibleUntil: '2024-12-31T00:00:00Z',
+        allowedRoles: ['admin'],
+      });
+      const ownerMeta = makeMeta('A');
+      const admin = makeMeta('B', undefined, undefined, { role: 'admin' });
+      const allowed = resolver.canAccess(
+        memory, 'agent_b', admin, ownerMeta, '2025-06-15T00:00:00Z',
+      );
+      expect(allowed).toBe(false);
+    });
+
+    it('grants when both gates pass', () => {
+      const memory = makeMemory('agent_a', 'shared', {
+        visibleFrom: '2024-01-01T00:00:00Z',
+        visibleUntil: '2026-12-31T00:00:00Z',
+        allowedRoles: ['admin'],
+      });
+      const ownerMeta = makeMeta('A');
+      const admin = makeMeta('B', undefined, undefined, { role: 'admin' });
+      const allowed = resolver.canAccess(
+        memory, 'agent_b', admin, ownerMeta, '2025-06-15T00:00:00Z',
+      );
+      expect(allowed).toBe(true);
+    });
+  });
 });

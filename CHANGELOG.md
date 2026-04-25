@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase η.5.5.b — Visibility Hierarchy Expansion)
+
+`VisibilityResolver` gains two AND-combined gates beyond the five-tier visibility model:
+
+- **Time-window gate** (evaluated FIRST, before owner/level rules):
+  - `AgentEntity.visibleFrom?: string` — ISO 8601 — memory becomes visible at this instant. Absent ⇒ visible since creation.
+  - `AgentEntity.visibleUntil?: string` — memory stops being visible at this instant. Absent ⇒ visible indefinitely. Useful for shared drafts that should expire on a known handoff date — the entity is still stored, just hidden after.
+  - **Denies even the owner** when current time is outside the window. (Rationale: a "draft until 2026-12-31" should not be readable by anyone after that date, including its author. This is the unusual-but-correct behavior; documented in JSDoc.)
+
+- **Role predicate** (evaluated AFTER level check, AND-combined):
+  - `AgentEntity.allowedRoles?: string[]` — when set, the requesting agent's `AgentMetadata.role` (new field) must appear in the list. Tightens, never widens.
+  - **Owner exempt** — an agent never locks itself out of its own data, even if its role isn't in the list.
+  - Empty array ⇒ no gate (matches absent field).
+  - Free-form role strings; aligns with built-in `RoleProfiles` but accepts any caller value.
+
+- New `AgentMetadata.role?: string` — distinct from `roleProfile` (which tunes salience weights); a single agent can have `roleProfile: 'researcher'` while bearing `role: 'admin'` for visibility.
+
+- `canAccess()` accepts an optional `now?: string` parameter for evaluating access at a hypothetical time (mainly for tests).
+
+14 new tests in `tests/unit/agent/VisibilityResolver.test.ts` (46 total).
+
+Closes T60 sub-feature 5.5.b. Plan: [`2026-04-25-eta-collaboration.md`](docs/superpowers/plans/2026-04-25-eta-collaboration.md). Sub-features 5.5.a/c/d remain (no-deps); 5.5.e (CRDT) gated.
+
 ### Added (Phase η.4.4 — Temporal Versioning expansion)
 
 Lifts the v1.9.0 `RelationManager` temporal surface (`invalidateRelation` / `queryAsOf` / `timeline`) to entities and observations. Orthogonal to v1.8.0 supersession (which answers "which version is current?"); temporal validity answers "was this true at time T?".
