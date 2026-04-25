@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase η.5.5.a — Multi-Agent Conflict View on `CollaborativeSynthesis`)
+
+`SynthesisResult` gains a `conflicts: ConflictView[]` field. After BFS-traversing neighbors and salience-scoring them, the synthesizer groups by *logical entity identity* (`rootEntityName`, falling back to `name`) and reports any group containing 2+ candidates from distinct `agentId`s as a conflict.
+
+- **`ConflictView`** — `{ entityName, candidates[], recommendedWinner }`. Each candidate carries `{ agentId, entity, score }` where `score = (confidence ?? 0.5) × salienceScore`. `recommendedWinner` is the highest-scored agentId (advisory).
+- **`CollaborativeSynthesis.resolveConflicts(result, policy)`** — pure function returning a `Map<entityName, AgentEntity>` of winners per the supplied policy. Does not mutate the synthesis result or persist anything; callers feed winners back through their write path.
+- **Four resolution policies**: `most_recent` (latest `lastModified`), `highest_confidence`, `highest_score` (the recommendation), `trusted_agent` (named agent wins if present, else fallback to `highest_score`).
+- **Skips entities with no `agentId`** — they can't participate in multi-agent conflict (no attribution to disagree with). A single-agent version chain (multiple versions, same author) is also NOT a conflict.
+
+11 new tests (28 total) in `tests/unit/agent/CollaborativeSynthesis.test.ts`. All 1370 agent unit tests pass. Closes T60 sub-feature 5.5.a — every no-deps subset of η.5.5 (b/c/d/a) is now shipped; only 5.5.e (CRDT, gated) remains.
+
 ### Added (Phase η.5.5.d — Audit Attribution Enforcer)
 
 - **`CollaborationAuditEnforcer`** (`src/agent/collaboration/`) — thin proxy over `EntityManager` that forces every mutation to carry an `agentId` and appends an `AuditLog` entry on success.

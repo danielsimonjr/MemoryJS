@@ -27,6 +27,48 @@ export interface CollaborativeSynthesisConfig {
 }
 
 /**
+ * A single multi-agent conflict surfaced during synthesis (η.5.5.a).
+ *
+ * Each ConflictView represents a group of entities that share the same
+ * `rootEntityName` (or `name` when there is no v1.8.0 supersession chain)
+ * but were authored by *different* `agentId`s — i.e. multiple agents have
+ * written competing versions of the same logical entity.
+ *
+ * The `recommendedWinner` is the agentId of the candidate with the highest
+ * `score = (confidence ?? 0.5) × salienceScore`. Callers pick a final
+ * winner by calling `resolveConflicts(result, policy)` on the synthesis
+ * instance — the recommendation is advisory.
+ */
+export interface ConflictView {
+  /** Logical entity identity — `rootEntityName` if set, else `name`. */
+  entityName: string;
+  /** Competing versions, sorted by score descending. */
+  candidates: Array<{
+    agentId: string;
+    entity: AgentEntity;
+    /** confidence × salienceScore, normalized to [0, 1]. */
+    score: number;
+  }>;
+  /** agentId of the highest-scored candidate (advisory). */
+  recommendedWinner: string;
+}
+
+/**
+ * Strategy for resolving a `ConflictView` programmatically.
+ *
+ * - `most_recent` — pick the candidate with the latest `lastModified`.
+ * - `highest_confidence` — pick the candidate with the highest `confidence`.
+ * - `highest_score` — pick `recommendedWinner` (default).
+ * - `trusted_agent` — caller supplies a `trustedAgentId`; that agent wins
+ *   if present in the candidates, else falls back to `highest_score`.
+ */
+export type ConflictResolutionPolicy =
+  | { strategy: 'most_recent' }
+  | { strategy: 'highest_confidence' }
+  | { strategy: 'highest_score' }
+  | { strategy: 'trusted_agent'; trustedAgentId: string };
+
+/**
  * Result of a collaborative synthesis operation.
  */
 export interface SynthesisResult {
@@ -40,6 +82,12 @@ export interface SynthesisResult {
   traversedCount: number;
   /** Number of entities filtered out due to low salience */
   filteredCount: number;
+  /**
+   * Multi-agent conflicts detected among the neighbors (η.5.5.a). Each
+   * entry describes a logical entity with competing versions from different
+   * agents. Empty array when no conflicts exist (single-agent case).
+   */
+  conflicts: ConflictView[];
 }
 
 /** Default configuration values. */
@@ -126,13 +174,119 @@ export class CollaborativeSynthesis {
     // 6. Synthesize observations grouped by entityType
     const synthesizedObservations = this.synthesizeObservations(seedEntityName, neighbors);
 
+    // 7. Detect multi-agent conflicts (η.5.5.a)
+    const conflicts = this.detectConflicts(neighbors);
+
     return {
       seedEntity: seedEntityName,
       neighbors,
       synthesizedObservations,
       traversedCount,
       filteredCount,
+      conflicts,
     };
+  }
+
+  /**
+   * Detect multi-agent conflicts among the synthesized neighbors (η.5.5.a).
+   *
+   * Two entities are *competing* when they share a logical identity
+   * (same `rootEntityName`, falling back to `name` when no chain) but
+   * carry distinct `agentId` values. A single-agent group of versions is
+   * NOT a conflict — only divergence between agents counts.
+   *
+   * Candidates within a conflict are ranked by `score = (confidence ?? 0.5)
+   * × salienceScore`, so a high-confidence finding from a noisy region of
+   * the graph can still rank below a moderate-confidence finding in a
+   * salient region.
+   *
+   * @internal
+   */
+  private detectConflicts(neighbors: ScoredEntity[]): ConflictView[] {
+    type Candidate = { agentId: string; entity: AgentEntity; score: number };
+    const groups = new Map<string, Candidate[]>();
+
+    for (const scored of neighbors) {
+      const e = scored.entity;
+      const agentId = e.agentId;
+      // Skip entities with no agentId — they can't participate in
+      // multi-agent conflict (no attribution to disagree with).
+      if (!agentId) continue;
+      const key = e.rootEntityName ?? e.name;
+      const confidence = e.confidence ?? 0.5;
+      const score = confidence * scored.salienceScore;
+      const list = groups.get(key) ?? [];
+      list.push({ agentId, entity: e, score });
+      groups.set(key, list);
+    }
+
+    const conflicts: ConflictView[] = [];
+    for (const [entityName, candidates] of groups) {
+      // Need at least 2 distinct agents to constitute a conflict.
+      const distinctAgents = new Set(candidates.map(c => c.agentId));
+      if (distinctAgents.size < 2) continue;
+      candidates.sort((a, b) => b.score - a.score);
+      conflicts.push({
+        entityName,
+        candidates,
+        recommendedWinner: candidates[0].agentId,
+      });
+    }
+    return conflicts;
+  }
+
+  /**
+   * Pick a winner per `ConflictView` according to the supplied policy.
+   * Returns a map keyed by `entityName` whose values are the winning
+   * `AgentEntity`. Pure function — does not mutate the synthesis result
+   * or persist anything to storage. Callers feed the winners back through
+   * their write path of choice (e.g. `EntityManager.updateEntity`).
+   *
+   * @example
+   * ```typescript
+   * const result = await synth.synthesize('Alice');
+   * const winners = synth.resolveConflicts(result, { strategy: 'most_recent' });
+   * for (const [name, winner] of winners) {
+   *   await entityManager.updateEntity(name, { ...winner });
+   * }
+   * ```
+   */
+  resolveConflicts(
+    result: SynthesisResult,
+    policy: ConflictResolutionPolicy,
+  ): Map<string, AgentEntity> {
+    const winners = new Map<string, AgentEntity>();
+
+    for (const conflict of result.conflicts) {
+      let winner: { agentId: string; entity: AgentEntity; score: number };
+
+      if (policy.strategy === 'highest_score') {
+        winner = conflict.candidates[0]; // already sorted descending
+      } else if (policy.strategy === 'most_recent') {
+        winner = [...conflict.candidates].sort((a, b) => {
+          const aTime = a.entity.lastModified ?? '1970-01-01T00:00:00Z';
+          const bTime = b.entity.lastModified ?? '1970-01-01T00:00:00Z';
+          return bTime.localeCompare(aTime);
+        })[0];
+      } else if (policy.strategy === 'highest_confidence') {
+        winner = [...conflict.candidates].sort((a, b) => {
+          const aConf = a.entity.confidence ?? 0.5;
+          const bConf = b.entity.confidence ?? 0.5;
+          return bConf - aConf;
+        })[0];
+      } else {
+        // trusted_agent — the named agent wins if they have a candidate;
+        // otherwise fall back to highest_score.
+        const trusted = conflict.candidates.find(
+          c => c.agentId === policy.trustedAgentId,
+        );
+        winner = trusted ?? conflict.candidates[0];
+      }
+
+      winners.set(conflict.entityName, winner.entity);
+    }
+
+    return winners;
   }
 
   /**

@@ -624,7 +624,7 @@ Cardinal rules. One commit. Plan checkbox ζ.1 → [x].`
 | T57 | η.5.2 Graph Embeddings | ROADMAP Phase 5.2 |
 | T58 | η.5.3 ML-Powered Features — **plan drafted** [`2026-04-25-eta-ml-features.md`](./2026-04-25-eta-ml-features.md) | ROADMAP Phase 5.3 |
 | T59 | η.5.4 Standards Compliance — **plan drafted** [`2026-04-25-eta-standards-compliance.md`](./2026-04-25-eta-standards-compliance.md); sub-features 1+2 (RDF/Turtle, RDF/XML, JSON-LD export) ✅ shipped 2026-04-24 | ROADMAP Phase 5.4 |
-| T60 | η.5.5 Collaboration Features — **plan drafted** [`2026-04-25-eta-collaboration.md`](./2026-04-25-eta-collaboration.md); ✅ sub-features 5.5.b (visibility) + 5.5.c (OCC) + 5.5.d (audit attribution enforcer) **SHIPPED** 2026-04-24; 5.5.a (conflict view) remains no-deps; 5.5.e CRDT gated | ROADMAP Phase 5.5 |
+| T60 | η.5.5 Collaboration Features — **plan drafted** [`2026-04-25-eta-collaboration.md`](./2026-04-25-eta-collaboration.md); ✅ ALL no-deps sub-features (5.5.a conflict view + 5.5.b visibility + 5.5.c OCC + 5.5.d audit attribution enforcer) **SHIPPED** 2026-04-24; only 5.5.e CRDT remains (gated on yjs peer dep approval) | ROADMAP Phase 5.5 |
 | T61 | η.6.x Enterprise (RBAC / Distributed / Security / Cloud / GPU) — **plan drafted** [`2026-04-25-eta-enterprise.md`](./2026-04-25-eta-enterprise.md) (5 sub-sections, 5 separate decision gates A-E) | ROADMAP Phase 6 |
 | T62 | 3B.4–3B.7 (Procedural / Active Retrieval / Causal / World Model) — **plan drafted** [`2026-04-25-3b-memory-theory.md`](./2026-04-25-3b-memory-theory.md) (all no-deps; ~3 weeks effort) | ROADMAP Phase 3B |
 | T63 | future_features.md categories not subsumed by η.4–η.6 | future_features.md |
