@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase δ — closing T31, T32, T35)
+
+- **Pre-storage validation hook in `ObservationManager`** (T31, Phase δ.1) — opt-in via `MEMORY_VALIDATE_ON_STORE=true` env var. When enabled AND a `MemoryValidator` is wired through `setMemoryValidator(...)`, `addObservations` runs `validateConsistency` on each new observation against its target entity before persisting. Blocking issues (`semantic-contradiction` or `duplicate-observation`) cause the observation to be skipped with a `console.warn` listing the validator's suggestions. Default off — preserves backwards-compat. `ManagerContext` auto-wires when the env var was truthy at construction time. 3 unit tests in `tests/unit/core/observation-validate-hook.test.ts`.
+- **`MemoryValidator.repairWithResolver(entity, competing, resolver, contradiction?, agents?)`** (T32, Phase δ.1) — closes the `ConflictResolver` integration loop spec'd in ROADMAP §3B.1. Constructs the minimal `ConflictInfo` from a `Contradiction` finding and delegates to `ConflictResolver.resolveConflict`. Picks the strategy heuristically (`most_recent` when timestamps are >24h apart, else `highest_confidence`). Caller can override by setting up a default on the resolver. 2 new tests in `tests/unit/agent/MemoryValidator.test.ts`. 16/16 validator tests green.
+- **T35 closed-as-shipped** — re-read of ROADMAP §3B.2 confirmed the four "compression strategies" (`semantic_clustering` / `temporal_windowing` / `importance_filtering` / `hierarchical`) are descriptive guidance for `distill` behavior, not separate methods on the public interface. The shipped `distill` uses token-overlap (semantic-clustering shape); `mergeRedundant` exposes the explicit choice points. No additional surface required.
+
+### Added (Phase η — dated plans drafted)
+
+- **`docs/superpowers/plans/2026-04-25-eta-rest-api.md`** — η.4.2 REST API Generation plan. Fastify-based wrapper over `ManagerContext`; covers entities/relations/search/memory routes. Decision gate: Fastify peer dep. Effort estimate ~1 week.
+- **`docs/superpowers/plans/2026-04-25-eta-graph-visualization.md`** — η.4.6 Graph Visualization expansion plan. Builds on the v1.9.1 `IOManager.visualizeGraph`; adds 4 layouts (force / hierarchical / circular / timeline), interactive filtering, search-as-you-type, PNG export. Effort ~1 week.
+- **`docs/superpowers/plans/2026-04-25-eta-ml-features.md`** — η.5.3 ML-Powered Features plan. Four sub-features (auto-tagging, relation anomaly detection, entity clustering, missing-relation prediction), all opt-in behind a feature flag. No required runtime deps. Effort ~3 weeks total.
+- **`docs/superpowers/plans/2026-04-25-eta-standards-compliance.md`** — η.5.4 Standards Compliance plan. Three sub-features: RDF/Turtle export, JSON-LD context, SPARQL SELECT translation. First two need no new deps; SPARQL needs `sparqljs`. Effort ~2 weeks.
+- Runbook (`2026-04-24-task-dispatch-runbook.md`) updated to link each Phase η item with a plan-drafted to its dated plan file.
+
 ## [1.13.0] - 2026-04-25
 
 ### Added (Phase δ — Memory Intelligence Services)

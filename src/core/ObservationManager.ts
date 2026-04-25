@@ -12,6 +12,7 @@ import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/Au
 import type { DeduplicationOptions } from '../types/types.js';
 import { EntityNotFoundError } from '../utils/errors.js';
 import type { ContradictionDetector } from '../features/ContradictionDetector.js';
+import type { MemoryValidator } from '../agent/MemoryValidator.js';
 import type { EntityManager } from './EntityManager.js';
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
 
@@ -31,6 +32,7 @@ export class ObservationManager {
   private contradictionDetector?: ContradictionDetector;
   private linkedEntityManager?: EntityManager;
   private _autoLinker?: AutoLinker;
+  private memoryValidator?: MemoryValidator;
 
   constructor(private storage: GraphStorage) {}
 
@@ -52,6 +54,21 @@ export class ObservationManager {
    */
   setAutoLinker(autoLinker: AutoLinker): void {
     this._autoLinker = autoLinker;
+  }
+
+  /**
+   * Wire a `MemoryValidator` for the optional pre-storage validation hook
+   * (Phase δ.1, T31). When set AND `MEMORY_VALIDATE_ON_STORE=true` (env)
+   * is enabled, `addObservations` runs `MemoryValidator.validateConsistency`
+   * on each new observation against its target entity before persisting.
+   * Blocking issues (`semantic-contradiction` or `duplicate-observation`)
+   * cause the observation to be skipped with a `console.warn`. Non-blocking
+   * issues (e.g., `low-confidence`) are surfaced as warnings only.
+   *
+   * Default off — preserves backwards-compat for existing callers.
+   */
+  setMemoryValidator(validator: MemoryValidator): void {
+    this.memoryValidator = validator;
   }
 
   /**
@@ -132,7 +149,31 @@ export class ObservationManager {
       }
 
       // First pass: filter exact duplicates
-      const nonExactDuplicates = o.contents.filter(content => !entity.observations.includes(content));
+      let nonExactDuplicates = o.contents.filter(content => !entity.observations.includes(content));
+
+      // Pre-storage validation hook (v1.13.0, Phase δ.1, T31).
+      // Opt-in via `MEMORY_VALIDATE_ON_STORE=true` env var. When enabled
+      // AND a MemoryValidator is wired, each candidate observation is
+      // checked via `validateConsistency` before persistence; blocking
+      // issues skip the observation with a warning.
+      if (this.memoryValidator && process.env.MEMORY_VALIDATE_ON_STORE === 'true') {
+        const passed: string[] = [];
+        for (const content of nonExactDuplicates) {
+          const result = await this.memoryValidator.validateConsistency(content, entity);
+          if (result.isValid) {
+            passed.push(content);
+          } else {
+            const blockers = result.issues
+              .filter((i) => i.kind === 'semantic-contradiction' || i.kind === 'duplicate-observation')
+              .map((i) => i.kind);
+            console.warn(
+              `[ObservationManager] Skipping observation on entity "${o.entityName}" due to validation issues: ${blockers.join(', ')}. ` +
+              `Suggestions: ${result.suggestions.join('; ')}`,
+            );
+          }
+        }
+        nonExactDuplicates = passed;
+      }
 
       if (nonExactDuplicates.length > 0) {
         // Contradiction detection hook (v1.8.0)

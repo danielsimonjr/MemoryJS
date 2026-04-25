@@ -510,7 +510,7 @@ Plan checkbox γ.0 → [x] when ADR draft is committed.`
 | T32 | δ.1.4 | integration with `ConflictResolver` | 🟡 deferred (`resolveConflict` requires upstream `ConflictInfo`; documented in `MemoryValidator.repairMemory`) |
 | T33 | δ.2.1 | `TrajectoryCompressor` interface | ✅ done 2026-04-25 |
 | T34 | δ.2.2 | impl wrapping `compressForContext` | ✅ done 2026-04-25 |
-| T35 | δ.2.3 | strategies (semantic_clustering / temporal_windowing / importance_filtering / hierarchical) | 🟡 partial — `mergeRedundant` shipped with 3 merge strategies; ROADMAP-spec compression-clustering strategies are descriptive guidance, not separate methods |
+| T35 | δ.2.3 | strategies (semantic_clustering / temporal_windowing / importance_filtering / hierarchical) | ✅ closed 2026-04-25 — ROADMAP-spec strategy names are descriptive guidance for `distill` behavior under different inputs, not separate methods. The shipped `distill` uses token-overlap (semantic-clustering shape); `mergeRedundant` exposes the explicit choice points (3 strategies). No further surface required. |
 | T36 | δ.2.4 | wire into `ContextWindowManager` | ✅ done 2026-04-25 (`ctx.trajectoryCompressor` lazy getter) |
 | T37 | δ.3.1 | `ExperienceExtractor` interface | ✅ done 2026-04-25 |
 | T38 | δ.3.2 | `extractFromContrastivePairs` | ✅ done 2026-04-25 |
@@ -615,15 +615,15 @@ Cardinal rules. One commit. Plan checkbox ζ.1 → [x].`
 | ID | Item | Source |
 |---|---|---|
 | T50 | η.4.1 Database Adapters | ROADMAP Phase 4.1 |
-| T51 | η.4.2 REST API Generation | ROADMAP Phase 4.2 |
+| T51 | η.4.2 REST API Generation — **plan drafted** [`2026-04-25-eta-rest-api.md`](./2026-04-25-eta-rest-api.md) | ROADMAP Phase 4.2 |
 | T52 | η.4.3 Elasticsearch Integration | ROADMAP Phase 4.3 |
 | T53 | η.4.4 Temporal Versioning expansion | ROADMAP Phase 4.4 |
 | T54 | η.4.5 Scalability Improvements | ROADMAP Phase 4.5 |
-| T55 | η.4.6 Graph Visualization expansion | ROADMAP Phase 4.6 |
+| T55 | η.4.6 Graph Visualization expansion — **plan drafted** [`2026-04-25-eta-graph-visualization.md`](./2026-04-25-eta-graph-visualization.md) | ROADMAP Phase 4.6 |
 | T56 | η.5.1 Vector Database Integration | ROADMAP Phase 5.1 |
 | T57 | η.5.2 Graph Embeddings | ROADMAP Phase 5.2 |
-| T58 | η.5.3 ML-Powered Features | ROADMAP Phase 5.3 |
-| T59 | η.5.4 Standards Compliance | ROADMAP Phase 5.4 |
+| T58 | η.5.3 ML-Powered Features — **plan drafted** [`2026-04-25-eta-ml-features.md`](./2026-04-25-eta-ml-features.md) | ROADMAP Phase 5.3 |
+| T59 | η.5.4 Standards Compliance — **plan drafted** [`2026-04-25-eta-standards-compliance.md`](./2026-04-25-eta-standards-compliance.md) | ROADMAP Phase 5.4 |
 | T60 | η.5.5 Collaboration Features | ROADMAP Phase 5.5 |
 | T61 | η.6.x Enterprise (RBAC / Distributed / Security / Cloud / GPU) | ROADMAP Phase 6 |
 | T62 | 3B.4–3B.7 (Procedural / Active Retrieval / Causal / World Model) | ROADMAP Phase 3B |

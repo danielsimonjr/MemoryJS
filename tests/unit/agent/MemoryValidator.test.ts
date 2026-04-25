@@ -110,6 +110,40 @@ describe('MemoryValidator.repairMemory', () => {
   });
 });
 
+describe('MemoryValidator.repairWithResolver', () => {
+  it('delegates to ConflictResolver.resolveConflict and returns the resolved memory', async () => {
+    const detector = new ContradictionDetector(stubSemanticSearch(() => 0));
+    const validator = new MemoryValidator(detector);
+    const { ConflictResolver } = await import('../../../src/agent/ConflictResolver.js');
+    const resolver = new ConflictResolver();
+
+    const older = makeEntity({ name: 'old', confidence: 0.5 }) as AgentEntity;
+    older.lastModified = new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(); // 1 week ago
+    const newer = makeEntity({ name: 'new', confidence: 0.9 }) as AgentEntity;
+    newer.lastModified = new Date().toISOString();
+
+    const result = await validator.repairWithResolver(older, newer, resolver, { similarity: 0.92 });
+    // 1-week age delta → most_recent strategy → newer wins.
+    expect(result.name).toBe('new');
+  });
+
+  it('falls back to highest_confidence when timestamps are close', async () => {
+    const detector = new ContradictionDetector(stubSemanticSearch(() => 0));
+    const validator = new MemoryValidator(detector);
+    const { ConflictResolver } = await import('../../../src/agent/ConflictResolver.js');
+    const resolver = new ConflictResolver();
+
+    const t = new Date().toISOString();
+    const lowConf = makeEntity({ name: 'low', confidence: 0.3 }) as AgentEntity;
+    lowConf.lastModified = t;
+    const highConf = makeEntity({ name: 'high', confidence: 0.95 }) as AgentEntity;
+    highConf.lastModified = t;
+
+    const result = await validator.repairWithResolver(lowConf, highConf, resolver, { similarity: 0.88 });
+    expect(result.name).toBe('high');
+  });
+});
+
 describe('MemoryValidator.validateTemporalOrder', () => {
   it('passes when timestamps are ascending', () => {
     const detector = new ContradictionDetector(stubSemanticSearch(() => 0));

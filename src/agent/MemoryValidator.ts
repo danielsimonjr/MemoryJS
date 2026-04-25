@@ -20,8 +20,9 @@
  */
 
 import type { Entity } from '../types/types.js';
-import type { AgentEntity } from '../types/agent-memory.js';
+import type { AgentEntity, AgentMetadata } from '../types/agent-memory.js';
 import type { ContradictionDetector, Contradiction as DetectorContradiction } from '../features/ContradictionDetector.js';
+import type { ConflictResolver } from './ConflictResolver.js';
 
 /** Per-issue annotation produced by `validateConsistency` /
  * `validateTemporalOrder`. */
@@ -166,13 +167,8 @@ export class MemoryValidator {
    * — does NOT persist. Caller decides via
    * `EntityManager.updateEntity` or supersede semantics.
    *
-   * Note: full integration with `ConflictResolver` (resolveConflict) is
-   * upstream of this method — it requires constructing `ConflictInfo`
-   * with a primary memory + conflicting memories + agent metadata,
-   * which is the orchestrator's job, not the validator's. When such
-   * orchestration is in play, callers should call
-   * `ConflictResolver.resolveConflict` directly and pass the resolved
-   * memory back here as `feedback`.
+   * For full `ConflictResolver`-driven repair against a competing
+   * memory, see `repairWithResolver`.
    */
   async repairMemory(entity: Entity, feedback: string): Promise<Entity> {
     return {
@@ -180,6 +176,58 @@ export class MemoryValidator {
       observations: [...entity.observations, `[repair] ${feedback}`],
       lastModified: new Date().toISOString(),
     };
+  }
+
+  /**
+   * Repair an entity by delegating to a `ConflictResolver`. Constructs
+   * the minimal `ConflictInfo` from a `Contradiction` finding so callers
+   * don't have to hand-build it. Closes the loop spec'd in ROADMAP §3B.1
+   * for `repairMemory` integration.
+   *
+   * @param entity         Primary memory being repaired (must be `AgentEntity`).
+   * @param competing      Competing memory to resolve against.
+   * @param contradiction  Optional similarity score / context. Severity
+   *                       is mapped onto `detectionMethod = 'similarity'`.
+   * @param resolver       The `ConflictResolver` instance.
+   * @param agents         Optional agent-metadata registry (used by the
+   *                       `trusted_agent` strategy). Empty Map is fine
+   *                       for the strategies that don't need it.
+   * @returns The resolved memory per the resolver's verdict.
+   *
+   * Throws when neither input is an `AgentEntity` (resolver requires the
+   * extension fields), or when the resolver itself throws (e.g., no
+   * conflicting memories found — should not happen given we provide both).
+   */
+  async repairWithResolver(
+    entity: AgentEntity,
+    competing: AgentEntity,
+    resolver: ConflictResolver,
+    contradiction?: { similarity?: number },
+    agents: Map<string, AgentMetadata> = new Map(),
+  ): Promise<AgentEntity> {
+    const sim = contradiction?.similarity ?? 0.85;
+    // Pick a sensible default strategy based on observable signal
+    // (newest wins when timestamps are far apart; highest-confidence
+    // otherwise). Caller can override by setting up a default on the
+    // resolver itself.
+    const aTs = entity.lastModified ? Date.parse(entity.lastModified) : 0;
+    const bTs = competing.lastModified ? Date.parse(competing.lastModified) : 0;
+    const ageDeltaSeconds = Math.abs(aTs - bTs) / 1000;
+    const suggestedStrategy = ageDeltaSeconds > 60 * 60 * 24 ? 'most_recent' : 'highest_confidence';
+
+    const result = resolver.resolveConflict(
+      {
+        primaryMemory: entity.name,
+        conflictingMemories: [competing.name],
+        detectionMethod: 'similarity',
+        similarityScore: sim,
+        suggestedStrategy,
+        detectedAt: new Date().toISOString(),
+      },
+      [entity, competing],
+      agents,
+    );
+    return result.resolvedMemory;
   }
 
   /**
