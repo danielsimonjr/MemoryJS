@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 3B.4 — Procedural Memory)
+
+First-class executable-procedure storage and execution. Distinct from semantic facts (what's true) and episodic events (what happened) — procedures are *how* to do things. New module: `src/agent/procedural/` + types in `src/types/procedure.ts`.
+
+- **`ProcedureManager`** — primary API. `addProcedure({ steps, ... })` auto-generates an id, persists; `getProcedure(id)`, `getStep(id, order)`, `getNextStep(id, currentOrder)`, `openSequencer(id)`, `matchProcedure(context, candidates, threshold?)`, `refineProcedure(id, feedback)`.
+- **`ProcedureStore`** — thin wrapper over `EntityManager`. Persists each procedure as `entityType: 'procedure'`. Steps + metadata encoded as JSON observations (`[procedure-steps]:<json>` + `[procedure-meta]:<json>`); description as a plain observation. Roundtrips through both JSONL and SQLite without schema changes.
+- **`StepSequencer`** — pure stateful cursor for execution. `current()` / `next()` advance through steps; `branchToFallback()` redirects to the current step's `fallback` chain (single-level; nest fallbacks via `step.fallback.fallback` for deeper recovery). `next()` after a fallback advances past the original step so main-track flow resumes correctly.
+- **Token-overlap matching** — `matchProcedure` scores candidates by Jaccard-like overlap between context tokens and the union of (`name`, `triggers`). Sorted by score descending; threshold cutoff supported.
+- **EWMA refinement** — `refineProcedure` increments `executionCount` and updates `successRate` with `α = 0.2` (configurable). First feedback initializes from a 0.5 neutral baseline; subsequent feedback smooths toward the observed signal. Successful runs converge toward 1.0; failures toward 0.0.
+- **Storage contract**: empty descriptions are skipped (the storage layer rejects empty observations). Free-form caller-defined steps; no LLM/sandboxing.
+- Barrel-exported from `src/agent/index.ts`.
+
+22 new tests in `tests/unit/agent/ProcedureManager.test.ts`. Closes T62 sub-section 3B.4.
+
 ### Added (Phase 3B.6 — Causal Reasoning)
 
 Symbolic forward / backward / counterfactual inference over a causal-relation subgraph. New module: `src/agent/causal/`.

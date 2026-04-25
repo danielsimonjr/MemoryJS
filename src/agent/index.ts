@@ -293,6 +293,16 @@ export {
   type CollaborationAuditEnforcerOptions,
 } from './collaboration/CollaborationAuditEnforcer.js';
 
+// 3B.4 Procedural Memory
+export {
+  ProcedureManager,
+  ProcedureStore,
+  StepSequencer,
+  decodeProcedure,
+  PROCEDURE_ENTITY_TYPE,
+  type ProcedureManagerConfig,
+} from './procedural/index.js';
+
 // 3B.6 Causal Reasoning
 export {
   CausalReasoner,
