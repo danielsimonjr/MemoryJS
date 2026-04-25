@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-04-25
+
 ### Added (Phase δ — Memory Intelligence Services)
 
 - **`docs/development/ARCHITECTURE_DECISIONS.md` ADR-011** — "Phase δ Memory Intelligence service shape (wrap-and-extend)". Decides each new service wraps the matching existing primitive (`ContradictionDetector` / `compressForContext` / `PatternDetector`) rather than renaming or reimplementing. Closes T28 (Phase δ.0).
