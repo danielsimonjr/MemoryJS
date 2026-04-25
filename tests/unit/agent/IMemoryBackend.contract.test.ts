@@ -136,6 +136,36 @@ export function runMemoryBackendContract(
       await expect(backend.delete_session('never-existed')).resolves.toBeUndefined();
     });
 
+    it('add() of identical (sessionId, content) is a silent no-op (dedup contract)', async () => {
+      const backend = await makeBackend();
+      const t = new Date().toISOString();
+      await backend.add(makeTurn({ id: 'first', content: 'identical', createdAt: t }));
+      await backend.add(makeTurn({ id: 'second', content: 'identical', createdAt: t }));
+      // Both backends MUST dedup. Lifecycle sequence: only one turn lives.
+      const result = await backend.get_weighted('', 'sess-A', { threshold: 0 });
+      expect(result.length).toBe(1);
+    });
+
+    it('lifecycle sequence: add → get → delete → add(same session) → get', async () => {
+      const backend = await makeBackend();
+      const t = new Date().toISOString();
+      await backend.add(makeTurn({ content: 'first cycle', createdAt: t }));
+      const before = await backend.get_weighted('', 'sess-A', { threshold: 0 });
+      expect(before.length).toBe(1);
+
+      await backend.delete_session('sess-A');
+      const afterDelete = await backend.get_weighted('', 'sess-A', { threshold: 0 });
+      expect(afterDelete).toEqual([]);
+
+      // After delete, the same sessionId is fresh again — adding new
+      // content (or the original content) must succeed without bleed-
+      // through from the old delete (no stale index entries).
+      await backend.add(makeTurn({ content: 'second cycle', createdAt: t }));
+      const afterRecreate = await backend.get_weighted('', 'sess-A', { threshold: 0 });
+      expect(afterRecreate.length).toBe(1);
+      expect(afterRecreate[0].turn.content).toBe('second cycle');
+    });
+
     it('add()/get_weighted() round-trips MemoryTurn metadata', async () => {
       const backend = await makeBackend();
       const meta = { source: 'test', priority: 'high' };

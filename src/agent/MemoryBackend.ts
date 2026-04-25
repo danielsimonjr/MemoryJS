@@ -29,7 +29,19 @@
  * `AgentEntity` at the storage boundary.
  */
 export interface MemoryTurn {
-  /** Stable turn identifier. May be caller-supplied or engine-generated. */
+  /**
+   * Stable turn identifier.
+   *
+   * **Per-backend honoring:**
+   * - `InMemoryBackend` — caller-supplied `id` is honored verbatim.
+   * - `SQLiteBackend` — caller-supplied `id` is **silently overridden**
+   *   by an engine-generated entity name unless `preserveCallerIds: true`
+   *   is set on the backend (which currently throws, pending a future
+   *   `storage.renameEntity` primitive).
+   *
+   * Callers that need stable cross-backend IDs should not rely on this
+   * field round-tripping unchanged today.
+   */
   id: string;
 
   /** Session this turn belongs to. Authoritative for routing + filtering. */
@@ -44,11 +56,21 @@ export interface MemoryTurn {
   /**
    * Importance score in PRD range [1.0, 3.0]. Adapters using the legacy
    * memoryjs scale [0, 10] convert at the boundary via
-   * `DecayEngine.calculatePrdEffectiveImportance` (lands in T15).
+   * `DecayEngine.calculatePrdEffectiveImportance`.
    */
   importance: number;
 
-  /** ISO-8601 creation timestamp. May be caller-supplied or engine-generated. */
+  /**
+   * ISO-8601 creation timestamp.
+   *
+   * **Per-backend honoring:**
+   * - `InMemoryBackend` — caller-supplied `createdAt` is honored verbatim.
+   * - `SQLiteBackend` — caller-supplied `createdAt` is **silently
+   *   overridden** by `EpisodicMemoryManager.createEpisode`'s
+   *   `new Date().toISOString()`.
+   *
+   * Set by the engine on read.
+   */
   createdAt: string;
 
   /** ISO-8601 most-recent-access timestamp. Updated by `get_weighted`. */
@@ -60,7 +82,15 @@ export interface MemoryTurn {
   /** Optional dense embedding vector (semantic recall). */
   embedding?: number[];
 
-  /** Caller metadata round-tripped opaquely. */
+  /**
+   * Caller metadata round-tripped opaquely.
+   *
+   * **Per-backend honoring:**
+   * - `InMemoryBackend` — full round-trip via the in-memory `MemoryTurn` map.
+   * - `SQLiteBackend` — currently dropped on write; round-trip returns
+   *   `undefined`. Future enhancement could thread metadata through the
+   *   `agentMetadata` JSON-blob column shipped in T06b.
+   */
   metadata?: Record<string, unknown>;
 }
 

@@ -243,3 +243,12 @@ export {
   type ImportanceScorerConfig,
   type ScoreOptions,
 } from './ImportanceScorer.js';
+
+export type {
+  IMemoryBackend,
+  MemoryTurn,
+  WeightedTurn,
+  GetWeightedOptions,
+} from './MemoryBackend.js';
+export { InMemoryBackend } from './InMemoryBackend.js';
+export { SQLiteBackend, type SQLiteBackendOptions } from './SQLiteBackend.js';

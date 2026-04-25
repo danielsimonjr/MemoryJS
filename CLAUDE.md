@@ -270,7 +270,7 @@ Read by `ctx.memoryEngine` lazy getter on first access. All ten knobs.
 | `MEMORY_ENGINE_OVERLAP_WEIGHT` | Number (0–1) | `0.3` |
 
 ### PRD Decay Extensions (v1.12.0 — Phase β.5/β.6)
-Powers `DecayEngine.calculatePrdEffectiveImportance` and is read by `IMemoryBackend.get_weighted` filter (T14+).
+Powers `DecayEngine.calculatePrdEffectiveImportance` and is read by `IMemoryBackend.get_weighted` filter.
 
 | Variable | Values | Default |
 |----------|--------|---------|
@@ -280,6 +280,15 @@ Powers `DecayEngine.calculatePrdEffectiveImportance` and is read by `IMemoryBack
 | `MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD` | Number | `0.1` |
 
 Distinct from the legacy `MEMORY_DECAY_*` set: those drive `DecayEngine.calculateEffectiveImportance` (memoryjs scale `[0, 10]`), while `MEMORY_PRD_*` drive the parallel `calculatePrdEffectiveImportance` (PRD scale, auto-translates `[0, 10]` → `[1.0, 3.0]`). Both formulas coexist; existing callers (`DecayScheduler`, `SearchManager`, `SemanticForget`) keep using the legacy method.
+
+**Important cross-link:** `MEMORY_DECAY_HALF_LIFE_HOURS` *does* feed PRD scoring — when `MEMORY_PRD_DECAY_RATE` is unset, the PRD `decayRate` is auto-derived from the half-life. Set `MEMORY_PRD_DECAY_RATE` explicitly to decouple.
+
+### Memory Backend selector (v1.12.0 — Phase β.4)
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_BACKEND` | `sqlite`, `in-memory` (aliases: `inmemory`, `memory`) | `sqlite` |
+
+Read by `ctx.memoryBackend` lazy getter. `sqlite` wraps `MemoryEngine` (which transparently spans JSONL + actual SQLite per `MEMORY_STORAGE_TYPE`). `in-memory` is ephemeral; suitable for tests and short-lived processes. Phase γ adds `postgres` and `vector` choices.
 
 ## Documentation
 

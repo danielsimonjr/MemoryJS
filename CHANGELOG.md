@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase β.3 + β.4 + β.7 — SQLiteBackend, wiring, review pass)
+
+- **`src/agent/SQLiteBackend.ts`** — Durable `IMemoryBackend` adapter wrapping `MemoryEngine` + `DecayEngine`. `add()` delegates to the four-tier dedup chain; `get_weighted` reuses `getSessionTurns` then re-scores via `DecayEngine.calculatePrdEffectiveImportance`. Options: `dedupOnAdd` (default `true`; `false` throws — bypass path is future work) and `preserveCallerIds` (default `false`; `true` throws — needs a `storage.renameEntity` primitive). Closes T13 (Phase β.3).
+- **`tests/unit/agent/SQLiteBackend.test.ts`** — 19 tests: contract suite + 4 backend-specific (role round-trip, exact-tier dedup, both option-throw paths, real-SQLite path test gated on `better-sqlite3` ABI compat).
+- **`ctx.memoryBackend` lazy getter on `ManagerContext`** — selects `SQLiteBackend` (default) or `InMemoryBackend` via `MEMORY_BACKEND` env var. Wraps `ctx.memoryEngine` + `ctx.decayEngine` so backend selection is transparent. `agentMemory(config)` re-instantiation now also invalidates `_memoryBackend`, `_consolidationScheduler`, and `_dreamEngine` (the previous diff's invalidation block was incomplete — closed under T17 review). Closes T14 (Phase β.4).
+- **`tests/unit/agent/memoryBackend-wiring.test.ts`** — 6 tests covering default selection, env-var aliases (`memory`/`inmemory`/`in-memory`), lazy caching, end-to-end round-trip, and the `agentMemory(config)` invalidation hook.
+- **`MEMORY_BACKEND` env var** documented in CLAUDE.md (Phase β.4 selector). The PRD-decay docs now also explicitly cross-link `MEMORY_DECAY_HALF_LIFE_HOURS` as feeding `MEMORY_PRD_DECAY_RATE` when the latter is unset.
+
+### Changed (Phase β.7 — review-pass fixes)
+
+- **`InMemoryBackend.add()` now dedups by `(sessionId, content)`** — match `SQLiteBackend`'s four-tier-exact behavior so the contract suite enforces uniform semantics. Without this, two backends could pass the same contract while behaving oppositely on duplicate adds. Reviewer Finding #1.
+- **`IMemoryBackend` contract suite gained 2 tests** — explicit dedup assertion and a full lifecycle sequence (`add → get → delete → add → get`) to catch stale-index bleed-through after delete. Reviewer Finding #5.
+- **`MemoryTurn` field docs tightened** — `id`, `createdAt`, and `metadata` are now explicit about per-backend honoring vs. silent override (`SQLiteBackend` overrides `id`/`createdAt` and drops `metadata`; `InMemoryBackend` honors all). Reviewer Finding #3 — closing the gap between documented and actual behavior.
+- **`agentMemory(config)` invalidation extended** to also reset `_consolidationScheduler` and `_dreamEngine`, both of which capture references through `agentMemory().consolidationPipeline` at construction time. Reviewer Finding #4 — pre-existing partial-invalidation bug fixed opportunistically.
+
 ### Added (Phase β.2 — InMemoryBackend adapter)
 
 - **`src/agent/InMemoryBackend.ts`** — Ephemeral, process-lifetime `IMemoryBackend` adapter. Stores turns in an in-process `Map<sessionId, MemoryTurn[]>`; no persistence. Scoring delegates to `DecayEngine.calculatePrdEffectiveImportance` so `get_weighted` returns the same PRD-formula scores any future backend produces. Inverse-translates `MemoryTurn.importance` (PRD scale `[1.0, 3.0]`) back to memoryjs scale `[0, 10]` before passing to the decay engine, which then internally re-translates — net round-trip is identity. `get_weighted` applies the threshold filter (defaulting to `decayEngine.prdMinImportanceThreshold = 0.1`) before sort-by-score-descending and limit. Closes T12 (Phase β.2).

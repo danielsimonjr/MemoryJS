@@ -50,6 +50,9 @@ import { ContradictionDetector } from '../features/ContradictionDetector.js';
 import { SemanticForget } from '../features/SemanticForget.js';
 import { MemoryEngine } from '../agent/MemoryEngine.js';
 import { ImportanceScorer } from '../agent/ImportanceScorer.js';
+import type { IMemoryBackend } from '../agent/MemoryBackend.js';
+import { InMemoryBackend } from '../agent/InMemoryBackend.js';
+import { SQLiteBackend } from '../agent/SQLiteBackend.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -98,6 +101,7 @@ export class ManagerContext {
   private _transitionLedger?: TransitionLedger | null;
   private _semanticSearch?: SemanticSearch | null;
   private _memoryEngine?: MemoryEngine;
+  private _memoryBackend?: IMemoryBackend;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -321,6 +325,39 @@ export class ManagerContext {
       );
     }
     return this._memoryEngine;
+  }
+
+  /**
+   * IMemoryBackend (PRD MEM-04) — agent-memory-flavored backend.
+   *
+   * Selection by `MEMORY_BACKEND` env var:
+   *   - `sqlite` (default when storage is SQLite OR var unset on JSONL)
+   *   - `in-memory` (ephemeral; no persistence)
+   *   - future: `postgres`, `vector` (Phase γ)
+   *
+   * Both adapters wrap `ctx.memoryEngine` + `ctx.decayEngine` so they
+   * inherit the four-tier dedup chain and PRD effective-importance
+   * scoring respectively. Lazy-initialized; cached.
+   */
+  get memoryBackend(): IMemoryBackend {
+    if (!this._memoryBackend) {
+      const choice = (process.env.MEMORY_BACKEND ?? 'sqlite').toLowerCase();
+      switch (choice) {
+        case 'in-memory':
+        case 'inmemory':
+        case 'memory':
+          this._memoryBackend = new InMemoryBackend(this.decayEngine);
+          break;
+        case 'sqlite':
+        default:
+          // SQLiteBackend wraps MemoryEngine which works against either
+          // JSONL or SQLite storage transparently — naming reflects PRD
+          // intent (durable backend) more than the disk format.
+          this._memoryBackend = new SQLiteBackend(this.memoryEngine, this.decayEngine);
+          break;
+      }
+    }
+    return this._memoryBackend;
   }
 
   /**
@@ -583,10 +620,16 @@ export class ManagerContext {
   agentMemory(config?: AgentMemoryConfig): AgentMemoryManager {
     if (!this._agentMemory || config) {
       this._agentMemory = new AgentMemoryManager(this.storage, config);
-      // Invalidate derived caches that captured references into the old
-      // AgentMemoryManager (e.g., MemoryEngine wires episodicMemory/
-      // workingMemory at construction time).
+      // Invalidate every derived cache that captured references into the
+      // old AgentMemoryManager. The full set:
+      //   - MemoryEngine (wires episodicMemory/workingMemory at ctor)
+      //   - MemoryBackend (wraps MemoryEngine)
+      //   - ConsolidationScheduler (captures agentMemory().consolidationPipeline)
+      //   - DreamEngine (also captures consolidationPipeline)
       this._memoryEngine = undefined;
+      this._memoryBackend = undefined;
+      this._consolidationScheduler = undefined;
+      this._dreamEngine = undefined;
     }
     return this._agentMemory;
   }

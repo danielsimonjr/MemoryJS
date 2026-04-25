@@ -41,13 +41,13 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-Phase β.1 (T11) shipped 2026-04-25 — `IMemoryBackend` interface + parameterized contract suite live. Phase ε mostly complete (T43 baselines.json still pending). Phase ζ T48 hook still pending. Next ready streams:
+**Phase β is COMPLETE** as of 2026-04-25 (T10–T17 all shipped on master). v1.12.0 release prep should follow once a few polish items land. Next ready streams:
 
-1. **T12** — Phase β.2: implement `InMemoryBackend` adapter (parallel with T13). Wire `runMemoryBackendContract('InMemoryBackend', () => new InMemoryBackend(...))`.
-2. **T13** — Phase β.3: implement `SQLiteBackend` adapter (parallel with T12). Wraps `SQLiteStorage` + `MemoryEngine`.
-3. **T48** — Phase ζ.3: Claude Code hook in `.claude/settings.local.json` for `audit:plans`.
+1. **T18** — Phase γ.0: ADR for Postgres adapter library + Vector store (decision gate; needs user input on runtime deps before adding `pg` etc.).
+2. **T48** — Phase ζ.3: Claude Code hook in `.claude/settings.local.json` to auto-run `npm run audit:plans` after commits touching plans or src.
+3. **T43** — Phase ε.3: per-platform `tests/performance/baselines.json` baselines.
 
-T12 + T13 are independent and parallelizable. T48 is independent of either.
+T48 + T43 are independent and parallelizable. T18 needs user input before runtime deps can be added (per cardinal rules) — recommend pausing the γ track until then.
 
 ---
 
@@ -303,11 +303,11 @@ Unblocks γ, δ. Smallest spec'd-but-unshipped feature.
 | T10 | β.0: code-explorer trace storage paths | ✅ | — | done 2026-04-25 |
 | T11 | β.1: define `IMemoryBackend` interface (TDD) | ✅ | — | done 2026-04-25 |
 | T12 | β.2: implement `InMemoryBackend` | ✅ | — | done 2026-04-25 |
-| T13 | β.3: implement `SQLiteBackend` | 🟡 | T11 | T12 |
-| T14 | β.4: wire `MemoryEngine` to backend (default In-Memory) | 🟡 | T12, T13 | — |
+| T13 | β.3: implement `SQLiteBackend` | ✅ | — | done 2026-04-25 |
+| T14 | β.4: wire `MemoryEngine` to backend (default SQLite) | ✅ | — | done 2026-04-25 |
 | T15 | β.5: `DecayEngine.calculatePrdEffectiveImportance` | ✅ | — | done 2026-04-25 |
 | T16 | β.6: configurable decay params (`AgentMemoryConfig`) | ✅ | — | done 2026-04-25 |
-| T17 | β.7: code review pass | 🟡 | T14, T15, T16 | — |
+| T17 | β.7: code review pass | ✅ | — | done 2026-04-25 (4 important + 2 medium findings all applied in same commit) |
 
 ### T10 — Phase β.0: trace storage wire-up points
 

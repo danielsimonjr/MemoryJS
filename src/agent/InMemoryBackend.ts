@@ -32,6 +32,13 @@ export class InMemoryBackend implements IMemoryBackend {
 
   async add(turn: MemoryTurn): Promise<void> {
     const list = this.turns.get(turn.sessionId) ?? [];
+    // Match SQLiteBackend's dedup-on-exact-content behavior so the
+    // contract suite's add semantics are identical across backends.
+    // Subsequent adds with identical (sessionId, content) become silent
+    // no-ops, matching the four-tier exact-equality tier in MemoryEngine.
+    if (list.some((existing) => existing.content === turn.content)) {
+      return;
+    }
     list.push(turn);
     this.turns.set(turn.sessionId, list);
   }
