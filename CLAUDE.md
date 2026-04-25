@@ -44,7 +44,7 @@ SKIP_BENCHMARKS=true npm test
 
 ```
 src/
-├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility)
+├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility, MemoryEngine + ImportanceScorer for turn-aware memory with four-tier dedup)
 ├── cli/       # CLI commands (bin: `memory` / `memoryjs`)
 ├── core/      # Storage backends, entity/relation/observation managers, transactions, RefIndex
 ├── search/    # Search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned)
@@ -133,6 +133,7 @@ ctx.agentMemory()       // Agent Memory System facade
 - **Failure distillation** (v1.7.0): `FailureDistillation` — causal chain lesson extraction from failed episodes; promotes high-scoring observations to semantic memory
 - **Cognitive load** (v1.7.0): `CognitiveLoadAnalyzer` — token density + redundancy ratio + observation diversity → `CognitiveLoadReport`; used by `ContextWindowManager` to prune high-load sections
 - **Visibility hierarchies** (v1.7.0): `VisibilityResolver` — five-level model (`private` | `team` | `org` | `shared` | `public`) with `GroupMembership` registry
+- **Memory Engine** (v1.11.0): `MemoryEngine` — turn-aware conversation memory facade composing over `EpisodicMemoryManager` + `WorkingMemoryManager`. Public API: `addTurn(content, opts)` (dedup-first write with importance scoring + event emission), `checkDuplicate(content, sessionId)`, `getSessionTurns(sessionId, { role?, limit? })` (chronological), `deleteSession`, `listSessions`. Four-tier dedup chain: `checkTierExact` (SHA-256 contentHash) / `checkTierPrefix` (50% prefix overlap) / `checkTierJaccard` (token Jaccard ≥ 0.72) / optional `checkTierSemantic` (embedding similarity). Emits `memoryEngine:turnAdded` / `memoryEngine:duplicateDetected` / `memoryEngine:sessionDeleted` on its own `node:events` `EventEmitter`. Companion: `ImportanceScorer` (length × keyword × recent-turn-overlap signals → integer [0, 10]). Wired via `ctx.memoryEngine` lazy getter; `agentMemory(config)` invalidates the cache on re-instantiation.
 
 ### Data Model
 
@@ -141,6 +142,7 @@ ctx.agentMemory()       // Agent Memory System facade
 - Optional: `parentId` (hierarchy), `tags[]`, `importance` (0-10), timestamps
 - Optional (v1.6.0): `ttl` (time-to-live for freshness), `confidence` (0.0–1.0 belief strength)
 - Optional (v1.8.0): `projectId` (project scoping), `version`/`parentEntityName`/`rootEntityName`/`isLatest`/`supersededBy` (memory versioning)
+- Optional (v1.11.0): `contentHash` (SHA-256 of raw turn content; powers `MemoryEngine` Tier 1 exact-equality dedup with O(1) index hit on SQLite via `idx_entities_content_hash`)
 
 **ArtifactEntity** (`src/types/artifact.ts`): Extends `AgentEntity` with `artifactType` (`ArtifactType` union) and stable auto-generated name (`toolName-date-shortId`).
 
@@ -251,6 +253,22 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 | `MEMORY_COGNITIVE_LOAD_MAX` | Number (0–1) | `0.8` |
 | `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
 
+### Memory Engine (v1.11.0)
+Read by `ctx.memoryEngine` lazy getter on first access. All ten knobs.
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_ENGINE_JACCARD_THRESHOLD` | Number (0–1) | `0.72` |
+| `MEMORY_ENGINE_PREFIX_OVERLAP` | Number (0–1) | `0.5` |
+| `MEMORY_ENGINE_DEDUP_SCAN_WINDOW` | Integer (recent-turns to scan) | `200` |
+| `MEMORY_ENGINE_MAX_TURNS_PER_SESSION` | Integer | `1000` |
+| `MEMORY_ENGINE_SEMANTIC_DEDUP` | `true`, `false` | `false` |
+| `MEMORY_ENGINE_SEMANTIC_THRESHOLD` | Number (0–1) | `0.92` |
+| `MEMORY_ENGINE_RECENT_TURNS` | Integer (turns for importance overlap) | `10` |
+| `MEMORY_ENGINE_LENGTH_WEIGHT` | Number (0–1) | `0.3` |
+| `MEMORY_ENGINE_KEYWORD_WEIGHT` | Number (0–1) | `0.4` |
+| `MEMORY_ENGINE_OVERLAP_WEIGHT` | Number (0–1) | `0.3` |
+
 ## Documentation
 
 ```
@@ -293,7 +311,7 @@ Located in `tools/` directory:
 - **Path confinement**: When validating derived paths (e.g., appending `.meta.json`), re-validate independently — the derived path may escape the confined directory.
 - **Windows atomic writes**: `fs.rename()` can fail with EPERM in temp directories due to Dropbox/antivirus file locking. `GraphStorage.durableWriteFile` has a fallback that writes directly if rename fails.
 - **Windows + Dropbox + git**: This repo is synced via Dropbox which can corrupt git objects (e.g., `fatal: bad object HEAD`). If git commands fail, try `git fsck` and `git reflog` to recover.
-- **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `npm install` fails on this, check node-gyp prerequisites.
+- **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `npm install` fails on this, check node-gyp prerequisites. **Node version mismatch**: if SQLite tests fail with `NODE_MODULE_VERSION mismatch`, run `npm rebuild better-sqlite3` — Node was upgraded since `npm install` and the prebuilt binary's ABI no longer matches.
 - **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `npm run build` (tsup), workers are built. But `npm run build:tsc` (bare tsc) does NOT build workers - use tsup.
 - **`package-lock.json` is gitignored**: Uses `npm install` (not `npm ci`) for development. Dependencies may drift between machines.
 - **Cache TTL boundary**: `SearchCache` uses `>=` for expiration checks. Using `>` causes TTL=0 entries to persist when accessed within the same millisecond (flaky on Windows due to timer resolution).

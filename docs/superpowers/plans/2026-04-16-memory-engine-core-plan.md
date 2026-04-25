@@ -1,6 +1,6 @@
 # Memory Engine Core Implementation Plan
 
-> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–13 SHIPPED on `master` (T03–T07 close-outs + T06b SQLite fix), Tasks 14–15 PENDING.** Tasks 14 (CLAUDE.md update) and 15 (CHANGELOG bump → 1.11.0) remain. T06 + T06b together fixed real persistence bugs in BOTH backends (JSONL and SQLite were each silently dropping AgentEntity/SessionEntity/ArtifactEntity extension fields on disk writes). T07 ships perf smoke tests with Windows-adjusted P95 thresholds.
+> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–14 SHIPPED on `master`, Task 15 PENDING.** Only Task 15 (release prep — version bump 1.10.0 → 1.11.0, finalize CHANGELOG, tag v1.11.0) remains. T08 refreshed CLAUDE.md with the MemoryEngine architecture entry, ten `MEMORY_ENGINE_*` env vars, the `contentHash` Entity field, and the `npm rebuild better-sqlite3` Node-version-mismatch gotcha.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -2034,7 +2034,7 @@ EOF
 **Files:**
 - Modify: `CLAUDE.md`
 
-- [ ] **Step 1: Add env vars to the Environment Variables section**
+- [x] **Step 1: Add env vars to the Environment Variables section**
 
 Under the "Environment Variables" section, after the existing `Governance & Freshness (v1.6.0)` sub-block, add:
 
@@ -2054,7 +2054,7 @@ Under the "Environment Variables" section, after the existing `Governance & Fres
 | `MEMORY_ENGINE_RECENT_TURNS` | Integer | `10` |
 ```
 
-- [ ] **Step 2: Add architecture bullets**
+- [x] **Step 2: Add architecture bullets**
 
 Under the "ManagerContext" section, append:
 
@@ -2066,7 +2066,7 @@ Under the "ManagerContext" section, append:
 - `ctx.memoryEngine.events` — separate `node:events` emitter (not `GraphEventEmitter`, whose union is closed). Fires `memoryEngine:turnAdded` / `duplicateDetected` / `sessionDeleted`.
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add CLAUDE.md

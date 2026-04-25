@@ -41,11 +41,11 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-1. **T08** — v1.11.0 Task 14: refresh `CLAUDE.md` with new MEMORY_ENGINE_* env vars, MemoryEngine architecture entry, and the `agentMetadata` SQLite column note. *(Unblocked; T07 shipped on `master`.)*
+1. **T09** — v1.11.0 Task 15: ship v1.11.0 (bump `package.json`, finalize `## [Unreleased]` → `## [1.11.0]`, move v1.12.0 spec entries into a fresh Unreleased, tag `v1.11.0`, run `/RELEASE` skill). *(Unblocked; T08 shipped on `master`.)*
 2. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Independent of the v1.11.0 chain.)*
 3. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Independent; warm-up for ε.)*
 
-T08 only touches `CLAUDE.md`; trivially parallel with T46 / T41.
+T09 is the v1.11.0 release commit and tag — should be alone (no parallel committers on `package.json` / `CHANGELOG.md`).
 
 ---
 
@@ -233,7 +233,7 @@ Cardinal rules apply. Document the baseline numbers in the commit body. Update p
 ### T08 — Update `CLAUDE.md` with new env vars + architecture notes
 
 **Phase:** v1.11.0 Task 14 (line 2032)
-**Status:** 🟡 BLOCKED on **T07** (don't document an unfinished feature)
+**Status:** ✅ DONE (2026-04-24)
 **Agent type:** `general-purpose`
 **Files touched:** `CLAUDE.md`
 **Done when:**
