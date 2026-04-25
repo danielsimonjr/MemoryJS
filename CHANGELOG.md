@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase η.6.3 — `PiiRedactor` sub-feature)
+
+Pluggable regex-based redactor for personally identifiable information. Applied on export only — does not mutate storage. New module: `src/security/`.
+
+- **`PiiRedactor`** — apply via `redact(text)` / `redactWithStats(text)` / `redactGraph(graph)`. The `*WithStats` variant returns per-pattern counts for compliance audit trails (proves N PII items were stripped without surfacing values).
+- **`DEFAULT_PII_PATTERNS`** — bundled patterns for email, U.S. SSN, credit card (13-19 digits in 4-digit groups OR unbroken), North American phone, IPv4. Conservative; false-positive bias preferred over false-negative for PII.
+- **Caller customization** via `{ patterns, additionalPatterns }` constructor options: `patterns` replaces the bank entirely, `additionalPatterns` layers on top of defaults.
+- **No new deps.** Pure TS regex.
+- Out of scope (deferred per the plan): `InputValidator` (zod gated), `EncryptionAdapter` (SQLCipher gated).
+
+14 new tests in `tests/unit/security/PiiRedactor.test.ts`. Closes T61 sub-section η.6.3 PII subset.
+
 ### Added (Phase 3B.5 — Active Retrieval)
 
 Iterative query-rewriting retrieval loop. New module: `src/agent/retrieval/`.
