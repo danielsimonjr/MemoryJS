@@ -118,7 +118,7 @@ describe('Foundation Performance Benchmarks (Phase 12 Sprint 1)', () => {
       expect(graph.relations.length).toBe(initialCount - 3);
     });
 
-    it.skip('should scale linearly for entity deletion (benchmark)', async () => {
+    it('should scale linearly for entity deletion (benchmark)', async () => {
       // SKIPPED: Benchmark assertion - optimize after codebase split
       // Create entities
       const entities = Array.from({ length: 500 }, (_, i) => ({
@@ -144,7 +144,7 @@ describe('Foundation Performance Benchmarks (Phase 12 Sprint 1)', () => {
       expect(largeDuration).toBeLessThan(Math.max(smallDuration * PERF_CONFIG.SCALE_MULTIPLIER, PERF_CONFIG.MAX_ABSOLUTE_TIME_MS));
     });
 
-    it.skip('should scale linearly for relation deletion (benchmark)', async () => {
+    it('should scale linearly for relation deletion (benchmark)', async () => {
       // SKIPPED: Benchmark assertion - optimize after codebase split
       // Create entities and relations
       const entities = Array.from({ length: 100 }, (_, i) => ({
@@ -256,7 +256,7 @@ describe('Foundation Performance Benchmarks (Phase 12 Sprint 1)', () => {
       expect(aliceGroup).toBeDefined();
     });
 
-    it.skip('should improve findDuplicates performance with pre-computed data (benchmark)', async () => {
+    it('should improve findDuplicates performance with pre-computed data (benchmark)', async () => {
       // SKIPPED: Benchmark assertion - optimize after codebase split
       // Create entities with some duplicates
       const entities = Array.from({ length: 200 }, (_, i) => ({
@@ -302,7 +302,7 @@ describe('Foundation Performance Benchmarks (Phase 12 Sprint 1)', () => {
       expect(graph.entities.length).toBeLessThan(5);
     });
 
-    it.skip('should scale linearly for compression (benchmark)', async () => {
+    it('should scale linearly for compression (benchmark)', async () => {
       // SKIPPED: Benchmark assertion - optimize after codebase split
       // Small graph: 50 entities
       const smallEntities = Array.from({ length: 50 }, (_, i) => ({
@@ -410,7 +410,7 @@ describe('Foundation Performance Benchmarks (Phase 12 Sprint 1)', () => {
       }
     });
 
-    it.skip('should scale well for tag operations (benchmark)', async () => {
+    it('should scale well for tag operations (benchmark)', async () => {
       // SKIPPED: Benchmark assertion - optimize after codebase split
       // Create entities
       const entities = Array.from({ length: 200 }, (_, i) => ({
@@ -440,7 +440,7 @@ describe('Foundation Performance Benchmarks (Phase 12 Sprint 1)', () => {
       expect(removeDuration).toBeLessThan(PERF_CONFIG.MAX_ABSOLUTE_TIME_MS);
     });
 
-    it.skip('should scale well for bulk tag operations (benchmark)', async () => {
+    it('should scale well for bulk tag operations (benchmark)', async () => {
       // SKIPPED: Benchmark assertion - optimize after codebase split
       // Create entities
       const entities = Array.from({ length: 500 }, (_, i) => ({
@@ -506,7 +506,7 @@ describe('Foundation Performance Benchmarks (Phase 12 Sprint 1)', () => {
       expect(graph.relations.length).toBeLessThan(200);
     });
 
-    it.skip('should complete complex workflow within time limit (benchmark)', async () => {
+    it('should complete complex workflow within time limit (benchmark)', async () => {
       // SKIPPED: Benchmark assertion - optimize after codebase split
       const startTime = Date.now();
 

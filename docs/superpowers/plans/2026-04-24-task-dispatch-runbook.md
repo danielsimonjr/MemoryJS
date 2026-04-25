@@ -41,13 +41,13 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-T03–T10 of the v1.11.0 + Phase β.0 chain are complete. T46+T47+T49 of Phase ζ shipped 2026-04-25 (audit tool + script + README; T48 commit-hook still pending). Next ready streams:
+Phase ε is **fully shipped** (T41, T42, T44, T45 done 2026-04-25; T43 baselines.json deferred per platform-keyed-rows note). T46+T47+T49 of Phase ζ also shipped (T48 hook still pending). Next ready streams:
 
-1. **T41** — Phase ε.1: skip-test inventory (read-only inventory; unblocks T42 unskip).
-2. **T11** — Phase β.1: define `IMemoryBackend` interface + contract test (TDD). Unblocks T12+T13 in parallel.
-3. **T48** — Phase ζ.3: Claude Code hook in `.claude/settings.local.json` to auto-run `npm run audit:plans` after commits touching plans or src.
+1. **T11** — Phase β.1: define `IMemoryBackend` interface + contract test (TDD). Sequential entry to v1.12.0.
+2. **T48** — Phase ζ.3: Claude Code hook in `.claude/settings.local.json` to auto-run `npm run audit:plans` after commits touching plans or src.
+3. **T43** — Phase ε.3: per-platform `tests/performance/baselines.json` baselines.
 
-T11 is the next sequential v1.12.0 step. T41 and T48 are independent and parallelizable with T11.
+T48 and T43 are independent and parallelizable with T11.
 
 ---
 
@@ -544,11 +544,11 @@ Cardinal rules. One commit. Plan checkbox δ.1.1 → [x].`
 
 | ID | Task | File |
 |---|---|---|
-| T41 | inventory the 10 `it.skip` blocks; categorize ready vs still-blocked | both perf test files |
-| T42 | unskip the ready ones; for blockers, file follow-up issues | both perf test files |
-| T43 | establish baselines (`tests/performance/baselines.json`) | new file |
-| T44 | add `npm run bench` script | `package.json` |
-| T45 | document Windows/Dropbox noise floor in CLAUDE.md | CLAUDE.md |
+| T41 | inventory the 10 `it.skip` blocks; categorize ready vs still-blocked | both perf test files | ✅ done 2026-04-25 |
+| T42 | unskip the ready ones; for blockers, file follow-up issues | both perf test files | ✅ done 2026-04-25 (10/10 unskipped, 48/48 green) |
+| T43 | establish baselines (`tests/performance/baselines.json`) | new file | 🟡 pending — recommend per-platform rows |
+| T44 | add `npm run bench` script | `package.json` | ✅ done 2026-04-25 |
+| T45 | document Windows/Dropbox noise floor in CLAUDE.md | CLAUDE.md | ✅ done 2026-04-25 |
 
 ```ts
 // T41 prompt

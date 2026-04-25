@@ -35,7 +35,8 @@
     "tools:install": "cd tools/chunking-for-files && npm install && cd ../compress-for-context && npm install && cd ../create-dependency-graph && npm install && cd ../migrate-from-jsonl-to-sqlite && npm install",
     "tools:build": "cd tools/chunking-for-files && npm run build && cd ../compress-for-context && npm run build && cd ../create-dependency-graph && npm run build && cd ../migrate-from-jsonl-to-sqlite && npm run build",
     "benchmark": "tsx benchmarks/synthetic-bench.ts",
-    "audit:plans": "tsx tools/plan-doc-audit/audit.ts"
+    "audit:plans": "tsx tools/plan-doc-audit/audit.ts",
+    "bench": "vitest run tests/performance"
   },
   "keywords": [
     "knowledge-graph",

@@ -401,7 +401,7 @@ describe('Embedding Performance Benchmarks', () => {
   });
 
   describe('Benchmark: Cache Performance', () => {
-    it.skip('BENCHMARK: Cache operations should be fast (SKIPPED pending codebase split)', () => {
+    it('BENCHMARK: Cache operations should be fast (SKIPPED pending codebase split)', () => {
       const cache = new EmbeddingCache({ maxSize: 10000 });
       const embedding = new Array(384).fill(0.1);
 
@@ -427,7 +427,7 @@ describe('Embedding Performance Benchmarks', () => {
   });
 
   describe('Benchmark: Batch Embedding', () => {
-    it.skip('BENCHMARK: Batch embedding should be efficient (SKIPPED pending codebase split)', async () => {
+    it('BENCHMARK: Batch embedding should be efficient (SKIPPED pending codebase split)', async () => {
       const service = new MockEmbeddingService(384);
       const texts = Array.from({ length: 1000 }, (_, i) => `Sample text content ${i}`);
 
@@ -441,7 +441,7 @@ describe('Embedding Performance Benchmarks', () => {
   });
 
   describe('Benchmark: Incremental Indexing', () => {
-    it.skip('BENCHMARK: Incremental indexing throughput (SKIPPED pending codebase split)', async () => {
+    it('BENCHMARK: Incremental indexing throughput (SKIPPED pending codebase split)', async () => {
       const embeddingService = new MockEmbeddingService(384);
       const vectorStore = new InMemoryVectorStore();
       const indexer = new IncrementalIndexer(embeddingService, vectorStore, {
