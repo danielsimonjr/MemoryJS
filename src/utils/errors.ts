@@ -300,6 +300,30 @@ export class RefNotFoundError extends KnowledgeGraphError {
 }
 
 /**
+ * Error thrown when a write through `CollaborationAuditEnforcer` is
+ * attempted without an `agentId` while
+ * `MEMORY_AUDIT_ATTRIBUTION_REQUIRED=true` (η.5.5.d). Strict-attribution
+ * mode forces every mutation to name the agent that made it, so audit
+ * trails can never be silently anonymous.
+ */
+export class AttributionRequiredError extends KnowledgeGraphError {
+  constructor(operation: string) {
+    super(
+      `agentId is required for ${operation} when audit attribution is enforced`,
+      'ATTRIBUTION_REQUIRED',
+      {
+        context: { operation },
+        suggestions: [
+          'Pass `agentId` to the enforcer method',
+          'Disable strict mode by setting MEMORY_AUDIT_ATTRIBUTION_REQUIRED=false',
+        ],
+      },
+    );
+    this.name = 'AttributionRequiredError';
+  }
+}
+
+/**
  * Error thrown when an optimistic-concurrency-controlled update fails
  * because the live entity's `version` field doesn't match the
  * caller-supplied `expectedVersion` (η.5.5.c).

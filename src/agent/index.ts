@@ -285,3 +285,10 @@ export {
   type ExperienceType,
   type Experience,
 } from './ExperienceExtractor.js';
+
+// η.5.5.d Collaboration audit enforcer
+export {
+  CollaborationAuditEnforcer,
+  type AttributionMode,
+  type CollaborationAuditEnforcerOptions,
+} from './collaboration/CollaborationAuditEnforcer.js';

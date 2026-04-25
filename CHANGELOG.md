@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase η.5.5.d — Audit Attribution Enforcer)
+
+- **`CollaborationAuditEnforcer`** (`src/agent/collaboration/`) — thin proxy over `EntityManager` that forces every mutation to carry an `agentId` and appends an `AuditLog` entry on success.
+  - Distinct from `GovernanceManager`: enforces *attribution only* — never blocks writes on policy grounds.
+  - Three operations: `createEntities(entities, agentId)`, `updateEntity(name, updates, agentId, options?)`, `deleteEntities(names, agentId)`.
+  - **Two modes** via `{ mode: 'strict' | 'lenient' }` constructor option:
+    - `strict` (default) — empty/undefined/whitespace `agentId` throws `AttributionRequiredError`.
+    - `lenient` — accepts calls without agentId; audit entry omits the field. Useful for back-compat wrapping around legacy callers.
+  - **Composes with η.5.5.c OCC** — `updateEntity` forwards `expectedVersion` option to `EntityManager.updateEntity`; `VersionConflictError` propagates and prevents the audit entry from being written (failed writes don't pollute the trail).
+  - **Captures full snapshots** — `update` audit entries include `before` (pre-update read) and `after` (post-update result); `delete` entries include `before`. `delete` skips audit entries for non-existent names (no-op match).
+- **`AttributionRequiredError`** (`src/utils/errors.ts`) — extends `KnowledgeGraphError`; raised by the enforcer in strict mode. Carries the operation name in context.
+- Barrel-exported from `src/agent/index.ts`.
+
+11 new tests in `tests/unit/agent/CollaborationAuditEnforcer.test.ts`. Closes T60 sub-feature 5.5.d.
+
 ### Added (Phase η.5.5.c — Optimistic Concurrency Control)
 
 `EntityManager.updateEntity` now accepts an optional `{ expectedVersion: number }` parameter. When supplied, the live entity's `Entity.version` (v1.8.0 supersession field) must match or `VersionConflictError` is thrown.
