@@ -62,6 +62,7 @@ import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
 import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
 import { WorldModelManager } from '../agent/world/WorldModelManager.js';
+import { ActiveRetrievalController } from '../agent/retrieval/ActiveRetrievalController.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -120,6 +121,7 @@ export class ManagerContext {
   private _rbacMiddleware?: RbacMiddleware;
   private _roleAssignmentStore?: RoleAssignmentStore;
   private _worldModelManager?: WorldModelManager;
+  private _activeRetrieval?: ActiveRetrievalController;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -508,6 +510,18 @@ export class ManagerContext {
       );
     }
     return this._worldModelManager;
+  }
+
+  /**
+   * `ActiveRetrievalController` (3B.5) — adaptive query-rewriting loop
+   * over `RankedSearch`. Lazy. Pure symbolic expansion (no LLM); for
+   * LLM-driven decomposition use `ctx.llmQueryPlanner`.
+   */
+  get activeRetrieval(): ActiveRetrievalController {
+    if (!this._activeRetrieval) {
+      this._activeRetrieval = new ActiveRetrievalController(this.rankedSearch);
+    }
+    return this._activeRetrieval;
   }
 
   /**

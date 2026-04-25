@@ -293,6 +293,18 @@ export {
   type CollaborationAuditEnforcerOptions,
 } from './collaboration/CollaborationAuditEnforcer.js';
 
+// 3B.5 Active Retrieval
+export {
+  QueryRewriter,
+  ActiveRetrievalController,
+  type RewriteResult,
+  type RetrievalContext,
+  type RetrievalDecision,
+  type RetrievalRound,
+  type AdaptiveResult,
+  type ActiveRetrievalConfig,
+} from './retrieval/index.js';
+
 // 3B.7 World Model
 export {
   WorldStateSnapshot,

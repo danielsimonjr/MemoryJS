@@ -89,6 +89,7 @@ ctx.causalReasoner      // 3B.6 Causal Reasoning (findCauses/findEffects/counter
 ctx.roleAssignmentStore // η.6.1 RBAC role grants registry
 ctx.rbacMiddleware      // η.6.1 RBAC policy (checkPermission)
 ctx.worldModelManager   // 3B.7 World Model orchestrator (snapshots + diff)
+ctx.activeRetrieval     // 3B.5 Active Retrieval (iterative query rewriting)
 ```
 
 **v1.9.0 Additions:**

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 3B.5 — Active Retrieval)
+
+Iterative query-rewriting retrieval loop. New module: `src/agent/retrieval/`.
+
+- **`QueryRewriter`** — pure token-overlap expansion. Given a base query and a set of result snippets, extracts the highest-co-occurring tokens (excluding the query's own tokens and a stopword set) and emits an expanded query. No LLM required.
+- **`ActiveRetrievalController`** — wraps `RankedSearch` for the search step and `QueryRewriter` for the expansion step.
+  - `shouldRetrieve(context)` — cost heuristic. Rejects empty queries; denies when estimated cost exceeds `costThreshold` (default 1000 tokens) or per-call `budgetTokens`.
+  - `adaptiveRetrieve(context)` — runs up to `maxRounds` (default 3) of (search → score coverage → rewrite). Stops early when coverage reaches `minCoverage` (default 0.6) or no expansion tokens are available. Returns the highest-coverage round's results plus the full per-round trace.
+  - Coverage estimate: average of top-3 result scores, clamped to [0, 1].
+- **`ctx.activeRetrieval`** — new lazy getter on `ManagerContext`. Wires `rankedSearch` automatically.
+- Distinct from `LLMQueryPlanner` (which decomposes via LLM) — `ActiveRetrievalController` is purely symbolic and works without any LLM provider.
+
+15 new tests in `tests/unit/agent/ActiveRetrieval.test.ts`. Closes T62 sub-section 3B.5 — **all four 3B.4-3B.7 sub-sections of the Memory Theory plan are now shipped**.
+
 ### Added (Phase 3B.7 — World Model)
 
 Orchestrator that composes existing services into a single facade for "what does the agent think the world looks like?" New module: `src/agent/world/`.
