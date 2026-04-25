@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-04-25
+
 ### Added (Phase ζ.3 — audit:plans commit hook)
 
 - **`.claude/settings.local.json` PostToolUse hook** — second hook in the `Edit|Write` matcher chain runs `npm run audit:plans` whenever `CLAUDE_FILE_PATH` matches a plan-doc or src path (`docs/superpowers/plans/**`, `docs/roadmap/**`, or `src/**`, `.md`/`.ts` files). Hook runs in <30s timeout; non-blocking. Logs flip-eligible items so plan-doc rot is caught the same edit it appears, not weeks later. Closes T48 (Phase ζ.3).
