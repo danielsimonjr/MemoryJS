@@ -293,6 +293,16 @@ export {
   type CollaborationAuditEnforcerOptions,
 } from './collaboration/CollaborationAuditEnforcer.js';
 
+// 3B.6 Causal Reasoning
+export {
+  CausalReasoner,
+  DEFAULT_CAUSAL_RELATION_TYPES,
+  type CausalRelationType,
+  type CausalChain,
+  type CausalCycle,
+  type CausalReasonerConfig,
+} from './causal/index.js';
+
 // η.6.1 Role-Based Access Control
 export {
   DEFAULT_PERMISSION_MATRIX,

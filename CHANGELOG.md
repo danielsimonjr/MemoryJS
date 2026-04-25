@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase 3B.6 — Causal Reasoning)
+
+Symbolic forward / backward / counterfactual inference over a causal-relation subgraph. New module: `src/agent/causal/`.
+
+- **`CausalReasoner`** — wraps `GraphTraversal.findAllPaths` filtered to causal relation types (default set: `causes`, `enables`, `prevents`, `precedes`, `correlates`; caller-overridable). Scores each chain by the product of per-edge `causalStrength` (read from `Relation.metadata.causalStrength`; defaults to 1 when absent).
+- **`findEffects(cause, candidates, maxDepth?)`** — chains starting at `cause` reaching any of `candidates`. Sorted by score descending.
+- **`findCauses(effect, candidates, maxDepth?)`** — symmetric: chains from any candidate cause to `effect`.
+- **`counterfactual({ seed, removeFrom, removeTo, predict, maxDepth? })`** — chains from `seed` to `predict` that DO NOT use the named edge. Pure: doesn't mutate the underlying graph. Compare against `findEffects` to see which chains the removal kills.
+- **`detectCycles(seed, maxDepth?)`** — depth-bounded DFS over the causal subgraph. Each cycle returned as `{ cycle: [n0, n1, ..., n0], relations: [...] }`. JSDoc'd caveat: treats `prevents` as a directed edge (NOT a logical negation), so prevents+enables triangles are flagged as cycles.
+- Configurable: `{ causalTypes, maxDepth }` constructor options. Default `maxDepth: 6`.
+- Probabilistic Bayes-net inference deferred — needs an external lib; gated per the plan.
+
+15 new tests in `tests/unit/agent/CausalReasoner.test.ts`. Closes T62 sub-section 3B.6.
+
 ### Added (Phase η.6.1 — Role-Based Access Control)
 
 Named-role permission system layered above the η.5.5.b visibility model. New module: `src/agent/rbac/`.
