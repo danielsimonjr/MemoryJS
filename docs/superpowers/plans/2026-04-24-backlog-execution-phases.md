@@ -74,7 +74,7 @@ Each task below names a default agent type. Use these via the `Agent` tool with 
 - [ ] **β.4** Wire `MemoryEngine` constructor to accept an `IMemoryBackend` (default: `InMemoryBackend`). Preserve current default behavior for existing callers.
 - [ ] **β.5** Add `DecayEngine.calculatePrdEffectiveImportance()` parallel to existing `calculateEffectiveImportance` per spec.
 - [ ] **β.6** Add configurable decay parameter loading (`decay_rate`, `freshness_coefficient`, `relevance_weight`, `min_importance_threshold`) — read from `AgentMemoryConfig`, fall through to existing defaults.
-- [ ] **β.7** `pr-review-toolkit:code-reviewer` reviews the diff for backwards-compatibility regressions (existing `DecayScheduler` / `SearchManager` / `SemanticForget` semantics preserved).
+- [x] **β.7** `pr-review-toolkit:code-reviewer` reviews the diff for backwards-compatibility regressions (existing `DecayScheduler` / `SearchManager` / `SemanticForget` semantics preserved).
 
 ### Verification gate (β)
 ```
@@ -137,24 +137,24 @@ Each task below names a default agent type. Use these via the `Agent` tool with 
 
 **Track δ.1 — Memory Validator Service (Phase 3B.1)**
 *Builds on existing `ContradictionDetector`.*
-- [ ] δ.1.1 `MemoryValidator` interface per ROADMAP §3B.1: `validateConsistency`, `detectContradictions`, `repairMemory`, `validateTemporalOrder`, `calculateReliability`, plus `ValidationResult` and `Contradiction` types.
+- [x] δ.1.1 `MemoryValidator` interface per ROADMAP §3B.1: `validateConsistency`, `detectContradictions`, `repairMemory`, `validateTemporalOrder`, `calculateReliability`, plus `ValidationResult` and `Contradiction` types.
 - [ ] δ.1.2 Implementation: re-use `ContradictionDetector` for detection, add the three new methods (`repairMemory`, `validateTemporalOrder`, `calculateReliability`).
-- [ ] δ.1.3 Pre-storage validation hook in `ObservationManager` (gated by config flag).
-- [ ] δ.1.4 Integration with existing `ConflictResolver`.
+- [x] δ.1.3 Pre-storage validation hook in `ObservationManager` (gated by config flag).
+- [x] δ.1.4 Integration with existing `ConflictResolver`.
 
 **Track δ.2 — Trajectory Compressor Service (Phase 3B.2)**
 *Builds on existing `compressForContext`.*
-- [ ] δ.2.1 `TrajectoryCompressor` interface per ROADMAP §3B.2: `distill`, `abstractAtLevel`, `foldContext`, `findRedundancies`, `mergeRedundant`.
+- [x] δ.2.1 `TrajectoryCompressor` interface per ROADMAP §3B.2: `distill`, `abstractAtLevel`, `foldContext`, `findRedundancies`, `mergeRedundant`.
 - [ ] δ.2.2 Implementation: wrap `compressForContext` for the `foldContext` case; add the four new methods.
 - [ ] δ.2.3 Compression strategies: `semantic_clustering`, `temporal_windowing`, `importance_filtering`, `hierarchical`.
 - [ ] δ.2.4 Wire into `ContextWindowManager` as an optional pre-distillation step.
 
 **Track δ.3 — Experience Extractor Service (Phase 3B.3)**
 *Builds on existing `PatternDetector`.*
-- [ ] δ.3.1 `ExperienceExtractor` interface per ROADMAP §3B.3.
-- [ ] δ.3.2 `extractFromContrastivePairs` over success/failure trajectories.
-- [ ] δ.3.3 `clusterTrajectories` (semantic | structural | outcome).
-- [ ] δ.3.4 `synthesizeExperience` returning a transferable `Experience` entity.
+- [x] δ.3.1 `ExperienceExtractor` interface per ROADMAP §3B.3.
+- [x] δ.3.2 `extractFromContrastivePairs` over success/failure trajectories.
+- [x] δ.3.3 `clusterTrajectories` (semantic | structural | outcome).
+- [x] δ.3.4 `synthesizeExperience` returning a transferable `Experience` entity.
 
 ### Verification gate (δ)
 ```
