@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase ζ.3 — audit:plans commit hook)
+
+- **`.claude/settings.local.json` PostToolUse hook** — second hook in the `Edit|Write` matcher chain runs `npm run audit:plans` whenever `CLAUDE_FILE_PATH` matches a plan-doc or src path (`docs/superpowers/plans/**`, `docs/roadmap/**`, or `src/**`, `.md`/`.ts` files). Hook runs in <30s timeout; non-blocking. Logs flip-eligible items so plan-doc rot is caught the same edit it appears, not weeks later. Closes T48 (Phase ζ.3).
+
+### Added (Phase ε.3 — perf baselines)
+
+- **`tests/performance/baselines.json`** — Per-platform performance baseline file keyed by `${process.platform}-${cpuModelSlug}`. Schema documented in `_meta`. Currently empty — first run on each host populates rows manually. Closes T43 (Phase ε.3).
+- **`tests/performance/baselineHelper.ts`** — `platformKey()` builds the deterministic host key (slug from first CPU model, lowercased + dashed); `getBaseline(testName)` returns the row or `null` (absent baselines = log-only mode); `assertOrLogP95(testName, p95)` is the call-site helper that asserts within `noise_floor_pct` tolerance when a baseline exists, or logs the captured P95 for manual seeding when not. 3 unit tests in `tests/unit/performance/baselineHelper.test.ts` cover key stability + null-baseline default.
+
 ### Added (Phase β.3 + β.4 + β.7 — SQLiteBackend, wiring, review pass)
 
 - **`src/agent/SQLiteBackend.ts`** — Durable `IMemoryBackend` adapter wrapping `MemoryEngine` + `DecayEngine`. `add()` delegates to the four-tier dedup chain; `get_weighted` reuses `getSessionTurns` then re-scores via `DecayEngine.calculatePrdEffectiveImportance`. Options: `dedupOnAdd` (default `true`; `false` throws — bypass path is future work) and `preserveCallerIds` (default `false`; `true` throws — needs a `storage.renameEntity` primitive). Closes T13 (Phase β.3).

@@ -1,0 +1,19 @@
+{
+  "_meta": {
+    "purpose": "Per-platform performance baselines for tests/performance/. Keyed by `${process.platform}-${cpuModelSlug}`. Tests look up their platform's row; if absent, they log timings without asserting (lets the suite stay green on new platforms while the baseline is captured).",
+    "schema": {
+      "<platform-key>": {
+        "<test-name>": {
+          "p50_ms": "median latency",
+          "p95_ms": "95th-percentile latency",
+          "noise_floor_pct": "expected jitter (used as a × multiplier when asserting)",
+          "captured_at": "ISO date when baseline was recorded",
+          "captured_node": "node version at capture time"
+        }
+      }
+    },
+    "regenerate": "Set MEMORY_PERF_RECORD=1 and run `npm run bench`; tests will write fresh rows for the active platform.",
+    "added": "2026-04-25 (T43, Phase ε.3)"
+  },
+  "platforms": {}
+}

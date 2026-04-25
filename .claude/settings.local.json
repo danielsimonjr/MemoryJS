@@ -67,6 +67,12 @@
             "command": "npm run typecheck 2>&1 | tail -20",
             "timeout": 60,
             "statusMessage": "Type-checking..."
+          },
+          {
+            "type": "command",
+            "command": "node -e \"const p=process.env.CLAUDE_FILE_PATH||''; const re=/^(docs[\\\\/]+(superpowers[\\\\/]+plans|roadmap)[\\\\/]+|src[\\\\/]+).*\\.(md|ts)$/; if(re.test(p)){const{spawnSync}=require('child_process');const r=spawnSync('npm',['run','audit:plans'],{shell:true,encoding:'utf8',timeout:30000});console.log(r.stdout||'');if(r.status===1){console.log('[plan-doc-audit] flip-eligible items found — review and run with --apply');}}\"",
+            "timeout": 45,
+            "statusMessage": "plan-doc-audit (when relevant paths touched)..."
           }
         ]
       }

@@ -41,13 +41,13 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-**Phase β is COMPLETE** as of 2026-04-25 (T10–T17 all shipped on master). v1.12.0 release prep should follow once a few polish items land. Next ready streams:
+**Phase β + ε + ζ are all COMPLETE** as of 2026-04-25. v1.12.0 is feature-complete; release prep can run anytime. Next streams (in order):
 
-1. **T18** — Phase γ.0: ADR for Postgres adapter library + Vector store (decision gate; needs user input on runtime deps before adding `pg` etc.).
-2. **T48** — Phase ζ.3: Claude Code hook in `.claude/settings.local.json` to auto-run `npm run audit:plans` after commits touching plans or src.
-3. **T43** — Phase ε.3: per-platform `tests/performance/baselines.json` baselines.
+1. **v1.12.0 release** — bump `package.json` 1.11.0 → 1.12.0, finalize CHANGELOG, tag, push (no npm publish — `/release` to publish).
+2. **T18** — Phase γ.0: ADR for Postgres adapter library + Vector store. **Needs user input on runtime deps** before adding `pg` etc.; per cardinal rule the agent should not add runtime deps without confirmation.
+3. **Phase δ** (T28–T40): Memory Intelligence Services — design ADR + 3 services (Memory Validator, Trajectory Compressor, Experience Extractor). Doesn't add runtime deps; can dispatch after release.
 
-T48 + T43 are independent and parallelizable. T18 needs user input before runtime deps can be added (per cardinal rules) — recommend pausing the γ track until then.
+η (T50–T63) remains long-horizon — each item needs its own dated plan via `superpowers:writing-plans` before dispatch.
 
 ---
 
@@ -546,7 +546,7 @@ Cardinal rules. One commit. Plan checkbox δ.1.1 → [x].`
 |---|---|---|
 | T41 | inventory the 10 `it.skip` blocks; categorize ready vs still-blocked | both perf test files | ✅ done 2026-04-25 |
 | T42 | unskip the ready ones; for blockers, file follow-up issues | both perf test files | ✅ done 2026-04-25 (10/10 unskipped, 48/48 green) |
-| T43 | establish baselines (`tests/performance/baselines.json`) | new file | 🟡 pending — recommend per-platform rows |
+| T43 | establish baselines (`tests/performance/baselines.json`) | new file | ✅ done 2026-04-25 (per-platform rows + baselineHelper) |
 | T44 | add `npm run bench` script | `package.json` | ✅ done 2026-04-25 |
 | T45 | document Windows/Dropbox noise floor in CLAUDE.md | CLAUDE.md | ✅ done 2026-04-25 |
 
@@ -578,7 +578,7 @@ Plan checkbox ε.1 → [x] when the inventory file exists.`
 |---|---|
 | T46 | `tools/plan-doc-audit/audit.ts` — symbol-presence checker that suggests `[x]` flips | ✅ done 2026-04-25 |
 | T47 | `npm run audit:plans` script | ✅ done 2026-04-25 |
-| T48 | Claude Code hook in `.claude/settings.local.json` | 🟡 pending |
+| T48 | Claude Code hook in `.claude/settings.local.json` | ✅ done 2026-04-25 |
 | T49 | `tools/plan-doc-audit/README.md` | ✅ done 2026-04-25 |
 
 ```ts
