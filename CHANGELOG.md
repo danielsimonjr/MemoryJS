@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase β.1 — IMemoryBackend interface)
+
+- **`src/agent/MemoryBackend.ts`** — Defines `IMemoryBackend` interface plus `MemoryTurn`, `WeightedTurn`, and `GetWeightedOptions` types per `docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md` (PRD MEM-04). Naming preserves the PRD's snake_case (`get_weighted`, `delete_session`, `list_sessions`) — the only place in the codebase that does so. Distinct from `IGraphStorage`: `IGraphStorage` is the durable graph-store contract (entities + relations + indexes + transactions); `IMemoryBackend` is the agent-memory-flavored contract (turn-level ingest, weighted retrieval, session lifecycle). Both coexist; this is purely additive. No backend implementations yet — `InMemoryBackend` lands in T12, `SQLiteBackend` in T13.
+- **`tests/unit/agent/IMemoryBackend.contract.test.ts`** — Parameterized contract test suite. Exports `runMemoryBackendContract(name, factory)` so T12/T13 backends can call `runMemoryBackendContract('InMemoryBackend', () => new InMemoryBackend(...))` and inherit a 9-test conformance suite covering `add`/`get_weighted`/`delete_session`/`list_sessions` semantics, sessionId scoping, limit/threshold options, and metadata round-trip. Plus 4 type-shape tests verifying the public TS surface compiles. Closes T11 (Phase β.1).
+
 ### Added (Phase ε — performance benchmarks unskip)
 
 - **`tests/performance/embedding-benchmarks.test.ts` + `tests/performance/foundation-benchmarks.test.ts`** — All 10 `it.skip` blocks un-skipped. The blocking event ("codebase split") happened (memoryjs is the post-split repo); every named subject under test (`EmbeddingCache`, `MockEmbeddingService`, `IncrementalIndexer`, `EntityManager.deleteEntities`, `RelationManager.removeRelations`, `CompressionManager.findDuplicates` / `compress`, `TagManager.*` per-entity + bulk paths, complex-workflow e2e) is shipped in `src/`. Verified pass: 48/48 perf tests green. Closes T41 + T42 + T45 of `docs/superpowers/plans/2026-04-24-task-dispatch-runbook.md` (Phase ε.1, ε.2, ε.5).

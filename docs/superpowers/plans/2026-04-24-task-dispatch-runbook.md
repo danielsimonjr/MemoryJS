@@ -41,13 +41,13 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-Phase ε is **fully shipped** (T41, T42, T44, T45 done 2026-04-25; T43 baselines.json deferred per platform-keyed-rows note). T46+T47+T49 of Phase ζ also shipped (T48 hook still pending). Next ready streams:
+Phase β.1 (T11) shipped 2026-04-25 — `IMemoryBackend` interface + parameterized contract suite live. Phase ε mostly complete (T43 baselines.json still pending). Phase ζ T48 hook still pending. Next ready streams:
 
-1. **T11** — Phase β.1: define `IMemoryBackend` interface + contract test (TDD). Sequential entry to v1.12.0.
-2. **T48** — Phase ζ.3: Claude Code hook in `.claude/settings.local.json` to auto-run `npm run audit:plans` after commits touching plans or src.
-3. **T43** — Phase ε.3: per-platform `tests/performance/baselines.json` baselines.
+1. **T12** — Phase β.2: implement `InMemoryBackend` adapter (parallel with T13). Wire `runMemoryBackendContract('InMemoryBackend', () => new InMemoryBackend(...))`.
+2. **T13** — Phase β.3: implement `SQLiteBackend` adapter (parallel with T12). Wraps `SQLiteStorage` + `MemoryEngine`.
+3. **T48** — Phase ζ.3: Claude Code hook in `.claude/settings.local.json` for `audit:plans`.
 
-T48 and T43 are independent and parallelizable with T11.
+T12 + T13 are independent and parallelizable. T48 is independent of either.
 
 ---
 
@@ -301,7 +301,7 @@ Unblocks γ, δ. Smallest spec'd-but-unshipped feature.
 | ID | Task | Status | Blockers | Parallel with |
 |---|---|---|---|---|
 | T10 | β.0: code-explorer trace storage paths | ✅ | — | done 2026-04-25 |
-| T11 | β.1: define `IMemoryBackend` interface (TDD) | 🟡 | T10 | — |
+| T11 | β.1: define `IMemoryBackend` interface (TDD) | ✅ | — | done 2026-04-25 |
 | T12 | β.2: implement `InMemoryBackend` | 🟡 | T11 | T13 |
 | T13 | β.3: implement `SQLiteBackend` | 🟡 | T11 | T12 |
 | T14 | β.4: wire `MemoryEngine` to backend (default In-Memory) | 🟡 | T12, T13 | — |
