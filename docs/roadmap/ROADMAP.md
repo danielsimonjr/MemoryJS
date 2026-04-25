@@ -1262,6 +1262,146 @@ Very high effort features for enterprise deployments.
 
 ---
 
+## Backlog Audit (2026-04-24) — Verified Status
+
+> **Method:** RLM cross-reference of all plan/spec docs (`docs/roadmap/`, `docs/superpowers/plans/`) against actual `src/` symbol presence at commit `57cdb13`. Plan-doc checkboxes treated as **stale tracking** (476 unchecked but most ARE implemented per CHANGELOG); ground truth is code presence + CHANGELOG.md.
+>
+> **Companion execution plan:** [`docs/superpowers/plans/2026-04-24-backlog-execution-phases.md`](../superpowers/plans/2026-04-24-backlog-execution-phases.md) — phase-by-phase agent-driven execution sequence (α → η).
+
+### A. In-flight — partial implementation
+
+#### A1. v1.11.0 Memory Engine Core *(target release per CHANGELOG Unreleased)*
+- [x] Tier 1 exact-equality dedup (`2c3a10d`)
+- [x] Tier 2 50% prefix overlap dedup (`5cb4da0`)
+- [x] Tier 3 Jaccard ≥ 0.72 dedup (`0ff0dc0`)
+- [x] Optional semantic-tier dedup (`1d74a08`)
+- [x] `MemoryEngine` + `ImportanceScorer` classes exist
+- [x] `Entity.contentHash` field
+- [ ] Self-review checklist (`task_chunks/041-self-review-checklist.md`)
+- [ ] CHANGELOG bump from Unreleased → 1.11.0 + version tag
+- [ ] Wire-up verification gates (Phase verification gates 013/021/026/033 in plan task chunks)
+
+→ Tackled in **Phase α** of the execution plan.
+
+### B. Spec only, no code yet
+
+#### B1. v1.12.0 Memory Engine Decay Extensions *(per CHANGELOG Unreleased)*
+- [ ] `IMemoryBackend` interface — **0 hits in src/**
+- [ ] `InMemoryBackend` adapter — **0 hits**
+- [ ] `SQLiteBackend` adapter — **0 hits**
+- [ ] `DecayEngine.calculatePrdEffectiveImportance()` — **0 hits**
+- [ ] PRD `MEM-01` configurable decay parameters (`decay_rate`, `freshness_coefficient`, `relevance_weight`, `min_importance_threshold`)
+- [ ] PRD importance range `[1.0, 3.0]` mapping
+
+→ Tackled in **Phase β** of the execution plan.
+
+#### B2. PRD §8 functional requirements not yet covered
+- [x] MEM-01 partial (basic decay shipped; configurable params pending — see B1)
+- [x] MEM-02 (auto-importance scoring) — `ImportanceScorer` shipped
+- [x] MEM-03 (three-tier dedup) — `MemoryEngine` shipped
+- [ ] MEM-04 — `IMemoryBackend` interface (= B1)
+- [ ] MEM-05 — `PostgreSQLBackend` for multi-user deployment with tenant isolation
+- [ ] MEM-06 — `VectorMemoryBackend` for cross-session semantic recall
+
+→ MEM-04 in **Phase β**, MEM-05/06 in **Phase γ**.
+
+### C. Roadmap items — not started
+
+#### C1. Clawvault (separate concept, 4-phase plan)
+- [ ] Phase 1: Quick Wins (P0) — **0 code symbols present**
+- [ ] Phase 2: Foundations (P1)
+- [ ] Phase 3: Advanced Features (P2)
+- [ ] Phase 4: Coordination (P3)
+
+→ **Out of scope** per `GAP_ANALYSIS_VS_SUPERMEMORY.md` ("Out of scope for core library; better suited as separate packages or MCP tools"). Spin out as `memoryjs-clawvault` sibling repo when there's pull.
+
+#### C2. ROADMAP Phase 3B — Memory Intelligence (Reflection & Experience)
+*(Adjacent infrastructure exists — `PatternDetector`, `ReflectionManager`, `ConsolidationPipeline`, `FailureDistillation` — but explicit Phase 3B interfaces are not implemented.)*
+
+- [ ] **3B.1 Memory Validator Service** — `MemoryValidator`, `validateConsistency`, `detectContradictions`, `repairMemory`, `validateTemporalOrder`, `calculateReliability` *(partial: `ContradictionDetector` covers detection only)*
+- [ ] **3B.2 Trajectory Compressor Service** — `distill`, `abstractAtLevel`, `foldContext`, `findRedundancies`, `mergeRedundant` *(partial: `compressForContext` covers context-window case only)*
+- [ ] **3B.3 Experience Extractor Service** — `extractFromContrastivePairs`, `abstractPattern`, `learnDecisionBoundary`, `clusterTrajectories`, `synthesizeExperience` *(partial: `PatternDetector` covers single-pattern case)*
+- [ ] **3B.4 Procedural Memory** *(per ROADMAP)*
+- [ ] **3B.5 Active Retrieval**
+- [ ] **3B.6 Causal Relations**
+- [ ] **3B.7 World Model**
+
+→ 3B.1–3B.3 in **Phase δ**. 3B.4–3B.7 in **Phase η** (long horizon).
+
+#### C3. ROADMAP Phase 4 — Integration & Scale
+- [ ] 4.1 Database Adapters
+- [ ] 4.2 REST API Generation
+- [ ] 4.3 Elasticsearch Integration
+- [ ] 4.4 Temporal Versioning *(partial: `RelationManager.invalidateRelation`/`queryAsOf`/`timeline` shipped in v1.9.0)*
+- [ ] 4.5 Scalability Improvements
+- [ ] 4.6 Graph Visualization *(partial: `IOManager.visualizeGraph` shipped in v1.9.1)*
+
+→ Each item earns its own dated plan file when promoted (**Phase η**).
+
+#### C4. ROADMAP Phase 5 — Advanced Features
+- [ ] 5.1 Vector Database Integration
+- [ ] 5.2 Graph Embeddings
+- [ ] 5.3 ML-Powered Features
+- [ ] 5.4 Standards Compliance
+- [ ] 5.5 Collaboration Features
+
+→ **Phase η** (long horizon).
+
+#### C5. ROADMAP Phase 6 — Enterprise
+- [ ] 6.1 Access Control
+- [ ] 6.2 Distributed Architecture
+- [ ] 6.3 Security & Compliance
+- [ ] 6.4 Cloud-Native Deployment
+- [ ] 6.5 GPU Acceleration
+
+→ **Phase η** (long horizon).
+
+#### C6. `future_features.md` performance/optimization tracks
+15 categories (Search Latency, Write Throughput, Memory Footprint, Query Execution, Storage Backend, Observability, Search Intelligence, Graph Analytics, Entity Lifecycle, CLI Enhancements, Memory Intelligence, Query Language, Integration & Ecosystem, Advanced Features, Enterprise). Largely overlap with C2–C5; folded into **Phase η** rather than duplicated as separate tracks.
+
+### D. Explicitly skipped — needs revisit
+
+#### D1. Skipped performance benchmarks (10 `it.skip`)
+- [ ] `tests/performance/embedding-benchmarks.test.ts:404` — Cache operations performance
+- [ ] `tests/performance/embedding-benchmarks.test.ts:430` — Batch embedding efficiency
+- [ ] `tests/performance/embedding-benchmarks.test.ts:444` — Incremental indexing throughput
+- [ ] `tests/performance/foundation-benchmarks.test.ts:121` — Linear scaling, entity deletion
+- [ ] `tests/performance/foundation-benchmarks.test.ts:147` — Linear scaling, relation deletion
+- [ ] `tests/performance/foundation-benchmarks.test.ts:259` — `findDuplicates` with pre-computed data
+- [ ] `tests/performance/foundation-benchmarks.test.ts:305` — Linear scaling, compression
+- [ ] `tests/performance/foundation-benchmarks.test.ts:413` — Tag operations scaling
+- [ ] `tests/performance/foundation-benchmarks.test.ts:443` — Bulk tag operations scaling
+- [ ] `tests/performance/foundation-benchmarks.test.ts:509` — Complex workflow time limit
+
+→ Tackled in **Phase ε** of the execution plan.
+
+#### D2. Explicitly deferred items (per plan-doc text)
+- PRD §3 GOAL-03 importance-range `[1.0, 3.0]` — *"deferred to the Decay Extensions spec"* (covered in B1 / Phase β).
+- Clawvault — *"deferred to separate effort"* (see C1; out of scope).
+
+### E. Source-level TODOs/FIXMEs
+
+**0 real source TODOs.** The single regex hit in `src/agent/ObserverPipeline.ts:68` is a *regex pattern definition* used to detect TODO-shaped observations in incoming text — not a code TODO itself.
+
+### Plan-doc rot — observed and addressed
+
+The audit found 476 unchecked checkboxes vs. ~10 actually-pending items per code reality. **Phase ζ** of the execution plan introduces `tools/plan-doc-audit/` and a `npm run audit:plans` script + commit hook to keep plan-doc state in sync with `src/` going forward.
+
+### Summary table
+
+| Category | Items | Execution phase |
+|---|---|---|
+| In-flight (v1.11.0 partial) | A1 | **α** — release prep |
+| Spec only (v1.12.0) | B1 + MEM-04 | **β** — IMemoryBackend foundation |
+| PRD MEM-05/06 | B2 | **γ** — backend expansion |
+| ROADMAP Phase 3B.1–3B.3 | C2 | **δ** — Memory Intelligence services |
+| Skipped tests | D1 | **ε** — unskip benchmarks |
+| Plan-doc rot tooling | — | **ζ** — audit automation |
+| ROADMAP Phase 4–6, 3B.4–7, future_features | C3–C6 | **η** — long horizon (per-item plans) |
+| Clawvault | C1 | **out of scope** (sibling repo) |
+
+---
+
 ## Feature Categories
 
 ### Query Language Enhancements
@@ -1392,6 +1532,7 @@ The maintainers will review proposals quarterly and update this roadmap accordin
 | 1.2 | 2026-01-19 | Marked Phase 3 as COMPLETED (v1.2.0). Added Phase 3B: Memory Intelligence based on "From Storage to Experience: A Survey on the Evolution of LLM Agent Memory Mechanisms" (Luo et al., 2026). New features include: Memory Validation & Error Rectification, Trajectory Compression, Experience Extraction (cross-trajectory abstraction), Procedural Memory Manager, Heuristic Guidelines Manager, Active Retrieval Controller, Causal Relations, and World Model Manager. Adjusted Phase 4-6 timelines accordingly. |
 | 1.3 | 2026-03-24 | Added Phase 3C: Must-Have Infrastructure Features — marked COMPLETED (v1.6.0). Eight features implemented: Stable Index Dereferencing (RefIndex), Artifact-Level Granularity (ArtifactManager), Temporal Range Queries (TemporalQueryParser + TemporalSearch), Memory Distillation Policy (DistillationPolicy + DistillationPipeline), Temporal Governance & Freshness (FreshnessManager, Entity.ttl/confidence), N-gram Hashing (NGramIndex), LLM Query Planner (LLMQueryPlanner + LLMSearchExecutor), Dynamic Memory Governance (AuditLog + GovernanceManager). |
 | 1.4 | 2026-03-24 | Added Phase 3D: Should-Have Agent Intelligence Features — marked COMPLETED (v1.7.0). Eight features implemented: Role-Aware Memory Customization (RoleProfiles), Entropy-Aware Filtering (EntropyFilter), Recursive Memory Consolidation (ConsolidationScheduler), Visual Salience Budget Allocation (MemoryFormatter.formatWithSalienceBudget), Collaborative Memory Synthesis (CollaborativeSynthesis), Failure-Driven Memory Distillation (FailureDistillation), Cognitive Load Metrics (CognitiveLoadAnalyzer), Shared Memory Visibility Hierarchies (VisibilityResolver + GroupMembership). |
+| 1.5 | 2026-04-24 | Added **Backlog Audit (2026-04-24) — Verified Status** section consolidating in-flight/spec-only/not-started items via RLM cross-reference of plan docs against `src/` symbol presence. Companion execution plan in `docs/superpowers/plans/2026-04-24-backlog-execution-phases.md` defines an agent-driven 7-phase sequence (α through η) with explicit verification gates, dispatch patterns, and dependency ordering. Findings: 0 real source TODOs, 10 skipped perf benchmarks pending unskip, 476-vs-10 plan-checkbox-vs-reality drift addressed via new Phase ζ tooling. |
 
 ---
 
