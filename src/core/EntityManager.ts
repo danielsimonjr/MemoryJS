@@ -10,7 +10,12 @@
 import type { Entity, LongRunningOperationOptions, AccessContext } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
-import { EntityNotFoundError, InvalidImportanceError, ValidationError } from '../utils/errors.js';
+import {
+  EntityNotFoundError,
+  InvalidImportanceError,
+  ValidationError,
+  VersionConflictError,
+} from '../utils/errors.js';
 import type { RefIndex, RefEntry } from './RefIndex.js';
 
 /**
@@ -528,7 +533,30 @@ export class EntityManager {
    * }
    * ```
    */
-  async updateEntity(name: string, updates: Partial<Entity>): Promise<Entity> {
+  /**
+   * Update an entity with optional optimistic-concurrency-control (η.5.5.c).
+   *
+   * Pass `options.expectedVersion` to enforce OCC: the caller asserts the
+   * live entity has a specific `version`. If it differs (because another
+   * agent / consolidation pass / contradiction-resolution incremented it
+   * since the caller fetched), `VersionConflictError` is thrown with the
+   * expected and actual versions. Omit `expectedVersion` for legacy
+   * last-write-wins semantics (the default — backwards-compat).
+   *
+   * On a successful OCC-guarded write, `version` is auto-incremented:
+   * `(entity.version ?? 1) + 1`. This makes OCC composable with the
+   * existing v1.8.0 supersession-driven version increments.
+   *
+   * **Caveat**: a `ConsolidationScheduler` running in the background can
+   * increment `version` between caller fetch and update, producing
+   * spurious conflicts. Don't cache `expectedVersion` across scheduler
+   * cycles — fetch immediately before writing.
+   */
+  async updateEntity(
+    name: string,
+    updates: Partial<Entity>,
+    options?: { expectedVersion?: number },
+  ): Promise<Entity> {
     // Validate input
     const validation = UpdateEntitySchema.safeParse(updates);
     if (!validation.success) {
@@ -545,9 +573,25 @@ export class EntityManager {
         throw new EntityNotFoundError(name);
       }
 
+      // η.5.5.c: optimistic concurrency check. Treat absent `version` as
+      // version 1 — both for the live entity and for callers asserting
+      // against legacy entities that pre-date supersession tracking.
+      if (options?.expectedVersion !== undefined) {
+        const liveVersion = entity.version ?? 1;
+        if (liveVersion !== options.expectedVersion) {
+          throw new VersionConflictError(name, options.expectedVersion, liveVersion);
+        }
+      }
+
       // Apply updates (sanitized to prevent prototype pollution)
       Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
       entity.lastModified = new Date().toISOString();
+
+      // OCC writes auto-increment version so subsequent OCC writes can detect
+      // their predecessor. Non-OCC writes leave version untouched (legacy).
+      if (options?.expectedVersion !== undefined) {
+        entity.version = (entity.version ?? 1) + 1;
+      }
 
       await this.storage.saveGraph(graph);
       return entity;

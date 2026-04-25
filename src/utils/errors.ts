@@ -300,6 +300,58 @@ export class RefNotFoundError extends KnowledgeGraphError {
 }
 
 /**
+ * Error thrown when an optimistic-concurrency-controlled update fails
+ * because the live entity's `version` field doesn't match the
+ * caller-supplied `expectedVersion` (η.5.5.c).
+ *
+ * This is the canonical 409 Conflict signal in collaborative scenarios
+ * — the η.4.2 REST API translates it to HTTP 409. Callers should refetch
+ * the latest entity, reconcile their changes, and retry.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   await manager.updateEntity('Alice', { importance: 9 }, { expectedVersion: 3 });
+ * } catch (e) {
+ *   if (e instanceof VersionConflictError) {
+ *     console.log(`Conflict: expected v${e.expected}, found v${e.actual}`);
+ *   }
+ * }
+ * ```
+ */
+export class VersionConflictError extends KnowledgeGraphError {
+  readonly entityName: string;
+  readonly expected: number;
+  readonly actual: number;
+  readonly conflictingAgentId?: string;
+
+  constructor(
+    entityName: string,
+    expected: number,
+    actual: number,
+    conflictingAgentId?: string,
+  ) {
+    super(
+      `Version conflict on entity '${entityName}': expected v${expected}, found v${actual}`,
+      'VERSION_CONFLICT',
+      {
+        context: { entityName, expected, actual, conflictingAgentId },
+        suggestions: [
+          'Re-fetch the entity to get the current version',
+          'Reconcile your changes with the live state',
+          'Retry the update with the new expectedVersion',
+        ],
+      },
+    );
+    this.name = 'VersionConflictError';
+    this.entityName = entityName;
+    this.expected = expected;
+    this.actual = actual;
+    this.conflictingAgentId = conflictingAgentId;
+  }
+}
+
+/**
  * Error thrown when content is rejected because its Shannon entropy is too low.
  *
  * Low entropy typically means the content is highly repetitive or contains

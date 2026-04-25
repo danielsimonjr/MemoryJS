@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase η.5.5.c — Optimistic Concurrency Control)
+
+`EntityManager.updateEntity` now accepts an optional `{ expectedVersion: number }` parameter. When supplied, the live entity's `Entity.version` (v1.8.0 supersession field) must match or `VersionConflictError` is thrown.
+
+- **Opt-in per call** — omitting `expectedVersion` preserves legacy last-write-wins semantics (default; backwards-compat).
+- **Auto-increment on success** — OCC-guarded writes bump `version` so subsequent OCC writers can detect their predecessor. Non-OCC writes leave `version` untouched (legacy behavior unchanged).
+- **Composes with v1.8.0 supersession** — both increment the same `version` field; `ContradictionDetector` and OCC interleave correctly.
+- **HTTP 409 mapping** — `VersionConflictError extends KnowledgeGraphError`; carries `{ entityName, expected, actual, conflictingAgentId? }`. The η.4.2 REST API plan translates it to HTTP 409 Conflict.
+- **Background-scheduler caveat** — `ConsolidationScheduler` can increment `version` between caller-fetch and write, producing spurious conflicts. JSDoc warns: don't cache `expectedVersion` across scheduler cycles; fetch immediately before writing.
+
+7 new tests in `tests/unit/core/optimistic-concurrency.test.ts`. Closes T60 sub-feature 5.5.c.
+
 ### Added (Phase η.5.5.b — Visibility Hierarchy Expansion)
 
 `VisibilityResolver` gains two AND-combined gates beyond the five-tier visibility model:
