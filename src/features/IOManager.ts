@@ -33,7 +33,7 @@ import {
 import { StreamingExporter, type StreamResult } from './StreamingExporter.js';
 import { EntitySchema, RelationSchema } from '../utils/schemas.js';
 
-export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid';
+export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid' | 'turtle' | 'rdf-xml' | 'json-ld';
 export type ImportFormat = 'json' | 'csv' | 'graphml';
 export type MergeStrategy = 'replace' | 'skip' | 'merge' | 'fail';
 
@@ -156,9 +156,203 @@ export class IOManager {
         return this.exportAsMarkdown(graph);
       case 'mermaid':
         return this.exportAsMermaid(graph);
+      case 'turtle':
+        return this.exportAsTurtle(graph);
+      case 'rdf-xml':
+        return this.exportAsRdfXml(graph);
+      case 'json-ld':
+        return this.exportAsJsonLd(graph);
       default:
         throw new Error(`Unsupported export format: ${format}`);
     }
+  }
+
+  // -------- η.5.4 Standards Compliance — RDF / Turtle / JSON-LD --------
+
+  /** IRI for an entity resource. Format: `urn:memoryjs:entity:<percent-encoded-name>`. */
+  private entityIri(name: string): string {
+    return `urn:memoryjs:entity:${encodeURIComponent(name)}`;
+  }
+
+  /** IRI for a relation predicate. Format: `urn:memoryjs:rel:<percent-encoded-type>`. */
+  private relationIri(type: string): string {
+    return `urn:memoryjs:rel:${encodeURIComponent(type)}`;
+  }
+
+  /**
+   * Escape a string for a Turtle `STRING_LITERAL_QUOTE` per W3C Turtle 1.1.
+   * - Named ECHAR escapes for `\\ " \n \r \t \b \f`
+   * - Other C0 control chars (forbidden unescaped in `"..."`) as `\uXXXX`
+   */
+  private turtleEscape(s: string): string {
+    return s
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t')
+      .replace(/\x08/g, '\\b')
+      .replace(/\x0c/g, '\\f')
+      .replace(/[\x00-\x07\x0B\x0E-\x1F]/g, (c) =>
+        `\\u${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
+      );
+  }
+
+  /**
+   * Test whether a string is a valid XML 1.0 NCName — ASCII subset,
+   * sufficient because `relationIri()` percent-encodes everything else.
+   * RDF/XML requires this for property-element predicate names.
+   */
+  private isValidNCName(s: string): boolean {
+    return /^[A-Za-z_][A-Za-z0-9_\-.]*$/.test(s);
+  }
+
+  /**
+   * Export as Turtle (W3C RDF 1.1).
+   * - entity → `urn:memoryjs:entity:<name>` resource
+   * - entityType → `rdf:type` with `urn:memoryjs:type:<type>` IRI
+   * - observations → `rdfs:comment` literals
+   * - tags → `dcterms:subject` literals
+   * - createdAt → `dcterms:created` literal
+   * - relation → `<from> <urn:memoryjs:rel:<type>> <to>` triple
+   */
+  private exportAsTurtle(graph: ReadonlyKnowledgeGraph): string {
+    const lines: string[] = [];
+    lines.push('@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .');
+    lines.push('@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .');
+    lines.push('@prefix dcterms: <http://purl.org/dc/terms/> .');
+    lines.push('');
+
+    for (const entity of graph.entities) {
+      const subject = `<${this.entityIri(entity.name)}>`;
+      lines.push(`${subject} a <urn:memoryjs:type:${encodeURIComponent(entity.entityType)}> ;`);
+      lines.push(`  rdfs:label "${this.turtleEscape(entity.name)}" ;`);
+      for (const obs of entity.observations) {
+        lines.push(`  rdfs:comment "${this.turtleEscape(obs)}" ;`);
+      }
+      for (const tag of entity.tags ?? []) {
+        lines.push(`  dcterms:subject "${this.turtleEscape(tag)}" ;`);
+      }
+      if (entity.createdAt) {
+        lines.push(`  dcterms:created "${this.turtleEscape(entity.createdAt)}" ;`);
+      }
+      // Convert the trailing predicate-list separator `;` into a `.` terminator.
+      const last = lines.length - 1;
+      lines[last] = lines[last].replace(/ ;$/, ' .');
+    }
+
+    if (graph.entities.length > 0) lines.push('');
+
+    for (const relation of graph.relations) {
+      const subject = `<${this.entityIri(relation.from)}>`;
+      const predicate = `<${this.relationIri(relation.relationType)}>`;
+      const object = `<${this.entityIri(relation.to)}>`;
+      lines.push(`${subject} ${predicate} ${object} .`);
+    }
+
+    return lines.join('\n');
+  }
+
+  /**
+   * Export as RDF/XML (W3C RDF 1.1 XML serialization).
+   * - Same triple set as Turtle, in XML form
+   * - NCName-valid relation types → property-element under `mjsRel:`
+   * - Otherwise → asserted `mjsRel:link` triple plus `rdf:Statement` reification preserving the original predicate IRI
+   */
+  private exportAsRdfXml(graph: ReadonlyKnowledgeGraph): string {
+    const xmlEscape = (s: string): string =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const lines: string[] = [];
+
+    lines.push('<?xml version="1.0" encoding="UTF-8"?>');
+    lines.push('<rdf:RDF');
+    lines.push('  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"');
+    lines.push('  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"');
+    lines.push('  xmlns:dcterms="http://purl.org/dc/terms/"');
+    lines.push('  xmlns:mjsRel="urn:memoryjs:rel:">');
+
+    for (const entity of graph.entities) {
+      lines.push(`  <rdf:Description rdf:about="${xmlEscape(this.entityIri(entity.name))}">`);
+      lines.push(`    <rdf:type rdf:resource="urn:memoryjs:type:${xmlEscape(encodeURIComponent(entity.entityType))}"/>`);
+      lines.push(`    <rdfs:label>${xmlEscape(entity.name)}</rdfs:label>`);
+      for (const obs of entity.observations) {
+        lines.push(`    <rdfs:comment>${xmlEscape(obs)}</rdfs:comment>`);
+      }
+      for (const tag of entity.tags ?? []) {
+        lines.push(`    <dcterms:subject>${xmlEscape(tag)}</dcterms:subject>`);
+      }
+      lines.push('  </rdf:Description>');
+    }
+
+    for (const relation of graph.relations) {
+      const fromIri = xmlEscape(this.entityIri(relation.from));
+      const toIri = xmlEscape(this.entityIri(relation.to));
+      if (this.isValidNCName(relation.relationType)) {
+        lines.push(`  <rdf:Description rdf:about="${fromIri}">`);
+        lines.push(`    <mjsRel:${xmlEscape(relation.relationType)} rdf:resource="${toIri}"/>`);
+        lines.push('  </rdf:Description>');
+        continue;
+      }
+      // Non-NCName predicate: emit an asserted edge via synthetic `mjsRel:link`,
+      // then a reified `rdf:Statement` so the original predicate IRI survives.
+      const predIri = xmlEscape(this.relationIri(relation.relationType));
+      lines.push(`  <rdf:Description rdf:about="${fromIri}">`);
+      lines.push(`    <mjsRel:link rdf:resource="${toIri}"/>`);
+      lines.push('  </rdf:Description>');
+      lines.push('  <rdf:Description>');
+      lines.push('    <rdf:type rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#Statement"/>');
+      lines.push(`    <rdf:subject rdf:resource="${fromIri}"/>`);
+      lines.push(`    <rdf:predicate rdf:resource="${predIri}"/>`);
+      lines.push(`    <rdf:object rdf:resource="${toIri}"/>`);
+      lines.push('  </rdf:Description>');
+    }
+
+    lines.push('</rdf:RDF>');
+    return lines.join('\n');
+  }
+
+  /**
+   * Export as JSON-LD (JSON for Linking Data).
+   * - `@context` maps memoryjs schema to RDFS + DCTerms vocabularies
+   * - observations/tags use `@container: @set` so each value becomes its own triple (matches Turtle/RDF-XML), not an `rdf:List`
+   * - any JSON-LD parser yields the same RDF graph as the Turtle export
+   */
+  private exportAsJsonLd(graph: ReadonlyKnowledgeGraph): string {
+    const context = {
+      '@vocab': 'urn:memoryjs:',
+      rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+      dcterms: 'http://purl.org/dc/terms/',
+      name: 'rdfs:label',
+      entityType: '@type',
+      observations: { '@id': 'rdfs:comment', '@container': '@set' },
+      tags: { '@id': 'dcterms:subject', '@container': '@set' },
+      createdAt: 'dcterms:created',
+      lastModified: 'dcterms:modified',
+      from: { '@id': 'urn:memoryjs:rel:from', '@type': '@id' },
+      to: { '@id': 'urn:memoryjs:rel:to', '@type': '@id' },
+      relationType: 'urn:memoryjs:rel:type',
+    };
+    const doc = {
+      '@context': context,
+      '@graph': [
+        ...graph.entities.map((entity) => ({
+          '@id': this.entityIri(entity.name),
+          name: entity.name,
+          entityType: `urn:memoryjs:type:${encodeURIComponent(entity.entityType)}`,
+          observations: entity.observations,
+          ...(entity.tags && entity.tags.length > 0 ? { tags: entity.tags } : {}),
+          ...(entity.createdAt ? { createdAt: entity.createdAt } : {}),
+          ...(entity.lastModified ? { lastModified: entity.lastModified } : {}),
+        })),
+        ...graph.relations.map((relation) => ({
+          '@id': `urn:memoryjs:relation:${encodeURIComponent(relation.from)}:${encodeURIComponent(relation.relationType)}:${encodeURIComponent(relation.to)}`,
+          from: this.entityIri(relation.from),
+          to: this.entityIri(relation.to),
+          relationType: relation.relationType,
+        })),
+      ],
+    };
+    return JSON.stringify(doc, null, 2);
   }
 
   /** Export graph with optional brotli compression. */

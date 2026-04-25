@@ -623,7 +623,7 @@ Cardinal rules. One commit. Plan checkbox ζ.1 → [x].`
 | T56 | η.5.1 Vector Database Integration | ROADMAP Phase 5.1 |
 | T57 | η.5.2 Graph Embeddings | ROADMAP Phase 5.2 |
 | T58 | η.5.3 ML-Powered Features — **plan drafted** [`2026-04-25-eta-ml-features.md`](./2026-04-25-eta-ml-features.md) | ROADMAP Phase 5.3 |
-| T59 | η.5.4 Standards Compliance — **plan drafted** [`2026-04-25-eta-standards-compliance.md`](./2026-04-25-eta-standards-compliance.md) | ROADMAP Phase 5.4 |
+| T59 | η.5.4 Standards Compliance — **plan drafted** [`2026-04-25-eta-standards-compliance.md`](./2026-04-25-eta-standards-compliance.md); sub-features 1+2 (RDF/Turtle, RDF/XML, JSON-LD export) ✅ shipped 2026-04-24 | ROADMAP Phase 5.4 |
 | T60 | η.5.5 Collaboration Features | ROADMAP Phase 5.5 |
 | T61 | η.6.x Enterprise (RBAC / Distributed / Security / Cloud / GPU) | ROADMAP Phase 6 |
 | T62 | 3B.4–3B.7 (Procedural / Active Retrieval / Causal / World Model) | ROADMAP Phase 3B |

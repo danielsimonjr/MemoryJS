@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase η.5.4 — Standards Compliance, sub-features 1+2)
+
+- **RDF/Turtle export** (`IOManager.exportGraph(graph, 'turtle')`) — emits W3C RDF 1.1 Turtle. Maps `entity → urn:memoryjs:entity:<name>` IRI, `entityType → rdf:type` (custom class IRI under `urn:memoryjs:type:`), `observations[] → rdfs:comment`, `tags[] → dcterms:subject`, `createdAt → dcterms:created`. Relations emit as direct triples (`<from> <urn:memoryjs:rel:<type>> <to>`).
+- **RDF/XML export** (`IOManager.exportGraph(graph, 'rdf-xml')`) — XML serialization of the same triples. Relations use **`rdf:Statement` reification** so arbitrary predicate IRIs (free-form relation types like `"works at"` or `"causes-then"`) serialize correctly without forcing the relation type into a valid XML local name.
+- **JSON-LD export** (`IOManager.exportGraph(graph, 'json-ld')`) — JSON-LD 1.1 with `@context` mapping memoryjs schema to RDFS + DCTerms. `observations` declared as `@list` (preserves order), `tags` as `@set` (unordered). Compatible with any JSON-LD parser.
+- All three formats percent-encode reserved characters in IRIs (`AT&T` → `urn:memoryjs:entity:AT%26T`, spaces → `%20`).
+- 23 unit tests in `tests/unit/features/IOManager.rdf-export.test.ts`.
+
+Closes T59 sub-features 1+2 (η.5.4 plan, [`2026-04-25-eta-standards-compliance.md`](docs/superpowers/plans/2026-04-25-eta-standards-compliance.md)). Sub-feature 3 (SPARQL SELECT translation) deferred — requires `sparqljs` runtime dep, gated on user approval.
+
 ## [1.14.0] - 2026-04-25
 
 ### Fixed (Phase δ code-reviewer findings)
