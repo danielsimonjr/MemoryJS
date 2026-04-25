@@ -4,7 +4,7 @@
 - Modify: `src/core/GraphStorage.ts` (three serialization blocks)
 - Test: `tests/integration/storage/graph-storage-new-fields.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/storage/graph-storage-new-fields.test.ts`:
 
@@ -83,12 +83,12 @@ describe('GraphStorage persists new v1.8.0 fields', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/storage/graph-storage-new-fields.test.ts`
 Expected: FAIL — fields are not persisted.
 
-- [ ] **Step 3: Add field serialization to `appendEntity`**
+- [x] **Step 3: Add field serialization to `appendEntity`**
 
 In `src/core/GraphStorage.ts`, locate `appendEntity()`. Find where `parentId` is conditionally added to `entityData`. Add immediately after it:
 
@@ -102,21 +102,21 @@ In `src/core/GraphStorage.ts`, locate `appendEntity()`. Find where `parentId` is
     if (entity.supersededBy !== undefined) entityData.supersededBy = entity.supersededBy;
 ```
 
-- [ ] **Step 4: Add the same block to `saveGraphInternal` and `updateEntity`**
+- [x] **Step 4: Add the same block to `saveGraphInternal` and `updateEntity`**
 
 Find the same `parentId` serialization pattern in both methods. Add the same six conditional lines after each occurrence.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/storage/graph-storage-new-fields.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Run full storage test suite**
+- [x] **Step 6: Run full storage test suite**
 
 Run: `npx vitest run tests/integration/storage/`
 Expected: all existing storage tests still pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Message:
 

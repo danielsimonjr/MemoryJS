@@ -4,7 +4,7 @@
 - Modify: `src/core/RelationManager.ts`
 - Test: `tests/unit/core/relation-manager-temporal.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/relation-manager-temporal.test.ts`:
 
@@ -64,11 +64,11 @@ describe('RelationManager.invalidateRelation', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/relation-manager-temporal.test.ts`
 
-- [ ] **Step 3: Implement invalidateRelation**
+- [x] **Step 3: Implement invalidateRelation**
 
 Add to `src/core/RelationManager.ts`:
 
@@ -105,12 +105,12 @@ Add to `src/core/RelationManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/core/relation-manager-temporal.test.ts`
 Expected: 3 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 feat(core): Add RelationManager.invalidateRelation()

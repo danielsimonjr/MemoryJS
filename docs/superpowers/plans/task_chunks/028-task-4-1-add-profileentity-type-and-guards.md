@@ -4,7 +4,7 @@
 - Modify: `src/types/agent-memory.ts`
 - Test: `tests/unit/types/profile-entity.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/types/profile-entity.test.ts`:
 
@@ -34,12 +34,12 @@ describe('ProfileEntity type guard', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/types/profile-entity.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add type and guard**
+- [x] **Step 3: Add type and guard**
 
 In `src/types/agent-memory.ts`, near other type guards like `isSessionEntity`:
 
@@ -60,7 +60,7 @@ export function isProfileEntity(entity: Entity): entity is ProfileEntity {
 }
 ```
 
-- [ ] **Step 4: Run test + commit**
+- [x] **Step 4: Run test + commit**
 
 Run: `npx vitest run tests/unit/types/profile-entity.test.ts`
 Expected: PASS.

@@ -4,7 +4,7 @@
 - Modify: `src/search/SearchManager.ts`
 - Test: `tests/integration/search/project-scope-isolation.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/search/project-scope-isolation.test.ts`:
 
@@ -63,28 +63,28 @@ describe('Project scope isolates search across all search methods', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/search/project-scope-isolation.test.ts`
 Expected: FAIL — search methods don't accept `projectId` in options yet.
 
-- [ ] **Step 3: Add projectId to SearchManager options and thread through**
+- [x] **Step 3: Add projectId to SearchManager options and thread through**
 
 In `src/search/SearchManager.ts`:
 - Add `projectId?: string` to `SearchOptionsWithTracking` (or the corresponding options type used by search methods)
 - In `searchNodes`, `searchNodesRanked`, `booleanSearch`, `fuzzySearch`: where a `SearchFilters` object is constructed from options, include `projectId: options?.projectId`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/search/project-scope-isolation.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Run full test suite**
+- [x] **Step 5: Run full test suite**
 
 Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20`
 Expected: all tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(search): Propagate projectId through all SearchManager methods`
 

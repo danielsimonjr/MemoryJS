@@ -4,7 +4,7 @@
 - Modify: `src/features/CompressionManager.ts`
 - Test: `tests/unit/features/compression-manager-versioning-guard.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/compression-manager-versioning-guard.test.ts`:
 
@@ -56,24 +56,24 @@ describe('CompressionManager respects version chains', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/compression-manager-versioning-guard.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add guard to findDuplicates and mergeEntities**
+- [x] **Step 3: Add guard to findDuplicates and mergeEntities**
 
 In `src/features/CompressionManager.ts`:
 
 - In `findDuplicates`, filter `graph.entities` to exclude `e.isLatest === false` before processing.
 - In `mergeEntities`, throw `ValidationError` if any target entity has `isLatest === false` with message: `"Cannot merge superseded entity '<name>'. Use the latest version."`
 
-- [ ] **Step 4: Run test + full compression suite**
+- [x] **Step 4: Run test + full compression suite**
 
 Run: `npx vitest run tests/unit/features/compression-manager-versioning-guard.test.ts tests/unit/features/CompressionManager.test.ts`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message: `fix(features): CompressionManager skips superseded entity versions`
 

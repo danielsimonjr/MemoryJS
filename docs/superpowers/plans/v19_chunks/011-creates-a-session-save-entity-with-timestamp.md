@@ -11,7 +11,7 @@ memoryjs entity create \
   --storage "$MEMORY_FILE" 2>/dev/null || true
 ```
 
-- [ ] **Step 2: Create precompact hook**
+- [x] **Step 2: Create precompact hook**
 
 Create `hooks/memoryjs_precompact_hook.sh`:
 

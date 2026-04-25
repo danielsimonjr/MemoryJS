@@ -6,13 +6,13 @@
 Both use `$MEMORY_FILE_PATH` env var (default: `~/.memoryjs/memory.jsonl`).
 ```
 
-- [ ] **Step 4: Make scripts executable**
+- [x] **Step 4: Make scripts executable**
 
 ```bash
 chmod +x hooks/memoryjs_save_hook.sh hooks/memoryjs_precompact_hook.sh
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 feat(hooks): Add auto-save hooks for Claude Code

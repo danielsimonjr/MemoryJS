@@ -4,7 +4,7 @@
 - Modify: `src/types/types.ts` (Entity interface, around line 88)
 - Test: `tests/unit/types/entity-new-fields.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/types/entity-new-fields.test.ts`:
 
@@ -64,12 +64,12 @@ describe('Entity new fields (v1.8.0)', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/types/entity-new-fields.test.ts`
 Expected: FAIL with TypeScript errors about unknown properties.
 
-- [ ] **Step 3: Add fields to Entity interface**
+- [x] **Step 3: Add fields to Entity interface**
 
 In `src/types/types.ts`, after the `expiresAt?: string;` field (around line 87), add:
 
@@ -97,17 +97,17 @@ In `src/types/types.ts`, after the `expiresAt?: string;` field (around line 87),
   supersededBy?: string;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/types/entity-new-fields.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Run typecheck**
+- [x] **Step 5: Run typecheck**
 
 Run: `npm run typecheck`
 Expected: no errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stage `src/types/types.ts` and `tests/unit/types/entity-new-fields.test.ts`, commit with message:
 

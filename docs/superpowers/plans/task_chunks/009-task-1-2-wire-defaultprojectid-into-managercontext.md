@@ -4,7 +4,7 @@
 - Modify: `src/core/ManagerContext.ts`
 - Test: `tests/unit/core/manager-context-project.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/manager-context-project.test.ts`:
 
@@ -43,28 +43,28 @@ describe('ManagerContext defaultProjectId option', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/manager-context-project.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Update ManagerContext constructor**
+- [x] **Step 3: Update ManagerContext constructor**
 
 Add an exported `ManagerContextOptions` interface (if not already present) with a new optional `defaultProjectId?: string` field. Update the constructor to accept `string | ManagerContextOptions` (union), extract options from either form, and store `defaultProjectId` as a public readonly property.
 
 Do NOT alter existing constructor logic beyond adding the new field extraction and the union type on the parameter.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/core/manager-context-project.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Run full ManagerContext test suite**
+- [x] **Step 5: Run full ManagerContext test suite**
 
 Run: `npx vitest run tests/unit/core/`
 Expected: all existing tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(core): Add defaultProjectId option to ManagerContext`
 

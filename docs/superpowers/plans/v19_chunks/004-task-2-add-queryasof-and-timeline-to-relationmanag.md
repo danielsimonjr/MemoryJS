@@ -4,7 +4,7 @@
 - Modify: `src/core/RelationManager.ts`
 - Modify: `tests/unit/core/relation-manager-temporal.test.ts` (add tests)
 
-- [ ] **Step 1: Add tests to existing file**
+- [x] **Step 1: Add tests to existing file**
 
 Append to `tests/unit/core/relation-manager-temporal.test.ts`:
 
@@ -113,11 +113,11 @@ describe('RelationManager.timeline', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run tests/unit/core/relation-manager-temporal.test.ts`
 
-- [ ] **Step 3: Implement queryAsOf and timeline**
+- [x] **Step 3: Implement queryAsOf and timeline**
 
 Add to `src/core/RelationManager.ts`:
 
@@ -183,12 +183,12 @@ Add to `src/core/RelationManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run all temporal tests**
+- [x] **Step 4: Run all temporal tests**
 
 Run: `npx vitest run tests/unit/core/relation-manager-temporal.test.ts`
 Expected: 8 PASS (3 invalidate + 3 queryAsOf + 2 timeline).
 
-- [ ] **Step 5: Typecheck and commit**
+- [x] **Step 5: Typecheck and commit**
 
 Run: `npm run typecheck`
 

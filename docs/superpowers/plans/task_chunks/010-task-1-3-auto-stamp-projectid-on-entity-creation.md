@@ -5,7 +5,7 @@
 - Modify: `src/core/ManagerContext.ts` (pass option to EntityManager constructor)
 - Test: `tests/unit/core/entity-manager-project-stamping.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/entity-manager-project-stamping.test.ts`:
 
@@ -62,23 +62,23 @@ describe('EntityManager auto-stamps projectId from context default', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/entity-manager-project-stamping.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Accept options in EntityManager constructor**
+- [x] **Step 3: Accept options in EntityManager constructor**
 
 In `src/core/EntityManager.ts`:
 - Add exported `EntityManagerOptions` interface with `defaultProjectId?: string`
 - Add optional second constructor parameter `options?: EntityManagerOptions`
 - Store `this.defaultProjectId = options?.defaultProjectId`
 
-- [ ] **Step 4: Pass the option from ManagerContext**
+- [x] **Step 4: Pass the option from ManagerContext**
 
 In `src/core/ManagerContext.ts`, update the `entityManager` lazy getter to pass `{ defaultProjectId: this.defaultProjectId }` as the second argument to the EntityManager constructor.
 
-- [ ] **Step 5: Stamp projectId in createEntities**
+- [x] **Step 5: Stamp projectId in createEntities**
 
 In `src/core/EntityManager.ts`, in `createEntities` around line 190, inside the loop that builds new entities (around line 232), before pushing to `newEntities`:
 
@@ -88,17 +88,17 @@ In `src/core/EntityManager.ts`, in `createEntities` around line 190, inside the 
       }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/core/entity-manager-project-stamping.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 7: Run full EntityManager test suite + typecheck**
+- [x] **Step 7: Run full EntityManager test suite + typecheck**
 
 Run: `npx vitest run tests/unit/core/EntityManager.test.ts && npm run typecheck`
 Expected: all tests pass, no errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Message: `feat(core): Auto-stamp projectId on entity creation`
 

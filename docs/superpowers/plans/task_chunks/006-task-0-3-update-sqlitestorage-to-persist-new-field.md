@@ -4,7 +4,7 @@
 - Modify: `src/core/SQLiteStorage.ts` (schema, migration, INSERT/UPDATE bindings)
 - Test: `tests/integration/storage/sqlite-storage-new-fields.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/storage/sqlite-storage-new-fields.test.ts`:
 
@@ -74,12 +74,12 @@ describe('SQLiteStorage persists new v1.8.0 fields', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/storage/sqlite-storage-new-fields.test.ts`
 Expected: FAIL — columns do not exist in schema.
 
-- [ ] **Step 3: Update schema in `createTables()`**
+- [x] **Step 3: Update schema in `createTables()`**
 
 In `src/core/SQLiteStorage.ts`, find the `CREATE TABLE entities` statement. Add these columns after `parentId`:
 
@@ -97,13 +97,13 @@ After the table creation, add two new index creation statements using `this.db.e
 - `CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`
 - `CREATE INDEX IF NOT EXISTS idx_entities_isLatest ON entities(isLatest)`
 
-- [ ] **Step 4: Add migration method**
+- [x] **Step 4: Add migration method**
 
 Add a private `migrateEntitiesTable()` method that uses PRAGMA table_info to detect existing columns, then issues ALTER TABLE ADD COLUMN for any missing columns from the list in Step 3. Call it from the constructor after `createTables()`.
 
 Reference: the existing `migrateRelationsTable` method in the same file shows the exact pattern to follow.
 
-- [ ] **Step 5: Update INSERT/UPDATE prepared statements**
+- [x] **Step 5: Update INSERT/UPDATE prepared statements**
 
 Find all `INSERT INTO entities` and `UPDATE entities SET` prepared statements. Add the new columns to the column list and bind parameters with these values:
 
@@ -116,7 +116,7 @@ entity.isLatest === false ? 0 : 1,
 entity.supersededBy ?? null,
 ```
 
-- [ ] **Step 6: Update row-to-Entity mapper**
+- [x] **Step 6: Update row-to-Entity mapper**
 
 Find the private method that maps a DB row to an Entity. Add:
 
@@ -129,17 +129,17 @@ if (row.isLatest != null) entity.isLatest = row.isLatest === 1;
 if (row.supersededBy != null) entity.supersededBy = row.supersededBy;
 ```
 
-- [ ] **Step 7: Run test to verify it passes**
+- [x] **Step 7: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/storage/sqlite-storage-new-fields.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 8: Run full SQLite test suite + typecheck**
+- [x] **Step 8: Run full SQLite test suite + typecheck**
 
 Run: `npx vitest run tests/integration/storage/ && npm run typecheck`
 Expected: all tests pass, no typecheck errors.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Message:
 

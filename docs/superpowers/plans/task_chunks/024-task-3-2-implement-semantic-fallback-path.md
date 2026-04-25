@@ -4,7 +4,7 @@
 - Modify: `src/features/SemanticForget.ts`
 - Test: `tests/unit/features/semantic-forget-semantic.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/semantic-forget-semantic.test.ts`:
 
@@ -84,12 +84,12 @@ describe('SemanticForget semantic fallback path', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/semantic-forget-semantic.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement semanticFallback**
+- [x] **Step 3: Implement semanticFallback**
 
 Replace the stub in `src/features/SemanticForget.ts`:
 
@@ -146,12 +146,12 @@ Replace the stub in `src/features/SemanticForget.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test + full SemanticForget suite**
+- [x] **Step 4: Run test + full SemanticForget suite**
 
 Run: `npx vitest run tests/unit/features/semantic-forget-*.test.ts`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message: `feat(features): Implement SemanticForget semantic fallback`
 

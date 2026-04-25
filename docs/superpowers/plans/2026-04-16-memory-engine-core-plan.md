@@ -1,5 +1,7 @@
 # Memory Engine Core Implementation Plan
 
+> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–8 SHIPPED on `master` (commits `2c3a10d`…`1d74a08`), Tasks 9–15 PENDING.** Tasks 9 (`addTurn` happy path), 10 (`getSessionTurns`/`deleteSession`/`listSessions`), 11 (wire `MemoryEngine` into `ManagerContext`), 12 (integration tests JSONL+SQLite), 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. The four `addTurn`/`getSessionTurns`/`deleteSession`/`listSessions` methods exist as stubs that throw `Error("Not implemented — Task N")`. See [`2026-04-24-backlog-execution-phases.md`](./2026-04-24-backlog-execution-phases.md) Phase α for the close-out plan.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship turn-aware conversation memory with three-tier dedup (PRD MEM-03) and auto-importance scoring (PRD MEM-02), composed over existing memoryjs managers.
@@ -42,7 +44,7 @@
 - Modify: `src/utils/schemas.ts` lines 90 / 106 / 129 (three schemas)
 - Test: `tests/unit/types/entity-content-hash.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/types/entity-content-hash.test.ts`:
 
@@ -84,12 +86,12 @@ describe('Entity.contentHash', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/types/entity-content-hash.test.ts`
 Expected: FAIL — `contentHash` unknown / schema rejects the field.
 
-- [ ] **Step 3: Add the field to the TypeScript `Entity` interface**
+- [x] **Step 3: Add the field to the TypeScript `Entity` interface**
 
 In `src/types/types.ts`, locate the `export interface Entity {` block (around line 40–60) and add after the existing optional fields (`tags`, `importance`, `projectId`):
 
@@ -102,7 +104,7 @@ In `src/types/types.ts`, locate the `export interface Entity {` block (around li
   contentHash?: string;
 ```
 
-- [ ] **Step 4: Add the field to Zod schemas**
+- [x] **Step 4: Add the field to Zod schemas**
 
 In `src/utils/schemas.ts`, find `EntitySchema` at line 90 and add inside the object shape:
 
@@ -112,17 +114,17 @@ In `src/utils/schemas.ts`, find `EntitySchema` at line 90 and add inside the obj
 
 Do the same for `CreateEntitySchema` (line 106) and `UpdateEntitySchema` (line 129). SHA-256 hex is exactly 64 chars; the `.length(64)` constraint catches corrupt writes.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/types/entity-content-hash.test.ts`
 Expected: 5 tests PASS.
 
-- [ ] **Step 6: Typecheck**
+- [x] **Step 6: Typecheck**
 
 Run: `npm run typecheck`
 Expected: no errors.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/types/types.ts src/utils/schemas.ts tests/unit/types/entity-content-hash.test.ts
@@ -147,7 +149,7 @@ EOF
 - Modify: `src/core/SQLiteStorage.ts` `migrateEntitiesTable` (~line 272) — add column and index
 - Test: `tests/unit/core/sqlite-content-hash-migration.test.ts` (create)
 
-- [ ] **Step 1: Write the failing migration test**
+- [x] **Step 1: Write the failing migration test**
 
 Create `tests/unit/core/sqlite-content-hash-migration.test.ts`:
 
@@ -204,12 +206,12 @@ describe('SQLiteStorage contentHash migration', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
 
 Run: `npx vitest run tests/unit/core/sqlite-content-hash-migration.test.ts`
 Expected: FAIL — column missing.
 
-- [ ] **Step 3: Add the migration**
+- [x] **Step 3: Add the migration**
 
 In `src/core/SQLiteStorage.ts`, locate `migrateEntitiesTable()`. After the existing `supersededBy` column block and before the existing `CREATE INDEX` block, add:
 
@@ -219,7 +221,7 @@ In `src/core/SQLiteStorage.ts`, locate `migrateEntitiesTable()`. After the exist
     }
 ```
 
-- [ ] **Step 4: Add the index**
+- [x] **Step 4: Add the index**
 
 Still in `migrateEntitiesTable`, after the existing `idx_entities_isLatest` index creation call, append:
 
@@ -229,17 +231,17 @@ Still in `migrateEntitiesTable`, after the existing `idx_entities_isLatest` inde
 
 Rationale for keeping this in `migrateEntitiesTable` alongside the other indexes there (rather than `createTables`): that is the existing pattern in this file — all `ALTER`-tracked columns get their indexes created in the migration block, not the initial table creation.
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run: `npx vitest run tests/unit/core/sqlite-content-hash-migration.test.ts`
 Expected: 3 tests PASS.
 
-- [ ] **Step 6: Run the broader storage test suite to catch regressions**
+- [x] **Step 6: Run the broader storage test suite to catch regressions**
 
 Run: `npx vitest run tests/unit/core/SQLiteStorage.test.ts`
 Expected: all existing tests pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/core/SQLiteStorage.ts tests/unit/core/sqlite-content-hash-migration.test.ts
@@ -263,7 +265,7 @@ EOF
 - Create: `src/agent/ImportanceScorer.ts`
 - Test: `tests/unit/agent/ImportanceScorer.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/unit/agent/ImportanceScorer.test.ts`:
 
@@ -348,12 +350,12 @@ describe('ImportanceScorer', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
 
 Run: `npx vitest run tests/unit/agent/ImportanceScorer.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Create the implementation**
+- [x] **Step 3: Create the implementation**
 
 Create `src/agent/ImportanceScorer.ts`:
 
@@ -447,17 +449,17 @@ function countIntersection(a: Set<string>, b: Set<string>): number {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run tests/unit/agent/ImportanceScorer.test.ts`
 Expected: 12 tests PASS.
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `npm run typecheck`
 Expected: no errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/agent/ImportanceScorer.ts tests/unit/agent/ImportanceScorer.test.ts
@@ -484,7 +486,7 @@ EOF
 - Create: `src/agent/MemoryEngine.ts` (skeleton — method bodies in Tasks 5–10)
 - Test: `tests/unit/agent/MemoryEngine.test.ts` (start — will grow)
 
-- [ ] **Step 1: Write the failing construction tests**
+- [x] **Step 1: Write the failing construction tests**
 
 Create `tests/unit/agent/MemoryEngine.test.ts`:
 
@@ -531,12 +533,12 @@ describe('MemoryEngine — construction', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Create the skeleton**
+- [x] **Step 3: Create the skeleton**
 
 Create `src/agent/MemoryEngine.ts`:
 
@@ -653,17 +655,17 @@ export class MemoryEngine {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: 2 tests PASS.
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `npm run typecheck`
 Expected: no errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/agent/MemoryEngine.ts tests/unit/agent/MemoryEngine.test.ts
@@ -690,7 +692,7 @@ EOF
 - Modify: `src/agent/MemoryEngine.ts`
 - Modify: `tests/unit/agent/MemoryEngine.test.ts`
 
-- [ ] **Step 1: Add failing Tier 1 tests**
+- [x] **Step 1: Add failing Tier 1 tests**
 
 Append to `tests/unit/agent/MemoryEngine.test.ts`:
 
@@ -751,12 +753,12 @@ describe('MemoryEngine — checkDuplicate Tier 1 (exact equality)', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify failure**
+- [x] **Step 2: Run tests to verify failure**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts -t "Tier 1"`
 Expected: FAIL with "Not implemented — Tasks 5–8".
 
-- [ ] **Step 3: Implement Tier 1 + shared helpers**
+- [x] **Step 3: Implement Tier 1 + shared helpers**
 
 In `src/agent/MemoryEngine.ts`, add import at the top:
 
@@ -789,17 +791,17 @@ Replace the `checkDuplicate` stub with:
   }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts -t "Tier 1"`
 Expected: 3 tests PASS.
 
-- [ ] **Step 5: Full suite to catch regressions**
+- [x] **Step 5: Full suite to catch regressions**
 
 Run: `SKIP_BENCHMARKS=true npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: 5 tests PASS (construction × 2 + Tier 1 × 3).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/agent/MemoryEngine.ts tests/unit/agent/MemoryEngine.test.ts
@@ -824,7 +826,7 @@ EOF
 - Modify: `src/agent/MemoryEngine.ts`
 - Modify: `tests/unit/agent/MemoryEngine.test.ts`
 
-- [ ] **Step 1: Add failing Tier 2 tests**
+- [x] **Step 1: Add failing Tier 2 tests**
 
 Append to `tests/unit/agent/MemoryEngine.test.ts`:
 
@@ -891,12 +893,12 @@ describe('MemoryEngine — checkDuplicate Tier 2 (50% prefix overlap)', () => {
 });
 ```
 
-- [ ] **Step 2: Run test, confirm failure**
+- [x] **Step 2: Run test, confirm failure**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts -t "Tier 2"`
 Expected: 3 FAILs (returns `isDuplicate: false`).
 
-- [ ] **Step 3: Implement Tier 2**
+- [x] **Step 3: Implement Tier 2**
 
 In `MemoryEngine.ts`, update `checkDuplicate` to chain Tier 2:
 
@@ -956,12 +958,12 @@ function longestCommonPrefix(a: string, b: string): string {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: 8 PASS (2 + 3 + 3).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/agent/MemoryEngine.ts tests/unit/agent/MemoryEngine.test.ts
@@ -985,7 +987,7 @@ EOF
 - Modify: `src/agent/MemoryEngine.ts`
 - Modify: `tests/unit/agent/MemoryEngine.test.ts`
 
-- [ ] **Step 1: Add failing Tier 3 tests**
+- [x] **Step 1: Add failing Tier 3 tests**
 
 Append to `tests/unit/agent/MemoryEngine.test.ts`:
 
@@ -1049,12 +1051,12 @@ describe('MemoryEngine — checkDuplicate Tier 3 (Jaccard)', () => {
 });
 ```
 
-- [ ] **Step 2: Confirm failure**
+- [x] **Step 2: Confirm failure**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts -t "Tier 3"`
 Expected: 2 FAILs (first two tests).
 
-- [ ] **Step 3: Implement Tier 3**
+- [x] **Step 3: Implement Tier 3**
 
 In `MemoryEngine.ts`, update `checkDuplicate` to chain Tier 3:
 
@@ -1107,12 +1109,12 @@ function tokeniseForDedup(text: string): Set<string> {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: 11 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/agent/MemoryEngine.ts tests/unit/agent/MemoryEngine.test.ts
@@ -1138,7 +1140,7 @@ EOF
 
 Before starting Task 8, open `src/search/SemanticSearch.ts` and note the real return shape of `search(query, options)`. The pseudocode below assumes `{ entityName: string; score: number }[]`; if the actual shape differs, adapt the stub factory and the implementation block together.
 
-- [ ] **Step 1: Add failing semantic-tier tests**
+- [x] **Step 1: Add failing semantic-tier tests**
 
 Append to `tests/unit/agent/MemoryEngine.test.ts`:
 
@@ -1205,12 +1207,12 @@ describe('MemoryEngine — optional semantic tier', () => {
 });
 ```
 
-- [ ] **Step 2: Verify failure**
+- [x] **Step 2: Verify failure**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts -t "semantic tier"`
 Expected: 1 FAIL (first test).
 
-- [ ] **Step 3: Implement semantic tier**
+- [x] **Step 3: Implement semantic tier**
 
 In `MemoryEngine.ts`, prepend semantic-tier check:
 
@@ -1245,12 +1247,12 @@ In `MemoryEngine.ts`, prepend semantic-tier check:
   }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: 14 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/agent/MemoryEngine.ts tests/unit/agent/MemoryEngine.test.ts

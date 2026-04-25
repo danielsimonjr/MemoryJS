@@ -4,7 +4,7 @@
 - Modify: `src/core/EntityManager.ts`
 - Test: `tests/unit/core/entity-manager-list-projects.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/entity-manager-list-projects.test.ts`:
 
@@ -46,12 +46,12 @@ describe('EntityManager.listProjects', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/entity-manager-list-projects.test.ts`
 Expected: FAIL — method does not exist.
 
-- [ ] **Step 3: Implement listProjects**
+- [x] **Step 3: Implement listProjects**
 
 Add to `src/core/EntityManager.ts`:
 
@@ -71,7 +71,7 @@ Add to `src/core/EntityManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test + typecheck + commit**
+- [x] **Step 4: Run test + typecheck + commit**
 
 Run: `npx vitest run tests/unit/core/entity-manager-list-projects.test.ts && npm run typecheck`
 Expected: PASS.

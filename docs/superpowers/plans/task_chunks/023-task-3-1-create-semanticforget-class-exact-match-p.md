@@ -4,7 +4,7 @@
 - Create: `src/features/SemanticForget.ts`
 - Test: `tests/unit/features/semantic-forget-exact.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/semantic-forget-exact.test.ts`:
 
@@ -91,12 +91,12 @@ describe('SemanticForget exact match path', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/semantic-forget-exact.test.ts`
 Expected: FAIL — module does not exist.
 
-- [ ] **Step 3: Create SemanticForget module**
+- [x] **Step 3: Create SemanticForget module**
 
 Create `src/features/SemanticForget.ts`:
 
@@ -222,12 +222,12 @@ export class SemanticForget {
 }
 ```
 
-- [ ] **Step 4: Run test + typecheck**
+- [x] **Step 4: Run test + typecheck**
 
 Run: `npx vitest run tests/unit/features/semantic-forget-exact.test.ts && npm run typecheck`
 Expected: PASS (5 tests), no type errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message: `feat(features): Add SemanticForget with exact-match path`
 

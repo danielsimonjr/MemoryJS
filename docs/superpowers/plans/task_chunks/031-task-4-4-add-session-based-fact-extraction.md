@@ -4,7 +4,7 @@
 - Modify: `src/agent/ProfileManager.ts`
 - Test: `tests/unit/agent/profile-manager-extraction.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/agent/profile-manager-extraction.test.ts`:
 
@@ -94,12 +94,12 @@ describe('ProfileManager.extractFromSession', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/agent/profile-manager-extraction.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement extractFromSession**
+- [x] **Step 3: Implement extractFromSession**
 
 Add to `src/agent/ProfileManager.ts`:
 
@@ -147,7 +147,7 @@ Add to `src/agent/ProfileManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test + commit**
+- [x] **Step 4: Run test + commit**
 
 Run: `npx vitest run tests/unit/agent/profile-manager-extraction.test.ts`
 Expected: PASS (2 tests).

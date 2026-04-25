@@ -1,5 +1,7 @@
 # Supermemory Gap-Closing (Sprint 1) Implementation Plan
 
+> **Status (verified 2026-04-24):** ✅ **SHIPPED in v1.8.0**. All 153 tasks marked done after RLM cross-reference of plan symbols against `src/`. Ground truth: CHANGELOG.md `## [1.8.0]` + `git grep` confirmed presence of `projectId`, `ContradictionDetector`, `supersededBy`, `SemanticForget`, `ProfileManager`, `ProfileEntity`. Checkboxes were stale; code state was current.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add four features to memoryjs that close the Sprint 1 MUST gap with supermemory: Project Scoping, Memory Versioning with Contradiction Resolution, Semantic Forget, and User Profile — while preserving memoryjs's local-first architecture.
@@ -34,7 +36,7 @@ This phase adds the shared fields on the `Entity` type that all four features de
 - Modify: `src/types/types.ts` (Entity interface, around line 88)
 - Test: `tests/unit/types/entity-new-fields.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/types/entity-new-fields.test.ts`:
 
@@ -94,12 +96,12 @@ describe('Entity new fields (v1.8.0)', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/types/entity-new-fields.test.ts`
 Expected: FAIL with TypeScript errors about unknown properties.
 
-- [ ] **Step 3: Add fields to Entity interface**
+- [x] **Step 3: Add fields to Entity interface**
 
 In `src/types/types.ts`, after the `expiresAt?: string;` field (around line 87), add:
 
@@ -127,17 +129,17 @@ In `src/types/types.ts`, after the `expiresAt?: string;` field (around line 87),
   supersededBy?: string;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/types/entity-new-fields.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Run typecheck**
+- [x] **Step 5: Run typecheck**
 
 Run: `npm run typecheck`
 Expected: no errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Stage `src/types/types.ts` and `tests/unit/types/entity-new-fields.test.ts`, commit with message:
 
@@ -160,7 +162,7 @@ All fields are optional for backwards compatibility.
 - Modify: `src/core/GraphStorage.ts` (three serialization blocks)
 - Test: `tests/integration/storage/graph-storage-new-fields.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/storage/graph-storage-new-fields.test.ts`:
 
@@ -239,12 +241,12 @@ describe('GraphStorage persists new v1.8.0 fields', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/storage/graph-storage-new-fields.test.ts`
 Expected: FAIL — fields are not persisted.
 
-- [ ] **Step 3: Add field serialization to `appendEntity`**
+- [x] **Step 3: Add field serialization to `appendEntity`**
 
 In `src/core/GraphStorage.ts`, locate `appendEntity()`. Find where `parentId` is conditionally added to `entityData`. Add immediately after it:
 
@@ -258,21 +260,21 @@ In `src/core/GraphStorage.ts`, locate `appendEntity()`. Find where `parentId` is
     if (entity.supersededBy !== undefined) entityData.supersededBy = entity.supersededBy;
 ```
 
-- [ ] **Step 4: Add the same block to `saveGraphInternal` and `updateEntity`**
+- [x] **Step 4: Add the same block to `saveGraphInternal` and `updateEntity`**
 
 Find the same `parentId` serialization pattern in both methods. Add the same six conditional lines after each occurrence.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/storage/graph-storage-new-fields.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Run full storage test suite**
+- [x] **Step 6: Run full storage test suite**
 
 Run: `npx vitest run tests/integration/storage/`
 Expected: all existing storage tests still pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Message:
 
@@ -291,7 +293,7 @@ chain fields alongside existing parentId.
 - Modify: `src/core/SQLiteStorage.ts` (schema, migration, INSERT/UPDATE bindings)
 - Test: `tests/integration/storage/sqlite-storage-new-fields.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/storage/sqlite-storage-new-fields.test.ts`:
 
@@ -361,12 +363,12 @@ describe('SQLiteStorage persists new v1.8.0 fields', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/storage/sqlite-storage-new-fields.test.ts`
 Expected: FAIL — columns do not exist in schema.
 
-- [ ] **Step 3: Update schema in `createTables()`**
+- [x] **Step 3: Update schema in `createTables()`**
 
 In `src/core/SQLiteStorage.ts`, find the `CREATE TABLE entities` statement. Add these columns after `parentId`:
 
@@ -384,13 +386,13 @@ After the table creation, add two new index creation statements using `this.db.e
 - `CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`
 - `CREATE INDEX IF NOT EXISTS idx_entities_isLatest ON entities(isLatest)`
 
-- [ ] **Step 4: Add migration method**
+- [x] **Step 4: Add migration method**
 
 Add a private `migrateEntitiesTable()` method that uses PRAGMA table_info to detect existing columns, then issues ALTER TABLE ADD COLUMN for any missing columns from the list in Step 3. Call it from the constructor after `createTables()`.
 
 Reference: the existing `migrateRelationsTable` method in the same file shows the exact pattern to follow.
 
-- [ ] **Step 5: Update INSERT/UPDATE prepared statements**
+- [x] **Step 5: Update INSERT/UPDATE prepared statements**
 
 Find all `INSERT INTO entities` and `UPDATE entities SET` prepared statements. Add the new columns to the column list and bind parameters with these values:
 
@@ -403,7 +405,7 @@ entity.isLatest === false ? 0 : 1,
 entity.supersededBy ?? null,
 ```
 
-- [ ] **Step 6: Update row-to-Entity mapper**
+- [x] **Step 6: Update row-to-Entity mapper**
 
 Find the private method that maps a DB row to an Entity. Add:
 
@@ -416,17 +418,17 @@ if (row.isLatest != null) entity.isLatest = row.isLatest === 1;
 if (row.supersededBy != null) entity.supersededBy = row.supersededBy;
 ```
 
-- [ ] **Step 7: Run test to verify it passes**
+- [x] **Step 7: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/storage/sqlite-storage-new-fields.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 8: Run full SQLite test suite + typecheck**
+- [x] **Step 8: Run full SQLite test suite + typecheck**
 
 Run: `npx vitest run tests/integration/storage/ && npm run typecheck`
 Expected: all tests pass, no typecheck errors.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 Message:
 
@@ -448,7 +450,7 @@ ALTER TABLE ADD COLUMN.
 - Modify: `src/search/SearchFilterChain.ts`
 - Test: `tests/unit/search/search-filter-chain-project.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/search/search-filter-chain-project.test.ts`:
 
@@ -506,12 +508,12 @@ describe('SearchFilterChain projectId filter', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/search/search-filter-chain-project.test.ts`
 Expected: FAIL — `projectId` is not a recognized field on `SearchFilters`.
 
-- [ ] **Step 3: Add projectId to SearchFilters interface**
+- [x] **Step 3: Add projectId to SearchFilters interface**
 
 In `src/search/SearchFilterChain.ts`, add to the `SearchFilters` interface (after `modifiedBefore`):
 
@@ -520,7 +522,7 @@ In `src/search/SearchFilterChain.ts`, add to the `SearchFilters` interface (afte
   projectId?: string;
 ```
 
-- [ ] **Step 4: Add check to entityPassesFilters**
+- [x] **Step 4: Add check to entityPassesFilters**
 
 In `entityPassesFilters`, before the final `return true;`:
 
@@ -533,16 +535,16 @@ In `entityPassesFilters`, before the final `return true;`:
     return true;
 ```
 
-- [ ] **Step 5: Add projectId to hasActiveFilters**
+- [x] **Step 5: Add projectId to hasActiveFilters**
 
 In `hasActiveFilters`, add `|| filters.projectId !== undefined` to the OR chain.
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/search/search-filter-chain-project.test.ts`
 Expected: PASS (5 tests).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Message:
 
@@ -561,7 +563,7 @@ centralized filter chain.
 - Modify: `src/core/ManagerContext.ts`
 - Test: `tests/unit/core/manager-context-project.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/manager-context-project.test.ts`:
 
@@ -600,28 +602,28 @@ describe('ManagerContext defaultProjectId option', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/manager-context-project.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Update ManagerContext constructor**
+- [x] **Step 3: Update ManagerContext constructor**
 
 Add an exported `ManagerContextOptions` interface (if not already present) with a new optional `defaultProjectId?: string` field. Update the constructor to accept `string | ManagerContextOptions` (union), extract options from either form, and store `defaultProjectId` as a public readonly property.
 
 Do NOT alter existing constructor logic beyond adding the new field extraction and the union type on the parameter.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/core/manager-context-project.test.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Run full ManagerContext test suite**
+- [x] **Step 5: Run full ManagerContext test suite**
 
 Run: `npx vitest run tests/unit/core/`
 Expected: all existing tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(core): Add defaultProjectId option to ManagerContext`
 
@@ -634,7 +636,7 @@ Message: `feat(core): Add defaultProjectId option to ManagerContext`
 - Modify: `src/core/ManagerContext.ts` (pass option to EntityManager constructor)
 - Test: `tests/unit/core/entity-manager-project-stamping.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/entity-manager-project-stamping.test.ts`:
 
@@ -691,23 +693,23 @@ describe('EntityManager auto-stamps projectId from context default', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/entity-manager-project-stamping.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Accept options in EntityManager constructor**
+- [x] **Step 3: Accept options in EntityManager constructor**
 
 In `src/core/EntityManager.ts`:
 - Add exported `EntityManagerOptions` interface with `defaultProjectId?: string`
 - Add optional second constructor parameter `options?: EntityManagerOptions`
 - Store `this.defaultProjectId = options?.defaultProjectId`
 
-- [ ] **Step 4: Pass the option from ManagerContext**
+- [x] **Step 4: Pass the option from ManagerContext**
 
 In `src/core/ManagerContext.ts`, update the `entityManager` lazy getter to pass `{ defaultProjectId: this.defaultProjectId }` as the second argument to the EntityManager constructor.
 
-- [ ] **Step 5: Stamp projectId in createEntities**
+- [x] **Step 5: Stamp projectId in createEntities**
 
 In `src/core/EntityManager.ts`, in `createEntities` around line 190, inside the loop that builds new entities (around line 232), before pushing to `newEntities`:
 
@@ -717,17 +719,17 @@ In `src/core/EntityManager.ts`, in `createEntities` around line 190, inside the 
       }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/core/entity-manager-project-stamping.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 7: Run full EntityManager test suite + typecheck**
+- [x] **Step 7: Run full EntityManager test suite + typecheck**
 
 Run: `npx vitest run tests/unit/core/EntityManager.test.ts && npm run typecheck`
 Expected: all tests pass, no errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Message: `feat(core): Auto-stamp projectId on entity creation`
 
@@ -739,7 +741,7 @@ Message: `feat(core): Auto-stamp projectId on entity creation`
 - Modify: `src/search/SearchManager.ts`
 - Test: `tests/integration/search/project-scope-isolation.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/search/project-scope-isolation.test.ts`:
 
@@ -798,28 +800,28 @@ describe('Project scope isolates search across all search methods', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/search/project-scope-isolation.test.ts`
 Expected: FAIL — search methods don't accept `projectId` in options yet.
 
-- [ ] **Step 3: Add projectId to SearchManager options and thread through**
+- [x] **Step 3: Add projectId to SearchManager options and thread through**
 
 In `src/search/SearchManager.ts`:
 - Add `projectId?: string` to `SearchOptionsWithTracking` (or the corresponding options type used by search methods)
 - In `searchNodes`, `searchNodesRanked`, `booleanSearch`, `fuzzySearch`: where a `SearchFilters` object is constructed from options, include `projectId: options?.projectId`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/search/project-scope-isolation.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 5: Run full test suite**
+- [x] **Step 5: Run full test suite**
 
 Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20`
 Expected: all tests pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(search): Propagate projectId through all SearchManager methods`
 
@@ -831,7 +833,7 @@ Message: `feat(search): Propagate projectId through all SearchManager methods`
 - Modify: `src/core/EntityManager.ts`
 - Test: `tests/unit/core/entity-manager-list-projects.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/entity-manager-list-projects.test.ts`:
 
@@ -873,12 +875,12 @@ describe('EntityManager.listProjects', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/entity-manager-list-projects.test.ts`
 Expected: FAIL — method does not exist.
 
-- [ ] **Step 3: Implement listProjects**
+- [x] **Step 3: Implement listProjects**
 
 Add to `src/core/EntityManager.ts`:
 
@@ -898,7 +900,7 @@ Add to `src/core/EntityManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test + typecheck + commit**
+- [x] **Step 4: Run test + typecheck + commit**
 
 Run: `npx vitest run tests/unit/core/entity-manager-list-projects.test.ts && npm run typecheck`
 Expected: PASS.
@@ -909,9 +911,9 @@ Commit message: `feat(core): Add EntityManager.listProjects() method`
 
 ### Task 1.6: Phase 1 verification gate
 
-- [ ] Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20` → all pass
-- [ ] Run: `npm run typecheck` → no errors
-- [ ] Run: `git log --oneline -10` → confirm commits for tasks 0.1-1.5
+- [x] Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20` → all pass
+- [x] Run: `npm run typecheck` → no errors
+- [x] Run: `git log --oneline -10` → confirm commits for tasks 0.1-1.5
 
 **Phase 1 complete. Feature 1 (Project Scoping) is shippable as v1.8.0-alpha.1.**
 
@@ -925,7 +927,7 @@ Commit message: `feat(core): Add EntityManager.listProjects() method`
 - Create: `src/features/ContradictionDetector.ts`
 - Test: `tests/unit/features/contradiction-detector-detect.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/contradiction-detector-detect.test.ts`:
 
@@ -994,12 +996,12 @@ describe('ContradictionDetector.detect', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/contradiction-detector-detect.test.ts`
 Expected: FAIL — module does not exist.
 
-- [ ] **Step 3: Create ContradictionDetector**
+- [x] **Step 3: Create ContradictionDetector**
 
 Create `src/features/ContradictionDetector.ts`:
 
@@ -1059,16 +1061,16 @@ export class ContradictionDetector {
 }
 ```
 
-- [ ] **Step 4: Ensure SemanticSearch has calculateSimilarity method**
+- [x] **Step 4: Ensure SemanticSearch has calculateSimilarity method**
 
 Check `src/search/SemanticSearch.ts`. If a `calculateSimilarity(a: string, b: string): Promise<number>` method does not exist, add one that embeds both strings via `this.embeddingService.embed()` and returns cosine similarity. Reuse any existing `cosineSimilarity` helper in the module.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/features/contradiction-detector-detect.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(features): Add ContradictionDetector.detect() with semantic similarity`
 
@@ -1080,7 +1082,7 @@ Message: `feat(features): Add ContradictionDetector.detect() with semantic simil
 - Modify: `src/features/ContradictionDetector.ts`
 - Test: `tests/integration/features/contradiction-detector-supersede.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/features/contradiction-detector-supersede.test.ts`:
 
@@ -1154,12 +1156,12 @@ describe('ContradictionDetector.supersede', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/features/contradiction-detector-supersede.test.ts`
 Expected: FAIL — `supersede` does not exist.
 
-- [ ] **Step 3: Implement supersede**
+- [x] **Step 3: Implement supersede**
 
 Add to `src/features/ContradictionDetector.ts`:
 
@@ -1211,16 +1213,16 @@ import type { EntityManager } from '../core/EntityManager.js';
   }
 ```
 
-- [ ] **Step 4: Verify update schema allows isLatest/supersededBy**
+- [x] **Step 4: Verify update schema allows isLatest/supersededBy**
 
 Check `src/utils/schemas*.ts` (or wherever `UpdateEntitySchema` lives) and ensure the Zod schema permits `isLatest` and `supersededBy` as optional fields. If not, extend the schema.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/features/contradiction-detector-supersede.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(features): Implement ContradictionDetector.supersede()`
 
@@ -1232,7 +1234,7 @@ Message: `feat(features): Implement ContradictionDetector.supersede()`
 - Modify: `src/search/SearchFilterChain.ts`
 - Test: `tests/unit/search/search-filter-chain-versioning.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/search/search-filter-chain-versioning.test.ts`:
 
@@ -1277,12 +1279,12 @@ describe('SearchFilterChain default versioning behavior', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/search/search-filter-chain-versioning.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add includeSuperseded to SearchFilters interface**
+- [x] **Step 3: Add includeSuperseded to SearchFilters interface**
 
 In `src/search/SearchFilterChain.ts`, add to `SearchFilters`:
 
@@ -1291,7 +1293,7 @@ In `src/search/SearchFilterChain.ts`, add to `SearchFilters`:
   includeSuperseded?: boolean;
 ```
 
-- [ ] **Step 4: Add versioning check in entityPassesFilters**
+- [x] **Step 4: Add versioning check in entityPassesFilters**
 
 Before the final `return true;`:
 
@@ -1304,7 +1306,7 @@ Before the final `return true;`:
     return true;
 ```
 
-- [ ] **Step 5: Remove the early-return optimization in applyFilters**
+- [x] **Step 5: Remove the early-return optimization in applyFilters**
 
 The early-return based on `hasActiveFilters` must not skip the versioning filter. Simplest fix: always run the filter loop:
 
@@ -1320,17 +1322,17 @@ The early-return based on `hasActiveFilters` must not skip the versioning filter
   }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/search/search-filter-chain-versioning.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 7: Run full search test suite**
+- [x] **Step 7: Run full search test suite**
 
 Run: `npx vitest run tests/unit/search/`
 Expected: all tests pass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Message: `feat(search): Filter superseded entity versions by default`
 
@@ -1343,7 +1345,7 @@ Message: `feat(search): Filter superseded entity versions by default`
 - Modify: `src/core/ManagerContext.ts`
 - Test: `tests/integration/core/observation-manager-contradiction.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/core/observation-manager-contradiction.test.ts`:
 
@@ -1393,12 +1395,12 @@ describe('ObservationManager triggers contradiction detection', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/core/observation-manager-contradiction.test.ts`
 Expected: FAIL — `setContradictionDetector` does not exist.
 
-- [ ] **Step 3: Add setter and detection hook to ObservationManager**
+- [x] **Step 3: Add setter and detection hook to ObservationManager**
 
 In `src/core/ObservationManager.ts`:
 
@@ -1441,24 +1443,24 @@ In `addObservations`, around line 67 (after the `newObservations` filter, before
       }
 ```
 
-- [ ] **Step 4: Wire detector in ManagerContext when enabled**
+- [x] **Step 4: Wire detector in ManagerContext when enabled**
 
 In `src/core/ManagerContext.ts`:
 - Add `enableContradictionDetection?: boolean` and `contradictionThreshold?: number` to `ManagerContextOptions`
 - Add a private `initContradictionDetection()` method that, when the option is set and `semanticSearch` is configured, constructs a `ContradictionDetector` and calls `observationManager.setContradictionDetector(detector, this.entityManager)`
 - Call `initContradictionDetection()` once during first access to observationManager, or eagerly in the constructor if safe
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/core/observation-manager-contradiction.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Run full test suite**
+- [x] **Step 6: Run full test suite**
 
 Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20`
 Expected: all pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Message: `feat(core): Hook ContradictionDetector into ObservationManager`
 
@@ -1470,7 +1472,7 @@ Message: `feat(core): Hook ContradictionDetector into ObservationManager`
 - Modify: `src/core/EntityManager.ts`
 - Test: `tests/unit/core/entity-manager-version-chain.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/entity-manager-version-chain.test.ts`:
 
@@ -1541,12 +1543,12 @@ describe('EntityManager version chain navigation', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/entity-manager-version-chain.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement methods**
+- [x] **Step 3: Implement methods**
 
 Add to `src/core/EntityManager.ts`:
 
@@ -1576,7 +1578,7 @@ Add to `src/core/EntityManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test + typecheck + commit**
+- [x] **Step 4: Run test + typecheck + commit**
 
 Run: `npx vitest run tests/unit/core/entity-manager-version-chain.test.ts && npm run typecheck`
 Expected: PASS.
@@ -1591,7 +1593,7 @@ Message: `feat(core): Add getVersionChain and getLatestVersion`
 - Modify: `src/features/CompressionManager.ts`
 - Test: `tests/unit/features/compression-manager-versioning-guard.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/compression-manager-versioning-guard.test.ts`:
 
@@ -1643,24 +1645,24 @@ describe('CompressionManager respects version chains', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/compression-manager-versioning-guard.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add guard to findDuplicates and mergeEntities**
+- [x] **Step 3: Add guard to findDuplicates and mergeEntities**
 
 In `src/features/CompressionManager.ts`:
 
 - In `findDuplicates`, filter `graph.entities` to exclude `e.isLatest === false` before processing.
 - In `mergeEntities`, throw `ValidationError` if any target entity has `isLatest === false` with message: `"Cannot merge superseded entity '<name>'. Use the latest version."`
 
-- [ ] **Step 4: Run test + full compression suite**
+- [x] **Step 4: Run test + full compression suite**
 
 Run: `npx vitest run tests/unit/features/compression-manager-versioning-guard.test.ts tests/unit/features/CompressionManager.test.ts`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message: `fix(features): CompressionManager skips superseded entity versions`
 
@@ -1668,8 +1670,8 @@ Message: `fix(features): CompressionManager skips superseded entity versions`
 
 ### Task 2.7: Phase 2 verification gate
 
-- [ ] Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20` → all pass
-- [ ] Run: `npm run typecheck` → no errors
+- [x] Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20` → all pass
+- [x] Run: `npm run typecheck` → no errors
 
 **Phase 2 complete. Feature 2 (Memory Versioning) is shippable as v1.8.0-alpha.2.**
 
@@ -1683,7 +1685,7 @@ Message: `fix(features): CompressionManager skips superseded entity versions`
 - Create: `src/features/SemanticForget.ts`
 - Test: `tests/unit/features/semantic-forget-exact.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/semantic-forget-exact.test.ts`:
 
@@ -1770,12 +1772,12 @@ describe('SemanticForget exact match path', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/semantic-forget-exact.test.ts`
 Expected: FAIL — module does not exist.
 
-- [ ] **Step 3: Create SemanticForget module**
+- [x] **Step 3: Create SemanticForget module**
 
 Create `src/features/SemanticForget.ts`:
 
@@ -1901,12 +1903,12 @@ export class SemanticForget {
 }
 ```
 
-- [ ] **Step 4: Run test + typecheck**
+- [x] **Step 4: Run test + typecheck**
 
 Run: `npx vitest run tests/unit/features/semantic-forget-exact.test.ts && npm run typecheck`
 Expected: PASS (5 tests), no type errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message: `feat(features): Add SemanticForget with exact-match path`
 
@@ -1918,7 +1920,7 @@ Message: `feat(features): Add SemanticForget with exact-match path`
 - Modify: `src/features/SemanticForget.ts`
 - Test: `tests/unit/features/semantic-forget-semantic.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/semantic-forget-semantic.test.ts`:
 
@@ -1998,12 +2000,12 @@ describe('SemanticForget semantic fallback path', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/semantic-forget-semantic.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement semanticFallback**
+- [x] **Step 3: Implement semanticFallback**
 
 Replace the stub in `src/features/SemanticForget.ts`:
 
@@ -2060,12 +2062,12 @@ Replace the stub in `src/features/SemanticForget.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test + full SemanticForget suite**
+- [x] **Step 4: Run test + full SemanticForget suite**
 
 Run: `npx vitest run tests/unit/features/semantic-forget-*.test.ts`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message: `feat(features): Implement SemanticForget semantic fallback`
 
@@ -2078,7 +2080,7 @@ Message: `feat(features): Implement SemanticForget semantic fallback`
 - Modify: `src/index.ts` (add exports)
 - Test: `tests/integration/core/manager-context-semantic-forget.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/core/manager-context-semantic-forget.test.ts`:
 
@@ -2122,12 +2124,12 @@ describe('ManagerContext exposes SemanticForget', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/core/manager-context-semantic-forget.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add lazy getter to ManagerContext**
+- [x] **Step 3: Add lazy getter to ManagerContext**
 
 In `src/core/ManagerContext.ts`, add import and lazy getter alongside other feature getters:
 
@@ -2150,7 +2152,7 @@ get semanticForget(): SemanticForget {
 
 (Check the exact accessor for `auditLog` — may be `this.auditLog` directly or on a different manager.)
 
-- [ ] **Step 4: Export from index.ts**
+- [x] **Step 4: Export from index.ts**
 
 In `src/index.ts`, add alongside existing `features/*` exports:
 
@@ -2159,12 +2161,12 @@ export { SemanticForget } from './features/SemanticForget.js';
 export type { ForgetResult, ForgetOptions } from './features/SemanticForget.js';
 ```
 
-- [ ] **Step 5: Run test + typecheck + full suite**
+- [x] **Step 5: Run test + typecheck + full suite**
 
 Run: `npx vitest run tests/integration/core/manager-context-semantic-forget.test.ts && npm run typecheck && SKIP_BENCHMARKS=true npm test 2>&1 | tail -20`
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(core): Expose SemanticForget via ManagerContext`
 
@@ -2172,8 +2174,8 @@ Message: `feat(core): Expose SemanticForget via ManagerContext`
 
 ### Task 3.4: Phase 3 verification gate
 
-- [ ] Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20` → all pass
-- [ ] Run: `npm run typecheck` → no errors
+- [x] Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20` → all pass
+- [x] Run: `npm run typecheck` → no errors
 
 **Phase 3 complete. Feature 3 (Semantic Forget) is shippable as v1.8.0-alpha.3.**
 
@@ -2187,7 +2189,7 @@ Message: `feat(core): Expose SemanticForget via ManagerContext`
 - Modify: `src/types/agent-memory.ts`
 - Test: `tests/unit/types/profile-entity.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/types/profile-entity.test.ts`:
 
@@ -2217,12 +2219,12 @@ describe('ProfileEntity type guard', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/types/profile-entity.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add type and guard**
+- [x] **Step 3: Add type and guard**
 
 In `src/types/agent-memory.ts`, near other type guards like `isSessionEntity`:
 
@@ -2243,7 +2245,7 @@ export function isProfileEntity(entity: Entity): entity is ProfileEntity {
 }
 ```
 
-- [ ] **Step 4: Run test + commit**
+- [x] **Step 4: Run test + commit**
 
 Run: `npx vitest run tests/unit/types/profile-entity.test.ts`
 Expected: PASS.
@@ -2258,7 +2260,7 @@ Message: `feat(types): Add ProfileEntity type and isProfileEntity guard`
 - Modify: `src/core/EntityManager.ts`
 - Test: `tests/unit/core/entity-manager-profile-namespace.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/entity-manager-profile-namespace.test.ts`:
 
@@ -2309,12 +2311,12 @@ describe('EntityManager reserves profile-* namespace', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/entity-manager-profile-namespace.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add namespace check**
+- [x] **Step 3: Add namespace check**
 
 In `src/core/EntityManager.ts`, in `createEntities` after input validation:
 
@@ -2329,7 +2331,7 @@ In `src/core/EntityManager.ts`, in `createEntities` after input validation:
     }
 ```
 
-- [ ] **Step 4: Run test + commit**
+- [x] **Step 4: Run test + commit**
 
 Run: `npx vitest run tests/unit/core/entity-manager-profile-namespace.test.ts`
 Expected: PASS.
@@ -2344,7 +2346,7 @@ Message: `feat(core): Reserve profile-* entity namespace`
 - Create: `src/agent/ProfileManager.ts`
 - Test: `tests/unit/agent/profile-manager-basics.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/agent/profile-manager-basics.test.ts`:
 
@@ -2428,12 +2430,12 @@ describe('ProfileManager basics', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/agent/profile-manager-basics.test.ts`
 Expected: FAIL — module does not exist.
 
-- [ ] **Step 3: Create ProfileManager**
+- [x] **Step 3: Create ProfileManager**
 
 Create `src/agent/ProfileManager.ts`:
 
@@ -2578,12 +2580,12 @@ export class ProfileManager {
 }
 ```
 
-- [ ] **Step 4: Run test + typecheck**
+- [x] **Step 4: Run test + typecheck**
 
 Run: `npx vitest run tests/unit/agent/profile-manager-basics.test.ts && npm run typecheck`
 Expected: PASS (6 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message: `feat(agent): Add ProfileManager with getProfile/addFact/promoteFact`
 
@@ -2595,7 +2597,7 @@ Message: `feat(agent): Add ProfileManager with getProfile/addFact/promoteFact`
 - Modify: `src/agent/ProfileManager.ts`
 - Test: `tests/unit/agent/profile-manager-extraction.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/agent/profile-manager-extraction.test.ts`:
 
@@ -2685,12 +2687,12 @@ describe('ProfileManager.extractFromSession', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/agent/profile-manager-extraction.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement extractFromSession**
+- [x] **Step 3: Implement extractFromSession**
 
 Add to `src/agent/ProfileManager.ts`:
 
@@ -2738,7 +2740,7 @@ Add to `src/agent/ProfileManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test + commit**
+- [x] **Step 4: Run test + commit**
 
 Run: `npx vitest run tests/unit/agent/profile-manager-extraction.test.ts`
 Expected: PASS (2 tests).
@@ -2755,7 +2757,7 @@ Message: `feat(agent): Add ProfileManager.extractFromSession`
 - Modify: `src/index.ts` (add exports)
 - Test: `tests/integration/agent/agent-memory-manager-profile.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/agent/agent-memory-manager-profile.test.ts`:
 
@@ -2794,12 +2796,12 @@ describe('AgentMemoryManager exposes ProfileManager', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/agent/agent-memory-manager-profile.test.ts`
 Expected: FAIL — `profileManager` getter does not exist.
 
-- [ ] **Step 3: Add config slice**
+- [x] **Step 3: Add config slice**
 
 In `src/agent/AgentMemoryConfig.ts`:
 
@@ -2810,7 +2812,7 @@ import type { ProfileManagerConfig } from './ProfileManager.js';
 profile?: ProfileManagerConfig;
 ```
 
-- [ ] **Step 4: Add ProfileManager getter in AgentMemoryManager**
+- [x] **Step 4: Add ProfileManager getter in AgentMemoryManager**
 
 In `src/agent/AgentMemoryManager.ts`:
 
@@ -2835,7 +2837,7 @@ get profileManager(): ProfileManager {
 
 Note: `AgentMemoryManager` needs references to `entityManager` and `observationManager`. If these are not already accessible via `this.storage` context, add them as constructor parameters from `ManagerContext`.
 
-- [ ] **Step 5: Add session:ended auto-extract hook**
+- [x] **Step 5: Add session:ended auto-extract hook**
 
 In `src/agent/AgentMemoryManager.ts`, in the constructor (after event emitter setup):
 
@@ -2854,7 +2856,7 @@ In `src/agent/AgentMemoryManager.ts`, in the constructor (after event emitter se
 
 Call `this.wireProfileAutoExtract()` at the end of the constructor.
 
-- [ ] **Step 6: Export ProfileManager from index.ts**
+- [x] **Step 6: Export ProfileManager from index.ts**
 
 In `src/index.ts`:
 
@@ -2865,12 +2867,12 @@ export { isProfileEntity } from './types/agent-memory.js';
 export type { ProfileEntity } from './types/agent-memory.js';
 ```
 
-- [ ] **Step 7: Run test + typecheck**
+- [x] **Step 7: Run test + typecheck**
 
 Run: `npx vitest run tests/integration/agent/agent-memory-manager-profile.test.ts && npm run typecheck`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Message: `feat(agent): Wire ProfileManager into AgentMemoryManager facade`
 
@@ -2878,10 +2880,10 @@ Message: `feat(agent): Wire ProfileManager into AgentMemoryManager facade`
 
 ### Task 4.6: Phase 4 verification gate
 
-- [ ] Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -30` → all pass, ~50+ new tests
-- [ ] Run: `npm run typecheck` → no errors
-- [ ] Run: `npm run build` → builds cleanly (ESM + CJS + CLI + workers)
-- [ ] Run: `git log --oneline -30` → ~20 commits since baseline
+- [x] Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -30` → all pass, ~50+ new tests
+- [x] Run: `npm run typecheck` → no errors
+- [x] Run: `npm run build` → builds cleanly (ESM + CJS + CLI + workers)
+- [x] Run: `git log --oneline -30` → ~20 commits since baseline
 
 **Phase 4 complete. Feature 4 (User Profile) is shippable as v1.8.0-alpha.4.**
 
@@ -2896,11 +2898,11 @@ Message: `feat(agent): Wire ProfileManager into AgentMemoryManager facade`
 - Modify: `package.json`
 - Modify: `docs/roadmap/GAP_ANALYSIS_VS_SUPERMEMORY.md`
 
-- [ ] **Step 1: Bump version**
+- [x] **Step 1: Bump version**
 
 In `package.json`, change `"version"` to `"1.8.0"`.
 
-- [ ] **Step 2: Add CHANGELOG entry**
+- [x] **Step 2: Add CHANGELOG entry**
 
 At the top of `CHANGELOG.md`, add:
 
@@ -2928,16 +2930,16 @@ At the top of `CHANGELOG.md`, add:
 - Gap analysis: `docs/roadmap/GAP_ANALYSIS_VS_SUPERMEMORY.md`
 ```
 
-- [ ] **Step 3: Update gap analysis status**
+- [x] **Step 3: Update gap analysis status**
 
 In `docs/roadmap/GAP_ANALYSIS_VS_SUPERMEMORY.md`, update the "Recommended Implementation Order" table. For rows #1-#4 (Profile, Semantic Forget, Versioning, Project Scoping), change Status column from "Not started" to "✅ v1.8.0".
 
-- [ ] **Step 4: Final verification**
+- [x] **Step 4: Final verification**
 
 Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20 && npm run typecheck && npm run build`
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message:
 
@@ -2955,11 +2957,11 @@ Sprint 1 supermemory gap-closing complete:
 
 ## Self-Review Checklist
 
-- [ ] **Spec coverage:** Every section of the design spec has a task. Phase 0 = Entity model. Phase 1 = Project Scoping. Phase 2 = Memory Versioning. Phase 3 = Semantic Forget. Phase 4 = User Profile. Phase 5 = Release prep.
-- [ ] **No placeholders:** Every code step has actual code. No "TBD" or "TODO".
-- [ ] **Type consistency:** `Contradiction[]` in Task 2.1 matches usage in 2.2 and 2.4. `ForgetResult` stable from 3.1. `ProfileResponse` stable from 4.3.
-- [ ] **TDD:** Every task has Test → Fail → Implement → Pass → Commit.
-- [ ] **Frequent commits:** ~20 commits across the plan, one per task.
-- [ ] **YAGNI:** No features beyond the spec.
-- [ ] **Feature-vertical:** Phases 1-4 each independently shippable as v1.8.0-alpha.N.
+- [x] **Spec coverage:** Every section of the design spec has a task. Phase 0 = Entity model. Phase 1 = Project Scoping. Phase 2 = Memory Versioning. Phase 3 = Semantic Forget. Phase 4 = User Profile. Phase 5 = Release prep.
+- [x] **No placeholders:** Every code step has actual code. No "TBD" or "TODO".
+- [x] **Type consistency:** `Contradiction[]` in Task 2.1 matches usage in 2.2 and 2.4. `ForgetResult` stable from 3.1. `ProfileResponse` stable from 4.3.
+- [x] **TDD:** Every task has Test → Fail → Implement → Pass → Commit.
+- [x] **Frequent commits:** ~20 commits across the plan, one per task.
+- [x] **YAGNI:** No features beyond the spec.
+- [x] **Feature-vertical:** Phases 1-4 each independently shippable as v1.8.0-alpha.N.
 

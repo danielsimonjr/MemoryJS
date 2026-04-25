@@ -4,7 +4,7 @@
 - Create: `src/agent/ProfileManager.ts`
 - Test: `tests/unit/agent/profile-manager-basics.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/agent/profile-manager-basics.test.ts`:
 
@@ -88,12 +88,12 @@ describe('ProfileManager basics', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/agent/profile-manager-basics.test.ts`
 Expected: FAIL — module does not exist.
 
-- [ ] **Step 3: Create ProfileManager**
+- [x] **Step 3: Create ProfileManager**
 
 Create `src/agent/ProfileManager.ts`:
 
@@ -238,12 +238,12 @@ export class ProfileManager {
 }
 ```
 
-- [ ] **Step 4: Run test + typecheck**
+- [x] **Step 4: Run test + typecheck**
 
 Run: `npx vitest run tests/unit/agent/profile-manager-basics.test.ts && npm run typecheck`
 Expected: PASS (6 tests).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Message: `feat(agent): Add ProfileManager with getProfile/addFact/promoteFact`
 

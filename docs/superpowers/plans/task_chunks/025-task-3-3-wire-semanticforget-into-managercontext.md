@@ -5,7 +5,7 @@
 - Modify: `src/index.ts` (add exports)
 - Test: `tests/integration/core/manager-context-semantic-forget.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/core/manager-context-semantic-forget.test.ts`:
 
@@ -49,12 +49,12 @@ describe('ManagerContext exposes SemanticForget', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/core/manager-context-semantic-forget.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add lazy getter to ManagerContext**
+- [x] **Step 3: Add lazy getter to ManagerContext**
 
 In `src/core/ManagerContext.ts`, add import and lazy getter alongside other feature getters:
 
@@ -77,7 +77,7 @@ get semanticForget(): SemanticForget {
 
 (Check the exact accessor for `auditLog` — may be `this.auditLog` directly or on a different manager.)
 
-- [ ] **Step 4: Export from index.ts**
+- [x] **Step 4: Export from index.ts**
 
 In `src/index.ts`, add alongside existing `features/*` exports:
 
@@ -86,12 +86,12 @@ export { SemanticForget } from './features/SemanticForget.js';
 export type { ForgetResult, ForgetOptions } from './features/SemanticForget.js';
 ```
 
-- [ ] **Step 5: Run test + typecheck + full suite**
+- [x] **Step 5: Run test + typecheck + full suite**
 
 Run: `npx vitest run tests/integration/core/manager-context-semantic-forget.test.ts && npm run typecheck && SKIP_BENCHMARKS=true npm test 2>&1 | tail -20`
 Expected: all pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(core): Expose SemanticForget via ManagerContext`
 

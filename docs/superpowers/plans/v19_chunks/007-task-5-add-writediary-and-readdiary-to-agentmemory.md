@@ -5,7 +5,7 @@
 - Modify: `src/core/EntityManager.ts` (reserve diary-* namespace)
 - Test: `tests/unit/agent/agent-memory-manager-diary.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/agent/agent-memory-manager-diary.test.ts`:
 
@@ -81,11 +81,11 @@ describe('AgentMemoryManager diary', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/agent/agent-memory-manager-diary.test.ts`
 
-- [ ] **Step 3: Reserve diary-* namespace in EntityManager**
+- [x] **Step 3: Reserve diary-* namespace in EntityManager**
 
 In `src/core/EntityManager.ts`, find the existing `profile-*` namespace check (added in v1.8.0) and extend it:
 
@@ -109,7 +109,7 @@ In `src/core/EntityManager.ts`, find the existing `profile-*` namespace check (a
     }
 ```
 
-- [ ] **Step 4: Implement writeDiary and readDiary**
+- [x] **Step 4: Implement writeDiary and readDiary**
 
 Add to `src/agent/AgentMemoryManager.ts`:
 
@@ -177,12 +177,12 @@ Add to `src/agent/AgentMemoryManager.ts`:
   }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/agent/agent-memory-manager-diary.test.ts`
 Expected: 6 PASS.
 
-- [ ] **Step 6: Typecheck and commit**
+- [x] **Step 6: Typecheck and commit**
 
 Run: `npm run typecheck`
 

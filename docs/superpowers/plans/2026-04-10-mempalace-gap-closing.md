@@ -1,5 +1,7 @@
 # MemPalace Gap-Closing (v1.9.0) Implementation Plan
 
+> **Status (verified 2026-04-24):** ✅ **SHIPPED in v1.9.0** (with v1.9.1 follow-ups). All 49 tasks marked done after RLM cross-reference. Ground truth: CHANGELOG.md `## [1.9.0]` / `## [1.9.1]` + `git grep` confirmed presence of `invalidateRelation`, `queryAsOf`, `timeline`, `wakeUp`, `ingest`, `writeDiary`/`readDiary`, plus zero-config local embedding default.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add 7 features from mempalace gap analysis to memoryjs v1.9.0, extending existing managers (Approach A — no new classes).
@@ -29,7 +31,7 @@ SKIP_BENCHMARKS=true npm test 2>&1 | tail -5  # ~5681 pass, 2 pre-existing failu
 - Modify: `src/core/RelationManager.ts`
 - Test: `tests/unit/core/relation-manager-temporal.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/relation-manager-temporal.test.ts`:
 
@@ -89,11 +91,11 @@ describe('RelationManager.invalidateRelation', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/relation-manager-temporal.test.ts`
 
-- [ ] **Step 3: Implement invalidateRelation**
+- [x] **Step 3: Implement invalidateRelation**
 
 Add to `src/core/RelationManager.ts`:
 
@@ -130,12 +132,12 @@ Add to `src/core/RelationManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/core/relation-manager-temporal.test.ts`
 Expected: 3 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 feat(core): Add RelationManager.invalidateRelation()
@@ -154,7 +156,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 - Modify: `src/core/RelationManager.ts`
 - Modify: `tests/unit/core/relation-manager-temporal.test.ts` (add tests)
 
-- [ ] **Step 1: Add tests to existing file**
+- [x] **Step 1: Add tests to existing file**
 
 Append to `tests/unit/core/relation-manager-temporal.test.ts`:
 
@@ -263,11 +265,11 @@ describe('RelationManager.timeline', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run tests/unit/core/relation-manager-temporal.test.ts`
 
-- [ ] **Step 3: Implement queryAsOf and timeline**
+- [x] **Step 3: Implement queryAsOf and timeline**
 
 Add to `src/core/RelationManager.ts`:
 
@@ -333,12 +335,12 @@ Add to `src/core/RelationManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run all temporal tests**
+- [x] **Step 4: Run all temporal tests**
 
 Run: `npx vitest run tests/unit/core/relation-manager-temporal.test.ts`
 Expected: 8 PASS (3 invalidate + 3 queryAsOf + 2 timeline).
 
-- [ ] **Step 5: Typecheck and commit**
+- [x] **Step 5: Typecheck and commit**
 
 Run: `npm run typecheck`
 
@@ -361,7 +363,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 - Modify: `src/agent/AgentMemoryConfig.ts` (add wakeUp config)
 - Test: `tests/unit/agent/context-window-manager-wakeup.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/agent/context-window-manager-wakeup.test.ts`:
 
@@ -429,11 +431,11 @@ describe('ContextWindowManager.wakeUp', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/agent/context-window-manager-wakeup.test.ts`
 
-- [ ] **Step 3: Add wakeUp config to AgentMemoryConfig**
+- [x] **Step 3: Add wakeUp config to AgentMemoryConfig**
 
 In `src/agent/AgentMemoryConfig.ts`, add to the `AgentMemoryConfig` interface:
 
@@ -445,7 +447,7 @@ In `src/agent/AgentMemoryConfig.ts`, add to the `AgentMemoryConfig` interface:
   };
 ```
 
-- [ ] **Step 4: Implement wakeUp**
+- [x] **Step 4: Implement wakeUp**
 
 Add to `src/agent/ContextWindowManager.ts`:
 
@@ -542,12 +544,12 @@ Then add the method to the class:
 
 **NOTE**: The dynamic imports are a pragmatic approach to avoid adding constructor dependencies. The ContextWindowManager already has `storage` — we create lightweight ProfileManager/EntityManager/ObservationManager instances from it. If the implementer finds a cleaner way to access ProfileManager (e.g. via a setter like ContradictionDetector uses), prefer that.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/agent/context-window-manager-wakeup.test.ts`
 Expected: 4 PASS.
 
-- [ ] **Step 6: Typecheck and commit**
+- [x] **Step 6: Typecheck and commit**
 
 Run: `npm run typecheck`
 
@@ -570,7 +572,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 - Modify: `src/features/IOManager.ts`
 - Test: `tests/unit/features/io-manager-ingest.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/io-manager-ingest.test.ts`:
 
@@ -685,11 +687,11 @@ describe('IOManager.ingest', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/io-manager-ingest.test.ts`
 
-- [ ] **Step 3: Implement ingest**
+- [x] **Step 3: Implement ingest**
 
 Add types at the top of `src/features/IOManager.ts` (after imports):
 
@@ -839,12 +841,12 @@ Add the method to the `IOManager` class:
 
 **NOTE**: The `EntityManager` is instantiated inline since `IOManager` only has `storage`. The implementer should check if `IOManager` already has access to an `EntityManager` via a different path — if so, use that instead of creating a new one.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/features/io-manager-ingest.test.ts`
 Expected: 6 PASS.
 
-- [ ] **Step 5: Export new types from index**
+- [x] **Step 5: Export new types from index**
 
 In `src/features/index.ts`, add:
 
@@ -852,7 +854,7 @@ In `src/features/index.ts`, add:
 export type { IngestInput, IngestOptions, IngestResult } from './IOManager.js';
 ```
 
-- [ ] **Step 6: Typecheck and commit**
+- [x] **Step 6: Typecheck and commit**
 
 Run: `npm run typecheck`
 
@@ -875,7 +877,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 - Modify: `src/core/EntityManager.ts` (reserve diary-* namespace)
 - Test: `tests/unit/agent/agent-memory-manager-diary.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/agent/agent-memory-manager-diary.test.ts`:
 
@@ -951,11 +953,11 @@ describe('AgentMemoryManager diary', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/agent/agent-memory-manager-diary.test.ts`
 
-- [ ] **Step 3: Reserve diary-* namespace in EntityManager**
+- [x] **Step 3: Reserve diary-* namespace in EntityManager**
 
 In `src/core/EntityManager.ts`, find the existing `profile-*` namespace check (added in v1.8.0) and extend it:
 
@@ -979,7 +981,7 @@ In `src/core/EntityManager.ts`, find the existing `profile-*` namespace check (a
     }
 ```
 
-- [ ] **Step 4: Implement writeDiary and readDiary**
+- [x] **Step 4: Implement writeDiary and readDiary**
 
 Add to `src/agent/AgentMemoryManager.ts`:
 
@@ -1047,12 +1049,12 @@ Add to `src/agent/AgentMemoryManager.ts`:
   }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/agent/agent-memory-manager-diary.test.ts`
 Expected: 6 PASS.
 
-- [ ] **Step 6: Typecheck and commit**
+- [x] **Step 6: Typecheck and commit**
 
 Run: `npm run typecheck`
 
@@ -1075,7 +1077,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 - Modify: `src/core/ManagerContext.ts`
 - Test: `tests/unit/core/manager-context-default-embedding.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/manager-context-default-embedding.test.ts`:
 
@@ -1113,11 +1115,11 @@ describe('Zero-config semantic search default', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/manager-context-default-embedding.test.ts`
 
-- [ ] **Step 3: Change default in constants**
+- [x] **Step 3: Change default in constants**
 
 Find `src/utils/constants.ts` or wherever `getEmbeddingConfig` is defined. Change the default provider from `'none'` to `'local'`:
 
@@ -1131,17 +1133,17 @@ const provider = process.env.MEMORY_EMBEDDING_PROVIDER || 'local';
 
 Also add a graceful fallback in the `SemanticSearch` constructor or `EmbeddingService` initialization: if `local` provider fails to initialize (ONNX not available), log a warning and fall back to `none`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/core/manager-context-default-embedding.test.ts`
 Expected: 2 PASS.
 
-- [ ] **Step 5: Run full test suite to check for regressions**
+- [x] **Step 5: Run full test suite to check for regressions**
 
 Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -5`
 Expected: no new failures (some existing tests may need `MEMORY_EMBEDDING_PROVIDER=none` if they don't want embeddings).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```
 feat(search): Default embedding provider to local (zero-config semantic)
@@ -1162,7 +1164,7 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 - Create: `hooks/memoryjs_precompact_hook.sh`
 - Create: `hooks/README.md`
 
-- [ ] **Step 1: Create save hook**
+- [x] **Step 1: Create save hook**
 
 Create `hooks/memoryjs_save_hook.sh`:
 
@@ -1182,7 +1184,7 @@ memoryjs entity create \
   --storage "$MEMORY_FILE" 2>/dev/null || true
 ```
 
-- [ ] **Step 2: Create precompact hook**
+- [x] **Step 2: Create precompact hook**
 
 Create `hooks/memoryjs_precompact_hook.sh`:
 
@@ -1202,7 +1204,7 @@ memoryjs entity create \
   --storage "$MEMORY_FILE" || true
 ```
 
-- [ ] **Step 3: Create README**
+- [x] **Step 3: Create README**
 
 Create `hooks/README.md`:
 
@@ -1232,13 +1234,13 @@ Add to your Claude Code `settings.json`:
 Both use `$MEMORY_FILE_PATH` env var (default: `~/.memoryjs/memory.jsonl`).
 ```
 
-- [ ] **Step 4: Make scripts executable**
+- [x] **Step 4: Make scripts executable**
 
 ```bash
 chmod +x hooks/memoryjs_save_hook.sh hooks/memoryjs_precompact_hook.sh
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 feat(hooks): Add auto-save hooks for Claude Code
@@ -1258,11 +1260,11 @@ Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 - Modify: `CHANGELOG.md`
 - Modify: `docs/roadmap/GAP_ANALYSIS_VS_MEMPALACE.md` (status update)
 
-- [ ] **Step 1: Bump version**
+- [x] **Step 1: Bump version**
 
 In `package.json`, change version to `"1.9.0"`.
 
-- [ ] **Step 2: Add CHANGELOG entry**
+- [x] **Step 2: Add CHANGELOG entry**
 
 Add at top of CHANGELOG.md:
 
@@ -1279,11 +1281,11 @@ Add at top of CHANGELOG.md:
 - **Auto-Save Hooks**: `hooks/memoryjs_save_hook.sh` and `hooks/memoryjs_precompact_hook.sh` for Claude Code.
 ```
 
-- [ ] **Step 3: Update gap analysis status**
+- [x] **Step 3: Update gap analysis status**
 
 In `docs/roadmap/GAP_ANALYSIS_VS_MEMPALACE.md`, update the implementation order table rows 1-5 from "Not started" to "✅ v1.9.0". Leave Benchmarking and AAAK as "Not started".
 
-- [ ] **Step 4: Final verification**
+- [x] **Step 4: Final verification**
 
 ```bash
 npm run typecheck
@@ -1291,7 +1293,7 @@ SKIP_BENCHMARKS=true npm test 2>&1 | tail -5
 npm run build
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```
 chore(release): Bump version to 1.9.0

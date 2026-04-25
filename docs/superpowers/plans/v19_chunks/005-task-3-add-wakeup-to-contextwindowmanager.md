@@ -5,7 +5,7 @@
 - Modify: `src/agent/AgentMemoryConfig.ts` (add wakeUp config)
 - Test: `tests/unit/agent/context-window-manager-wakeup.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/agent/context-window-manager-wakeup.test.ts`:
 
@@ -73,11 +73,11 @@ describe('ContextWindowManager.wakeUp', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/agent/context-window-manager-wakeup.test.ts`
 
-- [ ] **Step 3: Add wakeUp config to AgentMemoryConfig**
+- [x] **Step 3: Add wakeUp config to AgentMemoryConfig**
 
 In `src/agent/AgentMemoryConfig.ts`, add to the `AgentMemoryConfig` interface:
 
@@ -89,7 +89,7 @@ In `src/agent/AgentMemoryConfig.ts`, add to the `AgentMemoryConfig` interface:
   };
 ```
 
-- [ ] **Step 4: Implement wakeUp**
+- [x] **Step 4: Implement wakeUp**
 
 Add to `src/agent/ContextWindowManager.ts`:
 
@@ -186,12 +186,12 @@ Then add the method to the class:
 
 **NOTE**: The dynamic imports are a pragmatic approach to avoid adding constructor dependencies. The ContextWindowManager already has `storage` — we create lightweight ProfileManager/EntityManager/ObservationManager instances from it. If the implementer finds a cleaner way to access ProfileManager (e.g. via a setter like ContradictionDetector uses), prefer that.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/agent/context-window-manager-wakeup.test.ts`
 Expected: 4 PASS.
 
-- [ ] **Step 6: Typecheck and commit**
+- [x] **Step 6: Typecheck and commit**
 
 Run: `npm run typecheck`
 

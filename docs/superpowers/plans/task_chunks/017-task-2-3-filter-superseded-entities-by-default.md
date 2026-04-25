@@ -4,7 +4,7 @@
 - Modify: `src/search/SearchFilterChain.ts`
 - Test: `tests/unit/search/search-filter-chain-versioning.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/search/search-filter-chain-versioning.test.ts`:
 
@@ -49,12 +49,12 @@ describe('SearchFilterChain default versioning behavior', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/search/search-filter-chain-versioning.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add includeSuperseded to SearchFilters interface**
+- [x] **Step 3: Add includeSuperseded to SearchFilters interface**
 
 In `src/search/SearchFilterChain.ts`, add to `SearchFilters`:
 
@@ -63,7 +63,7 @@ In `src/search/SearchFilterChain.ts`, add to `SearchFilters`:
   includeSuperseded?: boolean;
 ```
 
-- [ ] **Step 4: Add versioning check in entityPassesFilters**
+- [x] **Step 4: Add versioning check in entityPassesFilters**
 
 Before the final `return true;`:
 
@@ -76,7 +76,7 @@ Before the final `return true;`:
     return true;
 ```
 
-- [ ] **Step 5: Remove the early-return optimization in applyFilters**
+- [x] **Step 5: Remove the early-return optimization in applyFilters**
 
 The early-return based on `hasActiveFilters` must not skip the versioning filter. Simplest fix: always run the filter loop:
 
@@ -92,17 +92,17 @@ The early-return based on `hasActiveFilters` must not skip the versioning filter
   }
 ```
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/search/search-filter-chain-versioning.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 7: Run full search test suite**
+- [x] **Step 7: Run full search test suite**
 
 Run: `npx vitest run tests/unit/search/`
 Expected: all tests pass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Message: `feat(search): Filter superseded entity versions by default`
 

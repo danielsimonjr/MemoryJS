@@ -4,7 +4,7 @@
 - Modify: `src/search/SearchFilterChain.ts`
 - Test: `tests/unit/search/search-filter-chain-project.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/search/search-filter-chain-project.test.ts`:
 
@@ -62,12 +62,12 @@ describe('SearchFilterChain projectId filter', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/search/search-filter-chain-project.test.ts`
 Expected: FAIL — `projectId` is not a recognized field on `SearchFilters`.
 
-- [ ] **Step 3: Add projectId to SearchFilters interface**
+- [x] **Step 3: Add projectId to SearchFilters interface**
 
 In `src/search/SearchFilterChain.ts`, add to the `SearchFilters` interface (after `modifiedBefore`):
 
@@ -76,7 +76,7 @@ In `src/search/SearchFilterChain.ts`, add to the `SearchFilters` interface (afte
   projectId?: string;
 ```
 
-- [ ] **Step 4: Add check to entityPassesFilters**
+- [x] **Step 4: Add check to entityPassesFilters**
 
 In `entityPassesFilters`, before the final `return true;`:
 
@@ -89,16 +89,16 @@ In `entityPassesFilters`, before the final `return true;`:
     return true;
 ```
 
-- [ ] **Step 5: Add projectId to hasActiveFilters**
+- [x] **Step 5: Add projectId to hasActiveFilters**
 
 In `hasActiveFilters`, add `|| filters.projectId !== undefined` to the OR chain.
 
-- [ ] **Step 6: Run test to verify it passes**
+- [x] **Step 6: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/search/search-filter-chain-project.test.ts`
 Expected: PASS (5 tests).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Message:
 

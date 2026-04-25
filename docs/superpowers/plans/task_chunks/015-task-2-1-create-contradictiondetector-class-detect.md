@@ -4,7 +4,7 @@
 - Create: `src/features/ContradictionDetector.ts`
 - Test: `tests/unit/features/contradiction-detector-detect.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/contradiction-detector-detect.test.ts`:
 
@@ -73,12 +73,12 @@ describe('ContradictionDetector.detect', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/contradiction-detector-detect.test.ts`
 Expected: FAIL — module does not exist.
 
-- [ ] **Step 3: Create ContradictionDetector**
+- [x] **Step 3: Create ContradictionDetector**
 
 Create `src/features/ContradictionDetector.ts`:
 
@@ -138,16 +138,16 @@ export class ContradictionDetector {
 }
 ```
 
-- [ ] **Step 4: Ensure SemanticSearch has calculateSimilarity method**
+- [x] **Step 4: Ensure SemanticSearch has calculateSimilarity method**
 
 Check `src/search/SemanticSearch.ts`. If a `calculateSimilarity(a: string, b: string): Promise<number>` method does not exist, add one that embeds both strings via `this.embeddingService.embed()` and returns cosine similarity. Reuse any existing `cosineSimilarity` helper in the module.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/features/contradiction-detector-detect.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(features): Add ContradictionDetector.detect() with semantic similarity`
 

@@ -11,7 +11,7 @@ memoryjs entity create \
   --storage "$MEMORY_FILE" || true
 ```
 
-- [ ] **Step 3: Create README**
+- [x] **Step 3: Create README**
 
 Create `hooks/README.md`:
 

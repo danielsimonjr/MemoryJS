@@ -4,7 +4,7 @@
 - Modify: `src/features/IOManager.ts`
 - Test: `tests/unit/features/io-manager-ingest.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/features/io-manager-ingest.test.ts`:
 
@@ -119,11 +119,11 @@ describe('IOManager.ingest', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/features/io-manager-ingest.test.ts`
 
-- [ ] **Step 3: Implement ingest**
+- [x] **Step 3: Implement ingest**
 
 Add types at the top of `src/features/IOManager.ts` (after imports):
 
@@ -273,12 +273,12 @@ Add the method to the `IOManager` class:
 
 **NOTE**: The `EntityManager` is instantiated inline since `IOManager` only has `storage`. The implementer should check if `IOManager` already has access to an `EntityManager` via a different path — if so, use that instead of creating a new one.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/features/io-manager-ingest.test.ts`
 Expected: 6 PASS.
 
-- [ ] **Step 5: Export new types from index**
+- [x] **Step 5: Export new types from index**
 
 In `src/features/index.ts`, add:
 
@@ -286,7 +286,7 @@ In `src/features/index.ts`, add:
 export type { IngestInput, IngestOptions, IngestResult } from './IOManager.js';
 ```
 
-- [ ] **Step 6: Typecheck and commit**
+- [x] **Step 6: Typecheck and commit**
 
 Run: `npm run typecheck`
 

@@ -6,7 +6,7 @@
 - Modify: `src/index.ts` (add exports)
 - Test: `tests/integration/agent/agent-memory-manager-profile.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/agent/agent-memory-manager-profile.test.ts`:
 
@@ -45,12 +45,12 @@ describe('AgentMemoryManager exposes ProfileManager', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/agent/agent-memory-manager-profile.test.ts`
 Expected: FAIL — `profileManager` getter does not exist.
 
-- [ ] **Step 3: Add config slice**
+- [x] **Step 3: Add config slice**
 
 In `src/agent/AgentMemoryConfig.ts`:
 
@@ -61,7 +61,7 @@ import type { ProfileManagerConfig } from './ProfileManager.js';
 profile?: ProfileManagerConfig;
 ```
 
-- [ ] **Step 4: Add ProfileManager getter in AgentMemoryManager**
+- [x] **Step 4: Add ProfileManager getter in AgentMemoryManager**
 
 In `src/agent/AgentMemoryManager.ts`:
 
@@ -86,7 +86,7 @@ get profileManager(): ProfileManager {
 
 Note: `AgentMemoryManager` needs references to `entityManager` and `observationManager`. If these are not already accessible via `this.storage` context, add them as constructor parameters from `ManagerContext`.
 
-- [ ] **Step 5: Add session:ended auto-extract hook**
+- [x] **Step 5: Add session:ended auto-extract hook**
 
 In `src/agent/AgentMemoryManager.ts`, in the constructor (after event emitter setup):
 
@@ -105,7 +105,7 @@ In `src/agent/AgentMemoryManager.ts`, in the constructor (after event emitter se
 
 Call `this.wireProfileAutoExtract()` at the end of the constructor.
 
-- [ ] **Step 6: Export ProfileManager from index.ts**
+- [x] **Step 6: Export ProfileManager from index.ts**
 
 In `src/index.ts`:
 
@@ -116,12 +116,12 @@ export { isProfileEntity } from './types/agent-memory.js';
 export type { ProfileEntity } from './types/agent-memory.js';
 ```
 
-- [ ] **Step 7: Run test + typecheck**
+- [x] **Step 7: Run test + typecheck**
 
 Run: `npx vitest run tests/integration/agent/agent-memory-manager-profile.test.ts && npm run typecheck`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 Message: `feat(agent): Wire ProfileManager into AgentMemoryManager facade`
 

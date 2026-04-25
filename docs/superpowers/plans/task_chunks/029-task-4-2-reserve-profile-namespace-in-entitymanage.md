@@ -4,7 +4,7 @@
 - Modify: `src/core/EntityManager.ts`
 - Test: `tests/unit/core/entity-manager-profile-namespace.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/entity-manager-profile-namespace.test.ts`:
 
@@ -55,12 +55,12 @@ describe('EntityManager reserves profile-* namespace', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/entity-manager-profile-namespace.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Add namespace check**
+- [x] **Step 3: Add namespace check**
 
 In `src/core/EntityManager.ts`, in `createEntities` after input validation:
 
@@ -75,7 +75,7 @@ In `src/core/EntityManager.ts`, in `createEntities` after input validation:
     }
 ```
 
-- [ ] **Step 4: Run test + commit**
+- [x] **Step 4: Run test + commit**
 
 Run: `npx vitest run tests/unit/core/entity-manager-profile-namespace.test.ts`
 Expected: PASS.

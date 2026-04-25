@@ -5,7 +5,7 @@
 - Modify: `src/core/ManagerContext.ts`
 - Test: `tests/integration/core/observation-manager-contradiction.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/core/observation-manager-contradiction.test.ts`:
 
@@ -55,12 +55,12 @@ describe('ObservationManager triggers contradiction detection', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/core/observation-manager-contradiction.test.ts`
 Expected: FAIL — `setContradictionDetector` does not exist.
 
-- [ ] **Step 3: Add setter and detection hook to ObservationManager**
+- [x] **Step 3: Add setter and detection hook to ObservationManager**
 
 In `src/core/ObservationManager.ts`:
 
@@ -103,24 +103,24 @@ In `addObservations`, around line 67 (after the `newObservations` filter, before
       }
 ```
 
-- [ ] **Step 4: Wire detector in ManagerContext when enabled**
+- [x] **Step 4: Wire detector in ManagerContext when enabled**
 
 In `src/core/ManagerContext.ts`:
 - Add `enableContradictionDetection?: boolean` and `contradictionThreshold?: number` to `ManagerContextOptions`
 - Add a private `initContradictionDetection()` method that, when the option is set and `semanticSearch` is configured, constructs a `ContradictionDetector` and calls `observationManager.setContradictionDetector(detector, this.entityManager)`
 - Call `initContradictionDetection()` once during first access to observationManager, or eagerly in the constructor if safe
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/core/observation-manager-contradiction.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: Run full test suite**
+- [x] **Step 6: Run full test suite**
 
 Run: `SKIP_BENCHMARKS=true npm test 2>&1 | tail -20`
 Expected: all pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Message: `feat(core): Hook ContradictionDetector into ObservationManager`
 

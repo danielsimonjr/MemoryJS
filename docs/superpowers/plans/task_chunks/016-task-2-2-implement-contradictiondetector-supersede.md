@@ -4,7 +4,7 @@
 - Modify: `src/features/ContradictionDetector.ts`
 - Test: `tests/integration/features/contradiction-detector-supersede.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/integration/features/contradiction-detector-supersede.test.ts`:
 
@@ -78,12 +78,12 @@ describe('ContradictionDetector.supersede', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/integration/features/contradiction-detector-supersede.test.ts`
 Expected: FAIL — `supersede` does not exist.
 
-- [ ] **Step 3: Implement supersede**
+- [x] **Step 3: Implement supersede**
 
 Add to `src/features/ContradictionDetector.ts`:
 
@@ -135,16 +135,16 @@ import type { EntityManager } from '../core/EntityManager.js';
   }
 ```
 
-- [ ] **Step 4: Verify update schema allows isLatest/supersededBy**
+- [x] **Step 4: Verify update schema allows isLatest/supersededBy**
 
 Check `src/utils/schemas*.ts` (or wherever `UpdateEntitySchema` lives) and ensure the Zod schema permits `isLatest` and `supersededBy` as optional fields. If not, extend the schema.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `npx vitest run tests/integration/features/contradiction-detector-supersede.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Message: `feat(features): Implement ContradictionDetector.supersede()`
 

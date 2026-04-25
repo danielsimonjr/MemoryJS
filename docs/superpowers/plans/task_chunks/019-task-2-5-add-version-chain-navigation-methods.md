@@ -4,7 +4,7 @@
 - Modify: `src/core/EntityManager.ts`
 - Test: `tests/unit/core/entity-manager-version-chain.test.ts` (create)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/unit/core/entity-manager-version-chain.test.ts`:
 
@@ -75,12 +75,12 @@ describe('EntityManager version chain navigation', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run tests/unit/core/entity-manager-version-chain.test.ts`
 Expected: FAIL.
 
-- [ ] **Step 3: Implement methods**
+- [x] **Step 3: Implement methods**
 
 Add to `src/core/EntityManager.ts`:
 
@@ -110,7 +110,7 @@ Add to `src/core/EntityManager.ts`:
   }
 ```
 
-- [ ] **Step 4: Run test + typecheck + commit**
+- [x] **Step 4: Run test + typecheck + commit**
 
 Run: `npx vitest run tests/unit/core/entity-manager-version-chain.test.ts && npm run typecheck`
 Expected: PASS.
