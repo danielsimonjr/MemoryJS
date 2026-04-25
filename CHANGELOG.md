@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase η.6.1 — Role-Based Access Control)
+
+Named-role permission system layered above the η.5.5.b visibility model. New module: `src/agent/rbac/`.
+
+- **`RbacTypes.ts`** — `Role` (`reader | writer | admin | owner | string`), `Permission` (`read | write | delete | manage`), `ResourceType` (`entity | relation | observation | session | artifact`), `RoleAssignment`, `RbacPolicy` interface.
+- **`PermissionMatrix.ts`** — `DEFAULT_PERMISSION_MATRIX`: monotonic role hierarchy where reader→read; writer→read+write; admin→read+write+delete; owner→all four. `permissionsForRole(role, resourceType, matrix?, overrides?)` looks up grants, with optional per-resource-type overrides. Unknown roles return empty (fail-safe).
+- **`RoleAssignmentStore.ts`** — in-process `Map<agentId, RoleAssignment[]>` with optional JSONL sidecar persistence. `assign` / `revoke` / `list` / `listActive(agentId, now?)`. `listActive` filters by `validFrom`/`validUntil` window. `hydrate()` replays the JSONL file on construction; tolerant of missing files and corrupt lines.
+- **`RbacMiddleware.ts`** — `RbacPolicy` implementation. `checkPermission(agentId, action, resourceType, resourceName?, now?)` consults the store for active assignments matching resourceType (exact OR universal/undefined) and `scope` prefix, then checks the matrix. Falls back to `defaultRole` (default `'reader'`) when no assignment matches; pass `defaultRole: undefined` to deny unregistered agents entirely.
+- **Three matching dimensions** per assignment: resource type (exact or universal), name scope (prefix match), validity window. Multiple grants compose — any matching grant that includes `action` suffices.
+- Barrel-exported from `src/agent/index.ts`.
+
+22 new tests in `tests/unit/agent/rbac.test.ts`. Closes T61 sub-section η.6.1 (no-deps subset of Enterprise plan).
+
 ### Added (Phase η.5.5.a — Multi-Agent Conflict View on `CollaborativeSynthesis`)
 
 `SynthesisResult` gains a `conflicts: ConflictView[]` field. After BFS-traversing neighbors and salience-scoring them, the synthesizer groups by *logical entity identity* (`rootEntityName`, falling back to `name`) and reports any group containing 2+ candidates from distinct `agentId`s as a conflict.

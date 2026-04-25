@@ -292,3 +292,21 @@ export {
   type AttributionMode,
   type CollaborationAuditEnforcerOptions,
 } from './collaboration/CollaborationAuditEnforcer.js';
+
+// η.6.1 Role-Based Access Control
+export {
+  DEFAULT_PERMISSION_MATRIX,
+  permissionsForRole,
+  RoleAssignmentStore,
+  RbacMiddleware,
+  type Role,
+  type Permission,
+  type ResourceType,
+  type RoleAssignment,
+  type RbacPolicy,
+  type PermissionMatrix,
+  type PermissionMatrixRow,
+  type ResourcePermissionOverrides,
+  type RoleAssignmentStoreOptions,
+  type RbacMiddlewareOptions,
+} from './rbac/index.js';
