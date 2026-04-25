@@ -1,11 +1,11 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "version": "1.5.0",
-    "lastUpdated": "2026-02-11",
-    "totalFiles": 110,
-    "totalModules": 9,
-    "totalExports": 770
+    "version": "1.14.0",
+    "lastUpdated": "2026-04-25",
+    "totalFiles": 183,
+    "totalModules": 10,
+    "totalExports": 1104
   },
   "entryPoints": [
     {
@@ -137,6 +137,27 @@
               "ConflictResolverConfig"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./CollaborativeSynthesis.js",
+            "imports": [
+              "CollaborativeSynthesisConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ProfileManager.js",
+            "imports": [
+              "ProfileManagerConfig"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -171,6 +192,25 @@
               "IGraphStorage"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ]
+          },
+          {
+            "file": "../core/ObservationManager.js",
+            "imports": [
+              "ObservationManager"
+            ]
           },
           {
             "file": "../types/agent-memory.js",
@@ -290,12 +330,52 @@
             ]
           },
           {
+            "file": "./SessionCheckpoint.js",
+            "imports": [
+              "SessionCheckpointManager",
+              "SessionCheckpointData"
+            ]
+          },
+          {
+            "file": "./WorkThreadManager.js",
+            "imports": [
+              "WorkThreadManager"
+            ]
+          },
+          {
             "file": "./AgentMemoryConfig.js",
             "imports": [
               "AgentMemoryConfig",
               "loadConfigFromEnv",
               "mergeConfig",
               "validateConfig"
+            ]
+          },
+          {
+            "file": "./DistillationPolicy.js",
+            "imports": [
+              "IDistillationPolicy"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RoleProfiles.js",
+            "imports": [
+              "resolveRoleProfile"
+            ]
+          },
+          {
+            "file": "./DreamEngine.js",
+            "imports": [
+              "DreamEngine",
+              "DreamEngineConfig",
+              "DreamCycleResult"
+            ]
+          },
+          {
+            "file": "./ProfileManager.js",
+            "imports": [
+              "ProfileManager"
             ]
           }
         ],
@@ -308,6 +388,257 @@
         "interfaces": [
           "CreateMemoryOptions",
           "RetrieveContextOptions"
+        ]
+      },
+      "src/agent/ArtifactManager.ts": {
+        "description": "Artifact Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomBytes"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage",
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/RefIndex.js",
+            "imports": [
+              "RefIndex"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "RefConflictError"
+            ]
+          },
+          {
+            "file": "../types/artifact.js",
+            "imports": [
+              "ArtifactType",
+              "CreateArtifactOptions",
+              "ArtifactEntity",
+              "ArtifactFilter"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/artifact.js",
+            "imports": [
+              "isArtifactEntity"
+            ]
+          }
+        ],
+        "exports": [
+          "ArtifactManager"
+        ],
+        "classes": [
+          "ArtifactManager"
+        ]
+      },
+      "src/agent/causal/CausalReasoner.ts": {
+        "description": "Causal Reasoner (3B.6)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../core/GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/index.js",
+            "imports": [
+              "Relation"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_CAUSAL_RELATION_TYPES",
+          "CausalReasoner"
+        ],
+        "classes": [
+          "CausalReasoner"
+        ],
+        "interfaces": [
+          "CausalChain",
+          "CausalCycle",
+          "CausalReasonerConfig"
+        ],
+        "constants": [
+          "DEFAULT_CAUSAL_RELATION_TYPES"
+        ]
+      },
+      "src/agent/causal/index.ts": {
+        "description": "Causal Module — Barrel Export (3B.6)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./CausalReasoner.js",
+            "imports": [
+              "CausalReasoner",
+              "DEFAULT_CAUSAL_RELATION_TYPES",
+              "type CausalRelationType",
+              "type CausalChain",
+              "type CausalCycle",
+              "type CausalReasonerConfig"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "CausalReasoner",
+          "DEFAULT_CAUSAL_RELATION_TYPES",
+          "type CausalRelationType",
+          "type CausalChain",
+          "type CausalCycle",
+          "type CausalReasonerConfig"
+        ],
+        "reExported": [
+          "CausalReasoner",
+          "DEFAULT_CAUSAL_RELATION_TYPES",
+          "type CausalRelationType",
+          "type CausalChain",
+          "type CausalCycle",
+          "type CausalReasonerConfig"
+        ]
+      },
+      "src/agent/CognitiveLoadAnalyzer.ts": {
+        "description": "Cognitive Load Analyzer",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "CognitiveLoadMetrics",
+              "AdaptiveReductionResult"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "CognitiveLoadAnalyzer"
+        ],
+        "classes": [
+          "CognitiveLoadAnalyzer"
+        ],
+        "interfaces": [
+          "CognitiveLoadConfig"
+        ]
+      },
+      "src/agent/collaboration/CollaborationAuditEnforcer.ts": {
+        "description": "Collaboration Audit Enforcer (η.5.5.d)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../features/AuditLog.js",
+            "imports": [
+              "AuditLog"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../utils/errors.js",
+            "imports": [
+              "AttributionRequiredError"
+            ]
+          }
+        ],
+        "exports": [
+          "CollaborationAuditEnforcer"
+        ],
+        "classes": [
+          "CollaborationAuditEnforcer"
+        ],
+        "interfaces": [
+          "CollaborationAuditEnforcerOptions"
+        ]
+      },
+      "src/agent/CollaborativeSynthesis.ts": {
+        "description": "Collaborative Memory Synthesis",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "SalienceContext",
+              "ScoredEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphTraversal.js",
+            "imports": [
+              "GraphTraversal"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SalienceEngine.js",
+            "imports": [
+              "SalienceEngine"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "CollaborativeSynthesis"
+        ],
+        "classes": [
+          "CollaborativeSynthesis"
+        ],
+        "interfaces": [
+          "CollaborativeSynthesisConfig",
+          "ConflictView",
+          "SynthesisResult"
         ]
       },
       "src/agent/ConflictResolver.ts": {
@@ -431,6 +762,75 @@
           "StageResult"
         ]
       },
+      "src/agent/ConsolidationScheduler.ts": {
+        "description": "Consolidation Scheduler",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "events",
+            "imports": [
+              "EventEmitter"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "./ConsolidationPipeline.js",
+            "imports": [
+              "ConsolidationPipeline"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../features/CompressionManager.js",
+            "imports": [
+              "CompressionManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "ConsolidationResult"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ConsolidationScheduler"
+        ],
+        "classes": [
+          "ConsolidationScheduler"
+        ],
+        "interfaces": [
+          "ConsolidationSchedulerConfig",
+          "ConsolidationCycleResult"
+        ]
+      },
+      "src/agent/ContextProfileManager.ts": {
+        "description": "Context Profile Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "SalienceContext",
+              "TemporalFocus"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ContextProfileManager"
+        ],
+        "classes": [
+          "ContextProfileManager"
+        ],
+        "interfaces": [
+          "ProfileConfig"
+        ]
+      },
       "src/agent/ContextWindowManager.ts": {
         "description": "Context Window Manager",
         "externalDependencies": [],
@@ -439,7 +839,8 @@
           {
             "file": "../types/types.js",
             "imports": [
-              "IGraphStorage"
+              "IGraphStorage",
+              "Entity"
             ],
             "typeOnly": true
           },
@@ -467,6 +868,20 @@
             "imports": [
               "SalienceEngine"
             ]
+          },
+          {
+            "file": "./DistillationPolicy.js",
+            "imports": [
+              "IDistillationPolicy"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ContextProfileManager.js",
+            "imports": [
+              "ContextProfileManager",
+              "ProfileConfig"
+            ]
           }
         ],
         "exports": [
@@ -477,6 +892,9 @@
         ],
         "interfaces": [
           "ContextWindowManagerConfig",
+          "ContextCompressionResult",
+          "WakeUpOptions",
+          "WakeUpResult",
           "SpilloverResult"
         ]
       },
@@ -512,6 +930,18 @@
             "file": "./AccessTracker.js",
             "imports": [
               "AccessTracker"
+            ]
+          },
+          {
+            "file": "../features/FreshnessManager.js",
+            "imports": [
+              "FreshnessManager"
+            ]
+          },
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "tokenize"
             ]
           }
         ],
@@ -560,10 +990,226 @@
           "DecayCycleResult"
         ]
       },
+      "src/agent/DistillationPipeline.ts": {
+        "description": "Distillation Pipeline",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "HybridSearchResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./DistillationPolicy.js",
+            "imports": [
+              "IDistillationPolicy",
+              "DistilledMemory",
+              "DistillationConfig"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DistillationPipeline"
+        ],
+        "classes": [
+          "DistillationPipeline"
+        ],
+        "interfaces": [
+          "DistillationStats",
+          "DistillationResult"
+        ]
+      },
+      "src/agent/DistillationPolicy.ts": {
+        "description": "Memory Distillation Policy",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "HybridSearchResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../features/FreshnessManager.js",
+            "imports": [
+              "FreshnessManager"
+            ]
+          }
+        ],
+        "exports": [
+          "NoOpDistillationPolicy",
+          "DefaultDistillationPolicy",
+          "CompositeDistillationPolicy"
+        ],
+        "classes": [
+          "NoOpDistillationPolicy",
+          "DefaultDistillationPolicy",
+          "CompositeDistillationPolicy"
+        ],
+        "interfaces": [
+          "DistilledMemory",
+          "DistillationConfig",
+          "IDistillationPolicy"
+        ]
+      },
+      "src/agent/DreamEngine.ts": {
+        "description": "DreamEngine — Background Memory Maintenance System",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "events",
+            "imports": [
+              "EventEmitter"
+            ]
+          },
+          {
+            "module": "crypto",
+            "imports": [
+              "randomUUID"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage",
+              "Relation"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../features/FreshnessManager.js",
+            "imports": [
+              "FreshnessManager"
+            ]
+          },
+          {
+            "file": "../features/CompressionManager.js",
+            "imports": [
+              "CompressionManager"
+            ]
+          },
+          {
+            "file": "../features/ObservationNormalizer.js",
+            "imports": [
+              "ObservationNormalizer"
+            ]
+          },
+          {
+            "file": "./PatternDetector.js",
+            "imports": [
+              "PatternDetector"
+            ]
+          },
+          {
+            "file": "./ConsolidationPipeline.js",
+            "imports": [
+              "ConsolidationPipeline"
+            ]
+          },
+          {
+            "file": "./EntropyFilter.js",
+            "imports": [
+              "passesEntropyFilter"
+            ]
+          }
+        ],
+        "exports": [
+          "DreamEngine"
+        ],
+        "classes": [
+          "DreamEngine"
+        ],
+        "interfaces": [
+          "DreamPhaseConfig",
+          "DreamEngineCallbacks",
+          "DreamEngineConfig",
+          "DreamPhaseResult",
+          "DreamCycleResult"
+        ]
+      },
+      "src/agent/EntropyFilter.ts": {
+        "description": "Entropy-Aware Content Filter",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "ConsolidateOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ConsolidationPipeline.js",
+            "imports": [
+              "PipelineStage",
+              "StageResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "LowEntropyContentError"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "LowEntropyContentError",
+          "computeEntropy",
+          "passesEntropyFilter",
+          "EntropyFilterStage"
+        ],
+        "reExported": [
+          "LowEntropyContentError"
+        ],
+        "classes": [
+          "EntropyFilterStage"
+        ],
+        "interfaces": [
+          "EntropyFilterConfig"
+        ],
+        "functions": [
+          "computeEntropy",
+          "passesEntropyFilter"
+        ]
+      },
       "src/agent/EpisodicMemoryManager.ts": {
         "description": "Episodic Memory Manager",
         "externalDependencies": [],
-        "nodeDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomBytes"
+            ]
+          }
+        ],
         "internalDependencies": [
           {
             "file": "../types/types.js",
@@ -602,6 +1248,112 @@
         ],
         "constants": [
           "EpisodicRelations"
+        ]
+      },
+      "src/agent/ExperienceExtractor.ts": {
+        "description": "ExperienceExtractor — Phase δ.3 (ROADMAP §3B.3).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./PatternDetector.js",
+            "imports": [
+              "PatternDetector"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "PatternResult"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ExperienceExtractor"
+        ],
+        "classes": [
+          "ExperienceExtractor"
+        ],
+        "interfaces": [
+          "Action",
+          "Trajectory",
+          "Rule",
+          "HeuristicGuideline",
+          "DecisionRule",
+          "TrajectoryCluster",
+          "Experience",
+          "ExperienceExtractorConfig"
+        ]
+      },
+      "src/agent/FailureDistillation.ts": {
+        "description": "Failure-Driven Memory Distillation",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomUUID"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage",
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "DistilledLesson"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity",
+              "isSessionEntity"
+            ]
+          },
+          {
+            "file": "./EpisodicMemoryManager.js",
+            "imports": [
+              "EpisodicRelations"
+            ]
+          }
+        ],
+        "exports": [
+          "FailureDistillation"
+        ],
+        "classes": [
+          "FailureDistillation"
+        ],
+        "interfaces": [
+          "FailureDistillationConfig",
+          "FailureDistillationResult"
+        ]
+      },
+      "src/agent/ImportanceScorer.ts": {
+        "description": "Score new content at creation time.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "ImportanceScorer"
+        ],
+        "classes": [
+          "ImportanceScorer"
+        ],
+        "interfaces": [
+          "ImportanceScorerConfig",
+          "ScoreOptions"
         ]
       },
       "src/agent/index.ts": {
@@ -733,7 +1485,9 @@
             "imports": [
               "ContextWindowManager",
               "type ContextWindowManagerConfig",
-              "type SpilloverResult"
+              "type SpilloverResult",
+              "type WakeUpOptions",
+              "type WakeUpResult"
             ],
             "reExport": true
           },
@@ -763,11 +1517,28 @@
             "reExport": true
           },
           {
+            "file": "./SessionCheckpoint.js",
+            "imports": [
+              "SessionCheckpointManager",
+              "type SessionCheckpointData"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./AgentMemoryManager.js",
             "imports": [
               "AgentMemoryManager",
               "type CreateMemoryOptions",
               "type RetrieveContextOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./CollaborativeSynthesis.js",
+            "imports": [
+              "CollaborativeSynthesis",
+              "type CollaborativeSynthesisConfig",
+              "type SynthesisResult"
             ],
             "reExport": true
           },
@@ -778,6 +1549,299 @@
               "loadConfigFromEnv",
               "mergeConfig",
               "validateConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ArtifactManager.js",
+            "imports": [
+              "ArtifactManager"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./DistillationPolicy.js",
+            "imports": [
+              "type IDistillationPolicy",
+              "type DistilledMemory",
+              "type DistillationConfig",
+              "NoOpDistillationPolicy",
+              "DefaultDistillationPolicy",
+              "CompositeDistillationPolicy"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./DistillationPipeline.js",
+            "imports": [
+              "DistillationPipeline",
+              "type DistillationStats",
+              "type DistillationResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./RoleProfiles.js",
+            "imports": [
+              "type AgentRole",
+              "type RoleProfile",
+              "getRoleProfile",
+              "listRoleProfiles",
+              "resolveRoleProfile",
+              "createCustomProfile"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./EntropyFilter.js",
+            "imports": [
+              "EntropyFilterStage",
+              "computeEntropy",
+              "passesEntropyFilter",
+              "type EntropyFilterConfig",
+              "LowEntropyContentError"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./FailureDistillation.js",
+            "imports": [
+              "FailureDistillation",
+              "type FailureDistillationResult",
+              "type FailureDistillationConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./CognitiveLoadAnalyzer.js",
+            "imports": [
+              "CognitiveLoadAnalyzer",
+              "type CognitiveLoadConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./VisibilityResolver.js",
+            "imports": [
+              "VisibilityResolver"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ConsolidationScheduler.js",
+            "imports": [
+              "ConsolidationScheduler",
+              "type ConsolidationSchedulerConfig",
+              "type ConsolidationCycleResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./DreamEngine.js",
+            "imports": [
+              "DreamEngine",
+              "type DreamEngineConfig",
+              "type DreamPhaseConfig",
+              "type DreamEngineCallbacks",
+              "type DreamPhaseResult",
+              "type DreamCycleResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ProfileManager.js",
+            "imports": [
+              "ProfileManager",
+              "type ProfileResponse",
+              "type ProfileManagerConfig",
+              "type ProfileOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ObserverPipeline.js",
+            "imports": [
+              "ObserverPipeline",
+              "type ObservationScore",
+              "type ObserverPipelineOptions",
+              "type ObserverPipelineStats"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./WorkThreadManager.js",
+            "imports": [
+              "WorkThreadManager",
+              "type WorkThread",
+              "type WorkThreadStatus",
+              "type WorkThreadFilter",
+              "type CreateWorkThreadOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ContextProfileManager.js",
+            "imports": [
+              "ContextProfileManager",
+              "type ContextProfile",
+              "type ProfileConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./MemoryEngine.js",
+            "imports": [
+              "MemoryEngine",
+              "type MemoryEngineConfig",
+              "type AddTurnOptions",
+              "type AddTurnResult",
+              "type DedupTier",
+              "type DuplicateCheckResult",
+              "type MemoryEngineEventName"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ImportanceScorer.js",
+            "imports": [
+              "ImportanceScorer",
+              "type ImportanceScorerConfig",
+              "type ScoreOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./InMemoryBackend.js",
+            "imports": [
+              "InMemoryBackend"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SQLiteBackend.js",
+            "imports": [
+              "SQLiteBackend",
+              "type SQLiteBackendOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./MemoryValidator.js",
+            "imports": [
+              "MemoryValidator",
+              "type MemoryValidatorConfig",
+              "type MemoryValidationResult",
+              "type MemoryValidationIssue",
+              "type Contradiction"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./TrajectoryCompressor.js",
+            "imports": [
+              "TrajectoryCompressor",
+              "type TrajectoryCompressorConfig",
+              "type DistillOptions",
+              "type CompressedMemory",
+              "type Granularity",
+              "type RedundancyGroup",
+              "type TrajectoryMergeStrategy"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ExperienceExtractor.js",
+            "imports": [
+              "ExperienceExtractor",
+              "type ExperienceExtractorConfig",
+              "type Trajectory",
+              "type Action",
+              "type Outcome",
+              "type Rule",
+              "type HeuristicGuideline",
+              "type DecisionRule",
+              "type ClusterMethod",
+              "type TrajectoryCluster",
+              "type ExperienceType",
+              "type Experience"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./collaboration/CollaborationAuditEnforcer.js",
+            "imports": [
+              "CollaborationAuditEnforcer",
+              "type AttributionMode",
+              "type CollaborationAuditEnforcerOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./retrieval/index.js",
+            "imports": [
+              "QueryRewriter",
+              "ActiveRetrievalController",
+              "type RewriteResult",
+              "type RetrievalContext",
+              "type RetrievalDecision",
+              "type RetrievalRound",
+              "type AdaptiveResult",
+              "type ActiveRetrievalConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./world/index.js",
+            "imports": [
+              "WorldStateSnapshot",
+              "WorldModelManager",
+              "type WorldStateEntity",
+              "type WorldStateChange",
+              "type WorldModelManagerOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./procedural/index.js",
+            "imports": [
+              "ProcedureManager",
+              "ProcedureStore",
+              "StepSequencer",
+              "decodeProcedure",
+              "PROCEDURE_ENTITY_TYPE",
+              "type ProcedureManagerConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./causal/index.js",
+            "imports": [
+              "CausalReasoner",
+              "DEFAULT_CAUSAL_RELATION_TYPES",
+              "type CausalRelationType",
+              "type CausalChain",
+              "type CausalCycle",
+              "type CausalReasonerConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./rbac/index.js",
+            "imports": [
+              "DEFAULT_PERMISSION_MATRIX",
+              "permissionsForRole",
+              "RoleAssignmentStore",
+              "RbacMiddleware",
+              "type Role",
+              "type Permission",
+              "type ResourceType",
+              "type RoleAssignment",
+              "type RbacPolicy",
+              "type PermissionMatrix",
+              "type PermissionMatrixRow",
+              "type ResourcePermissionOverrides",
+              "type RoleAssignmentStoreOptions",
+              "type RbacMiddlewareOptions"
             ],
             "reExport": true
           }
@@ -833,6 +1897,8 @@
           "ContextWindowManager",
           "type ContextWindowManagerConfig",
           "type SpilloverResult",
+          "type WakeUpOptions",
+          "type WakeUpResult",
           "MemoryFormatter",
           "type MemoryFormatterConfig",
           "MultiAgentMemoryManager",
@@ -840,13 +1906,149 @@
           "ConflictResolver",
           "type ConflictResolverConfig",
           "type ResolutionResult",
+          "SessionCheckpointManager",
+          "type SessionCheckpointData",
           "AgentMemoryManager",
           "type CreateMemoryOptions",
           "type RetrieveContextOptions",
+          "CollaborativeSynthesis",
+          "type CollaborativeSynthesisConfig",
+          "type SynthesisResult",
           "type AgentMemoryConfig",
           "loadConfigFromEnv",
           "mergeConfig",
-          "validateConfig"
+          "validateConfig",
+          "ArtifactManager",
+          "type IDistillationPolicy",
+          "type DistilledMemory",
+          "type DistillationConfig",
+          "NoOpDistillationPolicy",
+          "DefaultDistillationPolicy",
+          "CompositeDistillationPolicy",
+          "DistillationPipeline",
+          "type DistillationStats",
+          "type DistillationResult",
+          "type AgentRole",
+          "type RoleProfile",
+          "getRoleProfile",
+          "listRoleProfiles",
+          "resolveRoleProfile",
+          "createCustomProfile",
+          "EntropyFilterStage",
+          "computeEntropy",
+          "passesEntropyFilter",
+          "type EntropyFilterConfig",
+          "LowEntropyContentError",
+          "FailureDistillation",
+          "type FailureDistillationResult",
+          "type FailureDistillationConfig",
+          "CognitiveLoadAnalyzer",
+          "type CognitiveLoadConfig",
+          "VisibilityResolver",
+          "ConsolidationScheduler",
+          "type ConsolidationSchedulerConfig",
+          "type ConsolidationCycleResult",
+          "DreamEngine",
+          "type DreamEngineConfig",
+          "type DreamPhaseConfig",
+          "type DreamEngineCallbacks",
+          "type DreamPhaseResult",
+          "type DreamCycleResult",
+          "ProfileManager",
+          "type ProfileResponse",
+          "type ProfileManagerConfig",
+          "type ProfileOptions",
+          "ObserverPipeline",
+          "type ObservationScore",
+          "type ObserverPipelineOptions",
+          "type ObserverPipelineStats",
+          "WorkThreadManager",
+          "type WorkThread",
+          "type WorkThreadStatus",
+          "type WorkThreadFilter",
+          "type CreateWorkThreadOptions",
+          "ContextProfileManager",
+          "type ContextProfile",
+          "type ProfileConfig",
+          "MemoryEngine",
+          "type MemoryEngineConfig",
+          "type AddTurnOptions",
+          "type AddTurnResult",
+          "type DedupTier",
+          "type DuplicateCheckResult",
+          "type MemoryEngineEventName",
+          "ImportanceScorer",
+          "type ImportanceScorerConfig",
+          "type ScoreOptions",
+          "InMemoryBackend",
+          "SQLiteBackend",
+          "type SQLiteBackendOptions",
+          "MemoryValidator",
+          "type MemoryValidatorConfig",
+          "type MemoryValidationResult",
+          "type MemoryValidationIssue",
+          "type Contradiction",
+          "TrajectoryCompressor",
+          "type TrajectoryCompressorConfig",
+          "type DistillOptions",
+          "type CompressedMemory",
+          "type Granularity",
+          "type RedundancyGroup",
+          "type TrajectoryMergeStrategy",
+          "ExperienceExtractor",
+          "type ExperienceExtractorConfig",
+          "type Trajectory",
+          "type Action",
+          "type Outcome",
+          "type Rule",
+          "type HeuristicGuideline",
+          "type DecisionRule",
+          "type ClusterMethod",
+          "type TrajectoryCluster",
+          "type ExperienceType",
+          "type Experience",
+          "CollaborationAuditEnforcer",
+          "type AttributionMode",
+          "type CollaborationAuditEnforcerOptions",
+          "QueryRewriter",
+          "ActiveRetrievalController",
+          "type RewriteResult",
+          "type RetrievalContext",
+          "type RetrievalDecision",
+          "type RetrievalRound",
+          "type AdaptiveResult",
+          "type ActiveRetrievalConfig",
+          "WorldStateSnapshot",
+          "WorldModelManager",
+          "type WorldStateEntity",
+          "type WorldStateChange",
+          "type WorldModelManagerOptions",
+          "ProcedureManager",
+          "ProcedureStore",
+          "StepSequencer",
+          "decodeProcedure",
+          "PROCEDURE_ENTITY_TYPE",
+          "type ProcedureManagerConfig",
+          "CausalReasoner",
+          "DEFAULT_CAUSAL_RELATION_TYPES",
+          "type CausalRelationType",
+          "type CausalChain",
+          "type CausalCycle",
+          "type CausalReasonerConfig",
+          "DEFAULT_PERMISSION_MATRIX",
+          "permissionsForRole",
+          "RoleAssignmentStore",
+          "RbacMiddleware",
+          "type Role",
+          "type Permission",
+          "type ResourceType",
+          "type RoleAssignment",
+          "type RbacPolicy",
+          "type PermissionMatrix",
+          "type PermissionMatrixRow",
+          "type ResourcePermissionOverrides",
+          "type RoleAssignmentStoreOptions",
+          "type RbacMiddlewareOptions"
         ],
         "reExported": [
           "AccessTracker",
@@ -899,6 +2101,8 @@
           "ContextWindowManager",
           "type ContextWindowManagerConfig",
           "type SpilloverResult",
+          "type WakeUpOptions",
+          "type WakeUpResult",
           "MemoryFormatter",
           "type MemoryFormatterConfig",
           "MultiAgentMemoryManager",
@@ -906,13 +2110,287 @@
           "ConflictResolver",
           "type ConflictResolverConfig",
           "type ResolutionResult",
+          "SessionCheckpointManager",
+          "type SessionCheckpointData",
           "AgentMemoryManager",
           "type CreateMemoryOptions",
           "type RetrieveContextOptions",
+          "CollaborativeSynthesis",
+          "type CollaborativeSynthesisConfig",
+          "type SynthesisResult",
           "type AgentMemoryConfig",
           "loadConfigFromEnv",
           "mergeConfig",
-          "validateConfig"
+          "validateConfig",
+          "ArtifactManager",
+          "type IDistillationPolicy",
+          "type DistilledMemory",
+          "type DistillationConfig",
+          "NoOpDistillationPolicy",
+          "DefaultDistillationPolicy",
+          "CompositeDistillationPolicy",
+          "DistillationPipeline",
+          "type DistillationStats",
+          "type DistillationResult",
+          "type AgentRole",
+          "type RoleProfile",
+          "getRoleProfile",
+          "listRoleProfiles",
+          "resolveRoleProfile",
+          "createCustomProfile",
+          "EntropyFilterStage",
+          "computeEntropy",
+          "passesEntropyFilter",
+          "type EntropyFilterConfig",
+          "LowEntropyContentError",
+          "FailureDistillation",
+          "type FailureDistillationResult",
+          "type FailureDistillationConfig",
+          "CognitiveLoadAnalyzer",
+          "type CognitiveLoadConfig",
+          "VisibilityResolver",
+          "ConsolidationScheduler",
+          "type ConsolidationSchedulerConfig",
+          "type ConsolidationCycleResult",
+          "DreamEngine",
+          "type DreamEngineConfig",
+          "type DreamPhaseConfig",
+          "type DreamEngineCallbacks",
+          "type DreamPhaseResult",
+          "type DreamCycleResult",
+          "ProfileManager",
+          "type ProfileResponse",
+          "type ProfileManagerConfig",
+          "type ProfileOptions",
+          "ObserverPipeline",
+          "type ObservationScore",
+          "type ObserverPipelineOptions",
+          "type ObserverPipelineStats",
+          "WorkThreadManager",
+          "type WorkThread",
+          "type WorkThreadStatus",
+          "type WorkThreadFilter",
+          "type CreateWorkThreadOptions",
+          "ContextProfileManager",
+          "type ContextProfile",
+          "type ProfileConfig",
+          "MemoryEngine",
+          "type MemoryEngineConfig",
+          "type AddTurnOptions",
+          "type AddTurnResult",
+          "type DedupTier",
+          "type DuplicateCheckResult",
+          "type MemoryEngineEventName",
+          "ImportanceScorer",
+          "type ImportanceScorerConfig",
+          "type ScoreOptions",
+          "InMemoryBackend",
+          "SQLiteBackend",
+          "type SQLiteBackendOptions",
+          "MemoryValidator",
+          "type MemoryValidatorConfig",
+          "type MemoryValidationResult",
+          "type MemoryValidationIssue",
+          "type Contradiction",
+          "TrajectoryCompressor",
+          "type TrajectoryCompressorConfig",
+          "type DistillOptions",
+          "type CompressedMemory",
+          "type Granularity",
+          "type RedundancyGroup",
+          "type TrajectoryMergeStrategy",
+          "ExperienceExtractor",
+          "type ExperienceExtractorConfig",
+          "type Trajectory",
+          "type Action",
+          "type Outcome",
+          "type Rule",
+          "type HeuristicGuideline",
+          "type DecisionRule",
+          "type ClusterMethod",
+          "type TrajectoryCluster",
+          "type ExperienceType",
+          "type Experience",
+          "CollaborationAuditEnforcer",
+          "type AttributionMode",
+          "type CollaborationAuditEnforcerOptions",
+          "QueryRewriter",
+          "ActiveRetrievalController",
+          "type RewriteResult",
+          "type RetrievalContext",
+          "type RetrievalDecision",
+          "type RetrievalRound",
+          "type AdaptiveResult",
+          "type ActiveRetrievalConfig",
+          "WorldStateSnapshot",
+          "WorldModelManager",
+          "type WorldStateEntity",
+          "type WorldStateChange",
+          "type WorldModelManagerOptions",
+          "ProcedureManager",
+          "ProcedureStore",
+          "StepSequencer",
+          "decodeProcedure",
+          "PROCEDURE_ENTITY_TYPE",
+          "type ProcedureManagerConfig",
+          "CausalReasoner",
+          "DEFAULT_CAUSAL_RELATION_TYPES",
+          "type CausalRelationType",
+          "type CausalChain",
+          "type CausalCycle",
+          "type CausalReasonerConfig",
+          "DEFAULT_PERMISSION_MATRIX",
+          "permissionsForRole",
+          "RoleAssignmentStore",
+          "RbacMiddleware",
+          "type Role",
+          "type Permission",
+          "type ResourceType",
+          "type RoleAssignment",
+          "type RbacPolicy",
+          "type PermissionMatrix",
+          "type PermissionMatrixRow",
+          "type ResourcePermissionOverrides",
+          "type RoleAssignmentStoreOptions",
+          "type RbacMiddlewareOptions"
+        ]
+      },
+      "src/agent/InMemoryBackend.ts": {
+        "description": "`InMemoryBackend` — ephemeral, process-lifetime `IMemoryBackend` adapter.",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngine"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./MemoryBackend.js",
+            "imports": [
+              "IMemoryBackend",
+              "MemoryTurn",
+              "WeightedTurn",
+              "GetWeightedOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "InMemoryBackend"
+        ],
+        "classes": [
+          "InMemoryBackend"
+        ]
+      },
+      "src/agent/MemoryBackend.ts": {
+        "description": "Memory Backend Interface (`IMemoryBackend`)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [],
+        "interfaces": [
+          "MemoryTurn",
+          "WeightedTurn",
+          "GetWeightedOptions",
+          "IMemoryBackend"
+        ]
+      },
+      "src/agent/MemoryEngine.ts": {
+        "description": "MemoryEngine module",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "events",
+            "imports": [
+              "EventEmitter"
+            ]
+          },
+          {
+            "module": "crypto",
+            "imports": [
+              "createHash"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./EpisodicMemoryManager.js",
+            "imports": [
+              "EpisodicMemoryManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./WorkingMemoryManager.js",
+            "imports": [
+              "WorkingMemoryManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../search/SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "EmbeddingService"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ImportanceScorer.js",
+            "imports": [
+              "ImportanceScorer"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "MemoryEngine"
+        ],
+        "classes": [
+          "MemoryEngine"
+        ],
+        "interfaces": [
+          "MemoryEngineConfig",
+          "AddTurnOptions",
+          "AddTurnResult",
+          "DuplicateCheckResult"
         ]
       },
       "src/agent/MemoryFormatter.ts": {
@@ -937,6 +2415,56 @@
         ],
         "interfaces": [
           "MemoryFormatterConfig"
+        ]
+      },
+      "src/agent/MemoryValidator.ts": {
+        "description": "MemoryValidator — Phase δ.1 (ROADMAP §3B.1).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "AgentMetadata",
+              "ConflictStrategy"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../features/ContradictionDetector.js",
+            "imports": [
+              "ContradictionDetector",
+              "Contradiction"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ConflictResolver.js",
+            "imports": [
+              "ConflictResolver"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "MemoryValidator"
+        ],
+        "classes": [
+          "MemoryValidator"
+        ],
+        "interfaces": [
+          "MemoryValidationIssue",
+          "MemoryValidationResult",
+          "Contradiction",
+          "MemoryValidatorConfig"
         ]
       },
       "src/agent/MultiAgentMemoryManager.ts": {
@@ -983,6 +2511,12 @@
               "ConflictResolver",
               "ResolutionResult"
             ]
+          },
+          {
+            "file": "./VisibilityResolver.js",
+            "imports": [
+              "VisibilityResolver"
+            ]
           }
         ],
         "exports": [
@@ -993,6 +2527,45 @@
         ],
         "interfaces": [
           "MultiAgentConfig"
+        ]
+      },
+      "src/agent/ObserverPipeline.ts": {
+        "description": "Observer Pipeline",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphEventEmitter.js",
+            "imports": [
+              "GraphEventEmitter"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "ObservationAddedEvent"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ObserverPipeline"
+        ],
+        "classes": [
+          "ObserverPipeline"
+        ],
+        "interfaces": [
+          "ObservationScore",
+          "ObserverPipelineOptions",
+          "ObserverPipelineStats"
         ]
       },
       "src/agent/PatternDetector.ts": {
@@ -1013,6 +2586,533 @@
         ],
         "classes": [
           "PatternDetector"
+        ]
+      },
+      "src/agent/procedural/index.ts": {
+        "description": "Procedural Memory Module — Barrel Export (3B.4)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./ProcedureManager.js",
+            "imports": [
+              "ProcedureManager",
+              "type ProcedureManagerConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ProcedureStore.js",
+            "imports": [
+              "ProcedureStore",
+              "decodeProcedure",
+              "PROCEDURE_ENTITY_TYPE"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./StepSequencer.js",
+            "imports": [
+              "StepSequencer"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "ProcedureManager",
+          "type ProcedureManagerConfig",
+          "ProcedureStore",
+          "decodeProcedure",
+          "PROCEDURE_ENTITY_TYPE",
+          "StepSequencer"
+        ],
+        "reExported": [
+          "ProcedureManager",
+          "type ProcedureManagerConfig",
+          "ProcedureStore",
+          "decodeProcedure",
+          "PROCEDURE_ENTITY_TYPE",
+          "StepSequencer"
+        ]
+      },
+      "src/agent/procedural/ProcedureManager.ts": {
+        "description": "Procedure Manager (3B.4)",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomUUID"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/procedure.js",
+            "imports": [
+              "Procedure",
+              "ProcedureStep",
+              "ProcedureMatch",
+              "ProcedureFeedback"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ProcedureStore.js",
+            "imports": [
+              "ProcedureStore"
+            ]
+          },
+          {
+            "file": "./StepSequencer.js",
+            "imports": [
+              "StepSequencer"
+            ]
+          }
+        ],
+        "exports": [
+          "ProcedureManager"
+        ],
+        "classes": [
+          "ProcedureManager"
+        ],
+        "interfaces": [
+          "ProcedureManagerConfig"
+        ]
+      },
+      "src/agent/procedural/ProcedureStore.ts": {
+        "description": "Procedure Store (3B.4)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/procedure.js",
+            "imports": [
+              "Procedure",
+              "ProcedureStep"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "PROCEDURE_ENTITY_TYPE",
+          "decodeProcedure",
+          "ProcedureStore"
+        ],
+        "classes": [
+          "ProcedureStore"
+        ],
+        "functions": [
+          "decodeProcedure"
+        ],
+        "constants": [
+          "PROCEDURE_ENTITY_TYPE"
+        ]
+      },
+      "src/agent/procedural/StepSequencer.ts": {
+        "description": "Step Sequencer (3B.4)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/procedure.js",
+            "imports": [
+              "Procedure",
+              "ProcedureStep"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "StepSequencer"
+        ],
+        "classes": [
+          "StepSequencer"
+        ]
+      },
+      "src/agent/ProfileManager.ts": {
+        "description": "Profile Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/ObservationManager.js",
+            "imports": [
+              "ObservationManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SessionManager.js",
+            "imports": [
+              "SessionManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isSessionEntity"
+            ]
+          },
+          {
+            "file": "./SalienceEngine.js",
+            "imports": [
+              "SalienceEngine"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ProfileManager"
+        ],
+        "classes": [
+          "ProfileManager"
+        ],
+        "interfaces": [
+          "ProfileResponse",
+          "ProfileManagerConfig",
+          "ProfileOptions"
+        ]
+      },
+      "src/agent/rbac/index.ts": {
+        "description": "RBAC Module — Barrel Export (η.6.1)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./PermissionMatrix.js",
+            "imports": [
+              "DEFAULT_PERMISSION_MATRIX",
+              "permissionsForRole",
+              "type PermissionMatrix",
+              "type PermissionMatrixRow",
+              "type ResourcePermissionOverrides"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./RoleAssignmentStore.js",
+            "imports": [
+              "RoleAssignmentStore",
+              "type RoleAssignmentStoreOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./RbacMiddleware.js",
+            "imports": [
+              "RbacMiddleware",
+              "type RbacMiddlewareOptions"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_PERMISSION_MATRIX",
+          "permissionsForRole",
+          "type PermissionMatrix",
+          "type PermissionMatrixRow",
+          "type ResourcePermissionOverrides",
+          "RoleAssignmentStore",
+          "type RoleAssignmentStoreOptions",
+          "RbacMiddleware",
+          "type RbacMiddlewareOptions"
+        ],
+        "reExported": [
+          "DEFAULT_PERMISSION_MATRIX",
+          "permissionsForRole",
+          "type PermissionMatrix",
+          "type PermissionMatrixRow",
+          "type ResourcePermissionOverrides",
+          "RoleAssignmentStore",
+          "type RoleAssignmentStoreOptions",
+          "RbacMiddleware",
+          "type RbacMiddlewareOptions"
+        ]
+      },
+      "src/agent/rbac/PermissionMatrix.ts": {
+        "description": "Permission Matrix (η.6.1)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./RbacTypes.js",
+            "imports": [
+              "Permission",
+              "ResourceType",
+              "Role"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_PERMISSION_MATRIX",
+          "permissionsForRole"
+        ],
+        "functions": [
+          "permissionsForRole"
+        ],
+        "constants": [
+          "DEFAULT_PERMISSION_MATRIX"
+        ]
+      },
+      "src/agent/rbac/RbacMiddleware.ts": {
+        "description": "RBAC Middleware (η.6.1)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./RbacTypes.js",
+            "imports": [
+              "Permission",
+              "ResourceType",
+              "RbacPolicy",
+              "RoleAssignment"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./PermissionMatrix.js",
+            "imports": [
+              "DEFAULT_PERMISSION_MATRIX",
+              "PermissionMatrix",
+              "ResourcePermissionOverrides",
+              "permissionsForRole"
+            ]
+          },
+          {
+            "file": "./RoleAssignmentStore.js",
+            "imports": [
+              "RoleAssignmentStore"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "RbacMiddleware"
+        ],
+        "classes": [
+          "RbacMiddleware"
+        ],
+        "interfaces": [
+          "RbacMiddlewareOptions"
+        ]
+      },
+      "src/agent/rbac/RbacTypes.ts": {
+        "description": "RBAC Types (η.6.1)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [],
+        "interfaces": [
+          "RoleAssignment",
+          "RbacPolicy"
+        ]
+      },
+      "src/agent/rbac/RoleAssignmentStore.ts": {
+        "description": "Role Assignment Store (η.6.1)",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "./RbacTypes.js",
+            "imports": [
+              "RoleAssignment",
+              "Role",
+              "ResourceType"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "RoleAssignmentStore"
+        ],
+        "classes": [
+          "RoleAssignmentStore"
+        ],
+        "interfaces": [
+          "RoleAssignmentStoreOptions"
+        ]
+      },
+      "src/agent/retrieval/ActiveRetrievalController.ts": {
+        "description": "Active Retrieval Controller (3B.5)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../search/RankedSearch.js",
+            "imports": [
+              "RankedSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/index.js",
+            "imports": [
+              "SearchResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./QueryRewriter.js",
+            "imports": [
+              "QueryRewriter"
+            ]
+          }
+        ],
+        "exports": [
+          "ActiveRetrievalController"
+        ],
+        "classes": [
+          "ActiveRetrievalController"
+        ],
+        "interfaces": [
+          "RetrievalContext",
+          "RetrievalDecision",
+          "RetrievalRound",
+          "AdaptiveResult",
+          "ActiveRetrievalConfig"
+        ]
+      },
+      "src/agent/retrieval/index.ts": {
+        "description": "Active Retrieval Module — Barrel Export (3B.5)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./QueryRewriter.js",
+            "imports": [
+              "QueryRewriter",
+              "type RewriteResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ActiveRetrievalController.js",
+            "imports": [
+              "ActiveRetrievalController",
+              "type RetrievalContext",
+              "type RetrievalDecision",
+              "type RetrievalRound",
+              "type AdaptiveResult",
+              "type ActiveRetrievalConfig"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "QueryRewriter",
+          "type RewriteResult",
+          "ActiveRetrievalController",
+          "type RetrievalContext",
+          "type RetrievalDecision",
+          "type RetrievalRound",
+          "type AdaptiveResult",
+          "type ActiveRetrievalConfig"
+        ],
+        "reExported": [
+          "QueryRewriter",
+          "type RewriteResult",
+          "ActiveRetrievalController",
+          "type RetrievalContext",
+          "type RetrievalDecision",
+          "type RetrievalRound",
+          "type AdaptiveResult",
+          "type ActiveRetrievalConfig"
+        ]
+      },
+      "src/agent/retrieval/QueryRewriter.ts": {
+        "description": "Query Rewriter (3B.5)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "QueryRewriter"
+        ],
+        "classes": [
+          "QueryRewriter"
+        ],
+        "interfaces": [
+          "RewriteResult"
+        ]
+      },
+      "src/agent/RoleProfiles.ts": {
+        "description": "Role Profiles",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./SalienceEngine.js",
+            "imports": [
+              "SalienceEngineConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ContextWindowManager.js",
+            "imports": [
+              "ContextWindowManagerConfig"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentType"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "getRoleProfile",
+          "listRoleProfiles",
+          "resolveRoleProfile",
+          "createCustomProfile"
+        ],
+        "interfaces": [
+          "RoleProfile"
+        ],
+        "functions": [
+          "getRoleProfile",
+          "listRoleProfiles",
+          "resolveRoleProfile",
+          "createCustomProfile"
         ]
       },
       "src/agent/RuleEvaluator.ts": {
@@ -1082,6 +3182,12 @@
             "imports": [
               "SummarizationService"
             ]
+          },
+          {
+            "file": "../features/FreshnessManager.js",
+            "imports": [
+              "FreshnessManager"
+            ]
           }
         ],
         "exports": [
@@ -1094,10 +3200,67 @@
           "SalienceEngineConfig"
         ]
       },
+      "src/agent/SessionCheckpoint.ts": {
+        "description": "Session Checkpoint Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "SessionEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isSessionEntity"
+            ]
+          },
+          {
+            "file": "./WorkingMemoryManager.js",
+            "imports": [
+              "WorkingMemoryManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngine"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "SessionCheckpointManager"
+        ],
+        "classes": [
+          "SessionCheckpointManager"
+        ],
+        "interfaces": [
+          "SessionCheckpointData"
+        ]
+      },
       "src/agent/SessionManager.ts": {
         "description": "Session Manager",
         "externalDependencies": [],
-        "nodeDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomBytes"
+            ]
+          }
+        ],
         "internalDependencies": [
           {
             "file": "../types/types.js",
@@ -1113,7 +3276,8 @@
             "imports": [
               "AgentEntity",
               "SessionEntity",
-              "SessionStatus"
+              "SessionStatus",
+              "SessionOutcome"
             ],
             "typeOnly": true
           },
@@ -1205,11 +3369,65 @@
           "EntityWithContext"
         ]
       },
+      "src/agent/SQLiteBackend.ts": {
+        "description": "`SQLiteBackend` — durable `IMemoryBackend` adapter wrapping the",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./DecayEngine.js",
+            "imports": [
+              "DecayEngine"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./MemoryEngine.js",
+            "imports": [
+              "MemoryEngine"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./MemoryBackend.js",
+            "imports": [
+              "IMemoryBackend",
+              "MemoryTurn",
+              "WeightedTurn",
+              "GetWeightedOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "SQLiteBackend"
+        ],
+        "classes": [
+          "SQLiteBackend"
+        ],
+        "interfaces": [
+          "SQLiteBackendOptions"
+        ]
+      },
       "src/agent/SummarizationService.ts": {
         "description": "Summarization Service",
         "externalDependencies": [],
         "nodeDependencies": [],
-        "internalDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "calculateTextSimilarity"
+            ]
+          }
+        ],
         "exports": [
           "SummarizationService"
         ],
@@ -1220,6 +3438,60 @@
           "ISummarizationProvider",
           "SummarizationConfig",
           "GroupingResult"
+        ]
+      },
+      "src/agent/TrajectoryCompressor.ts": {
+        "description": "TrajectoryCompressor — Phase δ.2 (ROADMAP §3B.2).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./ContextWindowManager.js",
+            "imports": [
+              "ContextWindowManager"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "TrajectoryCompressor"
+        ],
+        "classes": [
+          "TrajectoryCompressor"
+        ],
+        "interfaces": [
+          "DistillOptions",
+          "CompressedMemory",
+          "RedundancyGroup",
+          "TrajectoryCompressorConfig"
+        ]
+      },
+      "src/agent/VisibilityResolver.ts": {
+        "description": "Visibility Resolver",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity",
+              "AgentMetadata"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "VisibilityResolver"
+        ],
+        "classes": [
+          "VisibilityResolver"
         ]
       },
       "src/agent/WorkingMemoryManager.ts": {
@@ -1248,6 +3520,19 @@
             "imports": [
               "isAgentEntity"
             ]
+          },
+          {
+            "file": "./EntropyFilter.js",
+            "imports": [
+              "passesEntropyFilter",
+              "EntropyFilterConfig"
+            ]
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "LowEntropyContentError"
+            ]
           }
         ],
         "exports": [
@@ -1264,11 +3549,227 @@
           "PromotionResult",
           "ConfirmationResult"
         ]
+      },
+      "src/agent/WorkThreadManager.ts": {
+        "description": "Work Thread Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomBytes"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage",
+              "Entity",
+              "Relation"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "WorkThreadManager"
+        ],
+        "classes": [
+          "WorkThreadManager"
+        ],
+        "interfaces": [
+          "WorkThread",
+          "WorkThreadFilter",
+          "CreateWorkThreadOptions"
+        ]
+      },
+      "src/agent/world/index.ts": {
+        "description": "World Model Module — Barrel Export (3B.7)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./WorldStateSnapshot.js",
+            "imports": [
+              "WorldStateSnapshot",
+              "type WorldStateEntity",
+              "type WorldStateChange"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./WorldModelManager.js",
+            "imports": [
+              "WorldModelManager",
+              "type WorldModelManagerOptions"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "WorldStateSnapshot",
+          "type WorldStateEntity",
+          "type WorldStateChange",
+          "WorldModelManager",
+          "type WorldModelManagerOptions"
+        ],
+        "reExported": [
+          "WorldStateSnapshot",
+          "type WorldStateEntity",
+          "type WorldStateChange",
+          "WorldModelManager",
+          "type WorldModelManagerOptions"
+        ]
+      },
+      "src/agent/world/WorldModelManager.ts": {
+        "description": "World Model Manager (3B.7)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../causal/CausalReasoner.js",
+            "imports": [
+              "CausalReasoner",
+              "CausalChain"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../MemoryValidator.js",
+            "imports": [
+              "MemoryValidator",
+              "MemoryValidationResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./WorldStateSnapshot.js",
+            "imports": [
+              "WorldStateSnapshot",
+              "WorldStateChange",
+              "WorldStateEntity"
+            ]
+          }
+        ],
+        "exports": [
+          "WorldModelManager"
+        ],
+        "classes": [
+          "WorldModelManager"
+        ],
+        "interfaces": [
+          "WorldModelManagerOptions"
+        ]
+      },
+      "src/agent/world/WorldStateSnapshot.ts": {
+        "description": "World State Snapshot (3B.7)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "WorldStateSnapshot"
+        ],
+        "classes": [
+          "WorldStateSnapshot"
+        ],
+        "interfaces": [
+          "WorldStateEntity",
+          "WorldStateChange"
+        ]
       }
     },
     "cli": {
-      "src/cli/commands/index.ts": {
-        "description": "CLI Command Registry",
+      "src/cli/commands/entity.ts": {
+        "description": "Entity CLI Commands",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatEntities",
+              "formatEntityDetail",
+              "formatSuccess",
+              "formatError"
+            ]
+          }
+        ],
+        "exports": [
+          "registerEntityCommands"
+        ],
+        "functions": [
+          "registerEntityCommands"
+        ]
+      },
+      "src/cli/commands/graph.ts": {
+        "description": "Graph Algorithm CLI Commands",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatPath",
+              "formatCentrality",
+              "formatComponents",
+              "formatError"
+            ]
+          }
+        ],
+        "exports": [
+          "registerGraphCommands"
+        ],
+        "functions": [
+          "registerGraphCommands"
+        ]
+      },
+      "src/cli/commands/helpers.ts": {
+        "description": "CLI Command Helpers",
         "externalDependencies": [
           {
             "package": "commander",
@@ -1304,12 +3805,123 @@
           {
             "file": "../formatters.js",
             "imports": [
+              "formatError"
+            ]
+          }
+        ],
+        "exports": [
+          "createLogger",
+          "type GlobalOptions",
+          "getOptions",
+          "createContext",
+          "withErrorHandling"
+        ],
+        "functions": [
+          "getOptions",
+          "createContext",
+          "withErrorHandling"
+        ]
+      },
+      "src/cli/commands/hierarchy.ts": {
+        "description": "Hierarchy CLI Commands",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
               "formatEntities",
-              "formatRelations",
-              "formatEntityDetail",
-              "formatSearchResults",
               "formatSuccess",
               "formatError"
+            ]
+          }
+        ],
+        "exports": [
+          "registerHierarchyCommands"
+        ],
+        "functions": [
+          "registerHierarchyCommands"
+        ]
+      },
+      "src/cli/commands/index.ts": {
+        "description": "CLI Command Registry",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./entity.js",
+            "imports": [
+              "registerEntityCommands"
+            ]
+          },
+          {
+            "file": "./relation.js",
+            "imports": [
+              "registerRelationCommands"
+            ]
+          },
+          {
+            "file": "./search.js",
+            "imports": [
+              "registerSearchCommands"
+            ]
+          },
+          {
+            "file": "./observation.js",
+            "imports": [
+              "registerObservationCommands"
+            ]
+          },
+          {
+            "file": "./tag.js",
+            "imports": [
+              "registerTagCommands"
+            ]
+          },
+          {
+            "file": "./hierarchy.js",
+            "imports": [
+              "registerHierarchyCommands"
+            ]
+          },
+          {
+            "file": "./graph.js",
+            "imports": [
+              "registerGraphCommands"
+            ]
+          },
+          {
+            "file": "./io.js",
+            "imports": [
+              "registerIOCommands"
+            ]
+          },
+          {
+            "file": "./maintenance.js",
+            "imports": [
+              "registerMaintenanceCommands"
             ]
           }
         ],
@@ -1318,6 +3930,248 @@
         ],
         "functions": [
           "registerCommands"
+        ]
+      },
+      "src/cli/commands/io.ts": {
+        "description": "Import/Export CLI Commands",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command",
+              "Option"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "readFileSync",
+              "writeFileSync"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "resolve"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatSuccess",
+              "formatError"
+            ]
+          },
+          {
+            "file": "../../utils/entityUtils.js",
+            "imports": [
+              "validateFilePath"
+            ]
+          }
+        ],
+        "exports": [
+          "registerIOCommands"
+        ],
+        "functions": [
+          "registerIOCommands"
+        ]
+      },
+      "src/cli/commands/maintenance.ts": {
+        "description": "Maintenance CLI Commands (stats, archive, compress, validate)",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatValidation",
+              "formatSuccess",
+              "formatError"
+            ]
+          }
+        ],
+        "exports": [
+          "registerMaintenanceCommands"
+        ],
+        "functions": [
+          "registerMaintenanceCommands"
+        ]
+      },
+      "src/cli/commands/observation.ts": {
+        "description": "Observation CLI Commands",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatSuccess",
+              "formatError",
+              "escapeCSV"
+            ]
+          }
+        ],
+        "exports": [
+          "registerObservationCommands"
+        ],
+        "functions": [
+          "registerObservationCommands"
+        ]
+      },
+      "src/cli/commands/relation.ts": {
+        "description": "Relation CLI Commands",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatRelations",
+              "formatSuccess",
+              "formatError"
+            ]
+          }
+        ],
+        "exports": [
+          "registerRelationCommands"
+        ],
+        "functions": [
+          "registerRelationCommands"
+        ]
+      },
+      "src/cli/commands/search.ts": {
+        "description": "Search CLI Commands",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatSearchResults",
+              "formatError"
+            ]
+          },
+          {
+            "file": "../../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "registerSearchCommands"
+        ],
+        "functions": [
+          "registerSearchCommands"
+        ]
+      },
+      "src/cli/commands/tag.ts": {
+        "description": "Tag CLI Commands",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createContext",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatSuccess",
+              "formatError",
+              "escapeCSV"
+            ]
+          }
+        ],
+        "exports": [
+          "registerTagCommands"
+        ],
+        "functions": [
+          "registerTagCommands"
         ]
       },
       "src/cli/config.ts": {
@@ -1381,7 +4235,11 @@
             "file": "../types/types.js",
             "imports": [
               "Entity",
-              "Relation"
+              "Relation",
+              "PathResult",
+              "CentralityResult",
+              "ConnectedComponentsResult",
+              "ValidationReport"
             ],
             "typeOnly": true
           }
@@ -1392,7 +4250,12 @@
           "formatSearchResults",
           "formatEntityDetail",
           "formatSuccess",
-          "formatError"
+          "formatError",
+          "formatPath",
+          "formatCentrality",
+          "formatComponents",
+          "formatValidation",
+          "escapeCSV"
         ],
         "functions": [
           "formatEntities",
@@ -1400,7 +4263,12 @@
           "formatSearchResults",
           "formatEntityDetail",
           "formatSuccess",
-          "formatError"
+          "formatError",
+          "formatPath",
+          "formatCentrality",
+          "formatComponents",
+          "formatValidation",
+          "escapeCSV"
         ]
       },
       "src/cli/index.ts": {
@@ -1540,8 +4408,17 @@
             "imports": [
               "EntityNotFoundError",
               "InvalidImportanceError",
-              "ValidationError"
+              "ValidationError",
+              "VersionConflictError"
             ]
+          },
+          {
+            "file": "./RefIndex.js",
+            "imports": [
+              "RefIndex",
+              "RefEntry"
+            ],
+            "typeOnly": true
           },
           {
             "file": "../utils/index.js",
@@ -1569,6 +4446,7 @@
           "EntityManager"
         ],
         "interfaces": [
+          "EntityManagerOptions",
           "GetEntityOptions"
         ]
       },
@@ -1622,6 +4500,12 @@
             "imports": [
               "promises"
             ]
+          },
+          {
+            "module": "crypto",
+            "imports": [
+              "randomBytes"
+            ]
           }
         ],
         "internalDependencies": [
@@ -1657,7 +4541,8 @@
             "file": "../utils/index.js",
             "imports": [
               "sanitizeObject",
-              "validateFilePath"
+              "validateFilePath",
+              "AsyncMutex"
             ]
           },
           {
@@ -1859,6 +4744,22 @@
               "GraphEventEmitter"
             ],
             "reExport": true
+          },
+          {
+            "file": "./RefIndex.js",
+            "imports": [
+              "RefIndex",
+              "type RefEntry",
+              "type RefIndexStats"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./TransitionLedger.js",
+            "imports": [
+              "TransitionLedger"
+            ],
+            "reExport": true
           }
         ],
         "exports": [
@@ -1877,7 +4778,11 @@
           "type TransactionResult",
           "createStorage",
           "createStorageFromPath",
-          "GraphEventEmitter"
+          "GraphEventEmitter",
+          "RefIndex",
+          "type RefEntry",
+          "type RefIndexStats",
+          "TransitionLedger"
         ],
         "reExported": [
           "GraphStorage",
@@ -1895,7 +4800,11 @@
           "type TransactionResult",
           "createStorage",
           "createStorageFromPath",
-          "GraphEventEmitter"
+          "GraphEventEmitter",
+          "RefIndex",
+          "type RefEntry",
+          "type RefIndexStats",
+          "TransitionLedger"
         ]
       },
       "src/core/ManagerContext.ts": {
@@ -1917,9 +4826,9 @@
             ]
           },
           {
-            "file": "./SQLiteStorage.js",
+            "file": "./StorageFactory.js",
             "imports": [
-              "SQLiteStorage"
+              "createStorageFromPath"
             ]
           },
           {
@@ -1965,6 +4874,25 @@
             ]
           },
           {
+            "file": "../search/LLMQueryPlanner.js",
+            "imports": [
+              "LLMQueryPlanner"
+            ]
+          },
+          {
+            "file": "../search/LLMSearchExecutor.js",
+            "imports": [
+              "LLMSearchExecutor"
+            ]
+          },
+          {
+            "file": "../search/LLMQueryPlanner.js",
+            "imports": [
+              "LLMQueryPlannerConfig"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../search/index.js",
             "imports": [
               "SemanticSearch",
@@ -2003,6 +4931,24 @@
             ]
           },
           {
+            "file": "../features/AutoLinker.js",
+            "imports": [
+              "AutoLinker"
+            ]
+          },
+          {
+            "file": "../features/FactExtractor.js",
+            "imports": [
+              "FactExtractor"
+            ]
+          },
+          {
+            "file": "./TransitionLedger.js",
+            "imports": [
+              "TransitionLedger"
+            ]
+          },
+          {
             "file": "../agent/AccessTracker.js",
             "imports": [
               "AccessTracker"
@@ -2018,6 +4964,12 @@
             "file": "../agent/DecayScheduler.js",
             "imports": [
               "DecayScheduler"
+            ]
+          },
+          {
+            "file": "../agent/ConsolidationScheduler.js",
+            "imports": [
+              "ConsolidationScheduler"
             ]
           },
           {
@@ -2045,6 +4997,38 @@
             ]
           },
           {
+            "file": "../agent/ArtifactManager.js",
+            "imports": [
+              "ArtifactManager"
+            ]
+          },
+          {
+            "file": "../agent/DreamEngine.js",
+            "imports": [
+              "DreamEngine",
+              "DreamEngineConfig"
+            ]
+          },
+          {
+            "file": "./RefIndex.js",
+            "imports": [
+              "RefIndex"
+            ]
+          },
+          {
+            "file": "../agent/ObserverPipeline.js",
+            "imports": [
+              "ObserverPipeline"
+            ]
+          },
+          {
+            "file": "../agent/ObserverPipeline.js",
+            "imports": [
+              "ObserverPipelineOptions"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../agent/AgentMemoryConfig.js",
             "imports": [
               "AgentMemoryConfig"
@@ -2062,6 +5046,109 @@
             "imports": [
               "validateFilePath"
             ]
+          },
+          {
+            "file": "../features/ContradictionDetector.js",
+            "imports": [
+              "ContradictionDetector"
+            ]
+          },
+          {
+            "file": "../features/SemanticForget.js",
+            "imports": [
+              "SemanticForget"
+            ]
+          },
+          {
+            "file": "../agent/MemoryEngine.js",
+            "imports": [
+              "MemoryEngine"
+            ]
+          },
+          {
+            "file": "../agent/ImportanceScorer.js",
+            "imports": [
+              "ImportanceScorer"
+            ]
+          },
+          {
+            "file": "../agent/MemoryBackend.js",
+            "imports": [
+              "IMemoryBackend"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/InMemoryBackend.js",
+            "imports": [
+              "InMemoryBackend"
+            ]
+          },
+          {
+            "file": "../agent/SQLiteBackend.js",
+            "imports": [
+              "SQLiteBackend"
+            ]
+          },
+          {
+            "file": "../agent/MemoryValidator.js",
+            "imports": [
+              "MemoryValidator"
+            ]
+          },
+          {
+            "file": "../agent/TrajectoryCompressor.js",
+            "imports": [
+              "TrajectoryCompressor"
+            ]
+          },
+          {
+            "file": "../agent/ExperienceExtractor.js",
+            "imports": [
+              "ExperienceExtractor"
+            ]
+          },
+          {
+            "file": "../agent/PatternDetector.js",
+            "imports": [
+              "PatternDetector"
+            ]
+          },
+          {
+            "file": "../agent/procedural/ProcedureManager.js",
+            "imports": [
+              "ProcedureManager"
+            ]
+          },
+          {
+            "file": "../agent/causal/CausalReasoner.js",
+            "imports": [
+              "CausalReasoner"
+            ]
+          },
+          {
+            "file": "../agent/rbac/RbacMiddleware.js",
+            "imports": [
+              "RbacMiddleware"
+            ]
+          },
+          {
+            "file": "../agent/rbac/RoleAssignmentStore.js",
+            "imports": [
+              "RoleAssignmentStore"
+            ]
+          },
+          {
+            "file": "../agent/world/WorldModelManager.js",
+            "imports": [
+              "WorldModelManager"
+            ]
+          },
+          {
+            "file": "../agent/retrieval/ActiveRetrievalController.js",
+            "imports": [
+              "ActiveRetrievalController"
+            ]
           }
         ],
         "exports": [
@@ -2069,6 +5156,9 @@
         ],
         "classes": [
           "ManagerContext"
+        ],
+        "interfaces": [
+          "ManagerContextOptions"
         ]
       },
       "src/core/ObservationManager.ts": {
@@ -2084,9 +5174,54 @@
             "typeOnly": true
           },
           {
+            "file": "../features/AutoLinker.js",
+            "imports": [
+              "AutoLinker",
+              "AutoLinkOptions",
+              "AutoLinkResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "DeduplicationOptions"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../utils/errors.js",
             "imports": [
-              "EntityNotFoundError"
+              "EntityNotFoundError",
+              "ValidationError"
+            ]
+          },
+          {
+            "file": "../features/ContradictionDetector.js",
+            "imports": [
+              "ContradictionDetector"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../agent/MemoryValidator.js",
+            "imports": [
+              "MemoryValidator",
+              "MemoryValidationIssue"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "calculateTextSimilarity"
             ]
           }
         ],
@@ -2095,6 +5230,43 @@
         ],
         "classes": [
           "ObservationManager"
+        ]
+      },
+      "src/core/RefIndex.ts": {
+        "description": "Ref Index",
+        "externalDependencies": [
+          {
+            "package": "async-mutex",
+            "imports": [
+              "Mutex"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "RefConflictError"
+            ]
+          }
+        ],
+        "exports": [
+          "RefIndex"
+        ],
+        "classes": [
+          "RefIndex"
+        ],
+        "interfaces": [
+          "RefEntry",
+          "RefIndexStats"
         ]
       },
       "src/core/RelationManager.ts": {
@@ -2119,7 +5291,8 @@
           {
             "file": "../utils/errors.js",
             "imports": [
-              "ValidationError"
+              "ValidationError",
+              "RelationNotFoundError"
             ]
           },
           {
@@ -2304,6 +5477,63 @@
         "enums": [
           "OperationType"
         ]
+      },
+      "src/core/TransitionLedger.ts": {
+        "description": "Transition Ledger",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          },
+          {
+            "module": "crypto",
+            "imports": [
+              "randomBytes"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "* as path"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "./GraphEventEmitter.js",
+            "imports": [
+              "GraphEventEmitter"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "EntityCreatedEvent",
+              "EntityUpdatedEvent",
+              "EntityDeletedEvent",
+              "RelationCreatedEvent",
+              "RelationDeletedEvent",
+              "ObservationAddedEvent",
+              "ObservationDeletedEvent"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "TransitionLedger"
+        ],
+        "classes": [
+          "TransitionLedger"
+        ],
+        "interfaces": [
+          "TransitionEvent",
+          "TransitionFilter"
+        ]
       }
     },
     "features": {
@@ -2394,6 +5624,69 @@
           "ArchiveResult"
         ]
       },
+      "src/features/AuditLog.ts": {
+        "description": "Audit Log",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          },
+          {
+            "module": "crypto",
+            "imports": [
+              "randomUUID"
+            ]
+          }
+        ],
+        "internalDependencies": [],
+        "exports": [
+          "AuditLog"
+        ],
+        "classes": [
+          "AuditLog"
+        ],
+        "interfaces": [
+          "AuditEntry",
+          "AuditFilter",
+          "AuditStats"
+        ]
+      },
+      "src/features/AutoLinker.ts": {
+        "description": "Auto-Linker",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity",
+              "Relation",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "AutoLinker"
+        ],
+        "classes": [
+          "AutoLinker"
+        ],
+        "interfaces": [
+          "AutoLinkOptions",
+          "AutoLinkResult"
+        ]
+      },
       "src/features/CompressionManager.ts": {
         "description": "Compression Manager",
         "externalDependencies": [],
@@ -2432,7 +5725,8 @@
             "file": "../utils/errors.js",
             "imports": [
               "EntityNotFoundError",
-              "InsufficientEntitiesError"
+              "InsufficientEntitiesError",
+              "ValidationError"
             ]
           },
           {
@@ -2448,6 +5742,146 @@
         ],
         "classes": [
           "CompressionManager"
+        ]
+      },
+      "src/features/ContradictionDetector.ts": {
+        "description": "Contradiction Detector",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../search/SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "ContradictionDetector"
+        ],
+        "classes": [
+          "ContradictionDetector"
+        ],
+        "interfaces": [
+          "Contradiction"
+        ]
+      },
+      "src/features/FactExtractor.ts": {
+        "description": "Fact Extractor",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "FactExtractor"
+        ],
+        "classes": [
+          "FactExtractor"
+        ],
+        "interfaces": [
+          "ExtractedFact",
+          "FactExtractionOptions",
+          "FactExtractionResult"
+        ]
+      },
+      "src/features/FreshnessManager.ts": {
+        "description": "Freshness Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "FreshnessManager"
+        ],
+        "classes": [
+          "FreshnessManager"
+        ],
+        "interfaces": [
+          "FreshnessReport",
+          "FreshnessManagerConfig"
+        ]
+      },
+      "src/features/GovernanceManager.ts": {
+        "description": "Governance Manager",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./AuditLog.js",
+            "imports": [
+              "AuditLog",
+              "AuditEntry"
+            ]
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "KnowledgeGraphError"
+            ]
+          }
+        ],
+        "exports": [
+          "GovernanceTransaction",
+          "GovernanceManager"
+        ],
+        "classes": [
+          "GovernanceTransaction",
+          "GovernanceManager"
+        ],
+        "interfaces": [
+          "GovernancePolicy",
+          "GovernanceOperationOptions"
         ]
       },
       "src/features/index.ts": {
@@ -2470,7 +5904,13 @@
               "type ImportFormat",
               "type MergeStrategy",
               "type BackupMetadata",
-              "type BackupInfo"
+              "type BackupInfo",
+              "type IngestInput",
+              "type IngestOptions",
+              "type IngestResult",
+              "type SplitOptions",
+              "type SplitResult",
+              "type VisualizeOptions"
             ],
             "reExport": true
           },
@@ -2507,6 +5947,25 @@
             "reExport": true
           },
           {
+            "file": "./AutoLinker.js",
+            "imports": [
+              "AutoLinker",
+              "type AutoLinkOptions",
+              "type AutoLinkResult"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./FactExtractor.js",
+            "imports": [
+              "FactExtractor",
+              "type ExtractedFact",
+              "type FactExtractionOptions",
+              "type FactExtractionResult"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./ObservationNormalizer.js",
             "imports": [
               "ObservationNormalizer",
@@ -2522,6 +5981,62 @@
               "type ScoredKeyword"
             ],
             "reExport": true
+          },
+          {
+            "file": "./AuditLog.js",
+            "imports": [
+              "AuditLog",
+              "type AuditEntry",
+              "type AuditOperation",
+              "type AuditFilter",
+              "type AuditStats"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./GovernanceManager.js",
+            "imports": [
+              "GovernanceManager",
+              "GovernanceTransaction",
+              "type GovernancePolicy",
+              "type GovernanceOperationOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./FreshnessManager.js",
+            "imports": [
+              "FreshnessManager",
+              "type FreshnessManagerConfig",
+              "type FreshnessReport"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ContradictionDetector.js",
+            "imports": [
+              "ContradictionDetector"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./SemanticForget.js",
+            "imports": [
+              "SemanticForget"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ObservableDataModelAdapter.js",
+            "imports": [
+              "createObservableDataModelFromGraph",
+              "ReadOnlyMemoryGraphDataError",
+              "type ObservableDataModelShape",
+              "type ObservableDataModelAdapterOptions",
+              "type GraphProjection",
+              "type JSONValue"
+            ],
+            "reExport": true
           }
         ],
         "exports": [
@@ -2532,6 +6047,12 @@
           "type MergeStrategy",
           "type BackupMetadata",
           "type BackupInfo",
+          "type IngestInput",
+          "type IngestOptions",
+          "type IngestResult",
+          "type SplitOptions",
+          "type SplitResult",
+          "type VisualizeOptions",
           "AnalyticsManager",
           "CompressionManager",
           "ArchiveManager",
@@ -2540,11 +6061,38 @@
           "type ArchiveResult",
           "StreamingExporter",
           "type StreamResult",
+          "AutoLinker",
+          "type AutoLinkOptions",
+          "type AutoLinkResult",
+          "FactExtractor",
+          "type ExtractedFact",
+          "type FactExtractionOptions",
+          "type FactExtractionResult",
           "ObservationNormalizer",
           "type NormalizationOptions",
           "type NormalizationResult",
           "KeywordExtractor",
-          "type ScoredKeyword"
+          "type ScoredKeyword",
+          "AuditLog",
+          "type AuditEntry",
+          "type AuditOperation",
+          "type AuditFilter",
+          "type AuditStats",
+          "GovernanceManager",
+          "GovernanceTransaction",
+          "type GovernancePolicy",
+          "type GovernanceOperationOptions",
+          "FreshnessManager",
+          "type FreshnessManagerConfig",
+          "type FreshnessReport",
+          "ContradictionDetector",
+          "SemanticForget",
+          "createObservableDataModelFromGraph",
+          "ReadOnlyMemoryGraphDataError",
+          "type ObservableDataModelShape",
+          "type ObservableDataModelAdapterOptions",
+          "type GraphProjection",
+          "type JSONValue"
         ],
         "reExported": [
           "TagManager",
@@ -2554,6 +6102,12 @@
           "type MergeStrategy",
           "type BackupMetadata",
           "type BackupInfo",
+          "type IngestInput",
+          "type IngestOptions",
+          "type IngestResult",
+          "type SplitOptions",
+          "type SplitResult",
+          "type VisualizeOptions",
           "AnalyticsManager",
           "CompressionManager",
           "ArchiveManager",
@@ -2562,15 +6116,42 @@
           "type ArchiveResult",
           "StreamingExporter",
           "type StreamResult",
+          "AutoLinker",
+          "type AutoLinkOptions",
+          "type AutoLinkResult",
+          "FactExtractor",
+          "type ExtractedFact",
+          "type FactExtractionOptions",
+          "type FactExtractionResult",
           "ObservationNormalizer",
           "type NormalizationOptions",
           "type NormalizationResult",
           "KeywordExtractor",
-          "type ScoredKeyword"
+          "type ScoredKeyword",
+          "AuditLog",
+          "type AuditEntry",
+          "type AuditOperation",
+          "type AuditFilter",
+          "type AuditStats",
+          "GovernanceManager",
+          "GovernanceTransaction",
+          "type GovernancePolicy",
+          "type GovernanceOperationOptions",
+          "FreshnessManager",
+          "type FreshnessManagerConfig",
+          "type FreshnessReport",
+          "ContradictionDetector",
+          "SemanticForget",
+          "createObservableDataModelFromGraph",
+          "ReadOnlyMemoryGraphDataError",
+          "type ObservableDataModelShape",
+          "type ObservableDataModelAdapterOptions",
+          "type GraphProjection",
+          "type JSONValue"
         ]
       },
       "src/features/IOManager.ts": {
-        "description": "Import graph from formatted data.",
+        "description": "Escape a string for a Turtle `STRING_LITERAL_QUOTE` per W3C Turtle 1.1.",
         "externalDependencies": [],
         "nodeDependencies": [
           {
@@ -2640,6 +6221,13 @@
               "StreamingExporter",
               "StreamResult"
             ]
+          },
+          {
+            "file": "../utils/schemas.js",
+            "imports": [
+              "EntitySchema",
+              "RelationSchema"
+            ]
           }
         ],
         "exports": [
@@ -2649,8 +6237,15 @@
           "IOManager"
         ],
         "interfaces": [
+          "IngestInput",
+          "IngestOptions",
+          "IngestResult",
           "BackupMetadata",
-          "BackupInfo"
+          "BackupInfo",
+          "SplitOptions",
+          "SplitResult",
+          "VisualizeOptions",
+          "VisualizeOptions"
         ]
       },
       "src/features/KeywordExtractor.ts": {
@@ -2666,6 +6261,50 @@
         ],
         "interfaces": [
           "ScoredKeyword"
+        ]
+      },
+      "src/features/ObservableDataModelAdapter.ts": {
+        "description": "ObservableDataModel Adapter",
+        "externalDependencies": [
+          {
+            "package": "@danielsimonjr/memoryjs",
+            "imports": [
+              "ManagerContext",
+              "createObservableDataModelFromGraph"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "Relation"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "createObservableDataModelFromGraph",
+          "ReadOnlyMemoryGraphDataError"
+        ],
+        "classes": [
+          "ReadOnlyMemoryGraphDataError"
+        ],
+        "interfaces": [
+          "ObservableDataModelShape",
+          "ObservableDataModelAdapterOptions"
+        ],
+        "functions": [
+          "createObservableDataModelFromGraph"
         ]
       },
       "src/features/ObservationNormalizer.ts": {
@@ -2690,6 +6329,65 @@
         "interfaces": [
           "NormalizationOptions",
           "NormalizationResult"
+        ]
+      },
+      "src/features/SemanticForget.ts": {
+        "description": "Semantic Forget",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/ObservationManager.js",
+            "imports": [
+              "ObservationManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../search/SemanticSearch.js",
+            "imports": [
+              "SemanticSearch"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./AuditLog.js",
+            "imports": [
+              "AuditLog"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "SemanticForget"
+        ],
+        "classes": [
+          "SemanticForget"
+        ],
+        "interfaces": [
+          "SemanticForgetResult",
+          "SemanticForgetOptions"
         ]
       },
       "src/features/StreamingExporter.ts": {
@@ -2801,6 +6499,13 @@
               "*"
             ],
             "reExport": true
+          },
+          {
+            "file": "./agent/index.js",
+            "imports": [
+              "*"
+            ],
+            "reExport": true
           }
         ],
         "exports": [],
@@ -2809,7 +6514,8 @@
           "* from ./utils/index.js",
           "* from ./core/index.js",
           "* from ./features/index.js",
-          "* from ./search/index.js"
+          "* from ./search/index.js",
+          "* from ./agent/index.js"
         ]
       }
     },
@@ -3137,6 +6843,12 @@
             "imports": [
               "SearchFilterChain",
               "SearchFilters"
+            ]
+          },
+          {
+            "file": "./NGramIndex.js",
+            "imports": [
+              "NGramIndex"
             ]
           }
         ],
@@ -3571,6 +7283,49 @@
               "type ProximityMatchLocation"
             ],
             "reExport": true
+          },
+          {
+            "file": "./TemporalQueryParser.js",
+            "imports": [
+              "TemporalQueryParser",
+              "type ParsedTemporalRange"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./TemporalSearch.js",
+            "imports": [
+              "TemporalSearch",
+              "type TemporalFilterField",
+              "type TemporalSearchOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./NGramIndex.js",
+            "imports": [
+              "NGramIndex",
+              "type NGramIndexStats"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./LLMQueryPlanner.js",
+            "imports": [
+              "LLMQueryPlanner",
+              "type LLMProvider",
+              "type StructuredQuery",
+              "type LLMQueryPlannerConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./LLMSearchExecutor.js",
+            "imports": [
+              "LLMSearchExecutor",
+              "type LLMSearchExecutorOptions"
+            ],
+            "reExport": true
           }
         ],
         "exports": [
@@ -3670,7 +7425,20 @@
           "matchesPrefix",
           "ProximitySearch",
           "type ProximityMatch",
-          "type ProximityMatchLocation"
+          "type ProximityMatchLocation",
+          "TemporalQueryParser",
+          "type ParsedTemporalRange",
+          "TemporalSearch",
+          "type TemporalFilterField",
+          "type TemporalSearchOptions",
+          "NGramIndex",
+          "type NGramIndexStats",
+          "LLMQueryPlanner",
+          "type LLMProvider",
+          "type StructuredQuery",
+          "type LLMQueryPlannerConfig",
+          "LLMSearchExecutor",
+          "type LLMSearchExecutorOptions"
         ],
         "reExported": [
           "BasicSearch",
@@ -3769,7 +7537,89 @@
           "matchesPrefix",
           "ProximitySearch",
           "type ProximityMatch",
-          "type ProximityMatchLocation"
+          "type ProximityMatchLocation",
+          "TemporalQueryParser",
+          "type ParsedTemporalRange",
+          "TemporalSearch",
+          "type TemporalFilterField",
+          "type TemporalSearchOptions",
+          "NGramIndex",
+          "type NGramIndexStats",
+          "LLMQueryPlanner",
+          "type LLMProvider",
+          "type StructuredQuery",
+          "type LLMQueryPlannerConfig",
+          "LLMSearchExecutor",
+          "type LLMSearchExecutorOptions"
+        ]
+      },
+      "src/search/LLMQueryPlanner.ts": {
+        "description": "LLM Query Planner",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "LLMQueryPlanner"
+        ],
+        "classes": [
+          "LLMQueryPlanner"
+        ],
+        "interfaces": [
+          "LLMProvider",
+          "StructuredQuery",
+          "LLMQueryPlannerConfig"
+        ]
+      },
+      "src/search/LLMSearchExecutor.ts": {
+        "description": "LLM Search Executor",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./SearchManager.js",
+            "imports": [
+              "SearchManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./LLMQueryPlanner.js",
+            "imports": [
+              "StructuredQuery"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "LLMSearchExecutor"
+        ],
+        "classes": [
+          "LLMSearchExecutor"
+        ],
+        "interfaces": [
+          "LLMSearchExecutorOptions"
+        ]
+      },
+      "src/search/NGramIndex.ts": {
+        "description": "N-gram Index",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "NGramIndex"
+        ],
+        "classes": [
+          "NGramIndex"
+        ],
+        "interfaces": [
+          "NGramIndexStats"
         ]
       },
       "src/search/OptimizedInvertedIndex.ts": {
@@ -3949,6 +7799,12 @@
             "module": "fs",
             "imports": [
               "appendFileSync"
+            ]
+          },
+          {
+            "module": "crypto",
+            "imports": [
+              "randomBytes"
             ]
           }
         ],
@@ -4249,6 +8105,13 @@
             "typeOnly": true
           },
           {
+            "file": "./TemporalSearch.js",
+            "imports": [
+              "TemporalSearch",
+              "TemporalSearchOptions"
+            ]
+          },
+          {
             "file": "./BasicSearch.js",
             "imports": [
               "BasicSearch"
@@ -4354,7 +8217,8 @@
           {
             "file": "./VectorStore.js",
             "imports": [
-              "InMemoryVectorStore"
+              "InMemoryVectorStore",
+              "cosineSimilarity"
             ]
           },
           {
@@ -4404,6 +8268,71 @@
         ],
         "interfaces": [
           "SymbolicResult"
+        ]
+      },
+      "src/search/TemporalQueryParser.ts": {
+        "description": "Temporal Query Parser",
+        "externalDependencies": [
+          {
+            "package": "chrono-node",
+            "imports": [
+              "* as chrono"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "TemporalQueryParser"
+        ],
+        "classes": [
+          "TemporalQueryParser"
+        ],
+        "interfaces": [
+          "ParsedTemporalRange"
+        ]
+      },
+      "src/search/TemporalSearch.ts": {
+        "description": "Temporal Search",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphStorage.js",
+            "imports": [
+              "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./TemporalQueryParser.js",
+            "imports": [
+              "ParsedTemporalRange"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./TemporalQueryParser.js",
+            "imports": [
+              "TemporalQueryParser"
+            ]
+          }
+        ],
+        "exports": [
+          "TemporalSearch"
+        ],
+        "classes": [
+          "TemporalSearch"
+        ],
+        "interfaces": [
+          "TemporalSearchOptions"
         ]
       },
       "src/search/TFIDFEventSync.ts": {
@@ -4525,6 +8454,65 @@
         ]
       }
     },
+    "security": {
+      "src/security/index.ts": {
+        "description": "Security Module — Barrel Export (η.6.3)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./PiiRedactor.js",
+            "imports": [
+              "PiiRedactor",
+              "DEFAULT_PII_PATTERNS",
+              "type PiiPattern",
+              "type PiiRedactorOptions",
+              "type RedactionStats",
+              "type RedactionResult"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "PiiRedactor",
+          "DEFAULT_PII_PATTERNS",
+          "type PiiPattern",
+          "type PiiRedactorOptions",
+          "type RedactionStats",
+          "type RedactionResult"
+        ],
+        "reExported": [
+          "PiiRedactor",
+          "DEFAULT_PII_PATTERNS",
+          "type PiiPattern",
+          "type PiiRedactorOptions",
+          "type RedactionStats",
+          "type RedactionResult"
+        ]
+      },
+      "src/security/PiiRedactor.ts": {
+        "description": "PII Redactor (η.6.3)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "DEFAULT_PII_PATTERNS",
+          "PiiRedactor"
+        ],
+        "classes": [
+          "PiiRedactor"
+        ],
+        "interfaces": [
+          "PiiPattern",
+          "PiiRedactorOptions",
+          "RedactionStats",
+          "RedactionResult"
+        ],
+        "constants": [
+          "DEFAULT_PII_PATTERNS"
+        ]
+      }
+    },
     "types": {
       "src/types/agent-memory.ts": {
         "description": "Agent Memory Type Definitions",
@@ -4537,9 +8525,17 @@
               "Entity"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../agent/ContextProfileManager.js",
+            "imports": [
+              "ContextProfile"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
+          "isProfileEntity",
           "isAgentEntity",
           "isSessionEntity",
           "isWorkingMemory",
@@ -4558,6 +8554,7 @@
           "AgentEntity",
           "AgentObservation",
           "SessionEntity",
+          "ProfileEntity",
           "AccessContext",
           "SalienceContext",
           "SalienceWeights",
@@ -4574,6 +8571,9 @@
           "PatternResult",
           "MergeResult",
           "DuplicatePair",
+          "DistilledLesson",
+          "CognitiveLoadMetrics",
+          "AdaptiveReductionResult",
           "RuleConditions",
           "ConsolidationRule",
           "RuleEvaluationResult",
@@ -4581,15 +8581,42 @@
           "TokenBreakdown",
           "ContextPackage",
           "ExcludedEntity",
+          "GroupMembership",
           "AgentMetadata"
         ],
         "functions": [
+          "isProfileEntity",
           "isAgentEntity",
           "isSessionEntity",
           "isWorkingMemory",
           "isEpisodicMemory",
           "isSemanticMemory",
           "isProceduralMemory"
+        ]
+      },
+      "src/types/artifact.ts": {
+        "description": "Artifact Type Definitions",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "isArtifactEntity"
+        ],
+        "interfaces": [
+          "CreateArtifactOptions",
+          "ArtifactEntity",
+          "ArtifactFilter"
+        ],
+        "functions": [
+          "isArtifactEntity"
         ]
       },
       "src/types/index.ts": {
@@ -4618,11 +8645,19 @@
             "imports": [
               "isAgentEntity",
               "isSessionEntity",
+              "isProfileEntity",
               "isWorkingMemory",
               "isEpisodicMemory",
               "isSemanticMemory",
               "isProceduralMemory",
               "AccessContextBuilder"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./artifact.js",
+            "imports": [
+              "isArtifactEntity"
             ],
             "reExport": true
           },
@@ -4640,11 +8675,13 @@
           "QueryTraceBuilder",
           "isAgentEntity",
           "isSessionEntity",
+          "isProfileEntity",
           "isWorkingMemory",
           "isEpisodicMemory",
           "isSemanticMemory",
           "isProceduralMemory",
           "AccessContextBuilder",
+          "isArtifactEntity",
           "createProgressInfo",
           "createThrottledProgress",
           "createDetailedProgressReporter"
@@ -4653,14 +8690,29 @@
           "QueryTraceBuilder",
           "isAgentEntity",
           "isSessionEntity",
+          "isProfileEntity",
           "isWorkingMemory",
           "isEpisodicMemory",
           "isSemanticMemory",
           "isProceduralMemory",
           "AccessContextBuilder",
+          "isArtifactEntity",
           "createProgressInfo",
           "createThrottledProgress",
           "createDetailedProgressReporter"
+        ]
+      },
+      "src/types/procedure.ts": {
+        "description": "Procedural Memory Types (3B.4)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [],
+        "interfaces": [
+          "ProcedureStep",
+          "Procedure",
+          "ProcedureMatch",
+          "ProcedureFeedback"
         ]
       },
       "src/types/progress.ts": {
@@ -4728,6 +8780,7 @@
         "exports": [],
         "interfaces": [
           "Entity",
+          "DeduplicationOptions",
           "RelationProperties",
           "Relation",
           "KnowledgeGraph",
@@ -4775,6 +8828,7 @@
           "SemanticIndexOptions",
           "LongRunningOperationOptions",
           "BatchResult",
+          "OperationResult",
           "BatchOptions",
           "GraphEventBase",
           "EntityCreatedEvent",
@@ -4803,6 +8857,21 @@
       }
     },
     "utils": {
+      "src/utils/AsyncMutex.ts": {
+        "description": "Async Mutex",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "AsyncMutex"
+        ],
+        "classes": [
+          "AsyncMutex"
+        ],
+        "interfaces": [
+          "AsyncMutexOptions"
+        ]
+      },
       "src/utils/BatchProcessor.ts": {
         "description": "Batch Processor",
         "externalDependencies": [],
@@ -5133,7 +9202,7 @@
         ]
       },
       "src/utils/errors.ts": {
-        "description": "errors module",
+        "description": "Error thrown when a ref alias is already registered.",
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [],
@@ -5149,6 +9218,11 @@
           "ImportError",
           "ExportError",
           "InsufficientEntitiesError",
+          "RefConflictError",
+          "RefNotFoundError",
+          "AttributionRequiredError",
+          "VersionConflictError",
+          "LowEntropyContentError",
           "OperationCancelledError",
           "ErrorCode"
         ],
@@ -5164,6 +9238,11 @@
           "ImportError",
           "ExportError",
           "InsufficientEntitiesError",
+          "RefConflictError",
+          "RefNotFoundError",
+          "AttributionRequiredError",
+          "VersionConflictError",
+          "LowEntropyContentError",
           "OperationCancelledError"
         ],
         "interfaces": [
@@ -5251,6 +9330,8 @@
               "ExportError",
               "InsufficientEntitiesError",
               "OperationCancelledError",
+              "RefConflictError",
+              "RefNotFoundError",
               "type ErrorOptions"
             ],
             "reExport": true
@@ -5616,6 +9697,24 @@
               "type JsonSchema"
             ],
             "reExport": true
+          },
+          {
+            "file": "./AsyncMutex.js",
+            "imports": [
+              "AsyncMutex",
+              "type AsyncMutexOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./textSimilarity.js",
+            "imports": [
+              "tokenize",
+              "buildTFVector",
+              "cosineSimilarity",
+              "calculateTextSimilarity"
+            ],
+            "reExport": true
           }
         ],
         "exports": [
@@ -5632,6 +9731,8 @@
           "ExportError",
           "InsufficientEntitiesError",
           "OperationCancelledError",
+          "RefConflictError",
+          "RefNotFoundError",
           "type ErrorOptions",
           "generateSuggestions",
           "getQuickHint",
@@ -5862,7 +9963,12 @@
           "all",
           "when",
           "SchemaValidator",
-          "type JsonSchema"
+          "type JsonSchema",
+          "AsyncMutex",
+          "type AsyncMutexOptions",
+          "buildTFVector",
+          "cosineSimilarity",
+          "calculateTextSimilarity"
         ],
         "reExported": [
           "ErrorCode",
@@ -5878,6 +9984,8 @@
           "ExportError",
           "InsufficientEntitiesError",
           "OperationCancelledError",
+          "RefConflictError",
+          "RefNotFoundError",
           "type ErrorOptions",
           "generateSuggestions",
           "getQuickHint",
@@ -6108,7 +10216,12 @@
           "all",
           "when",
           "SchemaValidator",
-          "type JsonSchema"
+          "type JsonSchema",
+          "AsyncMutex",
+          "type AsyncMutexOptions",
+          "buildTFVector",
+          "cosineSimilarity",
+          "calculateTextSimilarity"
         ]
       },
       "src/utils/indexes.ts": {
@@ -6539,6 +10652,24 @@
           "TaskStatus"
         ]
       },
+      "src/utils/textSimilarity.ts": {
+        "description": "Text Similarity Utilities",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "tokenize",
+          "buildTFVector",
+          "cosineSimilarity",
+          "calculateTextSimilarity"
+        ],
+        "functions": [
+          "tokenize",
+          "buildTFVector",
+          "cosineSimilarity",
+          "calculateTextSimilarity"
+        ]
+      },
       "src/utils/validators.ts": {
         "description": "Built-in Validators",
         "externalDependencies": [],
@@ -6704,6 +10835,17 @@
       ],
       "typeOnly": [
         [
+          "src/types/agent-memory.ts",
+          "src/agent/ContextProfileManager.ts",
+          "src/types/agent-memory.ts"
+        ],
+        [
+          "src/agent/WorkingMemoryManager.ts",
+          "src/agent/EntropyFilter.ts",
+          "src/agent/ConsolidationPipeline.ts",
+          "src/agent/WorkingMemoryManager.ts"
+        ],
+        [
           "src/core/GraphStorage.ts",
           "src/core/TransactionManager.ts",
           "src/core/GraphStorage.ts"
@@ -6715,9 +10857,9 @@
           "src/core/GraphStorage.ts"
         ]
       ],
-      "total": 3,
+      "total": 5,
       "runtimeCount": 1,
-      "typeOnlyCount": 2
+      "typeOnlyCount": 4
     },
     "layers": [
       {
@@ -6726,28 +10868,80 @@
           "src/agent/AccessTracker.ts",
           "src/agent/AgentMemoryConfig.ts",
           "src/agent/AgentMemoryManager.ts",
+          "src/agent/ArtifactManager.ts",
+          "src/agent/causal/CausalReasoner.ts",
+          "src/agent/causal/index.ts",
+          "src/agent/CognitiveLoadAnalyzer.ts",
+          "src/agent/collaboration/CollaborationAuditEnforcer.ts",
+          "src/agent/CollaborativeSynthesis.ts",
           "src/agent/ConflictResolver.ts",
           "src/agent/ConsolidationPipeline.ts",
+          "src/agent/ConsolidationScheduler.ts",
+          "src/agent/ContextProfileManager.ts",
           "src/agent/ContextWindowManager.ts",
           "src/agent/DecayEngine.ts",
           "src/agent/DecayScheduler.ts",
+          "src/agent/DistillationPipeline.ts",
+          "src/agent/DistillationPolicy.ts",
+          "src/agent/DreamEngine.ts",
+          "src/agent/EntropyFilter.ts",
           "src/agent/EpisodicMemoryManager.ts",
+          "src/agent/ExperienceExtractor.ts",
+          "src/agent/FailureDistillation.ts",
+          "src/agent/ImportanceScorer.ts",
           "src/agent/index.ts",
+          "src/agent/InMemoryBackend.ts",
+          "src/agent/MemoryBackend.ts",
+          "src/agent/MemoryEngine.ts",
           "src/agent/MemoryFormatter.ts",
+          "src/agent/MemoryValidator.ts",
           "src/agent/MultiAgentMemoryManager.ts",
+          "src/agent/ObserverPipeline.ts",
           "src/agent/PatternDetector.ts",
+          "src/agent/procedural/index.ts",
+          "src/agent/procedural/ProcedureManager.ts",
+          "src/agent/procedural/ProcedureStore.ts",
+          "src/agent/procedural/StepSequencer.ts",
+          "src/agent/ProfileManager.ts",
+          "src/agent/rbac/index.ts",
+          "src/agent/rbac/PermissionMatrix.ts",
+          "src/agent/rbac/RbacMiddleware.ts",
+          "src/agent/rbac/RbacTypes.ts",
+          "src/agent/rbac/RoleAssignmentStore.ts",
+          "src/agent/retrieval/ActiveRetrievalController.ts",
+          "src/agent/retrieval/index.ts",
+          "src/agent/retrieval/QueryRewriter.ts",
+          "src/agent/RoleProfiles.ts",
           "src/agent/RuleEvaluator.ts",
           "src/agent/SalienceEngine.ts",
+          "src/agent/SessionCheckpoint.ts",
           "src/agent/SessionManager.ts",
           "src/agent/SessionQueryBuilder.ts",
+          "src/agent/SQLiteBackend.ts",
           "src/agent/SummarizationService.ts",
-          "src/agent/WorkingMemoryManager.ts"
+          "src/agent/TrajectoryCompressor.ts",
+          "src/agent/VisibilityResolver.ts",
+          "src/agent/WorkingMemoryManager.ts",
+          "src/agent/WorkThreadManager.ts",
+          "src/agent/world/index.ts",
+          "src/agent/world/WorldModelManager.ts",
+          "src/agent/world/WorldStateSnapshot.ts"
         ]
       },
       {
         "name": "Cli",
         "files": [
+          "src/cli/commands/entity.ts",
+          "src/cli/commands/graph.ts",
+          "src/cli/commands/helpers.ts",
+          "src/cli/commands/hierarchy.ts",
           "src/cli/commands/index.ts",
+          "src/cli/commands/io.ts",
+          "src/cli/commands/maintenance.ts",
+          "src/cli/commands/observation.ts",
+          "src/cli/commands/relation.ts",
+          "src/cli/commands/search.ts",
+          "src/cli/commands/tag.ts",
           "src/cli/config.ts",
           "src/cli/formatters.ts",
           "src/cli/index.ts",
@@ -6766,10 +10960,12 @@
           "src/core/index.ts",
           "src/core/ManagerContext.ts",
           "src/core/ObservationManager.ts",
+          "src/core/RefIndex.ts",
           "src/core/RelationManager.ts",
           "src/core/SQLiteStorage.ts",
           "src/core/StorageFactory.ts",
-          "src/core/TransactionManager.ts"
+          "src/core/TransactionManager.ts",
+          "src/core/TransitionLedger.ts"
         ]
       },
       {
@@ -6777,11 +10973,19 @@
         "files": [
           "src/features/AnalyticsManager.ts",
           "src/features/ArchiveManager.ts",
+          "src/features/AuditLog.ts",
+          "src/features/AutoLinker.ts",
           "src/features/CompressionManager.ts",
+          "src/features/ContradictionDetector.ts",
+          "src/features/FactExtractor.ts",
+          "src/features/FreshnessManager.ts",
+          "src/features/GovernanceManager.ts",
           "src/features/index.ts",
           "src/features/IOManager.ts",
           "src/features/KeywordExtractor.ts",
+          "src/features/ObservableDataModelAdapter.ts",
           "src/features/ObservationNormalizer.ts",
+          "src/features/SemanticForget.ts",
           "src/features/StreamingExporter.ts",
           "src/features/TagManager.ts"
         ]
@@ -6806,6 +11010,9 @@
           "src/search/HybridSearchManager.ts",
           "src/search/IncrementalIndexer.ts",
           "src/search/index.ts",
+          "src/search/LLMQueryPlanner.ts",
+          "src/search/LLMSearchExecutor.ts",
+          "src/search/NGramIndex.ts",
           "src/search/OptimizedInvertedIndex.ts",
           "src/search/ParallelSearchExecutor.ts",
           "src/search/ProximitySearch.ts",
@@ -6824,16 +11031,27 @@
           "src/search/SearchSuggestions.ts",
           "src/search/SemanticSearch.ts",
           "src/search/SymbolicSearch.ts",
+          "src/search/TemporalQueryParser.ts",
+          "src/search/TemporalSearch.ts",
           "src/search/TFIDFEventSync.ts",
           "src/search/TFIDFIndexManager.ts",
           "src/search/VectorStore.ts"
         ]
       },
       {
+        "name": "Security",
+        "files": [
+          "src/security/index.ts",
+          "src/security/PiiRedactor.ts"
+        ]
+      },
+      {
         "name": "Types",
         "files": [
           "src/types/agent-memory.ts",
+          "src/types/artifact.ts",
           "src/types/index.ts",
+          "src/types/procedure.ts",
           "src/types/progress.ts",
           "src/types/search.ts",
           "src/types/types.ts"
@@ -6842,6 +11060,7 @@
       {
         "name": "Utils",
         "files": [
+          "src/utils/AsyncMutex.ts",
           "src/utils/BatchProcessor.ts",
           "src/utils/compressedCache.ts",
           "src/utils/compressionUtil.ts",
@@ -6864,6 +11083,7 @@
           "src/utils/searchAlgorithms.ts",
           "src/utils/searchCache.ts",
           "src/utils/taskScheduler.ts",
+          "src/utils/textSimilarity.ts",
           "src/utils/validators.ts",
           "src/utils/WorkerPoolManager.ts"
         ]
@@ -6878,21 +11098,21 @@
     ]
   },
   "statistics": {
-    "totalTypeScriptFiles": 110,
-    "totalModules": 9,
-    "totalLinesOfCode": 43392,
-    "totalExports": 770,
-    "totalClasses": 98,
-    "totalInterfaces": 249,
-    "totalFunctions": 157,
-    "totalTypeGuards": 15,
+    "totalTypeScriptFiles": 183,
+    "totalModules": 10,
+    "totalLinesOfCode": 62889,
+    "totalExports": 1104,
+    "totalClasses": 156,
+    "totalInterfaces": 384,
+    "totalFunctions": 189,
+    "totalTypeGuards": 17,
     "totalEnums": 4,
-    "totalConstants": 59,
-    "totalReExports": 460,
-    "totalTypeOnlyImports": 142,
+    "totalConstants": 63,
+    "totalReExports": 699,
+    "totalTypeOnlyImports": 269,
     "runtimeCircularDeps": 1,
-    "typeOnlyCircularDeps": 2,
+    "typeOnlyCircularDeps": 4,
     "unusedFilesCount": 2,
-    "unusedExportsCount": 251
+    "unusedExportsCount": 352
   }
 }

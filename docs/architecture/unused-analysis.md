@@ -1,11 +1,11 @@
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-02-11
+**Generated**: 2026-04-25
 
 ## Summary
 
 - **Potentially unused files**: 2
-- **Potentially unused exports**: 251
+- **Potentially unused exports**: 352
 
 ## Potentially Unused Files
 
@@ -28,19 +28,136 @@ These exports are not imported by any other file in the codebase:
 - `CreateMemoryOptions` (interface)
 - `RetrieveContextOptions` (interface)
 
-### `src/agent/ConsolidationPipeline.ts`
+### `src/agent/causal/CausalReasoner.ts`
 
-- `PipelineStage` (interface)
-- `StageResult` (interface)
+- `CausalCycle` (interface)
+- `CausalReasonerConfig` (interface)
+- `CausalRelationType` (type)
+
+### `src/agent/CognitiveLoadAnalyzer.ts`
+
+- `CognitiveLoadConfig` (interface)
+
+### `src/agent/collaboration/CollaborationAuditEnforcer.ts`
+
+- `CollaborationAuditEnforcerOptions` (interface)
+- `AttributionMode` (type)
+
+### `src/agent/CollaborativeSynthesis.ts`
+
+- `ConflictView` (interface)
+- `SynthesisResult` (interface)
+- `ConflictResolutionPolicy` (type)
+
+### `src/agent/ConsolidationScheduler.ts`
+
+- `ConsolidationSchedulerConfig` (interface)
+- `ConsolidationCycleResult` (interface)
 
 ### `src/agent/ContextWindowManager.ts`
 
+- `ContextCompressionResult` (interface)
+- `WakeUpOptions` (interface)
+- `WakeUpResult` (interface)
 - `SpilloverResult` (interface)
+- `CompressionLevel` (type)
 
 ### `src/agent/DecayEngine.ts`
 
 - `DecayOperationOptions` (interface)
 - `ReinforcementOptions` (interface)
+
+### `src/agent/DistillationPipeline.ts`
+
+- `DistillationStats` (interface)
+- `DistillationResult` (interface)
+
+### `src/agent/DreamEngine.ts`
+
+- `DreamPhaseConfig` (interface)
+- `DreamEngineCallbacks` (interface)
+- `DreamPhaseResult` (interface)
+
+### `src/agent/ExperienceExtractor.ts`
+
+- `Action` (interface)
+- `Trajectory` (interface)
+- `Rule` (interface)
+- `HeuristicGuideline` (interface)
+- `DecisionRule` (interface)
+- `TrajectoryCluster` (interface)
+- `Experience` (interface)
+- `ExperienceExtractorConfig` (interface)
+- `Outcome` (type)
+- `ClusterMethod` (type)
+- `ExperienceType` (type)
+
+### `src/agent/FailureDistillation.ts`
+
+- `FailureDistillationConfig` (interface)
+- `FailureDistillationResult` (interface)
+
+### `src/agent/ImportanceScorer.ts`
+
+- `ImportanceScorerConfig` (interface)
+- `ScoreOptions` (interface)
+
+### `src/agent/MemoryEngine.ts`
+
+- `MemoryEngineConfig` (interface)
+- `AddTurnOptions` (interface)
+- `AddTurnResult` (interface)
+- `DuplicateCheckResult` (interface)
+- `DedupTier` (type)
+- `MemoryEngineEventName` (type)
+
+### `src/agent/MemoryValidator.ts`
+
+- `Contradiction` (interface)
+- `MemoryValidatorConfig` (interface)
+
+### `src/agent/ObserverPipeline.ts`
+
+- `ObservationScore` (interface)
+- `ObserverPipelineStats` (interface)
+
+### `src/agent/procedural/ProcedureManager.ts`
+
+- `ProcedureManagerConfig` (interface)
+
+### `src/agent/ProfileManager.ts`
+
+- `ProfileResponse` (interface)
+- `ProfileOptions` (interface)
+
+### `src/agent/rbac/PermissionMatrix.ts`
+
+- `PermissionMatrixRow` (type)
+
+### `src/agent/rbac/RbacMiddleware.ts`
+
+- `RbacMiddlewareOptions` (interface)
+
+### `src/agent/rbac/RoleAssignmentStore.ts`
+
+- `RoleAssignmentStoreOptions` (interface)
+
+### `src/agent/retrieval/ActiveRetrievalController.ts`
+
+- `RetrievalContext` (interface)
+- `RetrievalDecision` (interface)
+- `RetrievalRound` (interface)
+- `AdaptiveResult` (interface)
+- `ActiveRetrievalConfig` (interface)
+
+### `src/agent/retrieval/QueryRewriter.ts`
+
+- `RewriteResult` (interface)
+
+### `src/agent/RoleProfiles.ts`
+
+- `RoleProfile` (interface)
+- `AgentRole` (type)
 
 ### `src/agent/SessionManager.ts`
 
@@ -52,15 +169,43 @@ These exports are not imported by any other file in the codebase:
 - `EntityWithContext` (interface)
 - `SearchFunction` (type)
 
+### `src/agent/SQLiteBackend.ts`
+
+- `SQLiteBackendOptions` (interface)
+
 ### `src/agent/SummarizationService.ts`
 
 - `GroupingResult` (interface)
+
+### `src/agent/TrajectoryCompressor.ts`
+
+- `DistillOptions` (interface)
+- `CompressedMemory` (interface)
+- `RedundancyGroup` (interface)
+- `TrajectoryCompressorConfig` (interface)
+- `Granularity` (type)
+- `TrajectoryMergeStrategy` (type)
 
 ### `src/agent/WorkingMemoryManager.ts`
 
 - `SessionMemoryFilter` (interface)
 - `PromotionMarkOptions` (interface)
 - `PromotionCriteria` (interface)
+
+### `src/agent/WorkThreadManager.ts`
+
+- `WorkThread` (interface)
+- `WorkThreadFilter` (interface)
+- `CreateWorkThreadOptions` (interface)
+- `WorkThreadStatus` (type)
+
+### `src/agent/world/WorldModelManager.ts`
+
+- `WorldModelManagerOptions` (interface)
+
+### `src/cli/commands/helpers.ts`
+
+- `withErrorHandling` (function)
 
 ### `src/cli/formatters.ts`
 
@@ -72,16 +217,30 @@ These exports are not imported by any other file in the codebase:
 
 ### `src/core/EntityManager.ts`
 
+- `EntityManagerOptions` (interface)
 - `GetEntityOptions` (interface)
 
 ### `src/core/GraphTraversal.ts`
 
 - `TraversalOptionsWithTracking` (interface)
 
+### `src/core/ManagerContext.ts`
+
+- `ManagerContextOptions` (interface)
+
+### `src/core/RefIndex.ts`
+
+- `RefIndexStats` (interface)
+
 ### `src/core/TransactionManager.ts`
 
 - `TransactionResult` (interface)
 - `TransactionOperation` (type)
+
+### `src/core/TransitionLedger.ts`
+
+- `TransitionEvent` (interface)
+- `TransitionFilter` (interface)
 
 ### `src/features/ArchiveManager.ts`
 
@@ -89,10 +248,39 @@ These exports are not imported by any other file in the codebase:
 - `ArchiveOptions` (interface)
 - `ArchiveResult` (interface)
 
+### `src/features/AuditLog.ts`
+
+- `AuditFilter` (interface)
+- `AuditStats` (interface)
+- `AuditOperation` (type)
+
+### `src/features/FactExtractor.ts`
+
+- `ExtractedFact` (interface)
+- `FactExtractionOptions` (interface)
+- `FactExtractionResult` (interface)
+
+### `src/features/FreshnessManager.ts`
+
+- `FreshnessReport` (interface)
+- `FreshnessManagerConfig` (interface)
+
+### `src/features/GovernanceManager.ts`
+
+- `GovernancePolicy` (interface)
+- `GovernanceOperationOptions` (interface)
+
 ### `src/features/IOManager.ts`
 
+- `IngestInput` (interface)
+- `IngestOptions` (interface)
+- `IngestResult` (interface)
 - `BackupMetadata` (interface)
 - `BackupInfo` (interface)
+- `SplitOptions` (interface)
+- `SplitResult` (interface)
+- `VisualizeOptions` (interface)
+- `VisualizeOptions` (interface)
 - `ExportFormat` (type)
 - `ImportFormat` (type)
 - `MergeStrategy` (type)
@@ -101,10 +289,22 @@ These exports are not imported by any other file in the codebase:
 
 - `ScoredKeyword` (interface)
 
+### `src/features/ObservableDataModelAdapter.ts`
+
+- `ObservableDataModelShape` (interface)
+- `ObservableDataModelAdapterOptions` (interface)
+- `JSONValue` (type)
+- `GraphProjection` (type)
+
 ### `src/features/ObservationNormalizer.ts`
 
 - `NormalizationOptions` (interface)
 - `NormalizationResult` (interface)
+
+### `src/features/SemanticForget.ts`
+
+- `SemanticForgetResult` (interface)
+- `SemanticForgetOptions` (interface)
 
 ### `src/search/BM25Search.ts`
 
@@ -143,6 +343,18 @@ These exports are not imported by any other file in the codebase:
 - `IncrementalIndexerOptions` (interface)
 - `FlushResult` (interface)
 - `IndexOperationType` (type)
+
+### `src/search/LLMQueryPlanner.ts`
+
+- `LLMProvider` (interface)
+
+### `src/search/LLMSearchExecutor.ts`
+
+- `LLMSearchExecutorOptions` (interface)
+
+### `src/search/NGramIndex.ts`
+
+- `NGramIndexStats` (interface)
 
 ### `src/search/OptimizedInvertedIndex.ts`
 
@@ -198,19 +410,31 @@ These exports are not imported by any other file in the codebase:
 
 - `SymbolicResult` (interface)
 
+### `src/search/TemporalSearch.ts`
+
+- `TemporalFilterField` (type)
+
 ### `src/search/VectorStore.ts`
 
 - `SQLiteStorageWithEmbeddings` (interface)
+
+### `src/security/PiiRedactor.ts`
+
+- `PiiPattern` (interface)
+- `PiiRedactorOptions` (interface)
+- `RedactionStats` (interface)
+- `RedactionResult` (interface)
 
 ### `src/types/agent-memory.ts`
 
 - `ObservationSource` (interface)
 - `MemorySource` (interface)
 - `AgentObservation` (interface)
+- `ProfileEntity` (interface)
 - `SalienceWeights` (interface)
 - `DecayOptions` (interface)
+- `GroupMembership` (interface)
 - `MemoryAcquisitionMethod` (type)
-- `TemporalFocus` (type)
 - `WorkingMemoryEntity` (type)
 - `EpisodicMemoryEntity` (type)
 - `SemanticMemoryEntity` (type)
@@ -248,7 +472,6 @@ These exports are not imported by any other file in the codebase:
 - `DocumentVector` (interface)
 - `TFIDFIndex` (interface)
 - `GraphStats` (interface)
-- `ValidationReport` (interface)
 - `ValidationIssue` (interface)
 - `ValidationWarning` (interface)
 - `ExportFilter` (interface)
@@ -268,9 +491,6 @@ These exports are not imported by any other file in the codebase:
 - `StorageConfig` (interface)
 - `TraversalOptions` (interface)
 - `TraversalResult` (interface)
-- `PathResult` (interface)
-- `ConnectedComponentsResult` (interface)
-- `CentralityResult` (interface)
 - `EmbeddingService` (interface)
 - `SemanticSearchResult` (interface)
 - `IVectorStore` (interface)
@@ -278,11 +498,11 @@ These exports are not imported by any other file in the codebase:
 - `EmbeddingConfig` (interface)
 - `SemanticIndexOptions` (interface)
 - `BatchResult` (interface)
+- `OperationResult` (interface)
 - `BatchOptions` (interface)
 - `GraphEventBase` (interface)
 - `RelationCreatedEvent` (interface)
 - `RelationDeletedEvent` (interface)
-- `ObservationAddedEvent` (interface)
 - `ObservationDeletedEvent` (interface)
 - `GraphSavedEvent` (interface)
 - `GraphLoadedEvent` (interface)
@@ -293,7 +513,6 @@ These exports are not imported by any other file in the codebase:
 - `PreparedEntity` (interface)
 - `SymbolicFilters` (interface)
 - `HybridSearchOptions` (interface)
-- `HybridSearchResult` (interface)
 - `ExtractedEntity` (interface)
 - `TemporalRange` (interface)
 - `QueryAnalysis` (interface)
@@ -307,6 +526,10 @@ These exports are not imported by any other file in the codebase:
 - `GraphEvent` (type)
 - `GraphEventListener` (type)
 - `SearchMethod` (type)
+
+### `src/utils/AsyncMutex.ts`
+
+- `AsyncMutexOptions` (interface)
 
 ### `src/utils/BatchProcessor.ts`
 
@@ -343,7 +566,6 @@ These exports are not imported by any other file in the codebase:
 - `isWithinDateRange` (function)
 - `isWithinImportanceRange` (function)
 - `sanitizeObject` (function)
-- `validateFilePath` (function)
 - `CommonSearchFilters` (interface)
 
 ### `src/utils/EntityValidator.ts`
@@ -401,7 +623,6 @@ These exports are not imported by any other file in the codebase:
 - `ExtendedExportFormatInput` (type)
 - `MergeStrategyInput` (type)
 - `ExportFilterInput` (type)
-- `EntitySchema` (constant)
 - `AddObservationInputSchema` (constant)
 - `ArchiveCriteriaSchema` (constant)
 - `SavedSearchInputSchema` (constant)
