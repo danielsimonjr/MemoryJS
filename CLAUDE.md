@@ -269,6 +269,18 @@ Read by `ctx.memoryEngine` lazy getter on first access. All ten knobs.
 | `MEMORY_ENGINE_KEYWORD_WEIGHT` | Number (0–1) | `0.4` |
 | `MEMORY_ENGINE_OVERLAP_WEIGHT` | Number (0–1) | `0.3` |
 
+### PRD Decay Extensions (v1.12.0 — Phase β.5/β.6)
+Powers `DecayEngine.calculatePrdEffectiveImportance` and is read by `IMemoryBackend.get_weighted` filter (T14+).
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_PRD_DECAY_RATE` | Number (1/seconds) | auto-derived from `MEMORY_DECAY_HALF_LIFE_HOURS` via `ln(2) / (halfLifeHours × 3600)` |
+| `MEMORY_PRD_FRESHNESS_COEFFICIENT` | Number (1/seconds) | `0.01` |
+| `MEMORY_PRD_RELEVANCE_WEIGHT` | Number (0–1) | `0.35` |
+| `MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD` | Number | `0.1` |
+
+Distinct from the legacy `MEMORY_DECAY_*` set: those drive `DecayEngine.calculateEffectiveImportance` (memoryjs scale `[0, 10]`), while `MEMORY_PRD_*` drive the parallel `calculatePrdEffectiveImportance` (PRD scale, auto-translates `[0, 10]` → `[1.0, 3.0]`). Both formulas coexist; existing callers (`DecayScheduler`, `SearchManager`, `SemanticForget`) keep using the legacy method.
+
 ## Documentation
 
 ```

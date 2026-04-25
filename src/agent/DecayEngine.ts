@@ -13,6 +13,12 @@ import type { AgentEntity, DecayResult, ForgetOptions, ForgetResult } from '../t
 import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
+import { tokenize as _tokenize } from '../utils/textSimilarity.js';
+
+/** Local helper — wraps the shared tokenize() into a Set for set-intersection. */
+function tokenize(text: string): Set<string> {
+  return new Set(_tokenize(text));
+}
 
 // Re-export for convenience
 export type { DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
@@ -47,6 +53,34 @@ export interface DecayEngineConfig {
    * Enable to make low-confidence memories decay faster in importance.
    */
   applyConfidenceToImportance?: boolean;
+
+  // ==== PRD MEM-01 (v1.12.0 — Memory Engine Decay Extensions) ====
+  /**
+   * PRD `decay_rate`: exponential decay rate per second for the recency
+   * term in `calculatePrdEffectiveImportance`. When absent, derived from
+   * `halfLifeHours` via `ln(2) / (halfLifeHours * 3600)`.
+   * Distinct from the legacy half-life formula used by
+   * `calculateEffectiveImportance`.
+   */
+  decayRate?: number;
+  /**
+   * PRD `freshness_coefficient`: exponential coefficient for the
+   * freshness term (per second since last access). Default 0.01.
+   */
+  freshnessCoefficient?: number;
+  /**
+   * PRD `relevance_weight`: scaling factor for the relevance-boost term.
+   * Default 0.35.
+   */
+  relevanceWeight?: number;
+  /**
+   * PRD `min_importance_threshold`: retrieval-time filter for
+   * `IMemoryBackend.get_weighted` and similar callers. Distinct from
+   * `minImportance` (which is a clamp applied during scoring) — this is
+   * a *filter* applied to the final score. Entities scoring below it
+   * are pruned. Default 0.1.
+   */
+  minImportanceThreshold?: number;
 }
 
 /**
@@ -101,14 +135,20 @@ export class DecayEngine {
   ) {
     this.storage = storage;
     this.accessTracker = accessTracker;
+    const halfLifeHours = config.halfLifeHours ?? 168; // 1 week
     this.config = {
-      halfLifeHours: config.halfLifeHours ?? 168, // 1 week
+      halfLifeHours,
       importanceModulation: config.importanceModulation ?? true,
       accessModulation: config.accessModulation ?? true,
       minImportance: config.minImportance ?? 0.1,
       ttlExpiredDecayMultiplier: config.ttlExpiredDecayMultiplier ?? 3.0,
       confidenceDecayRate: config.confidenceDecayRate ?? 0.001,
       applyConfidenceToImportance: config.applyConfidenceToImportance ?? false,
+      // PRD MEM-01: derive decayRate from halfLifeHours when not given.
+      decayRate: config.decayRate ?? Math.LN2 / (halfLifeHours * 3600),
+      freshnessCoefficient: config.freshnessCoefficient ?? 0.01,
+      relevanceWeight: config.relevanceWeight ?? 0.35,
+      minImportanceThreshold: config.minImportanceThreshold ?? 0.1,
     };
     this.freshnessManager = new FreshnessManager(storage, {
       defaultHalfLifeHours: this.config.halfLifeHours,
@@ -301,6 +341,76 @@ export class DecayEngine {
    */
   getFreshnessManager(): FreshnessManager {
     return this.freshnessManager;
+  }
+
+  // ==================== PRD-aligned Effective Importance (v1.12.0) ====================
+
+  /**
+   * Calculate effective importance using the Context Engine PRD formula.
+   *
+   * Distinct from `calculateEffectiveImportance` (legacy formula preserved
+   * for `DecayScheduler`, `SearchManager`, `SemanticForget`, etc.).
+   *
+   * Formula:
+   * ```
+   * effective = importance × recency × freshness + relevance_boost
+   *   recency         = e^(−decayRate × age_seconds)
+   *   freshness       = e^(−freshnessCoefficient × seconds_since_last_access)
+   *   relevance_boost = (|query_tokens ∩ turn_tokens| / |query_tokens|) × relevanceWeight
+   * ```
+   *
+   * `importance` is auto-scaled from memoryjs's `[0, 10]` range to PRD's
+   * `[1.0, 3.0]` range via `prd_importance = 1.0 + (memoryjs_importance / 10.0) * 2.0`.
+   *
+   * @param entity         AgentEntity to score.
+   * @param queryContext   Optional query string. When provided, enables the
+   *                       relevance-boost term via token overlap.
+   * @param now            Optional clock override (test injection). Defaults to `Date.now()`.
+   * @returns              Float in `[0, ∞)`. Callers filter via `minImportanceThreshold`.
+   */
+  calculatePrdEffectiveImportance(
+    entity: AgentEntity,
+    queryContext?: string,
+    now: number = Date.now(),
+  ): number {
+    // 1) Base importance — auto-scale from memoryjs [0,10] to PRD [1.0, 3.0].
+    const memoryjsScale = entity.importance ?? 5;
+    const prdImportance = 1.0 + (memoryjsScale / 10.0) * 2.0;
+
+    // 2) Recency factor — exponential decay since createdAt.
+    const createdAtMs = entity.createdAt ? new Date(entity.createdAt).getTime() : now;
+    const ageSeconds = Math.max(0, (now - createdAtMs) / 1000);
+    const recency = Math.exp(-this.config.decayRate * ageSeconds);
+
+    // 3) Freshness factor — exponential decay since lastAccessedAt
+    //    (falls back to createdAt when never accessed).
+    const lastAccessMs = entity.lastAccessedAt
+      ? new Date(entity.lastAccessedAt).getTime()
+      : createdAtMs;
+    const sinceAccessSeconds = Math.max(0, (now - lastAccessMs) / 1000);
+    const freshness = Math.exp(-this.config.freshnessCoefficient * sinceAccessSeconds);
+
+    // 4) Relevance boost — token overlap when a query is supplied.
+    let relevanceBoost = 0;
+    if (queryContext && queryContext.length > 0) {
+      const queryTokens = tokenize(queryContext);
+      if (queryTokens.size > 0) {
+        const turnText = (entity.observations ?? []).join(' ');
+        const turnTokens = tokenize(turnText);
+        let intersection = 0;
+        for (const t of queryTokens) {
+          if (turnTokens.has(t)) intersection += 1;
+        }
+        relevanceBoost = (intersection / queryTokens.size) * this.config.relevanceWeight;
+      }
+    }
+
+    return prdImportance * recency * freshness + relevanceBoost;
+  }
+
+  /** Read-only accessor for the configured PRD `min_importance_threshold`. */
+  get prdMinImportanceThreshold(): number {
+    return this.config.minImportanceThreshold;
   }
 
   // ==================== Decayed Memory Queries ====================

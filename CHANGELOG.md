@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase β.5/β.6 — PRD decay extensions)
+
+- **`DecayEngine.calculatePrdEffectiveImportance(entity, queryContext?, now?)`** — Parallel scoring method using the Context Engine PRD formula (`importance × recency × freshness + relevance_boost`) per `docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md`. Auto-scales memoryjs's `[0, 10]` importance to PRD's `[1.0, 3.0]`. The legacy `calculateEffectiveImportance` method is unchanged so existing callers (`DecayScheduler`, `SearchManager`, `SemanticForget`) preserve their semantics; this is a strictly additive parallel method. Closes T15 (Phase β.5). 8 new unit tests in `tests/unit/agent/DecayEngine.test.ts`.
+- **`DecayEngineConfig` extension** — Four new optional fields (`decayRate`, `freshnessCoefficient`, `relevanceWeight`, `minImportanceThreshold`) per PRD MEM-01. `decayRate` is auto-derived from `halfLifeHours` (`ln(2) / (halfLifeHours × 3600)`) when not given. Closes T16 (Phase β.6).
+- **Four new env vars** wired through `ctx.decayEngine`: `MEMORY_PRD_DECAY_RATE` (auto-derived), `MEMORY_PRD_FRESHNESS_COEFFICIENT` (default `0.01`), `MEMORY_PRD_RELEVANCE_WEIGHT` (default `0.35`), `MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD` (default `0.1`). Distinct from the legacy `MEMORY_DECAY_*` set — see CLAUDE.md § Environment Variables for the side-by-side. New `envNumberOrUndefined` helper added to `ManagerContext` so the `decayRate` auto-derive isn't masked when the env var is unset.
+- **`DecayEngine.prdMinImportanceThreshold`** read-only accessor — exposes the configured PRD threshold for downstream filters (e.g., `IMemoryBackend.get_weighted` in T14+).
+
 ### Added (Phase β.1 — IMemoryBackend interface)
 
 - **`src/agent/MemoryBackend.ts`** — Defines `IMemoryBackend` interface plus `MemoryTurn`, `WeightedTurn`, and `GetWeightedOptions` types per `docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md` (PRD MEM-04). Naming preserves the PRD's snake_case (`get_weighted`, `delete_session`, `list_sessions`) — the only place in the codebase that does so. Distinct from `IGraphStorage`: `IGraphStorage` is the durable graph-store contract (entities + relations + indexes + transactions); `IMemoryBackend` is the agent-memory-flavored contract (turn-level ingest, weighted retrieval, session lifecycle). Both coexist; this is purely additive. No backend implementations yet — `InMemoryBackend` lands in T12, `SQLiteBackend` in T13.

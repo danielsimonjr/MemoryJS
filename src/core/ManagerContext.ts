@@ -390,9 +390,24 @@ export class ManagerContext {
         minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
         importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
         accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
+        // PRD MEM-01 (v1.12.0). decayRate is auto-derived from halfLifeHours
+        // when env-var unset (NaN check avoids overriding the auto-derive).
+        decayRate: this.envNumberOrUndefined('MEMORY_PRD_DECAY_RATE'),
+        freshnessCoefficient: this.getEnvNumber('MEMORY_PRD_FRESHNESS_COEFFICIENT', 0.01),
+        relevanceWeight: this.getEnvNumber('MEMORY_PRD_RELEVANCE_WEIGHT', 0.35),
+        minImportanceThreshold: this.getEnvNumber('MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD', 0.1),
       });
     }
     return this._decayEngine;
+  }
+
+  /** Returns env-var as number, or undefined when unset (lets the
+   *  default-derive logic in DecayEngine kick in for `decayRate`). */
+  private envNumberOrUndefined(name: string): number | undefined {
+    const raw = process.env[name];
+    if (raw === undefined || raw === '') return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
   }
 
   /**

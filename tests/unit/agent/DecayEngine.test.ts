@@ -1032,3 +1032,132 @@ describe('DecayEngine.getConfig', () => {
     expect(config1.halfLifeHours).toBe(100);
   });
 });
+
+// ==================== PRD Effective Importance Tests (v1.12.0) ====================
+
+describe('DecayEngine.calculatePrdEffectiveImportance', () => {
+  function makeEntity(overrides: Partial<AgentEntity> = {}): AgentEntity {
+    const now = new Date().toISOString();
+    return {
+      name: 'turn-1',
+      entityType: 'memory_turn',
+      observations: ['hello world example content'],
+      createdAt: now,
+      lastModified: now,
+      lastAccessedAt: now,
+      memoryType: 'episodic',
+      accessCount: 0,
+      confidence: 0.8,
+      confirmationCount: 0,
+      visibility: 'private',
+      importance: 5,
+      ...overrides,
+    } as AgentEntity;
+  }
+
+  it('returns the auto-scaled PRD importance when no decay applies (now=createdAt, no query)', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+    const entity = makeEntity({ importance: 5 });
+    // memoryjs 5/10 → PRD 1.0 + 0.5*2.0 = 2.0; recency=1, freshness=1, no boost.
+    const score = decay.calculatePrdEffectiveImportance(
+      entity,
+      undefined,
+      Date.parse(entity.createdAt!),
+    );
+    expect(score).toBeCloseTo(2.0, 5);
+  });
+
+  it('decays with age (lower score when older)', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, { halfLifeHours: 1 });
+    const t0 = Date.parse('2026-01-01T00:00:00Z');
+    const entity = makeEntity({
+      importance: 5,
+      createdAt: '2026-01-01T00:00:00Z',
+      lastAccessedAt: '2026-01-01T00:00:00Z',
+    });
+    const fresh = decay.calculatePrdEffectiveImportance(entity, undefined, t0);
+    const oneHourLater = decay.calculatePrdEffectiveImportance(entity, undefined, t0 + 3600 * 1000);
+    expect(oneHourLater).toBeLessThan(fresh);
+    // halfLifeHours=1 → recency = 1/2 after 1h; freshness term reduces further.
+    expect(oneHourLater).toBeLessThan(fresh / 2);
+  });
+
+  it('relevance boost adds when query tokens overlap', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+    const entity = makeEntity({ observations: ['the quick brown fox'] });
+    const t0 = Date.parse(entity.createdAt!);
+    const noQuery = decay.calculatePrdEffectiveImportance(entity, undefined, t0);
+    const overlap = decay.calculatePrdEffectiveImportance(entity, 'quick fox', t0);
+    expect(overlap).toBeGreaterThan(noQuery);
+  });
+
+  it('relevance boost is zero when no overlap', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+    const entity = makeEntity({ observations: ['the quick brown fox'] });
+    const t0 = Date.parse(entity.createdAt!);
+    const noOverlap = decay.calculatePrdEffectiveImportance(entity, 'lorem ipsum', t0);
+    const noQuery = decay.calculatePrdEffectiveImportance(entity, undefined, t0);
+    expect(noOverlap).toBeCloseTo(noQuery, 5);
+  });
+
+  it('auto-scales memoryjs importance [0,10] to PRD [1.0, 3.0]', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+    const t0 = Date.parse('2026-01-01T00:00:00Z');
+    const at0 = makeEntity({ importance: 0, createdAt: '2026-01-01T00:00:00Z', lastAccessedAt: '2026-01-01T00:00:00Z' });
+    const at5 = makeEntity({ importance: 5, createdAt: '2026-01-01T00:00:00Z', lastAccessedAt: '2026-01-01T00:00:00Z' });
+    const at10 = makeEntity({ importance: 10, createdAt: '2026-01-01T00:00:00Z', lastAccessedAt: '2026-01-01T00:00:00Z' });
+    expect(decay.calculatePrdEffectiveImportance(at0, undefined, t0)).toBeCloseTo(1.0, 5);
+    expect(decay.calculatePrdEffectiveImportance(at5, undefined, t0)).toBeCloseTo(2.0, 5);
+    expect(decay.calculatePrdEffectiveImportance(at10, undefined, t0)).toBeCloseTo(3.0, 5);
+  });
+
+  it('exposes prdMinImportanceThreshold from config (default 0.1)', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+    expect(decay.prdMinImportanceThreshold).toBe(0.1);
+  });
+
+  it('respects an overridden minImportanceThreshold', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, { minImportanceThreshold: 0.5 });
+    expect(decay.prdMinImportanceThreshold).toBe(0.5);
+  });
+
+  it('accepts decayRate / freshnessCoefficient / relevanceWeight overrides', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker, {
+      decayRate: 0.001,
+      freshnessCoefficient: 0.005,
+      relevanceWeight: 0.5,
+    });
+    const cfg = decay.getConfig() as DecayEngineConfig;
+    expect(cfg.decayRate).toBe(0.001);
+    expect(cfg.freshnessCoefficient).toBe(0.005);
+    expect(cfg.relevanceWeight).toBe(0.5);
+  });
+
+  it('does not affect legacy calculateEffectiveImportance (formula preserved)', () => {
+    const storage = createMockStorage();
+    const tracker = new AccessTracker(storage);
+    const decay = new DecayEngine(storage, tracker);
+    const entity = makeEntity({ importance: 7 });
+    const legacy = decay.calculateEffectiveImportance(entity);
+    expect(legacy).toBeGreaterThan(0);
+    expect(legacy).toBeLessThanOrEqual(10);
+    const prd = decay.calculatePrdEffectiveImportance(entity);
+    expect(prd).toBeGreaterThan(0);
+  });
+});

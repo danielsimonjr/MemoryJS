@@ -305,8 +305,8 @@ Unblocks γ, δ. Smallest spec'd-but-unshipped feature.
 | T12 | β.2: implement `InMemoryBackend` | 🟡 | T11 | T13 |
 | T13 | β.3: implement `SQLiteBackend` | 🟡 | T11 | T12 |
 | T14 | β.4: wire `MemoryEngine` to backend (default In-Memory) | 🟡 | T12, T13 | — |
-| T15 | β.5: `DecayEngine.calculatePrdEffectiveImportance` | 🟡 | T11 | T16 |
-| T16 | β.6: configurable decay params (`AgentMemoryConfig`) | 🟡 | T11 | T15 |
+| T15 | β.5: `DecayEngine.calculatePrdEffectiveImportance` | ✅ | — | done 2026-04-25 |
+| T16 | β.6: configurable decay params (`AgentMemoryConfig`) | ✅ | — | done 2026-04-25 |
 | T17 | β.7: code review pass | 🟡 | T14, T15, T16 | — |
 
 ### T10 — Phase β.0: trace storage wire-up points
