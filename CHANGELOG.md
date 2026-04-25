@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Specs added (no code changes — design docs only)
+
+- **`docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md`** — Context Engine sub-feature #3b. Covers PRD §3 `GOAL-03`, §8 `MEM-01` (configurable decay parameters: `decay_rate`, `freshness_coefficient`, `relevance_weight`, `min_importance_threshold`), §8 `MEM-04` (`IMemoryBackend` with `InMemoryBackend` + `SQLiteBackend` adapters), and the deferred PRD importance-range `[1.0, 3.0]` mapping. Adds a new parallel `DecayEngine.calculatePrdEffectiveImportance` method; legacy `calculateEffectiveImportance` semantics preserved for `DecayScheduler` / `SearchManager` / `SemanticForget`. Target release: **v1.12.0** (after Core).
+- **`docs/superpowers/specs/_archived-2026-04-16-context-engine-memory-engine-design.md`** — previous single-spec version of the v1.11.0 + v1.12.0 split, kept with SUPERSEDED banner describing the split rationale and all 11 design changes driven by the review.
+
+## [1.11.0] - 2026-04-24
+
 ### Added
 
 - **`MemoryEngine.addTurn` happy path with events** — Implements turn-aware conversation memory ingestion (`src/agent/MemoryEngine.ts`). On each turn: runs the four-tier dedup chain (`checkTierExact` / `checkTierPrefix` / `checkTierJaccard` / optional `checkTierSemantic`); on duplicate, emits `memoryEngine:duplicateDetected` with the existing entity + matched tier and returns it without creating a new record. On non-duplicate: scores importance via `ImportanceScorer` (with optional `queryContext` + `recentTurns` for overlap signal — recent turns auto-loaded from session window if not provided), calls `EpisodicMemoryManager.createEpisode` with role-prefixed observation `[role=...] content`, populates `Entity.contentHash` via `storage.updateEntity`, opportunistically stores the embedding via duck-typed `storeEmbedding` when both an `EmbeddingService` and a SQLite-backed storage are wired, and emits `memoryEngine:turnAdded`. Closes Task 9 of `docs/superpowers/plans/2026-04-16-memory-engine-core-plan.md` and unblocks the v1.11.0 release chain (Tasks 10–15). 5 new unit tests under `describe('MemoryEngine — addTurn')`.
@@ -33,13 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Path-validation regression breaking ~1700 unit tests** — Commit `d005821` flipped `validateFilePath`'s `confineToBase` default from `false` to `true`, causing every test that passed an `os.tmpdir()` path through `ManagerContext` / `GraphStorage` / `SQLiteStorage` to throw `FileOperationError: Path is outside the allowed directory`. Fixed surgically: the three internal-storage call sites now pass `confineToBase: false` explicitly with rationale comments — their input is application-controlled and was already validated upstream. The defense-in-depth `..`-segment check at the top of `validateFilePath` (the actual security improvement from `d005821`) is preserved unchanged. Public API of `validateFilePath` and the strict default for external callers (CLI, IOManager backup paths) are unchanged. Test suite recovery: 1716 → 87 failures (1629 tests un-broken).
 
-### Specs added (no code changes — design docs only)
+### Notes
 
-- **`docs/superpowers/specs/2026-04-16-memory-engine-core-design.md`** — Context Engine sub-feature #3a. Covers PRD §8 `MEM-02` (auto-importance scoring with recent-turn overlap) and `MEM-03` (three-tier dedup: exact equality / 50% prefix overlap / Jaccard ≥ 0.72). Proposes a new `MemoryEngine` class composing over `EpisodicMemoryManager` + `WorkingMemoryManager`, a new `ImportanceScorer` class, a single additive `Entity.contentHash` field, and a `node:events`-based event emitter independent of the closed `GraphEvent` union. Target release: **v1.11.0**.
-- **`docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md`** — Context Engine sub-feature #3b. Covers PRD §3 `GOAL-03`, §8 `MEM-01` (configurable decay parameters: `decay_rate`, `freshness_coefficient`, `relevance_weight`, `min_importance_threshold`), §8 `MEM-04` (`IMemoryBackend` with `InMemoryBackend` + `SQLiteBackend` adapters), and the deferred PRD importance-range `[1.0, 3.0]` mapping. Adds a new parallel `DecayEngine.calculatePrdEffectiveImportance` method; legacy `calculateEffectiveImportance` semantics preserved for `DecayScheduler` / `SearchManager` / `SemanticForget`. Target release: **v1.12.0** (after Core).
-- **`docs/superpowers/specs/_archived-2026-04-16-context-engine-memory-engine-design.md`** — previous single-spec version, kept with SUPERSEDED banner describing the split rationale and all 11 design changes driven by the review.
-
-Both new specs were reviewed by two independent subagents (Opus + Sonnet, each armed with the RLM skill) producing 39 findings. All 8 blockers were validated against the actual memoryjs codebase via the HonestClaude discipline before fixes were applied. No implementation yet — specs only.
+- Two design specs reviewed during this cycle by two independent subagents (Opus + Sonnet, each armed with the RLM skill) produced 39 findings. All 8 blockers were validated against the actual memoryjs codebase via the HonestClaude discipline before fixes were applied. The v1.11.0 core spec landed as the implementation in this release; the v1.12.0 decay-extensions spec remains as a design doc only and is tracked under `[Unreleased]` above.
+- Test-suite recovery during this cycle: the v1.10.0 path-validation security fix had introduced a regression breaking ~1700 tests (every `os.tmpdir()`-based test). T03 + T06b widened the surgical fix across all internal storage call sites and one CLI site; the defense-in-depth `..` segment check at the top of `validateFilePath` continues to run unconditionally on every site. End state: 5551/5551 unit + integration tests passing.
+- Persistence drift was discovered and fixed in BOTH backends during this cycle. JSONL: `GraphStorage`'s three serialization sites had drifted out of sync with the type system; centralized into `OPTIONAL_PERSISTED_ENTITY_FIELDS` constant. SQLite: schema lacked AgentEntity-extension columns and `rowToEntity` lacked the mapping; resolved via single `agentMetadata` JSON-blob column with idempotent migration. Affects every `AgentEntity` / `SessionEntity` / `ArtifactEntity` write — pre-v1.11 data round-trips correctly via the migration path.
 
 ## [1.10.0] - 2026-04-14
 
@@ -192,7 +197,9 @@ const adapter = await createObservableDataModelFromGraph(ctx.storage, {
 - **LLM Query Planner** (`src/search/LLMQueryPlanner.ts`, `src/search/LLMSearchExecutor.ts`): Optional module that decomposes natural language queries into a `StructuredQuery`. `LLMProvider` interface, keyword fallback when no provider configured, JSON validation with recovery. `ManagerContext.queryNaturalLanguage()` entry point.
 - **Dynamic Memory Governance** (`src/features/AuditLog.ts`, `src/features/GovernanceManager.ts`): `AuditLog` with JSONL persistence for immutable operation history. `GovernanceManager` with `withTransaction`/`rollback` semantics. `GovernancePolicy` interface (`canCreate`/`canUpdate`/`canDelete`).
 
-## [Unreleased]
+## [Pre-1.6.0 CLI hardening — legacy unreleased section]
+
+> Historical entry: this block was previously labeled `[Unreleased]` but the work described here landed before v1.6.0 was tagged. Retained as-is for changelog continuity. Cross-references the [1.6.0] section above for the full feature set that shipped in that release.
 
 ### Added
 - **CLI: New commands**: Added hierarchy (set-parent, children, ancestors, descendants, roots), graph (shortest-path, centrality, components), maintenance (stats, archive, compress, validate), and tag management (add, remove, aliases) commands

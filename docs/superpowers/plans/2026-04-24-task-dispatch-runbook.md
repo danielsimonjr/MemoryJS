@@ -41,11 +41,13 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-1. **T09** — v1.11.0 Task 15: ship v1.11.0 (bump `package.json`, finalize `## [Unreleased]` → `## [1.11.0]`, move v1.12.0 spec entries into a fresh Unreleased, tag `v1.11.0`, run `/RELEASE` skill). *(Unblocked; T08 shipped on `master`.)*
-2. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Independent of the v1.11.0 chain.)*
-3. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Independent; warm-up for ε.)*
+The v1.11.0 chain (T03–T09) is complete. Released as `v1.11.0` on 2026-04-24. Two ready-to-dispatch streams remain plus the start of Phase β:
 
-T09 is the v1.11.0 release commit and tag — should be alone (no parallel committers on `package.json` / `CHANGELOG.md`).
+1. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Plan-doc rot prevention; meta-tooling.)*
+2. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Read-only inventory; unblocks T42 unskip.)*
+3. **T10** — Phase β.0 pre-flight: code-explorer trace of every storage wire-up point. *(Sets up Phase β `IMemoryBackend` foundation — see execution-plan §β.)*
+
+All three are independent and can run in parallel — they touch entirely separate files.
 
 ---
 
@@ -260,7 +262,7 @@ Cardinal rules apply. Update plan checkbox at line 2032.`
 ### T09 — Version bump + CHANGELOG finalization (= ship v1.11.0)
 
 **Phase:** v1.11.0 Task 15 (line 2087) + execution-plan α.5/α.6/α.7
-**Status:** 🟡 BLOCKED on **T08**
+**Status:** ✅ DONE (2026-04-24)
 **Agent type:** `general-purpose`
 **Files touched:** `package.json`, `CHANGELOG.md`, git tag
 **Done when:**

@@ -1,6 +1,6 @@
 # Memory Engine Core Implementation Plan
 
-> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–14 SHIPPED on `master`, Task 15 PENDING.** Only Task 15 (release prep — version bump 1.10.0 → 1.11.0, finalize CHANGELOG, tag v1.11.0) remains. T08 refreshed CLAUDE.md with the MemoryEngine architecture entry, ten `MEMORY_ENGINE_*` env vars, the `contentHash` Entity field, and the `npm rebuild better-sqlite3` Node-version-mismatch gotcha.
+> **Status (verified 2026-04-24):** ✅ **COMPLETE — All 15 tasks SHIPPED on `master`.** v1.11.0 is released: `package.json` version bumped, `CHANGELOG.md` finalized with the full feature set (`MemoryEngine` + `ImportanceScorer` + `agentMetadata` blob + path-validation widening + perf smoke + CLAUDE.md refresh), `## [Unreleased]` reset to v1.12.0 spec entries only, `v1.11.0` git tag created. Stopped before `npm publish` per cardinal rule (publish is gated on user approval).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -2090,7 +2090,7 @@ EOF
 - Modify: `package.json` — bump `"version"` to `1.11.0`
 - Modify: `CHANGELOG.md` — convert `[Unreleased]` to `[1.11.0] - YYYY-MM-DD`
 
-- [ ] **Step 1: Bump the version in package.json**
+- [x] **Step 1: Bump the version in package.json**
 
 Edit `package.json` line 3:
 
@@ -2098,7 +2098,7 @@ Edit `package.json` line 3:
   "version": "1.11.0",
 ```
 
-- [ ] **Step 2: Finalize the CHANGELOG**
+- [x] **Step 2: Finalize the CHANGELOG**
 
 In `CHANGELOG.md`, replace the `## [Unreleased]` section header with `## [1.11.0] - YYYY-MM-DD` (use the release day's date). Replace the section body with:
 
@@ -2134,17 +2134,17 @@ const { entity, duplicateDetected } = await ctx.memoryEngine.addTurn(
 - PRD importance range `[1.0, 3.0]` is NOT implemented in v1.11.0 — `ImportanceScorer` emits memoryjs's native `[0, 10]` scale. Range mapping is owned by the companion Decay Extensions spec (v1.12.0).
 ```
 
-- [ ] **Step 3: Run the full test suite one more time**
+- [x] **Step 3: Run the full test suite one more time**
 
 Run: `SKIP_BENCHMARKS=true npm test -- --reporter=dot`
 Expected: all tests pass.
 
-- [ ] **Step 4: Final typecheck**
+- [x] **Step 4: Final typecheck**
 
 Run: `npm run typecheck`
 Expected: no errors.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add package.json CHANGELOG.md
@@ -2160,7 +2160,7 @@ EOF
 )"
 ```
 
-- [ ] **Step 6: Push**
+- [x] **Step 6: Push**
 
 ```bash
 git pull --rebase origin master
