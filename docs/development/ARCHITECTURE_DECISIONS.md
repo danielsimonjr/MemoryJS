@@ -14,6 +14,7 @@ This document captures key architectural decisions made during MemoryJS developm
 8. [ADR-008: Barrel Export Pattern](#adr-008-barrel-export-pattern)
 9. [ADR-009: In-Memory Cache Strategy](#adr-009-in-memory-cache-strategy)
 10. [ADR-010: Hybrid Search Architecture](#adr-010-hybrid-search-architecture)
+11. [ADR-011: Phase δ Memory Intelligence service shape (wrap-and-extend)](#adr-011-phase-δ--memory-intelligence-service-shape-wrap-and-extend)
 
 ---
 
@@ -564,10 +565,81 @@ finalScore = (semantic * 0.4) + (lexical * 0.4) + (symbolic * 0.2);
 ## Template for New ADRs
 
 ```markdown
-## ADR-XXX: Title
+## ADR-011: Phase δ — Memory Intelligence service shape (wrap-and-extend)
 
-**Status**: Proposed | Accepted | Deprecated | Superseded
-**Date**: YYYY-MM
+**Status**: Accepted
+**Date**: 2026-04-25
+
+### Context
+
+ROADMAP §3B specifies three new services for the *Reflection* / *Experience* memory stages (Luo et al., 2026):
+
+- **§3B.1 `MemoryValidator`** — `validateConsistency` / `detectContradictions` / `repairMemory` / `validateTemporalOrder` / `calculateReliability`
+- **§3B.2 `TrajectoryCompressor`** — `distill` / `abstractAtLevel` / `foldContext` / `findRedundancies` / `mergeRedundant`
+- **§3B.3 `ExperienceExtractor`** — `extractFromContrastivePairs` / `abstractPattern` / `learnDecisionBoundary` / `clusterTrajectories` / `synthesizeExperience`
+
+memoryjs already ships overlapping infrastructure:
+
+| Existing class | Method | Maps to spec method |
+|---|---|---|
+| `ContradictionDetector` (`src/features/`) | `detect(entity, newObs)` | `MemoryValidator.detectContradictions` |
+| `ContextWindowManager` | `compressForContext(text, opts)` | `TrajectoryCompressor.foldContext` |
+| `PatternDetector` (`src/agent/`) | `detectPatterns(obs, minOccurrences)` | `ExperienceExtractor.abstractPattern` |
+
+Each existing class has unit tests, public callers, and proven semantics. The three spec'd services each have **one method overlap and four new methods**.
+
+### Decision
+
+**Wrap-and-extend per service.** Each new service ships as a new class that *delegates* to the existing infrastructure for its overlapping method, and *implements* the four new methods natively.
+
+| New service | Wraps | New methods |
+|---|---|---|
+| `MemoryValidator` | `ContradictionDetector` (delegate `detectContradictions`) | `validateConsistency`, `repairMemory`, `validateTemporalOrder`, `calculateReliability` |
+| `TrajectoryCompressor` | `ContextWindowManager.compressForContext` (delegate `foldContext`) | `distill`, `abstractAtLevel`, `findRedundancies`, `mergeRedundant` |
+| `ExperienceExtractor` | `PatternDetector` (delegate `abstractPattern`) | `extractFromContrastivePairs`, `learnDecisionBoundary`, `clusterTrajectories`, `synthesizeExperience` |
+
+The existing classes stay untouched. Their public API and tests are not affected. Callers that use them directly continue to work. New consumers prefer the higher-level service wrappers.
+
+### Alternatives Considered
+
+| Option | Pros | Cons |
+|---|---|---|
+| **Wrap-and-extend** (chosen) | Zero risk to existing callers; tests stay green; existing tested logic re-used; clean separation between "primitives" (existing) and "services" (new) | Two layers — slight indirection for the overlapped method |
+| Rename existing classes to the spec'd names | Single class per concern; matches spec naming exactly | Breaking API change; rewrites the tests; rewrites every caller; loses the "primitive vs service" distinction |
+| Greenfield — reimplement everything in new classes | Single class per concern; no wrapper overhead | Duplicates proven logic; doubles the maintenance cost; loses ContradictionDetector's tested semantic-similarity path |
+| Inline the spec'd methods directly into the existing classes | One class per concern, no rename needed | Bloats single-purpose classes (`ContradictionDetector` is currently ~150 LOC; adding 4 methods would 5× it) and conflates two abstraction levels — primitive detector vs. high-level service |
+
+### Consequences
+
+**Positive:**
+- Existing `ContradictionDetector`, `compressForContext`, `PatternDetector` callers unchanged → zero regression risk for v1.x consumers.
+- Each new service's "delegated" method is a one-line forward → preserves tested behavior.
+- Clear separation: `src/features/` and `src/agent/` keep the primitives; `src/agent/` (where the new services land) gets the higher-level orchestration.
+- Spec naming preserved (the spec talks about `MemoryValidator`, `TrajectoryCompressor`, `ExperienceExtractor` as standalone services).
+- Each service can be implemented and tested independently (T29–T32, T33–T36, T37–T40 in the runbook).
+
+**Negative:**
+- One extra layer of indirection for the three overlapping methods.
+- Two classes to read for the full picture of a single concern (e.g., contradiction detection logic in `ContradictionDetector`, contradiction-driven repair in `MemoryValidator`).
+- Mitigated by clear JSDoc on the wrapper methods pointing to the underlying primitive.
+
+### Implementation Notes
+
+File layout for Phase δ:
+
+```
+src/agent/
+├── MemoryValidator.ts          # T29–T32 (Phase δ.1)
+├── TrajectoryCompressor.ts     # T33–T36 (Phase δ.2)
+├── ExperienceExtractor.ts      # T37–T40 (Phase δ.3)
+└── (existing files unchanged)
+```
+
+Constructor pattern matches the rest of the agent module — dependencies injected, lazy-initialized via `ManagerContext` (β.4 pattern).
+
+Test pattern: each service's own test file, no parameterized suite needed (the three services have different shapes — no contract overlap like the `IMemoryBackend` adapters had).
+
+
 
 ### Context
 

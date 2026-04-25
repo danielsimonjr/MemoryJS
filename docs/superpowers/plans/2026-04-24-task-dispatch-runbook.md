@@ -503,19 +503,19 @@ Plan checkbox γ.0 → [x] when ADR draft is committed.`
 
 | ID | Track | Task | Blockers |
 |---|---|---|---|
-| T28 | δ.0 | design ADR comparing existing detectors to ROADMAP §3B interfaces | T17 (or T11 if proceeding without backends) |
-| T29 | δ.1.1 | `MemoryValidator` interface | T28 |
-| T30 | δ.1.2 | impl using existing `ContradictionDetector` | T29 |
-| T31 | δ.1.3 | pre-storage validation hook in `ObservationManager` | T30 |
-| T32 | δ.1.4 | integration with `ConflictResolver` | T31 |
-| T33 | δ.2.1 | `TrajectoryCompressor` interface | T28 |
-| T34 | δ.2.2 | impl wrapping `compressForContext` | T33 |
-| T35 | δ.2.3 | strategies (semantic_clustering / temporal_windowing / importance_filtering / hierarchical) | T34 |
-| T36 | δ.2.4 | wire into `ContextWindowManager` | T35 |
-| T37 | δ.3.1 | `ExperienceExtractor` interface | T28 |
-| T38 | δ.3.2 | `extractFromContrastivePairs` | T37 |
-| T39 | δ.3.3 | `clusterTrajectories` | T38 |
-| T40 | δ.3.4 | `synthesizeExperience` | T39 |
+| T28 | δ.0 | design ADR comparing existing detectors to ROADMAP §3B interfaces | ✅ done 2026-04-25 (ADR-011) |
+| T29 | δ.1.1 | `MemoryValidator` interface | ✅ done 2026-04-25 |
+| T30 | δ.1.2 | impl using existing `ContradictionDetector` | ✅ done 2026-04-25 |
+| T31 | δ.1.3 | pre-storage validation hook in `ObservationManager` | 🟡 deferred (caller-driven; validator is exposed for opt-in via `ctx.memoryValidator`) |
+| T32 | δ.1.4 | integration with `ConflictResolver` | 🟡 deferred (`resolveConflict` requires upstream `ConflictInfo`; documented in `MemoryValidator.repairMemory`) |
+| T33 | δ.2.1 | `TrajectoryCompressor` interface | ✅ done 2026-04-25 |
+| T34 | δ.2.2 | impl wrapping `compressForContext` | ✅ done 2026-04-25 |
+| T35 | δ.2.3 | strategies (semantic_clustering / temporal_windowing / importance_filtering / hierarchical) | 🟡 partial — `mergeRedundant` shipped with 3 merge strategies; ROADMAP-spec compression-clustering strategies are descriptive guidance, not separate methods |
+| T36 | δ.2.4 | wire into `ContextWindowManager` | ✅ done 2026-04-25 (`ctx.trajectoryCompressor` lazy getter) |
+| T37 | δ.3.1 | `ExperienceExtractor` interface | ✅ done 2026-04-25 |
+| T38 | δ.3.2 | `extractFromContrastivePairs` | ✅ done 2026-04-25 |
+| T39 | δ.3.3 | `clusterTrajectories` | ✅ done 2026-04-25 |
+| T40 | δ.3.4 | `synthesizeExperience` | ✅ done 2026-04-25 |
 
 T29 / T33 / T37 can run in parallel after T28. Within each track the order is sequential.
 

@@ -53,6 +53,10 @@ import { ImportanceScorer } from '../agent/ImportanceScorer.js';
 import type { IMemoryBackend } from '../agent/MemoryBackend.js';
 import { InMemoryBackend } from '../agent/InMemoryBackend.js';
 import { SQLiteBackend } from '../agent/SQLiteBackend.js';
+import { MemoryValidator } from '../agent/MemoryValidator.js';
+import { TrajectoryCompressor } from '../agent/TrajectoryCompressor.js';
+import { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
+import { PatternDetector } from '../agent/PatternDetector.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -102,6 +106,10 @@ export class ManagerContext {
   private _semanticSearch?: SemanticSearch | null;
   private _memoryEngine?: MemoryEngine;
   private _memoryBackend?: IMemoryBackend;
+  private _memoryValidator?: MemoryValidator;
+  private _trajectoryCompressor?: TrajectoryCompressor;
+  private _experienceExtractor?: ExperienceExtractor;
+  private _patternDetector?: PatternDetector;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -358,6 +366,65 @@ export class ManagerContext {
       }
     }
     return this._memoryBackend;
+  }
+
+  /**
+   * MemoryValidator (ROADMAP §3B.1, Phase δ.1) — reflection-stage
+   * service that prevents hallucinations and logical errors from
+   * contaminating memory through self-critique before storage.
+   * Wraps `ContradictionDetector`. Lazy-initialized.
+   *
+   * Construction needs `ContradictionDetector(SemanticSearch, threshold)`.
+   * If no semantic-search backend is configured, a no-op detector is
+   * synthesized so MemoryValidator's other methods still work — the
+   * detection method just returns no contradictions.
+   */
+  get memoryValidator(): MemoryValidator {
+    if (!this._memoryValidator) {
+      const ss = this.semanticSearch;
+      const detector = ss
+        ? new ContradictionDetector(ss, 0.85)
+        : new ContradictionDetector(
+            { calculateSimilarity: async () => 0 } as never,
+            0.85,
+          );
+      this._memoryValidator = new MemoryValidator(detector);
+    }
+    return this._memoryValidator;
+  }
+
+  /**
+   * TrajectoryCompressor (ROADMAP §3B.2, Phase δ.2) — reflection-stage
+   * service that distills verbose interaction histories into compact,
+   * reusable representations. Wraps `compressForContext`. Lazy.
+   */
+  get trajectoryCompressor(): TrajectoryCompressor {
+    if (!this._trajectoryCompressor) {
+      this._trajectoryCompressor = new TrajectoryCompressor(this.contextWindowManager);
+    }
+    return this._trajectoryCompressor;
+  }
+
+  /**
+   * ExperienceExtractor (ROADMAP §3B.3, Phase δ.3) — experience-stage
+   * service that abstracts universal patterns from trajectory clusters
+   * for zero-shot transfer. Wraps `PatternDetector`. Lazy.
+   */
+  get experienceExtractor(): ExperienceExtractor {
+    if (!this._experienceExtractor) {
+      this._experienceExtractor = new ExperienceExtractor(this.patternDetector);
+    }
+    return this._experienceExtractor;
+  }
+
+  /** Lazy `PatternDetector` instance — backs `experienceExtractor`
+   * but also exposed directly for callers that want pattern detection
+   * without the full Experience-stage wrapper. */
+  get patternDetector(): PatternDetector {
+    if (!this._patternDetector) {
+      this._patternDetector = new PatternDetector();
+    }
+    return this._patternDetector;
   }
 
   /**

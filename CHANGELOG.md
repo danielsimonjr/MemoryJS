@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase δ — Memory Intelligence Services)
+
+- **`docs/development/ARCHITECTURE_DECISIONS.md` ADR-011** — "Phase δ Memory Intelligence service shape (wrap-and-extend)". Decides each new service wraps the matching existing primitive (`ContradictionDetector` / `compressForContext` / `PatternDetector`) rather than renaming or reimplementing. Closes T28 (Phase δ.0).
+- **`src/agent/MemoryValidator.ts`** (Phase δ.1) — `validateConsistency` (composite duplicate/semantic/low-confidence check), `detectContradictions` (delegates to `ContradictionDetector` with symmetric-pair dedup + severity bucketing), `repairMemory` (appends `[repair]`-prefixed observation), `validateTemporalOrder` (synchronous `[T=ISO]` ordering check), `calculateReliability` (composite of confidence + confirmation count + age penalty, clamped to `[0, 1]`). 14 unit tests. Closes T29 + T30.
+- **`src/agent/TrajectoryCompressor.ts`** (Phase δ.2) — `distill` (token-overlap-based summarization with `maxLength` truncation), `abstractAtLevel` (`fine` / `medium` / `coarse` granularity), `foldContext` (delegates to `ContextWindowManager.compressForContext` with adaptive level), `findRedundancies` (Jaccard-clustered groups), `mergeRedundant` (3 strategies: `keep-newest` / `keep-most-confident` / `union-observations`). 12 unit tests. Closes T33 + T34 + T36.
+- **`src/agent/ExperienceExtractor.ts`** (Phase δ.3) — `extractFromContrastivePairs` (token-frequency-bias rules with confidence + support/contra counts), `abstractPattern` (delegates to `PatternDetector` with trajectory provenance), `learnDecisionBoundary` (positive/negative token separation), `clusterTrajectories` (`semantic` / `structural` / `outcome` methods with greedy single-link Jaccard), `synthesizeExperience` (procedure-vs-heuristic typing based on action density). 11 unit tests. Closes T37 + T38 + T39 + T40.
+- **`ctx.memoryValidator` / `ctx.trajectoryCompressor` / `ctx.experienceExtractor` / `ctx.patternDetector`** — four new lazy accessors on `ManagerContext` wiring the δ services. `MemoryValidator` builds a no-op `ContradictionDetector` when no semantic-search backend is configured, so its other methods (reliability, temporal-order) work without a provider. 5 wiring tests. Closes T36 wiring portion + barrel exports under `src/agent/index.ts` (with disambiguating re-exports for `ValidationResult`, `ValidationIssue`, and `MergeStrategy` to avoid collisions with existing `features/` and `utils/` exports).
+
+### Deferred (Phase δ — out-of-scope for this commit)
+
+- **T31** — pre-storage validation hook in `ObservationManager`. The validator is exposed via `ctx.memoryValidator` for opt-in by orchestrators; no automatic hook to keep behavior backwards-compatible.
+- **T32** — full `ConflictResolver` integration in `repairMemory`. `ConflictResolver.resolveConflict` requires upstream `ConflictInfo` construction (primary memory + competing memories + agent metadata) which is the orchestrator's job, not the validator's. `MemoryValidator.repairMemory` currently appends a `[repair]`-prefixed observation; orchestrator can call `ConflictResolver.resolveConflict` separately and feed the result back as `feedback`.
+- **T35** — compression-clustering strategies (`semantic_clustering` / `temporal_windowing` / `importance_filtering` / `hierarchical`) per ROADMAP §3B.2 prose. Re-read the spec: these are *descriptive* — they describe how `distill` should behave under different conditions, not separate methods on the public interface. The shipped `distill` uses token-overlap (semantic-clustering-like behavior). The 3 `mergeRedundant` strategies are the explicit per-spec choice points.
+
 ## [1.12.0] - 2026-04-25
 
 ### Added (Phase ζ.3 — audit:plans commit hook)

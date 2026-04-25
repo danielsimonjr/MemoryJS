@@ -252,3 +252,36 @@ export type {
 } from './MemoryBackend.js';
 export { InMemoryBackend } from './InMemoryBackend.js';
 export { SQLiteBackend, type SQLiteBackendOptions } from './SQLiteBackend.js';
+
+export {
+  MemoryValidator,
+  type MemoryValidatorConfig,
+  type ValidationResult as MemoryValidationResult,
+  type ValidationIssue as MemoryValidationIssue,
+  type Contradiction as MemoryValidatorContradiction,
+} from './MemoryValidator.js';
+
+export {
+  TrajectoryCompressor,
+  type TrajectoryCompressorConfig,
+  type DistillOptions,
+  type CompressedMemory,
+  type Granularity,
+  type RedundancyGroup,
+  type MergeStrategy as TrajectoryMergeStrategy,
+} from './TrajectoryCompressor.js';
+
+export {
+  ExperienceExtractor,
+  type ExperienceExtractorConfig,
+  type Trajectory,
+  type Action,
+  type Outcome,
+  type Rule,
+  type HeuristicGuideline,
+  type DecisionRule,
+  type ClusterMethod,
+  type TrajectoryCluster,
+  type ExperienceType,
+  type Experience,
+} from './ExperienceExtractor.js';
