@@ -1,7 +1,42 @@
 # MemoryJS Security Guide
 
-**Version**: 1.1.1
-**Last Updated**: 2026-01-12
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> **Security-relevant additions since v1.1:**
+>
+> - **Path-traversal validation** — `validateFilePath` (utils) with
+>   `confineToBase` flag; CLAUDE.md gotchas section documents call-site
+>   audit.
+> - **CSV injection guard** — `escapeCsvFormula` for export.
+> - **FTS5 / LIKE sanitization** — strips `:{}()"^~*` and boolean keywords
+>   from FTS5 queries; LIKE queries escape `\%_` with `ESCAPE '\'`.
+> - **XML import sanitization** — decodes XML entities via parser; never
+>   strips characters (so "AT&T" / "O'Brien" are preserved).
+> - **Audit log** (v1.6) — `AuditLog` JSONL immutable trail wired into
+>   `GovernanceManager`. Every create/update/delete operation logged.
+> - **Governance policies** (v1.6) — `canCreate` / `canUpdate` /
+>   `canDelete` enforcement at mutation boundaries.
+> - **Two-tier deletion** (v1.8) — `SemanticForget` exact match → 0.85
+>   semantic fallback with audit logging.
+> - **Visibility hierarchies** (v1.7+) — five-level model
+>   (`private`/`team`/`org`/`shared`/`public`); η.5.5.b extension adds
+>   `allowedRoles[]` predicate + `visibleFrom`/`visibleUntil` time-window
+>   gate.
+> - **RBAC** (η.6.1) — `RbacMiddleware.checkPermission()` plugged into
+>   `GovernancePolicy` when `MEMORY_RBAC_ENABLED=true`.
+> - **Audit attribution enforcer** (η.5.5.d) — `CollaborationAuditEnforcer`
+>   strict mode requires `agentId` on every mutation; throws
+>   `AttributionRequiredError` otherwise.
+> - **Optimistic concurrency** (η.5.5.c) — `EntityManager.updateEntity`
+>   accepts `expectedVersion`; throws `VersionConflictError` on stale
+>   writes (HTTP 409 mapping when behind REST API).
+> - **PII redactor** (η.6.3) — `PiiRedactor` with bundled patterns (email
+>   / SSN / CC / phone / IP) for export-time scrubbing; `redactWithStats`
+>   returns counts for compliance audit trails.
+>
+> Encryption-at-rest (SQLCipher) and full input-validation (Zod schema)
+> are **gated** pending dep approval — see η.6.3 plan.
 
 Production security hardening and best practices for MemoryJS deployments.
 

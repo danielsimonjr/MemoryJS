@@ -1,20 +1,25 @@
 # MemoryJS Future Features Development Roadmap
 
-This document outlines the strategic development roadmap for MemoryJS, organized by priority phases and feature categories.
+**Last refreshed**: 2026-04-25 (v1.14.0 + Unreleased)
+
+This document outlines the strategic development roadmap for MemoryJS, organized by priority phases and feature categories. **The dispatch runbook in [docs/superpowers/plans/2026-04-24-task-dispatch-runbook.md](../superpowers/plans/2026-04-24-task-dispatch-runbook.md) is the source-of-truth for execution status; this file is the strategic narrative.**
 
 ## Phase Overview
 
 | Phase | Name | Timeline | Status |
 |-------|------|----------|--------|
-| 1 | Foundation | Months 1-2 | 🔲 Pending |
-| 2 | Developer Experience | Months 2-3 | 🔲 Pending |
-| 3 | Agent Memory System | Months 3-5 | ✅ **Completed** (v1.2.0) |
-| 3B | Memory Intelligence (Reflection & Experience) | Months 5-7 | 🔲 Pending |
-| 3C | Must-Have Infrastructure Features | — | ✅ **Completed** (v1.6.0) |
-| 3D | Should-Have Agent Intelligence Features | — | ✅ **Completed** (v1.7.0) |
-| 4 | Integration & Scale | Months 9-11 | 🔲 Pending |
-| 5 | Advanced Features | Months 11-14 | 🔲 Pending |
-| 6 | Enterprise | Months 14+ | 🔲 Pending |
+| 1 | Foundation | Months 1-2 | ✅ **Shipped** (v1.0–v1.5) |
+| 2 | Developer Experience | Months 2-3 | ✅ **Shipped** (v1.5–v1.6) |
+| 3 | Agent Memory System | Months 3-5 | ✅ **Shipped** (v1.2.0) |
+| 3B | Memory Intelligence | Months 5-7 | ✅ **Shipped** — 3B.1–3B.3 v1.13.0 (Phase δ); 3B.4 / 3B.5 / 3B.6 / 3B.7 Unreleased |
+| 3C | Must-Have Infrastructure | — | ✅ **Shipped** (v1.6.0) |
+| 3D | Should-Have Agent Intelligence | — | ✅ **Shipped** (v1.7.0) |
+| 4 | Integration & Scale (η) | Months 9-11 | 🟡 **Partial** — η.4.4 (bitemporal), η.4.6 (visualize) shipped; η.4.1 (DB adapters), η.4.2 (REST), η.4.3 (Elastic), η.4.5 (scalability) gated on deps |
+| 5 | Advanced Features (η.5) | Months 11-14 | 🟡 **Partial** — η.5.4 RDF/Turtle/JSON-LD export (sub-features 1+2) + η.5.5.a-d Collaboration shipped Unreleased; η.5.1 Vector DB / η.5.2 Graph Embeddings / η.5.3 ML / η.5.4 SPARQL / η.5.5.e CRDT gated on deps |
+| 6 | Enterprise (η.6) | Months 14+ | 🟡 **Partial** — η.6.1 RBAC + η.6.3 PiiRedactor shipped Unreleased; η.6.2 Distributed (Redis), η.6.3 InputValidator (Zod) / EncryptionAdapter (SQLCipher), η.6.4 Cloud-native (devops), η.6.5 GPU gated on deps |
+
+> See `docs/superpowers/plans/2026-04-25-eta-*.md` for detailed plans on each
+> η sub-section. Decision gates and effort estimates per item.
 
 ---
 

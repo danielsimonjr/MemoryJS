@@ -1,7 +1,35 @@
 # MemoryJS Migration Guide
 
-**Version**: 1.1.1
-**Last Updated**: 2026-01-12
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> **Recent migrations** — all backwards-compatible (additive):
+>
+> - **v1.6.0 → v1.7.0** — `Entity.tags` already existed; new optional fields
+>   `ttl`, `confidence` added (auto-undefined for legacy entities).
+> - **v1.7.0 → v1.8.0** — Added `Entity.projectId` and v1.8 versioning fields
+>   (`version`, `parentEntityName`, `rootEntityName`, `isLatest`,
+>   `supersededBy`). All optional; legacy entities behave as v1.7.
+> - **v1.8.0 → v1.9.0** — Local-embeddings provider became the default
+>   (`MEMORY_EMBEDDING_PROVIDER=local`). Set explicitly to `none` to skip
+>   embedding generation if you don't want it.
+> - **v1.9.0 → v1.11.0** — `Entity.contentHash` field added (SHA-256;
+>   populated by `MemoryEngine` for conversation turns). SQLite gains
+>   `idx_entities_content_hash` index automatically on first run.
+> - **v1.11.0 → v1.12.0** — `MEMORY_BACKEND=sqlite|in-memory` env var added;
+>   default `sqlite` preserves existing behavior. `IMemoryBackend` is opt-in.
+> - **v1.13.0 → v1.14.0** — `MEMORY_VALIDATE_ON_STORE=true` opt-in pre-storage
+>   hook; default off so legacy callers see no behavior change.
+> - **v1.14.0 → Unreleased** — New optional `Entity` fields (`validFrom`,
+>   `validUntil`, `observationMeta[]`) for bitemporal queries; absent ⇒
+>   unbounded validity (matches pre-v1.14 behavior). New optional
+>   `AgentEntity` fields (`allowedRoles`, `visibleFrom`, `visibleUntil`)
+>   for visibility expansion; absent ⇒ no extra gating.
+>
+> No breaking changes have been introduced through Unreleased. SQLite
+> migrations are idempotent — running an older `dist/` against a newer
+> schema is safe; running newer code against an older `.db` triggers
+> automatic schema additions.
 
 Guide for migrating between versions, storage backends, and from other knowledge graph solutions.
 

@@ -1,7 +1,28 @@
 # AI Agent Integration Guide
 
-**Version**: 1.1.1
-**Last Updated**: 2026-01-12
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> **Updated agent-memory surface (v1.7+):**
+> - **Role profiles** — `MEMORY_AGENT_ROLE` env var (`researcher` /
+>   `planner` / `executor` / `reviewer` / `coordinator`) auto-tunes
+>   salience weights + context budget splits.
+> - **Memory Engine** (v1.11) — `ctx.memoryEngine.addTurn()` for turn-aware
+>   conversation memory with four-tier dedup.
+> - **Procedural memory** (3B.4) — `ctx.procedureManager.addProcedure()`
+>   for storing executable how-to sequences with EWMA refinement.
+> - **Active retrieval** (3B.5) — `ctx.activeRetrieval.adaptiveRetrieve()`
+>   for iterative query rewriting until coverage threshold met.
+> - **World model** (3B.7) — `ctx.worldModelManager.getCurrentState()` /
+>   `validateFact()` / `predictOutcome()` / `detectStateChange()`.
+> - **Causal reasoning** (3B.6) — `ctx.causalReasoner.findEffects()` /
+>   `findCauses()` / `counterfactual()`.
+> - **Multi-agent collaboration** (η.5.5) — visibility expansion (role +
+>   time-window gates), OCC, audit attribution enforcer, conflict view.
+> - **RBAC** (η.6.1) — `ctx.rbacMiddleware.checkPermission()`.
+>
+> See the Quick-Start sections of [README.md](../../README.md) for working
+> examples covering each new surface.
 
 A comprehensive guide for integrating MemoryJS as a memory system for AI agents (Claude, GPT, custom LLMs).
 

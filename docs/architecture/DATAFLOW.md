@@ -1,7 +1,15 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 1.5.0
-**Last Updated**: 2026-02-11
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> Most data-flow patterns documented here remain accurate. New flows added
+> in v1.9–Unreleased: temporal-validity invalidation cascade (η.4.4),
+> conversation ingestion pipeline (`IOManager.ingest`, v1.9.0), four-tier
+> dedup chain in `MemoryEngine` (v1.11.0), pluggable backend selection
+> (`MEMORY_BACKEND`, v1.12.0), iterative active-retrieval round-robin
+> (3B.5), causal-chain traversal (3B.6), and world-state snapshot diff
+> (3B.7). See the relevant per-manager sections below.
 
 ---
 

@@ -1,7 +1,14 @@
 # MemoryJS Use Cases & Examples
 
-**Version**: 1.1.1
-**Last Updated**: 2026-01-12
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> **Note:** examples below cover the v1.1-era surface. The library has
+> grown significantly — for examples covering Memory Engine, Memory
+> Validator, Causal Reasoner, Procedure Manager, Active Retrieval, World
+> Model, RBAC, conflict view, audit enforcer, optimistic concurrency,
+> bitemporal versioning, and RDF export, see the Quick-Start sections of
+> [README.md](../../README.md) and the recipes in [RECIPES.md](./RECIPES.md).
 
 Real-world examples and implementation patterns for common MemoryJS use cases.
 

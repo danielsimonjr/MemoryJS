@@ -1,13 +1,17 @@
 # Test Coverage Analysis
 
 **Generated**: 2026-01-14
+**Last refreshed**: 2026-04-25 — current totals: **6157 passing / 5 failing
+(pre-existing) / 3 skipped** across **214 test files**. Granular per-module
+analysis below is from the original snapshot (v1.5 era); for post-v1.14
+detail see CHANGELOG.md and per-feature commits.
 
 ## Summary
 
-| Metric | Count |
-|--------|-------|
-| Total Source Files | 110 |
-| Total Test Files | 126 |
+| Metric | Original snapshot | 2026-04-25 |
+|--------|-------------------|------------|
+| Total Source Files | 110 | 183 |
+| Total Test Files | 126 | 214 |
 | Total Tests | 4,674 |
 | Test Categories | 5 |
 

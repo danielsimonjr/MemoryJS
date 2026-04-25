@@ -1,6 +1,13 @@
 # MemoryJS Recipes
 
-> Ready-to-use code patterns and solutions for common tasks
+**Last refreshed**: 2026-04-25 (v1.14.0 + Unreleased)
+
+> Ready-to-use code patterns and solutions for common tasks. Recipes
+> below cover the v1.1-era surface; for examples covering Memory Engine,
+> Memory Validator, Causal Reasoner, Procedure Manager, Active Retrieval,
+> World Model, RBAC, PII redactor, conflict view, audit enforcer, OCC,
+> and bitemporal queries, see the Quick-Start sections of
+> [README.md](../../README.md).
 
 ## Table of Contents
 

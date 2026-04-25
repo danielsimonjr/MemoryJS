@@ -1,5 +1,9 @@
 # Release Process
 
+**Last reviewed**: 2026-04-25. Current `package.json` is at v1.14.0. Tags
+v1.11.0–v1.14.0 are pushed; npm publish is gated on token refresh in
+`~/.npmrc`. Process below remains accurate.
+
 Guide to releasing new versions of MemoryJS.
 
 ## Table of Contents

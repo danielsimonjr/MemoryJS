@@ -1,5 +1,10 @@
 # Testing Guide
 
+**Last reviewed**: 2026-04-25. Current totals: **6157 passing / 5 failing
+(pre-existing) / 3 skipped** across **214 test files**. Test patterns
+below remain accurate; new test layouts (per-module under
+`tests/unit/agent/<sub-module>/`) follow the same Vitest conventions.
+
 Comprehensive guide to testing in MemoryJS.
 
 ## Table of Contents

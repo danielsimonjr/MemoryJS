@@ -1,7 +1,14 @@
 # MemoryJS API Reference
 
-**Version**: 1.1.1
-**Last Updated**: 2026-01-12
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> **Note:** sections below cover the v1.1-era surface. For the v1.6+ additions
+> (Memory Engine, Memory Validator, Trajectory Compressor, Experience Extractor,
+> Causal Reasoner, Procedure Manager, Active Retrieval, World Model, RBAC,
+> PII Redactor, conflict view, audit enforcer, OCC, bitemporal versioning,
+> RDF export) see the per-manager API tables in [README.md](../../README.md)
+> and the architecture map in [docs/architecture/API.md](../architecture/API.md).
 
 Complete API documentation for all public classes, methods, and types.
 

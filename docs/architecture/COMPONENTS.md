@@ -1,7 +1,7 @@
 # MemoryJS - Component Reference
 
-**Version**: 1.8.0
-**Last Updated**: 2026-04-09
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
 
 ---
 
@@ -24,23 +24,36 @@ MemoryJS follows a layered architecture with specialized components:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  agent/            │  Agent memory system (30 files)        │
+│  agent/            │  Agent memory system (61 files)        │
 ├─────────────────────────────────────────────────────────────┤
-│  core/             │  Central managers and storage (13 files)│
+│  core/             │  Central managers and storage (14 files)│
 ├─────────────────────────────────────────────────────────────┤
-│  search/           │  Search implementations (34 files)     │
+│  search/           │  Search implementations (37 files)     │
 ├─────────────────────────────────────────────────────────────┤
-│  features/         │  Advanced capabilities (12 files)      │
+│  features/         │  Advanced capabilities (17 files)      │
 ├─────────────────────────────────────────────────────────────┤
-│  utils/            │  Shared utilities (24 files)           │
+│  utils/            │  Shared utilities (26 files)           │
 ├─────────────────────────────────────────────────────────────┤
-│  types/            │  TypeScript definitions (4 files)      │
+│  types/            │  TypeScript definitions (7 files)      │
+├─────────────────────────────────────────────────────────────┤
+│  security/         │  PII redaction (2 files; η.6.3)        │
+├─────────────────────────────────────────────────────────────┤
+│  cli/              │  CLI binary commands (16 files)        │
 ├─────────────────────────────────────────────────────────────┤
 │  workers/          │  Web workers (2 files)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 113 TypeScript files | 720+ exports | ~50,000 lines of code
+**Total:** 183 TypeScript files | 62.7K lines of code | 6157 passing tests
+
+### New since v1.13: dedicated sub-modules under `agent/`
+
+- `agent/causal/` — `CausalReasoner` (3B.6)
+- `agent/procedural/` — `ProcedureManager` + `StepSequencer` (3B.4)
+- `agent/retrieval/` — `ActiveRetrievalController` + `QueryRewriter` (3B.5)
+- `agent/world/` — `WorldModelManager` + `WorldStateSnapshot` (3B.7)
+- `agent/rbac/` — `RbacMiddleware` + `RoleAssignmentStore` + `PermissionMatrix` (η.6.1)
+- `agent/collaboration/` — `CollaborationAuditEnforcer` (η.5.5.d)
 
 ---
 

@@ -1,5 +1,7 @@
 # Code Style Guide
 
+**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased) — content remains accurate.
+
 Coding conventions and style guidelines for MemoryJS contributors.
 
 ## Table of Contents

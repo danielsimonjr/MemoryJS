@@ -1,6 +1,26 @@
 # Architecture Decision Records (ADRs)
 
+**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased)
+
 This document captures key architectural decisions made during MemoryJS development, including context, alternatives considered, and rationale.
+
+> **Recently shipped decisions not yet formalized as full ADRs** (track in
+> CHANGELOG and per-feature plans for now):
+>
+> - Optimistic concurrency uses the existing v1.8.0 `Entity.version` field
+>   rather than introducing a separate vector clock (η.5.5.c).
+> - RBAC permission matrix is monotonic-by-role (reader < writer < admin
+>   < owner) with per-resource-type override; unknown roles fail-safe to
+>   empty (η.6.1).
+> - PII redaction applies on export only, never mutates storage (η.6.3).
+> - Bitemporal validity is orthogonal to v1.8 supersession: supersession
+>   answers "which version is current?", `validFrom`/`validUntil` answers
+>   "was this true at time T?" (η.4.4).
+> - Causal cycle detection treats `prevents` as a directed edge, NOT as
+>   logical negation (3B.6 — JSDoc'd caveat).
+> - Active retrieval uses pure symbolic token-overlap expansion (no LLM)
+>   to keep `ctx.activeRetrieval` zero-dep; for LLM-driven decomposition
+>   use `ctx.llmQueryPlanner` instead (3B.5).
 
 ## Table of Contents
 

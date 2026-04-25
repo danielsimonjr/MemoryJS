@@ -1,7 +1,15 @@
 # MemoryJS - API Reference
 
-**Version**: 1.5.0
-**Last Updated**: 2026-02-11
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> **Recently shipped on top of v1.14.0:** η.4.4 bitemporal versioning,
+> η.5.4 RDF/Turtle/JSON-LD export, η.5.5.a-d Collaboration (conflict view,
+> visibility expansion, OCC, audit enforcer), η.6.1 RBAC, η.6.3 PII redactor,
+> 3B.4 procedural memory, 3B.5 active retrieval, 3B.6 causal reasoning,
+> 3B.7 world model. New methods are documented under the relevant managers below;
+> for a high-level summary see [README.md](../../README.md). For env-var reference
+> see [CLAUDE.md](../../CLAUDE.md).
 
 Complete reference for the MemoryJS library public API.
 

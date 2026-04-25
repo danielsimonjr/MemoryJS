@@ -1,25 +1,31 @@
 # MemoryJS - Project Overview
 
-**Version**: 1.5.0
-**Last Updated**: 2026-02-11
+**Version**: 1.14.0 + Unreleased (η.4.4 / η.5.4 / η.5.5 / η.6.1 / η.6.3 / 3B.4–3B.7)
+**Last Updated**: 2026-04-25
 
 ## What Is This?
 
-MemoryJS is a **TypeScript knowledge graph library** for managing entities, relations, and observations with advanced search capabilities. It provides the core foundation for building knowledge management systems and can be used as a library in other applications or as the backend for MCP servers.
+MemoryJS is a **TypeScript knowledge graph library** for managing entities, relations, and observations with advanced search, bitemporal versioning, causal reasoning, role-based access control, multi-agent collaboration, and pluggable storage backends. Powers [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp) and can be embedded directly into TypeScript / Node.js apps.
 
 ## Key Capabilities
 
 | Feature | Description |
 |---------|-------------|
-| **Knowledge Graph** | Store entities and relations in a flexible graph structure |
-| **Multiple Backends** | JSONL (human-readable) or SQLite (indexed, FTS5) storage |
+| **Knowledge Graph** | Entity-Relation-Observation model in a flexible directed graph |
+| **Multiple Backends** | JSONL (human-readable) or SQLite (FTS5 + BM25) storage; pluggable `IMemoryBackend` for memory engine |
 | **Hierarchical Nesting** | Parent-child relationships for tree organization |
-| **Advanced Search** | Basic, TF-IDF ranked, boolean, fuzzy, semantic, and hybrid search |
-| **Agent Memory System** | Working memory, episodic memory, decay, multi-agent support |
-| **Duplicate Detection** | Intelligent compression with similarity scoring |
+| **Advanced Search** | Basic / ranked (TF-IDF, BM25) / boolean / fuzzy (N-gram pre-filtered) / semantic / hybrid / temporal / LLM-planned / active iterative retrieval |
+| **Agent Memory System** | Working memory, episodic memory, decay, multi-agent support, role profiles, entropy filtering, recursive consolidation |
+| **Bitemporal Versioning** | `validFrom`/`validUntil` on entities, observations, and relations; time-travel queries |
+| **Memory Intelligence** | Validator (consistency / contradictions), TrajectoryCompressor, ExperienceExtractor, PatternDetector |
+| **Memory Theory (3B)** | Procedural memory, active retrieval, causal reasoning, world-model orchestrator |
+| **Multi-Agent Collaboration** | Visibility hierarchies (5-level + role + time-window), optimistic concurrency, attribution enforcement, conflict view |
+| **Duplicate Detection** | Four-tier dedup (exact / prefix / Jaccard / semantic) + entity-level compression |
 | **Graph Algorithms** | Shortest path, centrality, connected components, BFS/DFS traversal |
-| **Multi-format Export** | JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid |
-| **Tag Management** | Aliases, bulk operations, and validation |
+| **Multi-format Export** | JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid; **W3C Linked Data**: Turtle, RDF/XML, JSON-LD |
+| **Access Control** | RBAC (Role / Permission / Matrix / Middleware), audit attribution enforcer, governance policies |
+| **Privacy** | Pluggable PII redactor (email / SSN / CC / phone / IP) with per-pattern statistics |
+| **Tag Management** | Aliases, bulk operations, validation |
 
 ## Quick Architecture Overview
 
@@ -37,14 +43,22 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
 └───────────────────────┬────────────────────────────────┘
                         │ (direct manager access)
 ┌───────────────────────┴────────────────────────────────┐
-│  Layer 2: Specialized Managers                         │
-│  • EntityManager       (CRUD + hierarchy + archive)    │
-│  • RelationManager     (relation CRUD)                 │
-│  • SearchManager       (search + compression + analytics)
-│  • IOManager           (import + export + backup)      │
-│  • TagManager          (tag aliases)                   │
-│  • GraphTraversal      (graph algorithms)              │
-│  • AgentMemoryManager  (session, working memory, decay)│
+│  Layer 2: Specialized Managers (40+ lazy getters)      │
+│  Core:    EntityManager / RelationManager /            │
+│           ObservationManager / HierarchyManager /      │
+│           SearchManager / GraphTraversal / RefIndex    │
+│  I/O:     IOManager / Archive / Compression /          │
+│           Analytics / Audit / Governance / Freshness   │
+│  Search:  Ranked / Hybrid / Semantic / Temporal /      │
+│           LLMQueryPlanner / ActiveRetrievalController  │
+│  Memory:  MemoryEngine / MemoryBackend /               │
+│           ContextWindowManager / AgentMemory()         │
+│  Intel:   MemoryValidator / TrajectoryCompressor /     │
+│           ExperienceExtractor / PatternDetector        │
+│  Theory:  ProcedureManager / CausalReasoner /          │
+│           WorldModelManager                            │
+│  Auth:    RbacMiddleware / RoleAssignmentStore /       │
+│           AccessTracker                                │
 └───────────────────────┬────────────────────────────────┘
                         │
 ┌───────────────────────┴────────────────────────────────┐
@@ -58,14 +72,40 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
 ### Entity (Graph Node)
 ```typescript
 interface Entity {
+  // Core
   name: string;           // Unique identifier
   entityType: string;     // Classification (person, project, concept)
   observations: string[]; // Facts/notes about the entity
-  parentId?: string;      // Hierarchical parent (optional)
-  tags?: string[];        // Categories (lowercase, optional)
-  importance?: number;    // Priority 0-10 (optional)
-  createdAt?: string;     // ISO 8601 timestamp
-  lastModified?: string;  // ISO 8601 timestamp
+  parentId?: string;      // Hierarchical parent
+  tags?: string[];        // Categories (lowercase)
+  importance?: number;    // Priority 0-10
+  createdAt?: string;     // ISO 8601
+  lastModified?: string;  // ISO 8601
+
+  // v1.6.0 — Freshness
+  ttl?: number;
+  confidence?: number;
+
+  // v1.8.0 — Project scoping + supersession
+  projectId?: string;
+  version?: number;
+  parentEntityName?: string;
+  rootEntityName?: string;
+  isLatest?: boolean;
+  supersededBy?: string;
+
+  // v1.11.0 — Memory Engine dedup
+  contentHash?: string;   // SHA-256 for O(1) Tier-1 dedup
+
+  // η.4.4 — Bitemporal validity (orthogonal to supersession)
+  validFrom?: string;
+  validUntil?: string;
+  observationMeta?: Array<{
+    content: string;
+    validFrom?: string;
+    validUntil?: string;
+    recordedAt?: string;  // bitemporal axis
+  }>;
 }
 ```
 
@@ -81,10 +121,10 @@ interface Relation {
 ## Directory Structure
 
 ```
-src/ (110 TypeScript files, ~43,000 lines of code, 770 exports)
+src/ (183 TypeScript files, 62.7K lines of code)
 ├── index.ts              # Entry point, main exports
 │
-├── agent/ (19 files)     # Agent Memory System
+├── agent/ (61 files)     # Agent Memory System
 │   ├── AgentMemoryManager.ts     # Unified facade for all agent operations
 │   ├── AgentMemoryConfig.ts      # Configuration with env var loading
 │   ├── SessionManager.ts         # Session lifecycle management
@@ -104,7 +144,7 @@ src/ (110 TypeScript files, ~43,000 lines of code, 770 exports)
 │   ├── AccessTracker.ts          # Access pattern tracking
 │   └── index.ts                  # Barrel export
 │
-├── core/ (12 files)      # Core managers and storage
+├── core/ (14 files)      # Core managers and storage
 │   ├── ManagerContext.ts         # Context holder (lazy init)
 │   ├── EntityManager.ts          # Entity CRUD operations
 │   ├── RelationManager.ts        # Relation CRUD
@@ -118,7 +158,7 @@ src/ (110 TypeScript files, ~43,000 lines of code, 770 exports)
 │   ├── GraphEventEmitter.ts      # Event-driven updates
 │   └── index.ts                  # Barrel export
 │
-├── search/ (32 files)    # Search implementations
+├── search/ (37 files)    # Search implementations
 │   ├── SearchManager.ts          # Search orchestrator
 │   ├── BasicSearch.ts            # Text matching
 │   ├── RankedSearch.ts           # TF-IDF scoring
@@ -129,27 +169,40 @@ src/ (110 TypeScript files, ~43,000 lines of code, 770 exports)
 │   ├── HybridSearchManager.ts    # Three-layer hybrid search
 │   └── ...
 │
-├── features/ (9 files)   # Advanced capabilities
+├── features/ (17 files)  # Advanced capabilities
 │   ├── TagManager.ts             # Tag aliases
 │   ├── IOManager.ts              # Import + export + backup
 │   ├── ArchiveManager.ts         # Entity archival
 │   ├── CompressionManager.ts     # Duplicate detection
 │   └── ...
 │
-├── types/ (5 files)      # TypeScript definitions
+├── types/ (7 files)      # TypeScript definitions
 │   ├── types.ts                  # Core type definitions
 │   ├── agent-memory.ts           # Agent memory types
 │   └── index.ts                  # Barrel export
 │
-├── utils/ (24 files)     # Shared utilities
+├── utils/ (26 files)     # Shared utilities
 │   ├── schemas.ts                # Zod validation schemas
 │   ├── BatchProcessor.ts         # Batch processing utilities
 │   ├── WorkerPoolManager.ts      # Worker pool management
 │   └── ...
 │
+├── security/ (2 files)   # PII redaction (η.6.3)
+│   └── PiiRedactor.ts
+│
+├── cli/ (16 files)       # `memory` / `memoryjs` binary commands
+│
 └── workers/ (2 files)    # Web workers for CPU-intensive tasks
     ├── levenshteinWorker.ts      # Levenshtein calculations
     └── index.ts
+
+# Sub-modules under agent/ (new since v1.13):
+src/agent/causal/         # 3B.6 — CausalReasoner (findCauses / findEffects / counterfactual / detectCycles)
+src/agent/procedural/     # 3B.4 — ProcedureManager + ProcedureStore + StepSequencer
+src/agent/retrieval/      # 3B.5 — ActiveRetrievalController + QueryRewriter
+src/agent/world/          # 3B.7 — WorldModelManager + WorldStateSnapshot
+src/agent/rbac/           # η.6.1 — Role / Permission / Matrix / Middleware / RoleAssignmentStore
+src/agent/collaboration/  # η.5.5.d — CollaborationAuditEnforcer
 ```
 
 
@@ -203,9 +256,20 @@ const results = await ctx.searchManager.search('TypeScript');
 
 ## Environment Variables
 
+Most-used:
+
 - `MEMORY_STORAGE_TYPE`: `jsonl` (default) or `sqlite`
-- `MEMORY_EMBEDDING_PROVIDER`: `openai`, `local`, or `none` for semantic search
-- `MEMORY_OPENAI_API_KEY`: Required when using OpenAI embeddings
+- `MEMORY_BACKEND`: pluggable Memory Engine — `sqlite` (default) or `in-memory`
+- `MEMORY_EMBEDDING_PROVIDER`: `openai`, `local` (default), or `none`
+- `MEMORY_OPENAI_API_KEY`: required when using OpenAI embeddings
+- `MEMORY_AGENT_ROLE`: built-in role profile (`researcher`/`planner`/`executor`/`reviewer`/`coordinator`)
+- `MEMORY_GOVERNANCE_ENABLED`: enable `GovernanceManager`
+- `MEMORY_AUDIT_LOG_FILE`: path for JSONL audit trail
+- `MEMORY_VALIDATE_ON_STORE`: run `MemoryValidator` before observation writes
+- `MEMORY_AUDIT_ATTRIBUTION_REQUIRED`: `CollaborationAuditEnforcer` strict mode
+- `MEMORY_RBAC_ENABLED`: wire `RbacMiddleware` into `GovernancePolicy`
+
+Full reference (~50 variables): see [CLAUDE.md](../../CLAUDE.md#environment-variables).
 
 ## Related Documentation
 

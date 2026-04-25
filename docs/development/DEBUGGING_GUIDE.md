@@ -1,5 +1,10 @@
 # Debugging Guide
 
+**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased). Note: CLAUDE.md has a
+"Gotchas" section that documents Windows + Dropbox + git issues, FTS5
+sanitization rules, atomic-write fallbacks, and other platform-specific
+debugging patterns shipped through v1.14.
+
 Techniques and tools for debugging MemoryJS issues.
 
 ## Table of Contents

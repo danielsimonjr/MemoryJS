@@ -1,6 +1,23 @@
 # MemoryJS Quick Reference
 
+**Last refreshed**: 2026-04-25 (v1.14.0 + Unreleased)
+
 A concise cheat sheet for common MemoryJS operations.
+
+> **Cheat sheet for features shipped through Unreleased:**
+>
+> - **Bitemporal**: `entityManager.invalidateEntity(name, ended?)` / `entityAsOf(name, asOf)` / `entityTimeline(name)`; `observationManager.invalidateObservation(entity, content, ended?)` / `observationsAsOf(entity, asOf)` (η.4.4)
+> - **OCC**: `updateEntity(name, updates, { expectedVersion })` — throws `VersionConflictError` (η.5.5.c)
+> - **RDF export**: `ioManager.exportGraph(g, 'turtle' | 'rdf-xml' | 'json-ld')` (η.5.4)
+> - **Active retrieval**: `ctx.activeRetrieval.adaptiveRetrieve({ query })` (3B.5)
+> - **Causal**: `ctx.causalReasoner.findEffects(cause, candidates)` / `findCauses` / `counterfactual` / `detectCycles` (3B.6)
+> - **Procedures**: `ctx.procedureManager.addProcedure({ steps })` / `matchProcedure(context, candidates)` / `refineProcedure(id, { succeeded })` (3B.4)
+> - **World model**: `ctx.worldModelManager.getCurrentState()` / `validateFact()` / `predictOutcome()` / `detectStateChange(before, after)` (3B.7)
+> - **RBAC**: `ctx.rbacMiddleware.checkPermission(agentId, 'write', 'entity')` + `ctx.roleAssignmentStore.assign({ agentId, role })` (η.6.1)
+> - **PII**: `new PiiRedactor().redactGraph(graph)` / `redactWithStats(text)` (η.6.3)
+> - **Conflict resolution**: `synth.resolveConflicts(result, { strategy: 'highest_confidence' })` (η.5.5.a)
+> - **Audit attribution**: `new CollaborationAuditEnforcer(em, log).updateEntity(name, updates, agentId)` (η.5.5.d)
+> - **Visibility**: `AgentEntity.allowedRoles` + `visibleFrom` / `visibleUntil` (η.5.5.b)
 
 ---
 

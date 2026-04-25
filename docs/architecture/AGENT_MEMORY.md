@@ -1,6 +1,39 @@
 # Agent Memory System Design
 
+**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased)
+
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
+
+> **What's shipped on top of the original design** — the per-component
+> sections below predate v1.9; this banner is the source of truth for
+> what's in `src/agent/` today:
+>
+> - **v1.7.0** — Role profiles (`RoleProfiles`, 5 built-ins), entropy filter,
+>   consolidation scheduler, collaborative synthesis, failure distillation,
+>   cognitive load analyzer, visibility resolver (5-tier).
+> - **v1.8.0** — Memory versioning (supersession), project scoping,
+>   contradiction detector + semantic forget.
+> - **v1.9.0** — Temporal relations (`invalidateRelation`/`queryAsOf`/`timeline`),
+>   `ContextWindowManager.wakeUp` 4-layer memory stack, conversation ingest,
+>   per-agent diary, local-embeddings default.
+> - **v1.11.0** — `MemoryEngine` turn-aware conversation memory with
+>   four-tier dedup (exact / prefix / Jaccard / semantic).
+> - **v1.12.0** — Pluggable `IMemoryBackend` (in-memory / sqlite),
+>   `DecayEngine.calculatePrdEffectiveImportance` PRD-scale scoring.
+> - **v1.13.0 (Phase δ)** — `MemoryValidator` (consistency / contradictions /
+>   reliability), `TrajectoryCompressor`, `ExperienceExtractor`. All
+>   wrap-and-extend per ADR-011.
+> - **Unreleased (η.4.4)** — Bitemporal validity for entities + observations
+>   (`validFrom` / `validUntil` / `observationMeta[]`).
+> - **Unreleased (η.5.5)** — Multi-agent conflict view, visibility expansion
+>   (role + time-window gates), optimistic concurrency control, audit
+>   attribution enforcer.
+> - **Unreleased (η.6.1 / η.6.3)** — RBAC (Role / Permission / Matrix /
+>   Middleware), `PiiRedactor` for export-time PII scrubbing.
+> - **Unreleased (3B.4–3B.7)** — Procedural memory (`ProcedureManager` +
+>   `StepSequencer`), active retrieval (`ActiveRetrievalController` with
+>   iterative query rewriting), causal reasoning (`CausalReasoner`),
+>   world-model orchestrator (`WorldModelManager` + `WorldStateSnapshot`).
 
 ## Overview
 

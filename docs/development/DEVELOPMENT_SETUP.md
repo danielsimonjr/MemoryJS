@@ -1,5 +1,10 @@
 # Development Setup Guide
 
+**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased). Build commands now
+use `tsup` (ESM + CJS dual output); see [README.md § Development](../../README.md#development)
+for the full command list including `npm run audit:plans` and the
+dependency-graph generator.
+
 Complete guide to setting up a MemoryJS development environment.
 
 ## Table of Contents

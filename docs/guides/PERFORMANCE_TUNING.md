@@ -1,7 +1,29 @@
 # MemoryJS Performance Tuning Guide
 
-**Version**: 1.1.1
-**Last Updated**: 2026-01-12
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> **Performance-relevant additions since v1.1:**
+>
+> - **N-gram pre-filter** in `FuzzySearch` (v1.6) — Levenshtein candidates
+>   now reduced via Jaccard trigram pre-filter before expensive distance
+>   calculations.
+> - **Memory Engine four-tier dedup** (v1.11) — exact (SHA-256) → prefix
+>   → Jaccard → optional semantic. Tier 1 is O(1) via SQLite
+>   `idx_entities_content_hash`; configure scan window with
+>   `MEMORY_ENGINE_DEDUP_SCAN_WINDOW` (default 200).
+> - **Decay scheduler** (`MEMORY_AUTO_DECAY=true`, v1.7) — background
+>   periodic decay; configure with `MEMORY_DECAY_INTERVAL_MS` (default
+>   3600000).
+> - **Entropy filter + consolidation scheduler** (v1.7) — drops low-info
+>   memories before they reach the consolidation pipeline.
+> - **PRD decay scoring** (v1.12) — parallel formula
+>   `DecayEngine.calculatePrdEffectiveImportance` with separate knobs
+>   (`MEMORY_PRD_DECAY_RATE`, etc.).
+> - **Active retrieval cost-benefit** (3B.5) — `shouldRetrieve()` rejects
+>   over-budget queries before any search work happens.
+> - **World model snapshot cap** (3B.7) — `maxSnapshotSize` (default 1000)
+>   keeps state-diff cost bounded; over-cap prefers high-importance.
 
 Comprehensive guide for optimizing MemoryJS performance at different scales.
 

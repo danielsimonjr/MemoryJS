@@ -1,9 +1,18 @@
 # MemoryJS Configuration Reference
 
-**Version**: 1.1.1
-**Last Updated**: 2026-01-12
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
 
 Complete reference for all configuration options, environment variables, and customization settings.
+
+> **Note:** the most current and complete env-var reference now lives in
+> [CLAUDE.md § Environment Variables](../../CLAUDE.md#environment-variables).
+> Sections below cover the original v1.1 surface; many additional knobs
+> shipped through v1.14.0 — agent memory (decay/salience/context-window),
+> governance, freshness, role profiles, entropy filter, consolidation
+> scheduler, cognitive load, default visibility, Memory Engine knobs,
+> PRD decay extensions, Memory Backend selector, RBAC defaults, audit
+> attribution, validation-on-store. See CLAUDE.md for the ~50 full set.
 
 ---
 

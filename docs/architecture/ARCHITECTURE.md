@@ -1,7 +1,7 @@
 # MemoryJS - System Architecture
 
-**Version**: 1.7.0
-**Last Updated**: 2026-03-24
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
 
 ---
 
@@ -35,28 +35,26 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (v1.7.0)
+### Key Statistics (v1.14.0 + Unreleased)
 
 | Metric | Value |
 |--------|-------|
-| Source Files | 113 TypeScript files |
-| Lines of Code | ~50,000 lines |
-| Exports | 720+ total |
-| Classes | 99+ |
-| Interfaces | 240+ |
-| Functions | 120+ |
-| Circular Dependencies | 2 (type-only, safe) |
+| Source Files | 183 TypeScript files |
+| Lines of Code | 62.7K |
+| Tests | 6157 passing |
 
 ### Module Distribution
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
-| `agent/` | 30 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPolicy, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver |
-| `core/` | 13 | EntityManager, GraphStorage, SQLiteStorage, TransactionManager, RefIndex |
-| `search/` | 34 | SearchManager, BM25Search, HybridScorer, VectorStore, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor |
-| `features/` | 12 | IOManager, ArchiveManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager |
-| `utils/` | 18 | BatchProcessor, CompressedCache, WorkerPoolManager |
-| `types/` | 4 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity interfaces |
+| `agent/` | 61 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware** |
+| `core/` | 14 | ManagerContext, EntityManager (+OCC, +temporal validity), RelationManager (+temporal invalidation), ObservationManager (+bitemporal axis), HierarchyManager, GraphStorage, SQLiteStorage, GraphTraversal, TransactionManager, RefIndex |
+| `search/` | 37 | SearchManager, RankedSearch, BM25Search, BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor |
+| `features/` | 17 | IOManager (+RDF/Turtle/JSON-LD export), TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker |
+| `utils/` | 26 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError) |
+| `types/` | 7 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure |
+| `security/` | 2 | **PiiRedactor** + DEFAULT_PII_PATTERNS |
+| `cli/` | 16 | `memory` / `memoryjs` binary commands |
 | `workers/` | 2 | Levenshtein distance calculations |
 
 ---
