@@ -473,3 +473,41 @@ describe('MemoryEngine — session operations', () => {
     } finally { cleanup(); }
   });
 });
+
+describe('MemoryEngine — ManagerContext wiring', () => {
+  it('ctx.memoryEngine returns a working instance', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = ctx.memoryEngine;
+      expect(engine).toBeInstanceOf(MemoryEngine);
+      await engine.addTurn('hello from ctx', { sessionId: 'wire-A', role: 'user' });
+      const turns = await engine.getSessionTurns('wire-A');
+      expect(turns).toHaveLength(1);
+    } finally { cleanup(); }
+  });
+
+  it('ctx.memoryEngine is cached (same reference on repeated access)', () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const a = ctx.memoryEngine;
+      const b = ctx.memoryEngine;
+      expect(a).toBe(b);
+    } finally { cleanup(); }
+  });
+
+  it('env var MEMORY_ENGINE_JACCARD_THRESHOLD is honoured', () => {
+    const prev = process.env.MEMORY_ENGINE_JACCARD_THRESHOLD;
+    process.env.MEMORY_ENGINE_JACCARD_THRESHOLD = '0.95';
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = ctx.memoryEngine;
+      // cfg is `protected readonly` — access via cast for the assertion only.
+      const cfg = (engine as unknown as { cfg: { jaccardThreshold: number } }).cfg;
+      expect(cfg.jaccardThreshold).toBeCloseTo(0.95);
+    } finally {
+      cleanup();
+      if (prev === undefined) delete process.env.MEMORY_ENGINE_JACCARD_THRESHOLD;
+      else process.env.MEMORY_ENGINE_JACCARD_THRESHOLD = prev;
+    }
+  });
+});

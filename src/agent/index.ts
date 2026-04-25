@@ -227,3 +227,19 @@ export {
   type ContextProfile,
   type ProfileConfig,
 } from './ContextProfileManager.js';
+
+export {
+  MemoryEngine,
+  type MemoryEngineConfig,
+  type AddTurnOptions,
+  type AddTurnResult,
+  type DedupTier,
+  type DuplicateCheckResult,
+  type MemoryEngineEventName,
+} from './MemoryEngine.js';
+
+export {
+  ImportanceScorer,
+  type ImportanceScorerConfig,
+  type ScoreOptions,
+} from './ImportanceScorer.js';

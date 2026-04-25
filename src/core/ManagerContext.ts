@@ -48,6 +48,8 @@ import { getEmbeddingConfig } from '../utils/constants.js';
 import { validateFilePath } from '../utils/index.js';
 import { ContradictionDetector } from '../features/ContradictionDetector.js';
 import { SemanticForget } from '../features/SemanticForget.js';
+import { MemoryEngine } from '../agent/MemoryEngine.js';
+import { ImportanceScorer } from '../agent/ImportanceScorer.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -95,6 +97,7 @@ export class ManagerContext {
   private _factExtractor?: FactExtractor;
   private _transitionLedger?: TransitionLedger | null;
   private _semanticSearch?: SemanticSearch | null;
+  private _memoryEngine?: MemoryEngine;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -271,6 +274,53 @@ export class ManagerContext {
       }
     }
     return this._semanticSearch;
+  }
+
+  /**
+   * MemoryEngine — turn-aware conversation memory facade composing over
+   * EpisodicMemoryManager + WorkingMemoryManager + ImportanceScorer.
+   * Lazy: instantiated on first access. Reads MEMORY_ENGINE_* env vars
+   * for dedup thresholds, scan window, and scorer weights.
+   */
+  get memoryEngine(): MemoryEngine {
+    if (!this._memoryEngine) {
+      const agent = this.agentMemory();
+      const importanceScorer = new ImportanceScorer({
+        lengthWeight: this.getEnvNumber('MEMORY_ENGINE_LENGTH_WEIGHT', 0.3),
+        keywordWeight: this.getEnvNumber('MEMORY_ENGINE_KEYWORD_WEIGHT', 0.4),
+        overlapWeight: this.getEnvNumber('MEMORY_ENGINE_OVERLAP_WEIGHT', 0.3),
+      });
+      const semanticSearch = this.semanticSearch ?? null;
+      // Use the public accessor so a future rename of the private field
+      // would surface as a typecheck error rather than a silent null.
+      const embeddingService = semanticSearch?.getEmbeddingService() ?? null;
+
+      this._memoryEngine = new MemoryEngine(
+        this.storage,
+        this.entityManager,
+        agent.episodicMemory,
+        agent.workingMemory,
+        importanceScorer,
+        semanticSearch,
+        embeddingService,
+        {
+          jaccardThreshold: this.getEnvNumber('MEMORY_ENGINE_JACCARD_THRESHOLD', 0.72),
+          prefixOverlapThreshold: this.getEnvNumber('MEMORY_ENGINE_PREFIX_OVERLAP', 0.5),
+          dedupScanWindow: Math.trunc(
+            this.getEnvNumber('MEMORY_ENGINE_DEDUP_SCAN_WINDOW', 200),
+          ),
+          maxTurnsPerSession: Math.trunc(
+            this.getEnvNumber('MEMORY_ENGINE_MAX_TURNS_PER_SESSION', 1000),
+          ),
+          semanticDedupEnabled: this.getEnvBool('MEMORY_ENGINE_SEMANTIC_DEDUP', false),
+          semanticThreshold: this.getEnvNumber('MEMORY_ENGINE_SEMANTIC_THRESHOLD', 0.92),
+          recentTurnsForImportance: Math.trunc(
+            this.getEnvNumber('MEMORY_ENGINE_RECENT_TURNS', 10),
+          ),
+        },
+      );
+    }
+    return this._memoryEngine;
   }
 
   /**
@@ -518,6 +568,10 @@ export class ManagerContext {
   agentMemory(config?: AgentMemoryConfig): AgentMemoryManager {
     if (!this._agentMemory || config) {
       this._agentMemory = new AgentMemoryManager(this.storage, config);
+      // Invalidate derived caches that captured references into the old
+      // AgentMemoryManager (e.g., MemoryEngine wires episodicMemory/
+      // workingMemory at construction time).
+      this._memoryEngine = undefined;
     }
     return this._agentMemory;
   }

@@ -41,11 +41,11 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-1. **T05** — v1.11.0 Task 11: wire `MemoryEngine` into `ManagerContext` as a lazy getter. *(Now unblocked; T04 shipped on `master`.)*
+1. **T06** — v1.11.0 Task 12: integration tests for `MemoryEngine` against both JSONL + SQLite + the SQLite migration path. *(Now unblocked; T05 shipped on `master`.)*
 2. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Independent of the v1.11.0 chain; keeps plan-doc rot from regressing while v1.11.0 ships.)*
 3. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Independent; warm-up for ε.)*
 
-T05 touches `ManagerContext.ts` + barrel export; can run in parallel with T46 / T41 (different files).
+T06 creates a new file under `tests/integration/`; can run in parallel with T46 / T41 (different files).
 
 ---
 
@@ -143,7 +143,7 @@ Cardinal rules apply. One commit at the end. Update plan checkbox at line 1496 t
 ### T05 — Wire `MemoryEngine` into `ManagerContext`
 
 **Phase:** v1.11.0 Task 11 (line 1691)
-**Status:** 🟡 BLOCKED on **T04**
+**Status:** ✅ DONE (2026-04-24)
 **Agent type:** `general-purpose`
 **Files touched:** `src/core/ManagerContext.ts`, `src/index.ts` (barrel export), `tests/unit/core/ManagerContext.test.ts`
 **Done when:**

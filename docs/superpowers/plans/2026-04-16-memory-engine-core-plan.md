@@ -1,6 +1,6 @@
 # Memory Engine Core Implementation Plan
 
-> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–10 SHIPPED on `master` (T03 + T04 close-outs), Tasks 11–15 PENDING.** Tasks 11 (wire `MemoryEngine` into `ManagerContext`), 12 (integration tests JSONL+SQLite), 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. The `MemoryEngine` API surface (addTurn, checkDuplicate, getSessionTurns, deleteSession, listSessions, all four dedup tiers) is now complete; what remains is integration glue + tests + release prep. See [`2026-04-24-backlog-execution-phases.md`](./2026-04-24-backlog-execution-phases.md) Phase α for the close-out plan.
+> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–11 SHIPPED on `master` (T03 + T04 + T05 close-outs), Tasks 12–15 PENDING.** Tasks 12 (integration tests JSONL+SQLite), 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. `ManagerContext.memoryEngine` is now wired with 10 `MEMORY_ENGINE_*` env vars, lazy-initialized, and exported via `src/agent/index.ts`. Cache invalidation hook added to `agentMemory(config)` so re-instantiation also resets the derived `_memoryEngine` reference. See [`2026-04-24-backlog-execution-phases.md`](./2026-04-24-backlog-execution-phases.md) Phase α for the close-out plan.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1695,7 +1695,7 @@ EOF
 - Modify: `src/index.ts`
 - Modify: `tests/unit/agent/MemoryEngine.test.ts`
 
-- [ ] **Step 1: Add failing wiring tests**
+- [x] **Step 1: Add failing wiring tests**
 
 Append to `tests/unit/agent/MemoryEngine.test.ts`:
 
@@ -1737,12 +1737,12 @@ describe('MemoryEngine — ManagerContext wiring', () => {
 });
 ```
 
-- [ ] **Step 2: Verify failure**
+- [x] **Step 2: Verify failure**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts -t "ManagerContext wiring"`
 Expected: FAIL — getter missing.
 
-- [ ] **Step 3: Add imports and field in `ManagerContext.ts`**
+- [x] **Step 3: Add imports and field in `ManagerContext.ts`**
 
 Near the top of `src/core/ManagerContext.ts`, add:
 
@@ -1757,7 +1757,7 @@ Alongside the other private lazy fields (e.g., `_semanticSearch`), add:
   private _memoryEngine?: MemoryEngine;
 ```
 
-- [ ] **Step 4: Add the lazy getter**
+- [x] **Step 4: Add the lazy getter**
 
 Near the other manager getters (below `semanticSearch`):
 
@@ -1799,7 +1799,7 @@ Near the other manager getters (below `semanticSearch`):
   }
 ```
 
-- [ ] **Step 5: Re-export from the library barrel**
+- [x] **Step 5: Re-export from the library barrel**
 
 In `src/index.ts`, add:
 
@@ -1817,17 +1817,17 @@ export { ImportanceScorer } from './agent/ImportanceScorer.js';
 export type { ImportanceScorerConfig, ScoreOptions } from './agent/ImportanceScorer.js';
 ```
 
-- [ ] **Step 6: Run tests**
+- [x] **Step 6: Run tests**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: 28 PASS.
 
-- [ ] **Step 7: Typecheck**
+- [x] **Step 7: Typecheck**
 
 Run: `npm run typecheck`
 Expected: no errors.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/core/ManagerContext.ts src/index.ts tests/unit/agent/MemoryEngine.test.ts
