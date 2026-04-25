@@ -302,7 +302,7 @@ Unblocks γ, δ. Smallest spec'd-but-unshipped feature.
 |---|---|---|---|---|
 | T10 | β.0: code-explorer trace storage paths | ✅ | — | done 2026-04-25 |
 | T11 | β.1: define `IMemoryBackend` interface (TDD) | ✅ | — | done 2026-04-25 |
-| T12 | β.2: implement `InMemoryBackend` | 🟡 | T11 | T13 |
+| T12 | β.2: implement `InMemoryBackend` | ✅ | — | done 2026-04-25 |
 | T13 | β.3: implement `SQLiteBackend` | 🟡 | T11 | T12 |
 | T14 | β.4: wire `MemoryEngine` to backend (default In-Memory) | 🟡 | T12, T13 | — |
 | T15 | β.5: `DecayEngine.calculatePrdEffectiveImportance` | ✅ | — | done 2026-04-25 |

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase β.2 — InMemoryBackend adapter)
+
+- **`src/agent/InMemoryBackend.ts`** — Ephemeral, process-lifetime `IMemoryBackend` adapter. Stores turns in an in-process `Map<sessionId, MemoryTurn[]>`; no persistence. Scoring delegates to `DecayEngine.calculatePrdEffectiveImportance` so `get_weighted` returns the same PRD-formula scores any future backend produces. Inverse-translates `MemoryTurn.importance` (PRD scale `[1.0, 3.0]`) back to memoryjs scale `[0, 10]` before passing to the decay engine, which then internally re-translates — net round-trip is identity. `get_weighted` applies the threshold filter (defaulting to `decayEngine.prdMinImportanceThreshold = 0.1`) before sort-by-score-descending and limit. Closes T12 (Phase β.2).
+- **`tests/unit/agent/InMemoryBackend.test.ts`** — Wires `runMemoryBackendContract` from T11's parameterized suite (9 contract tests) plus 4 backend-specific tests (cross-session isolation, list_sessions add+delete, score-tie ordering, metadata round-trip).
+
 ### Added (Phase β.5/β.6 — PRD decay extensions)
 
 - **`DecayEngine.calculatePrdEffectiveImportance(entity, queryContext?, now?)`** — Parallel scoring method using the Context Engine PRD formula (`importance × recency × freshness + relevance_boost`) per `docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md`. Auto-scales memoryjs's `[0, 10]` importance to PRD's `[1.0, 3.0]`. The legacy `calculateEffectiveImportance` method is unchanged so existing callers (`DecayScheduler`, `SearchManager`, `SemanticForget`) preserve their semantics; this is a strictly additive parallel method. Closes T15 (Phase β.5). 8 new unit tests in `tests/unit/agent/DecayEngine.test.ts`.
