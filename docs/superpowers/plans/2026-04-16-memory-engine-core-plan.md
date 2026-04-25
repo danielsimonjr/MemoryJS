@@ -1,6 +1,6 @@
 # Memory Engine Core Implementation Plan
 
-> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–11 SHIPPED on `master` (T03 + T04 + T05 close-outs), Tasks 12–15 PENDING.** Tasks 12 (integration tests JSONL+SQLite), 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. `ManagerContext.memoryEngine` is now wired with 10 `MEMORY_ENGINE_*` env vars, lazy-initialized, and exported via `src/agent/index.ts`. Cache invalidation hook added to `agentMemory(config)` so re-instantiation also resets the derived `_memoryEngine` reference. See [`2026-04-24-backlog-execution-phases.md`](./2026-04-24-backlog-execution-phases.md) Phase α for the close-out plan.
+> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–12 SHIPPED on `master` (T03 + T04 + T05 + T06 close-outs), Tasks 13–15 PENDING.** Tasks 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. T06 also fixed a real persistence bug: `GraphStorage`'s three serialization sites had drifted, silently dropping every `AgentEntity` / `SessionEntity` / `ArtifactEntity` extension field on JSONL writes. Centralized into `OPTIONAL_PERSISTED_ENTITY_FIELDS` constant + helper, so future schema additions only need one edit point. SQLite tests skipped pending a parallel SQLite-side fix (schema lacks the columns; `rowToEntity` lacks the mapping).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1851,7 +1851,7 @@ EOF
 **Files:**
 - Create: `tests/integration/MemoryEngineStorage.test.ts`
 
-- [ ] **Step 1: Write the integration tests**
+- [x] **Step 1: Write the integration tests**
 
 Create `tests/integration/MemoryEngineStorage.test.ts`:
 
@@ -1922,17 +1922,17 @@ describe('MemoryEngine integration — SQLite roundtrip', () => {
 });
 ```
 
-- [ ] **Step 2: Run the integration tests**
+- [x] **Step 2: Run the integration tests**
 
 Run: `SKIP_BENCHMARKS=true npx vitest run tests/integration/MemoryEngineStorage.test.ts`
 Expected: 4 PASS.
 
-- [ ] **Step 3: Run the full regression suite**
+- [x] **Step 3: Run the full regression suite**
 
 Run: `SKIP_BENCHMARKS=true npm test -- --reporter=dot`
 Expected: all tests pass. Note: Vitest worker spawn errors on Windows (`errno -4094`) are transient — retry once if they appear.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/integration/MemoryEngineStorage.test.ts

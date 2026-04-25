@@ -17,6 +17,46 @@ import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js'
 import { BatchTransaction } from './TransactionManager.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
 
+// Required fields are always serialized via the explicit literal at each
+// call site. This list is the *optional* fields — additive across schema
+// evolution. Add new optional Entity / AgentEntity / SessionEntity /
+// ArtifactEntity fields here once and every appendEntity /
+// saveGraphInternal / updateEntity site picks them up. See:
+//   src/types/types.ts            Entity
+//   src/types/agent-memory.ts     AgentEntity, SessionEntity
+//   src/types/artifact.ts         ArtifactEntity
+const OPTIONAL_PERSISTED_ENTITY_FIELDS: ReadonlyArray<string> = [
+  // Core Entity (types/types.ts)
+  'tags', 'importance', 'parentId', 'projectId',
+  'version', 'parentEntityName', 'rootEntityName', 'isLatest', 'supersededBy',
+  'contentHash',
+  'ttl', 'confidence',
+  // AgentEntity extension (types/agent-memory.ts)
+  'memoryType', 'sessionId', 'conversationId', 'taskId',
+  'expiresAt', 'isWorkingMemory', 'promotedAt', 'promotedFrom', 'markedForPromotion',
+  'accessCount', 'lastAccessedAt', 'accessPattern',
+  'confirmationCount', 'decayRate',
+  'agentId', 'visibility', 'source',
+  // SessionEntity extension (types/agent-memory.ts)
+  'startedAt', 'endedAt', 'status',
+  'goalDescription', 'taskType', 'userIntent',
+  'memoryCount', 'consolidatedCount',
+  'previousSessionId', 'relatedSessionIds',
+  'outcome', 'failureCauses',
+  // ArtifactEntity extension (types/artifact.ts)
+  'artifactType', 'toolName', 'shortId',
+];
+
+function copyOptionalPersistedFields(
+  src: Partial<Record<string, unknown>>,
+  dst: Record<string, unknown>,
+): void {
+  for (const field of OPTIONAL_PERSISTED_ENTITY_FIELDS) {
+    const v = src[field];
+    if (v !== undefined) dst[field] = v;
+  }
+}
+
 /**
  * GraphStorage manages persistence of the knowledge graph to disk.
  *
@@ -412,16 +452,9 @@ export class GraphStorage implements IGraphStorage {
         lastModified: entity.lastModified,
       };
 
-      // Only include optional fields if they exist
-      if (entity.tags !== undefined) entityData.tags = entity.tags;
-      if (entity.importance !== undefined) entityData.importance = entity.importance;
-      if (entity.parentId !== undefined) entityData.parentId = entity.parentId;
-      if (entity.projectId !== undefined) entityData.projectId = entity.projectId;
-      if (entity.version !== undefined) entityData.version = entity.version;
-      if (entity.parentEntityName !== undefined) entityData.parentEntityName = entity.parentEntityName;
-      if (entity.rootEntityName !== undefined) entityData.rootEntityName = entity.rootEntityName;
-      if (entity.isLatest !== undefined) entityData.isLatest = entity.isLatest;
-      if (entity.supersededBy !== undefined) entityData.supersededBy = entity.supersededBy;
+      // Only include optional fields if they exist (centralized — see
+      // OPTIONAL_PERSISTED_ENTITY_FIELDS at the top of the file).
+      copyOptionalPersistedFields(entity as unknown as Record<string, unknown>, entityData);
 
       const line = JSON.stringify(entityData);
 
@@ -574,16 +607,9 @@ export class GraphStorage implements IGraphStorage {
           lastModified: e.lastModified,
         };
 
-        // Only include optional fields if they exist
-        if (e.tags !== undefined) entityData.tags = e.tags;
-        if (e.importance !== undefined) entityData.importance = e.importance;
-        if (e.parentId !== undefined) entityData.parentId = e.parentId;
-        if (e.projectId !== undefined) entityData.projectId = e.projectId;
-        if (e.version !== undefined) entityData.version = e.version;
-        if (e.parentEntityName !== undefined) entityData.parentEntityName = e.parentEntityName;
-        if (e.rootEntityName !== undefined) entityData.rootEntityName = e.rootEntityName;
-        if (e.isLatest !== undefined) entityData.isLatest = e.isLatest;
-        if (e.supersededBy !== undefined) entityData.supersededBy = e.supersededBy;
+        // Only include optional fields if they exist (centralized — see
+        // OPTIONAL_PERSISTED_ENTITY_FIELDS at the top of the file).
+        copyOptionalPersistedFields(e as unknown as Record<string, unknown>, entityData);
 
         return JSON.stringify(entityData);
       }),
@@ -685,15 +711,9 @@ export class GraphStorage implements IGraphStorage {
         lastModified: updatedEntity.lastModified,
       };
 
-      if (updatedEntity.tags !== undefined) entityData.tags = updatedEntity.tags;
-      if (updatedEntity.importance !== undefined) entityData.importance = updatedEntity.importance;
-      if (updatedEntity.parentId !== undefined) entityData.parentId = updatedEntity.parentId;
-      if (updatedEntity.projectId !== undefined) entityData.projectId = updatedEntity.projectId;
-      if (updatedEntity.version !== undefined) entityData.version = updatedEntity.version;
-      if (updatedEntity.parentEntityName !== undefined) entityData.parentEntityName = updatedEntity.parentEntityName;
-      if (updatedEntity.rootEntityName !== undefined) entityData.rootEntityName = updatedEntity.rootEntityName;
-      if (updatedEntity.isLatest !== undefined) entityData.isLatest = updatedEntity.isLatest;
-      if (updatedEntity.supersededBy !== undefined) entityData.supersededBy = updatedEntity.supersededBy;
+      // Centralized optional-field copy — see
+      // OPTIONAL_PERSISTED_ENTITY_FIELDS at the top of the file.
+      copyOptionalPersistedFields(updatedEntity as unknown as Record<string, unknown>, entityData);
 
       const line = JSON.stringify(entityData);
 
