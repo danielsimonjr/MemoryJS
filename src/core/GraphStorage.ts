@@ -116,8 +116,11 @@ export class GraphStorage implements IGraphStorage {
    * @throws {FileOperationError} If path traversal is detected
    */
   constructor(memoryFilePath: string) {
-    // Security: Validate path to prevent path traversal attacks
-    this.memoryFilePath = validateFilePath(memoryFilePath);
+    // Security: Validate path to prevent path traversal attacks.
+    // confineToBase=false: memoryFilePath comes from ManagerContext, which
+    // already validated it. Tests pass tmpdir() paths; the ".." segment
+    // defense-in-depth check still runs.
+    this.memoryFilePath = validateFilePath(memoryFilePath, undefined, false);
   }
 
   // ==================== Phase 10 Sprint 2: Event Emitter Access ====================

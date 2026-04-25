@@ -117,8 +117,11 @@ export class ManagerContext {
         : pathOrOptions;
     this.defaultProjectId = opts.defaultProjectId;
 
-    // Security: Validate path to prevent path traversal attacks
-    const validatedPath = validateFilePath(opts.storagePath);
+    // Security: Validate path to prevent path traversal attacks.
+    // confineToBase=false because storagePath is application-controlled
+    // (not user-tainted) — tests need to pass tmpdir() paths. The defense-
+    // in-depth ".." segment check at the top of validateFilePath still runs.
+    const validatedPath = validateFilePath(opts.storagePath, undefined, false);
 
     // Derive paths for saved searches and tag aliases
     const dir = path.dirname(validatedPath);

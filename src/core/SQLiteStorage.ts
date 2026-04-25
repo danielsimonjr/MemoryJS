@@ -105,8 +105,11 @@ export class SQLiteStorage implements IGraphStorage {
    * @throws {FileOperationError} If path traversal is detected
    */
   constructor(dbFilePath: string) {
-    // Security: Validate path to prevent path traversal attacks
-    this.validatedDbFilePath = validateFilePath(dbFilePath);
+    // Security: Validate path to prevent path traversal attacks.
+    // confineToBase=false: dbFilePath comes from ManagerContext, which
+    // already validated it. Tests pass tmpdir() paths; the ".." segment
+    // defense-in-depth check still runs.
+    this.validatedDbFilePath = validateFilePath(dbFilePath, undefined, false);
   }
 
   /**

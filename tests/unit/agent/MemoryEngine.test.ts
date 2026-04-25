@@ -273,3 +273,90 @@ describe('MemoryEngine — optional semantic tier', () => {
     } finally { cleanup(); }
   });
 });
+
+describe('MemoryEngine — addTurn', () => {
+  it('creates entity with role-prefixed observation, importance, contentHash', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      const result = await engine.addTurn('hello world', { sessionId: 'sess-A', role: 'user' });
+
+      expect(result.duplicateDetected).toBe(false);
+      expect(result.entity.observations[0]).toBe('[role=user] hello world');
+      expect(result.entity.contentHash).toBe(sha256('hello world'));
+      expect(result.importanceScore).toBeGreaterThanOrEqual(0);
+      expect(result.importanceScore).toBeLessThanOrEqual(10);
+    } finally { cleanup(); }
+  });
+
+  it('returns existing entity + duplicateTier on duplicate', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      const first = await engine.addTurn('hello world', { sessionId: 'sess-A', role: 'user' });
+      const second = await engine.addTurn('hello world', { sessionId: 'sess-A', role: 'user' });
+      expect(second.duplicateDetected).toBe(true);
+      expect(second.duplicateTier).toBe('exact');
+      expect(second.duplicateOf).toBe(first.entity.name);
+    } finally { cleanup(); }
+  });
+
+  it('respects importance override', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      const result = await engine.addTurn('x', { sessionId: 'sess-A', role: 'user', importance: 9 });
+      expect(result.entity.importance).toBe(9);
+      expect(result.importanceScore).toBe(9);
+    } finally { cleanup(); }
+  });
+
+  it('fires memoryEngine:turnAdded event', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      const captured: unknown[] = [];
+      engine.events.on('memoryEngine:turnAdded', (ev) => captured.push(ev));
+
+      await engine.addTurn('hello', { sessionId: 'sess-A', role: 'user' });
+      expect(captured).toHaveLength(1);
+      const ev = captured[0] as { sessionId: string; role: string; importance: number };
+      expect(ev.sessionId).toBe('sess-A');
+      expect(ev.role).toBe('user');
+      expect(typeof ev.importance).toBe('number');
+    } finally { cleanup(); }
+  });
+
+  it('fires memoryEngine:duplicateDetected event on duplicate', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      const captured: unknown[] = [];
+      engine.events.on('memoryEngine:duplicateDetected', (ev) => captured.push(ev));
+
+      await engine.addTurn('dupe', { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn('dupe', { sessionId: 'sess-A', role: 'user' });
+      expect(captured).toHaveLength(1);
+    } finally { cleanup(); }
+  });
+});

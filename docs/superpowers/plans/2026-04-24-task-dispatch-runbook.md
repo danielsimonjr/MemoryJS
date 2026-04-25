@@ -41,11 +41,11 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-1. **T03** — v1.11.0 Task 9: implement `MemoryEngine.addTurn` happy path with events. *(Blocks the entire v1.11.0 release chain.)*
+1. **T04** — v1.11.0 Task 10: implement `getSessionTurns` / `deleteSession` / `listSessions`. *(Now unblocked; T03 shipped on `master`.)*
 2. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Independent of the v1.11.0 chain; keeps plan-doc rot from regressing while v1.11.0 ships.)*
 3. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Independent; warm-up for ε.)*
 
-T03 and T46 can run in parallel (different files, no shared state). T41 is read-only analysis, can run anytime.
+T04 must run sequentially next (touches same `MemoryEngine.ts` file). T46 and T41 can run in parallel with T04 (different files, no shared state).
 
 ---
 
@@ -73,7 +73,7 @@ These ship `MemoryEngine` from "skeleton + dedup tiers" to "consumable feature".
 ### T03 — Implement `MemoryEngine.addTurn` happy path with events
 
 **Phase:** v1.11.0 Task 9 (`docs/superpowers/plans/2026-04-16-memory-engine-core-plan.md`, line 1274)
-**Status:** 🟢 READY
+**Status:** ✅ DONE (2026-04-24)
 **Blockers:** none
 **Parallel with:** T41, T46 (different files)
 **Agent type:** `general-purpose` (or `superpowers:executing-plans` for the parent plan)

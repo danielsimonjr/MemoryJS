@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`MemoryEngine.addTurn` happy path with events** — Implements turn-aware conversation memory ingestion (`src/agent/MemoryEngine.ts`). On each turn: runs the four-tier dedup chain (`checkTierExact` / `checkTierPrefix` / `checkTierJaccard` / optional `checkTierSemantic`); on duplicate, emits `memoryEngine:duplicateDetected` with the existing entity + matched tier and returns it without creating a new record. On non-duplicate: scores importance via `ImportanceScorer` (with optional `queryContext` + `recentTurns` for overlap signal — recent turns auto-loaded from session window if not provided), calls `EpisodicMemoryManager.createEpisode` with role-prefixed observation `[role=...] content`, populates `Entity.contentHash` via `storage.updateEntity`, opportunistically stores the embedding via duck-typed `storeEmbedding` when both an `EmbeddingService` and a SQLite-backed storage are wired, and emits `memoryEngine:turnAdded`. Closes Task 9 of `docs/superpowers/plans/2026-04-16-memory-engine-core-plan.md` and unblocks the v1.11.0 release chain (Tasks 10–15). 5 new unit tests under `describe('MemoryEngine — addTurn')`.
+
+### Fixed
+
+- **Path-validation regression breaking ~1700 unit tests** — Commit `d005821` flipped `validateFilePath`'s `confineToBase` default from `false` to `true`, causing every test that passed an `os.tmpdir()` path through `ManagerContext` / `GraphStorage` / `SQLiteStorage` to throw `FileOperationError: Path is outside the allowed directory`. Fixed surgically: the three internal-storage call sites now pass `confineToBase: false` explicitly with rationale comments — their input is application-controlled and was already validated upstream. The defense-in-depth `..`-segment check at the top of `validateFilePath` (the actual security improvement from `d005821`) is preserved unchanged. Public API of `validateFilePath` and the strict default for external callers (CLI, IOManager backup paths) are unchanged. Test suite recovery: 1716 → 87 failures (1629 tests un-broken).
+
 ### Specs added (no code changes — design docs only)
 
 - **`docs/superpowers/specs/2026-04-16-memory-engine-core-design.md`** — Context Engine sub-feature #3a. Covers PRD §8 `MEM-02` (auto-importance scoring with recent-turn overlap) and `MEM-03` (three-tier dedup: exact equality / 50% prefix overlap / Jaccard ≥ 0.72). Proposes a new `MemoryEngine` class composing over `EpisodicMemoryManager` + `WorkingMemoryManager`, a new `ImportanceScorer` class, a single additive `Entity.contentHash` field, and a `node:events`-based event emitter independent of the closed `GraphEvent` union. Target release: **v1.11.0**.

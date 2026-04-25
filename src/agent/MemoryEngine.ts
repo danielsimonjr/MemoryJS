@@ -140,8 +140,76 @@ export class MemoryEngine {
     };
   }
 
-  async addTurn(_content: string, _options: AddTurnOptions): Promise<AddTurnResult> {
-    throw new Error('Not implemented — Task 9');
+  async addTurn(content: string, options: AddTurnOptions): Promise<AddTurnResult> {
+    const dup = await this.checkDuplicate(content, options.sessionId);
+    if (dup.isDuplicate && dup.match) {
+      this.events.emit('memoryEngine:duplicateDetected', {
+        existingEntity: dup.match,
+        attemptedContent: content,
+        sessionId: options.sessionId,
+        tier: dup.tier,
+      });
+      return {
+        entity: dup.match,
+        duplicateDetected: true,
+        duplicateOf: dup.match.name,
+        duplicateTier: dup.tier,
+        importanceScore: dup.match.importance ?? 0,
+      };
+    }
+
+    let importance: number;
+    if (typeof options.importance === 'number') {
+      importance = options.importance;
+    } else {
+      const recentTurns =
+        options.recentTurns ??
+        (await this.loadRecentTurnsForImportance(options.sessionId));
+      importance = this.deps.importanceScorer.score(content, {
+        queryContext: options.queryContext,
+        recentTurns,
+      });
+    }
+
+    const observation = `[role=${options.role}] ${content}`;
+    const entity = await this.deps.episodicMemory.createEpisode(observation, {
+      sessionId: options.sessionId,
+      agentId: options.agentId,
+      importance,
+    });
+
+    const hash = this.computeContentHash(content);
+    await this.deps.storage.updateEntity(entity.name, { contentHash: hash });
+    const enriched: AgentEntity = { ...entity, contentHash: hash };
+
+    if (this.deps.embeddingService && hasStoreEmbedding(this.deps.storage)) {
+      try {
+        const vector = await this.deps.embeddingService.embed(content);
+        const model =
+          (this.deps.embeddingService as { getModelName?: () => string }).getModelName?.() ??
+          'unknown';
+        this.deps.storage.storeEmbedding(entity.name, vector, model);
+      } catch {
+        // Embedding is best-effort; failure does not abort the write.
+      }
+    }
+
+    this.events.emit('memoryEngine:turnAdded', {
+      entity: enriched,
+      sessionId: options.sessionId,
+      role: options.role,
+      importance,
+    });
+
+    return { entity: enriched, duplicateDetected: false, importanceScore: importance };
+  }
+
+  private async loadRecentTurnsForImportance(sessionId: string): Promise<string[]> {
+    const recent = await this.getRecentSessionEntities(
+      sessionId,
+      this.cfg.recentTurnsForImportance,
+    );
+    return recent.map((e) => stripRolePrefix(e.observations[0] ?? ''));
   }
 
   async getSessionTurns(
@@ -252,4 +320,12 @@ export class MemoryEngine {
   async listSessions(): Promise<string[]> {
     throw new Error('Not implemented — Task 10');
   }
+}
+
+interface HasStoreEmbedding {
+  storeEmbedding: (entityName: string, vector: number[], model: string) => void;
+}
+
+function hasStoreEmbedding(storage: unknown): storage is HasStoreEmbedding {
+  return typeof (storage as HasStoreEmbedding | null)?.storeEmbedding === 'function';
 }

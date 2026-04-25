@@ -1,6 +1,6 @@
 # Memory Engine Core Implementation Plan
 
-> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–8 SHIPPED on `master` (commits `2c3a10d`…`1d74a08`), Tasks 9–15 PENDING.** Tasks 9 (`addTurn` happy path), 10 (`getSessionTurns`/`deleteSession`/`listSessions`), 11 (wire `MemoryEngine` into `ManagerContext`), 12 (integration tests JSONL+SQLite), 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. The four `addTurn`/`getSessionTurns`/`deleteSession`/`listSessions` methods exist as stubs that throw `Error("Not implemented — Task N")`. See [`2026-04-24-backlog-execution-phases.md`](./2026-04-24-backlog-execution-phases.md) Phase α for the close-out plan.
+> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–9 SHIPPED on `master` (commits `2c3a10d`…`1d74a08` + T03 follow-on), Tasks 10–15 PENDING.** Tasks 10 (`getSessionTurns`/`deleteSession`/`listSessions`), 11 (wire `MemoryEngine` into `ManagerContext`), 12 (integration tests JSONL+SQLite), 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. `getSessionTurns` / `deleteSession` / `listSessions` still exist as stubs that throw `Error("Not implemented — Task 10")`. See [`2026-04-24-backlog-execution-phases.md`](./2026-04-24-backlog-execution-phases.md) Phase α for the close-out plan.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1277,7 +1277,7 @@ EOF
 - Modify: `src/agent/MemoryEngine.ts`
 - Modify: `tests/unit/agent/MemoryEngine.test.ts`
 
-- [ ] **Step 1: Add failing addTurn tests**
+- [x] **Step 1: Add failing addTurn tests**
 
 Append to `tests/unit/agent/MemoryEngine.test.ts`:
 
@@ -1370,12 +1370,12 @@ describe('MemoryEngine — addTurn', () => {
 });
 ```
 
-- [ ] **Step 2: Verify failure**
+- [x] **Step 2: Verify failure**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts -t "addTurn"`
 Expected: 5 FAILs.
 
-- [ ] **Step 3: Implement `addTurn`**
+- [x] **Step 3: Implement `addTurn`**
 
 Before writing the body, confirm the real `EmbeddingService` method for retrieving the current model name by grepping `src/search/EmbeddingService.ts` for `getModelName` or similar. If the method is named differently, adapt the call. If no such method exists, pass a constant `'unknown'` string — the model identifier is only used for embedding-table metadata.
 
@@ -1462,17 +1462,17 @@ function hasStoreEmbedding(storage: unknown): storage is HasStoreEmbedding {
 }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: 19 PASS.
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `npm run typecheck`
 Expected: no errors.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/agent/MemoryEngine.ts tests/unit/agent/MemoryEngine.test.ts
