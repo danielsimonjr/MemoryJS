@@ -30,7 +30,8 @@ export function registerIOCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
-        const resolvedPath = validateFilePath(resolve(file));
+        // CLI path is user-explicit; ".." defense-in-depth still runs.
+        const resolvedPath = validateFilePath(resolve(file), undefined, false);
         const data = readFileSync(resolvedPath, 'utf-8');
 
         const result = await ctx.ioManager.importGraph(
@@ -62,7 +63,8 @@ export function registerIOCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
-        const resolvedPath = validateFilePath(resolve(file));
+        // CLI path is user-explicit; ".." defense-in-depth still runs.
+        const resolvedPath = validateFilePath(resolve(file), undefined, false);
         const graph = await ctx.storage.loadGraph();
         const data = ctx.ioManager.exportGraph(
           graph,

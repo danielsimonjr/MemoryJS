@@ -65,8 +65,10 @@ export class StreamingExporter {
    * @throws {FileOperationError} If path traversal is detected
    */
   constructor(filePath: string) {
-    // Validate path to prevent path traversal attacks
-    this.validatedFilePath = validateFilePath(filePath);
+    // Export targets are user-supplied and may legitimately point outside
+    // cwd (tmpdir, network shares, OneDrive). The ".." defense-in-depth
+    // check inside validateFilePath still runs.
+    this.validatedFilePath = validateFilePath(filePath, undefined, false);
   }
 
   /**

@@ -41,11 +41,11 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-1. **T07** — v1.11.0 Task 13: performance smoke test (≥1000 `addTurn` calls, exercise all four dedup tiers, p50/p95 reporting, honor `SKIP_BENCHMARKS`). *(Now unblocked; T06 shipped on `master`.)*
+1. **T07** — v1.11.0 Task 13: performance smoke test (≥1000 `addTurn` calls, exercise all four dedup tiers, p50/p95 reporting, honor `SKIP_BENCHMARKS`). *(Unblocked; T06 + T06b shipped on `master`.)*
 2. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Independent of the v1.11.0 chain.)*
 3. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Independent; warm-up for ε.)*
 
-T07 creates `benchmarks/memory-engine-bench.ts`; can run in parallel with T46 / T41 (different files). Note: a follow-up for the SQLite-side AgentEntity-field mapping is now implicitly queued (the `it.skip` tests in T06's deliverable). Worth filing as its own task before T07 starts so the SQLite side doesn't get forgotten.
+T07 creates `benchmarks/memory-engine-bench.ts`; can run in parallel with T46 / T41 (different files).
 
 ---
 
@@ -176,7 +176,7 @@ Cardinal rules apply. One commit. Update plan checkbox at line 1691 to [x].`
 ### T06 — Integration tests: JSONL + SQLite roundtrip + migration
 
 **Phase:** v1.11.0 Task 12 (line 1849)
-**Status:** ✅ DONE for JSONL (2026-04-24); SQLite half deferred — `it.skip` with rationale, follow-up needed for SessionEntity/AgentEntity column mapping.
+**Status:** ✅ DONE (2026-04-24) — JSONL + SQLite both passing. T06 follow-on (T06b) shipped the SQLite-side AgentEntity round-trip via a new `agentMetadata` JSON-blob column with idempotent migration. All 7 integration tests in the file pass; 5551/5551 unit + integration green.
 **Agent type:** `general-purpose`
 **Files touched:** new file `tests/integration/MemoryEngine.integration.test.ts`
 **Done when:**

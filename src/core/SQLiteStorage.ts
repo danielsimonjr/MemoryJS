@@ -140,7 +140,10 @@ export class SQLiteStorage implements IGraphStorage {
   private createTables(): void {
     if (!this.db) throw new Error('Database not initialized');
 
-    // Entities table with referential integrity for parentId
+    // Entities table with referential integrity for parentId.
+    // contentHash and agentMetadata are added by migrateEntitiesTable for
+    // backwards compatibility with v1.10 and earlier DBs; new DBs created
+    // here also get them via that same migration call below.
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS entities (
         name TEXT PRIMARY KEY,
@@ -156,7 +159,9 @@ export class SQLiteStorage implements IGraphStorage {
         parentEntityName TEXT,
         rootEntityName TEXT,
         isLatest INTEGER DEFAULT 1,
-        supersededBy TEXT
+        supersededBy TEXT,
+        contentHash TEXT,
+        agentMetadata TEXT
       )
     `);
 
@@ -301,11 +306,66 @@ export class SQLiteStorage implements IGraphStorage {
     if (!columnNames.has('contentHash')) {
       this.db.exec('ALTER TABLE entities ADD COLUMN contentHash TEXT');
     }
+    if (!columnNames.has('agentMetadata')) {
+      // Single JSON-blob column for AgentEntity / SessionEntity /
+      // ArtifactEntity extension fields. Subsumes the field-list drift
+      // problem: future schema additions just extend the JSON shape.
+      this.db.exec('ALTER TABLE entities ADD COLUMN agentMetadata TEXT');
+    }
 
     // Create indexes (idempotent)
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_isLatest ON entities(isLatest)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_content_hash ON entities(contentHash)`);
+  }
+
+  /**
+   * Fields that round-trip through the `agentMetadata` JSON blob column.
+   * Native columns (importance, projectId, version, contentHash, etc.) are
+   * stored separately for SQL-side queryability. Everything else lives in
+   * the blob to avoid schema-migration drift as the type system evolves.
+   * Mirrors `OPTIONAL_PERSISTED_ENTITY_FIELDS` in GraphStorage.ts minus
+   * the fields that already have native columns.
+   */
+  private static readonly EXTENSION_FIELDS: ReadonlyArray<string> = [
+    // Core Entity (not in native columns)
+    'ttl', 'confidence',
+    // AgentEntity (types/agent-memory.ts)
+    'memoryType', 'sessionId', 'conversationId', 'taskId',
+    'expiresAt', 'isWorkingMemory', 'promotedAt', 'promotedFrom', 'markedForPromotion',
+    'accessCount', 'lastAccessedAt', 'accessPattern',
+    'confirmationCount', 'decayRate',
+    'agentId', 'visibility', 'source',
+    // SessionEntity (types/agent-memory.ts)
+    'startedAt', 'endedAt', 'status',
+    'goalDescription', 'taskType', 'userIntent',
+    'memoryCount', 'consolidatedCount',
+    'previousSessionId', 'relatedSessionIds',
+    'outcome', 'failureCauses',
+    // ArtifactEntity (types/artifact.ts)
+    'artifactType', 'toolName', 'shortId',
+  ];
+
+  /** Build the JSON blob payload for the `agentMetadata` column. */
+  private serializeExtensionFields(entity: Entity): string | null {
+    const src = entity as unknown as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const field of SQLiteStorage.EXTENSION_FIELDS) {
+      const v = src[field];
+      if (v !== undefined) out[field] = v;
+    }
+    return Object.keys(out).length === 0 ? null : JSON.stringify(out);
+  }
+
+  /** Inverse of `serializeExtensionFields`. Tolerant of malformed JSON. */
+  private parseExtensionFields(blob: string | null): Record<string, unknown> {
+    if (!blob) return {};
+    try {
+      const parsed: unknown = JSON.parse(blob);
+      return parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
   }
 
   /**
@@ -372,6 +432,13 @@ export class SQLiteStorage implements IGraphStorage {
     if (row.rootEntityName != null) entity.rootEntityName = row.rootEntityName;
     if (row.isLatest != null) entity.isLatest = row.isLatest === 1;
     if (row.supersededBy != null) entity.supersededBy = row.supersededBy;
+
+    // v1.11.0: contentHash + AgentEntity / SessionEntity / ArtifactEntity
+    // extension fields. contentHash has its own indexed column; everything
+    // else round-trips through the agentMetadata JSON blob.
+    if (row.contentHash != null) entity.contentHash = row.contentHash;
+    const ext = this.parseExtensionFields(row.agentMetadata ?? null);
+    Object.assign(entity, ext);
 
     return entity;
   }
@@ -497,8 +564,8 @@ export class SQLiteStorage implements IGraphStorage {
 
         // Insert all entities
         const entityStmt = this.db!.prepare(`
-          INSERT INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         for (const entity of graph.entities) {
@@ -517,6 +584,8 @@ export class SQLiteStorage implements IGraphStorage {
             entity.rootEntityName ?? null,
             entity.isLatest === false ? 0 : 1,
             entity.supersededBy ?? null,
+            entity.contentHash ?? null,
+            this.serializeExtensionFields(entity),
           );
         }
 
@@ -583,8 +652,8 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Use INSERT OR REPLACE to handle updates
       const stmt = this.db.prepare(`
-        INSERT OR REPLACE INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
@@ -602,6 +671,8 @@ export class SQLiteStorage implements IGraphStorage {
         entity.rootEntityName ?? null,
         entity.isLatest === false ? 0 : 1,
         entity.supersededBy ?? null,
+        entity.contentHash ?? null,
+        this.serializeExtensionFields(entity),
       );
 
       // Update cache
@@ -716,7 +787,9 @@ export class SQLiteStorage implements IGraphStorage {
           parentEntityName = ?,
           rootEntityName = ?,
           isLatest = ?,
-          supersededBy = ?
+          supersededBy = ?,
+          contentHash = ?,
+          agentMetadata = ?
         WHERE name = ?
       `);
 
@@ -733,6 +806,8 @@ export class SQLiteStorage implements IGraphStorage {
         entity.rootEntityName ?? null,
         entity.isLatest === false ? 0 : 1,
         entity.supersededBy ?? null,
+        entity.contentHash ?? null,
+        this.serializeExtensionFields(entity),
         entityName,
       );
 
@@ -1254,6 +1329,9 @@ interface EntityRow {
   rootEntityName: string | null;
   isLatest: number | null;
   supersededBy: string | null;
+  // v1.11.0: contentHash + AgentEntity-extension JSON blob
+  contentHash: string | null;
+  agentMetadata: string | null;
 }
 
 interface RelationRow {

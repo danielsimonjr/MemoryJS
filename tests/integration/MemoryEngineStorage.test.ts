@@ -70,15 +70,6 @@ describe('MemoryEngine integration — JSONL roundtrip', () => {
 });
 
 describe('MemoryEngine integration — SQLite roundtrip', () => {
-  // NOTE: Skipped pending follow-up bug fix. SQLiteStorage's rowToEntity
-  // mapper enumerates a fixed column subset that excludes every
-  // AgentEntity-extension field (sessionId, agentId, accessCount,
-  // confidence, confirmationCount, visibility, memoryType, etc.). Schema
-  // also lacks those columns entirely. To make these round-trips work we
-  // need either (a) an `agentMetadata` JSON blob column with a single
-  // forward migration, or (b) twelve discrete columns added via
-  // ADD COLUMN with read/write paths updated. Tracked as the SQLite
-  // counterpart to the JSONL field-drift fix shipped with T06.
   let file: string;
   const prevStorageType = process.env.MEMORY_STORAGE_TYPE;
 
@@ -98,7 +89,7 @@ describe('MemoryEngine integration — SQLite roundtrip', () => {
     else process.env.MEMORY_STORAGE_TYPE = prevStorageType;
   });
 
-  it.skip('contentHash populates the indexed column on SQLite', async () => {
+  it('contentHash populates the indexed column on SQLite', async () => {
     const ctx1 = new ManagerContext(file);
     await ctx1.memoryEngine.addTurn('sqlite content', {
       sessionId: 's-A',
@@ -111,7 +102,7 @@ describe('MemoryEngine integration — SQLite roundtrip', () => {
     expect(turns[0].contentHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it.skip('dedup via index hits across SQLite reopen', async () => {
+  it('dedup via index hits across SQLite reopen', async () => {
     const ctx1 = new ManagerContext(file);
     const first = await ctx1.memoryEngine.addTurn('persist dedup sqlite', {
       sessionId: 's-A',
@@ -128,12 +119,35 @@ describe('MemoryEngine integration — SQLite roundtrip', () => {
     expect(second.duplicateOf).toBe(first.entity.name);
   });
 
-  it.skip('handles SQLite migration idempotently across multiple opens', async () => {
+  it('handles SQLite migration idempotently across multiple opens', async () => {
     const ctx1 = new ManagerContext(file);
     await ctx1.memoryEngine.addTurn('warm-up', { sessionId: 's-A', role: 'user' });
 
     // Re-opening the same DB must not re-run destructive migrations or throw.
     expect(() => new ManagerContext(file)).not.toThrow();
     expect(() => new ManagerContext(file)).not.toThrow();
+  });
+
+  it('AgentEntity-extension fields survive close/reopen via agentMetadata blob', async () => {
+    const ctx1 = new ManagerContext(file);
+    await ctx1.memoryEngine.addTurn('round-trip me sqlite', {
+      sessionId: 'rt-S',
+      role: 'assistant',
+      agentId: 'agent-y',
+    });
+
+    const ctx2 = new ManagerContext(file);
+    const turns = await ctx2.memoryEngine.getSessionTurns('rt-S');
+    expect(turns).toHaveLength(1);
+
+    const t = turns[0];
+    expect(t.sessionId).toBe('rt-S');
+    expect(t.agentId).toBe('agent-y');
+    expect(t.memoryType).toBeDefined();
+    expect(t.visibility).toBeDefined();
+    expect(typeof t.accessCount).toBe('number');
+    expect(typeof t.confidence).toBe('number');
+    expect(typeof t.confirmationCount).toBe('number');
+    expect(t.contentHash).toMatch(/^[0-9a-f]{64}$/);
   });
 });

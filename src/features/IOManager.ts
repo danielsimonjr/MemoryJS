@@ -227,8 +227,9 @@ export class IOManager {
     graph: ReadonlyKnowledgeGraph,
     options: ExportOptions & { outputPath: string }
   ): Promise<ExportResult> {
-    // Validate path to prevent path traversal attacks (defense in depth)
-    const validatedOutputPath = validateFilePath(options.outputPath);
+    // Export output is user-supplied and may legitimately target outside
+    // cwd; ".." defense-in-depth check inside validateFilePath still runs.
+    const validatedOutputPath = validateFilePath(options.outputPath, undefined, false);
     const exporter = new StreamingExporter(validatedOutputPath);
     let result: StreamResult;
 

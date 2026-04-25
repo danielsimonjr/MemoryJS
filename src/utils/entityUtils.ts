@@ -797,9 +797,11 @@ export const defaultMemoryPath = path.join(process.cwd(), 'memory.jsonl');
  */
 export async function ensureMemoryFilePath(): Promise<string> {
   if (process.env.MEMORY_FILE_PATH) {
-    // Custom path provided, validate and resolve to absolute
-    // Use process.cwd() as baseDir so paths are relative to consuming project
-    const validatedPath = validateFilePath(process.env.MEMORY_FILE_PATH, process.cwd());
+    // baseDir=cwd so relative values anchor to the consuming project.
+    // confineToBase=false because MEMORY_FILE_PATH is explicit user config
+    // and may legitimately point anywhere on disk; ".." defense-in-depth
+    // still runs.
+    const validatedPath = validateFilePath(process.env.MEMORY_FILE_PATH, process.cwd(), false);
     return validatedPath;
   }
 

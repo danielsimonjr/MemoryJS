@@ -760,9 +760,25 @@ describe('entityUtils', () => {
   // ==================== Path Utilities Tests ====================
 
   describe('validateFilePath', () => {
-    it('should accept absolute paths', () => {
-      // Using a format that works on Windows
-      const result = validateFilePath('C:\\Users\\test\\memory.jsonl', 'C:\\base');
+    // Post-d005821 contract: confineToBase defaults to true and ".." segments
+    // are eagerly rejected before normalization (defense-in-depth against
+    // path-traversal). Callers that legitimately need to escape cwd pass
+    // confineToBase=false explicitly (storage layer, MEMORY_FILE_PATH,
+    // export output paths).
+
+    it('rejects absolute paths outside baseDir under default confinement', () => {
+      // Default confineToBase=true rejects absolute paths that escape baseDir.
+      expect(() =>
+        validateFilePath('C:\\Users\\test\\memory.jsonl', 'C:\\base'),
+      ).toThrow(/outside the allowed directory/);
+    });
+
+    it('accepts absolute paths when confineToBase=false', () => {
+      const result = validateFilePath(
+        'C:\\Users\\test\\memory.jsonl',
+        'C:\\base',
+        false,
+      );
       expect(result).toContain('memory.jsonl');
     });
 
@@ -771,10 +787,11 @@ describe('entityUtils', () => {
       expect(result).toContain('memory.jsonl');
     });
 
-    it('should normalize paths and remove single dots', () => {
-      const result = validateFilePath('./data/../memory.jsonl', 'C:\\base');
-      expect(result).not.toContain('..');
-      expect(result).toContain('memory.jsonl');
+    it('rejects ".." segments before normalization', () => {
+      // The eager defense-in-depth check throws on any ".." segment in input,
+      // regardless of whether normalization would resolve it safely.
+      expect(() => validateFilePath('./data/../memory.jsonl', 'C:\\base'))
+        .toThrow(/Path traversal detected/);
     });
 
     it('should handle simple relative paths', () => {
@@ -788,12 +805,9 @@ describe('entityUtils', () => {
       expect(result).toContain('file.txt');
     });
 
-    it('should normalize path traversal and return valid path', () => {
-      // After normalization, '..' is resolved - this tests the actual behavior
-      // The function normalizes paths, so '../..' becomes a parent directory path
-      const result = validateFilePath('..', '/base/subdir');
-      // Path is normalized to /base
-      expect(result).toBeDefined();
+    it('rejects bare ".." traversal', () => {
+      expect(() => validateFilePath('..', '/base/subdir'))
+        .toThrow(/Path traversal detected/);
     });
   });
 
@@ -976,18 +990,20 @@ describe('entityUtils', () => {
       expect(result).toContain('memory.jsonl');
     });
 
-    it('should use MEMORY_FILE_PATH when set', async () => {
+    it('should use MEMORY_FILE_PATH when set (absolute path outside cwd allowed)', async () => {
+      // ensureMemoryFilePath passes confineToBase=false because
+      // MEMORY_FILE_PATH is explicit user configuration; allowing arbitrary
+      // absolute paths is the intended behavior.
       process.env.MEMORY_FILE_PATH = '/custom/path/memory.jsonl';
       const result = await ensureMemoryFilePath();
       expect(result).toContain('memory.jsonl');
     });
 
-    it('should resolve relative paths with traversal', async () => {
-      // Path traversal in MEMORY_FILE_PATH gets normalized
-      // The function validates and resolves to absolute path
+    it('rejects MEMORY_FILE_PATH with ".." traversal', async () => {
+      // The eager ".." defense-in-depth check rejects path traversal in
+      // MEMORY_FILE_PATH even though the rest of the path API is permissive.
       process.env.MEMORY_FILE_PATH = '../custom.jsonl';
-      const result = await ensureMemoryFilePath();
-      expect(result).toContain('custom.jsonl');
+      await expect(ensureMemoryFilePath()).rejects.toThrow(/Path traversal detected/);
     });
 
     it('should handle relative custom path', async () => {
