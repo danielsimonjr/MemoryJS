@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase ζ — plan-doc rot prevention)
+
+- **`tools/plan-doc-audit/`** — Static-analysis tool that walks every `docs/superpowers/plans/**/*.md` and `docs/roadmap/**/*.md`, extracts code symbols from `- [ ]` task lines (backtick-quoted code spans only — PascalCase in prose intentionally ignored to suppress noise), runs `git grep` against `src/`, and reads function bodies to filter stubs. The load-bearing lesson from the 2026-04-24 reconciliation is baked into the design: a stub that throws `"Not implemented"` must NOT count as shipped, even though `git grep` finds the symbol. Window for stub detection is intentionally tight (matched line + 2 lines after) so multi-class files don't false-positive on adjacent class declarations. Future-work-verb filter (Implement / Wire / Add / Create / Build / etc.) leaves tasks unchecked even when their named symbols are shipped, because such tasks usually reference the symbols as the *target* of new work, not as evidence the task is complete. Modes: `--dry-run` (default — report only, exit 1 if flips eligible) and `--apply` (rewrite plan files). Programmatic API: `runAudit({ planRoots, srcRoot, apply, cwd })` for tests/CI integration. 20 unit tests with synthetic git fixtures cover symbol extraction, stub detection, file auditing, flip application, future-work-verb gating, file-path filtering, and the prose-stop-word list. Closes T46, T47, T49 of `docs/superpowers/plans/2026-04-24-task-dispatch-runbook.md` (Phase ζ.1, ζ.2, ζ.4).
+- **`npm run audit:plans`** script — wraps `tsx tools/plan-doc-audit/audit.ts`.
+- **`tools/plan-doc-audit/README.md`** — design notes + usage.
+
 ### Added (Phase β.0 prep — read-only investigation)
 
 - **`docs/superpowers/specs/2026-04-24-storage-wireup-trace.md`** — Maps all 232 wire-up points across 56 source files where the storage layer types (`GraphStorage`, `SQLiteStorage`, `IGraphStorage`, `StorageFactory`, `WorkingMemoryManager`, `EpisodicMemoryManager`) are imported or referenced. Categorized by role (storage layer, manager/coordinator, type-only-import, concrete-class direct reference) and analyzed for `IMemoryBackend` impact. Closes T10 of `docs/superpowers/plans/2026-04-24-task-dispatch-runbook.md` (Phase β.0). Direct conclusion: only 3 files (`ManagerContext`, `AgentMemoryManager`, `MemoryEngine`) need wiring changes for `IMemoryBackend`; the other 53 type-import sites stay unchanged.

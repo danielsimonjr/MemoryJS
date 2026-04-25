@@ -41,13 +41,13 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-The v1.11.0 chain (T03–T09) is complete. Released as `v1.11.0` on 2026-04-24. Two ready-to-dispatch streams remain plus the start of Phase β:
+T03–T10 of the v1.11.0 + Phase β.0 chain are complete. T46+T47+T49 of Phase ζ shipped 2026-04-25 (audit tool + script + README; T48 commit-hook still pending). Next ready streams:
 
-1. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Plan-doc rot prevention; meta-tooling.)*
-2. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Read-only inventory; unblocks T42 unskip.)*
-3. **T10** — Phase β.0 pre-flight: code-explorer trace of every storage wire-up point. *(Sets up Phase β `IMemoryBackend` foundation — see execution-plan §β.)*
+1. **T41** — Phase ε.1: skip-test inventory (read-only inventory; unblocks T42 unskip).
+2. **T11** — Phase β.1: define `IMemoryBackend` interface + contract test (TDD). Unblocks T12+T13 in parallel.
+3. **T48** — Phase ζ.3: Claude Code hook in `.claude/settings.local.json` to auto-run `npm run audit:plans` after commits touching plans or src.
 
-All three are independent and can run in parallel — they touch entirely separate files.
+T11 is the next sequential v1.12.0 step. T41 and T48 are independent and parallelizable with T11.
 
 ---
 
@@ -576,10 +576,10 @@ Plan checkbox ε.1 → [x] when the inventory file exists.`
 
 | ID | Task |
 |---|---|
-| T46 | `tools/plan-doc-audit/audit.ts` — symbol-presence checker that suggests `[x]` flips |
-| T47 | `npm run audit:plans` script |
-| T48 | Claude Code hook in `.claude/settings.local.json` |
-| T49 | `tools/plan-doc-audit/README.md` |
+| T46 | `tools/plan-doc-audit/audit.ts` — symbol-presence checker that suggests `[x]` flips | ✅ done 2026-04-25 |
+| T47 | `npm run audit:plans` script | ✅ done 2026-04-25 |
+| T48 | Claude Code hook in `.claude/settings.local.json` | 🟡 pending |
+| T49 | `tools/plan-doc-audit/README.md` | ✅ done 2026-04-25 |
 
 ```ts
 // T46 prompt
