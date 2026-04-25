@@ -41,11 +41,11 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-1. **T07** — v1.11.0 Task 13: performance smoke test (≥1000 `addTurn` calls, exercise all four dedup tiers, p50/p95 reporting, honor `SKIP_BENCHMARKS`). *(Unblocked; T06 + T06b shipped on `master`.)*
+1. **T08** — v1.11.0 Task 14: refresh `CLAUDE.md` with new MEMORY_ENGINE_* env vars, MemoryEngine architecture entry, and the `agentMetadata` SQLite column note. *(Unblocked; T07 shipped on `master`.)*
 2. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Independent of the v1.11.0 chain.)*
 3. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Independent; warm-up for ε.)*
 
-T07 creates `benchmarks/memory-engine-bench.ts`; can run in parallel with T46 / T41 (different files).
+T08 only touches `CLAUDE.md`; trivially parallel with T46 / T41.
 
 ---
 
@@ -205,7 +205,7 @@ Cardinal rules apply. One commit. Update plan checkbox at line 1849.`
 ### T07 — Performance smoke test
 
 **Phase:** v1.11.0 Task 13 (line 1952)
-**Status:** 🟡 BLOCKED on **T06**
+**Status:** ✅ DONE (2026-04-24)
 **Agent type:** `general-purpose`
 **Files touched:** new `benchmarks/memory-engine-bench.ts`, possibly `package.json` scripts
 **Done when:**

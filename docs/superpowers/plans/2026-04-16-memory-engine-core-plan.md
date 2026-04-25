@@ -1,6 +1,6 @@
 # Memory Engine Core Implementation Plan
 
-> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–12 SHIPPED on `master` (T03 + T04 + T05 + T06 close-outs), Tasks 13–15 PENDING.** Tasks 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. T06 also fixed a real persistence bug: `GraphStorage`'s three serialization sites had drifted, silently dropping every `AgentEntity` / `SessionEntity` / `ArtifactEntity` extension field on JSONL writes. Centralized into `OPTIONAL_PERSISTED_ENTITY_FIELDS` constant + helper, so future schema additions only need one edit point. SQLite tests skipped pending a parallel SQLite-side fix (schema lacks the columns; `rowToEntity` lacks the mapping).
+> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–13 SHIPPED on `master` (T03–T07 close-outs + T06b SQLite fix), Tasks 14–15 PENDING.** Tasks 14 (CLAUDE.md update) and 15 (CHANGELOG bump → 1.11.0) remain. T06 + T06b together fixed real persistence bugs in BOTH backends (JSONL and SQLite were each silently dropping AgentEntity/SessionEntity/ArtifactEntity extension fields on disk writes). T07 ships perf smoke tests with Windows-adjusted P95 thresholds.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1954,7 +1954,7 @@ EOF
 **Files:**
 - Create: `tests/performance/memory-engine-perf.test.ts`
 
-- [ ] **Step 1: Write the performance test**
+- [x] **Step 1: Write the performance test**
 
 Create `tests/performance/memory-engine-perf.test.ts`:
 
@@ -2007,12 +2007,12 @@ describe.skipIf(process.env.SKIP_BENCHMARKS === 'true')('MemoryEngine performanc
 });
 ```
 
-- [ ] **Step 2: Run the perf test**
+- [x] **Step 2: Run the perf test**
 
 Run: `npx vitest run tests/performance/memory-engine-perf.test.ts`
 Expected: 2 PASS. If Windows timing jitter causes flakiness, widen the threshold by 2× — do NOT skip.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add tests/performance/memory-engine-perf.test.ts
