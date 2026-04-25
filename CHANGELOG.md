@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase β.0 prep — read-only investigation)
+
+- **`docs/superpowers/specs/2026-04-24-storage-wireup-trace.md`** — Maps all 232 wire-up points across 56 source files where the storage layer types (`GraphStorage`, `SQLiteStorage`, `IGraphStorage`, `StorageFactory`, `WorkingMemoryManager`, `EpisodicMemoryManager`) are imported or referenced. Categorized by role (storage layer, manager/coordinator, type-only-import, concrete-class direct reference) and analyzed for `IMemoryBackend` impact. Closes T10 of `docs/superpowers/plans/2026-04-24-task-dispatch-runbook.md` (Phase β.0). Direct conclusion: only 3 files (`ManagerContext`, `AgentMemoryManager`, `MemoryEngine`) need wiring changes for `IMemoryBackend`; the other 53 type-import sites stay unchanged.
+
+### Removed
+
+- **`src/agent/ContextWindowManager.ts.tmp.44728.1775826871762`** — stale 35KB editor cruft from 2026-04-10. Was tracked in git but fully superseded by the real `ContextWindowManager.ts`. Drive-by cleanup spotted during T10.
+
 ### Specs added (no code changes — design docs only)
 
 - **`docs/superpowers/specs/2026-04-16-memory-engine-decay-extensions-design.md`** — Context Engine sub-feature #3b. Covers PRD §3 `GOAL-03`, §8 `MEM-01` (configurable decay parameters: `decay_rate`, `freshness_coefficient`, `relevance_weight`, `min_importance_threshold`), §8 `MEM-04` (`IMemoryBackend` with `InMemoryBackend` + `SQLiteBackend` adapters), and the deferred PRD importance-range `[1.0, 3.0]` mapping. Adds a new parallel `DecayEngine.calculatePrdEffectiveImportance` method; legacy `calculateEffectiveImportance` semantics preserved for `DecayScheduler` / `SearchManager` / `SemanticForget`. Target release: **v1.12.0** (after Core).

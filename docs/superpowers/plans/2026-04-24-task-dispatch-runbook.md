@@ -300,7 +300,7 @@ Unblocks γ, δ. Smallest spec'd-but-unshipped feature.
 
 | ID | Task | Status | Blockers | Parallel with |
 |---|---|---|---|---|
-| T10 | β.0: code-explorer trace storage paths | 🟡 | T09 | — |
+| T10 | β.0: code-explorer trace storage paths | ✅ | — | done 2026-04-25 |
 | T11 | β.1: define `IMemoryBackend` interface (TDD) | 🟡 | T10 | — |
 | T12 | β.2: implement `InMemoryBackend` | 🟡 | T11 | T13 |
 | T13 | β.3: implement `SQLiteBackend` | 🟡 | T11 | T12 |
