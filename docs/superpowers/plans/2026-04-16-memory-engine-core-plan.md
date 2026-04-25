@@ -1,6 +1,6 @@
 # Memory Engine Core Implementation Plan
 
-> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–9 SHIPPED on `master` (commits `2c3a10d`…`1d74a08` + T03 follow-on), Tasks 10–15 PENDING.** Tasks 10 (`getSessionTurns`/`deleteSession`/`listSessions`), 11 (wire `MemoryEngine` into `ManagerContext`), 12 (integration tests JSONL+SQLite), 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. `getSessionTurns` / `deleteSession` / `listSessions` still exist as stubs that throw `Error("Not implemented — Task 10")`. See [`2026-04-24-backlog-execution-phases.md`](./2026-04-24-backlog-execution-phases.md) Phase α for the close-out plan.
+> **Status (verified 2026-04-24):** 🚧 **Partial — Tasks 1–10 SHIPPED on `master` (T03 + T04 close-outs), Tasks 11–15 PENDING.** Tasks 11 (wire `MemoryEngine` into `ManagerContext`), 12 (integration tests JSONL+SQLite), 13 (perf smoke test), 14 (CLAUDE.md update), 15 (CHANGELOG bump → 1.11.0) remain. The `MemoryEngine` API surface (addTurn, checkDuplicate, getSessionTurns, deleteSession, listSessions, all four dedup tiers) is now complete; what remains is integration glue + tests + release prep. See [`2026-04-24-backlog-execution-phases.md`](./2026-04-24-backlog-execution-phases.md) Phase α for the close-out plan.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1499,7 +1499,7 @@ EOF
 - Modify: `src/agent/MemoryEngine.ts`
 - Modify: `tests/unit/agent/MemoryEngine.test.ts`
 
-- [ ] **Step 1: Add failing tests**
+- [x] **Step 1: Add failing tests**
 
 Append to `tests/unit/agent/MemoryEngine.test.ts`:
 
@@ -1609,12 +1609,12 @@ describe('MemoryEngine — session operations', () => {
 });
 ```
 
-- [ ] **Step 2: Confirm failure**
+- [x] **Step 2: Confirm failure**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts -t "session operations"`
 Expected: 6 FAILs.
 
-- [ ] **Step 3: Implement the three methods**
+- [x] **Step 3: Implement the three methods**
 
 Verify `entityManager.deleteEntities` exists and accepts an array (read `src/core/EntityManager.ts` if uncertain). If the method is a singular `deleteEntity(name)`, iterate. Replace the three stubs in `MemoryEngine.ts`:
 
@@ -1664,12 +1664,12 @@ Verify `entityManager.deleteEntities` exists and accepts an array (read `src/cor
   }
 ```
 
-- [ ] **Step 4: Run tests**
+- [x] **Step 4: Run tests**
 
 Run: `npx vitest run tests/unit/agent/MemoryEngine.test.ts`
 Expected: 25 PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/agent/MemoryEngine.ts tests/unit/agent/MemoryEngine.test.ts

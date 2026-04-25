@@ -41,11 +41,11 @@ Agent({
 
 ## Up Next (top 3 ready to dispatch)
 
-1. **T04** — v1.11.0 Task 10: implement `getSessionTurns` / `deleteSession` / `listSessions`. *(Now unblocked; T03 shipped on `master`.)*
+1. **T05** — v1.11.0 Task 11: wire `MemoryEngine` into `ManagerContext` as a lazy getter. *(Now unblocked; T04 shipped on `master`.)*
 2. **T46** — Phase ζ.1: write `tools/plan-doc-audit/audit.ts`. *(Independent of the v1.11.0 chain; keeps plan-doc rot from regressing while v1.11.0 ships.)*
 3. **T41** — Phase ε.1: identify "pending code" each `it.skip` waits on. *(Independent; warm-up for ε.)*
 
-T04 must run sequentially next (touches same `MemoryEngine.ts` file). T46 and T41 can run in parallel with T04 (different files, no shared state).
+T05 touches `ManagerContext.ts` + barrel export; can run in parallel with T46 / T41 (different files).
 
 ---
 
@@ -111,7 +111,7 @@ Done when: \`npm test tests/unit/agent/MemoryEngine.test.ts\` green, \`npm run t
 ### T04 — Implement `getSessionTurns`, `deleteSession`, `listSessions`
 
 **Phase:** v1.11.0 Task 10 (line 1496)
-**Status:** 🟡 BLOCKED on **T03**
+**Status:** ✅ DONE (2026-04-24)
 **Parallel with:** none (touches same file as T03)
 **Agent type:** `general-purpose`
 **Files touched:** `src/agent/MemoryEngine.ts`, `tests/unit/agent/MemoryEngine.test.ts`

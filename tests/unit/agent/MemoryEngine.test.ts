@@ -360,3 +360,116 @@ describe('MemoryEngine — addTurn', () => {
     } finally { cleanup(); }
   });
 });
+
+describe('MemoryEngine — session operations', () => {
+  it('getSessionTurns returns all turns for session', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await engine.addTurn('one', { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn('two', { sessionId: 'sess-A', role: 'assistant' });
+      await engine.addTurn('three', { sessionId: 'sess-B', role: 'user' });
+
+      const turnsA = await engine.getSessionTurns('sess-A');
+      expect(turnsA).toHaveLength(2);
+      expect(turnsA.every((e) => e.sessionId === 'sess-A')).toBe(true);
+    } finally { cleanup(); }
+  });
+
+  it('getSessionTurns filters by role', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await engine.addTurn('one', { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn('two', { sessionId: 'sess-A', role: 'assistant' });
+
+      const userTurns = await engine.getSessionTurns('sess-A', { role: 'user' });
+      expect(userTurns).toHaveLength(1);
+      expect(userTurns[0].observations[0]).toBe('[role=user] one');
+    } finally { cleanup(); }
+  });
+
+  it('getSessionTurns respects limit', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      // Sufficiently distinct content per turn so dedup tiers do not fire.
+      const distinct = [
+        'apple banana cherry',
+        'mountain river forest',
+        'piano violin trumpet',
+        'crimson azure verdant',
+        'meridian zenith equator',
+      ];
+      for (const c of distinct) {
+        await engine.addTurn(c, { sessionId: 'sess-A', role: 'user' });
+      }
+      const turns = await engine.getSessionTurns('sess-A', { limit: 2 });
+      expect(turns).toHaveLength(2);
+    } finally { cleanup(); }
+  });
+
+  it('deleteSession removes session turns and fires event', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await engine.addTurn('one', { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn('two', { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn('three', { sessionId: 'sess-B', role: 'user' });
+
+      const captured: unknown[] = [];
+      engine.events.on('memoryEngine:sessionDeleted', (ev) => captured.push(ev));
+
+      const { deleted } = await engine.deleteSession('sess-A');
+      expect(deleted).toBe(2);
+      expect(await engine.getSessionTurns('sess-A')).toHaveLength(0);
+      expect(await engine.getSessionTurns('sess-B')).toHaveLength(1);
+      expect(captured).toHaveLength(1);
+      expect(captured[0]).toEqual({ sessionId: 'sess-A', deletedCount: 2 });
+    } finally { cleanup(); }
+  });
+
+  it('deleteSession on unknown session returns { deleted: 0 }', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      const { deleted } = await engine.deleteSession('nonexistent');
+      expect(deleted).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('listSessions returns sessions with >=1 turn', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+      );
+      await engine.addTurn('one', { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn('two', { sessionId: 'sess-B', role: 'user' });
+      const sessions = await engine.listSessions();
+      expect(new Set(sessions)).toEqual(new Set(['sess-A', 'sess-B']));
+    } finally { cleanup(); }
+  });
+});

@@ -213,10 +213,32 @@ export class MemoryEngine {
   }
 
   async getSessionTurns(
-    _sessionId: string,
-    _options?: { limit?: number; role?: 'user' | 'assistant' | 'system' },
+    sessionId: string,
+    options: { limit?: number; role?: 'user' | 'assistant' | 'system' } = {},
   ): Promise<AgentEntity[]> {
-    throw new Error('Not implemented — Task 10');
+    const graph = await this.deps.storage.loadGraph();
+    let turns = graph.entities.filter(
+      (e) => (e as AgentEntity).sessionId === sessionId,
+    ) as AgentEntity[];
+
+    // Chronological order (oldest first) — natural transcript order, and
+    // makes `limit` deterministic across storage backends.
+    turns.sort((a, b) => {
+      const aT = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bT = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return aT - bT;
+    });
+
+    if (options.role) {
+      const prefix = `[role=${options.role}]`;
+      turns = turns.filter((e) => (e.observations[0] ?? '').startsWith(prefix));
+    }
+
+    if (typeof options.limit === 'number') {
+      turns = turns.slice(0, options.limit);
+    }
+
+    return turns;
   }
 
   async checkDuplicate(content: string, sessionId: string): Promise<DuplicateCheckResult> {
@@ -313,12 +335,27 @@ export class MemoryEngine {
     return { isDuplicate: false };
   }
 
-  async deleteSession(_sessionId: string): Promise<{ deleted: number }> {
-    throw new Error('Not implemented — Task 10');
+  async deleteSession(sessionId: string): Promise<{ deleted: number }> {
+    const turns = await this.getSessionTurns(sessionId);
+    if (turns.length === 0) return { deleted: 0 };
+
+    const names = turns.map((t) => t.name);
+    await this.deps.entityManager.deleteEntities(names);
+    this.events.emit('memoryEngine:sessionDeleted', {
+      sessionId,
+      deletedCount: names.length,
+    });
+    return { deleted: names.length };
   }
 
   async listSessions(): Promise<string[]> {
-    throw new Error('Not implemented — Task 10');
+    const graph = await this.deps.storage.loadGraph();
+    const sessions = new Set<string>();
+    for (const e of graph.entities) {
+      const s = (e as AgentEntity).sessionId;
+      if (s) sessions.add(s);
+    }
+    return Array.from(sessions);
   }
 }
 
