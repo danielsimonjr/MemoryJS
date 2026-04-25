@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Context Engine PRD — Product Requirements Document</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #05070f;
+    --deep: #0d1117;
+    --surface: #131820;
+    --border: #1e2736;
+    --muted: #2a3545;
+    --text: #d0dae8;
+    --text-dim: #6b7f96;
+    --text-bright: #eaf2ff;
+    --electric: #00d4ff;
+    --lime: #7fff6a;
+    --amber: #ffb84d;
+    --coral: #ff6b6b;
+    --violet: #b57bff;
+    --teal: #4ecdc4;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--void);
+    color: var(--text);
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--void); }
+  ::-webkit-scrollbar-thumb { background: var(--muted); border-radius: 3px; }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #07090f 0%, #0d1320 50%, #0a1219 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 50%, rgba(0,212,255,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 10% 80%, rgba(127,255,106,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 56px 32px 52px;
+    position: relative;
+  }
+  .prd-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 3px;
+    padding: 4px 12px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--electric);
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .prd-label::before { content: '●'; font-size: 8px; animation: blink 1.8s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  h1.prd-title {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-size: clamp(28px, 4.5vw, 52px);
+    font-weight: 400;
+    color: var(--text-bright);
+    line-height: 1.15;
+    margin-bottom: 16px;
+  }
+  h1.prd-title .accent { color: var(--electric); }
+  h1.prd-title .italic { font-style: italic; color: var(--lime); }
+  .prd-tagline {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-bottom: 36px;
+    max-width: 700px;
+  }
+
+  .meta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    max-width: 800px;
+  }
+  .meta-item {
+    padding: 14px 20px;
+    border-right: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .meta-item:last-child { border-right: none; }
+  .meta-key {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .meta-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--electric);
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: calc(100vh - 200px);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ── SIDEBAR ── */
+  nav.sidebar {
+    border-right: 1px solid var(--border);
+    padding: 32px 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .nav-group-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 20px 20px 8px;
+  }
+  .nav-link {
+    display: block;
+    padding: 7px 20px;
+    font-size: 13px;
+    color: var(--text-dim);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .nav-link:hover,
+  .nav-link.active {
+    color: var(--electric);
+    border-left-color: var(--electric);
+    background: rgba(0,212,255,0.04);
+  }
+
+  /* ── MAIN CONTENT ── */
+  main { padding: 40px 40px 80px; }
+
+  .section { margin-bottom: 64px; scroll-margin-top: 20px; }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--electric);
+    letter-spacing: 0.15em;
+    flex-shrink: 0;
+  }
+  h2.section-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(20px, 2.5vw, 26px);
+    font-weight: 400;
+    color: var(--text-bright);
+    line-height: 1.2;
+  }
+
+  h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--lime);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 32px 0 12px;
+  }
+  h4 {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 24px 0 10px;
+  }
+
+  p { margin-bottom: 16px; }
+
+  /* ── TAGS ── */
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 2px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 2px;
+  }
+  .tag-must  { background: rgba(255,107,107,0.15); color: var(--coral);   border:1px solid rgba(255,107,107,0.3); }
+  .tag-should{ background: rgba(255,184,77,0.12);  color: var(--amber);   border:1px solid rgba(255,184,77,0.3); }
+  .tag-could { background: rgba(78,205,196,0.1);   color: var(--teal);    border:1px solid rgba(78,205,196,0.3); }
+  .tag-phase { background: rgba(181,123,255,0.12); color: var(--violet);  border:1px solid rgba(181,123,255,0.3); }
+  .tag-perf  { background: rgba(0,212,255,0.1);    color: var(--electric);border:1px solid rgba(0,212,255,0.25); }
+
+  /* ── CARDS ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin: 20px 0;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 22px;
+  }
+  .card-icon {
+    font-size: 22px;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .card-title {
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+    font-size: 15px;
+  }
+  .card p { font-size: 13px; color: var(--text-dim); margin-bottom: 0; }
+
+  /* ── TABLES ── */
+  .tbl-wrap { overflow-x: auto; margin: 20px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead tr {
+    background: var(--surface);
+    border-bottom: 2px solid var(--electric);
+  }
+  thead th {
+    padding: 12px 14px;
+    text-align: left;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--electric);
+    font-weight: 400;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  td { padding: 11px 14px; vertical-align: top; }
+  td.em { color: var(--text-bright); font-weight: 500; }
+  td.ok { color: var(--lime); }
+  td.warn { color: var(--amber); }
+  td.req { color: var(--coral); }
+
+  /* ── CODE BLOCKS ── */
+  pre {
+    background: var(--deep);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--electric);
+    padding: 20px 22px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 20px 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--text);
+  }
+  .kw { color: var(--electric); }
+  .ty { color: var(--violet); }
+  .st { color: var(--lime); }
+  .cm { color: var(--text-dim); font-style: italic; }
+  .nb { color: var(--amber); }
+  code { font-family: 'Space Mono', monospace; font-size: 12px; background: var(--surface); padding: 1px 6px; border-radius: 2px; color: var(--electric); }
+
+  /* ── REQUIREMENT BLOCKS ── */
+  .req-block {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin: 12px 0;
+    overflow: hidden;
+  }
+  .req-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .req-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .req-body {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .req-rationale {
+    padding: 10px 16px;
+    background: rgba(0,0,0,0.2);
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── PHASE TIMELINE ── */
+  .timeline {
+    position: relative;
+    padding-left: 32px;
+    margin: 20px 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--electric), var(--violet), var(--lime));
+  }
+  .phase {
+    position: relative;
+    margin-bottom: 32px;
+  }
+  .phase::before {
+    content: '';
+    position: absolute;
+    left: -28px;
+    top: 6px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--electric);
+    border: 2px solid var(--void);
+    box-shadow: 0 0 8px rgba(0,212,255,0.5);
+  }
+  .phase:nth-child(2)::before { background: var(--violet); box-shadow: 0 0 8px rgba(181,123,255,0.5); }
+  .phase:nth-child(3)::before { background: var(--lime);   box-shadow: 0 0 8px rgba(127,255,106,0.5); }
+  .phase:nth-child(4)::before { background: var(--amber);  box-shadow: 0 0 8px rgba(255,184,77,0.5); }
+  .phase-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: var(--electric);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .phase:nth-child(2) .phase-label { color: var(--violet); }
+  .phase:nth-child(3) .phase-label { color: var(--lime); }
+  .phase:nth-child(4) .phase-label { color: var(--amber); }
+  .phase-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    color: var(--text-bright);
+    margin-bottom: 8px;
+  }
+  .phase-items {
+    list-style: none;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .phase-items li::before { content: '→ '; color: var(--electric); }
+  .phase:nth-child(2) .phase-items li::before { color: var(--violet); }
+  .phase:nth-child(3) .phase-items li::before { color: var(--lime); }
+  .phase:nth-child(4) .phase-items li::before { color: var(--amber); }
+
+  /* ── CALLOUT ── */
+  .callout {
+    border-radius: 4px;
+    padding: 18px 22px;
+    margin: 20px 0;
+    font-size: 14px;
+  }
+  .callout-note { background: rgba(0,212,255,0.06); border-left: 3px solid var(--electric); }
+  .callout-warn { background: rgba(255,184,77,0.07); border-left: 3px solid var(--amber); }
+  .callout-crit { background: rgba(255,107,107,0.07); border-left: 3px solid var(--coral); }
+  .callout-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .callout-note .callout-label { color: var(--electric); }
+  .callout-warn .callout-label { color: var(--amber); }
+  .callout-crit .callout-label { color: var(--coral); }
+  .callout p { margin: 0; color: var(--text); }
+
+  /* ── METRIC GRID ── */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--electric);
+    padding: 16px;
+    text-align: center;
+  }
+  .metric:nth-child(2) { border-top-color: var(--lime); }
+  .metric:nth-child(3) { border-top-color: var(--amber); }
+  .metric:nth-child(4) { border-top-color: var(--violet); }
+  .metric:nth-child(5) { border-top-color: var(--teal); }
+  .metric:nth-child(6) { border-top-color: var(--coral); }
+  .metric-val {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px;
+    color: var(--text-bright);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .metric-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  ul.feature-list {
+    list-style: none;
+    margin: 12px 0 20px;
+  }
+  ul.feature-list li {
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 14px;
+    color: var(--text);
+  }
+  ul.feature-list li::before { content: '◆ '; color: var(--electric); font-size: 10px; }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.sidebar { display: none; }
+    main { padding: 24px 20px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="header-inner">
+    <div class="prd-label">Product Requirements Document</div>
+    <h1 class="prd-title">
+      Context Engine<br>
+      <span class="italic">The Missing Layer</span> for <span class="accent">Production LLM Systems</span>
+    </h1>
+    <p class="prd-tagline">
+      Full specification for building a production-grade context engineering system —
+      retrieval, re-ranking, memory decay, semantic compression, token budgeting, and observability.
+    </p>
+    <div class="meta-grid">
+      <div class="meta-item"><div class="meta-key">Document Type</div><div class="meta-val">PRD v1.0</div></div>
+      <div class="meta-item"><div class="meta-key">Status</div><div class="meta-val">APPROVED</div></div>
+      <div class="meta-item"><div class="meta-key">Date</div><div class="meta-val">APR 2026</div></div>
+      <div class="meta-item"><div class="meta-key">Build Horizon</div><div class="meta-val">4 Phases</div></div>
+      <div class="meta-item"><div class="meta-key">Target Stack</div><div class="meta-val">Python 3.12+</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ══ SIDEBAR ══ -->
+  <nav class="sidebar">
+    <div class="nav-group-label">Document</div>
+    <a class="nav-link active" href="#overview">Overview</a>
+    <a class="nav-link" href="#problem">Problem Statement</a>
+    <a class="nav-link" href="#goals">Goals & Non-Goals</a>
+    <a class="nav-link" href="#users">Users & Use Cases</a>
+
+    <div class="nav-group-label">Architecture</div>
+    <a class="nav-link" href="#components">System Components</a>
+    <a class="nav-link" href="#retriever">Retriever</a>
+    <a class="nav-link" href="#reranker">Re-ranker</a>
+    <a class="nav-link" href="#memory">Memory Engine</a>
+    <a class="nav-link" href="#compressor">Compressor</a>
+    <a class="nav-link" href="#budget">Token Budget</a>
+    <a class="nav-link" href="#orchestrator">Orchestrator</a>
+
+    <div class="nav-group-label">Specifications</div>
+    <a class="nav-link" href="#api">API Design</a>
+    <a class="nav-link" href="#data-models">Data Models</a>
+    <a class="nav-link" href="#performance">Performance NFRs</a>
+    <a class="nav-link" href="#observability">Observability</a>
+
+    <div class="nav-group-label">Delivery</div>
+    <a class="nav-link" href="#phases">Phases & Milestones</a>
+    <a class="nav-link" href="#testing">Testing Strategy</a>
+    <a class="nav-link" href="#metrics">Success Metrics</a>
+    <a class="nav-link" href="#risks">Risks & Mitigations</a>
+  </nav>
+
+  <!-- ══ MAIN ══ -->
+  <main>
+
+    <!-- §1 OVERVIEW -->
+    <div class="section" id="overview">
+      <div class="section-header">
+        <span class="section-num">§01</span>
+        <h2 class="section-title">Product Overview</h2>
+      </div>
+
+      <p>
+        The <strong>Context Engine</strong> is a standalone infrastructure component that sits between a document
+        retrieval system and an LLM generation call. It implements context engineering — the discipline of
+        deciding <em>what information enters the model's context window</em>, how much of it, in what order,
+        and at what level of compression — as an explicit, observable, configurable software layer.
+      </p>
+      <p>
+        Without a context engine, LLM systems operating under multi-turn, multi-document, token-constrained
+        conditions degrade predictably: relevant documents are dropped, conversation history accumulates noise,
+        prompts overflow silently, and model performance collapses at thresholds that cannot be predicted in advance.
+      </p>
+
+      <div class="card-grid">
+        <div class="card">
+          <span class="card-icon">🔎</span>
+          <div class="card-title">Hybrid Retrieval</div>
+          <p>Adaptive-alpha blending of dense embeddings and TF-IDF with query-type routing. Best of both paradigms, automatically.</p>
+        </div>
+        <div class="card">
+          <span class="card-icon">🏆</span>
+          <div class="card-title">Two-Phase Re-ranking</div>
+          <p>Heuristic pre-filter + cross-encoder scoring for principled document ordering at any scale.</p>
+        </div>
+        <div class="card">
+          <span class="card-icon">🧠</span>
+          <div class="card-title">Decay-Based Memory</div>
+          <p>Cognitive-inspired exponential decay with importance scoring, deduplication, and durable cross-session persistence.</p>
+        </div>
+        <div class="card">
+          <span class="card-icon">✂️</span>
+          <div class="card-title">Semantic Compression</div>
+          <p>Embedding-aware sentence scoring with original-order restoration. Preserves meaning, not just characters.</p>
+        </div>
+        <div class="card">
+          <span class="card-icon">📊</span>
+          <div class="card-title">Token Budget Enforcement</div>
+          <p>Slot-based allocator with disciplined reservation order. Context never overflows silently again.</p>
+        </div>
+        <div class="card">
+          <span class="card-icon">🔭</span>
+          <div class="card-title">Full Observability</div>
+          <p>Context trace logging, token audit, quality evaluation, and A/B experiment infrastructure built in.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- §2 PROBLEM -->
+    <div class="section" id="problem">
+      <div class="section-header">
+        <span class="section-num">§02</span>
+        <h2 class="section-title">Problem Statement</h2>
+      </div>
+
+      <h3>The Core Failure Mode</h3>
+      <p>
+        Naive RAG systems fail within the first few multi-turn interactions. The failure is not in retrieval
+        quality — it is in the complete absence of architectural control over what enters the context window.
+        The consequences are deterministic and well-documented:
+      </p>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Failure Mode</th><th>Mechanism</th><th>Observed Impact</th></tr></thead>
+          <tbody>
+            <tr><td class="em">Context Overflow</td><td>Retrieved documents + history exceed token budget; LLM call fails or truncates silently</td><td class="req">Immediate failure; unpredictable output</td></tr>
+            <tr><td class="em">Context Rot</td><td>Irrelevant content accumulates; attention budget diluted across noise</td><td class="warn">95% → 60% accuracy at unpredictable length (Chroma, 2025)</td></tr>
+            <tr><td class="em">Memory Bloat</td><td>All conversation history retained without decay; old turns crowd out current relevance</td><td class="warn">39% performance drop from fragmented multi-turn context</td></tr>
+            <tr><td class="em">Retrieval Noise</td><td>Near-duplicate documents fill top-K; genuinely relevant but lexically distant documents excluded</td><td class="warn">Critical documents dropped; model reasons from noise</td></tr>
+            <tr><td class="em">Statelessness</td><td>No cross-session persistence; context rebuilding wastes tokens and degrades experience</td><td class="req">Enterprise unusable; continuity impossible</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-crit">
+        <div class="callout-label">⚠ Critical Finding</div>
+        <p>Every model tested in the Chroma 2025 study of 18 frontier LLMs degraded as input grew. The degradation
+        is non-linear and model-specific, making it impossible to predict when a system will break without an
+        explicit token budget enforcement mechanism.</p>
+      </div>
+
+      <h3>What Existing Solutions Miss</h3>
+      <ul class="feature-list">
+        <li>RAG frameworks (LangChain, LlamaIndex) do retrieval but not context assembly discipline</li>
+        <li>Prompt engineering focuses on instruction quality, not information flow control</li>
+        <li>Vector databases provide storage and retrieval but no compression or budget enforcement</li>
+        <li>LLM APIs have no context management — they accept tokens, they don't curate them</li>
+        <li>Memory libraries (Mem0, Zep) provide persistence but not integrated pipeline orchestration</li>
+      </ul>
+
+      <p>
+        No existing off-the-shelf component addresses context engineering as a complete, integrated pipeline.
+        The Context Engine fills this gap.
+      </p>
+    </div>
+
+    <!-- §3 GOALS -->
+    <div class="section" id="goals">
+      <div class="section-header">
+        <span class="section-num">§03</span>
+        <h2 class="section-title">Goals & Non-Goals</h2>
+      </div>
+
+      <h3>Goals</h3>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">GOAL-01</span><span class="tag tag-must">Must Have</span></div>
+        <div class="req-body">Guarantee that context packets assembled for LLM calls never exceed the configured token budget, under any combination of document count, history depth, or query type.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">GOAL-02</span><span class="tag tag-must">Must Have</span></div>
+        <div class="req-body">Provide measurably higher retrieval relevance than TF-IDF-only or embedding-only retrieval, validated by NDCG@5 on a domain-specific evaluation set.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">GOAL-03</span><span class="tag tag-must">Must Have</span></div>
+        <div class="req-body">Implement exponential memory decay with configurable parameters, ensuring high-importance turns survive longer than low-importance turns without requiring manual annotation.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">GOAL-04</span><span class="tag tag-must">Must Have</span></div>
+        <div class="req-body">Produce a full context trace for every <code>build()</code> call — a serialized, queryable record of every allocation decision, compression ratio, and document retention outcome.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">GOAL-05</span><span class="tag tag-should">Should Have</span></div>
+        <div class="req-body">Persist memory state across sessions using a configurable backend (SQLite for single-user; PostgreSQL for multi-user), with full API compatibility between backends.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">GOAL-06</span><span class="tag tag-could">Could Have</span></div>
+        <div class="req-body">Expose the entire pipeline as an MCP server, enabling integration with LangGraph, AutoGen, Semantic Kernel, and any MCP-compatible orchestration framework.</div>
+      </div>
+
+      <h3>Non-Goals</h3>
+      <ul class="feature-list">
+        <li>This is NOT an LLM. The Context Engine assembles context; it does not generate responses.</li>
+        <li>This is NOT a vector database. It integrates with one; it does not replace one.</li>
+        <li>This is NOT a prompt engineering library. Prompt construction is a separate concern.</li>
+        <li>This is NOT a fine-tuning pipeline. Knowledge is retrieved, not baked into weights.</li>
+        <li>This is NOT a UI or chat interface. It is infrastructure, consumed via API.</li>
+      </ul>
+    </div>
+
+    <!-- §4 USERS -->
+    <div class="section" id="users">
+      <div class="section-header">
+        <span class="section-num">§04</span>
+        <h2 class="section-title">Users & Use Cases</h2>
+      </div>
+
+      <h3>Primary Users</h3>
+      <div class="card-grid">
+        <div class="card">
+          <span class="card-icon">👩‍💻</span>
+          <div class="card-title">ML / AI Engineers</div>
+          <p>Building production LLM applications that need deterministic context management. Primary integrators of the Python SDK.</p>
+        </div>
+        <div class="card">
+          <span class="card-icon">🏗️</span>
+          <div class="card-title">Platform Engineers</div>
+          <p>Deploying the Context Engine as a shared service within an LLM platform. Consume the REST API and observability stack.</p>
+        </div>
+        <div class="card">
+          <span class="card-icon">📐</span>
+          <div class="card-title">AI Architects</div>
+          <p>Designing multi-agent systems, RAG pipelines, and copilot products. Use the Context Engine to solve the context assembly problem once, across all products.</p>
+        </div>
+      </div>
+
+      <h3>Primary Use Cases</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Use Case</th><th>Key Requirements</th><th>Config Profile</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="em">Multi-turn Chatbot</td>
+              <td>Memory decay, deduplication, history compression, session persistence</td>
+              <td><code>profile: conversational</code></td>
+            </tr>
+            <tr>
+              <td class="em">Enterprise RAG over Large KB</td>
+              <td>Two-phase re-ranking, adaptive alpha, semantic compression, high doc count</td>
+              <td><code>profile: knowledge-retrieval</code></td>
+            </tr>
+            <tr>
+              <td class="em">AI Copilot / Code Assistant</td>
+              <td>Code-aware tokenization (tiktoken), file-context injection, low latency</td>
+              <td><code>profile: developer-copilot</code></td>
+            </tr>
+            <tr>
+              <td class="em">Multi-Agent Orchestration</td>
+              <td>MCP server exposure, shared memory across agents, tool-call context injection</td>
+              <td><code>profile: agent</code></td>
+            </tr>
+            <tr>
+              <td class="em">Research / Long-Document QA</td>
+              <td>Dense document ingestion, LLM Wiki pre-compilation, extractive compression</td>
+              <td><code>profile: research</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-note">
+        <div class="callout-label">ℹ When to Skip the Context Engine</div>
+        <p>
+          Single-turn queries with a small knowledge base (&lt;20 documents), latency requirements under 50ms
+          without embedding caching, or fully deterministic keyword-only retrieval domains (legal contract parsing)
+          do not benefit from the full pipeline. A lightweight mode (keyword retrieval + truncation + no memory)
+          should be available for these cases.
+        </p>
+      </div>
+    </div>
+
+    <!-- §5 COMPONENTS -->
+    <div class="section" id="components">
+      <div class="section-header">
+        <span class="section-num">§05</span>
+        <h2 class="section-title">System Architecture</h2>
+      </div>
+      <pre>
+┌──────────────────────────────────────────────────────────────────┐
+│                     CONTEXT ENGINE v2.0                          │
+├──────────────────┬───────────────────────────────────────────────┤
+│  INGESTION PLANE │  DocLoader → Chunker → Embedder → DualStore   │
+├──────────────────┼───────────────────────────────────────────────┤
+│ RETRIEVAL PLANE  │  QueryClassifier → HybridRetriever(α-adaptive)│
+│                  │  → CandidateSet(top-K)                        │
+├──────────────────┼───────────────────────────────────────────────┤
+│ CONTEXT ENG.     │  TwoPhaseReRanker                             │
+│ PLANE            │    Phase1: HeuristicScorer (microseconds)     │
+│                  │    Phase2: CrossEncoderScorer (top-20)        │
+│                  │  → MemoryEngine (decay + dedup + persist)     │
+│                  │  → SemanticCompressor (embedding-aware)       │
+│                  │  → TokenBudgetEnforcer (slot-based)           │
+│                  │  → ContextPacketBuilder                       │
+├──────────────────┼───────────────────────────────────────────────┤
+│ GENERATION PLANE │  PromptAssembler → LLMRouter → StreamHandler  │
+├──────────────────┼───────────────────────────────────────────────┤
+│ OBSERVABILITY    │  ContextTraceLogger → TokenAuditor            │
+│                  │  → QualityEvaluator → DriftDetector           │
+├──────────────────┼───────────────────────────────────────────────┤
+│ CONTROL PLANE    │  ConfigAPI → TenantIsolation → CacheManager   │
+│                  │  → RateLimiter → HealthMonitor                │
+└──────────────────┴───────────────────────────────────────────────┘</pre>
+    </div>
+
+    <!-- §6 RETRIEVER -->
+    <div class="section" id="retriever">
+      <div class="section-header">
+        <span class="section-num">§06</span>
+        <h2 class="section-title">Component: Hybrid Retriever</h2>
+      </div>
+
+      <h3>Functional Requirements</h3>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RET-01</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Support three retrieval modes: <code>keyword</code> (BM25/token matching), <code>tfidf</code> (TF-IDF + cosine), and <code>hybrid</code> (adaptive-alpha blend).</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RET-02</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Implement a <strong>QueryClassifier</strong> that selects alpha dynamically based on query type: keyword-heavy (α ≈ 0.35–0.45), balanced (α ≈ 0.60–0.70), semantic/conversational (α ≈ 0.75–0.85).</div>
+        <div class="req-rationale">Rationale: Fixed α=0.65 is domain-dependent and requires manual tuning. Adaptive routing removes a fragile configuration knob.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RET-03</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Implement an LRU embedding cache (configurable size, default 10,000 entries). Cache hit must return in &lt;2ms; cache miss triggers fresh embedding computation.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RET-04</span><span class="tag tag-should">Should</span></div>
+        <div class="req-body">Expose a pluggable embedding provider interface: <code>LocalTransformer</code>, <code>OpenAIEmbeddings</code>, <code>CohereEmbeddings</code>. Default to <code>sentence-transformers/all-MiniLM-L6-v2</code>.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RET-05</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Degrade gracefully when <code>sentence-transformers</code> is unavailable: fall back to TF-IDF with a logged warning. Random embeddings are NOT acceptable in production mode.</div>
+      </div>
+
+      <h4>Performance Targets</h4>
+      <div class="metric-grid">
+        <div class="metric"><span class="metric-val">&lt;1ms</span><span class="metric-label">Keyword mode</span></div>
+        <div class="metric"><span class="metric-val">&lt;5ms</span><span class="metric-label">TF-IDF mode</span></div>
+        <div class="metric"><span class="metric-val">&lt;30ms</span><span class="metric-label">Hybrid (CPU cached)</span></div>
+        <div class="metric"><span class="metric-val">&lt;10ms</span><span class="metric-label">Hybrid (GPU)</span></div>
+      </div>
+    </div>
+
+    <!-- §7 RE-RANKER -->
+    <div class="section" id="reranker">
+      <div class="section-header">
+        <span class="section-num">§07</span>
+        <h2 class="section-title">Component: Two-Phase Re-ranker</h2>
+      </div>
+      <p>
+        Re-ranking determines the final document order before compression. A two-phase design delivers
+        cross-encoder accuracy at heuristic speed for typical document counts.
+      </p>
+
+      <h3>Phase 1 — Heuristic Pre-filter</h3>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RNK-01</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Score each candidate document using: <code>final_score = retrieval_score × w₁ + tag_importance × w₂ + freshness_bonus × w₃</code>. Default weights: 0.65 / 0.25 / 0.10.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RNK-02</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Tag importance values and domain tag sets must be configurable per deployment. Default tag set and importance multipliers must be documented and overridable via config.</div>
+      </div>
+
+      <h3>Phase 2 — Cross-Encoder Scoring</h3>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RNK-03</span><span class="tag tag-should">Should</span></div>
+        <div class="req-body">When document count exceeds a configurable threshold (default: 20), invoke a cross-encoder model (default: <code>cross-encoder/ms-marco-MiniLM-L-6-v2</code>) to score each query-document pair from the Phase 1 top-20.</div>
+        <div class="req-rationale">Rationale: Cross-encoder is 1 model call per document. At 20 documents it adds ~40–80ms CPU. Below threshold, heuristic runs in microseconds. Two-phase delivers the right trade-off at any scale.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">RNK-04</span><span class="tag tag-should">Should</span></div>
+        <div class="req-body">The cross-encoder interface must be pluggable. Swap between local BERT cross-encoder, Cohere Rerank API, and custom providers without changing pipeline code.</div>
+      </div>
+    </div>
+
+    <!-- §8 MEMORY -->
+    <div class="section" id="memory">
+      <div class="section-header">
+        <span class="section-num">§08</span>
+        <h2 class="section-title">Component: Memory Engine</h2>
+      </div>
+
+      <h3>Decay Model</h3>
+      <p>Each conversation turn is scored by an effective score function:</p>
+      <pre><span class="cm"># Effective score formula</span>
+effective = importance × recency × freshness + relevance_boost
+
+<span class="cm"># Where:</span>
+recency          = exp(−decay_rate × age_seconds)
+freshness        = exp(−0.01 × seconds_since_last_access)
+relevance_boost  = (|query_tokens ∩ turn_tokens| / |query_tokens|) × 0.35
+importance       = auto_score(turn_content)  <span class="cm"># range: 1.0 – 3.0</span></pre>
+
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">MEM-01</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">All decay parameters (<code>decay_rate</code>, <code>freshness_coefficient</code>, <code>relevance_weight</code>, <code>min_importance_threshold</code>) must be configurable per engine instance.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">MEM-02</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Auto-importance scoring must evaluate turn content on three dimensions: content length (log-scaled), domain keyword presence (configurable lexicon), and query token overlap with recent turns.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">MEM-03</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Three-tier deduplication must run before any turn is stored: (1) exact containment check, (2) prefix overlap (first 50% of tokens), (3) token-overlap Jaccard similarity ≥ configurable threshold (default: 0.72).</div>
+      </div>
+
+      <h3>Persistence</h3>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">MEM-04</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Implement a storage backend interface with two concrete implementations: <code>InMemoryBackend</code> (default, session-scoped) and <code>SQLiteBackend</code> (persistent, single-user). The <code>add()</code> and <code>get_weighted()</code> APIs must be identical across backends.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">MEM-05</span><span class="tag tag-should">Should</span></div>
+        <div class="req-body">Implement a <code>PostgreSQLBackend</code> for multi-user, multi-session enterprise deployments. Must support tenant isolation via <code>session_id</code> and <code>user_id</code> scoping.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">MEM-06</span><span class="tag tag-could">Could</span></div>
+        <div class="req-body">Implement a <code>VectorMemoryBackend</code> that stores turn embeddings alongside text, enabling semantic recall of past turns (not just lexical overlap) for the <code>relevance_boost</code> calculation.</div>
+      </div>
+    </div>
+
+    <!-- §9 COMPRESSOR -->
+    <div class="section" id="compressor">
+      <div class="section-header">
+        <span class="section-num">§09</span>
+        <h2 class="section-title">Component: Semantic Compressor</h2>
+      </div>
+
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">CMP-01</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Support three compression strategies: <code>truncate</code> (proportional character cutoff), <code>sentence</code> (greedy sentence-boundary selection), <code>extractive</code> (query-scored sentence selection).</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">CMP-02</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">All strategies must restore selected sentences to <strong>original document order</strong> before output. Relevance-rank order produces incoherent context and is explicitly forbidden.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">CMP-03</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">The <code>extractive</code> strategy must support two sentence scoring modes: <code>token_overlap</code> (fast, keyword-recall-based) and <code>embedding_similarity</code> (semantic, cosine similarity to query embedding, reusing retrieval model).</div>
+        <div class="req-rationale">Rationale: Token-overlap scoring drops sentences that semantically paraphrase the query. Embedding mode eliminates this blind spot with negligible added latency when the embedding model is already loaded.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">CMP-04</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Report <code>compression_ratio</code>, <code>strategy_used</code>, <code>sentences_selected</code>, and <code>sentences_dropped</code> in the compression result, for inclusion in the context trace.</div>
+      </div>
+    </div>
+
+    <!-- §10 TOKEN BUDGET -->
+    <div class="section" id="budget">
+      <div class="section-header">
+        <span class="section-num">§10</span>
+        <h2 class="section-title">Component: Token Budget Enforcer</h2>
+      </div>
+
+      <h4>Reservation Order (Non-Negotiable)</h4>
+      <pre><span class="cm"># Slot reservation order — must not change</span>
+<span class="nb">1.</span> system_prompt      <span class="cm"># Fixed overhead — reserve first</span>
+<span class="nb">2.</span> history            <span class="cm"># Memory turns — multi-turn coherence depends on this</span>
+<span class="nb">3.</span> retrieved_docs     <span class="cm"># Variable — compressed to fit remaining budget</span>
+<span class="nb">4.</span> query              <span class="cm"># Current user query — always guaranteed space</span>
+<span class="nb">5.</span> generation_reserve <span class="cm"># Output buffer — never consumed by input</span></pre>
+
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">BDG-01</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Token estimation must be configurable: <code>char_heuristic</code> (÷4, default, &lt;1ms), <code>tiktoken</code> (exact, ~5ms per 1k tokens), or <code>model_specific</code> (provider SDK). Production deployments with non-English content or code MUST use tiktoken or equivalent.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">BDG-02</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">The budget enforcer must raise a structured <code>BudgetExceededError</code> (not a silent truncation) if the system prompt alone exceeds the total configured budget.</div>
+      </div>
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">BDG-03</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">Expose a <code>budget_report()</code> method returning per-slot allocation, remaining budget, and overflow risk flag for every <code>build()</code> call. This data must be included in the context trace.</div>
+      </div>
+    </div>
+
+    <!-- §11 ORCHESTRATOR -->
+    <div class="section" id="orchestrator">
+      <div class="section-header">
+        <span class="section-num">§11</span>
+        <h2 class="section-title">Component: Pipeline Orchestrator</h2>
+      </div>
+      <p>
+        The Orchestrator (<code>ContextEngine</code> class) owns the <code>build(query)</code> method that sequences
+        all components and returns a <code>ContextPacket</code>.
+      </p>
+      <pre><span class="kw">async def</span> <span class="nb">build</span>(<span class="ty">self</span>, query: <span class="ty">str</span>, session_id: <span class="ty">str</span>) -> <span class="ty">ContextPacket</span>:
+    <span class="cm"># 1. Retrieve candidates</span>
+    candidates = <span class="kw">await</span> <span class="ty">self</span>.retriever.retrieve(query, top_k=<span class="ty">self</span>.retrieval_k)
+    
+    <span class="cm"># 2. Re-rank</span>
+    ranked = <span class="kw">await</span> <span class="ty">self</span>.reranker.rerank(query, candidates)
+    
+    <span class="cm"># 3. Decay memory</span>
+    memory_turns = <span class="kw">await</span> <span class="ty">self</span>.memory.get_weighted(query=query, session_id=session_id)
+    
+    <span class="cm"># 4. Reserve system + history budget</span>
+    budget = TokenBudget(total=<span class="ty">self</span>.total_token_budget)
+    budget.reserve(<span class="st">"system_prompt"</span>, <span class="ty">self</span>.system_prompt)
+    budget.reserve(<span class="st">"history"</span>, memory_turns)
+    budget.reserve(<span class="st">"query"</span>, query)
+    
+    <span class="cm"># 5. Compress to remaining budget</span>
+    remaining = budget.remaining_chars()
+    compressed = <span class="kw">await</span> <span class="ty">self</span>.compressor.compress(ranked, query=query, max_chars=remaining)
+    budget.reserve(<span class="st">"retrieved_docs"</span>, compressed.text)
+    
+    <span class="cm"># 6. Build packet + trace</span>
+    <span class="kw">return</span> ContextPacket(
+        system_prompt=<span class="ty">self</span>.system_prompt,
+        history=memory_turns,
+        retrieved_docs=compressed.text,
+        query=query,
+        budget_report=budget.report(),
+        trace=ContextTrace(...),
+    )</pre>
+
+      <div class="req-block">
+        <div class="req-header"><span class="req-id">ORC-01</span><span class="tag tag-must">Must</span></div>
+        <div class="req-body">The <code>build()</code> method must be fully async. All I/O operations (embedding API calls, DB reads, cache lookups) must be awaitable. Synchronous <code>build_sync()</code> wrapper is acceptable as a convenience method.</div>
+      </div>
+    </div>
+
+    <!-- §12 API DESIGN -->
+    <div class="section" id="api">
+      <div class="section-header">
+        <span class="section-num">§12</span>
+        <h2 class="section-title">API Design</h2>
+      </div>
+
+      <h3>Python SDK (Primary Interface)</h3>
+      <pre><span class="kw">from</span> context_engine <span class="kw">import</span> ContextEngine, EngineConfig
+
+<span class="cm"># Initialize with a config profile or explicit parameters</span>
+engine = ContextEngine.from_config(EngineConfig(
+    profile=<span class="st">"conversational"</span>,
+    total_token_budget=<span class="nb">4096</span>,
+    compression_strategy=<span class="st">"extractive_semantic"</span>,
+    memory_backend=<span class="st">"sqlite"</span>,
+    memory_db_path=<span class="st">"./memory.db"</span>,
+    reranker_mode=<span class="st">"two_phase"</span>,
+))
+
+<span class="cm"># Build a context packet for an LLM call</span>
+packet = <span class="kw">await</span> engine.build(query=<span class="st">"How does memory decay work?"</span>, session_id=<span class="st">"user-123"</span>)
+
+<span class="cm"># Compose the prompt using the packet</span>
+prompt = assemble_prompt(packet)  <span class="cm"># caller's responsibility</span>
+
+<span class="cm"># After LLM responds, store the exchange in memory</span>
+<span class="kw">await</span> engine.memory.add(
+    content=<span class="st">"How does memory decay work?"</span>,
+    role=<span class="st">"user"</span>,
+    session_id=<span class="st">"user-123"</span>,
+)</pre>
+
+      <h3>REST API (Service Mode)</h3>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td class="em">POST</td><td><code>/v1/build</code></td><td>Build a context packet for a query. Returns ContextPacket JSON.</td></tr>
+            <tr><td class="em">POST</td><td><code>/v1/memory/add</code></td><td>Add a conversation turn to session memory.</td></tr>
+            <tr><td class="em">GET</td><td><code>/v1/memory/{session_id}</code></td><td>Retrieve weighted memory turns for a session.</td></tr>
+            <tr><td class="em">DELETE</td><td><code>/v1/memory/{session_id}</code></td><td>Clear all memory for a session.</td></tr>
+            <tr><td class="em">POST</td><td><code>/v1/documents/ingest</code></td><td>Ingest documents into the retrieval store (chunking, embedding, indexing).</td></tr>
+            <tr><td class="em">GET</td><td><code>/v1/traces/{trace_id}</code></td><td>Retrieve a stored context trace by ID.</td></tr>
+            <tr><td class="em">GET</td><td><code>/v1/health</code></td><td>Health check with component status breakdown.</td></tr>
+            <tr><td class="em">GET</td><td><code>/v1/metrics</code></td><td>Prometheus-compatible metrics endpoint.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- §13 DATA MODELS -->
+    <div class="section" id="data-models">
+      <div class="section-header">
+        <span class="section-num">§13</span>
+        <h2 class="section-title">Core Data Models</h2>
+      </div>
+      <pre><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="ty">ContextPacket</span>:
+    system_prompt:   <span class="ty">str</span>
+    history:         <span class="ty">list</span>[MemoryTurn]
+    retrieved_docs:  <span class="ty">str</span>              <span class="cm"># compressed, ordered</span>
+    query:           <span class="ty">str</span>
+    budget_report:   <span class="ty">BudgetReport</span>
+    trace:           <span class="ty">ContextTrace</span>
+    total_tokens:    <span class="ty">int</span>
+    overflow_risk:   <span class="ty">bool</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="ty">ContextTrace</span>:
+    trace_id:        <span class="ty">str</span>             <span class="cm"># UUID</span>
+    session_id:      <span class="ty">str</span>
+    query:           <span class="ty">str</span>
+    timestamp:       <span class="ty">datetime</span>
+    retrieval_mode:  <span class="ty">str</span>
+    alpha_used:      <span class="ty">float</span>
+    candidates_k:    <span class="ty">int</span>
+    reranker_phase:  <span class="ty">int</span>              <span class="cm"># 1 or 2</span>
+    docs_before_cmp: <span class="ty">list</span>[<span class="ty">str</span>]        <span class="cm"># doc IDs before compression</span>
+    docs_after_cmp:  <span class="ty">list</span>[<span class="ty">str</span>]        <span class="cm"># doc IDs after compression</span>
+    compression_ratio: <span class="ty">float</span>
+    memory_turns_in:  <span class="ty">int</span>
+    memory_turns_out: <span class="ty">int</span>
+    budget_slots:    <span class="ty">dict</span>[<span class="ty">str</span>, <span class="ty">int</span>]  <span class="cm"># tokens per slot</span>
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="ty">MemoryTurn</span>:
+    turn_id:         <span class="ty">str</span>
+    content:         <span class="ty">str</span>
+    role:            <span class="ty">str</span>              <span class="cm"># "user" | "assistant"</span>
+    timestamp:       <span class="ty">datetime</span>
+    importance:      <span class="ty">float</span>
+    effective_score: <span class="ty">float</span>           <span class="cm"># computed at retrieval time</span>
+    last_accessed:   <span class="ty">datetime</span></pre>
+    </div>
+
+    <!-- §14 PERFORMANCE -->
+    <div class="section" id="performance">
+      <div class="section-header">
+        <span class="section-num">§14</span>
+        <h2 class="section-title">Performance Requirements (NFRs)</h2>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Requirement</th><th>Target</th><th>Measurement Method</th><th>Priority</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="em">P95 build() latency (hybrid, CPU, cached)</td>
+              <td class="ok">&lt;120ms</td>
+              <td>Load test: 100 concurrent requests, 5-min run</td>
+              <td><span class="tag tag-must">Must</span></td>
+            </tr>
+            <tr>
+              <td class="em">P95 build() latency (tfidf mode)</td>
+              <td class="ok">&lt;15ms</td>
+              <td>Load test: same as above</td>
+              <td><span class="tag tag-must">Must</span></td>
+            </tr>
+            <tr>
+              <td class="em">Embedding cache hit rate (steady state)</td>
+              <td class="ok">&gt;80%</td>
+              <td>Metrics endpoint: cache_hits / (cache_hits + misses)</td>
+              <td><span class="tag tag-should">Should</span></td>
+            </tr>
+            <tr>
+              <td class="em">Token budget accuracy</td>
+              <td class="ok">≤2% over-budget (tiktoken mode)</td>
+              <td>Unit tests on 1000 packet samples vs ground truth</td>
+              <td><span class="tag tag-must">Must</span></td>
+            </tr>
+            <tr>
+              <td class="em">Memory dedup false-positive rate</td>
+              <td class="ok">&lt;5% (distinct turns incorrectly rejected)</td>
+              <td>Eval on 500-turn conversation dataset</td>
+              <td><span class="tag tag-must">Must</span></td>
+            </tr>
+            <tr>
+              <td class="em">Retrieval NDCG@5 vs TF-IDF baseline</td>
+              <td class="ok">+15% minimum improvement</td>
+              <td>Domain-specific eval set; 100 queries; 50 documents</td>
+              <td><span class="tag tag-must">Must</span></td>
+            </tr>
+            <tr>
+              <td class="em">Max memory per engine instance</td>
+              <td class="warn">&lt;500MB (embedding cache included)</td>
+              <td>Memory profiling under steady-state load</td>
+              <td><span class="tag tag-should">Should</span></td>
+            </tr>
+            <tr>
+              <td class="em">Throughput (CPU, hybrid, cached)</td>
+              <td class="ok">&gt;200 req/sec with 4 workers</td>
+              <td>Load test: 500 concurrent requests, 10-min run</td>
+              <td><span class="tag tag-should">Should</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- §15 OBSERVABILITY -->
+    <div class="section" id="observability">
+      <div class="section-header">
+        <span class="section-num">§15</span>
+        <h2 class="section-title">Observability & Evaluation</h2>
+      </div>
+
+      <h3>Context Trace Logging (Required)</h3>
+      <p>
+        Every <code>build()</code> call must produce a <code>ContextTrace</code> object (see §13). Traces
+        must be persisted to a queryable store (SQLite or PostgreSQL, same backend as memory) and accessible
+        via the REST API. No production deployment is complete without traces.
+      </p>
+
+      <h3>Metrics (Prometheus-Compatible)</h3>
+      <ul class="feature-list">
+        <li><code>context_engine_build_latency_seconds</code> (histogram, labeled by mode)</li>
+        <li><code>context_engine_token_budget_used_ratio</code> (gauge per slot)</li>
+        <li><code>context_engine_compression_ratio</code> (histogram)</li>
+        <li><code>context_engine_memory_turns_retained</code> (gauge per session)</li>
+        <li><code>context_engine_cache_hits_total</code> / <code>cache_misses_total</code></li>
+        <li><code>context_engine_reranker_phase</code> (counter: phase 1 vs phase 2 invocations)</li>
+      </ul>
+
+      <h3>Quality Evaluator</h3>
+      <p>
+        A background <code>QualityEvaluator</code> component should run periodic automated evaluation
+        on a held-out query set and track: retrieval NDCG@5 over time, compression semantic similarity
+        (before/after embedding cosine), and memory decay false-positive and false-negative rates.
+        Results must be surfaced in the metrics endpoint and alert on regression.
+      </p>
+    </div>
+
+    <!-- §16 PHASES -->
+    <div class="section" id="phases">
+      <div class="section-header">
+        <span class="section-num">§16</span>
+        <h2 class="section-title">Implementation Phases</h2>
+      </div>
+
+      <div class="timeline">
+        <div class="phase">
+          <div class="phase-label">Phase 1 — Weeks 1–4</div>
+          <div class="phase-title">Core Pipeline (Article Fidelity)</div>
+          <ul class="phase-items">
+            <li>Hybrid Retriever with fixed α and embedding cache</li>
+            <li>Heuristic re-ranker (Phase 1 only)</li>
+            <li>Exponential memory decay with in-process backend</li>
+            <li>All three compression strategies (token-overlap extractive)</li>
+            <li>Token budget enforcer (char heuristic + tiktoken)</li>
+            <li>Synchronous <code>build()</code> orchestrator</li>
+            <li>ContextTrace data model (stored in memory)</li>
+            <li>Unit tests: 90% coverage on all components</li>
+          </ul>
+        </div>
+
+        <div class="phase">
+          <div class="phase-label">Phase 2 — Weeks 5–8</div>
+          <div class="phase-title">Production Hardening</div>
+          <ul class="phase-items">
+            <li>Async <code>build()</code> with full asyncio refactor</li>
+            <li>SQLite memory backend with cross-session persistence</li>
+            <li>Query classifier for adaptive alpha routing</li>
+            <li>Embedding-based sentence scoring in extractive compressor</li>
+            <li>Context trace persistence to SQLite + REST API endpoint</li>
+            <li>Prometheus metrics endpoint</li>
+            <li>Docker container + docker-compose dev stack</li>
+            <li>Integration tests: 5 end-to-end scenarios</li>
+          </ul>
+        </div>
+
+        <div class="phase">
+          <div class="phase-label">Phase 3 — Weeks 9–12</div>
+          <div class="phase-title">Scale & Accuracy</div>
+          <ul class="phase-items">
+            <li>Cross-encoder Phase 2 re-ranker integration</li>
+            <li>PostgreSQL backend for multi-user deployment</li>
+            <li>LLM Wiki ingestion pipeline (background compiler)</li>
+            <li>Quality evaluator with regression alerting</li>
+            <li>A/B experiment runner for alpha and compression strategies</li>
+            <li>Performance benchmarks vs Phase 1 baseline</li>
+          </ul>
+        </div>
+
+        <div class="phase">
+          <div class="phase-label">Phase 4 — Weeks 13–16</div>
+          <div class="phase-title">Platform Integration</div>
+          <ul class="phase-items">
+            <li>MCP server exposure (all core endpoints as MCP tools)</li>
+            <li>LangChain / LangGraph integration adapter</li>
+            <li>Vector memory backend for semantic turn recall</li>
+            <li>Multi-tenant isolation in REST API</li>
+            <li>Production load testing at target NFRs</li>
+            <li>Documentation site (API reference + integration guides)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- §17 TESTING -->
+    <div class="section" id="testing">
+      <div class="section-header">
+        <span class="section-num">§17</span>
+        <h2 class="section-title">Testing Strategy</h2>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Test Type</th><th>Scope</th><th>Target Coverage</th><th>Tooling</th></tr></thead>
+          <tbody>
+            <tr><td class="em">Unit Tests</td><td>Each component in isolation with mocked dependencies</td><td class="ok">≥90% line coverage</td><td>pytest, pytest-asyncio</td></tr>
+            <tr><td class="em">Integration Tests</td><td>Full pipeline build() with real retrieval store and memory backend</td><td class="ok">5 canonical scenarios</td><td>pytest + in-memory SQLite</td></tr>
+            <tr><td class="em">Regression Eval</td><td>NDCG@5, compression similarity, budget accuracy on fixed eval set</td><td class="ok">Run on every PR</td><td>Custom eval harness</td></tr>
+            <tr><td class="em">Load Tests</td><td>100 → 500 concurrent requests; 10-minute sustained runs</td><td class="warn">P95 within NFRs</td><td>Locust</td></tr>
+            <tr><td class="em">Property Tests</td><td>Token budget never exceeded; dedup threshold respected; decay monotonically decreasing</td><td class="ok">Generative test suite</td><td>Hypothesis</td></tr>
+            <tr><td class="em">Chaos Tests</td><td>Embedding provider unavailable; DB connection failure; OOM on large context</td><td class="warn">Graceful degradation verified</td><td>Manual + Fault injection</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- §18 METRICS -->
+    <div class="section" id="metrics">
+      <div class="section-header">
+        <span class="section-num">§18</span>
+        <h2 class="section-title">Success Metrics</h2>
+      </div>
+
+      <h3>Technical Success</h3>
+      <div class="metric-grid">
+        <div class="metric"><span class="metric-val">0</span><span class="metric-label">Budget Overflows</span></div>
+        <div class="metric"><span class="metric-val">+15%</span><span class="metric-label">NDCG@5 vs Baseline</span></div>
+        <div class="metric"><span class="metric-val">&lt;120ms</span><span class="metric-label">P95 Latency</span></div>
+        <div class="metric"><span class="metric-val">&gt;80%</span><span class="metric-label">Cache Hit Rate</span></div>
+        <div class="metric"><span class="metric-val">&lt;5%</span><span class="metric-label">Dedup False+ Rate</span></div>
+        <div class="metric"><span class="metric-val">100%</span><span class="metric-label">Trace Coverage</span></div>
+      </div>
+
+      <h3>Product Success</h3>
+      <ul class="feature-list">
+        <li>Multi-turn chatbot maintains coherent context for 20+ turns without manual context management</li>
+        <li>Enterprise RAG over 10,000-document corpus produces relevant results with no budget overflows</li>
+        <li>Cross-session memory persistence enables continuity that stateless RAG cannot provide</li>
+        <li>All context assembly decisions are auditable via ContextTrace records</li>
+      </ul>
+    </div>
+
+    <!-- §19 RISKS -->
+    <div class="section" id="risks">
+      <div class="section-header">
+        <span class="section-num">§19</span>
+        <h2 class="section-title">Risks & Mitigations</h2>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Risk</th><th>Probability</th><th>Impact</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="em">Embedding latency degrades P95 beyond 120ms</td>
+              <td class="warn">Medium</td>
+              <td class="req">High</td>
+              <td>LRU cache + async prefetch + GPU batch mode. Fallback to TF-IDF if cache cold on &gt;10 concurrent misses.</td>
+            </tr>
+            <tr>
+              <td class="em">Cross-encoder adds unacceptable latency at scale</td>
+              <td class="warn">Medium</td>
+              <td class="warn">Medium</td>
+              <td>Phase 2 is conditional on document count threshold. Threshold is configurable. Default skips Phase 2 for &lt;20 docs.</td>
+            </tr>
+            <tr>
+              <td class="em">Memory decay false positives degrade conversation quality</td>
+              <td class="ok">Low</td>
+              <td class="req">High</td>
+              <td>Dedup threshold and decay_rate are configurable. A/B experiments compare configurations on real sessions. Eval suite runs on every release.</td>
+            </tr>
+            <tr>
+              <td class="em">tiktoken dependency introduces breaking changes</td>
+              <td class="ok">Low</td>
+              <td class="warn">Medium</td>
+              <td>Pin tiktoken version. Token estimator is a pluggable interface; char heuristic is always the fallback.</td>
+            </tr>
+            <tr>
+              <td class="em">SQLite backend insufficient for high-concurrency production</td>
+              <td class="warn">Medium</td>
+              <td class="warn">Medium</td>
+              <td>PostgreSQL backend in Phase 2. SQLite is explicitly documented as single-user only.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-warn">
+        <div class="callout-label">⚡ Design Principle: Graceful Degradation Over Failure</div>
+        <p>
+          Every component must define a degraded mode. If cross-encoder unavailable → heuristic re-ranking.
+          If embedding model unavailable → TF-IDF mode with warning. If memory backend down → in-process
+          fallback with warning. Context assembly must always produce a valid (possibly lower-quality) packet.
+          Silent failure is never acceptable.
+        </p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // Simple scroll-spy for sidebar
+  const links = document.querySelectorAll('.nav-link');
+  const sections = document.querySelectorAll('.section[id]');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector('.nav-link[href="#' + e.target.id + '"]');
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.25 });
+  sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
