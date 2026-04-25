@@ -138,8 +138,20 @@ export const UpdateEntitySchema = z.object({
   // v1.8.0: Memory versioning fields
   isLatest: z.boolean().optional(),
   supersededBy: z.string().optional(),
+  rootEntityName: entityNameSchema.optional(),
+  parentEntityName: entityNameSchema.optional(),
+  version: z.number().int().min(1).optional(),
   // v1.11.0: Memory Engine dedup
   contentHash: z.string().length(64).optional(),
+  // η.4.4: Temporal Versioning expansion
+  validFrom: z.string().optional(),
+  validUntil: z.string().optional(),
+  observationMeta: z.array(z.object({
+    content: z.string(),
+    validFrom: z.string().optional(),
+    validUntil: z.string().optional(),
+    recordedAt: z.string().optional(),
+  })).optional(),
 }).strict();
 
 // ==================== Relation Schemas ====================

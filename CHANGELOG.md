@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Phase η.4.4 — Temporal Versioning expansion)
+
+Lifts the v1.9.0 `RelationManager` temporal surface (`invalidateRelation` / `queryAsOf` / `timeline`) to entities and observations. Orthogonal to v1.8.0 supersession (which answers "which version is current?"); temporal validity answers "was this true at time T?".
+
+- **Entity fields** (opt-in, all optional, backwards-compat):
+  - `Entity.validFrom?: string` — ISO 8601 — entity is valid from this instant. Absent ⇒ always-valid since creation.
+  - `Entity.validUntil?: string` — ISO 8601 — entity is valid until this instant. Absent ⇒ still valid.
+  - `Entity.observationMeta?: Array<{ content, validFrom?, validUntil?, recordedAt? }>` — per-observation temporal metadata, indexed parallel to `observations[]` by content match. Absent or partial ⇒ those observations are unbounded.
+
+- **`EntityManager` methods**:
+  - `invalidateEntity(name, ended?)` — sets `validUntil`. Idempotent. Throws `EntityNotFoundError` on missing entity.
+  - `entityAsOf(name, asOf)` — returns the entity at a point in time, or `null` if invalid then. Validates `asOf` is an ISO 8601 string.
+  - `entityTimeline(name)` — returns the v1.8.0 supersession chain (or just the named entity) sorted by `validFrom` ascending, with unbounded entities last.
+
+- **`ObservationManager` methods**:
+  - `invalidateObservation(entity, content, ended?)` — creates or updates the parallel `observationMeta[]` entry for the named observation. Throws `ValidationError` if observation not on entity.
+  - `observationsAsOf(entity, asOf)` — filters observations by `validFrom`/`validUntil` window. Observations with no meta entry treated as unbounded (preserves backwards-compat).
+
+- Persisted in JSONL (`OPTIONAL_PERSISTED_ENTITY_FIELDS` extended) and SQLite (added to `EXTENSION_FIELDS` JSON blob — no schema migration needed).
+- `UpdateEntitySchema` Zod schema gains the three new optional fields plus previously-undeclared `rootEntityName`/`parentEntityName`/`version` (these were already settable via direct field assignment but blocked by `.strict()` on `updateEntity`).
+
+22 tests in `tests/unit/core/temporal-versioning.test.ts`. Closes T53 (η.4.4 entity + observation expansion). Plan: [`2026-04-25-eta-temporal-versioning.md`](docs/superpowers/plans/2026-04-25-eta-temporal-versioning.md).
+
+### Added (Phase η plan drafts)
+
+Eight plans now drafted, covering remaining no-code Phase η work:
+
+- **`docs/superpowers/plans/2026-04-25-eta-database-adapters.md`** — η.4.1. PostgreSQL/MongoDB/MySQL/Redis adapters, each gated on its peer dep. T0 (interface hardening) is unblocked and ships without deps.
+- **`docs/superpowers/plans/2026-04-25-eta-temporal-versioning.md`** — η.4.4 (now SHIPPED above).
+- **`docs/superpowers/plans/2026-04-25-eta-collaboration.md`** — η.5.5. Visibility expansion, OCC, attribution enforcement, conflict-view synthesis (no-deps subset). CRDT (Yjs) gated.
+- **`docs/superpowers/plans/2026-04-25-eta-enterprise.md`** — η.6.1–6.5. RBAC + Distributed + Security + Cloud-native + GPU. Five separate decision gates.
+- **`docs/superpowers/plans/2026-04-25-3b-memory-theory.md`** — 3B.4–3B.7. Procedural Memory + Active Retrieval + Causal Reasoning + World Model. All no-deps.
+
+Runbook (`2026-04-24-task-dispatch-runbook.md`) updated with cross-links.
+
 ### Added (Phase η.5.4 — Standards Compliance, sub-features 1+2)
 
 - **RDF/Turtle export** (`IOManager.exportGraph(graph, 'turtle')`) — emits W3C RDF 1.1 Turtle. Maps `entity → urn:memoryjs:entity:<name>` IRI, `entityType → rdf:type` (custom class IRI under `urn:memoryjs:type:`), `observations[] → rdfs:comment`, `tags[] → dcterms:subject`, `createdAt → dcterms:created`. Relations emit as direct triples (`<from> <urn:memoryjs:rel:<type>> <to>`).

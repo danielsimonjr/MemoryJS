@@ -31,6 +31,8 @@ const OPTIONAL_PERSISTED_ENTITY_FIELDS: ReadonlyArray<string> = [
   'version', 'parentEntityName', 'rootEntityName', 'isLatest', 'supersededBy',
   'contentHash',
   'ttl', 'confidence',
+  // η.4.4 temporal versioning expansion
+  'validFrom', 'validUntil', 'observationMeta',
   // AgentEntity extension (types/agent-memory.ts)
   'memoryType', 'sessionId', 'conversationId', 'taskId',
   'expiresAt', 'isWorkingMemory', 'promotedAt', 'promotedFrom', 'markedForPromotion',

@@ -330,6 +330,8 @@ export class SQLiteStorage implements IGraphStorage {
   private static readonly EXTENSION_FIELDS: ReadonlyArray<string> = [
     // Core Entity (not in native columns)
     'ttl', 'confidence',
+    // η.4.4 temporal versioning expansion
+    'validFrom', 'validUntil', 'observationMeta',
     // AgentEntity (types/agent-memory.ts)
     'memoryType', 'sessionId', 'conversationId', 'taskId',
     'expiresAt', 'isWorkingMemory', 'promotedAt', 'promotedFrom', 'markedForPromotion',

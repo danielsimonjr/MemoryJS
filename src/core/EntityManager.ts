@@ -877,4 +877,87 @@ export class EntityManager {
       release();
     }
   }
+
+  // ==================== η.4.4: Temporal Versioning ====================
+  //
+  // Mirrors the v1.9.0 RelationManager surface (invalidateRelation /
+  // queryAsOf / timeline) for entities. Orthogonal to v1.8.0 supersession
+  // (`version`/`supersededBy`): supersession answers "which version is
+  // current?", temporal validity answers "was the entity true at time T?".
+  // An entity may be superseded but still valid at a past asOf date, and
+  // vice versa.
+
+  /**
+   * Mark an entity as no longer valid by setting `validUntil`. Idempotent:
+   * a second call updates the existing `validUntil`. Does not delete the
+   * entity — `entityAsOf` still returns it for past asOf timestamps.
+   *
+   * @param name - The entity to invalidate
+   * @param ended - ISO 8601 timestamp; defaults to current time
+   * @throws {EntityNotFoundError} If no entity exists with the given name
+   */
+  async invalidateEntity(name: string, ended?: string): Promise<void> {
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const entity = graph.entities.find(e => e.name === name);
+      if (!entity) throw new EntityNotFoundError(name);
+      entity.validUntil = ended ?? new Date().toISOString();
+      entity.lastModified = new Date().toISOString();
+      await this.storage.saveGraph(graph);
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Return the entity at a given point in time, or null if it didn't exist
+   * (or was already invalidated) then. An entity is valid at `asOf` when:
+   * - `validFrom` is undefined OR `validFrom` <= asOf
+   * - `validUntil` is undefined OR `validUntil` >= asOf
+   *
+   * @param name - The entity name
+   * @param asOf - ISO 8601 date string
+   * @throws {ValidationError} If `asOf` is not an ISO 8601 date string
+   */
+  async entityAsOf(name: string, asOf: string): Promise<Entity | null> {
+    if (!/^\d{4}-\d{2}-\d{2}/.test(asOf)) {
+      throw new ValidationError(`asOf must be an ISO 8601 date string, got: '${asOf}'`, []);
+    }
+    const graph = await this.storage.loadGraph();
+    const entity = graph.entities.find(e => e.name === name);
+    if (!entity) return null;
+    const vf = entity.validFrom;
+    const vu = entity.validUntil;
+    if (vf && vf > asOf) return null;
+    if (vu && vu < asOf) return null;
+    return entity;
+  }
+
+  /**
+   * Return all temporal versions of an entity in chronological order
+   * (by `validFrom`, with unbounded entities last). When `name` matches
+   * a member of a v1.8.0 supersession chain, returns the full chain
+   * sorted by `validFrom`. Otherwise returns just the named entity (or []).
+   *
+   * @param name - Any entity name in the chain
+   */
+  async entityTimeline(name: string): Promise<Entity[]> {
+    const graph = await this.storage.loadGraph();
+    const entity = graph.entities.find(e => e.name === name);
+    if (!entity) return [];
+    const rootName = entity.rootEntityName ?? entity.name;
+    const chain = graph.entities.filter(
+      e => (e.rootEntityName ?? e.name) === rootName,
+    );
+    chain.sort((a, b) => {
+      const aFrom = a.validFrom ?? '';
+      const bFrom = b.validFrom ?? '';
+      if (!aFrom && !bFrom) return 0;
+      if (!aFrom) return 1;
+      if (!bFrom) return -1;
+      return aFrom.localeCompare(bFrom);
+    });
+    return chain;
+  }
 }

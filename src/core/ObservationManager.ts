@@ -10,7 +10,7 @@
 import type { GraphStorage } from './GraphStorage.js';
 import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/AutoLinker.js';
 import type { DeduplicationOptions } from '../types/types.js';
-import { EntityNotFoundError } from '../utils/errors.js';
+import { EntityNotFoundError, ValidationError } from '../utils/errors.js';
 import type { ContradictionDetector } from '../features/ContradictionDetector.js';
 import type { MemoryValidator, MemoryValidationIssue } from '../agent/MemoryValidator.js';
 import type { EntityManager } from './EntityManager.js';
@@ -417,5 +417,80 @@ export class ObservationManager {
     if (hasChanges) {
       await this.storage.saveGraph(graph);
     }
+  }
+
+  // ==================== η.4.4: Temporal Validity ====================
+  //
+  // Per-observation temporal validity via the parallel `observationMeta[]`
+  // array on Entity. Mirrors the entity-level `validFrom`/`validUntil` shape
+  // but indexed by observation content (not array position) so re-ordering
+  // observations doesn't disturb validity windows.
+
+  /**
+   * Mark a specific observation as no longer valid by setting its
+   * `validUntil`. Creates the parallel `observationMeta[]` entry if absent
+   * (preserves backwards-compat for entities that don't use the bitemporal
+   * axis). Idempotent: a second call updates the existing `validUntil`.
+   *
+   * @throws {EntityNotFoundError} If no entity exists with the given name
+   * @throws {ValidationError} If the observation isn't found on the entity
+   */
+  async invalidateObservation(
+    entityName: string,
+    content: string,
+    ended?: string,
+  ): Promise<void> {
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      const graph = await this.storage.getGraphForMutation();
+      const entity = graph.entities.find(e => e.name === entityName);
+      if (!entity) throw new EntityNotFoundError(entityName);
+      if (!entity.observations.includes(content)) {
+        throw new ValidationError(
+          `Observation not found on entity '${entityName}'`,
+          [`content: ${JSON.stringify(content).slice(0, 80)}`],
+        );
+      }
+      const ts = ended ?? new Date().toISOString();
+      if (!entity.observationMeta) entity.observationMeta = [];
+      const existing = entity.observationMeta.find(m => m.content === content);
+      if (existing) {
+        existing.validUntil = ts;
+      } else {
+        entity.observationMeta.push({ content, validUntil: ts });
+      }
+      entity.lastModified = new Date().toISOString();
+      await this.storage.saveGraph(graph);
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Return observations valid at a given point in time. An observation
+   * with no meta entry is treated as unbounded (always valid). With a meta
+   * entry, validity rules mirror `EntityManager.entityAsOf`:
+   * - `validFrom` undefined OR `validFrom` <= asOf
+   * - `validUntil` undefined OR `validUntil` >= asOf
+   *
+   * @throws {ValidationError} If `asOf` is not an ISO 8601 date string
+   */
+  async observationsAsOf(entityName: string, asOf: string): Promise<string[]> {
+    if (!/^\d{4}-\d{2}-\d{2}/.test(asOf)) {
+      throw new ValidationError(`asOf must be an ISO 8601 date string, got: '${asOf}'`, []);
+    }
+    const graph = await this.storage.loadGraph();
+    const entity = graph.entities.find(e => e.name === entityName);
+    if (!entity) return [];
+    const metaByContent = new Map(
+      (entity.observationMeta ?? []).map(m => [m.content, m]),
+    );
+    return entity.observations.filter(obs => {
+      const meta = metaByContent.get(obs);
+      if (!meta) return true; // unbounded
+      if (meta.validFrom && meta.validFrom > asOf) return false;
+      if (meta.validUntil && meta.validUntil < asOf) return false;
+      return true;
+    });
   }
 }

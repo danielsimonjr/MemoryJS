@@ -116,6 +116,39 @@ export interface Entity {
    * entity types leave this undefined.
    */
   contentHash?: string;
+
+  // ==================== η.4.4: Temporal Versioning Expansion ====================
+
+  /**
+   * ISO 8601 — entity is valid from this instant. Absent ⇒ always-valid since
+   * creation. Orthogonal to `version`/`supersededBy` (those answer "which
+   * version is current?"; this answers "was the entity true at time T?").
+   */
+  validFrom?: string;
+
+  /**
+   * ISO 8601 — entity is valid until this instant. Absent ⇒ still valid. Set
+   * by `EntityManager.invalidateEntity` to mark an entity as no longer valid
+   * without deleting it.
+   */
+  validUntil?: string;
+
+  /**
+   * Per-observation temporal validity, indexed parallel to `observations[]`
+   * by content match. Absent or partial ⇒ those observations are unbounded
+   * (always-valid) — preserves backwards-compat with entities that don't use
+   * the bitemporal axis.
+   */
+  observationMeta?: Array<{
+    /** Matches an entry in `observations[]` by exact content. */
+    content: string;
+    /** ISO 8601 — observation valid from. Absent ⇒ valid since recorded. */
+    validFrom?: string;
+    /** ISO 8601 — observation valid until. Absent ⇒ still valid. */
+    validUntil?: string;
+    /** ISO 8601 — when this fact was recorded (bitemporal axis). */
+    recordedAt?: string;
+  }>;
 }
 
 // ==================== Observation Deduplication Types ====================
