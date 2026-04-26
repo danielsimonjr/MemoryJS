@@ -45,3 +45,6 @@ tests/test-results/summary/
 package-lock.json
 tmpclaude-*-cwd
 .claude/worktrees/
+
+# Pre-publish smoke-test scratch
+.smoketest/

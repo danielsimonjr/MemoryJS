@@ -35,9 +35,15 @@ program
   .version(getVersion(), '-v, --version', 'Output the current version');
 
 // Global options
+//
+// `--output-format` controls console-render format (json|table|csv).
+// Renamed from `-f, --format` to avoid clashing with the `import`/`export`
+// subcommands' `--format` flag (data format: graphml, turtle, json-ld,
+// etc.). Long-form-only — the `-o` short flag is reserved for entity
+// `--observation` and similar subcommand options.
 program
   .option('-s, --storage <path>', 'Path to storage file', './memory.jsonl')
-  .option('-f, --format <type>', 'Output format (json|table|csv)', 'json')
+  .option('--output-format <type>', 'Console output format (json|table|csv)', 'json')
   .option('-q, --quiet', 'Suppress non-essential output')
   .option('--verbose', 'Enable verbose/debug output');
 

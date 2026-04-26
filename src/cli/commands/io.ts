@@ -12,7 +12,8 @@ import { formatSuccess, formatError } from '../formatters.js';
 import { validateFilePath } from '../../utils/entityUtils.js';
 
 const IMPORT_FORMATS = ['json', 'csv', 'graphml'] as const;
-const EXPORT_FORMATS = ['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid'] as const;
+// W3C Linked-Data formats (turtle / rdf-xml / json-ld) added by η.5.4.
+const EXPORT_FORMATS = ['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid', 'turtle', 'rdf-xml', 'json-ld'] as const;
 
 export function registerIOCommands(program: Command): void {
   program

@@ -24,15 +24,20 @@ export const defaultOptions: GlobalOptions = {
  * Parse and validate global options from commander.
  */
 export function parseGlobalOptions(opts: Record<string, unknown>): GlobalOptions {
-  const format = opts.format as string;
-  if (format && !['json', 'table', 'csv'].includes(format)) {
-    console.error(`Invalid format: ${format}. Use json, table, or csv.`);
-    process.exit(1);
-  }
+  // Global option is `-o, --output-format` (json|table|csv) — renamed
+  // from `-f, --format` to avoid shadowing the `import`/`export`
+  // subcommand `--format` flag (data format: graphml, turtle, json-ld,
+  // etc.). Internal `GlobalOptions.format` field name kept for
+  // backwards compatibility with the formatter consumers.
+  const rawFormat = opts.outputFormat as string | undefined;
+  const format: GlobalOptions['format'] =
+    rawFormat && (['json', 'table', 'csv'] as const).includes(rawFormat as 'json' | 'table' | 'csv')
+      ? (rawFormat as GlobalOptions['format'])
+      : defaultOptions.format;
 
   return {
     storage: (opts.storage as string) || defaultOptions.storage,
-    format: (format as GlobalOptions['format']) || defaultOptions.format,
+    format,
     quiet: Boolean(opts.quiet),
     verbose: Boolean(opts.verbose),
   };

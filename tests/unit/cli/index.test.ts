@@ -154,22 +154,24 @@ describe('CLI Entry Point', () => {
       expect(storageOpt?.defaultValue).toBe('./memory.jsonl');
     });
 
-    it('should register format option', async () => {
+    it('should register output-format option (renamed from --format to avoid subcommand clash)', async () => {
       vi.resetModules();
       await import('../../../src/cli/index.js');
 
       const opts = capturedProgram?.options || [];
-      const formatOpt = opts.find(o => o.long === '--format');
+      const formatOpt = opts.find(o => o.long === '--output-format');
       expect(formatOpt).toBeDefined();
-      expect(formatOpt?.short).toBe('-f');
+      // Long-form only — the `-o` short flag is reserved for entity
+      // commands' `--observation` option.
+      expect(formatOpt?.short).toBeFalsy();
     });
 
-    it('should have default format as json', async () => {
+    it('should have default output-format as json', async () => {
       vi.resetModules();
       await import('../../../src/cli/index.js');
 
       const opts = capturedProgram?.options || [];
-      const formatOpt = opts.find(o => o.long === '--format');
+      const formatOpt = opts.find(o => o.long === '--output-format');
       expect(formatOpt?.defaultValue).toBe('json');
     });
 

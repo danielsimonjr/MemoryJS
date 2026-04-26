@@ -80,7 +80,7 @@ describe('CLI Commands', () => {
       writeOut: () => {},
     });
     program.option('-s, --storage <path>', 'Path to storage file', './test.jsonl');
-    program.option('-f, --format <type>', 'Output format', 'json');
+    program.option('--output-format <type>', 'Output format', 'json');
     program.option('-q, --quiet', 'Suppress output');
     program.option('--verbose', 'Enable verbose');
 
@@ -629,8 +629,9 @@ describe('CLI Commands', () => {
   describe('Stats Command', () => {
     it('should show stats in table format', async () => {
       registerCommands(program);
-      // Pass -f table to get table format (default is json)
-      await program.parseAsync(['node', 'test', '-f', 'table', 'stats']);
+      // Global option renamed to `--output-format` (no short flag) to
+      // avoid shadowing the `import`/`export` subcommand `--format` flag.
+      await program.parseAsync(['node', 'test', '--output-format', 'table', 'stats']);
 
       expect(mockAnalyticsManager.getGraphStats).toHaveBeenCalled();
       expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Statistics'));

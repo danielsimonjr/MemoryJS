@@ -244,14 +244,14 @@ async function processCommand(
     }
 
     case 'export': {
-      const validFormats = ['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid'];
+      const validFormats = ['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid', 'turtle', 'rdf-xml', 'json-ld'];
       const fmt = args[0] || 'json';
       if (!validFormats.includes(fmt)) {
         console.log(chalk.yellow(`Invalid format: ${fmt}. Use: ${validFormats.join(', ')}`));
         break;
       }
       const exportGraph = await ctx.storage.loadGraph();
-      const output = ctx.ioManager.exportGraph(exportGraph, fmt as 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid');
+      const output = ctx.ioManager.exportGraph(exportGraph, fmt as 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid' | 'turtle' | 'rdf-xml' | 'json-ld');
       console.log(output);
       break;
     }

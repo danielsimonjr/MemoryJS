@@ -57,18 +57,22 @@ describe('CLI Options', () => {
       expect(result.storage).toBe(defaultOptions.storage);
     });
 
+    // Global flag is now `--output-format` (renamed from `--format` to
+    // avoid clashing with `import`/`export` subcommand `--format` flag).
+    // The `outputFormat` key is what commander populates; the result
+    // field stays `format` for backwards compatibility with formatters.
     it('should parse json format', () => {
-      const result = parseGlobalOptions({ format: 'json' });
+      const result = parseGlobalOptions({ outputFormat: 'json' });
       expect(result.format).toBe('json');
     });
 
     it('should parse table format', () => {
-      const result = parseGlobalOptions({ format: 'table' });
+      const result = parseGlobalOptions({ outputFormat: 'table' });
       expect(result.format).toBe('table');
     });
 
     it('should parse csv format', () => {
-      const result = parseGlobalOptions({ format: 'csv' });
+      const result = parseGlobalOptions({ outputFormat: 'csv' });
       expect(result.format).toBe('csv');
     });
 
@@ -77,24 +81,17 @@ describe('CLI Options', () => {
       expect(result.format).toBe(defaultOptions.format);
     });
 
-    it('should exit on invalid format', () => {
-      expect(() => {
-        parseGlobalOptions({ format: 'invalid' });
-      }).toThrow('process.exit called');
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Invalid format')
-      );
+    it('should silently fall back to default for unknown format (subcommand --format pass-through)', () => {
+      // Commander rolls subcommand `--format graphml` into the global
+      // outputFormat too; we silently default rather than failing so
+      // the subcommand's own validator can decide.
+      const result = parseGlobalOptions({ outputFormat: 'invalid' });
+      expect(result.format).toBe(defaultOptions.format);
     });
 
-    it('should exit on format that is not json, table, or csv', () => {
-      expect(() => {
-        parseGlobalOptions({ format: 'xml' });
-      }).toThrow('process.exit called');
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('xml')
-      );
+    it('should silently fall back to default for non-render formats like graphml', () => {
+      const result = parseGlobalOptions({ outputFormat: 'graphml' });
+      expect(result.format).toBe(defaultOptions.format);
     });
 
     it('should parse quiet flag as true', () => {
@@ -140,7 +137,7 @@ describe('CLI Options', () => {
     it('should parse all options together', () => {
       const result = parseGlobalOptions({
         storage: './test.jsonl',
-        format: 'csv',
+        outputFormat: 'csv',
         quiet: true,
         verbose: true,
       });
