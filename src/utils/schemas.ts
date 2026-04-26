@@ -114,6 +114,9 @@ export const CreateEntitySchema = z.object({
   projectId: z.string().optional(),
   createdAt: isoDateSchema.optional(),
   lastModified: isoDateSchema.optional(),
+  // v1.6.0: Freshness
+  ttl: z.number().optional(),
+  confidence: z.number().min(0).max(1).optional(),
   // v1.8.0: Memory versioning fields
   version: z.number().int().positive().optional(),
   parentEntityName: z.string().optional(),
@@ -122,6 +125,15 @@ export const CreateEntitySchema = z.object({
   supersededBy: z.string().optional(),
   // v1.11.0: Memory Engine dedup
   contentHash: z.string().length(64).optional(),
+  // η.4.4: Bitemporal validity
+  validFrom: z.string().optional(),
+  validUntil: z.string().optional(),
+  observationMeta: z.array(z.object({
+    content: z.string(),
+    validFrom: z.string().optional(),
+    validUntil: z.string().optional(),
+    recordedAt: z.string().optional(),
+  })).optional(),
 }).strict();
 
 /**
@@ -344,8 +356,16 @@ export const ImportFormatSchema = z.enum(['json', 'csv', 'graphml']);
 
 /**
  * Export format validation (includes all output formats).
+ *
+ * Includes the η.5.4 W3C Linked Data formats:
+ * - `turtle`: RDF 1.1 Turtle
+ * - `rdf-xml`: RDF 1.1 XML serialization (uses Statement reification for non-NCName predicates)
+ * - `json-ld`: JSON-LD 1.1 with @context mapping to RDFS + DCTerms
  */
-export const ExtendedExportFormatSchema = z.enum(['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid']);
+export const ExtendedExportFormatSchema = z.enum([
+  'json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid',
+  'turtle', 'rdf-xml', 'json-ld',
+]);
 
 /**
  * Merge strategy validation for imports.

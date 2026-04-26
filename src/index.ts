@@ -25,3 +25,6 @@ export * from './search/index.js';
 
 // Export agent memory system (v1.7.0)
 export * from './agent/index.js';
+
+// Export security primitives (η.6.3)
+export * from './security/index.js';

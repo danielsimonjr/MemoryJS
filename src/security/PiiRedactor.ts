@@ -135,16 +135,17 @@ export class PiiRedactor {
 
   /**
    * Redact every observation on every entity in a graph-shaped object.
-   * Mutates a shallow clone — does NOT touch the input. Returns the
-   * cleaned shape.
+   * Returns a shallow clone with redacted observations — does NOT touch
+   * the input. Accepts both mutable `Entity[]` and `ReadonlyArray<Entity>`
+   * shapes (e.g. `ReadonlyKnowledgeGraph` from `storage.loadGraph()`).
    */
-  redactGraph<T extends { entities: Array<{ observations: string[] }> }>(graph: T): T {
+  redactGraph<T extends { entities: ReadonlyArray<{ observations: ReadonlyArray<string> }> }>(graph: T): T {
     return {
       ...graph,
       entities: graph.entities.map(e => ({
         ...e,
         observations: e.observations.map(obs => this.redact(obs)),
       })),
-    };
+    } as unknown as T;
   }
 }
