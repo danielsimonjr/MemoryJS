@@ -1,19 +1,21 @@
 # Test Coverage Analysis
 
-**Generated**: 2026-01-14
-**Last refreshed**: 2026-04-25 — current totals: **6157 passing / 5 failing
-(pre-existing) / 3 skipped** across **214 test files**. Granular per-module
-analysis below is from the original snapshot (v1.5 era); for post-v1.14
-detail see CHANGELOG.md and per-feature commits.
+**Generated**: 2026-04-25 (regenerated from current `tests/` directory)
 
 ## Summary
 
-| Metric | Original snapshot | 2026-04-25 |
-|--------|-------------------|------------|
-| Total Source Files | 110 | 183 |
-| Total Test Files | 126 | 214 |
-| Total Tests | 4,674 |
-| Test Categories | 5 |
+| Metric | Count |
+|--------|-------|
+| Total Source Files | 183 |
+| Total Test Files | 214 |
+| Tests passing | 6157 |
+| Tests failing (pre-existing) | 5 |
+| Tests skipped | 3 |
+| Test categories | 4 (unit, integration, edge-cases, performance) |
+
+**Pre-existing failures** (tracked, not introduced by recent commits):
+- 4 in `tests/file-path.test.ts` — `ensureMemoryFilePath` path-validation regressions; predate v1.14
+- 1 in `tests/performance/memory-engine-perf.test.ts` — Windows perf-timing flake (P95 threshold)
 
 ---
 
@@ -27,283 +29,299 @@ detail see CHANGELOG.md and per-feature commits.
           / E2E \ (Edge cases: 1 file)
          /______\
         /        \
-       / Integr.  \ (Integration: 8 files)
+       / Integr.  \ (Integration: 17 files)
       /____________\
      /              \
-    /   Unit Tests   \ (Unit: 68 files)
+    /   Unit Tests   \ (Unit: 181 files across 11 dirs)
    /                  \
   /____________________\
  /                      \
-/   Performance Tests    \ (Performance: 12 files)
+/   Performance Tests    \ (Performance: 13 files; gated by SKIP_BENCHMARKS)
 ```
+
+### File counts by test directory
+
+| Directory | Test files | Source dir | Source files | Files-coverage |
+|-----------|-----------:|------------|-------------:|---------------:|
+| `tests/unit/agent/` | 53 | `src/agent/` | 61 | 87% |
+| `tests/unit/cli/` | 6 | `src/cli/` | 16 | 38% |
+| `tests/unit/core/` | 30 | `src/core/` | 14 | 214% (multiple test files per source) |
+| `tests/unit/features/` | 22 | `src/features/` | 17 | 129% |
+| `tests/unit/search/` | 37 | `src/search/` | 37 | 100% |
+| `tests/unit/security/` | 1 | `src/security/` | 2 | 50% |
+| `tests/unit/types/` | 6 | `src/types/` | 7 | 86% |
+| `tests/unit/utils/` | 22 | `src/utils/` | 26 | 85% |
+| `tests/unit/workers/` | 2 | `src/workers/` | 2 | 100% |
+| `tests/unit/performance/` | 1 | (helper) | — | — |
+| `tests/unit/tools/` | 1 | `tools/plan-doc-audit/` | — | — |
+| `tests/integration/` | 17 | (cross-module) | — | — |
+| `tests/edge-cases/` | 1 | (boundary) | — | — |
+| `tests/performance/` | 13 | (benchmarks) | — | — |
+
+> "Files-coverage" measures whether each source file has at least one
+> test file targeting it. It is NOT a substitute for line-coverage; for
+> that run `npm run test:coverage`.
 
 ---
 
 ## Test Categories
 
-### Unit Tests (102 files)
+### Unit Tests — Agent (53 files; src/agent has 61 files)
 
-#### Core (15 files)
-| Test File | Tests |
-|-----------|-------|
-| `BatchTransaction.test.ts` | Batch transaction operations |
-| `ConcurrencyControl.test.ts` | Concurrent operation handling |
-| `EntityManager.test.ts` | Entity CRUD operations |
-| `GraphEventEmitter.test.ts` | Event emission system |
-| `GraphEvents.test.ts` | Event handling |
-| `GraphStorage.test.ts` | JSONL storage operations |
-| `GraphTraversal.test.ts` | Graph algorithms |
-| `HierarchyManager.test.ts` | Parent-child relationships |
-| `ManagerContext.test.ts` | Context initialization |
-| `ObservationManager.test.ts` | Observation operations |
-| `RelationManager.test.ts` | Relation operations |
-| `SQLiteStorage.test.ts` | SQLite storage operations |
-| `StorageFactory.test.ts` | Storage backend factory |
-| `TransactionBatching.test.ts` | Transaction batching |
-| `TransactionManager.test.ts` | Transaction management |
+Includes the original Phase 3 surface plus all new sub-modules through Unreleased.
 
-#### Features (7 files)
-| Test File | Tests |
-|-----------|-------|
-| `AnalyticsManager.test.ts` | Graph statistics |
-| `ArchiveManager.test.ts` | Entity archival |
-| `CompressionManager.test.ts` | Duplicate detection |
-| `IOManager.test.ts` | Import/export |
-| `ObservationNormalizer.test.ts` | Observation normalization |
-| `StreamingExporter.test.ts` | Streaming exports |
-| `TagManager.test.ts` | Tag aliases |
+**Original (v1.0–v1.7):**
+- AccessTracker, AgentMemoryManager, ConflictResolver, ConsolidationPipeline,
+  ContextWindowManager, DecayEngine, DecayScheduler, EpisodicMemoryManager,
+  MemoryFormatter, MultiAgentMemoryManager, PatternDetector, RuleEvaluator,
+  SalienceEngine, SessionManager, SessionQueryBuilder, SummarizationService,
+  WorkingMemoryManager, ArtifactManager, CognitiveLoadAnalyzer, ConsolidationScheduler,
+  DistillationPolicy, EntropyFilter, FailureDistillation, MemoryFormatterSalience,
+  ObserverPipeline, RoleProfiles, VisibilityResolver, ContextProfileManager,
+  CollaborativeSynthesis, profile-manager-basics, profile-manager-extraction,
+  agent-memory-manager-diary, context-window-manager-compress,
+  context-window-manager-wakeup, SessionCheckpoint, WorkThreadManager,
+  DreamEngine
 
-#### Search (30 files)
-| Test File | Tests |
-|-----------|-------|
-| `BasicSearch.test.ts` | Text matching |
-| `BM25Search.test.ts` | BM25 ranking |
-| `BooleanSearch.test.ts` | Boolean queries |
-| `EarlyTerminationManager.test.ts` | Early termination |
-| `EmbeddingCache.test.ts` | Embedding caching |
-| `EmbeddingService.test.ts` | Embedding providers |
-| `FuzzySearch.test.ts` | Fuzzy matching |
-| `HybridScorer.test.ts` | Hybrid scoring |
-| `HybridSearchManager.test.ts` | Hybrid search |
-| `IncrementalIndexer.test.ts` | Incremental indexing |
-| `IncrementalTFIDF.test.ts` | TF-IDF updates |
-| `OptimizedInvertedIndex.test.ts` | Inverted index |
-| `ParallelSearchExecutor.test.ts` | Parallel execution |
-| `QuantizedVectorStore.test.ts` | Vector quantization |
-| `QueryAnalyzer.test.ts` | Query analysis |
-| `QueryCostEstimator.test.ts` | Query cost estimation |
-| `QueryPlanCache.test.ts` | Query plan caching |
-| `RankedSearch.test.ts` | TF-IDF ranking |
-| `ReflectionManager.test.ts` | Result refinement |
-| `SavedSearchManager.test.ts` | Saved searches |
-| `SearchFilterChain.test.ts` | Filter chain |
-| `SearchManager.test.ts` | Search orchestration |
-| `SearchSuggestions.test.ts` | Suggestions |
-| `SemanticSearch.test.ts` | Vector search |
-| `TFIDFEventSync.test.ts` | TF-IDF sync |
-| `TFIDFIndexManager.test.ts` | TF-IDF index |
-| `VectorStore.test.ts` | Vector storage |
+**v1.11 — Memory Engine:**
+- MemoryEngine.test.ts, ImportanceScorer.test.ts
 
-#### Utils (22 files)
-| Test File | Tests |
-|-----------|-------|
-| `BatchProcessor.test.ts` | Batch processing |
-| `compressedCache.test.ts` | Compressed caching |
-| `compressionUtil.test.ts` | Compression utilities |
-| `entityUtils.test.ts` | Entity helpers |
-| `errors.test.ts` | Error classes |
-| `formatters.test.ts` | Response formatting |
-| `indexes.test.ts` | Index structures |
-| `logger.test.ts` | Logging |
-| `MemoryMonitor.test.ts` | Memory monitoring |
-| `operationUtils.test.ts` | Operation utilities |
-| `parallelUtils.test.ts` | Parallel utilities |
-| `schemas.test.ts` | Zod schemas |
-| `searchAlgorithms.test.ts` | Search algorithms |
-| `searchCache.test.ts` | Search caching |
-| `taskScheduler.test.ts` | Task scheduling |
-| `WorkerPoolManager.test.ts` | Worker pool |
+**v1.12 — Pluggable backends:**
+- IMemoryBackend.contract.test.ts (parameterized contract suite)
+- InMemoryBackend.test.ts, SQLiteBackend.test.ts
+- memoryBackend-wiring.test.ts
 
-#### Workers (2 files)
-| Test File | Tests |
-|-----------|-------|
-| `levenshteinWorker.test.ts` | Levenshtein worker |
-| `WorkerPool.test.ts` | Worker pool operations |
+**v1.13 — Phase δ Memory Intelligence:**
+- MemoryValidator.test.ts, TrajectoryCompressor.test.ts,
+  ExperienceExtractor.test.ts, delta-services-wiring.test.ts
 
-#### Agent (17 files)
-| Test File | Tests |
-|-----------|-------|
-| `AccessTracker.test.ts` | Access pattern tracking |
-| `AgentMemoryManager.test.ts` | Agent memory facade |
-| `ConflictResolver.test.ts` | Conflict resolution |
-| `ConsolidationPipeline.test.ts` | Memory consolidation |
-| `ContextWindowManager.test.ts` | Context window management |
-| `DecayEngine.test.ts` | Memory decay |
-| `DecayScheduler.test.ts` | Decay scheduling |
-| `EpisodicMemoryManager.test.ts` | Episodic memory |
-| `MemoryFormatter.test.ts` | Memory formatting |
-| `MultiAgentMemoryManager.test.ts` | Multi-agent memory |
-| `PatternDetector.test.ts` | Pattern detection |
-| `RuleEvaluator.test.ts` | Rule evaluation |
-| `SalienceEngine.test.ts` | Salience scoring |
-| `SessionManager.test.ts` | Session lifecycle |
-| `SessionQueryBuilder.test.ts` | Session queries |
-| `SummarizationService.test.ts` | Summarization |
-| `WorkingMemoryManager.test.ts` | Working memory |
+**Unreleased — η.5.5 + η.6.1 + 3B.4–3B.7:**
+- CollaborationAuditEnforcer.test.ts (η.5.5.d)
+- rbac.test.ts (η.6.1)
+- ProcedureManager.test.ts (3B.4)
+- ActiveRetrieval.test.ts (3B.5)
+- CausalReasoner.test.ts (3B.6)
+- WorldModel.test.ts (3B.7)
 
-#### CLI (6 files)
-| Test File | Tests |
-|-----------|-------|
-| `commands.test.ts` | CLI commands |
-| `config.test.ts` | CLI configuration |
-| `formatters.test.ts` | Output formatting |
-| `index.test.ts` | CLI entry point |
-| `interactive.test.ts` | Interactive mode |
-| `options.test.ts` | CLI options |
+### Unit Tests — Core (30 files; src/core has 14 files)
 
-#### Types (3 files)
-| Test File | Tests |
-|-----------|-------|
-| `agent-memory.test.ts` | Agent memory types |
-| `progress.test.ts` | Progress types |
-| `search.test.ts` | Search types |
+Multiple test files per source — heavy coverage of EntityManager / RelationManager / ObservationManager / GraphStorage / SQLiteStorage:
 
----
+- BatchTransaction, ConcurrencyControl, EntityManager (+ list-projects,
+  profile-namespace, project-stamping, version-chain), GraphEventEmitter,
+  GraphEvents, GraphStorage, GraphTraversal, HierarchyManager,
+  ManagerContext (+ default-embedding, new-managers, project),
+  ObservationManager (+ dedup), observation-validate-hook (η.5.5 hook),
+  **optimistic-concurrency.test.ts** (η.5.5.c), RefIndex,
+  RelationManager (+ relation-manager-temporal, v1.9.0),
+  sqlite-content-hash-migration (v1.11), SQLiteStorage, StorageFactory,
+  **temporal-versioning.test.ts** (η.4.4), TransactionBatching,
+  TransactionManager, TransitionLedger
 
-### Integration Tests (9 files)
+### Unit Tests — Features (22 files; src/features has 17 files)
 
-| Test File | Purpose |
-|-----------|---------|
-| `backup-compression.test.ts` | Backup with compression |
-| `compression-optimization.test.ts` | Compression performance |
-| `hybrid-search.test.ts` | Hybrid search workflow |
-| `operation-progress.test.ts` | Progress tracking |
-| `smart-search.test.ts` | Smart search workflow |
-| `streaming-export.test.ts` | Streaming exports |
-| `worker-pool-integration.test.ts` | Worker pool integration |
-| `workflows.test.ts` | End-to-end workflows |
+- AnalyticsManager, ArchiveManager, AuditLog, AutoLinker,
+  CompressionManager (+ priority-dedup, versioning-guard),
+  contradiction-detector-detect, FactExtractor, FreshnessManager,
+  GovernanceManager, **IOManager.rdf-export.test.ts** (η.5.4),
+  IOManager, io-manager-ingest (v1.9.0), io-manager-split,
+  io-manager-visualize (v1.9.1), ObservableDataModelAdapter,
+  ObservationNormalizer, semantic-forget-exact / -semantic (v1.8),
+  StreamingExporter, TagManager
 
----
+### Unit Tests — Search (37 files; src/search has 37 files; 100% files-coverage)
 
-### Performance Tests (12 files)
+All search algorithms covered:
 
-| Test File | Purpose |
-|-----------|---------|
-| `benchmarks.test.ts` | General benchmarks |
-| `compression-benchmarks.test.ts` | Compression performance |
-| `embedding-benchmarks.test.ts` | Embedding performance |
-| `foundation-benchmarks.test.ts` | Core operation benchmarks |
-| `optimization-benchmarks.test.ts` | Optimization benchmarks |
-| `parallel-benchmarks.test.ts` | Parallel execution |
-| `query-execution-benchmarks.test.ts` | Query execution |
-| `search-algorithm-benchmarks.test.ts` | Search algorithms |
-| `task-scheduler-benchmarks.test.ts` | Task scheduling |
-| `task-scheduler-config-benchmarks.test.ts` | Scheduler config |
-| `v10-benchmarks.test.ts` | Version 10 benchmarks |
-| `write-performance.test.ts` | Write operations |
+- BasicSearch, BM25Search, BooleanSearch, EarlyTerminationManager,
+  EmbeddingCache, EmbeddingService, FuzzySearch, HybridScorer,
+  HybridSearchManager, IncrementalIndexer, IncrementalTFIDF,
+  LLMQueryPlanner (v1.6), NGramFuzzyIntegration (v1.6),
+  NGramIndex, OptimizedInvertedIndex, ParallelSearchExecutor,
+  ProximitySearch, QuantizedVectorStore, QueryAnalyzer,
+  QueryCostEstimator, QueryLogger, QueryParser, QueryPlanCache,
+  RankedSearch, ReflectionManager, SavedSearchManager,
+  SearchFilterChain (+ project, versioning), SearchManager,
+  SearchSuggestions, SemanticSearch, TemporalQueryParser /
+  TemporalSearch (v1.6), TFIDFEventSync, TFIDFIndexManager,
+  VectorStore
 
----
+### Unit Tests — Utils (22 files; src/utils has 26 files)
+
+- BatchProcessor, compressedCache, compressionUtil, entityUtils,
+  EntityValidator, errors, errorSuggestions, formatters, indexes,
+  logger, MemoryMonitor, operationUtils, parallelUtils, relationHelpers,
+  relationValidation, schemas, SchemaValidator, searchAlgorithms,
+  searchCache, taskScheduler, validators, WorkerPoolManager
+
+### Unit Tests — Security (1 file; new in η.6.3)
+
+- **PiiRedactor.test.ts** — covers default pattern bank (email/SSN/CC/phone/IPv4),
+  custom patterns, redactWithStats, redactGraph
+
+### Unit Tests — Types (6 files)
+
+- agent-memory, **entity-content-hash** (v1.11),
+  **entity-new-fields** (η.4.4 + supersession), profile-entity,
+  progress, search
+
+### Unit Tests — CLI (6 files)
+
+- commands, config, formatters, index, interactive, options
+
+### Unit Tests — Workers (2 files)
+
+- levenshteinWorker, WorkerPool
+
+### Unit Tests — Performance helpers (1 file)
+
+- baselineHelper.test.ts — platform-keyed perf baseline lookup
+
+### Unit Tests — Tools (1 file)
+
+- plan-doc-audit.test.ts — audit tool's symbol detection + flip logic
+
+### Integration Tests (17 files)
+
+Cross-module workflows and storage roundtrips:
+
+- access-tracking, agent-memory-manager-profile, backup-compression,
+  compression-optimization, contradiction-detector-supersede (v1.8),
+  graph-storage-new-fields (η.4.4 / v1.8 fields persist correctly),
+  hybrid-search, manager-context-semantic-forget,
+  MemoryEngineStorage (v1.11 turn dedup roundtrip),
+  observation-manager-contradiction, operation-progress,
+  project-scope-isolation (v1.8), smart-search,
+  sqlite-storage-new-fields, streaming-export,
+  worker-pool-integration, workflows
 
 ### Edge Cases (1 file)
 
-| Test File | Purpose |
-|-----------|---------|
-| `edge-cases.test.ts` | Boundary conditions |
+- edge-cases.test.ts — boundary conditions
+
+### Performance Tests (13 files; gated by `SKIP_BENCHMARKS=true`)
+
+- benchmarks, compression-benchmarks, embedding-benchmarks,
+  foundation-benchmarks, **memory-engine-perf** (v1.11 P95 thresholds —
+  carries documented Windows flake), optimization-benchmarks,
+  parallel-benchmarks, query-execution-benchmarks,
+  search-algorithm-benchmarks, task-scheduler-benchmarks,
+  task-scheduler-config-benchmarks, v10-benchmarks, write-performance
+
+### File-path tests (1 file at root)
+
+- file-path.test.ts — `ensureMemoryFilePath` validation; **carries 4
+  pre-existing failures** unrelated to v1.14+ work
 
 ---
 
-### Other Tests (2 files)
+## Source-to-Test Mapping (selected)
 
-| Test File | Purpose |
-|-----------|---------|
-| `file-path.test.ts` | File path handling |
-| `knowledge-graph.test.ts` | Knowledge graph operations |
+### Core — every source file has at least one test file
 
----
-
-## Source to Test Mapping
-
-### Core Module Coverage
-
-| Source File | Primary Test File |
-|-------------|-------------------|
-| `EntityManager.ts` | `EntityManager.test.ts` |
-| `RelationManager.ts` | `RelationManager.test.ts` |
-| `ObservationManager.ts` | `ObservationManager.test.ts` |
+| Source File | Test File(s) |
+|-------------|--------------|
+| `EntityManager.ts` | `EntityManager.test.ts` + 4 specialized + `optimistic-concurrency.test.ts` (η.5.5.c) + `temporal-versioning.test.ts` (η.4.4) |
+| `RelationManager.ts` | `RelationManager.test.ts` + `relation-manager-temporal.test.ts` (v1.9) |
+| `ObservationManager.ts` | `ObservationManager.test.ts` + `dedup` + `observation-validate-hook.test.ts` (η.5.5 hook) + `temporal-versioning.test.ts` |
 | `HierarchyManager.ts` | `HierarchyManager.test.ts` |
 | `GraphStorage.ts` | `GraphStorage.test.ts` |
-| `SQLiteStorage.ts` | `SQLiteStorage.test.ts` |
-| `StorageFactory.ts` | `StorageFactory.test.ts` |
+| `SQLiteStorage.ts` | `SQLiteStorage.test.ts` + `sqlite-content-hash-migration.test.ts` (v1.11) |
 | `GraphTraversal.ts` | `GraphTraversal.test.ts` |
-| `TransactionManager.ts` | `TransactionManager.test.ts` |
-| `GraphEventEmitter.ts` | `GraphEventEmitter.test.ts` |
-| `ManagerContext.ts` | `ManagerContext.test.ts` |
+| `TransactionManager.ts` | `TransactionManager.test.ts` + `BatchTransaction.test.ts` + `TransactionBatching.test.ts` |
+| `ManagerContext.ts` | `ManagerContext.test.ts` + 3 specialized (incl. `manager-context-new-managers.test.ts`) |
+| `RefIndex.ts` | `RefIndex.test.ts` |
+| `TransitionLedger.ts` | `TransitionLedger.test.ts` |
 
-### Search Module Coverage
+### Search — every source file has a test file
 
-| Source File | Primary Test File |
-|-------------|-------------------|
-| `BasicSearch.ts` | `BasicSearch.test.ts` |
-| `RankedSearch.ts` | `RankedSearch.test.ts` |
-| `BM25Search.ts` | `BM25Search.test.ts` |
-| `BooleanSearch.ts` | `BooleanSearch.test.ts` |
-| `FuzzySearch.ts` | `FuzzySearch.test.ts` |
-| `SemanticSearch.ts` | `SemanticSearch.test.ts` |
-| `HybridSearchManager.ts` | `HybridSearchManager.test.ts` |
-| `SearchManager.ts` | `SearchManager.test.ts` |
-| `TFIDFIndexManager.ts` | `TFIDFIndexManager.test.ts` |
-| `VectorStore.ts` | `VectorStore.test.ts` |
-| `EmbeddingService.ts` | `EmbeddingService.test.ts` |
-| `QueryAnalyzer.ts` | `QueryAnalyzer.test.ts` |
-| `SearchFilterChain.ts` | `SearchFilterChain.test.ts` |
+100% files-coverage: 37 source files mapped 1:1 to 37 test files (some sources have multiple test files).
 
-### Features Module Coverage
+### Features — most source files have tests
 
-| Source File | Primary Test File |
-|-------------|-------------------|
-| `IOManager.ts` | `IOManager.test.ts` |
-| `TagManager.ts` | `TagManager.test.ts` |
-| `CompressionManager.ts` | `CompressionManager.test.ts` |
-| `AnalyticsManager.ts` | `AnalyticsManager.test.ts` |
-| `ArchiveManager.ts` | `ArchiveManager.test.ts` |
-| `StreamingExporter.ts` | `StreamingExporter.test.ts` |
-| `ObservationNormalizer.ts` | `ObservationNormalizer.test.ts` |
+`IOManager.ts` has 4 test files (incl. `IOManager.rdf-export.test.ts` for η.5.4 + `io-manager-ingest`/`-split`/`-visualize` for v1.9). `CompressionManager` has 3. `SemanticForget` has 2.
+
+### Recently shipped sub-modules
+
+| Sub-module | Source files | Test file |
+|------------|--------------|-----------|
+| `src/agent/causal/` (3B.6) | 2 (CausalReasoner, index) | `tests/unit/agent/CausalReasoner.test.ts` |
+| `src/agent/procedural/` (3B.4) | 4 (Manager, Store, Sequencer, index) | `tests/unit/agent/ProcedureManager.test.ts` |
+| `src/agent/retrieval/` (3B.5) | 3 (Controller, QueryRewriter, index) | `tests/unit/agent/ActiveRetrieval.test.ts` |
+| `src/agent/world/` (3B.7) | 3 (Manager, Snapshot, index) | `tests/unit/agent/WorldModel.test.ts` |
+| `src/agent/rbac/` (η.6.1) | 5 (Types, Matrix, Middleware, Store, index) | `tests/unit/agent/rbac.test.ts` |
+| `src/agent/collaboration/` (η.5.5.d) | 1 (CollaborationAuditEnforcer) | `tests/unit/agent/CollaborationAuditEnforcer.test.ts` |
+| `src/security/` (η.6.3) | 2 (PiiRedactor, index) | `tests/unit/security/PiiRedactor.test.ts` |
 
 ---
 
 ## Running Tests
 
 ```bash
-# Run all tests
+# All tests
 npm test
 
-# Run with coverage
+# With coverage report
 npm run test:coverage
 
-# Run specific test file
+# Single file
 npx vitest run tests/unit/core/EntityManager.test.ts
 
-# Run tests matching pattern
+# Pattern match
 npx vitest run --grep "EntityManager"
 
 # Watch mode
 npm run test:watch
 
-# Run only unit tests
+# Targeted suites
 npx vitest run tests/unit
-
-# Run only integration tests
 npx vitest run tests/integration
-
-# Run only performance tests
 npx vitest run tests/performance
+
+# Skip perf tests in main run (default in CI)
+SKIP_BENCHMARKS=true npm test
+
+# Standalone benchmark CLI
+npm run benchmark
+```
+
+### Per-feature smoke tests
+
+```bash
+# η.4.4 bitemporal versioning
+npx vitest run tests/unit/core/temporal-versioning.test.ts
+
+# η.5.4 RDF export
+npx vitest run tests/unit/features/IOManager.rdf-export.test.ts
+
+# η.5.5.* collaboration suite
+npx vitest run tests/unit/agent/CollaborationAuditEnforcer.test.ts \
+                tests/unit/agent/CollaborativeSynthesis.test.ts \
+                tests/unit/agent/VisibilityResolver.test.ts \
+                tests/unit/core/optimistic-concurrency.test.ts
+
+# η.6.1 RBAC
+npx vitest run tests/unit/agent/rbac.test.ts
+
+# η.6.3 PII
+npx vitest run tests/unit/security/PiiRedactor.test.ts
+
+# 3B.4–3B.7 memory theory
+npx vitest run tests/unit/agent/ProcedureManager.test.ts \
+                tests/unit/agent/ActiveRetrieval.test.ts \
+                tests/unit/agent/CausalReasoner.test.ts \
+                tests/unit/agent/WorldModel.test.ts
 ```
 
 ---
 
 ## Test Configuration
 
-### vitest.config.ts
+### `vitest.config.ts`
+
+Tests use Vitest with a 30-second default timeout. Coverage excludes barrel
+`index.ts` files. Custom `per-file-reporter.js` writes per-file results to
+`tests/test-results/`.
 
 ```typescript
 export default defineConfig({
@@ -314,14 +332,22 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['**/index.ts', '**/types.ts']
-    }
-  }
+      exclude: ['**/index.ts', '**/types.ts'],
+    },
+  },
 });
 ```
 
+### Environment toggles for test runs
+
+| Variable | Effect |
+|---|---|
+| `SKIP_BENCHMARKS=true` | Performance tests in `tests/performance/` are skipped |
+| `MEMORY_STORAGE_TYPE=sqlite` | Run integration tests against the SQLite backend instead of JSONL |
+| `MEMORY_BACKEND=in-memory` | Use in-memory `IMemoryBackend` instead of `SQLiteBackend` |
+
 ---
 
-**Document Version**: 1.1
-**Last Updated**: 2026-02-11
+**Document Version**: 2.0
+**Last Updated**: 2026-04-25
 **Maintained By**: Daniel Simon Jr.
