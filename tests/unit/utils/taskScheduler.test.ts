@@ -955,8 +955,12 @@ describe('Task Scheduler', () => {
 
       const duration = Date.now() - startTime;
       expect(results).toEqual([1, 2, 3, 4, 5]);
-      // Should be very fast with high rate limit
-      expect(duration).toBeLessThan(100);
+      // Should be fast with high rate limit. 500ms ceiling absorbs
+      // Windows + Dropbox file-locking variance observed during
+      // pre-publish testing (typical run is ~10ms; saw 169ms on
+      // Windows). Test intent is "doesn't block on rate limit", not
+      // benchmark precision.
+      expect(duration).toBeLessThan(500);
     });
   });
 
