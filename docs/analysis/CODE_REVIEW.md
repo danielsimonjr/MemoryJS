@@ -6,7 +6,7 @@
 
 > **Historical document — not retroactively edited.** This is a
 > point-in-time review of v1.5.0. The codebase has since grown to
-> v1.14.0 + Unreleased (183 files, 62.7K LOC, 6157 passing tests).
+> v1.14.0 + Unreleased (183 files, 62,889 LOC, 156 classes, 384 interfaces, 1,104 exports, 6,157 passing tests).
 > Findings here may have been addressed, superseded, or rendered
 > moot by subsequent work. For the current state see
 > [README.md](../../README.md), [CHANGELOG.md](../../CHANGELOG.md),

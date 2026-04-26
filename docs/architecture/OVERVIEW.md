@@ -120,8 +120,13 @@ interface Relation {
 
 ## Directory Structure
 
+> Counts below are from `dependency-summary.compact.json` (2026-04-25)
+> — the authoritative output of `tools/create-dependency-graph`. Repo
+> totals: **183 source files, 62,889 LOC, 1,104 exports, 156 classes,
+> 384 interfaces, 189 functions, 1 self-circular dependency.**
+
 ```
-src/ (183 TypeScript files, 62.7K lines of code)
+src/ (183 TypeScript files, 62,889 lines of code)
 ├── index.ts              # Entry point, main exports
 │
 ├── agent/ (61 files)     # Agent Memory System

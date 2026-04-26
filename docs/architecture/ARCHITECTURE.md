@@ -37,11 +37,26 @@ MemoryJS is a TypeScript knowledge graph library providing:
 
 ### Key Statistics (v1.14.0 + Unreleased)
 
+Numbers below are extracted from the authoritative `dependency-summary.compact.json`
+produced by `tools/create-dependency-graph` on 2026-04-25. To regenerate run
+`npx tsx tools/create-dependency-graph/create-dependency-graph.ts`.
+
 | Metric | Value |
 |--------|-------|
-| Source Files | 183 TypeScript files |
-| Lines of Code | 62.7K |
-| Tests | 6157 passing |
+| Source files | 183 TypeScript files |
+| Lines of code | 62,889 |
+| Total exports | 1,104 |
+| Re-exports (barrel) | 699 |
+| Classes | 156 |
+| Interfaces | 384 |
+| Functions | 189 |
+| Type aliases | 17 |
+| Enums | 4 |
+| Constants | 63 |
+| Type-only imports | 269 |
+| Circular dependencies | 1 (self-ref: `EntityValidator`) |
+| Tests passing | 6,157 |
+| Test files | 214 |
 
 ### Module Distribution
 

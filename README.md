@@ -8,7 +8,7 @@
 
 A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search**, **hierarchical organization**, **bitemporal versioning**, **causal reasoning**, **role-based access control**, **multi-agent collaboration**, and **multiple storage backends**.
 
-> Core library powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). **183 TypeScript files**, **62.7K lines of code**, **6157 passing tests**, dual storage backends (JSONL/SQLite + pluggable `IMemoryBackend`), comprehensive search (BM25, TF-IDF, fuzzy with N-gram pre-filter, semantic, hybrid, temporal, LLM-planned, active iterative retrieval), and a complete **Agent Memory System** for AI agents — role profiles, entropy filtering, recursive consolidation, collaborative synthesis with conflict resolution, failure distillation, cognitive load analysis, visibility hierarchies, RBAC, optimistic concurrency, audit attribution, procedural memory, causal reasoning, and a world-model orchestrator.
+> Core library powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). **183 TypeScript files**, **62,889 lines of code**, **6157 passing tests**, dual storage backends (JSONL/SQLite + pluggable `IMemoryBackend`), comprehensive search (BM25, TF-IDF, fuzzy with N-gram pre-filter, semantic, hybrid, temporal, LLM-planned, active iterative retrieval), and a complete **Agent Memory System** for AI agents — role profiles, entropy filtering, recursive consolidation, collaborative synthesis with conflict resolution, failure distillation, cognitive load analysis, visibility hierarchies, RBAC, optimistic concurrency, audit attribution, procedural memory, causal reasoning, and a world-model orchestrator.
 
 ## Table of Contents
 
@@ -68,7 +68,7 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 | `cli/` | 16 | `memory` / `memoryjs` binary commands (entity, relation, search, observation, tag, hierarchy, graph, io, maintenance) |
 | `workers/` | 2 | Levenshtein distance calculations |
 
-**Total:** 183 TypeScript files | 62.7K lines of code | 6157 passing tests
+**Total:** 183 TypeScript files | 62,889 lines of code | 6157 passing tests
 
 ### Recent additions (Unreleased — built on top of v1.14.0)
 

@@ -44,7 +44,8 @@ MemoryJS follows a layered architecture with specialized components:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 183 TypeScript files | 62.7K lines of code | 6157 passing tests
+**Total:** 183 TypeScript files | 62,889 LOC | 1,104 exports | 156 classes | 384 interfaces | 6,157 passing tests
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`)
 
 ### New since v1.13: dedicated sub-modules under `agent/`
 

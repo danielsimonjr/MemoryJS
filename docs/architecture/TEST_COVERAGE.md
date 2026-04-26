@@ -1,17 +1,29 @@
 # Test Coverage Analysis
 
-**Generated**: 2026-04-25 (regenerated from current `tests/` directory)
+**Generated**: 2026-04-25 (regenerated from current `tests/` directory + the
+authoritative `dependency-summary.compact.json` produced by
+`tools/create-dependency-graph`).
 
 ## Summary
 
-| Metric | Count |
-|--------|-------|
-| Total Source Files | 183 |
-| Total Test Files | 214 |
-| Tests passing | 6157 |
-| Tests failing (pre-existing) | 5 |
-| Tests skipped | 3 |
-| Test categories | 4 (unit, integration, edge-cases, performance) |
+| Metric | Count | Source |
+|--------|-------|--------|
+| Total source files | 183 | dep-graph |
+| Total test files | 214 | filesystem scan |
+| Lines of source code | 62,889 | dep-graph |
+| Total exports | 1,104 | dep-graph |
+| Re-exports (barrel) | 699 | dep-graph |
+| Classes | 156 | dep-graph |
+| Interfaces | 384 | dep-graph |
+| Functions | 189 | dep-graph |
+| Type aliases | 17 | dep-graph |
+| Enums | 4 | dep-graph |
+| Constants | 63 | dep-graph |
+| Type-only imports | 269 | dep-graph |
+| Circular dependencies | 1 (self-ref: `EntityValidator`) | dep-graph |
+| Tests passing | 6,157 | vitest run |
+| Tests failing (pre-existing) | 5 | vitest run |
+| Tests skipped | 3 | vitest run |
 
 **Pre-existing failures** (tracked, not introduced by recent commits):
 - 4 in `tests/file-path.test.ts` — `ensureMemoryFilePath` path-validation regressions; predate v1.14
@@ -39,28 +51,86 @@
 /   Performance Tests    \ (Performance: 13 files; gated by SKIP_BENCHMARKS)
 ```
 
-### File counts by test directory
+### Per-module file counts and class density
 
-| Directory | Test files | Source dir | Source files | Files-coverage |
-|-----------|-----------:|------------|-------------:|---------------:|
-| `tests/unit/agent/` | 53 | `src/agent/` | 61 | 87% |
-| `tests/unit/cli/` | 6 | `src/cli/` | 16 | 38% |
-| `tests/unit/core/` | 30 | `src/core/` | 14 | 214% (multiple test files per source) |
-| `tests/unit/features/` | 22 | `src/features/` | 17 | 129% |
-| `tests/unit/search/` | 37 | `src/search/` | 37 | 100% |
-| `tests/unit/security/` | 1 | `src/security/` | 2 | 50% |
-| `tests/unit/types/` | 6 | `src/types/` | 7 | 86% |
-| `tests/unit/utils/` | 22 | `src/utils/` | 26 | 85% |
-| `tests/unit/workers/` | 2 | `src/workers/` | 2 | 100% |
-| `tests/unit/performance/` | 1 | (helper) | — | — |
-| `tests/unit/tools/` | 1 | `tools/plan-doc-audit/` | — | — |
-| `tests/integration/` | 17 | (cross-module) | — | — |
-| `tests/edge-cases/` | 1 | (boundary) | — | — |
-| `tests/performance/` | 13 | (benchmarks) | — | — |
+Source-side counts come from `dependency-summary.compact.json` (the
+authoritative output of `tools/create-dependency-graph`); test-side
+counts come from a filesystem scan of `tests/`. The "Tests : Classes"
+ratio gives a rough density signal — closer to 1:1 for foundational
+modules where each class earns a test file, lower for utility modules
+where a single test file may cover multiple small classes.
+
+| Module | Src files | Classes | Interfaces | Test files | Tests : Classes |
+|--------|----------:|--------:|-----------:|-----------:|----------------:|
+| `agent/` | 61 | 52 | 10 (in summary; full count higher) | 53 | 1.02 |
+| `cli/` | 16 | 0 | 1 | 6 | n/a (function-based) |
+| `core/` | 14 | 13 | 9 | 30 | 2.31 (multiple per class) |
+| `features/` | 17 | 17 | 10 | 22 | 1.29 |
+| `search/` | 37 | 39 | 10 | 37 | 0.95 |
+| `security/` | 2 | 1 | 4 | 1 | 1.00 |
+| `types/` | 7 | 2 | 10+ | 6 | n/a (type defs) |
+| `utils/` | 26 | 32 | 10 | 22 | 0.69 |
+| `workers/` | 2 | 0 | 2 | 2 | n/a (function-based) |
+
+> Interface counts above are "in summary" — the dep-graph compact JSON
+> caps the interface list per module at the most prominent ~10. The
+> repo total is **384 interfaces** across all modules.
+
+### Test file counts by directory
+
+| Directory | Test files | Notes |
+|-----------|-----------:|-------|
+| `tests/unit/agent/` | 53 | Mirrors `src/agent/` 1:1 with sub-module coverage |
+| `tests/unit/cli/` | 6 | CLI binary (memory / memoryjs) |
+| `tests/unit/core/` | 30 | High density: EntityManager / RelationManager / GraphStorage have multiple test files |
+| `tests/unit/features/` | 22 | High density: IOManager has 4 test files (incl. RDF, ingest, split, visualize) |
+| `tests/unit/search/` | 37 | 1:1 with src/search |
+| `tests/unit/security/` | 1 | PiiRedactor (η.6.3) |
+| `tests/unit/types/` | 6 | Type-only validation tests |
+| `tests/unit/utils/` | 22 | Helper coverage |
+| `tests/unit/workers/` | 2 | Levenshtein worker pool |
+| `tests/unit/performance/` | 1 | `baselineHelper.test.ts` |
+| `tests/unit/tools/` | 1 | `plan-doc-audit.test.ts` |
+| `tests/integration/` | 17 | Cross-module workflows |
+| `tests/edge-cases/` | 1 | Boundary conditions |
+| `tests/performance/` | 13 | Benchmarks (gated by `SKIP_BENCHMARKS=true`) |
 
 > "Files-coverage" measures whether each source file has at least one
 > test file targeting it. It is NOT a substitute for line-coverage; for
 > that run `npm run test:coverage`.
+
+### Hub modules and their test density
+
+Per the dep-graph fan-in/out report (`hp` field of the compact summary),
+these are the most-imported modules in the codebase. Test density should
+be highest here:
+
+| Source file | Imports IN | Imports OUT | Test files |
+|-------------|-----------:|------------:|-----------:|
+| `core/ManagerContext.ts` | 54 | 3 | 4 (`ManagerContext.test.ts` + 3 specialized incl. `manager-context-new-managers.test.ts`) |
+| `agent/index.ts` (barrel) | 47 | 1 | n/a (barrel) |
+| `search/index.ts` (barrel) | 36 | 2 | n/a (barrel) |
+| `agent/AgentMemoryManager.ts` | 27 | 2 | 2 (`AgentMemoryManager.test.ts` + `agent-memory-manager-diary.test.ts`) |
+| `utils/index.ts` (barrel) | 25 | 20 | n/a |
+| `features/index.ts` (barrel) | 16 | 1 | n/a |
+| `core/EntityManager.ts` | 7 | 15 | 5 (`EntityManager.test.ts` + 4 specialized covering OCC, projects, profile, version-chain) |
+| `core/GraphStorage.ts` | 6 | 26 | 1 (`GraphStorage.test.ts`; integration covers persistence) |
+| `types/index.ts` (barrel) | 5 | 54 | n/a |
+| `types/types.ts` | 1 | 41 | 2 (`entity-content-hash.test.ts` + `entity-new-fields.test.ts`) |
+
+> The two highest-fanin source files (`ManagerContext.ts` at 54 in,
+> `EntityManager.ts` at 7 in but 15 out as the entity-write hub) carry
+> the most concentrated test coverage — 4 and 5 test files respectively,
+> with specialized variants for each major feature shipped. This is the
+> right pattern: density follows fanin.
+
+### Circular dependency analysis
+
+The dep-graph reports **1 circular dependency**: `EntityValidator → EntityValidator`
+(a self-reference cycle of length 1, type-only). This is structurally
+benign — the symbol is referenced from within its own file via type
+imports for self-documenting JSDoc. No runtime impact; flagged here for
+completeness.
 
 ---
 
