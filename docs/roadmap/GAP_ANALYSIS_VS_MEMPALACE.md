@@ -1,10 +1,13 @@
 # Gap Analysis: MemoryJS vs MemPalace
 
-Updated: 2026-04-09 (source-verified from GitHub)
+Originally generated: 2026-04-09 (source-verified from GitHub)
+**Last refreshed: 2026-04-25** — MemoryJS now at v1.14.0 + Unreleased.
 
 ## Executive Summary
 
-**MemoryJS** (v1.8.0) is a TypeScript knowledge graph library with 29+ managers, 94 MCP tools (via memory-mcp), formal agent memory (sessions, decay, salience, DreamEngine), 12+ search strategies, and dual storage backends (JSONL + SQLite). It excels at graph algorithms, memory lifecycle management, and structured entity-relation-observation modeling.
+**MemoryJS** (v1.14.0 + Unreleased; was v1.8.0 at original write-up) is a TypeScript knowledge graph library with 40+ managers, 94 MCP tools (via memory-mcp), formal agent memory (sessions, decay, salience, DreamEngine), 12+ search strategies, dual storage backends (JSONL + SQLite), pluggable IMemoryBackend (in-memory + SQLite), four-tier conversation-turn dedup (MemoryEngine), bitemporal versioning (η.4.4), causal reasoning (3B.6), procedural memory (3B.4), world-model orchestration (3B.7), active iterative retrieval (3B.5), RBAC (η.6.1), PII redaction (η.6.3), W3C Linked-Data export (η.5.4), and full multi-agent collaboration primitives (η.5.5).
+
+> **Status of original MUST/SHOULD items** — see the closing roadmap table at line 270; items 1–5 (4-layer memory stack, ingestion pipeline, temporal KG convenience methods, agent diary, auto-save hooks) ✅ shipped in v1.9.0. Subsequent gaps closed via v1.10–Unreleased work.
 
 **MemPalace** (v3.1.0) is a Python AI memory system using ChromaDB with a spatial "memory palace" metaphor (wings → rooms → closets → drawers). It stores verbatim conversations, uses a 4-layer memory stack for context loading (~170 tokens wake-up), has a temporal knowledge graph (SQLite), and includes an experimental AAAK compression dialect. It excels at zero-API-key operation, conversation mining, and benchmark performance (96.6% LongMemEval R@5).
 

@@ -3,6 +3,13 @@
 **Date**: 2026-02-09
 **Overall pattern**: Excessive abstraction layering — facades wrapping facades, lazy initialization of lightweight objects, and config objects with rarely-used options.
 
+> **Historical document — not retroactively edited.** Findings reflect the
+> v1.5-era codebase. Many specific concerns have since been addressed by
+> targeted simplifications (the `code-simplifier` agent has been run on
+> Phase δ + η work) or have been retained as deliberate decisions
+> (e.g. the lazy-getter pattern is now formally documented in ADR-002 +
+> ADR-011). For current state see CHANGELOG and the dispatch runbook.
+
 ---
 
 ## Top 15 Findings

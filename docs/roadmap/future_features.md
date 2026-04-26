@@ -2,7 +2,18 @@
 
 Consolidated list of all planned but unimplemented features for MemoryJS, merging the original [ROADMAP.md](./ROADMAP.md) phases with new performance & scale proposals.
 
-> **What's already done**: Phase 1 (95% — only CLI pipe support remains), Phase 2 (partial — search suggestions and performance metrics exist), Phase 3 (100%). See ROADMAP.md for details on completed work.
+**Last refreshed: 2026-04-25** — significant additions since original write-up.
+
+> **What's already done** (updated 2026-04-25):
+> - Phase 1 (95% — CLI pipe support is the only remaining item)
+> - Phase 2 (partial — search suggestions and performance metrics exist)
+> - Phase 3 (100%)
+> - **Phase 3B (Memory Intelligence)**: 3B.1–3B.3 ✅ shipped v1.13.0 (Phase δ); 3B.4 + 3B.5 + 3B.6 + 3B.7 ✅ shipped Unreleased
+> - **Phase 4 (Integration & Scale, η)**: η.4.4 (bitemporal versioning) ✅ shipped Unreleased; η.4.6 (graph visualization) ✅ shipped v1.9.1; η.4.1 (DB adapters), η.4.2 (REST API), η.4.3 (Elasticsearch), η.4.5 (scalability) — plans drafted, gated on dep approval
+> - **Phase 5 (Advanced Features, η.5)**: η.5.4 RDF/Turtle/JSON-LD export ✅ shipped Unreleased (sub-features 1+2; SPARQL deferred); η.5.5.a-d Collaboration ✅ shipped Unreleased (CRDT 5.5.e gated); η.5.1/5.2/5.3 plans drafted
+> - **Phase 6 (Enterprise, η.6)**: η.6.1 RBAC ✅ shipped Unreleased; η.6.3 PiiRedactor ✅ shipped Unreleased; η.6.2 Distributed (Redis), η.6.3 InputValidator (Zod) / EncryptionAdapter (SQLCipher), η.6.4 Cloud-native (devops), η.6.5 GPU — gated on deps
+>
+> See ROADMAP.md and the `docs/superpowers/plans/2026-04-25-eta-*.md` files for per-feature detail.
 
 ---
 

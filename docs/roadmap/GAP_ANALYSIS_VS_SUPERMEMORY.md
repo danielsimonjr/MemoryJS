@@ -1,10 +1,13 @@
 # Gap Analysis: MemoryJS vs Supermemory
 
-Updated: 2026-04-08 (source-verified from GitHub repos)
+Originally generated: 2026-04-08 (source-verified from GitHub repos)
+**Last refreshed: 2026-04-25** — MemoryJS now at v1.14.0 + Unreleased.
 
 ## Executive Summary
 
-**MemoryJS** (`@danielsimonjr/memoryjs`) is a local-first TypeScript knowledge graph library with 29+ managers, 94 MCP tools (via memory-mcp), formal agent memory (sessions, decay, salience, DreamEngine), and 12+ search strategies. It excels at graph algorithms, memory lifecycle management, and offline operation.
+**MemoryJS** (`@danielsimonjr/memoryjs`, v1.14.0 + Unreleased) is a local-first TypeScript knowledge graph library with 40+ managers, 94 MCP tools (via memory-mcp), formal agent memory (sessions, decay, salience, DreamEngine), 12+ search strategies, plus the v1.8 / v1.11 / v1.12 / v1.13 / Unreleased additions: contradiction-aware memory versioning + semantic forget (v1.8), turn-aware MemoryEngine + four-tier dedup (v1.11), pluggable IMemoryBackend (v1.12), MemoryValidator + TrajectoryCompressor + ExperienceExtractor (v1.13 Phase δ), bitemporal versioning + RDF export + multi-agent collaboration + RBAC + PII redactor + 3B.4-3B.7 memory theory (Unreleased). It excels at graph algorithms, memory lifecycle management, structured entity-relation-observation modeling, multi-agent governed shared-graph scenarios, and offline operation.
+
+> **Status of original MUST items** — see the closing roadmap table at line 337; items 1–4 (auto-maintained user profile, semantic forget, memory versioning + contradiction resolution, project/container scoping) ✅ all shipped in v1.8.0.
 
 **Supermemory** (`supermemory`) is a cloud SaaS monorepo (Turbo + Bun + Cloudflare Workers + PostgreSQL) with auto-maintained user profiles, contradiction-aware memory versioning, semantic forget, external connectors, and multi-SDK middleware integration. It excels at zero-config memory augmentation for conversational AI.
 

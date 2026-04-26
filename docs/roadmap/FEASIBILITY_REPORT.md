@@ -1,6 +1,7 @@
 # MemoryJS Paper Ideas — Feasibility Report
 
 Generated 2026-03-24 by 3 parallel code-explorer agents reviewing actual codebase.
+**Last refreshed: 2026-04-25** — codebase has advanced significantly since this report. Items previously marked HARD or INFRASTRUCTURE may now be EASY because dependencies are now in place. See [`docs/superpowers/plans/2026-04-24-task-dispatch-runbook.md`](../superpowers/plans/2026-04-24-task-dispatch-runbook.md) for the current shipped/gated status of Phase η work.
 
 ## Summary
 

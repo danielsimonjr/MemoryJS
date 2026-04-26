@@ -1,7 +1,8 @@
 # Design: Supermemory Gap-Closing (Sprint 1 MUST Features)
 
 **Date:** 2026-04-09
-**Branch:** `feature/must-have-8` (base)
+**Status:** ✅ **Shipped as v1.8.0** — auto-maintained user profile, two-tier semantic forget, memory versioning + contradiction resolution, project/container scoping. See CHANGELOG v1.8.0.
+**Branch:** `feature/must-have-8` → merged to master.
 **Related:** `docs/roadmap/GAP_ANALYSIS_VS_SUPERMEMORY.md`
 
 ## Goal

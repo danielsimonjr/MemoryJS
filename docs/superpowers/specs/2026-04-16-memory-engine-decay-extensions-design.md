@@ -1,8 +1,14 @@
 # Design: Memory Engine Decay Extensions
 
 **Date:** 2026-04-16
-**Status:** Approved (post-review fixes applied), not yet implemented
-**Target branch:** `feature/memory-engine-decay-extensions`
+**Status:** ✅ **Shipped as v1.12.0** — `DecayEngine.calculatePrdEffectiveImportance()`
+in `src/agent/DecayEngine.ts` plus `IMemoryBackend` interface and
+`InMemoryBackend` / `SQLiteBackend` adapters. Four PRD-scale env vars
+exposed (`MEMORY_PRD_DECAY_RATE`, `MEMORY_PRD_FRESHNESS_COEFFICIENT`,
+`MEMORY_PRD_RELEVANCE_WEIGHT`, `MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD`).
+Tests: `tests/unit/agent/IMemoryBackend.contract.test.ts` +
+`InMemoryBackend.test.ts` + `SQLiteBackend.test.ts`.
+**Target branch:** `feature/memory-engine-decay-extensions` → merged to master.
 **Target version:** v1.12.0 (next minor after Memory Engine Core ships as v1.11.0)
 **Supersedes:** portion of `_archived-2026-04-16-context-engine-memory-engine-design.md`
 **Companion spec:** `2026-04-16-memory-engine-core-design.md` (ships first)

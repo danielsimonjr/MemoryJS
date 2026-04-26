@@ -1,8 +1,11 @@
 # Design: Memory Engine Core
 
 **Date:** 2026-04-16
-**Status:** Approved (post-review fixes applied), not yet implemented
-**Target branch:** `feature/memory-engine-core`
+**Status:** ✅ **Shipped as v1.11.0** — `src/agent/MemoryEngine.ts` +
+`src/agent/ImportanceScorer.ts`. Four-tier dedup chain (exact / prefix /
+Jaccard / optional semantic) ships as designed. Tests:
+`tests/unit/agent/MemoryEngine.test.ts` + `ImportanceScorer.test.ts`.
+**Target branch:** `feature/memory-engine-core` → merged to master.
 **Target version:** v1.11.0 (next minor after current v1.10.0)
 **Supersedes:** `_archived-2026-04-16-context-engine-memory-engine-design.md` (split into Core + Decay Extensions per user decision B)
 **Companion spec:** `2026-04-16-memory-engine-decay-extensions-design.md` (ships in a separate later release)

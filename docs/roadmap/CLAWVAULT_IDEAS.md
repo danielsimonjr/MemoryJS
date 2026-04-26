@@ -1,5 +1,9 @@
 # Ideas from ClawVault for MemoryJS
 
+**Last refreshed: 2026-04-25** — analysis is from earlier; many ideas
+listed below are now shipped or have ADRs covering them. Cross-reference
+[ROADMAP.md](./ROADMAP.md) and the dispatch runbook for current status.
+
 Analysis of [ClawVault](https://github.com/danielsimonjr/clawvault) — a markdown-native persistent memory system for AI agents — with actionable ideas for MemoryJS.
 
 ---

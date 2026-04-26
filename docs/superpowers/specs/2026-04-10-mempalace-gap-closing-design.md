@@ -1,7 +1,8 @@
 # Design: MemPalace Gap-Closing (v1.9.0)
 
 **Date:** 2026-04-10
-**Branch:** `feature/mempalace-gap` (off master after PR #14 merges)
+**Status:** ✅ **Shipped as v1.9.0** — temporal relations (`invalidateRelation` / `queryAsOf` / `timeline`), 4-layer wake-up stack (`ContextWindowManager.wakeUp`), conversation ingestion (`IOManager.ingest`), per-agent diary, local-embeddings default. See CHANGELOG v1.9.0.
+**Branch:** `feature/mempalace-gap` → merged to master.
 **Related:** `docs/roadmap/GAP_ANALYSIS_VS_MEMPALACE.md`
 
 ## Goal

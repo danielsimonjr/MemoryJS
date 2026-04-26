@@ -4,6 +4,17 @@
 **Scope**: Full codebase review of MemoryJS v1.5.0 (110 files, ~43K LOC)
 **Methodology**: Parallel review agents covering core/, search/, agent/, features/, utils/, plus dedicated security review
 
+> **Historical document — not retroactively edited.** This is a
+> point-in-time review of v1.5.0. The codebase has since grown to
+> v1.14.0 + Unreleased (183 files, 62.7K LOC, 6157 passing tests).
+> Findings here may have been addressed, superseded, or rendered
+> moot by subsequent work. For the current state see
+> [README.md](../../README.md), [CHANGELOG.md](../../CHANGELOG.md),
+> and [DEPENDENCY_GRAPH.md](../architecture/DEPENDENCY_GRAPH.md).
+> Subsequent code-reviewer runs are tracked per-PR via the
+> `pr-review-toolkit:code-reviewer` agent and recorded in commit
+> messages.
+
 ## Summary
 
 | Severity | Count |
