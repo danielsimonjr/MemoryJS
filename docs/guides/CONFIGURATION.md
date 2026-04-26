@@ -849,5 +849,143 @@ const ctx = new ManagerContext(config.storagePath);
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Document Version**: 2.0
+**Last Updated**: 2026-04-25
+
+---
+
+## Complete Environment Variable Reference (v1.6 → Unreleased)
+
+The original sections above cover the v1.1-era variables. Below is the
+complete current set. Defaults shown in parens; **bold** values are
+opt-in / require explicit configuration.
+
+### Storage + backend
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` |
+| `MEMORY_FILE_PATH` | path | (per `ManagerContext` ctor) |
+| `MEMORY_BACKEND` | `sqlite`, `in-memory` | `sqlite` |
+
+### Embedding / semantic search
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `local` |
+| `MEMORY_OPENAI_API_KEY` | API key string | — |
+| `MEMORY_EMBEDDING_MODEL` | model name override | — |
+| `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |
+
+### Decay engine (legacy memoryjs scale [0, 10])
+
+| Variable | Default |
+|----------|---------|
+| `MEMORY_AUTO_DECAY` | `false` |
+| `MEMORY_DECAY_HALF_LIFE_HOURS` | `168` |
+| `MEMORY_DECAY_MIN_IMPORTANCE` | `0.1` |
+| `MEMORY_DECAY_INTERVAL_MS` | `3600000` |
+| `MEMORY_AUTO_FORGET` | `false` |
+| `MEMORY_FORGET_THRESHOLD` | `0.05` |
+
+### Decay engine (PRD scale [1.0, 3.0]; v1.12)
+
+| Variable | Default |
+|----------|---------|
+| `MEMORY_PRD_DECAY_RATE` | auto-derived from `MEMORY_DECAY_HALF_LIFE_HOURS` via `ln(2) / (h × 3600)` |
+| `MEMORY_PRD_FRESHNESS_COEFFICIENT` | `0.01` |
+| `MEMORY_PRD_RELEVANCE_WEIGHT` | `0.35` |
+| `MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD` | `0.1` |
+
+### Salience weights (must sum to ~1.0)
+
+| Variable | Default |
+|----------|---------|
+| `MEMORY_SALIENCE_IMPORTANCE_WEIGHT` | `0.25` |
+| `MEMORY_SALIENCE_RECENCY_WEIGHT` | `0.25` |
+| `MEMORY_SALIENCE_FREQUENCY_WEIGHT` | `0.2` |
+| `MEMORY_SALIENCE_CONTEXT_WEIGHT` | `0.2` |
+| `MEMORY_SALIENCE_NOVELTY_WEIGHT` | `0.1` |
+
+### Context window
+
+| Variable | Default |
+|----------|---------|
+| `MEMORY_CONTEXT_MAX_TOKENS` | `4000` |
+| `MEMORY_CONTEXT_TOKEN_MULTIPLIER` | `1.3` |
+| `MEMORY_CONTEXT_RESERVE_BUFFER` | `100` |
+
+### Query logging
+
+| Variable | Default |
+|----------|---------|
+| `MEMORY_QUERY_LOGGING` | `false` |
+| `MEMORY_QUERY_LOG_FILE` | — |
+| `MEMORY_QUERY_LOG_LEVEL` | `info` |
+
+### Governance + freshness (v1.6)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_GOVERNANCE_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_AUDIT_LOG_FILE` | path | — |
+| `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | number | `168` |
+| `MEMORY_LLM_QUERY_PLANNER_PROVIDER` | provider name | — |
+
+### Role profiles + advanced agent (v1.7)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_AGENT_ROLE` | `researcher`, `planner`, `executor`, `reviewer`, `coordinator` | — |
+| `MEMORY_ENTROPY_FILTER_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_ENTROPY_THRESHOLD` | number 0–1 | `0.3` |
+| `MEMORY_CONSOLIDATION_SCHEDULER_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_CONSOLIDATION_INTERVAL_MS` | number | `3600000` |
+| `MEMORY_COGNITIVE_LOAD_MAX` | number 0–1 | `0.8` |
+| `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
+
+### Memory Engine (v1.11)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_ENGINE_JACCARD_THRESHOLD` | 0–1 | `0.72` |
+| `MEMORY_ENGINE_PREFIX_OVERLAP` | 0–1 | `0.5` |
+| `MEMORY_ENGINE_DEDUP_SCAN_WINDOW` | int | `200` |
+| `MEMORY_ENGINE_MAX_TURNS_PER_SESSION` | int | `1000` |
+| `MEMORY_ENGINE_SEMANTIC_DEDUP` | `true`, `false` | `false` |
+| `MEMORY_ENGINE_SEMANTIC_THRESHOLD` | 0–1 | `0.92` |
+| `MEMORY_ENGINE_RECENT_TURNS` | int | `10` |
+| `MEMORY_ENGINE_LENGTH_WEIGHT` | 0–1 | `0.3` |
+| `MEMORY_ENGINE_KEYWORD_WEIGHT` | 0–1 | `0.4` |
+| `MEMORY_ENGINE_OVERLAP_WEIGHT` | 0–1 | `0.3` |
+
+### Memory Validator (v1.13 → η.5.5)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_VALIDATE_ON_STORE` | `true`, `false` | `false` |
+
+### Multi-agent collaboration (η.5.5)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` | `true`, `false` | `false` |
+
+### RBAC (η.6.1)
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_RBAC_ENABLED` | `true`, `false` | `false` |
+| `MEMORY_RBAC_DEFAULT_ROLE` | `reader`, `writer`, `admin` | `reader` |
+
+### Misc
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `SKIP_BENCHMARKS` | `true`, `false` | `false` |
+| `LOG_LEVEL` | `debug`, `info`, `warn`, `error` | (none) |
+| `MEMORY_TRANSITION_LEDGER` | `true`, `false` | `false` |
+
+> If you find a discrepancy between this section and [CLAUDE.md](../../CLAUDE.md),
+> CLAUDE.md is authoritative — both should be kept in sync but CLAUDE.md is
+> grep-tested by `npm run audit:plans`.

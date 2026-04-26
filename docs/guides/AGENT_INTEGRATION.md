@@ -1132,5 +1132,339 @@ console.log(context);
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Document Version**: 2.0
+**Last Updated**: 2026-04-25
+
+---
+
+## v1.7 → Unreleased — agent-memory features added since this guide was first written
+
+Sections above cover the v1.1 surface; the additions below give working
+patterns for everything shipped since.
+
+### Memory Engine — turn-aware conversation dedup (v1.11.0)
+
+`MemoryEngine` keeps every conversation turn and runs a four-tier dedup
+chain (exact SHA-256 / 50% prefix overlap / Jaccard ≥ 0.72 / optional
+semantic cosine ≥ 0.92) before persisting:
+
+```typescript
+const ctx = new ManagerContext({ storagePath: './memory.jsonl' });
+
+// Adding a turn — dedup runs automatically.
+const result = await ctx.memoryEngine.addTurn(
+  'User asked about authentication best practices',
+  { sessionId: 'session_123', role: 'user' },
+);
+
+if (result.deduped) {
+  console.log(`Dropped as duplicate of: ${result.existingTurn.id}`);
+  console.log(`Tier hit: ${result.tier}`); // 'exact' | 'prefix' | 'jaccard' | 'semantic'
+} else {
+  console.log(`Stored as turn: ${result.turn.id}`);
+}
+
+// Replay session
+const turns = await ctx.memoryEngine.getSessionTurns('session_123', { limit: 50 });
+```
+
+Tune the dedup chain via env vars: `MEMORY_ENGINE_JACCARD_THRESHOLD` (default 0.72),
+`MEMORY_ENGINE_PREFIX_OVERLAP` (0.5), `MEMORY_ENGINE_DEDUP_SCAN_WINDOW` (200),
+`MEMORY_ENGINE_SEMANTIC_DEDUP=true` (default false; needs embedding provider).
+
+### Procedural Memory — store + execute how-to sequences (3B.4)
+
+For agents that need to remember and replay multi-step procedures
+(onboarding flows, deployment steps, etc.):
+
+```typescript
+const proc = await ctx.procedureManager.addProcedure({
+  name: 'reset-password',
+  description: 'Send reset link, verify token, set new password',
+  steps: [
+    { order: 1, action: 'send-email', parameters: { template: 'reset' } },
+    { order: 2, action: 'verify-token', parameters: {} },
+    {
+      order: 3, action: 'persist-password', parameters: {},
+      fallback: { order: 99, action: 'rollback', parameters: {} },
+    },
+  ],
+  triggers: ['forgot password', 'password reset'],
+});
+
+// Match a context to a stored procedure
+const all = await Promise.all(
+  (await ctx.entityManager.listProjects()).map(...) // load candidates
+);
+const matches = await ctx.procedureManager.matchProcedure(
+  'user wants to reset their forgotten password',
+  [proc],
+);
+const top = matches[0]; // { procedure, score }
+
+// Execute step-by-step
+const seq = await ctx.procedureManager.openSequencer(proc.id)!;
+while (!seq.isComplete()) {
+  const step = seq.current();
+  if (!step) break;
+  try {
+    await yourExecutor(step);
+    seq.next();
+  } catch {
+    if (step.fallback) seq.branchToFallback();
+    else throw new Error(`Step ${step.order} failed and has no fallback`);
+  }
+}
+
+// Refine after execution — EWMA updates successRate
+await ctx.procedureManager.refineProcedure(proc.id, { succeeded: true });
+```
+
+### Active Retrieval — iterative query rewriting (3B.5)
+
+When a single search call returns too little, run multiple rounds with
+token-overlap query expansion:
+
+```typescript
+const result = await ctx.activeRetrieval.adaptiveRetrieve({
+  query: 'memory leak in worker pool',
+  // Optional: bound the cost
+  budgetTokens: 2000,
+});
+
+// result.bestResults    — the highest-coverage round's hits
+// result.bestCoverage   — score in [0, 1]
+// result.rounds         — full per-round trace for debugging
+//   each round: { query, results, coverage, expansionTokens }
+```
+
+Pure symbolic — no LLM provider required. For LLM-driven decomposition,
+use `ctx.queryNaturalLanguage(query)` instead.
+
+### Causal Reasoning — find causes, effects, counterfactuals (3B.6)
+
+For agents reasoning about consequences in a domain graph:
+
+```typescript
+// Build a causal subgraph using `causes` / `enables` / `prevents`
+// relations (Relation.metadata.causalStrength is honored when present)
+
+const effects = await ctx.causalReasoner.findEffects('rain', [
+  'flooding', 'erosion', 'crop-growth',
+]);
+// → CausalChain[] sorted by score (product of causalStrength)
+
+const causes = await ctx.causalReasoner.findCauses('flooding', [
+  'rain', 'broken-dam', 'snowmelt',
+]);
+
+// Counterfactual: "what if we remove the rain → flooding edge?"
+const surviving = await ctx.causalReasoner.counterfactual({
+  seed: 'rain',
+  removeFrom: 'rain',
+  removeTo: 'flooding',
+  predict: 'flooding',
+});
+// → chains from rain → flooding that don't use the removed edge
+
+const cycles = ctx.causalReasoner.detectCycles('rain');
+// JSDoc'd caveat: prevents+enables triangles ARE flagged as cycles
+// (prevents is treated as a directed edge, not a logical negation)
+```
+
+### World Model — snapshot + diff orchestration (3B.7)
+
+For agents that need to verify facts and detect drift over time:
+
+```typescript
+// Snapshot the agent's view of the world
+const before = await ctx.worldModelManager.getCurrentState();
+
+// ... agent does work, mutating the graph ...
+
+const after = await ctx.worldModelManager.getCurrentState();
+const change = ctx.worldModelManager.detectStateChange(before, after);
+// → { added[], removed[], modified[] (with field-level detail) }
+
+// Validate a candidate observation BEFORE committing it
+const result = await ctx.worldModelManager.validateFact(
+  'Alice is now CTO',
+  'Alice',
+);
+// → MemoryValidationResult with issues like 'semantic-contradiction'
+
+// Predict downstream effects of an action
+const chains = await ctx.worldModelManager.predictOutcome(
+  'deploy-to-production',
+  ['user-impact', 'rollback-required', 'monitoring-alert'],
+);
+```
+
+### Multi-Agent Collaboration — visibility, OCC, conflict view, attribution (η.5.5)
+
+```typescript
+// 1. Visibility — set who can see what (η.5.5.b)
+await ctx.entityManager.updateEntity('SharedDraft', {
+  visibility: 'shared',
+  allowedRoles: ['reviewer', 'admin'],   // role gate (AND-combined)
+  visibleFrom: '2025-01-01T00:00:00Z',   // time-window gate
+  visibleUntil: '2025-12-31T23:59:59Z',
+});
+
+// 2. Optimistic Concurrency Control (η.5.5.c)
+const entity = await ctx.entityManager.getEntity('Alice');
+try {
+  await ctx.entityManager.updateEntity('Alice',
+    { importance: 9 },
+    { expectedVersion: entity!.version ?? 1 },
+  );
+} catch (e) {
+  if (e instanceof VersionConflictError) {
+    // Refetch + reconcile + retry
+  }
+}
+
+// 3. Conflict-view synthesis (η.5.5.a)
+const synth = await ctx.agentMemory().collaborativeSynthesis.synthesize('Alice');
+if (synth.conflicts.length > 0) {
+  const winners = ctx.agentMemory().collaborativeSynthesis.resolveConflicts(
+    synth, { strategy: 'highest_confidence' },
+  );
+  for (const [name, winner] of winners) {
+    await ctx.entityManager.updateEntity(name, { ...winner });
+  }
+}
+
+// 4. Audit attribution enforcer (η.5.5.d)
+import { CollaborationAuditEnforcer, AuditLog } from '@danielsimonjr/memoryjs';
+const enforcer = new CollaborationAuditEnforcer(
+  ctx.entityManager,
+  new AuditLog('./audit.jsonl'),
+  { mode: 'strict' },  // strict = throws AttributionRequiredError without agentId
+);
+
+// Every mutation must name its agent
+await enforcer.createEntities(
+  [{ name: 'Decision-2026-01-15', entityType: 'decision', observations: ['ship'] }],
+  'agent-alice', // <- mandatory in strict mode
+);
+```
+
+### RBAC — role-based access (η.6.1)
+
+```typescript
+// Grant a role
+await ctx.roleAssignmentStore.assign({
+  agentId: 'agent-alice',
+  role: 'writer',
+  resourceType: 'entity',  // optional: narrow to a type
+  scope: 'project-x:',     // optional: prefix match on resource name
+  validUntil: '2026-12-31T23:59:59Z',
+});
+
+// Check a permission
+const allowed = ctx.rbacMiddleware.checkPermission(
+  'agent-alice', 'write', 'entity', 'project-x:Alice',
+);
+// reader → ['read']; writer → ['read', 'write']; admin → +'delete'; owner → +'manage'
+```
+
+When `MEMORY_RBAC_ENABLED=true` is set, the middleware wires automatically
+into `GovernancePolicy.canCreate/canUpdate/canDelete`.
+
+### PII Redaction on export (η.6.3)
+
+```typescript
+import { PiiRedactor } from '@danielsimonjr/memoryjs';
+
+const redactor = new PiiRedactor({
+  // Optional: extend the bundled patterns (email/SSN/CC/phone/IPv4)
+  additionalPatterns: [
+    { name: 'license', regex: /\bDL\d{8}\b/g, replacement: '<DL>' },
+  ],
+});
+
+// Single string
+const clean = redactor.redact(observation);
+
+// Whole graph (for export)
+const cleanGraph = redactor.redactGraph(graph);
+
+// With audit-trail-friendly stats
+const { text, stats } = redactor.redactWithStats(text);
+console.log(`Redacted ${stats.totalRedactedBytes} bytes`);
+console.log(stats.countsByPattern); // Map { 'email' → 3, 'ssn' → 1 }
+```
+
+Apply redaction on export only — `PiiRedactor` never mutates storage.
+
+### Bitemporal Versioning (η.4.4)
+
+```typescript
+// Set validity windows on an entity
+await ctx.entityManager.updateEntity('Alice', {
+  validFrom: '2024-01-01T00:00:00Z',
+  validUntil: '2024-12-31T00:00:00Z',
+});
+
+// Time-travel
+const past = await ctx.entityManager.entityAsOf('Alice', '2024-06-15T00:00:00Z');
+// → entity, because asOf is within the window
+
+const future = await ctx.entityManager.entityAsOf('Alice', '2025-06-15T00:00:00Z');
+// → null (outside window)
+
+// Per-observation validity
+await ctx.observationManager.invalidateObservation(
+  'Bob', 'works at Acme', '2024-12-31T00:00:00Z',
+);
+
+const obsAtTime = await ctx.observationManager.observationsAsOf(
+  'Bob', '2024-06-15T00:00:00Z',
+);
+// → ['works at Acme', 'lives in Seattle', ...]   (still valid then)
+
+const obsAfter = await ctx.observationManager.observationsAsOf(
+  'Bob', '2025-06-15T00:00:00Z',
+);
+// → ['lives in Seattle', ...]   ('works at Acme' filtered out)
+
+// Timeline of an entity (returns the v1.8 supersession chain too)
+const versions = await ctx.entityManager.entityTimeline('Alice');
+// → AgentEntity[] sorted by validFrom ascending
+```
+
+### W3C Linked-Data Export (η.5.4)
+
+For interop with triplestores:
+
+```typescript
+const graph = await ctx.storage.loadGraph();
+
+// Three new export formats
+const turtle = ctx.ioManager.exportGraph(graph, 'turtle');     // RDF 1.1 Turtle
+const xml = ctx.ioManager.exportGraph(graph, 'rdf-xml');       // RDF 1.1 XML
+const jsonld = ctx.ioManager.exportGraph(graph, 'json-ld');    // JSON-LD 1.1
+
+// IRIs use urn:memoryjs:entity:<percent-encoded-name> scheme
+// Relations with non-NCName types (e.g. "works at") use rdf:Statement
+//   reification + a synthetic mjsRel:link triple so consumers always get
+//   a graph edge they can traverse
+```
+
+### Quick reference — every new accessor on `ManagerContext`
+
+| Accessor | Shipped in | What |
+|----------|-----------|------|
+| `ctx.memoryEngine` | v1.11 | Turn-aware memory + 4-tier dedup |
+| `ctx.memoryBackend` | v1.12 | Pluggable IMemoryBackend (in-memory / sqlite) |
+| `ctx.memoryValidator` | v1.13 | Consistency / contradictions / reliability |
+| `ctx.trajectoryCompressor` | v1.13 | Distill / abstract / merge |
+| `ctx.experienceExtractor` | v1.13 | Pattern abstraction + clustering |
+| `ctx.patternDetector` | v1.13 | Direct trigger/sequence mining |
+| `ctx.procedureManager` | 3B.4 | Procedure storage + execution |
+| `ctx.causalReasoner` | 3B.6 | findCauses / findEffects / counterfactual |
+| `ctx.worldModelManager` | 3B.7 | Snapshot orchestrator + state-change diff |
+| `ctx.activeRetrieval` | 3B.5 | Iterative query rewriting |
+| `ctx.roleAssignmentStore` | η.6.1 | Role grants registry |
+| `ctx.rbacMiddleware` | η.6.1 | RbacPolicy.checkPermission |

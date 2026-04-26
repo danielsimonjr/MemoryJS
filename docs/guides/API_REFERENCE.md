@@ -1602,5 +1602,419 @@ try {
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Document Version**: 2.0
+**Last Updated**: 2026-04-25
+
+---
+
+## v1.6 → Unreleased — added API surface
+
+Sections above cover the original v1.1-era API. Below are the new
+public surfaces shipped since.
+
+### EntityManager — new methods
+
+```typescript
+class EntityManager {
+  // η.4.4 — bitemporal validity
+  invalidateEntity(name: string, ended?: string): Promise<void>;
+  entityAsOf(name: string, asOf: string): Promise<Entity | null>;
+  entityTimeline(name: string): Promise<Entity[]>;
+
+  // η.5.5.c — optimistic concurrency control (opt-in)
+  updateEntity(
+    name: string,
+    updates: Partial<Entity>,
+    options?: { expectedVersion?: number },  // throws VersionConflictError on mismatch
+  ): Promise<Entity>;
+
+  // v1.8 — supersession chain navigation
+  getVersionChain(entityName: string): Promise<Entity[]>;
+  getLatestVersion(entityName: string): Promise<Entity | null>;
+}
+```
+
+### RelationManager — new methods (v1.9)
+
+```typescript
+class RelationManager {
+  invalidateRelation(
+    from: string, relationType: string, to: string, ended?: string,
+  ): Promise<void>;
+  queryAsOf(
+    entityName: string, asOf: string,
+    options?: { direction?: 'outgoing' | 'incoming' | 'both' },
+  ): Promise<Relation[]>;
+  timeline(
+    entityName: string,
+    options?: { direction?: 'outgoing' | 'incoming' | 'both' },
+  ): Promise<Relation[]>;
+}
+```
+
+### ObservationManager — new methods (η.4.4)
+
+```typescript
+class ObservationManager {
+  invalidateObservation(
+    entityName: string, content: string, ended?: string,
+  ): Promise<void>;
+  observationsAsOf(entityName: string, asOf: string): Promise<string[]>;
+}
+```
+
+### IOManager — new export formats (η.5.4 + v1.9)
+
+```typescript
+type ExportFormat =
+  | 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid'
+  | 'turtle' | 'rdf-xml' | 'json-ld';  // ← new
+
+class IOManager {
+  exportGraph(graph: ReadonlyKnowledgeGraph, format: ExportFormat): string;
+
+  // v1.9 conversation ingest pipeline
+  ingest(input: IngestInput, options?: IngestOptions): Promise<IngestResult>;
+  splitSessions(content: string, options?: SplitOptions): Promise<SplitResult>;
+
+  // v1.9.1 visualization
+  visualizeGraph(options?: VisualizeOptions): Promise<string>;
+}
+```
+
+### MemoryEngine (v1.11)
+
+```typescript
+class MemoryEngine extends EventEmitter {
+  addTurn(
+    content: string,
+    options: { sessionId: string; role: 'user' | 'assistant' | 'system' },
+  ): Promise<{ turn?: MemoryTurn; deduped: boolean; tier?: DedupTier; existingTurn?: MemoryTurn }>;
+
+  checkDuplicate(content: string, sessionId: string): Promise<DedupResult>;
+
+  getSessionTurns(
+    sessionId: string,
+    options?: { role?: string; limit?: number },
+  ): Promise<MemoryTurn[]>;
+
+  deleteSession(sessionId: string): Promise<void>;
+  listSessions(): Promise<string[]>;
+}
+// Events: memoryEngine:turnAdded / duplicateDetected / sessionDeleted
+```
+
+### IMemoryBackend (v1.12)
+
+```typescript
+interface IMemoryBackend {
+  add(turn: MemoryTurn, options?: { dedupOnAdd?: boolean }): Promise<MemoryTurn>;
+  get_weighted(sessionId: string, options?: GetWeightedOptions): Promise<WeightedTurn[]>;
+  delete_session(sessionId: string): Promise<void>;
+  list_sessions(): Promise<string[]>;
+}
+
+// Implementations:
+//   InMemoryBackend  — ephemeral; dedups on (sessionId, content)
+//   SQLiteBackend    — wraps MemoryEngine + DecayEngine
+
+ctx.memoryBackend  // selected by MEMORY_BACKEND=sqlite|in-memory
+```
+
+### MemoryValidator (v1.13)
+
+```typescript
+class MemoryValidator {
+  validateConsistency(newObs: string, existing: Entity): Promise<MemoryValidationResult>;
+  detectContradictions(entity: Entity): Promise<Contradiction[]>;
+  repairWithResolver(
+    entity: Entity, competing: Entity[], resolver: ConflictResolver,
+    contradiction?: Contradiction,
+    options?: { detectionMethod?, strategy?, agents? },
+  ): Promise<Entity>;
+  validateTemporalOrder(observations: string[]): MemoryValidationResult;
+  calculateReliability(entity: Entity): number;
+}
+```
+
+### TrajectoryCompressor (v1.13)
+
+```typescript
+class TrajectoryCompressor {
+  distill(observations: string[], maxLength: number): string;
+  abstractAtLevel(observations: string[], level: 'fine' | 'medium' | 'coarse'): string[];
+  foldContext(content: string, level?: CompressionLevel): string;
+  findRedundancies(observations: string[], threshold?: number): Array<string[]>;  // groups
+  mergeRedundant(
+    entities: Entity[],
+    strategy: TrajectoryMergeStrategy,  // 'keep-newest' | 'keep-most-confident' | 'union-observations'
+  ): Entity;
+}
+```
+
+### ExperienceExtractor (v1.13)
+
+```typescript
+class ExperienceExtractor {
+  extractFromContrastivePairs(success: Trajectory[], failure: Trajectory[]): Rule[];
+  abstractPattern(observations: string[]): Pattern;
+  learnDecisionBoundary(positive: Trajectory[], negative: Trajectory[]): DecisionRule;
+  clusterTrajectories(
+    trajectories: Trajectory[],
+    method: 'semantic' | 'structural' | 'outcome',
+  ): TrajectoryCluster[];
+  synthesizeExperience(cluster: TrajectoryCluster): Experience;
+}
+```
+
+### CollaborativeSynthesis (v1.7 + η.5.5.a)
+
+```typescript
+class CollaborativeSynthesis {
+  // v1.7
+  synthesize(seedEntity: string, context?: SalienceContext): Promise<SynthesisResult>;
+
+  // η.5.5.a — conflict detection + resolution
+  resolveConflicts(
+    result: SynthesisResult,
+    policy: ConflictResolutionPolicy,
+  ): Map<string, AgentEntity>;
+}
+
+interface SynthesisResult {
+  // ... pre-existing fields
+  conflicts: ConflictView[];  // ← new in η.5.5.a
+}
+
+type ConflictResolutionPolicy =
+  | { strategy: 'most_recent' }
+  | { strategy: 'highest_confidence' }
+  | { strategy: 'highest_score' }
+  | { strategy: 'trusted_agent'; trustedAgentId: string };
+```
+
+### VisibilityResolver (v1.7 + η.5.5.b)
+
+```typescript
+class VisibilityResolver {
+  canAccess(
+    memory: AgentEntity,
+    requestingAgentId: string,
+    requestingMeta: AgentMetadata | undefined,
+    ownerMeta: AgentMetadata | undefined,
+    now?: string,  // ← new in η.5.5.b for time-window evaluation
+  ): boolean;
+}
+
+// AgentEntity gains:
+interface AgentEntity {
+  // ... existing
+  allowedRoles?: string[];   // η.5.5.b — role gate (AND-combined)
+  visibleFrom?: string;      // η.5.5.b — time-window start
+  visibleUntil?: string;     // η.5.5.b — time-window end
+}
+```
+
+### CollaborationAuditEnforcer (η.5.5.d)
+
+```typescript
+class CollaborationAuditEnforcer {
+  constructor(
+    em: EntityManager,
+    log: AuditLog,
+    options?: { mode?: 'strict' | 'lenient' },  // strict throws AttributionRequiredError
+  );
+
+  createEntities(entities: Entity[], agentId: string | undefined): Promise<Entity[]>;
+  updateEntity(
+    name: string, updates: Partial<Entity>, agentId: string | undefined,
+    options?: { expectedVersion?: number },  // forwards to OCC
+  ): Promise<Entity>;
+  deleteEntities(names: string[], agentId: string | undefined): Promise<void>;
+}
+```
+
+### CausalReasoner (3B.6)
+
+```typescript
+class CausalReasoner {
+  findEffects(
+    causeEntityName: string, candidateEffects: string[], maxDepth?: number,
+  ): Promise<CausalChain[]>;
+  findCauses(
+    effectEntityName: string, candidateCauses: string[], maxDepth?: number,
+  ): Promise<CausalChain[]>;
+  counterfactual(scenario: {
+    seed: string; removeFrom: string; removeTo: string; predict: string; maxDepth?: number;
+  }): Promise<CausalChain[]>;
+  detectCycles(seed: string, maxDepth?: number): CausalCycle[];
+}
+
+interface CausalChain {
+  path: string[];        // entity names cause→effect
+  relations: Relation[]; // edges traversed
+  score: number;         // product of per-edge causalStrength
+  length: number;
+}
+```
+
+### ProcedureManager (3B.4)
+
+```typescript
+class ProcedureManager {
+  addProcedure(input: Partial<Procedure>): Promise<Procedure>;
+  getProcedure(id: string): Promise<Procedure | null>;
+  getStep(id: string, order: number): Promise<ProcedureStep | null>;
+  getNextStep(id: string, currentOrder: number): Promise<ProcedureStep | null>;
+  openSequencer(id: string): Promise<StepSequencer | null>;
+  matchProcedure(
+    contextDescription: string,
+    candidates: Procedure[],
+    threshold?: number,
+  ): Promise<ProcedureMatch[]>;
+  refineProcedure(id: string, feedback: ProcedureFeedback): Promise<Procedure>;
+}
+
+class StepSequencer {
+  current(): ProcedureStep | null;
+  next(): ProcedureStep | null;
+  branchToFallback(): void;       // throws if no fallback
+  reset(): void;
+  isComplete(): boolean;
+  readonly cursorIndex: number;
+  readonly steps: readonly ProcedureStep[];
+}
+```
+
+### ActiveRetrievalController (3B.5)
+
+```typescript
+class ActiveRetrievalController {
+  shouldRetrieve(context: RetrievalContext): RetrievalDecision;
+  adaptiveRetrieve(context: RetrievalContext): Promise<AdaptiveResult>;
+}
+
+class QueryRewriter {
+  rewrite(
+    query: string, snippets: ReadonlyArray<string>, expansionLimit?: number,
+  ): RewriteResult;
+}
+
+interface AdaptiveResult {
+  bestResults: SearchResult[];
+  bestCoverage: number;
+  rounds: RetrievalRound[];
+}
+```
+
+### WorldModelManager (3B.7)
+
+```typescript
+class WorldModelManager {
+  getCurrentState(): Promise<WorldStateSnapshot>;
+  validateFact(observation: string, entityName: string): Promise<MemoryValidationResult | null>;
+  predictOutcome(actionEntity: string, candidateEffects: string[]): Promise<CausalChain[]>;
+  detectStateChange(before: WorldStateSnapshot, after: WorldStateSnapshot): WorldStateChange;
+}
+
+class WorldStateSnapshot {
+  readonly takenAt: string;
+  readonly entitiesByName: ReadonlyMap<string, WorldStateEntity>;
+  readonly size: number;
+  entities(): ReadonlyArray<WorldStateEntity>;
+  diffTo(next: WorldStateSnapshot): WorldStateChange;
+  toJSON(): { takenAt: string; entities: WorldStateEntity[] };
+  static fromJSON(json): WorldStateSnapshot;
+}
+```
+
+### RBAC (η.6.1)
+
+```typescript
+class RoleAssignmentStore {
+  constructor(options?: { persistencePath?: string });
+  hydrate(): Promise<void>;
+  assign(assignment: RoleAssignment): Promise<void>;
+  revoke(agentId: string, role: Role, resourceType?: ResourceType): Promise<void>;
+  list(agentId: string): RoleAssignment[];
+  listActive(agentId: string, now?: string): RoleAssignment[];
+}
+
+class RbacMiddleware implements RbacPolicy {
+  constructor(
+    store: RoleAssignmentStore,
+    options?: {
+      matrix?: PermissionMatrix;
+      overrides?: ResourcePermissionOverrides;
+      defaultRole?: string;  // 'reader' default; pass undefined to deny unregistered
+    },
+  );
+  checkPermission(
+    agentId: string,
+    action: Permission,
+    resourceType: ResourceType,
+    resourceName?: string,
+    now?: string,
+  ): boolean;
+}
+```
+
+### PiiRedactor (η.6.3)
+
+```typescript
+class PiiRedactor {
+  constructor(options?: {
+    patterns?: ReadonlyArray<PiiPattern>;       // replaces default bank
+    additionalPatterns?: ReadonlyArray<PiiPattern>;  // layered on top
+  });
+  redact(text: string): string;
+  redactWithStats(text: string): RedactionResult;  // { text, stats }
+  redactGraph<T>(graph: T): T;  // shallow clone; non-destructive
+}
+
+const DEFAULT_PII_PATTERNS: ReadonlyArray<PiiPattern>;
+// Bundled: email, ssn, credit-card, phone, ipv4
+```
+
+### New error types
+
+```typescript
+// η.5.5.c — optimistic concurrency
+class VersionConflictError extends KnowledgeGraphError {
+  readonly entityName: string;
+  readonly expected: number;
+  readonly actual: number;
+  readonly conflictingAgentId?: string;
+}
+
+// η.5.5.d — strict-mode attribution enforcement
+class AttributionRequiredError extends KnowledgeGraphError {}
+```
+
+### `ManagerContext` — full lazy-getter list (current)
+
+```typescript
+// Core
+ctx.entityManager / relationManager / observationManager / hierarchyManager
+ctx.searchManager / rankedSearch / graphTraversal / tagManager / refIndex
+
+// I/O + governance
+ctx.ioManager / archiveManager / compressionManager / analyticsManager
+ctx.semanticForget / governanceManager / freshnessManager
+
+// Search extensions
+ctx.semanticSearch / temporalSearch / activeRetrieval
+ctx.llmQueryPlanner() / queryNaturalLanguage()
+
+// Memory + agent
+ctx.memoryEngine / memoryBackend / contextWindowManager / agentMemory()
+
+// Memory intelligence
+ctx.memoryValidator / trajectoryCompressor / experienceExtractor / patternDetector
+
+// Memory theory (3B)
+ctx.procedureManager / causalReasoner / worldModelManager
+
+// Auth
+ctx.roleAssignmentStore / rbacMiddleware / accessTracker
+```

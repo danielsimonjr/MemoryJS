@@ -1903,5 +1903,291 @@ Each implementation can be adapted and combined based on your specific requireme
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Document Version**: 2.0
+**Last Updated**: 2026-04-25
+
+---
+
+## v1.7 → Unreleased — additional use cases
+
+### 11. Multi-Agent Collaborative Knowledge Base
+
+Multiple agents writing to the same graph; conflicts surfaced at synthesis time.
+
+```typescript
+import {
+  ManagerContext,
+  CollaborationAuditEnforcer,
+  AuditLog,
+} from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext({ storagePath: './shared-kb.jsonl' });
+
+// Force every mutation to name the agent that made it
+const enforcer = new CollaborationAuditEnforcer(
+  ctx.entityManager,
+  new AuditLog('./audit.jsonl'),
+  { mode: 'strict' },
+);
+
+// Each agent writes via the enforcer
+await enforcer.createEntities(
+  [{ name: 'Alice', entityType: 'person', observations: ['engineer'] }],
+  'agent-research',
+);
+await enforcer.updateEntity('Alice',
+  { observations: [...existing, 'recently promoted to manager'] },
+  'agent-hr',
+  // Optional OCC: refuse stale writes
+  { expectedVersion: 1 },
+);
+
+// At synthesis time, conflicts between agents are surfaced
+const result = await ctx.agentMemory().collaborativeSynthesis.synthesize('Alice');
+if (result.conflicts.length > 0) {
+  // Pick winners by most-recent / highest-confidence / trusted-agent
+  const winners = ctx.agentMemory().collaborativeSynthesis.resolveConflicts(
+    result, { strategy: 'most_recent' },
+  );
+  for (const [name, winner] of winners) {
+    await enforcer.updateEntity(name, { ...winner }, 'agent-arbiter');
+  }
+}
+```
+
+**Key features:** η.5.5.a-d — `CollaborationAuditEnforcer` (strict
+attribution) + OCC (`expectedVersion`) + `CollaborativeSynthesis.resolveConflicts`.
+
+### 12. Time-Travel Knowledge Graph (Bitemporal)
+
+For domains where facts change over time and you need to query historical
+state — legal records, employment history, configuration history.
+
+```typescript
+const ctx = new ManagerContext({ storagePath: './history.jsonl' });
+
+// Set validity windows on entities
+await ctx.entityManager.createEntities([
+  {
+    name: 'Acme-Headquarters',
+    entityType: 'location',
+    observations: ['100 Main St, San Francisco'],
+  },
+]);
+await ctx.entityManager.updateEntity('Acme-Headquarters', {
+  validFrom: '2020-01-01T00:00:00Z',
+  validUntil: '2024-12-31T00:00:00Z',
+});
+
+// Per-observation validity windows
+await ctx.observationManager.invalidateObservation(
+  'Bob', 'employed at Acme', '2024-12-31T00:00:00Z',
+);
+
+// Time-travel queries
+const past = await ctx.entityManager.entityAsOf(
+  'Acme-Headquarters', '2022-06-15T00:00:00Z',
+);  // → entity (within window)
+
+const future = await ctx.entityManager.entityAsOf(
+  'Acme-Headquarters', '2025-06-15T00:00:00Z',
+);  // → null (outside window)
+
+const historicalFacts = await ctx.observationManager.observationsAsOf(
+  'Bob', '2024-06-15T00:00:00Z',
+);  // → ['employed at Acme', ...] (still valid then)
+
+// Full timeline
+const timeline = await ctx.entityManager.entityTimeline('Acme-Headquarters');
+```
+
+**Key features:** η.4.4 — `validFrom` / `validUntil` / `observationMeta[]`,
+`entityAsOf` / `entityTimeline` / `observationsAsOf`.
+
+### 13. Linked-Data Export to Triplestore
+
+Export the graph to W3C-standard formats for ingestion into Apache
+Jena, Blazegraph, GraphDB, etc.
+
+```typescript
+const graph = await ctx.storage.loadGraph();
+
+// Three new export formats — each is a complete RDF document
+await fs.writeFile('export.ttl',
+  ctx.ioManager.exportGraph(graph, 'turtle'));
+await fs.writeFile('export.rdf',
+  ctx.ioManager.exportGraph(graph, 'rdf-xml'));
+await fs.writeFile('export.jsonld',
+  ctx.ioManager.exportGraph(graph, 'json-ld'));
+
+// IRIs use urn:memoryjs:entity:<percent-encoded-name>
+// Relations with NCName-valid types emit as direct property triples;
+// arbitrary relation types (with spaces, etc.) use rdf:Statement
+//   reification + a synthetic mjsRel:link assertion
+```
+
+**Key features:** η.5.4.1+2 — RDF/Turtle / RDF-XML / JSON-LD export.
+
+### 14. Causal Reasoning Engine
+
+Build domain knowledge as a causal subgraph; ask forward/backward/counterfactual questions.
+
+```typescript
+// Build the graph with causal relations
+await ctx.entityManager.createEntities([
+  { name: 'high-disk-io', entityType: 'metric', observations: [] },
+  { name: 'page-faults', entityType: 'symptom', observations: [] },
+  { name: 'app-slowness', entityType: 'symptom', observations: [] },
+]);
+await ctx.relationManager.createRelations([
+  {
+    from: 'high-disk-io', to: 'page-faults', relationType: 'causes',
+    metadata: { causalStrength: 0.85 },
+  },
+  {
+    from: 'page-faults', to: 'app-slowness', relationType: 'causes',
+    metadata: { causalStrength: 0.7 },
+  },
+]);
+
+// "What causes app slowness?"
+const causes = await ctx.causalReasoner.findCauses(
+  'app-slowness', ['high-disk-io', 'memory-pressure', 'network-congestion'],
+);
+// → causes[0].path: ['high-disk-io', 'page-faults', 'app-slowness']
+// → causes[0].score: 0.85 × 0.7 = 0.595
+
+// "What if we eliminate the high-disk-io → page-faults link?"
+const counterfactual = await ctx.causalReasoner.counterfactual({
+  seed: 'high-disk-io',
+  removeFrom: 'high-disk-io',
+  removeTo: 'page-faults',
+  predict: 'app-slowness',
+});
+// → [] if no surviving path; or alternative chains if they exist
+```
+
+**Key features:** 3B.6 — `CausalReasoner.findCauses` /
+`findEffects` / `counterfactual` / `detectCycles`; `Relation.metadata.causalStrength`.
+
+### 15. Procedural Memory for Agentic Workflows
+
+Agents that learn and replay multi-step procedures with EWMA-tracked
+success rate.
+
+```typescript
+const ctx = new ManagerContext({ storagePath: './procedures.jsonl' });
+
+// Learn a procedure
+const onboarding = await ctx.procedureManager.addProcedure({
+  name: 'employee-onboarding',
+  description: 'Send welcome packet, create accounts, schedule intro meeting',
+  steps: [
+    { order: 1, action: 'send-email', parameters: { template: 'welcome' } },
+    { order: 2, action: 'create-account', parameters: { system: 'sso' } },
+    { order: 3, action: 'create-account', parameters: { system: 'jira' } },
+    { order: 4, action: 'schedule-meeting', parameters: { type: 'intro' } },
+  ],
+  triggers: ['new hire', 'employee onboarding', 'onboard'],
+});
+
+// Find the right procedure for a context
+const matches = await ctx.procedureManager.matchProcedure(
+  'we need to onboard a new engineer starting Monday',
+  [onboarding],
+);
+
+// Execute step-by-step with fallback handling
+const seq = await ctx.procedureManager.openSequencer(onboarding.id);
+while (seq && !seq.isComplete()) {
+  const step = seq.current();
+  if (!step) break;
+  try {
+    await yourActionExecutor(step);
+    seq.next();
+  } catch (e) {
+    if (step.fallback) seq.branchToFallback();
+    else throw e;
+  }
+}
+
+// Refine — successRate converges toward observed reality via EWMA
+await ctx.procedureManager.refineProcedure(onboarding.id, { succeeded: true });
+```
+
+**Key features:** 3B.4 — `ProcedureManager` + `StepSequencer` + EWMA refinement.
+
+### 16. Active Retrieval (Adaptive Search)
+
+When a single search call returns insufficient coverage, run multiple
+rounds with token-overlap query expansion until a coverage threshold is met.
+
+```typescript
+const result = await ctx.activeRetrieval.adaptiveRetrieve({
+  query: 'memory leak in worker pool',
+  budgetTokens: 2000,  // optional cost cap
+});
+
+console.log(`Best coverage: ${result.bestCoverage}`);
+console.log(`Rounds run: ${result.rounds.length}`);
+for (const round of result.rounds) {
+  console.log(`  query: "${round.query}" (coverage: ${round.coverage})`);
+  console.log(`  expansion tokens: ${round.expansionTokens}`);
+}
+
+// Use the best results
+for (const r of result.bestResults) {
+  console.log(r.entity.name, r.score);
+}
+```
+
+**Key features:** 3B.5 — `ActiveRetrievalController.adaptiveRetrieve`,
+`QueryRewriter` (pure symbolic, no LLM).
+
+### 17. Compliant Knowledge Graph (PII-Aware Export)
+
+For GDPR / HIPAA-adjacent scenarios where exports must be PII-scrubbed.
+
+```typescript
+import { PiiRedactor } from '@danielsimonjr/memoryjs';
+
+const redactor = new PiiRedactor({
+  // Bundled patterns (email/SSN/CC/phone/IPv4) plus your own
+  additionalPatterns: [
+    { name: 'license', regex: /\bDL\d{8}\b/g, replacement: '<DL>' },
+  ],
+});
+
+const graph = await ctx.storage.loadGraph();
+const cleanGraph = redactor.redactGraph(graph);
+
+// Audit trail showing what was scrubbed (without surfacing values)
+for (const obs of someObservations) {
+  const { text, stats } = redactor.redactWithStats(obs);
+  await ctx.governanceManager.logAudit({
+    operation: 'export-redact',
+    entityName: 'system',
+    after: { redactedBytes: stats.totalRedactedBytes,
+             counts: Object.fromEntries(stats.countsByPattern) },
+    status: 'committed',
+  });
+}
+
+// Export the clean graph
+const json = ctx.ioManager.exportGraph(cleanGraph, 'json');
+```
+
+**Key features:** η.6.3 — `PiiRedactor` (export-only; never mutates storage).
+
+### Summary table — new use cases (v1.7 → Unreleased)
+
+| Use Case | Key Features Used |
+|----------|------------------|
+| Multi-Agent Collaborative KB | η.5.5.a-d (conflict view, OCC, audit, visibility) |
+| Time-Travel Knowledge Graph | η.4.4 (bitemporal versioning) |
+| Linked-Data Export to Triplestore | η.5.4 (RDF/Turtle/JSON-LD) |
+| Causal Reasoning Engine | 3B.6 (CausalReasoner) |
+| Procedural Memory | 3B.4 (ProcedureManager + Sequencer) |
+| Active Retrieval | 3B.5 (ActiveRetrievalController) |
+| Compliant PII-Aware Export | η.6.3 (PiiRedactor) |
+| RBAC-Gated Multi-Tenant KB | η.6.1 (RbacMiddleware + RoleAssignmentStore) |
