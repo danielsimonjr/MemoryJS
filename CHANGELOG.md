@@ -5,7 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.15.0] - 2026-04-26
+
+Adds the `PiiRedactor` sub-feature, extends `CreateEntitySchema` and `ExtendedExportFormatSchema` for the η.6.3 / η.4.4 / η.5.4 surfaces, surfaces RDF formats through the CLI, and resolves the global vs subcommand `--format` flag clash. Picked up smoke-test fixes (`b1672c8`, `4b6382a`) discovered during memory-mcp v12.2.0 pre-publish testing on 2026-04-25.
 
 ### Added (Phase η.6.3 — `PiiRedactor` sub-feature)
 
