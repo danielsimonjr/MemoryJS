@@ -48,3 +48,6 @@ tmpclaude-*-cwd
 
 # Pre-publish smoke-test scratch
 .smoketest/
+
+# Per-developer MCP server registrations (machine-specific paths)
+.mcp.json
