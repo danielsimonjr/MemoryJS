@@ -1,4 +1,7 @@
-﻿# Dependencies
+# Git internals — keeps Dropbox out of .git so git operations don't get blocked
+.git/
+
+# Dependencies
 node_modules/
 tools/*/node_modules/
 
@@ -45,3 +48,4 @@ tests/test-results/summary/
 package-lock.json
 tmpclaude-*-cwd
 .claude/worktrees/
+
