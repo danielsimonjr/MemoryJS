@@ -2,15 +2,15 @@
 
 Consolidated list of all planned but unimplemented features for MemoryJS, merging the original [ROADMAP.md](./ROADMAP.md) phases with new performance & scale proposals.
 
-**Last refreshed: 2026-04-25** — significant additions since original write-up.
+**Last refreshed: 2026-05-08** — completed Phase 3B, η.4.4, η.4.6, η.5.4 (partial), η.5.5 (partial), η.6.1, η.6.3 (partial) removed; codebase-health recommendations added (§15).
 
-> **What's already done** (updated 2026-04-25):
+> **What's already done** (updated 2026-05-08):
 > - Phase 1 (95% — CLI pipe support is the only remaining item)
 > - Phase 2 (partial — search suggestions and performance metrics exist)
 > - Phase 3 (100%)
-> - **Phase 3B (Memory Intelligence)**: 3B.1–3B.3 ✅ shipped v1.13.0 (Phase δ); 3B.4 + 3B.5 + 3B.6 + 3B.7 ✅ shipped Unreleased
-> - **Phase 4 (Integration & Scale, η)**: η.4.4 (bitemporal versioning) ✅ shipped Unreleased; η.4.6 (graph visualization) ✅ shipped v1.9.1; η.4.1 (DB adapters), η.4.2 (REST API), η.4.3 (Elasticsearch), η.4.5 (scalability) — plans drafted, gated on dep approval
-> - **Phase 5 (Advanced Features, η.5)**: η.5.4 RDF/Turtle/JSON-LD export ✅ shipped Unreleased (sub-features 1+2; SPARQL deferred); η.5.5.a-d Collaboration ✅ shipped Unreleased (CRDT 5.5.e gated); η.5.1/5.2/5.3 plans drafted
+> - **Phase 3B (Memory Intelligence)**: 3B.1–3B.7 ✅ shipped (3B.1–3B.3 in v1.13.0 / Phase δ; 3B.4–3B.7 Unreleased). Heuristic Guidelines Manager (§11.1 below) is the only remaining 3B item.
+> - **Phase 4 (Integration & Scale, η)**: η.4.4 bitemporal versioning ✅ shipped Unreleased; η.4.6 graph visualization ✅ shipped v1.9.1; η.4.1 (DB adapters), η.4.2 (REST API), η.4.3 (Elasticsearch), η.4.5 (scalability) — plans drafted, gated on dep approval
+> - **Phase 5 (Advanced Features, η.5)**: η.5.4 RDF/Turtle/JSON-LD export ✅ shipped Unreleased (SPARQL deferred — see §13.4); η.5.5.a–d Collaboration ✅ shipped Unreleased (CRDT 5.5.e gated — see §13.5); η.5.1/5.2/5.3 plans drafted
 > - **Phase 6 (Enterprise, η.6)**: η.6.1 RBAC ✅ shipped Unreleased; η.6.3 PiiRedactor ✅ shipped Unreleased; η.6.2 Distributed (Redis), η.6.3 InputValidator (Zod) / EncryptionAdapter (SQLCipher), η.6.4 Cloud-native (devops), η.6.5 GPU — gated on deps
 >
 > See ROADMAP.md and the `docs/superpowers/plans/2026-04-25-eta-*.md` files for per-feature detail.
@@ -453,49 +453,9 @@ Enable stdin/stdout piping for composable CLI workflows.
 
 ## 11. Memory Intelligence (from ROADMAP Phase 3B)
 
-*All Phase 3B features are unimplemented. These transform raw storage into validated, compressed, transferable knowledge. See ROADMAP.md for full interface specifications.*
+*Phase 3B is largely shipped: `MemoryValidator`, `TrajectoryCompressor`, `ExperienceExtractor`, `ProcedureManager`, `ActiveRetrievalController`, `CausalReasoner`, and `WorldModelManager` are all in `src/agent/`. Only the Heuristic Guidelines Manager remains.*
 
-### 11.1 Memory Validation & Error Rectification
-
-Prevent hallucinations and logical errors from contaminating memory through self-critique before storage.
-
-- `MemoryValidator` service with consistency checking against existing entity knowledge
-- Contradiction detection (factual, temporal, logical) within and across entities
-- Temporal consistency validation (event ordering)
-- Reliability scoring based on source and confirmation count
-- Pre-storage validation hooks
-
-### 11.2 Trajectory Compression
-
-Distill verbose interaction histories into compact, reusable representations.
-
-- `TrajectoryCompressor` with multiple strategies: semantic clustering, temporal windowing, importance filtering, hierarchical
-- Multi-granularity abstraction (fine/medium/coarse)
-- Context folding for working memory (fit into token budget)
-- Redundancy detection across entities
-- LLM-powered summarization (optional) + embedding-based clustering
-
-### 11.3 Experience Extraction
-
-Abstract universal patterns from clusters of trajectories for zero-shot transfer.
-
-- `ExperienceExtractor` with contrastive induction (learn from success/failure pairs)
-- Trajectory clustering by semantic, structural, or outcome similarity
-- Decision boundary learning from trajectory outcomes
-- Rule confidence scoring with support/contra counts
-- Experience lifecycle management (creation, validation, application, retirement)
-
-### 11.4 Procedural Memory Manager
-
-Encapsulate recurring action patterns into reusable procedures (skills).
-
-- `ProceduralMemoryManager` — learn procedures from observed action sequences
-- Context-based procedure matching
-- Procedure refinement from execution feedback
-- Procedure composition into higher-level skills
-- Success rate tracking and versioning
-
-### 11.5 Heuristic Guidelines Manager
+### 11.1 Heuristic Guidelines Manager
 
 Crystallize implicit patterns into explicit natural language strategies.
 
@@ -504,36 +464,6 @@ Crystallize implicit patterns into explicit natural language strategies.
 - Conflict detection between heuristics (contradictory actions, overlapping conditions)
 - Heuristic induction from trajectory analysis
 - Prioritized application when multiple heuristics match
-
-### 11.6 Active Retrieval Controller
-
-Transform memory from passive storage to autonomous, context-aware resource invocation.
-
-- `ActiveRetrievalController` — decide if/when/what to retrieve based on task context
-- Cost-benefit analysis for retrieval (estimated benefit vs token/latency cost)
-- Adaptive retrieval strategy based on task type (recall, reasoning, planning, creative, diagnostic)
-- Retrieval pattern learning from feedback
-- Dynamic budget allocation across memory types
-
-### 11.7 Causal Relations
-
-Extend relations to capture causal dependencies with delayed effects.
-
-- `CausalRelation` type with strength, delay, probability, conditions, mechanism
-- `CausalGraphManager` — causal inference, effect prediction, causal path finding
-- Cycle detection for inconsistency identification
-- Causal structure learning from observations
-- Integration with `GraphTraversal` for causal path algorithms
-
-### 11.8 World Model Manager
-
-Build and maintain internal models of the environment from observations.
-
-- `WorldModelManager` — infer environment rules, predict outcomes, track state
-- State versioning and change detection
-- Rule learning from observation sequences with confidence calibration
-- Prediction with uncertainty quantification
-- Integration with `CausalGraphManager` for causal reasoning
 
 ---
 
@@ -570,33 +500,19 @@ A purpose-built query language for knowledge graph operations.
 - Hybrid local + Elasticsearch queries
 - Automatic index mapping from entity types
 
-### 12.4 Temporal Versioning
-
-- Entity/relation change history (append-only audit log)
-- Point-in-time queries: `ctx.entityManager.getAt(name, timestamp)`
-- User attribution on changes
-- Rollback to any previous version
-
-### 12.5 Graph Visualization
-
-- Browser-based graph explorer (standalone HTML + D3.js or Cytoscape.js)
-- Interactive filtering, search, and drill-down
-- Export to SVG/PNG
-- Cluster visualization for communities
-
-### 12.6 GraphQL Support
+### 12.4 GraphQL Support
 
 - Auto-generated GraphQL schema from entity types
 - Query and mutation resolvers
 - Subscription support for real-time graph change notifications
 
-### 12.7 Framework Integrations
+### 12.5 Framework Integrations
 
 - NestJS module with decorators for entity/relation injection
 - Express middleware for REST endpoints
 - Next.js API route helpers
 
-### 12.8 LLM Ecosystem Integrations
+### 12.6 LLM Ecosystem Integrations
 
 - LangChain memory backend adapter (use MemoryJS as LangChain memory)
 - Llama Index data connector
@@ -628,17 +544,19 @@ A purpose-built query language for knowledge graph operations.
 - Locality-Sensitive Hashing (LSH) for approximate fuzzy search
 - Adaptive indexing based on query patterns
 
-### 13.4 Standards Compliance
+### 13.4 Standards Compliance — SPARQL
 
-- SPARQL query support
-- RDF import/export
-- Linked Data compatibility
+*RDF/Turtle/JSON-LD import/export already ship via `IOManager` (η.5.4). Only SPARQL remains.*
 
-### 13.5 Collaboration Features
+- SPARQL query support over the existing RDF view
+- Federated query support across local + remote endpoints
 
-- Multi-user graph editing with conflict resolution
-- Change conflict detection and merge strategies
-- Real-time collaboration via WebSocket
+### 13.5 Collaboration — CRDT
+
+*Multi-user collaboration audit/conflict-resolution already ship (η.5.5.a–d). Only the CRDT layer (η.5.5.e) remains.*
+
+- Conflict-free replicated data types for eventual consistency
+- Real-time collaboration via WebSocket on top of the CRDT layer
 
 ---
 
@@ -646,7 +564,8 @@ A purpose-built query language for knowledge graph operations.
 
 ### 14.1 Access Control
 
-- Role-Based Access Control (RBAC) with entity-level permissions
+*RBAC ships via `src/agent/rbac/` (η.6.1). Remaining items below.*
+
 - Attribute-Based Access Control (ABAC)
 - Row-level security for entity queries
 - API key management
@@ -660,11 +579,11 @@ A purpose-built query language for knowledge graph operations.
 
 ### 14.3 Security & Compliance
 
-- Encryption at rest (AES-256)
+*PII detection/masking ships via `src/security/PiiRedactor.ts` (η.6.3). Audit logging ships via `AuditLog` (v1.6.0). Remaining items below.*
+
+- Encryption at rest (AES-256 / SQLCipher adapter — gated)
 - Encryption in transit (TLS)
 - GDPR compliance tools (right to deletion, data export)
-- PII detection and masking in observations
-- Complete audit logging
 
 ### 14.4 Cloud-Native Deployment
 
@@ -719,35 +638,37 @@ A purpose-built query language for knowledge graph operations.
 | 9.1 Entity State Machine | Medium | Medium | **P2** |
 | 10.1 CLI Pipe Support | Low | Low | **P2** |
 | **Memory Intelligence (Phase 3B)** | | | |
-| 11.1 Memory Validation | High | High | **P2** |
-| 11.2 Trajectory Compression | High | High | **P2** |
-| 11.3 Experience Extraction | High | Very High | **P3** |
-| 11.4 Procedural Memory | Medium | Very High | **P3** |
-| 11.5 Heuristic Manager | Medium | High | **P3** |
-| 11.6 Active Retrieval | Medium | High | **P3** |
-| 11.7 Causal Relations | Medium | Very High | **P4** |
-| 11.8 World Model Manager | Medium | Very High | **P4** |
+| 11.1 Heuristic Manager | Medium | High | **P3** |
 | **Integration & Ecosystem** | | | |
 | 12.1 Database Adapters | High | Very High | **P3** |
 | 12.2 REST API Generation | High | High | **P3** |
-| 12.4 Temporal Versioning | Medium | High | **P3** |
-| 12.5 Graph Visualization | Medium | High | **P3** |
 | 12.3 Elasticsearch Integration | Medium | High | **P4** |
-| 12.6 GraphQL Support | Medium | High | **P4** |
-| 12.7 Framework Integrations | Medium | Medium | **P4** |
-| 12.8 LLM Ecosystem Integrations | High | High | **P3** |
+| 12.4 GraphQL Support | Medium | High | **P4** |
+| 12.5 Framework Integrations | Medium | Medium | **P4** |
+| 12.6 LLM Ecosystem Integrations | High | High | **P3** |
 | 11B.1 Query Language DSL | Medium | Very High | **P4** |
 | **Advanced & Enterprise** | | | |
 | 13.1 Vector DB Integration | Medium | High | **P4** |
 | 13.2 Graph Embeddings | Medium | Very High | **P4** |
 | 13.3 ML-Powered Features (incl. LSH, adaptive indexing) | Medium | Very High | **P4** |
-| 13.4 Standards Compliance | Low | High | **P5** |
-| 13.5 Collaboration | Medium | Very High | **P5** |
-| 14.1 Access Control | High | Very High | **P5** |
+| 13.4 SPARQL (Standards) | Low | High | **P5** |
+| 13.5 CRDT Collaboration | Medium | Very High | **P5** |
+| 14.1 Access Control (ABAC, row-level, API keys) | High | Very High | **P5** |
 | 14.2 Distributed Architecture | High | Very High | **P5** |
-| 14.3 Security & Compliance | High | High | **P5** |
+| 14.3 Encryption & GDPR | High | High | **P5** |
 | 14.4 Cloud-Native Deployment | Medium | High | **P5** |
 | 14.5 GPU Acceleration | Low | Very High | **P5** |
+| **Codebase Health (§15)** | | | |
+| 15.1 Split god-object files | Medium | Medium | **P1** |
+| 15.2 Close agent-memory test gaps | High | Medium | **P1** |
+| 15.3 Eliminate `as any` casts | Medium | Low | **P2** |
+| 15.4 Centralize logging | Low | Low | **P2** |
+| 15.5 Scheduler / lifecycle hygiene | Medium | Low | **P1** |
+| 15.6 Tooling (lint, lockfile) | Medium | Low | **P1** |
+| 15.7 Dependency currency | Low | Medium | **P3** |
+| 15.8 Public API tiering | Low | Low | **P3** |
+| 15.9 Security checklist | Medium | Low | **P2** |
+| 15.10 Documentation drift | Low | Low | **P2** |
 
 ---
 
@@ -757,13 +678,97 @@ A purpose-built query language for knowledge graph operations.
 
 **Phase B (P1 — Weeks 4-7)**: Streaming results, bloom filters, parallel cancellation, lazy hydration. Reduce worst-case latency and memory usage.
 
-**Phase C (P2 — Weeks 8-12)**: Background indexing, LRU caches, SQLite pooling, observability, spell correction, synonym expansion, entity lifecycle, CLI pipe support, memory validation, trajectory compression.
+**Phase C (P2 — Weeks 8-12)**: Background indexing, LRU caches, SQLite pooling, observability, spell correction, synonym expansion, entity lifecycle, CLI pipe support; codebase-health items 15.3/15.4/15.9/15.10.
 
-**Phase D (P3 — Months 4-6)**: Experience extraction, procedural memory, heuristics, community detection, database adapters, REST API, temporal versioning, graph visualization, LLM ecosystem integrations.
+**Phase D (P3 — Months 4-6)**: Heuristic manager, community detection, database adapters, REST API, LLM ecosystem integrations; codebase-health item 15.7/15.8.
 
-**Phase E (P4 — Months 7-10)**: Causal relations, world model, Elasticsearch, GraphQL, framework integrations, query DSL, vector DB, graph embeddings, ML features (LSH, adaptive indexing).
+**Phase E (P4 — Months 7-10)**: Elasticsearch, GraphQL, framework integrations, query DSL, vector DB, graph embeddings, ML features (LSH, adaptive indexing).
 
-**Phase F (P5 — Months 11+)**: Standards compliance, collaboration, access control, distributed architecture, security/compliance, cloud-native, GPU acceleration.
+**Phase F (P5 — Months 11+)**: SPARQL, CRDT collaboration, ABAC/row-level access control, distributed architecture, encryption & GDPR, cloud-native, GPU acceleration.
+
+**Codebase health (parallel track — Weeks 1-6)**: §15 items run alongside Phase A/B and don't gate feature work. P1 items (15.1, 15.2, 15.5, 15.6) should land first because they unblock cleaner downstream work.
+
+---
+
+## 15. Codebase Health & Improvement Areas (added 2026-05-08)
+
+*Concrete refactoring/quality items grounded in the v1.15.0 source tree (verified file paths and counts). Distinct from feature work — these address tech debt, type safety, lifecycle hygiene, and tooling.*
+
+### 15.1 Split the largest god-object files
+
+Top offenders by LOC (verified via `wc -l`):
+
+| File | LOC | Split direction |
+|---|---|---|
+| `src/types/types.ts` | 2,242 | `entity-types.ts`, `relation-types.ts`, `search-types.ts` |
+| `src/features/IOManager.ts` | 1,934 | `ImportManager`, `ExportManager`, `BackupManager`, `IngestManager` behind a thin facade |
+| `src/agent/ContextWindowManager.ts` | 1,517 | Extract `CompressionService` and `TokenBudgetManager` |
+| `src/core/SQLiteStorage.ts` | 1,350 | Pull schema/migrations into a separate module |
+| `src/agent/ConsolidationPipeline.ts` | 1,276 | One class per pipeline phase |
+| `src/types/agent-memory.ts` | 1,267 | Same split treatment as `types.ts` |
+| `src/agent/MultiAgentMemoryManager.ts` | 1,139 | Coordination + conflict resolution + visibility |
+| `src/core/EntityManager.ts` | 1,007 | Tag-index/query-builder extraction |
+
+The `CHUNK` skill and `tools/chunking-for-files` directly support this work.
+
+### 15.2 Close agent-memory test gaps
+
+Modules in `src/agent/` with **no matching `*.test.ts`**:
+
+- `src/agent/DistillationPipeline.ts`
+- `src/agent/ProfileManager.ts`
+- `src/agent/MemoryBackend.ts` (interface — but contract enforcement could be stricter)
+- `src/agent/AgentMemoryConfig.ts`
+
+`src/search/LLMSearchExecutor.ts` and `src/search/SymbolicSearch.ts` likewise lack dedicated tests. Agent memory is the headline feature; gaps here are the highest-leverage to close.
+
+`DistillationPipeline` is referenced in CLAUDE.md but has no public getter on `ManagerContext` — flag as either internal-only or wire it up properly.
+
+### 15.3 Type-safety leaks
+
+- **19** `as any` casts in `src/` (verified). Hotspots: `src/agent/ProfileManager.ts:158/170/172`, `src/agent/ContextWindowManager.ts:1127–1129`, `src/core/GraphStorage.ts:695`.
+- 1 `@ts-expect-error` in `src/search/EmbeddingService.ts:359` for the optional `@xenova/transformers` peer dep — fine, but document the peer-dep matrix.
+- Only 2 `TODO/FIXME/HACK` markers — repo is clean on that axis.
+
+### 15.4 Centralize logging
+
+26 raw `console.*` calls outside CLI/tests (error handlers in `DecayScheduler:189`, `ContextWindowManager:1142/1173/1187`, `ConsolidationScheduler:216`, `AgentMemoryManager:125`, `ManagerContext:185/194`, etc.). `QueryLogger` already exists — promote it (or a small `Logger` facade) to project-wide and route these through it. Today, error visibility depends on which class you're in.
+
+### 15.5 Scheduler / lifecycle hygiene
+
+- `DecayScheduler.start()` (`src/agent/DecayScheduler.ts:121`) does **not** `.unref()` its `setInterval`, but `ConsolidationScheduler` and `DreamEngine` do — inconsistent and can keep the process alive.
+- Fire-and-forget `void this.runX()` patterns in scheduler ticks swallow rejections. Wrap each tick body in try/catch with logger + optional `onError` callback (some have it, some don't).
+- No global `process.on('unhandledRejection' | 'uncaughtException', …)` in `src/cli/index.ts` — silent CLI crashes likely.
+
+### 15.6 Tooling & reproducibility
+
+- **No lint script.** Add ESLint + `@typescript-eslint` (would catch most of §15.3 and §15.4 above). The repo has ~63k LOC and no static analysis beyond `tsc`.
+- **`package-lock.json` is gitignored.** For a published library this is unusual and explicitly causes the "dependencies drift between machines" gotcha noted in CLAUDE.md. Commit it.
+- `tsup.config.ts` ships sourcemaps in production. Consider gating with `process.env.NODE_ENV` to slim `dist`.
+
+### 15.7 Dependency currency
+
+- `zod ^3.24.1` — Zod v4 is current; the v3→v4 migration affects error formatting and `.parseAsync`. Worth a tracked upgrade.
+- `commander ^12.1.0` — current major is v14. Check CLI flag parsing for breaking changes.
+- `chrono-node ^2.9.0` — used by `TemporalQueryParser`; check for newer locale/parse fixes.
+
+### 15.8 Public API surface
+
+`src/index.ts` is a barrel of `export *`. With ~150 source files there's a strong chance internal helpers leak.
+
+- Tag intentional exports with `/** @public */` and run `api-extractor` (or just be intentional in barrels).
+- Document a stability tier (stable / experimental / internal) — several v1.7+ features (entropy filter, role profiles, dream engine) are still maturing.
+
+### 15.9 Security checklist coverage
+
+`src/security/` exists. Cross-check against the gotchas in CLAUDE.md (FTS5/LIKE escaping, XML entity decoding, path confinement) — make sure CLI I/O paths in `src/cli/commands/io.ts` (which uses `readFileSync`/`writeFileSync` with user-supplied paths) all flow through the validators. A short `SECURITY.md` documenting the threat model would make audit easier.
+
+### 15.10 Documentation drift
+
+CLAUDE.md is largely accurate (verified `ctx.memoryEngine`, `ctx.worldModelManager`, `ctx.causalReasoner`, `ctx.procedureManager`, `ctx.rbacMiddleware`, `ctx.roleAssignmentStore` all present in `src/core/ManagerContext.ts`). Drift to fix:
+
+- `DistillationPipeline` documented but unwired (see §15.2).
+- The auto-generated `docs/architecture/DEPENDENCY_GRAPH.md` should be regenerated as part of release (the `DEPS` skill exists for this).
 
 ---
 
@@ -791,5 +796,5 @@ Planned testing improvements beyond the current 4674 tests:
 
 ---
 
-*Generated: 2026-02-10*
+*Generated: 2026-02-10. Last refreshed: 2026-05-08 (removed shipped Phase 3B / η.4.4 / η.4.6 / η.5.4 / η.5.5 / η.6.1 / η.6.3 items; added §15 codebase-health track).*
 *Supersedes performance-only version. Consolidates all unimplemented [ROADMAP.md](./ROADMAP.md) features.*
