@@ -2,7 +2,7 @@
 
 Consolidated list of all planned but unimplemented features for MemoryJS, merging the original [ROADMAP.md](./ROADMAP.md) phases with new performance & scale proposals.
 
-**Last refreshed: 2026-05-08** — completed Phase 3B, η.4.4, η.4.6, η.5.4 (partial), η.5.5 (partial), η.6.1, η.6.3 (partial) removed; codebase-health recommendations added (§15).
+**Last refreshed: 2026-05-08** — completed Phase 3B, η.4.4, η.4.6, η.5.4 (partial), η.5.5 (partial), η.6.1, η.6.3 (partial) removed; codebase-health recommendations added (§15). Deep-dive pass also trimmed §1.3 (TF-IDF + inverted-index incrementality already shipped via `TFIDFIndexManager` / `OptimizedInvertedIndex` / `IncrementalIndexer` / `TFIDFEventSync`; only BM25 incrementality and batch-coalesce window remain).
 
 > **What's already done** (updated 2026-05-08):
 > - Phase 1 (95% — CLI pipe support is the only remaining item)
@@ -47,19 +47,17 @@ Use bloom filters to quickly eliminate non-matching entities before expensive se
 
 **Expected impact**: 60-80% reduction in candidate set size for filtered searches.
 
-### 1.3 Incremental Index Updates
+### 1.3 Incremental Index Updates — BM25 + batch coalescing
 
-Replace full index rebuilds with surgical add/remove operations.
+*TF-IDF (`TFIDFIndexManager`), inverted index (`OptimizedInvertedIndex`), and embedding indexes (`IncrementalIndexer` + `TFIDFEventSync`) already support surgical `addDocument`/`removeDocument` (Phase 10 Sprint 3 / Phase 12 Sprint 5). Two sub-items remain.*
 
-**Problem**: `TFIDFIndexManager` and `OptimizedInvertedIndex` rebuild on entity changes. At 100K entities, rebuilds take 500ms+.
+**Problem**: `BM25Search` still has no `addDocument`/`removeDocument` — its index rebuilds on entity changes. And none of the index updaters coalesce clustered writes.
 
 **Proposal**:
-- Add `addDocument(entityName, terms[])` and `removeDocument(entityName)` to inverted index
-- Update TF-IDF scores incrementally (adjust document frequency counts, recalculate only affected terms)
-- BM25 index: maintain running average document length, update on add/remove
-- Batch coalescing: if N writes happen within a configurable window (e.g., 50ms), apply all updates in a single pass
+- BM25: maintain running average document length, update on add/remove (mirrors what `TFIDFIndexManager` already does)
+- Batch coalescing across all incremental updaters: if N writes happen within a configurable window (e.g., 50ms), apply all updates in a single pass
 
-**Expected impact**: Index updates drop from O(n) to O(1) amortized per entity change.
+**Expected impact**: Index updates drop from O(n) to O(1) amortized for BM25; reduced churn under burst writes.
 
 ### 1.4 Query Result Streaming
 
@@ -604,7 +602,7 @@ A purpose-built query language for knowledge graph operations.
 | Feature | Impact | Effort | Priority |
 |---------|--------|--------|----------|
 | **Performance & Scale** | | | |
-| 1.3 Incremental Index Updates | High | Medium | **P0** |
+| 1.3 Incremental Index Updates (BM25 + coalescing) | Medium | Low | **P1** |
 | 1.1 Materialized Search Views | High | Medium | **P0** |
 | 2.2 Batch Mutation API | High | Low | **P0** |
 | 1.4 Query Result Streaming | High | Medium | **P1** |
@@ -674,7 +672,7 @@ A purpose-built query language for knowledge graph operations.
 
 ## Implementation Strategy
 
-**Phase A (P0 — Weeks 1-3)**: Incremental indexing, materialized views, batch mutations. Eliminate the most common performance bottlenecks.
+**Phase A (P0 — Weeks 1-3)**: Materialized views, batch mutations. Eliminate the most common performance bottlenecks. (TF-IDF/inverted-index incrementality already shipped — see §1.3 for remaining BM25 + coalescing work, demoted to P1.)
 
 **Phase B (P1 — Weeks 4-7)**: Streaming results, bloom filters, parallel cancellation, lazy hydration. Reduce worst-case latency and memory usage.
 
@@ -796,5 +794,5 @@ Planned testing improvements beyond the current 4674 tests:
 
 ---
 
-*Generated: 2026-02-10. Last refreshed: 2026-05-08 (removed shipped Phase 3B / η.4.4 / η.4.6 / η.5.4 / η.5.5 / η.6.1 / η.6.3 items; added §15 codebase-health track).*
+*Generated: 2026-02-10. Last refreshed: 2026-05-08 (removed shipped Phase 3B / η.4.4 / η.4.6 / η.5.4 / η.5.5 / η.6.1 / η.6.3 items; added §15 codebase-health track; deep-dive trimmed §1.3 to BM25 + coalescing).*
 *Supersedes performance-only version. Consolidates all unimplemented [ROADMAP.md](./ROADMAP.md) features.*
