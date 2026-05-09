@@ -55,8 +55,9 @@ export class SearchManager {
   readonly searchSuggestions: SearchSuggestions;
   readonly savedSearchManager: SavedSearchManager;
   readonly queryEstimator: QueryCostEstimator;
-  readonly queryAnalyzer: QueryAnalyzer;
-  readonly queryPlanner: QueryPlanner;
+  // Private — only exposed via explainPlan().
+  private readonly queryAnalyzer: QueryAnalyzer;
+  private readonly queryPlanner: QueryPlanner;
   private storage: GraphStorage;
   private accessTracker?: AccessTracker;
   private temporalSearch: TemporalSearch;

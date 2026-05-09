@@ -1,10 +1,9 @@
 /**
  * Index Health interface.
  *
- * Phase 0 step 6: a uniform shape for surfacing per-index health snapshots.
- * Intentionally minimal — `IndexHealthMonitor` (and later
- * `ctx.diagnostics()` in Phase 1 step 17) compose over snapshots from
- * implementers.
+ * Uniform shape for surfacing per-index health snapshots. Intentionally
+ * minimal — `IndexHealthMonitor` (and the future `ctx.diagnostics()`)
+ * compose over snapshots from implementers.
  *
  * @module utils/IIndexHealth
  */

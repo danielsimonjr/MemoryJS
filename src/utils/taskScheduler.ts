@@ -12,6 +12,7 @@
  */
 
 import workerpool from '@danielsimonjr/workerpool';
+import { logger } from './logger.js';
 
 /**
  * Validates that the input is a real function object.
@@ -236,11 +237,20 @@ export class TaskQueue {
         this.queue.splice(insertIndex, 0, queuedTask as QueuedTask);
       }
 
-      // Start processing if not already running (fire-and-forget; processNext
-      // catches its own errors and recurses to drain the queue).
       if (!this.isProcessing) {
-        void this.processNext();
+        this.kickProcessNext();
       }
+    });
+  }
+
+  /**
+   * Fire-and-forget invocation of `processNext` with explicit error logging.
+   * Surfaces any rejection that escapes the inner try/catch instead of
+   * letting `void` swallow it silently.
+   */
+  private kickProcessNext(): void {
+    this.processNext().catch((err) => {
+      logger.error('[TaskQueue.processNext] failed:', err);
     });
   }
 
@@ -343,8 +353,8 @@ export class TaskQueue {
       task.resolve(taskResult);
     }
 
-    // Process next task (fire-and-forget recursion to drain the queue)
-    void this.processNext();
+    // Drain the queue via fire-and-forget recursion.
+    this.kickProcessNext();
   }
 
   /**

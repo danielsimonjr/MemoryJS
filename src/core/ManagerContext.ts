@@ -241,25 +241,39 @@ export class ManagerContext {
   }
 
   /**
-   * Phase 0 step 6: Aggregate index health snapshot.
+   * Aggregate index health snapshot.
    *
    * Returns a uniform report covering every search index this context is
-   * aware of. `ctx.diagnostics()` (Phase 1 step 17) will compose over this
-   * shape rather than redefine it.
+   * aware of. The future `ctx.diagnostics()` will compose over this shape
+   * rather than redefine it.
+   *
+   * Side-effect-free: reads the private lazy-init fields directly so calling
+   * `indexHealth()` does not force construction of `RankedSearch` or
+   * `SemanticSearch` (which would load the local embedding model).
+   * Uninitialised subsystems report `initialized: false` with a warning.
    */
   indexHealth(): IndexHealthReport {
     return new IndexHealthMonitor({
-      rankedSearch: this.rankedSearch,
-      embeddingHealth: () => {
-        const ss = this.semanticSearch;
-        return {
-          name: 'embedding',
-          initialized: ss !== null,
-          documentCount: -1,
-          warnings: ss === null ? ['no embedding provider configured'] : [],
-        };
-      },
+      rankedSearch: this._rankedSearch,
+      embeddingHealth: () => this.embeddingHealthSnapshot(),
     }).report();
+  }
+
+  private embeddingHealthSnapshot() {
+    if (this._semanticSearch === undefined) {
+      return {
+        name: 'embedding',
+        initialized: false,
+        documentCount: -1,
+        warnings: ['embedding subsystem not initialised'],
+      };
+    }
+    return {
+      name: 'embedding',
+      initialized: this._semanticSearch !== null,
+      documentCount: -1,
+      warnings: this._semanticSearch === null ? ['no embedding provider configured'] : [],
+    };
   }
 
   /** IOManager - Import/export/backup/restore */

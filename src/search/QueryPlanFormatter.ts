@@ -1,12 +1,8 @@
 /**
  * Query Plan Formatter
  *
- * Phase 0 step 5: Renders a `QueryPlan` (from `QueryPlanner`) as a human-
- * readable ASCII tree. The tree is intended for `searchManager.explainPlan`
- * output and for ad-hoc debugging via the CLI.
- *
- * Reuses the existing `QueryPlan` shape from `src/types/types.ts` — does not
- * introduce a parallel plan type.
+ * Renders a `QueryPlan` (from `QueryPlanner`) as a human-readable ASCII
+ * tree. Used by `searchManager.explainPlan` and for ad-hoc CLI debugging.
  *
  * @module search/QueryPlanFormatter
  */
@@ -21,7 +17,9 @@ import type { QueryPlan, SubQuery } from '../types/index.js';
  */
 export function formatQueryPlanAscii(plan: QueryPlan): string {
   const lines: string[] = [];
-  lines.push(`QueryPlan: ${truncate(plan.originalQuery, 80)}`);
+  // Normalise whitespace so embedded newlines/tabs don't break tree alignment.
+  const normalised = plan.originalQuery.replace(/\s+/g, ' ').trim();
+  lines.push(`QueryPlan: ${truncate(normalised, 80)}`);
   lines.push(`├─ Strategy:             ${plan.executionStrategy}`);
   lines.push(`├─ Merge:                ${plan.mergeStrategy}`);
   lines.push(`├─ Estimated complexity: ${plan.estimatedComplexity.toFixed(2)}`);
@@ -60,9 +58,6 @@ function truncate(s: string, max: number): string {
 function padRight(s: string, width: number): string {
   return s.length >= width ? s : s + ' '.repeat(width - s.length);
 }
-
-/** @internal — exported for unit testing only */
-export const __testing = { truncate, padRight };
 
 /**
  * The shape returned by `SearchManager.explainPlan`.

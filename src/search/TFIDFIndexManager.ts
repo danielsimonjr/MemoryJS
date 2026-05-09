@@ -508,10 +508,11 @@ export class TFIDFIndexManager implements IIndexHealth {
   }
 
   /**
-   * Phase 0 step 6: Health snapshot for `IndexHealthMonitor` /
-   * `ctx.indexHealth()`. Staleness is reported as `'unknown'` because this
-   * manager has no graph reference; callers wanting a fresh/dirty signal
-   * should call `needsRebuild(graph)` directly.
+   * Health snapshot for `IndexHealthMonitor` / `ctx.indexHealth()`.
+   *
+   * Staleness is `'unknown'` because this manager has no graph reference;
+   * callers wanting a fresh/dirty signal should call `needsRebuild(graph)`
+   * directly.
    */
   health(): IndexHealthSnapshot {
     return {

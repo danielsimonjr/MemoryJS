@@ -1,10 +1,10 @@
 /**
  * Index Health Monitor
  *
- * Phase 0 step 6: aggregator that collects per-index `IndexHealthSnapshot`s
- * and returns a uniform report. Designed to be a sub-component of
- * `ctx.diagnostics()` (Phase 1 step 17) — `diagnostics` will compose over
- * `indexHealth` rather than redefining its shape.
+ * Aggregator that collects per-index `IndexHealthSnapshot`s and returns
+ * a uniform report. Designed as a sub-component of the future
+ * `ctx.diagnostics()` — `diagnostics` will compose over `indexHealth`
+ * rather than redefining its shape.
  *
  * @module utils/IndexHealthMonitor
  */
@@ -14,16 +14,12 @@ import type { IndexHealthSnapshot } from './IIndexHealth.js';
 /**
  * Aggregate health report covering every index `ManagerContext` knows about.
  *
- * Currently surfaces TF-IDF (via `RankedSearch`), the optional optimised
- * inverted index (when callers attach one), and an embedding placeholder.
  * The shape is intentionally permissive — additional fields may be added
  * without breaking callers as new indexes come online.
  */
 export interface IndexHealthReport {
   /** TF-IDF index health (always present; warnings if disabled). */
   tfidf: IndexHealthSnapshot;
-  /** Optimised inverted index health (omitted when none is attached). */
-  inverted?: IndexHealthSnapshot;
   /** Embedding subsystem health (omitted when no provider configured). */
   embedding?: IndexHealthSnapshot;
   /** ISO timestamp of when the report was generated. */
@@ -37,8 +33,6 @@ export interface IndexHealthReport {
 export interface IndexHealthSources {
   /** Object exposing `getIndexHealth()` — typically a `RankedSearch`. */
   rankedSearch?: { getIndexHealth(): IndexHealthSnapshot };
-  /** An optional `OptimizedInvertedIndex` instance. */
-  invertedIndex?: { health(): IndexHealthSnapshot };
   /** An optional embedding-provider snapshot supplier. */
   embeddingHealth?: () => IndexHealthSnapshot;
 }
@@ -74,9 +68,6 @@ export class IndexHealthMonitor {
         };
 
     const report: IndexHealthReport = { tfidf, generatedAt };
-    if (this.sources.invertedIndex) {
-      report.inverted = this.sources.invertedIndex.health();
-    }
     if (this.sources.embeddingHealth) {
       report.embedding = this.sources.embeddingHealth();
     }

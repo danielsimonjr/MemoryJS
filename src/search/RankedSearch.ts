@@ -49,9 +49,9 @@ export class RankedSearch {
   }
 
   /**
-   * Phase 0 step 6: Surface the underlying TF-IDF index manager's health.
-   * Returns a 'not configured' snapshot when no storageDir was provided to
-   * the constructor (in which case there is no on-disk TF-IDF index).
+   * Surface the underlying TF-IDF index manager's health. Returns a
+   * 'not configured' snapshot when no storageDir was provided to the
+   * constructor (in which case there is no on-disk TF-IDF index).
    */
   getIndexHealth(): IndexHealthSnapshot {
     if (!this.indexManager) {

@@ -369,9 +369,15 @@ export class AgentMemoryManager extends EventEmitter {
     return this.memoryFormatter.formatForPrompt(memories, options ?? {});
   }
 
+  /**
+   * Record an access against a memory. Sync API for back-compat; the
+   * underlying call is async. Errors are logged via `logger.error` and
+   * never thrown — callers needing strict error propagation should call
+   * `accessTracker.recordAccess` directly.
+   *
+   * @throws Never (errors are logged, not thrown).
+   */
   recordAccess(memoryName: string, context: AccessContext): void {
-    // Underlying recordAccess is async; the public wrapper stays sync for
-    // back-compat. Errors surface through the logger instead of disappearing.
     this.accessTracker.recordAccess(memoryName, context).catch((err) => {
       logger.error('[AgentMemoryManager.recordAccess] failed:', err);
     });
@@ -402,9 +408,19 @@ export class AgentMemoryManager extends EventEmitter {
 
   // ==================== Multi-Agent ====================
 
+  /**
+   * Register an agent. Sync API for back-compat — the underlying call is
+   * async and runs fire-and-forget. The `'agent:registered'` event fires
+   * synchronously (immediately after this method returns), regardless of
+   * whether the underlying registration ultimately succeeds.
+   *
+   * Known limitation: a rejection from the underlying async call (e.g. a
+   * duplicate agentId) is logged via `logger.error` but the success event
+   * has already been emitted. Tightening this requires changing the
+   * wrapper to `Promise<void>`, which is a SemVer-breaking change deferred
+   * to the API-tiering work in Phase 2.
+   */
   registerAgent(agentId: string, metadata: Omit<AgentMetadata, 'createdAt' | 'lastActiveAt'>): void {
-    // Underlying registerAgent is async; the public wrapper stays sync for
-    // back-compat. Errors surface through the logger instead of disappearing.
     this.multiAgentManager.registerAgent(agentId, metadata).catch((err) => {
       logger.error('[AgentMemoryManager.registerAgent] failed:', err);
     });

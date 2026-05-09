@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Phase 0 (hygiene + scaffolding) of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven items in Phase 0 landed plus three review rounds. No SemVer-breaking changes.
+
+### Added
+
+- **ESLint flat config** at `eslint.config.mjs`. Enforces `@typescript-eslint/no-explicit-any`, `no-console`, and `@typescript-eslint/no-floating-promises` at error severity. Logger implementations (`src/utils/logger.ts`, `src/search/QueryLogger.ts`) and the CLI bin entry are excepted from `no-console`. New scripts: `npm run lint` and `npm run lint:fix`.
+- **`searchManager.explainPlan(query)`** — returns `{ ascii, json }`, where `ascii` is a tree-formatted view of the underlying `QueryPlan` (from the existing `QueryPlanner` pipeline) and `json` is the raw plan. New module: `src/search/QueryPlanFormatter.ts`.
+- **`ctx.indexHealth()`** — aggregate health snapshot over `RankedSearch`'s TF-IDF index and the embedding subsystem. Side-effect-free (does not force lazy construction). New modules: `src/utils/IIndexHealth.ts`, `src/utils/IndexHealthMonitor.ts`. Future `ctx.diagnostics()` will compose over this shape.
+- **CLI pipe support** — when stdin is piped (non-TTY) and no positional subcommand is on argv, `memoryjs` reads stdin line-by-line via `readline` and runs each line as a command. Lines starting with `#` are comments; quoted args (single or double, with backslash escapes) are respected. Global flags (`--storage`, `--output-format`, etc.) come from the outer invocation: `cat commands.txt | memoryjs --output-format=table`.
+- **`TFIDFIndexManager.health()`** and **`OptimizedInvertedIndex.health()`** — both now `implements IIndexHealth`. **`RankedSearch.getIndexHealth()`** delegates to its index manager and returns a "disabled" snapshot when no `storageDir` was supplied.
+
+### Changed
+
+- **`package-lock.json` is now committed.** Previously gitignored per the "use `npm ci` in CI" comment, but the same gotcha in `CLAUDE.md` acknowledged "dependencies may drift between machines". Reproducible builds win.
+- **Centralised logging.** 19 `console.*` call sites in non-CLI / non-logger code now route through the existing `src/utils/logger.ts` facade. The 4 `console.*` calls inside `src/utils/logger.ts` itself and the 4 inside `src/search/QueryLogger.ts` are intentional — those modules ARE the logger implementations.
+- **`DecayScheduler.start()`** now `.unref()`s its `setInterval` (mirrors the existing `ConsolidationScheduler` pattern) so the scheduler does not by itself keep the Node.js process alive.
+- **`taskScheduler` floating-promise fixes.** Two `processNext()` callsites that were fire-and-forget without explicit handling now go through a new `kickProcessNext()` helper that wraps each call with `.catch(logger.error)`. Errors that escape `processNext`'s internal try/catch surface in the logger instead of being silently dropped.
+- **`AgentMemoryManager.recordAccess`** and **`registerAgent`** — both now wrap their async-called-from-sync-wrapper invocations in `.catch(logger.error)`. Public signatures unchanged (still `void`); errors that previously rode the unhandled-rejection path now log and continue. Documented as a known limitation; tightening the contract requires an API change deferred to Phase 2 (API tiering).
+- **`DistillationPipeline`, `DistillationStats`, `DistillationResult` marked `@internal`.** No internal consumers; not wired through `ManagerContext`. The symbols remain exported for forward compatibility but are not part of the stable public surface.
+- **CLI safety nets.** New `process.on('unhandledRejection' | 'uncaughtException')` handlers at module load. Both route through the logger and **do not** call `process.exit(1)` — so other handlers (notably `WorkerPoolManager.uncaughtExceptionHandler`'s worker shutdown) get to run and Node's default exit semantics apply.
+- **Migration logging messages.** `entityUtils.ensureMemoryFilePath`'s "Found legacy memory.json" / "Successfully migrated" messages now go through `logger.info` (which writes to stderr like the rest of the logger and prefixes `[INFO]` itself). The duplicate `[INFO]` prefix in the message string was dropped. Visible to anyone scraping these messages from stdout — they now appear on stderr.
+
+### Notes
+
+- 18 pre-existing `as any` casts remain, all on lines untouched by this phase. They are the explicit target of Phase 1 step 10.
+- Pre-existing test failures unrelated to this phase (9 environment-related signing failures in `tests/unit/tools/plan-doc-audit.test.ts` + 1 Linux-vs-Windows path test in `tests/unit/utils/entityUtils.test.ts`) are not addressed here.
+
 ## [1.15.0] - 2026-04-26
 
 Adds the `PiiRedactor` sub-feature, extends `CreateEntitySchema` and `ExtendedExportFormatSchema` for the η.6.3 / η.4.4 / η.5.4 surfaces, surfaces RDF formats through the CLI, and resolves the global vs subcommand `--format` flag clash. Picked up smoke-test fixes (`b1672c8`, `4b6382a`) discovered during memory-mcp v12.2.0 pre-publish testing on 2026-04-25.

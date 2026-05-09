@@ -439,20 +439,30 @@ export class OptimizedInvertedIndex implements IIndexHealth {
   }
 
   /**
-   * Phase 0 step 6: Health snapshot for `IndexHealthMonitor`.
+   * Health snapshot for `IndexHealthMonitor`.
    *
-   * Reports `'dirty'` staleness whenever there are pending writes that have
-   * not been finalised into `Uint32Array` posting lists yet.
+   * Staleness is `'unknown'` for an empty / never-built index, `'dirty'`
+   * when there are pending writes that have not been finalised into
+   * `Uint32Array` posting lists, and `'fresh'` otherwise.
    */
   health(): IndexHealthSnapshot {
     const usage = this.getMemoryUsage();
     const pendingWrites = this.tempPostingLists.size > 0;
+    const initialized = this.entityToId.size > 0;
+    let staleness: 'fresh' | 'dirty' | 'unknown';
+    if (!initialized) {
+      staleness = 'unknown';
+    } else if (pendingWrites) {
+      staleness = 'dirty';
+    } else {
+      staleness = 'fresh';
+    }
     return {
       name: 'inverted',
-      initialized: this.entityToId.size > 0,
+      initialized,
       documentCount: usage.documentCount,
       approxMemoryBytes: usage.totalBytes,
-      staleness: pendingWrites ? 'dirty' : 'fresh',
+      staleness,
       extras: { termCount: usage.termCount, finalized: this.finalized },
     };
   }
