@@ -30,8 +30,14 @@ Phase 0 (hygiene + scaffolding) of the long-running `claude/recommend-improvemen
 
 ### Notes
 
-- 18 pre-existing `as any` casts remain, all on lines untouched by this phase. They are the explicit target of Phase 1 step 10.
-- Pre-existing test failures unrelated to this phase (9 environment-related signing failures in `tests/unit/tools/plan-doc-audit.test.ts` + 1 Linux-vs-Windows path test in `tests/unit/utils/entityUtils.test.ts`) are not addressed here.
+- A follow-up commit (same `[Unreleased]`) cleared all 18 pre-existing `as any` casts (Phase 1 step 10 done early), removed 4 unused `eslint-disable` directives, and resolved the 10 pre-existing test failures (9 plan-doc-audit signing, 1 entityUtils Windows-path test). `npm run lint` exits 0; `npm run test:ci` passes 6008/6008.
+
+### Fixed (follow-up — pre-existing issues surfaced during Phase 0)
+
+- **All 18 `no-explicit-any` lint errors** (§15.3 / Phase 1 step 10). ENOENT casts now use `NodeJS.ErrnoException`. `(e: any)` filter/sort callback annotations dropped in favour of TS inference. `(this.storage as any)` in `ContextWindowManager.wakeUp` replaced with `as GraphStorage` plus a TODO comment about the deeper storage-abstraction issue (`EntityManager` and `ObservationManager` are typed for the concrete `GraphStorage`, not `IGraphStorage`). `ProfileManager.extractFromSession`'s load-bearing `as any` (it was passing observation strings to `SalienceEngine.calculateSalience` which expects an `AgentEntity`) replaced with `as unknown as AgentEntity` and a TODO documenting the underlying call-signature mismatch. Two `GraphEventListener<any>` cases in `GraphEventEmitter` retained behind explicit `eslint-disable` + comments noting that TS function-parameter contravariance prevents the heterogeneous listener Set from being typed precisely.
+- **4 unused `eslint-disable` directives removed** from `src/features/IOManager.ts` (no-template-curly-in-string block disable + matching enable), `src/utils/parallelUtils.ts` (x2 `no-new-func`), `src/utils/taskScheduler.ts` (`no-new-func`). The `SECURITY NOTE` JSDoc above each kept-line `new Function()` site stays.
+- **`tests/unit/tools/plan-doc-audit.test.ts`** — three `beforeEach` hooks now call `git config commit.gpgsign false` and `git config tag.gpgsign false` after `git init` so the temp-repo commits no longer hit the sandboxed signing server. Restores 9 tests.
+- **`tests/unit/utils/entityUtils.test.ts:769–783`** (`validateFilePath > rejects absolute paths outside baseDir`) — fixtures are now platform-aware (`/etc/test/memory.jsonl` vs `/base` on POSIX; `C:\Users\test\memory.jsonl` vs `C:\base` on Windows). The original hard-coded `C:\` paths were treated as relative on Linux which silently passed the confinement check.
 
 ## [1.15.0] - 2026-04-26
 

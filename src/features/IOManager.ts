@@ -1765,7 +1765,6 @@ export class IOManager {
 
     const nodesJson = JSON.stringify(nodes);
     const linksJson = JSON.stringify(links);
-    /* eslint-disable no-template-curly-in-string */
     const html = [
       '<!DOCTYPE html>',
       '<html>',
@@ -1922,7 +1921,6 @@ export class IOManager {
       '</body>',
       '</html>',
     ].join('\n');
-    /* eslint-enable no-template-curly-in-string */
 
     if (options?.outputPath) {
       await fs.writeFile(options.outputPath, html, 'utf-8');

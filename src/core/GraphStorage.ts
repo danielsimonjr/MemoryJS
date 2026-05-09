@@ -368,7 +368,7 @@ export class GraphStorage implements IGraphStorage {
       this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
     } catch (error) {
       // File doesn't exist - create empty graph
-      if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
+      if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
         this.cache = { entities: [], relations: [] };
         this.clearIndexes();
 
@@ -692,7 +692,10 @@ export class GraphStorage implements IGraphStorage {
       const previousValues: Partial<Entity> = {};
       for (const key of Object.keys(updates) as Array<keyof Entity>) {
         if (key in entity) {
-          previousValues[key] = entity[key] as any;
+          // TS can't prove the per-key value-type alignment when `key` is a
+          // union — runtime correctness holds because `key` is narrowed to a
+          // single Entity field per iteration.
+          (previousValues as Record<string, unknown>)[key] = entity[key];
         }
       }
 

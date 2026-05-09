@@ -294,7 +294,6 @@ export class TaskQueue {
                 // SECURITY NOTE: new Function() is required for worker pool serialization.
                 // Safety is ensured by validateFunction() at enqueue() which guarantees
                 // only real Function objects (not user strings) are serialized here.
-                // eslint-disable-next-line no-new-func
                 const fn = new Function('return ' + fnStr)();
                 return fn(input);
               },
