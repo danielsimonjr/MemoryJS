@@ -16,14 +16,14 @@ Each iteration covers **one phase** end-to-end. Within a phase, items are tackle
 | Step | Owner | Tool / Agent |
 |---|---|---|
 | 1. Write code | Main agent | direct edits |
-| 2. Review code | Subagent (independent context) | `general-purpose` Agent — instructed to read the diff cold and critique |
+| 2. Review code | Subagent (independent context) | Fresh `Agent(subagent_type='general-purpose')` invocation — the SDK built-in, not a project-defined agent. Instructed to read the diff cold and critique. |
 | 3. Update code | Main agent | apply review fixes |
-| 4. Simplify code | Skill | `simplify` |
-| 5. Test code | Subagent | `.claude/agents/test-runner.md` (mapped to changed files); `.claude/agents/security-reviewer.md` invoked on items touching `src/security/`, `src/cli/commands/io.ts`, FTS5/LIKE input paths, or path-validation code |
+| 4. Simplify code | Skill | `simplify`, scoped to the changed-files list (`git diff --name-only HEAD`) so it does not churn unchanged files |
+| 5. Test code | Subagent | `.claude/agents/test-runner.md` (mapped to changed files); `.claude/agents/security-reviewer.md` invoked on items touching `src/security/`, `src/cli/commands/io.ts`, FTS5/LIKE input paths, or path-validation code. (NB: a `/security-review` skill also exists in the harness — the **agent** is canonical here; do not also invoke the skill.) |
 | 6. Update plan | Main agent | edit this file (mark item done, note variances) |
 | 7. Update changelog & docs | Main agent | `CHANGELOG.md`, `CLAUDE.md` if architecture changed, regenerate `docs/architecture/DEPENDENCY_GRAPH.md` if module graph changed |
 
-**Branch & commits:** stay on `claude/recommend-improvements-5Jly9`. One commit per phase (squash the Write/Review/Update/Simplify diff; Test, Plan-update, and Changelog can ride in the same commit). No PR until explicitly requested.
+**Branch & commits:** stay on `claude/recommend-improvements-5Jly9`. One commit per phase covering Write/Review/Update/Simplify/Test/Plan-update/Changelog. No PR until explicitly requested. **Push to remote after every phase commit** so a Dropbox-corrupted local repo cannot lose the phase (CLAUDE.md gotcha).
 
 **Pause policy:** run autonomously; only stop on genuine blockers — failing tests I cannot fix, ambiguous design decisions, destructive operations, or a permission denial. On a blocker, post a concise question and wait.
 
@@ -34,6 +34,7 @@ Each iteration covers **one phase** end-to-end. Within a phase, items are tackle
 3. `simplify` skill has been run on changed code and any obvious dead code / duplication is resolved.
 4. This plan file's checklist for the phase is fully ticked.
 5. `CHANGELOG.md` has an entry under "Unreleased" for the phase.
+6. **Self-review checkpoint:** before committing the phase, run `git diff main...HEAD` through a fresh `general-purpose` subagent to spot regressions across all phase changes (compensates for the no-PR policy).
 
 ---
 
@@ -43,34 +44,36 @@ Each iteration covers **one phase** end-to-end. Within a phase, items are tackle
 
 | ☐ | # | Item | Est. | First file(s) to touch | Acceptance |
 |---|---|------|------|------------------------|------------|
-| ☐ | 1 | **§15.6 Tooling: commit `package-lock.json`, add ESLint** | 3 h | `.gitignore`, `package.json`, new `.eslintrc.cjs`, new `package-lock.json` | `npm run lint` script exists; `no-explicit-any`, `no-console` (allow `src/cli/`), `no-floating-promises` rules active; `package-lock.json` committed |
-| ☐ | 2 | **§15.5 Scheduler / lifecycle hygiene** | 2 h | `src/agent/DecayScheduler.ts:121`, `src/cli/index.ts` | `.unref()` on `DecayScheduler` interval; every scheduler tick has try/catch; CLI registers `unhandledRejection` + `uncaughtException` handlers |
-| ☐ | 3 | **§15.4 Centralize logging** | 4 h | `src/utils/Logger.ts` (new), 26 grep-located sites | A `Logger` facade exports `debug/info/warn/error`; all 26 raw `console.*` outside `src/cli/` and tests routed through it; ESLint `no-console` enforces this |
-| ☐ | 4 | **§15.10 Documentation drift fix** | 1 h | `CLAUDE.md`, `docs/architecture/DEPENDENCY_GRAPH.md`, `src/core/ManagerContext.ts` (DistillationPipeline decision) | Either `ctx.distillationPipeline` getter exists OR `DistillationPipeline` is marked `@internal` and removed from CLAUDE.md; `DEPENDENCY_GRAPH.md` regenerated via `DEPS` skill |
-| ☐ | 5 | **§6.1 Query plan visualization (ASCII)** | 4 h | `src/search/SearchManager.ts`, `src/search/QueryPlanFormatter.ts` (new) | `searchManager.explainPlan(query)` returns `{ ascii: string, json: object }`; existing `QueryPlan` shape is the only input |
-| ☐ | 6 | **§6.3 Index health monitor** | 4 h | `src/utils/IndexHealthMonitor.ts` (new), `src/core/ManagerContext.ts` | `ctx.indexHealth()` returns `{ tfidf, inverted, embedding }` summaries pulled from existing managers; no schema changes |
+| ☐ | 1 | **§15.6 Tooling: ESLint + lockfile** | 3 h | `.gitignore` (un-ignore `package-lock.json`), `package.json` (`lint` script + `eslint`/`@typescript-eslint` devDeps), new `.eslintrc.cjs`, new `package-lock.json` (from `npm install`) | `npm run lint` exists; `@typescript-eslint/no-explicit-any: error` (NOT warn), `no-console: error` (allow `src/cli/` + `src/utils/logger.ts`), `@typescript-eslint/no-floating-promises: error` rules active; `.gitignore` no longer excludes `package-lock.json`; `npm install` run; `package-lock.json` committed |
+| ☐ | 2 | **§15.4 Centralize logging** | 4 h | **`src/utils/logger.ts` (existing — extend, do NOT create `Logger.ts`; case collision on macOS/Windows)**, 22 call sites needing reroute | Existing `src/utils/logger.ts` exports a `debug/info/warn/error` facade (extend if missing); all 22 raw `console.*` sites outside `src/cli/` and tests routed through it (4 sites *inside* `src/utils/logger.ts` itself are the implementation and stay); ESLint `no-console: error` enforces this |
+| ☐ | 3 | **§15.5 Scheduler / lifecycle hygiene** | 2 h | `src/agent/DecayScheduler.ts:121` (verified line for un-`.unref`'d `setInterval`), `src/cli/index.ts` | `.unref()` on `DecayScheduler` interval; every scheduler tick has try/catch routing errors **through the new logger from step 2**; CLI registers `unhandledRejection` + `uncaughtException` handlers that **also use the logger** |
+| ☐ | 4 | **§15.10 Documentation drift fix** | 1 h | `CLAUDE.md`, `docs/architecture/DEPENDENCY_GRAPH.md`, `src/agent/DistillationPipeline.ts` | Mark `DistillationPipeline` as `@internal` (chosen path — currently no consumers; do not add `ManagerContext` getter); remove from CLAUDE.md public-API list; regenerate `DEPENDENCY_GRAPH.md` via `DEPS` skill |
+| ☐ | 5 | **§6.1 Query plan visualization (ASCII)** | 4 h | `src/search/SearchManager.ts`, `src/search/QueryPlanFormatter.ts` (new) | `searchManager.explainPlan(query)` returns `{ ascii: string, json: object }`; **must reuse the existing `QueryPlan` type from `QueryPlanner` — do not introduce a parallel type** |
+| ☐ | 6 | **§6.3 Index health monitor** | 1 d | New `src/utils/IIndexHealth.ts` (interface), back-fill `health()` on `TFIDFIndexManager` / `OptimizedInvertedIndex` / `EmbeddingService`, new `src/utils/IndexHealthMonitor.ts`, `src/core/ManagerContext.ts` | `IIndexHealth` interface defined first; each index manager exposes `health()`; `ctx.indexHealth()` aggregates and returns `{ tfidf, inverted, embedding }`. Output shape is treated as a **sub-component** of the future `ctx.diagnostics()` (Phase 1 step 17) — Phase 1 step 17 must compose over this, not replace it |
 | ☐ | 7 | **§10.1 CLI pipe support** | 6 h | `src/cli/index.ts`, `src/cli/commands/*.ts` (output-format flag) | Non-TTY stdin reads commands; `--format json\|csv\|table` flag works; default to `json` when piped; closes the last 5% of Phase 1 of the original ROADMAP |
 
-**Phase 0 expected total:** ~3 working days. Steps 1–3 are force-multipliers; step 1 must land before steps 2–7 to get ESLint coverage on later changes.
+**Phase 0 expected total:** ~3–4 working days (28 h sequential = ~3.5 days at 8 h/day). Step 1 must land before steps 2–7 (ESLint enforcement). Step 2 (logger) must land before step 3 (scheduler hygiene uses the logger). Steps 4–7 are mutually independent.
 
 ---
 
 ## Phase 1 — Small features (1–3 days each)
 
-| ☐ | # | Item | Est. |
-|---|---|------|------|
-| ☐ | 8 | **§15.9 `SECURITY.md` + CLI path-validation audit** | 1 d |
-| ☐ | 9 | **§8.2 HITS algorithm** | 1 d |
-| ☐ | 10 | **§15.3 Eliminate `as any` casts (19 sites)** | 1–2 d |
-| ☐ | 11 | **§8.1 Clique detection (Bron-Kerbosch)** | 2 d |
-| ☐ | 12 | **§5.1 SQLite read connection pool** | 2 d |
-| ☐ | 13 | **§1.3 BM25 incrementality + batch coalescing** | 2–3 d |
-| ☐ | 14 | **§9.1 Entity state machine (`status` field + transitions)** | 3 d |
-| ☐ | 15 | **§4.2 AbortController in `ParallelSearchExecutor`** | 3 d |
-| ☐ | 16 | **§8.3 Louvain community detection** | 3 d |
-| ☐ | 17 | **§6.2 `ctx.diagnostics()` aggregator** | 3 d |
+| ☐ | # | Item | Est. | Acceptance |
+|---|---|------|------|------------|
+| ☐ | 8 | **§15.9 `SECURITY.md` + CLI path-validation audit** | 1 d | New `SECURITY.md` documents threat model (FTS5/LIKE escaping, XML entity decoding, path confinement); every `readFileSync`/`writeFileSync` in `src/cli/commands/io.ts` flows through a validator |
+| ☐ | 9 | **§8.2 HITS algorithm** | 1 d | `graphTraversal.hits({ maxIter, tol })` returns `{ hubs, authorities }` per entity; converges within `maxIter` on test fixtures; benchmark vs. PageRank documented in test |
+| ☐ | 10 | **§15.3 Eliminate `as any` casts (19 sites)** | 1–2 d | Zero `as any` in `src/` (verify with `grep -rEn 'as any\\b' src --include='*.ts' \| wc -l` → 0); ESLint `no-explicit-any: error` from step 1 enforces ongoing |
+| ☐ | 11 | **§8.1 Clique detection (Bron-Kerbosch)** | 2 d | `graphTraversal.findCliques({ minSize })` returns maximal cliques sorted by size; correctness test against a known graph fixture |
+| ☐ | 12 | **§5.1 SQLite read connection pool** | 2 d | New env `MEMORY_SQLITE_READ_POOL_SIZE` (default 4); read operations (`SearchManager`, `EntityManager.getByName`) use pool; writes use exclusive connection; concurrent-read test passes |
+| ☐ | 13 | **§1.3 BM25 incrementality + batch coalescing** | 2–3 d | `BM25Search.addDocument` / `removeDocument` mirror `TFIDFIndexManager`; `TFIDFEventSync` coalesces writes within configurable window (default 50 ms via new env `MEMORY_INDEX_COALESCE_MS`); incremental test passes |
+| ☐ | 14 | **§9.1 Entity state machine (`status` field + transitions)** | 3 d | `Entity.status?: 'draft' \| 'published' \| 'archived'`; transitions enforced by `EntityManager`; default `searchManager` filter excludes non-`published` (configurable); migration test for existing entities |
+| ☐ | 15 | **§4.2 AbortController in `ParallelSearchExecutor`** | 3 d | All search layers accept `AbortSignal`; `EarlyTerminationManager` cancels in-flight layers when adequacy hits; cancellation test verifies no work continues post-abort |
+| ☐ | 16 | **§8.3 Louvain community detection** | 3 d | `graphTraversal.findCommunities({ resolution })` returns `Map<entityName, communityId>` + modularity score; correctness test against a known modular graph |
+| ☐ | 17 | **§6.2 `ctx.diagnostics()` aggregator** | 3 d | Returns `{ indexHealth, queryStats, memory, entityCounts, cacheHitRates }`; **composes over `ctx.indexHealth()` from Phase 0 step 6** (does not redefine its shape); optional `MEMORY_DIAGNOSTICS_LOG=true` periodic file logging |
 
-Phase 1 expected total: ~3 weeks.
+**Phase 1 expected total:** ~4–5 working weeks (high-end estimate sums to 23 working days plus review/test cycles).
+
+**Ordering note (steps 12 & 13):** SQLite pool and BM25 incrementality both touch hot paths but operate on independent layers (SQLite storage vs. ranked-search index); the listed order is fine. If FTS5 ranking interactions surface during step 12, swap them so BM25 stabilizes the index first.
 
 ---
 
@@ -82,7 +85,7 @@ Phase 1 expected total: ~3 weeks.
 | ☐ | 19 | **§7.2 Synonym expansion** | 1 wk |
 | ☐ | 20 | **§5.2 SQLite partial indexes (auto from `QueryLogger`)** | 1 wk |
 | ☐ | 21 | **§4.1 `QueryPlanCache` runtime feedback to `QueryCostEstimator`** | 1 wk |
-| ☐ | 22 | **§15.7 Zod v4 + Commander v14 migration** | 1 wk |
+| ☐ | 22 | **§15.7 Zod v4 + Commander v14 + chrono-node bump** | 1 wk |
 | ☐ | 23 | **§15.2 Close agent-memory test gaps** (DistillationPipeline, ProfileManager, AgentMemoryConfig, LLMSearchExecutor, SymbolicSearch) | 1–2 wk |
 | ☐ | 24 | **§15.8 Public API tiering (`api-extractor` + `@public/@internal/@experimental`)** | 1–2 wk |
 | ☐ | 25 | **§2.2 Batch mutation API (`ctx.batch(async b => …)`)** | 1–2 wk |
@@ -149,17 +152,33 @@ Phase 2 expected total: ~3 months.
 
 - **Dropbox + Windows file-locking** flakiness is documented in `CLAUDE.md`. Tests in `tests/performance/` may need re-tuning during Phase 0–1; do not skip flaky tests, fix the underlying timing.
 - **`better-sqlite3` native addon**: any change to Node version on the dev machine requires `npm rebuild better-sqlite3`. Steps that touch `src/core/SQLiteStorage.ts` (Phase 1 step 12, Phase 2 step 20) carry this risk.
-- **Public API surface (Phase 2 step 24)** may surface accidental breaking changes. Tier annotations should land *before* any v2.0.0 cut.
-- **Zod v4 migration** (Phase 2 step 22) affects validation error formats consumed by `MemoryValidator` and CLI. Plan a single PR with both library bump and adjusted assertions.
+- **API tiering (Phase 2 step 24) is itself a SemVer-breaking change.** Marking previously-exported symbols as `@internal` will break consumers regardless of whether `api-extractor` removes them at build time. Either (a) schedule a v2.0.0 cut to coincide with step 24, or (b) keep all currently-exported symbols `@public` and only tier symbols added *after* step 24. Decision must be made *before* the step starts.
+- **Zod v4 migration** (Phase 2 step 22) affects validation error formats consumed by `MemoryValidator` and the CLI. Plan a single commit with both the library bump and adjusted assertions; chrono-node and Commander bumps in the same commit are acceptable.
+- **Dropbox + git object corruption (CLAUDE.md gotcha):** with one-commit-per-phase, an object corruption mid-phase loses the entire phase's work. Mitigation: every phase commit is followed immediately by `git push` to remote (already in the workflow), and a phase that hits unexplained `fatal: bad object HEAD` should be recovered via `git fsck` / `git reflog` before retrying.
+- **Single-branch / no-PR policy = no second pair of eyes by default.** The phase-exit self-review (criterion 6) and the per-iteration `general-purpose` review subagent are the only checks. If the cumulative diff on the branch grows past ~2k LOC, prompt the user to open a PR for human review.
+- **Every new env var must be documented in `CLAUDE.md` and have a sane default.** Phase 1 step 13 adds `MEMORY_INDEX_COALESCE_MS`; Phase 1 step 12 adds `MEMORY_SQLITE_READ_POOL_SIZE`; Phase 2 step 28 will likely add LRU pressure thresholds; later phases will add more. CLAUDE.md's env-var matrix is the source of truth — the changelog entry for any phase that adds env vars must update it.
 - **No PR is opened** during this work. The user explicitly opted to defer that. If the diff grows large enough to make rebase risk meaningful, prompt to open a PR.
 
 ---
 
 ## Sequencing notes (cross-cutting)
 
-- **Steps 1–3** are force-multipliers. Land them in order before any other Phase 0 step. ESLint must exist before the `as any` cleanup in Phase 1.
-- **Codebase-health items (§15) interleave with feature work** — they are scattered across phases by effort, not bundled, so they don't block features.
-- **`docs/superpowers/plans/` carries detailed per-feature plan documents** for items already drafted (e.g. `2026-04-25-eta-database-adapters.md`). When Phase 4 begins, those plans are the operational input — this document is just the index.
+- **Step 1 (ESLint + lockfile)** is the force-multiplier. Land it before any other step in any phase. Phase 1 step 10 (`as any` cleanup) measures success against the rule from step 1.
+- **Step 2 (logger) before step 3 (scheduler hygiene)**: the new error handlers in step 3 must use the centralized logger.
+- **Codebase-health items (§15) interleave with feature work** — scattered by effort, not bundled, so they don't block features.
+- **Phase 4/5 operational input — pre-existing per-feature plan docs:**
+
+  | Plan item | Detailed plan |
+  |---|---|
+  | Phase 4 step 46 (§12.2 REST API / Fastify) | `docs/superpowers/plans/2026-04-25-eta-rest-api.md` |
+  | Phase 4 step 47 (§12.1 Database adapters) | `docs/superpowers/plans/2026-04-25-eta-database-adapters.md` |
+  | Phase 5 step 51 (§13.3 ML features) | `docs/superpowers/plans/2026-04-25-eta-ml-features.md` |
+  | Phase 5 step 52 (§13.4 SPARQL — RDF half already shipped) | `docs/superpowers/plans/2026-04-25-eta-standards-compliance.md` |
+  | Phase 5 step 53 (§13.5 CRDT — collab a–d already shipped) | `docs/superpowers/plans/2026-04-25-eta-collaboration.md` |
+  | Phase 5 steps 54–57 (§14.x Enterprise) | `docs/superpowers/plans/2026-04-25-eta-enterprise.md` |
+  | _Already shipped — for reference only_ | `2026-04-25-eta-graph-visualization.md` (η.4.6 v1.9.1), `2026-04-25-eta-temporal-versioning.md` (η.4.4 Unreleased) |
+
+  These per-feature plans are the operational input when their phase begins; this document is the index over them.
 
 ---
 
@@ -173,4 +192,4 @@ Mark each item ☑ when its phase commit lands. Append a one-line note for varia
 
 ---
 
-*Last updated: 2026-05-08 — initial plan ratification.*
+*Last updated: 2026-05-08 — initial plan ratification + review-driven edits (file path correction in Phase 0 step 2, step 2/3 reorder, ESLint severity made explicit, Phase 1 acceptance column added, API-tiering risk polarity fixed, three new risks added, Phase 4/5 plan mapping table added).*
