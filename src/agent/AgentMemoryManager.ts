@@ -9,6 +9,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { logger } from '../utils/logger.js';
 import type { IGraphStorage } from '../types/types.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { EntityManager } from '../core/EntityManager.js';
@@ -122,7 +123,7 @@ export class AgentMemoryManager extends EventEmitter {
         try {
           await this.profileManager.extractFromSession(sessionId);
         } catch (err) {
-          console.error('ProfileManager auto-extract failed:', err);
+          logger.error('ProfileManager auto-extract failed:', err);
         }
       });
     }
@@ -272,7 +273,7 @@ export class AgentMemoryManager extends EventEmitter {
     // fire a maintenance cycle asynchronously.  The cycle runs fire-and-forget
     // so it does not block session teardown.
     if (this._dreamEngine) {
-      void this._dreamEngine.runDreamCycle().catch((err) => { console.error('[AgentMemoryManager] Dream cycle failed:', err); });
+      void this._dreamEngine.runDreamCycle().catch((err) => { logger.error('[AgentMemoryManager] Dream cycle failed:', err); });
     }
 
     return result;
@@ -369,7 +370,11 @@ export class AgentMemoryManager extends EventEmitter {
   }
 
   recordAccess(memoryName: string, context: AccessContext): void {
-    this.accessTracker.recordAccess(memoryName, context);
+    // Underlying recordAccess is async; the public wrapper stays sync for
+    // back-compat. Errors surface through the logger instead of disappearing.
+    this.accessTracker.recordAccess(memoryName, context).catch((err) => {
+      logger.error('[AgentMemoryManager.recordAccess] failed:', err);
+    });
   }
 
   // ==================== Decay ====================
@@ -398,7 +403,11 @@ export class AgentMemoryManager extends EventEmitter {
   // ==================== Multi-Agent ====================
 
   registerAgent(agentId: string, metadata: Omit<AgentMetadata, 'createdAt' | 'lastActiveAt'>): void {
-    this.multiAgentManager.registerAgent(agentId, metadata);
+    // Underlying registerAgent is async; the public wrapper stays sync for
+    // back-compat. Errors surface through the logger instead of disappearing.
+    this.multiAgentManager.registerAgent(agentId, metadata).catch((err) => {
+      logger.error('[AgentMemoryManager.registerAgent] failed:', err);
+    });
     this.emit('agent:registered', { agentId });
   }
 

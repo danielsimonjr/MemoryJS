@@ -10,6 +10,7 @@
 import type { Entity, KnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { levenshteinDistance } from '../utils/index.js';
+import { logger } from '../utils/logger.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import { NGramIndex } from './NGramIndex.js';
@@ -473,7 +474,7 @@ export class FuzzySearch {
       return entities.filter(e => matchedNames.has(e.name));
     } catch (error) {
       // Worker execution failed - fall back to single-threaded mode
-      console.warn(
+      logger.warn(
         `Worker pool execution failed, falling back to single-threaded fuzzy search: ${
           error instanceof Error ? error.message : String(error)
         }`

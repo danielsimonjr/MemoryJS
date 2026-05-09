@@ -9,6 +9,8 @@
  * @module search/OptimizedInvertedIndex
  */
 
+import type { IIndexHealth, IndexHealthSnapshot } from '../utils/IIndexHealth.js';
+
 /**
  * Statistics about memory usage.
  */
@@ -61,7 +63,7 @@ export interface PostingListResult {
  * console.log(results); // ['entity1']
  * ```
  */
-export class OptimizedInvertedIndex {
+export class OptimizedInvertedIndex implements IIndexHealth {
   /** Map from entity name to integer ID */
   private entityToId: Map<string, number> = new Map();
 
@@ -434,5 +436,24 @@ export class OptimizedInvertedIndex {
     return this.finalized
       ? this.postingLists.has(term)
       : this.tempPostingLists.has(term);
+  }
+
+  /**
+   * Phase 0 step 6: Health snapshot for `IndexHealthMonitor`.
+   *
+   * Reports `'dirty'` staleness whenever there are pending writes that have
+   * not been finalised into `Uint32Array` posting lists yet.
+   */
+  health(): IndexHealthSnapshot {
+    const usage = this.getMemoryUsage();
+    const pendingWrites = this.tempPostingLists.size > 0;
+    return {
+      name: 'inverted',
+      initialized: this.entityToId.size > 0,
+      documentCount: usage.documentCount,
+      approxMemoryBytes: usage.totalBytes,
+      staleness: pendingWrites ? 'dirty' : 'fresh',
+      extras: { termCount: usage.termCount, finalized: this.finalized },
+    };
   }
 }

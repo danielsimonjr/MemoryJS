@@ -9,6 +9,8 @@
  */
 
 import path from 'path';
+import { logger } from '../utils/logger.js';
+import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
@@ -182,7 +184,7 @@ export class ManagerContext {
     try {
       const ss = this.semanticSearch;
       if (!ss) {
-        console.warn(
+        logger.warn(
           '[ManagerContext] Contradiction detection requested but no embedding provider is configured. ' +
           'Set MEMORY_EMBEDDING_PROVIDER to enable it.'
         );
@@ -191,7 +193,7 @@ export class ManagerContext {
       const detector = new ContradictionDetector(ss, threshold ?? 0.85);
       this.observationManager.setContradictionDetector(detector, this.entityManager);
     } catch (err) {
-      console.warn(
+      logger.warn(
         '[ManagerContext] Could not initialise contradiction detection:',
         err instanceof Error ? err.message : String(err)
       );
@@ -236,6 +238,28 @@ export class ManagerContext {
   /** RankedSearch - TF-IDF/BM25 ranked search */
   get rankedSearch(): RankedSearch {
     return (this._rankedSearch ??= new RankedSearch(this.storage));
+  }
+
+  /**
+   * Phase 0 step 6: Aggregate index health snapshot.
+   *
+   * Returns a uniform report covering every search index this context is
+   * aware of. `ctx.diagnostics()` (Phase 1 step 17) will compose over this
+   * shape rather than redefine it.
+   */
+  indexHealth(): IndexHealthReport {
+    return new IndexHealthMonitor({
+      rankedSearch: this.rankedSearch,
+      embeddingHealth: () => {
+        const ss = this.semanticSearch;
+        return {
+          name: 'embedding',
+          initialized: ss !== null,
+          documentCount: -1,
+          warnings: ss === null ? ['no embedding provider configured'] : [],
+        };
+      },
+    }).report();
   }
 
   /** IOManager - Import/export/backup/restore */

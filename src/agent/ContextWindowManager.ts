@@ -7,6 +7,7 @@
  * @module agent/ContextWindowManager
  */
 
+import { logger } from '../utils/logger.js';
 import type { IGraphStorage, Entity } from '../types/types.js';
 import type {
   AgentEntity,
@@ -1139,7 +1140,7 @@ export class ContextWindowManager {
       }
     } catch (err) {
       if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
-        console.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
+        logger.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
       }
     }
 
@@ -1170,7 +1171,7 @@ export class ContextWindowManager {
         }
         l1 = lines.join('\n');
       } catch (err) {
-        console.error('[ContextWindowManager.wakeUp] L1 entity loading failed:', err);
+        logger.error('[ContextWindowManager.wakeUp] L1 entity loading failed:', err);
       }
     }
 
@@ -1184,7 +1185,7 @@ export class ContextWindowManager {
         }
         // else: compression skipped — legend overhead exceeds savings
       } catch (err) {
-        console.error('[ContextWindowManager.wakeUp] Compression failed, using uncompressed:', err);
+        logger.error('[ContextWindowManager.wakeUp] Compression failed, using uncompressed:', err);
         // Fall through with uncompressed l1
       }
     }

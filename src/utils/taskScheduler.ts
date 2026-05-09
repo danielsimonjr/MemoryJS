@@ -236,9 +236,10 @@ export class TaskQueue {
         this.queue.splice(insertIndex, 0, queuedTask as QueuedTask);
       }
 
-      // Start processing if not already running
+      // Start processing if not already running (fire-and-forget; processNext
+      // catches its own errors and recurses to drain the queue).
       if (!this.isProcessing) {
-        this.processNext();
+        void this.processNext();
       }
     });
   }
@@ -342,8 +343,8 @@ export class TaskQueue {
       task.resolve(taskResult);
     }
 
-    // Process next task
-    this.processNext();
+    // Process next task (fire-and-forget recursion to drain the queue)
+    void this.processNext();
   }
 
   /**

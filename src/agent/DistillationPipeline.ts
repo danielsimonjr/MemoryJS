@@ -48,6 +48,12 @@ export interface DistillationResult {
  * Each policy is applied in order. After the final policy, per-policy removal
  * stats are synthesised by comparing intermediate counts.
  *
+ * @internal
+ * Currently has no internal consumers and is not wired through `ManagerContext`.
+ * Retained as an exported symbol for forward compatibility, but the public
+ * surface is not yet stable. `api-extractor` (Phase 2 step 24) is expected to
+ * either strip this from `dist/` or graduate it to `@public` based on usage.
+ *
  * @example
  * ```typescript
  * const pipeline = new DistillationPipeline();

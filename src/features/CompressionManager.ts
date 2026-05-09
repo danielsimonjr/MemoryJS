@@ -17,6 +17,7 @@ import {
   fnv1aHash,
 } from '../utils/index.js';
 import { EntityNotFoundError, InsufficientEntitiesError, ValidationError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 import { SIMILARITY_WEIGHTS, DEFAULT_DUPLICATE_THRESHOLD } from '../utils/constants.js';
 
 /**
@@ -621,7 +622,7 @@ export class CompressionManager {
         result.entitiesMerged += group.length - 1;
       } catch (error) {
         // Skip groups that fail to merge
-        console.error(`Failed to merge group ${group}:`, error);
+        logger.error(`Failed to merge group ${group}:`, error);
       }
 
       mergedGroups++;

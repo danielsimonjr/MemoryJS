@@ -8,6 +8,7 @@
  */
 
 import type { GraphStorage } from './GraphStorage.js';
+import { logger } from '../utils/logger.js';
 import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/AutoLinker.js';
 import type { DeduplicationOptions } from '../types/types.js';
 import { EntityNotFoundError, ValidationError } from '../utils/errors.js';
@@ -206,7 +207,7 @@ export class ObservationManager {
                 .filter((i: MemoryValidationIssue) => i.kind !== 'duplicate-observation')
                 .map((i: MemoryValidationIssue) => i.kind);
               if (advisories.length > 0) {
-                console.warn(
+                logger.warn(
                   `[ObservationManager] Validator advisory for "${o.entityName}": ${advisories.join(', ')}. ` +
                   (this.contradictionDetector
                     ? 'Semantic-contradiction findings will be handled by the v1.8.0 supersede branch.'
@@ -215,7 +216,7 @@ export class ObservationManager {
               }
             }
           } else {
-            console.warn(
+            logger.warn(
               `[ObservationManager] Skipping duplicate observation on entity "${o.entityName}". ` +
               `Suggestions: ${result.suggestions.join('; ')}`,
             );

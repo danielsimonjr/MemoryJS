@@ -12,6 +12,19 @@ import { registerCommands } from './commands/index.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { logger } from '../utils/logger.js';
+
+// Process-level safety nets — without these, an unhandled rejection or
+// uncaught exception silently crashes the CLI. Errors route through the
+// shared logger so output is consistent with every other module.
+process.on('unhandledRejection', (reason) => {
+  logger.error('Unhandled promise rejection:', reason);
+  process.exit(1);
+});
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught exception:', err);
+  process.exit(1);
+});
 
 // Get package version
 function getVersion(): string {
@@ -50,5 +63,50 @@ program
 // Register all commands
 registerCommands(program);
 
-// Parse and execute
-program.parse();
+/**
+ * Phase 0 step 7: when stdin is piped (non-TTY) and no subcommand is supplied
+ * on the argv, treat each line of stdin as a separate command invocation.
+ * Lines starting with `#` are ignored as comments. Blank lines are skipped.
+ *
+ * This enables Unix-style composition:
+ *
+ *   echo "search foo" | memoryjs
+ *   cat commands.txt | memoryjs --output-format=table
+ *
+ * The global `--output-format` flag (default: json) lets callers choose
+ * machine-readable output when piping.
+ */
+async function runPipedCommands(): Promise<void> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+  }
+  const input = Buffer.concat(chunks).toString('utf-8');
+  const lines = input
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !l.startsWith('#'));
+
+  // Prevent Commander from calling process.exit on per-line parse errors.
+  program.exitOverride();
+
+  for (const line of lines) {
+    const lineArgs = line.split(/\s+/);
+    try {
+      await program.parseAsync(lineArgs, { from: 'user' });
+    } catch (err) {
+      logger.error(`Pipe-mode command failed: "${line}":`, err);
+      process.exitCode = 1;
+    }
+  }
+}
+
+const isPiped = process.stdin.isTTY === false;
+const hasSubcommand = process.argv.length > 2;
+
+if (isPiped && !hasSubcommand) {
+  void runPipedCommands();
+} else {
+  // Parse and execute (default path: argv-driven invocation)
+  program.parse();
+}

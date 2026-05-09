@@ -25,6 +25,7 @@ import type {
   GraphSavedEvent,
   GraphLoadedEvent,
 } from '../types/index.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Phase 10 Sprint 2: Event emitter for graph change notifications.
@@ -394,7 +395,7 @@ export class GraphEventEmitter {
         listener(event);
       } catch (error) {
         // Log but don't propagate errors from listeners
-        console.error(`GraphEventEmitter: Listener error for ${event.type}:`, error);
+        logger.error(`GraphEventEmitter: Listener error for ${event.type}:`, error);
       }
     } else {
       listener(event);
