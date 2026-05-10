@@ -98,6 +98,9 @@ const DEFAULT_OPTIONS: Required<QueryPlanCacheOptions> = {
  * ```
  */
 export class QueryPlanCache {
+  /** Stable name — implements `PressureAwareCache` for `CachePressureCoordinator`. */
+  readonly name: string = 'queryPlan';
+
   private cache: Map<string, CachedQueryEntry>;
   private options: Required<QueryPlanCacheOptions>;
 
@@ -464,6 +467,38 @@ export class QueryPlanCache {
       this.evictIfNeeded();
 
       this.cache.set(entry.normalizedQuery, entry);
+    }
+  }
+
+  /** `PressureAwareCache` interface — entry count. */
+  currentEntries(): number {
+    return this.cache.size;
+  }
+
+  /**
+   * `PressureAwareCache` interface — drop LRU entries until the cache
+   * is at or below `targetEntries`. Reuses the same LRU + expired-entry
+   * logic as `evictIfNeeded`.
+   */
+  evictTo(targetEntries: number): void {
+    while (this.cache.size > targetEntries) {
+      let oldestKey: string | null = null;
+      let oldestTime = Infinity;
+      for (const [key, entry] of this.cache) {
+        if (this.isExpired(entry)) {
+          this.cache.delete(key);
+          if (this.options.enableStats) this.evictions++;
+          if (this.cache.size <= targetEntries) return;
+          continue;
+        }
+        if (entry.lastAccessed < oldestTime) {
+          oldestTime = entry.lastAccessed;
+          oldestKey = key;
+        }
+      }
+      if (!oldestKey) break;
+      this.cache.delete(oldestKey);
+      if (this.options.enableStats) this.evictions++;
     }
   }
 }

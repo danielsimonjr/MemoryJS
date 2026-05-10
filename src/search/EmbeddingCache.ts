@@ -87,6 +87,9 @@ export const DEFAULT_EMBEDDING_CACHE_OPTIONS: Required<EmbeddingCacheOptions> = 
  * ```
  */
 export class EmbeddingCache {
+  /** Stable name — implements `PressureAwareCache` for `CachePressureCoordinator`. */
+  readonly name: string = 'embedding';
+
   private cache: Map<string, CacheEntry>;
   private options: Required<EmbeddingCacheOptions>;
   private hits: number = 0;
@@ -292,6 +295,24 @@ export class EmbeddingCache {
    */
   size(): number {
     return this.cache.size;
+  }
+
+  /**
+   * `PressureAwareCache` interface — entry count.
+   */
+  currentEntries(): number {
+    return this.cache.size;
+  }
+
+  /**
+   * `PressureAwareCache` interface — drop LRU entries until the cache
+   * is at or below `targetEntries`. Repeated calls into the existing
+   * `evictLRU` private; cheap for any reasonable target.
+   */
+  evictTo(targetEntries: number): void {
+    while (this.cache.size > targetEntries) {
+      this.evictLRU();
+    }
   }
 
   /**

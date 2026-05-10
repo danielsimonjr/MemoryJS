@@ -14,6 +14,8 @@ import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealth
 import { buildDiagnosticsReport, type DiagnosticsReport } from '../utils/Diagnostics.js';
 import { BatchTransaction } from './TransactionManager.js';
 import type { BatchResult, BatchOptions } from '../types/index.js';
+import { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
+import { MaterializedViewsManager } from '../search/MaterializedViews.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
@@ -111,6 +113,19 @@ export class ManagerContext {
   private _analyticsManager?: AnalyticsManager;
   private _compressionManager?: CompressionManager;
   private _archiveManager?: ArchiveManager;
+  /**
+   * Coordinated cache pressure across registered subsystem caches.
+   * Enabled when `MEMORY_CACHE_BUDGET_ENTRIES` is set; otherwise this
+   * is a quiet no-op. Subsystems (e.g. `EmbeddingCache`,
+   * `QueryPlanCache`) are registered on first lazy access so the
+   * coordinator can shrink them proportionally when the global budget
+   * is exceeded.
+   */
+  readonly cachePressure: CachePressureCoordinator = new CachePressureCoordinator();
+
+  /** Lazy-initialised. See `materializedViews` getter. */
+  private _materializedViews?: MaterializedViewsManager;
+
   private _autoLinker?: AutoLinker;
   private _factExtractor?: FactExtractor;
   private _transitionLedger?: TransitionLedger | null;
@@ -241,6 +256,18 @@ export class ManagerContext {
   /** RankedSearch - TF-IDF/BM25 ranked search */
   get rankedSearch(): RankedSearch {
     return (this._rankedSearch ??= new RankedSearch(this.storage));
+  }
+
+  /**
+   * Materialised search views — pre-computed result sets for repeated
+   * filter-based queries. Lazy: only constructed on first access (which
+   * also wires the GraphEventEmitter listener for auto-invalidation).
+   */
+  get materializedViews(): MaterializedViewsManager {
+    return (this._materializedViews ??= new MaterializedViewsManager(
+      this.storage as GraphStorage,
+      this.storage.events,
+    ));
   }
 
   /**

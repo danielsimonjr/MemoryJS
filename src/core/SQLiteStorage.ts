@@ -27,6 +27,7 @@ import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphSt
 import { clearAllSearchCaches } from '../utils/searchCache.js';
 import { NameIndex, TypeIndex } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath } from '../utils/index.js';
+import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 
 /**
  * SQLiteStorage manages persistence of the knowledge graph using native SQLite.
@@ -69,6 +70,24 @@ export class SQLiteStorage implements IGraphStorage {
    * Round-robin cursor over `readPool`. Wraps modulo pool size.
    */
   private readPoolCursor: number = 0;
+
+  /**
+   * Partial-index advisor. Self-disables when `MEMORY_SQLITE_AUTO_INDEX`
+   * is unset. Callers feed it via `recordFilter(observation)`; the
+   * advisor's recommendations are flushed every
+   * `partialIndexApplyEvery` recordings.
+   */
+  private readonly partialIndexAdvisor: PartialIndexAdvisor = new PartialIndexAdvisor();
+
+  /**
+   * How many `recordFilter` calls between automatic `apply()`s. Tuned
+   * so the DDL doesn't fire on every query but reacts within a few
+   * hundred filters.
+   */
+  private readonly partialIndexApplyEvery: number = 100;
+
+  /** Counter against `partialIndexApplyEvery`. */
+  private partialIndexRecordings: number = 0;
 
   /**
    * Whether the database has been initialized.
@@ -1072,6 +1091,15 @@ export class SQLiteStorage implements IGraphStorage {
    * Close the database connection (and any pooled read connections).
    */
   close(): void {
+    // Drop advisor-managed indexes before tearing down so the file
+    // doesn't accumulate orphan idx_advisor_* indexes across runs.
+    if (this.partialIndexAdvisor.enabled && this.db) {
+      try {
+        this.partialIndexAdvisor.dropAll(this.db);
+      } catch {
+        // Best-effort — never block close on advisor cleanup.
+      }
+    }
     this.closeReadPool();
     if (this.db) {
       this.db.close();
@@ -1116,6 +1144,35 @@ export class SQLiteStorage implements IGraphStorage {
     }
     this.readPool.length = 0;
     this.readPoolCursor = 0;
+  }
+
+  /**
+   * Record a search-filter observation for the partial-index advisor.
+   * No-op when `MEMORY_SQLITE_AUTO_INDEX` is unset (the advisor
+   * self-disables). After every `partialIndexApplyEvery` recordings,
+   * advisor recommendations are applied to the writer connection so
+   * partial indexes track the live workload.
+   *
+   * Callers (typically `SearchManager`) invoke this with the filter
+   * shape they're about to execute. Pre-existing in-memory filtering
+   * is unaffected — partial indexes only accelerate lookups, never
+   * change semantics.
+   */
+  recordFilter(observation: FilterObservation): void {
+    if (!this.partialIndexAdvisor.enabled) return;
+    this.partialIndexAdvisor.record(observation);
+    this.partialIndexRecordings++;
+    if (this.partialIndexRecordings % this.partialIndexApplyEvery === 0 && this.db) {
+      this.partialIndexAdvisor.apply(this.db);
+    }
+  }
+
+  /**
+   * Read-only snapshot of the advisor's current state — useful for
+   * `ctx.diagnostics()` and tests.
+   */
+  partialIndexAdvisorSnapshot(): ReturnType<PartialIndexAdvisor['snapshot']> {
+    return this.partialIndexAdvisor.snapshot();
   }
 
   /**
