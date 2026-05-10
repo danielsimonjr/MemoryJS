@@ -12,6 +12,8 @@ import path from 'path';
 import { logger } from '../utils/logger.js';
 import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
 import { buildDiagnosticsReport, type DiagnosticsReport } from '../utils/Diagnostics.js';
+import { BatchTransaction } from './TransactionManager.js';
+import type { BatchResult, BatchOptions } from '../types/index.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
@@ -266,6 +268,31 @@ export class ManagerContext {
    * enough to call from a request handler — does not force lazy-subsystem
    * construction (uninitialised parts report null/empty).
    */
+  /**
+   * Group multiple mutations into a single batch executed atomically.
+   *
+   * The callback receives a `BatchTransaction` builder. Mutations queued
+   * on the builder are validated and applied in a single pass via the
+   * underlying `BatchTransaction.execute()`, returning the aggregate
+   * result.
+   *
+   * @example
+   * ```typescript
+   * const result = await ctx.batch(async (b) => {
+   *   b.createEntity({ name: 'A', entityType: 'note', observations: [] });
+   *   b.createRelation({ from: 'A', to: 'B', relationType: 'r' });
+   * });
+   * ```
+   */
+  async batch(
+    fn: (b: BatchTransaction) => void | Promise<void>,
+    options: BatchOptions = {},
+  ): Promise<BatchResult> {
+    const builder = new BatchTransaction(this.storage as GraphStorage);
+    await fn(builder);
+    return builder.execute(options);
+  }
+
   diagnostics(): DiagnosticsReport {
     return buildDiagnosticsReport(
       () => this.indexHealth(),

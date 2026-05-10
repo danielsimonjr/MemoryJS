@@ -237,4 +237,67 @@ describe('SearchSuggestions', () => {
       expect(Array.isArray(result)).toBe(true);
     });
   });
+
+  describe('getVocabulary', () => {
+    it('builds a vocabulary from entity names, types, and observations', async () => {
+      const vocab = await suggestions.getVocabulary();
+      expect(vocab.has('alice')).toBe(true);
+      expect(vocab.has('alicia')).toBe(true);
+      expect(vocab.has('database')).toBe(true);
+      expect(vocab.has('developer')).toBe(true); // observation token
+      expect(vocab.has('person')).toBe(true);
+    });
+
+    it('excludes tokens shorter than 3 characters', async () => {
+      const vocab = await suggestions.getVocabulary();
+      expect(vocab.has('a')).toBe(false);
+      expect(vocab.has('to')).toBe(false);
+    });
+
+    it('caches the vocabulary across calls', async () => {
+      const v1 = await suggestions.getVocabulary();
+      const v2 = await suggestions.getVocabulary();
+      expect(v1).toBe(v2); // same Set reference
+    });
+
+    it('invalidateVocabulary clears the cache so a fresh call rebuilds', async () => {
+      const v1 = await suggestions.getVocabulary();
+      suggestions.invalidateVocabulary();
+      const v2 = await suggestions.getVocabulary();
+      expect(v1).not.toBe(v2);
+    });
+  });
+
+  describe('correctQuery', () => {
+    it('substitutes a single misspelled term with its closest vocab match', async () => {
+      const result = await suggestions.correctQuery('alise');
+      expect(result.hadCorrection).toBe(true);
+      expect(result.corrected).toBe('alice');
+      expect(result.terms[0]).toMatchObject({ original: 'alise', corrected: 'alice' });
+    });
+
+    it('preserves an exact-match term verbatim by default', async () => {
+      const result = await suggestions.correctQuery('Alice');
+      expect(result.hadCorrection).toBe(false);
+      expect(result.corrected).toBe('Alice');
+    });
+
+    it('skips short tokens (< minTokenLength)', async () => {
+      const result = await suggestions.correctQuery('a developer');
+      // 'a' is too short to correct; 'developer' is exact-match.
+      expect(result.terms[0]!.corrected).toBe('a');
+      expect(result.hadCorrection).toBe(false);
+    });
+
+    it('preserves whitespace in the corrected output', async () => {
+      const result = await suggestions.correctQuery('alise   developer');
+      expect(result.corrected).toBe('alice   developer');
+    });
+
+    it('does not substitute when the closest match exceeds maxDistance', async () => {
+      const result = await suggestions.correctQuery('xyzzy123', { maxDistance: 1 });
+      expect(result.hadCorrection).toBe(false);
+      expect(result.corrected).toBe('xyzzy123');
+    });
+  });
 });

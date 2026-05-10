@@ -86,6 +86,25 @@ export class QueryCostEstimator {
   private adaptiveDepthConfig: Required<AdaptiveDepthConfig>;
   private tokenEstimationConfig: Required<TokenEstimationOptions>;
 
+  /**
+   * Adaptive per-method per-entity time, learned from `recordExecution()`
+   * via an exponentially-weighted moving average. Falls back to the
+   * configured constant in `getBaseTimeForMethod` when a method has no
+   * recorded samples yet.
+   */
+  private adaptiveBaseTime: Partial<Record<SearchMethod, number>> = {};
+
+  /** Number of samples recorded per method (for diagnostics). */
+  private adaptiveSampleCount: Partial<Record<SearchMethod, number>> = {};
+
+  /**
+   * Smoothing factor for the EWMA. New observations contribute
+   * `EWMA_ALPHA` of their weight; the running estimate keeps `1 - alpha`.
+   * 0.2 gives a half-life around 3 samples — fast enough to adapt to a
+   * shifting workload, slow enough to ignore one-off outliers.
+   */
+  private static readonly EWMA_ALPHA = 0.2;
+
   /** Create a new QueryCostEstimator instance. */
   constructor(
     options?: QueryCostEstimatorOptions,
@@ -95,6 +114,48 @@ export class QueryCostEstimator {
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this.adaptiveDepthConfig = { ...DEFAULT_ADAPTIVE_DEPTH, ...adaptiveDepthConfig };
     this.tokenEstimationConfig = { ...DEFAULT_TOKEN_ESTIMATION, ...tokenEstimationConfig };
+  }
+
+  /**
+   * Record the actual execution time of a search so future estimates can
+   * adapt to the live workload. Updates the per-method per-entity EWMA.
+   *
+   * @param method - Search method that ran.
+   * @param entityCount - Number of entities scanned (or processed).
+   * @param actualMs - Wall-clock duration of the search in milliseconds.
+   */
+  recordExecution(method: SearchMethod, entityCount: number, actualMs: number): void {
+    if (!Number.isFinite(actualMs) || actualMs < 0 || entityCount <= 0) return;
+    const observed = actualMs / entityCount;
+    const previous = this.adaptiveBaseTime[method];
+    const next = previous === undefined
+      ? observed
+      : QueryCostEstimator.EWMA_ALPHA * observed + (1 - QueryCostEstimator.EWMA_ALPHA) * previous;
+    this.adaptiveBaseTime[method] = next;
+    this.adaptiveSampleCount[method] = (this.adaptiveSampleCount[method] ?? 0) + 1;
+  }
+
+  /**
+   * Snapshot of the adaptive estimator state. Useful for diagnostics
+   * and tests that want to assert the EWMA has converged.
+   */
+  getAdaptiveStats(): {
+    baseTimes: Partial<Record<SearchMethod, number>>;
+    sampleCounts: Partial<Record<SearchMethod, number>>;
+  } {
+    return {
+      baseTimes: { ...this.adaptiveBaseTime },
+      sampleCounts: { ...this.adaptiveSampleCount },
+    };
+  }
+
+  /**
+   * Reset learned state. Useful in tests and after large workload shifts
+   * where prior samples are no longer representative.
+   */
+  resetAdaptive(): void {
+    this.adaptiveBaseTime = {};
+    this.adaptiveSampleCount = {};
   }
 
   /** Estimate the cost of a specific search method. */
@@ -193,6 +254,11 @@ export class QueryCostEstimator {
 
   /** @internal */
   private getBaseTimeForMethod(method: SearchMethod): number {
+    // Prefer the EWMA learned from `recordExecution()` once we have one;
+    // it tracks the live workload. Fall back to the configured constant
+    // otherwise.
+    const adaptive = this.adaptiveBaseTime[method];
+    if (adaptive !== undefined) return adaptive;
     switch (method) {
       case 'basic':
         return this.options.basicTimePerEntity;
