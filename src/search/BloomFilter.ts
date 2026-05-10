@@ -118,5 +118,10 @@ function doubleHash(s: string): [number, number] {
     h1 = Math.imul(h1 ^ c, 16777619) >>> 0;
     h2 = Math.imul(h2 ^ c, 0x01000193) >>> 0;
   }
+  // Force `h2` odd so that for any `bitCount`, the sequence
+  // `(h1 + i * h2) % bitCount` does not collapse onto a strict subgroup
+  // when both are even — the standard Kirsch-Mitzenmacher fix that keeps
+  // the filter's measured FPR close to the theoretical curve.
+  h2 = (h2 | 1) >>> 0;
   return [h1, h2];
 }

@@ -112,12 +112,17 @@ export class MaterializedViewsManager {
     if (!state) throw new Error(`MaterializedViewsManager: no view named "${name}"`);
 
     let refreshed = false;
-    if (state.dirty) {
+    // Loop on dirty so a graph mutation that fires DURING `loadGraph()`
+    // re-marks the view dirty and forces another recompute. Without this
+    // re-check, the listener at `attachListeners` would set dirty=true
+    // and the post-await `state.dirty = false` here would silently
+    // overwrite it, caching a stale view.
+    while (state.dirty) {
+      state.dirty = false;
       const graph = await this.storage.loadGraph();
       const filtered = SearchFilterChain.applyFilters(graph.entities as Entity[], state.def.filters);
       state.members = filtered.map((e) => e.name).sort();
       state.computedAt = Date.now();
-      state.dirty = false;
       refreshed = true;
     }
     return {

@@ -235,6 +235,9 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 |----------|--------|---------|-------------|
 | `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4` | Read connection pool size for `SQLiteStorage` (`fullTextSearch` / `simpleSearch`). Set to `0` or `1` to route reads through the writer connection. |
 | `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50` | TF-IDF event-sync coalescing window. Multiple writes to the same entity within the window collapse into a single index update. Set to `0` to disable coalescing (apply immediately). |
+| `MEMORY_SQLITE_AUTO_INDEX` | `true`, `false` | `false` | Enables `PartialIndexAdvisor` — tracks `entityType` / `projectId` filter frequency and creates `idx_advisor_*` partial SQLite indexes for hot patterns. Infrastructure-only as of Phase 2; wiring into `SQLiteStorage` is a follow-up. |
+| `MEMORY_SYNONYM_EXPANSION` | `true`, `false` | `false` | Enables `SynonymManager.expand()` and the auto-detect-from-graph step. When false, `add()` mappings are still stored but `lookup()` / `expand()` no-op. |
+| `MEMORY_CACHE_BUDGET_ENTRIES` | Integer ≥ 1 | unset (disabled) | Global entry budget for caches registered with `CachePressureCoordinator`. When the sum of `currentEntries()` across registered caches exceeds the budget, `evictIfOverBudget()` shrinks each cache proportionally to its current share (with a small per-cache floor). |
 
 ### Agent Memory
 

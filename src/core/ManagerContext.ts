@@ -276,6 +276,10 @@ export class ManagerContext {
    * underlying `BatchTransaction.execute()`, returning the aggregate
    * result.
    *
+   * **Exception semantics:** if `fn` throws, the queued operations are
+   * discarded and the exception propagates — `execute()` is not called.
+   * This is the conventional "abort on builder error" contract.
+   *
    * @example
    * ```typescript
    * const result = await ctx.batch(async (b) => {
@@ -289,7 +293,12 @@ export class ManagerContext {
     options: BatchOptions = {},
   ): Promise<BatchResult> {
     const builder = new BatchTransaction(this.storage as GraphStorage);
-    await fn(builder);
+    try {
+      await fn(builder);
+    } catch (err) {
+      builder.clear();
+      throw err;
+    }
     return builder.execute(options);
   }
 

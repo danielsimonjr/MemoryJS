@@ -140,11 +140,18 @@ export class PartialIndexAdvisor {
 
     for (const rec of recs) {
       if (this.liveIndexes.has(rec.indexName)) continue;
-      // Bound parameters can't appear in DDL; we sanitise the value
-      // through `escapeLiteral` to prevent injection.
+      // Defence-in-depth: the column field is whitelist-typed, but
+      // re-validate at runtime in case a caller force-casts. DDL goes
+      // through `db.exec` and bound parameters cannot appear there.
+      if (rec.column !== 'entityType' && rec.column !== 'projectId') {
+        throw new Error(`PartialIndexAdvisor: refused unknown column "${rec.column}"`);
+      }
       const literal = escapeLiteral(rec.value);
+      // Index the filter column itself (not `entities(name)`) so the
+      // partial index actually accelerates `WHERE entityType = '...'`
+      // / `WHERE projectId = '...'` lookups.
       db.exec(
-        `CREATE INDEX IF NOT EXISTS ${rec.indexName} ON entities(name) WHERE ${rec.column} = ${literal}`,
+        `CREATE INDEX IF NOT EXISTS ${rec.indexName} ON entities(${rec.column}) WHERE ${rec.column} = ${literal}`,
       );
       this.liveIndexes.add(rec.indexName);
       created++;

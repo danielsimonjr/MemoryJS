@@ -147,16 +147,21 @@ export class SynonymManager {
       s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= minTokenLength);
 
     for (const entity of graph.entities) {
+      // Dedup per entity: a pair counts once per entity even if the two
+      // tokens co-occur in multiple observations. Without this, an
+      // entity with the same observation duplicated N times would
+      // inflate pair counts N-fold and lower the effective minSupport.
+      const entityTokens = new Set<string>();
       for (const obs of entity.observations) {
-        const tokens = [...new Set(tokenize(obs))];
-        // O(k^2) per observation in token count; observations are usually short.
-        for (let i = 0; i < tokens.length; i++) {
-          for (let j = i + 1; j < tokens.length; j++) {
-            const a = tokens[i]!;
-            const b = tokens[j]!;
-            const key = a < b ? `${a}|${b}` : `${b}|${a}`;
-            pairCount.set(key, (pairCount.get(key) ?? 0) + 1);
-          }
+        for (const tok of tokenize(obs)) entityTokens.add(tok);
+      }
+      const tokens = [...entityTokens];
+      for (let i = 0; i < tokens.length; i++) {
+        for (let j = i + 1; j < tokens.length; j++) {
+          const a = tokens[i]!;
+          const b = tokens[j]!;
+          const key = a < b ? `${a}|${b}` : `${b}|${a}`;
+          pairCount.set(key, (pairCount.get(key) ?? 0) + 1);
         }
       }
     }

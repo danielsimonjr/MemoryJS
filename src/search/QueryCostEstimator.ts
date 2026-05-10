@@ -126,7 +126,9 @@ export class QueryCostEstimator {
    */
   recordExecution(method: SearchMethod, entityCount: number, actualMs: number): void {
     if (!Number.isFinite(actualMs) || actualMs < 0 || entityCount <= 0) return;
-    const observed = actualMs / entityCount;
+    // Floor against zero-sample seeding (clock resolution can produce
+    // 0 ms for fast queries; a 0 EWMA would hide all subsequent cost).
+    const observed = Math.max(actualMs / entityCount, 1e-6);
     const previous = this.adaptiveBaseTime[method];
     const next = previous === undefined
       ? observed

@@ -1078,4 +1078,41 @@ describe('KnowledgeGraphManager (ManagerContext)', () => {
       expect(cwm).toBeDefined();
     });
   });
+
+  describe('batch()', () => {
+    it('executes queued mutations and returns aggregate result', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'batch-basic.jsonl'));
+      const result = await ctx.batch(async (b) => {
+        b.createEntity({ name: 'BatchA', entityType: 'note', observations: ['a1'] });
+        b.createEntity({ name: 'BatchB', entityType: 'note', observations: ['b1'] });
+        b.createRelation({ from: 'BatchA', to: 'BatchB', relationType: 'links' });
+      });
+      expect(result.success).toBe(true);
+      expect(result.entitiesCreated).toBe(2);
+      expect(result.relationsCreated).toBe(1);
+      const graph = await ctx.storage.loadGraph();
+      const names = graph.entities.map((e) => e.name).sort();
+      expect(names).toContain('BatchA');
+      expect(names).toContain('BatchB');
+    });
+
+    it('aborts the batch when the callback throws', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'batch-throw.jsonl'));
+      await expect(
+        ctx.batch(async (b) => {
+          b.createEntity({ name: 'BatchX', entityType: 'note', observations: [] });
+          throw new Error('caller aborted');
+        }),
+      ).rejects.toThrow(/caller aborted/);
+      const graph = await ctx.storage.loadGraph();
+      expect(graph.entities.find((e) => e.name === 'BatchX')).toBeUndefined();
+    });
+
+    it('returns success with zero counts on an empty batch', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'batch-empty.jsonl'));
+      const result = await ctx.batch(async () => { /* no ops queued */ });
+      expect(result.success).toBe(true);
+      expect(result.operationsExecuted).toBe(0);
+    });
+  });
 });

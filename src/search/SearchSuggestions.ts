@@ -9,6 +9,7 @@
  */
 
 import type { GraphStorage } from '../core/GraphStorage.js';
+import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import { levenshteinDistance } from '../utils/index.js';
 
 interface Suggestion {
@@ -48,10 +49,15 @@ export class SearchSuggestions {
   /**
    * Cached vocabulary: lowercased terms drawn from entity names, types,
    * and observation tokens. Built lazily on first call to
-   * `getVocabulary()` / `correctQuery()`. `invalidateVocabulary()` clears
-   * the cache; callers should invoke that after large graph mutations.
+   * `getVocabulary()` / `correctQuery()`. Auto-invalidated via
+   * `attachInvalidator(events)` when wired to a `GraphEventEmitter`;
+   * callers can also invoke `invalidateVocabulary()` directly after
+   * bulk imports or other operations the event stream doesn't cover.
    */
   private vocabularyCache: Set<string> | null = null;
+
+  /** Unsubscribe handles for the optional event-driven invalidator. */
+  private vocabUnsubscribers: Array<() => void> = [];
 
   /** Get suggestions for a query using Levenshtein distance similarity. */
   async getSearchSuggestions(query: string, maxSuggestions: number = 5): Promise<string[]> {
@@ -128,11 +134,31 @@ export class SearchSuggestions {
   /**
    * Drop the cached vocabulary so the next call to `getVocabulary()` /
    * `correctQuery()` rebuilds it from the current graph. Cheap — just
-   * nulls the field. Callers should invoke this after a bulk import or
-   * any other multi-thousand-entity mutation.
+   * nulls the field.
    */
   invalidateVocabulary(): void {
     this.vocabularyCache = null;
+  }
+
+  /**
+   * Wire automatic invalidation to a `GraphEventEmitter`. After this is
+   * attached, the vocabulary cache is dropped on every entity
+   * create/update/delete event. Returns an unsubscribe function;
+   * subsequent calls replace the previous subscription.
+   */
+  attachInvalidator(events: GraphEventEmitter): () => void {
+    this.detachInvalidator();
+    const drop = (): void => this.invalidateVocabulary();
+    this.vocabUnsubscribers.push(events.on('entity:created', drop));
+    this.vocabUnsubscribers.push(events.on('entity:updated', drop));
+    this.vocabUnsubscribers.push(events.on('entity:deleted', drop));
+    return (): void => this.detachInvalidator();
+  }
+
+  /** Unsubscribe from any attached `GraphEventEmitter`. */
+  detachInvalidator(): void {
+    for (const u of this.vocabUnsubscribers) u();
+    this.vocabUnsubscribers = [];
   }
 
   /**

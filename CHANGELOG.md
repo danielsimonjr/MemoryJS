@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Phases 0 and 1 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven Phase 0 items plus all ten Phase 1 items landed. No SemVer-breaking changes.
+Phases 0, 1, and 2 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven Phase 0 items + all ten Phase 1 items + 10 of 12 Phase 2 items landed (Phase 2 steps 24 and 29 deferred). No SemVer-breaking changes.
+
+### Added (Phase 2)
+
+- **Pre-execution spell correction** (`src/search/SearchSuggestions.ts`): new `getVocabulary()` (cached Set built from entity names + types + observation tokens), `correctQuery(q, options)` with conservative defaults (skip <4-char tokens, skip exact matches, only substitute on unique closest match within `maxDistance`). New `attachInvalidator(events)` wires the cache to a `GraphEventEmitter` for automatic invalidation on entity create/update/delete.
+- **Synonym expansion** (`src/search/SynonymManager.ts`): new module gated on `MEMORY_SYNONYM_EXPANSION` (default off). `add(group)` registers symmetric mappings; `expand(query)` returns OR-grouped tokens; `autoDetectFromGraph()` adds frequent co-occurrence pairs above `minSupport` (per-entity dedup so a single entity with repeated observations doesn't inflate counts).
+- **SQLite partial-index advisor** (`src/search/PartialIndexAdvisor.ts`): tracks `entityType` / `projectId` filter frequency; recommends `idx_advisor_*` partial indexes; `apply(db)` creates/drops via DDL with runtime column-whitelist re-validation. Indexes the filter column itself (not `entities(name)`). Gated on `MEMORY_SQLITE_AUTO_INDEX`.
+- **`QueryCostEstimator` adaptive feedback** (`src/search/QueryCostEstimator.ts`): new `recordExecution(method, count, ms)` updates a per-method EWMA (alpha=0.2). `getBaseTimeForMethod` prefers the EWMA once seeded; falls back to the configured constant otherwise. Min-bound floor on observed time (`1e-6` ms/entity) prevents zero-sample seeding.
+- **Batch mutation API** (`src/core/ManagerContext.ts`): new `ctx.batch(async (b) => {...}, options?)` wraps the existing `BatchTransaction` builder with a callback-style API. Aborts the batch when the callback throws (clears the queue + propagates).
+- **Materialized search views** (`src/search/MaterializedViews.ts`): `MaterializedViewsManager` registers named views (filter predicates), caches members, auto-invalidates via `entity:created/updated/deleted` events. Race-safe `query()` re-checks `dirty` after `await loadGraph()`.
+- **Bloom filter pre-screening** (`src/search/BloomFilter.ts` + `src/search/BloomPreScreener.ts`): pure-TS `BloomFilter` (FNV-1a + double-hash; `h2` forced odd to prevent subgroup collapse on even-`bitCount` filters). `BloomPreScreener` builds per-entity term filters (dynamic capacity sized to actual token count) plus global type/tag filters. Designed as a candidate-set pre-screen before fuzzy / semantic search.
+- **Cache pressure coordinator** (`src/utils/CachePressureCoordinator.ts`): caches register via `PressureAwareCache { name, currentEntries, evictTo }` interface. Proportional eviction (with `minRetentionEntries` floor) when total exceeds `MEMORY_CACHE_BUDGET_ENTRIES`. Gated — disabled when the env var is unset.
+- **63 new tests** covering DistillationPipeline (6, closing the test gap), SearchSuggestions vocab + correctQuery (6), SynonymManager (8), PartialIndexAdvisor (6), QueryCostEstimator EWMA (6), BloomFilter + BloomPreScreener (12), MaterializedViewsManager (7), CachePressureCoordinator (6), and `ctx.batch()` (3). `test:ci` total now 6092 / 6092 passing.
+
+### Changed (Phase 2)
+
+- **`zod ^3.24.1 → ^4.4.3`**, **`commander ^12.1.0 → ^14.0.3`**, **`chrono-node ^2.9.0 → ^2.9.1`**. All major bumps landed with zero source changes — codebase usage was conservative enough that the test suite (6028 tests) passed before any review fixes were applied.
+- **`CLAUDE.md` env-var matrix** gained `MEMORY_SQLITE_AUTO_INDEX`, `MEMORY_SYNONYM_EXPANSION`, and `MEMORY_CACHE_BUDGET_ENTRIES`.
+
+### Notes (Phase 2 — deferred items)
+
+- **Step 24 (§15.8 API tiering)** — blocked per the plan's risk: marking previously-public symbols `@internal` is itself a SemVer-breaking change, regardless of whether `api-extractor` removes them at build time. Needs an explicit v2.0 cut decision before starting; deferred until that decision is made.
+- **Step 29 (§15.1 split god-object `IOManager.ts` at 1934 LOC)** — too large to bundle into the Phase 2 commit alongside everything else. Will be addressed in a dedicated follow-up commit.
+- **Caller wiring** — the four new infrastructure modules (`PartialIndexAdvisor`, `MaterializedViewsManager`, `BloomPreScreener`, `CachePressureCoordinator`) ship with smoke-test coverage but are NOT yet wired into the search / cache hot paths. Wiring each into the appropriate caller is a follow-up. The contracts were chosen to make wiring straightforward (e.g., `PressureAwareCache` matches the existing `EmbeddingCache` / `QueryPlanCache` shape).
 
 ### Added (Phase 1)
 

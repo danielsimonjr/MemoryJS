@@ -75,11 +75,17 @@ export class BloomPreScreener {
       this.typeFilter.add(entity.entityType.toLowerCase());
       for (const tag of entity.tags ?? []) this.tagFilter.add(tag.toLowerCase());
 
-      const terms = new BloomFilter(64, this.fpr);
-      for (const tok of tokenize(entity.name)) terms.add(tok);
+      // Pre-tokenise so we can size the per-entity filter against the
+      // actual token count. A fixed 64-capacity filter would saturate
+      // (FPR → ~100%) for entities with long observations.
+      const tokens = new Set<string>();
+      for (const tok of tokenize(entity.name)) tokens.add(tok);
       for (const obs of entity.observations) {
-        for (const tok of tokenize(obs)) terms.add(tok);
+        for (const tok of tokenize(obs)) tokens.add(tok);
       }
+      const capacity = Math.max(64, tokens.size * 2);
+      const terms = new BloomFilter(capacity, this.fpr);
+      for (const tok of tokens) terms.add(tok);
       this.entities.push({ name: entity.name, terms });
     }
   }
