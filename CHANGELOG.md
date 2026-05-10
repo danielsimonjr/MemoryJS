@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Phase 0 (hygiene + scaffolding) of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven items in Phase 0 landed plus three review rounds. No SemVer-breaking changes.
+Phases 0 and 1 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven Phase 0 items plus all ten Phase 1 items landed. No SemVer-breaking changes.
+
+### Added (Phase 1)
+
+- **`SECURITY.md`** — top-level threat model and controls inventory: path confinement (`validateFilePath`), FTS5 query sanitisation (`SQLiteStorage.fullTextSearch`), LIKE wildcard escaping (`simpleSearch`), XML entity encode/decode (`IOManager`), prototype-pollution guard (`sanitizeObject`), PII redaction (`PiiRedactor`), CLI input flow, known limitations, and a maintainer checklist.
+- **`searchManager` graph-analytics additions** (`src/core/GraphTraversal.ts`):
+  - `calculateHITS(maxIter?, tolerance?, topN?)` — Kleinberg's hubs-and-authorities with power iteration and L2 normalisation. Returns `{ hubs, authorities, iterations, converged }`.
+  - `findCliques({ minSize?, maxCliques? })` — Bron-Kerbosch with the Tomita-Tanaka-Takahashi pivot optimisation. Returns maximal cliques sorted longest-first.
+  - `findCommunities({ maxIter?, tolerance? })` — two-phase Louvain (greedy moves → community contraction → repeat). Returns `{ communities, modularity, levels }`. Edge-doubling fix for self-loops.
+- **SQLite read connection pool** (`src/core/SQLiteStorage.ts`): new `MEMORY_SQLITE_READ_POOL_SIZE` env var (default 4). Round-robin read connections via `pickReadConnection()`; reads through `fullTextSearch` and `simpleSearch` use the pool. Pool readers open with `readonly: true`. `closeReadPool()` invoked from both `clearCache` and `close`.
+- **BM25 incrementality** (`src/search/BM25Search.ts`): `addDocument`/`removeDocument`/`updateDocument` mirror the `TFIDFIndexManager` API with O(1) running-average doc-length updates. `addDocument` is a no-op until `buildIndex()` runs (matches TF-IDF semantics).
+- **TFIDFEventSync coalescing** (`src/search/TFIDFEventSync.ts`): index events for the same entity within `MEMORY_INDEX_COALESCE_MS` (default 50 ms) collapse into a single update via a per-entity-name pending Map with explicit merge rules (`create + update → create`, `create + delete → cancel`, etc.). New `flushNow()` for tests, new `{ coalesceMs }` constructor override, `process.on('beforeExit')` drain on shutdown, `disable()` flushes synchronously before unsubscribing.
+- **Entity state machine** (`src/core/EntityStateMachine.ts`): new `Entity.lifecycleStatus?: 'draft' | 'published' | 'archived'` field (named to avoid clashing with the pre-existing `SessionEntity.status` union). `EntityStateMachine` validates transitions; `EntityManager.updateEntity` enforces them. Persisted by both backends. `SearchFilterChain` defaults to `[DEFAULT_ENTITY_STATUS]` (= `'published'`) — drafts and archived entities are excluded from search unless callers opt in.
+- **`AbortSignal` cancellation in `ParallelSearchExecutor`**: new `ParallelSearchOptions.signal?: AbortSignal`. Each layer wrapped in a `withCancel` helper that races against the abort event — already-aborted skips synchronously, mid-flight abort drops results without waiting. Existing executor behaviour unchanged when `signal` is omitted.
+- **`ctx.diagnostics()`** (`src/utils/Diagnostics.ts`): single-call snapshot composing over `ctx.indexHealth()` plus an entity-counts panel. Side-effect-free — uses the new `IGraphStorage.cachedGraph` getter rather than forcing a load.
+- **`IGraphStorage.cachedGraph`** — new public read-only getter on the storage interface (implemented by both `GraphStorage` and `SQLiteStorage`).
+- 23 new smoke tests covering HITS, Bron-Kerbosch, Louvain, `EntityStateMachine`, BM25 incrementality, and `ParallelSearchExecutor` AbortSignal cancellation.
+
+### Changed (Phase 1)
+
+- **Pre-existing latent XML decode-order bug fixed** (`src/features/IOManager.ts`): the import-side `decodeXmlEntities` helper now runs `&amp;` LAST so double-encoded entities like `&amp;lt;` decode to `&lt;` (literal) rather than `<`. The `SECURITY.md` audit surfaced the divergence.
+- **CLAUDE.md env-var matrix** gained the two new Phase 1 vars (`MEMORY_SQLITE_READ_POOL_SIZE`, `MEMORY_INDEX_COALESCE_MS`).
+- **`SearchFilterChain.hasActiveFilters`** now reports `lifecycleStatus` when explicitly set (only the implicit default-to-published is silent).
+
+### Notes
+
+- The previous `[Unreleased]` "Fixed (follow-up — pre-existing issues surfaced during Phase 0)" section already addressed Phase 1 step 10 (`§15.3 Eliminate as any`) early. That work landed in commit `9d19e87`.
+
+## Phase 0 (hygiene + scaffolding)
+
+All seven items in Phase 0 landed plus three review rounds. No SemVer-breaking changes.
 
 ### Added
 

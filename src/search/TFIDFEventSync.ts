@@ -43,10 +43,23 @@ import type {
  */
 /**
  * Pending coalesced index operation. Stored per-entity-name so consecutive
- * events on the same entity collapse to a single final operation.
+ * events on the same entity collapse to a single final operation. Create
+ * and update are kept distinct so the flush dispatches to the correct
+ * underlying method (`addDocument` vs `updateDocument`).
+ *
+ * Merge rules (new event arriving for an entity that already has a pending op):
+ *   create + update  → create  (with the update's content)
+ *   create + delete  → cancel  (entity never made it to the index)
+ *   update + update  → update  (last writer wins)
+ *   update + delete  → delete
+ *   delete + create  → create  (entity recreated)
+ *   delete + update  → update  (we cancel the delete and treat it as update)
+ *   create + create  → create  (idempotent)
+ *   delete + delete  → delete  (idempotent)
  */
 type PendingOp =
-  | { op: 'upsert'; name: string; entityType: string; observations: string[] }
+  | { op: 'create'; name: string; entityType: string; observations: string[] }
+  | { op: 'update'; name: string; entityType: string; observations: string[] }
   | { op: 'delete'; name: string };
 
 export class TFIDFEventSync {
@@ -77,19 +90,28 @@ export class TFIDFEventSync {
    * @param indexManager - TFIDFIndexManager to sync
    * @param eventEmitter - GraphEventEmitter to listen to
    * @param storage - Storage to fetch entity data from (for updates)
+   * @param options.coalesceMs - Override the env-var default. Useful in
+   *   tests that need synchronous emit→apply semantics (pass `0`).
    */
   constructor(
     indexManager: TFIDFIndexManager,
     eventEmitter: GraphEventEmitter,
-    storage: IGraphStorage
+    storage: IGraphStorage,
+    options: { coalesceMs?: number } = {},
   ) {
     this.indexManager = indexManager;
     this.eventEmitter = eventEmitter;
     this.storage = storage;
 
-    const raw = process.env.MEMORY_INDEX_COALESCE_MS;
-    const parsed = raw === undefined ? 50 : parseInt(raw, 10);
-    this.coalesceMs = Number.isFinite(parsed) && parsed >= 0 ? parsed : 50;
+    if (options.coalesceMs !== undefined) {
+      this.coalesceMs = Number.isFinite(options.coalesceMs) && options.coalesceMs >= 0
+        ? options.coalesceMs
+        : 50;
+    } else {
+      const raw = process.env.MEMORY_INDEX_COALESCE_MS;
+      const parsed = raw === undefined ? 50 : parseInt(raw, 10);
+      this.coalesceMs = Number.isFinite(parsed) && parsed >= 0 ? parsed : 50;
+    }
   }
 
   /**
@@ -175,6 +197,12 @@ export class TFIDFEventSync {
     for (const op of ops) {
       if (op.op === 'delete') {
         this.indexManager.removeDocument(op.name);
+      } else if (op.op === 'create') {
+        this.indexManager.addDocument({
+          name: op.name,
+          entityType: op.entityType,
+          observations: op.observations,
+        });
       } else {
         this.indexManager.updateDocument({
           name: op.name,
@@ -183,6 +211,38 @@ export class TFIDFEventSync {
         });
       }
     }
+  }
+
+  /**
+   * Merge a new pending op into the queue, applying the rules in the
+   * `PendingOp` doc comment. Returns true when the op was queued (i.e.
+   * the resulting state is non-empty) — the only false return is when
+   * `create + delete` cancel each other out and nothing remains pending.
+   */
+  private mergeOp(next: PendingOp): boolean {
+    const existing = this.pendingOps.get(next.name);
+    if (!existing) {
+      this.pendingOps.set(next.name, next);
+      return true;
+    }
+
+    if (existing.op === 'create' && next.op === 'delete') {
+      this.pendingOps.delete(next.name); // create + delete cancels out
+      return false;
+    }
+    if (existing.op === 'create' && (next.op === 'update' || next.op === 'create')) {
+      // Keep `create` as the kind, but use the latest content.
+      this.pendingOps.set(next.name, {
+        op: 'create',
+        name: next.name,
+        entityType: (next as { entityType: string }).entityType,
+        observations: (next as { observations: string[] }).observations,
+      });
+      return true;
+    }
+    // For everything else (update→*, delete→*) the latest event wins.
+    this.pendingOps.set(next.name, next);
+    return true;
   }
 
   /**
@@ -212,8 +272,8 @@ export class TFIDFEventSync {
     if (!this.indexManager.isInitialized()) {
       return;
     }
-    this.pendingOps.set(event.entity.name, {
-      op: 'upsert',
+    this.mergeOp({
+      op: 'create',
       name: event.entity.name,
       entityType: event.entity.entityType,
       observations: event.entity.observations,
@@ -233,8 +293,8 @@ export class TFIDFEventSync {
     const graph = await this.storage.loadGraph();
     const entity = graph.entities.find(e => e.name === event.entityName);
     if (!entity) return;
-    this.pendingOps.set(entity.name, {
-      op: 'upsert',
+    this.mergeOp({
+      op: 'update',
       name: entity.name,
       entityType: entity.entityType,
       observations: entity.observations,
@@ -250,7 +310,7 @@ export class TFIDFEventSync {
     if (!this.indexManager.isInitialized()) {
       return;
     }
-    this.pendingOps.set(event.entityName, { op: 'delete', name: event.entityName });
+    this.mergeOp({ op: 'delete', name: event.entityName });
     this.scheduleFlush();
   }
 }
