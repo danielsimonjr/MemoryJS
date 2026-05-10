@@ -79,6 +79,28 @@ export interface IDatabaseAdapter {
    * `BatchTransaction.execute()` and similar bulk paths.
    */
   applyBatch(ops: DatabaseBatchOp[]): Promise<void>;
+
+  /**
+   * Stream every entity. Implementations should pull from a server-
+   * side cursor when available (Postgres `DECLARE CURSOR`, Mongo
+   * `find().cursor()`) so the full result set never has to live in
+   * memory at once. The reference `InMemoryDatabaseAdapter` simply
+   * yields its in-memory map.
+   */
+  streamEntities(): AsyncIterable<Entity>;
+
+  /**
+   * Run `fn` inside a transaction. Implementations decide the isolation
+   * level — the contract is just "either every write inside `fn`
+   * commits, or none do". `fn` should perform writes via the same
+   * adapter instance (real adapters may shadow methods to route
+   * through the transaction handle).
+   *
+   * Re-entrancy is not required: an inner `withTransaction` may join
+   * the outer transaction, start a savepoint, or throw, depending on
+   * the adapter. Document the choice in the implementation's JSDoc.
+   */
+  withTransaction<T>(fn: () => Promise<T>): Promise<T>;
 }
 
 /**
@@ -93,26 +115,29 @@ export type DatabaseBatchOp =
   | { kind: 'delete-relation'; from: string; to: string; relationType: string };
 
 /**
- * Reference no-op adapter. Useful as a stand-in for tests and as a
- * starting template for real adapters. Throws on every operation
- * except `connect`/`disconnect`/`isConnected` so a caller that
- * accidentally wires this adapter sees a loud error rather than
- * silent data loss.
+ * Reference no-op adapter. Useful as a "loud failure" stand-in: every
+ * method (including `connect`) rejects with an explicit unimplemented
+ * error so a caller who reaches for this adapter notices their
+ * misconfiguration rather than silently losing data. Use
+ * `InMemoryDatabaseAdapter` for tests that need a working backend.
  */
 export class NullDatabaseAdapter implements IDatabaseAdapter {
   readonly name = 'null';
-  private connected = false;
 
-  async connect(): Promise<void> {
-    this.connected = true;
+  connect(): Promise<void> {
+    return Promise.reject(
+      new Error('NullDatabaseAdapter: connect is unimplemented (use a real adapter)'),
+    );
   }
 
   async disconnect(): Promise<void> {
-    this.connected = false;
+    // disconnect-on-disconnected is a legitimate cleanup pattern; keep it
+    // forgiving so teardown paths don't have to special-case the null
+    // adapter.
   }
 
   isConnected(): boolean {
-    return this.connected;
+    return false;
   }
 
   putEntity(): Promise<void> {
@@ -141,6 +166,14 @@ export class NullDatabaseAdapter implements IDatabaseAdapter {
   }
   applyBatch(): Promise<void> {
     return Promise.reject(new Error('NullDatabaseAdapter: applyBatch is unimplemented'));
+  }
+  streamEntities(): AsyncIterable<Entity> {
+    return (async function* () {
+      throw new Error('NullDatabaseAdapter: streamEntities is unimplemented');
+    })();
+  }
+  withTransaction<T>(): Promise<T> {
+    return Promise.reject(new Error('NullDatabaseAdapter: withTransaction is unimplemented'));
   }
 }
 
@@ -213,26 +246,67 @@ export class InMemoryDatabaseAdapter implements IDatabaseAdapter {
     };
   }
 
+  /**
+   * Yield every entity. Reference impl is trivially in-memory; real
+   * adapters should stream from a server-side cursor.
+   */
+  async *streamEntities(): AsyncIterable<Entity> {
+    this.checkConnected();
+    for (const entity of this.entities.values()) {
+      yield entity;
+    }
+  }
+
+  /**
+   * In-memory transaction: snapshots the maps, runs `fn`, restores on
+   * throw. Re-entrant calls join the outermost transaction (the inner
+   * snapshot is identical to the outer pre-state, so commits/rollbacks
+   * compose naturally).
+   */
+  async withTransaction<T>(fn: () => Promise<T>): Promise<T> {
+    this.checkConnected();
+    const entitySnapshot = new Map(this.entities);
+    const relationSnapshot = new Map(this.relations);
+    try {
+      return await fn();
+    } catch (err) {
+      this.entities = entitySnapshot;
+      this.relations = relationSnapshot;
+      throw err;
+    }
+  }
+
   async applyBatch(ops: DatabaseBatchOp[]): Promise<void> {
     this.checkConnected();
-    for (const op of ops) {
-      switch (op.kind) {
-        case 'put-entity':
-          this.entities.set(op.entity.name, op.entity);
-          break;
-        case 'delete-entity':
-          this.entities.delete(op.name);
-          break;
-        case 'put-relation':
-          this.relations.set(
-            relationKey(op.relation.from, op.relation.to, op.relation.relationType),
-            op.relation,
-          );
-          break;
-        case 'delete-relation':
-          this.relations.delete(relationKey(op.from, op.to, op.relationType));
-          break;
+    // Snapshot before applying so a thrown op rolls back to the
+    // pre-batch state — matches the "atomic" contract in the
+    // interface JSDoc.
+    const entitySnapshot = new Map(this.entities);
+    const relationSnapshot = new Map(this.relations);
+    try {
+      for (const op of ops) {
+        switch (op.kind) {
+          case 'put-entity':
+            this.entities.set(op.entity.name, op.entity);
+            break;
+          case 'delete-entity':
+            this.entities.delete(op.name);
+            break;
+          case 'put-relation':
+            this.relations.set(
+              relationKey(op.relation.from, op.relation.to, op.relation.relationType),
+              op.relation,
+            );
+            break;
+          case 'delete-relation':
+            this.relations.delete(relationKey(op.from, op.to, op.relationType));
+            break;
+        }
       }
+    } catch (err) {
+      this.entities = entitySnapshot;
+      this.relations = relationSnapshot;
+      throw err;
     }
   }
 

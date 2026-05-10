@@ -281,6 +281,12 @@ export class ManagerContext {
    * on first access. The Entity shape on disk is unchanged; this is
    * a side-channel store the caller drives manually via
    * `internEntityObservations(entity)` / `releaseEntityObservations(hashes)`.
+   *
+   * **Scope:** the store is per-`ManagerContext` instance and lives
+   * only in process memory. There is no on-disk persistence and no
+   * seed from existing graph entities — a fresh `ctx` starts empty
+   * and the store accumulates only the observations the caller
+   * explicitly interns. Restart the process and the table is gone.
    */
   get observationStore(): ObservationStore {
     return (this._observationStore ??= new ObservationStore());

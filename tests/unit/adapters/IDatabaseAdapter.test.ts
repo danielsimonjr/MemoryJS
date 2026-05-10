@@ -94,13 +94,22 @@ describe('InMemoryDatabaseAdapter', () => {
 });
 
 describe('NullDatabaseAdapter', () => {
-  it('connects but rejects every CRUD op', async () => {
+  it('rejects connect() so misconfigured callers fail loud', async () => {
     const adapter = new NullDatabaseAdapter();
-    await adapter.connect();
-    expect(adapter.isConnected()).toBe(true);
+    await expect(adapter.connect()).rejects.toThrow(/unimplemented/);
+    expect(adapter.isConnected()).toBe(false);
+  });
+
+  it('rejects every CRUD op', async () => {
+    const adapter = new NullDatabaseAdapter();
     await expect(
       adapter.putEntity({ name: 'X', entityType: 'note', observations: [] }),
     ).rejects.toThrow(/unimplemented/);
     await expect(adapter.snapshot()).rejects.toThrow(/unimplemented/);
+  });
+
+  it('disconnect is a forgiving no-op', async () => {
+    const adapter = new NullDatabaseAdapter();
+    await expect(adapter.disconnect()).resolves.toBeUndefined();
   });
 });

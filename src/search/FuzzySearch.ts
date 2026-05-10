@@ -338,16 +338,15 @@ export class FuzzySearch {
     }
 
     // Phase 4 follow-up: optional Bloom pre-screen layered AFTER the
-    // NGram prefilter. Same correctness contract — Levenshtein
-    // re-validates every candidate, so a false positive in the bloom
-    // filter just costs an extra Levenshtein call. False negatives
-    // are not possible (Bloom: never says "absent" when present).
+    // NGram prefilter. The Bloom filter operates on EXACT-match
+    // tokens — but fuzzy search is specifically for queries that
+    // DON'T exact-match (e.g. "Alise" finding "Alice" at Levenshtein
+    // distance 1). When the screener returns zero candidates we
+    // therefore fall back to the larger candidate set rather than
+    // trust the empty result; Levenshtein then has the chance to
+    // find tolerant matches the Bloom filter couldn't see.
     if (this.bloomPreScreener && this.bloomPreScreener.isBuilt()) {
       const screened = new Set(this.bloomPreScreener.intersectCandidates(query));
-      // Only narrow if the screener actually removes anything; falling
-      // back to the larger candidate set when screening yields zero
-      // matches (e.g. on very short queries that fall under
-      // minQueryTerm) preserves recall.
       if (screened.size > 0 && screened.size < candidateEntities.length) {
         candidateEntities = candidateEntities.filter((e) => screened.has(e.name));
       }

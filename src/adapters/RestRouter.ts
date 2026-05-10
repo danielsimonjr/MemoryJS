@@ -15,6 +15,7 @@
  * @module adapters/RestRouter
  */
 
+import type { IncomingMessage, ServerResponse } from 'http';
 import type { ManagerContext } from '../core/ManagerContext.js';
 import { logger } from '../utils/logger.js';
 
@@ -169,10 +170,30 @@ export class RestRouter {
           : { status: 404, body: { error: `Entity not found: ${req.params.name}` } };
       })
       .post('/entities', async (req, c) => {
-        if (!req.body || typeof req.body !== 'object') {
-          return { status: 400, body: { error: 'Body must be an Entity object' } };
+        const body = req.body as Record<string, unknown> | null;
+        if (
+          !body ||
+          typeof body !== 'object' ||
+          typeof body.name !== 'string' ||
+          typeof body.entityType !== 'string' ||
+          !Array.isArray(body.observations) ||
+          !body.observations.every((o) => typeof o === 'string')
+        ) {
+          return {
+            status: 400,
+            body: {
+              error:
+                'Body must be an Entity object with string `name`, string `entityType`, and string[] `observations`',
+            },
+          };
         }
-        const created = await c.entityManager.createEntities([req.body as never]);
+        const created = await c.entityManager.createEntities([
+          {
+            name: body.name,
+            entityType: body.entityType,
+            observations: body.observations,
+          },
+        ]);
         return { status: 201, body: { created } };
       })
       .delete('/entities/:name', async (req, c) => {
@@ -185,6 +206,90 @@ export class RestRouter {
         return { status: 200, body: { results } };
       });
     return router;
+  }
+
+  /**
+   * Minimal Node `http` adapter. Converts an `IncomingMessage` /
+   * `ServerResponse` pair into a `RestRequest`, runs `dispatch`, and
+   * writes the response. Reads the body as JSON when the
+   * `content-type` looks JSON-shaped; otherwise leaves `body` as
+   * `null` so handlers can decide how to interpret raw payloads.
+   *
+   * @example
+   * ```typescript
+   * import { createServer } from 'http';
+   * const router = RestRouter.withDefaults(ctx);
+   * createServer((req, res) => router.serve(req, res)).listen(3000);
+   * ```
+   */
+  async serve(req: IncomingMessage, res: ServerResponse): Promise<void> {
+    try {
+      const method = (req.method ?? 'GET').toUpperCase() as RestMethod;
+      const url = new URL(req.url ?? '/', 'http://localhost');
+      const query: Record<string, string> = {};
+      for (const [k, v] of url.searchParams) query[k] = v;
+      const headers: Record<string, string> = {};
+      for (const [k, v] of Object.entries(req.headers)) {
+        if (typeof v === 'string') headers[k.toLowerCase()] = v;
+        else if (Array.isArray(v)) headers[k.toLowerCase()] = v.join(',');
+      }
+      const body = await readJsonBody(req, headers);
+
+      const restReq: RestRequest = {
+        method,
+        path: url.pathname,
+        params: {},
+        query,
+        body,
+        headers,
+      };
+      const restRes = await this.dispatch(restReq);
+
+      res.statusCode = restRes.status;
+      if (restRes.headers) {
+        for (const [k, v] of Object.entries(restRes.headers)) res.setHeader(k, v);
+      }
+      if (restRes.body === null || restRes.body === undefined) {
+        res.end();
+        return;
+      }
+      if (!res.getHeader('content-type')) {
+        res.setHeader('content-type', 'application/json');
+      }
+      res.end(JSON.stringify(restRes.body));
+    } catch (err) {
+      logger.error('[RestRouter.serve] unhandled error:', err);
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ error: 'Internal Server Error' }));
+      }
+    }
+  }
+}
+
+/**
+ * Read the request body and parse as JSON when the content-type
+ * suggests JSON. Returns `null` for empty bodies or non-JSON
+ * content-types so handlers can branch on shape.
+ */
+async function readJsonBody(
+  req: IncomingMessage,
+  headers: Record<string, string>,
+): Promise<unknown> {
+  const ctype = headers['content-type'] ?? '';
+  if (!ctype.includes('json')) return null;
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+  }
+  if (chunks.length === 0) return null;
+  const text = Buffer.concat(chunks).toString('utf-8');
+  if (text.trim().length === 0) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
 }
 

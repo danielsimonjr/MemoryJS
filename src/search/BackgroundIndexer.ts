@@ -255,16 +255,16 @@ export class BackgroundIndexer {
  * indexer.start();
  * ```
  *
- * The updater fetches the live entity from storage on each upsert
- * (matches the `TFIDFEventSync` event-handler contract).
+ * The updater uses `IGraphStorage.getEntityByName` (O(1) via the
+ * NameIndex) on each upsert — replacing the previous `loadGraph()`
+ * + linear `.find()` which was O(n) per upsert.
  */
 export function makeTFIDFUpdater(indexManager: TFIDFIndexManager): IndexUpdater {
   return {
     name: 'tfidf',
-    async applyUpsert(entityName, storage) {
+    applyUpsert(entityName, storage) {
       if (!indexManager.isInitialized()) return;
-      const graph = await storage.loadGraph();
-      const entity = graph.entities.find((e) => e.name === entityName);
+      const entity = storage.getEntityByName(entityName);
       if (!entity) return;
       indexManager.updateDocument({
         name: entity.name,

@@ -9,8 +9,10 @@ import { tmpdir } from 'os';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import {
   BackgroundIndexer,
+  makeTFIDFUpdater,
   type IndexUpdater,
 } from '../../../src/search/BackgroundIndexer.js';
+import { TFIDFIndexManager } from '../../../src/search/TFIDFIndexManager.js';
 
 describe('BackgroundIndexer', () => {
   let storage: GraphStorage;
@@ -164,5 +166,71 @@ describe('BackgroundIndexer', () => {
     expect(updater.upserts).toEqual([]);
 
     indexer.stop();
+  });
+
+  describe('makeTFIDFUpdater factory', () => {
+    it('upserts a known entity into the TFIDFIndexManager', async () => {
+      process.env.MEMORY_INDEX_UPDATE_MODE = 'async';
+      const indexManager = new TFIDFIndexManager(dir);
+      // Build a minimal index so isInitialized() returns true.
+      await indexManager.buildIndex({ entities: [], relations: [] });
+
+      // Persist the entity into storage so getEntityByName resolves it.
+      await storage.saveGraph({
+        entities: [{ name: 'A', entityType: 'note', observations: ['hello world'] }],
+        relations: [],
+      });
+
+      const indexer = new BackgroundIndexer(storage, storage.events, { intervalMs: 60_000 });
+      indexer.registerUpdater(makeTFIDFUpdater(indexManager));
+      indexer.start();
+
+      storage.events.emitEntityCreated({ name: 'A', entityType: 'note', observations: ['hello world'] });
+      await indexer.flush();
+      expect(indexManager.getDocumentCount()).toBe(1);
+
+      indexer.stop();
+    });
+
+    it('removes a deleted entity from the TFIDFIndexManager', async () => {
+      process.env.MEMORY_INDEX_UPDATE_MODE = 'async';
+      const indexManager = new TFIDFIndexManager(dir);
+      await indexManager.buildIndex({
+        entities: [{ name: 'A', entityType: 'note', observations: ['hello'] }],
+        relations: [],
+      });
+      expect(indexManager.getDocumentCount()).toBe(1);
+
+      const indexer = new BackgroundIndexer(storage, storage.events, { intervalMs: 60_000 });
+      indexer.registerUpdater(makeTFIDFUpdater(indexManager));
+      indexer.start();
+
+      storage.events.emitEntityDeleted('A');
+      await indexer.flush();
+      expect(indexManager.getDocumentCount()).toBe(0);
+
+      indexer.stop();
+    });
+
+    it('upsert is a no-op when the index has not been built', async () => {
+      process.env.MEMORY_INDEX_UPDATE_MODE = 'async';
+      const indexManager = new TFIDFIndexManager(dir);
+      // buildIndex NOT called — isInitialized() is false.
+      await storage.saveGraph({
+        entities: [{ name: 'A', entityType: 'note', observations: [] }],
+        relations: [],
+      });
+
+      const indexer = new BackgroundIndexer(storage, storage.events, { intervalMs: 60_000 });
+      indexer.registerUpdater(makeTFIDFUpdater(indexManager));
+      indexer.start();
+
+      storage.events.emitEntityCreated({ name: 'A', entityType: 'note', observations: [] });
+      await indexer.flush();
+      expect(indexManager.isInitialized()).toBe(false);
+      expect(indexManager.getDocumentCount()).toBe(0);
+
+      indexer.stop();
+    });
   });
 });

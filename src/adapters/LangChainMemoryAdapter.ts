@@ -103,7 +103,15 @@ export class LangChainMemoryAdapter {
    */
   async loadMemoryVariables(_values: Record<string, unknown> = {}): Promise<MemoryVariables> {
     const turns = await this.engine.getSessionTurns(this.sessionId, { limit: this.maxTurns });
-    const messages: ChatMessage[] = turns.map((t) => extractRoleAndContent(t));
+    // Defensive re-sort: `MemoryEngine.getSessionTurns` is documented
+    // chronological, but explicitly sorting here protects against
+    // future changes to the engine's internal ordering.
+    const sorted = [...turns].sort((a, b) => {
+      const aT = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bT = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return aT - bT;
+    });
+    const messages: ChatMessage[] = sorted.map((t) => extractRoleAndContent(t));
     if (this.returnString) {
       const joined = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
       return { [this.memoryKey]: joined };
@@ -165,5 +173,9 @@ function extractRoleAndContent(entity: AgentEntity): ChatMessage {
   if (match) {
     return { role: match[1]!, content: match[2] ?? '' };
   }
-  return { role: 'user', content: first };
+  // Fallback: an entity without the `[role=...]` prefix is foreign
+  // to the MemoryEngine encoding. Label it `'unknown'` so downstream
+  // prompt-building code can decide how to handle it — silently
+  // relabelling foreign turns as `user` would distort prompts.
+  return { role: 'unknown', content: first };
 }

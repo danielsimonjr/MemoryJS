@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Phases 0, 1, 2, and 3 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven Phase 0 items + all ten Phase 1 items + 10 of 12 Phase 2 items + 5 of 12 Phase 3 items landed (Phase 2 steps 24/29 and Phase 3 steps 35–41 deferred). No SemVer-breaking changes.
+Phases 0, 1, 2, 3, and 4 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven Phase 0 items + all ten Phase 1 items + 10 of 12 Phase 2 items + 5 of 12 Phase 3 items + 4 of 7 Phase 4 items landed (Phase 2 steps 24/29, Phase 3 steps 35–41, and Phase 4 steps 42/43/45 deferred). No SemVer-breaking changes.
+
+### Added (Phase 4)
+
+- **`IDatabaseAdapter` interface** (`src/adapters/IDatabaseAdapter.ts`): contract for backing the knowledge graph with an external database. CRUD methods plus `applyBatch` (atomic — `InMemoryDatabaseAdapter` snapshot-restores on throw), `streamEntities` (AsyncIterable for cursor-style backends), `withTransaction`. Includes `NullDatabaseAdapter` (every method including `connect()` rejects so misconfigured callers fail loud) and `InMemoryDatabaseAdapter` (test-only reference impl). Real Postgres/Mongo adapters live in companion packages — no external dep added.
+- **`IVectorDBAdapter` interface** (`src/adapters/IVectorDBAdapter.ts`): contract for offloading semantic search to an external vector database. `connect` / `upsert` / `query` / `remove` / `stats`. Includes `InMemoryVectorAdapter` (linear-scan cosine reference impl). Zero-magnitude vectors return `NaN` from the similarity helper and are filtered out in `query` rather than silently scoring as 0. Real Weaviate/Pinecone/Qdrant adapters live in companion packages.
+- **`RestRouter`** (`src/adapters/RestRouter.ts`): framework-agnostic dispatch table. `:name`-pattern routes, `RestRequest` / `RestResponse` envelopes, `dispatch(req)` for any framework, plus a built-in Node `http` `serve(req, res)` adapter (auto-parses JSON bodies, writes JSON responses). `RestRouter.withDefaults(ctx)` mounts entity + search routes; the POST handler validates Entity shape (rejects with 400 on malformed body — replaced an unsafe `as never` cast with a real shape check).
+- **`LangChainMemoryAdapter`** (`src/adapters/LangChainMemoryAdapter.ts`): structurally matches LangChain's `BaseChatMemory` contract without taking a `langchain` dep. `loadMemoryVariables` (with defensive timestamp sort against future `MemoryEngine` ordering changes) + `saveContext` + `clear` + configurable input/output/memory keys. Foreign turns (without the `[role=...]` prefix) fall back to `'unknown'` rather than being silently relabeled as `user`.
+- **45 new tests** for adapters and wiring follow-ups: `IDatabaseAdapter` x10, `IVectorDBAdapter` x9, `RestRouter` x8, `LangChainMemoryAdapter` x7, `makeTFIDFUpdater` x3, `setBloomPreScreener` x3, `ctx.observationStore` x3, `applyBatch` atomicity x1, `withTransaction` round-trip x1.
+
+### Changed (Phase 4)
+
+- **`BackgroundIndexer.makeTFIDFUpdater`** (Phase 3 follow-up wiring): the factory's `applyUpsert` now uses `IGraphStorage.getEntityByName` (O(1) via the NameIndex) instead of `loadGraph().find()` (O(n) per upsert). Major perf improvement at scale.
+- **`ObservationStore`** gains `internEntityObservations(entity)` and `releaseEntityObservations(hashes)` convenience helpers; exposed via lazy `ctx.observationStore` getter on `ManagerContext`. JSDoc clarifies the store is per-`ManagerContext` and per-process — no on-disk persistence, no seed from existing graph entities.
+- **`FuzzySearch.setBloomPreScreener` / `hasBloomPreScreener`**: opt-in candidate pre-screen that intersects with the Bloom filter's output BEFORE the Levenshtein scan. Correctness preserved — the pre-screen falls back to the unfiltered candidate set when the screener returns zero matches (regression test verifies "Alise" still finds "Alice" through fuzzy search even though "alise" isn't in any entity's bloom filter).
+
+### Notes (Phase 4 — deferred items)
+
+- **Steps 42 / 43 / 45**: §12.5 NestJS / Express / Next.js framework integrations, §12.4 GraphQL support, §12.3 Elasticsearch sync. Each requires a real external dep (`@nestjs/common`, `graphql`, `@elastic/elasticsearch`) that the plan flags as "gated on dep approval." Skipped pending consumer / dep-approval decisions.
+- **Phase 2 step 24** (API tiering) remains blocked on the v2.0 SemVer cut decision.
+- **Phase 2 step 29** (split `IOManager.ts` 1934 LOC) still pending its own dedicated commit.
 
 ### Added (Phase 3)
 

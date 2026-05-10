@@ -132,7 +132,10 @@ export class InMemoryVectorAdapter implements IVectorDBAdapter {
     for (const stored of this.vectors.values()) {
       if (filter && !matchesFilter(stored.metadata, filter)) continue;
       const score = cosineSimilarity(vector, stored.vector);
-      if (score < minScore) continue;
+      // NaN indicates a zero-magnitude vector on either side — likely
+      // a broken upstream embedding rather than legitimate data. Drop
+      // it rather than silently treating it as "perfectly dissimilar".
+      if (Number.isNaN(score) || score < minScore) continue;
       matches.push({ id: stored.id, score, metadata: stored.metadata });
     }
     matches.sort((a, b) => b.score - a.score);
@@ -180,7 +183,7 @@ function matchesFilter(
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length || a.length === 0) return 0;
+  if (a.length !== b.length || a.length === 0) return NaN;
   let dot = 0;
   let normA = 0;
   let normB = 0;
@@ -192,5 +195,8 @@ function cosineSimilarity(a: number[], b: number[]): number {
     normB += bi * bi;
   }
   const denom = Math.sqrt(normA) * Math.sqrt(normB);
-  return denom === 0 ? 0 : dot / denom;
+  // Returning NaN for zero-magnitude vectors lets `query()` skip them
+  // — see the comment in the query loop. A zero vector typically
+  // indicates a broken embedding pipeline upstream.
+  return denom === 0 ? NaN : dot / denom;
 }

@@ -1165,4 +1165,35 @@ describe('KnowledgeGraphManager (ManagerContext)', () => {
       }
     });
   });
+
+  describe('observationStore lazy getter', () => {
+    it('returns the same instance across calls', () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'obs-store-lazy.jsonl'));
+      const a = ctx.observationStore;
+      const b = ctx.observationStore;
+      expect(a).toBe(b);
+    });
+
+    it('starts empty regardless of existing storage state', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'obs-store-empty.jsonl'));
+      await ctx.storage.saveGraph({
+        entities: [{ name: 'Alice', entityType: 'person', observations: ['hello'] }],
+        relations: [],
+      });
+      // Per the JSDoc, the store does not seed from existing entities.
+      expect(ctx.observationStore.size()).toBe(0);
+    });
+
+    it('internEntityObservations + releaseEntityObservations round-trip', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'obs-store-roundtrip.jsonl'));
+      const entity = { observations: ['a', 'b', 'a'] };
+      const hashes = ctx.observationStore.internEntityObservations(entity);
+      expect(hashes).toHaveLength(3);
+      expect(hashes[0]).toBe(hashes[2]); // 'a' deduped
+      expect(ctx.observationStore.size()).toBe(2);
+      const removed = ctx.observationStore.releaseEntityObservations(hashes);
+      expect(removed).toBe(2); // both unique entries hit zero
+      expect(ctx.observationStore.size()).toBe(0);
+    });
+  });
 });
