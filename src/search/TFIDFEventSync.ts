@@ -41,12 +41,32 @@ import type {
  * sync.disable();
  * ```
  */
+/**
+ * Pending coalesced index operation. Stored per-entity-name so consecutive
+ * events on the same entity collapse to a single final operation.
+ */
+type PendingOp =
+  | { op: 'upsert'; name: string; entityType: string; observations: string[] }
+  | { op: 'delete'; name: string };
+
 export class TFIDFEventSync {
   private indexManager: TFIDFIndexManager;
   private eventEmitter: GraphEventEmitter;
   private storage: IGraphStorage;
   private unsubscribers: Array<() => void> = [];
   private enabled: boolean = false;
+
+  /**
+   * Coalescing window in ms. Reads `MEMORY_INDEX_COALESCE_MS` (default 50).
+   * Set to 0 to disable coalescing — operations apply synchronously.
+   */
+  private readonly coalesceMs: number;
+
+  /** Pending op per entity name. Last op wins. */
+  private pendingOps: Map<string, PendingOp> = new Map();
+
+  /** Timer ref for the next scheduled flush, or null when no flush pending. */
+  private flushTimer: NodeJS.Timeout | null = null;
 
   /**
    * Create a new TFIDFEventSync instance.
@@ -63,6 +83,10 @@ export class TFIDFEventSync {
     this.indexManager = indexManager;
     this.eventEmitter = eventEmitter;
     this.storage = storage;
+
+    const raw = process.env.MEMORY_INDEX_COALESCE_MS;
+    const parsed = raw === undefined ? 50 : parseInt(raw, 10);
+    this.coalesceMs = Number.isFinite(parsed) && parsed >= 0 ? parsed : 50;
   }
 
   /**
@@ -94,7 +118,9 @@ export class TFIDFEventSync {
   /**
    * Disable automatic index synchronization.
    *
-   * Unsubscribes from all events.
+   * Unsubscribes from all events. Any pending coalesced operations are
+   * applied synchronously before returning so the index is not left in a
+   * stale state.
    */
   disable(): void {
     if (!this.enabled) {
@@ -106,6 +132,7 @@ export class TFIDFEventSync {
     }
     this.unsubscribers = [];
     this.enabled = false;
+    this.flushNow();
   }
 
   /**
@@ -118,6 +145,57 @@ export class TFIDFEventSync {
   }
 
   /**
+   * Drain all pending coalesced operations into the underlying index
+   * manager. Idempotent. Safe to call from tests, from `disable()`, and
+   * on demand.
+   */
+  flushNow(): void {
+    if (this.flushTimer !== null) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = null;
+    }
+    if (this.pendingOps.size === 0) return;
+    if (!this.indexManager.isInitialized()) {
+      // Nothing useful to do — drop the queue silently rather than try to
+      // apply against an un-built index.
+      this.pendingOps.clear();
+      return;
+    }
+    const ops = [...this.pendingOps.values()];
+    this.pendingOps.clear();
+    for (const op of ops) {
+      if (op.op === 'delete') {
+        this.indexManager.removeDocument(op.name);
+      } else {
+        this.indexManager.updateDocument({
+          name: op.name,
+          entityType: op.entityType,
+          observations: op.observations,
+        });
+      }
+    }
+  }
+
+  /**
+   * Schedule a flush within the coalescing window. If `coalesceMs` is 0,
+   * the flush runs synchronously here and the queue is drained immediately.
+   */
+  private scheduleFlush(): void {
+    if (this.coalesceMs === 0) {
+      this.flushNow();
+      return;
+    }
+    if (this.flushTimer !== null) return; // a flush is already pending
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      this.flushNow();
+    }, this.coalesceMs);
+    // Don't keep the event loop alive for a coalesce timer — schedulers
+    // and CLI processes should exit cleanly when their work is done.
+    this.flushTimer.unref?.();
+  }
+
+  /**
    * Handle entity:created event.
    * @private
    */
@@ -125,12 +203,13 @@ export class TFIDFEventSync {
     if (!this.indexManager.isInitialized()) {
       return;
     }
-
-    this.indexManager.addDocument({
+    this.pendingOps.set(event.entity.name, {
+      op: 'upsert',
       name: event.entity.name,
       entityType: event.entity.entityType,
       observations: event.entity.observations,
     });
+    this.scheduleFlush();
   }
 
   /**
@@ -141,18 +220,17 @@ export class TFIDFEventSync {
     if (!this.indexManager.isInitialized()) {
       return;
     }
-
-    // Fetch the current entity state
+    // Fetch the current entity state.
     const graph = await this.storage.loadGraph();
     const entity = graph.entities.find(e => e.name === event.entityName);
-
-    if (entity) {
-      this.indexManager.updateDocument({
-        name: entity.name,
-        entityType: entity.entityType,
-        observations: entity.observations,
-      });
-    }
+    if (!entity) return;
+    this.pendingOps.set(entity.name, {
+      op: 'upsert',
+      name: entity.name,
+      entityType: entity.entityType,
+      observations: entity.observations,
+    });
+    this.scheduleFlush();
   }
 
   /**
@@ -163,7 +241,7 @@ export class TFIDFEventSync {
     if (!this.indexManager.isInitialized()) {
       return;
     }
-
-    this.indexManager.removeDocument(event.entityName);
+    this.pendingOps.set(event.entityName, { op: 'delete', name: event.entityName });
+    this.scheduleFlush();
   }
 }

@@ -11,6 +11,7 @@
 import path from 'path';
 import { logger } from '../utils/logger.js';
 import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
+import { DiagnosticsAggregator, type DiagnosticsReport } from '../utils/Diagnostics.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
@@ -256,6 +257,30 @@ export class ManagerContext {
     return new IndexHealthMonitor({
       rankedSearch: this._rankedSearch,
       embeddingHealth: () => this.embeddingHealthSnapshot(),
+    }).report();
+  }
+
+  /**
+   * Aggregate diagnostics: composes over `indexHealth()` and adds optional
+   * memory / entity-count / query-stats / cache-hit-rate panels. Cheap
+   * enough to call from a request handler — does not force lazy-subsystem
+   * construction (uninitialised parts report null/empty).
+   */
+  diagnostics(): DiagnosticsReport {
+    return new DiagnosticsAggregator({
+      indexHealth: () => this.indexHealth(),
+      entityCounts: () => {
+        // Avoid forcing a graph load — read the cache directly via the
+        // public storage interface. If the cache isn't warm, return -1.
+        const cached = (this.storage as { cachedGraph?: { entities: ReadonlyArray<{ entityType: string }> } })
+          .cachedGraph;
+        if (!cached) return { total: -1, byType: {} };
+        const byType: Record<string, number> = {};
+        for (const e of cached.entities) {
+          byType[e.entityType] = (byType[e.entityType] ?? 0) + 1;
+        }
+        return { total: cached.entities.length, byType };
+      },
     }).report();
   }
 

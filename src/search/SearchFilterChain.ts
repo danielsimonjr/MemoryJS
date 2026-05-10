@@ -43,6 +43,13 @@ export interface SearchFilters {
   projectId?: string;
   /** Include superseded entity versions (isLatest=false). Default false. */
   includeSuperseded?: boolean;
+  /**
+   * Allowed entity lifecycle statuses. When omitted, defaults to
+   * `['published']` — drafts and archived entities are excluded from
+   * search results unless the caller opts in. Pass
+   * `['draft', 'published', 'archived']` to include everything.
+   */
+  lifecycleStatus?: ReadonlyArray<'draft' | 'published' | 'archived'>;
 }
 
 /**
@@ -146,6 +153,15 @@ export class SearchFilterChain {
 
     // Versioning filter: exclude superseded entities by default
     if (!filters.includeSuperseded && entity.isLatest === false) {
+      return false;
+    }
+
+    // Lifecycle-status filter: default to 'published' only. Entities
+    // created before the lifecycleStatus field existed (undefined) are
+    // treated as 'published' for back-compat.
+    const allowedStatuses = filters.lifecycleStatus ?? ['published'];
+    const effective = entity.lifecycleStatus ?? 'published';
+    if (!allowedStatuses.includes(effective)) {
       return false;
     }
 

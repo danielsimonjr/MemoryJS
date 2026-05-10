@@ -51,9 +51,24 @@ export class SQLiteStorage implements IGraphStorage {
   private mutex = new Mutex();
 
   /**
-   * SQLite database instance.
+   * SQLite database instance for writes and write-transaction reads.
    */
   private db: DatabaseType | null = null;
+
+  /**
+   * Read-only connection pool. WAL mode (set in `initialize()`) lets these
+   * read concurrently with the writer at the SQLite level. Round-robin
+   * checkout via `pickReadConnection()` keeps the rotation cheap.
+   *
+   * Sized by `MEMORY_SQLITE_READ_POOL_SIZE` (default 4). Set to 0 or 1 to
+   * route reads through the writer connection.
+   */
+  private readPool: DatabaseType[] = [];
+
+  /**
+   * Round-robin cursor over `readPool`. Wraps modulo pool size.
+   */
+  private readPoolCursor: number = 0;
 
   /**
    * Whether the database has been initialized.
@@ -124,6 +139,10 @@ export class SQLiteStorage implements IGraphStorage {
     // Enable foreign keys and WAL mode for better performance
     this.db.pragma('foreign_keys = ON');
     this.db.pragma('journal_mode = WAL');
+
+    // Spin up the read pool while the writer connection is still live so
+    // file creation and pragmas have already happened.
+    this.initReadPool();
 
     // Create tables and indexes
     this.createTables();
@@ -956,8 +975,11 @@ export class SQLiteStorage implements IGraphStorage {
 
       if (!sanitized) return [];
 
-      // Use FTS5 MATCH for full-text search with BM25 ranking
-      const stmt = this.db.prepare(`
+      // Use FTS5 MATCH for full-text search with BM25 ranking. Reads check
+      // out a pooled connection so they can run concurrently with writes
+      // at the SQLite level (WAL mode).
+      const reader = this.pickReadConnection();
+      const stmt = reader.prepare(`
         SELECT name, bm25(entities_fts, 10, 5, 3, 1) as score
         FROM entities_fts
         WHERE entities_fts MATCH ?
@@ -985,7 +1007,8 @@ export class SQLiteStorage implements IGraphStorage {
     // Escape LIKE wildcards to prevent matching manipulation
     const escaped = searchTerm.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
     const pattern = `%${escaped}%`;
-    const stmt = this.db.prepare(`
+    const reader = this.pickReadConnection();
+    const stmt = reader.prepare(`
       SELECT name FROM entities
       WHERE name LIKE ? ESCAPE '\\' COLLATE NOCASE
          OR entityType LIKE ? ESCAPE '\\' COLLATE NOCASE
@@ -1031,14 +1054,66 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Close the database connection.
+   * Close the database connection (and any pooled read connections).
    */
   close(): void {
+    this.closeReadPool();
     if (this.db) {
       this.db.close();
       this.db = null;
     }
     this.initialized = false;
+  }
+
+  /**
+   * Initialise the read connection pool. Size comes from
+   * `MEMORY_SQLITE_READ_POOL_SIZE` (default 4). A size of 0 or 1 means
+   * "route reads through the writer connection" — the pool stays empty
+   * and `pickReadConnection()` returns `this.db`.
+   */
+  private initReadPool(): void {
+    const raw = process.env.MEMORY_SQLITE_READ_POOL_SIZE;
+    const parsed = raw === undefined ? 4 : parseInt(raw, 10);
+    const size = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 4;
+    if (size <= 1) return; // Single-writer fallback; reads go through this.db.
+
+    for (let i = 0; i < size; i++) {
+      const conn = new Database(this.validatedDbFilePath, { readonly: true });
+      conn.pragma('foreign_keys = ON');
+      conn.pragma('journal_mode = WAL');
+      this.readPool.push(conn);
+    }
+  }
+
+  /**
+   * Close every pooled read connection.
+   */
+  private closeReadPool(): void {
+    for (const conn of this.readPool) {
+      try {
+        conn.close();
+      } catch {
+        // Best-effort close; ignore.
+      }
+    }
+    this.readPool.length = 0;
+    this.readPoolCursor = 0;
+  }
+
+  /**
+   * Pick a read connection. Round-robin across the pool; falls back to the
+   * writer when the pool is empty (size 0 or 1, or pool not yet
+   * initialised). Internal helper — public read methods should call this
+   * rather than `this.db` directly when they don't need write semantics.
+   */
+  private pickReadConnection(): DatabaseType {
+    if (this.readPool.length === 0) {
+      if (!this.db) throw new Error('Database not initialized');
+      return this.db;
+    }
+    const conn = this.readPool[this.readPoolCursor]!;
+    this.readPoolCursor = (this.readPoolCursor + 1) % this.readPool.length;
+    return conn;
   }
 
   // ==================== Relation Index Operations ====================
