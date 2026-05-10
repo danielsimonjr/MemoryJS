@@ -44,10 +44,11 @@ export async function* streamArrayInChunks<T>(
   source: readonly T[],
   chunkSize: number = 10,
 ): AsyncIterable<T> {
-  if (chunkSize <= 0) chunkSize = 1;
+  // Local — never mutate the function parameter.
+  const size = chunkSize <= 0 ? 1 : chunkSize;
   for (let i = 0; i < source.length; i++) {
     yield source[i]!;
-    if ((i + 1) % chunkSize === 0 && i + 1 < source.length) {
+    if ((i + 1) % size === 0 && i + 1 < source.length) {
       // Yield the event loop so a `break` from the consumer's `for await`
       // is observed promptly. Cheap; on a few-hundred-element batch this
       // adds <1 ms of latency to the full traversal.
@@ -64,6 +65,13 @@ export async function* streamArrayInChunks<T>(
  * Each source is "peeked" eagerly: the merger pulls one item from each
  * iterator, picks the highest, and advances only that source. Sources
  * that exhaust drop out of the queue.
+ *
+ * **Precondition:** every source MUST yield items in non-increasing
+ * score order. The merger only inspects head positions, so a
+ * non-monotone source silently produces a globally non-monotone
+ * output stream — there is no runtime check. Hybrid-search callers
+ * already sort their layer outputs before adapting them, so this
+ * holds in practice; document the contract at every adapter site.
  *
  * Useful for hybrid search where lexical / semantic / symbolic layers
  * each yield ranked results — callers see the global top-K before any

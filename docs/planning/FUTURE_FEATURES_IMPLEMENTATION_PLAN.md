@@ -100,20 +100,26 @@ Phase 2 result: 10 of 12 items shipped (steps 24, 29 deferred). New env vars: `M
 
 ## Phase 3 — Larger features (3–6 weeks each)
 
-| ☐ | # | Item | Est. |
-|---|---|------|------|
-| ☐ | 30 | §1.4 Query result streaming (`AsyncIterable<ScoredEntity>`) | 3 wk |
-| ☐ | 31 | §2.3 Background index maintenance | 3 wk |
-| ☐ | 32 | §3.1 Observation deduplication (content-addressable) | 3 wk |
-| ☐ | 33 | §5.5 Index partitioning by entity type | 3 wk |
-| ☐ | 34 | §11.1 Heuristic Guidelines Manager (last Phase 3B item) | 3–4 wk |
-| ☐ | 35 | §4.3 Columnar observation storage | 3–4 wk |
-| ☐ | 36 | §3.2 Lazy entity hydration (`EntityProxy`) | 4 wk |
-| ☐ | 37 | §3.4 Compressed in-memory storage (LZ4 cold tier) | 4 wk |
-| ☐ | 38 | §5.3 JSONL segment files | 4 wk |
-| ☐ | 39 | §5.4 Memory-mapped file support | 4–6 wk |
-| ☐ | 40 | §2.1 WAL for JSONL backend | 4–6 wk |
-| ☐ | 41 | §1.5 Tiered index architecture | 4–6 wk |
+| ☐ | # | Item | Est. | Acceptance |
+|---|---|------|------|------------|
+| ☑ | 30 | **§1.4 Query result streaming** | 3 wk | ✅ New `src/search/SearchStream.ts`. `streamArrayInChunks` (chunked yield with `setImmediate` between chunks for early-break responsiveness), `streamMergedByScore` (priority-queue merge over multiple `AsyncIterable<ScoredItem>` sources — precondition: per-source descending order, documented), `collectStream` helper. |
+| ☑ | 31 | **§2.3 Background index maintenance** | 3 wk | ✅ New `src/search/BackgroundIndexer.ts`. Gated on `MEMORY_INDEX_UPDATE_MODE=async`. Per-entity coalescing (delete+create→upsert; upsert+delete→delete; idempotent). Concurrent `flush()` calls share an in-flight promise + chain a follow-up drain when the queue grows during a flush (no starvation). Force-flush on max-batch dispatched via `setImmediate` to avoid re-entering the emit handler. `pendingFor(name)` lets search-side overlays serve reads against dirty indexes. |
+| ☑ | 32 | **§3.1 Observation deduplication** | 3 wk | ✅ New `src/core/ObservationStore.ts`. Content-addressable SHA-256 store with reference counting; `release()` returns tri-state `'removed' \| 'decremented' \| 'unknown'` so callers distinguish no-ops from successful decrements. Entity shape unchanged — wiring into `EntityManager` is a follow-up. |
+| ☑ | 33 | **§5.5 Index partitioning by entity type** | 3 wk | ✅ New `src/search/PartitionedInvertedIndex.ts`. Composes per-entityType `OptimizedInvertedIndex` instances; `searchPartition(type, terms)` for typed queries, `searchAcrossAll(terms)` (snapshot-iterates partitions for safety). `IIndexHealth.health()` rolls partitions up. |
+| ☑ | 34 | **§11.1 Heuristic Guidelines Manager (last Phase 3B item)** | 3–4 wk | ✅ New `src/agent/HeuristicManager.ts`. `add` / `match` (Jaccard token-overlap × confidence; symmetric so a 1-token query against a 10-token condition isn't penalised) / `reinforce` (asymptotic toward 1) / `recordContradiction` (asymptotic toward 0) / `detectConflicts` (overlap vs literal-negation contradiction). Stopword-aware tokeniser keeps short tokens like "PR", "AI", "go". |
+| ☐ | 35 | §4.3 Columnar observation storage | 3–4 wk | DEFERRED |
+| ☐ | 36 | §3.2 Lazy entity hydration (`EntityProxy`) | 4 wk | DEFERRED |
+| ☐ | 37 | §3.4 Compressed in-memory storage (LZ4 cold tier) | 4 wk | DEFERRED |
+| ☐ | 38 | §5.3 JSONL segment files | 4 wk | DEFERRED |
+| ☐ | 39 | §5.4 Memory-mapped file support | 4–6 wk | DEFERRED |
+| ☐ | 40 | §2.1 WAL for JSONL backend | 4–6 wk | DEFERRED |
+| ☐ | 41 | §1.5 Tiered index architecture | 4–6 wk | DEFERRED |
+
+**Phase 2 deferred-wirings shipped alongside Phase 3:**
+- `PartialIndexAdvisor` wired into `SQLiteStorage.recordFilter()` (deferred DDL via `setImmediate` per review #17).
+- `EmbeddingCache` and `QueryPlanCache` now `implements PressureAwareCache` (single-sort O(n log n) `evictTo` per review #15/#16). `ctx.cachePressure: CachePressureCoordinator` exposed on `ManagerContext`; cache JSDocs document the registration pattern.
+- `MaterializedViewsManager` exposed via lazy `ctx.materializedViews` getter.
+- BloomPreScreener → FuzzySearch wiring still deferred (FuzzySearch restructuring needed).
 
 ---
 
@@ -192,7 +198,8 @@ Mark each item ☑ when its phase commit lands. Append a one-line note for varia
 | 2026-05-08 | 1 (step 10) | **§15.3 Eliminate `as any` casts** + clean up the 10 pre-existing test failures and 4 unused-eslint-disable warnings discovered during Phase 0 | ✅ Shipped. User asked to fix all pre-existing issues surfaced in Phase 0. 18 `as any` casts cleared across 9 files; 4 unused `eslint-disable` directives removed; plan-doc-audit tests gained `git config commit.gpgsign false` in `beforeEach` to bypass the sandboxed-CI signing requirement (9 failures → 0); entityUtils path test made platform-aware (Linux uses `/etc/test/...` and `/base`; Windows keeps the original `C:\` paths). Final tally: `npm run lint` exits 0 (0 errors / 0 warnings); `npm run test:ci` passes 6008/6008 with 0 failures. | `9d19e87` |
 | 2026-05-08 | 1 | **All 9 remaining Phase 1 items** (§15.9 SECURITY.md, §8.1/8.2/8.3 graph algorithms, §5.1 SQLite read pool, §1.3 BM25 incrementality + TFIDFEventSync coalescing, §9.1 entity state machine, §4.2 AbortController, §6.2 ctx.diagnostics) | ✅ Shipped. One review round (general-purpose subagent on the WIP commit → 24 findings, 12 substantive fixes applied) and one simplify round (3 parallel reviewers — code reuse, code quality, efficiency → 13 cleanups). Tests: 23 new smoke tests (HITS x3, Bron-Kerbosch x2, Louvain x2, EntityStateMachine x7, BM25 incrementality x5, ParallelSearchExecutor AbortSignal x2, plus 2 inline). Test-runner surfaced 6 TFIDFEventSync test failures from the create→upsert collapse — fixed by restoring create/update/delete distinction with explicit `mergeOp` rules. Final tally: `npm run lint` exits 0; `npm run test:ci` passes 6029/6029; `npm audit` reports 0 vulnerabilities. Bumped Phase 0/Phase 1 step 10 deferred fixes too: pre-existing latent XML decode-order bug in `IOManager` fixed during the SECURITY.md audit (decoder now runs `&amp;` last for double-encoded entities). | `fdff4c3` (impl WIP) + `553b6a4` (review+simplify+tests WIP) + `d11f52c` (close-out) |
 | 2026-05-08 | 2 | **10 of 12 Phase 2 items** (steps 18–23, 25–28). Steps 24 and 29 deferred (see ledger acceptance column). | ✅ Shipped. One review round (general-purpose subagent on the WIP commit → 30 findings, 11 substantive fixes applied: BloomFilter h2-odd, MaterializedViews dirty-flag race, CachePressureCoordinator entry-units contract, PartialIndexAdvisor column re-validation + correct index column, QueryCost min-bound on observed, SynonymManager per-entity dedup, BloomPreScreener dynamic capacity, vocab event-driven invalidation, ctx.batch abort-on-throw, env-var matrix). Tests: 32 new (Bloom x12, MaterializedViews x7, CachePressureCoordinator x6, ctx.batch x3, plus the 17 across SearchSuggestions/Synonym/PartialIndex/QueryCost/Distillation from step 23). Highlight: Zod v4 + Commander v14 + chrono-node bumps landed with **zero source changes** — all 6028 existing tests pass. Final tally: `npm run lint` exits 0; `npm run test:ci` passes 6092/6092; `npm audit` reports 0 vulnerabilities. | `e425885` (impl WIP) + close-out commit |
+| 2026-05-08 | 3 | **5 of 12 Phase 3 items** (steps 30, 31, 32, 33, 34) + 3 of 4 deferred Phase 2 wirings. Steps 35–41 deferred (each is months of dedicated work, warrants its own phase). | ✅ Shipped. Steps 30–34 add `SearchStream`, `BackgroundIndexer`, `ObservationStore`, `PartitionedInvertedIndex`, `HeuristicManager` (the last Phase 3B item — closes that sub-track). Phase 2 wirings: `PartialIndexAdvisor` wired into `SQLiteStorage.recordFilter`, `EmbeddingCache`/`QueryPlanCache` implement `PressureAwareCache`, `ctx.materializedViews` lazy getter exposed. One review round (25 findings → 12 substantive fixes: BackgroundIndexer concurrency #7+#8, EmbeddingCache+QueryPlanCache O(n²) → O(n log n) bulk-evict #15+#16, deferred DDL #17, ObservationStore tri-state release #1, SearchStream descending-order docstring #4, HeuristicManager Jaccard + stopwords #11+#13, PartitionedInvertedIndex snapshot iterator #10, parameter-mutation style nit #25, cache JSDoc registration examples #18). Tests: 58 new (ObservationStore x10, SearchStream x8, BackgroundIndexer x7, PartitionedInvertedIndex x8, HeuristicManager x8, plus #21/#22/#23 wiring tests x17). Final tally: `npm run lint` exits 0; `npm run test:ci` passes 6150/6150; `npm audit` reports 0 vulnerabilities. | `6856587` (impl WIP) + close-out commit |
 
 ---
 
-*Last updated: 2026-05-08 — Phases 0, 1, and 2 shipped (see ledger). Phase 2 result: 10 of 12 items shipped, steps 24 and 29 deferred. Test:ci 6092/6092 passing on Zod v4 + Commander v14.*
+*Last updated: 2026-05-08 — Phases 0, 1, 2, and 3 shipped (see ledger). Phase 3 result: 5 of 12 items shipped (steps 30–34), 3 of 4 deferred Phase 2 wirings completed, steps 35–41 deferred. Test:ci 6150/6150 passing.*

@@ -75,19 +75,24 @@ export class ObservationStore {
   }
 
   /**
-   * Decrement the reference count for a hash. When it reaches zero, the
-   * entry is removed. Returns `true` if the entry was actually removed,
-   * `false` if the hash was unknown or still has references.
+   * Decrement the reference count for a hash. Returns:
+   *   - `'removed'` — the refCount hit zero and the entry was deleted
+   *   - `'decremented'` — the entry still has references after the call
+   *   - `'unknown'` — no such hash in the store
+   *
+   * The tri-state lets callers distinguish "successful decrement" from
+   * "no-op unknown hash" — a use case the previous boolean return
+   * conflated.
    */
-  release(hash: string): boolean {
+  release(hash: string): 'removed' | 'decremented' | 'unknown' {
     const entry = this.entries.get(hash);
-    if (!entry) return false;
+    if (!entry) return 'unknown';
     entry.refCount--;
     if (entry.refCount <= 0) {
       this.entries.delete(hash);
-      return true;
+      return 'removed';
     }
-    return false;
+    return 'decremented';
   }
 
   /**

@@ -89,8 +89,13 @@ export class PartitionedInvertedIndex implements IIndexHealth {
    * type is empty.
    */
   searchAcrossAll(terms: string[]): string[] {
+    // Snapshot the partition list before iterating — protects against
+    // a future async `intersect` (or a concurrent `dropPartition` from
+    // another execution context) from invalidating the iterator
+    // mid-walk.
+    const partitions = [...this.partitions.values()];
     const seen = new Set<string>();
-    for (const partition of this.partitions.values()) {
+    for (const partition of partitions) {
       for (const name of partition.intersect(terms)) seen.add(name);
     }
     return [...seen];

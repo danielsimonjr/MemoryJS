@@ -1115,4 +1115,54 @@ describe('KnowledgeGraphManager (ManagerContext)', () => {
       expect(result.operationsExecuted).toBe(0);
     });
   });
+
+  describe('materializedViews lazy getter', () => {
+    it('returns the same instance across calls (lazy memoised)', () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'mv-lazy.jsonl'));
+      const a = ctx.materializedViews;
+      const b = ctx.materializedViews;
+      expect(a).toBe(b);
+    });
+
+    it('register + query work end-to-end through ManagerContext', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'mv-roundtrip.jsonl'));
+      await ctx.storage.saveGraph({
+        entities: [
+          { name: 'A', entityType: 'note', observations: [] },
+          { name: 'B', entityType: 'project', observations: [] },
+        ],
+        relations: [],
+      });
+      ctx.materializedViews.register({ name: 'notes', filters: { entityType: 'note' } });
+      const result = await ctx.materializedViews.query('notes');
+      expect(result.members).toEqual(['A']);
+      expect(result.refreshed).toBe(true);
+    });
+  });
+
+  describe('cachePressure coordinator field', () => {
+    it('is exposed regardless of env-var state', () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'cp.jsonl'));
+      expect(ctx.cachePressure).toBeDefined();
+      expect(typeof ctx.cachePressure.register).toBe('function');
+    });
+
+    it('register + totalEntries round-trip when enabled', () => {
+      const original = process.env.MEMORY_CACHE_BUDGET_ENTRIES;
+      process.env.MEMORY_CACHE_BUDGET_ENTRIES = '1000';
+      try {
+        const ctx = new KnowledgeGraphManager(join(testDir, 'cp-on.jsonl'));
+        const fake = {
+          name: 'fake',
+          currentEntries: () => 5,
+          evictTo: () => undefined,
+        };
+        ctx.cachePressure.register(fake);
+        expect(ctx.cachePressure.totalEntries()).toBe(5);
+      } finally {
+        if (original === undefined) delete process.env.MEMORY_CACHE_BUDGET_ENTRIES;
+        else process.env.MEMORY_CACHE_BUDGET_ENTRIES = original;
+      }
+    });
+  });
 });

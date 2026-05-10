@@ -69,6 +69,15 @@ export const DEFAULT_EMBEDDING_CACHE_OPTIONS: Required<EmbeddingCacheOptions> = 
  * - TTL support for automatic expiration
  * - Hit/miss statistics tracking
  *
+ * Implements `PressureAwareCache` — once constructed, callers should
+ * register the instance with `ctx.cachePressure` so coordinated
+ * eviction can shrink it under memory pressure:
+ *
+ * ```typescript
+ * const cache = new EmbeddingCache({ maxSize: 500 });
+ * ctx.cachePressure.register(cache);
+ * ```
+ *
  * @example
  * ```typescript
  * const cache = new EmbeddingCache({ maxSize: 500, ttlMs: 60000 });
@@ -306,12 +315,17 @@ export class EmbeddingCache {
 
   /**
    * `PressureAwareCache` interface — drop LRU entries until the cache
-   * is at or below `targetEntries`. Repeated calls into the existing
-   * `evictLRU` private; cheap for any reasonable target.
+   * is at or below `targetEntries`. Single sort + bulk delete (O(n log n))
+   * — calling `evictLRU()` in a loop would be O(n²) on bulk evictions
+   * because each call re-scans the full map for the oldest entry.
    */
   evictTo(targetEntries: number): void {
-    while (this.cache.size > targetEntries) {
-      this.evictLRU();
+    if (this.cache.size <= targetEntries) return;
+    const entries = [...this.cache.entries()];
+    entries.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
+    const toRemove = this.cache.size - Math.max(0, targetEntries);
+    for (let i = 0; i < toRemove; i++) {
+      this.cache.delete(entries[i]![0]);
     }
   }
 

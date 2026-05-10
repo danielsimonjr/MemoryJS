@@ -27,6 +27,7 @@ import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphSt
 import { clearAllSearchCaches } from '../utils/searchCache.js';
 import { NameIndex, TypeIndex } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath } from '../utils/index.js';
+import { logger } from '../utils/logger.js';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 
 /**
@@ -1163,7 +1164,17 @@ export class SQLiteStorage implements IGraphStorage {
     this.partialIndexAdvisor.record(observation);
     this.partialIndexRecordings++;
     if (this.partialIndexRecordings % this.partialIndexApplyEvery === 0 && this.db) {
-      this.partialIndexAdvisor.apply(this.db);
+      // Defer the DDL via setImmediate so the calling search returns
+      // before any CREATE INDEX runs. The advisor's apply() is
+      // idempotent so a second call before the first finishes is safe.
+      const dbRef = this.db;
+      setImmediate(() => {
+        try {
+          this.partialIndexAdvisor.apply(dbRef);
+        } catch (err) {
+          logger.error('[SQLiteStorage] partial-index apply failed:', err);
+        }
+      });
     }
   }
 

@@ -33,15 +33,25 @@ describe('ObservationStore', () => {
     const store = new ObservationStore();
     const h = store.intern('x');
     store.intern('x'); // refCount=2
-    expect(store.release(h)).toBe(false); // refCount=1
-    expect(store.release(h)).toBe(true);  // refCount=0, removed
+    expect(store.release(h)).toBe('decremented');
+    expect(store.release(h)).toBe('removed');
     expect(store.size()).toBe(0);
     expect(store.get(h)).toBeUndefined();
   });
 
-  it('release on unknown hash returns false', () => {
+  it('release on unknown hash returns "unknown"', () => {
     const store = new ObservationStore();
-    expect(store.release('deadbeef')).toBe(false);
+    expect(store.release('deadbeef')).toBe('unknown');
+  });
+
+  it('intern after full release recreates the entry with refCount=1', () => {
+    const store = new ObservationStore();
+    const h1 = store.intern('roundtrip');
+    store.release(h1);
+    expect(store.size()).toBe(0);
+    const h2 = store.intern('roundtrip');
+    expect(h2).toBe(h1); // SHA-256 stable across re-add
+    expect(store.refCount(h2)).toBe(1);
   });
 
   it('stats reflects unique observations and bytes saved', () => {

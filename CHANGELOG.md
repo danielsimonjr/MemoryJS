@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Phases 0, 1, and 2 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven Phase 0 items + all ten Phase 1 items + 10 of 12 Phase 2 items landed (Phase 2 steps 24 and 29 deferred). No SemVer-breaking changes.
+Phases 0, 1, 2, and 3 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. All seven Phase 0 items + all ten Phase 1 items + 10 of 12 Phase 2 items + 5 of 12 Phase 3 items landed (Phase 2 steps 24/29 and Phase 3 steps 35–41 deferred). No SemVer-breaking changes.
+
+### Added (Phase 3)
+
+- **Query result streaming** (`src/search/SearchStream.ts`): `streamArrayInChunks` (chunked yield with `setImmediate` between chunks for early-break responsiveness), `streamMergedByScore` (priority-queue merge over multiple `AsyncIterable<ScoredItem>` sources — precondition: per-source descending order, documented), `collectStream` helper.
+- **Background index maintenance** (`src/search/BackgroundIndexer.ts`): decouples index updates from the write path. Gated on `MEMORY_INDEX_UPDATE_MODE=async`. Per-entity coalescing rules with explicit merge matrix. Concurrent `flush()` calls share an in-flight promise + chain a follow-up drain when the queue grows during a flush — no starvation under sustained writes. Force-flush on max-batch dispatched via `setImmediate` to avoid re-entering the emit handler synchronously.
+- **Observation deduplication** (`src/core/ObservationStore.ts`): content-addressable SHA-256 store with reference counting. `release()` returns tri-state `'removed' | 'decremented' | 'unknown'` so callers distinguish no-ops from successful decrements. `intern` / `get` / `refCount` / `stats` / `internAll` / `getAll`. Entity shape unchanged; wiring into `EntityManager` is a follow-up.
+- **Index partitioning by entity type** (`src/search/PartitionedInvertedIndex.ts`): per-entityType partitioned router over `OptimizedInvertedIndex`. `searchPartition(type, terms)` for typed queries (proportional to per-type document count rather than full graph), `searchAcrossAll(terms)` snapshots the partition list before iterating to protect against concurrent `dropPartition`. `IIndexHealth.health()` rolls partitions up.
+- **Heuristic Guidelines Manager** (`src/agent/HeuristicManager.ts`): closes the **last unshipped Phase 3B item**. `add` / `match` (Jaccard token-overlap × confidence — symmetric so a 1-token query against a 10-token condition isn't penalised out of proportion) / `reinforce` (asymptotic toward 1) / `recordContradiction` (asymptotic toward 0) / `detectConflicts` (overlap vs literal-negation contradiction). Stopword-aware tokeniser keeps short tokens like "PR", "AI", "go".
+- **3 of 4 deferred Phase 2 wirings:** `PartialIndexAdvisor` wired into `SQLiteStorage.recordFilter()` (deferred DDL via `setImmediate` so the calling search returns first); `EmbeddingCache` and `QueryPlanCache` now `implements PressureAwareCache` with single-sort O(n log n) `evictTo`; `ctx.materializedViews` lazy getter exposed on `ManagerContext`. The remaining `BloomPreScreener` → `FuzzySearch` wiring requires FuzzySearch restructuring and stays deferred.
+- **75 new tests** (58 from Phase 3 modules + 17 from review-driven wiring tests): `ObservationStore` x10, `SearchStream` x8, `BackgroundIndexer` x7, `PartitionedInvertedIndex` x8, `HeuristicManager` x8, `PressureAwareCache` interface tests on both caches x10, `recordFilter` round-trip x2, `ctx.materializedViews` + `ctx.cachePressure` x4, plus inline. `test:ci` total now 6150 / 6150 passing.
+
+### Notes (Phase 3 — deferred items)
+
+- **Steps 35–41**: §4.3 columnar storage, §3.2 lazy hydration, §3.4 compressed in-memory (LZ4 cold tier), §5.3 JSONL segments, §5.4 mmap, §2.1 WAL for JSONL, §1.5 tiered index. Each is months of dedicated work — they warrant standalone phases rather than being bundled into a single commit.
+- **Wiring follow-ups still outstanding**: `BloomPreScreener` → `FuzzySearch` (needs FuzzySearch restructuring), `BackgroundIndexer` ↔ `TFIDFEventSync` (no production caller registers a real `IndexUpdater` yet), `ObservationStore` → `EntityManager` (Entity write path still stores full strings).
+- **Phase 2 step 24** (API tiering) remains blocked on the v2.0 SemVer cut decision.
+- **Phase 2 step 29** (split `IOManager.ts` 1934 LOC) still pending its own dedicated commit.
 
 ### Added (Phase 2)
 

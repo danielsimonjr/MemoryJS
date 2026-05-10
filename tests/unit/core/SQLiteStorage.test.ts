@@ -1197,4 +1197,42 @@ describe('SQLiteStorage', () => {
       expect(employees[0].name).toBe('Alice');
     });
   });
+
+  describe('PartialIndexAdvisor wiring (recordFilter)', () => {
+    const ORIGINAL = process.env.MEMORY_SQLITE_AUTO_INDEX;
+
+    beforeEach(() => {
+      delete process.env.MEMORY_SQLITE_AUTO_INDEX;
+    });
+
+    afterEach(() => {
+      if (ORIGINAL === undefined) delete process.env.MEMORY_SQLITE_AUTO_INDEX;
+      else process.env.MEMORY_SQLITE_AUTO_INDEX = ORIGINAL;
+    });
+
+    it('recordFilter is a no-op when MEMORY_SQLITE_AUTO_INDEX is unset', async () => {
+      // Default beforeEach already created `storage` without the env var.
+      await storage.ensureLoaded();
+      storage.recordFilter({ entityType: 'person' });
+      const snap = storage.partialIndexAdvisorSnapshot();
+      // No counts recorded when advisor is disabled.
+      expect(snap.typeCounts.person).toBeUndefined();
+      expect(snap.liveIndexes).toEqual([]);
+    });
+
+    it('recordFilter accumulates counts when env var enabled', async () => {
+      process.env.MEMORY_SQLITE_AUTO_INDEX = 'true';
+      const enabled = new SQLiteStorage(join(testDir, 'advisor-on.db'));
+      try {
+        await enabled.ensureLoaded();
+        for (let i = 0; i < 3; i++) enabled.recordFilter({ entityType: 'person' });
+        enabled.recordFilter({ projectId: 'proj-A' });
+        const snap = enabled.partialIndexAdvisorSnapshot();
+        expect(snap.typeCounts.person).toBe(3);
+        expect(snap.projectCounts['proj-A']).toBe(1);
+      } finally {
+        enabled.close();
+      }
+    });
+  });
 });

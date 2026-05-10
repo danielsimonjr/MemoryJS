@@ -69,7 +69,16 @@ export class BackgroundIndexer {
   private interval: NodeJS.Timeout | null = null;
   private unsubscribers: Array<() => void> = [];
   private running = false;
-  private flushing = false;
+
+  /**
+   * In-flight flush, if any. A second concurrent `flush()` awaits this
+   * promise instead of returning 0, so callers always get back the
+   * count of (entity, updater) pairs actually applied since their
+   * call landed. After the in-flight flush finishes, if more dirty
+   * entries accumulated during it, a follow-up flush is chained
+   * automatically — prevents starvation under sustained writes.
+   */
+  private flushPromise: Promise<number> | null = null;
 
   /** True when the env var enables async mode. */
   readonly enabled: boolean;
@@ -152,34 +161,60 @@ export class BackgroundIndexer {
 
   /**
    * Drain every pending op into the registered updaters. Safe to call
-   * concurrently — overlapping flushes coalesce. Returns the number of
-   * (entity, updater) pairs applied.
+   * concurrently — a second caller awaits the in-flight flush rather
+   * than returning 0 prematurely. If new dirty entries accumulate
+   * during a flush, a follow-up flush is chained automatically so a
+   * caller's `await flush()` returns only when the queue is actually
+   * empty.
+   *
+   * Returns the number of (entity, updater) pairs applied during the
+   * caller's awaited flush window (including any chained follow-up
+   * drains).
    */
   async flush(): Promise<number> {
-    if (this.dirty.size === 0 || this.flushing) return 0;
-    this.flushing = true;
-    try {
-      const ops = [...this.dirty.entries()];
-      this.dirty.clear();
-      let applied = 0;
-      for (const [name, op] of ops) {
-        for (const updater of this.updaters) {
-          try {
-            if (op === 'delete') {
-              await updater.applyDelete(name);
-            } else {
-              await updater.applyUpsert(name, this.storage);
-            }
-            applied++;
-          } catch (err) {
-            logger.error(`[BackgroundIndexer] ${updater.name} failed on ${name}:`, err);
+    if (this.flushPromise) return this.flushPromise;
+    this.flushPromise = this.drainOnce()
+      .then(async (firstApplied) => {
+        // Anything queued during the in-flight drain? Chain another
+        // pass so the awaiting caller doesn't return with a stale
+        // queue. Loop until the queue is genuinely empty.
+        let total = firstApplied;
+        while (this.dirty.size > 0) {
+          total += await this.drainOnce();
+        }
+        return total;
+      })
+      .finally(() => {
+        this.flushPromise = null;
+      });
+    return this.flushPromise;
+  }
+
+  /**
+   * Single-pass drain. Internal helper used by `flush()` to apply one
+   * snapshot of the dirty queue. Each call returns the number of
+   * (entity, updater) pairs applied during that pass.
+   */
+  private async drainOnce(): Promise<number> {
+    if (this.dirty.size === 0) return 0;
+    const ops = [...this.dirty.entries()];
+    this.dirty.clear();
+    let applied = 0;
+    for (const [name, op] of ops) {
+      for (const updater of this.updaters) {
+        try {
+          if (op === 'delete') {
+            await updater.applyDelete(name);
+          } else {
+            await updater.applyUpsert(name, this.storage);
           }
+          applied++;
+        } catch (err) {
+          logger.error(`[BackgroundIndexer] ${updater.name} failed on ${name}:`, err);
         }
       }
-      return applied;
-    } finally {
-      this.flushing = false;
     }
+    return applied;
   }
 
   /**
@@ -196,9 +231,14 @@ export class BackgroundIndexer {
     } else {
       this.dirty.set(entityName, op);
     }
-    // Force-drain when over the batch size cap.
+    // Force-drain when over the batch size cap. We're inside a
+    // synchronous emit handler, so the force-flush is dispatched via
+    // setImmediate — this lets the emit handler return promptly and
+    // avoids re-entering `markDirty` from within the same tick.
     if (this.dirty.size >= this.maxBatchSize) {
-      this.flush().catch((err) => logger.error('[BackgroundIndexer] force-flush failed:', err));
+      setImmediate(() => {
+        this.flush().catch((err) => logger.error('[BackgroundIndexer] force-flush failed:', err));
+      });
     }
   }
 }

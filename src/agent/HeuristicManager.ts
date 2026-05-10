@@ -137,7 +137,12 @@ export class HeuristicManager {
       if (condTokens.size === 0) continue;
       let intersect = 0;
       for (const t of inputTokens) if (condTokens.has(t)) intersect++;
-      const overlap = intersect / Math.max(inputTokens.size, condTokens.size);
+      // Jaccard similarity: |A ∩ B| / |A ∪ B|. Symmetric so a
+      // one-token query against a richer condition isn't penalised
+      // out of proportion. Equivalent to
+      // `intersect / (a.size + b.size - intersect)`.
+      const unionSize = inputTokens.size + condTokens.size - intersect;
+      const overlap = unionSize === 0 ? 0 : intersect / unionSize;
       const score = overlap * h.confidence;
       if (score >= minScore) {
         matches.push({ heuristic: h, score });
@@ -231,12 +236,25 @@ export class HeuristicManager {
   }
 }
 
+/**
+ * Common English stopwords filtered from condition / input tokens.
+ * Replaces the previous `length >= 3` filter so important short tokens
+ * like "PR", "AI", "go" are retained, while noise like "is", "the",
+ * "an" still gets dropped. List is conservative — favours retaining
+ * tokens over filtering them out.
+ */
+const HEURISTIC_STOPWORDS: ReadonlySet<string> = new Set([
+  'a', 'an', 'the', 'is', 'be', 'are', 'was', 'were', 'to', 'of', 'in', 'on',
+  'at', 'by', 'for', 'with', 'and', 'or', 'but', 'if', 'as', 'it', 'its',
+  'this', 'that', 'these', 'those',
+]);
+
 function tokenSet(s: string): Set<string> {
   return new Set(
     s
       .toLowerCase()
       .split(/[^a-z0-9]+/)
-      .filter((t) => t.length >= 3),
+      .filter((t) => t.length >= 2 && !HEURISTIC_STOPWORDS.has(t)),
   );
 }
 
