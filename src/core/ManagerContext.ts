@@ -16,6 +16,7 @@ import { BatchTransaction } from './TransactionManager.js';
 import type { BatchResult, BatchOptions } from '../types/index.js';
 import { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { MaterializedViewsManager } from '../search/MaterializedViews.js';
+import { ObservationStore } from './ObservationStore.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
@@ -125,6 +126,9 @@ export class ManagerContext {
 
   /** Lazy-initialised. See `materializedViews` getter. */
   private _materializedViews?: MaterializedViewsManager;
+
+  /** Lazy-initialised. See `observationStore` getter. */
+  private _observationStore?: ObservationStore;
 
   private _autoLinker?: AutoLinker;
   private _factExtractor?: FactExtractor;
@@ -268,6 +272,18 @@ export class ManagerContext {
       this.storage as GraphStorage,
       this.storage.events,
     ));
+  }
+
+  /**
+   * Content-addressable observation store — opt-in helper for callers
+   * who want to detect duplicate observation strings across entities
+   * (memory-saving analysis, dedup audits). Lazy: only constructed
+   * on first access. The Entity shape on disk is unchanged; this is
+   * a side-channel store the caller drives manually via
+   * `internEntityObservations(entity)` / `releaseEntityObservations(hashes)`.
+   */
+  get observationStore(): ObservationStore {
+    return (this._observationStore ??= new ObservationStore());
   }
 
   /**

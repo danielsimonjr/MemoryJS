@@ -17,6 +17,7 @@
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import type { IGraphStorage } from '../types/index.js';
 import { logger } from '../utils/logger.js';
+import type { TFIDFIndexManager } from './TFIDFIndexManager.js';
 
 /** Per-index updater contract. Implementations register with the indexer. */
 export interface IndexUpdater {
@@ -241,4 +242,39 @@ export class BackgroundIndexer {
       });
     }
   }
+}
+
+/**
+ * Build an `IndexUpdater` that drives a `TFIDFIndexManager`. Convenience
+ * factory so callers don't have to hand-roll the upsert/delete bridge.
+ *
+ * @example
+ * ```typescript
+ * const indexer = new BackgroundIndexer(storage, events);
+ * indexer.registerUpdater(makeTFIDFUpdater(rankedSearch.indexManager));
+ * indexer.start();
+ * ```
+ *
+ * The updater fetches the live entity from storage on each upsert
+ * (matches the `TFIDFEventSync` event-handler contract).
+ */
+export function makeTFIDFUpdater(indexManager: TFIDFIndexManager): IndexUpdater {
+  return {
+    name: 'tfidf',
+    async applyUpsert(entityName, storage) {
+      if (!indexManager.isInitialized()) return;
+      const graph = await storage.loadGraph();
+      const entity = graph.entities.find((e) => e.name === entityName);
+      if (!entity) return;
+      indexManager.updateDocument({
+        name: entity.name,
+        entityType: entity.entityType,
+        observations: entity.observations,
+      });
+    },
+    applyDelete(entityName) {
+      if (!indexManager.isInitialized()) return;
+      indexManager.removeDocument(entityName);
+    },
+  };
 }

@@ -162,4 +162,31 @@ export class ObservationStore {
   static hash(content: string): string {
     return createHash('sha256').update(content).digest('hex');
   }
+
+  /**
+   * Helper that interns every observation on an entity-shape input
+   * and returns a parallel hash array. Convenience wrapper used by
+   * the opt-in dedup path — `EntityManager` callers who want the
+   * memory savings can run an entity's observations through this
+   * before persisting (the Entity shape is unchanged on disk; the
+   * store's job is purely to detect cross-entity duplicates and
+   * report savings).
+   */
+  internEntityObservations(entity: { observations: readonly string[] }): string[] {
+    return this.internAll(entity.observations);
+  }
+
+  /**
+   * Symmetric helper: release every hash in a parallel array. Useful
+   * when an entity is deleted and the caller wants to free its
+   * observation references in the store. Returns the count actually
+   * removed (entries whose refCount hit zero).
+   */
+  releaseEntityObservations(hashes: readonly string[]): number {
+    let removed = 0;
+    for (const h of hashes) {
+      if (this.release(h) === 'removed') removed++;
+    }
+    return removed;
+  }
 }
