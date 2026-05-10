@@ -11,7 +11,7 @@
 import path from 'path';
 import { logger } from '../utils/logger.js';
 import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
-import { DiagnosticsAggregator, type DiagnosticsReport } from '../utils/Diagnostics.js';
+import { buildDiagnosticsReport, type DiagnosticsReport } from '../utils/Diagnostics.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
@@ -267,13 +267,12 @@ export class ManagerContext {
    * construction (uninitialised parts report null/empty).
    */
   diagnostics(): DiagnosticsReport {
-    return new DiagnosticsAggregator({
-      indexHealth: () => this.indexHealth(),
-      entityCounts: () => {
-        // Avoid forcing a graph load — read the cache directly via the
-        // public storage interface. If the cache isn't warm, return -1.
-        const cached = (this.storage as { cachedGraph?: { entities: ReadonlyArray<{ entityType: string }> } })
-          .cachedGraph;
+    return buildDiagnosticsReport(
+      () => this.indexHealth(),
+      () => {
+        // Read the in-memory cache directly via the IGraphStorage getter
+        // — does NOT force a load, returns -1 / {} when nothing is cached.
+        const cached = this.storage.cachedGraph;
         if (!cached) return { total: -1, byType: {} };
         const byType: Record<string, number> = {};
         for (const e of cached.entities) {
@@ -281,7 +280,7 @@ export class ManagerContext {
         }
         return { total: cached.entities.length, byType };
       },
-    }).report();
+    );
   }
 
   private embeddingHealthSnapshot() {

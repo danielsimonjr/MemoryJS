@@ -1030,9 +1030,11 @@ export class IOManager {
         return match ? match[1] : undefined;
       };
 
-      // Decode XML entities without stripping characters (preserves "AT&T", "O'Brien")
+      // Decode XML entities without stripping characters (preserves "AT&T", "O'Brien").
+      // Order is load-bearing: `&amp;` MUST run last so that double-encoded
+      // entities like `&amp;lt;` decode to `&lt;` (literal) rather than `<`.
       const decodeXmlEntities = (v: string): string =>
-        v.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+        v.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
 
       const entity: Entity = {
         name: decodeXmlEntities(nodeId),

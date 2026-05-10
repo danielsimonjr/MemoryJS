@@ -82,7 +82,7 @@ Before merging caller-supplied updates into entities, `EntityManager.updateEntit
 
 Used in:
 
-- `src/core/SQLiteStorage.ts:775` (entity update path)
+- `src/core/SQLiteStorage.ts:796` (entity update path)
 - `src/core/EntityManager.ts` (the sister GraphStorage-backed update path)
 - import pipelines that accept JSON
 

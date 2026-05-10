@@ -82,6 +82,16 @@ export class SQLiteStorage implements IGraphStorage {
   private cache: KnowledgeGraph | null = null;
 
   /**
+   * Public read-only view of the in-memory cache. Side-effect-free —
+   * does NOT force a load. Returns null when the cache has not been
+   * populated yet. Mirrors `GraphStorage.cachedGraph` so observability
+   * code (`ctx.diagnostics`) works uniformly across both backends.
+   */
+  get cachedGraph(): KnowledgeGraph | null {
+    return this.cache;
+  }
+
+  /**
    * O(1) entity lookup by name.
    */
   private nameIndex: NameIndex = new NameIndex();
@@ -351,6 +361,8 @@ export class SQLiteStorage implements IGraphStorage {
     'ttl', 'confidence',
     // η.4.4 temporal versioning expansion
     'validFrom', 'validUntil', 'observationMeta',
+    // Entity state machine
+    'lifecycleStatus',
     // AgentEntity (types/agent-memory.ts)
     'memoryType', 'sessionId', 'conversationId', 'taskId',
     'expiresAt', 'isWorkingMemory', 'promotedAt', 'promotedFrom', 'markedForPromotion',
@@ -880,6 +892,9 @@ export class SQLiteStorage implements IGraphStorage {
     // Phase 4 Sprint 1: Clear bidirectional relation cache
     this.bidirectionalRelationCache.clear();
     this.initialized = false;
+    // Close the read pool first so its connections can't outlive the
+    // writer connection (reproducible test re-init was leaking handles).
+    this.closeReadPool();
     if (this.db) {
       this.db.close();
       this.db = null;
@@ -1079,8 +1094,11 @@ export class SQLiteStorage implements IGraphStorage {
 
     for (let i = 0; i < size; i++) {
       const conn = new Database(this.validatedDbFilePath, { readonly: true });
+      // Foreign keys are still meaningful on a read-only handle (for
+      // referential integrity in compound queries). The journal_mode
+      // pragma is intentionally NOT set here — it's a write-time setting
+      // that the writer connection already established for the file.
       conn.pragma('foreign_keys = ON');
-      conn.pragma('journal_mode = WAL');
       this.readPool.push(conn);
     }
   }
@@ -1103,12 +1121,14 @@ export class SQLiteStorage implements IGraphStorage {
   /**
    * Pick a read connection. Round-robin across the pool; falls back to the
    * writer when the pool is empty (size 0 or 1, or pool not yet
-   * initialised). Internal helper — public read methods should call this
-   * rather than `this.db` directly when they don't need write semantics.
+   * initialised). Throws when the storage has not been initialised at all
+   * — callers no longer need to pre-check `this.db` themselves.
    */
   private pickReadConnection(): DatabaseType {
+    if (!this.initialized || !this.db) {
+      throw new Error('SQLiteStorage not initialized — call ensureLoaded() first');
+    }
     if (this.readPool.length === 0) {
-      if (!this.db) throw new Error('Database not initialized');
       return this.db;
     }
     const conn = this.readPool[this.readPoolCursor]!;

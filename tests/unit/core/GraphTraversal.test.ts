@@ -484,4 +484,106 @@ describe('GraphTraversal', () => {
       expect(neighborNames).not.toContain('C'); // C is type 'node'
     });
   });
+
+  describe('calculateHITS', () => {
+    it('returns hub and authority scores for every entity', async () => {
+      const result = await traversal.calculateHITS(50, 1e-6, 5);
+      expect(result.hubs.algorithm).toBe('hits-hubs');
+      expect(result.authorities.algorithm).toBe('hits-authorities');
+      expect(result.hubs.scores.size).toBe(8);
+      expect(result.authorities.scores.size).toBe(8);
+      expect(result.hubs.topEntities.length).toBeLessThanOrEqual(5);
+    });
+
+    it('ranks high-out-degree nodes as hubs', async () => {
+      const { hubs } = await traversal.calculateHITS(100, 1e-9, 8);
+      const hubScore = (name: string) => hubs.scores.get(name) ?? 0;
+      // B has the most outgoing edges in the fixture (B→C, B→E)
+      expect(hubScore('B')).toBeGreaterThan(hubScore('H'));
+    });
+
+    it('handles an empty graph without iterating', async () => {
+      const emptyDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hits-empty-'));
+      const emptyStorage = new GraphStorage(path.join(emptyDir, 'mem.jsonl'));
+      try {
+        await emptyStorage.saveGraph({ entities: [], relations: [] });
+        const r = await new GraphTraversal(emptyStorage).calculateHITS();
+        expect(r.iterations).toBe(0);
+        expect(r.converged).toBe(true);
+        expect(r.hubs.scores.size).toBe(0);
+      } finally {
+        emptyStorage.clearCache();
+        fs.rmSync(emptyDir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('findCliques (Bron-Kerbosch)', () => {
+    it('returns nothing on a graph with no triangles', async () => {
+      // The default fixture is a tree — no triangles, hence no >=3-cliques.
+      const cliques = await traversal.findCliques({ minSize: 3 });
+      expect(cliques).toEqual([]);
+    });
+
+    it('finds a triangle when one is added', async () => {
+      const triangleDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cliques-tri-'));
+      const triStorage = new GraphStorage(path.join(triangleDir, 'mem.jsonl'));
+      try {
+        await triStorage.saveGraph({
+          entities: ['X', 'Y', 'Z', 'W'].map(n => ({ name: n, entityType: 'node', observations: [] })),
+          relations: [
+            { from: 'X', to: 'Y', relationType: 'r' },
+            { from: 'Y', to: 'Z', relationType: 'r' },
+            { from: 'Z', to: 'X', relationType: 'r' },
+            // W is connected only to X — not part of a clique.
+            { from: 'W', to: 'X', relationType: 'r' },
+          ],
+        });
+        const cliques = await new GraphTraversal(triStorage).findCliques({ minSize: 3 });
+        expect(cliques).toHaveLength(1);
+        expect(cliques[0]).toEqual(['X', 'Y', 'Z']);
+      } finally {
+        triStorage.clearCache();
+        fs.rmSync(triangleDir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('findCommunities (Louvain)', () => {
+    it('groups every node into a community and returns finite modularity', async () => {
+      const result = await traversal.findCommunities();
+      expect(result.communities.size).toBe(8);
+      expect(Number.isFinite(result.modularity)).toBe(true);
+      expect(result.levels).toBeGreaterThanOrEqual(1);
+    });
+
+    it('separates two disconnected cliques into distinct communities', async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'louvain-'));
+      const s = new GraphStorage(path.join(dir, 'mem.jsonl'));
+      try {
+        await s.saveGraph({
+          entities: ['a1', 'a2', 'a3', 'b1', 'b2', 'b3'].map(n => ({ name: n, entityType: 'node', observations: [] })),
+          relations: [
+            { from: 'a1', to: 'a2', relationType: 'r' },
+            { from: 'a2', to: 'a3', relationType: 'r' },
+            { from: 'a3', to: 'a1', relationType: 'r' },
+            { from: 'b1', to: 'b2', relationType: 'r' },
+            { from: 'b2', to: 'b3', relationType: 'r' },
+            { from: 'b3', to: 'b1', relationType: 'r' },
+          ],
+        });
+        const r = await new GraphTraversal(s).findCommunities();
+        // Two disconnected triangles must end up in two communities.
+        expect(r.communities.get('a1')).toBe(r.communities.get('a2'));
+        expect(r.communities.get('a1')).toBe(r.communities.get('a3'));
+        expect(r.communities.get('b1')).toBe(r.communities.get('b2'));
+        expect(r.communities.get('b1')).toBe(r.communities.get('b3'));
+        expect(r.communities.get('a1')).not.toBe(r.communities.get('b1'));
+        expect(r.modularity).toBeGreaterThan(0);
+      } finally {
+        s.clearCache();
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
 });

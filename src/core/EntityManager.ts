@@ -19,6 +19,10 @@ import {
 import type { RefIndex, RefEntry } from './RefIndex.js';
 import { EntityStateMachine } from './EntityStateMachine.js';
 
+// Stateless validator — hoisted to a singleton so updateEntity doesn't
+// allocate one per call.
+const ENTITY_STATE_MACHINE = new EntityStateMachine();
+
 /**
  * Options for constructing an EntityManager.
  */
@@ -584,13 +588,13 @@ export class EntityManager {
         }
       }
 
-      // Phase 1 step 14: Validate entity lifecycle-status transition before
-      // assignment. Throws IllegalStatusTransitionError if illegal.
+      // Validate the lifecycle-status transition before assignment.
+      // Throws IllegalStatusTransitionError if illegal.
       if (
         updates.lifecycleStatus !== undefined &&
         updates.lifecycleStatus !== entity.lifecycleStatus
       ) {
-        new EntityStateMachine().transition(entity.lifecycleStatus, updates.lifecycleStatus, name);
+        ENTITY_STATE_MACHINE.transition(entity.lifecycleStatus, updates.lifecycleStatus, name);
       }
 
       // Apply updates (sanitized to prevent prototype pollution)

@@ -134,7 +134,6 @@ export const CreateEntitySchema = z.object({
     validUntil: z.string().optional(),
     recordedAt: z.string().optional(),
   })).optional(),
-  // Phase 1 step 14: Entity state machine
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
 }).strict();
 
@@ -166,7 +165,6 @@ export const UpdateEntitySchema = z.object({
     validUntil: z.string().optional(),
     recordedAt: z.string().optional(),
   })).optional(),
-  // Phase 1 step 14: Entity state machine
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
 }).strict();
 

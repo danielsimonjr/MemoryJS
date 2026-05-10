@@ -134,7 +134,7 @@ export interface Entity {
    */
   contentHash?: string;
 
-  // ==================== Phase 1 step 14: Entity State Machine ====================
+  // ==================== Entity State Machine ====================
 
   /**
    * Lifecycle state. `'draft'` is in-flight / pre-publish, `'published'`
@@ -1198,6 +1198,14 @@ export interface IGraphStorage {
    * @returns Promise resolving when ready
    */
   ensureLoaded(): Promise<void>;
+
+  /**
+   * In-memory cached graph if one is currently loaded, else null.
+   * Side-effect-free getter — does NOT trigger a load. Used by
+   * `Diagnostics` and similar observability surfaces that want a cheap
+   * peek at the current state without forcing I/O.
+   */
+  readonly cachedGraph: ReadonlyKnowledgeGraph | null;
 
   // ==================== Write Operations ====================
 

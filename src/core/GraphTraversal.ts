@@ -1016,8 +1016,11 @@ export class GraphTraversal {
       const u = idOf.get(relation.from);
       const v = idOf.get(relation.to);
       if (u === undefined || v === undefined) continue;
+      // Push every undirected edge twice (once per endpoint) so the
+      // phase-2 contraction's `w / 2` halving for self-loops produces
+      // the correct super-node weight.
       adj[u]!.push({ to: v, weight: 1 });
-      if (u !== v) adj[v]!.push({ to: u, weight: 1 });
+      adj[v]!.push({ to: u, weight: 1 });
       totalWeight += 1;
     }
     if (totalWeight === 0) {

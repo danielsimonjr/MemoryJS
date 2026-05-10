@@ -366,15 +366,9 @@ export class BM25Search {
    *   `entityToText` (name, entityType, observations, tags) are used.
    */
   addDocument(entity: { name: string; entityType: string; observations: string[]; tags?: string[] }): void {
-    // Lazy-init the index if a caller incrementally indexes before any
-    // buildIndex() — produces an index with whatever has been added so far.
+    // Mirror TFIDFIndexManager: addDocument is a no-op until buildIndex() runs.
     if (!this.index) {
-      this.index = {
-        documents: new Map(),
-        documentFrequency: new Map(),
-        avgDocLength: 0,
-        totalDocs: 0,
-      };
+      return;
     }
 
     // If already present, remove first so DF counts and length stats stay
@@ -414,8 +408,13 @@ export class BM25Search {
   /**
    * Update an entity in the index. Equivalent to `removeDocument` followed
    * by `addDocument`; provided for API symmetry with `TFIDFIndexManager`.
+   * No-op when the entity is not yet in the index — call `addDocument`
+   * directly if you need to insert a new entity.
    */
   updateDocument(entity: { name: string; entityType: string; observations: string[]; tags?: string[] }): void {
+    if (!this.index || !this.index.documents.has(entity.name)) {
+      return;
+    }
     this.addDocument(entity);
   }
 

@@ -68,6 +68,9 @@ export class TFIDFEventSync {
   /** Timer ref for the next scheduled flush, or null when no flush pending. */
   private flushTimer: NodeJS.Timeout | null = null;
 
+  /** beforeExit handler — fires `flushNow()` if the process is winding down with pending ops. */
+  private readonly beforeExitHandler: () => void = () => this.flushNow();
+
   /**
    * Create a new TFIDFEventSync instance.
    *
@@ -112,6 +115,11 @@ export class TFIDFEventSync {
       this.eventEmitter.on('entity:deleted', this.handleEntityDeleted.bind(this))
     );
 
+    // Drain any pending coalesced ops before the process exits — without
+    // this, a process that stops between event arrival and the coalesce
+    // window silently loses index updates.
+    process.on('beforeExit', this.beforeExitHandler);
+
     this.enabled = true;
   }
 
@@ -132,6 +140,7 @@ export class TFIDFEventSync {
     }
     this.unsubscribers = [];
     this.enabled = false;
+    process.removeListener('beforeExit', this.beforeExitHandler);
     this.flushNow();
   }
 

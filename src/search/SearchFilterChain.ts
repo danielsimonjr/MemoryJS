@@ -8,7 +8,8 @@
  * @module search/SearchFilterChain
  */
 
-import type { Entity } from '../types/index.js';
+import type { Entity, EntityStatus } from '../types/index.js';
+import { DEFAULT_ENTITY_STATUS } from '../core/EntityStateMachine.js';
 import {
   normalizeTags,
   hasMatchingTag,
@@ -49,7 +50,7 @@ export interface SearchFilters {
    * search results unless the caller opts in. Pass
    * `['draft', 'published', 'archived']` to include everything.
    */
-  lifecycleStatus?: ReadonlyArray<'draft' | 'published' | 'archived'>;
+  lifecycleStatus?: ReadonlyArray<EntityStatus>;
 }
 
 /**
@@ -156,11 +157,11 @@ export class SearchFilterChain {
       return false;
     }
 
-    // Lifecycle-status filter: default to 'published' only. Entities
-    // created before the lifecycleStatus field existed (undefined) are
-    // treated as 'published' for back-compat.
-    const allowedStatuses = filters.lifecycleStatus ?? ['published'];
-    const effective = entity.lifecycleStatus ?? 'published';
+    // Lifecycle-status filter: defaults to the entity-state-machine
+    // default status only. Entities created before lifecycleStatus
+    // existed (undefined) take the same default for back-compat.
+    const allowedStatuses = filters.lifecycleStatus ?? [DEFAULT_ENTITY_STATUS];
+    const effective = entity.lifecycleStatus ?? DEFAULT_ENTITY_STATUS;
     if (!allowedStatuses.includes(effective)) {
       return false;
     }
@@ -185,7 +186,10 @@ export class SearchFilterChain {
       filters.createdBefore ||
       filters.modifiedAfter ||
       filters.modifiedBefore ||
-      filters.projectId !== undefined
+      filters.projectId !== undefined ||
+      // The lifecycle-status filter is always implicitly active (defaults
+      // to ['published']); only count an explicit caller-supplied value.
+      filters.lifecycleStatus !== undefined
     );
   }
 

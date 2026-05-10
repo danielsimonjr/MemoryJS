@@ -230,6 +230,12 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 | `MEMORY_EMBEDDING_MODEL` | Model name override | - |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |
 
+### SQLite read pool & index coalescing
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4` | Read connection pool size for `SQLiteStorage` (`fullTextSearch` / `simpleSearch`). Set to `0` or `1` to route reads through the writer connection. |
+| `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50` | TF-IDF event-sync coalescing window. Multiple writes to the same entity within the window collapse into a single index update. Set to `0` to disable coalescing (apply immediately). |
+
 ### Agent Memory
 
 Decay: `MEMORY_AUTO_DECAY` (false), `MEMORY_DECAY_HALF_LIFE_HOURS` (168), `MEMORY_DECAY_MIN_IMPORTANCE` (0.1), `MEMORY_DECAY_INTERVAL_MS` (3600000), `MEMORY_AUTO_FORGET` (false), `MEMORY_FORGET_THRESHOLD` (0.05)
