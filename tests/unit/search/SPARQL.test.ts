@@ -260,4 +260,89 @@ describe('evaluateSparql', () => {
     expect(result[0]!.from).toContain('alice');
     expect(result[0]!.to).toContain('bob');
   });
+
+  it('FILTER `<` works with numeric RHS (review fix #1)', () => {
+    const numericGraph: KnowledgeGraph = {
+      entities: [
+        { name: 'a', entityType: 'thing', observations: [], importance: 3 },
+        { name: 'b', entityType: 'thing', observations: [], importance: 7 },
+      ],
+      relations: [],
+    };
+    // Use a synthetic triple set with a numeric literal.
+    const triples = [
+      { subject: 'a', predicate: 'imp', object: '3', isLiteral: true },
+      { subject: 'b', predicate: 'imp', object: '7', isLiteral: true },
+    ];
+    void numericGraph; // (unused; we go through `triples` for predictable IRIs)
+    const result = runSparql(
+      `SELECT ?s WHERE { ?s <imp> ?v FILTER (?v < 5) }`,
+      triples,
+    );
+    expect(result.map((r) => r.s)).toEqual(['a']);
+  });
+
+  it('FILTER `<=` works (review fix #1)', () => {
+    const triples = [
+      { subject: 'a', predicate: 'imp', object: '5', isLiteral: true },
+      { subject: 'b', predicate: 'imp', object: '6', isLiteral: true },
+    ];
+    const result = runSparql(
+      `SELECT ?s WHERE { ?s <imp> ?v FILTER (?v <= 5) }`,
+      triples,
+    );
+    expect(result.map((r) => r.s)).toEqual(['a']);
+  });
+
+  it('FILTER LIKE rejects patterns longer than the cap', () => {
+    const pattern = '%' + 'a'.repeat(500) + '%';
+    expect(() =>
+      runSparql(
+        `SELECT ?s WHERE { ?s ?p ?o FILTER (?o LIKE "${pattern}") }`,
+        graph,
+      ),
+    ).toThrow(SparqlError);
+  });
+
+  it('FILTER LIKE pattern cap is configurable via limits', () => {
+    // Lower the cap to 4 chars and verify it triggers.
+    expect(() =>
+      runSparql(
+        `SELECT ?s WHERE { ?s ?p ?o FILTER (?o LIKE "abcde") }`,
+        graph,
+        { maxLikePatternLength: 4 },
+      ),
+    ).toThrow(SparqlError);
+  });
+
+  it('throws when result-set exceeds maxSolutions', () => {
+    // Tiny limit + a query that produces many bindings.
+    expect(() =>
+      runSparql(
+        'SELECT * WHERE { ?s ?p ?o }',
+        graph,
+        { maxSolutions: 1 },
+      ),
+    ).toThrow(/maxSolutions/);
+  });
+
+  it('reorders triple patterns by selectivity (bound terms first)', () => {
+    // Both queries should return the same result — but the second
+    // form puts the unbound pattern first, exercising the reorder.
+    const direct = runSparql(
+      `SELECT ?o WHERE {
+        ?s <${DEFAULT_PREFIXES.rdf}type> <urn:memoryjs:type:person> .
+        ?s <${DEFAULT_PREFIXES.rdfs}label> ?o
+      }`,
+      graph,
+    );
+    const reversed = runSparql(
+      `SELECT ?o WHERE {
+        ?s <${DEFAULT_PREFIXES.rdfs}label> ?o .
+        ?s <${DEFAULT_PREFIXES.rdf}type> <urn:memoryjs:type:person>
+      }`,
+      graph,
+    );
+    expect(direct.map((r) => r.o).sort()).toEqual(reversed.map((r) => r.o).sort());
+  });
 });

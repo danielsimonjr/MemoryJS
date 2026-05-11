@@ -120,13 +120,28 @@ describe('WriteAheadLog', () => {
       ]);
     });
 
-    it('skips malformed lines without aborting', async () => {
+    it('tolerates a malformed *tail* (crash-during-append fingerprint)', async () => {
       await wal.append({ op: 'delete-entity', name: 'a', ts: 't1' });
-      // Inject a malformed line.
+      // Inject a malformed trailing line (no following entries).
+      await fs.appendFile(walPath, 'not-json\n');
+      const replayed = await wal.replay();
+      expect(replayed).toHaveLength(1);
+      expect((replayed[0] as { name: string }).name).toBe('a');
+    });
+
+    it('throws on a malformed line in the *middle* of the log by default', async () => {
+      await wal.append({ op: 'delete-entity', name: 'a', ts: 't1' });
+      // Inject a malformed line that's NOT the tail.
       await fs.appendFile(walPath, 'not-json\n');
       await wal.append({ op: 'delete-entity', name: 'b', ts: 't2' });
-      const replayed = await wal.replay();
-      expect(replayed).toHaveLength(2);
+      await expect(wal.replay()).rejects.toThrow(/Malformed lines in the middle/);
+    });
+
+    it('tolerateGaps:true permits a middle-of-log malformed line', async () => {
+      await wal.append({ op: 'delete-entity', name: 'a', ts: 't1' });
+      await fs.appendFile(walPath, 'not-json\n');
+      await wal.append({ op: 'delete-entity', name: 'b', ts: 't2' });
+      const replayed = await wal.replay({ tolerateGaps: true });
       expect(replayed.map((e) => (e as { name: string }).name)).toEqual(['a', 'b']);
     });
 

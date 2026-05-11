@@ -158,6 +158,25 @@ export class SparqlError extends Error {
   }
 }
 
+/**
+ * Caps for the evaluator. The brute-force join is intrinsically
+ * O(|patterns| × |triples| × |solutions|); without limits an
+ * adversary-chosen query is a CPU DoS. Defaults are conservative —
+ * raise them deliberately for trusted callers, lower them for
+ * over-the-network access.
+ */
+export interface SparqlLimits {
+  /** Hard cap on the intermediate solution set. Default: 100_000. */
+  maxSolutions?: number;
+  /** Hard cap on `LIKE` pattern length. Default: 256. */
+  maxLikePatternLength?: number;
+}
+
+const DEFAULT_LIMITS: Required<SparqlLimits> = {
+  maxSolutions: 100_000,
+  maxLikePatternLength: 256,
+};
+
 // ==================== Tokenizer ====================
 
 type SparqlTok =
@@ -201,6 +220,23 @@ function tokenize(input: string): SparqlTok[] {
       continue;
     }
     if (c === '<') {
+      // Disambiguate IRI vs comparison operator. Real IRIs start with
+      // a scheme char or an alphanumeric — anything else (whitespace,
+      // `=`, EOF) means this is a `<` or `<=` operator. Without this
+      // pre-check, `FILTER (?n < 5)` would slurp the rest of the input
+      // as a malformed IRI.
+      const next = input[i + 1];
+      if (next === '=') {
+        toks.push({ kind: 'op', value: '<=' });
+        i += 2;
+        continue;
+      }
+      const isIriStart = next !== undefined && /[A-Za-z0-9:_/]/.test(next);
+      if (!isIriStart) {
+        toks.push({ kind: 'op', value: '<' });
+        i++;
+        continue;
+      }
       let j = i + 1;
       while (j < input.length && input[j] !== '>') j++;
       if (j >= input.length) throw new SparqlError('Unterminated IRI <...>');
@@ -245,12 +281,7 @@ function tokenize(input: string): SparqlTok[] {
       i += 2;
       continue;
     }
-    if (c === '<' && input[i + 1] === '=') {
-      // unreachable — handled above
-      toks.push({ kind: 'op', value: '<=' });
-      i += 2;
-      continue;
-    }
+    // `<` and `<=` are emitted by the IRI/operator disambiguation block above.
     if (c === '>') {
       if (input[i + 1] === '=') {
         toks.push({ kind: 'op', value: '>=' });
@@ -472,15 +503,55 @@ export type SparqlBindings = Record<string, string>;
  * which is fine for the typical knowledge-graph sizes we ship for.
  * Callers with > 100k triples should plug in a real SPARQL engine.
  */
-export function evaluateSparql(query: SparqlSelectQuery, triples: Triple[]): SparqlBindings[] {
+export function evaluateSparql(
+  query: SparqlSelectQuery,
+  triples: Triple[],
+  limits: SparqlLimits = {},
+): SparqlBindings[] {
+  const caps = { ...DEFAULT_LIMITS, ...limits };
+
+  // Pre-compile FILTER LIKE patterns once per query (instead of once
+  // per row × filter). Also enforces the pattern-length cap so an
+  // attacker can't ship a 1MB `%` chain.
+  const filterRegexes = new Map<SparqlFilter, RegExp>();
+  for (const f of query.filters) {
+    if (f.op === 'LIKE' && typeof f.value === 'string') {
+      if (f.value.length > caps.maxLikePatternLength) {
+        throw new SparqlError(
+          `FILTER LIKE pattern exceeds ${caps.maxLikePatternLength} chars`,
+        );
+      }
+      filterRegexes.set(
+        f,
+        new RegExp(
+          '^' + escapeRegex(f.value).replace(/%/g, '.*').replace(/_/g, '.') + '$',
+          'i',
+        ),
+      );
+    }
+  }
+
+  // Reorder patterns by selectivity — patterns with bound IRIs /
+  // literals first, since they're the cheapest to filter against the
+  // triple store. Dramatically shrinks the cross-product in common
+  // cases.
+  const patterns = [...query.patterns].sort((a, b) => selectivity(b) - selectivity(a));
+
   // Build the solution set by joining triple patterns iteratively.
   let solutions: SparqlBindings[] = [{}];
-  for (const pattern of query.patterns) {
+  for (const pattern of patterns) {
     const next: SparqlBindings[] = [];
     for (const sol of solutions) {
       for (const triple of triples) {
         const merged = matchTriple(pattern, triple, sol);
-        if (merged) next.push(merged);
+        if (merged) {
+          next.push(merged);
+          if (next.length > caps.maxSolutions) {
+            throw new SparqlError(
+              `Query exceeded maxSolutions=${caps.maxSolutions} — narrow the query or raise the limit`,
+            );
+          }
+        }
       }
     }
     solutions = next;
@@ -489,7 +560,9 @@ export function evaluateSparql(query: SparqlSelectQuery, triples: Triple[]): Spa
 
   // Apply filters.
   if (query.filters.length > 0) {
-    solutions = solutions.filter((sol) => query.filters.every((f) => evalFilter(f, sol)));
+    solutions = solutions.filter((sol) =>
+      query.filters.every((f) => evalFilter(f, sol, filterRegexes)),
+    );
   }
 
   // Project to the requested variables (or keep everything for SELECT *).
@@ -522,9 +595,19 @@ export function evaluateSparql(query: SparqlSelectQuery, triples: Triple[]): Spa
 export function runSparql(
   input: string,
   graph: KnowledgeGraph | Triple[],
+  limits: SparqlLimits = {},
 ): SparqlBindings[] {
   const triples = Array.isArray(graph) ? graph : graphToTriples(graph);
-  return evaluateSparql(parseSparql(input), triples);
+  return evaluateSparql(parseSparql(input), triples, limits);
+}
+
+/** Selectivity score for a triple pattern — higher = more selective. */
+function selectivity(p: SparqlTriplePattern): number {
+  return (
+    (p.subject.kind === 'var' ? 0 : 1) +
+    (p.predicate.kind === 'var' ? 0 : 1) +
+    (p.object.kind === 'var' ? 0 : 1)
+  );
 }
 
 function matchTriple(
@@ -551,7 +634,11 @@ function matchTerm(term: SparqlTerm, value: string, bindings: SparqlBindings): b
   return false;
 }
 
-function evalFilter(filter: SparqlFilter, sol: SparqlBindings): boolean {
+function evalFilter(
+  filter: SparqlFilter,
+  sol: SparqlBindings,
+  regexes: Map<SparqlFilter, RegExp>,
+): boolean {
   const left = sol[filter.variable];
   if (left === undefined) return false;
   const right = filter.value;
@@ -559,11 +646,8 @@ function evalFilter(filter: SparqlFilter, sol: SparqlBindings): boolean {
   if (filter.op === '=') return looseEq(left, right);
   if (filter.op === '!=') return !looseEq(left, right);
   if (filter.op === 'LIKE') {
-    if (typeof right !== 'string') return false;
-    const re = new RegExp(
-      '^' + escapeRegex(right).replace(/%/g, '.*').replace(/_/g, '.') + '$',
-      'i',
-    );
+    const re = regexes.get(filter);
+    if (!re) return false;
     return re.test(left);
   }
 

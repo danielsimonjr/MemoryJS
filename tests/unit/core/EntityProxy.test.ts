@@ -93,6 +93,23 @@ describe('EntityProxy', () => {
     });
   });
 
+  it('observations are frozen — caller mutation does not corrupt the cache', () => {
+    const { storage } = makeStorage([alice]);
+    const proxy = new EntityProxy(alice.name, alice.entityType, storage);
+    const obs = proxy.observations;
+    expect(() => (obs as string[]).push('mutated')).toThrow();
+    // Underlying cache unaffected.
+    expect(proxy.observations).toEqual(['likes coffee', 'works at TechCo']);
+  });
+
+  it('tags are frozen — caller mutation does not corrupt the cache', () => {
+    const { storage } = makeStorage([alice]);
+    const proxy = new EntityProxy(alice.name, alice.entityType, storage);
+    const tags = proxy.tags;
+    expect(tags).toBeDefined();
+    expect(() => (tags as string[])!.push('mutated')).toThrow();
+  });
+
   it('hydrate() with absent record still flips isHydrated', () => {
     // Important: caching the "miss" prevents repeated reads for a
     // known-missing name in a tight loop.

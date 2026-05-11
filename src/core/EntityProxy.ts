@@ -27,6 +27,9 @@
 
 import type { Entity } from '../types/types.js';
 
+/** Shared frozen empty array — avoids allocating one per `observations` access. */
+const EMPTY_FROZEN_ARRAY: readonly string[] = Object.freeze([]);
+
 /** Minimal storage shape `EntityProxy` needs. Matches `IGraphStorage`. */
 export interface EntityProxyStorage {
   getEntityByName(name: string): Entity | undefined;
@@ -95,11 +98,18 @@ export class EntityProxy {
 
   get observations(): readonly string[] {
     const e = this.hydrate();
-    return e?.observations ?? [];
+    if (!e?.observations) return EMPTY_FROZEN_ARRAY;
+    // Freeze on first access. Callers get a true readonly view — a
+    // `.push()` on the returned array fails fast rather than silently
+    // corrupting the storage-layer cache.
+    if (!Object.isFrozen(e.observations)) Object.freeze(e.observations);
+    return e.observations;
   }
 
   get tags(): readonly string[] | undefined {
-    return this.hydrate()?.tags;
+    const tags = this.hydrate()?.tags;
+    if (tags && !Object.isFrozen(tags)) Object.freeze(tags);
+    return tags;
   }
 
   get importance(): number | undefined {

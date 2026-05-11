@@ -26,7 +26,7 @@
  *   to skipping unknown kinds with a warning.
  */
 
-import { promises as fs, openSync, writeSync, fsyncSync, closeSync, existsSync } from 'fs';
+import { promises as fs, openSync, writeSync, fsyncSync, closeSync, existsSync, statSync, constants as fsConstants } from 'fs';
 import { dirname, join } from 'path';
 import type { Entity, Relation } from '../types/types.js';
 import { logger } from '../utils/logger.js';
@@ -88,6 +88,10 @@ export class WriteAheadLog {
   async append(entry: WALEntry): Promise<void> {
     await fs.mkdir(dirname(this.walPath), { recursive: true });
     const line = JSON.stringify(entry) + '\n';
+    // First-write detection — after creating the WAL we also need to
+    // fsync the *directory* so the new dirent survives a crash before
+    // the kernel flushes it.
+    const isFirstWrite = !existsSync(this.walPath);
     if (this.fsyncOnAppend) {
       // Use sync ops here to ensure fsync ordering — async fs.appendFile
       // can interleave with the main-file write on some filesystems.
@@ -98,6 +102,23 @@ export class WriteAheadLog {
       } finally {
         closeSync(fd);
       }
+      if (isFirstWrite && process.platform !== 'win32') {
+        // Directory fsync on POSIX. Windows doesn't support fsync on
+        // a directory handle (and doesn't need it — the NTFS journal
+        // makes dirent durability implicit).
+        try {
+          const dirFd = openSync(dirname(this.walPath), fsConstants.O_RDONLY);
+          try {
+            fsyncSync(dirFd);
+          } finally {
+            closeSync(dirFd);
+          }
+        } catch {
+          // Some filesystems (tmpfs on certain Linux configs) reject
+          // O_RDONLY on a directory — that's fine; the rename-based
+          // durability dance is best-effort anyway.
+        }
+      }
     } else {
       await fs.appendFile(this.walPath, line);
     }
@@ -107,7 +128,7 @@ export class WriteAheadLog {
   hasPending(): boolean {
     if (!existsSync(this.walPath)) return false;
     try {
-      const stat = require('fs').statSync(this.walPath);
+      const stat = statSync(this.walPath);
       return stat.size > 0;
     } catch {
       return false;
@@ -119,10 +140,15 @@ export class WriteAheadLog {
    * the caller replays each entry into main storage, then calls
    * `checkpoint()` to drop the WAL.
    *
-   * Malformed lines are logged and skipped — a corrupt tail
-   * shouldn't block replay of the well-formed prefix.
+   * **Malformed-line policy:** by default, only a malformed *tail*
+   * (the last logical entry) is tolerated — that's the typical
+   * crash-during-append signature. A malformed line followed by
+   * later well-formed lines indicates either filesystem corruption
+   * or a concurrent writer; replay throws to surface it. Callers who
+   * really want to skip mid-log gaps must pass `{ tolerateGaps: true }`
+   * and accept that state divergence is possible.
    */
-  async replay(): Promise<WALEntry[]> {
+  async replay(options: { tolerateGaps?: boolean } = {}): Promise<WALEntry[]> {
     try {
       await fs.access(this.walPath);
     } catch {
@@ -130,8 +156,10 @@ export class WriteAheadLog {
     }
     const text = await fs.readFile(this.walPath, 'utf-8');
     const entries: WALEntry[] = [];
+    const malformedLines: number[] = [];
     let lineNum = 0;
-    for (const line of text.split('\n')) {
+    const rawLines = text.split('\n');
+    for (const line of rawLines) {
       lineNum++;
       const trimmed = line.trim();
       if (trimmed.length === 0) continue;
@@ -140,13 +168,29 @@ export class WriteAheadLog {
         if (isKnownOp(parsed)) {
           entries.push(parsed as WALEntry);
         } else {
+          malformedLines.push(lineNum);
           logger.warn(
-            `[WAL] Skipping entry with unknown op '${parsed.op}' at ${this.walPath}:${lineNum}`,
+            `[WAL] Skipping entry with unknown op '${(parsed as { op?: unknown }).op}' at ${this.walPath}:${lineNum}`,
           );
         }
       } catch (err) {
+        malformedLines.push(lineNum);
         logger.warn(
           `[WAL] Skipping malformed entry at ${this.walPath}:${lineNum}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // Only tolerate a malformed *tail* (one trailing bad line is the
+    // crash-during-append fingerprint). Bad lines in the middle of an
+    // otherwise-well-formed log indicate something worse and should
+    // abort replay unless the caller explicitly opted in.
+    if (malformedLines.length > 0 && !options.tolerateGaps) {
+      const lastNonEmpty = lastNonEmptyLineNumber(rawLines);
+      const allAtTail = malformedLines.every((n) => n >= lastNonEmpty);
+      if (!allAtTail) {
+        throw new Error(
+          `[WAL] Malformed lines in the middle of ${this.walPath} at ${malformedLines.join(', ')}; pass { tolerateGaps: true } to ignore`,
         );
       }
     }
@@ -175,7 +219,9 @@ export class WriteAheadLog {
   async stats(): Promise<{ path: string; size: number; entryCount: number } | null> {
     try {
       const stat = await fs.stat(this.walPath);
-      const entries = await this.replay();
+      // Tolerate gaps for diagnostics — we don't want a corrupted WAL
+      // to break `stats()`; the strict check belongs in `replay()`.
+      const entries = await this.replay({ tolerateGaps: true });
       return {
         path: this.walPath,
         size: stat.size,
@@ -185,6 +231,13 @@ export class WriteAheadLog {
       return null;
     }
   }
+}
+
+function lastNonEmptyLineNumber(lines: string[]): number {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i]!.trim().length > 0) return i + 1; // 1-indexed
+  }
+  return 0;
 }
 
 function isKnownOp(value: unknown): value is WALEntry {
