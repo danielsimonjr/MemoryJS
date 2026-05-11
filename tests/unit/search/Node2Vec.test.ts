@@ -120,6 +120,26 @@ describe('BiasedRandomWalk', () => {
     const w2 = new BiasedRandomWalk(adj, 1, 1, makeSeededRng(99)).walk('a1', 15);
     expect(w1).toEqual(w2);
   });
+
+  it('walkLength=1 returns just the start node', () => {
+    const graph = chainGraph(5);
+    const adj = buildAdjacency(graph.entities, graph.relations);
+    const walker = new BiasedRandomWalk(adj, 1, 1, makeSeededRng(0));
+    expect(walker.walk('n0', 1)).toEqual(['n0']);
+  });
+
+  it('isolated node produces a length-1 walk (no neighbors)', () => {
+    const graph: KnowledgeGraph = {
+      entities: [
+        { name: 'lonely', entityType: 'x', observations: [] },
+        { name: 'other', entityType: 'x', observations: [] },
+      ],
+      relations: [],
+    };
+    const adj = buildAdjacency(graph.entities, graph.relations);
+    const walker = new BiasedRandomWalk(adj, 1, 1, makeSeededRng(1));
+    expect(walker.walk('lonely', 10)).toEqual(['lonely']);
+  });
 });
 
 describe('computeNode2Vec', () => {

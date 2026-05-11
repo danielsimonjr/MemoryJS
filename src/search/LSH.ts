@@ -74,9 +74,23 @@ export class LSHIndex {
   private readonly vectors: Map<string, Float32Array> = new Map();
 
   constructor(options: LSHOptions) {
+    if (!Number.isInteger(options.dimensions) || options.dimensions <= 0) {
+      throw new Error(
+        `LSHIndex: dimensions must be a positive integer, got ${options.dimensions}`,
+      );
+    }
     this.dimensions = options.dimensions;
     this.numTables = options.numTables ?? 8;
-    this.bits = options.hyperplanesPerTable ?? 12;
+    // Cap bits at 63 — the bucket-key packing uses two signed 32-bit
+    // halves and dropping bit 64+ would silently lose entropy and
+    // produce key collisions for unrelated vectors.
+    const requestedBits = options.hyperplanesPerTable ?? 12;
+    if (!Number.isInteger(requestedBits) || requestedBits <= 0 || requestedBits > 63) {
+      throw new Error(
+        `LSHIndex: hyperplanesPerTable must be an integer in [1, 63], got ${requestedBits}`,
+      );
+    }
+    this.bits = requestedBits;
 
     const rng = makeRng(options.seed);
     this.hyperplanes = [];
@@ -184,7 +198,10 @@ export class LSHIndex {
   private bucketKey(tableIdx: number, vector: Float32Array): string {
     const planes = this.hyperplanes[tableIdx]!;
     // Encode bits as packed hex — cheaper than building a binary
-    // string for every bucket lookup.
+    // string for every bucket lookup. `>>> 0` coerces to unsigned so
+    // toString(16) never produces the leading-minus form (which would
+    // be internally consistent but harder to reason about during
+    // diagnostics).
     let high = 0;
     let low = 0;
     for (let b = 0; b < this.bits; b++) {
@@ -192,7 +209,7 @@ export class LSHIndex {
       if (b < 32) low |= sign << b;
       else high |= sign << (b - 32);
     }
-    return `${high.toString(16)}_${low.toString(16)}`;
+    return `${(high >>> 0).toString(16)}_${(low >>> 0).toString(16)}`;
   }
 }
 

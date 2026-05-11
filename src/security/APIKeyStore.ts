@@ -119,6 +119,14 @@ export class APIKeyStore {
    * Validate a plaintext key. When `requiredScopes` is provided, the
    * key must include every scope listed; missing scopes return
    * `valid: false, reason: 'wrong-scope'`.
+   *
+   * **Timing-leak note:** the `reason` field is observable by network
+   * callers — `'revoked'`, `'expired'`, and `'wrong-scope'` distinguish
+   * between known-but-rejected keys and `'unknown'` reveals an
+   * unindexed plaintext. For high-assurance APIs, collapse the reason
+   * to a single "invalid" before serializing the result over the wire
+   * to avoid leaking key state to an attacker who already knows the
+   * plaintext.
    */
   validate(plaintext: string, requiredScopes: readonly string[] = []): ValidationResult {
     const hash = sha256(plaintext);

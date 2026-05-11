@@ -133,6 +133,29 @@ describe('APIKeyStore.serialize / load', () => {
   });
 });
 
+describe('APIKeyStore boundary cases', () => {
+  it('expiresAt at exactly now is treated as expired', () => {
+    const store = new APIKeyStore();
+    const { plaintext } = store.issue({
+      expiresAt: new Date(Date.now()).toISOString(),
+    });
+    const v = store.validate(plaintext);
+    expect(v.valid).toBe(false);
+    expect(v.reason).toBe('expired');
+  });
+
+  it('serialize/load round-trip across two store instances', () => {
+    const a = new APIKeyStore();
+    const { plaintext } = a.issue({ ownerId: 'u', scopes: ['x'] });
+    const records = a.serialize();
+
+    const b = new APIKeyStore();
+    b.load(records);
+    expect(b.validate(plaintext).valid).toBe(true);
+    expect(b.size()).toBe(1);
+  });
+});
+
 describe('APIKeyStore.size / list', () => {
   it('size reflects issued count, including revoked', () => {
     const store = new APIKeyStore();

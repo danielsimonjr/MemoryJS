@@ -260,6 +260,10 @@ export class SkipGramTrainer {
   private readonly word2idx: Map<string, number>;
   /** Negative-sampling distribution (unigram^0.75 reservoir). */
   private readonly negDist: number[];
+  /** Cumulative prefix-sums of `negDist` — O(log V) sample via binary search. */
+  private readonly negCumulative: number[];
+  /** Sum of `negDist` (cached so we don't re-walk the array per sample). */
+  private readonly negTotal: number;
 
   constructor(
     private readonly walks: string[][],
@@ -284,6 +288,16 @@ export class SkipGramTrainer {
     // tokens — same effect here, helps embeddings of high-degree
     // nodes share less "mass" with their many neighbors.
     this.negDist = this.vocab.map((w) => Math.pow(counts.get(w) ?? 1, 0.75));
+    // Precompute the cumulative distribution so `sampleNegative` is
+    // O(log V) via binary search instead of the O(V) inner loop the
+    // naive implementation used.
+    this.negCumulative = new Array(this.negDist.length);
+    let acc = 0;
+    for (let i = 0; i < this.negDist.length; i++) {
+      acc += this.negDist[i]!;
+      this.negCumulative[i] = acc;
+    }
+    this.negTotal = acc;
   }
 
   train(): { embeddings: Map<string, Float32Array>; vocabulary: string[] } {
@@ -315,7 +329,10 @@ export class SkipGramTrainer {
 
             for (let k = 0; k < negativeSamples; k++) {
               const negIdx = this.sampleNegative(rng);
-              if (negIdx === ctxIdx) continue;
+              // Skip both the context and the center itself — sampling
+              // the center as its own negative biases its in/out vectors
+              // apart, which is wrong per the SGNS objective.
+              if (negIdx === ctxIdx || negIdx === centerIdx) continue;
               this.updatePair(inEmb, outEmb, centerIdx, negIdx, 0, lr);
             }
           }
@@ -358,14 +375,17 @@ export class SkipGramTrainer {
   }
 
   private sampleNegative(rng: () => number): number {
-    let total = 0;
-    for (const w of this.negDist) total += w;
-    let r = rng() * total;
-    for (let i = 0; i < this.negDist.length; i++) {
-      r -= this.negDist[i]!;
-      if (r <= 0) return i;
+    // Binary search the cumulative distribution. The naive O(V) walk
+    // was the dominant cost on graphs > ~1k nodes.
+    const target = rng() * this.negTotal;
+    let lo = 0;
+    let hi = this.negCumulative.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (this.negCumulative[mid]! < target) lo = mid + 1;
+      else hi = mid;
     }
-    return this.negDist.length - 1;
+    return lo;
   }
 }
 

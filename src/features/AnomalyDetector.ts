@@ -157,15 +157,32 @@ export function detectSemanticAnomalies(
   const ids = [...embeddings.keys()];
   if (ids.length < k + 2) return [];
 
+  // Precompute L2 norms once. Falling back to true cosine distance
+  // (`1 - dot/(|u||v|)`) protects callers who pass un-normalized
+  // embeddings — without this guard, dot products > 1 produce
+  // negative "distances" and silently break the z-score logic.
+  const norms = new Map<string, number>();
+  for (const id of ids) {
+    const v = embeddings.get(id)!;
+    norms.set(id, l2Norm(v));
+  }
+
   const avgDistances = new Map<string, number>();
   for (const id of ids) {
     const v = embeddings.get(id)!;
+    const nv = norms.get(id)!;
     const distances: number[] = [];
     for (const other of ids) {
       if (other === id) continue;
       const u = embeddings.get(other)!;
       if (u.length !== v.length) continue;
-      distances.push(1 - dotProduct(u, v));
+      const nu = norms.get(other)!;
+      const denom = nu * nv;
+      const cos = denom === 0 ? 0 : dotProduct(u, v) / denom;
+      // Cosine distance in `[0, 2]`. Clamp on top to avoid float drift
+      // pushing distance slightly negative when the norm reconstruction
+      // is imperfect.
+      distances.push(Math.max(0, 1 - cos));
     }
     distances.sort((a, b) => a - b);
     const slice = distances.slice(0, k);
@@ -229,6 +246,12 @@ function dotProduct(a: Float32Array, b: Float32Array): number {
   let s = 0;
   for (let i = 0; i < a.length; i++) s += a[i]! * b[i]!;
   return s;
+}
+
+function l2Norm(v: Float32Array): number {
+  let s = 0;
+  for (let i = 0; i < v.length; i++) s += v[i]! * v[i]!;
+  return Math.sqrt(s);
 }
 
 // Re-export for callers who want to introspect.

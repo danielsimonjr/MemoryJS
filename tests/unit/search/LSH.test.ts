@@ -116,6 +116,28 @@ describe('LSHIndex', () => {
     expect(top[0]?.id).toBe('a');
   });
 
+  it('throws on dimensions <= 0', () => {
+    expect(() => new LSHIndex({ dimensions: 0 })).toThrow();
+    expect(() => new LSHIndex({ dimensions: -4 })).toThrow();
+    expect(() => new LSHIndex({ dimensions: 8.5 })).toThrow();
+  });
+
+  it('throws on hyperplanesPerTable > 63', () => {
+    expect(() => new LSHIndex({ dimensions: 8, hyperplanesPerTable: 64 })).toThrow();
+    expect(() => new LSHIndex({ dimensions: 8, hyperplanesPerTable: 100 })).toThrow();
+    expect(() => new LSHIndex({ dimensions: 8, hyperplanesPerTable: 0 })).toThrow();
+  });
+
+  it('add() is idempotent on the same id (same size, retrievable)', () => {
+    const lsh = new LSHIndex({ dimensions: 8, seed: 1 });
+    const v = randomUnit(8, makeSeededRng(1));
+    lsh.add('a', v);
+    lsh.add('a', v);
+    lsh.add('a', v);
+    expect(lsh.size()).toBe(1);
+    expect(lsh.query(v)[0]?.id).toBe('a');
+  });
+
   it('bucketStats() returns one entry per table', () => {
     const lsh = new LSHIndex({ dimensions: 8, numTables: 4, seed: 1 });
     const rng = makeSeededRng(7);

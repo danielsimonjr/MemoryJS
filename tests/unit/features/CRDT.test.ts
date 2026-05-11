@@ -218,6 +218,50 @@ describe('CRDTGraph', () => {
     expect(b.toGraph().relations).toHaveLength(0);
   });
 
+  it('merge is associative — (A∪B)∪C === A∪(B∪C)', () => {
+    const a = new CRDTGraph('a');
+    a.upsertEntity({ name: 'x', entityType: 'thing', observations: ['from-a'] });
+    const b = new CRDTGraph('b');
+    b.upsertEntity({ name: 'x', entityType: 'thing', observations: ['from-b'] });
+    const c = new CRDTGraph('c');
+    c.upsertEntity({ name: 'y', entityType: 'thing', observations: ['from-c'] });
+
+    const left = new CRDTGraph('left', JSON.parse(JSON.stringify(a.state)));
+    left.merge(b.state);
+    left.merge(c.state);
+
+    const right = new CRDTGraph('right', JSON.parse(JSON.stringify(a.state)));
+    // Build B∪C separately, then merge into right.
+    const bc = new CRDTGraph('tmp', JSON.parse(JSON.stringify(b.state)));
+    bc.merge(c.state);
+    right.merge(bc.state);
+
+    const leftOut = left.toGraph();
+    const rightOut = right.toGraph();
+    expect(leftOut.entities.map((e) => e.name).sort()).toEqual(
+      rightOut.entities.map((e) => e.name).sort(),
+    );
+    const xL = leftOut.entities.find((e) => e.name === 'x')!;
+    const xR = rightOut.entities.find((e) => e.name === 'x')!;
+    expect(xL.observations.sort()).toEqual(xR.observations.sort());
+  });
+
+  it('HLC issues distinct timestamps for back-to-back same-ms ops on one replica', () => {
+    const a = new CRDTGraph('a');
+    a.upsertEntity({ name: 'e1', entityType: 'thing', observations: [] });
+    a.upsertEntity({ name: 'e2', entityType: 'thing', observations: [] });
+    a.upsertEntity({ name: 'e3', entityType: 'thing', observations: [] });
+    const tss = [
+      a.state.entities['e1']!.entityType.ts,
+      a.state.entities['e2']!.entityType.ts,
+      a.state.entities['e3']!.entityType.ts,
+    ];
+    // Strict monotonic — no two ops on the same replica share a ts.
+    for (let i = 1; i < tss.length; i++) {
+      expect(tss[i]).toBeGreaterThan(tss[i - 1]!);
+    }
+  });
+
   it('concurrent delete + readd resolves by LWW timestamp', async () => {
     const a = new CRDTGraph('replica-a');
     a.upsertEntity({ name: 'alice', entityType: 'person', observations: ['x'] });

@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { ABACPolicy } from '../../../src/security/ABACPolicy.js';
+import { ABACPolicy, ABACPolicyError } from '../../../src/security/ABACPolicy.js';
 
 describe('ABACPolicy', () => {
   it('returns not-applicable when no rule matches the action', () => {
@@ -241,6 +241,72 @@ describe('ABACPolicy', () => {
         environment: { hour: 19 },
       }),
     ).toBe('not-applicable');
+  });
+
+  it('throws ABACPolicyError when `in` value is not an array', () => {
+    const p = new ABACPolicy([
+      {
+        id: 'bad',
+        effect: 'permit',
+        action: 'read',
+        // @ts-expect-error — testing runtime guard
+        conditions: [{ attribute: 'subject.role', op: 'in', value: 'admin' }],
+      },
+    ]);
+    expect(() =>
+      p.evaluate({ subject: { role: 'admin' }, resource: {}, action: 'read' }),
+    ).toThrow(ABACPolicyError);
+  });
+
+  it('throws ABACPolicyError when `not-in` value is not an array', () => {
+    const p = new ABACPolicy([
+      {
+        id: 'bad',
+        effect: 'permit',
+        action: 'read',
+        // @ts-expect-error — testing runtime guard
+        conditions: [{ attribute: 'subject.role', op: 'not-in', value: 'admin' }],
+      },
+    ]);
+    expect(() =>
+      p.evaluate({ subject: { role: 'admin' }, resource: {}, action: 'read' }),
+    ).toThrow(ABACPolicyError);
+  });
+
+  it('handles cyclic subject objects without stack overflow', () => {
+    const cyclic: Record<string, unknown> = { name: 'root' };
+    cyclic.self = cyclic;
+    const p = new ABACPolicy([
+      { id: 'r1', effect: 'permit', action: 'read' },
+    ]);
+    expect(() =>
+      p.evaluate({ subject: cyclic, resource: {}, action: 'read' }),
+    ).not.toThrow();
+  });
+
+  it("'*' wildcard rule and specific-action rule with same priority — deny-overrides applies", () => {
+    const p = new ABACPolicy([
+      { id: 'specific', effect: 'permit', action: 'read', priority: 5 },
+      { id: 'wildcard', effect: 'deny', action: '*', priority: 5 },
+    ]);
+    expect(
+      p.evaluate({ subject: {}, resource: {}, action: 'read' }),
+    ).toBe('deny');
+  });
+
+  it('priority tie-break on equal priority + effect is deterministic on rule id', () => {
+    // Two permits at the same priority — the lexicographically-smaller id wins.
+    const p1 = new ABACPolicy([
+      { id: 'aaa', effect: 'permit', action: 'read', priority: 1 },
+      { id: 'zzz', effect: 'permit', action: 'read', priority: 1 },
+    ]);
+    const p2 = new ABACPolicy([
+      { id: 'zzz', effect: 'permit', action: 'read', priority: 1 },
+      { id: 'aaa', effect: 'permit', action: 'read', priority: 1 },
+    ]);
+    expect(
+      p1.evaluate({ subject: {}, resource: {}, action: 'read' }),
+    ).toBe(p2.evaluate({ subject: {}, resource: {}, action: 'read' }));
   });
 
   it('addRule extends the policy at runtime', () => {

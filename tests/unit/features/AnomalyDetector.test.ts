@@ -67,6 +67,24 @@ describe('detectStructuralAnomalies', () => {
     const high = detectStructuralAnomalies(hubGraph(), { zThreshold: 100 });
     expect(high).toEqual([]);
   });
+
+  it('topK truncates after sorting by magnitude', () => {
+    // Graph where multiple nodes deviate, but topK=1 only keeps the strongest.
+    const graph: KnowledgeGraph = {
+      entities: [
+        ...Array.from({ length: 10 }, (_, i) => ent(`s${i}`)),
+        ent('hub'),
+        ent('isolate'),
+      ],
+      relations: Array.from({ length: 10 }, (_, i) => ({
+        from: 'hub',
+        to: `s${i}`,
+        relationType: 'connects',
+      })),
+    };
+    const reports = detectStructuralAnomalies(graph, { zThreshold: 0, topK: 1 });
+    expect(reports).toHaveLength(1);
+  });
 });
 
 describe('detectSemanticAnomalies', () => {

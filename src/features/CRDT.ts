@@ -29,6 +29,7 @@
  *   across versions.
  */
 
+import { randomBytes } from 'crypto';
 import type { Entity, Relation } from '../types/types.js';
 
 // ==================== Vector Clock ====================
@@ -277,7 +278,7 @@ export class CRDTGraph {
     const ts = this.nextTs();
     const existing = this.state.entities[entity.name];
     if (!existing) {
-      this.state.entities[entity.name] = {
+      const fresh: CRDTEntityState = {
         id: entity.name,
         entityType: { value: entity.entityType, ts, replicaId: this.replicaId },
         observations: { adds: {}, removes: {} },
@@ -285,10 +286,13 @@ export class CRDTGraph {
         importance: { value: entity.importance ?? null, ts, replicaId: this.replicaId },
         tombstone: { value: false, ts, replicaId: this.replicaId },
       };
-      const obs = new ORSet<string>(this.state.entities[entity.name]!.observations);
+      const obs = new ORSet<string>(fresh.observations);
       for (const o of entity.observations) obs.add(o);
-      const tags = new ORSet<string>(this.state.entities[entity.name]!.tags);
+      fresh.observations = obs.state;
+      const tags = new ORSet<string>(fresh.tags);
       for (const t of entity.tags ?? []) tags.add(t);
+      fresh.tags = tags.state;
+      this.state.entities[entity.name] = fresh;
       this.state.clock = this.clock.state;
       return;
     }
@@ -475,12 +479,12 @@ function deserialize<T>(key: string): T {
 }
 
 function randomTag(): string {
-  // 12 hex chars — collision-resistant for the corpus sizes a single
-  // CRDT replica will produce. Replace with a real UUID v7 in
-  // production deployments.
-  let s = '';
-  for (let i = 0; i < 12; i++) s += Math.floor(Math.random() * 16).toString(16);
-  return s;
+  // 64 bits from a CSPRNG. `Math.random` here would only be 48 bits
+  // and is well within birthday-paradox range (~16M tags) for a
+  // long-lived replica — collisions break OR-Set semantics because
+  // a remove() targeting one add-tag would tombstone any concurrent
+  // add that landed on the same tag.
+  return randomBytes(8).toString('hex');
 }
 
 function highestTs(state: CRDTGraphState): number {

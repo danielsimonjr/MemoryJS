@@ -22,6 +22,20 @@
  *   operators in non-breaking ways; existing rules keep evaluating.
  */
 
+/**
+ * Thrown for malformed rule conditions encountered at evaluation
+ * time (e.g. `op: 'in'` with a non-array value). Raises loudly
+ * rather than silently denying because a misconfigured policy is a
+ * security risk and the caller should fix the policy, not paper
+ * over it.
+ */
+export class ABACPolicyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ABACPolicyError';
+  }
+}
+
 /** Outcome of a policy evaluation. */
 export type ABACDecision = 'permit' | 'deny' | 'not-applicable';
 
@@ -140,13 +154,15 @@ export class ABACPolicy {
     }
     if (matched.length === 0) return 'not-applicable';
 
-    // Sort by priority descending, then deny before permit.
+    // Sort by priority descending, then deny before permit, finally
+    // by rule id lexicographically so the winning rule is fully
+    // deterministic across runs (matters for audit logs).
     matched.sort((a, b) => {
       const ap = a.priority ?? 0;
       const bp = b.priority ?? 0;
       if (ap !== bp) return bp - ap;
       if (a.effect !== b.effect) return a.effect === 'deny' ? -1 : 1;
-      return 0;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
     return matched[0]!.effect;
   }
@@ -172,9 +188,19 @@ function evalCondition(cond: ABACCondition, context: ABACContext): boolean {
     case 'neq':
       return left !== cond.value;
     case 'in':
-      return Array.isArray(cond.value) && cond.value.includes(left);
+      if (!Array.isArray(cond.value)) {
+        throw new ABACPolicyError(
+          `Rule condition op 'in' requires an array value, got ${typeof cond.value} for attribute '${cond.attribute}'`,
+        );
+      }
+      return cond.value.includes(left);
     case 'not-in':
-      return Array.isArray(cond.value) && !cond.value.includes(left);
+      if (!Array.isArray(cond.value)) {
+        throw new ABACPolicyError(
+          `Rule condition op 'not-in' requires an array value, got ${typeof cond.value} for attribute '${cond.attribute}'`,
+        );
+      }
+      return !cond.value.includes(left);
     case 'contains':
       if (Array.isArray(left)) return left.includes(cond.value);
       if (typeof left === 'string' && typeof cond.value === 'string') {
@@ -199,24 +225,44 @@ function evalCondition(cond: ABACCondition, context: ABACContext): boolean {
   }
 }
 
+/**
+ * Maximum recursion depth for `flatten`. Caps the cost of
+ * pathologically deep subject/resource trees and stops cycles dead
+ * in their tracks (paired with the `visited` set below). Four levels
+ * is enough to support real-world policies like
+ * `subject.org.team.name`.
+ */
+const FLATTEN_MAX_DEPTH = 4;
+
 function flatten(ctx: ABACContext): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   out['action'] = ctx.action;
-  flattenInto(ctx.subject, 'subject', out);
-  flattenInto(ctx.resource, 'resource', out);
-  if (ctx.environment) flattenInto(ctx.environment, 'environment', out);
+  const visited = new WeakSet<object>();
+  flattenInto(ctx.subject, 'subject', out, visited, 0);
+  flattenInto(ctx.resource, 'resource', out, visited, 0);
+  if (ctx.environment) flattenInto(ctx.environment, 'environment', out, visited, 0);
   return out;
 }
 
-function flattenInto(obj: Record<string, unknown>, prefix: string, out: Record<string, unknown>): void {
+function flattenInto(
+  obj: Record<string, unknown>,
+  prefix: string,
+  out: Record<string, unknown>,
+  visited: WeakSet<object>,
+  depth: number,
+): void {
+  if (depth > FLATTEN_MAX_DEPTH) return;
+  if (visited.has(obj)) return;
+  visited.add(obj);
   for (const [k, v] of Object.entries(obj)) {
     const key = `${prefix}.${k}`;
     out[key] = v;
-    // Recurse one level into nested objects so policies can reference
-    // `subject.team.name` etc. Stop at arrays / primitives to keep
-    // operator semantics (`contains`, `in`) on arrays intact.
+    // Recurse into nested non-array objects so policies can reference
+    // `subject.team.name` etc. Stop at arrays so operator semantics
+    // (`contains`, `in`) on arrays remain intact, and bail on depth /
+    // cycle to keep evaluation O(unique-attributes).
     if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
-      flattenInto(v as Record<string, unknown>, key, out);
+      flattenInto(v as Record<string, unknown>, key, out, visited, depth + 1);
     }
   }
 }
