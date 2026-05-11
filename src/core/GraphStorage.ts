@@ -16,6 +16,27 @@ import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex }
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { BatchTransaction } from './TransactionManager.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
+import { dirname } from 'path';
+import { FileSegmentStorage } from './segments/FileSegmentStorage.js';
+import { FnvSegmentRouter } from './segments/ISegmentStorage.js';
+
+/**
+ * Read `MEMORY_STORAGE_SEGMENT_COUNT` and return a `FileSegmentStorage`
+ * when the value is `>= 2`, otherwise `null` (single-file mode —
+ * byte-identical to pre-Phase-7 behavior). Invalid values
+ * (non-integer, < 1) fall back to single-file mode rather than
+ * throwing so a misconfigured deployment degrades gracefully.
+ *
+ * Segment files live under `<dirname(memoryFilePath)>/segments/`.
+ */
+function resolveSegmentStorage(memoryFilePath: string): FileSegmentStorage | null {
+  const raw = process.env.MEMORY_STORAGE_SEGMENT_COUNT;
+  if (!raw) return null;
+  const count = Number.parseInt(raw, 10);
+  if (!Number.isInteger(count) || count < 2) return null;
+  const rootDir = dirname(memoryFilePath);
+  return new FileSegmentStorage(rootDir, new FnvSegmentRouter(count));
+}
 
 // Required fields are always serialized via the explicit literal at each
 // call site. This list is the *optional* fields — additive across schema
@@ -154,6 +175,15 @@ export class GraphStorage implements IGraphStorage {
   private memoryFilePath: string;
 
   /**
+   * When set, reads and writes route through the segment-file
+   * backend instead of the single JSONL file. Activated by setting
+   * `MEMORY_STORAGE_SEGMENT_COUNT >= 2` in the environment.
+   * Default (`null`) preserves byte-identical behavior with the
+   * pre-Phase-7 single-file format.
+   */
+  private segmentStorage: FileSegmentStorage | null;
+
+  /**
    * Create a new GraphStorage instance.
    *
    * @param memoryFilePath - Absolute path to the JSONL file
@@ -165,6 +195,7 @@ export class GraphStorage implements IGraphStorage {
     // already validated it. Tests pass tmpdir() paths; the ".." segment
     // defense-in-depth check still runs.
     this.memoryFilePath = validateFilePath(memoryFilePath, undefined, false);
+    this.segmentStorage = resolveSegmentStorage(this.memoryFilePath);
   }
 
   // ==================== Phase 10 Sprint 2: Event Emitter Access ====================
@@ -319,6 +350,10 @@ export class GraphStorage implements IGraphStorage {
    * Internal method to load graph from disk into cache.
    */
   private async loadFromDisk(): Promise<void> {
+    if (this.segmentStorage !== null) {
+      await this.loadFromSegments();
+      return;
+    }
     try {
       const data = await fs.readFile(this.memoryFilePath, 'utf-8');
       const lines = data.split('\n').filter((line: string) => line.trim() !== '');
@@ -379,6 +414,41 @@ export class GraphStorage implements IGraphStorage {
         return;
       }
       throw error;
+    }
+  }
+
+  /**
+   * Load via the segment backend (activated by `MEMORY_STORAGE_SEGMENT_COUNT
+   * >= 2`). Equivalent to `loadFromDisk` but reads each segment file
+   * separately. An absent `segments/` directory degrades to an empty
+   * graph — matches the ENOENT fallback in the single-file path.
+   */
+  private async loadFromSegments(): Promise<void> {
+    const graph = await this.segmentStorage!.loadAll();
+    this.cache = graph;
+    this.buildEntityIndexes(graph.entities);
+    this.buildRelationIndex(graph.relations);
+    this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
+  }
+
+  /**
+   * Append-path fallback when segment mode is active. Stages the
+   * in-memory mutation via `applyMutation`, then writes the whole
+   * graph through `segmentStorage.saveAll`. On save failure we
+   * reload from disk so the cache + indexes don't diverge from the
+   * persisted state. Matches the write-first-cache-after contract
+   * the single-file append paths use, just at a coarser granularity.
+   */
+  private async appendViaSegmentSave(applyMutation: () => void): Promise<void> {
+    applyMutation();
+    try {
+      await this.segmentStorage!.saveAll(this.cache!);
+    } catch (err) {
+      // Reload from disk to drop the speculative mutation. Index
+      // rebuild happens inside loadFromSegments.
+      this.cache = null;
+      await this.loadFromSegments();
+      throw err;
     }
   }
 
@@ -447,6 +517,23 @@ export class GraphStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
+      if (this.segmentStorage !== null) {
+        // Segment mode: append-paths route through a full saveAll
+        // instead of a single-line append. Less efficient than the
+        // single-file branch but correct — per-segment append is a
+        // follow-up optimization.
+        await this.appendViaSegmentSave(() => {
+          this.cache!.entities.push(entity);
+          this.nameIndex.add(entity);
+          this.typeIndex.add(entity);
+          this.lowercaseCache.set(entity);
+          this.observationIndex.add(entity.name, entity.observations);
+        });
+        clearAllSearchCaches();
+        this.eventEmitter.emitEntityCreated(entity);
+        return;
+      }
+
       const entityData: Record<string, unknown> = {
         type: 'entity',
         name: entity.name,
@@ -513,6 +600,17 @@ export class GraphStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
+      if (this.segmentStorage !== null) {
+        // Segment mode: full-save fallback (same rationale as appendEntity).
+        await this.appendViaSegmentSave(() => {
+          this.cache!.relations.push(relation);
+          this.relationIndex.add(relation);
+        });
+        clearAllSearchCaches();
+        this.eventEmitter.emitRelationCreated(relation);
+        return;
+      }
+
       // Serialize relation with all fields (Phase 1 Sprint 5: Metadata support)
       const serialized: Record<string, unknown> = {
         type: 'relation',
@@ -600,6 +698,14 @@ export class GraphStorage implements IGraphStorage {
    * @returns Promise resolving when save is complete
    */
   private async saveGraphInternal(graph: KnowledgeGraph): Promise<void> {
+    if (this.segmentStorage !== null) {
+      await this.segmentStorage.saveAll(graph);
+      this.cache = graph;
+      this.buildEntityIndexes(graph.entities);
+      this.buildRelationIndex(graph.relations);
+      this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
+      return;
+    }
     const lines = [
       ...graph.entities.map(e => {
         const entityData: Record<string, unknown> = {
@@ -689,6 +795,33 @@ export class GraphStorage implements IGraphStorage {
       const entity = this.cache!.entities[entityIndex];
       const oldType = entity.entityType;
       const timestamp = new Date().toISOString();
+
+      if (this.segmentStorage !== null) {
+        // Segment mode: route updateEntity through a full saveAll
+        // after applying the in-cache mutation (same write-after-
+        // cache pattern as appendEntity/Relation in segment mode).
+        // Capture pre-mutation state for the change event.
+        const previous: Partial<Entity> = {};
+        for (const key of Object.keys(updates)) {
+          (previous as Record<string, unknown>)[key] = (entity as unknown as Record<string, unknown>)[key];
+        }
+        await this.appendViaSegmentSave(() => {
+          Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
+          entity.lastModified = timestamp;
+          this.nameIndex.add(entity);
+          if (updates.entityType && updates.entityType !== oldType) {
+            this.typeIndex.updateType(entityName, oldType, updates.entityType);
+          }
+          this.lowercaseCache.set(entity);
+          if (updates.observations) {
+            this.observationIndex.remove(entityName);
+            this.observationIndex.add(entityName, entity.observations);
+          }
+        });
+        clearAllSearchCaches();
+        this.eventEmitter.emitEntityUpdated(entityName, updates, previous);
+        return true;
+      }
 
       // Phase 10 Sprint 2: Capture previous values for event
       const previousValues: Partial<Entity> = {};
