@@ -22,18 +22,35 @@ import { FnvSegmentRouter } from './segments/ISegmentStorage.js';
 
 /**
  * Read `MEMORY_STORAGE_SEGMENT_COUNT` and return a `FileSegmentStorage`
- * when the value is `>= 2`, otherwise `null` (single-file mode —
- * byte-identical to pre-Phase-7 behavior). Invalid values
- * (non-integer, < 1) fall back to single-file mode rather than
- * throwing so a misconfigured deployment degrades gracefully.
+ * when the value parses as an integer in `[2, MAX_SEGMENT_COUNT]`,
+ * otherwise `null` (single-file mode — byte-identical to pre-Phase-7
+ * behavior). Anything else (unset, floats, exponents, hex literals,
+ * out-of-range) falls back to single-file mode rather than throwing
+ * so a misconfigured deployment degrades gracefully.
+ *
+ * Strict parsing: we use `Number(raw)` + `Number.isInteger` instead of
+ * `parseInt` because `parseInt('3.7')` silently truncates to `3`,
+ * which would surprise an operator who typed a fractional value.
+ *
+ * Upper bound: 1024 segments is enough for any practical workload
+ * and guards against `MEMORY_STORAGE_SEGMENT_COUNT=1000000` causing
+ * `loadAll` to do a million ENOENT-rejected file opens.
  *
  * Segment files live under `<dirname(memoryFilePath)>/segments/`.
  */
+const MAX_SEGMENT_COUNT = 1024;
+const SEGMENT_COUNT_PATTERN = /^[1-9][0-9]*$/;
 function resolveSegmentStorage(memoryFilePath: string): FileSegmentStorage | null {
   const raw = process.env.MEMORY_STORAGE_SEGMENT_COUNT;
   if (!raw) return null;
-  const count = Number.parseInt(raw, 10);
-  if (!Number.isInteger(count) || count < 2) return null;
+  // Require a plain positive-decimal-integer literal — rejects floats
+  // (`3.7`), exponents (`1e3`), hex (`0x10`), leading zeros (`007`),
+  // signs (`-5`, `+5`), and whitespace. `Number('1e3') === 1000` is
+  // numerically fine, but an operator who typed `1e3` was probably
+  // confused — fail closed so the misconfig surfaces.
+  if (!SEGMENT_COUNT_PATTERN.test(raw)) return null;
+  const count = Number(raw);
+  if (!Number.isInteger(count) || count < 2 || count > MAX_SEGMENT_COUNT) return null;
   const rootDir = dirname(memoryFilePath);
   return new FileSegmentStorage(rootDir, new FnvSegmentRouter(count));
 }
@@ -438,17 +455,36 @@ export class GraphStorage implements IGraphStorage {
    * reload from disk so the cache + indexes don't diverge from the
    * persisted state. Matches the write-first-cache-after contract
    * the single-file append paths use, just at a coarser granularity.
+   *
+   * **Recovery contract on save failure:**
+   * - Speculative cache + index mutations are dropped.
+   * - We `clearIndexes()` first, then `loadFromSegments()` rebuilds
+   *   from disk. The clear is defense-in-depth — `IndexImpl.build()`
+   *   isn't required to be clear-then-add.
+   * - If the reload itself fails (disk error, malformed segment),
+   *   we throw an aggregated `Error` that mentions both the
+   *   original save error and the reload error. The caller should
+   *   treat the storage as desynced and reconstruct it.
    */
   private async appendViaSegmentSave(applyMutation: () => void): Promise<void> {
     applyMutation();
     try {
       await this.segmentStorage!.saveAll(this.cache!);
-    } catch (err) {
-      // Reload from disk to drop the speculative mutation. Index
-      // rebuild happens inside loadFromSegments.
-      this.cache = null;
-      await this.loadFromSegments();
-      throw err;
+    } catch (saveErr) {
+      try {
+        this.cache = null;
+        this.clearIndexes();
+        await this.loadFromSegments();
+      } catch (reloadErr) {
+        // Both writes failed — surface both errors so the caller can
+        // tell what happened.
+        const saveMsg = saveErr instanceof Error ? saveErr.message : String(saveErr);
+        const reloadMsg = reloadErr instanceof Error ? reloadErr.message : String(reloadErr);
+        throw new Error(
+          `Segment save failed (${saveMsg}); recovery reload also failed (${reloadMsg}); storage is in a desynced state and must be reconstructed.`,
+        );
+      }
+      throw saveErr;
     }
   }
 
@@ -521,7 +557,9 @@ export class GraphStorage implements IGraphStorage {
         // Segment mode: append-paths route through a full saveAll
         // instead of a single-line append. Less efficient than the
         // single-file branch but correct — per-segment append is a
-        // follow-up optimization.
+        // follow-up optimization. saveAll rewrites every segment
+        // from scratch, so `pendingAppends` (the single-file
+        // compaction counter) resets to 0.
         await this.appendViaSegmentSave(() => {
           this.cache!.entities.push(entity);
           this.nameIndex.add(entity);
@@ -529,6 +567,7 @@ export class GraphStorage implements IGraphStorage {
           this.lowercaseCache.set(entity);
           this.observationIndex.add(entity.name, entity.observations);
         });
+        this.pendingAppends = 0;
         clearAllSearchCaches();
         this.eventEmitter.emitEntityCreated(entity);
         return;
@@ -606,6 +645,7 @@ export class GraphStorage implements IGraphStorage {
           this.cache!.relations.push(relation);
           this.relationIndex.add(relation);
         });
+        this.pendingAppends = 0;
         clearAllSearchCaches();
         this.eventEmitter.emitRelationCreated(relation);
         return;
@@ -800,10 +840,14 @@ export class GraphStorage implements IGraphStorage {
         // Segment mode: route updateEntity through a full saveAll
         // after applying the in-cache mutation (same write-after-
         // cache pattern as appendEntity/Relation in segment mode).
-        // Capture pre-mutation state for the change event.
+        // Capture pre-mutation state for the change event — deep-
+        // clone array/object fields so the snapshot survives the
+        // in-place `Object.assign` mutation that follows.
         const previous: Partial<Entity> = {};
         for (const key of Object.keys(updates)) {
-          (previous as Record<string, unknown>)[key] = (entity as unknown as Record<string, unknown>)[key];
+          const v = (entity as unknown as Record<string, unknown>)[key];
+          (previous as Record<string, unknown>)[key] =
+            v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v;
         }
         await this.appendViaSegmentSave(() => {
           Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
@@ -818,6 +862,7 @@ export class GraphStorage implements IGraphStorage {
             this.observationIndex.add(entityName, entity.observations);
           }
         });
+        this.pendingAppends = 0;
         clearAllSearchCaches();
         this.eventEmitter.emitEntityUpdated(entityName, updates, previous);
         return true;

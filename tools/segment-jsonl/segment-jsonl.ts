@@ -47,12 +47,14 @@ export type ParsedArgs =
       output: string;
       segments: number;
       dryRun: boolean;
+      force: boolean;
     }
   | {
       mode: 'merge';
       input: string;
       output: string;
       dryRun: boolean;
+      force: boolean;
     };
 
 /**
@@ -72,14 +74,19 @@ export function parseArgs(argv: string[]): ParsedArgs {
   let segments: number | undefined;
   let dryRun = false;
 
+  let force = false;
   for (let i = 1; i < argv.length; i++) {
     const arg = argv[i]!;
     if (arg === '--dry-run') {
       dryRun = true;
+    } else if (arg === '--force') {
+      force = true;
     } else if (arg.startsWith('--segments=')) {
       const value = arg.slice('--segments='.length);
-      const n = Number.parseInt(value, 10);
-      if (!Number.isFinite(n) || n < 1) {
+      const n = Number(value);
+      // Strict — reject floats, hex, exponents. `parseInt('3.7')`
+      // silently truncated to 3, which is a footgun for operators.
+      if (!Number.isInteger(n) || n < 1) {
         throw new Error(
           `Invalid --segments value "${value}". Must be a positive integer.`,
         );
@@ -87,8 +94,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
       segments = n;
     } else if (arg === '--segments') {
       const value = argv[++i];
-      const n = value === undefined ? Number.NaN : Number.parseInt(value, 10);
-      if (!Number.isFinite(n) || n < 1) {
+      const n = value === undefined ? Number.NaN : Number(value);
+      if (!Number.isInteger(n) || n < 1) {
         throw new Error(
           `Invalid --segments value "${value ?? ''}". Must be a positive integer.`,
         );
@@ -113,9 +120,9 @@ export function parseArgs(argv: string[]): ParsedArgs {
     if (segments === undefined) {
       throw new Error('split requires --segments=N.');
     }
-    return { mode: 'split', input, output, segments, dryRun };
+    return { mode: 'split', input, output, segments, dryRun, force };
   }
-  return { mode: 'merge', input, output, dryRun };
+  return { mode: 'merge', input, output, dryRun, force };
 }
 
 /**
@@ -199,9 +206,12 @@ export async function runSplit(opts: {
   outputDir: string;
   segmentCount: number;
   dryRun?: boolean;
+  /** When false (default), refuse to clobber existing segment files. */
+  force?: boolean;
 }): Promise<SplitResult> {
   const { inputPath, outputDir, segmentCount } = opts;
   const dryRun = opts.dryRun === true;
+  const force = opts.force === true;
 
   const absInput = path.resolve(inputPath);
   const absOutDir = path.resolve(outputDir);
@@ -217,6 +227,25 @@ export async function runSplit(opts: {
   }
 
   if (!dryRun) {
+    // Refuse to overwrite an existing segments directory unless
+    // `--force` is set — protects against silently nuking a
+    // hand-edited segment file.
+    if (!force) {
+      const existing: string[] = [];
+      for (const f of segmentFiles) {
+        try {
+          await fs.access(f);
+          existing.push(f);
+        } catch {
+          /* file absent — OK */
+        }
+      }
+      if (existing.length > 0) {
+        throw new Error(
+          `Refusing to overwrite ${existing.length} existing segment file(s): ${existing.join(', ')}. Pass --force to clobber.`,
+        );
+      }
+    }
     await fs.mkdir(segmentsDir, { recursive: true });
     for (const seg of segments) {
       const lines = segmentToLines(seg);
@@ -255,9 +284,12 @@ export async function runMerge(opts: {
   inputDir: string;
   outputPath: string;
   dryRun?: boolean;
+  /** When false (default), refuse to clobber an existing output file. */
+  force?: boolean;
 }): Promise<MergeResult> {
   const { inputDir, outputPath } = opts;
   const dryRun = opts.dryRun === true;
+  const force = opts.force === true;
 
   const absInDir = path.resolve(inputDir);
   const absOutPath = path.resolve(outputPath);
@@ -284,6 +316,17 @@ export async function runMerge(opts: {
   const graph = mergeSegmentsIntoGraph(segments);
 
   if (!dryRun) {
+    if (!force) {
+      try {
+        await fs.access(absOutPath);
+        throw new Error(
+          `Refusing to overwrite existing output file ${absOutPath}. Pass --force to clobber.`,
+        );
+      } catch (err) {
+        // Re-throw our own error; swallow ENOENT (file is absent → OK).
+        if (err instanceof Error && err.message.startsWith('Refusing')) throw err;
+      }
+    }
     await fs.mkdir(path.dirname(absOutPath), { recursive: true });
     const lines = graphToLines(graph);
     const body = lines.length === 0 ? '' : lines.join('\n') + '\n';
@@ -306,11 +349,13 @@ Convert between single-file JSONL and the N-segment on-disk layout
 used by FileSegmentStorage.
 
 USAGE:
-  segment-jsonl split <input.jsonl> <output-dir> --segments=N [--dry-run]
-  segment-jsonl merge <input-dir> <output.jsonl> [--dry-run]
+  segment-jsonl split <input.jsonl> <output-dir> --segments=N [--dry-run] [--force]
+  segment-jsonl merge <input-dir> <output.jsonl> [--dry-run] [--force]
 
-SPLIT writes <output-dir>/segments/<id>.jsonl for id in [0, N).
+SPLIT writes <output-dir>/segments/<id>.jsonl for id in [0, N). Refuses
+to overwrite existing segment files unless --force is set.
 MERGE reads <input-dir>/segments/*.jsonl in id order and concatenates.
+Refuses to overwrite the output file unless --force is set.
 
 ROUTING:
   Each entity routes to segment fnv1a32(entity.name) % N. Relations
@@ -332,6 +377,7 @@ async function main(argv: string[]): Promise<void> {
       outputDir: opts.output,
       segmentCount: opts.segments,
       dryRun: opts.dryRun,
+      force: opts.force,
     });
     const verb = result.dryRun ? 'Would split' : 'Split';
     console.log(
@@ -342,6 +388,7 @@ async function main(argv: string[]): Promise<void> {
       inputDir: opts.input,
       outputPath: opts.output,
       dryRun: opts.dryRun,
+      force: opts.force,
     });
     const verb = result.dryRun ? 'Would merge' : 'Merged';
     console.log(

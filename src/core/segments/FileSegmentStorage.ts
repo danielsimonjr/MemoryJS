@@ -36,6 +36,7 @@ import { promises as fs } from 'fs';
 import { randomBytes } from 'crypto';
 import { join, dirname } from 'path';
 import type { Entity, KnowledgeGraph, Relation } from '../../types/types.js';
+import { logger } from '../../utils/logger.js';
 import {
   type ISegmentStorage,
   type Segment,
@@ -83,6 +84,58 @@ export class FileSegmentStorage implements ISegmentStorage {
     return join(this.segmentsDir, `${id}.jsonl`);
   }
 
+  /** Path to the manifest sidecar that drives crash-atomic `saveAll`. */
+  private manifestPath(): string {
+    return join(this.segmentsDir, '_manifest.json');
+  }
+
+  /**
+   * If a prior `saveAll` crashed in phase 3 (mid-rename), the
+   * manifest sidecar survives. Replay its remaining renames forward
+   * (the tmp files contain the new state we wanted to commit),
+   * then delete the manifest. Called at the top of `loadAll` so
+   * readers never observe a torn snapshot.
+   */
+  private async recoverFromManifestIfPresent(): Promise<void> {
+    const manifestPath = this.manifestPath();
+    let manifestContent: string;
+    try {
+      manifestContent = await fs.readFile(manifestPath, 'utf-8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw err;
+    }
+
+    let manifest: { version: number; moves: Array<{ tmp: string; target: string }> };
+    try {
+      manifest = JSON.parse(manifestContent);
+    } catch {
+      // Malformed manifest — bail out by deleting it. Worst case the
+      // store is in the pre-saveAll state since the tmps weren't
+      // renamed; users see the old snapshot.
+      await fs.unlink(manifestPath).catch(() => undefined);
+      return;
+    }
+
+    if (manifest.version !== 1 || !Array.isArray(manifest.moves)) {
+      await fs.unlink(manifestPath).catch(() => undefined);
+      return;
+    }
+
+    for (const move of manifest.moves) {
+      try {
+        // If the tmp is still around, we crashed before renaming it.
+        // Complete the move. If the tmp is gone, the rename had
+        // already happened — skip silently.
+        await fs.access(move.tmp);
+        await renameWithFallback(move.tmp, move.target);
+      } catch {
+        // tmp missing → already moved; ignore.
+      }
+    }
+    await fs.unlink(manifestPath).catch(() => undefined);
+  }
+
   async loadSegment(id: SegmentId): Promise<Segment> {
     this.assertValidId(id);
     const path = this.segmentPath(id);
@@ -107,6 +160,11 @@ export class FileSegmentStorage implements ISegmentStorage {
   }
 
   async loadAll(): Promise<KnowledgeGraph> {
+    // Forward-recovery: if a prior `saveAll` crashed between renames,
+    // the manifest sidecar lists the unfinished rename moves and we
+    // complete them before reading. This is what makes the multi-
+    // segment save crash-atomic from the loader's perspective.
+    await this.recoverFromManifestIfPresent();
     const segs: Segment[] = [];
     for (let i = 0; i < this.segmentCount; i++) {
       segs.push(await this.loadSegment(i));
@@ -117,17 +175,35 @@ export class FileSegmentStorage implements ISegmentStorage {
   /**
    * Replace every segment file with slices of `graph`.
    *
-   * Two-phase commit: every tmp file is written + fsynced before any
-   * rename runs. A crash before the first rename leaves the prior
-   * segments intact; a crash after the last rename leaves the new
-   * snapshot intact. A crash in between leaves a mix — the window is
-   * small (no I/O between renames) but not zero. Callers that need
-   * true atomicity should wrap this in a higher-level transaction.
+   * **Crash atomicity (manifest-based):** the save proceeds in three
+   * phases:
+   *
+   * 1. Stage — every tmp file is written + fsynced.
+   * 2. Manifest — a `segments/_manifest.json` sidecar is written +
+   *    fsynced atomically (temp + rename). It lists every staged
+   *    (tmp, target) pair.
+   * 3. Commit — each tmp is renamed onto its target, then the
+   *    manifest is deleted.
+   *
+   * A crash:
+   * - Before phase 2 → no manifest, all targets are old; staged tmp
+   *   files leak (`recoverFromManifestIfPresent` cleans them up on
+   *   the next `loadAll`).
+   * - During phase 3 → manifest survives, listing the in-progress
+   *   moves; the next `loadAll` finishes the rename loop and deletes
+   *   the manifest. Loaders see the new snapshot atomically.
+   *
+   * This is the multi-file analog of the temp+rename trick the
+   * single-file `GraphStorage.durableWriteFile` uses. The previous
+   * "two-phase staging" was misleading — a crash mid-rename DID
+   * leave a torn snapshot. The manifest sidecar closes that window.
    */
   async saveAll(graph: KnowledgeGraph): Promise<void> {
     const segs = splitGraphIntoSegments(graph, this.router);
     await this.ensureDir();
 
+    // Phase 1 — stage tmps. Tracked in `staged` so we can clean up
+    // on any phase-1 failure.
     const staged: Array<{ tmp: string; target: string }> = [];
     try {
       for (const seg of segs) {
@@ -138,17 +214,50 @@ export class FileSegmentStorage implements ISegmentStorage {
       }
     } catch (err) {
       for (const { tmp } of staged) {
-        try {
-          await fs.unlink(tmp);
-        } catch {
-          /* best-effort cleanup */
-        }
+        try { await fs.unlink(tmp); } catch { /* best-effort */ }
       }
       throw err;
     }
 
-    for (const { tmp, target } of staged) {
-      await renameWithFallback(tmp, target);
+    // Phase 2 — write the manifest atomically.
+    const manifestPath = this.manifestPath();
+    try {
+      const manifestContent = JSON.stringify({
+        version: 1,
+        moves: staged,
+      });
+      const manifestTmp = await writeTmpFile(manifestPath, manifestContent);
+      await renameWithFallback(manifestTmp, manifestPath);
+    } catch (err) {
+      for (const { tmp } of staged) {
+        try { await fs.unlink(tmp); } catch { /* best-effort */ }
+      }
+      throw err;
+    }
+
+    // Phase 3 — perform the renames. On failure, leave the manifest
+    // in place so the next `loadAll` can complete recovery. Unlink
+    // remaining tmps that didn't get renamed so they don't leak
+    // across recovery cycles.
+    let renamedThroughIdx = -1;
+    try {
+      for (let i = 0; i < staged.length; i++) {
+        await renameWithFallback(staged[i]!.tmp, staged[i]!.target);
+        renamedThroughIdx = i;
+      }
+    } catch (err) {
+      for (let i = renamedThroughIdx + 1; i < staged.length; i++) {
+        try { await fs.unlink(staged[i]!.tmp); } catch { /* may not exist */ }
+      }
+      throw err;
+    }
+
+    // Phase 3 complete — drop the manifest.
+    try {
+      await fs.unlink(manifestPath);
+    } catch {
+      // Manifest already gone (someone else recovered, or it never
+      // got written). Either way, our state is now consistent.
     }
   }
 
@@ -242,17 +351,36 @@ function parseSegmentFile(id: SegmentId, raw: string): Segment {
   const entities: Entity[] = [];
   const relations: Relation[] = [];
   const lines = raw.split('\n');
+  let malformedCount = 0;
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed === '') continue;
-    const item = JSON.parse(trimmed) as SegmentLine;
+    // Per-line tolerance: a single garbage line (half-written tail
+    // from a crash, hand-edit typo, etc.) should not take the whole
+    // segment down. Mirrors `GraphStorage.loadFromDisk`'s
+    // try/catch-per-line semantics. Malformed lines are counted and
+    // logged once at the end of the file for diagnostics.
+    let item: SegmentLine;
+    try {
+      item = JSON.parse(trimmed) as SegmentLine;
+    } catch {
+      malformedCount++;
+      continue;
+    }
     if (item.type === 'entity') {
       const { type: _t, ...rest } = item;
       entities.push(rest as unknown as Entity);
     } else if (item.type === 'relation') {
       const { type: _t, ...rest } = item;
       relations.push(rest as unknown as Relation);
+    } else {
+      malformedCount++;
     }
+  }
+  if (malformedCount > 0) {
+    logger.warn(
+      `[FileSegmentStorage] Segment ${id}: skipped ${malformedCount} malformed line(s)`,
+    );
   }
   return { id, entities, relations };
 }

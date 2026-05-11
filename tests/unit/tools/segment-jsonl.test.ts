@@ -90,6 +90,7 @@ describe('segment-jsonl / parseArgs', () => {
       output: 'out',
       segments: 4,
       dryRun: false,
+      force: false,
     });
   });
 
@@ -110,6 +111,7 @@ describe('segment-jsonl / parseArgs', () => {
       input: 'in-dir',
       output: 'out.jsonl',
       dryRun: false,
+      force: false,
     });
   });
 
