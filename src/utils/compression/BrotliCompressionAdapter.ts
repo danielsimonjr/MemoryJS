@@ -114,15 +114,31 @@ export class BrotliCompressionAdapter implements ICompressionAdapter {
   }
 
   compress(input: Buffer): Buffer {
-    return brotliCompressSync(input, {
-      params: {
-        [constants.BROTLI_PARAM_QUALITY]: this.quality,
-        [constants.BROTLI_PARAM_MODE]: this.mode,
-      },
-    });
+    try {
+      return brotliCompressSync(input, {
+        params: {
+          [constants.BROTLI_PARAM_QUALITY]: this.quality,
+          [constants.BROTLI_PARAM_MODE]: this.mode,
+        },
+      });
+    } catch (err) {
+      throw new Error(
+        `BrotliCompressionAdapter: compress failed (input may exceed Buffer.constants.MAX_LENGTH): ${(err as Error).message}`,
+      );
+    }
   }
 
   decompress(input: Buffer): Buffer {
-    return brotliDecompressSync(input);
+    // Wrap the underlying brotli error (review #5) so callers can
+    // tell which adapter rejected. A buffer compressed by
+    // `ZlibCompressionAdapter` throws here with the wrapper
+    // identifying the adapter.
+    try {
+      return brotliDecompressSync(input);
+    } catch (err) {
+      throw new Error(
+        `BrotliCompressionAdapter: decompress failed — input is likely corrupted, truncated, or produced by a different adapter: ${(err as Error).message}`,
+      );
+    }
   }
 }

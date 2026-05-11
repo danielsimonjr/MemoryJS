@@ -88,11 +88,27 @@ export class ZlibCompressionAdapter implements ICompressionAdapter {
   }
 
   compress(input: Buffer): Buffer {
-    return deflateSync(input, { level: this.level });
+    try {
+      return deflateSync(input, { level: this.level });
+    } catch (err) {
+      throw new Error(
+        `ZlibCompressionAdapter: compress failed (input may exceed Buffer.constants.MAX_LENGTH): ${(err as Error).message}`,
+      );
+    }
   }
 
   decompress(input: Buffer): Buffer {
-    return inflateSync(input);
+    // Wrap the underlying zlib error (review #5) so callers can tell
+    // which adapter rejected. A buffer compressed by `BrotliCompressionAdapter`
+    // throws here with the wrapper identifying the adapter — letting
+    // multi-adapter callers distinguish "wrong adapter" from "truncated input."
+    try {
+      return inflateSync(input);
+    } catch (err) {
+      throw new Error(
+        `ZlibCompressionAdapter: decompress failed — input is likely corrupted, truncated, or produced by a different adapter: ${(err as Error).message}`,
+      );
+    }
   }
 }
 

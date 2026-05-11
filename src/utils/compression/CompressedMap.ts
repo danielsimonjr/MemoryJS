@@ -163,6 +163,19 @@ export class CompressedMap<K, V> {
     };
   }
 
+  /**
+   * Yields `[key, value]` pairs. **Order: hot entries (insertion
+   * order) first, then cold entries (insertion order).** This is
+   * NOT global insertion order — differs from native `Map`. A user
+   * calling `new Map([...compressedMap])` will get keys grouped by
+   * tier, not by original insertion sequence.
+   *
+   * **Iteration does NOT promote cold entries to hot.** Decompression
+   * cost is paid per call; iterating twice decompresses each cold
+   * entry twice. Callers that need to update entries in-place
+   * should iterate `keys()` and then use `get()`/`set()`, which
+   * respect the LRU and promote-on-access.
+   */
   *entries(): IterableIterator<[K, V]> {
     for (const entry of this.hot) {
       yield entry;
@@ -172,6 +185,7 @@ export class CompressedMap<K, V> {
     }
   }
 
+  /** Hot keys (insertion order) followed by cold keys (insertion order). See `entries()` for the contract. */
   *keys(): IterableIterator<K> {
     for (const key of this.hot.keys()) {
       yield key;
@@ -181,6 +195,7 @@ export class CompressedMap<K, V> {
     }
   }
 
+  /** Hot values (insertion order) followed by cold values (insertion order, decompressed on-the-fly). See `entries()` for the contract. */
   *values(): IterableIterator<V> {
     for (const value of this.hot.values()) {
       yield value;
@@ -190,6 +205,7 @@ export class CompressedMap<K, V> {
     }
   }
 
+  /** Alias for `entries()`. See its JSDoc for tier-ordering + no-promotion contract. */
   [Symbol.iterator](): IterableIterator<[K, V]> {
     return this.entries();
   }
@@ -211,10 +227,23 @@ export class CompressedMap<K, V> {
       }
       const key = oldest.value;
       const value = this.hot.get(key) as V;
+      // Compress + serialize BEFORE removing from hot (review #1).
+      // If either step throws (custom adapter, OOM, serialize choke
+      // on circular ref / BigInt), the hot entry stays put — better
+      // to leave the map over-budget by 1 than silently drop the
+      // just-inserted entry on the floor. The throw surfaces to the
+      // caller of set()/get() that triggered the demotion.
+      let compressed: Buffer;
+      try {
+        compressed = this.adapter.compress(
+          Buffer.from(this.serialize(value), 'utf8'),
+        );
+      } catch (err) {
+        throw new Error(
+          `CompressedMap: failed to demote key '${String(key)}' to cold tier (compression or serialization threw): ${(err as Error).message}`,
+        );
+      }
       this.hot.delete(key);
-      const compressed = this.adapter.compress(
-        Buffer.from(this.serialize(value), 'utf8'),
-      );
       this.cold.set(key, compressed);
       this.coldBytesTotal += compressed.length;
     }
