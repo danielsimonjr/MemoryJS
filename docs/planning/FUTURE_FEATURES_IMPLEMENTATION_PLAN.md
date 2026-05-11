@@ -107,13 +107,13 @@ Phase 2 result: all 12 items shipped (steps 24, 29 closed in Phase 5). New env v
 | ☑ | 32 | **§3.1 Observation deduplication** | 3 wk | ✅ New `src/core/ObservationStore.ts`. Content-addressable SHA-256 store with reference counting; `release()` returns tri-state `'removed' \| 'decremented' \| 'unknown'` so callers distinguish no-ops from successful decrements. Entity shape unchanged — wiring into `EntityManager` is a follow-up. |
 | ☑ | 33 | **§5.5 Index partitioning by entity type** | 3 wk | ✅ New `src/search/PartitionedInvertedIndex.ts`. Composes per-entityType `OptimizedInvertedIndex` instances; `searchPartition(type, terms)` for typed queries, `searchAcrossAll(terms)` (snapshot-iterates partitions for safety). `IIndexHealth.health()` rolls partitions up. |
 | ☑ | 34 | **§11.1 Heuristic Guidelines Manager (last Phase 3B item)** | 3–4 wk | ✅ New `src/agent/HeuristicManager.ts`. `add` / `match` (Jaccard token-overlap × confidence; symmetric so a 1-token query against a 10-token condition isn't penalised) / `reinforce` (asymptotic toward 1) / `recordContradiction` (asymptotic toward 0) / `detectConflicts` (overlap vs literal-negation contradiction). Stopword-aware tokeniser keeps short tokens like "PR", "AI", "go". |
-| ☐ | 35 | §4.3 Columnar observation storage | 3–4 wk | DEFERRED |
+| ☐ | 35 | §4.3 Columnar observation storage | 3–4 wk | EXPANDED into Phase 8 (tasks 64–68) |
 | ☑ | 36 | **§3.2 Lazy entity hydration (`EntityProxy`)** | 4 wk | ✅ Shipped in Phase 6. New `src/core/EntityProxy.ts`. Eager `(name, entityType)`, deferred `observations` / `tags` / `importance` / `parentId` / `createdAt` / `lastModified` (single `getEntityByName` on first access, cached); arrays returned to callers are `Object.freeze`'d so mutation can't corrupt the storage cache. `EntityProxyFactory.fromPair` / `fromIndex` / `fromName` builders; `seed()` lets factories pre-populate the cache from an already-loaded record. |
-| ☐ | 37 | §3.4 Compressed in-memory storage (LZ4 cold tier) | 4 wk | DEFERRED |
-| ☐ | 38 | §5.3 JSONL segment files | 4 wk | DEFERRED |
-| ☐ | 39 | §5.4 Memory-mapped file support | 4–6 wk | DEFERRED |
+| ☐ | 37 | §3.4 Compressed in-memory storage (LZ4 cold tier) | 4 wk | EXPANDED into Phase 10 (tasks 75–79) |
+| ☐ | 38 | §5.3 JSONL segment files | 4 wk | EXPANDED into Phase 7 (tasks 59–63) |
+| ☐ | 39 | §5.4 Memory-mapped file support | 4–6 wk | EXPANDED into Phase 11 (tasks 80–86) |
 | ☑ | 40 | **§2.1 WAL for JSONL backend** | 4–6 wk | ✅ Shipped in Phase 6. New `src/core/WriteAheadLog.ts`. Append-only `<file>.wal` companion (JSONL entries); synchronous `openSync` / `writeSync` / `fsyncSync` to guarantee durability ordering before the main-file write; first-write does a POSIX directory fsync so a fresh WAL's dirent is durable. `replay()` tolerates a malformed *tail* (the crash-during-append fingerprint) but throws on mid-log malformed lines unless `{ tolerateGaps: true }`. `checkpoint()` drops the WAL after main-store write succeeds. `applyWALToGraph()` helper for in-memory replay. Wiring into `GraphStorage.saveGraph` is a follow-up — this commit ships the scaffolding only. |
-| ☐ | 41 | §1.5 Tiered index architecture | 4–6 wk | DEFERRED |
+| ☐ | 41 | §1.5 Tiered index architecture | 4–6 wk | EXPANDED into Phase 9 (tasks 69–74) |
 
 **Phase 2 deferred-wirings shipped alongside Phase 3:**
 - `PartialIndexAdvisor` wired into `SQLiteStorage.recordFilter()` (deferred DDL via `setImmediate` per review #17).
@@ -156,6 +156,95 @@ Phase 2 result: all 12 items shipped (steps 24, 29 closed in Phase 5). New env v
 | ☐ | 56 | §14.2 Distributed architecture | DEFERRED — multi-month effort, depends on Phase 4 adapter rollout |
 | ☐ | 57 | §14.4 Cloud-native deployment | DEFERRED — operations not source-code work |
 | ☐ | 58 | §14.5 GPU acceleration | DEFERRED — needs CUDA/WebGPU dep approval |
+
+---
+
+## Phases 7–11 — Multi-month engineering features (agent-driven task breakdown)
+
+The five remaining Phase 3 deferrals are each multi-month engineering features that don't fit a single phase iteration. This section breaks them into agent-executable sub-tasks ordered **from least to most complex**.
+
+Sequencing rationale (per phase):
+
+1. **Phase 7 — JSONL segment files** — least complex. Pure bookkeeping (route reads/writes to N files), no new algorithms, no external deps.
+2. **Phase 8 — Columnar observation storage** — moderate. Restructures storage format and adds a migration path; no external deps; coordinates with `EntityManager` read paths.
+3. **Phase 9 — Tiered index architecture** — moderate-high. Coordinates across every search-index subsystem (`OptimizedInvertedIndex`, `NGramIndex`, `VectorStore`, `TFIDFIndexManager`); no external deps.
+4. **Phase 10 — LZ4 compressed in-memory storage** — high. Self-contained algorithm but needs a compression-library decision (built-in `zlib` works as a fallback; `lz4` is the speed-optimal target).
+5. **Phase 11 — Memory-mapped file support** — most complex. Platform-specific (POSIX vs Windows), needs a native mmap binding, interop with Node's `Buffer` semantics.
+
+Each phase follows the same pattern: **define interface → reference impl → wiring → migration → benchmarks**. The interface task is intentionally small so it can land first as a low-risk scaffold; later tasks layer behavior on top. Where a task carries a decision gate (compression library, mmap binding), it's flagged as such — the agent should pause and ask before consuming a budget on the wrong choice.
+
+### Phase 7 — JSONL segment files (least complex; replaces Phase 3 step 38)
+
+**Goal:** Split a large JSONL store into N segment files routed by stable hash on entity name. Smaller working set per operation, faster startup (parallel segment load), reduced GC churn on edits.
+
+**Estimated total:** 3–4 weeks (~5 agent iterations).
+
+| ☐ | # | Task | Acceptance |
+|---|---|------|------------|
+| ☐ | 59 | **7.1 Segment storage interface** | New `src/core/segments/ISegmentStorage.ts` with `Segment`, `SegmentId`, `SegmentRouter` types. Pure interfaces + an `InMemorySegmentStorage` reference impl. Stable hashing rule documented (FNV-1a of entity name, modulo segment count). Zero behavior change. |
+| ☐ | 60 | **7.2 FileSegmentStorage backend** | `src/core/segments/FileSegmentStorage.ts` reads/writes per-segment JSONL files under `<storage>/segments/<id>.jsonl`. Each segment is a complete `KnowledgeGraph` slice. Round-trip a 100k-entity graph across 4 / 8 / 16 segments via a property-based test. |
+| ☐ | 61 | **7.3 Cross-segment relation routing** | Relations may span segments. Document the rule: relation lives in the segment hosting `from`. Reader logic that needs both endpoints joins across segments. Tests for the cross-segment relation case. |
+| ☐ | 62 | **7.4 Wire `GraphStorage` to segments** | Add `MEMORY_STORAGE_SEGMENT_COUNT` env var (default `1` = no segmentation, byte-identical to current). With `=4`, `GraphStorage` reads/writes via `FileSegmentStorage`. All 6620 existing tests pass at `=1`; a new suite asserts equivalence at `=4`. |
+| ☐ | 63 | **7.5 Migration tool** | `tools/segment-jsonl/` CLI: splits an existing single-file JSONL into N segments and back. Bidirectional round-trip is byte-identical (modulo ordering); test fixture seeded from a 10k-entity dump. |
+
+### Phase 8 — Columnar observation storage (replaces Phase 3 step 35)
+
+**Goal:** Store observation strings in a per-attribute column file instead of inline in entity rows. Makes "list all entity names" and "filter by entityType" cheap even when observation arrays are huge.
+
+**Estimated total:** 3–4 weeks (~5 agent iterations).
+
+| ☐ | # | Task | Acceptance |
+|---|---|------|------------|
+| ☐ | 64 | **8.1 IColumnStore interface** | `src/core/columns/IColumnStore.ts` — get/put/delete/batch-put keyed by `entityName`; `ObservationColumn` value type. `InMemoryColumnStore` reference impl. Tests cover round-trip + missing-key semantics. |
+| ☐ | 65 | **8.2 JsonlColumnStore backend** | Side-car file `<storage>.observations.jsonl`; each line is `{name, observations}`. Reuses `durableWriteFile` (atomic temp + rename) from `GraphStorage`. Tests for append-then-read, delete-then-read, and crash-mid-write. |
+| ☐ | 66 | **8.3 Read-path integration** | `EntityManager.getObservations(name)` consults `IColumnStore` first, falls back to inline `entity.observations` when the column is absent. Backwards-compat for the existing storage format. Tests on a mixed-format graph (some entities in columns, some inline). |
+| ☐ | 67 | **8.4 Write-path integration** | `EntityManager.addObservations()` / `setObservations()` write to the column store. Inline `entity.observations` becomes a derived view. Existing 6620 tests pass with the column store enabled. |
+| ☐ | 68 | **8.5 Migration helper** | `tools/observations-to-columns/`: bulk-extract observations from existing entity rows into the column store, leaving inline empty. Bidirectional. Backwards-compat read of un-migrated stores. |
+
+### Phase 9 — Tiered index architecture (replaces Phase 3 step 41)
+
+**Goal:** Hot/warm/cold tier abstraction over search indexes. Hot tier in-process; warm tier on-disk LRU; cold tier compressed. Promotion on hit, demotion on staleness. Lets the library hold huge indexes without paying the full in-memory cost.
+
+**Estimated total:** 4–5 weeks (~6 agent iterations).
+
+| ☐ | # | Task | Acceptance |
+|---|---|------|------------|
+| ☐ | 69 | **9.1 ITieredIndex interface** | `src/search/tiered/ITieredIndex.ts` — `get(key)` / `put(key, value)` / `delete(key)` with tier-aware metadata. `TierAccessStats` for diagnostics. `HotOnlyIndex` reference impl (single-tier in-memory). |
+| ☐ | 70 | **9.2 LRU hot tier** | `LRUHotTier` with configurable max-entries + max-bytes (estimate-based). Eviction events fed to a `IDemotionTarget` callback. Tests for eviction order + size-bound enforcement. |
+| ☐ | 71 | **9.3 Disk-backed warm tier** | `DiskWarmTier` writes evicted entries to JSONL (or SQLite when `MEMORY_STORAGE_TYPE=sqlite`). `get(key)` brings the entry back into hot. Tests for warm-hit, warm-miss, hot-promotion. |
+| ☐ | 72 | **9.4 Brotli-compressed cold tier** | `BrotliColdTier` keeps a compressed-on-disk shard for the long tail; reuses `src/utils/compressionUtil`. Promotion to warm on hit. Tests for compressed-cold-hit latency and decompression correctness. |
+| ☐ | 73 | **9.5 Wire `OptimizedInvertedIndex` to TieredIndex** | The existing inverted index becomes a `TieredIndex` user. Gated on `MEMORY_TIERED_INDEX=true` env var (default off). Tests for end-to-end search across tiers. |
+| ☐ | 74 | **9.6 Diagnostics + benchmark** | `ctx.diagnostics()` reports per-tier hit rate + size. New benchmark in `tests/performance/`: hit-rate vs latency vs RAM trade-off on a 100k-entity index. |
+
+### Phase 10 — LZ4 compressed in-memory storage (replaces Phase 3 step 37)
+
+**Goal:** Compress cold entities in RAM (LZ4 fast compression). Keeps a large graph in memory at lower cost than the current uncompressed map.
+
+**Estimated total:** 3–4 weeks (~5 agent iterations). Decision point in task 77 — pause for user approval on the compression library choice.
+
+| ☐ | # | Task | Acceptance |
+|---|---|------|------------|
+| ☐ | 75 | **10.1 ICompressionAdapter interface** | `src/utils/compression/ICompressionAdapter.ts` — synchronous `compress(Buffer)` / `decompress(Buffer)` interface. `ZlibCompressionAdapter` reference impl using Node's built-in `zlib` (no external dep). Tests on round-trip + size-reduction sanity. |
+| ☐ | 76 | **10.2 CompressedMap data structure** | `src/utils/CompressedMap.ts` — Map-like with compressed values for cold entries (hot/cold threshold = N most-recent accesses). Decompresses on `get()`, marks as hot. Tests with `ZlibCompressionAdapter`. |
+| ☐ | 77 | **10.3 Decision gate — LZ4 vs zlib vs brotli** | Pause for user decision: which compression library for the production hot path? Options: built-in zlib (no dep, slowest), `lz4` (~3× faster compress, ~5× faster decompress, ~30 % worse ratio), brotli (already a dep, slow on compress). Agent ships a benchmark comparison + recommendation; user picks. |
+| ☐ | 78 | **10.4 LZ4 adapter (only if approved)** | `Lz4CompressionAdapter` implementing the interface. If LZ4 wasn't approved, this task ships `BrotliCompressionAdapter` instead — same interface, different perf profile. |
+| ☐ | 79 | **10.5 Wire `GraphStorage` cache** | The in-memory entity cache (in `GraphStorage`) optionally compresses cold entities via `MEMORY_CACHE_COMPRESS=true` env var. Perf benchmark vs un-compressed baseline on a 50k-entity graph. |
+
+### Phase 11 — Memory-mapped file support (most complex; replaces Phase 3 step 39)
+
+**Goal:** Read large JSONL files via mmap — zero-copy iteration, OS-managed paging, faster startup on multi-GB stores.
+
+**Estimated total:** 5–6 weeks (~7 agent iterations). Decision point in task 82 — pause for user approval on the mmap binding (or accept a build-from-scratch native addon).
+
+| ☐ | # | Task | Acceptance |
+|---|---|------|------------|
+| ☐ | 80 | **11.1 IMmapBackend interface** | `src/core/mmap/IMmapBackend.ts` — `open(path)` / `close(handle)` / `readRange(handle, offset, length)` / `size(handle)`. Synchronous reads (mmap semantics). No deps yet. |
+| ☐ | 81 | **11.2 Buffer-backed reference impl** | `BufferMmapBackend` reads the entire file into a single `Buffer` at open time, services `readRange` from the slice. Useful for tests and for files small enough to not need real mmap. Tests for range correctness + EOF handling. |
+| ☐ | 82 | **11.3 Decision gate — mmap binding choice** | Pause for user decision: which native binding? Options: `mmap-io` (popular, MIT, last published 2020), `@datastructures-js/heap`-style custom Node addon (no dep, but build complexity), `node-mmap` (older). Agent ships a comparison of binary size, platform support, maintenance status; user picks. |
+| ☐ | 83 | **11.4 POSIX mmap impl (only if approved)** | `PosixMmapBackend` using the approved binding. Windows fallback: `WindowsMmapBackend` falls back to `fs.read` ranges since Windows mmap semantics differ. Tests gated by platform via `process.platform` check. |
+| ☐ | 84 | **11.5 Wire `GraphStorage.loadGraph`** | Use mmap-backed line iterator when `MEMORY_USE_MMAP=true` and file size > 100 MB. Behavior identical at sizes below the threshold. Tests for both branches. |
+| ☐ | 85 | **11.6 Benchmark on a 1 GB JSONL** | New `tests/performance/mmap-benchmark.test.ts`. Compares time-to-first-result with vs without mmap on a synthetically-generated 1 GB JSONL. Acceptance: mmap wins by ≥ 2× on cold-cache startup. |
+| ☐ | 86 | **11.7 Platform-matrix CI smoke** | macOS / Linux / Windows: run the mmap test suite. Windows uses the `fs.read` fallback path. CI workflow documented in `.github/workflows/` (or noted as a follow-up if no CI exists). |
 
 ---
 
@@ -210,4 +299,4 @@ Mark each item ☑ when its phase commit lands. Append a one-line note for varia
 
 ---
 
-*Last updated: 2026-05-11 — Phases 0, 1, 2, 3, 4, 5, and 6 shipped (see ledger). Phase 6 result: 3 deferral closeouts (Phase 3 step 36 EntityProxy + step 40 JSONL WAL + Phase 5 step 52 SPARQL minimal subset). Remaining deferrals all need external deps or strategy decisions: Phase 3 35/37/38/39/41 (columnar storage, LZ4, segment files, mmap, tiered index — each multi-month); Phase 4 42/43/45 (NestJS/Express/Next.js, GraphQL, Elasticsearch — dep approval); Phase 5 55–58 (encryption-at-rest, distributed, cloud-native, GPU — strategy decisions or external deps). `vitest run` passes 6620/6627.*
+*Last updated: 2026-05-11 — Phases 0, 1, 2, 3, 4, 5, and 6 shipped (see ledger). Phase 6 result: 3 deferral closeouts (Phase 3 step 36 EntityProxy + step 40 JSONL WAL + Phase 5 step 52 SPARQL minimal subset). The five remaining Phase 3 deferrals (35/37/38/39/41) have been expanded into Phases 7–11 (tasks 59–86), ordered least-to-most complex and broken into agent-executable sub-tasks. Remaining Phase 4 (42/43/45) and Phase 5 (55–58) deferrals still need user-side decisions: dep approval (NestJS/Express/Next.js, GraphQL, Elasticsearch, CUDA/WebGPU), key-management strategy (encryption at rest), or multi-month coordinated effort (distributed architecture, cloud-native deployment). `vitest run` passes 6620/6627.*
