@@ -22,6 +22,8 @@ import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
+import { JsonlColumnStore } from './columns/JsonlColumnStore.js';
+import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
 import { SearchManager } from '../search/SearchManager.js';
@@ -99,12 +101,14 @@ export class ManagerContext {
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
   private readonly refIndexFilePath: string;
+  private readonly observationColumnStorePath: string;
   private _observerPipeline?: ObserverPipeline;
 
   // ==================== LAZY-INITIALIZED CORE MANAGERS ====================
   private _entityManager?: EntityManager;
   private _relationManager?: RelationManager;
   private _observationManager?: ObservationManager;
+  private _observationColumnStore: IColumnStore<ObservationColumn> | null | undefined;
   private _hierarchyManager?: HierarchyManager;
   private _graphTraversal?: GraphTraversal;
   private _searchManager?: SearchManager;
@@ -180,6 +184,11 @@ export class ManagerContext {
     this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
     this.refIndexFilePath = path.join(dir, `${basename}-ref-index.jsonl`);
+    // Phase 8: column-store sidecar lives next to the main file. Only
+    // populated when `MEMORY_OBSERVATIONS_COLUMNAR=true` (see the
+    // `observationColumnStore` lazy getter below); zero behavior change
+    // when the flag is unset.
+    this.observationColumnStorePath = path.join(dir, `${basename}.observations.jsonl`);
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
@@ -239,7 +248,38 @@ export class ManagerContext {
 
   /** ObservationManager - Observation CRUD */
   get observationManager(): ObservationManager {
-    return (this._observationManager ??= new ObservationManager(this.storage));
+    if (!this._observationManager) {
+      this._observationManager = new ObservationManager(this.storage);
+      // Phase 8 tasks 66 + 67: wire the column store (env-gated). The
+      // store is null when `MEMORY_OBSERVATIONS_COLUMNAR` is unset/false,
+      // matching pre-Phase-8 behavior. When enabled, every
+      // addObservations/deleteObservations write shadow-mirrors to the
+      // sidecar and `getObservationsFor(name)` reads from the column
+      // store first, falling back to inline.
+      this._observationManager.setColumnStore(this.observationColumnStore);
+    }
+    return this._observationManager;
+  }
+
+  /**
+   * Lazy `IColumnStore<ObservationColumn>` for the shadow observation
+   * column. Returns `null` when `MEMORY_OBSERVATIONS_COLUMNAR` is
+   * unset / `false` / any other value. Strict literal-match on
+   * `'true'` keeps the activation gate predictable (no `'yes'` /
+   * `'1'` / `'TRUE'` surprises). The sidecar lives at
+   * `<storagePath>.observations.jsonl`.
+   *
+   * @experimental Phase 8 — call signature stable; the underlying
+   *   sidecar format may grow new fields in non-breaking ways.
+   */
+  get observationColumnStore(): IColumnStore<ObservationColumn> | null {
+    if (this._observationColumnStore === undefined) {
+      this._observationColumnStore =
+        process.env.MEMORY_OBSERVATIONS_COLUMNAR === 'true'
+          ? new JsonlColumnStore<ObservationColumn>(this.observationColumnStorePath)
+          : null;
+    }
+    return this._observationColumnStore;
   }
 
   /** HierarchyManager - Entity hierarchy operations */

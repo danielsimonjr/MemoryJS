@@ -16,6 +16,7 @@ import type { ContradictionDetector } from '../features/ContradictionDetector.js
 import type { MemoryValidator, MemoryValidationIssue } from '../agent/MemoryValidator.js';
 import type { EntityManager } from './EntityManager.js';
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
+import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 
 /**
  * Default deduplication options used when dedup is enabled without explicit config.
@@ -39,8 +40,83 @@ export class ObservationManager {
    * is actually needed (i.e., MEMORY_VALIDATE_ON_STORE flips on AND an
    * observation gets added). */
   private memoryValidatorProvider?: () => MemoryValidator;
+  /**
+   * Shadow column store (Phase 8). When set (via
+   * `MEMORY_OBSERVATIONS_COLUMNAR=true` env wired through
+   * `ManagerContext`), every write to `entity.observations` is also
+   * mirrored to this store. Reads via `getObservationsFor(name)`
+   * consult the column store first, falling back to inline. The
+   * inline `entity.observations` field remains the source of truth —
+   * the column store is a read-side cache to avoid the full entity
+   * deserialization when callers only need observations.
+   */
+  private columnStore: IColumnStore<ObservationColumn> | null = null;
 
   constructor(private storage: GraphStorage) {}
+
+  /**
+   * Attach an `IColumnStore` for shadow-mirroring observation writes.
+   * Pass `null` to detach. Called by `ManagerContext` when
+   * `MEMORY_OBSERVATIONS_COLUMNAR=true`.
+   */
+  setColumnStore(store: IColumnStore<ObservationColumn> | null): void {
+    this.columnStore = store;
+  }
+
+  /**
+   * Whether a column store is currently attached. Used by tests +
+   * diagnostic reporting.
+   */
+  hasColumnStore(): boolean {
+    return this.columnStore !== null;
+  }
+
+  /**
+   * Read the observations for `name`, preferring the column store
+   * when one is attached. Falls back to the inline `entity.observations`
+   * field if the column store has no entry (pre-migration data) or no
+   * store is attached. Returns `[]` for an unknown entity rather than
+   * throwing — matches the "missing observations are empty" intuition
+   * used elsewhere in the codebase.
+   *
+   * Phase 8 task 66.
+   */
+  async getObservationsFor(name: string): Promise<string[]> {
+    if (this.columnStore !== null) {
+      const col = await this.columnStore.get(name);
+      if (col !== undefined) return [...col];
+    }
+    const entity = this.storage.getEntityByName(name);
+    return entity ? [...entity.observations] : [];
+  }
+
+  /**
+   * Shadow-write the column store from the entity's current inline
+   * state. Best-effort — a column-store failure logs a warning but
+   * does NOT fail the calling write (the inline state is already on
+   * disk via `saveGraph`, so the source of truth is intact). The
+   * column store is a read-side cache; a stale shadow is recoverable
+   * via the next successful write or via the migration tool.
+   *
+   * Phase 8 task 67.
+   */
+  private async shadowWriteColumn(name: string, observations: string[]): Promise<void> {
+    if (this.columnStore === null) return;
+    try {
+      await this.columnStore.put(name, [...observations]);
+    } catch (err) {
+      logger.warn(
+        `[ObservationManager] Column-store shadow write failed for "${name}": ${(err as Error).message}. Inline observations are authoritative.`,
+      );
+    }
+  }
+
+  // (`shadowDeleteColumn` for full-entity removal is intentionally not
+  // wired in Phase 8 — entity deletion happens in `EntityManager`,
+  // out of scope for the observation-level integration. A stale
+  // column-store entry for a deleted entity is masked by the fact
+  // that callers check entity existence via `EntityManager.getEntity`
+  // before reading observations. Follow-up wiring can attach a hook.)
 
   /**
    * Enable contradiction detection on addObservations.
@@ -273,6 +349,17 @@ export class ObservationManager {
     // Save all changes in a single atomic operation
     if (hasChanges) {
       await this.storage.saveGraph(graph);
+      // Phase 8 task 67: shadow-write the column store with the post-
+      // save inline state. Best-effort — failures log but don't reject
+      // the caller's add (inline state is already durable).
+      if (this.columnStore !== null) {
+        for (const r of results) {
+          if (r.addedObservations.length > 0) {
+            const entity = graph.entities.find((e) => e.name === r.entityName);
+            if (entity) await this.shadowWriteColumn(entity.name, entity.observations);
+          }
+        }
+      }
     }
 
     // Auto-link: detect entity mentions and create relations
@@ -399,6 +486,7 @@ export class ObservationManager {
     const graph = await this.storage.getGraphForMutation();
     const timestamp = new Date().toISOString();
     let hasChanges = false;
+    const touchedNames: string[] = [];
 
     deletions.forEach(d => {
       const entity = graph.entities.find(e => e.name === d.entityName);
@@ -410,6 +498,7 @@ export class ObservationManager {
         if (entity.observations.length < originalLength) {
           entity.lastModified = timestamp;
           hasChanges = true;
+          touchedNames.push(entity.name);
         }
       }
     });
@@ -417,6 +506,17 @@ export class ObservationManager {
     // Save all changes in a single atomic operation
     if (hasChanges) {
       await this.storage.saveGraph(graph);
+      // Phase 8 task 67: shadow-update the column store for each
+      // touched entity. Empty-after-delete entries still get put()'d
+      // (not delete()'d) so callers see `[]` rather than fall through
+      // to the inline value — important because inline ALSO went to
+      // `[]`, so the column store needs to reflect that.
+      if (this.columnStore !== null) {
+        for (const name of touchedNames) {
+          const entity = graph.entities.find((e) => e.name === name);
+          if (entity) await this.shadowWriteColumn(entity.name, entity.observations);
+        }
+      }
     }
   }
 
