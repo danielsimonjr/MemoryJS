@@ -187,8 +187,10 @@ export class ManagerContext {
     // Phase 8: column-store sidecar lives next to the main file. Only
     // populated when `MEMORY_OBSERVATIONS_COLUMNAR=true` (see the
     // `observationColumnStore` lazy getter below); zero behavior change
-    // when the flag is unset.
-    this.observationColumnStorePath = path.join(dir, `${basename}.observations.jsonl`);
+    // when the flag is unset. Hyphen-delimited path matches the
+    // convention used by the other sidecars in this constructor
+    // (`-saved-searches`, `-tag-aliases`, `-ref-index`).
+    this.observationColumnStorePath = path.join(dir, `${basename}-observations.jsonl`);
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
@@ -267,7 +269,17 @@ export class ManagerContext {
    * unset / `false` / any other value. Strict literal-match on
    * `'true'` keeps the activation gate predictable (no `'yes'` /
    * `'1'` / `'TRUE'` surprises). The sidecar lives at
-   * `<storagePath>.observations.jsonl`.
+   * `<basename>-observations.jsonl` next to the main storage file.
+   *
+   * **Read once, cached for the life of the ManagerContext.** The
+   * env-var value is read on first access and the resolved column
+   * store (or `null`) is cached. Flipping
+   * `MEMORY_OBSERVATIONS_COLUMNAR` at runtime has no effect after
+   * the first access — restart the process. Matches the precedent
+   * set by Phase 7's `MEMORY_STORAGE_SEGMENT_COUNT` on
+   * `GraphStorage`. If runtime reconfiguration becomes a
+   * requirement, expose a `setObservationColumnStore` method on
+   * `ManagerContext` rather than reading the env on every call.
    *
    * @experimental Phase 8 — call signature stable; the underlying
    *   sidecar format may grow new fields in non-breaking ways.

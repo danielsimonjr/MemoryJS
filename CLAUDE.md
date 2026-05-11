@@ -239,6 +239,12 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 | `MEMORY_SYNONYM_EXPANSION` | `true`, `false` | `false` | Enables `SynonymManager.expand()` and the auto-detect-from-graph step. When false, `add()` mappings are still stored but `lookup()` / `expand()` no-op. |
 | `MEMORY_CACHE_BUDGET_ENTRIES` | Integer ≥ 1 | unset (disabled) | Global entry budget for caches registered with `CachePressureCoordinator`. When the sum of `currentEntries()` across registered caches exceeds the budget, `evictIfOverBudget()` shrinks each cache proportionally to its current share (with a small per-cache floor). |
 
+### JSONL backend layout (Phase 7 + Phase 8)
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `MEMORY_STORAGE_SEGMENT_COUNT` | Integer in `[2, 1024]` (strict decimal: rejects floats, exponents, hex, leading zeros, signs) | unset = single-file | Phase 7. When set to ≥ 2, `GraphStorage` routes reads/writes through `FileSegmentStorage` under `<storageDir>/segments/<id>.jsonl`. Entity-to-segment routing is `fnv1a32(name) % N`; relations live in the segment owning their `from` endpoint. `saveAll` uses a manifest sidecar (`segments/_manifest.json`) for crash-atomic multi-file commits. Read once at `GraphStorage` construction — restart the process to change. |
+| `MEMORY_OBSERVATIONS_COLUMNAR` | `'true'` (strict literal match — `'1'` / `'yes'` / `'TRUE'` decline) | unset = inline | Phase 8. When `'true'`, `ManagerContext` instantiates a `JsonlColumnStore` at `<basename>-observations.jsonl` and wires it into `ObservationManager` as a shadow store. Every observation write (via `addObservations` / `deleteObservations` / `createEntities` / `updateEntity` / supersede / bulk import — caught uniformly via `GraphEventEmitter` subscription) mirrors to the column store. `ObservationManager.getObservationsFor(name)` prefers the column store with inline fallback. Inline `entity.observations` remains source of truth; column store is a read-side cache. Read once at first `observationManager` access — restart the process to change. |
+
 ### Agent Memory
 
 Decay: `MEMORY_AUTO_DECAY` (false), `MEMORY_DECAY_HALF_LIFE_HOURS` (168), `MEMORY_DECAY_MIN_IMPORTANCE` (0.1), `MEMORY_DECAY_INTERVAL_MS` (3600000), `MEMORY_AUTO_FORGET` (false), `MEMORY_FORGET_THRESHOLD` (0.05)

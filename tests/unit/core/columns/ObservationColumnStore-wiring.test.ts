@@ -184,7 +184,7 @@ describe('ManagerContext.observationColumnStore env-gating', () => {
     await ctx.entityManager.createEntities([
       { name: 'alice', entityType: 'person', observations: ['hello'] },
     ]);
-    await expect(fs.access(join(dir, 'memory.observations.jsonl'))).rejects.toThrow();
+    await expect(fs.access(join(dir, 'memory-observations.jsonl'))).rejects.toThrow();
   });
 
   it('=true → observationColumnStore is non-null and ObservationManager has it wired', async () => {
@@ -214,7 +214,7 @@ describe('ManagerContext.observationColumnStore env-gating', () => {
     ]);
 
     const sidecarContent = await fs.readFile(
-      join(dir, 'memory.observations.jsonl'),
+      join(dir, 'memory-observations.jsonl'),
       'utf-8',
     );
     expect(sidecarContent).toContain('alice');

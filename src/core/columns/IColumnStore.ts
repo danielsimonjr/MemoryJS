@@ -92,6 +92,20 @@ export interface IColumnStore<T> {
 
   /** Drop every entry. Useful for tests + reset. */
   clear(): Promise<void>;
+
+  /**
+   * Drop any in-memory cache so the next read pulls fresh from the
+   * backing store. No-op for `InMemoryColumnStore` (the cache IS
+   * the backing store). Disk-backed implementations use this when
+   * an external writer (e.g. the migration tool, a hand-edit) is
+   * known to have changed the sidecar out-of-band — the
+   * `single-writer` assumption documented on `JsonlColumnStore` is
+   * easy to break when a long-running process holds a store while a
+   * one-shot script edits the sidecar.
+   *
+   * Phase 8 review fix (#4).
+   */
+  reload(): Promise<void>;
 }
 
 // ==================== In-memory reference impl ====================
@@ -152,5 +166,11 @@ export class InMemoryColumnStore<T> implements IColumnStore<T> {
 
   async clear(): Promise<void> {
     this.data.clear();
+  }
+
+  async reload(): Promise<void> {
+    // No-op — the cache IS the backing store. Method exists for
+    // interface conformance; tests of `reload()` semantics belong on
+    // the disk-backed `JsonlColumnStore`.
   }
 }

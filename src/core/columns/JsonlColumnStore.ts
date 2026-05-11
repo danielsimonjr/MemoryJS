@@ -68,25 +68,53 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
 
   async put(name: string, value: T): Promise<void> {
     const cache = await this.ensureLoaded();
+    // Snapshot prior state so we can roll the cache back if the disk
+    // flush fails — without this, the in-memory cache would be the
+    // new value while disk holds the old one, and a process restart
+    // (which re-reads disk) loses the write silently. Restores the
+    // `IColumnStore.batchPut` JSDoc's atomicity promise.
+    const hadPrior = cache.has(name);
+    const priorValue = hadPrior ? cache.get(name)! : undefined;
     cache.set(name, value);
-    await this.flush(cache);
+    try {
+      await this.flush(cache);
+    } catch (err) {
+      if (hadPrior) cache.set(name, priorValue!);
+      else cache.delete(name);
+      throw err;
+    }
   }
 
   async delete(name: string): Promise<boolean> {
     const cache = await this.ensureLoaded();
-    const existed = cache.delete(name);
-    if (existed) {
+    if (!cache.has(name)) return false;
+    const priorValue = cache.get(name)!;
+    cache.delete(name);
+    try {
       await this.flush(cache);
+    } catch (err) {
+      cache.set(name, priorValue);
+      throw err;
     }
-    return existed;
+    return true;
   }
 
   async batchPut(entries: ReadonlyArray<{ name: string; value: T }>): Promise<void> {
     const cache = await this.ensureLoaded();
+    if (entries.length === 0) return;
+    // Snapshot the whole map so a flush failure restores every key
+    // we touched. Matches the "atomic batch" contract.
+    const priorSnapshot = new Map(cache);
     for (const entry of entries) {
       cache.set(entry.name, entry.value);
     }
-    await this.flush(cache);
+    try {
+      await this.flush(cache);
+    } catch (err) {
+      cache.clear();
+      for (const [k, v] of priorSnapshot) cache.set(k, v);
+      throw err;
+    }
   }
 
   async *keys(): AsyncIterable<string> {
@@ -108,8 +136,27 @@ export class JsonlColumnStore<T> implements IColumnStore<T> {
 
   async clear(): Promise<void> {
     const cache = await this.ensureLoaded();
+    if (cache.size === 0) return;
+    const priorSnapshot = new Map(cache);
     cache.clear();
-    await this.flush(cache);
+    try {
+      await this.flush(cache);
+    } catch (err) {
+      for (const [k, v] of priorSnapshot) cache.set(k, v);
+      throw err;
+    }
+  }
+
+  /**
+   * Drop the in-memory cache so the next read pulls from disk. Used
+   * by callers that know an external process (the migration tool, a
+   * hand-edit) modified the sidecar while we held a stale snapshot.
+   * Cheap — the next `ensureLoaded` re-parses the sidecar lazily.
+   *
+   * Phase 8 review fix (#4).
+   */
+  async reload(): Promise<void> {
+    this.cache = null;
   }
 
   private async ensureLoaded(): Promise<Map<string, T>> {

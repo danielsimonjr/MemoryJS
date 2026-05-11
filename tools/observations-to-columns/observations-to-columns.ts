@@ -158,19 +158,37 @@ async function readJsonlLines(filePath: string): Promise<JsonlLine[]> {
 
 /**
  * Read the column sidecar. Returns an empty map when the sidecar is
- * absent — `reinline` callers may want to detect that case (we throw
- * for `reinline` upstream); `extract` never reads the sidecar.
+ * absent (ENOENT) — for `reinline`, the upstream caller checks the
+ * map size and emits a clearer error before reaching this. Malformed
+ * lines are skipped with a warning, matching `JsonlColumnStore`'s
+ * load-time tolerance.
+ *
+ * Phase 8 review fix (#8): align the implementation with the
+ * documented "returns empty map when absent" behavior — the prior
+ * version let ENOENT bubble up unconditionally.
  */
 async function readColumnSidecar(
   filePath: string,
 ): Promise<Map<string, string[]>> {
-  const data = await fs.readFile(filePath, 'utf-8');
   const out = new Map<string, string[]>();
+  let data: string;
+  try {
+    data = await fs.readFile(filePath, 'utf-8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return out;
+    throw err;
+  }
   for (const raw of data.split('\n')) {
     const trimmed = raw.trim();
     if (trimmed === '') continue;
-    const parsed = JSON.parse(trimmed) as ColumnSidecarLine;
-    out.set(parsed.name, parsed.value);
+    try {
+      const parsed = JSON.parse(trimmed) as ColumnSidecarLine;
+      if (typeof parsed.name === 'string') {
+        out.set(parsed.name, parsed.value);
+      }
+    } catch {
+      // Skip malformed lines; matches JsonlColumnStore.loadFromDisk.
+    }
   }
   return out;
 }
@@ -279,6 +297,28 @@ export async function runExtract(opts: {
     }
   }
 
+  // Phase 8 review #6: refuse to silently double-extract. If we have
+  // nothing to extract (every entity has empty observations) but
+  // would otherwise overwrite a populated sidecar, that's almost
+  // certainly an operator mistake — they likely meant `reinline`
+  // instead. Block it even under `--force` since the failure mode is
+  // data loss; the caller can delete the sidecar manually if they
+  // truly want an empty one.
+  if (!dryRun && totalObservations === 0) {
+    let existingSidecarHasData = false;
+    try {
+      const stat = await fs.stat(absSidecar);
+      existingSidecarHasData = stat.size > 0;
+    } catch {
+      // ENOENT — no sidecar yet, nothing to protect.
+    }
+    if (existingSidecarHasData) {
+      throw new Error(
+        `Refusing to overwrite a populated sidecar with an empty one: input "${absInput}" has no inline observations (already extracted?). Either run \`reinline\` to restore inline observations, or delete ${absSidecar} manually first.`,
+      );
+    }
+  }
+
   if (!dryRun) {
     await ensureNotClobbering(absOutput, force);
     await ensureNotClobbering(absSidecar, force);
@@ -313,6 +353,12 @@ export interface ReinlineResult {
   totalObservations: number;
   /** Sidecar names that did not match any entity in the input (data drift signal). */
   orphanColumnCount: number;
+  /**
+   * Path to a sidecar `*.orphans.jsonl` written when `orphanColumnCount > 0`,
+   * or `null` when no orphans. Lets users recover dropped data after
+   * a wrong-pairing accident.
+   */
+  orphansOutputPath: string | null;
   outputPath: string;
   columnSidecarPath: string;
   dryRun: boolean;
@@ -375,16 +421,31 @@ export async function runReinline(opts: {
     }
   }
 
-  let orphanColumnCount = 0;
-  for (const name of sidecar.keys()) {
-    if (!consumedNames.has(name)) orphanColumnCount += 1;
+  // Phase 8 review #7: surface orphan sidecar entries explicitly.
+  // The prior version counted orphans but silently dropped their
+  // payloads — if the user paired the wrong sidecar with the wrong
+  // graph file, they'd lose observation data with only a one-number
+  // signal in the CLI summary. Now we collect orphans and (when not
+  // dry-run) write them to `<output>.orphans.jsonl` so recovery is
+  // possible.
+  const orphans: Array<{ name: string; value: string[] }> = [];
+  for (const [name, value] of sidecar) {
+    if (!consumedNames.has(name)) orphans.push({ name, value });
   }
+  const orphanColumnCount = orphans.length;
+  const orphansOutputPath =
+    orphanColumnCount > 0 ? `${absOutput}.orphans.jsonl` : null;
 
   if (!dryRun) {
     await ensureNotClobbering(absOutput, force);
+    if (orphansOutputPath !== null) await ensureNotClobbering(orphansOutputPath, force);
     const outputBody =
       outputLines.length === 0 ? '' : outputLines.join('\n') + '\n';
     await writeFileAtomic(absOutput, outputBody);
+    if (orphansOutputPath !== null) {
+      const orphanBody = orphans.map((o) => JSON.stringify(o)).join('\n') + '\n';
+      await writeFileAtomic(orphansOutputPath, orphanBody);
+    }
   }
 
   return {
@@ -395,6 +456,7 @@ export async function runReinline(opts: {
     orphanColumnCount,
     outputPath: absOutput,
     columnSidecarPath: absSidecar,
+    orphansOutputPath,
     dryRun,
   };
 }
@@ -453,13 +515,18 @@ async function main(argv: string[]): Promise<void> {
       force: opts.force,
     });
     const verb = result.dryRun ? 'Would reinline' : 'Reinlined';
-    const orphanNote =
-      result.orphanColumnCount > 0
-        ? ` (${result.orphanColumnCount} orphan sidecar entries skipped)`
-        : '';
     console.log(
-      `${verb} ${result.totalObservations} observations into ${result.reinlinedColumnCount}/${result.entityCount} entities (+ ${result.relationCount} relations) at ${result.outputPath}${orphanNote}`,
+      `${verb} ${result.totalObservations} observations into ${result.reinlinedColumnCount}/${result.entityCount} entities (+ ${result.relationCount} relations) at ${result.outputPath}`,
     );
+    if (result.orphanColumnCount > 0) {
+      // Phase 8 review #7: print orphans loudly. The prior tail-of-
+      // sentence note got buried in batch-script output.
+      const orphanLocation = result.orphansOutputPath ?? '(none — dry-run)';
+      console.warn(
+        `WARNING: ${result.orphanColumnCount} sidecar entries had no matching entity in the input. ` +
+          `Wrote them to ${orphanLocation} so you can recover if the wrong sidecar/graph pair was supplied.`,
+      );
+    }
   }
 }
 

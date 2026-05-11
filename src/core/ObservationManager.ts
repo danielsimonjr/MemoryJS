@@ -17,6 +17,12 @@ import type { MemoryValidator, MemoryValidationIssue } from '../agent/MemoryVali
 import type { EntityManager } from './EntityManager.js';
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
 import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
+import type {
+  EntityCreatedEvent,
+  EntityUpdatedEvent,
+  EntityDeletedEvent,
+  GraphSavedEvent,
+} from '../types/types.js';
 
 /**
  * Default deduplication options used when dedup is enabled without explicit config.
@@ -54,13 +60,77 @@ export class ObservationManager {
 
   constructor(private storage: GraphStorage) {}
 
+  /** Unsubscribe handle from `setColumnStore` event subscription. Null when no store attached. */
+  private columnStoreUnsubscribe: (() => void) | null = null;
+
   /**
    * Attach an `IColumnStore` for shadow-mirroring observation writes.
    * Pass `null` to detach. Called by `ManagerContext` when
    * `MEMORY_OBSERVATIONS_COLUMNAR=true`.
+   *
+   * **Event subscription (Phase 8 review #2+#3):** when a store is
+   * attached, this method also subscribes to the storage's
+   * `entity:created` / `entity:updated` / `entity:deleted` events.
+   * That catches observation writes that bypass `addObservations` /
+   * `deleteObservations` (e.g. `EntityManager.createEntities` with
+   * non-empty observations, `updateEntity` with `observations` in the
+   * patch, the v1.8.0 supersede branch, bulk imports). Without this
+   * fan-out, the column store would silently lag those paths and
+   * `getObservationsFor` would return stale data.
    */
   setColumnStore(store: IColumnStore<ObservationColumn> | null): void {
+    // Tear down any prior subscription before swapping.
+    if (this.columnStoreUnsubscribe !== null) {
+      this.columnStoreUnsubscribe();
+      this.columnStoreUnsubscribe = null;
+    }
     this.columnStore = store;
+    if (store === null) return;
+
+    const emitter = this.storage.events;
+    const unsubs: Array<() => void> = [
+      emitter.on('entity:created', (event: EntityCreatedEvent) => {
+        // Async-but-not-awaited: the EventEmitter listener signature
+        // is sync. Errors inside shadowWriteColumn already log + swallow.
+        void this.shadowWriteColumn(event.entity.name, event.entity.observations);
+      }),
+      emitter.on('entity:updated', (event: EntityUpdatedEvent) => {
+        // Only react when the change touches observations.
+        if (event.changes.observations === undefined) return;
+        // The post-update entity has the merged state; the storage
+        // layer just persisted it. Pull fresh via getEntityByName.
+        const entity = this.storage.getEntityByName(event.entityName);
+        if (entity) {
+          void this.shadowWriteColumn(entity.name, entity.observations);
+        }
+      }),
+      emitter.on('entity:deleted', (event: EntityDeletedEvent) => {
+        // Drop the column entry so getObservationsFor stops returning
+        // ghost observations for the deleted entity (review #2).
+        if (this.columnStore !== null) {
+          void this.columnStore.delete(event.entityName).catch((err) => {
+            logger.warn(
+              `[ObservationManager] Column-store shadow delete failed for "${event.entityName}": ${(err as Error).message}.`,
+            );
+          });
+        }
+      }),
+      // Bulk-save paths (`createEntities`, `IOManager.importJSON`,
+      // bulk loaders) call `storage.saveGraph` which emits
+      // `graph:saved` exactly once for the whole batch — they do NOT
+      // emit per-entity `entity:created`. Without this handler the
+      // column store would silently miss every entity created via
+      // those paths. Resync from the post-save storage state: walk
+      // every entity, put each one's observations. O(N) per save,
+      // but bulk saves are infrequent (interactive paths use
+      // `appendEntity` which emits per-entity events).
+      emitter.on('graph:saved', (_event: GraphSavedEvent) => {
+        void this.resyncFromStorage();
+      }),
+    ];
+    this.columnStoreUnsubscribe = () => {
+      for (const u of unsubs) u();
+    };
   }
 
   /**
@@ -91,6 +161,33 @@ export class ObservationManager {
   }
 
   /**
+   * Walk every entity in storage and put each one's observations to
+   * the column store. Used as the fallback for bulk-save paths
+   * (`graph:saved`) that don't emit per-entity `entity:created`.
+   *
+   * Best-effort like every other shadow write — failures log but
+   * don't propagate. Stale column entries from earlier deletes get
+   * cleaned up by the `entity:deleted` event handler, so this method
+   * only needs to mirror present-in-storage state, not perform a
+   * diff.
+   *
+   * Phase 8 review fix (#3 — bulk-save fan-out).
+   */
+  private async resyncFromStorage(): Promise<void> {
+    if (this.columnStore === null) return;
+    try {
+      const graph = await this.storage.loadGraph();
+      for (const entity of graph.entities) {
+        await this.shadowWriteColumn(entity.name, entity.observations);
+      }
+    } catch (err) {
+      logger.warn(
+        `[ObservationManager] Column-store resync from storage failed: ${(err as Error).message}.`,
+      );
+    }
+  }
+
+  /**
    * Shadow-write the column store from the entity's current inline
    * state. Best-effort — a column-store failure logs a warning but
    * does NOT fail the calling write (the inline state is already on
@@ -111,12 +208,9 @@ export class ObservationManager {
     }
   }
 
-  // (`shadowDeleteColumn` for full-entity removal is intentionally not
-  // wired in Phase 8 — entity deletion happens in `EntityManager`,
-  // out of scope for the observation-level integration. A stale
-  // column-store entry for a deleted entity is masked by the fact
-  // that callers check entity existence via `EntityManager.getEntity`
-  // before reading observations. Follow-up wiring can attach a hook.)
+  // Full-entity-deletion cleanup is handled by the `entity:deleted`
+  // event subscription set up in `setColumnStore`. No separate
+  // `shadowDeleteColumn` method needed.
 
   /**
    * Enable contradiction detection on addObservations.
