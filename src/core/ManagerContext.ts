@@ -326,8 +326,14 @@ export class ManagerContext {
    *
    * Phase 9 tasks 73 + 74.
    *
-   * @experimental Tier sizing defaults may change in non-breaking
-   *   ways. Shape of `stats()` may grow new counters.
+   * @internal Until `OptimizedInvertedIndex` (or another concrete
+   *   index implementation) actually consumes this property, the
+   *   typing `TieredIndex<unknown>` is loose and the property has
+   *   no in-tree caller. Marked `@internal` per Phase 9 review #5
+   *   so external adopters don't lock themselves to a surface that
+   *   may grow stricter generics once a concrete consumer lands.
+   *   The `@experimental` notes still apply: tier sizing defaults
+   *   and the `stats()` shape may change in non-breaking ways.
    */
   get tieredPostingsIndex(): TieredIndex<unknown> | null {
     if (this._tieredPostingsIndex === undefined) {

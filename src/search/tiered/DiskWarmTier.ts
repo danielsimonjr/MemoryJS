@@ -102,19 +102,24 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
 
   async put(key: string, value: V): Promise<void> {
     const cache = await this.ensureLoaded();
-    // Snapshot prior state so we can roll the cache back if the disk
-    // flush fails — without this the in-memory cache would hold the
-    // new value while disk holds the old, and a process restart that
-    // re-reads disk would lose the write silently.
+    // Snapshot the WHOLE map before mutating. Restoring entry-by-
+    // entry from collected diffs (the prior implementation) lost the
+    // original LRU position of `key` when `hadPrior` was true — a
+    // later eviction round would target the wrong oldest. A full
+    // snapshot pays GC cost only on the rare error path but
+    // guarantees byte-exact rollback including insertion order
+    // (review #2).
+    const snapshot = new Map(cache);
+
     const hadPrior = cache.has(key);
-    const priorValue = hadPrior ? cache.get(key)! : undefined;
     // Re-inserting refreshes Map insertion order so LRU eviction
     // targets the genuinely-oldest key.
     if (hadPrior) cache.delete(key);
     cache.set(key, value);
 
-    // Collect evictees before flush so a failed flush can restore
-    // them alongside the put rollback.
+    // Collect evictees before flush so we can fire their callbacks
+    // post-flush (and so the snapshot rollback can leave them
+    // un-evicted on failure).
     const evicted: Array<{ k: string; v: V }> = [];
     if (this.maxEntries !== undefined) {
       while (cache.size > this.maxEntries) {
@@ -129,19 +134,10 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
     try {
       await this.flush(cache);
     } catch (err) {
-      // Rebuild the cache to its pre-mutation state: evictees first
-      // (they were the oldest), then the surviving entries in their
-      // existing order (skipping the failed put), then restore the
-      // prior value for `key` if it had one.
-      const restored = new Map<string, V>();
-      for (const { k, v } of evicted) restored.set(k, v);
-      for (const [k, v] of cache) {
-        if (k === key) continue; // skip the failed put
-        restored.set(k, v);
-      }
-      if (hadPrior) restored.set(key, priorValue!);
+      // Restore from the upfront snapshot — guarantees pre-mutation
+      // LRU order, no entry-by-entry reconstruction needed.
       cache.clear();
-      for (const [k, v] of restored) cache.set(k, v);
+      for (const [k, v] of snapshot) cache.set(k, v);
       throw err;
     }
 

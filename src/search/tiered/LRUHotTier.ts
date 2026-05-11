@@ -85,6 +85,20 @@ export class LRUHotTier<K, V> implements IIndexTier<K, V> {
       this.perEntryBytes.delete(key);
     }
     const entryBytes = this.estimateBytesFn(key, value);
+
+    // Short-circuit when a single entry exceeds `maxBytes`: don't
+    // insert it, just demote directly via onEvict. Inserting it
+    // would force `evictUntilWithinBounds` to drop every other
+    // entry trying to make room — nuking the entire hot tier for
+    // one oversized value (review #4). This way the hot tier
+    // protects its working set and the caller's value still
+    // reaches the next tier.
+    if (this.maxBytes !== undefined && entryBytes > this.maxBytes) {
+      this.evictionCount++;
+      if (this.onEvict) this.onEvict(key, value);
+      return;
+    }
+
     this.data.set(key, value);
     this.perEntryBytes.set(key, entryBytes);
     this.bytes += entryBytes;

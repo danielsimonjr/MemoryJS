@@ -42,6 +42,7 @@ import {
   type TierAccessStats,
   makeFreshStats,
 } from './ITieredIndex.js';
+import { logger } from '../../utils/logger.js';
 
 export interface TieredIndexOptions<V> {
   hot: IIndexTier<string, V>;
@@ -72,6 +73,16 @@ export class TieredIndex<V> implements ITieredIndex<string, V> {
   private readonly warm: IIndexTier<string, V>;
   private readonly cold: IIndexTier<string, V> | null;
   private accessStats: TierAccessStats;
+  /**
+   * Per-key operation chain. Serializes `get`/`put`/`delete` on the
+   * same key while allowing different keys to proceed in parallel.
+   * Without this, an interleaved `put(k, A)` + `get(k)` (where `get`
+   * found `k` in warm) could leave hot holding the stale warm value
+   * after the racing-back `hot.put` (review #1). Cleanup on
+   * `finally` so the map doesn't leak entries past the last op on a
+   * key.
+   */
+  private opChains: Map<string, Promise<unknown>> = new Map();
 
   constructor(options: TieredIndexOptions<V>) {
     this.hot = options.hot;
@@ -84,7 +95,30 @@ export class TieredIndex<V> implements ITieredIndex<string, V> {
     this.accessStats = makeFreshStats(...tierNames);
   }
 
+  /**
+   * Serialize `op` against any concurrent operations on the same
+   * `key`. Operations on DIFFERENT keys proceed in parallel — this
+   * is a fine-grained lock, not a global one. Errors propagate to
+   * the caller and are also propagated down the chain so subsequent
+   * ops on the same key don't end up `await`ing forever.
+   */
+  private async withKeyLock<R>(key: string, op: () => Promise<R>): Promise<R> {
+    const prior = this.opChains.get(key) ?? Promise.resolve();
+    let next!: Promise<R>;
+    next = prior.then(op, op).finally(() => {
+      if (this.opChains.get(key) === (next as unknown as Promise<unknown>)) {
+        this.opChains.delete(key);
+      }
+    });
+    this.opChains.set(key, next as unknown as Promise<unknown>);
+    return next;
+  }
+
   async get(key: string): Promise<V | undefined> {
+    return this.withKeyLock(key, () => this.getInner(key));
+  }
+
+  private async getInner(key: string): Promise<V | undefined> {
     // Hot first.
     const hotHit = await this.hot.get(key);
     if (hotHit !== undefined) {
@@ -125,25 +159,31 @@ export class TieredIndex<V> implements ITieredIndex<string, V> {
   }
 
   async put(key: string, value: V): Promise<void> {
-    // Writes always land in hot. Hot's `onEvict` (wired in the
-    // wiring helper below) handles demotion to warm; warm's
-    // `onEvict` handles demotion to cold.
-    //
-    // Also delete from warm + cold so the entry exists at exactly
-    // one tier — important for `has()` / `size()` accounting.
-    await this.hot.put(key, value);
-    await this.warm.delete(key);
-    if (this.cold !== null) await this.cold.delete(key);
+    return this.withKeyLock(key, async () => {
+      // Writes always land in hot. Hot's `onEvict` (wired in the
+      // wiring helper below) handles demotion to warm; warm's
+      // `onEvict` handles demotion to cold.
+      //
+      // Also delete from warm + cold so the entry exists at exactly
+      // one tier — important for `has()` / `size()` accounting. The
+      // per-key serialization (`withKeyLock`) keeps this safe vs
+      // concurrent `get` from another caller (review #1).
+      await this.hot.put(key, value);
+      await this.warm.delete(key);
+      if (this.cold !== null) await this.cold.delete(key);
+    });
   }
 
   async delete(key: string): Promise<boolean> {
-    // Delete from every tier so we don't leak. Track whether any
-    // tier had something so the return matches `IIndexTier.delete`.
-    let removed = false;
-    if (await this.hot.delete(key)) removed = true;
-    if (await this.warm.delete(key)) removed = true;
-    if (this.cold !== null && (await this.cold.delete(key))) removed = true;
-    return removed;
+    return this.withKeyLock(key, async () => {
+      // Delete from every tier so we don't leak. Track whether any
+      // tier had something so the return matches `IIndexTier.delete`.
+      let removed = false;
+      if (await this.hot.delete(key)) removed = true;
+      if (await this.warm.delete(key)) removed = true;
+      if (this.cold !== null && (await this.cold.delete(key))) removed = true;
+      return removed;
+    });
   }
 
   async has(key: string): Promise<boolean> {
@@ -240,11 +280,26 @@ export function buildTieredIndex<V>(options: TieredIndexBuildOptions<V>): Tiered
   let composer: TieredIndex<V>;
   const warm = options.makeWarm((key, value) => {
     composer.recordDemotion();
-    if (cold !== null) void cold.put(key, value);
+    // Surface demotion failures via logger (review #3) — fire-and-
+    // forget previously meant a disk-full or EPERM on the cold tier
+    // would silently drop the evictee. The eviction is final from
+    // warm's POV either way (it already deleted the entry), so the
+    // best we can do is shout.
+    if (cold !== null) {
+      void cold.put(key, value).catch((err) => {
+        logger.error(
+          `[TieredIndex] warm→cold demotion failed for key "${key}"; value lost: ${(err as Error).message}`,
+        );
+      });
+    }
   });
   const hot = options.makeHot((key, value) => {
     composer.recordDemotion();
-    void warm.put(key, value);
+    void warm.put(key, value).catch((err) => {
+      logger.error(
+        `[TieredIndex] hot→warm demotion failed for key "${key}"; value lost: ${(err as Error).message}`,
+      );
+    });
   });
   composer = new TieredIndex<V>({ hot, warm, ...(cold !== null ? { cold } : {}) });
   return composer;
