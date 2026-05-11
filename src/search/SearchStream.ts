@@ -17,6 +17,8 @@
  *     Used by hybrid search to surface top-K with minimum latency.
  *
  * @module search/SearchStream
+ * @public Stable streaming helpers. Generic over the item type so
+ *   callers can wrap any ranked-search output.
  */
 
 /** A single scored item — the minimum shape the merger needs. */

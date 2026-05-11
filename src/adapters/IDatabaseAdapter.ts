@@ -16,6 +16,9 @@
  * are provided in `docs/superpowers/plans/2026-04-25-eta-database-adapters.md`.
  *
  * @module adapters/IDatabaseAdapter
+ * @public Stable interface; downstream adapters depend on this shape.
+ *   Reference impls (`NullDatabaseAdapter`, `InMemoryDatabaseAdapter`)
+ *   are also `@public`.
  */
 
 import type { Entity, Relation, KnowledgeGraph } from '../types/types.js';

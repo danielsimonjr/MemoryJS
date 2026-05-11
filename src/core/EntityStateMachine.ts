@@ -10,6 +10,8 @@
  * `src/types/types.ts` so non-state-machine code can introspect it.
  *
  * @module core/EntityStateMachine
+ * @public Stable transition validator. Status union and transition
+ *   table (`ENTITY_STATUS_TRANSITIONS`) follow SemVer.
  */
 
 import { ENTITY_STATUS_TRANSITIONS, type EntityStatus } from '../types/types.js';

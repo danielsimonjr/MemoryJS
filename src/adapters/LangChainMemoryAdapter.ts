@@ -11,6 +11,9 @@
  * structural).
  *
  * @module adapters/LangChainMemoryAdapter
+ * @experimental Structural match against LangChain's `BaseChatMemory`
+ *   may need updates if their contract changes; the role-encoding
+ *   convention in observations may evolve.
  */
 
 import type { ManagerContext } from '../core/ManagerContext.js';

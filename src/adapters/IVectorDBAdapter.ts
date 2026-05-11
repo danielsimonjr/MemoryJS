@@ -13,6 +13,9 @@
  * companion packages.
  *
  * @module adapters/IVectorDBAdapter
+ * @public Stable interface; the `VectorQueryFilter` shape is exact-
+ *   match-only in v1 and will gain operator support in a
+ *   non-breaking way (additive fields on filter values).
  */
 
 /** A single embedding upsert operation. */

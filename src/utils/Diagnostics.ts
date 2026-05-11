@@ -12,6 +12,9 @@
  * 4-source aggregator until that happens.
  *
  * @module utils/Diagnostics
+ * @experimental Report shape (`{ indexHealth, entityCounts }`) may
+ *   gain optional fields (memory, queryStats, cacheHitRates) without
+ *   a major version bump.
  */
 
 import type { IndexHealthReport } from './IndexHealthMonitor.js';

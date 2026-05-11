@@ -7,6 +7,7 @@
  * rather than redefining its shape.
  *
  * @module utils/IndexHealthMonitor
+ * @public Stable aggregator over `IIndexHealth` implementations.
  */
 
 import type { IndexHealthSnapshot } from './IIndexHealth.js';

@@ -12,6 +12,9 @@
  * the current shape).
  *
  * @module agent/HeuristicManager
+ * @experimental Match algorithm (Jaccard token-overlap × confidence)
+ *   and conflict-detection heuristics are conservative v1; may evolve
+ *   toward semantic-similarity matching.
  */
 
 /**

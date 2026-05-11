@@ -13,6 +13,8 @@
  * data structure.
  *
  * @module search/PartitionedInvertedIndex
+ * @experimental No production caller integrates this yet. Per-type
+ *   partition strategy may evolve based on observed query shapes.
  */
 
 import { OptimizedInvertedIndex } from './OptimizedInvertedIndex.js';

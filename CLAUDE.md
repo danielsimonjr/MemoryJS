@@ -305,6 +305,20 @@ Distinct from the legacy `MEMORY_DECAY_*` set: those drive `DecayEngine.calculat
 
 Read by `ctx.memoryBackend` lazy getter. `sqlite` wraps `MemoryEngine` (which transparently spans JSONL + actual SQLite per `MEMORY_STORAGE_TYPE`). `in-memory` is ephemeral; suitable for tests and short-lived processes. Phase γ adds `postgres` and `vector` choices.
 
+## API Stability Tiers
+
+Modules added in Phase 0-4 carry a stability tag in their `@module` JSDoc. The contract:
+
+| Tag | Meaning | SemVer behaviour |
+|-----|---------|------------------|
+| `@public` | Stable surface — adopters should rely on the signatures and types | Breaking changes require a major-version bump |
+| `@experimental` | Functional but the contract may evolve based on real-world feedback | Minor changes possible in a minor-version bump; document each change in CHANGELOG |
+| `@internal` | Implementation detail — do not import from outside the project | May change at any time without notice |
+
+**Tagged modules** (Phase 0-4 additions): 19 modules — `src/adapters/*`, `src/agent/HeuristicManager`, `src/core/{EntityStateMachine, ObservationStore}`, `src/search/{BackgroundIndexer, BloomFilter, BloomPreScreener, MaterializedViews, PartialIndexAdvisor, PartitionedInvertedIndex, QueryPlanFormatter, SearchStream, SynonymManager}`, `src/utils/{CachePressureCoordinator, Diagnostics, IIndexHealth, IndexHealthMonitor}`.
+
+**Existing modules** (pre-Phase-0) are implicitly `@public` and follow the project's SemVer contract. A full audit + per-symbol tiering of those will require a v2.0.0 cut and is deliberately deferred.
+
 ## Documentation
 
 ```

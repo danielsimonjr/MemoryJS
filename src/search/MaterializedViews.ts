@@ -13,6 +13,9 @@
  * the structural-filter shape from `SearchFilters` is supported.
  *
  * @module search/MaterializedViews
+ * @experimental View invalidation is currently coarse — every entity
+ *   event marks every view dirty. Per-view filter-aware invalidation
+ *   is a planned refinement.
  */
 
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';

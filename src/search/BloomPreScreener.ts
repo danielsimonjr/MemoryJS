@@ -12,6 +12,8 @@
  * names. Re-build after large mutations.
  *
  * @module search/BloomPreScreener
+ * @experimental Capacity heuristics and the per-entity filter-sizing
+ *   formula (`Math.max(64, tokenCount * 2)`) may be tuned.
  */
 
 import type { GraphStorage } from '../core/GraphStorage.js';

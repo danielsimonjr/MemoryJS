@@ -19,8 +19,6 @@ import type { GraphStorage } from '../core/GraphStorage.js';
 import { FileOperationError } from '../utils/errors.js';
 import {
   compress,
-  decompress,
-  hasBrotliExtension,
   COMPRESSION_CONFIG,
   STREAMING_CONFIG,
   checkCancellation,
@@ -31,6 +29,7 @@ import {
   escapeCsvFormula,
 } from '../utils/index.js';
 import { StreamingExporter, type StreamResult } from './StreamingExporter.js';
+import { BackupManager } from './BackupManager.js';
 import { EntitySchema, RelationSchema } from '../utils/schemas.js';
 
 export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid' | 'turtle' | 'rdf-xml' | 'json-ld';
@@ -129,10 +128,27 @@ export interface VisualizeOptions {
 export class IOManager {
   private readonly backupDir: string;
 
+  /**
+   * Backup lifecycle is delegated to `BackupManager` (extracted in
+   * Phase 2 step 29). `IOManager`'s public backup methods remain
+   * unchanged — they thinly forward to this instance.
+   */
+  private readonly backups: BackupManager;
+
   constructor(private storage: GraphStorage) {
     const filePath = this.storage.getFilePath();
     const dir = dirname(filePath);
     this.backupDir = join(dir, '.backups');
+    this.backups = new BackupManager(storage, this.backupDir);
+  }
+
+  /**
+   * Standalone backup manager. Callers can use it directly if they
+   * want a smaller surface than the full `IOManager`; the public
+   * backup methods on `IOManager` continue to delegate here.
+   */
+  get backupManager(): BackupManager {
+    return this.backups;
   }
 
   // ---
@@ -1254,269 +1270,40 @@ export class IOManager {
     return result;
   }
 
-  // ---
-  // BACKUP OPERATIONS
-  // ---
-
-  /** Ensure backup directory exists. */
-  private async ensureBackupDir(): Promise<void> {
-    try {
-      await fs.mkdir(this.backupDir, { recursive: true });
-    } catch (error) {
-      throw new FileOperationError('create backup directory', this.backupDir, error as Error);
-    }
-  }
-
-  /** Generate backup file name with timestamp. */
-  private generateBackupFileName(compressed: boolean = true): string {
-    const now = new Date();
-    const timestamp = now.toISOString()
-      .replace(/:/g, '-')
-      .replace(/\./g, '-')
-      .replace('T', '_')
-      .replace('Z', '');
-    const extension = compressed ? '.jsonl.br' : '.jsonl';
-    return `backup_${timestamp}${extension}`;
-  }
+  // ==================== Backup methods (delegated) ====================
+  // Backup logic now lives in `BackupManager` (Phase 2 step 29 — first
+  // pass of the IOManager split). These wrappers preserve the
+  // pre-extraction public API so existing callers keep working
+  // unchanged.
 
   /** Create a backup of the current knowledge graph. */
   async createBackup(options?: BackupOptions | string): Promise<BackupResult> {
-    await this.ensureBackupDir();
-
-    // Handle legacy string argument (backward compatibility)
-    const opts: BackupOptions = typeof options === 'string'
-      ? { description: options, compress: COMPRESSION_CONFIG.AUTO_COMPRESS_BACKUP }
-      : { compress: COMPRESSION_CONFIG.AUTO_COMPRESS_BACKUP, ...options };
-
-    const shouldCompress = opts.compress ?? COMPRESSION_CONFIG.AUTO_COMPRESS_BACKUP;
-    const graph = await this.storage.loadGraph();
-    const timestamp = new Date().toISOString();
-    const fileName = this.generateBackupFileName(shouldCompress);
-    const backupPath = join(this.backupDir, fileName);
-
-    try {
-      const originalPath = this.storage.getFilePath();
-      let fileContent: string;
-
-      try {
-        fileContent = await fs.readFile(originalPath, 'utf-8');
-      } catch {
-        // If file doesn't exist, generate content from graph
-        const lines = [
-          ...graph.entities.map(e => JSON.stringify({ type: 'entity', ...e })),
-          ...graph.relations.map(r => JSON.stringify({ type: 'relation', ...r })),
-        ];
-        fileContent = lines.join('\n');
-      }
-
-      const originalSize = Buffer.byteLength(fileContent, 'utf-8');
-      let compressedSize = originalSize;
-      let compressionRatio = 1;
-
-      if (shouldCompress) {
-        // Compress with maximum quality for backups (archive quality)
-        const compressionResult = await compress(fileContent, {
-          quality: COMPRESSION_CONFIG.BROTLI_QUALITY_ARCHIVE,
-          mode: 'text',
-        });
-
-        await fs.writeFile(backupPath, compressionResult.compressed);
-        compressedSize = compressionResult.compressedSize;
-        compressionRatio = compressionResult.ratio;
-      } else {
-        // Write uncompressed backup
-        await fs.writeFile(backupPath, fileContent);
-      }
-
-      const stats = await fs.stat(backupPath);
-
-      const metadata: BackupMetadata = {
-        timestamp,
-        entityCount: graph.entities.length,
-        relationCount: graph.relations.length,
-        fileSize: stats.size,
-        description: opts.description,
-        compressed: shouldCompress,
-        originalSize,
-        compressionRatio: shouldCompress ? compressionRatio : undefined,
-        compressionFormat: shouldCompress ? 'brotli' : 'none',
-      };
-
-      const metadataPath = `${backupPath}.meta.json`;
-      await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
-
-      return {
-        path: backupPath,
-        timestamp,
-        entityCount: graph.entities.length,
-        relationCount: graph.relations.length,
-        compressed: shouldCompress,
-        originalSize,
-        compressedSize,
-        compressionRatio,
-        description: opts.description,
-      };
-    } catch (error) {
-      throw new FileOperationError('create backup', backupPath, error as Error);
-    }
+    return this.backups.create(options);
   }
 
   /** List all available backups, sorted by timestamp (newest first). */
   async listBackups(): Promise<BackupInfo[]> {
-    try {
-      try {
-        await fs.access(this.backupDir);
-      } catch {
-        return [];
-      }
-
-      const files = await fs.readdir(this.backupDir);
-      // Match both .jsonl and .jsonl.br backup files, exclude metadata files
-      const backupFiles = files.filter(f =>
-        f.startsWith('backup_') &&
-        (f.endsWith('.jsonl') || f.endsWith('.jsonl.br')) &&
-        !f.endsWith('.meta.json')
-      );
-
-      const backups: BackupInfo[] = [];
-
-      for (const fileName of backupFiles) {
-        const filePath = join(this.backupDir, fileName);
-        const isCompressed = hasBrotliExtension(fileName);
-
-        // Try to read metadata file (handles both .jsonl.meta.json and .jsonl.br.meta.json)
-        const metadataPath = `${filePath}.meta.json`;
-
-        try {
-          const [metadataContent, stats] = await Promise.all([
-            fs.readFile(metadataPath, 'utf-8'),
-            fs.stat(filePath),
-          ]);
-          const metadata: BackupMetadata = JSON.parse(metadataContent);
-
-          // Ensure compression fields are present (backward compatibility)
-          if (metadata.compressed === undefined) {
-            metadata.compressed = isCompressed;
-          }
-          if (metadata.compressionFormat === undefined) {
-            metadata.compressionFormat = isCompressed ? 'brotli' : 'none';
-          }
-
-          backups.push({
-            fileName,
-            filePath,
-            metadata,
-            compressed: isCompressed,
-            size: stats.size,
-          });
-        } catch {
-          // Skip backups without valid metadata
-          continue;
-        }
-      }
-
-      backups.sort((a, b) =>
-        new Date(b.metadata.timestamp).getTime() - new Date(a.metadata.timestamp).getTime()
-      );
-
-      return backups;
-    } catch (error) {
-      throw new FileOperationError('list backups', this.backupDir, error as Error);
-    }
+    return this.backups.list();
   }
 
   /** Restore the knowledge graph from a backup file. */
   async restoreFromBackup(backupPath: string): Promise<RestoreResult> {
-    try {
-      validateFilePath(backupPath, this.backupDir, true);
-      // Prevent symlink-based escape attacks
-      const stat = await fs.lstat(backupPath);
-      if (stat.isSymbolicLink()) {
-        throw new FileOperationError('Symbolic links are not allowed for backup restore', backupPath);
-      }
-
-      const isCompressed = hasBrotliExtension(backupPath);
-      const backupBuffer = await fs.readFile(backupPath);
-
-      let backupContent: string;
-      if (isCompressed) {
-        // Decompress the backup
-        const decompressedBuffer = await decompress(backupBuffer);
-        backupContent = decompressedBuffer.toString('utf-8');
-      } else {
-        // Read as plain text
-        backupContent = backupBuffer.toString('utf-8');
-      }
-
-      const mainPath = this.storage.getFilePath();
-      await fs.writeFile(mainPath, backupContent);
-
-      this.storage.clearCache();
-
-      // Load the restored graph to get counts
-      const graph = await this.storage.loadGraph();
-
-      return {
-        entityCount: graph.entities.length,
-        relationCount: graph.relations.length,
-        restoredFrom: backupPath,
-        wasCompressed: isCompressed,
-      };
-    } catch (error) {
-      throw new FileOperationError('restore from backup', backupPath, error as Error);
-    }
+    return this.backups.restore(backupPath);
   }
 
   /** Delete a specific backup file. */
   async deleteBackup(backupPath: string): Promise<void> {
-    try {
-      validateFilePath(backupPath, this.backupDir, true);
-      await fs.unlink(backupPath);
-
-      try {
-        // Use path.basename for safe filename extraction instead of string split
-        const baseName = backupPath.split(/[/\\]/).pop() ?? '';
-        const metaPath = join(this.backupDir, `${baseName}.meta.json`);
-        validateFilePath(metaPath, this.backupDir, true);
-        await fs.unlink(metaPath);
-      } catch {
-        // Metadata file doesn't exist or is outside backup dir - that's ok
-      }
-    } catch (error) {
-      throw new FileOperationError('delete backup', backupPath, error as Error);
-    }
+    return this.backups.delete(backupPath);
   }
 
-  /**
-   * Clean old backups, keeping only the most recent N.
-   */
+  /** Clean old backups, keeping only the most recent N. */
   async cleanOldBackups(keepCount: number = 10): Promise<number> {
-    const backups = await this.listBackups();
-
-    if (backups.length <= keepCount) {
-      return 0;
-    }
-
-    const backupsToDelete = backups.slice(keepCount);
-    let deletedCount = 0;
-
-    for (const backup of backupsToDelete) {
-      try {
-        await this.deleteBackup(backup.filePath);
-        deletedCount++;
-      } catch {
-        continue;
-      }
-    }
-
-    return deletedCount;
+    return this.backups.cleanOld(keepCount);
   }
 
-  /**
-   * Get the path to the backup directory.
-   */
+  /** Get the path to the backup directory. */
   getBackupDir(): string {
-    return this.backupDir;
+    return this.backups.getDir();
   }
 
   /**

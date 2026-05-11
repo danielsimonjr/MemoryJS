@@ -16,6 +16,9 @@
  * `correctQuery` first, then `expand` on the corrected output.
  *
  * @module search/SynonymManager
+ * @experimental Gated behind `MEMORY_SYNONYM_EXPANSION`. The
+ *   auto-detection heuristics (per-entity dedup, minSupport defaults)
+ *   may be tuned.
  */
 
 import type { GraphStorage } from '../core/GraphStorage.js';

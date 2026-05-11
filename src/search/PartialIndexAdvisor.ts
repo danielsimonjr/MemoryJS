@@ -15,6 +15,8 @@
  * created itself via the `idx_advisor_*` prefix.
  *
  * @module search/PartialIndexAdvisor
+ * @experimental Gated behind `MEMORY_SQLITE_AUTO_INDEX`. The
+ *   recommendation thresholds and index-naming scheme may evolve.
  */
 
 import type { Database as DatabaseType } from 'better-sqlite3';

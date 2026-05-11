@@ -12,6 +12,9 @@
  * activates this background drainer.
  *
  * @module search/BackgroundIndexer
+ * @experimental Gated behind `MEMORY_INDEX_UPDATE_MODE=async`.
+ *   `IndexUpdater` contract may evolve to support cancellation
+ *   tokens.
  */
 
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';

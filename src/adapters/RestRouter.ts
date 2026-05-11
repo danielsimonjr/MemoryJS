@@ -13,6 +13,9 @@
  * built-in `http` module is provided as a reference.
  *
  * @module adapters/RestRouter
+ * @public `RestRequest` / `RestResponse` / `RouteDefinition` are
+ *   stable. `withDefaults` mounts may gain routes additively in
+ *   future minors.
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';

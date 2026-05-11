@@ -6,6 +6,8 @@
  * compose over snapshots from implementers.
  *
  * @module utils/IIndexHealth
+ * @public Stable interface — adopters should implement `health()` to
+ *   participate in `ctx.indexHealth()` and `ctx.diagnostics()`.
  */
 
 /**

@@ -12,6 +12,8 @@
  * working. Wiring into `EntityManager` is a follow-up.
  *
  * @module core/ObservationStore
+ * @public Stable content-addressable store. `intern`/`get`/`release`
+ *   tri-state contract follows SemVer.
  */
 
 import { createHash } from 'crypto';

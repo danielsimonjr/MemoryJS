@@ -13,6 +13,8 @@
  * independent hash positions per insert/lookup.
  *
  * @module search/BloomFilter
+ * @public Stable Bloom-filter primitive. `add`/`mayContain`/`clear`
+ *   shape follows SemVer.
  */
 
 /**

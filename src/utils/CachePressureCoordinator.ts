@@ -19,6 +19,9 @@
  * existing per-cache `maxSize` behaviour.
  *
  * @module utils/CachePressureCoordinator
+ * @experimental `PressureAwareCache` interface (currentEntries +
+ *   evictTo) is stable, but the proportional-eviction policy may
+ *   gain a min-floor or LRU-vs-LFU knob.
  */
 
 /** A registered cache participating in coordinated eviction. */

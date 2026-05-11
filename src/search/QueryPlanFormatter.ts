@@ -5,6 +5,7 @@
  * tree. Used by `searchManager.explainPlan` and for ad-hoc CLI debugging.
  *
  * @module search/QueryPlanFormatter
+ * @experimental Output shape (`{ ascii, json }`) may evolve.
  */
 
 import type { QueryPlan, SubQuery } from '../types/index.js';
