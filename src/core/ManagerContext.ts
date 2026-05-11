@@ -13,7 +13,7 @@ import { logger } from '../utils/logger.js';
 import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
 import { buildDiagnosticsReport, type DiagnosticsReport } from '../utils/Diagnostics.js';
 import { BatchTransaction } from './TransactionManager.js';
-import type { BatchResult, BatchOptions } from '../types/index.js';
+import type { BatchResult, BatchOptions, Entity } from '../types/index.js';
 import { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { MaterializedViewsManager } from '../search/MaterializedViews.js';
 import { ObservationStore } from './ObservationStore.js';
@@ -27,6 +27,8 @@ import { TieredIndex, buildTieredIndex } from '../search/tiered/TieredIndex.js';
 import { LRUHotTier } from '../search/tiered/LRUHotTier.js';
 import { DiskWarmTier } from '../search/tiered/DiskWarmTier.js';
 import { BrotliColdTier } from '../search/tiered/BrotliColdTier.js';
+import { CompressedMap } from '../utils/compression/CompressedMap.js';
+import { ZlibCompressionAdapter } from '../utils/compression/ICompressionAdapter.js';
 import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
@@ -116,6 +118,9 @@ export class ManagerContext {
 
   /** Phase 9: tiered posting-list cache. `undefined` = unresolved, `null` = env-gated off. */
   private _tieredPostingsIndex: TieredIndex<unknown> | null | undefined;
+
+  /** Phase 10: compressed entity cache. `undefined` = unresolved, `null` = env-gated off. */
+  private _compressedEntityCache: CompressedMap<string, Entity> | null | undefined;
   private _hierarchyManager?: HierarchyManager;
   private _graphTraversal?: GraphTraversal;
   private _searchManager?: SearchManager;
@@ -353,6 +358,50 @@ export class ManagerContext {
       });
     }
     return this._tieredPostingsIndex;
+  }
+
+  /**
+   * Lazy `CompressedMap<string, Entity>` for callers who want to
+   * hold a large entity set in RAM at a fraction of the uncompressed
+   * cost. Activated by `MEMORY_CACHE_COMPRESS='true'` (strict
+   * literal-match — matches `MEMORY_OBSERVATIONS_COLUMNAR` and
+   * `MEMORY_TIERED_INDEX` precedents).
+   *
+   * **Default configuration:** hot threshold 1000 entries
+   * (uncompressed working set), Zlib adapter at level 6 (best
+   * compress-speed/ratio trade-off per Phase 10 task 77 benchmark).
+   * Brotli is the right pick for cold-storage shards; zlib for hot
+   * caches like this one.
+   *
+   * **Direct integration with `GraphStorage.cache` is intentionally
+   * deferred** — the existing cache holds a `KnowledgeGraph`
+   * snapshot, not per-entity entries, so swapping in a
+   * `CompressedMap` would require restructuring every read/write
+   * path. Callers who want compressed entity caching today can
+   * compose this property over the storage layer themselves; the
+   * follow-up phase that rewires `GraphStorage` to entity-level
+   * caching will pick this up.
+   *
+   * Phase 10 task 79.
+   *
+   * @internal Until `GraphStorage.cache` is restructured to use
+   *   per-entity caching, the property has no in-tree consumer.
+   *   Marked `@internal` per Phase 9 precedent so external adopters
+   *   don't lock themselves to a surface that may grow stricter
+   *   typing once a concrete consumer lands.
+   */
+  get compressedEntityCache(): CompressedMap<string, Entity> | null {
+    if (this._compressedEntityCache === undefined) {
+      if (process.env.MEMORY_CACHE_COMPRESS !== 'true') {
+        this._compressedEntityCache = null;
+        return null;
+      }
+      this._compressedEntityCache = new CompressedMap<string, Entity>({
+        hotThreshold: 1000,
+        adapter: new ZlibCompressionAdapter(6),
+      });
+    }
+    return this._compressedEntityCache;
   }
 
   /** HierarchyManager - Entity hierarchy operations */
