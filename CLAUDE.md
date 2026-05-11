@@ -199,7 +199,7 @@ ctx.activeRetrieval     // 3B.5 Active Retrieval (iterative query rewriting)
 - Worker files (`levenshteinWorker.ts`) built separately to `dist/workers/` for dynamic loading
 - CLI built separately to `dist/cli/` with `#!/usr/bin/env node` banner
 - `better-sqlite3` is externalized (native addon, not bundled)
-- No lint script configured - TypeScript compiler (`npm run typecheck`) catches most issues
+- `npm run lint` (ESLint 9 flat config in `eslint.config.mjs`) is the primary lint surface; `npm run typecheck` (bare `tsc --noEmit`) catches type-only issues lint doesn't see. Both should exit 0 before commit.
 - Publishable package: `npm run prepublishOnly` runs clean + build + test
 
 ## Testing
