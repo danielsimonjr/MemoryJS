@@ -23,6 +23,10 @@ import { EntityManager } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
 import { JsonlColumnStore } from './columns/JsonlColumnStore.js';
+import { TieredIndex, buildTieredIndex } from '../search/tiered/TieredIndex.js';
+import { LRUHotTier } from '../search/tiered/LRUHotTier.js';
+import { DiskWarmTier } from '../search/tiered/DiskWarmTier.js';
+import { BrotliColdTier } from '../search/tiered/BrotliColdTier.js';
 import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
@@ -109,6 +113,9 @@ export class ManagerContext {
   private _relationManager?: RelationManager;
   private _observationManager?: ObservationManager;
   private _observationColumnStore: IColumnStore<ObservationColumn> | null | undefined;
+
+  /** Phase 9: tiered posting-list cache. `undefined` = unresolved, `null` = env-gated off. */
+  private _tieredPostingsIndex: TieredIndex<unknown> | null | undefined;
   private _hierarchyManager?: HierarchyManager;
   private _graphTraversal?: GraphTraversal;
   private _searchManager?: SearchManager;
@@ -294,6 +301,54 @@ export class ManagerContext {
     return this._observationColumnStore;
   }
 
+  /**
+   * Lazy `ITieredIndex<string, unknown>` building block for callers
+   * who want hot/warm/cold posting-list caching. Returns `null` when
+   * `MEMORY_TIERED_INDEX` is not exactly `'true'` (strict literal
+   * match — `'1'` / `'yes'` / `'TRUE'` decline, matching the
+   * `MEMORY_OBSERVATIONS_COLUMNAR` precedent).
+   *
+   * **Wiring**: a `LRUHotTier` (10k entries default) → `DiskWarmTier`
+   * (sidecar at `<basename>-tiered-warm.jsonl`) → `BrotliColdTier`
+   * (shard at `<basename>-tiered-cold.jsonl.br`) chain. Use
+   * `tieredPostingsIndex.stats()` for hit-rate diagnostics; the
+   * tier-stats roll up into `ctx.diagnostics()`.
+   *
+   * **Direct integration with `OptimizedInvertedIndex` is intentionally
+   * deferred** — the existing class uses tightly-coupled `Uint32Array`
+   * posting layouts that don't map cleanly onto an `ITieredIndex<V>`.
+   * Callers who want the cache today can compose it themselves on top
+   * of any string-keyed corpus; a follow-up phase will retrofit
+   * `OptimizedInvertedIndex` to consume the tiered backing.
+   *
+   * Read once at first access — restart the process to flip the env
+   * var. Matches `observationColumnStore` precedent.
+   *
+   * Phase 9 tasks 73 + 74.
+   *
+   * @experimental Tier sizing defaults may change in non-breaking
+   *   ways. Shape of `stats()` may grow new counters.
+   */
+  get tieredPostingsIndex(): TieredIndex<unknown> | null {
+    if (this._tieredPostingsIndex === undefined) {
+      if (process.env.MEMORY_TIERED_INDEX !== 'true') {
+        this._tieredPostingsIndex = null;
+        return null;
+      }
+      const filePath = this.storage.getFilePath();
+      const dir = path.dirname(filePath);
+      const basename = path.basename(filePath, path.extname(filePath));
+      const warmPath = path.join(dir, `${basename}-tiered-warm.jsonl`);
+      const coldPath = path.join(dir, `${basename}-tiered-cold.jsonl.br`);
+      this._tieredPostingsIndex = buildTieredIndex<unknown>({
+        makeHot: (onEvict) => new LRUHotTier({ maxEntries: 10_000, onEvict, name: 'hot' }),
+        makeWarm: (onEvict) => new DiskWarmTier({ filePath: warmPath, maxEntries: 100_000, onEvict, name: 'warm' }),
+        makeCold: () => new BrotliColdTier({ filePath: coldPath, name: 'cold' }),
+      });
+    }
+    return this._tieredPostingsIndex;
+  }
+
   /** HierarchyManager - Entity hierarchy operations */
   get hierarchyManager(): HierarchyManager {
     return (this._hierarchyManager ??= new HierarchyManager(this.storage));
@@ -416,6 +471,20 @@ export class ManagerContext {
           byType[e.entityType] = (byType[e.entityType] ?? 0) + 1;
         }
         return { total: cached.entities.length, byType };
+      },
+      // Phase 9 task 74: include tier stats when active. Reads through
+      // the cached field directly so an unconfigured tiered index
+      // doesn't force initialization just to report nothing.
+      () => {
+        if (this._tieredPostingsIndex === undefined || this._tieredPostingsIndex === null) {
+          return undefined;
+        }
+        const stats = this._tieredPostingsIndex.stats();
+        const total = stats.hits + stats.misses;
+        return {
+          ...stats,
+          hitRate: total === 0 ? 0 : stats.hits / total,
+        };
       },
     );
   }

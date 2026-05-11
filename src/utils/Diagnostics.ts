@@ -32,22 +32,50 @@ export interface EntityCounts {
 /**
  * Aggregate diagnostics report.
  */
+/**
+ * Phase 9 task 74: optional tier-stats snapshot from
+ * `ITieredIndex.stats()`. Present when `MEMORY_TIERED_INDEX=true`
+ * activated a posting-list cache; otherwise `undefined`.
+ */
+export interface TieredIndexStatsSnapshot {
+  hits: number;
+  misses: number;
+  promotions: number;
+  demotions: number;
+  perTierHits: Record<string, number>;
+  /** Convenience: hits / (hits + misses), or 0 when no traffic. */
+  hitRate: number;
+}
+
 export interface DiagnosticsReport {
   generatedAt: string;
   indexHealth: IndexHealthReport;
   entityCounts: EntityCounts;
+  /** Phase 9: tier stats when `ctx.tieredPostingsIndex` is active. */
+  tieredIndexStats?: TieredIndexStatsSnapshot;
 }
 
 /**
  * Build a diagnostics snapshot. Each callback fires once per call.
+ *
+ * Phase 9 task 74: optional `tieredIndexStats` parameter lets the
+ * caller (`ManagerContext.diagnostics()`) include tier hit-rate
+ * stats when the tiered index is active. Omit when no tiered index
+ * is configured — the field is left `undefined` in the report.
  */
 export function buildDiagnosticsReport(
   indexHealth: () => IndexHealthReport,
   entityCounts: () => EntityCounts,
+  tieredIndexStats?: () => TieredIndexStatsSnapshot | undefined,
 ): DiagnosticsReport {
-  return {
+  const report: DiagnosticsReport = {
     generatedAt: new Date().toISOString(),
     indexHealth: indexHealth(),
     entityCounts: entityCounts(),
   };
+  if (tieredIndexStats) {
+    const snap = tieredIndexStats();
+    if (snap !== undefined) report.tieredIndexStats = snap;
+  }
+  return report;
 }
