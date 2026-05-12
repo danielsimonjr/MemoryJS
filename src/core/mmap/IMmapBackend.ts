@@ -107,36 +107,62 @@ export interface IMmapBackend {
 export async function* streamLines(
   backend: IMmapBackend,
   handle: MmapHandle,
-  options: { chunkSize?: number } = {},
+  options: { chunkSize?: number; maxLineBytes?: number } = {},
 ): AsyncIterable<Buffer> {
   const chunkSize = options.chunkSize ?? 64 * 1024; // 64 KB
+  // Phase 11 review #1: cap the unflushed remainder length. Without
+  // this guard, a hostile / corrupted file with no `\n` (or a single
+  // line spanning multiple GB) makes the accumulator grow without
+  // bound — defeating the whole point of the mmap path. 16 MB is
+  // generous for legitimate JSONL lines and catches the OOM scenario.
+  const maxLineBytes = options.maxLineBytes ?? 16 * 1024 * 1024;
   const total = await backend.size(handle);
   let offset = 0;
-  let remainder: Buffer = Buffer.alloc(0);
+  // Accumulate remainder as a Buffer[] rather than repeatedly
+  // `Buffer.concat`-ing into a growing single Buffer — that pattern
+  // was O(N²) total work. Concat lazily only when we need to yield
+  // a line that crosses the chunk boundary.
+  let remainderParts: Buffer[] = [];
+  let remainderLength = 0;
 
   while (offset < total) {
     const readLength = Math.min(chunkSize, total - offset);
     const chunk = await backend.readRange(handle, offset, readLength);
     offset += readLength;
 
-    // Concatenate remainder + chunk into a contiguous buffer so we
-    // can scan for newlines. The remainder is at most one line
-    // long, so this stays bounded.
-    const combined =
-      remainder.length === 0 ? chunk : Buffer.concat([remainder, chunk]);
+    // Scan the chunk for newlines. When we find one, splice it
+    // together with the carried-over remainder and yield.
     let lineStart = 0;
-    for (let i = 0; i < combined.length; i++) {
-      if (combined[i] === 0x0a) {
-        // 0x0a = '\n'. Yield the line excluding the newline.
-        yield combined.subarray(lineStart, i);
+    for (let i = 0; i < chunk.length; i++) {
+      if (chunk[i] === 0x0a) {
+        const piece = chunk.subarray(lineStart, i);
+        if (remainderParts.length === 0) {
+          yield piece;
+        } else {
+          remainderParts.push(piece);
+          yield Buffer.concat(remainderParts);
+          remainderParts = [];
+          remainderLength = 0;
+        }
         lineStart = i + 1;
       }
     }
-    remainder = combined.subarray(lineStart);
+    // Append everything after the last newline to the remainder.
+    if (lineStart < chunk.length) {
+      const tail = chunk.subarray(lineStart);
+      remainderParts.push(tail);
+      remainderLength += tail.length;
+      if (remainderLength > maxLineBytes) {
+        throw new Error(
+          `streamLines: line exceeded maxLineBytes=${maxLineBytes} ` +
+            `(no newline found across ${remainderLength} bytes — file may be corrupt or wrong format)`,
+        );
+      }
+    }
   }
 
   // Final partial line (no trailing newline). Yield only if non-empty.
-  if (remainder.length > 0) {
-    yield remainder;
+  if (remainderLength > 0) {
+    yield Buffer.concat(remainderParts);
   }
 }

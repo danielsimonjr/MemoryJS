@@ -111,10 +111,16 @@ describe('mmap vs fs.readFile load (Phase 11 task 85)', () => {
 
       // The mmap path SHOULD be slower on a small file (12 MB) —
       // the per-chunk iteration overhead doesn't pay off at this
-      // size. We assert it's not catastrophically worse (< 5×)
-      // — the real win lands at >1 GB files where the fs.readFile
+      // size. The real win lands at >1 GB files where the fs.readFile
       // path's peak RSS becomes a problem.
-      expect(mmapMs).toBeLessThan(fsMs * 5);
+      //
+      // Bound widened to 15× (Phase 11 review #6) for CI variance:
+      // slow shared runners with disk thrashing can produce
+      // 10-12× ratios on a 12 MB file because of per-chunk syscall
+      // overhead amplified by I/O contention. The console.log
+      // numbers are the real signal — the assertion guards only
+      // against a 2-3 orders-of-magnitude regression.
+      expect(mmapMs).toBeLessThan(fsMs * 15);
       // Correctness must hold regardless.
       expect(mmapResult.entities.length).toBe(fsResult.entities.length);
     },

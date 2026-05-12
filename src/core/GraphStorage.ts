@@ -513,7 +513,12 @@ export class GraphStorage implements IGraphStorage {
   private async shouldUseMmap(): Promise<boolean> {
     if (process.env.MEMORY_USE_MMAP !== 'true') return false;
     const thresholdRaw = process.env.MEMORY_MMAP_THRESHOLD_BYTES;
-    const threshold = thresholdRaw && /^[1-9][0-9]*$/.test(thresholdRaw)
+    // Phase 11 review #4: accept `0` to mean "always use mmap"
+    // (size > 0 trivially true for any non-empty file). Without
+    // this, `'0'` silently fell back to the 100 MB default which
+    // surprised operators who wrote `MEMORY_MMAP_THRESHOLD_BYTES=0`
+    // to force the mmap path on.
+    const threshold = thresholdRaw && /^(0|[1-9][0-9]*)$/.test(thresholdRaw)
       ? Number(thresholdRaw)
       : 100 * 1024 * 1024;
     try {
@@ -539,18 +544,26 @@ export class GraphStorage implements IGraphStorage {
     try {
       const entityMap = new Map<string, Entity>();
       const relationMap = new Map<string, Relation>();
+      // Track line number for debuggable parse errors (review #2).
+      // The fs.readFile path doesn't carry line numbers either, but
+      // mmap-mode targets huge files where "which line broke?" is
+      // exactly the information operators need.
+      let lineNumber = 0;
 
       for await (const lineBuf of streamLines(backend, handle)) {
+        lineNumber++;
         const line = lineBuf.toString('utf-8').trim();
         if (line === '') continue;
         let item: unknown;
         try {
           item = JSON.parse(line);
-        } catch {
-          // Match the fs.readFile path's de-facto behavior: a
-          // malformed line aborts the load. The error surfaces to
-          // the caller of loadGraph.
-          throw new Error(`Failed to parse line in ${this.memoryFilePath}: ${line.slice(0, 100)}`);
+        } catch (err) {
+          // Surface the underlying SyntaxError message + line
+          // number so a 1 GB file's bad row is locatable.
+          const cause = err instanceof Error ? err.message : String(err);
+          throw new Error(
+            `Failed to parse line ${lineNumber} of ${this.memoryFilePath}: ${cause} (preview: ${line.slice(0, 100)})`,
+          );
         }
         const rec = item as Record<string, unknown>;
         if (rec.type === 'entity') {

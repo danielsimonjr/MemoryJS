@@ -37,6 +37,7 @@
  */
 
 import { promises as fs } from 'fs';
+import { resolve } from 'path';
 import type { FileHandle } from 'fs/promises';
 import type { IMmapBackend, MmapHandle } from './IMmapBackend.js';
 
@@ -80,16 +81,21 @@ export class FsReadMmapBackend implements IMmapBackend {
    * so callers don't have to interpret raw Node error codes.
    */
   async open(filePath: string): Promise<MmapHandle> {
+    // Resolve to absolute path (Phase 11 review #12) so handle.id is
+    // a canonical identifier independent of cwd — matches
+    // BufferMmapBackend's behavior and lets callers compare ids
+    // across instances meaningfully.
+    const absolutePath = resolve(filePath);
     let fileHandle: FileHandle;
     try {
-      fileHandle = await fs.open(filePath, 'r');
+      fileHandle = await fs.open(absolutePath, 'r');
     } catch (err) {
       // ENOENT / EACCES / EISDIR all surface here. Re-throw with
       // a descriptive message that includes the path — saves
       // callers from spelunking through error.code lookups.
       const cause = err instanceof Error ? err.message : String(err);
       throw new Error(
-        `FsReadMmapBackend: failed to open '${filePath}': ${cause}`,
+        `FsReadMmapBackend: failed to open '${absolutePath}': ${cause}`,
       );
     }
 
@@ -108,11 +114,11 @@ export class FsReadMmapBackend implements IMmapBackend {
       });
       const cause = err instanceof Error ? err.message : String(err);
       throw new Error(
-        `FsReadMmapBackend: failed to stat '${filePath}': ${cause}`,
+        `FsReadMmapBackend: failed to stat '${absolutePath}': ${cause}`,
       );
     }
 
-    const handle: MmapHandle = { id: filePath, size };
+    const handle: MmapHandle = { id: absolutePath, size };
     this.handles.set(handle, fileHandle);
     return handle;
   }
@@ -180,14 +186,30 @@ export class FsReadMmapBackend implements IMmapBackend {
     // Fresh allocation per call — caller-owned, no aliasing with
     // any internal cache. Matches the interface contract.
     const buf = Buffer.alloc(length);
-    const { bytesRead } = await fileHandle.read(buf, 0, length, offset);
 
-    if (bytesRead !== length) {
-      // Should never happen given the bounds check above unless
-      // the file was truncated underneath us. Surface explicitly
-      // so callers don't silently get a partial buffer.
+    // Phase 11 review #5: loop until the request is fully satisfied
+    // (or EOF). On most filesystems a single `fileHandle.read` returns
+    // the full count, but POSIX permits short reads — NFS / FUSE /
+    // signal-interrupted reads on some platforms surface them. Loop
+    // until done; only throw if we hit EOF before length.
+    let totalRead = 0;
+    while (totalRead < length) {
+      const { bytesRead } = await fileHandle.read(
+        buf,
+        totalRead,
+        length - totalRead,
+        offset + totalRead,
+      );
+      if (bytesRead === 0) break; // EOF
+      totalRead += bytesRead;
+    }
+
+    if (totalRead !== length) {
+      // File truncated underneath us between open() and readRange().
+      // Surface explicitly so callers don't silently get a partial
+      // buffer.
       throw new Error(
-        `FsReadMmapBackend: short read (expected ${length} bytes, got ${bytesRead}, offset=${offset}, id='${handle.id}'). File may have been truncated.`,
+        `FsReadMmapBackend: short read (expected ${length} bytes, got ${totalRead}, offset=${offset}, id='${handle.id}'). File may have been truncated.`,
       );
     }
 
