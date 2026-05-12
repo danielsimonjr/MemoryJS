@@ -19,6 +19,8 @@ import { GraphEventEmitter } from './GraphEventEmitter.js';
 import { dirname } from 'path';
 import { FileSegmentStorage } from './segments/FileSegmentStorage.js';
 import { FnvSegmentRouter } from './segments/ISegmentStorage.js';
+import { FsReadMmapBackend } from './mmap/FsReadMmapBackend.js';
+import { streamLines } from './mmap/IMmapBackend.js';
 
 /**
  * Read `MEMORY_STORAGE_SEGMENT_COUNT` and return a `FileSegmentStorage`
@@ -371,6 +373,16 @@ export class GraphStorage implements IGraphStorage {
       await this.loadFromSegments();
       return;
     }
+    // Phase 11 task 84: when MEMORY_USE_MMAP=true AND the file is
+    // larger than the configured threshold, iterate lines via the
+    // FsReadMmapBackend's range-read path instead of slurping the
+    // whole file into a single string. Smaller files stay on the
+    // existing fs.readFile path — for sub-threshold files the
+    // streaming setup overhead doesn't pay off.
+    if (await this.shouldUseMmap()) {
+      await this.loadViaMmap();
+      return;
+    }
     try {
       const data = await fs.readFile(this.memoryFilePath, 'utf-8');
       const lines = data.split('\n').filter((line: string) => line.trim() !== '');
@@ -485,6 +497,84 @@ export class GraphStorage implements IGraphStorage {
         );
       }
       throw saveErr;
+    }
+  }
+
+  /**
+   * Phase 11 task 84: decide whether to use the mmap-backed read
+   * path. Activated by `MEMORY_USE_MMAP='true'` (strict literal-
+   * match, matches Phase 7/8/9/10 env precedents) AND file size
+   * > `MEMORY_MMAP_THRESHOLD_BYTES` (default 100 MB).
+   *
+   * Files below the threshold stay on the existing `fs.readFile`
+   * path — for small files the per-line streaming setup overhead
+   * eats the mmap perf benefit.
+   */
+  private async shouldUseMmap(): Promise<boolean> {
+    if (process.env.MEMORY_USE_MMAP !== 'true') return false;
+    const thresholdRaw = process.env.MEMORY_MMAP_THRESHOLD_BYTES;
+    const threshold = thresholdRaw && /^[1-9][0-9]*$/.test(thresholdRaw)
+      ? Number(thresholdRaw)
+      : 100 * 1024 * 1024;
+    try {
+      const stat = await fs.stat(this.memoryFilePath);
+      return stat.size > threshold;
+    } catch {
+      // ENOENT / EACCES — fall back to the regular path which
+      // already handles those cases.
+      return false;
+    }
+  }
+
+  /**
+   * Load via the `FsReadMmapBackend` + `streamLines` helper.
+   * Iterates lines lazily, holding at most one 64 KB chunk in
+   * memory at a time. Compared to `fs.readFile`+split, this avoids
+   * the peak-RSS spike of loading the whole file as a single
+   * string for multi-GB JSONLs.
+   */
+  private async loadViaMmap(): Promise<void> {
+    const backend = new FsReadMmapBackend();
+    const handle = await backend.open(this.memoryFilePath);
+    try {
+      const entityMap = new Map<string, Entity>();
+      const relationMap = new Map<string, Relation>();
+
+      for await (const lineBuf of streamLines(backend, handle)) {
+        const line = lineBuf.toString('utf-8').trim();
+        if (line === '') continue;
+        let item: unknown;
+        try {
+          item = JSON.parse(line);
+        } catch {
+          // Match the fs.readFile path's de-facto behavior: a
+          // malformed line aborts the load. The error surfaces to
+          // the caller of loadGraph.
+          throw new Error(`Failed to parse line in ${this.memoryFilePath}: ${line.slice(0, 100)}`);
+        }
+        const rec = item as Record<string, unknown>;
+        if (rec.type === 'entity') {
+          if (!rec.createdAt) rec.createdAt = new Date().toISOString();
+          if (!rec.lastModified) rec.lastModified = rec.createdAt;
+          entityMap.set(rec.name as string, rec as unknown as Entity);
+        } else if (rec.type === 'relation') {
+          if (!rec.createdAt) rec.createdAt = new Date().toISOString();
+          if (!rec.lastModified) rec.lastModified = rec.createdAt;
+          const key = `${rec.from}:${rec.to}:${rec.relationType}`;
+          relationMap.set(key, rec as unknown as Relation);
+        }
+      }
+
+      const graph: KnowledgeGraph = {
+        entities: Array.from(entityMap.values()),
+        relations: Array.from(relationMap.values()),
+      };
+      this.cache = graph;
+      this.buildEntityIndexes(graph.entities);
+      this.buildRelationIndex(graph.relations);
+      this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
+    } finally {
+      await backend.close(handle);
     }
   }
 
