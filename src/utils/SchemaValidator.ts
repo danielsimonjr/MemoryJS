@@ -9,6 +9,7 @@
 
 import type { Entity } from '../types/types.js';
 import type { EntityValidationResult, EntityValidationIssue } from './EntityValidator.js';
+import { logger } from './logger.js';
 
 /**
  * JSON Schema type definition (simplified).
@@ -159,7 +160,7 @@ export class SchemaValidator {
       const validate = this.ajv.compile(schema);
       this.validators.set(entityType, validate);
     } catch (error) {
-      console.warn(`Failed to compile schema for "${entityType}": ${(error as Error).message}`);
+      logger.warn(`Failed to compile schema for "${entityType}": ${(error as Error).message}`);
     }
   }
 

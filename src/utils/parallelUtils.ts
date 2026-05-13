@@ -135,7 +135,6 @@ export async function parallelMap<T, R>(
             // SECURITY NOTE: new Function() is required for worker pool serialization.
             // Safety is ensured by validateFunction() which guarantees only real
             // Function objects (not user strings) are serialized here.
-            // eslint-disable-next-line no-new-func
             const mapFn = new Function('return ' + fnStr)() as (item: T) => R;
             return chunkData.map(mapFn);
           },
@@ -214,7 +213,6 @@ export async function parallelFilter<T>(
             // SECURITY NOTE: new Function() is required for worker pool serialization.
             // Safety is ensured by validateFunction() which guarantees only real
             // Function objects (not user strings) are serialized here.
-            // eslint-disable-next-line no-new-func
             const filterFn = new Function('return ' + predicateStr)() as (item: T) => boolean;
             return chunkData.filter(filterFn);
           },

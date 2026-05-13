@@ -7,7 +7,9 @@
  * @module agent/ContextWindowManager
  */
 
+import { logger } from '../utils/logger.js';
 import type { IGraphStorage, Entity } from '../types/types.js';
+import type { GraphStorage } from '../core/GraphStorage.js';
 import type {
   AgentEntity,
   SalienceContext,
@@ -1123,10 +1125,18 @@ export class ContextWindowManager {
       const { ProfileManager } = await import('./ProfileManager.js');
       const { EntityManager } = await import('../core/EntityManager.js');
       const { ObservationManager } = await import('../core/ObservationManager.js');
+      // EntityManager / ObservationManager are typed for the concrete
+      // GraphStorage. ContextWindowManager holds the broader IGraphStorage,
+      // so the cast asserts the runtime is in fact a GraphStorage. Both
+      // shipping implementations (GraphStorage, SQLiteStorage) satisfy the
+      // interface — but only GraphStorage exposes the mutex/graph helpers
+      // those managers reach into. Tracked under the storage-abstraction
+      // refactor in the codebase-health backlog.
+      const concreteStorage = this.storage as GraphStorage;
       const pm = new ProfileManager(
-        this.storage as any,
-        new EntityManager(this.storage as any),
-        new ObservationManager(this.storage as any),
+        concreteStorage,
+        new EntityManager(concreteStorage),
+        new ObservationManager(concreteStorage),
       );
       const profile = await pm.getProfile({ projectId: options.projectId });
       if (profile.static.length > 0) {
@@ -1139,7 +1149,7 @@ export class ContextWindowManager {
       }
     } catch (err) {
       if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
-        console.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
+        logger.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
       }
     }
 
@@ -1150,12 +1160,12 @@ export class ContextWindowManager {
       try {
         const graph = await this.storage.loadGraph();
         let entities = graph.entities.filter(
-          (e: any) => e.isLatest !== false && e.entityType !== 'profile' && e.entityType !== 'diary'
+          (e) => e.isLatest !== false && e.entityType !== 'profile' && e.entityType !== 'diary'
         );
         if (options.projectId) {
-          entities = entities.filter((e: any) => e.projectId === options.projectId);
+          entities = entities.filter((e) => e.projectId === options.projectId);
         }
-        const sorted = [...entities].sort((a: any, b: any) => (b.importance ?? 0) - (a.importance ?? 0));
+        const sorted = [...entities].sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0));
 
         const lines: string[] = [];
         let tokenCount = 0;
@@ -1170,7 +1180,7 @@ export class ContextWindowManager {
         }
         l1 = lines.join('\n');
       } catch (err) {
-        console.error('[ContextWindowManager.wakeUp] L1 entity loading failed:', err);
+        logger.error('[ContextWindowManager.wakeUp] L1 entity loading failed:', err);
       }
     }
 
@@ -1184,7 +1194,7 @@ export class ContextWindowManager {
         }
         // else: compression skipped — legend overhead exceeds savings
       } catch (err) {
-        console.error('[ContextWindowManager.wakeUp] Compression failed, using uncompressed:', err);
+        logger.error('[ContextWindowManager.wakeUp] Compression failed, using uncompressed:', err);
         // Fall through with uncompressed l1
       }
     }

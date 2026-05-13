@@ -11,6 +11,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { TFIDFIndex, DocumentVector, KnowledgeGraph, ReadonlyKnowledgeGraph } from '../types/index.js';
 import { calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
+import type { IIndexHealth, IndexHealthSnapshot } from '../utils/IIndexHealth.js';
 
 const INDEX_VERSION = '1.0';
 const INDEX_FILENAME = 'tfidf-index.json';
@@ -28,7 +29,7 @@ interface SerializedTFIDFIndex {
 /**
  * Manages TF-IDF index lifecycle: building, updating, and persistence.
  */
-export class TFIDFIndexManager {
+export class TFIDFIndexManager implements IIndexHealth {
   private indexPath: string;
   private index: TFIDFIndex | null = null;
 
@@ -504,5 +505,21 @@ export class TFIDFIndexManager {
    */
   getDocumentCount(): number {
     return this.index?.documents.size ?? 0;
+  }
+
+  /**
+   * Health snapshot for `IndexHealthMonitor` / `ctx.indexHealth()`.
+   *
+   * Staleness is `'unknown'` because this manager has no graph reference;
+   * callers wanting a fresh/dirty signal should call `needsRebuild(graph)`
+   * directly.
+   */
+  health(): IndexHealthSnapshot {
+    return {
+      name: 'tfidf',
+      initialized: this.isInitialized(),
+      documentCount: this.getDocumentCount(),
+      staleness: 'unknown',
+    };
   }
 }

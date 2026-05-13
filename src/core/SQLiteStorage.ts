@@ -27,6 +27,8 @@ import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphSt
 import { clearAllSearchCaches } from '../utils/searchCache.js';
 import { NameIndex, TypeIndex } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath } from '../utils/index.js';
+import { logger } from '../utils/logger.js';
+import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 
 /**
  * SQLiteStorage manages persistence of the knowledge graph using native SQLite.
@@ -51,9 +53,42 @@ export class SQLiteStorage implements IGraphStorage {
   private mutex = new Mutex();
 
   /**
-   * SQLite database instance.
+   * SQLite database instance for writes and write-transaction reads.
    */
   private db: DatabaseType | null = null;
+
+  /**
+   * Read-only connection pool. WAL mode (set in `initialize()`) lets these
+   * read concurrently with the writer at the SQLite level. Round-robin
+   * checkout via `pickReadConnection()` keeps the rotation cheap.
+   *
+   * Sized by `MEMORY_SQLITE_READ_POOL_SIZE` (default 4). Set to 0 or 1 to
+   * route reads through the writer connection.
+   */
+  private readPool: DatabaseType[] = [];
+
+  /**
+   * Round-robin cursor over `readPool`. Wraps modulo pool size.
+   */
+  private readPoolCursor: number = 0;
+
+  /**
+   * Partial-index advisor. Self-disables when `MEMORY_SQLITE_AUTO_INDEX`
+   * is unset. Callers feed it via `recordFilter(observation)`; the
+   * advisor's recommendations are flushed every
+   * `partialIndexApplyEvery` recordings.
+   */
+  private readonly partialIndexAdvisor: PartialIndexAdvisor = new PartialIndexAdvisor();
+
+  /**
+   * How many `recordFilter` calls between automatic `apply()`s. Tuned
+   * so the DDL doesn't fire on every query but reacts within a few
+   * hundred filters.
+   */
+  private readonly partialIndexApplyEvery: number = 100;
+
+  /** Counter against `partialIndexApplyEvery`. */
+  private partialIndexRecordings: number = 0;
 
   /**
    * Whether the database has been initialized.
@@ -65,6 +100,16 @@ export class SQLiteStorage implements IGraphStorage {
    * Synchronized with SQLite on writes.
    */
   private cache: KnowledgeGraph | null = null;
+
+  /**
+   * Public read-only view of the in-memory cache. Side-effect-free —
+   * does NOT force a load. Returns null when the cache has not been
+   * populated yet. Mirrors `GraphStorage.cachedGraph` so observability
+   * code (`ctx.diagnostics`) works uniformly across both backends.
+   */
+  get cachedGraph(): KnowledgeGraph | null {
+    return this.cache;
+  }
 
   /**
    * O(1) entity lookup by name.
@@ -124,6 +169,10 @@ export class SQLiteStorage implements IGraphStorage {
     // Enable foreign keys and WAL mode for better performance
     this.db.pragma('foreign_keys = ON');
     this.db.pragma('journal_mode = WAL');
+
+    // Spin up the read pool while the writer connection is still live so
+    // file creation and pragmas have already happened.
+    this.initReadPool();
 
     // Create tables and indexes
     this.createTables();
@@ -332,6 +381,8 @@ export class SQLiteStorage implements IGraphStorage {
     'ttl', 'confidence',
     // η.4.4 temporal versioning expansion
     'validFrom', 'validUntil', 'observationMeta',
+    // Entity state machine
+    'lifecycleStatus',
     // AgentEntity (types/agent-memory.ts)
     'memoryType', 'sessionId', 'conversationId', 'taskId',
     'expiresAt', 'isWorkingMemory', 'promotedAt', 'promotedFrom', 'markedForPromotion',
@@ -867,6 +918,9 @@ export class SQLiteStorage implements IGraphStorage {
     // Phase 4 Sprint 1: Clear bidirectional relation cache
     this.bidirectionalRelationCache.clear();
     this.initialized = false;
+    // Close the read pool first so its connections can't outlive the
+    // writer connection (reproducible test re-init was leaking handles).
+    this.closeReadPool();
     if (this.db) {
       this.db.close();
       this.db = null;
@@ -962,8 +1016,11 @@ export class SQLiteStorage implements IGraphStorage {
 
       if (!sanitized) return [];
 
-      // Use FTS5 MATCH for full-text search with BM25 ranking
-      const stmt = this.db.prepare(`
+      // Use FTS5 MATCH for full-text search with BM25 ranking. Reads check
+      // out a pooled connection so they can run concurrently with writes
+      // at the SQLite level (WAL mode).
+      const reader = this.pickReadConnection();
+      const stmt = reader.prepare(`
         SELECT name, bm25(entities_fts, 10, 5, 3, 1) as score
         FROM entities_fts
         WHERE entities_fts MATCH ?
@@ -991,7 +1048,8 @@ export class SQLiteStorage implements IGraphStorage {
     // Escape LIKE wildcards to prevent matching manipulation
     const escaped = searchTerm.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
     const pattern = `%${escaped}%`;
-    const stmt = this.db.prepare(`
+    const reader = this.pickReadConnection();
+    const stmt = reader.prepare(`
       SELECT name FROM entities
       WHERE name LIKE ? ESCAPE '\\' COLLATE NOCASE
          OR entityType LIKE ? ESCAPE '\\' COLLATE NOCASE
@@ -1037,14 +1095,119 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Close the database connection.
+   * Close the database connection (and any pooled read connections).
    */
   close(): void {
+    // Drop advisor-managed indexes before tearing down so the file
+    // doesn't accumulate orphan idx_advisor_* indexes across runs.
+    if (this.partialIndexAdvisor.enabled && this.db) {
+      try {
+        this.partialIndexAdvisor.dropAll(this.db);
+      } catch {
+        // Best-effort — never block close on advisor cleanup.
+      }
+    }
+    this.closeReadPool();
     if (this.db) {
       this.db.close();
       this.db = null;
     }
     this.initialized = false;
+  }
+
+  /**
+   * Initialise the read connection pool. Size comes from
+   * `MEMORY_SQLITE_READ_POOL_SIZE` (default 4). A size of 0 or 1 means
+   * "route reads through the writer connection" — the pool stays empty
+   * and `pickReadConnection()` returns `this.db`.
+   */
+  private initReadPool(): void {
+    const raw = process.env.MEMORY_SQLITE_READ_POOL_SIZE;
+    const parsed = raw === undefined ? 4 : parseInt(raw, 10);
+    const size = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 4;
+    if (size <= 1) return; // Single-writer fallback; reads go through this.db.
+
+    for (let i = 0; i < size; i++) {
+      const conn = new Database(this.validatedDbFilePath, { readonly: true });
+      // Foreign keys are still meaningful on a read-only handle (for
+      // referential integrity in compound queries). The journal_mode
+      // pragma is intentionally NOT set here — it's a write-time setting
+      // that the writer connection already established for the file.
+      conn.pragma('foreign_keys = ON');
+      this.readPool.push(conn);
+    }
+  }
+
+  /**
+   * Close every pooled read connection.
+   */
+  private closeReadPool(): void {
+    for (const conn of this.readPool) {
+      try {
+        conn.close();
+      } catch {
+        // Best-effort close; ignore.
+      }
+    }
+    this.readPool.length = 0;
+    this.readPoolCursor = 0;
+  }
+
+  /**
+   * Record a search-filter observation for the partial-index advisor.
+   * No-op when `MEMORY_SQLITE_AUTO_INDEX` is unset (the advisor
+   * self-disables). After every `partialIndexApplyEvery` recordings,
+   * advisor recommendations are applied to the writer connection so
+   * partial indexes track the live workload.
+   *
+   * Callers (typically `SearchManager`) invoke this with the filter
+   * shape they're about to execute. Pre-existing in-memory filtering
+   * is unaffected — partial indexes only accelerate lookups, never
+   * change semantics.
+   */
+  recordFilter(observation: FilterObservation): void {
+    if (!this.partialIndexAdvisor.enabled) return;
+    this.partialIndexAdvisor.record(observation);
+    this.partialIndexRecordings++;
+    if (this.partialIndexRecordings % this.partialIndexApplyEvery === 0 && this.db) {
+      // Defer the DDL via setImmediate so the calling search returns
+      // before any CREATE INDEX runs. The advisor's apply() is
+      // idempotent so a second call before the first finishes is safe.
+      const dbRef = this.db;
+      setImmediate(() => {
+        try {
+          this.partialIndexAdvisor.apply(dbRef);
+        } catch (err) {
+          logger.error('[SQLiteStorage] partial-index apply failed:', err);
+        }
+      });
+    }
+  }
+
+  /**
+   * Read-only snapshot of the advisor's current state — useful for
+   * `ctx.diagnostics()` and tests.
+   */
+  partialIndexAdvisorSnapshot(): ReturnType<PartialIndexAdvisor['snapshot']> {
+    return this.partialIndexAdvisor.snapshot();
+  }
+
+  /**
+   * Pick a read connection. Round-robin across the pool; falls back to the
+   * writer when the pool is empty (size 0 or 1, or pool not yet
+   * initialised). Throws when the storage has not been initialised at all
+   * — callers no longer need to pre-check `this.db` themselves.
+   */
+  private pickReadConnection(): DatabaseType {
+    if (!this.initialized || !this.db) {
+      throw new Error('SQLiteStorage not initialized — call ensureLoaded() first');
+    }
+    if (this.readPool.length === 0) {
+      return this.db;
+    }
+    const conn = this.readPool[this.readPoolCursor]!;
+    this.readPoolCursor = (this.readPoolCursor + 1) % this.readPool.length;
+    return conn;
   }
 
   // ==================== Relation Index Operations ====================

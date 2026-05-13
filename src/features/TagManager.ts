@@ -34,7 +34,7 @@ export class TagManager {
       }
       return aliases;
     } catch (error) {
-      if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
+      if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
         return [];
       }
       throw error;

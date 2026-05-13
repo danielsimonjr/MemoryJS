@@ -136,7 +136,9 @@ export type {
   QueryPlan,
   // Observation deduplication types
   DeduplicationOptions,
+  EntityStatus,
 } from './types.js';
+export { ENTITY_STATUS_TRANSITIONS } from './types.js';
 
 // Agent Memory Types (Phase 1 - Agent Memory System)
 export type {

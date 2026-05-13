@@ -9,11 +9,27 @@
  */
 
 import path from 'path';
+import { logger } from '../utils/logger.js';
+import { IndexHealthMonitor, type IndexHealthReport } from '../utils/IndexHealthMonitor.js';
+import { buildDiagnosticsReport, type DiagnosticsReport } from '../utils/Diagnostics.js';
+import { BatchTransaction } from './TransactionManager.js';
+import type { BatchResult, BatchOptions, Entity } from '../types/index.js';
+import { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
+import { MaterializedViewsManager } from '../search/MaterializedViews.js';
+import { ObservationStore } from './ObservationStore.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
 import { EntityManager } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
+import { JsonlColumnStore } from './columns/JsonlColumnStore.js';
+import { TieredIndex, buildTieredIndex } from '../search/tiered/TieredIndex.js';
+import { LRUHotTier } from '../search/tiered/LRUHotTier.js';
+import { DiskWarmTier } from '../search/tiered/DiskWarmTier.js';
+import { BrotliColdTier } from '../search/tiered/BrotliColdTier.js';
+import { CompressedMap } from '../utils/compression/CompressedMap.js';
+import { ZlibCompressionAdapter } from '../utils/compression/ICompressionAdapter.js';
+import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
 import { SearchManager } from '../search/SearchManager.js';
@@ -91,12 +107,20 @@ export class ManagerContext {
   private readonly savedSearchesFilePath: string;
   private readonly tagAliasesFilePath: string;
   private readonly refIndexFilePath: string;
+  private readonly observationColumnStorePath: string;
   private _observerPipeline?: ObserverPipeline;
 
   // ==================== LAZY-INITIALIZED CORE MANAGERS ====================
   private _entityManager?: EntityManager;
   private _relationManager?: RelationManager;
   private _observationManager?: ObservationManager;
+  private _observationColumnStore: IColumnStore<ObservationColumn> | null | undefined;
+
+  /** Phase 9: tiered posting-list cache. `undefined` = unresolved, `null` = env-gated off. */
+  private _tieredPostingsIndex: TieredIndex<unknown> | null | undefined;
+
+  /** Phase 10: compressed entity cache. `undefined` = unresolved, `null` = env-gated off. */
+  private _compressedEntityCache: CompressedMap<string, Entity> | null | undefined;
   private _hierarchyManager?: HierarchyManager;
   private _graphTraversal?: GraphTraversal;
   private _searchManager?: SearchManager;
@@ -106,6 +130,22 @@ export class ManagerContext {
   private _analyticsManager?: AnalyticsManager;
   private _compressionManager?: CompressionManager;
   private _archiveManager?: ArchiveManager;
+  /**
+   * Coordinated cache pressure across registered subsystem caches.
+   * Enabled when `MEMORY_CACHE_BUDGET_ENTRIES` is set; otherwise this
+   * is a quiet no-op. Subsystems (e.g. `EmbeddingCache`,
+   * `QueryPlanCache`) are registered on first lazy access so the
+   * coordinator can shrink them proportionally when the global budget
+   * is exceeded.
+   */
+  readonly cachePressure: CachePressureCoordinator = new CachePressureCoordinator();
+
+  /** Lazy-initialised. See `materializedViews` getter. */
+  private _materializedViews?: MaterializedViewsManager;
+
+  /** Lazy-initialised. See `observationStore` getter. */
+  private _observationStore?: ObservationStore;
+
   private _autoLinker?: AutoLinker;
   private _factExtractor?: FactExtractor;
   private _transitionLedger?: TransitionLedger | null;
@@ -156,6 +196,13 @@ export class ManagerContext {
     this.savedSearchesFilePath = path.join(dir, `${basename}-saved-searches.jsonl`);
     this.tagAliasesFilePath = path.join(dir, `${basename}-tag-aliases.jsonl`);
     this.refIndexFilePath = path.join(dir, `${basename}-ref-index.jsonl`);
+    // Phase 8: column-store sidecar lives next to the main file. Only
+    // populated when `MEMORY_OBSERVATIONS_COLUMNAR=true` (see the
+    // `observationColumnStore` lazy getter below); zero behavior change
+    // when the flag is unset. Hyphen-delimited path matches the
+    // convention used by the other sidecars in this constructor
+    // (`-saved-searches`, `-tag-aliases`, `-ref-index`).
+    this.observationColumnStorePath = path.join(dir, `${basename}-observations.jsonl`);
     // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
     this.storage = createStorageFromPath(validatedPath) as GraphStorage;
@@ -182,7 +229,7 @@ export class ManagerContext {
     try {
       const ss = this.semanticSearch;
       if (!ss) {
-        console.warn(
+        logger.warn(
           '[ManagerContext] Contradiction detection requested but no embedding provider is configured. ' +
           'Set MEMORY_EMBEDDING_PROVIDER to enable it.'
         );
@@ -191,7 +238,7 @@ export class ManagerContext {
       const detector = new ContradictionDetector(ss, threshold ?? 0.85);
       this.observationManager.setContradictionDetector(detector, this.entityManager);
     } catch (err) {
-      console.warn(
+      logger.warn(
         '[ManagerContext] Could not initialise contradiction detection:',
         err instanceof Error ? err.message : String(err)
       );
@@ -215,7 +262,146 @@ export class ManagerContext {
 
   /** ObservationManager - Observation CRUD */
   get observationManager(): ObservationManager {
-    return (this._observationManager ??= new ObservationManager(this.storage));
+    if (!this._observationManager) {
+      this._observationManager = new ObservationManager(this.storage);
+      // Phase 8 tasks 66 + 67: wire the column store (env-gated). The
+      // store is null when `MEMORY_OBSERVATIONS_COLUMNAR` is unset/false,
+      // matching pre-Phase-8 behavior. When enabled, every
+      // addObservations/deleteObservations write shadow-mirrors to the
+      // sidecar and `getObservationsFor(name)` reads from the column
+      // store first, falling back to inline.
+      this._observationManager.setColumnStore(this.observationColumnStore);
+    }
+    return this._observationManager;
+  }
+
+  /**
+   * Lazy `IColumnStore<ObservationColumn>` for the shadow observation
+   * column. Returns `null` when `MEMORY_OBSERVATIONS_COLUMNAR` is
+   * unset / `false` / any other value. Strict literal-match on
+   * `'true'` keeps the activation gate predictable (no `'yes'` /
+   * `'1'` / `'TRUE'` surprises). The sidecar lives at
+   * `<basename>-observations.jsonl` next to the main storage file.
+   *
+   * **Read once, cached for the life of the ManagerContext.** The
+   * env-var value is read on first access and the resolved column
+   * store (or `null`) is cached. Flipping
+   * `MEMORY_OBSERVATIONS_COLUMNAR` at runtime has no effect after
+   * the first access — restart the process. Matches the precedent
+   * set by Phase 7's `MEMORY_STORAGE_SEGMENT_COUNT` on
+   * `GraphStorage`. If runtime reconfiguration becomes a
+   * requirement, expose a `setObservationColumnStore` method on
+   * `ManagerContext` rather than reading the env on every call.
+   *
+   * @experimental Phase 8 — call signature stable; the underlying
+   *   sidecar format may grow new fields in non-breaking ways.
+   */
+  get observationColumnStore(): IColumnStore<ObservationColumn> | null {
+    if (this._observationColumnStore === undefined) {
+      this._observationColumnStore =
+        process.env.MEMORY_OBSERVATIONS_COLUMNAR === 'true'
+          ? new JsonlColumnStore<ObservationColumn>(this.observationColumnStorePath)
+          : null;
+    }
+    return this._observationColumnStore;
+  }
+
+  /**
+   * Lazy `ITieredIndex<string, unknown>` building block for callers
+   * who want hot/warm/cold posting-list caching. Returns `null` when
+   * `MEMORY_TIERED_INDEX` is not exactly `'true'` (strict literal
+   * match — `'1'` / `'yes'` / `'TRUE'` decline, matching the
+   * `MEMORY_OBSERVATIONS_COLUMNAR` precedent).
+   *
+   * **Wiring**: a `LRUHotTier` (10k entries default) → `DiskWarmTier`
+   * (sidecar at `<basename>-tiered-warm.jsonl`) → `BrotliColdTier`
+   * (shard at `<basename>-tiered-cold.jsonl.br`) chain. Use
+   * `tieredPostingsIndex.stats()` for hit-rate diagnostics; the
+   * tier-stats roll up into `ctx.diagnostics()`.
+   *
+   * **Direct integration with `OptimizedInvertedIndex` is intentionally
+   * deferred** — the existing class uses tightly-coupled `Uint32Array`
+   * posting layouts that don't map cleanly onto an `ITieredIndex<V>`.
+   * Callers who want the cache today can compose it themselves on top
+   * of any string-keyed corpus; a follow-up phase will retrofit
+   * `OptimizedInvertedIndex` to consume the tiered backing.
+   *
+   * Read once at first access — restart the process to flip the env
+   * var. Matches `observationColumnStore` precedent.
+   *
+   * Phase 9 tasks 73 + 74.
+   *
+   * @internal Until `OptimizedInvertedIndex` (or another concrete
+   *   index implementation) actually consumes this property, the
+   *   typing `TieredIndex<unknown>` is loose and the property has
+   *   no in-tree caller. Marked `@internal` per Phase 9 review #5
+   *   so external adopters don't lock themselves to a surface that
+   *   may grow stricter generics once a concrete consumer lands.
+   *   The `@experimental` notes still apply: tier sizing defaults
+   *   and the `stats()` shape may change in non-breaking ways.
+   */
+  get tieredPostingsIndex(): TieredIndex<unknown> | null {
+    if (this._tieredPostingsIndex === undefined) {
+      if (process.env.MEMORY_TIERED_INDEX !== 'true') {
+        this._tieredPostingsIndex = null;
+        return null;
+      }
+      const filePath = this.storage.getFilePath();
+      const dir = path.dirname(filePath);
+      const basename = path.basename(filePath, path.extname(filePath));
+      const warmPath = path.join(dir, `${basename}-tiered-warm.jsonl`);
+      const coldPath = path.join(dir, `${basename}-tiered-cold.jsonl.br`);
+      this._tieredPostingsIndex = buildTieredIndex<unknown>({
+        makeHot: (onEvict) => new LRUHotTier({ maxEntries: 10_000, onEvict, name: 'hot' }),
+        makeWarm: (onEvict) => new DiskWarmTier({ filePath: warmPath, maxEntries: 100_000, onEvict, name: 'warm' }),
+        makeCold: () => new BrotliColdTier({ filePath: coldPath, name: 'cold' }),
+      });
+    }
+    return this._tieredPostingsIndex;
+  }
+
+  /**
+   * Lazy `CompressedMap<string, Entity>` for callers who want to
+   * hold a large entity set in RAM at a fraction of the uncompressed
+   * cost. Activated by `MEMORY_CACHE_COMPRESS='true'` (strict
+   * literal-match — matches `MEMORY_OBSERVATIONS_COLUMNAR` and
+   * `MEMORY_TIERED_INDEX` precedents).
+   *
+   * **Default configuration:** hot threshold 1000 entries
+   * (uncompressed working set), Zlib adapter at level 6 (best
+   * compress-speed/ratio trade-off per Phase 10 task 77 benchmark).
+   * Brotli is the right pick for cold-storage shards; zlib for hot
+   * caches like this one.
+   *
+   * **Direct integration with `GraphStorage.cache` is intentionally
+   * deferred** — the existing cache holds a `KnowledgeGraph`
+   * snapshot, not per-entity entries, so swapping in a
+   * `CompressedMap` would require restructuring every read/write
+   * path. Callers who want compressed entity caching today can
+   * compose this property over the storage layer themselves; the
+   * follow-up phase that rewires `GraphStorage` to entity-level
+   * caching will pick this up.
+   *
+   * Phase 10 task 79.
+   *
+   * @internal Until `GraphStorage.cache` is restructured to use
+   *   per-entity caching, the property has no in-tree consumer.
+   *   Marked `@internal` per Phase 9 precedent so external adopters
+   *   don't lock themselves to a surface that may grow stricter
+   *   typing once a concrete consumer lands.
+   */
+  get compressedEntityCache(): CompressedMap<string, Entity> | null {
+    if (this._compressedEntityCache === undefined) {
+      if (process.env.MEMORY_CACHE_COMPRESS !== 'true') {
+        this._compressedEntityCache = null;
+        return null;
+      }
+      this._compressedEntityCache = new CompressedMap<string, Entity>({
+        hotThreshold: 1000,
+        adapter: new ZlibCompressionAdapter(6),
+      });
+    }
+    return this._compressedEntityCache;
   }
 
   /** HierarchyManager - Entity hierarchy operations */
@@ -236,6 +422,143 @@ export class ManagerContext {
   /** RankedSearch - TF-IDF/BM25 ranked search */
   get rankedSearch(): RankedSearch {
     return (this._rankedSearch ??= new RankedSearch(this.storage));
+  }
+
+  /**
+   * Materialised search views — pre-computed result sets for repeated
+   * filter-based queries. Lazy: only constructed on first access (which
+   * also wires the GraphEventEmitter listener for auto-invalidation).
+   */
+  get materializedViews(): MaterializedViewsManager {
+    return (this._materializedViews ??= new MaterializedViewsManager(
+      this.storage as GraphStorage,
+      this.storage.events,
+    ));
+  }
+
+  /**
+   * Content-addressable observation store — opt-in helper for callers
+   * who want to detect duplicate observation strings across entities
+   * (memory-saving analysis, dedup audits). Lazy: only constructed
+   * on first access. The Entity shape on disk is unchanged; this is
+   * a side-channel store the caller drives manually via
+   * `internEntityObservations(entity)` / `releaseEntityObservations(hashes)`.
+   *
+   * **Scope:** the store is per-`ManagerContext` instance and lives
+   * only in process memory. There is no on-disk persistence and no
+   * seed from existing graph entities — a fresh `ctx` starts empty
+   * and the store accumulates only the observations the caller
+   * explicitly interns. Restart the process and the table is gone.
+   */
+  get observationStore(): ObservationStore {
+    return (this._observationStore ??= new ObservationStore());
+  }
+
+  /**
+   * Aggregate index health snapshot.
+   *
+   * Returns a uniform report covering every search index this context is
+   * aware of. The future `ctx.diagnostics()` will compose over this shape
+   * rather than redefine it.
+   *
+   * Side-effect-free: reads the private lazy-init fields directly so calling
+   * `indexHealth()` does not force construction of `RankedSearch` or
+   * `SemanticSearch` (which would load the local embedding model).
+   * Uninitialised subsystems report `initialized: false` with a warning.
+   */
+  indexHealth(): IndexHealthReport {
+    return new IndexHealthMonitor({
+      rankedSearch: this._rankedSearch,
+      embeddingHealth: () => this.embeddingHealthSnapshot(),
+    }).report();
+  }
+
+  /**
+   * Aggregate diagnostics: composes over `indexHealth()` and adds optional
+   * memory / entity-count / query-stats / cache-hit-rate panels. Cheap
+   * enough to call from a request handler — does not force lazy-subsystem
+   * construction (uninitialised parts report null/empty).
+   */
+  /**
+   * Group multiple mutations into a single batch executed atomically.
+   *
+   * The callback receives a `BatchTransaction` builder. Mutations queued
+   * on the builder are validated and applied in a single pass via the
+   * underlying `BatchTransaction.execute()`, returning the aggregate
+   * result.
+   *
+   * **Exception semantics:** if `fn` throws, the queued operations are
+   * discarded and the exception propagates — `execute()` is not called.
+   * This is the conventional "abort on builder error" contract.
+   *
+   * @example
+   * ```typescript
+   * const result = await ctx.batch(async (b) => {
+   *   b.createEntity({ name: 'A', entityType: 'note', observations: [] });
+   *   b.createRelation({ from: 'A', to: 'B', relationType: 'r' });
+   * });
+   * ```
+   */
+  async batch(
+    fn: (b: BatchTransaction) => void | Promise<void>,
+    options: BatchOptions = {},
+  ): Promise<BatchResult> {
+    const builder = new BatchTransaction(this.storage as GraphStorage);
+    try {
+      await fn(builder);
+    } catch (err) {
+      builder.clear();
+      throw err;
+    }
+    return builder.execute(options);
+  }
+
+  diagnostics(): DiagnosticsReport {
+    return buildDiagnosticsReport(
+      () => this.indexHealth(),
+      () => {
+        // Read the in-memory cache directly via the IGraphStorage getter
+        // — does NOT force a load, returns -1 / {} when nothing is cached.
+        const cached = this.storage.cachedGraph;
+        if (!cached) return { total: -1, byType: {} };
+        const byType: Record<string, number> = {};
+        for (const e of cached.entities) {
+          byType[e.entityType] = (byType[e.entityType] ?? 0) + 1;
+        }
+        return { total: cached.entities.length, byType };
+      },
+      // Phase 9 task 74: include tier stats when active. Reads through
+      // the cached field directly so an unconfigured tiered index
+      // doesn't force initialization just to report nothing.
+      () => {
+        if (this._tieredPostingsIndex === undefined || this._tieredPostingsIndex === null) {
+          return undefined;
+        }
+        const stats = this._tieredPostingsIndex.stats();
+        const total = stats.hits + stats.misses;
+        return {
+          ...stats,
+          hitRate: total === 0 ? 0 : stats.hits / total,
+        };
+      },
+    );
+  }
+
+  private embeddingHealthSnapshot() {
+    if (this._semanticSearch === undefined) {
+      return {
+        name: 'embedding',
+        initialized: false,
+        documentCount: -1,
+        warnings: ['embedding subsystem not initialised'],
+      };
+    }
+    return {
+      name: 'embedding',
+      initialized: this._semanticSearch !== null,
+      documentCount: -1,
+      warnings: this._semanticSearch === null ? ['no embedding provider configured'] : [],
+    };
   }
 
   /** IOManager - Import/export/backup/restore */

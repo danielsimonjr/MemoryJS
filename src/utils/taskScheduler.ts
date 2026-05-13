@@ -12,6 +12,7 @@
  */
 
 import workerpool from '@danielsimonjr/workerpool';
+import { logger } from './logger.js';
 
 /**
  * Validates that the input is a real function object.
@@ -242,10 +243,20 @@ export class TaskQueue {
         this.queue.splice(insertIndex, 0, queuedTask as QueuedTask);
       }
 
-      // Start processing if not already running
       if (!this.isProcessing) {
-        this.processNext();
+        this.kickProcessNext();
       }
+    });
+  }
+
+  /**
+   * Fire-and-forget invocation of `processNext` with explicit error logging.
+   * Surfaces any rejection that escapes the inner try/catch instead of
+   * letting `void` swallow it silently.
+   */
+  private kickProcessNext(): void {
+    this.processNext().catch((err) => {
+      logger.error('[TaskQueue.processNext] failed:', err);
     });
   }
 
@@ -289,7 +300,6 @@ export class TaskQueue {
                 // SECURITY NOTE: new Function() is required for worker pool serialization.
                 // Safety is ensured by validateFunction() at enqueue() which guarantees
                 // only real Function objects (not user strings) are serialized here.
-                // eslint-disable-next-line no-new-func
                 const fn = new Function('return ' + fnStr)();
                 return fn(input);
               },
@@ -341,8 +351,8 @@ export class TaskQueue {
       task.resolve(taskResult);
     }
 
-    // Process next task
-    this.processNext();
+    // Drain the queue via fire-and-forget recursion.
+    this.kickProcessNext();
   }
 
   /**

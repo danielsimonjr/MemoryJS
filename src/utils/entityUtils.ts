@@ -15,6 +15,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import type { Entity, KnowledgeGraph } from '../types/index.js';
 import { EntityNotFoundError, FileOperationError } from './errors.js';
+import { logger } from './logger.js';
 
 // ==================== Hash Functions ====================
 
@@ -821,9 +822,9 @@ export async function ensureMemoryFilePath(): Promise<string> {
       return newMemoryPath;
     } catch {
       // Old file exists, new file doesn't - migrate
-      console.log('[INFO] Found legacy memory.json file, migrating to memory.jsonl for JSONL format compatibility');
+      logger.info('Found legacy memory.json file, migrating to memory.jsonl for JSONL format compatibility');
       await fs.rename(oldMemoryPath, newMemoryPath);
-      console.log('[INFO] Successfully migrated memory.json to memory.jsonl');
+      logger.info('Successfully migrated memory.json to memory.jsonl');
       return newMemoryPath;
     }
   } catch {

@@ -1078,4 +1078,122 @@ describe('KnowledgeGraphManager (ManagerContext)', () => {
       expect(cwm).toBeDefined();
     });
   });
+
+  describe('batch()', () => {
+    it('executes queued mutations and returns aggregate result', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'batch-basic.jsonl'));
+      const result = await ctx.batch(async (b) => {
+        b.createEntity({ name: 'BatchA', entityType: 'note', observations: ['a1'] });
+        b.createEntity({ name: 'BatchB', entityType: 'note', observations: ['b1'] });
+        b.createRelation({ from: 'BatchA', to: 'BatchB', relationType: 'links' });
+      });
+      expect(result.success).toBe(true);
+      expect(result.entitiesCreated).toBe(2);
+      expect(result.relationsCreated).toBe(1);
+      const graph = await ctx.storage.loadGraph();
+      const names = graph.entities.map((e) => e.name).sort();
+      expect(names).toContain('BatchA');
+      expect(names).toContain('BatchB');
+    });
+
+    it('aborts the batch when the callback throws', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'batch-throw.jsonl'));
+      await expect(
+        ctx.batch(async (b) => {
+          b.createEntity({ name: 'BatchX', entityType: 'note', observations: [] });
+          throw new Error('caller aborted');
+        }),
+      ).rejects.toThrow(/caller aborted/);
+      const graph = await ctx.storage.loadGraph();
+      expect(graph.entities.find((e) => e.name === 'BatchX')).toBeUndefined();
+    });
+
+    it('returns success with zero counts on an empty batch', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'batch-empty.jsonl'));
+      const result = await ctx.batch(async () => { /* no ops queued */ });
+      expect(result.success).toBe(true);
+      expect(result.operationsExecuted).toBe(0);
+    });
+  });
+
+  describe('materializedViews lazy getter', () => {
+    it('returns the same instance across calls (lazy memoised)', () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'mv-lazy.jsonl'));
+      const a = ctx.materializedViews;
+      const b = ctx.materializedViews;
+      expect(a).toBe(b);
+    });
+
+    it('register + query work end-to-end through ManagerContext', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'mv-roundtrip.jsonl'));
+      await ctx.storage.saveGraph({
+        entities: [
+          { name: 'A', entityType: 'note', observations: [] },
+          { name: 'B', entityType: 'project', observations: [] },
+        ],
+        relations: [],
+      });
+      ctx.materializedViews.register({ name: 'notes', filters: { entityType: 'note' } });
+      const result = await ctx.materializedViews.query('notes');
+      expect(result.members).toEqual(['A']);
+      expect(result.refreshed).toBe(true);
+    });
+  });
+
+  describe('cachePressure coordinator field', () => {
+    it('is exposed regardless of env-var state', () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'cp.jsonl'));
+      expect(ctx.cachePressure).toBeDefined();
+      expect(typeof ctx.cachePressure.register).toBe('function');
+    });
+
+    it('register + totalEntries round-trip when enabled', () => {
+      const original = process.env.MEMORY_CACHE_BUDGET_ENTRIES;
+      process.env.MEMORY_CACHE_BUDGET_ENTRIES = '1000';
+      try {
+        const ctx = new KnowledgeGraphManager(join(testDir, 'cp-on.jsonl'));
+        const fake = {
+          name: 'fake',
+          currentEntries: () => 5,
+          evictTo: () => undefined,
+        };
+        ctx.cachePressure.register(fake);
+        expect(ctx.cachePressure.totalEntries()).toBe(5);
+      } finally {
+        if (original === undefined) delete process.env.MEMORY_CACHE_BUDGET_ENTRIES;
+        else process.env.MEMORY_CACHE_BUDGET_ENTRIES = original;
+      }
+    });
+  });
+
+  describe('observationStore lazy getter', () => {
+    it('returns the same instance across calls', () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'obs-store-lazy.jsonl'));
+      const a = ctx.observationStore;
+      const b = ctx.observationStore;
+      expect(a).toBe(b);
+    });
+
+    it('starts empty regardless of existing storage state', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'obs-store-empty.jsonl'));
+      await ctx.storage.saveGraph({
+        entities: [{ name: 'Alice', entityType: 'person', observations: ['hello'] }],
+        relations: [],
+      });
+      // Per the JSDoc, the store does not seed from existing entities.
+      expect(ctx.observationStore.size()).toBe(0);
+    });
+
+    it('internEntityObservations + releaseEntityObservations round-trip', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'obs-store-roundtrip.jsonl'));
+      const entity = { observations: ['a', 'b', 'a'] };
+      const hashes = ctx.observationStore.internEntityObservations(entity);
+      expect(hashes).toHaveLength(3);
+      expect(hashes[0]).toBe(hashes[2]); // 'a' deduped
+      expect(ctx.observationStore.size()).toBe(2);
+      const removed = ctx.observationStore.releaseEntityObservations(hashes);
+      expect(removed).toBe(2); // both unique entries hit zero
+      expect(ctx.observationStore.size()).toBe(0);
+    });
+  });
 });

@@ -199,7 +199,7 @@ ctx.activeRetrieval     // 3B.5 Active Retrieval (iterative query rewriting)
 - Worker files (`levenshteinWorker.ts`) built separately to `dist/workers/` for dynamic loading
 - CLI built separately to `dist/cli/` with `#!/usr/bin/env node` banner
 - `better-sqlite3` is externalized (native addon, not bundled)
-- No lint script configured - TypeScript compiler (`npm run typecheck`) catches most issues
+- `npm run lint` (ESLint 9 flat config in `eslint.config.mjs`) is the primary lint surface; `npm run typecheck` (bare `tsc --noEmit`) catches type-only issues lint doesn't see. Both should exit 0 before commit.
 - Publishable package: `npm run prepublishOnly` runs clean + build + test
 
 ## Testing
@@ -229,6 +229,25 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 | `MEMORY_OPENAI_API_KEY` | API key string | - |
 | `MEMORY_EMBEDDING_MODEL` | Model name override | - |
 | `MEMORY_AUTO_INDEX_EMBEDDINGS` | `true`, `false` | `false` |
+
+### SQLite read pool & index coalescing
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4` | Read connection pool size for `SQLiteStorage` (`fullTextSearch` / `simpleSearch`). Set to `0` or `1` to route reads through the writer connection. |
+| `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50` | TF-IDF event-sync coalescing window. Multiple writes to the same entity within the window collapse into a single index update. Set to `0` to disable coalescing (apply immediately). |
+| `MEMORY_SQLITE_AUTO_INDEX` | `true`, `false` | `false` | Enables `PartialIndexAdvisor` — tracks `entityType` / `projectId` filter frequency and creates `idx_advisor_*` partial SQLite indexes for hot patterns. Infrastructure-only as of Phase 2; wiring into `SQLiteStorage` is a follow-up. |
+| `MEMORY_SYNONYM_EXPANSION` | `true`, `false` | `false` | Enables `SynonymManager.expand()` and the auto-detect-from-graph step. When false, `add()` mappings are still stored but `lookup()` / `expand()` no-op. |
+| `MEMORY_CACHE_BUDGET_ENTRIES` | Integer ≥ 1 | unset (disabled) | Global entry budget for caches registered with `CachePressureCoordinator`. When the sum of `currentEntries()` across registered caches exceeds the budget, `evictIfOverBudget()` shrinks each cache proportionally to its current share (with a small per-cache floor). |
+
+### JSONL backend layout (Phase 7 + Phase 8)
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `MEMORY_STORAGE_SEGMENT_COUNT` | Integer in `[2, 1024]` (strict decimal: rejects floats, exponents, hex, leading zeros, signs) | unset = single-file | Phase 7. When set to ≥ 2, `GraphStorage` routes reads/writes through `FileSegmentStorage` under `<storageDir>/segments/<id>.jsonl`. Entity-to-segment routing is `fnv1a32(name) % N`; relations live in the segment owning their `from` endpoint. `saveAll` uses a manifest sidecar (`segments/_manifest.json`) for crash-atomic multi-file commits. Read once at `GraphStorage` construction — restart the process to change. |
+| `MEMORY_OBSERVATIONS_COLUMNAR` | `'true'` (strict literal match — `'1'` / `'yes'` / `'TRUE'` decline) | unset = inline | Phase 8. When `'true'`, `ManagerContext` instantiates a `JsonlColumnStore` at `<basename>-observations.jsonl` and wires it into `ObservationManager` as a shadow store. Every observation write (via `addObservations` / `deleteObservations` / `createEntities` / `updateEntity` / supersede / bulk import — caught uniformly via `GraphEventEmitter` subscription) mirrors to the column store. `ObservationManager.getObservationsFor(name)` prefers the column store with inline fallback. Inline `entity.observations` remains source of truth; column store is a read-side cache. Read once at first `observationManager` access — restart the process to change. |
+| `MEMORY_TIERED_INDEX` | `'true'` (strict literal match) | unset = off | Phase 9. When `'true'`, `ctx.tieredPostingsIndex` exposes a 3-tier `ITieredIndex<unknown>` composer (`LRUHotTier` 10k entries → `DiskWarmTier` at `<basename>-tiered-warm.jsonl` 100k entries → `BrotliColdTier` at `<basename>-tiered-cold.jsonl.br`). Get-from-warm/cold auto-promotes; hot evictions cascade to warm; warm evictions cascade to cold. Per-key serialization via `Map<key, Promise>` chain prevents stale-write races on concurrent `put`/`get`. Tier stats roll up into `ctx.diagnostics().tieredIndexStats`. **`@internal` until a concrete index consumer wires up** — `OptimizedInvertedIndex`'s `Uint32Array` posting layout doesn't map cleanly onto `TieredIndex<V>`; integration is a follow-up. Read once at first access — restart the process to change. |
+| `MEMORY_CACHE_COMPRESS` | `'true'` (strict literal match) | unset = off | Phase 10. When `'true'`, `ctx.compressedEntityCache` exposes a `CompressedMap<string, Entity>` (hot tier 1000 entries, Zlib adapter at level 6 — per task 77 benchmark recommendation for hot caches). Hot/cold tier with LRU demotion; cold entries are compressed in RAM. `get` on cold key decompresses + promotes. Compression failures (custom adapter throws, BigInt-in-JSON) throw rather than silently dropping the hot entry. Adapter errors identify which adapter rejected (helps multi-adapter callers distinguish "wrong adapter" from "truncated input"). **`@internal` until `GraphStorage.cache` is restructured to per-entity caching** — the current single-`KnowledgeGraph`-snapshot cache doesn't compose cleanly with `CompressedMap`. Read once at first access — restart the process to change. |
+| `MEMORY_USE_MMAP` | `'true'` (strict literal match) | unset = off | Phase 11. When `'true'` AND file size > `MEMORY_MMAP_THRESHOLD_BYTES`, `GraphStorage.loadGraph` reads via `FsReadMmapBackend` + `streamLines` (range-based reads on a pinned `FileHandle`) instead of slurping the whole file via `fs.readFile`. Lowers peak memory at the cost of per-chunk syscall overhead — pays off at multi-GB JSONL files. **Segment-storage mode (`MEMORY_STORAGE_SEGMENT_COUNT >= 2`) short-circuits this** — segments win because they're already chunked. Native mmap binding (mmap-io) deferred pending dep approval; the portable `fs.read` backend ships as the default. Read on every `loadFromDisk` call (not cached), so operators can flip the env between explicit `clearCache()` cycles. |
+| `MEMORY_MMAP_THRESHOLD_BYTES` | Integer (strict-decimal regex `^(0|[1-9][0-9]*)$`) | `104857600` (100 MB) | Phase 11. File-size threshold above which `MEMORY_USE_MMAP=true` actually activates. `'0'` means "always use mmap for non-empty files". Invalid inputs (floats, exponents, leading zeros, signs, whitespace) fall back to the default rather than throwing — graceful degradation for misconfigured deployments. |
 
 ### Agent Memory
 
@@ -295,6 +314,20 @@ Distinct from the legacy `MEMORY_DECAY_*` set: those drive `DecayEngine.calculat
 | `MEMORY_BACKEND` | `sqlite`, `in-memory` (aliases: `inmemory`, `memory`) | `sqlite` |
 
 Read by `ctx.memoryBackend` lazy getter. `sqlite` wraps `MemoryEngine` (which transparently spans JSONL + actual SQLite per `MEMORY_STORAGE_TYPE`). `in-memory` is ephemeral; suitable for tests and short-lived processes. Phase γ adds `postgres` and `vector` choices.
+
+## API Stability Tiers
+
+Modules added in Phase 0-4 carry a stability tag in their `@module` JSDoc. The contract:
+
+| Tag | Meaning | SemVer behaviour |
+|-----|---------|------------------|
+| `@public` | Stable surface — adopters should rely on the signatures and types | Breaking changes require a major-version bump |
+| `@experimental` | Functional but the contract may evolve based on real-world feedback | Minor changes possible in a minor-version bump; document each change in CHANGELOG |
+| `@internal` | Implementation detail — do not import from outside the project | May change at any time without notice |
+
+**Tagged modules** (Phase 0-4 additions): 19 modules — `src/adapters/*`, `src/agent/HeuristicManager`, `src/core/{EntityStateMachine, ObservationStore}`, `src/search/{BackgroundIndexer, BloomFilter, BloomPreScreener, MaterializedViews, PartialIndexAdvisor, PartitionedInvertedIndex, QueryPlanFormatter, SearchStream, SynonymManager}`, `src/utils/{CachePressureCoordinator, Diagnostics, IIndexHealth, IndexHealthMonitor}`.
+
+**Existing modules** (pre-Phase-0) are implicitly `@public` and follow the project's SemVer contract. A full audit + per-symbol tiering of those will require a v2.0.0 cut and is deliberately deferred.
 
 ## Documentation
 

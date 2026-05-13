@@ -8,13 +8,21 @@
  */
 
 import type { GraphStorage } from './GraphStorage.js';
+import { logger } from '../utils/logger.js';
 import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/AutoLinker.js';
-import type { DeduplicationOptions } from '../types/types.js';
+import type { DeduplicationOptions, Entity } from '../types/types.js';
 import { EntityNotFoundError, ValidationError } from '../utils/errors.js';
 import type { ContradictionDetector } from '../features/ContradictionDetector.js';
 import type { MemoryValidator, MemoryValidationIssue } from '../agent/MemoryValidator.js';
 import type { EntityManager } from './EntityManager.js';
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
+import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
+import type {
+  EntityCreatedEvent,
+  EntityUpdatedEvent,
+  EntityDeletedEvent,
+  GraphSavedEvent,
+} from '../types/types.js';
 
 /**
  * Default deduplication options used when dedup is enabled without explicit config.
@@ -38,8 +46,171 @@ export class ObservationManager {
    * is actually needed (i.e., MEMORY_VALIDATE_ON_STORE flips on AND an
    * observation gets added). */
   private memoryValidatorProvider?: () => MemoryValidator;
+  /**
+   * Shadow column store (Phase 8). When set (via
+   * `MEMORY_OBSERVATIONS_COLUMNAR=true` env wired through
+   * `ManagerContext`), every write to `entity.observations` is also
+   * mirrored to this store. Reads via `getObservationsFor(name)`
+   * consult the column store first, falling back to inline. The
+   * inline `entity.observations` field remains the source of truth —
+   * the column store is a read-side cache to avoid the full entity
+   * deserialization when callers only need observations.
+   */
+  private columnStore: IColumnStore<ObservationColumn> | null = null;
 
   constructor(private storage: GraphStorage) {}
+
+  /** Unsubscribe handle from `setColumnStore` event subscription. Null when no store attached. */
+  private columnStoreUnsubscribe: (() => void) | null = null;
+
+  /**
+   * Attach an `IColumnStore` for shadow-mirroring observation writes.
+   * Pass `null` to detach. Called by `ManagerContext` when
+   * `MEMORY_OBSERVATIONS_COLUMNAR=true`.
+   *
+   * **Event subscription (Phase 8 review #2+#3):** when a store is
+   * attached, this method also subscribes to the storage's
+   * `entity:created` / `entity:updated` / `entity:deleted` events.
+   * That catches observation writes that bypass `addObservations` /
+   * `deleteObservations` (e.g. `EntityManager.createEntities` with
+   * non-empty observations, `updateEntity` with `observations` in the
+   * patch, the v1.8.0 supersede branch, bulk imports). Without this
+   * fan-out, the column store would silently lag those paths and
+   * `getObservationsFor` would return stale data.
+   */
+  setColumnStore(store: IColumnStore<ObservationColumn> | null): void {
+    // Tear down any prior subscription before swapping.
+    if (this.columnStoreUnsubscribe !== null) {
+      this.columnStoreUnsubscribe();
+      this.columnStoreUnsubscribe = null;
+    }
+    this.columnStore = store;
+    if (store === null) return;
+
+    const emitter = this.storage.events;
+    const unsubs: Array<() => void> = [
+      emitter.on('entity:created', (event: EntityCreatedEvent) => {
+        // Async-but-not-awaited: the EventEmitter listener signature
+        // is sync. Errors inside shadowWriteColumn already log + swallow.
+        void this.shadowWriteColumn(event.entity.name, event.entity.observations);
+      }),
+      emitter.on('entity:updated', (event: EntityUpdatedEvent) => {
+        // Only react when the change touches observations.
+        if (event.changes.observations === undefined) return;
+        // The post-update entity has the merged state; the storage
+        // layer just persisted it. Pull fresh via getEntityByName.
+        const entity = this.storage.getEntityByName(event.entityName);
+        if (entity) {
+          void this.shadowWriteColumn(entity.name, entity.observations);
+        }
+      }),
+      emitter.on('entity:deleted', (event: EntityDeletedEvent) => {
+        // Drop the column entry so getObservationsFor stops returning
+        // ghost observations for the deleted entity (review #2).
+        if (this.columnStore !== null) {
+          void this.columnStore.delete(event.entityName).catch((err) => {
+            logger.warn(
+              `[ObservationManager] Column-store shadow delete failed for "${event.entityName}": ${(err as Error).message}.`,
+            );
+          });
+        }
+      }),
+      // Bulk-save paths (`createEntities`, `IOManager.importJSON`,
+      // bulk loaders) call `storage.saveGraph` which emits
+      // `graph:saved` exactly once for the whole batch — they do NOT
+      // emit per-entity `entity:created`. Without this handler the
+      // column store would silently miss every entity created via
+      // those paths. Resync from the post-save storage state: walk
+      // every entity, put each one's observations. O(N) per save,
+      // but bulk saves are infrequent (interactive paths use
+      // `appendEntity` which emits per-entity events).
+      emitter.on('graph:saved', (_event: GraphSavedEvent) => {
+        void this.resyncFromStorage();
+      }),
+    ];
+    this.columnStoreUnsubscribe = () => {
+      for (const u of unsubs) u();
+    };
+  }
+
+  /**
+   * Whether a column store is currently attached. Used by tests +
+   * diagnostic reporting.
+   */
+  hasColumnStore(): boolean {
+    return this.columnStore !== null;
+  }
+
+  /**
+   * Read the observations for `name`, preferring the column store
+   * when one is attached. Falls back to the inline `entity.observations`
+   * field if the column store has no entry (pre-migration data) or no
+   * store is attached. Returns `[]` for an unknown entity rather than
+   * throwing — matches the "missing observations are empty" intuition
+   * used elsewhere in the codebase.
+   *
+   * Phase 8 task 66.
+   */
+  async getObservationsFor(name: string): Promise<string[]> {
+    if (this.columnStore !== null) {
+      const col = await this.columnStore.get(name);
+      if (col !== undefined) return [...col];
+    }
+    const entity = this.storage.getEntityByName(name);
+    return entity ? [...entity.observations] : [];
+  }
+
+  /**
+   * Walk every entity in storage and put each one's observations to
+   * the column store. Used as the fallback for bulk-save paths
+   * (`graph:saved`) that don't emit per-entity `entity:created`.
+   *
+   * Best-effort like every other shadow write — failures log but
+   * don't propagate. Stale column entries from earlier deletes get
+   * cleaned up by the `entity:deleted` event handler, so this method
+   * only needs to mirror present-in-storage state, not perform a
+   * diff.
+   *
+   * Phase 8 review fix (#3 — bulk-save fan-out).
+   */
+  private async resyncFromStorage(): Promise<void> {
+    if (this.columnStore === null) return;
+    try {
+      const graph = await this.storage.loadGraph();
+      for (const entity of graph.entities) {
+        await this.shadowWriteColumn(entity.name, entity.observations);
+      }
+    } catch (err) {
+      logger.warn(
+        `[ObservationManager] Column-store resync from storage failed: ${(err as Error).message}.`,
+      );
+    }
+  }
+
+  /**
+   * Shadow-write the column store from the entity's current inline
+   * state. Best-effort — a column-store failure logs a warning but
+   * does NOT fail the calling write (the inline state is already on
+   * disk via `saveGraph`, so the source of truth is intact). The
+   * column store is a read-side cache; a stale shadow is recoverable
+   * via the next successful write or via the migration tool.
+   *
+   * Phase 8 task 67.
+   */
+  private async shadowWriteColumn(name: string, observations: string[]): Promise<void> {
+    if (this.columnStore === null) return;
+    try {
+      await this.columnStore.put(name, [...observations]);
+    } catch (err) {
+      logger.warn(
+        `[ObservationManager] Column-store shadow write failed for "${name}": ${(err as Error).message}. Inline observations are authoritative.`,
+      );
+    }
+  }
+
+  // Full-entity-deletion cleanup is handled by the `entity:deleted`
+  // event subscription set up in `setColumnStore`. No separate
+  // `shadowDeleteColumn` method needed.
 
   /**
    * Enable contradiction detection on addObservations.
@@ -156,6 +327,56 @@ export class ObservationManager {
     dedup?: DeduplicationOptions,
     options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
   ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
+    // Two-phase orchestration:
+    //
+    // Phase 1 (locked) — snapshot, dedup, contradiction-detect.
+    // Regular (non-superseding) appends apply + save atomically
+    // under the graph mutex (fixes Phase 8 review #9: concurrent
+    // addObservations would otherwise race the snapshot vs save).
+    // Supersede candidates are collected but NOT executed here —
+    // supersede calls entityManager.createEntities/updateEntity
+    // which re-acquire the same mutex, and `async-mutex` doesn't
+    // support reentrance. Executing under the lock would deadlock.
+    //
+    // Phase 2 (unlocked) — run supersede for each candidate.
+    // Each supersede call atomicaly creates the new-version entity
+    // + marks the old one isLatest=false via entityManager's own
+    // mutex acquisitions.
+    const supersedeCandidates: { entityName: string; entity: Entity; contents: string[] }[] = [];
+
+    const release = await this.storage.graphMutex.acquire();
+    let regularResults: { entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[];
+    try {
+      regularResults = await this.addObservationsLocked(observations, dedup, options, supersedeCandidates);
+    } finally {
+      release();
+    }
+
+    for (const candidate of supersedeCandidates) {
+      // contradictionDetector + linkedEntityManager are non-null
+      // because the locked path only pushes a candidate when both
+      // are wired (see addObservationsLocked).
+      await this.contradictionDetector!.supersede(
+        candidate.entity,
+        candidate.contents,
+        this.linkedEntityManager!,
+      );
+      regularResults.push({
+        entityName: candidate.entityName,
+        addedObservations: candidate.contents,
+        superseded: true,
+      });
+    }
+
+    return regularResults;
+  }
+
+  private async addObservationsLocked(
+    observations: { entityName: string; contents: string[] }[],
+    dedup?: DeduplicationOptions,
+    options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions },
+    supersedeCandidates?: { entityName: string; entity: Entity; contents: string[] }[]
+  ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
     const resolvedDedup = this.resolveDedup(dedup);
 
     // Get mutable graph for atomic update
@@ -206,7 +427,7 @@ export class ObservationManager {
                 .filter((i: MemoryValidationIssue) => i.kind !== 'duplicate-observation')
                 .map((i: MemoryValidationIssue) => i.kind);
               if (advisories.length > 0) {
-                console.warn(
+                logger.warn(
                   `[ObservationManager] Validator advisory for "${o.entityName}": ${advisories.join(', ')}. ` +
                   (this.contradictionDetector
                     ? 'Semantic-contradiction findings will be handled by the v1.8.0 supersede branch.'
@@ -215,7 +436,7 @@ export class ObservationManager {
               }
             }
           } else {
-            console.warn(
+            logger.warn(
               `[ObservationManager] Skipping duplicate observation on entity "${o.entityName}". ` +
               `Suggestions: ${result.suggestions.join('; ')}`,
             );
@@ -232,12 +453,28 @@ export class ObservationManager {
             nonExactDuplicates
           );
           if (contradictions.length > 0) {
-            await this.contradictionDetector.supersede(
-              entity,
-              nonExactDuplicates,
-              this.linkedEntityManager
-            );
-            results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates, superseded: true });
+            // Defer supersede to the unlocked post-pass — see
+            // addObservations's two-phase rationale. Without this
+            // deferral the supersede call's entityManager methods
+            // re-acquire graphMutex and deadlock.
+            if (supersedeCandidates) {
+              supersedeCandidates.push({
+                entityName: o.entityName,
+                entity,
+                contents: nonExactDuplicates,
+              });
+            } else {
+              // Defensive path: legacy callers invoking
+              // addObservationsLocked directly (no two-phase
+              // orchestration) get the original supersede semantics.
+              // No external callers do this; kept for safety.
+              await this.contradictionDetector.supersede(
+                entity,
+                nonExactDuplicates,
+                this.linkedEntityManager
+              );
+              results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates, superseded: true });
+            }
             continue; // skip normal append for this entity
           }
         }
@@ -272,6 +509,17 @@ export class ObservationManager {
     // Save all changes in a single atomic operation
     if (hasChanges) {
       await this.storage.saveGraph(graph);
+      // Phase 8 task 67: shadow-write the column store with the post-
+      // save inline state. Best-effort — failures log but don't reject
+      // the caller's add (inline state is already durable).
+      if (this.columnStore !== null) {
+        for (const r of results) {
+          if (r.addedObservations.length > 0) {
+            const entity = graph.entities.find((e) => e.name === r.entityName);
+            if (entity) await this.shadowWriteColumn(entity.name, entity.observations);
+          }
+        }
+      }
     }
 
     // Auto-link: detect entity mentions and create relations
@@ -394,10 +642,23 @@ export class ObservationManager {
   async deleteObservations(
     deletions: { entityName: string; observations: string[] }[]
   ): Promise<void> {
+    // Same locking rationale as addObservations — Phase 8 review #9.
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      return await this.deleteObservationsLocked(deletions);
+    } finally {
+      release();
+    }
+  }
+
+  private async deleteObservationsLocked(
+    deletions: { entityName: string; observations: string[] }[]
+  ): Promise<void> {
     // Get mutable graph for atomic update
     const graph = await this.storage.getGraphForMutation();
     const timestamp = new Date().toISOString();
     let hasChanges = false;
+    const touchedNames: string[] = [];
 
     deletions.forEach(d => {
       const entity = graph.entities.find(e => e.name === d.entityName);
@@ -409,6 +670,7 @@ export class ObservationManager {
         if (entity.observations.length < originalLength) {
           entity.lastModified = timestamp;
           hasChanges = true;
+          touchedNames.push(entity.name);
         }
       }
     });
@@ -416,6 +678,17 @@ export class ObservationManager {
     // Save all changes in a single atomic operation
     if (hasChanges) {
       await this.storage.saveGraph(graph);
+      // Phase 8 task 67: shadow-update the column store for each
+      // touched entity. Empty-after-delete entries still get put()'d
+      // (not delete()'d) so callers see `[]` rather than fall through
+      // to the inline value — important because inline ALSO went to
+      // `[]`, so the column store needs to reflect that.
+      if (this.columnStore !== null) {
+        for (const name of touchedNames) {
+          const entity = graph.entities.find((e) => e.name === name);
+          if (entity) await this.shadowWriteColumn(entity.name, entity.observations);
+        }
+      }
     }
   }
 
