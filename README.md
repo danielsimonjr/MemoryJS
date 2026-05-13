@@ -8,7 +8,7 @@
 
 A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search**, **hierarchical organization**, **bitemporal versioning**, **causal reasoning**, **role-based access control**, **multi-agent collaboration**, **memory-mapped I/O**, **segment-sharded JSONL**, **tiered indexing**, and **multiple storage backends**.
 
-> Core library powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). **231 TypeScript files**, **76,495 lines of code**, **7098 passing tests**, dual storage backends (JSONL/SQLite + pluggable `IMemoryBackend`), comprehensive search (BM25 with incremental indexing, TF-IDF, fuzzy with N-gram pre-filter, semantic, hybrid, temporal, LLM-planned, active iterative retrieval, minimal SPARQL subset), and a complete **Agent Memory System** for AI agents — role profiles, entropy filtering, recursive consolidation, collaborative synthesis with conflict resolution, failure distillation, cognitive load analysis, visibility hierarchies, RBAC, optimistic concurrency, audit attribution, procedural memory, causal reasoning, and a world-model orchestrator. The v1.15 line adds Phases 0–11 of the long-running performance & scale track: memory-mapped file loading (`IMmapBackend` / `FsReadMmapBackend`), segment-sharded JSONL (`FileSegmentStorage`), columnar observation storage (`JsonlColumnStore`), tiered cache (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), pluggable in-memory compression (`ICompressionAdapter` / `BrotliCompressionAdapter` / `ZlibCompressionAdapter`), write-ahead log + `EntityProxy`, CRDT, attribute-based access control (`ABAC` + RLS + API keys), graph algorithms (HITS / clique / Louvain), and `BackupManager` extracted from `IOManager`.
+> Core library powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). **231 TypeScript files**, **76,495 lines of code**, **7098 passing tests**, dual storage backends (JSONL/SQLite + pluggable `IMemoryBackend`), comprehensive search (BM25 with incremental indexing, TF-IDF, fuzzy with N-gram pre-filter, semantic, hybrid, temporal, LLM-planned, active iterative retrieval, minimal SPARQL subset), and a complete **Agent Memory System** for AI agents — role profiles, entropy filtering, recursive consolidation, collaborative synthesis with conflict resolution, failure distillation, cognitive load analysis, visibility hierarchies, RBAC, optimistic concurrency, audit attribution, procedural memory, causal reasoning, and a world-model orchestrator.
 
 ## Table of Contents
 
@@ -59,124 +59,109 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 | Module | Files | Key Components |
 |--------|-------|----------------|
 | `agent/` | 62 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver, **MemoryEngine**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **InMemoryBackend** / **SQLiteBackend** |
-| `core/` | 25 | ManagerContext, EntityManager (with OCC), RelationManager (with temporal validity), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage, SQLiteStorage, GraphTraversal, TransactionManager, RefIndex, **FileSegmentStorage** (Phase 7), **WriteAheadLog** + **EntityProxy** (Phase 6), **JsonlColumnStore** (Phase 8), **TieredIndex** (`LRUHotTier`/`DiskWarmTier`/`BrotliColdTier`, Phase 9), **IMmapBackend** / **BufferMmapBackend** / **FsReadMmapBackend** (Phase 11) |
-| `search/` | 55 | SearchManager, RankedSearch (TF-IDF), BM25Search (incremental, Phase 1), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalQueryParser, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, EmbeddingService, VectorStore, **SparqlExecutor** (minimal subset, Phase 6), **PartialIndexAdvisor** |
-| `features/` | 20 | IOManager (with RDF/Turtle/JSON-LD export), **BackupManager** (extracted Phase 5), ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker, **CRDT** (Phase 5), **AnomalyDetector** |
-| `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor, schemas (Zod), **ICompressionAdapter** / **BrotliCompressionAdapter** / **ZlibCompressionAdapter** / **IdentityCompressionAdapter** / **CompressedMap** (Phase 10), structured `logger`, scheduler/explainPlan/indexHealth diagnostics (Phase 0) |
+| `core/` | 25 | ManagerContext, EntityManager (with OCC), RelationManager (with temporal validity), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage, SQLiteStorage, GraphTraversal, TransactionManager, RefIndex, **FileSegmentStorage**, **WriteAheadLog** + **EntityProxy**, **JsonlColumnStore**, **TieredIndex** (`LRUHotTier`/`DiskWarmTier`/`BrotliColdTier`), **IMmapBackend** / **BufferMmapBackend** / **FsReadMmapBackend** |
+| `search/` | 55 | SearchManager, RankedSearch (TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalQueryParser, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, EmbeddingService, VectorStore, **SparqlExecutor** (minimal subset), **PartialIndexAdvisor** |
+| `features/` | 20 | IOManager (with RDF/Turtle/JSON-LD export), **BackupManager**, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker, **CRDT**, **AnomalyDetector** |
+| `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor, schemas (Zod), **ICompressionAdapter** / **BrotliCompressionAdapter** / **ZlibCompressionAdapter** / **IdentityCompressionAdapter** / **CompressedMap**, structured `logger`, scheduler/explainPlan/indexHealth diagnostics |
 | `types/` | 7 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity, Procedure |
-| `security/` | 5 | **PiiRedactor** + bundled patterns (email/SSN/CC/phone/IP), **ABAC + RLS + API keys** (Phase 5) |
-| `cli/` | 16 | `memory` / `memoryjs` binary commands (entity, relation, search, observation, tag, hierarchy, graph, io, maintenance) + pipe support (Phase 0) |
+| `security/` | 5 | **PiiRedactor** + bundled patterns (email/SSN/CC/phone/IP), **ABAC + RLS + API keys** |
+| `cli/` | 16 | `memory` / `memoryjs` binary commands (entity, relation, search, observation, tag, hierarchy, graph, io, maintenance) + pipe support |
 | `adapters/` | 4 | `IDatabaseAdapter` / `IVectorDBAdapter` interfaces, `LangChainMemoryAdapter`, `RestRouter` |
 | `workers/` | 2 | Levenshtein distance calculations |
 
 **Total:** 231 TypeScript files | 76,495 lines of code | 7098 passing tests | 11 modules | 1 runtime + 3 type-only circular dependencies (see `docs/architecture/DEPENDENCY_GRAPH.md`)
 
-### v1.15.0 — Performance & Scale (Phases 0–11)
+### Agent Memory
 
-The long-running `claude/recommend-improvements-5Jly9` branch — twelve phases of performance, observability, and scalability work — landed as one consolidated merge. All 12 of 12 Phase 3 items closed; all 5 multi-month engineering items shipped.
+| Capability | Entry point |
+|-----------|-------------|
+| Sessions, working memory, episodic memory | `ctx.agentMemory()` — `startSession` / `addWorkingMemory` / `retrieveForContext` |
+| Turn-aware conversation memory with 4-tier dedup (exact / prefix / Jaccard / semantic) | `ctx.memoryEngine.addTurn()` / `getSessionTurns()` |
+| Time-based decay, salience scoring, freshness | `DecayEngine`, `SalienceEngine`, `ctx.freshnessManager` |
+| Role profiles (`researcher` / `planner` / `executor` / `reviewer` / `coordinator`) | `MEMORY_AGENT_ROLE` / `RoleProfileManager.apply(role)` |
+| Memory consolidation, summarization, pattern detection | `ConsolidationPipeline`, `ConsolidationScheduler` |
+| Collaborative synthesis across agents with conflict resolution | `CollaborativeSynthesis.synthesize()` / `resolveConflicts()` |
+| Failure-driven distillation, cognitive load analysis | `FailureDistillation`, `CognitiveLoadAnalyzer` |
+| Procedural memory (executable procedures with feedback refinement) | `ctx.procedureManager.addProcedure()` / `matchProcedure()` / `refineProcedure()` |
+| Active retrieval (iterative query rewriting) | `ctx.activeRetrieval.adaptiveRetrieve()` |
+| Causal reasoning (causes / effects / counterfactuals / cycle detection) | `ctx.causalReasoner.findCauses()` / `findEffects()` / `counterfactual()` |
+| World-state orchestrator | `ctx.worldModelManager.getCurrentState()` / `predictOutcome()` |
+| Per-agent persistent journal | `AgentMemoryManager.writeDiary()` / `readDiary()` |
 
-| Phase | Highlights | Entry Points |
-|-------|------------|--------------|
-| **Phase 0** | ESLint, structured logger, task scheduler, query `explainPlan`, index health, CLI pipe support | `src/utils/logger.ts`, `src/utils/taskScheduler.ts`, `src/search/QueryPlanner.ts` |
-| **Phase 1** | `SECURITY.md`, HITS / Clique / Louvain graph algos, SQLite read pool, BM25 incrementality, entity state machine, `AbortController`-driven cancellation, diagnostics surface | `ctx.diagnostics`, `MEMORY_SQLITE_READ_POOL_SIZE` |
-| **Phase 4** | Adapter interfaces (`IDatabaseAdapter`, `IVectorDBAdapter`, `IMessageQueueAdapter`, `IObservableDataModel`) | `src/adapters/` |
-| **Phase 5** | API stability tags, `BackupManager` extracted from `IOManager`, query DSL, node2vec, LSH + anomaly detector, CRDT, ABAC + RLS + API keys | `ctx.ioManager` / `BackupManager`, `src/security/abac.ts` |
-| **Phase 6** | Minimal SPARQL subset, `EntityProxy`, write-ahead log | `SparqlExecutor`, `WriteAheadLog` |
-| **Phase 7** | `FileSegmentStorage` (FNV-routed JSONL shards) + migration tool | `MEMORY_STORAGE_SEGMENT_COUNT` (1–1024), `tools/segment-jsonl/` |
-| **Phase 8** | `JsonlColumnStore` for observation columns | `IColumnStore<T>`, `ObservationColumn`, `tools/observations-to-columns/` |
-| **Phase 9** | Tiered index (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier` + `TieredIndex` composer + `HotOnlyIndex` reference) | `ITieredIndex`, `IIndexTier` |
-| **Phase 10** | Pluggable in-memory compression (`ICompressionAdapter` + `Zlib` / `Brotli` / `Identity` impls + `CompressedMap`) | `ctx.compressedEntityCache` |
-| **Phase 11** | Memory-mapped file loading (`IMmapBackend` + `streamLines` + `BufferMmapBackend` + `FsReadMmapBackend`); `GraphStorage.loadFromDisk` mmap branch | `MEMORY_USE_MMAP=true`, `MEMORY_MMAP_THRESHOLD_BYTES` |
+### Search & Retrieval
 
-Also: security follow-up (PRs #38 + #39) — `validateFilePath` default flipped to `confineToBase=true`, `crypto.randomBytes` replaces `Math.random()` for ID generation, ReDoS-resistant regex escapes, `console.warn` on malformed JSON instead of silent fail, `TaskScheduler` `MAX_COMPLETED` / `MAX_QUEUE` bounds, throw-not-truncate for oversize wildcard patterns, symlink check on `BackupManager.delete()`.
+| Capability | Entry point |
+|-----------|-------------|
+| Auto-selecting search with method explanation | `ctx.searchManager.autoSearch(query)` |
+| TF-IDF + BM25 ranked search (incremental indexing) | `ctx.rankedSearch`, `BM25Search` |
+| Boolean (AND / OR / NOT) with AST parser | `ctx.searchManager.booleanSearch()` |
+| Fuzzy matching (Levenshtein, N-gram pre-filtered) | `ctx.searchManager.fuzzySearch()` |
+| Semantic search with pluggable embedding provider | `ctx.semanticSearch` (set `MEMORY_EMBEDDING_PROVIDER`) |
+| Hybrid (semantic + lexical + symbolic) | `ctx.hybridSearch` |
+| Temporal range queries with natural-language parsing | `ctx.searchManager.searchByTime("last hour")` |
+| LLM-planned natural-language queries | `ctx.queryNaturalLanguage(query, llmProvider?)` |
+| Minimal SPARQL subset (BGP / FILTER / OPTIONAL / UNION) | `ctx.sparqlExecutor.query()` |
+| Query diagnostics (`explainPlan`, index health) | `ctx.diagnostics` |
 
-See `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md` for the per-phase task ledger and `CHANGELOG.md` for the full per-phase commit-by-commit breakdown.
+### Knowledge Graph
 
-### v1.14.0 line additions (η / 3B series — also shipped in v1.15.0)
-
-| Feature | Entry Point |
-|---------|-------------|
-| **η.4.4 Bitemporal Versioning** | `EntityManager.invalidateEntity()` / `entityAsOf()` / `entityTimeline()`; `ObservationManager.invalidateObservation()` / `observationsAsOf()`; `Entity.validFrom` / `validUntil` / `observationMeta[]` |
-| **η.5.4 Linked Data Export** | `ioManager.exportGraph(g, 'turtle' \| 'rdf-xml' \| 'json-ld')` — W3C RDF 1.1; reification fallback for non-NCName predicates |
-| **η.5.5.a Multi-Agent Conflict View** | `SynthesisResult.conflicts[]` + `CollaborativeSynthesis.resolveConflicts(result, policy)` (most_recent / highest_confidence / highest_score / trusted_agent) |
-| **η.5.5.b Visibility Expansion** | `AgentEntity.visibleFrom` / `visibleUntil` / `allowedRoles[]`; `VisibilityResolver` adds time-window gate + role predicate |
-| **η.5.5.c Optimistic Concurrency** | `EntityManager.updateEntity(name, updates, { expectedVersion })` → throws `VersionConflictError` on mismatch |
-| **η.5.5.d Attribution Enforcer** | `CollaborationAuditEnforcer` — strict-mode requires `agentId` on every mutation; appends to `AuditLog` |
-| **η.6.1 RBAC** | `ctx.rbacMiddleware.checkPermission(agentId, action, resourceType, resourceName?)`; `ctx.roleAssignmentStore` with optional JSONL persistence |
-| **η.6.3 PII Redactor** | `new PiiRedactor().redactGraph(graph)` — pluggable regex bank with `redactWithStats()` for compliance audit trails |
-| **3B.4 Procedural Memory** | `ctx.procedureManager.addProcedure({ steps })` / `matchProcedure(context)` / `refineProcedure(id, feedback)` (EWMA success-rate) |
-| **3B.5 Active Retrieval** | `ctx.activeRetrieval.adaptiveRetrieve({ query })` — iterative query rewriting with token-overlap expansion |
-| **3B.6 Causal Reasoning** | `ctx.causalReasoner.findCauses()` / `findEffects()` / `counterfactual()` / `detectCycles()` |
-| **3B.7 World Model** | `ctx.worldModelManager.getCurrentState()` / `validateFact()` / `predictOutcome()` / `detectStateChange()` |
-
-### v1.13.0 — Memory Intelligence Services (Phase δ)
-
-| Feature | Entry Point |
-|---------|-------------|
-| Memory Validator | `ctx.memoryValidator.validateConsistency()` / `detectContradictions()` / `repairWithResolver()` / `validateTemporalOrder()` / `calculateReliability()` |
-| Trajectory Compressor | `ctx.trajectoryCompressor.distill()` / `abstractAtLevel()` / `findRedundancies()` / `mergeRedundant()` |
-| Experience Extractor | `ctx.experienceExtractor.extractFromContrastivePairs()` / `clusterTrajectories()` / `synthesizeExperience()` |
-
-### v1.12.0 — Pluggable Memory Backends (Phase β)
-
-| Feature | Entry Point |
-|---------|-------------|
-| `IMemoryBackend` interface | `MEMORY_BACKEND=in-memory \| sqlite` selects via `ctx.memoryBackend` |
-| `InMemoryBackend` | Ephemeral, dedup on `(sessionId, content)` |
-| `SQLiteBackend` | Wraps `MemoryEngine` + `DecayEngine.calculatePrdEffectiveImportance()` |
-| Audit-tooling guard | `npm run audit:plans` PostToolUse hook catches plan-doc rot |
-
-### v1.11.0 — Turn-Aware Memory Engine
-
-| Feature | Entry Point |
-|---------|-------------|
-| `MemoryEngine` | `ctx.memoryEngine.addTurn()` / `getSessionTurns()` — four-tier dedup (exact / prefix / Jaccard / optional semantic) |
-| `ImportanceScorer` | length × keyword × recent-turn-overlap → integer [0, 10] |
-| O(1) exact-equality dedup | `Entity.contentHash` (SHA-256) + SQLite `idx_entities_content_hash` |
-
-### v1.9.0 — Temporal Relations + Conversation Ingest
-
-| Feature | Entry Point |
-|---------|-------------|
-| Temporal Relations | `RelationManager.invalidateRelation()` / `queryAsOf(date)` / `timeline()` |
-| 4-Layer Wake-Up Stack | `ContextWindowManager.wakeUp({ compress })` — ~600-token context bootstrap |
-| Conversation Ingestion | `IOManager.ingest({ messages, ...options })` — format-agnostic pipeline |
-| Per-Agent Diary | `AgentMemoryManager.writeDiary()` / `readDiary()` |
-| Local Embeddings (default) | `MEMORY_EMBEDDING_PROVIDER=local` — zero-config semantic search |
-
-### v1.8.0 — Memory Versioning + Project Scoping
-
-| Feature | Entry Point |
-|---------|-------------|
-| Contradiction-driven supersession | `Entity.version` / `parentEntityName` / `rootEntityName` / `supersededBy` |
+| Capability | Entry point |
+|-----------|-------------|
+| Entity / relation / observation CRUD | `ctx.entityManager`, `ctx.relationManager`, `ctx.observationManager` |
+| Optimistic concurrency control on updates | `entityManager.updateEntity(name, updates, { expectedVersion })` |
+| Bitemporal versioning (entities + observations) | `invalidateEntity()` / `entityAsOf()` / `entityTimeline()` |
+| Temporal relations (validity windows) | `relationManager.invalidateRelation()` / `queryAsOf()` / `timeline()` |
+| Memory versioning with contradiction-driven supersession | `Entity.version` / `parentEntityName` / `rootEntityName` / `supersededBy` |
 | Project scoping | `Entity.projectId` + `MEMORY_DEFAULT_PROJECT_ID` |
-| Two-tier deletion | `ctx.semanticForget` — exact match → 0.85 semantic fallback with audit logging |
+| Two-tier deletion (exact match → 0.85 semantic fallback) | `ctx.semanticForget` |
+| Hierarchical nesting + traversal (ancestors / descendants / subtrees) | `ctx.hierarchyManager` |
+| Graph algorithms — shortest path, all paths, BFS / DFS | `ctx.graphTraversal.findShortestPath()` |
+| Centrality — degree, betweenness, PageRank, HITS hub/authority | `ctx.graphTraversal.pageRank()` / `hits()` |
+| Community detection (Louvain), clique enumeration | `ctx.graphTraversal.louvainCommunities()` / `findMaximalCliques()` |
+| Stable named references for entity name changes | `ctx.refIndex.register()` / `resolve()` |
+| Tag aliases, importance scores (0–10) | `ctx.tagManager`, `Entity.importance` |
+| Multi-format import / export — JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid | `ctx.ioManager.exportGraph(format)` |
+| W3C Linked Data export — Turtle, RDF/XML, JSON-LD | `ctx.ioManager.exportGraph('turtle' \| 'rdf-xml' \| 'json-ld')` |
+| Conversation ingestion (format-agnostic) | `ctx.ioManager.ingest(input, options)` |
 
-### v1.7.0 — Multi-Agent Memory
+### Storage & Performance
 
-| Feature | Entry Point |
-|---------|-------------|
-| Role-Aware Customization | `RoleProfileManager.apply(role)` — salience weights + budget splits |
-| Entropy-Aware Filtering | `EntropyFilter` — Shannon entropy gate in `ConsolidationPipeline` |
-| Recursive Memory Consolidation | `ConsolidationScheduler` — background dedup + merge to fixed point |
-| Salience Budget Allocation | `MemoryFormatter.formatWithSalienceBudget()` |
-| Collaborative Memory Synthesis | `CollaborativeSynthesis.synthesize(entity, hopDepth)` |
-| Failure-Driven Distillation | `FailureDistillation.distill(failureEntity)` |
-| Cognitive Load Metrics | `CognitiveLoadAnalyzer.analyze(memories)` → `CognitiveLoadReport` |
-| Shared Visibility Hierarchies | `VisibilityResolver.canAccess()` — 5-level model |
+| Capability | Entry point |
+|-----------|-------------|
+| JSONL or SQLite backend (FTS5, BM25, WAL mode) | `MEMORY_STORAGE_TYPE=jsonl\|sqlite` |
+| Pluggable Memory Engine backend | `MEMORY_BACKEND=sqlite\|in-memory` |
+| Memory-mapped file loading for stores > 100 MB | `MEMORY_USE_MMAP=true`, `MEMORY_MMAP_THRESHOLD_BYTES` |
+| Segment-sharded JSONL (FNV-routed N-way shards) | `MEMORY_STORAGE_SEGMENT_COUNT=1..1024` |
+| Columnar observation storage | `JsonlColumnStore`, `ObservationColumn` |
+| Tiered index — LRU hot / disk warm / Brotli cold | `LRUHotTier` → `DiskWarmTier` → `BrotliColdTier` via `TieredIndex` |
+| In-memory entity-cache compression (Zlib / Brotli / Identity) | `ctx.compressedEntityCache`, `CompressedMap` |
+| Write-ahead log + entity proxy for durable mutations | `WriteAheadLog`, `EntityProxy` |
+| Backup lifecycle (create / list / restore / delete / cleanOld) with symlink-attack guards | `ctx.ioManager` (delegates to `BackupManager`) |
+| Streaming export with Brotli compression | `ctx.streamingExporter` |
+| Entity archival to compressed storage | `ctx.archiveManager` |
+| Duplicate detection + entity merging | `ctx.compressionManager` |
+| LSH-based anomaly detection | `ctx.anomalyDetector` |
 
-### v1.6.0 — Governance + Temporal
+### Governance, Security, Multi-Agent
 
-| Feature | Entry Point |
-|---------|-------------|
-| Stable Index Dereferencing | `ctx.refIndex` — `register` / `resolve` / `deregister` |
-| Artifact-Level Granularity | `ctx.agentMemory().artifactManager.createArtifact()` |
-| Temporal Range Queries | `ctx.searchManager.searchByTime()` / `ctx.temporalSearch` |
-| Memory Distillation Policy | `IDistillationPolicy` — wired into `ContextWindowManager` |
-| Freshness Auditing | `ctx.freshnessManager` — TTL, confidence, staleness report |
-| N-gram Pre-filtering | Automatic in `FuzzySearch` via `NGramIndex` |
-| LLM Query Planner | `ctx.queryNaturalLanguage(query, llmProvider?)` |
-| Dynamic Memory Governance | `ctx.governanceManager` — `withTransaction` / `GovernancePolicy` |
+| Capability | Entry point |
+|-----------|-------------|
+| Policy enforcement + transactional rollback | `ctx.governanceManager.withTransaction()` / `GovernancePolicy` |
+| Immutable JSONL audit trail | `ctx.auditLog` |
+| Strict-mode attribution enforcer | `CollaborationAuditEnforcer` (requires `agentId` on every mutation) |
+| RBAC — role / permission / matrix / middleware | `ctx.rbacMiddleware.checkPermission()` / `ctx.roleAssignmentStore` |
+| ABAC + row-level security + API-key scoping | `src/security/abac.ts`, `rls.ts`, `apiKeys.ts` |
+| PII redactor (email / SSN / CC / phone / IP) with per-pattern stats | `new PiiRedactor().redactGraph()` / `redactWithStats()` |
+| Visibility hierarchies — 5-level (`private` / `team` / `org` / `shared` / `public`) | `VisibilityResolver.canAccess()` |
+| Time-window + role-gated visibility | `AgentEntity.visibleFrom` / `visibleUntil` / `allowedRoles[]` |
+| CRDT primitives for multi-writer scenarios | `src/features/CRDT.ts` |
+| Path-traversal protection (defense-in-depth) | `validateFilePath(path, baseDir?, confineToBase=true)` |
+
+## What's New
+
+The latest release is **v1.15.0** — a twelve-phase performance & scale track adding mmap-backed I/O, segment-sharded JSONL, columnar observation storage, tiered indexing, pluggable in-memory compression, a minimal SPARQL subset, write-ahead log, extracted `BackupManager`, CRDT primitives, ABAC + RLS + API keys, HITS / clique / Louvain graph algorithms, and a hardened security baseline (`crypto.randomBytes` for IDs, ReDoS-resistant regex escapes, bounded `TaskQueue`).
+
+See [CHANGELOG.md](CHANGELOG.md) for the full per-version history. The implementation roadmap and remaining items live in [`docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`](docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md).
 
 ## Installation
 
@@ -281,7 +266,7 @@ await enforcer.createEntities([{ name: 'X', entityType: 't', observations: ['fac
   'agent-alice'); // throws AttributionRequiredError if agentId is missing
 ```
 
-### 6. Bitemporal versioning (η.4.4)
+### 6. Bitemporal versioning
 
 ```typescript
 // Mark an entity as no longer valid at a specific time
@@ -299,7 +284,7 @@ const obsAtTime = await ctx.observationManager.observationsAsOf(
 );
 ```
 
-### 7. Causal reasoning + world model (3B.6 / 3B.7)
+### 7. Causal reasoning and world model
 
 ```typescript
 // Forward inference — "what does X cause?"
@@ -316,7 +301,7 @@ const after = await ctx.worldModelManager.getCurrentState();
 const change = ctx.worldModelManager.detectStateChange(before, after);
 ```
 
-### 8. RBAC + PII redaction (η.6.1 / η.6.3)
+### 8. RBAC and PII redaction
 
 ```typescript
 // Grant a role
@@ -349,11 +334,11 @@ interface Entity {
   createdAt?: string;        // ISO 8601 timestamp
   lastModified?: string;     // ISO 8601 timestamp
 
-  // v1.6.0 — Freshness
+  // Freshness
   ttl?: number;              // Seconds until stale
   confidence?: number;       // [0, 1] belief strength
 
-  // v1.8.0 — Project scoping + supersession
+  // Project scoping + supersession
   projectId?: string;        // Multi-project isolation
   version?: number;          // Supersession chain version (also drives η.5.5.c OCC)
   parentEntityName?: string;
@@ -361,7 +346,7 @@ interface Entity {
   isLatest?: boolean;
   supersededBy?: string;
 
-  // v1.11.0 — Memory Engine dedup
+  // Memory Engine dedup
   contentHash?: string;      // SHA-256 for O(1) Tier-1 dedup
 
   // η.4.4 — Bitemporal validity (orthogonal to supersession)
@@ -430,13 +415,13 @@ ctx.memoryBackend        // Pluggable IMemoryBackend (in-memory / sqlite)
 ctx.contextWindowManager // 4-layer wake-up stack + token budgeting
 ctx.agentMemory()        // Full Agent Memory System facade
 
-// Memory intelligence (Phase δ)
+// Memory intelligence
 ctx.memoryValidator         // Validate consistency / contradictions / temporal order
 ctx.trajectoryCompressor    // Distill / abstract / merge redundant trajectories
 ctx.experienceExtractor     // Cluster trajectories → reusable experience patterns
 ctx.patternDetector         // Trigger / sequence / outcome pattern mining
 
-// Memory theory (Phase 3B)
+// Memory theory
 ctx.procedureManager     // 3B.4 — executable procedure memory + EWMA refinement
 ctx.causalReasoner       // 3B.6 — findCauses / findEffects / counterfactual
 ctx.worldModelManager    // 3B.7 — snapshot orchestrator + state-change diff
@@ -735,7 +720,7 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `batchUpdate(updates[])` | Atomic multi-entity update |
 | `addTags(name, tags)` / `removeTags(name, tags)` | Tag management |
 | `setImportance(name, score)` | Set importance (0-10) |
-| `getVersionChain(name)` / `getLatestVersion(name)` | v1.8.0 supersession chains |
+| `getVersionChain(name)` / `getLatestVersion(name)` | supersession chains |
 | `invalidateEntity(name, ended?)` | η.4.4 — set `validUntil` |
 | `entityAsOf(name, asOf)` | η.4.4 — time-travel query |
 | `entityTimeline(name)` | η.4.4 — versions sorted by `validFrom` |
@@ -747,9 +732,9 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `createRelations(relations)` | Create multiple relations |
 | `getRelations(entityName)` | Get incoming/outgoing relations |
 | `deleteRelations(relations)` | Delete specific relations |
-| `invalidateRelation(from, type, to, ended?)` | v1.9.0 — set `validUntil` on a relation |
-| `queryAsOf(entity, asOf, { direction? })` | v1.9.0 — relations valid at time T |
-| `timeline(entity, { direction? })` | v1.9.0 — chronological history |
+| `invalidateRelation(from, type, to, ended?)` | set `validUntil` on a relation |
+| `queryAsOf(entity, asOf, { direction? })` | relations valid at time T |
+| `timeline(entity, { direction? })` | chronological history |
 
 ### ObservationManager
 
@@ -778,9 +763,9 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `exportGraph(graph, format)` | Export to `json` / `csv` / `graphml` / `gexf` / `dot` / `markdown` / `mermaid` / `turtle` / `rdf-xml` / `json-ld` |
 | `exportGraphWithCompression(graph, format, options?)` | Brotli-compressed export |
 | `importGraph(format, data, options)` | Import with merge strategies (`replace` / `skip` / `merge` / `fail`) |
-| `ingest({ messages }, options?)` | v1.9.0 — conversation ingestion pipeline |
-| `splitSessions(content, options?)` | v1.9.0 — split multi-session transcripts |
-| `visualizeGraph(options?)` | v1.9.1 — interactive HTML visualization |
+| `ingest({ messages }, options?)` | conversation ingestion pipeline |
+| `splitSessions(content, options?)` | split multi-session transcripts |
+| `visualizeGraph(options?)` | interactive HTML visualization |
 | `createBackup(options)` / `restoreBackup(path)` | Backup management |
 
 ### GraphTraversal
@@ -793,7 +778,7 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `getConnectedComponents()` | Find isolated subgraphs |
 | `bfs(start, options)` / `dfs(start, options)` | Traversal |
 
-### CausalReasoner (3B.6)
+### CausalReasoner
 
 | Method | Description |
 |--------|-------------|
@@ -802,7 +787,7 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `counterfactual({ seed, removeFrom, removeTo, predict })` | Chains surviving edge removal (pure; no graph mutation) |
 | `detectCycles(seed, maxDepth?)` | Depth-bounded DFS over causal subgraph |
 
-### ProcedureManager (3B.4)
+### ProcedureManager
 
 | Method | Description |
 |--------|-------------|
@@ -812,7 +797,7 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `matchProcedure(context, candidates, threshold?)` | Token-overlap match |
 | `refineProcedure(id, { succeeded, notes? })` | EWMA success-rate update |
 
-### WorldModelManager (3B.7)
+### WorldModelManager
 
 | Method | Description |
 |--------|-------------|
@@ -821,21 +806,21 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `predictOutcome(action, candidates)` | Delegates to `CausalReasoner.findEffects` |
 | `detectStateChange(before, after)` | Pure snapshot diff |
 
-### ActiveRetrievalController (3B.5)
+### ActiveRetrievalController
 
 | Method | Description |
 |--------|-------------|
 | `shouldRetrieve(context)` | Cost heuristic; rejects empty / over-budget |
 | `adaptiveRetrieve(context)` | Iterative rewrite + retrieve until coverage threshold |
 
-### CollaborativeSynthesis (η.5.5.a)
+### CollaborativeSynthesis
 
 | Method | Description |
 |--------|-------------|
 | `synthesize(seedEntity, context?)` | BFS + salience scoring; surfaces multi-agent `conflicts[]` |
 | `resolveConflicts(result, policy)` | Pick winners per `most_recent` / `highest_confidence` / `highest_score` / `trusted_agent` |
 
-### MemoryValidator (Phase δ)
+### MemoryValidator
 
 | Method | Description |
 |--------|-------------|
@@ -845,7 +830,7 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `validateTemporalOrder(observations)` | Sync `[T=ISO]` ordering check |
 | `calculateReliability(entity)` | Confidence × confirmation × age penalty |
 
-### RbacMiddleware (η.6.1)
+### RbacMiddleware
 
 | Method | Description |
 |--------|-------------|
@@ -854,7 +839,7 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `roleAssignmentStore.revoke(agentId, role, resourceType?)` | Remove a grant |
 | `roleAssignmentStore.listActive(agentId, now?)` | Active grants at a point in time |
 
-### PiiRedactor (η.6.3)
+### PiiRedactor
 
 | Method | Description |
 |--------|-------------|
@@ -885,10 +870,10 @@ The full env-var reference lives in [CLAUDE.md](CLAUDE.md). Most-used:
 | `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` | `CollaborationAuditEnforcer` strict mode | `false` |
 | `MEMORY_RBAC_ENABLED` | Wire `RbacMiddleware` into `GovernancePolicy` | `false` |
 | `MEMORY_DEFAULT_VISIBILITY` | Default `AgentEntity.visibility` | `private` |
-| `MEMORY_USE_MMAP` | Use mmap (`FsReadMmapBackend`) for `GraphStorage.loadFromDisk` (Phase 11) | `false` (strict `'true'` literal match) |
+| `MEMORY_USE_MMAP` | Use mmap (`FsReadMmapBackend`) for `GraphStorage.loadFromDisk` | `false` (strict `'true'` literal match) |
 | `MEMORY_MMAP_THRESHOLD_BYTES` | Minimum file size to trigger mmap path; `0` means always-on | `104857600` (100 MB) |
-| `MEMORY_STORAGE_SEGMENT_COUNT` | Number of FNV-routed JSONL shards in `FileSegmentStorage` (1–1024) (Phase 7) | `1` (off) |
-| `MEMORY_SQLITE_READ_POOL_SIZE` | Read-connection pool size for `SQLiteStorage` (Phase 1) | `4` |
+| `MEMORY_STORAGE_SEGMENT_COUNT` | Number of FNV-routed JSONL shards in `FileSegmentStorage` (1–1024) | `1` (off) |
+| `MEMORY_SQLITE_READ_POOL_SIZE` | Read-connection pool size for `SQLiteStorage` | `4` |
 | `MEMORY_SQLITE_AUTO_INDEX` | Enable `PartialIndexAdvisor`-driven automatic partial-index DDL | `false` |
 | `SKIP_BENCHMARKS` | Skip perf benchmark tests | `false` |
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | (none) |
@@ -989,9 +974,9 @@ memoryjs/
 │   │   ├── MemoryBackend.ts            # IMemoryBackend interface (v1.12)
 │   │   ├── InMemoryBackend.ts          # Ephemeral adapter
 │   │   ├── SQLiteBackend.ts            # SQLite-backed adapter
-│   │   ├── MemoryValidator.ts          # Phase δ — consistency checks
-│   │   ├── TrajectoryCompressor.ts     # Phase δ — distill / merge
-│   │   ├── ExperienceExtractor.ts      # Phase δ — pattern abstraction
+│   │   ├── MemoryValidator.ts          # Memory consistency / contradiction checks
+│   │   ├── TrajectoryCompressor.ts     # Distill / merge trajectory data
+│   │   ├── ExperienceExtractor.ts      # Pattern abstraction from contrastive pairs
 │   │   ├── PatternDetector.ts          # Sequence + outcome mining
 │   │   ├── causal/                     # 3B.6 — CausalReasoner
 │   │   ├── procedural/                 # 3B.4 — ProcedureManager + Sequencer
@@ -1078,7 +1063,7 @@ Comprehensive architecture documentation in `docs/architecture/`:
 
 ADRs and roadmap:
 
-- [ARCHITECTURE_DECISIONS.md](docs/development/ARCHITECTURE_DECISIONS.md) - including ADR-011 (Phase δ wrap-and-extend pattern)
+- [ARCHITECTURE_DECISIONS.md](docs/development/ARCHITECTURE_DECISIONS.md) - including ADR-011 (wrap-and-extend pattern for memory intelligence services)
 - [ROADMAP.md](docs/roadmap/ROADMAP.md) - Feature roadmap with implementation details
 - [docs/superpowers/plans/](docs/superpowers/plans/) - Phase α–η implementation plans
 
