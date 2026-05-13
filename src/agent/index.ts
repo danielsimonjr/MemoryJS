@@ -70,6 +70,15 @@ export {
 } from './ProspectiveMemoryManager.js';
 
 export {
+  FailureManager,
+  type FailureManagerConfig,
+  type FailureInput,
+  type FailureEntityOptions,
+  type LookupOptions as FailureLookupOptions,
+  type GetAllOptions as FailureGetAllOptions,
+} from './FailureManager.js';
+
+export {
   ConsolidationPipeline,
   type ConsolidationPipelineConfig,
   type PipelineStage,

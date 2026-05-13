@@ -78,6 +78,7 @@ import {
   ProspectiveMemoryManager,
   type ProcedureInvoker,
 } from '../agent/ProspectiveMemoryManager.js';
+import { FailureManager } from '../agent/FailureManager.js';
 import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
 import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
@@ -162,6 +163,7 @@ export class ManagerContext {
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
+  private _failureManager?: FailureManager;
   private _causalReasoner?: CausalReasoner;
   private _rbacMiddleware?: RbacMiddleware;
   private _roleAssignmentStore?: RoleAssignmentStore;
@@ -806,6 +808,22 @@ export class ManagerContext {
       });
     }
     return this._prospectiveMemory;
+  }
+
+  /**
+   * `FailureManager` (Phase 2 Sprint 4) — structured failure-memory
+   * with `record()` / `lookupForTask()` / `markResolved()` /
+   * `getAll()`. Catalog Type 9. The catalog calls this "the single
+   * biggest concrete win available to most agentic systems" — the
+   * pre-task `lookupForTask` is the headline retrieval mode.
+   */
+  get failureManager(): FailureManager {
+    if (!this._failureManager) {
+      this._failureManager = new FailureManager(this.storage, {
+        defaultLookupLimit: this.getEnvNumber('MEMORY_FAILURE_LOOKUP_LIMIT', 5),
+      });
+    }
+    return this._failureManager;
   }
 
   /**

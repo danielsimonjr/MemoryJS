@@ -20,7 +20,7 @@ import type { ContextProfile } from '../agent/ContextProfileManager.js';
  * - semantic: Long-term facts, concepts, knowledge
  * - procedural: Skills, patterns, procedures (future)
  */
-export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective';
+export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective' | 'failure';
 
 /**
  * Classification of memory access frequency.
@@ -714,7 +714,7 @@ export function isAgentEntity(entity: unknown): entity is AgentEntity {
     typeof e.name === 'string' &&
     typeof e.entityType === 'string' &&
     typeof e.memoryType === 'string' &&
-    ['working', 'episodic', 'semantic', 'procedural', 'prospective'].includes(e.memoryType as string) &&
+    ['working', 'episodic', 'semantic', 'procedural', 'prospective', 'failure'].includes(e.memoryType as string) &&
     typeof e.accessCount === 'number' &&
     typeof e.confidence === 'number' &&
     typeof e.confirmationCount === 'number' &&
@@ -989,6 +989,104 @@ export interface ObservationContext {
   /** Session that produced the observation. */
   sessionId?: string;
 }
+
+// ==================== Failure Memory Types ====================
+
+/**
+ * Discriminated lifecycle for a `FailureRecord`. Mirrors the
+ * `ProspectiveLifecycle` pattern so `resolvedAt` / `resolvedReason`
+ * are only valid in the `resolved` variant — illegal states like
+ * `{ status: 'open', resolvedAt: '...' }` are unrepresentable.
+ */
+export type FailureLifecycle =
+  | { status: 'open' }
+  | { status: 'resolved'; resolvedAt: IsoDateTime; resolvedReason?: string };
+
+/**
+ * Structured failure-memory record per the Agentic Memory Library
+ * design catalog (Type 9). Designed for **pre-task semantic lookup**:
+ * the `applicability_hint` field is the retrieval key.
+ *
+ * Catalog framing: failure memory is "the single biggest concrete win
+ * available to most agentic systems" because a structured pre-task
+ * lookup of "what failed when I tried similar work before" prevents
+ * the most common class of agentic regression.
+ *
+ * Distinct from `DistilledLesson` (causal-chain output from
+ * `FailureDistillation`): a `FailureRecord` is the *retrievable input
+ * for the next task*. `FailureDistillation` should produce
+ * `FailureRecord`s via `FailureManager.record()` so the two compose
+ * — see `sourceSessionId` for provenance.
+ *
+ * **Embeddings are NOT stored on this type** — they live in a
+ * downstream vector store (when configured) or are computed on demand
+ * by `lookupForTask`. Keeps the public surface small per encapsulation
+ * review.
+ */
+export interface FailureRecord {
+  /** Stable unique id, prefixed `failure-`. */
+  id: string;
+  /** When the failure occurred. */
+  timestamp: IsoDateTime;
+  /** What was being attempted (free-form description). */
+  context: string;
+  /** The specific action / approach taken. */
+  attempted: string;
+  /** What went wrong, verbatim if possible. */
+  failure_mode: string;
+  /** Agent's or user's diagnosis. */
+  root_cause: string;
+  /** What worked instead (optional). */
+  alternative_taken?: string;
+  /**
+   * When does this lesson apply — the retrieval key.
+   * MUST be non-empty (enforced at `record()` time).
+   */
+  applicability_hint: string;
+  /** Discriminated lifecycle — see `FailureLifecycle`. */
+  lifecycle: FailureLifecycle;
+  /**
+   * Session id when this record was produced by
+   * `FailureDistillation`. Optional for manual `record()` calls.
+   */
+  sourceSessionId?: string;
+}
+
+/**
+ * Persisted shape of a failure-memory entity. `failureRecord` is the
+ * canonical state; `observations`/`tags` etc. come from the inherited
+ * `AgentEntity`. The entity's `name` matches `failureRecord.id`.
+ */
+export interface FailureEntity extends AgentEntity {
+  memoryType: 'failure';
+  failureRecord: FailureRecord;
+}
+
+/** Type guard for failure-memory entities. */
+export function isFailureMemory(entity: unknown): entity is FailureEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'failure') return false;
+  const fr = (entity as FailureEntity).failureRecord as
+    | { id?: unknown; lifecycle?: unknown }
+    | undefined;
+  return (
+    typeof fr === 'object' &&
+    fr !== null &&
+    typeof fr.id === 'string' &&
+    typeof fr.lifecycle === 'object' &&
+    fr.lifecycle !== null
+  );
+}
+
+/** Utility alias for failure-memory entities. */
+export type FailureMemoryEntity = FailureEntity;
+
+/**
+ * Discriminated result for `FailureManager.markResolved()`. Mirrors
+ * `CancelResult` on the prospective-memory manager so callers can
+ * distinguish "id not found" / "already resolved" / "successfully
+ * resolved" without lying via a single boolean.
+ */
+export type MarkResolvedResult = 'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update';
 
 // ==================== Utility Types ====================
 

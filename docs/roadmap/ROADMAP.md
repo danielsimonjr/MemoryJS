@@ -18,13 +18,9 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 ### Priority 1 — next sprint
 
-#### 1. Failure Memory hardening (Phase 2 Sprint 4)
-- Catalog explicitly calls this "the single biggest concrete win available to most agentic systems"
-- `FailureDistillation` exists; missing structured `FailureRecord` with `failure_mode` / `root_cause` / `alternative_taken` / `applicability_hint` for pre-task semantic lookup
-- New `FailureManager` facade with `record(failure)`, `lookupForTask(context)`, `markResolved(id)`
-- Pre-task retrieval hook via `ContextWindowManager.mustInclude` extension
-- Effort: small (~5 days)
-- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 9
+#### 1. ~~Failure Memory hardening (Phase 2 Sprint 4)~~ — ✅ shipped
+- Closed via `FailureManager` (`src/agent/FailureManager.ts`) + `MemoryType: 'failure'` extension + `ctx.failureManager` lazy getter
+- Pre-task `lookupForTask()` substring MVP; `SearchManager.semanticSearch` integration deferred to a follow-up
 
 #### 2. Plan / Goal Stack (Phase 2 Sprint 5 — new memory type)
 - Catalog MVP step 1 lists this alongside Identity + Project Context + Provenance as the foundational set; MemoryJS has the rest, Plan is the lone gap

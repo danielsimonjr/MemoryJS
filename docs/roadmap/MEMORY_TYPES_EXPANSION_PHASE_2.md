@@ -158,7 +158,7 @@ Ordered for maximum compound value:
 
 | Sprint | Item | Effort | Rationale |
 |--------|------|--------|-----------|
-| **Sprint 4** | **Failure Memory hardening** (Type 9 enhancement) | ~5 days | Highest single-feature ROI per the catalog. Existing `FailureDistillation` becomes the producer of structured `FailureRecord`s; pre-task lookup hook delivers immediate user-visible value. Doesn't depend on any other planned work. |
+| **Sprint 4** | **Failure Memory hardening** (Type 9 enhancement) — ✅ shipped | ~5 days | Highest single-feature ROI per the catalog. Existing `FailureDistillation` becomes the producer of structured `FailureRecord`s; pre-task lookup hook delivers immediate user-visible value. Doesn't depend on any other planned work. |
 | **Sprint 5** | **Plan / Goal Stack** (Type 6, new memory type) | ~10 days | Foundational per the catalog's MVP sequence. Pairs structurally with the just-shipped prospective memory (intentions × goals × episodes is the full forward-time triplet). Same sprint shape as prospective — type additions + manager + consolidation stage + wakeUp injection. |
 | **Sprint 6** | **Trust Hierarchy formalization** (Type 12 enhancement) | ~3 days | Meta-improvement. Quick win. Lifts every other type's conflict-resolution and staleness handling. Sets up the discriminated-union pattern for future provenance-related work. |
 | **Sprint 7** | **Tool Affordance Memory** (Type 8, new memory type) | ~7 days | High adaptive-tool-selection value. Could wait if MCP-server integration isn't a near-term priority. |

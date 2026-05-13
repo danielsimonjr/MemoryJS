@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Failure Memory — Phase 2 Sprint 4)
+
+- **`MemoryType` union extended with `'failure'`**: closes Phase 2 Sprint 4 of the memory-types expansion (see [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 9). The catalog frames failure memory as "the single biggest concrete win available to most agentic systems" because a structured pre-task lookup of "what failed when I tried similar work before" prevents the most common class of agentic regression.
+- **New types** in `src/types/agent-memory.ts`:
+  - `FailureLifecycle` — discriminated union (`{ status: 'open' }` | `{ status: 'resolved'; resolvedAt; resolvedReason? }`), mirrors the `ProspectiveLifecycle` pattern so illegal states like `{ status: 'open', resolvedAt: '...' }` are unrepresentable
+  - `FailureRecord` — structured failure with `context` / `attempted` / `failure_mode` / `root_cause` / `alternative_taken?` / `applicability_hint` (the retrieval key) / `lifecycle` / `sourceSessionId?`
+  - `FailureEntity` extending `AgentEntity`; `isFailureMemory` type guard; `FailureMemoryEntity` alias
+  - `MarkResolvedResult` discriminated union (`'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update'`) — mirrors `CancelResult` pattern; distinguishes 404 / 409 / TOCTOU race from successful resolve
+- **`FailureManager`** in `src/agent/FailureManager.ts`:
+  - `record(input, options?)` — validates non-empty strings on five required fields with received-type/value in error messages; wraps `storage.appendEntity` failures with the failure id so EPERM-style races are attributable (CLAUDE.md > Gotchas > Windows atomic writes)
+  - `lookupForTask(taskContext, options?)` — substring-match MVP scoring (`applicability_hint` 3×, `context` 2×, `attempted` 1×); excludes resolved by default; `status: 'all'` includes both. JSDoc documents the MVP cliffs (single-char tokens dropped, no stemming) + the `SearchManager.semanticSearch` upgrade path
+  - `markResolved(id, reason?)` — returns `MarkResolvedResult`; branches on `storage.updateEntity`'s `Promise<boolean>` return (Sprint 2's silent-failure pattern) to surface `'vanished-mid-update'` separately from `'not-found'` / `'already-resolved'`
+  - `getAll(options?)` — filter by `status` and/or `sourceSessionId`
+  - Embeddings deliberately NOT on the public `FailureRecord` surface (encapsulation per type-design review) — semantic similarity is delegated to the downstream `SearchManager` / `VectorStore` when the integration upgrade lands
+- **`ctx.failureManager`** lazy getter on `ManagerContext` with `MEMORY_FAILURE_LOOKUP_LIMIT` env var (default `5`)
+- **29 new tests** in `tests/unit/agent/FailureManager.test.ts`: `record()` (8 cases incl. validation, append-error wrapping, received-value error context) / `lookupForTask()` (6) / `markResolved()` (5 incl. all 4 discriminated returns) / `getAll()` (3) / type guard (3) / non-empty validation per required field
+- **Reviewed**: pre-implementation type-design review reshaped the original draft (flat status → discriminated union; dropped `embedding` from public surface; dropped duplicated `tags`; mandatory non-empty validation). Post-implementation: code-reviewer flagged 1 BLOCKING (`ManagerContext` getter ordering — JSDoc detachment) + 1 HIGH (boolean → discriminated) + 2 MEDIUM/LOW; silent-failure-hunter flagged 1 HIGH (`updateEntity` boolean ignored) + 2 MEDIUM (error context, append wrapping) + 1 LOW (superfluous `await`). All applied; re-review clean. Code-simplifier flagged 8 cleanups; 6 applied (filter collapse, dead bindings, mock plumbing, type-guard cast), 2 deferred (`FailureMemoryEntity` alias retained for consistency with sibling memory-type aliases)
+- **Verification**: 218/218 tests pass across `FailureManager` (29 new) + `ProspectiveMemoryManager` (51) + `FailureDistillation` (21) + `ManagerContext` (117); typecheck clean
+
 ### Added (ContextWindowManager.wakeUp — L1.5 prospective layer)
 
 - **L1.5 layer in `ContextWindowManager.wakeUp()`** surfaces pending prospective intentions in the agent's wake-up context. Closes Sprint 3 of 3 for the prospective-memory integration; the full memory-type addition (manager → context wiring → consolidation stage → wake-up surface) is now complete.
