@@ -80,6 +80,7 @@ import {
 } from '../agent/ProspectiveMemoryManager.js';
 import { FailureManager } from '../agent/FailureManager.js';
 import { PlanManager } from '../agent/PlanManager.js';
+import { ReflectionManager } from '../agent/ReflectionManager.js';
 import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
 import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
@@ -166,6 +167,7 @@ export class ManagerContext {
   private _prospectiveMemory?: ProspectiveMemoryManager;
   private _failureManager?: FailureManager;
   private _plan?: PlanManager;
+  private _reflectionManager?: ReflectionManager;
   private _causalReasoner?: CausalReasoner;
   private _rbacMiddleware?: RbacMiddleware;
   private _roleAssignmentStore?: RoleAssignmentStore;
@@ -839,6 +841,24 @@ export class ManagerContext {
       this._plan = new PlanManager(this.storage);
     }
     return this._plan;
+  }
+
+  /**
+   * `ReflectionManager` (Phase 2 Sprint 8) — reflection-memory write
+   * path and read API. Catalog Type 10: derived memories produced by
+   * `ReflectionStage` (pattern + trajectory + experience) over a
+   * candidate set. **Additive** — reflections do NOT supersede their
+   * evidence entities. `ReflectionStage` itself is not auto-registered
+   * on the default pipeline; construct it explicitly (it requires a
+   * `TrajectoryCompressor` which needs a `ContextWindowManager`) and
+   * invoke `runOnSessionEnd(sessionId)` from session-end handlers, or
+   * register it on a `ConsolidationPipeline` instance.
+   */
+  get reflectionManager(): ReflectionManager {
+    if (!this._reflectionManager) {
+      this._reflectionManager = new ReflectionManager(this.storage);
+    }
+    return this._reflectionManager;
   }
 
   /**

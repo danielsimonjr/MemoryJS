@@ -20,7 +20,7 @@ import type { ContextProfile } from '../agent/ContextProfileManager.js';
  * - semantic: Long-term facts, concepts, knowledge
  * - procedural: Skills, patterns, procedures (future)
  */
-export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective' | 'failure' | 'plan';
+export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective' | 'failure' | 'plan' | 'reflection';
 
 /**
  * Classification of memory access frequency.
@@ -830,7 +830,7 @@ export function isAgentEntity(entity: unknown): entity is AgentEntity {
     typeof e.name === 'string' &&
     typeof e.entityType === 'string' &&
     typeof e.memoryType === 'string' &&
-    ['working', 'episodic', 'semantic', 'procedural', 'prospective', 'failure', 'plan'].includes(e.memoryType as string) &&
+    ['working', 'episodic', 'semantic', 'procedural', 'prospective', 'failure', 'plan', 'reflection'].includes(e.memoryType as string) &&
     typeof e.accessCount === 'number' &&
     typeof e.confidence === 'number' &&
     typeof e.confirmationCount === 'number' &&
@@ -1317,6 +1317,88 @@ export function isPlanMemory(entity: unknown): entity is PlanEntity {
 
 /** Utility alias for plan-memory entities. */
 export type PlanMemoryEntity = PlanEntity;
+
+// ==================== Reflection Memory Types (Phase 2 Sprint 8) ====================
+
+/**
+ * Branded reflection id. Format: `reflection-<timestamp>-<shortrandom>`.
+ * Minted by `ReflectionManager` — do not construct manually.
+ */
+export type ReflectionId = string & { readonly __reflectionId: unique symbol };
+
+/**
+ * Reflection scope (Catalog Type 10). Determines how broadly the
+ * reflection should be retrieved during context assembly.
+ *
+ * - `session`: applies only to the source session
+ * - `project`: applies across a project (multi-session)
+ * - `global`: applies across all projects (durable agent-level insight)
+ */
+export type ReflectionScope = 'session' | 'project' | 'global';
+
+/**
+ * Reflection record (Phase 2 Sprint 8, Catalog Type 10).
+ *
+ * Reflections are derived memories — pattern + trajectory summary +
+ * experience extraction synthesized into a single record with
+ * provenance back to the evidence entities. **Additive** by design:
+ * evidence entities remain queryable; reflections sit on top as
+ * a derived layer (per Sprint 8 user decision).
+ */
+export interface ReflectionRecord {
+  id: ReflectionId;
+  timestamp: IsoDateTime;
+  scope: ReflectionScope;
+  /** TrajectoryCompressor summary or hand-written reflection text. */
+  summary: string;
+  /** Top patterns surfaced from PatternDetector (≤ 5 entries). */
+  keyInsights: string[];
+  /** Entity names that backed this reflection (non-empty). */
+  evidence: string[];
+  /** Combined pattern + compression confidence in `[0.0, 1.0]`. */
+  generalization_confidence: number;
+  /** ExperienceExtractor experience type, if available. */
+  experienceType?: string;
+  sourceSessionId?: string;
+  sourceProjectId?: string;
+  /**
+   * SHA-256 hash of `scope + sorted(evidence)`. Used by
+   * `ReflectionManager.create` for Tier-1 dedup (mirrors
+   * `MemoryEngine.contentHash` pattern from v1.11.0).
+   */
+  evidenceHash: string;
+  /** Whether the reflection has been archived (soft-delete). */
+  archived?: boolean;
+  archivedAt?: IsoDateTime;
+}
+
+/**
+ * Reflection entity — `AgentEntity` carrying a `ReflectionRecord`.
+ * `name === reflectionRecord.id`.
+ */
+export interface ReflectionEntity extends AgentEntity {
+  memoryType: 'reflection';
+  reflectionRecord: ReflectionRecord;
+}
+
+/** Type guard for reflection-memory entities. */
+export function isReflectionMemory(entity: unknown): entity is ReflectionEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'reflection') return false;
+  const rr = (entity as ReflectionEntity).reflectionRecord as
+    | { id?: unknown; scope?: unknown; evidenceHash?: unknown; evidence?: unknown }
+    | undefined;
+  return (
+    typeof rr === 'object' &&
+    rr !== null &&
+    typeof rr.id === 'string' &&
+    typeof rr.scope === 'string' &&
+    typeof rr.evidenceHash === 'string' &&
+    Array.isArray(rr.evidence)
+  );
+}
+
+/** Utility alias for reflection-memory entities. */
+export type ReflectionMemoryEntity = ReflectionEntity;
 
 // ==================== Utility Types ====================
 

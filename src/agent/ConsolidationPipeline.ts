@@ -27,6 +27,9 @@ import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
 import { RuleEvaluator } from './RuleEvaluator.js';
+import type { ReflectionManager } from './ReflectionManager.js';
+import type { TrajectoryCompressor } from './TrajectoryCompressor.js';
+import type { ReflectionScope } from '../types/agent-memory.js';
 
 /**
  * Configuration for ConsolidationPipeline.
@@ -1339,5 +1342,183 @@ export class ProspectivePromotionStage implements PipelineStage {
     }
 
     return { processed: candidates.length, transformed, errors };
+  }
+}
+
+/**
+ * Configuration for `ReflectionStage`.
+ */
+export interface ReflectionStageConfig {
+  /** Minimum `PatternResult.confidence` to qualify (default 0.4). */
+  minConfidence?: number;
+  /** `minOccurrences` argument to `PatternDetector.detectPatterns` (default 2). */
+  minPatternOccurrences?: number;
+  /** Reflection scope written to the new `ReflectionRecord` (default 'session'). */
+  scope?: ReflectionScope;
+  /** Circuit-breaker on observations per run (default 500). */
+  maxObservationsPerRun?: number;
+}
+
+/**
+ * Pipeline stage that produces `ReflectionEntity` records from
+ * candidate episodic memories. Mirrors `ProspectivePromotionStage`'s
+ * self-sufficient pattern (scans storage directly; ignores the
+ * `entities` argument).
+ *
+ * Pipeline:
+ * 1. Load episodic candidates from storage (filter by optional session
+ *    when called via `runOnSessionEnd`)
+ * 2. Collect observations up to `maxObservationsPerRun`
+ * 3. Run `PatternDetector.detectPatterns` → early return if all
+ *    patterns are below `minConfidence`
+ * 4. Run `TrajectoryCompressor.distill` → derive
+ *    `generalization_confidence = min(1 - compressionRatio, maxPatternConfidence)`
+ * 5. Call `ReflectionManager.create` once (content-hash dedup at that
+ *    layer handles repeat runs)
+ *
+ * **Additive semantics** (Sprint 8 user decision): evidence entities
+ * are NOT mutated. The reflection sits alongside them as a derived
+ * overlay. Re-running is idempotent because `ReflectionManager.create`
+ * dedups on the evidence-set hash.
+ *
+ * Register on the default pipeline via
+ * `ConsolidationPipeline.registerStage(reflectionStage)`, or invoke
+ * `stage.runOnSessionEnd(sessionId)` directly from session-end
+ * handlers.
+ */
+export class ReflectionStage implements PipelineStage {
+  readonly name = 'reflection';
+  private readonly minConfidence: number;
+  private readonly minPatternOccurrences: number;
+  private readonly scope: ReflectionScope;
+  private readonly maxObservationsPerRun: number;
+
+  constructor(
+    private readonly storage: IGraphStorage,
+    private readonly reflectionManager: ReflectionManager,
+    private readonly patternDetector: PatternDetector,
+    private readonly trajectoryCompressor: TrajectoryCompressor,
+    config: ReflectionStageConfig = {}
+  ) {
+    this.minConfidence = config.minConfidence ?? 0.4;
+    this.minPatternOccurrences = config.minPatternOccurrences ?? 2;
+    this.scope = config.scope ?? 'session';
+    this.maxObservationsPerRun = config.maxObservationsPerRun ?? 500;
+  }
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
+    return this.runInternal(undefined);
+  }
+
+  /**
+   * Convenience helper for session-end triggers. Scopes the candidate
+   * set to entities whose `sessionId === sessionId`. Sets
+   * `sourceSessionId` on the resulting reflection.
+   */
+  async runOnSessionEnd(sessionId: string): Promise<StageResult> {
+    if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+      throw new Error(
+        `ReflectionStage.runOnSessionEnd: sessionId must be a non-empty string; received ${
+          typeof sessionId === 'string' ? `'${sessionId}'` : typeof sessionId
+        }`
+      );
+    }
+    return this.runInternal(sessionId);
+  }
+
+  private async runInternal(sessionId: string | undefined): Promise<StageResult> {
+    const graph = await this.storage.loadGraph();
+    const candidates = graph.entities.filter((e) => {
+      if (!isAgentEntity(e)) return false;
+      if (e.memoryType !== 'episodic' && e.memoryType !== 'semantic') return false;
+      if (sessionId !== undefined && e.sessionId !== sessionId) return false;
+      return true;
+    });
+
+    if (candidates.length === 0) {
+      return { processed: 0, transformed: 0, errors: [] };
+    }
+
+    const observations: string[] = [];
+    for (const entity of candidates) {
+      for (const obs of entity.observations ?? []) {
+        if (observations.length >= this.maxObservationsPerRun) break;
+        observations.push(obs);
+      }
+      if (observations.length >= this.maxObservationsPerRun) break;
+    }
+
+    const patterns = this.patternDetector.detectPatterns(
+      observations,
+      this.minPatternOccurrences
+    );
+    const maxPatternConfidence = patterns.reduce((m, p) => Math.max(m, p.confidence), 0);
+    if (patterns.length === 0 || maxPatternConfidence < this.minConfidence) {
+      // Surface a diagnostic so callers can distinguish "no candidates"
+      // (transformed=0, errors=[]) from "candidates existed but didn't
+      // qualify" (transformed=0, errors=['[info] ...']). The [info]
+      // prefix marks this as non-fatal — pipeline aggregators that
+      // gate on errors.length should filter it out.
+      const reason =
+        patterns.length === 0
+          ? 'no patterns detected'
+          : `max pattern confidence ${maxPatternConfidence.toFixed(2)} < minConfidence ${this.minConfidence}`;
+      return {
+        processed: candidates.length,
+        transformed: 0,
+        errors: [`[info] ReflectionStage: skipped reflection (${reason})`],
+      };
+    }
+
+    let compression: Awaited<ReturnType<TrajectoryCompressor['distill']>>;
+    const errors: string[] = [];
+    try {
+      compression = await this.trajectoryCompressor.distill(observations);
+    } catch (err) {
+      errors.push(
+        `ReflectionStage: TrajectoryCompressor.distill failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+      return { processed: candidates.length, transformed: 0, errors };
+    }
+
+    // `PatternResult.sourceEntities` is currently unpopulated by
+    // `PatternDetector.detectPatterns` (the detector tracks source
+    // *texts* internally but doesn't surface them on the result type).
+    // For now, attribute evidence to all scanned candidates — a future
+    // PatternDetector enhancement could narrow this to exact matches.
+    // Entity names are already unique by storage contract, so a Set
+    // would be redundant.
+    const evidence = candidates.map((e) => e.name);
+
+    // Clamp to `[0, 1]` defensively: `TrajectoryCompressor.compressionRatio`
+    // can exceed 1.0 in edge cases (ellipsis suffix on very short totals,
+    // multibyte expansion). Without the clamp, a negative input crashes
+    // `validateConfidence` in `ReflectionManager.create`.
+    const confidence = Math.max(
+      0,
+      Math.min(1, 1 - compression.compressionRatio, maxPatternConfidence)
+    );
+    const keyInsights = patterns.slice(0, 5).map((p) => p.pattern);
+
+    try {
+      await this.reflectionManager.create({
+        scope: this.scope,
+        evidence,
+        summary: compression.summary || keyInsights[0] || 'pattern reflection',
+        generalization_confidence: confidence,
+        keyInsights,
+        sourceSessionId: sessionId,
+      });
+      return { processed: candidates.length, transformed: 1, errors };
+    } catch (err) {
+      errors.push(
+        `ReflectionStage: ReflectionManager.create failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+      return { processed: candidates.length, transformed: 0, errors };
+    }
   }
 }

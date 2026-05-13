@@ -87,9 +87,26 @@ export {
 } from './PlanManager.js';
 
 export {
+  // Aliased to avoid name collision with `src/search/ReflectionManager`
+  // (progressive search refinement, predates this module). The class
+  // itself is named `ReflectionManager` inside `src/agent/`; this
+  // barrel re-exports it under the more specific public name.
+  ReflectionManager as ReflectionMemoryManager,
+  type ArchiveReflectionResult,
+  type ReflectionManagerConfig as ReflectionMemoryManagerConfig,
+  type ReflectionInput,
+  type ReflectionEntityOptions,
+  type ListReflectionsOptions,
+  type RelevanceOptions,
+} from './ReflectionManager.js';
+
+export {
   ConsolidationPipeline,
+  ProspectivePromotionStage,
+  ReflectionStage,
   type ConsolidationPipelineConfig,
   type PipelineStage,
+  type ReflectionStageConfig,
   type StageResult,
 } from './ConsolidationPipeline.js';
 

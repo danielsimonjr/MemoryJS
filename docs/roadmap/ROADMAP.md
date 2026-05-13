@@ -54,11 +54,13 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Effort: medium (~7 days)
 - Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 8
 
-#### 2. Reflection Log scheduled pass (Phase 2 Sprint 8 — enhancement)
-- Components exist (`PatternDetector`, `TrajectoryCompressor`, `ExperienceExtractor`) but no explicit `ReflectionRecord` schema and no scheduled pass
-- New `ReflectionStage` pipeline stage mirrors `ProspectivePromotionStage` pattern just shipped in Sprint 2
-- Effort: small-medium (~5 days)
-- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 10
+#### 2. ~~Reflection Log scheduled pass (Phase 2 Sprint 8)~~ — ✅ shipped
+- Closed via `ReflectionManager` (`src/agent/ReflectionManager.ts`) + `MemoryType: 'reflection'` extension + `ctx.reflectionManager` lazy getter + `ReflectionStage` appended to `ConsolidationPipeline`
+- New `ReflectionRecord` schema with `scope: 'session' | 'project' | 'global'`, `evidence: string[]`, `generalization_confidence: number`, `keyInsights[]`, content-hash dedup on `sha256(scope + sorted(evidence))`
+- **Additive** by design (no supersession of evidence entities); raw `PatternResult.confidence ≥ 0.4` gate; session-end scheduling via explicit `runOnSessionEnd(sessionId)` helper (no `SessionManager` coupling)
+- 29 unit tests across `ReflectionManager` (19) + `ReflectionStage` (10); 1986/1986 sibling agent + types + ManagerContext tests green
+- Deferred to a follow-up: `ExperienceExtractor.synthesizeExperience` wiring (`experienceType` field remains optional); `PatternResult.sourceEntities` narrowing (evidence currently attributed to all scanned candidates)
+- Aliased export `ReflectionMemoryManager` at the agent barrel to avoid collision with existing `src/search/ReflectionManager` (progressive query refinement)
 
 #### 3. Concrete Vector-DB drivers (MEM-06)
 - `IVectorDBAdapter` interface + `InMemoryVectorAdapter` + `InMemoryVectorStore` + `SQLiteVectorStore` + `QuantizedVectorStore` all shipped
