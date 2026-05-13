@@ -396,11 +396,13 @@ for (const event of fired) {
 
 The four open questions raised in the original draft were resolved as follows. These decisions are binding on the implementation — any deviation requires updating this section first.
 
-### D1. `action: 'invoke'` invokes `ProcedureManager` via **dependency injection**
+### D1. `action: 'invoke'` invokes `ProcedureManager` via **dependency injection** — ✅ shipped
 
-Direct import would create a hard coupling between two memory managers. Instead, `ProspectiveMemoryManager`'s constructor accepts an optional `procedureInvoker?: (procedureId: string, context?: unknown) => Promise<void>` callback. `ManagerContext` wires `ctx.procedureManager.invoke.bind(ctx.procedureManager)` as the default. Tests pass a stub; consumers who don't use procedural memory pay nothing.
+Direct import would create a hard coupling between two memory managers. Instead, `ProspectiveMemoryManager`'s constructor accepts an optional `procedureInvoker?: (procedureId: string, context: FiredEvent) => Promise<void>` callback. `ManagerContext.prospectiveMemory` wires a closure that calls `this.procedureManager.invoke(procedureId)` and throws on `found: false`. Tests pass a stub; consumers who don't use procedural memory pay nothing.
 
 **Rationale**: Same pattern used by `LLMQueryPlanner` for the optional `LLMProvider` — keeps the dep optional, breaks the import cycle, makes the manager testable in isolation.
+
+**Status (2026-05-13)**: `ProcedureManager.invoke()` returning `InvocationResult` discriminated union shipped in commit `1efd905`; `ManagerContext.prospectiveMemory` lazy getter with the wired invoker shipped in the next commit.
 
 ### D2. `cancelOnEvent` uses **OR semantics (first match)**
 

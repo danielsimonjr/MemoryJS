@@ -278,6 +278,14 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 | `MEMORY_COGNITIVE_LOAD_MAX` | Number (0–1) | `0.8` |
 | `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
 
+### Prospective Memory
+Read by `ctx.prospectiveMemory` lazy getter on first access.
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS` | Number | `168` |
+| `MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION` | Integer | `100` |
+
 ### Memory Engine (v1.11.0)
 Read by `ctx.memoryEngine` lazy getter on first access. All ten knobs.
 

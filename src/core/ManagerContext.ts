@@ -74,6 +74,10 @@ import { TrajectoryCompressor } from '../agent/TrajectoryCompressor.js';
 import { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
+import {
+  ProspectiveMemoryManager,
+  type ProcedureInvoker,
+} from '../agent/ProspectiveMemoryManager.js';
 import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
 import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
@@ -157,6 +161,7 @@ export class ManagerContext {
   private _experienceExtractor?: ExperienceExtractor;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
+  private _prospectiveMemory?: ProspectiveMemoryManager;
   private _causalReasoner?: CausalReasoner;
   private _rbacMiddleware?: RbacMiddleware;
   private _roleAssignmentStore?: RoleAssignmentStore;
@@ -779,6 +784,28 @@ export class ManagerContext {
       this._procedureManager = new ProcedureManager(this.entityManager);
     }
     return this._procedureManager;
+  }
+
+  /**
+   * `ProspectiveMemoryManager` — intention-to-act / future-tense memory.
+   * Lazy. Wires `procedureInvoker` to delegate to `procedureManager.invoke()`
+   * per D1 of `docs/roadmap/MEMORY_TYPES_EXPANSION.md` §6.
+   */
+  get prospectiveMemory(): ProspectiveMemoryManager {
+    if (!this._prospectiveMemory) {
+      const procedureInvoker: ProcedureInvoker = async (procedureId) => {
+        const result = await this.procedureManager.invoke(procedureId);
+        if (!result.found) {
+          throw new Error(`ProcedureInvoker: procedure '${procedureId}' not found`);
+        }
+      };
+      this._prospectiveMemory = new ProspectiveMemoryManager(this.storage, {
+        defaultExpiryHours: this.getEnvNumber('MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS', 168),
+        maxPendingPerSession: this.getEnvNumber('MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION', 100),
+        procedureInvoker,
+      });
+    }
+    return this._prospectiveMemory;
   }
 
   /**

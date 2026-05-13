@@ -1196,4 +1196,120 @@ describe('KnowledgeGraphManager (ManagerContext)', () => {
       expect(ctx.observationStore.size()).toBe(0);
     });
   });
+
+  describe('prospectiveMemory lazy getter', () => {
+    it('returns the same instance across calls (lazy memoised)', () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'pm-lazy.jsonl'));
+      const a = ctx.prospectiveMemory;
+      const b = ctx.prospectiveMemory;
+      expect(a).toBe(b);
+    });
+
+    it('is constructed only on first access', () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'pm-deferred.jsonl'));
+      expect((ctx as unknown as { _prospectiveMemory?: unknown })._prospectiveMemory).toBeUndefined();
+      void ctx.prospectiveMemory;
+      expect((ctx as unknown as { _prospectiveMemory?: unknown })._prospectiveMemory).toBeDefined();
+    });
+
+    it('schedules and reads back a prospective intention end-to-end', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'pm-e2e.jsonl'));
+      const future = new Date(Date.now() + 60_000);
+      const entity = await ctx.prospectiveMemory.scheduleAt('remind me', future, {
+        sessionId: 's1',
+      });
+      expect(entity.memoryType).toBe('prospective');
+      const pending = await ctx.prospectiveMemory.getPending({ sessionId: 's1' });
+      expect(pending).toHaveLength(1);
+      expect(pending[0].name).toBe(entity.name);
+    });
+
+    it('honours MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS env var', async () => {
+      const original = process.env.MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS;
+      process.env.MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS = '24';
+      try {
+        const ctx = new KnowledgeGraphManager(join(testDir, 'pm-expiry.jsonl'));
+        const before = Date.now();
+        const entity = await ctx.prospectiveMemory.scheduleAt('e', new Date(Date.now() + 60_000));
+        const expiresMs = new Date(entity.expiresAt!).getTime();
+        const elapsedHours = (expiresMs - before) / 3600 / 1000;
+        expect(elapsedHours).toBeGreaterThanOrEqual(23.99);
+        expect(elapsedHours).toBeLessThanOrEqual(24.01);
+      } finally {
+        if (original === undefined) delete process.env.MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS;
+        else process.env.MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS = original;
+      }
+    });
+
+    it('honours MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION env var', async () => {
+      const original = process.env.MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION;
+      process.env.MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION = '2';
+      try {
+        const ctx = new KnowledgeGraphManager(join(testDir, 'pm-cap.jsonl'));
+        const future = new Date(Date.now() + 60_000);
+        await ctx.prospectiveMemory.scheduleAt('a', future, { sessionId: 's' });
+        await ctx.prospectiveMemory.scheduleAt('b', future, { sessionId: 's' });
+        await expect(
+          ctx.prospectiveMemory.scheduleAt('c', future, { sessionId: 's' })
+        ).rejects.toThrow(/max pending cap/i);
+      } finally {
+        if (original === undefined) delete process.env.MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION;
+        else process.env.MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION = original;
+      }
+    });
+
+    it('uses defaults when env vars are unset', async () => {
+      const originalExpiry = process.env.MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS;
+      const originalCap = process.env.MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION;
+      delete process.env.MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS;
+      delete process.env.MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION;
+      try {
+        const ctx = new KnowledgeGraphManager(join(testDir, 'pm-defaults.jsonl'));
+        const before = Date.now();
+        const entity = await ctx.prospectiveMemory.scheduleAt('d', new Date(Date.now() + 60_000));
+        // Default is 168 hours (1 week)
+        const elapsedHours = (new Date(entity.expiresAt!).getTime() - before) / 3600 / 1000;
+        expect(elapsedHours).toBeGreaterThanOrEqual(167.99);
+        expect(elapsedHours).toBeLessThanOrEqual(168.01);
+      } finally {
+        if (originalExpiry === undefined) delete process.env.MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS;
+        else process.env.MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS = originalExpiry;
+        if (originalCap === undefined) delete process.env.MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION;
+        else process.env.MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION = originalCap;
+      }
+    });
+
+    it('wires procedureInvoker to ProcedureManager.invoke() — fires on existing procedure', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'pm-di-fire.jsonl'));
+      const proc = await ctx.procedureManager.addProcedure({
+        name: 'reminder-proc',
+        steps: [{ order: 1, action: 'noop', parameters: {} }],
+      });
+      await ctx.prospectiveMemory.scheduleOnEvent(
+        'invoke-test',
+        { tags: ['go'] },
+        { action: { kind: 'invoke', procedureId: proc.id } }
+      );
+      const fired = await ctx.prospectiveMemory.onObservation('any', { tags: ['go'] });
+      expect(fired).toHaveLength(1);
+      expect(fired[0].invokedProcedureId).toBe(proc.id);
+      expect(fired[0].invocationError).toBeUndefined();
+    });
+
+    it('surfaces ProcedureManager.invoke() not-found as FiredEvent.invocationError', async () => {
+      const ctx = new KnowledgeGraphManager(join(testDir, 'pm-di-miss.jsonl'));
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      await ctx.prospectiveMemory.scheduleOnEvent(
+        'miss',
+        { tags: ['go'] },
+        { action: { kind: 'invoke', procedureId: 'does-not-exist' } }
+      );
+      const fired = await ctx.prospectiveMemory.onObservation('any', { tags: ['go'] });
+      expect(fired).toHaveLength(1);
+      expect(fired[0].invocationError).toBeInstanceOf(Error);
+      expect(fired[0].invocationError?.message).toMatch(/not found/i);
+      expect(fired[0].entity.lifecycle.fireCount).toBe(1);
+      warnSpy.mockRestore();
+    });
+  });
 });

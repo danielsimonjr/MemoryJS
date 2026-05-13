@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (ManagerContext.prospectiveMemory lazy getter)
+
+- **`ctx.prospectiveMemory`** lazy getter on `ManagerContext` (`src/core/ManagerContext.ts`): closes D1 of [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) §6 — wires `ProspectiveMemoryManager` with a `procedureInvoker` closure that delegates to `procedureManager.invoke()` and throws on `found: false`, so the rejection surfaces via `FiredEvent.invocationError` per the existing contract.
+- **Two new env vars** (consumed by the getter):
+  - `MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS` (default `168`)
+  - `MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION` (default `100`)
+- **8 new tests** (`tests/unit/core/ManagerContext.test.ts > prospectiveMemory lazy getter`): lazy memoization, deferred construction (no `_prospectiveMemory` until first access), end-to-end schedule + read-back, both env vars honoured individually, defaults when env vars are unset, DI fire-success when procedure exists, DI not-found surfaces as `FiredEvent.invocationError` while the entity still transitions through the fire path.
+- **Idiomatic conformance**: getter uses `this.getEnvNumber()` private helper (matches the 30+ sibling call sites in the same file); closure captures `this.procedureManager` lazily so the procedural manager doesn't materialize until first fire, not first prospective-getter access.
+- **Reviewed**: code-reviewer flagged one MEDIUM (`getEnvNumber` swap) — applied + re-reviewed clean; code-simplifier suggested three concrete cleanups (drop dead local binding, trim JSDoc, drop test comment cruft) — all applied; `withEnv` test helper deferred to match the existing `cachePressure` block convention in the same file.
+- **Verification**: 168/168 tests pass across `ManagerContext` (117 incl. 8 new) and `ProspectiveMemoryManager` (51); typecheck clean.
+
 ### Added (ProcedureManager.invoke — bridge for ProspectiveMemoryManager)
 
 - **`ProcedureManager.invoke(procedureId): Promise<InvocationResult>`** (`src/agent/procedural/ProcedureManager.ts`): resolves a procedure id to an `InvocationResult` discriminated union — `{ found: false, procedureId, invokedAt }` or `{ found: true, procedureId, procedure, invokedAt, openSequencer }`. Used by `ProspectiveMemoryManager`'s `procedureInvoker` callback (D1 in [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) §6): the wired invoker calls `invoke()`, throws on `found: false`, and the throw surfaces via `FiredEvent.invocationError` per the existing contract.
