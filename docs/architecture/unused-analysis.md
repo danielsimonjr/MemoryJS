@@ -1,18 +1,37 @@
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-04-25
+**Generated**: 2026-05-13
 
 ## Summary
 
-- **Potentially unused files**: 2
-- **Potentially unused exports**: 352
+- **Potentially unused files**: 21
+- **Potentially unused exports**: 394
 
 ## Potentially Unused Files
 
 These files are not imported by any other file in the codebase:
 
+- `src/adapters/IDatabaseAdapter.ts`
+- `src/adapters/IVectorDBAdapter.ts`
+- `src/adapters/LangChainMemoryAdapter.ts`
+- `src/adapters/RestRouter.ts`
+- `src/agent/HeuristicManager.ts`
 - `src/cli/index.ts`
 - `src/cli/interactive.ts`
+- `src/core/EntityProxy.ts`
+- `src/core/mmap/BufferMmapBackend.ts`
+- `src/core/WriteAheadLog.ts`
+- `src/features/AnomalyDetector.ts`
+- `src/features/CRDT.ts`
+- `src/search/BackgroundIndexer.ts`
+- `src/search/LSH.ts`
+- `src/search/Node2Vec.ts`
+- `src/search/PartitionedInvertedIndex.ts`
+- `src/search/QueryLanguage.ts`
+- `src/search/SearchStream.ts`
+- `src/search/SPARQL.ts`
+- `src/search/SynonymManager.ts`
+- `src/utils/compression/BrotliCompressionAdapter.ts`
 
 ## Potentially Unused Exports
 
@@ -215,10 +234,20 @@ These exports are not imported by any other file in the codebase:
 
 - `defaultOptions` (constant)
 
+### `src/core/columns/IColumnStore.ts`
+
+- `InMemoryColumnStore` (class)
+
 ### `src/core/EntityManager.ts`
 
 - `EntityManagerOptions` (interface)
 - `GetEntityOptions` (interface)
+
+### `src/core/EntityStateMachine.ts`
+
+- `effectiveStatus` (function)
+- `canTransition` (function)
+- `IllegalStatusTransitionError` (class)
 
 ### `src/core/GraphTraversal.ts`
 
@@ -228,9 +257,22 @@ These exports are not imported by any other file in the codebase:
 
 - `ManagerContextOptions` (interface)
 
+### `src/core/mmap/FsReadMmapBackend.ts`
+
+- `FsReadMmapBackendOptions` (interface)
+
+### `src/core/ObservationStore.ts`
+
+- `ObservationStoreStats` (interface)
+
 ### `src/core/RefIndex.ts`
 
 - `RefIndexStats` (interface)
+
+### `src/core/segments/ISegmentStorage.ts`
+
+- `fnv1a32` (function)
+- `InMemorySegmentStorage` (class)
 
 ### `src/core/TransactionManager.ts`
 
@@ -253,6 +295,11 @@ These exports are not imported by any other file in the codebase:
 - `AuditFilter` (interface)
 - `AuditStats` (interface)
 - `AuditOperation` (type)
+
+### `src/features/BackupManager.ts`
+
+- `BackupMetadata` (interface)
+- `BackupInfo` (interface)
 
 ### `src/features/FactExtractor.ts`
 
@@ -306,6 +353,14 @@ These exports are not imported by any other file in the codebase:
 - `SemanticForgetResult` (interface)
 - `SemanticForgetOptions` (interface)
 
+### `src/search/BloomFilter.ts`
+
+- `bloomParams` (function)
+
+### `src/search/BloomPreScreener.ts`
+
+- `BloomPreScreenerOptions` (interface)
+
 ### `src/search/BM25Search.ts`
 
 - `BM25DocumentEntry` (interface)
@@ -352,6 +407,11 @@ These exports are not imported by any other file in the codebase:
 
 - `LLMSearchExecutorOptions` (interface)
 
+### `src/search/MaterializedViews.ts`
+
+- `ViewDefinition` (interface)
+- `ViewSnapshot` (interface)
+
 ### `src/search/NGramIndex.ts`
 
 - `NGramIndexStats` (interface)
@@ -366,6 +426,11 @@ These exports are not imported by any other file in the codebase:
 - `LayerTiming` (interface)
 - `ParallelSearchResult` (interface)
 - `ParallelSearchOptions` (interface)
+
+### `src/search/PartialIndexAdvisor.ts`
+
+- `IndexRecommendation` (interface)
+- `PartialIndexAdvisorOptions` (interface)
 
 ### `src/search/ProximitySearch.ts`
 
@@ -406,6 +471,11 @@ These exports are not imported by any other file in the codebase:
 
 - `SearchOptionsWithTracking` (interface)
 
+### `src/search/SearchSuggestions.ts`
+
+- `CorrectedQuery` (interface)
+- `CorrectQueryOptions` (interface)
+
 ### `src/search/SymbolicSearch.ts`
 
 - `SymbolicResult` (interface)
@@ -414,9 +484,48 @@ These exports are not imported by any other file in the codebase:
 
 - `TemporalFilterField` (type)
 
+### `src/search/tiered/BrotliColdTier.ts`
+
+- `BrotliColdTierOptions` (interface)
+
+### `src/search/tiered/DiskWarmTier.ts`
+
+- `DiskWarmTierOptions` (interface)
+
+### `src/search/tiered/ITieredIndex.ts`
+
+- `InMemoryTier` (class)
+- `HotOnlyIndex` (class)
+
+### `src/search/tiered/LRUHotTier.ts`
+
+- `LRUHotTierOptions` (interface)
+
+### `src/search/tiered/TieredIndex.ts`
+
+- `TieredIndexOptions` (interface)
+- `TieredIndexBuildOptions` (interface)
+
 ### `src/search/VectorStore.ts`
 
 - `SQLiteStorageWithEmbeddings` (interface)
+
+### `src/security/ABACPolicy.ts`
+
+- `ABACPolicyError` (class)
+- `ABACContext` (interface)
+- `ABACCondition` (interface)
+- `ABACRule` (interface)
+- `ABACDecision` (type)
+- `ABACEffect` (type)
+- `ABACOp` (type)
+
+### `src/security/APIKeyStore.ts`
+
+- `ValidationResult` (interface)
+- `KeyRecord` (interface)
+- `IssueOptions` (interface)
+- `IssueResult` (interface)
 
 ### `src/security/PiiRedactor.ts`
 
@@ -424,6 +533,10 @@ These exports are not imported by any other file in the codebase:
 - `PiiRedactorOptions` (interface)
 - `RedactionStats` (interface)
 - `RedactionResult` (interface)
+
+### `src/security/RowLevelFilter.ts`
+
+- `RowPredicate` (type)
 
 ### `src/types/agent-memory.ts`
 
@@ -463,7 +576,6 @@ These exports are not imported by any other file in the codebase:
 
 ### `src/types/types.ts`
 
-- `KnowledgeGraph` (interface)
 - `FuzzyCacheKey` (interface)
 - `BooleanCacheEntry` (interface)
 - `PaginatedCacheEntry` (interface)
@@ -504,7 +616,6 @@ These exports are not imported by any other file in the codebase:
 - `RelationCreatedEvent` (interface)
 - `RelationDeletedEvent` (interface)
 - `ObservationDeletedEvent` (interface)
-- `GraphSavedEvent` (interface)
 - `GraphLoadedEvent` (interface)
 - `GraphEventMap` (interface)
 - `QueryCostEstimate` (interface)
@@ -539,10 +650,23 @@ These exports are not imported by any other file in the codebase:
 - `BatchProcessorOptions` (interface)
 - `BatchProgressCallback` (type)
 
+### `src/utils/CachePressureCoordinator.ts`
+
+- `PressureAwareCache` (interface)
+- `CachePressureSnapshot` (interface)
+
 ### `src/utils/compressedCache.ts`
 
 - `CompressedCacheOptions` (interface)
 - `CompressedCacheStats` (interface)
+
+### `src/utils/compression/CompressedMap.ts`
+
+- `CompressedMapOptions` (interface)
+
+### `src/utils/compression/ICompressionAdapter.ts`
+
+- `IdentityCompressionAdapter` (class)
 
 ### `src/utils/compressionUtil.ts`
 
@@ -554,6 +678,11 @@ These exports are not imported by any other file in the codebase:
 
 - `CompressionQuality` (type)
 - `EMBEDDING_ENV_VARS` (constant)
+
+### `src/utils/Diagnostics.ts`
+
+- `EntityCounts` (interface)
+- `TieredIndexStatsSnapshot` (interface)
 
 ### `src/utils/entityUtils.ts`
 
@@ -582,6 +711,10 @@ These exports are not imported by any other file in the codebase:
 - `validatePagination` (function)
 - `ValidatedPagination` (interface)
 - `ToolResponse` (type)
+
+### `src/utils/IndexHealthMonitor.ts`
+
+- `IndexHealthSources` (interface)
 
 ### `src/utils/MemoryMonitor.ts`
 

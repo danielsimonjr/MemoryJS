@@ -1,15 +1,22 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34)
+**Last Updated**: 2026-05-13
 
 > Most data-flow patterns documented here remain accurate. New flows added
-> in v1.9–Unreleased: temporal-validity invalidation cascade (η.4.4),
+> in v1.9–v1.15: temporal-validity invalidation cascade (η.4.4),
 > conversation ingestion pipeline (`IOManager.ingest`, v1.9.0), four-tier
 > dedup chain in `MemoryEngine` (v1.11.0), pluggable backend selection
 > (`MEMORY_BACKEND`, v1.12.0), iterative active-retrieval round-robin
-> (3B.5), causal-chain traversal (3B.6), and world-state snapshot diff
-> (3B.7). See the relevant per-manager sections below.
+> (3B.5), causal-chain traversal (3B.6), world-state snapshot diff (3B.7),
+> mmap-branched JSONL load via `IMmapBackend.streamLines` (v1.15.0 Phase 11),
+> FNV-routed segment-shard reads (v1.15.0 Phase 7), columnar observation
+> reads via `JsonlColumnStore` (v1.15.0 Phase 8), tiered-index lookups
+> (`LRUHotTier` → `DiskWarmTier` → `BrotliColdTier`, v1.15.0 Phase 9),
+> compressed entity-cache hits via `CompressedMap` (v1.15.0 Phase 10),
+> write-ahead log commit-then-apply (v1.15.0 Phase 6), and `BackupManager`'s
+> three-step delete (path-validate → symlink-check → unlink-then-cleanup-meta).
+> See the relevant per-manager sections below.
 
 ---
 

@@ -1,14 +1,14 @@
 # MemoryJS
 
-[![Version](https://img.shields.io/badge/version-1.14.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
+[![Version](https://img.shields.io/badge/version-1.15.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-6157%20passing-brightgreen.svg)](https://github.com/danielsimonjr/memoryjs)
+[![Tests](https://img.shields.io/badge/tests-7098%20passing-brightgreen.svg)](https://github.com/danielsimonjr/memoryjs)
 
-A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search**, **hierarchical organization**, **bitemporal versioning**, **causal reasoning**, **role-based access control**, **multi-agent collaboration**, and **multiple storage backends**.
+A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search**, **hierarchical organization**, **bitemporal versioning**, **causal reasoning**, **role-based access control**, **multi-agent collaboration**, **memory-mapped I/O**, **segment-sharded JSONL**, **tiered indexing**, and **multiple storage backends**.
 
-> Core library powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). **183 TypeScript files**, **62,889 lines of code**, **6157 passing tests**, dual storage backends (JSONL/SQLite + pluggable `IMemoryBackend`), comprehensive search (BM25, TF-IDF, fuzzy with N-gram pre-filter, semantic, hybrid, temporal, LLM-planned, active iterative retrieval), and a complete **Agent Memory System** for AI agents — role profiles, entropy filtering, recursive consolidation, collaborative synthesis with conflict resolution, failure distillation, cognitive load analysis, visibility hierarchies, RBAC, optimistic concurrency, audit attribution, procedural memory, causal reasoning, and a world-model orchestrator.
+> Core library powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). **231 TypeScript files**, **76,495 lines of code**, **7098 passing tests**, dual storage backends (JSONL/SQLite + pluggable `IMemoryBackend`), comprehensive search (BM25 with incremental indexing, TF-IDF, fuzzy with N-gram pre-filter, semantic, hybrid, temporal, LLM-planned, active iterative retrieval, minimal SPARQL subset), and a complete **Agent Memory System** for AI agents — role profiles, entropy filtering, recursive consolidation, collaborative synthesis with conflict resolution, failure distillation, cognitive load analysis, visibility hierarchies, RBAC, optimistic concurrency, audit attribution, procedural memory, causal reasoning, and a world-model orchestrator. The v1.15 line adds Phases 0–11 of the long-running performance & scale track: memory-mapped file loading (`IMmapBackend` / `FsReadMmapBackend`), segment-sharded JSONL (`FileSegmentStorage`), columnar observation storage (`JsonlColumnStore`), tiered cache (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), pluggable in-memory compression (`ICompressionAdapter` / `BrotliCompressionAdapter` / `ZlibCompressionAdapter`), write-ahead log + `EntityProxy`, CRDT, attribute-based access control (`ABAC` + RLS + API keys), graph algorithms (HITS / clique / Louvain), and `BackupManager` extracted from `IOManager`.
 
 ## Table of Contents
 
@@ -58,19 +58,41 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 
 | Module | Files | Key Components |
 |--------|-------|----------------|
-| `agent/` | 61 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver, **MemoryEngine**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **InMemoryBackend** / **SQLiteBackend** |
-| `core/` | 14 | ManagerContext, EntityManager (with OCC), RelationManager (with temporal validity), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage, SQLiteStorage, GraphTraversal, TransactionManager, RefIndex |
-| `search/` | 37 | SearchManager, RankedSearch (TF-IDF), BM25Search, BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalQueryParser, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, EmbeddingService, VectorStore |
-| `features/` | 17 | IOManager (with RDF/Turtle/JSON-LD export), ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker |
-| `utils/` | 26 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor, schemas (Zod) |
+| `agent/` | 62 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver, **MemoryEngine**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **InMemoryBackend** / **SQLiteBackend** |
+| `core/` | 25 | ManagerContext, EntityManager (with OCC), RelationManager (with temporal validity), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage, SQLiteStorage, GraphTraversal, TransactionManager, RefIndex, **FileSegmentStorage** (Phase 7), **WriteAheadLog** + **EntityProxy** (Phase 6), **JsonlColumnStore** (Phase 8), **TieredIndex** (`LRUHotTier`/`DiskWarmTier`/`BrotliColdTier`, Phase 9), **IMmapBackend** / **BufferMmapBackend** / **FsReadMmapBackend** (Phase 11) |
+| `search/` | 55 | SearchManager, RankedSearch (TF-IDF), BM25Search (incremental, Phase 1), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalQueryParser, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, EmbeddingService, VectorStore, **SparqlExecutor** (minimal subset, Phase 6), **PartialIndexAdvisor** |
+| `features/` | 20 | IOManager (with RDF/Turtle/JSON-LD export), **BackupManager** (extracted Phase 5), ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker, **CRDT** (Phase 5), **AnomalyDetector** |
+| `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor, schemas (Zod), **ICompressionAdapter** / **BrotliCompressionAdapter** / **ZlibCompressionAdapter** / **IdentityCompressionAdapter** / **CompressedMap** (Phase 10), structured `logger`, scheduler/explainPlan/indexHealth diagnostics (Phase 0) |
 | `types/` | 7 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity, Procedure |
-| `security/` | 2 | **PiiRedactor** + bundled patterns (email/SSN/CC/phone/IP) |
-| `cli/` | 16 | `memory` / `memoryjs` binary commands (entity, relation, search, observation, tag, hierarchy, graph, io, maintenance) |
+| `security/` | 5 | **PiiRedactor** + bundled patterns (email/SSN/CC/phone/IP), **ABAC + RLS + API keys** (Phase 5) |
+| `cli/` | 16 | `memory` / `memoryjs` binary commands (entity, relation, search, observation, tag, hierarchy, graph, io, maintenance) + pipe support (Phase 0) |
+| `adapters/` | 4 | `IDatabaseAdapter` / `IVectorDBAdapter` interfaces, `LangChainMemoryAdapter`, `RestRouter` |
 | `workers/` | 2 | Levenshtein distance calculations |
 
-**Total:** 183 TypeScript files | 62,889 lines of code | 6157 passing tests
+**Total:** 231 TypeScript files | 76,495 lines of code | 7098 passing tests | 11 modules | 1 runtime + 3 type-only circular dependencies (see `docs/architecture/DEPENDENCY_GRAPH.md`)
 
-### Recent additions (Unreleased — built on top of v1.14.0)
+### v1.15.0 — Performance & Scale (Phases 0–11)
+
+The long-running `claude/recommend-improvements-5Jly9` branch — twelve phases of performance, observability, and scalability work — landed as one consolidated merge. All 12 of 12 Phase 3 items closed; all 5 multi-month engineering items shipped.
+
+| Phase | Highlights | Entry Points |
+|-------|------------|--------------|
+| **Phase 0** | ESLint, structured logger, task scheduler, query `explainPlan`, index health, CLI pipe support | `src/utils/logger.ts`, `src/utils/taskScheduler.ts`, `src/search/QueryPlanner.ts` |
+| **Phase 1** | `SECURITY.md`, HITS / Clique / Louvain graph algos, SQLite read pool, BM25 incrementality, entity state machine, `AbortController`-driven cancellation, diagnostics surface | `ctx.diagnostics`, `MEMORY_SQLITE_READ_POOL_SIZE` |
+| **Phase 4** | Adapter interfaces (`IDatabaseAdapter`, `IVectorDBAdapter`, `IMessageQueueAdapter`, `IObservableDataModel`) | `src/adapters/` |
+| **Phase 5** | API stability tags, `BackupManager` extracted from `IOManager`, query DSL, node2vec, LSH + anomaly detector, CRDT, ABAC + RLS + API keys | `ctx.ioManager` / `BackupManager`, `src/security/abac.ts` |
+| **Phase 6** | Minimal SPARQL subset, `EntityProxy`, write-ahead log | `SparqlExecutor`, `WriteAheadLog` |
+| **Phase 7** | `FileSegmentStorage` (FNV-routed JSONL shards) + migration tool | `MEMORY_STORAGE_SEGMENT_COUNT` (1–1024), `tools/segment-jsonl/` |
+| **Phase 8** | `JsonlColumnStore` for observation columns | `IColumnStore<T>`, `ObservationColumn`, `tools/observations-to-columns/` |
+| **Phase 9** | Tiered index (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier` + `TieredIndex` composer + `HotOnlyIndex` reference) | `ITieredIndex`, `IIndexTier` |
+| **Phase 10** | Pluggable in-memory compression (`ICompressionAdapter` + `Zlib` / `Brotli` / `Identity` impls + `CompressedMap`) | `ctx.compressedEntityCache` |
+| **Phase 11** | Memory-mapped file loading (`IMmapBackend` + `streamLines` + `BufferMmapBackend` + `FsReadMmapBackend`); `GraphStorage.loadFromDisk` mmap branch | `MEMORY_USE_MMAP=true`, `MEMORY_MMAP_THRESHOLD_BYTES` |
+
+Also: security follow-up (PRs #38 + #39) — `validateFilePath` default flipped to `confineToBase=true`, `crypto.randomBytes` replaces `Math.random()` for ID generation, ReDoS-resistant regex escapes, `console.warn` on malformed JSON instead of silent fail, `TaskScheduler` `MAX_COMPLETED` / `MAX_QUEUE` bounds, throw-not-truncate for oversize wildcard patterns, symlink check on `BackupManager.delete()`.
+
+See `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md` for the per-phase task ledger and `CHANGELOG.md` for the full per-phase commit-by-commit breakdown.
+
+### v1.14.0 line additions (η / 3B series — also shipped in v1.15.0)
 
 | Feature | Entry Point |
 |---------|-------------|
@@ -863,10 +885,15 @@ The full env-var reference lives in [CLAUDE.md](CLAUDE.md). Most-used:
 | `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` | `CollaborationAuditEnforcer` strict mode | `false` |
 | `MEMORY_RBAC_ENABLED` | Wire `RbacMiddleware` into `GovernancePolicy` | `false` |
 | `MEMORY_DEFAULT_VISIBILITY` | Default `AgentEntity.visibility` | `private` |
+| `MEMORY_USE_MMAP` | Use mmap (`FsReadMmapBackend`) for `GraphStorage.loadFromDisk` (Phase 11) | `false` (strict `'true'` literal match) |
+| `MEMORY_MMAP_THRESHOLD_BYTES` | Minimum file size to trigger mmap path; `0` means always-on | `104857600` (100 MB) |
+| `MEMORY_STORAGE_SEGMENT_COUNT` | Number of FNV-routed JSONL shards in `FileSegmentStorage` (1–1024) (Phase 7) | `1` (off) |
+| `MEMORY_SQLITE_READ_POOL_SIZE` | Read-connection pool size for `SQLiteStorage` (Phase 1) | `4` |
+| `MEMORY_SQLITE_AUTO_INDEX` | Enable `PartialIndexAdvisor`-driven automatic partial-index DDL | `false` |
 | `SKIP_BENCHMARKS` | Skip perf benchmark tests | `false` |
 | `LOG_LEVEL` | `debug` / `info` / `warn` / `error` | (none) |
 
-See [CLAUDE.md](CLAUDE.md#environment-variables) for the complete list (~50 variables across decay/salience/context-window/freshness/RBAC/PRD scoring/MemoryEngine knobs).
+See [CLAUDE.md](CLAUDE.md#environment-variables) for the complete list (~60 variables across decay/salience/context-window/freshness/RBAC/PRD scoring/MemoryEngine/mmap/segment/SQLite-pool/PartialIndex knobs).
 
 ## Development
 

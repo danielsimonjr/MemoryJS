@@ -1,33 +1,41 @@
 # Test Coverage Analysis
 
-**Generated**: 2026-04-25 (regenerated from current `tests/` directory + the
+**Generated**: 2026-05-13 (regenerated from current `tests/` directory + the
 authoritative `dependency-summary.compact.json` produced by
-`tools/create-dependency-graph`).
+`tools/create-dependency-graph`). Reflects v1.15.0 — Phases 0–11 brought 880+
+new tests via PR #34 (mmap, segments, columns, tiered index, compression,
+SPARQL, WAL, BackupManager, CRDT, ABAC) plus the security-audit follow-ups
+in PRs #38 and #39.
 
 ## Summary
 
 | Metric | Count | Source |
 |--------|-------|--------|
-| Total source files | 183 | dep-graph |
-| Total test files | 214 | filesystem scan |
-| Lines of source code | 62,889 | dep-graph |
-| Total exports | 1,104 | dep-graph |
-| Re-exports (barrel) | 699 | dep-graph |
-| Classes | 156 | dep-graph |
-| Interfaces | 384 | dep-graph |
-| Functions | 189 | dep-graph |
-| Type aliases | 17 | dep-graph |
+| Total source files | 231 | dep-graph |
+| Total test files | 273 | filesystem scan |
+| Lines of source code | 76,495 | dep-graph |
+| Total exports | 1,203 | dep-graph |
+| Re-exports (barrel) | 715 | dep-graph |
+| Classes | 208 | dep-graph |
+| Interfaces | 474 | dep-graph |
+| Functions | 217 | dep-graph |
+| Type guards | 17 | dep-graph |
 | Enums | 4 | dep-graph |
-| Constants | 63 | dep-graph |
-| Type-only imports | 269 | dep-graph |
-| Circular dependencies | 1 (self-ref: `EntityValidator`) | dep-graph |
-| Tests passing | 6,157 | vitest run |
-| Tests failing (pre-existing) | 5 | vitest run |
-| Tests skipped | 3 | vitest run |
+| Type-only imports | 316 | dep-graph |
+| Runtime circular dependencies | 1 | dep-graph |
+| Type-only circular dependencies | 3 | dep-graph |
+| Modules | 11 | dep-graph |
+| Tests passing | 7,098 | vitest run |
+| Tests skipped | 12 | vitest run |
 
-**Pre-existing failures** (tracked, not introduced by recent commits):
-- 4 in `tests/file-path.test.ts` — `ensureMemoryFilePath` path-validation regressions; predate v1.14
-- 1 in `tests/performance/memory-engine-perf.test.ts` — Windows perf-timing flake (P95 threshold)
+**Known Windows-only flakes** (documented in `CLAUDE.md > Gotchas`, not test regressions):
+- `tests/unit/agent/AgentMemoryManager.test.ts` — sporadic post-test ENOENT
+  on temp-dir cleanup (`agentmem-test-*/test-memory.jsonl`). The recent commit
+  `cfacb07` explicitly skips these in `test:ci`. Caused by Dropbox sync + antivirus
+  interaction on Windows; tests themselves pass.
+- `tests/unit/core/segments/segments-review-fixes.test.ts` — `MEMORY_STORAGE_SEGMENT_COUNT="1024"`
+  test can approach the 30 s timeout under Windows file-system contention; passes
+  in isolation in ~8.5 s.
 
 ---
 

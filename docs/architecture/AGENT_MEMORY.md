@@ -1,6 +1,6 @@
 # Agent Memory System Design
 
-**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased)
+**Last reviewed**: 2026-05-13 (v1.15.0 — Phases 0–11 performance & scale track shipped via PR #34)
 
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
 
@@ -34,6 +34,16 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   `StepSequencer`), active retrieval (`ActiveRetrievalController` with
 >   iterative query rewriting), causal reasoning (`CausalReasoner`),
 >   world-model orchestrator (`WorldModelManager` + `WorldStateSnapshot`).
+> - **v1.15.0 (Phases 0–11 performance & scale)** — The agent memory subsystem
+>   benefits transparently from infrastructure improvements in PR #34:
+>   `EpisodicMemoryManager` and `WorkingMemoryManager` now sit on top of
+>   `GraphStorage`'s optional mmap branch (`MEMORY_USE_MMAP`) for >100 MB
+>   stores, segment-sharded JSONL (`MEMORY_STORAGE_SEGMENT_COUNT`) for
+>   parallel reads, and the `JsonlColumnStore` columnar observation backend
+>   for very-wide entity rows. `ContextWindowManager` retrieval results now
+>   pass through `ctx.compressedEntityCache` (`CompressedMap` with
+>   `BrotliCompressionAdapter`) so retrieved entities cost ~80% less RAM
+>   at rest. No agent-memory API changes; opt-in via env vars.
 
 ## Overview
 

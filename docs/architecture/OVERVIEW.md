@@ -1,7 +1,7 @@
 # MemoryJS - Project Overview
 
-**Version**: 1.14.0 + Unreleased (η.4.4 / η.5.4 / η.5.5 / η.6.1 / η.6.3 / 3B.4–3B.7)
-**Last Updated**: 2026-04-25
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; security follow-up via PRs #38 + #39)
+**Last Updated**: 2026-05-13
 
 ## What Is This?
 
@@ -26,6 +26,16 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
 | **Access Control** | RBAC (Role / Permission / Matrix / Middleware), audit attribution enforcer, governance policies |
 | **Privacy** | Pluggable PII redactor (email / SSN / CC / phone / IP) with per-pattern statistics |
 | **Tag Management** | Aliases, bulk operations, validation |
+| **Memory-Mapped I/O** | (v1.15.0) `IMmapBackend` + `BufferMmapBackend` + `FsReadMmapBackend`; `GraphStorage.loadFromDisk` mmap branch gated by `MEMORY_USE_MMAP` + `MEMORY_MMAP_THRESHOLD_BYTES` |
+| **Segment-Sharded JSONL** | (v1.15.0) `FileSegmentStorage` — FNV-routed N-way shards via `MEMORY_STORAGE_SEGMENT_COUNT` (1–1024); enables parallel reads on very large stores |
+| **Columnar Observation Store** | (v1.15.0) `IColumnStore<T>` + `JsonlColumnStore` + `ObservationColumn` — observation data physically separated from entity rows |
+| **Tiered Index** | (v1.15.0) `LRUHotTier` (in-memory) → `DiskWarmTier` (uncompressed JSONL) → `BrotliColdTier` (compressed); composed via `TieredIndex` |
+| **In-Memory Compression** | (v1.15.0) `ICompressionAdapter` (sync `compress`/`decompress`) + `ZlibCompressionAdapter` / `BrotliCompressionAdapter` / `IdentityCompressionAdapter` + `CompressedMap` |
+| **SPARQL Subset** | (v1.15.0) `SparqlExecutor` — minimal BGP / FILTER / OPTIONAL / UNION subset on top of the entity/relation graph |
+| **Write-Ahead Log** | (v1.15.0) `WriteAheadLog` + `EntityProxy` — durable mutation log preceding storage commit |
+| **CRDT** | (v1.15.0) Convergent replicated data type primitives for multi-writer scenarios (currently scaffolded; awaiting wiring) |
+| **ABAC + RLS + API keys** | (v1.15.0) Attribute-based access control with row-level security predicates; API-key-scoped access alongside RBAC |
+| **Graph Algorithms (extended)** | (v1.15.0) HITS, clique enumeration, Louvain community detection alongside existing shortest path / centrality / connected components |
 
 ## Quick Architecture Overview
 
@@ -63,7 +73,14 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
                         │
 ┌───────────────────────┴────────────────────────────────┐
 │  Layer 3: Storage Layer                                │
-│  GraphStorage (JSONL) or SQLiteStorage (better-sqlite3)│
+│  GraphStorage (JSONL) — optionally:                    │
+│    • mmap branch via FsReadMmapBackend (>100MB files)  │
+│    • FileSegmentStorage (FNV-routed JSONL shards)      │
+│    • JsonlColumnStore (columnar observation data)      │
+│    • TieredIndex (LRU hot / disk warm / Brotli cold)   │
+│    • CompressedMap (Zlib/Brotli in-memory entry cache) │
+│  OR SQLiteStorage (better-sqlite3, FTS5, BM25,         │
+│    read pool, PartialIndexAdvisor)                     │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -120,16 +137,22 @@ interface Relation {
 
 ## Directory Structure
 
-> Counts below are from `dependency-summary.compact.json` (2026-04-25)
+> Counts below are from `dependency-summary.compact.json` (2026-05-13)
 > — the authoritative output of `tools/create-dependency-graph`. Repo
-> totals: **183 source files, 62,889 LOC, 1,104 exports, 156 classes,
-> 384 interfaces, 189 functions, 1 self-circular dependency.**
+> totals: **231 source files, 76,495 LOC, 1,203 exports, 208 classes,
+> 474 interfaces, 217 functions, 1 runtime + 3 type-only circular dependencies.**
 
 ```
-src/ (183 TypeScript files, 62,889 lines of code)
+src/ (231 TypeScript files, 76,495 lines of code)
 ├── index.ts              # Entry point, main exports
 │
-├── agent/ (61 files)     # Agent Memory System
+├── adapters/ (4 files)   # External-system adapter interfaces (Phase 4)
+│   ├── IDatabaseAdapter.ts
+│   ├── IVectorDBAdapter.ts
+│   ├── LangChainMemoryAdapter.ts
+│   └── RestRouter.ts
+│
+├── agent/ (62 files)     # Agent Memory System
 │   ├── AgentMemoryManager.ts     # Unified facade for all agent operations
 │   ├── AgentMemoryConfig.ts      # Configuration with env var loading
 │   ├── SessionManager.ts         # Session lifecycle management
@@ -149,21 +172,40 @@ src/ (183 TypeScript files, 62,889 lines of code)
 │   ├── AccessTracker.ts          # Access pattern tracking
 │   └── index.ts                  # Barrel export
 │
-├── core/ (14 files)      # Core managers and storage
+├── core/ (25 files)      # Core managers and storage
 │   ├── ManagerContext.ts         # Context holder (lazy init)
-│   ├── EntityManager.ts          # Entity CRUD operations
-│   ├── RelationManager.ts        # Relation CRUD
-│   ├── ObservationManager.ts     # Observation add/delete
+│   ├── EntityManager.ts          # Entity CRUD operations (with OCC)
+│   ├── RelationManager.ts        # Relation CRUD (with temporal validity)
+│   ├── ObservationManager.ts     # Observation add/delete (bitemporal)
 │   ├── HierarchyManager.ts       # Parent-child relationships
-│   ├── GraphStorage.ts           # JSONL file I/O, caching
-│   ├── SQLiteStorage.ts          # SQLite backend (better-sqlite3)
+│   ├── GraphStorage.ts           # JSONL file I/O + mmap branch + caching
+│   ├── SQLiteStorage.ts          # SQLite backend (read pool, partial-index advisor)
 │   ├── StorageFactory.ts         # Storage backend factory
 │   ├── TransactionManager.ts     # Batch operations
-│   ├── GraphTraversal.ts         # Graph algorithms
+│   ├── GraphTraversal.ts         # Graph algorithms (HITS / clique / Louvain added)
 │   ├── GraphEventEmitter.ts      # Event-driven updates
+│   ├── TransitionLedger.ts       # Entity state machine ledger
+│   ├── EntityProxy.ts            # Phase 6 — proxy facade for WAL-backed writes
+│   ├── WriteAheadLog.ts          # Phase 6 — durable mutation log
+│   ├── mmap/                     # Phase 11 — memory-mapped file backends
+│   │   ├── IMmapBackend.ts             # Interface + streamLines helper
+│   │   ├── BufferMmapBackend.ts        # Read-everything-at-open reference impl
+│   │   └── FsReadMmapBackend.ts        # Portable mmap-equivalent via FileHandle
+│   ├── segments/                 # Phase 7 — FNV-routed JSONL shards
+│   │   └── FileSegmentStorage.ts
+│   ├── columns/                  # Phase 8 — columnar observation storage
+│   │   ├── IColumnStore.ts             # Interface
+│   │   ├── JsonlColumnStore.ts         # JSONL-backed impl
+│   │   ├── InMemoryColumnStore.ts      # In-memory impl
+│   │   └── ObservationColumn.ts        # Observation-specific column type
+│   ├── tiered/                   # Phase 9 — hot / warm / cold index tiers
+│   │   ├── ITieredIndex.ts             # Composer interface
+│   │   ├── LRUHotTier.ts               # In-memory LRU
+│   │   ├── DiskWarmTier.ts             # Uncompressed disk
+│   │   └── BrotliColdTier.ts           # Compressed disk
 │   └── index.ts                  # Barrel export
 │
-├── search/ (37 files)    # Search implementations
+├── search/ (55 files)    # Search implementations
 │   ├── SearchManager.ts          # Search orchestrator
 │   ├── BasicSearch.ts            # Text matching
 │   ├── RankedSearch.ts           # TF-IDF scoring
@@ -174,11 +216,14 @@ src/ (183 TypeScript files, 62,889 lines of code)
 │   ├── HybridSearchManager.ts    # Three-layer hybrid search
 │   └── ...
 │
-├── features/ (17 files)  # Advanced capabilities
+├── features/ (20 files)  # Advanced capabilities
 │   ├── TagManager.ts             # Tag aliases
-│   ├── IOManager.ts              # Import + export + backup
+│   ├── IOManager.ts              # Import + export (backup logic extracted to BackupManager)
+│   ├── BackupManager.ts          # Phase 5 — create / list / restore / delete / cleanOld
 │   ├── ArchiveManager.ts         # Entity archival
-│   ├── CompressionManager.ts     # Duplicate detection
+│   ├── CompressionManager.ts     # Duplicate detection / entity merging
+│   ├── CRDT.ts                   # Phase 5 — convergent replicated data type primitives
+│   ├── AnomalyDetector.ts        # Phase 5 — LSH-backed anomaly detection
 │   └── ...
 │
 ├── types/ (7 files)      # TypeScript definitions
@@ -186,14 +231,25 @@ src/ (183 TypeScript files, 62,889 lines of code)
 │   ├── agent-memory.ts           # Agent memory types
 │   └── index.ts                  # Barrel export
 │
-├── utils/ (26 files)     # Shared utilities
+├── utils/ (34 files)     # Shared utilities
 │   ├── schemas.ts                # Zod validation schemas
+│   ├── logger.ts                 # Phase 0 — structured logger
+│   ├── taskScheduler.ts          # Phase 0 — priority task queue with bounds
 │   ├── BatchProcessor.ts         # Batch processing utilities
 │   ├── WorkerPoolManager.ts      # Worker pool management
+│   ├── compression/              # Phase 10 — pluggable in-memory compression
+│   │   ├── ICompressionAdapter.ts      # sync compress/decompress interface
+│   │   ├── ZlibCompressionAdapter.ts   # Node zlib reference impl
+│   │   ├── BrotliCompressionAdapter.ts # Node zlib brotli impl
+│   │   ├── IdentityCompressionAdapter.ts # Test baseline (no-op)
+│   │   └── CompressedMap.ts            # Map<K,V> with values compressed at rest
 │   └── ...
 │
-├── security/ (2 files)   # PII redaction (η.6.3)
-│   └── PiiRedactor.ts
+├── security/ (5 files)   # PII redaction (η.6.3) + ABAC + RLS + API keys (Phase 5)
+│   ├── PiiRedactor.ts
+│   ├── abac.ts
+│   ├── rls.ts
+│   └── apiKeys.ts
 │
 ├── cli/ (16 files)       # `memory` / `memoryjs` binary commands
 │

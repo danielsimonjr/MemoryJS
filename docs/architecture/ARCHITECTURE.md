@@ -1,6 +1,6 @@
 # MemoryJS - System Architecture
 
-**Version**: 1.14.0 + Unreleased
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; security follow-up via PRs #38 + #39)
 **Last Updated**: 2026-04-25
 
 ---
@@ -35,41 +35,44 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (v1.14.0 + Unreleased)
+### Key Statistics (v1.15.0)
 
 Numbers below are extracted from the authoritative `dependency-summary.compact.json`
-produced by `tools/create-dependency-graph` on 2026-04-25. To regenerate run
-`npx tsx tools/create-dependency-graph/create-dependency-graph.ts`.
+produced by `tools/create-dependency-graph` on 2026-05-13. To regenerate run
+`node --experimental-strip-types tools/create-dependency-graph/create-dependency-graph.ts`.
 
 | Metric | Value |
 |--------|-------|
-| Source files | 183 TypeScript files |
-| Lines of code | 62,889 |
-| Total exports | 1,104 |
-| Re-exports (barrel) | 699 |
-| Classes | 156 |
-| Interfaces | 384 |
-| Functions | 189 |
-| Type aliases | 17 |
+| Source files | 231 TypeScript files |
+| Lines of code | 76,495 |
+| Total exports | 1,203 |
+| Re-exports (barrel) | 715 |
+| Classes | 208 |
+| Interfaces | 474 |
+| Functions | 217 |
+| Type guards | 17 |
 | Enums | 4 |
-| Constants | 63 |
-| Type-only imports | 269 |
-| Circular dependencies | 1 (self-ref: `EntityValidator`) |
-| Tests passing | 6,157 |
-| Test files | 214 |
+| Type-only imports | 316 |
+| Runtime circular dependencies | 1 |
+| Type-only circular dependencies | 3 |
+| Tests passing | 7,098 |
+| Test files | 273 |
+| Modules | 11 |
 
 ### Module Distribution
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
-| `agent/` | 61 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware** |
-| `core/` | 14 | ManagerContext, EntityManager (+OCC, +temporal validity), RelationManager (+temporal invalidation), ObservationManager (+bitemporal axis), HierarchyManager, GraphStorage, SQLiteStorage, GraphTraversal, TransactionManager, RefIndex |
-| `search/` | 37 | SearchManager, RankedSearch, BM25Search, BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor |
-| `features/` | 17 | IOManager (+RDF/Turtle/JSON-LD export), TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker |
-| `utils/` | 26 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError) |
+| `adapters/` | 4 | `IDatabaseAdapter`, `IVectorDBAdapter`, `LangChainMemoryAdapter`, `RestRouter` (Phase 4) |
+| `agent/` | 62 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware** |
+| `core/` | 25 | ManagerContext, EntityManager (+OCC, +temporal validity, +state machine), RelationManager (+temporal invalidation), ObservationManager (+bitemporal axis), HierarchyManager, GraphStorage (+mmap branch), SQLiteStorage (+read pool, +partial index advisor), GraphTraversal (+HITS/clique/Louvain), TransactionManager, RefIndex, **FileSegmentStorage** (Phase 7), **WriteAheadLog** + **EntityProxy** (Phase 6), **JsonlColumnStore** (Phase 8), **TieredIndex** (`LRUHotTier`/`DiskWarmTier`/`BrotliColdTier`, Phase 9), **IMmapBackend** / **BufferMmapBackend** / **FsReadMmapBackend** (Phase 11) |
+| `search/` | 55 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental, Phase 1), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, **SparqlExecutor** (minimal subset, Phase 6), **PartialIndexAdvisor** |
+| `features/` | 20 | IOManager (+RDF/Turtle/JSON-LD export), **BackupManager** (extracted Phase 5), TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker, **CRDT** (Phase 5), **AnomalyDetector** (Phase 5) |
+| `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
 | `types/` | 7 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure |
-| `security/` | 2 | **PiiRedactor** + DEFAULT_PII_PATTERNS |
-| `cli/` | 16 | `memory` / `memoryjs` binary commands |
+| `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** (Phase 5) |
+| `cli/` | 16 | `memory` / `memoryjs` binary commands (with pipe support, Phase 0) |
+| `entry/` | 1 | `src/index.ts` |
 | `workers/` | 2 | Levenshtein distance calculations |
 
 ---

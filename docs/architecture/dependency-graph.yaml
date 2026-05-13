@@ -1,15 +1,102 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  version: 1.14.0
-  lastUpdated: "2026-04-25"
-  totalFiles: 183
-  totalModules: 10
-  totalExports: 1104
+  version: 1.15.0
+  lastUpdated: "2026-05-13"
+  totalFiles: 231
+  totalModules: 11
+  totalExports: 1203
 entryPoints:
   - file: src/index.ts
     type: main
     description: MemoryJS - Knowledge Graph Storage Library
 modules:
+  adapters:
+    src/adapters/IDatabaseAdapter.ts:
+      description: Database Adapter Interface
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - Relation
+            - KnowledgeGraph
+          typeOnly: true
+      exports:
+        - NullDatabaseAdapter
+        - InMemoryDatabaseAdapter
+      classes:
+        - NullDatabaseAdapter
+        - InMemoryDatabaseAdapter
+      interfaces:
+        - IDatabaseAdapter
+    src/adapters/IVectorDBAdapter.ts:
+      description: Vector Database Adapter Interface
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - InMemoryVectorAdapter
+      classes:
+        - InMemoryVectorAdapter
+      interfaces:
+        - VectorUpsert
+        - VectorMatch
+        - VectorAdapterStats
+        - IVectorDBAdapter
+    src/adapters/LangChainMemoryAdapter.ts:
+      description: LangChain Memory Adapter
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../core/ManagerContext.js
+          imports:
+            - ManagerContext
+          typeOnly: true
+        - file: ../agent/MemoryEngine.js
+          imports:
+            - MemoryEngine
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - AgentEntity
+          typeOnly: true
+      exports:
+        - LangChainMemoryAdapter
+      classes:
+        - LangChainMemoryAdapter
+      interfaces:
+        - ChatMessage
+        - MemoryInputs
+        - MemoryVariables
+        - LangChainMemoryAdapterOptions
+    src/adapters/RestRouter.ts:
+      description: REST Router
+      externalDependencies: []
+      nodeDependencies:
+        - module: http
+          imports:
+            - IncomingMessage
+            - ServerResponse
+        - module: http
+          imports:
+            - createServer
+      internalDependencies:
+        - file: ../core/ManagerContext.js
+          imports:
+            - ManagerContext
+          typeOnly: true
+        - file: ../utils/logger.js
+          imports:
+            - logger
+      exports:
+        - RestRouter
+      classes:
+        - RestRouter
+      interfaces:
+        - RestRequest
+        - RestResponse
+        - RouteDefinition
   agent:
     src/agent/AccessTracker.ts:
       description: Access Tracker
@@ -116,6 +203,9 @@ modules:
           imports:
             - EventEmitter
       internalDependencies:
+        - file: ../utils/logger.js
+          imports:
+            - logger
         - file: ../types/types.js
           imports:
             - IGraphStorage
@@ -483,6 +573,9 @@ modules:
           imports:
             - EventEmitter
       internalDependencies:
+        - file: ../utils/logger.js
+          imports:
+            - logger
         - file: ./ConsolidationPipeline.js
           imports:
             - ConsolidationPipeline
@@ -523,10 +616,17 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/logger.js
+          imports:
+            - logger
         - file: ../types/types.js
           imports:
             - IGraphStorage
             - Entity
+          typeOnly: true
+        - file: ../core/GraphStorage.js
+          imports:
+            - GraphStorage
           typeOnly: true
         - file: ../types/agent-memory.js
           imports:
@@ -613,6 +713,9 @@ modules:
           imports:
             - DecayEngine
           typeOnly: true
+        - file: ../utils/logger.js
+          imports:
+            - logger
       exports:
         - DecayScheduler
       classes:
@@ -842,6 +945,20 @@ modules:
       interfaces:
         - FailureDistillationConfig
         - FailureDistillationResult
+    src/agent/HeuristicManager.ts:
+      description: Heuristic Guidelines Manager
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - HeuristicManager
+      classes:
+        - HeuristicManager
+      interfaces:
+        - Heuristic
+        - AddHeuristicOptions
+        - HeuristicMatch
+        - HeuristicConflict
     src/agent/ImportanceScorer.ts:
       description: Score new content at creation time.
       externalDependencies: []
@@ -1947,6 +2064,10 @@ modules:
         - file: ../types/agent-memory.js
           imports:
             - isSessionEntity
+        - file: ../types/agent-memory.js
+          imports:
+            - AgentEntity
+          typeOnly: true
         - file: ./SalienceEngine.js
           imports:
             - SalienceEngine
@@ -2917,6 +3038,9 @@ modules:
         - module: fs
           imports:
             - readFileSync
+        - module: readline
+          imports:
+            - createInterface
         - module: url
           imports:
             - fileURLToPath
@@ -2928,6 +3052,9 @@ modules:
         - file: ./commands/index.js
           imports:
             - registerCommands
+        - file: ../utils/logger.js
+          imports:
+            - logger
       exports: []
     src/cli/interactive.ts:
       description: Interactive CLI Mode (REPL)
@@ -2968,6 +3095,39 @@ modules:
       constants:
         - defaultOptions
   core:
+    src/core/columns/IColumnStore.ts:
+      description: Column Store — Interface + In-Memory Reference Impl
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - InMemoryColumnStore
+      classes:
+        - InMemoryColumnStore
+      interfaces:
+        - IColumnStore
+    src/core/columns/JsonlColumnStore.ts:
+      description: JsonlColumnStore — JSONL-sidecar-backed `IColumnStore<T>`
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+      internalDependencies:
+        - file: ../../utils/logger.js
+          imports:
+            - logger
+        - file: ../../utils/durableWriteFile.js
+          imports:
+            - durableWriteFile
+        - file: ./IColumnStore.js
+          imports:
+            - IColumnStore
+          typeOnly: true
+      exports:
+        - JsonlColumnStore
+      classes:
+        - JsonlColumnStore
     src/core/EntityManager.ts:
       description: Entity Manager
       externalDependencies: []
@@ -2998,6 +3158,9 @@ modules:
             - RefIndex
             - RefEntry
           typeOnly: true
+        - file: ./EntityStateMachine.js
+          imports:
+            - EntityStateMachine
         - file: ../utils/index.js
           imports:
             - BatchCreateEntitiesSchema
@@ -3017,6 +3180,46 @@ modules:
       interfaces:
         - EntityManagerOptions
         - GetEntityOptions
+    src/core/EntityProxy.ts:
+      description: Lazy Entity Hydration (`EntityProxy`)
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+          typeOnly: true
+      exports:
+        - EntityProxy
+        - EntityProxyFactory
+      classes:
+        - EntityProxy
+        - EntityProxyFactory
+      interfaces:
+        - EntityProxyStorage
+    src/core/EntityStateMachine.ts:
+      description: Entity State Machine
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - ENTITY_STATUS_TRANSITIONS
+            - EntityStatus
+      exports:
+        - DEFAULT_ENTITY_STATUS
+        - effectiveStatus
+        - canTransition
+        - IllegalStatusTransitionError
+        - EntityStateMachine
+      classes:
+        - IllegalStatusTransitionError
+        - EntityStateMachine
+      functions:
+        - effectiveStatus
+        - canTransition
+      constants:
+        - DEFAULT_ENTITY_STATUS
     src/core/GraphEventEmitter.ts:
       description: Graph Event Emitter
       externalDependencies: []
@@ -3040,6 +3243,9 @@ modules:
             - GraphSavedEvent
             - GraphLoadedEvent
           typeOnly: true
+        - file: ../utils/logger.js
+          imports:
+            - logger
       exports:
         - GraphEventEmitter
       classes:
@@ -3054,10 +3260,13 @@ modules:
         - module: fs
           imports:
             - promises
-        - module: crypto
+        - module: path
           imports:
-            - randomBytes
+            - dirname
       internalDependencies:
+        - file: ../utils/durableWriteFile.js
+          imports:
+            - durableWriteFile
         - file: ../types/index.js
           imports:
             - KnowledgeGraph
@@ -3088,6 +3297,18 @@ modules:
         - file: ./GraphEventEmitter.js
           imports:
             - GraphEventEmitter
+        - file: ./segments/FileSegmentStorage.js
+          imports:
+            - FileSegmentStorage
+        - file: ./segments/ISegmentStorage.js
+          imports:
+            - FnvSegmentRouter
+        - file: ./mmap/FsReadMmapBackend.js
+          imports:
+            - FsReadMmapBackend
+        - file: ./mmap/IMmapBackend.js
+          imports:
+            - streamLines
       exports:
         - GraphStorage
       classes:
@@ -3266,6 +3487,35 @@ modules:
           imports:
             - path
       internalDependencies:
+        - file: ../utils/logger.js
+          imports:
+            - logger
+        - file: ../utils/IndexHealthMonitor.js
+          imports:
+            - IndexHealthMonitor
+            - IndexHealthReport
+        - file: ../utils/Diagnostics.js
+          imports:
+            - buildDiagnosticsReport
+            - DiagnosticsReport
+        - file: ./TransactionManager.js
+          imports:
+            - BatchTransaction
+        - file: ../types/index.js
+          imports:
+            - BatchResult
+            - BatchOptions
+            - Entity
+          typeOnly: true
+        - file: ../utils/CachePressureCoordinator.js
+          imports:
+            - CachePressureCoordinator
+        - file: ../search/MaterializedViews.js
+          imports:
+            - MaterializedViewsManager
+        - file: ./ObservationStore.js
+          imports:
+            - ObservationStore
         - file: ./GraphStorage.js
           imports:
             - GraphStorage
@@ -3281,6 +3531,33 @@ modules:
         - file: ./ObservationManager.js
           imports:
             - ObservationManager
+        - file: ./columns/JsonlColumnStore.js
+          imports:
+            - JsonlColumnStore
+        - file: ../search/tiered/TieredIndex.js
+          imports:
+            - TieredIndex
+            - buildTieredIndex
+        - file: ../search/tiered/LRUHotTier.js
+          imports:
+            - LRUHotTier
+        - file: ../search/tiered/DiskWarmTier.js
+          imports:
+            - DiskWarmTier
+        - file: ../search/tiered/BrotliColdTier.js
+          imports:
+            - BrotliColdTier
+        - file: ../utils/compression/CompressedMap.js
+          imports:
+            - CompressedMap
+        - file: ../utils/compression/ICompressionAdapter.js
+          imports:
+            - ZlibCompressionAdapter
+        - file: ./columns/IColumnStore.js
+          imports:
+            - IColumnStore
+            - ObservationColumn
+          typeOnly: true
         - file: ./HierarchyManager.js
           imports:
             - HierarchyManager
@@ -3441,6 +3718,62 @@ modules:
         - ManagerContext
       interfaces:
         - ManagerContextOptions
+    src/core/mmap/BufferMmapBackend.ts:
+      description: BufferMmapBackend — slurp-the-whole-file reference impl
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+        - module: path
+          imports:
+            - resolve
+      internalDependencies:
+        - file: ./IMmapBackend.js
+          imports:
+            - IMmapBackend
+            - MmapHandle
+          typeOnly: true
+      exports:
+        - BufferMmapBackend
+      classes:
+        - BufferMmapBackend
+      interfaces:
+        - BufferMmapBackendOptions
+    src/core/mmap/FsReadMmapBackend.ts:
+      description: FsReadMmapBackend — Range-Read Over a Pinned File Descriptor
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+        - module: path
+          imports:
+            - resolve
+        - module: fs/promises
+          imports:
+            - FileHandle
+      internalDependencies:
+        - file: ./IMmapBackend.js
+          imports:
+            - IMmapBackend
+            - MmapHandle
+          typeOnly: true
+      exports:
+        - FsReadMmapBackend
+      classes:
+        - FsReadMmapBackend
+      interfaces:
+        - FsReadMmapBackendOptions
+    src/core/mmap/IMmapBackend.ts:
+      description: IMmapBackend — Range-Read Interface
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports: []
+      interfaces:
+        - MmapHandle
+        - IMmapBackend
     src/core/ObservationManager.ts:
       description: Observation Manager
       externalDependencies: []
@@ -3450,6 +3783,9 @@ modules:
           imports:
             - GraphStorage
           typeOnly: true
+        - file: ../utils/logger.js
+          imports:
+            - logger
         - file: ../features/AutoLinker.js
           imports:
             - AutoLinker
@@ -3459,6 +3795,7 @@ modules:
         - file: ../types/types.js
           imports:
             - DeduplicationOptions
+            - Entity
           typeOnly: true
         - file: ../utils/errors.js
           imports:
@@ -3480,10 +3817,36 @@ modules:
         - file: ../utils/textSimilarity.js
           imports:
             - calculateTextSimilarity
+        - file: ./columns/IColumnStore.js
+          imports:
+            - IColumnStore
+            - ObservationColumn
+          typeOnly: true
+        - file: ../types/types.js
+          imports:
+            - EntityCreatedEvent
+            - EntityUpdatedEvent
+            - EntityDeletedEvent
+            - GraphSavedEvent
+          typeOnly: true
       exports:
         - ObservationManager
       classes:
         - ObservationManager
+    src/core/ObservationStore.ts:
+      description: Observation Store
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - createHash
+      internalDependencies: []
+      exports:
+        - ObservationStore
+      classes:
+        - ObservationStore
+      interfaces:
+        - ObservationStoreStats
     src/core/RefIndex.ts:
       description: Ref Index
       externalDependencies:
@@ -3533,6 +3896,72 @@ modules:
         - RelationManager
       classes:
         - RelationManager
+    src/core/segments/FileSegmentStorage.ts:
+      description: File Segment Storage — JSONL-per-segment backend
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+        - module: crypto
+          imports:
+            - randomBytes
+        - module: path
+          imports:
+            - join
+      internalDependencies:
+        - file: ../../types/types.js
+          imports:
+            - Entity
+            - KnowledgeGraph
+            - Relation
+          typeOnly: true
+        - file: ../../utils/logger.js
+          imports:
+            - logger
+        - file: ../../utils/durableWriteFile.js
+          imports:
+            - durableWriteFile
+        - file: ./ISegmentStorage.js
+          imports:
+            - ISegmentStorage
+            - Segment
+            - SegmentId
+            - SegmentRouter
+            - mergeSegmentsIntoGraph
+            - splitGraphIntoSegments
+      exports:
+        - FileSegmentStorage
+      classes:
+        - FileSegmentStorage
+    src/core/segments/ISegmentStorage.ts:
+      description: Segment Storage — Interface + Reference Impl
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../../types/types.js
+          imports:
+            - Entity
+            - Relation
+            - KnowledgeGraph
+          typeOnly: true
+      exports:
+        - fnv1a32
+        - splitGraphIntoSegments
+        - mergeSegmentsIntoGraph
+        - FnvSegmentRouter
+        - InMemorySegmentStorage
+      classes:
+        - FnvSegmentRouter
+        - InMemorySegmentStorage
+      interfaces:
+        - SegmentRouter
+        - Segment
+        - ISegmentStorage
+      functions:
+        - fnv1a32
+        - splitGraphIntoSegments
+        - mergeSegmentsIntoGraph
     src/core/SQLiteStorage.ts:
       description: SQLite Storage
       externalDependencies:
@@ -3567,6 +3996,13 @@ modules:
           imports:
             - sanitizeObject
             - validateFilePath
+        - file: ../utils/logger.js
+          imports:
+            - logger
+        - file: ../search/PartialIndexAdvisor.js
+          imports:
+            - PartialIndexAdvisor
+            - FilterObservation
       exports:
         - SQLiteStorage
       classes:
@@ -3671,6 +4107,45 @@ modules:
       interfaces:
         - TransitionEvent
         - TransitionFilter
+    src/core/WriteAheadLog.ts:
+      description: Write-Ahead Log (WAL)
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+            - openSync
+            - writeSync
+            - fsyncSync
+            - closeSync
+            - existsSync
+            - statSync
+            - constants
+        - module: path
+          imports:
+            - dirname
+            - join
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - Relation
+          typeOnly: true
+        - file: ../utils/logger.js
+          imports:
+            - logger
+      exports:
+        - _internal
+        - applyWALToGraph
+        - WriteAheadLog
+      classes:
+        - WriteAheadLog
+      interfaces:
+        - WALOptions
+      functions:
+        - applyWALToGraph
+      constants:
+        - _internal
   features:
     src/features/AnalyticsManager.ts:
       description: Analytics Manager
@@ -3692,6 +4167,29 @@ modules:
         - AnalyticsManager
       classes:
         - AnalyticsManager
+    src/features/AnomalyDetector.ts:
+      description: Anomaly Detector
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - KnowledgeGraph
+            - Relation
+          typeOnly: true
+      exports:
+        - detectStructuralAnomalies
+        - detectSemanticAnomalies
+        - detectAllAnomalies
+      interfaces:
+        - AnomalyReport
+        - StructuralAnomalyOptions
+        - SemanticAnomalyOptions
+      functions:
+        - detectStructuralAnomalies
+        - detectSemanticAnomalies
+        - detectAllAnomalies
     src/features/ArchiveManager.ts:
       description: Archive Manager
       externalDependencies: []
@@ -3769,6 +4267,47 @@ modules:
       interfaces:
         - AutoLinkOptions
         - AutoLinkResult
+    src/features/BackupManager.ts:
+      description: Backup Manager
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+        - module: path
+          imports:
+            - basename
+            - join
+      internalDependencies:
+        - file: ../core/GraphStorage.js
+          imports:
+            - GraphStorage
+          typeOnly: true
+        - file: ../utils/errors.js
+          imports:
+            - FileOperationError
+        - file: ../utils/index.js
+          imports:
+            - compress
+            - decompress
+            - hasBrotliExtension
+            - COMPRESSION_CONFIG
+        - file: ../utils/entityUtils.js
+          imports:
+            - validateFilePath
+        - file: ../types/index.js
+          imports:
+            - BackupOptions
+            - BackupResult
+            - RestoreResult
+          typeOnly: true
+      exports:
+        - BackupManager
+      classes:
+        - BackupManager
+      interfaces:
+        - BackupMetadata
+        - BackupInfo
     src/features/CompressionManager.ts:
       description: Compression Manager
       externalDependencies: []
@@ -3799,6 +4338,9 @@ modules:
             - EntityNotFoundError
             - InsufficientEntitiesError
             - ValidationError
+        - file: ../utils/logger.js
+          imports:
+            - logger
         - file: ../utils/constants.js
           imports:
             - SIMILARITY_WEIGHTS
@@ -3830,6 +4372,36 @@ modules:
         - ContradictionDetector
       interfaces:
         - Contradiction
+    src/features/CRDT.ts:
+      description: CRDT Collaboration Primitives
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - randomBytes
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - Relation
+          typeOnly: true
+      exports:
+        - VectorClock
+        - LWWRegister
+        - ORSet
+        - CRDTGraph
+      classes:
+        - VectorClock
+        - LWWRegister
+        - ORSet
+        - CRDTGraph
+      interfaces:
+        - VectorClockState
+        - LWWRegisterState
+        - ORSetState
+        - CRDTEntityState
+        - CRDTRelationState
+        - CRDTGraphState
     src/features/FactExtractor.ts:
       description: Fact Extractor
       externalDependencies: []
@@ -4112,7 +4684,7 @@ modules:
         - type GraphProjection
         - type JSONValue
     src/features/IOManager.ts:
-      description: Escape a string for a Turtle `STRING_LITERAL_QUOTE` per W3C Turtle 1.1.
+      description: Backup lifecycle is delegated to `BackupManager` (extracted in
       externalDependencies: []
       nodeDependencies:
         - module: fs
@@ -4147,8 +4719,6 @@ modules:
         - file: ../utils/index.js
           imports:
             - compress
-            - decompress
-            - hasBrotliExtension
             - COMPRESSION_CONFIG
             - STREAMING_CONFIG
             - checkCancellation
@@ -4161,6 +4731,9 @@ modules:
           imports:
             - StreamingExporter
             - StreamResult
+        - file: ./BackupManager.js
+          imports:
+            - BackupManager
         - file: ../utils/schemas.js
           imports:
             - EntitySchema
@@ -4208,6 +4781,9 @@ modules:
             - Entity
             - Relation
           typeOnly: true
+        - file: ../utils/logger.js
+          imports:
+            - logger
       exports:
         - createObservableDataModelFromGraph
         - ReadOnlyMemoryGraphDataError
@@ -4342,6 +4918,10 @@ modules:
           imports:
             - "*"
           reExport: true
+        - file: ./security/index.js
+          imports:
+            - "*"
+          reExport: true
       exports: []
       reExported:
         - "* from ./types/index.js"
@@ -4350,7 +4930,38 @@ modules:
         - "* from ./features/index.js"
         - "* from ./search/index.js"
         - "* from ./agent/index.js"
+        - "* from ./security/index.js"
   search:
+    src/search/BackgroundIndexer.ts:
+      description: Background Indexer
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../core/GraphEventEmitter.js
+          imports:
+            - GraphEventEmitter
+          typeOnly: true
+        - file: ../types/index.js
+          imports:
+            - IGraphStorage
+          typeOnly: true
+        - file: ../utils/logger.js
+          imports:
+            - logger
+        - file: ./TFIDFIndexManager.js
+          imports:
+            - TFIDFIndexManager
+          typeOnly: true
+      exports:
+        - makeTFIDFUpdater
+        - BackgroundIndexer
+      classes:
+        - BackgroundIndexer
+      interfaces:
+        - IndexUpdater
+        - BackgroundIndexerOptions
+      functions:
+        - makeTFIDFUpdater
     src/search/BasicSearch.ts:
       description: Basic Search
       externalDependencies: []
@@ -4377,6 +4988,36 @@ modules:
         - BasicSearch
       classes:
         - BasicSearch
+    src/search/BloomFilter.ts:
+      description: Bloom Filter
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - bloomParams
+        - BloomFilter
+      classes:
+        - BloomFilter
+      functions:
+        - bloomParams
+    src/search/BloomPreScreener.ts:
+      description: Bloom Pre-Screener
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../core/GraphStorage.js
+          imports:
+            - GraphStorage
+          typeOnly: true
+        - file: ./BloomFilter.js
+          imports:
+            - BloomFilter
+      exports:
+        - BloomPreScreener
+      classes:
+        - BloomPreScreener
+      interfaces:
+        - BloomPreScreenerOptions
     src/search/BM25Search.ts:
       description: BM25 Search
       externalDependencies: []
@@ -4552,6 +5193,9 @@ modules:
         - file: ../utils/index.js
           imports:
             - levenshteinDistance
+        - file: ../utils/logger.js
+          imports:
+            - logger
         - file: ../utils/constants.js
           imports:
             - SEARCH_LIMITS
@@ -4562,6 +5206,10 @@ modules:
         - file: ./NGramIndex.js
           imports:
             - NGramIndex
+        - file: ./BloomPreScreener.js
+          imports:
+            - BloomPreScreener
+          typeOnly: true
       exports:
         - DEFAULT_FUZZY_THRESHOLD
         - FuzzySearch
@@ -5138,6 +5786,46 @@ modules:
         - LLMSearchExecutor
       interfaces:
         - LLMSearchExecutorOptions
+    src/search/LSH.ts:
+      description: Locality-Sensitive Hashing (LSH)
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - LSHIndex
+      classes:
+        - LSHIndex
+      interfaces:
+        - LSHOptions
+        - LSHResult
+    src/search/MaterializedViews.ts:
+      description: Materialized Search Views
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../core/GraphEventEmitter.js
+          imports:
+            - GraphEventEmitter
+          typeOnly: true
+        - file: ../core/GraphStorage.js
+          imports:
+            - GraphStorage
+          typeOnly: true
+        - file: ../types/types.js
+          imports:
+            - Entity
+          typeOnly: true
+        - file: ./SearchFilterChain.js
+          imports:
+            - SearchFilterChain
+            - SearchFilters
+      exports:
+        - MaterializedViewsManager
+      classes:
+        - MaterializedViewsManager
+      interfaces:
+        - ViewDefinition
+        - ViewSnapshot
     src/search/NGramIndex.ts:
       description: N-gram Index
       externalDependencies: []
@@ -5149,11 +5837,45 @@ modules:
         - NGramIndex
       interfaces:
         - NGramIndexStats
+    src/search/Node2Vec.ts:
+      description: Node2Vec — biased-random-walk graph embeddings
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - KnowledgeGraph
+            - Relation
+          typeOnly: true
+      exports:
+        - computeNode2Vec
+        - buildAdjacency
+        - similarity
+        - topKSimilar
+        - BiasedRandomWalk
+        - SkipGramTrainer
+      classes:
+        - BiasedRandomWalk
+        - SkipGramTrainer
+      interfaces:
+        - Node2VecOptions
+        - Node2VecResult
+      functions:
+        - computeNode2Vec
+        - buildAdjacency
+        - similarity
+        - topKSimilar
     src/search/OptimizedInvertedIndex.ts:
       description: Optimized Inverted Index
       externalDependencies: []
       nodeDependencies: []
-      internalDependencies: []
+      internalDependencies:
+        - file: ../utils/IIndexHealth.js
+          imports:
+            - IIndexHealth
+            - IndexHealthSnapshot
+          typeOnly: true
       exports:
         - OptimizedInvertedIndex
       classes:
@@ -5194,6 +5916,41 @@ modules:
         - LayerTiming
         - ParallelSearchResult
         - ParallelSearchOptions
+    src/search/PartialIndexAdvisor.ts:
+      description: Partial Index Advisor
+      externalDependencies:
+        - package: better-sqlite3
+          imports:
+            - Database
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - PartialIndexAdvisor
+      classes:
+        - PartialIndexAdvisor
+      interfaces:
+        - FilterObservation
+        - IndexRecommendation
+        - PartialIndexAdvisorOptions
+    src/search/PartitionedInvertedIndex.ts:
+      description: Partitioned Inverted Index
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./OptimizedInvertedIndex.js
+          imports:
+            - OptimizedInvertedIndex
+        - file: ../utils/IIndexHealth.js
+          imports:
+            - IIndexHealth
+            - IndexHealthSnapshot
+          typeOnly: true
+      exports:
+        - PartitionedInvertedIndex
+      classes:
+        - PartitionedInvertedIndex
+      interfaces:
+        - PartitionedIndexSnapshot
     src/search/ProximitySearch.ts:
       description: Proximity Search
       externalDependencies: []
@@ -5264,6 +6021,30 @@ modules:
         - LayerRecommendationOptions
         - TokenEstimationOptions
         - AdaptiveDepthConfig
+    src/search/QueryLanguage.ts:
+      description: Query Language DSL
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - Relation
+            - KnowledgeGraph
+          typeOnly: true
+      exports:
+        - parseDsl
+        - executeDsl
+        - runDsl
+        - QueryDslError
+      classes:
+        - QueryDslError
+      interfaces:
+        - DslQuery
+      functions:
+        - parseDsl
+        - executeDsl
+        - runDsl
     src/search/QueryLogger.ts:
       description: Query Logger
       externalDependencies: []
@@ -5325,6 +6106,22 @@ modules:
         - CachedQueryEntry
         - QueryPlanCacheStats
         - QueryPlanCacheOptions
+    src/search/QueryPlanFormatter.ts:
+      description: Query Plan Formatter
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/index.js
+          imports:
+            - QueryPlan
+            - SubQuery
+          typeOnly: true
+      exports:
+        - formatQueryPlanAscii
+      interfaces:
+        - ExplainPlanResult
+      functions:
+        - formatQueryPlanAscii
     src/search/QueryPlanner.ts:
       description: Query Planner - generates execution plans for queries based on analysis.
       externalDependencies: []
@@ -5372,6 +6169,10 @@ modules:
           imports:
             - SearchFilterChain
             - SearchFilters
+        - file: ../utils/IIndexHealth.js
+          imports:
+            - IndexHealthSnapshot
+          typeOnly: true
       exports:
         - RankedSearch
       classes:
@@ -5436,7 +6237,11 @@ modules:
         - file: ../types/index.js
           imports:
             - Entity
+            - EntityStatus
           typeOnly: true
+        - file: ../core/EntityStateMachine.js
+          imports:
+            - DEFAULT_ENTITY_STATUS
         - file: ../utils/index.js
           imports:
             - normalizeTags
@@ -5494,6 +6299,16 @@ modules:
         - file: ./QueryCostEstimator.js
           imports:
             - QueryCostEstimator
+        - file: ./QueryAnalyzer.js
+          imports:
+            - QueryAnalyzer
+        - file: ./QueryPlanner.js
+          imports:
+            - QueryPlanner
+        - file: ./QueryPlanFormatter.js
+          imports:
+            - formatQueryPlanAscii
+            - ExplainPlanResult
         - file: ../agent/AccessTracker.js
           imports:
             - AccessTracker
@@ -5504,6 +6319,17 @@ modules:
         - SearchManager
       interfaces:
         - SearchOptionsWithTracking
+    src/search/SearchStream.ts:
+      description: Search Stream
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - collectStream
+      interfaces:
+        - ScoredItem
+      functions:
+        - collectStream
     src/search/SearchSuggestions.ts:
       description: Search Suggestions
       externalDependencies: []
@@ -5513,6 +6339,10 @@ modules:
           imports:
             - GraphStorage
           typeOnly: true
+        - file: ../core/GraphEventEmitter.js
+          imports:
+            - GraphEventEmitter
+          typeOnly: true
         - file: ../utils/index.js
           imports:
             - levenshteinDistance
@@ -5520,6 +6350,9 @@ modules:
         - SearchSuggestions
       classes:
         - SearchSuggestions
+      interfaces:
+        - CorrectedQuery
+        - CorrectQueryOptions
     src/search/SemanticSearch.ts:
       description: Semantic Search Manager
       externalDependencies: []
@@ -5552,6 +6385,39 @@ modules:
         - SemanticSearch
       functions:
         - entityToText
+    src/search/SPARQL.ts:
+      description: SPARQL Minimal Subset
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - KnowledgeGraph
+            - Relation
+          typeOnly: true
+      exports:
+        - DEFAULT_PREFIXES
+        - graphToTriples
+        - parseSparql
+        - evaluateSparql
+        - runSparql
+        - SparqlError
+      classes:
+        - SparqlError
+      interfaces:
+        - Triple
+        - SparqlTriplePattern
+        - SparqlFilter
+        - SparqlSelectQuery
+        - SparqlLimits
+      functions:
+        - graphToTriples
+        - parseSparql
+        - evaluateSparql
+        - runSparql
+      constants:
+        - DEFAULT_PREFIXES
     src/search/SymbolicSearch.ts:
       description: Symbolic Search Layer - metadata-based filtering using structured predicates.
       externalDependencies: []
@@ -5568,6 +6434,22 @@ modules:
         - SymbolicSearch
       interfaces:
         - SymbolicResult
+    src/search/SynonymManager.ts:
+      description: Synonym Manager
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../core/GraphStorage.js
+          imports:
+            - GraphStorage
+          typeOnly: true
+      exports:
+        - SynonymManager
+      classes:
+        - SynonymManager
+      interfaces:
+        - ExpandedQuery
+        - ExpandOptions
     src/search/TemporalQueryParser.ts:
       description: Temporal Query Parser
       externalDependencies:
@@ -5657,10 +6539,124 @@ modules:
           imports:
             - calculateIDFFromTokenSets
             - tokenize
+        - file: ../utils/IIndexHealth.js
+          imports:
+            - IIndexHealth
+            - IndexHealthSnapshot
+          typeOnly: true
       exports:
         - TFIDFIndexManager
       classes:
         - TFIDFIndexManager
+    src/search/tiered/BrotliColdTier.ts:
+      description: BrotliColdTier — Brotli-compressed JSONL shard `IIndexTier<string, V>`
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+      internalDependencies:
+        - file: ../../utils/logger.js
+          imports:
+            - logger
+        - file: ../../utils/compressionUtil.js
+          imports:
+            - compress
+            - decompress
+        - file: ../../utils/durableWriteFile.js
+          imports:
+            - durableWriteFile
+        - file: ./ITieredIndex.js
+          imports:
+            - IIndexTier
+          typeOnly: true
+      exports:
+        - BrotliColdTier
+      classes:
+        - BrotliColdTier
+      interfaces:
+        - BrotliColdTierOptions
+    src/search/tiered/DiskWarmTier.ts:
+      description: DiskWarmTier — JSONL-sidecar-backed `IIndexTier<string, V>`
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+      internalDependencies:
+        - file: ../../utils/logger.js
+          imports:
+            - logger
+        - file: ../../utils/durableWriteFile.js
+          imports:
+            - durableWriteFile
+        - file: ./ITieredIndex.js
+          imports:
+            - IIndexTier
+          typeOnly: true
+      exports:
+        - DiskWarmTier
+      classes:
+        - DiskWarmTier
+      interfaces:
+        - DiskWarmTierOptions
+    src/search/tiered/ITieredIndex.ts:
+      description: Tiered Index — Interface + Single-Tier Reference Impl
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - makeFreshStats
+        - InMemoryTier
+        - HotOnlyIndex
+      classes:
+        - InMemoryTier
+        - HotOnlyIndex
+      interfaces:
+        - TierAccessStats
+        - IIndexTier
+        - ITieredIndex
+      functions:
+        - makeFreshStats
+    src/search/tiered/LRUHotTier.ts:
+      description: LRU Hot Tier
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./ITieredIndex.js
+          imports:
+            - IIndexTier
+          typeOnly: true
+      exports:
+        - LRUHotTier
+      classes:
+        - LRUHotTier
+      interfaces:
+        - LRUHotTierOptions
+    src/search/tiered/TieredIndex.ts:
+      description: Tiered Index Composer (hot → warm → cold)
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./ITieredIndex.js
+          imports:
+            - IIndexTier
+            - ITieredIndex
+            - TierAccessStats
+            - makeFreshStats
+        - file: ../../utils/logger.js
+          imports:
+            - logger
+      exports:
+        - buildTieredIndex
+        - TieredIndex
+      classes:
+        - TieredIndex
+      interfaces:
+        - TieredIndexOptions
+        - TieredIndexBuildOptions
+      functions:
+        - buildTieredIndex
     src/search/VectorStore.ts:
       description: Vector Store
       externalDependencies: []
@@ -5685,6 +6681,40 @@ modules:
         - cosineSimilarity
         - createVectorStore
   security:
+    src/security/ABACPolicy.ts:
+      description: ABAC Policy
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - ABACPolicyError
+        - ABACPolicy
+      classes:
+        - ABACPolicyError
+        - ABACPolicy
+      interfaces:
+        - ABACContext
+        - ABACCondition
+        - ABACRule
+    src/security/APIKeyStore.ts:
+      description: API Key Store
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - createHash
+            - randomBytes
+            - timingSafeEqual
+      internalDependencies: []
+      exports:
+        - APIKeyStore
+      classes:
+        - APIKeyStore
+      interfaces:
+        - ValidationResult
+        - KeyRecord
+        - IssueOptions
+        - IssueResult
     src/security/index.ts:
       description: Security Module — Barrel Export (η.6.3)
       externalDependencies: []
@@ -5699,6 +6729,29 @@ modules:
             - type RedactionStats
             - type RedactionResult
           reExport: true
+        - file: ./ABACPolicy.js
+          imports:
+            - ABACPolicy
+            - type ABACContext
+            - type ABACCondition
+            - type ABACDecision
+            - type ABACEffect
+            - type ABACOp
+            - type ABACRule
+          reExport: true
+        - file: ./RowLevelFilter.js
+          imports:
+            - RowLevelFilter
+            - type RowPredicate
+          reExport: true
+        - file: ./APIKeyStore.js
+          imports:
+            - APIKeyStore
+            - type IssueOptions
+            - type IssueResult
+            - type KeyRecord
+            - type ValidationResult
+          reExport: true
       exports:
         - PiiRedactor
         - DEFAULT_PII_PATTERNS
@@ -5706,6 +6759,20 @@ modules:
         - type PiiRedactorOptions
         - type RedactionStats
         - type RedactionResult
+        - ABACPolicy
+        - type ABACContext
+        - type ABACCondition
+        - type ABACDecision
+        - type ABACEffect
+        - type ABACOp
+        - type ABACRule
+        - RowLevelFilter
+        - type RowPredicate
+        - APIKeyStore
+        - type IssueOptions
+        - type IssueResult
+        - type KeyRecord
+        - type ValidationResult
       reExported:
         - PiiRedactor
         - DEFAULT_PII_PATTERNS
@@ -5713,6 +6780,20 @@ modules:
         - type PiiRedactorOptions
         - type RedactionStats
         - type RedactionResult
+        - ABACPolicy
+        - type ABACContext
+        - type ABACCondition
+        - type ABACDecision
+        - type ABACEffect
+        - type ABACOp
+        - type ABACRule
+        - RowLevelFilter
+        - type RowPredicate
+        - APIKeyStore
+        - type IssueOptions
+        - type IssueResult
+        - type KeyRecord
+        - type ValidationResult
     src/security/PiiRedactor.ts:
       description: PII Redactor (η.6.3)
       externalDependencies: []
@@ -5730,6 +6811,20 @@ modules:
         - RedactionResult
       constants:
         - DEFAULT_PII_PATTERNS
+    src/security/RowLevelFilter.ts:
+      description: Row-Level Filter
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - Relation
+          typeOnly: true
+      exports:
+        - RowLevelFilter
+      classes:
+        - RowLevelFilter
   types:
     src/types/agent-memory.ts:
       description: Agent Memory Type Definitions
@@ -5831,6 +6926,10 @@ modules:
           imports:
             - QueryTraceBuilder
           reExport: true
+        - file: ./types.js
+          imports:
+            - ENTITY_STATUS_TRANSITIONS
+          reExport: true
         - file: ./agent-memory.js
           imports:
             - isAgentEntity
@@ -5854,6 +6953,7 @@ modules:
           reExport: true
       exports:
         - QueryTraceBuilder
+        - ENTITY_STATUS_TRANSITIONS
         - isAgentEntity
         - isSessionEntity
         - isProfileEntity
@@ -5868,6 +6968,7 @@ modules:
         - createDetailedProgressReporter
       reExported:
         - QueryTraceBuilder
+        - ENTITY_STATUS_TRANSITIONS
         - isAgentEntity
         - isSessionEntity
         - isProfileEntity
@@ -5941,7 +7042,8 @@ modules:
             - ProgressCallback
             - TaskPriority
           typeOnly: true
-      exports: []
+      exports:
+        - ENTITY_STATUS_TRANSITIONS
       interfaces:
         - Entity
         - DeduplicationOptions
@@ -6017,6 +7119,8 @@ modules:
         - QueryAnalysis
         - SubQuery
         - QueryPlan
+      constants:
+        - ENTITY_STATUS_TRANSITIONS
   utils:
     src/utils/AsyncMutex.ts:
       description: Async Mutex
@@ -6056,6 +7160,18 @@ modules:
         - parallelLimit
         - mapParallel
         - filterParallel
+    src/utils/CachePressureCoordinator.ts:
+      description: Cache Pressure Coordinator
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - CachePressureCoordinator
+      classes:
+        - CachePressureCoordinator
+      interfaces:
+        - PressureAwareCache
+        - CachePressureSnapshot
     src/utils/compressedCache.ts:
       description: Compressed Cache Utility
       externalDependencies: []
@@ -6080,6 +7196,58 @@ modules:
       interfaces:
         - CompressedCacheOptions
         - CompressedCacheStats
+    src/utils/compression/BrotliCompressionAdapter.ts:
+      description: BrotliCompressionAdapter — Brotli-backed ICompressionAdapter
+      externalDependencies: []
+      nodeDependencies:
+        - module: zlib
+          imports:
+            - brotliCompressSync
+            - brotliDecompressSync
+            - constants
+      internalDependencies:
+        - file: ./ICompressionAdapter.js
+          imports:
+            - ICompressionAdapter
+          typeOnly: true
+      exports:
+        - BrotliCompressionAdapter
+      classes:
+        - BrotliCompressionAdapter
+      interfaces:
+        - BrotliCompressionAdapterOptions
+    src/utils/compression/CompressedMap.ts:
+      description: CompressedMap<K, V> — Hot/Cold Tiered Map with Compression
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./ICompressionAdapter.js
+          imports:
+            - ICompressionAdapter
+            - ZlibCompressionAdapter
+      exports:
+        - CompressedMap
+      classes:
+        - CompressedMap
+      interfaces:
+        - CompressedMapOptions
+    src/utils/compression/ICompressionAdapter.ts:
+      description: Compression Adapter — Interface + Zlib Reference Impl
+      externalDependencies: []
+      nodeDependencies:
+        - module: zlib
+          imports:
+            - deflateSync
+            - inflateSync
+      internalDependencies: []
+      exports:
+        - ZlibCompressionAdapter
+        - IdentityCompressionAdapter
+      classes:
+        - ZlibCompressionAdapter
+        - IdentityCompressionAdapter
+      interfaces:
+        - ICompressionAdapter
     src/utils/compressionUtil.ts:
       description: Compression Utility Module
       externalDependencies: []
@@ -6171,6 +7339,41 @@ modules:
         - SEMANTIC_SEARCH_LIMITS
         - OPENAI_API_CONFIG
         - STREAMING_CONFIG
+    src/utils/Diagnostics.ts:
+      description: Diagnostics
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./IndexHealthMonitor.js
+          imports:
+            - IndexHealthReport
+          typeOnly: true
+      exports:
+        - buildDiagnosticsReport
+      interfaces:
+        - EntityCounts
+        - TieredIndexStatsSnapshot
+        - DiagnosticsReport
+      functions:
+        - buildDiagnosticsReport
+    src/utils/durableWriteFile.ts:
+      description: Durable file write helper
+      externalDependencies: []
+      nodeDependencies:
+        - module: fs
+          imports:
+            - promises
+        - module: crypto
+          imports:
+            - randomBytes
+        - module: path
+          imports:
+            - dirname
+      internalDependencies: []
+      exports:
+        - durableWriteFile
+      functions:
+        - durableWriteFile
     src/utils/entityUtils.ts:
       description: Entity Utilities
       externalDependencies: []
@@ -6191,6 +7394,9 @@ modules:
           imports:
             - EntityNotFoundError
             - FileOperationError
+        - file: ./logger.js
+          imports:
+            - logger
       exports:
         - defaultMemoryPath
         - fnv1aHash
@@ -6374,6 +7580,15 @@ modules:
         - applyPagination
         - paginateArray
         - getPaginationMeta
+    src/utils/IIndexHealth.ts:
+      description: Index Health interface.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports: []
+      interfaces:
+        - IndexHealthSnapshot
+        - IIndexHealth
     src/utils/index.ts:
       description: Utilities Module Barrel Export
       externalDependencies: []
@@ -7233,6 +8448,22 @@ modules:
         - LowercaseCache
         - RelationIndex
         - ObservationIndex
+    src/utils/IndexHealthMonitor.ts:
+      description: Index Health Monitor
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./IIndexHealth.js
+          imports:
+            - IndexHealthSnapshot
+          typeOnly: true
+      exports:
+        - IndexHealthMonitor
+      classes:
+        - IndexHealthMonitor
+      interfaces:
+        - IndexHealthReport
+        - IndexHealthSources
     src/utils/logger.ts:
       description: Simple logging utility for the Memory MCP Server
       externalDependencies: []
@@ -7455,6 +8686,9 @@ modules:
             - EntityValidationResult
             - EntityValidationIssue
           typeOnly: true
+        - file: ./logger.js
+          imports:
+            - logger
       exports:
         - SchemaValidator
       classes:
@@ -7513,7 +8747,10 @@ modules:
           imports:
             - workerpool
       nodeDependencies: []
-      internalDependencies: []
+      internalDependencies:
+        - file: ./logger.js
+          imports:
+            - logger
       exports:
         - batchProcess
         - rateLimitedProcess
@@ -7619,7 +8856,10 @@ modules:
             - Pool
             - PoolStats
       nodeDependencies: []
-      internalDependencies: []
+      internalDependencies:
+        - file: ./logger.js
+          imports:
+            - logger
       exports:
         - getWorkerPoolManager
         - WorkerPoolManager
@@ -7678,21 +8918,23 @@ dependencyGraph:
       - - src/types/agent-memory.ts
         - src/agent/ContextProfileManager.ts
         - src/types/agent-memory.ts
-      - - src/agent/WorkingMemoryManager.ts
+      - - src/core/TransactionManager.ts
+        - src/core/GraphStorage.ts
+        - src/core/TransactionManager.ts
+      - - src/agent/ConsolidationPipeline.ts
+        - src/agent/WorkingMemoryManager.ts
         - src/agent/EntropyFilter.ts
         - src/agent/ConsolidationPipeline.ts
-        - src/agent/WorkingMemoryManager.ts
-      - - src/core/GraphStorage.ts
-        - src/core/TransactionManager.ts
-        - src/core/GraphStorage.ts
-      - - src/core/GraphStorage.ts
-        - src/core/TransactionManager.ts
-        - src/features/IOManager.ts
-        - src/core/GraphStorage.ts
-    total: 5
+    total: 4
     runtimeCount: 1
-    typeOnlyCount: 4
+    typeOnlyCount: 3
   layers:
+    - name: Adapters
+      files:
+        - src/adapters/IDatabaseAdapter.ts
+        - src/adapters/IVectorDBAdapter.ts
+        - src/adapters/LangChainMemoryAdapter.ts
+        - src/adapters/RestRouter.ts
     - name: Agent
       files:
         - src/agent/AccessTracker.ts
@@ -7718,6 +8960,7 @@ dependencyGraph:
         - src/agent/EpisodicMemoryManager.ts
         - src/agent/ExperienceExtractor.ts
         - src/agent/FailureDistillation.ts
+        - src/agent/HeuristicManager.ts
         - src/agent/ImportanceScorer.ts
         - src/agent/index.ts
         - src/agent/InMemoryBackend.ts
@@ -7776,28 +9019,42 @@ dependencyGraph:
         - src/cli/options.ts
     - name: Core
       files:
+        - src/core/columns/IColumnStore.ts
+        - src/core/columns/JsonlColumnStore.ts
         - src/core/EntityManager.ts
+        - src/core/EntityProxy.ts
+        - src/core/EntityStateMachine.ts
         - src/core/GraphEventEmitter.ts
         - src/core/GraphStorage.ts
         - src/core/GraphTraversal.ts
         - src/core/HierarchyManager.ts
         - src/core/index.ts
         - src/core/ManagerContext.ts
+        - src/core/mmap/BufferMmapBackend.ts
+        - src/core/mmap/FsReadMmapBackend.ts
+        - src/core/mmap/IMmapBackend.ts
         - src/core/ObservationManager.ts
+        - src/core/ObservationStore.ts
         - src/core/RefIndex.ts
         - src/core/RelationManager.ts
+        - src/core/segments/FileSegmentStorage.ts
+        - src/core/segments/ISegmentStorage.ts
         - src/core/SQLiteStorage.ts
         - src/core/StorageFactory.ts
         - src/core/TransactionManager.ts
         - src/core/TransitionLedger.ts
+        - src/core/WriteAheadLog.ts
     - name: Features
       files:
         - src/features/AnalyticsManager.ts
+        - src/features/AnomalyDetector.ts
         - src/features/ArchiveManager.ts
         - src/features/AuditLog.ts
         - src/features/AutoLinker.ts
+        - src/features/BackupManager.ts
         - src/features/CompressionManager.ts
         - src/features/ContradictionDetector.ts
+        - src/features/CRDT.ts
         - src/features/FactExtractor.ts
         - src/features/FreshnessManager.ts
         - src/features/GovernanceManager.ts
@@ -7814,7 +9071,10 @@ dependencyGraph:
         - src/index.ts
     - name: Search
       files:
+        - src/search/BackgroundIndexer.ts
         - src/search/BasicSearch.ts
+        - src/search/BloomFilter.ts
+        - src/search/BloomPreScreener.ts
         - src/search/BM25Search.ts
         - src/search/BooleanSearch.ts
         - src/search/EarlyTerminationManager.ts
@@ -7827,34 +9087,52 @@ dependencyGraph:
         - src/search/index.ts
         - src/search/LLMQueryPlanner.ts
         - src/search/LLMSearchExecutor.ts
+        - src/search/LSH.ts
+        - src/search/MaterializedViews.ts
         - src/search/NGramIndex.ts
+        - src/search/Node2Vec.ts
         - src/search/OptimizedInvertedIndex.ts
         - src/search/ParallelSearchExecutor.ts
+        - src/search/PartialIndexAdvisor.ts
+        - src/search/PartitionedInvertedIndex.ts
         - src/search/ProximitySearch.ts
         - src/search/QuantizedVectorStore.ts
         - src/search/QueryAnalyzer.ts
         - src/search/QueryCostEstimator.ts
+        - src/search/QueryLanguage.ts
         - src/search/QueryLogger.ts
         - src/search/QueryParser.ts
         - src/search/QueryPlanCache.ts
+        - src/search/QueryPlanFormatter.ts
         - src/search/QueryPlanner.ts
         - src/search/RankedSearch.ts
         - src/search/ReflectionManager.ts
         - src/search/SavedSearchManager.ts
         - src/search/SearchFilterChain.ts
         - src/search/SearchManager.ts
+        - src/search/SearchStream.ts
         - src/search/SearchSuggestions.ts
         - src/search/SemanticSearch.ts
+        - src/search/SPARQL.ts
         - src/search/SymbolicSearch.ts
+        - src/search/SynonymManager.ts
         - src/search/TemporalQueryParser.ts
         - src/search/TemporalSearch.ts
         - src/search/TFIDFEventSync.ts
         - src/search/TFIDFIndexManager.ts
+        - src/search/tiered/BrotliColdTier.ts
+        - src/search/tiered/DiskWarmTier.ts
+        - src/search/tiered/ITieredIndex.ts
+        - src/search/tiered/LRUHotTier.ts
+        - src/search/tiered/TieredIndex.ts
         - src/search/VectorStore.ts
     - name: Security
       files:
+        - src/security/ABACPolicy.ts
+        - src/security/APIKeyStore.ts
         - src/security/index.ts
         - src/security/PiiRedactor.ts
+        - src/security/RowLevelFilter.ts
     - name: Types
       files:
         - src/types/agent-memory.ts
@@ -7868,16 +9146,24 @@ dependencyGraph:
       files:
         - src/utils/AsyncMutex.ts
         - src/utils/BatchProcessor.ts
+        - src/utils/CachePressureCoordinator.ts
         - src/utils/compressedCache.ts
+        - src/utils/compression/BrotliCompressionAdapter.ts
+        - src/utils/compression/CompressedMap.ts
+        - src/utils/compression/ICompressionAdapter.ts
         - src/utils/compressionUtil.ts
         - src/utils/constants.ts
+        - src/utils/Diagnostics.ts
+        - src/utils/durableWriteFile.ts
         - src/utils/entityUtils.ts
         - src/utils/EntityValidator.ts
         - src/utils/errors.ts
         - src/utils/errorSuggestions.ts
         - src/utils/formatters.ts
+        - src/utils/IIndexHealth.ts
         - src/utils/index.ts
         - src/utils/indexes.ts
+        - src/utils/IndexHealthMonitor.ts
         - src/utils/logger.ts
         - src/utils/MemoryMonitor.ts
         - src/utils/operationUtils.ts
@@ -7897,19 +9183,19 @@ dependencyGraph:
         - src/workers/index.ts
         - src/workers/levenshteinWorker.ts
 statistics:
-  totalTypeScriptFiles: 183
-  totalModules: 10
-  totalLinesOfCode: 62889
-  totalExports: 1104
-  totalClasses: 156
-  totalInterfaces: 384
-  totalFunctions: 189
+  totalTypeScriptFiles: 231
+  totalModules: 11
+  totalLinesOfCode: 76495
+  totalExports: 1203
+  totalClasses: 208
+  totalInterfaces: 474
+  totalFunctions: 217
   totalTypeGuards: 17
   totalEnums: 4
-  totalConstants: 63
-  totalReExports: 699
-  totalTypeOnlyImports: 269
+  totalConstants: 67
+  totalReExports: 715
+  totalTypeOnlyImports: 316
   runtimeCircularDeps: 1
-  typeOnlyCircularDeps: 4
-  unusedFilesCount: 2
-  unusedExportsCount: 352
+  typeOnlyCircularDeps: 3
+  unusedFilesCount: 21
+  unusedExportsCount: 394

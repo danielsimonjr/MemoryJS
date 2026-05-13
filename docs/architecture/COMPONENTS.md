@@ -1,7 +1,7 @@
 # MemoryJS - Component Reference
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34)
+**Last Updated**: 2026-05-13
 
 ---
 
@@ -24,28 +24,32 @@ MemoryJS follows a layered architecture with specialized components:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  agent/            │  Agent memory system (61 files)        │
+│  adapters/         │  External-system adapters (4 files)    │
 ├─────────────────────────────────────────────────────────────┤
-│  core/             │  Central managers and storage (14 files)│
+│  agent/            │  Agent memory system (62 files)        │
 ├─────────────────────────────────────────────────────────────┤
-│  search/           │  Search implementations (37 files)     │
+│  core/             │  Central managers + storage (25 files) │
 ├─────────────────────────────────────────────────────────────┤
-│  features/         │  Advanced capabilities (17 files)      │
+│  search/           │  Search implementations (55 files)     │
 ├─────────────────────────────────────────────────────────────┤
-│  utils/            │  Shared utilities (26 files)           │
+│  features/         │  Advanced capabilities (20 files)      │
+├─────────────────────────────────────────────────────────────┤
+│  utils/            │  Shared utilities (34 files)           │
 ├─────────────────────────────────────────────────────────────┤
 │  types/            │  TypeScript definitions (7 files)      │
 ├─────────────────────────────────────────────────────────────┤
-│  security/         │  PII redaction (2 files; η.6.3)        │
+│  security/         │  PII / ABAC / RLS / API keys (5 files) │
 ├─────────────────────────────────────────────────────────────┤
 │  cli/              │  CLI binary commands (16 files)        │
+├─────────────────────────────────────────────────────────────┤
+│  entry/            │  Library entry point (1 file)          │
 ├─────────────────────────────────────────────────────────────┤
 │  workers/          │  Web workers (2 files)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 183 TypeScript files | 62,889 LOC | 1,104 exports | 156 classes | 384 interfaces | 6,157 passing tests
-(authoritative numbers from `docs/architecture/dependency-summary.compact.json`)
+**Total:** 231 TypeScript files | 76,495 LOC | 1,203 exports | 208 classes | 474 interfaces | 7,098 passing tests
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-05-13)
 
 ### New since v1.13: dedicated sub-modules under `agent/`
 
@@ -55,6 +59,17 @@ MemoryJS follows a layered architecture with specialized components:
 - `agent/world/` — `WorldModelManager` + `WorldStateSnapshot` (3B.7)
 - `agent/rbac/` — `RbacMiddleware` + `RoleAssignmentStore` + `PermissionMatrix` (η.6.1)
 - `agent/collaboration/` — `CollaborationAuditEnforcer` (η.5.5.d)
+
+### New in v1.15.0: dedicated sub-modules under `core/` and `utils/`
+
+- `core/mmap/` — `IMmapBackend` + `BufferMmapBackend` + `FsReadMmapBackend` (Phase 11)
+- `core/segments/` — `FileSegmentStorage` (FNV-routed JSONL shards, Phase 7)
+- `core/columns/` — `IColumnStore<T>` + `JsonlColumnStore` + `InMemoryColumnStore` + `ObservationColumn` (Phase 8)
+- `core/tiered/` — `ITieredIndex` + `LRUHotTier` + `DiskWarmTier` + `BrotliColdTier` (Phase 9)
+- `utils/compression/` — `ICompressionAdapter` + `ZlibCompressionAdapter` + `BrotliCompressionAdapter` + `IdentityCompressionAdapter` + `CompressedMap` (Phase 10)
+- `features/BackupManager.ts` — extracted from `IOManager` (Phase 5)
+- `search/SparqlExecutor.ts` — minimal SPARQL BGP/FILTER/OPTIONAL/UNION subset (Phase 6)
+- `core/WriteAheadLog.ts` + `core/EntityProxy.ts` — durable mutation log (Phase 6)
 
 ---
 
@@ -1080,31 +1095,38 @@ export class IOManager {
     options?: ImportOptions
   ): Promise<ImportResult>
 
-  // Backup
-  async createBackup(options?: BackupOptions): Promise<BackupInfo>
-  async restoreBackup(backupId: string): Promise<void>
+  // Backup (delegated to BackupManager since Phase 5 / v1.15.0)
+  async createBackup(options?: BackupOptions): Promise<BackupResult>
   async listBackups(): Promise<BackupInfo[]>
-  async deleteBackup(backupId: string): Promise<void>
-}
+  async restoreFromBackup(backupPath: string): Promise<RestoreResult>
+  async deleteBackup(backupPath: string): Promise<void>
+  async cleanOldBackups(keepCount?: number): Promise<number>
 
-type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid';
+  // Conversation ingestion (v1.9.0)
+  async ingest(input: string | { messages: ChatMessage[] }, options?: IngestOptions): Promise<IngestResult>
+  splitTranscript(content: string, options?: SplitOptions): SplitResult
+}
 ```
+
+Supported formats: `json`, `csv`, `graphml`, `gexf`, `dot`, `markdown`, `mermaid`, and (η.5.4) `turtle`, `rdf-xml`, `json-ld`. v1.15.0 hardens `splitTranscript()` with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10,000) guards against ReDoS.
 
 ---
 
 ### TagManager (`features/TagManager.ts`)
 
-**Purpose**: Tag aliases and synonyms
+**Purpose**: Tag alias management and bulk operations
 
 ```typescript
 export class TagManager {
-  constructor(tagAliasesFilePath: string)
+  constructor(storage: IGraphStorage)
 
-  async resolveTag(tag: string): Promise<string>
-  async addTagAlias(alias: string, canonical: string, description?: string): Promise<TagAlias>
-  async listTagAliases(): Promise<TagAlias[]>
-  async removeTagAlias(alias: string): Promise<boolean>
-  async getAliasesForTag(canonicalTag: string): Promise<string[]>
+  addAlias(canonical: string, alias: string): Promise<void>
+  removeAlias(alias: string): Promise<void>
+  resolveAlias(tag: string): Promise<string>
+  listAliases(): Promise<Map<string, string[]>>
+
+  async addTags(entityName: string, tags: string[]): Promise<void>
+  async removeTags(entityName: string, tags: string[]): Promise<void>
 }
 ```
 
@@ -1112,22 +1134,19 @@ export class TagManager {
 
 ### CompressionManager (`features/CompressionManager.ts`)
 
-**Purpose**: Duplicate detection and merging
+**Purpose**: Duplicate detection and entity merging
 
 ```typescript
 export class CompressionManager {
   constructor(storage: IGraphStorage)
 
-  async findDuplicates(threshold?: number): Promise<string[][]>
-  async mergeEntities(entityNames: string[], targetName?: string): Promise<Entity>
-  async compressGraph(threshold?: number, dryRun?: boolean): Promise<CompressionResult>
+  async findDuplicates(threshold?: number): Promise<DuplicateGroup[]>
+  async mergeEntities(primary: string, duplicates: string[]): Promise<void>
+  async compressGraph(): Promise<CompressionResult>
 }
 ```
 
-**Similarity Algorithm**:
-```
-score = (nameSim × 0.4) + (typeSim × 0.3) + (obsSim × 0.2) + (tagSim × 0.1)
-```
+Similarity scoring uses observation content with configurable threshold (default 0.8). Compresses graph by merging high-similarity duplicates into a primary entity.
 
 ---
 
@@ -1139,16 +1158,19 @@ score = (nameSim × 0.4) + (typeSim × 0.3) + (obsSim × 0.2) + (tagSim × 0.1)
 export class AnalyticsManager {
   constructor(storage: IGraphStorage)
 
-  async getGraphStats(): Promise<GraphStats>
-  async validateGraph(): Promise<ValidationReport>
+  async getStats(): Promise<GraphStats>
+  async validateGraph(): Promise<ValidationResult>
+  async findOrphanEntities(): Promise<Entity[]>
+  async findDanglingRelations(): Promise<Relation[]>
 }
 
-interface GraphStats {
+export interface GraphStats {
   entityCount: number;
   relationCount: number;
-  entityTypes: Record<string, number>;
-  tagCounts: Record<string, number>;
-  importanceDistribution: Record<number, number>;
+  observationCount: number;
+  averageObservationsPerEntity: number;
+  entityTypeDistribution: Record<string, number>;
+  topTags: Array<{ tag: string; count: number }>;
 }
 ```
 
@@ -1156,20 +1178,20 @@ interface GraphStats {
 
 ### ArchiveManager (`features/ArchiveManager.ts`)
 
-**Purpose**: Entity archival
+**Purpose**: Archive low-importance or old entities to compressed storage
 
 ```typescript
 export class ArchiveManager {
-  constructor(storage: IGraphStorage)
+  constructor(storage: IGraphStorage, archiveDir?: string)
 
-  async archiveEntities(criteria: ArchiveCriteria, dryRun?: boolean): Promise<ArchiveResult>
+  async archive(criteria: ArchiveCriteria): Promise<ArchiveResult>
+  async restore(archiveId: string): Promise<void>
+  async listArchives(): Promise<ArchiveInfo[]>
 }
 
-interface ArchiveCriteria {
-  olderThan?: string;
+export interface ArchiveCriteria {
   minImportance?: number;
-  maxImportance?: number;
-  tags?: string[];
+  olderThan?: number;  // milliseconds
   entityTypes?: string[];
 }
 ```
@@ -1178,46 +1200,45 @@ interface ArchiveCriteria {
 
 ### FreshnessManager (`features/FreshnessManager.ts`)
 
-**Purpose**: Track and report entity freshness based on TTL and confidence fields
+**Purpose**: TTL/confidence freshness reporting (v1.6.0)
 
 ```typescript
 export class FreshnessManager {
   constructor(storage: IGraphStorage)
 
-  calculateFreshness(entity: Entity): FreshnessScore
+  calculateFreshness(entity: Entity, now?: Date): FreshnessScore
   async getStaleEntities(threshold?: number): Promise<Entity[]>
   async getExpiredEntities(): Promise<Entity[]>
   async generateReport(): Promise<FreshnessReport>
 }
 
-interface FreshnessScore {
-  entityName: string;
-  freshnessRatio: number;  // 0.0 = expired, 1.0 = fully fresh
-  ttlRemainingMs: number;
-  confidence: number;
+export interface FreshnessScore {
+  score: number;        // 0-1, higher = fresher
+  isExpired: boolean;
+  reason: string;
 }
 ```
 
-`Entity.ttl` (ms) and `Entity.confidence` (0–1) are new optional fields added in v1.6.0. `DecayEngine` uses TTL for decay calculations; `SalienceEngine` adds `freshnessWeight` to salience score.
+Combines `Entity.ttl` (absolute time-to-live) and `Entity.confidence` (belief strength) into a single freshness score used by `SalienceEngine` and decay routines.
 
 ---
 
 ### AuditLog (`features/AuditLog.ts`)
 
-**Purpose**: Immutable operation history persisted as JSONL
+**Purpose**: Immutable JSONL audit trail for all mutations (v1.6.0)
 
 ```typescript
 export class AuditLog {
   constructor(logFilePath: string)
 
   async append(entry: AuditEntry): Promise<void>
-  async query(filter?: AuditFilter): Promise<AuditEntry[]>
-  async tail(limit: number): Promise<AuditEntry[]>
+  async query(filter: AuditQueryFilter): Promise<AuditEntry[]>
+  async getEntityHistory(entityName: string): Promise<AuditEntry[]>
 }
 
-interface AuditEntry {
+export interface AuditEntry {
   timestamp: string;
-  operation: 'create' | 'update' | 'delete';
+  operation: 'create' | 'update' | 'delete' | 'rollback' | 'archive';
   entityName?: string;
   actor?: string;
   metadata?: Record<string, unknown>;
@@ -1246,6 +1267,50 @@ export class GovernanceManager {
 ```
 
 Wraps `EntityManager` mutations with policy checks. `withTransaction` snapshots current state for rollback. Emits to `AuditLog` on every committed operation.
+
+---
+
+### BackupManager (`features/BackupManager.ts`) — Phase 5 (v1.15.0)
+
+**Purpose**: Backup lifecycle extracted from `IOManager` — create / list / restore / delete / cleanOld
+
+```typescript
+export class BackupManager {
+  constructor(storage: GraphStorage, backupDir: string)
+
+  async create(options?: BackupOptions): Promise<BackupResult>
+  async list(): Promise<BackupInfo[]>
+  async restore(backupPath: string): Promise<RestoreResult>
+  async delete(backupPath: string): Promise<void>
+  async cleanOld(keepCount?: number): Promise<number>
+}
+```
+
+All file-touching paths run through `validateFilePath(path, this.backupDir, true)` — paths must stay inside the backup directory. `restore()` and `delete()` both reject symbolic links via `fs.lstat().isSymbolicLink()` to prevent symlink-escape attacks. Metadata sidecar files (`.meta.json`) are derived via `path.basename()` and independently revalidated before unlink. `IOManager` delegates all backup operations to this class.
+
+---
+
+### CRDT (`features/CRDT.ts`) — Phase 5 (v1.15.0)
+
+**Purpose**: Convergent replicated data type primitives for multi-writer scenarios
+
+Currently scaffolded as standalone types; production wiring deferred. Intended consumer: `MultiAgentMemoryManager` for last-writer-wins / OR-set / G-counter merge semantics across agents writing the same entity concurrently. See `unused-analysis.md` for the wiring TODO.
+
+---
+
+### AnomalyDetector (`features/AnomalyDetector.ts`) — Phase 5 (v1.15.0)
+
+**Purpose**: LSH-based anomaly detection over the observation corpus
+
+Uses MinHash + Locality-Sensitive Hashing to find observations that are sparse with respect to the rest of the corpus. Output candidates feed `ContradictionDetector` for higher-precision review.
+
+---
+
+### ContradictionDetector (`features/ContradictionDetector.ts`)
+
+**Purpose**: Semantic-similarity-based contradiction detection with entity versioning support (v1.8.0)
+
+Compares observations across the same `rootEntityName` chain to find statements that contradict each other within a configurable threshold. Output feeds `EntityManager.invalidateEntity()` to create a successor entity. v1.15.0 adds tighter integration with `AnomalyDetector` candidates.
 
 ---
 
@@ -1293,6 +1358,52 @@ export function tokenize(text: string): string[]
 - Tag utilities: `normalizeTag`, `normalizeTags`, `hasMatchingTag`
 - Date utilities: `isWithinDateRange`, `getCurrentTimestamp`
 - Filter utilities: `isWithinImportanceRange`, `filterByImportance`
+- Path security: `validateFilePath(path, baseDir?, confineToBase?)` — default `confineToBase=true` since v1.15.0 (PR #38); throws on `..` segments unconditionally; opts out at explicit user-input call sites (CLI, `ensureMemoryFilePath`)
+
+### logger (`utils/logger.ts`) — Phase 0 (v1.15.0)
+
+**Purpose**: Structured logger replacing scattered `console.*` calls
+
+Stderr-only by design (logger never writes to stdout — CLI commands keep their output channel clean). Honors `LOG_LEVEL=debug|info|warn|error`. Used by `GraphStorage`, `SQLiteStorage`, `TaskQueue`, `MemoryEngine`, and all `Phase 0+` components.
+
+### taskScheduler (`utils/taskScheduler.ts`) — Phase 0 (v1.15.0)
+
+**Purpose**: Priority task queue with bounded resource use
+
+```typescript
+export class TaskQueue {
+  // Bounded — MAX_QUEUE = 100,000 pending, MAX_COMPLETED = 10,000 results retained
+  enqueue<T, R>(task: Task<T, R>): Promise<TaskResult<R>>
+  // ...
+}
+```
+
+`enqueue` validates `task.fn` is a real function object (rejects strings to prevent code-injection via `new Function`). The `recordCompleted` helper centralizes eviction. v1.15.0 adds `kickProcessNext` for explicit-error logging on swallowed rejections.
+
+### compression/ (`utils/compression/`) — Phase 10 (v1.15.0)
+
+**Purpose**: Pluggable in-memory compression for entity caches and tiered storage
+
+```typescript
+export interface ICompressionAdapter {
+  readonly name: string;
+  compress(input: Buffer): Buffer;
+  decompress(input: Buffer): Buffer;
+}
+
+export class ZlibCompressionAdapter implements ICompressionAdapter { /* zlib.deflateSync */ }
+export class BrotliCompressionAdapter implements ICompressionAdapter { /* zlib.brotliCompressSync */ }
+export class IdentityCompressionAdapter implements ICompressionAdapter { /* no-op test baseline */ }
+
+export class CompressedMap<K, V> {
+  // Map<K, V> implementation that compresses values at rest
+  get(key: K): V | undefined
+  set(key: K, value: V): this
+  // ...
+}
+```
+
+Sync API chosen deliberately — async would force `CompressedMap.get` to be async, rippling through every caller. Adapter errors wrap the underlying zlib/brotli message with the adapter `name` so multi-adapter callers can distinguish "wrong adapter" from "truncated input." Wired via `ctx.compressedEntityCache`.
 
 ---
 
