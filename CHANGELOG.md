@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (ContextWindowManager.wakeUp — L1.5 prospective layer)
+
+- **L1.5 layer in `ContextWindowManager.wakeUp()`** surfaces pending prospective intentions in the agent's wake-up context. Closes Sprint 3 of 3 for the prospective-memory integration; the full memory-type addition (manager → context wiring → consolidation stage → wake-up surface) is now complete.
+- **`WakeUpOptions` extended** (backward-compatible — new fields are optional):
+  - `maxL1_5Tokens?: number` (default 200) — token budget for the pending-intentions block
+  - `includeL1_5?: boolean` (default true) — disable L1.5 entirely
+  - `sessionId?: string` — filter L1.5 to one session (when omitted, all sessions)
+- **`WakeUpResult` extended** (backward-compatible — new fields added, no existing fields renamed or removed):
+  - `l1_5: string` — formatted pending-intentions block
+  - `pendingIntentionCount: number` — count of intentions surfaced
+- **Per-intention line format**: `[at <iso>] content` (time) / `[window <from> → <until>] content` (time-window) / `[event: text=... tags=... type=... session=...] content` (event — lists ALL populated condition fields per silent-failure-hunter review) / `[conditional: <predicate>] content` (conditional).
+- **Token estimation reuses** the per-line `l1_5Tokens` accumulator rather than re-estimating the joined string in the total — saves one pass and matches the existing L1 pattern.
+- **Error handling** mirrors L0 / L1 exactly: try/catch wraps the entire L1.5 block, missing-module errors are guarded (no noisy log when `ProspectiveMemoryManager` is absent from a partial build), all other errors are logged via `logger.error` and the layer falls back to empty defaults so wake-up continues to L1.
+- **Future-safe formatting**: trigger-kind dispatch is an exhaustive `switch` with a `_exhaustive: never` check — adding a new trigger kind to the `ProspectiveTrigger` union becomes a compile-time error in `ContextWindowManager.ts`. `TriggerCondition` field-rendering is documented with a "keep in sync with `TriggerConditionFields`" comment for the same reason.
+- **10 new tests** in `describe('L1.5 — pending prospective intentions')`: empty when no pending / surfaces time-based / sorts by next-fire-time / filters by sessionId / includes all sessions when sessionId omitted / respects `maxL1_5Tokens` budget / `includeL1_5: false` skips the block / excludes fired / cancelled / expired intentions / formats event-trigger prefix with all populated condition fields / `l1_5` token count contributes to `totalTokens`.
+- **Reviewed**: code-reviewer found one MEDIUM (missing-module guard) + two LOWs (exhaustive switch, drop `void e1` workaround); silent-failure-hunter found one MEDIUM (lossy event prefix); re-review after fixes flagged one LOW (future-proof `formatCondition` against new fields) — all applied. Code-simplifier flagged token double-counting + repeated `amm` declarations — both applied; rejected the `never` removal and the `Partial<{...}>` inlining (would have removed compile-time safety / required exporting an internal type).
+- **Verification**: 14/14 wake-up tests pass; 121/121 across the four ContextWindowManager + ProspectiveMemoryManager test files; typecheck clean.
+
 ### Added (ConsolidationPipeline.ProspectivePromotionStage)
 
 - **`ProspectivePromotionStage`** exported from `src/agent/ConsolidationPipeline.ts`: new `PipelineStage` that scans storage for fired prospective intentions whose `action.kind === 'inject-context'` and promotes them to `memoryType: 'episodic'` with a `prospective-fulfilled` tag. Closes Sprint 2 of 3 for the prospective-memory integration; see `docs/roadmap/MEMORY_TYPES_EXPANSION.md` §4.3 row "ConsolidationPipeline".

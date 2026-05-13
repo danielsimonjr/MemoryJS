@@ -18,6 +18,8 @@ import type {
   TokenBreakdown,
   ExcludedEntity,
   ScoredEntity,
+  ProspectiveTrigger,
+  TriggerCondition,
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { SalienceEngine } from './SalienceEngine.js';
@@ -72,7 +74,13 @@ export interface WakeUpOptions {
   projectId?: string;
   maxL0Tokens?: number;
   maxL1Tokens?: number;
+  /** Token budget for L1.5 pending-intentions block. Default 200. */
+  maxL1_5Tokens?: number;
   includeL1?: boolean;
+  /** Whether to surface pending prospective intentions in L1.5. Default true. */
+  includeL1_5?: boolean;
+  /** Filter L1.5 to a specific session. Omit to include all sessions. */
+  sessionId?: string;
   /** Apply compression to L1 content. Pass a CompressionLevel or true for 'medium'. */
   compress?: boolean | CompressionLevel;
 }
@@ -82,9 +90,13 @@ export interface WakeUpOptions {
  */
 export interface WakeUpResult {
   l0: string;
+  /** Pending prospective intentions, sorted by next-fire-time, capped by `maxL1_5Tokens`. */
+  l1_5: string;
   l1: string;
   totalTokens: number;
   entityCount: number;
+  /** Count of pending prospective intentions surfaced in `l1_5`. */
+  pendingIntentionCount: number;
 }
 
 /**
@@ -1117,7 +1129,9 @@ export class ContextWindowManager {
   async wakeUp(options: WakeUpOptions = {}): Promise<WakeUpResult> {
     const maxL0 = options.maxL0Tokens ?? 100;
     const maxL1 = options.maxL1Tokens ?? 500;
+    const maxL1_5 = options.maxL1_5Tokens ?? 200;
     const includeL1 = options.includeL1 ?? true;
+    const includeL1_5 = options.includeL1_5 ?? true;
 
     // L0: Profile static facts
     let l0 = '';
@@ -1150,6 +1164,37 @@ export class ContextWindowManager {
     } catch (err) {
       if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
         logger.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
+      }
+    }
+
+    // L1.5: Pending prospective intentions for the current session.
+    // Relies on `getPending()` ordering — earliest fire-time first.
+    let l1_5 = '';
+    let l1_5Tokens = 0;
+    let pendingIntentionCount = 0;
+    if (includeL1_5) {
+      try {
+        const { ProspectiveMemoryManager } = await import('./ProspectiveMemoryManager.js');
+        const pmm = new ProspectiveMemoryManager(this.storage);
+        const pending = await pmm.getPending({ sessionId: options.sessionId });
+        const lines: string[] = [];
+        for (const intention of pending) {
+          const content = intention.observations[0] ?? '';
+          const prefix = formatTriggerPrefix(intention.trigger);
+          const line = `${prefix} ${content}`;
+          const lineTokens = this.estimateStringTokens(line);
+          if (l1_5Tokens + lineTokens > maxL1_5) break;
+          lines.push(line);
+          l1_5Tokens += lineTokens;
+          pendingIntentionCount++;
+        }
+        l1_5 = lines.join('\n');
+      } catch (err) {
+        // Mirror L0's guard: a missing module is an expected
+        // "feature unavailable" outcome, not an error worth logging.
+        if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
+          logger.error('[ContextWindowManager.wakeUp] L1.5 prospective loading failed:', err);
+        }
       }
     }
 
@@ -1199,8 +1244,8 @@ export class ContextWindowManager {
       }
     }
 
-    const totalTokens = this.estimateStringTokens(l0) + this.estimateStringTokens(l1);
-    return { l0, l1, totalTokens, entityCount };
+    const totalTokens = this.estimateStringTokens(l0) + l1_5Tokens + this.estimateStringTokens(l1);
+    return { l0, l1_5, l1, totalTokens, entityCount, pendingIntentionCount };
   }
 
   // ==================== Context Compression ====================
@@ -1523,5 +1568,60 @@ export class ContextWindowManager {
     return { text: result, legend };
   }
 
+}
+
+// ==================== Helpers ====================
+
+/**
+ * Format a prospective intention's trigger as a wake-up-line prefix.
+ *
+ * Exhaustive switch on `trigger.kind` with a `never` fall-through —
+ * adding a new trigger kind to the union becomes a compile-time
+ * error here, preventing silent mislabeling.
+ *
+ * Event-trigger prefix lists ALL populated condition fields (not just
+ * the first) so users can debug "why hasn't this fired?" with a
+ * complete picture of the matching predicate.
+ */
+function formatTriggerPrefix(trigger: ProspectiveTrigger): string {
+  switch (trigger.kind) {
+    case 'time':
+      return `[at ${trigger.at}]`;
+    case 'time-window':
+      return trigger.until
+        ? `[window ${trigger.from} → ${trigger.until}]`
+        : `[window from ${trigger.from}]`;
+    case 'event':
+      return `[event: ${formatCondition(trigger.condition)}]`;
+    case 'conditional':
+      return `[conditional: ${trigger.predicate}]`;
+    default: {
+      const _exhaustive: never = trigger;
+      void _exhaustive;
+      return '[?]';
+    }
+  }
+}
+
+/**
+ * Render a TriggerCondition as a compact "k=v" pair list.
+ *
+ * Keep in sync with `TriggerConditionFields` in `src/types/agent-memory.ts` —
+ * adding a new field there requires adding a new `if` branch here, or the
+ * new field will be silently dropped from wake-up prefixes.
+ */
+function formatCondition(condition: TriggerCondition): string {
+  const c = condition as Partial<{
+    text: string;
+    tags: string[];
+    entityType: string;
+    sessionId: string;
+  }>;
+  const parts: string[] = [];
+  if (c.text !== undefined) parts.push(`text=${c.text}`);
+  if (c.tags !== undefined && c.tags.length > 0) parts.push(`tags=${c.tags.join(',')}`);
+  if (c.entityType !== undefined) parts.push(`type=${c.entityType}`);
+  if (c.sessionId !== undefined) parts.push(`session=${c.sessionId}`);
+  return parts.length > 0 ? parts.join(' ') : '?';
 }
 
