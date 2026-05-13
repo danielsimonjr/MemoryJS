@@ -780,37 +780,89 @@ export function isProceduralMemory(entity: unknown): entity is AgentEntity & { m
 
 // ==================== Prospective Memory Types ====================
 
+// ---- Branded primitives ----
+
 /**
- * Trigger condition shared by event-based scheduling and cancellation.
- *
- * **Semantics**: OR / any-of across the populated fields (D2 in
- * `docs/roadmap/MEMORY_TYPES_EXPANSION.md`). A condition matches an
- * incoming observation if ANY of its populated filters matches. Empty
- * conditions match nothing (guards against accidentally-fire-on-every).
+ * Branded ISO 8601 datetime string. Use `toIsoDateTime()` to construct;
+ * this prevents accidentally storing a non-parseable string in a
+ * timestamp field. Compatible with plain `string` consumption (read
+ * paths can pass it where `string` is expected without a cast).
  */
-export interface TriggerCondition {
+export type IsoDateTime = string & { readonly __iso: unique symbol };
+
+/**
+ * Parse / brand a value as `IsoDateTime`. Throws on invalid input.
+ */
+export function toIsoDateTime(value: Date | string): IsoDateTime {
+  const s = typeof value === 'string' ? value : value.toISOString();
+  if (Number.isNaN(new Date(s).getTime())) {
+    throw new Error(`Invalid ISO 8601 datetime: ${JSON.stringify(value)}`);
+  }
+  return s as IsoDateTime;
+}
+
+/** Branded positive integer (≥ 1). Use `toPositiveInt()` to construct. */
+export type PositiveInt = number & { readonly __positiveInt: unique symbol };
+
+/** Construct a `PositiveInt`. Throws on non-integer or non-positive. */
+export function toPositiveInt(n: number): PositiveInt {
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`Expected positive integer (≥ 1), got ${n}`);
+  }
+  return n as PositiveInt;
+}
+
+// ---- At-least-one constraint helper ----
+
+/**
+ * Constrain `T` to require at least one of its keys to be populated.
+ * Used by `TriggerCondition` to make empty `{}` un-constructable at the
+ * type level — the matcher's runtime "anyFieldPopulated" guard is now
+ * a belt to the structural suspenders.
+ */
+export type AtLeastOne<T, K extends keyof T = keyof T> = {
+  [P in K]: Required<Pick<T, P>> & Partial<Omit<T, P>>;
+}[K];
+
+// ---- Trigger condition ----
+
+/**
+ * Fields a `TriggerCondition` can populate. Shared by event-trigger
+ * firing and `cancelOnEvent` cancellation predicates.
+ */
+interface TriggerConditionFields {
   /** Plain-text substring match against incoming observation content. */
-  text?: string;
+  text: string;
   /** Tag match — fires if ANY of these tags is on the related entity. */
-  tags?: string[];
+  tags: string[];
   /** Entity-type filter — fires if observation's entity has this type. */
-  entityType?: string;
+  entityType: string;
   /** Session-id filter — fires only within this session. */
-  sessionId?: string;
+  sessionId: string;
 }
 
 /**
- * Trigger describes WHEN a prospective intention should fire.
+ * Trigger condition for event-based scheduling and cancellation.
+ *
+ * **Semantics**: OR / any-of across the populated fields (D2 in
+ * `docs/roadmap/MEMORY_TYPES_EXPANSION.md`). At least one field MUST
+ * be populated — empty conditions are now un-constructable at the
+ * type level.
  */
-export type ProspectiveTrigger =
-  | { kind: 'time'; at: string /* ISO 8601 */ }
-  | { kind: 'time-window'; from: string; until?: string }
-  | { kind: 'event'; condition: TriggerCondition }
-  | { kind: 'conditional'; predicate: string; checkIntervalMs?: number };
+export type TriggerCondition = AtLeastOne<TriggerConditionFields>;
 
-/**
- * Action describes WHAT happens when a prospective intention fires.
- */
+// ---- Trigger ----
+
+/** Trigger describes WHEN a prospective intention should fire. */
+export type ProspectiveTrigger =
+  | { kind: 'time'; at: IsoDateTime }
+  | { kind: 'time-window'; from: IsoDateTime; until?: IsoDateTime }
+  | { kind: 'event'; condition: TriggerCondition }
+  | { kind: 'conditional'; predicate: string; checkIntervalMs?: PositiveInt };
+
+// ---- Action ----
+
+/** Action describes WHAT happens when a prospective intention fires. */
 export type ProspectiveAction =
   | {
       kind: 'inject-context';
@@ -832,10 +884,27 @@ export type ProspectiveAction =
       relatedEntityFilter: TriggerCondition;
     };
 
+// ---- Lifecycle (discriminated state machine) ----
+
 /**
- * Lifecycle status of a prospective memory.
+ * Lifecycle state of a prospective intention.
+ *
+ * Discriminated by `status`. Each variant carries exactly the fields
+ * valid for that state; illegal combinations like
+ * `{ status: 'pending', firedAt: '...' }` are unrepresentable.
+ *
+ * Transitions:
+ * - `pending` → `fired` (on tick or onObservation match)
+ * - `pending` → `expired` (on `expireOverdue`)
+ * - `pending` → `cancelled` (on `cancel()` or `cancelOnEvent` match)
+ * - `fired` (recurring event-based) → `pending` (if `fireCount < maxFireCount`)
+ * - `fired` → `expired` (if `fireCount >= maxFireCount`)
  */
-export type ProspectiveStatus = 'pending' | 'fired' | 'expired' | 'cancelled';
+export type ProspectiveLifecycle =
+  | { status: 'pending'; fireCount: number; firedAt?: IsoDateTime }
+  | { status: 'fired'; firedAt: IsoDateTime; fireCount: number }
+  | { status: 'expired'; firedAt?: IsoDateTime; fireCount: number; expiredAt: IsoDateTime }
+  | { status: 'cancelled'; cancelledAt: IsoDateTime; fireCount: number };
 
 /**
  * Prospective memory — intention-to-act / future-tense memory.
@@ -848,56 +917,65 @@ export type ProspectiveStatus = 'pending' | 'fired' | 'expired' | 'cancelled';
  */
 export interface ProspectiveEntity extends AgentEntity {
   memoryType: 'prospective';
-
-  /** When the intention should activate. */
   trigger: ProspectiveTrigger;
-
-  /** What to do when the trigger fires. */
   action: ProspectiveAction;
-
-  /** Lifecycle status. */
-  status: ProspectiveStatus;
-
-  /** ISO 8601 timestamp the intention last fired (undefined for pending). */
-  firedAt?: string;
-
-  /** How many times this intention has fired (for recurring event-based triggers). */
-  fireCount?: number;
-
-  /** Optional cap on `fireCount`. Once reached, status transitions to 'expired'. */
-  maxFireCount?: number;
-
-  /**
-   * Optional condition that cancels the intention without firing.
-   * OR-semantics: matches if ANY populated field of the condition matches
-   * (D2 in `docs/roadmap/MEMORY_TYPES_EXPANSION.md`).
-   */
+  /** Discriminated lifecycle — replaces flat status/firedAt/fireCount. */
+  lifecycle: ProspectiveLifecycle;
+  /** Optional cap on `lifecycle.fireCount`. Reaching it transitions to `'expired'`. */
+  maxFireCount?: PositiveInt;
+  /** Optional condition that cancels the intention without firing. OR-semantics. */
   cancelOnEvent?: TriggerCondition;
 }
 
 /**
- * Type guard for prospective memory entities.
+ * Type guard for prospective memory entities. Verifies the entity is
+ * an AgentEntity of the right `memoryType` AND has a structurally
+ * valid `lifecycle` object.
  */
 export function isProspectiveMemory(entity: unknown): entity is ProspectiveEntity {
-  return isAgentEntity(entity) && entity.memoryType === 'prospective';
+  if (!isAgentEntity(entity) || entity.memoryType !== 'prospective') return false;
+  const e = entity as ProspectiveEntity;
+  const lc = e.lifecycle as { status?: unknown } | undefined;
+  return (
+    typeof lc === 'object' &&
+    lc !== null &&
+    typeof lc.status === 'string' &&
+    ['pending', 'fired', 'expired', 'cancelled'].includes(lc.status)
+  );
 }
+
+/**
+ * Result of `cancel()`. Discriminated so callers can branch on what
+ * actually happened — distinguishes "not found", "already fired",
+ * "already cancelled / expired" from a successful cancellation.
+ */
+export type CancelResult = 'cancelled' | 'not-found' | 'already-fired' | 'already-cancelled' | 'already-expired';
 
 /**
  * Result of a single fire event from the prospective memory manager.
  *
- * Returned by `tick()` and `onObservation()` so callers can observe what
- * fired and either (a) deliver the `injectionPayload` to a wake-up
- * channel or (b) react to invoked procedures.
+ * Returned by `tick()` and `onObservation()` so callers can observe
+ * what fired and either (a) deliver the `injectionPayload` to a
+ * wake-up channel, (b) react to invoked procedures and their errors,
+ * or (c) audit which related entities were tagged.
  */
 export interface FiredEvent {
-  /** The intention that fired. */
+  /** The intention that fired (post-update, with new lifecycle state). */
   entity: ProspectiveEntity;
   /** When it fired. */
   firedAt: Date;
   /** Formatted content payload for `action: 'inject-context'`. */
   injectionPayload?: string;
-  /** Procedure id for `action: 'invoke'`. */
+  /** Procedure id for `action: 'invoke'`. Always set on invoke firings. */
   invokedProcedureId?: string;
+  /**
+   * Error from the injected procedure invoker, if it rejected. The
+   * intention still transitions to `fired` — this field tells the
+   * caller the downstream procedure did NOT execute successfully.
+   */
+  invocationError?: Error;
+  /** Names of entities that received tags from `action: 'tag-related'`. */
+  taggedEntityNames?: string[];
 }
 
 /**

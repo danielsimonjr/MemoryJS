@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Prospective memory — review-batch hardening)
+
+Follow-up to the initial `ProspectiveMemoryManager` commit, driven by parallel review agents (`code-reviewer`, `type-design-analyzer`, `silent-failure-hunter`, `pr-test-analyzer`). All BLOCKING / HIGH / MEDIUM / LOW findings addressed in one batch — no items deferred.
+
+**Types** (`src/types/agent-memory.ts`):
+- **Branded `IsoDateTime`** with `toIsoDateTime()` factory — throws on invalid input, catches malformed-timestamp bugs at the boundary instead of `NaN`-comparisons silently returning false
+- **Branded `PositiveInt`** with `toPositiveInt()` factory — rejects 0, negatives, and non-integers for `maxFireCount` and `checkIntervalMs`
+- **`AtLeastOne<>` constraint helper** + reshaped `TriggerCondition` — empty `{}` conditions are now un-constructable at compile time (was: caught at runtime by the `anyFieldPopulated` guard)
+- **`ProspectiveLifecycle` discriminated state machine** replacing the flat `status` / `firedAt` / `fireCount` fields on `ProspectiveEntity`. Variants: `pending` / `fired` / `expired` / `cancelled`. Each carries exactly the fields valid for its state — illegal combinations like `{ status: 'pending', firedAt: '...' }` are unrepresentable (type-design Invariant Expression axis: 2/5 → 4/5)
+- **`CancelResult` discriminated union** (`'cancelled' | 'not-found' | 'already-fired' | 'already-cancelled' | 'already-expired'`) — `cancel()` now distinguishes typo from already-fired from successful cancellation
+- **`FiredEvent.invocationError?: Error`** — surfaces procedureInvoker rejections without unwinding the fire; callers observe partial-success state
+- **`FiredEvent.taggedEntityNames?: string[]`** — names of entities that received tags from `action: 'tag-related'`
+- `isProspectiveMemory` type guard now verifies the discriminated `lifecycle` field
+
+**Manager** (`src/agent/ProspectiveMemoryManager.ts`):
+- **Implemented `action: 'tag-related'`** — previously declared in the union but `fire()` silently no-op'd (pr-test-analyzer BLOCKING finding). Scans entities matching `relatedEntityFilter`, appends `tagsToAdd`, returns names in `FiredEvent.taggedEntityNames`
+- **NaN guards via `safeIsoToMs()`** in `expireOverdue` / `shouldFireOnTick` / `getFired.sinceDate` — malformed `expiresAt` or `trigger.at` strings now produce a `logger.warn` and skip the entity, preventing the "silently never expires" path
+- **`scheduleConditional` JSDoc warning** + one-time `logger.warn` per instance noting predicate evaluation is deferred
+- **Recurring event-based triggers correctly stay `pending`** after fire (was: incorrectly transitioned to `fired` after first match)
+- **`cancel()` returns `CancelResult`** — discriminated status; `_reason` parameter dropped (was unused per code-reviewer)
+- **`fire()` return type tightened** to `Promise<FiredEvent>` (was misleadingly `| undefined`); `if (event)` guards at callers dropped
+- **Procedure invoker errors** surfaced on `FiredEvent.invocationError` + `logger.warn`; no longer swallowed silently via `console.warn` + a forward-comment
+- **Structured `logger`** replaces `console.warn` for all warnings
+- **`confidence?` added to `ScheduleOptions`** — parity with `EpisodicMemoryManager.CreateEpisodeOptions`
+- Config typing simplified to three plain class fields (`defaultExpiryHours`, `maxPendingPerSession`, `procedureInvoker`) — was a complex `Required<Omit<...>> & Pick<...>` intersection
+- Forward-compat shim `// Future: add to AuditLog` removed (CLAUDE.md "don't add half-finished implementations")
+- Best-effort session-cap race noted with a one-line comment
+
+**Tests** (`tests/unit/agent/ProspectiveMemoryManager.test.ts`):
+- Test count: 31 → **51** (+20 net)
+- New cases: `time-window` trigger fires within `[from, until)`, `time-window` does not fire past `until`, session-cap rejection, session-cap is per-session, schedule with `maxFireCount=0` rejects (positive-int brand), negative `maxFireCount` rejects, `scheduleConditional` warns exactly once, `getFired` with `sinceDate` filter, `tick` fires multiple in chronological order, `cancel` returns `'not-found'` for typos, `cancel` returns `'already-fired'` / `'already-cancelled'`, `expireOverdue` with undefined `expiresAt`, `expireOverdue` skips and warns on malformed `expiresAt`, `onObservation` matches on `sessionId` field, `tag-related` action tags matching entities and reports names, `tag-related` does not re-tag, procedureInvoker rejection surfaces on `FiredEvent.invocationError`, `tick` propagates `updateEntity` rejection cleanly, custom `confidence` / `importance` honoured, type guard rejects entities missing the discriminated lifecycle
+- **Test-design refactor**: all 5 prior `setTimeout(100)` sleeps replaced with explicit `tick(new Date(...))` injection — removed Windows-flake risk per `CLAUDE.md > Gotchas > Performance benchmark flakiness`. Zero timer-based tests remain
+- Logger spies updated to `console.warn` (was incorrectly `console.error`)
+
+**Verification**: typecheck clean; 51/51 prospective tests pass; 1573/1573 agent-memory directory tests pass; zero regressions in adjacent managers (`WorkingMemoryManager` 58, `EpisodicMemoryManager` 30, `AgentMemoryManager` 74).
+
 ### Added (Prospective memory — new memory type)
 
 - **`MemoryType` union extended with `'prospective'`** (`src/types/agent-memory.ts`): closes the canonical Tulving-aligned taxonomy alongside `'working' | 'episodic' | 'semantic' | 'procedural'`. Type guard `isProspectiveMemory(entity)` mirrors the other four guards. Design rationale + competitive lens in [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) — no competing library (MemPalace / Supermemory / mem0 / LangChain / LlamaIndex / Letta) ships prospective memory as a typed tier, so this is green-field design space.
