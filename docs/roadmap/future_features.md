@@ -59,6 +59,32 @@ Crystallize implicit patterns into explicit natural-language strategies. Final 3
 - Prioritised application when multiple heuristics match
 - Reinforcement / decay tied to procedural-memory success metrics
 
+### 11.2 Prospective memory (new memory type) — P1
+
+Memory for intentions to perform actions at specific future times or in specific future contexts. Extends the canonical `MemoryType` union to `'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective'`.
+
+**Cognitive-science basis**: Einstein & McDaniel 1990 — distinguishes **time-based** (T+5h) from **event-based** (when I see X) prospective memory.
+
+**Status**: not started. Full design + integration + test surface lives in [`MEMORY_TYPES_EXPANSION.md`](./MEMORY_TYPES_EXPANSION.md); summary below.
+
+**Proposal**:
+- New `ProspectiveEntity` extending `AgentEntity` with `trigger` (time / time-window / event / conditional) + `action` (inject-context / invoke / tag-related) + lifecycle (`status`, `firedAt`, `fireCount`, `maxFireCount`)
+- New `ProspectiveMemoryManager` in `src/agent/` with `scheduleAt`, `scheduleOnEvent`, `scheduleConditional`, `getPending`, `tick`, `onObservation`, `cancel`, `expireOverdue`, `start` / `stop`
+- Integrates with `TaskQueue` (recurring tick at `MEMORY_PROSPECTIVE_POLL_INTERVAL_MS`), `DecayEngine` (expiry after `MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS`), `SalienceEngine` (imminent-fire boost), `ConsolidationPipeline` (new `ProspectivePromotion` stage: fired→episodic), `ContextWindowManager.wakeUp` (new L1.5 layer for pending intentions), `MemoryEngine` (dedup on `content`), `VisibilityResolver`, `AuditLog` (fire + cancel events)
+- Five new env vars: `MEMORY_PROSPECTIVE_ENABLED` (default `false`), `MEMORY_PROSPECTIVE_POLL_INTERVAL_MS` (default `60000`), `MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION` (default `100`), `MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS` (default `168`), `MEMORY_PROSPECTIVE_INJECT_INTO_WAKEUP` (default `true`)
+- CLI surface in same release: `memory prospective schedule "..." --at "..."`, `memory prospective list`, `memory prospective cancel <name>`
+- MCP surface (`schedule_reminder`, `list_pending_reminders`, `cancel_reminder`) ships in a follow-up minor release of `@danielsimonjr/memory-mcp`
+
+**Design decisions** (locked in [`MEMORY_TYPES_EXPANSION.md`](./MEMORY_TYPES_EXPANSION.md) §6):
+- D1: `action: 'invoke'` fires procedures via **dependency injection** (callback in constructor), not direct `ProcedureManager` import
+- D2: `cancelOnEvent` uses **OR semantics** (first match) — mirrors trigger semantics, AND-style cancellation can be composed
+- D3: Default visibility is `private` — matches every other memory type
+- D4: CLI ships with library release; MCP follows in `@danielsimonjr/memory-mcp` next minor
+
+**Effort**: ~10 days (1–2 weeks). Effort breakdown in [`MEMORY_TYPES_EXPANSION.md`](./MEMORY_TYPES_EXPANSION.md) §4.7.
+
+**Differentiator**: no competitor library (MemPalace, Supermemory, mem0, LangChain, LlamaIndex, Letta) has prospective memory as a typed tier — they all quietly assume memory is past-tense.
+
 ---
 
 ## 11B. Query Language
@@ -241,14 +267,14 @@ Items in the codebase-health track that are still partially open:
 
 | Priority | Items |
 |----------|-------|
-| **P1** | 3.1 Entity-level dedup, 11.1 Heuristic Manager wiring |
+| **P1** | 3.1 Entity-level dedup, 11.1 Heuristic Manager wiring, 11.2 Prospective memory (new type) |
 | **P2** | 7.1 Spell correction, 11B.1 Query DSL frontend, 12.1 PostgreSQL driver, 12.2 REST API polish, 13.1 Concrete vector-DB drivers (pgvector), 15.2 Agent-memory test gaps, 15.10 Documentation drift |
 | **P3** | 12.1 MongoDB driver, 12.5 Framework integrations, 12.6 LLM ecosystem, 13.1 Pinecone/Weaviate drivers, 14.3 GDPR tooling, 15.7 Dep currency, 15.8 API tiering |
 | **P4** | 12.3 Elasticsearch, 12.4 GraphQL, 14.2 Distributed architecture, 14.4 Cloud-native artefacts |
 | **P5** | 14.5 GPU acceleration |
 | **Out of scope / speculative** | 15.1 Real-time WS, 15.2 GraphSAGE, 15.3 KG completion, 15.4 Clawvault |
 
-**P1/P2 count: 9 items.** That's the realistic "active forward work" load for the next 1–2 quarters.
+**P1/P2 count: 10 items.** That's the realistic "active forward work" load for the next 1–2 quarters.
 
 ---
 

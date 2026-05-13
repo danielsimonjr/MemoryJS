@@ -28,6 +28,16 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Could reuse the existing four-tier dedup machinery applied at observation granularity
 - Effort: medium
 
+#### 3. Prospective memory (new memory type)
+- New `MemoryType` value `'prospective'` + new `ProspectiveMemoryManager` for intention-to-act / future-tense memory
+- Three trigger kinds: time-based (`scheduleAt`), event-based (`scheduleOnEvent`), conditional-predicate (`scheduleConditional`)
+- Three actions: `inject-context` (delivers content into next wake-up), `invoke` (fires a `ProcedureManager` procedure via DI callback), `tag-related`
+- Integrates with `TaskQueue` (tick loop), `DecayEngine` (expiry), `SalienceEngine` (imminent-fire boost), `ConsolidationPipeline` (fired→episodic promotion), `ContextWindowManager.wakeUp` (new L1.5 layer), `MemoryEngine` (dedup), `VisibilityResolver`, `AuditLog`
+- Five new env vars (master toggle + tick interval + per-session cap + expiry + wake-up injection toggle)
+- Differentiator: **no competitor library has prospective memory** as a typed tier (MemPalace, Supermemory, mem0, LangChain, LlamaIndex, Letta all assume past-tense memory only)
+- Full design + integration + test surface in [`MEMORY_TYPES_EXPANSION.md`](./MEMORY_TYPES_EXPANSION.md)
+- Effort: medium (~10 days / 1–2 weeks)
+
 ### Priority 2 — within 1–2 sprints
 
 #### 3. Concrete Vector-DB drivers (MEM-06)
@@ -129,16 +139,16 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 | Track | Outstanding items |
 |-------|-------------------|
-| **Agent memory** (Phase 3B finish) | 3B.8 Heuristic Guidelines Manager |
+| **Agent memory** (Phase 3B finish + new types) | 3B.8 Heuristic Guidelines Manager, **Prospective memory (new type)** |
 | **Dedup** | Entity-level observation dedup |
 | **Backends** | MEM-05 PostgreSQL, MEM-06 concrete vector DBs |
 | **Search** | Spell correction, query DSL frontend |
 | **Integration** | Elasticsearch, REST API polish, framework adapters, GraphQL |
 | **Enterprise** | Distributed coordinator, cloud-native artefacts, GDPR tooling, encryption layer |
-| **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport |
-| **Out of scope** | Clawvault (sibling repo) |
+| **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport, affective tagging (deferred P3) |
+| **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline) |
 
-**Genuinely active P1/P2 items: 7.** Everything else is gated, strategic, or long-horizon.
+**Genuinely active P1/P2 items: 8.** Everything else is gated, strategic, or long-horizon.
 
 ---
 
