@@ -18,27 +18,52 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 ### Priority 1 — next sprint
 
-#### 1. Heuristic Guidelines Manager (3B.8)
+#### 1. Failure Memory hardening (Phase 2 Sprint 4)
+- Catalog explicitly calls this "the single biggest concrete win available to most agentic systems"
+- `FailureDistillation` exists; missing structured `FailureRecord` with `failure_mode` / `root_cause` / `alternative_taken` / `applicability_hint` for pre-task semantic lookup
+- New `FailureManager` facade with `record(failure)`, `lookupForTask(context)`, `markResolved(id)`
+- Pre-task retrieval hook via `ContextWindowManager.mustInclude` extension
+- Effort: small (~5 days)
+- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 9
+
+#### 2. Plan / Goal Stack (Phase 2 Sprint 5 — new memory type)
+- Catalog MVP step 1 lists this alongside Identity + Project Context + Provenance as the foundational set; MemoryJS has the rest, Plan is the lone gap
+- Distinct from just-shipped prospective memory: prospective = intentions-to-act; plan = forward-looking goal *tree* with sub-tasks + acceptance criteria
+- New `MemoryType: 'plan'` + `PlanEntity` with `rootGoal` / `stack: GoalNode[]` / `currentNodeId` / `history` / acceptance criteria
+- Effort: medium (~10 days), mirrors prospective-memory sprint shape
+- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 6
+
+#### 3. Trust Hierarchy formalization (Phase 2 Sprint 6 — meta-improvement)
+- Adds `trust_level: 'ground-truth' | 'verified' | 'inferred' | 'unverified'` discriminated union to `Entity.source`
+- Updates `CollaborativeSynthesis.resolveConflicts` to honor explicit ordering: `user-authored > tool-verified (recent) > agent-inferred (high) > imported > agent-inferred (low)`, recency tiebreaker within tier
+- Lifts every other type's conflict-resolution / staleness handling
+- Effort: small (~3 days)
+- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 12
+
+#### 4. Heuristic Guidelines Manager (3B.8)
 - `src/agent/HeuristicManager.ts` exists as scaffold but is not wired into the `ConsolidationPipeline`
 - Final 3B item — closing it completes the entire "From Storage to Experience" memory evolution series
 - Effort: medium (1–2 weeks)
 
-#### 2. Entity-level observation deduplication
+#### 5. Entity-level observation deduplication
 - `MemoryEngine` covers turn-level dedup (Tier 1–4 chain). Entity-level passes — finding cross-entity duplicate observations — still TBD
 - Could reuse the existing four-tier dedup machinery applied at observation granularity
 - Effort: medium
 
-#### 3. Prospective memory (new memory type)
-- New `MemoryType` value `'prospective'` + new `ProspectiveMemoryManager` for intention-to-act / future-tense memory
-- Three trigger kinds: time-based (`scheduleAt`), event-based (`scheduleOnEvent`), conditional-predicate (`scheduleConditional`)
-- Three actions: `inject-context` (delivers content into next wake-up), `invoke` (fires a `ProcedureManager` procedure via DI callback), `tag-related`
-- Integrates with `TaskQueue` (tick loop), `DecayEngine` (expiry), `SalienceEngine` (imminent-fire boost), `ConsolidationPipeline` (fired→episodic promotion), `ContextWindowManager.wakeUp` (new L1.5 layer), `MemoryEngine` (dedup), `VisibilityResolver`, `AuditLog`
-- Five new env vars (master toggle + tick interval + per-session cap + expiry + wake-up injection toggle)
-- Differentiator: **no competitor library has prospective memory** as a typed tier (MemPalace, Supermemory, mem0, LangChain, LlamaIndex, Letta all assume past-tense memory only)
-- Full design + integration + test surface in [`MEMORY_TYPES_EXPANSION.md`](./MEMORY_TYPES_EXPANSION.md)
-- Effort: medium (~10 days / 1–2 weeks)
-
 ### Priority 2 — within 1–2 sprints
+
+#### 1. Tool Affordance Memory (Phase 2 Sprint 7 — new memory type)
+- No current support; high adaptive-tool-selection value
+- `ToolAffordanceRecord` with `tool_name` / `recent_success_rate` / `common_failure_modes` / `cost_estimate` / rolling-window stats
+- Needs an upstream tool-observation pipeline (open Q4 in Phase 2 doc — scope decision)
+- Effort: medium (~7 days)
+- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 8
+
+#### 2. Reflection Log scheduled pass (Phase 2 Sprint 8 — enhancement)
+- Components exist (`PatternDetector`, `TrajectoryCompressor`, `ExperienceExtractor`) but no explicit `ReflectionRecord` schema and no scheduled pass
+- New `ReflectionStage` pipeline stage mirrors `ProspectivePromotionStage` pattern just shipped in Sprint 2
+- Effort: small-medium (~5 days)
+- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 10
 
 #### 3. Concrete Vector-DB drivers (MEM-06)
 - `IVectorDBAdapter` interface + `InMemoryVectorAdapter` + `InMemoryVectorStore` + `SQLiteVectorStore` + `QuantizedVectorStore` all shipped
@@ -139,7 +164,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 | Track | Outstanding items |
 |-------|-------------------|
-| **Agent memory** (Phase 3B finish + new types) | 3B.8 Heuristic Guidelines Manager, **Prospective memory (new type)** |
+| **Agent memory** (Phase 3B finish + Phase 2 expansions) | 3B.8 Heuristic Guidelines Manager, **Plan / Goal Stack** (new type), **Tool Affordance Memory** (new type), **Failure Memory hardening**, **Trust Hierarchy formalization**, **Reflection Log scheduled pass** |
 | **Dedup** | Entity-level observation dedup |
 | **Backends** | MEM-05 PostgreSQL, MEM-06 concrete vector DBs |
 | **Search** | Spell correction, query DSL frontend |
@@ -235,5 +260,7 @@ Items reaching P1/P2 must have:
 - [CHANGELOG.md](../../CHANGELOG.md) — per-version history of shipped features
 - [`docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`](../planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md) — per-phase task ledger for the perf & scale track
 - [`docs/roadmap/future_features.md`](./future_features.md) — companion roadmap with the §1–§15 narrative framing
+- [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](./MEMORY_TYPES_EXPANSION.md) — Phase 1 design (prospective memory, ✅ shipped)
+- [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) — Phase 2 planning (catalog-driven candidate set: failure-memory hardening / plan / trust hierarchy / tool affordance / reflection)
 - [`docs/architecture/DEPENDENCY_GRAPH.md`](../architecture/DEPENDENCY_GRAPH.md) — auto-generated dependency map; source of truth for what exists in `src/`
 - [`docs/roadmap/GAP_ANALYSIS_VS_MEMPALACE.md`](./GAP_ANALYSIS_VS_MEMPALACE.md), [`GAP_ANALYSIS_VS_SUPERMEMORY.md`](./GAP_ANALYSIS_VS_SUPERMEMORY.md) — comparative analysis against adjacent projects
