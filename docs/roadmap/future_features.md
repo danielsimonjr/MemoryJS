@@ -2,18 +2,31 @@
 
 Consolidated list of all planned but unimplemented features for MemoryJS, merging the original [ROADMAP.md](./ROADMAP.md) phases with new performance & scale proposals.
 
-**Last refreshed: 2026-05-08** — completed Phase 3B, η.4.4, η.4.6, η.5.4 (partial), η.5.5 (partial), η.6.1, η.6.3 (partial) removed; codebase-health recommendations added (§15). Deep-dive pass also trimmed §1.3 (TF-IDF + inverted-index incrementality already shipped via `TFIDFIndexManager` / `OptimizedInvertedIndex` / `IncrementalIndexer` / `TFIDFEventSync`; only BM25 incrementality and batch-coalesce window remain).
+**Last refreshed: 2026-05-13** — v1.15.0 shipped Phases 0–11 of the performance & scale track via PR #34, absorbing the majority of remaining items across §1–§6 (search latency, write throughput, memory footprint, query execution, storage backends, observability) and large portions of §7–§13 (search intelligence, graph analytics, integration, advanced features). The 2026-05-08 "deep-dive" trimming of §1.3 is now superseded — BM25 incrementality + batch-coalesce window both shipped as part of Phase 1.
 
-> **What's already done** (updated 2026-05-08):
-> - Phase 1 (95% — CLI pipe support is the only remaining item)
-> - Phase 2 (partial — search suggestions and performance metrics exist)
-> - Phase 3 (100%)
-> - **Phase 3B (Memory Intelligence)**: 3B.1–3B.7 ✅ shipped (3B.1–3B.3 in v1.13.0 / Phase δ; 3B.4–3B.7 Unreleased). Heuristic Guidelines Manager (§11.1 below) is the only remaining 3B item.
-> - **Phase 4 (Integration & Scale, η)**: η.4.4 bitemporal versioning ✅ shipped Unreleased; η.4.6 graph visualization ✅ shipped v1.9.1; η.4.1 (DB adapters), η.4.2 (REST API), η.4.3 (Elasticsearch), η.4.5 (scalability) — plans drafted, gated on dep approval
-> - **Phase 5 (Advanced Features, η.5)**: η.5.4 RDF/Turtle/JSON-LD export ✅ shipped Unreleased (SPARQL deferred — see §13.4); η.5.5.a–d Collaboration ✅ shipped Unreleased (CRDT 5.5.e gated — see §13.5); η.5.1/5.2/5.3 plans drafted
-> - **Phase 6 (Enterprise, η.6)**: η.6.1 RBAC ✅ shipped Unreleased; η.6.3 PiiRedactor ✅ shipped Unreleased; η.6.2 Distributed (Redis), η.6.3 InputValidator (Zod) / EncryptionAdapter (SQLCipher), η.6.4 Cloud-native (devops), η.6.5 GPU — gated on deps
+> **What's shipped** (regenerated 2026-05-13 against `src/` at HEAD):
 >
-> See ROADMAP.md and the `docs/superpowers/plans/2026-04-25-eta-*.md` files for per-feature detail.
+> | Phase | Status | Notes |
+> |-------|--------|-------|
+> | Phase 1 — Foundation | ✅ shipped | CLI pipe support landed in Phase 0 of perf & scale track |
+> | Phase 2 — Developer Experience | ✅ mostly shipped | Search suggestions + perf metrics + diagnostics (`ctx.diagnostics.explainPlan` / `indexHealth`) all shipped |
+> | Phase 3 — Agent Memory | ✅ shipped | All v1.7–v1.11 agent-memory features stable |
+> | Phase 3B — Memory Intelligence | ✅ 3B.1–3B.7 shipped | 3B.8 Heuristic Guidelines Manager remains (scaffold in `src/agent/HeuristicManager.ts`) |
+> | Phase 4 — Integration & Scale (η.4) | ✅ 5 of 6 shipped | Only Elasticsearch (4.3) remains; mmap / segments / columns / tiered index all shipped |
+> | Phase 5 — Advanced Features (η.5) | ✅ shipped | node2vec + LSH + RDF/SPARQL + CRDT + collaboration synthesis all in place |
+> | Phase 6 — Enterprise (η.6) | ⚠️ 2 of 5 shipped | RBAC + ABAC + RLS + API keys + PII + governance shipped; distributed / cloud-native / GPU remain |
+> | Perf & Scale Track (Phases 0–11) | ✅ shipped | All 12 of 12 Phase 3 items + all 5 multi-month engineering features shipped via PR #34 |
+>
+> **Remaining work as of 2026-05-13**:
+> - **MEM-05** — `PostgreSQLBackend` (multi-user tenant isolation)
+> - **MEM-06** — Concrete external `VectorMemoryBackend` (pgvector / Pinecone / Weaviate)
+> - **4.3** — Elasticsearch integration (SQLite FTS5 + BM25 covers most original motivation; this is optional add-on)
+> - **6.2** — Multi-node distributed coordinator (in-process building blocks ready: `WriteAheadLog`, `CRDTGraph`, `FileSegmentStorage`)
+> - **6.4** — Cloud-native deployment artefacts (Helm / K8s operator / Docker)
+> - **6.5** — GPU acceleration (deferred — `src/search/Node2Vec.ts` declines it in code comments; CPU envelope covers ~10 M entities)
+> - **3B.8** — Heuristic Guidelines Manager wiring
+>
+> See [ROADMAP.md](./ROADMAP.md) Backlog Audit section for the full ship-state table, and [`docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`](../planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md) for the per-task Phase 0–11 ledger.
 
 ---
 
@@ -599,74 +612,90 @@ A purpose-built query language for knowledge graph operations.
 
 ## Priority Matrix
 
-| Feature | Impact | Effort | Priority |
-|---------|--------|--------|----------|
-| **Performance & Scale** | | | |
-| 1.3 Incremental Index Updates (BM25 + coalescing) | Medium | Low | **P1** |
-| 1.1 Materialized Search Views | High | Medium | **P0** |
-| 2.2 Batch Mutation API | High | Low | **P0** |
-| 1.4 Query Result Streaming | High | Medium | **P1** |
-| 1.2 Bloom Filter Pre-screening | High | Medium | **P1** |
-| 4.2 Parallel Search + Cancellation | Medium | Low | **P1** |
-| 3.2 Lazy Entity Hydration | High | High | **P1** |
-| 2.3 Background Index Maintenance | Medium | Medium | **P2** |
-| 3.3 LRU Cache w/ Pressure Eviction | Medium | Medium | **P2** |
-| 5.1 SQLite Connection Pooling | Medium | Low | **P2** |
-| 1.5 Tiered Index Architecture | Medium | High | **P3** |
-| 2.1 WAL for JSONL Backend | Medium | High | **P3** |
-| 3.1 Observation Deduplication | Low | Medium | **P3** |
-| 3.4 Compressed In-Memory Storage | Medium | High | **P3** |
-| 4.1 Query Plan Caching w/ Stats | Low | Medium | **P3** |
-| 4.3 Columnar Observation Storage | Medium | High | **P3** |
-| 5.2 SQLite Partial Indexes | Low | Medium | **P3** |
-| 5.3 JSONL Segment Files | Medium | High | **P3** |
-| 5.4 Memory-Mapped Files | Medium | High | **P3** |
-| 5.5 Index Partitioning | Medium | Medium | **P3** |
-| **Observability** | | | |
-| 6.1 Query Plan Visualization | Medium | Low | **P2** |
-| 6.2 Performance Dashboard | Low | Medium | **P3** |
-| 6.3 Index Health Monitor | Low | Low | **P3** |
-| **Search & Analytics** | | | |
-| 7.1 Spell Correction | Medium | Medium | **P2** |
-| 7.2 Synonym Expansion | Medium | Medium | **P2** |
-| 8.1 Clique Detection | Low | Medium | **P3** |
-| 8.2 HITS Algorithm | Low | Low | **P3** |
-| 8.3 Community Detection | Medium | Medium | **P3** |
-| **Entity & CLI** | | | |
-| 9.1 Entity State Machine | Medium | Medium | **P2** |
-| 10.1 CLI Pipe Support | Low | Low | **P2** |
-| **Memory Intelligence (Phase 3B)** | | | |
-| 11.1 Heuristic Manager | Medium | High | **P3** |
-| **Integration & Ecosystem** | | | |
-| 12.1 Database Adapters | High | Very High | **P3** |
-| 12.2 REST API Generation | High | High | **P3** |
-| 12.3 Elasticsearch Integration | Medium | High | **P4** |
-| 12.4 GraphQL Support | Medium | High | **P4** |
-| 12.5 Framework Integrations | Medium | Medium | **P4** |
-| 12.6 LLM Ecosystem Integrations | High | High | **P3** |
-| 11B.1 Query Language DSL | Medium | Very High | **P4** |
-| **Advanced & Enterprise** | | | |
-| 13.1 Vector DB Integration | Medium | High | **P4** |
-| 13.2 Graph Embeddings | Medium | Very High | **P4** |
-| 13.3 ML-Powered Features (incl. LSH, adaptive indexing) | Medium | Very High | **P4** |
-| 13.4 SPARQL (Standards) | Low | High | **P5** |
-| 13.5 CRDT Collaboration | Medium | Very High | **P5** |
-| 14.1 Access Control (ABAC, row-level, API keys) | High | Very High | **P5** |
-| 14.2 Distributed Architecture | High | Very High | **P5** |
-| 14.3 Encryption & GDPR | High | High | **P5** |
-| 14.4 Cloud-Native Deployment | Medium | High | **P5** |
-| 14.5 GPU Acceleration | Low | Very High | **P5** |
-| **Codebase Health (§15)** | | | |
-| 15.1 Split god-object files | Medium | Medium | **P1** |
-| 15.2 Close agent-memory test gaps | High | Medium | **P1** |
-| 15.3 Eliminate `as any` casts | Medium | Low | **P2** |
-| 15.4 Centralize logging | Low | Low | **P2** |
-| 15.5 Scheduler / lifecycle hygiene | Medium | Low | **P1** |
-| 15.6 Tooling (lint, lockfile) | Medium | Low | **P1** |
-| 15.7 Dependency currency | Low | Medium | **P3** |
-| 15.8 Public API tiering | Low | Low | **P3** |
-| 15.9 Security checklist | Medium | Low | **P2** |
-| 15.10 Documentation drift | Low | Low | **P2** |
+### Shipped in v1.15.0 (PR #34 — Phases 0–11 of performance & scale track)
+
+| Section | Item | Implementation |
+|---------|------|----------------|
+| **Performance & Scale** | | |
+| 1.1 | Materialized Search Views | `MaterializedViewsManager` |
+| 1.2 | Bloom Filter Pre-screening | `BloomFilter` + `BloomPreScreener` |
+| 1.3 | BM25 Incrementality + Batch Coalescing | `BM25Search` + `IncrementalIndexer` + `TFIDFEventSync` |
+| 1.4 | Query Result Streaming | `StreamingExporter` |
+| 1.5 | Tiered Index Architecture | `LRUHotTier` → `DiskWarmTier` → `BrotliColdTier` via `TieredIndex` |
+| 2.1 | WAL for JSONL Backend | `WriteAheadLog` + `EntityProxy` |
+| 2.2 | Batch Mutation API | `BatchTransaction` |
+| 2.3 | Background Index Maintenance | `BackgroundIndexer` |
+| 3.2 | Lazy Entity Hydration | `JsonlColumnStore` (columnar observation reads) |
+| 3.3 | LRU Cache w/ Pressure Eviction | `CachePressureCoordinator` |
+| 3.4 | Compressed In-Memory Storage | `CompressedMap` + `BrotliCompressionAdapter` / `ZlibCompressionAdapter` / `IdentityCompressionAdapter` |
+| 4.1 | Query Plan Caching with Stats | `QueryPlanCache` + `QueryCostEstimator` + `QueryPlanner` |
+| 4.2 | Parallel Search + Cancellation | `ParallelSearchExecutor` + `EarlyTerminationManager` + `OperationCancelledError` (AbortController-driven) |
+| 4.3 | Columnar Observation Storage | `IColumnStore<T>` + `JsonlColumnStore` + `InMemoryColumnStore` + `ObservationColumn` |
+| 5.1 | SQLite Connection Pooling | Read pool (`MEMORY_SQLITE_READ_POOL_SIZE`) |
+| 5.2 | SQLite Partial Indexes | `PartialIndexAdvisor` (auto-DDL via `MEMORY_SQLITE_AUTO_INDEX`) |
+| 5.3 | JSONL Segment Files | `FileSegmentStorage` + `FnvSegmentRouter` (`MEMORY_STORAGE_SEGMENT_COUNT`) |
+| 5.4 | Memory-Mapped Files | `IMmapBackend` + `BufferMmapBackend` + `FsReadMmapBackend` |
+| 5.5 | Index Partitioning | `PartitionedInvertedIndex` |
+| **Observability** | | |
+| 6.1 | Query Plan Visualization | `ctx.diagnostics.explainPlan` |
+| 6.3 | Index Health Monitor | `IndexHealthMonitor` |
+| **Search & Analytics** | | |
+| 7.2 | Synonym Expansion | `SynonymManager` |
+| 8.1 | Clique Detection | `GraphTraversal.findMaximalCliques()` |
+| 8.2 | HITS Algorithm | `GraphTraversal.hits()` |
+| 8.3 | Community Detection | `GraphTraversal.louvainCommunities()` |
+| **Entity & CLI** | | |
+| 9.1 | Entity State Machine | `EntityStateMachine` + `TransitionLedger` + `IllegalStatusTransitionError` |
+| 10.1 | CLI Pipe Support | `src/cli/` (Phase 0) |
+| **Advanced & Enterprise** | | |
+| 13.2 | Graph Embeddings | `BiasedRandomWalk` + `SkipGramTrainer` (node2vec) |
+| 13.3 | ML-Powered Features (LSH, anomaly) | `LSHIndex` + `AnomalyDetector` + `BloomFilter` + `PatternDetector` |
+| 13.4 | SPARQL (Standards) | `SparqlExecutor` (minimal BGP / FILTER / OPTIONAL / UNION) + `SparqlError` |
+| 13.5 | CRDT Collaboration | `VectorClock` + `LWWRegister` + `ORSet` + `CRDTGraph` |
+| 14.1 | Access Control | `RbacMiddleware` + `RoleAssignmentStore` (η.6.1); `ABACPolicy` + `RowLevelFilter` + `APIKeyStore` (Phase 5) |
+| **Codebase Health** | | |
+| 15.1 | Split god-object files | Done (IOManager → BackupManager; AgentMemoryManager kept as intentional facade) |
+| 15.3 | Eliminate `as any` casts | Done |
+| 15.4 | Centralize logging | `src/utils/logger.ts` (structured logger) |
+| 15.5 | Scheduler / lifecycle hygiene | `TaskQueue` bounds + `kickProcessNext` error surfacing |
+| 15.6 | Tooling (lint, lockfile) | ESLint + improved lockfile discipline |
+| 15.9 | Security checklist | `SECURITY.md` + PRs #38/#39 hardening |
+
+### Remaining work (P1 → P5 priority)
+
+| Section | Item | Priority | Effort | Notes |
+|---------|------|----------|--------|-------|
+| **High-priority remaining** | | | | |
+| 3.1 | Observation Deduplication (entity-level) | **P1** | Medium | `MemoryEngine` covers turn-level dedup; entity-level passes still TBD |
+| 7.1 | Spell Correction | **P2** | Medium | `NGramIndex` infrastructure exists; spell-correction layer absent |
+| 11.1 | Heuristic Manager wiring (3B.8) | **P2** | Medium | `src/agent/HeuristicManager.ts` is scaffolded but not wired to `ConsolidationPipeline` |
+| 11B.1 | Query Language DSL parser | **P2** | High | `QueryParser` + `QueryDslError` exist; full DSL frontend pending |
+| **Integration & Ecosystem** | | | | |
+| 12.1 | Concrete DB drivers (PostgreSQL, MongoDB) | **P2** | High | `IDatabaseAdapter` interface shipped; concrete drivers pending. Overlaps with MEM-05. |
+| 12.2 | REST API generation (Fastify, OpenAPI) | **P3** | High | `RestRouter` scaffold shipped; framework binding + OpenAPI pending |
+| 12.3 | Elasticsearch Integration | **P4** | High | Optional add-on; SQLite FTS5 + BM25 covers the common case |
+| 12.4 | GraphQL Support | **P4** | High | Build on top of REST |
+| 12.5 | Framework Integrations (LangChain, LlamaIndex) | **P3** | Medium | `LangChainMemoryAdapter` scaffolded |
+| 12.6 | LLM Ecosystem Integrations | **P3** | Medium | Optional embedding/LLM providers pluggable today |
+| 13.1 | Concrete Vector-DB drivers (pgvector / Pinecone / Weaviate) | **P3** | High | `IVectorDBAdapter` + in-process stores shipped; external drivers pending. Overlaps with MEM-06. |
+| **Enterprise** | | | | |
+| 14.2 | Distributed Architecture (multi-node) | **P4** | Very High | In-process building blocks ready (`WriteAheadLog`, `CRDTGraph`, `FileSegmentStorage`); cross-host coordinator pending |
+| 14.3 | Encryption & GDPR tooling | **P3** | Medium | PII redactor + audit log shipped; formal GDPR-export / right-to-erasure workflows pending |
+| 14.4 | Cloud-Native Deployment artefacts | **P4** | Medium | Helm chart / K8s operator / Docker image — may live in sibling repo |
+| 14.5 | GPU Acceleration | **P5** | Very High | Deferred per `src/search/Node2Vec.ts` comments; CPU envelope covers ~10 M entities |
+| **Codebase Health** | | | | |
+| 15.2 | Close agent-memory test gaps | **P2** | Medium | 273 test files / 7098 tests — gaps remain on visibility-time-window edge cases |
+| 15.7 | Dependency currency | **P3** | Medium | Periodic `npm outdated` sweep |
+| 15.8 | Public API tiering | **P3** | Low | API-stability tags added Phase 5; coverage incomplete |
+| 15.10 | Documentation drift | **P2** | Low | This document + README + architecture/* refreshed 2026-05-13 |
+
+### Priority legend
+
+- **P1** — should be the next sprint's focus
+- **P2** — within 1–2 sprints
+- **P3** — within the next quarter
+- **P4** — strategic; gated on user pull or external dep approval
+- **P5** — long-horizon / out-of-scope-for-now
 
 ---
 
