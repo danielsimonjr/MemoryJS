@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (ConsolidationPipeline.ProspectivePromotionStage)
+
+- **`ProspectivePromotionStage`** exported from `src/agent/ConsolidationPipeline.ts`: new `PipelineStage` that scans storage for fired prospective intentions whose `action.kind === 'inject-context'` and promotes them to `memoryType: 'episodic'` with a `prospective-fulfilled` tag. Closes Sprint 2 of 3 for the prospective-memory integration; see `docs/roadmap/MEMORY_TYPES_EXPANSION.md` §4.3 row "ConsolidationPipeline".
+- **Semantics**: only `inject-context` actions get promoted — they have content payload worth archiving as episodic memory. `invoke` and `tag-related` actions are side-effect-only and stay untouched (the user can still query them via `getFired()` for audit; they just don't appear in episodic search).
+- **Idempotent**: `isProspectiveMemory()` rejects entities whose `memoryType` is already `'episodic'`, so re-running the stage on a fulfilled entity is a no-op. The `prospective-fulfilled` tag is also deduped via `Array.from(new Set(...))`.
+- **Self-sufficient**: the stage's `entities` argument from the pipeline is intentionally unused — prospective intentions aren't in the working-memory candidate set, so the stage scans storage directly. The pattern mirrors the existing `executeRuleStage` self-sufficiency.
+- **Failure semantics**: per-entity try/catch surfaces all errors on `StageResult.errors` and the batch continues. `storage.updateEntity` returning `false` (entity vanished mid-batch — concurrent delete / governance rollback / segment flush) is also surfaced as an error rather than being silently counted as transformed. Error messages include `fireCount` and `action.kind` for debuggability.
+- **12 new tests** (`tests/unit/agent/ConsolidationPipeline.test.ts > ProspectivePromotionStage`): promotes inject-context fires / does NOT promote invoke / does NOT promote tag-related / does NOT promote pending / does NOT promote expired or cancelled / idempotent on re-run / preserves existing tags / processes multiple in one pass / aggregates throw errors / aggregates vanished-mid-batch errors / error messages include context / stage `name` contract.
+- **Mock-storage update**: the shared `createMockStorage` helper in this test file now returns `boolean` from `updateEntity` matching real `GraphStorage.updateEntity` and `SQLiteStorage.updateEntity` semantics. Existing 78 tests in this file unaffected.
+- **Reviewed**: code-reviewer "ship it" (one LOW on JSDoc verbosity — within local convention, deferred); silent-failure-hunter caught HIGH (`updateEntity` boolean return ignored) + MEDIUM (error-message context) — both fixed and re-reviewed clean; code-simplifier flagged dynamic `import()` in tests as over-engineering — replaced with static import.
+- **Verification**: 90/90 ConsolidationPipeline tests pass; typecheck clean.
+
 ### Added (ManagerContext.prospectiveMemory lazy getter)
 
 - **`ctx.prospectiveMemory`** lazy getter on `ManagerContext` (`src/core/ManagerContext.ts`): closes D1 of [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) §6 — wires `ProspectiveMemoryManager` with a `procedureInvoker` closure that delegates to `procedureManager.invoke()` and throws on `found: false`, so the rejection surfaces via `FiredEvent.invocationError` per the existing contract.

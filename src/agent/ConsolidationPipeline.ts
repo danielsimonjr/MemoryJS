@@ -21,7 +21,7 @@ import type {
   ConsolidationTrigger,
   ConsolidationRule,
 } from '../types/agent-memory.js';
-import { isAgentEntity } from '../types/agent-memory.js';
+import { isAgentEntity, isProspectiveMemory } from '../types/agent-memory.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
@@ -1272,5 +1272,72 @@ export class ConsolidationPipeline {
    */
   async triggerManualConsolidation(): Promise<ConsolidationResult> {
     return this.runAutoConsolidation('manual');
+  }
+}
+
+// ==================== ProspectivePromotionStage ====================
+
+/**
+ * Pipeline stage that promotes fired prospective intentions to
+ * episodic memory. Closes the prospective-memory lifecycle: a fired
+ * intention whose action delivered content (`'inject-context'`) becomes
+ * a permanent episodic record tagged `'prospective-fulfilled'`.
+ *
+ * - `invoke` and `tag-related` actions are NOT promoted — they have
+ *   side-effects but no payload worth archiving as episodic content.
+ * - Idempotent: re-running on an already-promoted entity is a no-op
+ *   (the entity's `memoryType` is now `'episodic'`, so the prospective
+ *   filter excludes it).
+ * - Self-sufficient: scans storage independently of the `entities`
+ *   argument from the pipeline (prospective intentions aren't in the
+ *   working-memory candidate set).
+ *
+ * Register via `ConsolidationPipeline.registerStage(new ProspectivePromotionStage(storage))`.
+ */
+export class ProspectivePromotionStage implements PipelineStage {
+  readonly name = 'prospective-promotion';
+
+  constructor(private readonly storage: IGraphStorage) {}
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
+    const graph = await this.storage.loadGraph();
+    const candidates = graph.entities
+      .filter(isProspectiveMemory)
+      .filter((e) => e.lifecycle.status === 'fired' && e.action.kind === 'inject-context');
+
+    let transformed = 0;
+    const errors: string[] = [];
+    const nowIso = new Date().toISOString();
+
+    for (const entity of candidates) {
+      const ctx = `fireCount=${entity.lifecycle.fireCount}, action=${entity.action.kind}`;
+      try {
+        const newTags = Array.from(new Set([...(entity.tags ?? []), 'prospective-fulfilled']));
+        const ok = await this.storage.updateEntity(entity.name, {
+          memoryType: 'episodic',
+          tags: newTags,
+          lastModified: nowIso,
+        } as unknown as Partial<Entity>);
+        if (ok) {
+          transformed++;
+        } else {
+          // updateEntity returns false when the entity is missing —
+          // signals a vanished-mid-batch race (concurrent delete /
+          // governance rollback / segment-mode flush). Surface it
+          // rather than silently counting it as transformed.
+          errors.push(
+            `ProspectivePromotionStage: entity '${entity.name}' disappeared mid-batch (${ctx})`
+          );
+        }
+      } catch (err) {
+        errors.push(
+          `ProspectivePromotionStage: failed to promote '${entity.name}' (${ctx}): ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
+    }
+
+    return { processed: candidates.length, transformed, errors };
   }
 }

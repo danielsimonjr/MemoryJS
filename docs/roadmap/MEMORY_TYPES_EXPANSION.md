@@ -285,7 +285,7 @@ export interface FiredEvent {
 | **`TaskQueue`** | `ProspectiveMemoryManager.start()` enqueues a recurring `tick` task at `pollIntervalMs`. Reuses bounds (`MAX_QUEUE`) — no new resource ceiling needed. |
 | **`DecayEngine`** | Pending intentions get standard half-life decay; un-fired intentions past `defaultExpiryHours` become `status: 'expired'` and feed `forgetWeakMemories` |
 | **`SalienceEngine`** | Pending intentions whose trigger is imminent (within the next `pollIntervalMs * 2`) get a salience boost; expired ones get penalized |
-| **`ConsolidationPipeline`** | New `PipelineStage`: `ProspectivePromotion` — fired prospective intentions whose action was `inject-context` get promoted into episodic memory with a `prospective-fulfilled` tag |
+| **`ConsolidationPipeline`** | ✅ shipped — `ProspectivePromotionStage` exported from `src/agent/ConsolidationPipeline.ts`. Scans storage for fired prospective intentions with `action.kind === 'inject-context'` and promotes them to `memoryType: 'episodic'` with a `prospective-fulfilled` tag. `invoke` and `tag-related` actions are NOT promoted (side-effects only, no payload). Idempotent; partial-batch error aggregation per `StageResult.errors`. |
 | **`ContextWindowManager.wakeUp()`** | New L1.5 layer: pending intentions for the current session, sorted by next-fire-time, capped at ~5 entries / ~200 tokens |
 | **`AuditLog`** | All fire events logged; `cancel` events logged with reason |
 | **`MemoryEngine`** | Dedup chain runs over `content` of incoming prospective intentions — prevents "remind me about X" being added twice |

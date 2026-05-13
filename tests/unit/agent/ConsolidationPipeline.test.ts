@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   ConsolidationPipeline,
+  ProspectivePromotionStage,
   type PipelineStage,
 } from '../../../src/agent/ConsolidationPipeline.js';
 import type { IGraphStorage, Entity, KnowledgeGraph } from '../../../src/types/types.js';
@@ -26,9 +27,9 @@ function createMockStorage(entities: Entity[] = []): IGraphStorage {
     getEntityByName: vi.fn((name: string) => entityMap.get(name)),
     updateEntity: vi.fn(async (name: string, updates: Record<string, unknown>) => {
       const entity = entityMap.get(name);
-      if (entity) {
-        Object.assign(entity, updates);
-      }
+      if (!entity) return false;
+      Object.assign(entity, updates);
+      return true;
     }),
     loadGraph: vi.fn(async () => ({
       entities: Array.from(entityMap.values()),
@@ -1860,6 +1861,205 @@ describe('ConsolidationPipeline', () => {
       const result = await pipeline.triggerManualConsolidation();
       expect(result).toBeDefined();
       expect(result.memoriesProcessed).toBe(0);
+    });
+  });
+
+  describe('ProspectivePromotionStage', () => {
+    function makeFiredProspective(
+      name: string,
+      opts: {
+        actionKind?: 'inject-context' | 'invoke' | 'tag-related';
+        status?: 'pending' | 'fired' | 'expired' | 'cancelled';
+        tags?: string[];
+      } = {}
+    ): Entity {
+      const nowIso = new Date().toISOString();
+      const status = opts.status ?? 'fired';
+      let lifecycle: Record<string, unknown>;
+      if (status === 'fired') {
+        lifecycle = { status, firedAt: nowIso, fireCount: 1 };
+      } else if (status === 'pending') {
+        lifecycle = { status, fireCount: 0 };
+      } else if (status === 'expired') {
+        lifecycle = { status, fireCount: 0, expiredAt: nowIso };
+      } else {
+        lifecycle = { status, cancelledAt: nowIso, fireCount: 0 };
+      }
+      let action: Record<string, unknown>;
+      if (opts.actionKind === 'invoke') {
+        action = { kind: 'invoke', procedureId: 'p' };
+      } else if (opts.actionKind === 'tag-related') {
+        action = {
+          kind: 'tag-related',
+          tagsToAdd: ['t'],
+          relatedEntityFilter: { tags: ['x'] },
+        };
+      } else {
+        action = { kind: 'inject-context' };
+      }
+      return {
+        name,
+        entityType: 'prospective',
+        observations: [`content for ${name}`],
+        createdAt: nowIso,
+        lastModified: nowIso,
+        importance: 5,
+        memoryType: 'prospective',
+        visibility: 'private',
+        accessCount: 0,
+        confidence: 0.9,
+        confirmationCount: 0,
+        trigger: { kind: 'time', at: nowIso },
+        action,
+        lifecycle,
+        tags: opts.tags,
+      } as unknown as Entity;
+    }
+
+    it('promotes fired inject-context prospective intentions', async () => {
+      const storage = createMockStorage([makeFiredProspective('p1')]);
+      const stage = new ProspectivePromotionStage(storage);
+
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.processed).toBe(1);
+      expect(result.transformed).toBe(1);
+      expect(result.errors).toEqual([]);
+
+      const stored = (await storage.getEntityByName('p1')) as Entity & {
+        memoryType: string;
+        tags: string[];
+      };
+      expect(stored.memoryType).toBe('episodic');
+      expect(stored.tags).toContain('prospective-fulfilled');
+    });
+
+    it('does not promote fired invoke-action intentions', async () => {
+      const storage = createMockStorage([
+        makeFiredProspective('p-invoke', { actionKind: 'invoke' }),
+      ]);
+      const stage = new ProspectivePromotionStage(storage);
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.processed).toBe(0);
+      const stored = (await storage.getEntityByName('p-invoke')) as Entity & { memoryType: string };
+      expect(stored.memoryType).toBe('prospective');
+    });
+
+    it('does not promote fired tag-related intentions', async () => {
+      const storage = createMockStorage([
+        makeFiredProspective('p-tag', { actionKind: 'tag-related' }),
+      ]);
+      const stage = new ProspectivePromotionStage(storage);
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.processed).toBe(0);
+      const stored = (await storage.getEntityByName('p-tag')) as Entity & { memoryType: string };
+      expect(stored.memoryType).toBe('prospective');
+    });
+
+    it('does not promote pending prospective intentions', async () => {
+      const storage = createMockStorage([makeFiredProspective('p-pend', { status: 'pending' })]);
+      const stage = new ProspectivePromotionStage(storage);
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.processed).toBe(0);
+    });
+
+    it('does not promote expired or cancelled intentions', async () => {
+      const storage = createMockStorage([
+        makeFiredProspective('exp', { status: 'expired' }),
+        makeFiredProspective('can', { status: 'cancelled' }),
+      ]);
+      const stage = new ProspectivePromotionStage(storage);
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.processed).toBe(0);
+    });
+
+    it('is idempotent — does not re-promote already-fulfilled entities', async () => {
+      const storage = createMockStorage([makeFiredProspective('p-twice')]);
+      const stage = new ProspectivePromotionStage(storage);
+      await stage.process([], {} as ConsolidateOptions);
+      const second = await stage.process([], {} as ConsolidateOptions);
+      expect(second.processed).toBe(0);
+      const stored = (await storage.getEntityByName('p-twice')) as Entity & { tags: string[] };
+      expect(stored.tags.filter((t) => t === 'prospective-fulfilled')).toHaveLength(1);
+    });
+
+    it('preserves existing tags when adding prospective-fulfilled', async () => {
+      const storage = createMockStorage([
+        makeFiredProspective('p-tags', { tags: ['existing-1', 'existing-2'] }),
+      ]);
+      const stage = new ProspectivePromotionStage(storage);
+      await stage.process([], {} as ConsolidateOptions);
+      const stored = (await storage.getEntityByName('p-tags')) as Entity & { tags: string[] };
+      expect(stored.tags).toEqual(expect.arrayContaining(['existing-1', 'existing-2', 'prospective-fulfilled']));
+    });
+
+    it('processes multiple fired intentions in one pass', async () => {
+      const storage = createMockStorage([
+        makeFiredProspective('a'),
+        makeFiredProspective('b'),
+        makeFiredProspective('c'),
+      ]);
+      const stage = new ProspectivePromotionStage(storage);
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.processed).toBe(3);
+      expect(result.transformed).toBe(3);
+    });
+
+    it('reports updateEntity errors without aborting the batch', async () => {
+      const storage = createMockStorage([
+        makeFiredProspective('ok'),
+        makeFiredProspective('fail'),
+        makeFiredProspective('also-ok'),
+      ]);
+      (storage.updateEntity as ReturnType<typeof vi.fn>).mockImplementation(
+        async (name: string) => {
+          if (name === 'fail') throw new Error('disk full');
+          return true;
+        }
+      );
+      const stage = new ProspectivePromotionStage(storage);
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.processed).toBe(3);
+      expect(result.transformed).toBe(2);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toMatch(/fail/);
+    });
+
+    it('reports vanished-mid-batch (updateEntity returns false) without inflating transformed count', async () => {
+      const storage = createMockStorage([
+        makeFiredProspective('present'),
+        makeFiredProspective('vanished'),
+      ]);
+      // Simulate `vanished` being deleted between loadGraph() and updateEntity()
+      (storage.updateEntity as ReturnType<typeof vi.fn>).mockImplementation(
+        async (name: string) => {
+          if (name === 'vanished') return false;
+          return true;
+        }
+      );
+      const stage = new ProspectivePromotionStage(storage);
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.processed).toBe(2);
+      expect(result.transformed).toBe(1); // NOT 2 — 'vanished' should not be counted
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toMatch(/vanished/);
+      expect(result.errors[0]).toMatch(/disappeared mid-batch/);
+    });
+
+    it('includes fireCount and action kind in error messages', async () => {
+      const storage = createMockStorage([makeFiredProspective('ctx')]);
+      (storage.updateEntity as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+        throw new Error('boom');
+      });
+      const stage = new ProspectivePromotionStage(storage);
+      const result = await stage.process([], {} as ConsolidateOptions);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toMatch(/fireCount=1/);
+      expect(result.errors[0]).toMatch(/action=inject-context/);
+    });
+
+    it('has the expected stage name', async () => {
+      const stage = new ProspectivePromotionStage(createMockStorage());
+      expect(stage.name).toBe('prospective-promotion');
     });
   });
 });
