@@ -327,6 +327,27 @@ export class ObservationManager {
     dedup?: DeduplicationOptions,
     options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
   ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
+    // Acquire the graph mutex for the whole add-observations
+    // sequence. Without this, two concurrent addObservations calls
+    // on the same entity both snapshot via getGraphForMutation,
+    // both append observations to their respective copies, both
+    // call saveGraph serially — but the second write clobbers the
+    // first's persisted state. Flagged as Phase 8 review #9
+    // (pre-existing race made observable through the shadow column
+    // store); the same lock is already used by invalidateObservation.
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      return await this.addObservationsLocked(observations, dedup, options);
+    } finally {
+      release();
+    }
+  }
+
+  private async addObservationsLocked(
+    observations: { entityName: string; contents: string[] }[],
+    dedup?: DeduplicationOptions,
+    options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
+  ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
     const resolvedDedup = this.resolveDedup(dedup);
 
     // Get mutable graph for atomic update
@@ -574,6 +595,18 @@ export class ObservationManager {
    * ```
    */
   async deleteObservations(
+    deletions: { entityName: string; observations: string[] }[]
+  ): Promise<void> {
+    // Same locking rationale as addObservations — Phase 8 review #9.
+    const release = await this.storage.graphMutex.acquire();
+    try {
+      return await this.deleteObservationsLocked(deletions);
+    } finally {
+      release();
+    }
+  }
+
+  private async deleteObservationsLocked(
     deletions: { entityName: string; observations: string[] }[]
   ): Promise<void> {
     // Get mutable graph for atomic update

@@ -138,6 +138,18 @@ export class GraphStorage implements IGraphStorage {
   private cache: KnowledgeGraph | null = null;
 
   /**
+   * In-flight load promise. When two concurrent `loadGraph()` /
+   * `ensureLoaded()` calls hit a cold cache, only the first
+   * actually invokes `loadFromDisk`; the second awaits the same
+   * promise. Without this, both would race through `loadFromDisk`,
+   * both would build entity maps, and the second would clobber the
+   * first's cache assignment. The second backend handle in mmap
+   * mode also doubled the kernel page-cache pressure. Flagged in
+   * the Phase 11 review #3 as a pre-existing hole; fixed here.
+   */
+  private loadingPromise: Promise<void> | null = null;
+
+  /**
    * Number of pending append operations since last compaction.
    * Used to trigger automatic compaction when threshold is reached.
    */
@@ -329,8 +341,9 @@ export class GraphStorage implements IGraphStorage {
       return this.cache;
     }
 
-    // Cache miss - load from disk
-    await this.loadFromDisk();
+    // Cache miss - load from disk via the shared in-flight
+    // promise so concurrent callers don't both invoke loadFromDisk.
+    await this.ensureLoaded();
     return this.cache!;
   }
 
@@ -355,14 +368,21 @@ export class GraphStorage implements IGraphStorage {
   }
 
   /**
-   * Ensure the cache is loaded from disk.
-   *
-   * @returns Promise resolving when cache is populated
+   * Ensure the cache is loaded from disk. Concurrent callers share
+   * the same in-flight promise so `loadFromDisk` runs at most once
+   * per cold-cache window. On error, the in-flight promise is
+   * cleared (not the cache) so the next caller retries from disk.
    */
   async ensureLoaded(): Promise<void> {
-    if (this.cache === null) {
-      await this.loadFromDisk();
+    if (this.cache !== null) return;
+    if (this.loadingPromise !== null) {
+      await this.loadingPromise;
+      return;
     }
+    this.loadingPromise = this.loadFromDisk().finally(() => {
+      this.loadingPromise = null;
+    });
+    await this.loadingPromise;
   }
 
   /**
