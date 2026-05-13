@@ -30,12 +30,10 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Branded `PlanId` / `GoalNodeId` prevent id-type confusion; `MarkResolvedResult` discriminates `'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update'`
 - 36 unit tests passing; consolidation-pipeline stage + wakeUp L1.5 layer follow as separate sprints
 
-#### 3. Trust Hierarchy formalization (Phase 2 Sprint 6 — meta-improvement)
-- Adds `trust_level: 'ground-truth' | 'verified' | 'inferred' | 'unverified'` discriminated union to `Entity.source`
-- Updates `CollaborativeSynthesis.resolveConflicts` to honor explicit ordering: `user-authored > tool-verified (recent) > agent-inferred (high) > imported > agent-inferred (low)`, recency tiebreaker within tier
-- Lifts every other type's conflict-resolution / staleness handling
-- Effort: small (~3 days)
-- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 12
+#### 3. ~~Trust Hierarchy formalization (Phase 2 Sprint 6)~~ — ✅ shipped (partial)
+- Closed (type + backfill + `ConflictResolver` strategy): `TrustLevel` union (`'ground-truth' | 'verified' | 'inferred' | 'unverified'`) added to `MemorySource.trustLevel?:`; `inferTrustLevel(source)` backfill from `method` + `reliability` with `DEFAULT_TRUST_THRESHOLDS` overridable defaults; `compareTrustLevel` standard comparator; new `'trust_level'` `ConflictStrategy` with recency tiebreak in `ConflictResolver.resolveTrustLevel`
+- Deferred to a follow-up sprint per scope cut: `CollaborativeSynthesis.resolveConflicts` ordering integration (its own consumer surface)
+- Verified: 31/31 trust-level + `ConflictResolver` tests; 1957/1957 sibling agent + types + ManagerContext suites green
 
 #### 4. Heuristic Guidelines Manager (3B.8)
 - `src/agent/HeuristicManager.ts` exists as scaffold but is not wired into the `ConsolidationPipeline`

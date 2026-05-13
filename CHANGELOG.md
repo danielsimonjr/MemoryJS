@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Trust Hierarchy formalization — Phase 2 Sprint 6, partial)
+
+- **`TrustLevel` discriminated union** on `MemorySource.trustLevel?:` — catalog Type 12 (Provenance) closure. Closes the type+backfill+ConflictResolver-strategy portion of Phase 2 Sprint 6 per scope cut; `CollaborativeSynthesis.resolveConflicts` ordering integration deferred to a follow-up sprint (it's a separate consumer surface and benefits from letting the type bake first). Catalog framing of trust as **categorical** (not scalar) lifts conflict resolution from `0..1` numeric compare to explicit ordering: "user-authored beats tool-verified regardless of recency" stops being a `>` against a magic constant.
+- **New types/functions** in `src/types/agent-memory.ts`:
+  - `TrustLevel = 'ground-truth' | 'verified' | 'inferred' | 'unverified'`
+  - `TRUST_LEVEL_ORDER: Record<TrustLevel, number>` — `@internal`-tagged so client code prefers `compareTrustLevel` over numeric escape-hatch comparisons (per type-design review)
+  - `compareTrustLevel(a, b)` — standard sort comparator (negative / 0 / positive)
+  - `DEFAULT_TRUST_THRESHOLDS` — exported const so deployments can override `told: 0.9` / `observed: 0.8` / `consolidated: 0.7` without forking (per type-design review on fenced-off thresholds)
+  - `inferTrustLevel(source)` — total function (`MemorySource | undefined → TrustLevel`); precedence: explicit `source.trustLevel` → NaN/non-finite reliability guard → method-based mapping → undefined source → `'unverified'`. The NaN guard is load-bearing: `NaN >= 0.9` silently evaluates `false`, which without the guard would coerce malformed `'told'` records to `'verified'` (actively misleading; caught by silent-failure-hunter)
+  - `MemorySource.trustLevel?:` field added; explicit value takes precedence over inference
+- **`'trust_level'` `ConflictStrategy`** added to the union; new private `ConflictResolver.resolveTrustLevel(memories)` resolves by highest categorical `TrustLevel`, with `lastModified → createdAt` recency tiebreak within tier. Empty-array guard throws `'resolveTrustLevel: empty memories array'` (defensive against future direct callers; safe under current `resolveConflict` since the caller guards length earlier)
+- **18 new tests**: `tests/unit/types/trust-level.test.ts` (14 — ordering / explicit-takes-precedence / per-method mapping / NaN+infinite+undefined-reliability defensive / undefined-source) + 4 new cases in `tests/unit/agent/ConflictResolver.test.ts` (highest-trust wins / explicit `source.trustLevel` overrides inferred / recency tiebreak at same tier / fallback to `'unverified'` when `source` missing)
+- **Reviewed**: type-design-analyzer flagged 1 MEDIUM (`DEFAULT_TRUST_THRESHOLDS` extraction — applied), 1 MEDIUM (`@internal` on `TRUST_LEVEL_ORDER` — applied), 1 LOW (`readonly` on `trustLevel?:` — deferred for consistency with sibling `MemorySource` fields); silent-failure-hunter flagged 1 HIGH (NaN guard — applied), 1 MEDIUM (`resolveTrustLevel` empty-array guard — applied), 1 MEDIUM (`undefined`-source warning — deferred: missing source is the **designed** total-function contract, not a bug; logging from `types/` would couple types to runtime), 1 LOW (epoch fallback log — deferred: matches existing `resolveMostRecent` convention). Code-simplifier flagged 5 micro-cleanups; 1 applied (import consolidation), 4 deferred (recompute-in-reduce, epoch sentinel, JSDoc tweaks — all below noise floor)
+- **Verification**: 31/31 Sprint 6 + 1957/1957 across agent + types + ManagerContext suites; typecheck clean
+
 ### Added (Plan / Goal Stack — Phase 2 Sprint 5)
 
 - **`MemoryType` union extended with `'plan'`**: closes Phase 2 Sprint 5 of the memory-types expansion (see [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 6). Pairs structurally with prospective memory (intentions × goals × episodes is the full forward-time triplet) — prospective is single, append-only-until-fired intention-to-act; plan is mutable hierarchical goal *tree* with sub-tasks and acceptance criteria.

@@ -48,6 +48,112 @@ export type MemoryVisibility = 'private' | 'team' | 'org' | 'shared' | 'public';
 export type MemoryAcquisitionMethod = 'observed' | 'inferred' | 'told' | 'consolidated';
 
 /**
+ * Trust-hierarchy mixin (Phase 2 Sprint 6, Catalog Type 12 — Provenance).
+ *
+ * Categorical complement to the numeric `MemorySource.reliability` /
+ * `AgentEntity.confidence` / `AgentMetadata.trustLevel` scores. The
+ * catalog frames trust as a discriminated label so conflict-resolution
+ * ordering is explicit ("user-authored beats tool-verified regardless
+ * of recency") rather than a scalar comparison that hides the *kind*
+ * of trust.
+ *
+ * Ordering: `ground-truth` > `verified` > `inferred` > `unverified`.
+ * - **ground-truth**: user-authored or tool-verified at acquisition
+ * - **verified**: confirmed by a second source / observation
+ * - **inferred**: agent inference, not externally confirmed
+ * - **unverified**: imported / low-confidence / unknown
+ */
+export type TrustLevel = 'ground-truth' | 'verified' | 'inferred' | 'unverified';
+
+/**
+ * Numeric ordering for `TrustLevel` — higher = more trustworthy.
+ *
+ * **Prefer `compareTrustLevel`** for ordering decisions; the numeric
+ * values here are an implementation detail of the comparator and may
+ * change. Exposed for tests and the comparator itself, not as a
+ * stable public API for client comparisons.
+ *
+ * @internal
+ */
+export const TRUST_LEVEL_ORDER: Record<TrustLevel, number> = {
+  'ground-truth': 4,
+  verified: 3,
+  inferred: 2,
+  unverified: 1,
+};
+
+/**
+ * Standard sort comparator. Negative → a < b; 0 → equal; positive → a > b.
+ */
+export function compareTrustLevel(a: TrustLevel, b: TrustLevel): number {
+  return TRUST_LEVEL_ORDER[a] - TRUST_LEVEL_ORDER[b];
+}
+
+/**
+ * Per-method reliability thresholds for `inferTrustLevel`. Exported so
+ * deployments that disagree with the conservative defaults (e.g. a
+ * stricter compliance environment requiring `reliability ≥ 0.95` for
+ * `'verified'`) can override without forking the library — pass a
+ * spread-merged object to a wrapping `inferTrustLevel`-with-thresholds
+ * caller.
+ *
+ * The thresholds split the bucket *one tier up*; below the threshold,
+ * the method's lower-tier label is returned (see `inferTrustLevel`).
+ */
+export const DEFAULT_TRUST_THRESHOLDS = {
+  /** `'told'` ≥ this → `'ground-truth'`; lower → `'verified'`. */
+  told: 0.9,
+  /** `'observed'` ≥ this → `'verified'`; lower → `'inferred'`. */
+  observed: 0.8,
+  /** `'consolidated'` ≥ this → `'verified'`; lower → `'inferred'`. */
+  consolidated: 0.7,
+} as const;
+
+/**
+ * Backfill mapping from existing `MemorySource` fields (method + reliability)
+ * to a `TrustLevel`. Explicit `source.trustLevel` takes precedence.
+ *
+ * Mapping rules (precedence top-down):
+ * - explicit `source.trustLevel` → return as-is
+ * - reliability is `NaN` / not a finite number → 'unverified' (defensive;
+ *   `>=` with `NaN` would silently coerce to a *lower* bucket if not caught)
+ * - `method: 'told'` + reliability ≥ 0.9 → 'ground-truth' (user/tool told us)
+ * - `method: 'told'` (lower reliability) → 'verified'
+ * - `method: 'observed'` + reliability ≥ 0.8 → 'verified'
+ * - `method: 'observed'` (lower) → 'inferred'
+ * - `method: 'consolidated'` + reliability ≥ 0.7 → 'verified'
+ * - `method: 'consolidated'` (lower) → 'inferred'
+ * - `method: 'inferred'` → 'inferred' (regardless of reliability)
+ * - undefined source → 'unverified'
+ *
+ * `inferTrustLevel(undefined) === 'unverified'` is the **designed**
+ * total-function contract, not a bug — missing source is a defined
+ * input value.
+ *
+ * Thresholds come from `DEFAULT_TRUST_THRESHOLDS`; tune per-deployment
+ * by either setting `source.trustLevel` explicitly at write time or
+ * wrapping this function with custom thresholds.
+ */
+export function inferTrustLevel(source: MemorySource | undefined): TrustLevel {
+  if (!source) return 'unverified';
+  if (source.trustLevel) return source.trustLevel;
+  const r = source.reliability;
+  if (typeof r !== 'number' || !Number.isFinite(r)) return 'unverified';
+  switch (source.method) {
+    case 'told':
+      return r >= DEFAULT_TRUST_THRESHOLDS.told ? 'ground-truth' : 'verified';
+    case 'observed':
+      return r >= DEFAULT_TRUST_THRESHOLDS.observed ? 'verified' : 'inferred';
+    case 'consolidated':
+      return r >= DEFAULT_TRUST_THRESHOLDS.consolidated ? 'verified' : 'inferred';
+    case 'inferred':
+      return 'inferred';
+    default:
+      return 'unverified';
+  }
+}
+
+/**
  * Session lifecycle status.
  * - active: Session is currently in progress
  * - completed: Session ended normally
@@ -75,6 +181,8 @@ export type TemporalFocus = 'recent' | 'historical' | 'balanced';
  * - highest_confidence: Use the memory with highest confidence score
  * - most_confirmations: Use the memory with most confirmations
  * - trusted_agent: Use the memory from agent with highest trustLevel
+ * - trust_level: Use the memory with highest categorical `TrustLevel`
+ *   (ground-truth > verified > inferred > unverified); recency tiebreak
  * - merge_all: Combine observations from all conflicting memories
  */
 export type ConflictStrategy =
@@ -82,6 +190,7 @@ export type ConflictStrategy =
   | 'highest_confidence'
   | 'most_confirmations'
   | 'trusted_agent'
+  | 'trust_level'
   | 'merge_all';
 
 /**
@@ -153,6 +262,13 @@ export interface MemorySource {
   method: MemoryAcquisitionMethod;
   /** Trust/reliability score (0.0-1.0) */
   reliability: number;
+  /**
+   * Categorical trust label (Phase 2 Sprint 6). Optional — when absent,
+   * `inferTrustLevel(source)` backfills from `method` + `reliability`.
+   * Set explicitly to override the inferred default (e.g. user-authored
+   * memories explicitly marked `'ground-truth'`).
+   */
+  trustLevel?: TrustLevel;
   /** Original entity ID if consolidated from another memory */
   originalEntityId?: string;
 }
