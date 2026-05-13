@@ -20,7 +20,7 @@ import type { ContextProfile } from '../agent/ContextProfileManager.js';
  * - semantic: Long-term facts, concepts, knowledge
  * - procedural: Skills, patterns, procedures (future)
  */
-export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural';
+export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective';
 
 /**
  * Classification of memory access frequency.
@@ -714,7 +714,7 @@ export function isAgentEntity(entity: unknown): entity is AgentEntity {
     typeof e.name === 'string' &&
     typeof e.entityType === 'string' &&
     typeof e.memoryType === 'string' &&
-    ['working', 'episodic', 'semantic', 'procedural'].includes(e.memoryType as string) &&
+    ['working', 'episodic', 'semantic', 'procedural', 'prospective'].includes(e.memoryType as string) &&
     typeof e.accessCount === 'number' &&
     typeof e.confidence === 'number' &&
     typeof e.confirmationCount === 'number' &&
@@ -776,6 +776,140 @@ export function isSemanticMemory(entity: unknown): entity is AgentEntity & { mem
  */
 export function isProceduralMemory(entity: unknown): entity is AgentEntity & { memoryType: 'procedural' } {
   return isAgentEntity(entity) && entity.memoryType === 'procedural';
+}
+
+// ==================== Prospective Memory Types ====================
+
+/**
+ * Trigger condition shared by event-based scheduling and cancellation.
+ *
+ * **Semantics**: OR / any-of across the populated fields (D2 in
+ * `docs/roadmap/MEMORY_TYPES_EXPANSION.md`). A condition matches an
+ * incoming observation if ANY of its populated filters matches. Empty
+ * conditions match nothing (guards against accidentally-fire-on-every).
+ */
+export interface TriggerCondition {
+  /** Plain-text substring match against incoming observation content. */
+  text?: string;
+  /** Tag match — fires if ANY of these tags is on the related entity. */
+  tags?: string[];
+  /** Entity-type filter — fires if observation's entity has this type. */
+  entityType?: string;
+  /** Session-id filter — fires only within this session. */
+  sessionId?: string;
+}
+
+/**
+ * Trigger describes WHEN a prospective intention should fire.
+ */
+export type ProspectiveTrigger =
+  | { kind: 'time'; at: string /* ISO 8601 */ }
+  | { kind: 'time-window'; from: string; until?: string }
+  | { kind: 'event'; condition: TriggerCondition }
+  | { kind: 'conditional'; predicate: string; checkIntervalMs?: number };
+
+/**
+ * Action describes WHAT happens when a prospective intention fires.
+ */
+export type ProspectiveAction =
+  | {
+      kind: 'inject-context';
+      /** Optional target session for the injection. Defaults to the intention's own session. */
+      targetSession?: string;
+      /** Brief = headline only; full = full content. Default 'brief'. */
+      format?: 'brief' | 'full';
+    }
+  | {
+      kind: 'invoke';
+      /** Procedure to invoke via the DI callback. */
+      procedureId: string;
+    }
+  | {
+      kind: 'tag-related';
+      /** Tags to add to entities matching `relatedEntityFilter`. */
+      tagsToAdd: string[];
+      /** Filter for which entities receive the tags. */
+      relatedEntityFilter: TriggerCondition;
+    };
+
+/**
+ * Lifecycle status of a prospective memory.
+ */
+export type ProspectiveStatus = 'pending' | 'fired' | 'expired' | 'cancelled';
+
+/**
+ * Prospective memory — intention-to-act / future-tense memory.
+ *
+ * Extends `AgentEntity` with trigger / action / lifecycle fields.
+ * Persisted via the standard `agentMetadata` round-trip on SQLite or
+ * as plain JSON properties on JSONL.
+ *
+ * @see docs/roadmap/MEMORY_TYPES_EXPANSION.md §4.1 for full design.
+ */
+export interface ProspectiveEntity extends AgentEntity {
+  memoryType: 'prospective';
+
+  /** When the intention should activate. */
+  trigger: ProspectiveTrigger;
+
+  /** What to do when the trigger fires. */
+  action: ProspectiveAction;
+
+  /** Lifecycle status. */
+  status: ProspectiveStatus;
+
+  /** ISO 8601 timestamp the intention last fired (undefined for pending). */
+  firedAt?: string;
+
+  /** How many times this intention has fired (for recurring event-based triggers). */
+  fireCount?: number;
+
+  /** Optional cap on `fireCount`. Once reached, status transitions to 'expired'. */
+  maxFireCount?: number;
+
+  /**
+   * Optional condition that cancels the intention without firing.
+   * OR-semantics: matches if ANY populated field of the condition matches
+   * (D2 in `docs/roadmap/MEMORY_TYPES_EXPANSION.md`).
+   */
+  cancelOnEvent?: TriggerCondition;
+}
+
+/**
+ * Type guard for prospective memory entities.
+ */
+export function isProspectiveMemory(entity: unknown): entity is ProspectiveEntity {
+  return isAgentEntity(entity) && entity.memoryType === 'prospective';
+}
+
+/**
+ * Result of a single fire event from the prospective memory manager.
+ *
+ * Returned by `tick()` and `onObservation()` so callers can observe what
+ * fired and either (a) deliver the `injectionPayload` to a wake-up
+ * channel or (b) react to invoked procedures.
+ */
+export interface FiredEvent {
+  /** The intention that fired. */
+  entity: ProspectiveEntity;
+  /** When it fired. */
+  firedAt: Date;
+  /** Formatted content payload for `action: 'inject-context'`. */
+  injectionPayload?: string;
+  /** Procedure id for `action: 'invoke'`. */
+  invokedProcedureId?: string;
+}
+
+/**
+ * Context passed to `onObservation()` to evaluate event-based triggers.
+ */
+export interface ObservationContext {
+  /** Tags associated with the incoming observation. */
+  tags?: string[];
+  /** Entity type of the source entity, if applicable. */
+  entityType?: string;
+  /** Session that produced the observation. */
+  sessionId?: string;
 }
 
 // ==================== Utility Types ====================

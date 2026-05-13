@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Prospective memory — new memory type)
+
+- **`MemoryType` union extended with `'prospective'`** (`src/types/agent-memory.ts`): closes the canonical Tulving-aligned taxonomy alongside `'working' | 'episodic' | 'semantic' | 'procedural'`. Type guard `isProspectiveMemory(entity)` mirrors the other four guards. Design rationale + competitive lens in [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) — no competing library (MemPalace / Supermemory / mem0 / LangChain / LlamaIndex / Letta) ships prospective memory as a typed tier, so this is green-field design space.
+- **`ProspectiveEntity` extending `AgentEntity`** with `trigger` (time / time-window / event / conditional), `action` (inject-context / invoke / tag-related), and lifecycle fields (`status`, `firedAt`, `fireCount`, `maxFireCount`, `cancelOnEvent`). New shared `TriggerCondition` type used by both firing and cancellation. Persists transparently through both JSONL and SQLite backends via the standard `agentMetadata` round-trip — no migration needed.
+- **`ProspectiveMemoryManager`** (`src/agent/ProspectiveMemoryManager.ts`): 11 public methods covering schedule (`scheduleAt` / `scheduleOnEvent` / `scheduleConditional`), read (`getPending` / `getFired`), lifecycle (`tick` / `onObservation` / `cancel` / `expireOverdue`). Sorts pending by next-fire time. `tick` fires past-due time triggers and is idempotent via the `status` field. `onObservation` checks `cancelOnEvent` first (cancel-precedence-over-fire is deterministic).
+- **Design decisions D1–D4 locked** (`docs/roadmap/MEMORY_TYPES_EXPANSION.md` §6):
+  - **D1**: `action: 'invoke'` fires procedures via **dependency-injected callback** (`procedureInvoker` in constructor), not a direct `ProcedureManager` import. Same pattern as `LLMQueryPlanner` + `LLMProvider`. Falling back to no-op when no invoker is wired so the manager is usable without procedural memory.
+  - **D2**: `cancelOnEvent` uses **OR (first-match) semantics** — matches `TriggerCondition` firing semantics. AND-style cancellation is composable from OR + chaining; OR is not recoverable from AND without negation (De Morgan).
+  - **D3**: Default visibility is `'private'` — matches every other memory type. The user's existing `MEMORY_DEFAULT_VISIBILITY` env var remains the global lever.
+  - **D4**: CLI surface ships with library release (`memory prospective schedule`/`list`/`cancel`); MCP follow-up in `@danielsimonjr/memory-mcp` next minor.
+- **31 new tests** (`tests/unit/agent/ProspectiveMemoryManager.test.ts`): coverage of all three schedule paths, `getPending` sort order + session filtering, `tick` idempotency, `onObservation` matching across text / tags / entityType, `maxFireCount` cap, `cancel` semantics, `expireOverdue`, D1 invoker callback (3 cases), D2 OR semantics (3 cases including cancel-precedence-over-fire), type guard.
+- **Note**: this is the manager itself — wiring into `ManagerContext` (lazy getter), `ConsolidationPipeline` (new `ProspectivePromotion` stage), `ContextWindowManager.wakeUp` (new L1.5 layer), CLI commands, and MCP tools ships in follow-up PRs per the 10-day estimate breakdown in [`MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) §4.7.
+
+---
+
 Phases 0–11 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. **All 12 of 12 Phase 3 items now closed** (step 39 — memory-mapped file support — landed in Phase 11). All Phase 0–2 items + all 12 Phase 3 items + 4 of 7 Phase 4 items + 6 of 10 Phase 5 items + all 5 Phase 7 tasks + all 5 Phase 8 tasks + all 6 Phase 9 tasks + all 5 Phase 10 tasks + all 7 Phase 11 tasks. **All 5 multi-month engineering features from the original deferral list are complete.** Remaining deferrals (Phase 4 steps 42/43/45 and Phase 5 steps 55–58) are all blocked on user-side decisions (external dep approval / strategy decisions), not engineering. No SemVer-breaking changes.
 
 ### Added (Phase 11 — Memory-mapped file support)

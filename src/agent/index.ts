@@ -63,6 +63,13 @@ export {
 } from './EpisodicMemoryManager.js';
 
 export {
+  ProspectiveMemoryManager,
+  type ProspectiveMemoryConfig,
+  type ProcedureInvoker,
+  type ScheduleOptions,
+} from './ProspectiveMemoryManager.js';
+
+export {
   ConsolidationPipeline,
   type ConsolidationPipelineConfig,
   type PipelineStage,
