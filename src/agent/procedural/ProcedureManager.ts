@@ -32,6 +32,28 @@ export interface ProcedureManagerConfig {
   successRateAlpha?: number;
 }
 
+/**
+ * Result of `ProcedureManager.invoke()`. Discriminated by `found` so
+ * TypeScript narrows `procedure` and `openSequencer` to non-optional
+ * on the `found: true` branch — no caller-side non-null assertions.
+ *
+ * **Semantics**: "resolve-and-prepare", NOT "execute". The library is
+ * action-agnostic — `ProcedureStep.action` is a string identifier that
+ * caller-defined executors interpret. The returned `openSequencer()`
+ * factory yields a fresh `StepSequencer` per call; the caller drives
+ * iteration and downstream effects.
+ */
+export type InvocationResult =
+  | { found: false; procedureId: string; invokedAt: string }
+  | {
+      found: true;
+      procedureId: string;
+      procedure: Procedure;
+      invokedAt: string;
+      /** Factory — yields a fresh `StepSequencer` each call. */
+      openSequencer: () => StepSequencer;
+    };
+
 export class ProcedureManager {
   private readonly store: ProcedureStore;
   private readonly successRateAlpha: number;
@@ -105,6 +127,32 @@ export class ProcedureManager {
     const proc = await this.getProcedure(procedureId);
     if (!proc) return null;
     return new StepSequencer(proc);
+  }
+
+  /**
+   * Resolve a procedure id to an `InvocationResult` that callers can
+   * execute. Used by `ProspectiveMemoryManager` when a prospective
+   * intention fires with `action: 'invoke'` — the wired
+   * `procedureInvoker` throws on `found: false` and surfaces the error
+   * via `FiredEvent.invocationError`.
+   *
+   * Does NOT execute steps — the library is action-agnostic. The
+   * caller drives iteration via the returned `openSequencer()`
+   * factory.
+   */
+  async invoke(procedureId: string): Promise<InvocationResult> {
+    const procedure = await this.getProcedure(procedureId);
+    const invokedAt = new Date().toISOString();
+    if (!procedure) {
+      return { found: false, procedureId, invokedAt };
+    }
+    return {
+      found: true,
+      procedureId,
+      procedure,
+      invokedAt,
+      openSequencer: () => new StepSequencer(procedure),
+    };
   }
 
   /**

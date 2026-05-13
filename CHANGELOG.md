@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (ProcedureManager.invoke — bridge for ProspectiveMemoryManager)
+
+- **`ProcedureManager.invoke(procedureId): Promise<InvocationResult>`** (`src/agent/procedural/ProcedureManager.ts`): resolves a procedure id to an `InvocationResult` discriminated union — `{ found: false, procedureId, invokedAt }` or `{ found: true, procedureId, procedure, invokedAt, openSequencer }`. Used by `ProspectiveMemoryManager`'s `procedureInvoker` callback (D1 in [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) §6): the wired invoker calls `invoke()`, throws on `found: false`, and the throw surfaces via `FiredEvent.invocationError` per the existing contract.
+- **`InvocationResult` discriminated union** — narrowing makes `procedure` and `openSequencer` non-optional on the `found: true` branch without caller-side non-null assertions. `openSequencer` is a factory (not a stateful field) so multiple sequencers per invocation are explicit.
+- **Semantics — "resolve-and-prepare", NOT "execute"**: `ProcedureStep.action` is a string identifier (e.g. `"http.get"`), not executable code. The library is action-agnostic; the caller drives downstream iteration via `result.openSequencer()`. JSDoc on both `invoke()` and `InvocationResult` calls this out so a future reader doesn't assume "invoke = run all steps".
+- **6 new tests** (`tests/unit/agent/ProcedureManager.test.ts`): `found: true` with sequencer factory / `found: false` for unknown id / valid `invokedAt` timestamp / fresh sequencer at cursor 0 / independent sequencers per `openSequencer()` call / independent invocations on repeated `invoke()`.
+- **Reviewed**: pre-implementation type-design review reshaped the original optional-fields proposal into the discriminated union; post-implementation code-reviewer and silent-failure-hunter both passed clean across all severities; code-simplifier found nothing material.
+- **Verification**: 28/28 `ProcedureManager` tests pass; typecheck clean.
+
 ### Changed (Prospective memory — review-batch hardening)
 
 Follow-up to the initial `ProspectiveMemoryManager` commit, driven by parallel review agents (`code-reviewer`, `type-design-analyzer`, `silent-failure-hunter`, `pr-test-analyzer`). All BLOCKING / HIGH / MEDIUM / LOW findings addressed in one batch — no items deferred.
