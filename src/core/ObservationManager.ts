@@ -10,7 +10,7 @@
 import type { GraphStorage } from './GraphStorage.js';
 import { logger } from '../utils/logger.js';
 import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/AutoLinker.js';
-import type { DeduplicationOptions } from '../types/types.js';
+import type { DeduplicationOptions, Entity } from '../types/types.js';
 import { EntityNotFoundError, ValidationError } from '../utils/errors.js';
 import type { ContradictionDetector } from '../features/ContradictionDetector.js';
 import type { MemoryValidator, MemoryValidationIssue } from '../agent/MemoryValidator.js';
@@ -327,26 +327,55 @@ export class ObservationManager {
     dedup?: DeduplicationOptions,
     options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
   ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
-    // Acquire the graph mutex for the whole add-observations
-    // sequence. Without this, two concurrent addObservations calls
-    // on the same entity both snapshot via getGraphForMutation,
-    // both append observations to their respective copies, both
-    // call saveGraph serially — but the second write clobbers the
-    // first's persisted state. Flagged as Phase 8 review #9
-    // (pre-existing race made observable through the shadow column
-    // store); the same lock is already used by invalidateObservation.
+    // Two-phase orchestration:
+    //
+    // Phase 1 (locked) — snapshot, dedup, contradiction-detect.
+    // Regular (non-superseding) appends apply + save atomically
+    // under the graph mutex (fixes Phase 8 review #9: concurrent
+    // addObservations would otherwise race the snapshot vs save).
+    // Supersede candidates are collected but NOT executed here —
+    // supersede calls entityManager.createEntities/updateEntity
+    // which re-acquire the same mutex, and `async-mutex` doesn't
+    // support reentrance. Executing under the lock would deadlock.
+    //
+    // Phase 2 (unlocked) — run supersede for each candidate.
+    // Each supersede call atomicaly creates the new-version entity
+    // + marks the old one isLatest=false via entityManager's own
+    // mutex acquisitions.
+    const supersedeCandidates: { entityName: string; entity: Entity; contents: string[] }[] = [];
+
     const release = await this.storage.graphMutex.acquire();
+    let regularResults: { entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[];
     try {
-      return await this.addObservationsLocked(observations, dedup, options);
+      regularResults = await this.addObservationsLocked(observations, dedup, options, supersedeCandidates);
     } finally {
       release();
     }
+
+    for (const candidate of supersedeCandidates) {
+      // contradictionDetector + linkedEntityManager are non-null
+      // because the locked path only pushes a candidate when both
+      // are wired (see addObservationsLocked).
+      await this.contradictionDetector!.supersede(
+        candidate.entity,
+        candidate.contents,
+        this.linkedEntityManager!,
+      );
+      regularResults.push({
+        entityName: candidate.entityName,
+        addedObservations: candidate.contents,
+        superseded: true,
+      });
+    }
+
+    return regularResults;
   }
 
   private async addObservationsLocked(
     observations: { entityName: string; contents: string[] }[],
     dedup?: DeduplicationOptions,
-    options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
+    options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions },
+    supersedeCandidates?: { entityName: string; entity: Entity; contents: string[] }[]
   ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
     const resolvedDedup = this.resolveDedup(dedup);
 
@@ -424,12 +453,28 @@ export class ObservationManager {
             nonExactDuplicates
           );
           if (contradictions.length > 0) {
-            await this.contradictionDetector.supersede(
-              entity,
-              nonExactDuplicates,
-              this.linkedEntityManager
-            );
-            results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates, superseded: true });
+            // Defer supersede to the unlocked post-pass — see
+            // addObservations's two-phase rationale. Without this
+            // deferral the supersede call's entityManager methods
+            // re-acquire graphMutex and deadlock.
+            if (supersedeCandidates) {
+              supersedeCandidates.push({
+                entityName: o.entityName,
+                entity,
+                contents: nonExactDuplicates,
+              });
+            } else {
+              // Defensive path: legacy callers invoking
+              // addObservationsLocked directly (no two-phase
+              // orchestration) get the original supersede semantics.
+              // No external callers do this; kept for safety.
+              await this.contradictionDetector.supersede(
+                entity,
+                nonExactDuplicates,
+                this.linkedEntityManager
+              );
+              results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates, superseded: true });
+            }
             continue; // skip normal append for this entity
           }
         }

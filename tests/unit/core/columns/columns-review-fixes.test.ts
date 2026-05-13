@@ -20,6 +20,7 @@ import {
   type ObservationColumn,
 } from '../../../../src/core/columns/IColumnStore.js';
 import { ManagerContext } from '../../../../src/core/ManagerContext.js';
+import { injectFlushFailure as sharedInjectFlushFailure } from '../../../test-utils/inject-flush-failure.js';
 
 async function makeDir(): Promise<string> {
   const dir = join(tmpdir(), `cols-review-${Date.now()}-${Math.random()}`);
@@ -44,24 +45,10 @@ describe('Review #1 + #10: JsonlColumnStore rollback on flush failure', () => {
     try { await fs.rm(dir, { recursive: true, force: true }); } catch { /* */ }
   });
 
-  /**
-   * Force `durableWriteFile` to fail end-to-end. The tmp-write +
-   * rename path falls back to a direct write on EPERM (Windows-style)
-   * — to test the rollback path we need BOTH the rename and the
-   * fallback's open(target, 'w') to throw. Path-based filter on
-   * `fs.open` lets the tmp open succeed but rejects the fallback open.
-   */
-  function injectFlushFailure(): void {
-    vi.spyOn(fs, 'rename').mockRejectedValue(new Error('synthetic-rename'));
-    const realOpen = fs.open.bind(fs);
-    vi.spyOn(fs, 'open').mockImplementation((p, ...rest) => {
-      // The fallback opens `sidecarPath` directly (not a `.tmp.*` path).
-      if (p === sidecarPath) {
-        return Promise.reject(new Error('synthetic-fallback'));
-      }
-      return realOpen(p, ...rest);
-    });
-  }
+  // Shared helper — see `tests/test-utils/inject-flush-failure.ts`.
+  const injectFlushFailure = (): void => {
+    sharedInjectFlushFailure(sidecarPath);
+  };
 
   it('put: cache rolls back if flush fails (no-prior-value branch)', async () => {
     // Prime with one entry so the snapshot has something to roll back to.

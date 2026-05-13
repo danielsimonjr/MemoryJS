@@ -37,8 +37,8 @@
  */
 
 import { promises as fs } from 'fs';
-import { randomBytes } from 'crypto';
 import { logger } from '../../utils/logger.js';
+import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import type { IIndexTier } from './ITieredIndex.js';
 
 interface SidecarLine<V> {
@@ -244,31 +244,6 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
       lines.push(JSON.stringify({ k, v }));
     }
     const content = lines.length === 0 ? '' : lines.join('\n') + '\n';
-    await this.durableWriteFile(content);
-  }
-
-  private async durableWriteFile(content: string): Promise<void> {
-    const tmpPath = `${this.filePath}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
-    const fd = await fs.open(tmpPath, 'w');
-    try {
-      await fd.write(content);
-      await fd.sync();
-    } finally {
-      await fd.close();
-    }
-    try {
-      await fs.rename(tmpPath, this.filePath);
-    } catch {
-      // Windows EPERM fallback — Dropbox/antivirus can lock the
-      // target during rename. Write directly and clean up the temp.
-      const fallbackFd = await fs.open(this.filePath, 'w');
-      try {
-        await fallbackFd.write(content);
-        await fallbackFd.sync();
-      } finally {
-        await fallbackFd.close();
-      }
-      try { await fs.unlink(tmpPath); } catch { /* ignore */ }
-    }
+    await durableWriteFile(this.filePath, content);
   }
 }

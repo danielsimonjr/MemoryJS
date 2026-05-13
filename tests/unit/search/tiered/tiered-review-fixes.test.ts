@@ -20,6 +20,7 @@ import {
 import { InMemoryTier } from '../../../../src/search/tiered/ITieredIndex.js';
 import { LRUHotTier } from '../../../../src/search/tiered/LRUHotTier.js';
 import { DiskWarmTier } from '../../../../src/search/tiered/DiskWarmTier.js';
+import { injectFlushFailure as sharedInjectFlushFailure } from '../../../test-utils/inject-flush-failure.js';
 
 async function makeDir(): Promise<string> {
   const dir = join(tmpdir(), `tiered-review-${Date.now()}-${Math.random()}`);
@@ -114,14 +115,10 @@ describe('Review #2: DiskWarmTier rollback preserves original LRU position', () 
     try { await fs.rm(dir, { recursive: true, force: true }); } catch { /* */ }
   });
 
-  function injectFlushFailure(): void {
-    vi.spyOn(fs, 'rename').mockRejectedValue(new Error('synthetic-rename'));
-    const realOpen = fs.open.bind(fs);
-    vi.spyOn(fs, 'open').mockImplementation((p, ...rest) => {
-      if (p === sidecarPath) return Promise.reject(new Error('synthetic-fallback'));
-      return realOpen(p, ...rest);
-    });
-  }
+  // Shared helper — see `tests/test-utils/inject-flush-failure.ts`.
+  const injectFlushFailure = (): void => {
+    sharedInjectFlushFailure(sidecarPath);
+  };
 
   it('failed put on existing key restores its ORIGINAL LRU position (not freshest)', async () => {
     const tier = new DiskWarmTier<number>({ filePath: sidecarPath, maxEntries: 3 });

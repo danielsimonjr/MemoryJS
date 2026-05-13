@@ -34,9 +34,10 @@
 
 import { promises as fs } from 'fs';
 import { randomBytes } from 'crypto';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import type { Entity, KnowledgeGraph, Relation } from '../../types/types.js';
 import { logger } from '../../utils/logger.js';
+import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import {
   type ISegmentStorage,
   type Segment,
@@ -393,16 +394,12 @@ function isENOENT(err: unknown): boolean {
   );
 }
 
-/**
- * Write `content` durably to `target` via a temp file + rename.
- * Mirrors `GraphStorage.durableWriteFile` including the Windows
- * EPERM fallback documented in CLAUDE.md "Gotchas".
- */
-async function durableWriteFile(target: string, content: string): Promise<void> {
-  await fs.mkdir(dirname(target), { recursive: true });
-  const tmp = await writeTmpFile(target, content);
-  await renameWithFallback(tmp, target);
-}
+// Note: per-segment writes go through `durableWriteFile` imported
+// from `src/utils/durableWriteFile.ts`. The local `writeTmpFile` +
+// `renameWithFallback` helpers below remain because the two-phase
+// crash-atomic `saveAll` (stage every tmp, then commit every rename,
+// then drop the manifest) uses them standalone — that's a different
+// pattern than "one durable write to one target."
 
 async function writeTmpFile(target: string, content: string): Promise<string> {
   const tmpPath = `${target}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;

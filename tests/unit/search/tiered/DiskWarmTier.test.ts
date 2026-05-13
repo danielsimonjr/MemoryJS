@@ -12,6 +12,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { randomBytes } from 'crypto';
 import { DiskWarmTier } from '../../../../src/search/tiered/DiskWarmTier.js';
+import { injectFlushFailure } from '../../../test-utils/inject-flush-failure.js';
 
 describe('DiskWarmTier', () => {
   let dir: string;
@@ -200,24 +201,7 @@ describe('DiskWarmTier', () => {
   });
 
   describe('snapshot-restore rollback on flush failure', () => {
-    /**
-     * Force `durableWriteFile` to fail end-to-end. The tmp-write +
-     * rename path falls back to a direct write on EPERM (Windows-style)
-     * — to test the rollback path we need BOTH the rename and the
-     * fallback's open(target, 'w') to throw. Path-based filter on
-     * `fs.open` lets the tmp open succeed but rejects the fallback.
-     */
-    function injectFlushFailure(target: string): void {
-      vi.spyOn(fs, 'rename').mockRejectedValue(new Error('synthetic-rename'));
-      const realOpen = fs.open.bind(fs);
-      vi.spyOn(fs, 'open').mockImplementation((p, ...rest) => {
-        if (p === target) {
-          return Promise.reject(new Error('synthetic-fallback'));
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (realOpen as any)(p, ...rest);
-      });
-    }
+    // Shared helper — see `tests/test-utils/inject-flush-failure.ts`.
 
     it('put: cache rolls back when no prior value existed', async () => {
       const tier = new DiskWarmTier<number>({ filePath: sidecar });

@@ -18,6 +18,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { BrotliColdTier } from '../../../../src/search/tiered/BrotliColdTier.js';
 import { compress } from '../../../../src/utils/compressionUtil.js';
+import { injectFlushFailure as sharedInjectFlushFailure } from '../../../test-utils/inject-flush-failure.js';
 
 async function makeDir(): Promise<string> {
   const dir = join(tmpdir(), `cold-tier-${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -237,24 +238,10 @@ describe('BrotliColdTier — snapshot-restore rollback on flush failure', () => 
     try { await fs.rm(dir, { recursive: true, force: true }); } catch { /* */ }
   });
 
-  /**
-   * Force `durableWriteFile` to fail end-to-end. The tmp-write +
-   * rename path has a Windows-EPERM fallback that writes directly
-   * to the target — we need BOTH the rename and the fallback's
-   * open(target, 'w') to throw. Path-based filter on `fs.open` lets
-   * the tmp open succeed but rejects the fallback open against
-   * `filePath`.
-   */
-  function injectFlushFailure(): void {
-    vi.spyOn(fs, 'rename').mockRejectedValue(new Error('synthetic-rename'));
-    const realOpen = fs.open.bind(fs);
-    vi.spyOn(fs, 'open').mockImplementation((p, ...rest) => {
-      if (p === filePath) {
-        return Promise.reject(new Error('synthetic-fallback'));
-      }
-      return realOpen(p, ...rest);
-    });
-  }
+  // Shared helper — see `tests/test-utils/inject-flush-failure.ts`.
+  const injectFlushFailure = (): void => {
+    sharedInjectFlushFailure(filePath);
+  };
 
   it('put: cache rolls back on flush failure (no-prior-value branch)', async () => {
     await tier.put('alice', 'a-1');

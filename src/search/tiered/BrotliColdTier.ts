@@ -34,9 +34,9 @@
  */
 
 import { promises as fs } from 'fs';
-import { randomBytes } from 'crypto';
 import { logger } from '../../utils/logger.js';
 import { compress, decompress } from '../../utils/compressionUtil.js';
+import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import type { IIndexTier } from './ITieredIndex.js';
 
 /**
@@ -282,44 +282,6 @@ export class BrotliColdTier<V> implements IIndexTier<string, V> {
       const result = await compress(content, { quality: this.quality });
       payload = result.compressed;
     }
-    await this.durableWriteFile(payload);
-  }
-
-  /**
-   * Atomic write via temp file + fsync + rename. Mirrors
-   * `JsonlColumnStore.durableWriteFile`, including the Windows EPERM
-   * fallback that writes directly to the target if rename fails
-   * (Dropbox / antivirus can hold a brief lock on the temp file
-   * making `fs.rename` reject with EPERM).
-   */
-  private async durableWriteFile(content: Buffer): Promise<void> {
-    const tmpPath = `${this.filePath}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
-    const fd = await fs.open(tmpPath, 'w');
-    try {
-      await fd.write(content);
-      await fd.sync();
-    } finally {
-      await fd.close();
-    }
-    try {
-      await fs.rename(tmpPath, this.filePath);
-    } catch {
-      // Windows fallback — direct write to the target. Matches the
-      // `JsonlColumnStore` recovery path so any caller that tested
-      // their flush-failure handling against that store sees the
-      // same shape here.
-      const fallbackFd = await fs.open(this.filePath, 'w');
-      try {
-        await fallbackFd.write(content);
-        await fallbackFd.sync();
-      } finally {
-        await fallbackFd.close();
-      }
-      try {
-        await fs.unlink(tmpPath);
-      } catch {
-        /* ignore — best-effort cleanup of the orphan tmp file */
-      }
-    }
+    await durableWriteFile(this.filePath, payload);
   }
 }

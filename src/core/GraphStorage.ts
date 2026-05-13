@@ -8,7 +8,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { randomBytes } from 'crypto';
+import { durableWriteFile as durableWriteFileShared } from '../utils/durableWriteFile.js';
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import { clearAllSearchCaches } from '../utils/searchCache.js';
@@ -283,29 +283,7 @@ export class GraphStorage implements IGraphStorage {
    * @param content - Content to write
    */
   private async durableWriteFile(content: string): Promise<void> {
-    // Atomic write: write to temp file, fsync, then rename over target
-    const tmpPath = `${this.memoryFilePath}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
-    const fd = await fs.open(tmpPath, 'w');
-    try {
-      await fd.write(content);
-      await fd.sync();
-    } finally {
-      await fd.close();
-    }
-    try {
-      await fs.rename(tmpPath, this.memoryFilePath);
-    } catch {
-      // Fallback for Windows where rename can fail (EPERM) due to file locking
-      const fallbackFd = await fs.open(this.memoryFilePath, 'w');
-      try {
-        await fallbackFd.write(content);
-        await fallbackFd.sync();
-      } finally {
-        await fallbackFd.close();
-      }
-      // Clean up temp file
-      try { await fs.unlink(tmpPath); } catch { /* ignore */ }
-    }
+    await durableWriteFileShared(this.memoryFilePath, content);
   }
 
   /**
