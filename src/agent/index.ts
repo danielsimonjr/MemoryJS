@@ -79,6 +79,14 @@ export {
 } from './FailureManager.js';
 
 export {
+  PlanManager,
+  type PlanManagerConfig,
+  type CreatePlanOptions,
+  type PushSubGoalOptions,
+  type ListPlansOptions,
+} from './PlanManager.js';
+
+export {
   ConsolidationPipeline,
   type ConsolidationPipelineConfig,
   type PipelineStage,

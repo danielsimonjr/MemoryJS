@@ -22,12 +22,13 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Closed via `FailureManager` (`src/agent/FailureManager.ts`) + `MemoryType: 'failure'` extension + `ctx.failureManager` lazy getter
 - Pre-task `lookupForTask()` substring MVP; `SearchManager.semanticSearch` integration deferred to a follow-up
 
-#### 2. Plan / Goal Stack (Phase 2 Sprint 5 — new memory type)
-- Catalog MVP step 1 lists this alongside Identity + Project Context + Provenance as the foundational set; MemoryJS has the rest, Plan is the lone gap
-- Distinct from just-shipped prospective memory: prospective = intentions-to-act; plan = forward-looking goal *tree* with sub-tasks + acceptance criteria
-- New `MemoryType: 'plan'` + `PlanEntity` with `rootGoal` / `stack: GoalNode[]` / `currentNodeId` / `history` / acceptance criteria
-- Effort: medium (~10 days), mirrors prospective-memory sprint shape
-- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 6
+#### 2. ~~Plan / Goal Stack (Phase 2 Sprint 5)~~ — ✅ shipped
+- Closed via `PlanManager` (`src/agent/PlanManager.ts`) + `MemoryType: 'plan'` extension + `ctx.plan` lazy getter
+- `PlanRecord` with `rootGoal: GoalNode` (recursive tree), `currentNodeId`, `PlanLifecycle` / `GoalNodeLifecycle` discriminated unions, `history: GoalEvent[]`, optional `acceptanceCriteria` per node
+- Public API: `createPlan` / `pushSubGoal` / `transitionNode` / `markPlanComplete` / `abandonPlan` / `findPlan` / `findNode` / `getCurrentPath` / `getActivePlan` / `listPlans`
+- `validatePlanInvariants` runs after every mutation (unique ids, `currentNodeId ∈ tree`, no cycles); cycle-protected DFS in `findNodeInTree` / `findPathToNode` as defense against corrupted on-disk plans
+- Branded `PlanId` / `GoalNodeId` prevent id-type confusion; `MarkResolvedResult` discriminates `'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update'`
+- 36 unit tests passing; consolidation-pipeline stage + wakeUp L1.5 layer follow as separate sprints
 
 #### 3. Trust Hierarchy formalization (Phase 2 Sprint 6 — meta-improvement)
 - Adds `trust_level: 'ground-truth' | 'verified' | 'inferred' | 'unverified'` discriminated union to `Entity.source`

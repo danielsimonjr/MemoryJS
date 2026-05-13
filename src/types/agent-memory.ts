@@ -20,7 +20,7 @@ import type { ContextProfile } from '../agent/ContextProfileManager.js';
  * - semantic: Long-term facts, concepts, knowledge
  * - procedural: Skills, patterns, procedures (future)
  */
-export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective' | 'failure';
+export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective' | 'failure' | 'plan';
 
 /**
  * Classification of memory access frequency.
@@ -714,7 +714,7 @@ export function isAgentEntity(entity: unknown): entity is AgentEntity {
     typeof e.name === 'string' &&
     typeof e.entityType === 'string' &&
     typeof e.memoryType === 'string' &&
-    ['working', 'episodic', 'semantic', 'procedural', 'prospective', 'failure'].includes(e.memoryType as string) &&
+    ['working', 'episodic', 'semantic', 'procedural', 'prospective', 'failure', 'plan'].includes(e.memoryType as string) &&
     typeof e.accessCount === 'number' &&
     typeof e.confidence === 'number' &&
     typeof e.confirmationCount === 'number' &&
@@ -1087,6 +1087,120 @@ export type FailureMemoryEntity = FailureEntity;
  * resolved" without lying via a single boolean.
  */
 export type MarkResolvedResult = 'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update';
+
+// ==================== Plan / Goal-Stack Types ====================
+
+/** Branded plan id — minted only by `PlanManager`. */
+export type PlanId = string & { readonly __planId: unique symbol };
+
+/** Branded goal-node id — minted only by `PlanManager`. */
+export type GoalNodeId = string & { readonly __goalNodeId: unique symbol };
+
+/**
+ * Discriminated lifecycle for a `GoalNode`. Per the pre-implementation
+ * type-design review (single biggest type-quality win): each variant
+ * carries exactly the fields valid in that state, mirroring the
+ * `PlanLifecycle` / `ProspectiveLifecycle` / `FailureLifecycle`
+ * patterns shipped in Sprints 2/3/4.
+ */
+export type GoalNodeLifecycle =
+  | { status: 'pending' }
+  | { status: 'active'; activatedAt: IsoDateTime }
+  | { status: 'complete'; completedAt: IsoDateTime; completionNote?: string }
+  | { status: 'blocked'; blockedAt: IsoDateTime; blockedReason: string };
+
+/**
+ * Recursive goal tree node. Built up via `PlanManager.pushSubGoal`;
+ * transitions via `PlanManager.transitionNode`. Tree integrity
+ * (unique ids, no cycles, currentNodeId ∈ tree) is enforced at
+ * runtime by `validatePlanInvariants` after every mutation.
+ */
+export interface GoalNode {
+  id: GoalNodeId;
+  description: string;
+  lifecycle: GoalNodeLifecycle;
+  /** Free-form criteria for v1. Structured `{id, predicate, met}` deferred. */
+  acceptanceCriteria?: string;
+  children: GoalNode[];
+  createdAt: IsoDateTime;
+}
+
+/**
+ * Plan-level lifecycle. Distinct from `GoalNodeLifecycle` — operates
+ * over the entire plan tree, not individual nodes.
+ */
+export type PlanLifecycle =
+  | { status: 'active' }
+  | { status: 'blocked'; blockedAt: IsoDateTime; blockedReason: string }
+  | { status: 'complete'; completedAt: IsoDateTime; completionNote?: string }
+  | { status: 'abandoned'; abandonedAt: IsoDateTime; abandonedReason?: string };
+
+/**
+ * Audit entry for one node state transition. Plan-local, in-record,
+ * queryable without cross-referencing the global `AuditLog`. Intentional
+ * duplication per type-design review: enables `getCurrentPath` rendering
+ * and "why is this blocked?" debugging without a separate query.
+ */
+export interface GoalEvent {
+  timestamp: IsoDateTime;
+  goalId: GoalNodeId;
+  fromStatus: GoalNodeLifecycle['status'];
+  toStatus: GoalNodeLifecycle['status'];
+  note?: string;
+}
+
+/** Discriminated transition payload for `PlanManager.transitionNode`. */
+export type GoalNodeTransition =
+  | { to: 'pending' }
+  | { to: 'active' }
+  | { to: 'complete'; note?: string }
+  | { to: 'blocked'; reason: string };
+
+/**
+ * Canonical plan / goal-stack record. The whole tree is embedded by
+ * value (round-trips through the `agentMetadata` JSON blob, same path
+ * as `ProspectiveEntity.trigger`). Query methods return `Readonly`
+ * views — all mutations flow through `PlanManager`.
+ */
+export interface PlanRecord {
+  id: PlanId;
+  rootGoal: GoalNode;
+  currentNodeId: GoalNodeId;
+  lifecycle: PlanLifecycle;
+  createdAt: IsoDateTime;
+  lastModified: IsoDateTime;
+  history: GoalEvent[];
+  sessionId?: string;
+  agentId?: string;
+}
+
+/**
+ * Persisted shape of a plan-memory entity.
+ */
+export interface PlanEntity extends AgentEntity {
+  memoryType: 'plan';
+  planRecord: PlanRecord;
+}
+
+/** Type guard for plan-memory entities. */
+export function isPlanMemory(entity: unknown): entity is PlanEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'plan') return false;
+  const pr = (entity as PlanEntity).planRecord as
+    | { id?: unknown; rootGoal?: unknown; lifecycle?: unknown }
+    | undefined;
+  return (
+    typeof pr === 'object' &&
+    pr !== null &&
+    typeof pr.id === 'string' &&
+    typeof pr.rootGoal === 'object' &&
+    pr.rootGoal !== null &&
+    typeof pr.lifecycle === 'object' &&
+    pr.lifecycle !== null
+  );
+}
+
+/** Utility alias for plan-memory entities. */
+export type PlanMemoryEntity = PlanEntity;
 
 // ==================== Utility Types ====================
 

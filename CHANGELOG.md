@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Plan / Goal Stack — Phase 2 Sprint 5)
+
+- **`MemoryType` union extended with `'plan'`**: closes Phase 2 Sprint 5 of the memory-types expansion (see [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 6). Pairs structurally with prospective memory (intentions × goals × episodes is the full forward-time triplet) — prospective is single, append-only-until-fired intention-to-act; plan is mutable hierarchical goal *tree* with sub-tasks and acceptance criteria.
+- **New types** in `src/types/agent-memory.ts`:
+  - `PlanId` / `GoalNodeId` — branded string aliases; minted only via `randomUUID`-backed helpers in `PlanManager`. Prevents id-type confusion at compile time
+  - `GoalNodeLifecycle` — discriminated union (`{ status: 'pending' }` | `{ status: 'active'; activatedAt }` | `{ status: 'complete'; completedAt; completionNote? }` | `{ status: 'blocked'; blockedAt; blockedReason }`). Mirrors the `FailureLifecycle` / `ProspectiveLifecycle` shape so illegal states like `{ status: 'pending', activatedAt: '...' }` are unrepresentable
+  - `PlanLifecycle` — discriminated union (`active` / `blocked` / `complete` / `abandoned`) for the whole-plan state
+  - `GoalNode` — recursive tree node with `id` / `description` / `lifecycle` / `children: GoalNode[]` / optional `acceptanceCriteria`
+  - `GoalEvent` — `{ timestamp, goalId, fromStatus, toStatus, note? }`; one row per state transition for full history
+  - `GoalNodeTransition` — discriminated union `{ to: 'pending' | 'active' | 'complete'; note? | 'blocked'; reason }` powering the unified `transitionNode` API
+  - `PlanRecord` — id, `rootGoal: GoalNode`, `currentNodeId`, `lifecycle`, `createdAt` / `lastModified`, `history: GoalEvent[]`, optional `sessionId` / `agentId`
+  - `PlanEntity` extending `AgentEntity`; `isPlanMemory` type guard; `PlanMemoryEntity` alias
+- **`PlanManager`** in `src/agent/PlanManager.ts`:
+  - `createPlan(rootDescription, options?)` — wraps `storage.appendEntity` failures with the plan id so EPERM-style races are attributable (CLAUDE.md > Gotchas > Windows atomic writes); seeds history with `plan created` row
+  - `pushSubGoal(planId, parentNodeId, description, options?)` — appends a child under the named parent; validates non-empty `description` with received-type/value error context
+  - `transitionNode(planId, nodeId, transition)` — single state-machine entry point. `to: 'active'` also updates `plan.currentNodeId` so `getCurrentPath` always reflects the focus node. `to: 'blocked'` requires a non-empty `reason`
+  - `markPlanComplete(planId, note?)` / `abandonPlan(planId, reason?)` — return `MarkResolvedResult`; branch on `storage.updateEntity`'s `Promise<boolean>` return to surface `'vanished-mid-update'` separately from `'not-found'` / `'already-resolved'`. Mutators (`pushSubGoal` / `transitionNode`) throw on the same boolean since their existing contract is throw-on-not-found
+  - `findPlan` / `findNode` / `getCurrentPath` — `Readonly<>`-typed reads; clone-free (the `Readonly` cast is type-only, so no `structuredClone` on read paths)
+  - `getActivePlan(sessionId)` — most-recently-modified active plan per session; uses reverse-then-stable-sort to tiebreak when multiple plans share a `lastModified` millisecond (ECMA2019+ stable sort)
+  - `listPlans(options?)` — filter by `sessionId` / `agentId` / `status`
+  - `validatePlanInvariants` runs after every mutation: unique node ids, `currentNodeId ∈ tree`, no cycles. Validate-after-mutate is safe because mutations happen on a `structuredClone`d `PlanRecord` (via `loadPlanMutable`) — the clone is the rollback. Cycle-protected DFS in `findNodeInTree` / `findPathToNode` as defense against corrupted on-disk plans (validation runs *after* these are first called during a mutation)
+- **`ctx.plan`** lazy getter on `ManagerContext`; lifecycle attached to the same lazy-initialization pattern as the other agent memory managers
+- **36 new tests** in `tests/unit/agent/PlanManager.test.ts`: `createPlan` (6) / `pushSubGoal` (5) / `transitionNode` (8 incl. all four transitions + `to: 'active'` `currentNodeId` update + blocked-reason validation) / `markPlanComplete` (4 incl. all `MarkResolvedResult` branches) / `abandonPlan` (3) / read API (5) / `getActivePlan` (3 incl. tiebreak) / `listPlans` (2)
+- **Reviewed**: pre-implementation type-design review reshaped the flat-status draft into the discriminated `GoalNodeLifecycle` + `PlanLifecycle` pair; pre-implementation also produced the unified `transitionNode` (vs. four sibling methods) to avoid re-proving the same invariants four times. Post-implementation: silent-failure-hunter flagged 1 HIGH (`transitionNode` / `pushSubGoal` ignored `persistPlan` return — the recurring Sprint 2/4 pattern), 1 MEDIUM (validate-after-mutate order — defensible, documented), 1 LOW (`findNodeInTree` cycle protection); code-reviewer flagged 1 HIGH (`structuredClone` on read paths — runtime cost for a type-only assertion), 1 MEDIUM (`getActivePlan` reverse-then-sort needed an explanatory comment). All applied; code-simplifier flagged 7 cleanups, 3 applied (inline `persistPlan`, default-param visited sets, drop `foundCurrent` closure), 4 deferred (try/catch asymmetry reflects underlying `appendEntity`/`updateEntity` API split; ternary on `completionNote` matches sibling code; keep `runInvariantCheck` for the docstring)
+- **Verification**: 36/36 PlanManager + 197/197 sibling memory-type suites (FailureManager 29, ProspectiveMemoryManager 51, ManagerContext 117); typecheck clean
+
 ### Added (Failure Memory — Phase 2 Sprint 4)
 
 - **`MemoryType` union extended with `'failure'`**: closes Phase 2 Sprint 4 of the memory-types expansion (see [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 9). The catalog frames failure memory as "the single biggest concrete win available to most agentic systems" because a structured pre-task lookup of "what failed when I tried similar work before" prevents the most common class of agentic regression.

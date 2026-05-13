@@ -79,6 +79,7 @@ import {
   type ProcedureInvoker,
 } from '../agent/ProspectiveMemoryManager.js';
 import { FailureManager } from '../agent/FailureManager.js';
+import { PlanManager } from '../agent/PlanManager.js';
 import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
 import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
@@ -164,6 +165,7 @@ export class ManagerContext {
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
   private _failureManager?: FailureManager;
+  private _plan?: PlanManager;
   private _causalReasoner?: CausalReasoner;
   private _rbacMiddleware?: RbacMiddleware;
   private _roleAssignmentStore?: RoleAssignmentStore;
@@ -824,6 +826,19 @@ export class ManagerContext {
       });
     }
     return this._failureManager;
+  }
+
+  /**
+   * `PlanManager` (Phase 2 Sprint 5) — plan / goal-stack memory.
+   * Catalog Type 6: forward-looking goal tree with sub-tasks +
+   * acceptance criteria. Distinct from prospective memory (single
+   * intention-to-act) by mutability + decomposition.
+   */
+  get plan(): PlanManager {
+    if (!this._plan) {
+      this._plan = new PlanManager(this.storage);
+    }
+    return this._plan;
   }
 
   /**
