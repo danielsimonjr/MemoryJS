@@ -79,6 +79,9 @@ export class OptimizedInvertedIndex implements IIndexHealth {
   /** Temporary posting lists (before finalization) */
   private tempPostingLists: Map<string, number[]> = new Map();
 
+  /** Reverse index: document ID -> set of terms it contains (for O(terms) removal) */
+  private docToTerms: Map<number, Set<string>> = new Map();
+
   /** Whether the index is finalized (posting lists converted to Uint32Array) */
   private finalized: boolean = false;
 
@@ -103,14 +106,20 @@ export class OptimizedInvertedIndex implements IIndexHealth {
       this.idToEntity.set(docId, entityName);
     }
 
-    // Remove old terms before re-indexing to prevent stale posting list entries
+    // Remove old terms before re-indexing to prevent stale posting list entries.
+    // Use the reverse index so only the terms this doc actually had are touched.
     if (isReindex) {
-      for (const [term, postingList] of this.tempPostingLists) {
-        const idx = postingList.indexOf(docId);
-        if (idx !== -1) {
-          postingList.splice(idx, 1);
-          if (postingList.length === 0) {
-            this.tempPostingLists.delete(term);
+      const oldTerms = this.docToTerms.get(docId);
+      if (oldTerms) {
+        for (const term of oldTerms) {
+          const postingList = this.tempPostingLists.get(term);
+          if (!postingList) continue;
+          const idx = postingList.indexOf(docId);
+          if (idx !== -1) {
+            postingList.splice(idx, 1);
+            if (postingList.length === 0) {
+              this.tempPostingLists.delete(term);
+            }
           }
         }
       }
@@ -133,6 +142,9 @@ export class OptimizedInvertedIndex implements IIndexHealth {
         postingList.push(docId);
       }
     }
+
+    // Keep the reverse index in sync with the unique terms for this document
+    this.docToTerms.set(docId, seenTerms);
   }
 
   /**
@@ -152,16 +164,22 @@ export class OptimizedInvertedIndex implements IIndexHealth {
       this.unfinalize();
     }
 
-    // Remove from all posting lists
-    for (const [term, postingList] of this.tempPostingLists) {
-      const idx = postingList.indexOf(docId);
-      if (idx !== -1) {
-        postingList.splice(idx, 1);
-        if (postingList.length === 0) {
-          this.tempPostingLists.delete(term);
+    // Remove from posting lists — only the terms this doc actually contained
+    const docTerms = this.docToTerms.get(docId);
+    if (docTerms) {
+      for (const term of docTerms) {
+        const postingList = this.tempPostingLists.get(term);
+        if (!postingList) continue;
+        const idx = postingList.indexOf(docId);
+        if (idx !== -1) {
+          postingList.splice(idx, 1);
+          if (postingList.length === 0) {
+            this.tempPostingLists.delete(term);
+          }
         }
       }
     }
+    this.docToTerms.delete(docId);
 
     // Remove ID mappings
     this.entityToId.delete(entityName);
@@ -402,6 +420,7 @@ export class OptimizedInvertedIndex implements IIndexHealth {
     this.idToEntity.clear();
     this.postingLists.clear();
     this.tempPostingLists.clear();
+    this.docToTerms.clear();
     this.nextId = 0;
     this.finalized = false;
   }

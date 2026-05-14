@@ -234,11 +234,15 @@ export class QueryCostEstimator {
   ): { method: SearchMethod; reason: string; estimate: QueryCostEstimate } {
     const methods = preferredMethods ?? (['basic', 'ranked', 'boolean', 'fuzzy', 'semantic'] as SearchMethod[]);
 
+    // Computed once and reused per method — calling `estimateMethod` in the
+    // loop would recompute this each time, making the whole pass O(N²).
+    const recommendedMethod = this.getRecommendedMethodOnly(query, entityCount);
+
     // Score each method based on query characteristics and cost
     const scores = methods.map(method => ({
       method,
       score: this.scoreMethod(method, query, entityCount),
-      estimate: this.estimateMethod(method, query, entityCount),
+      estimate: this.estimateMethodInternal(method, query, entityCount, method === recommendedMethod),
     }));
 
     // Sort by score (higher is better)

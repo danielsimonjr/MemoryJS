@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (performance — API audit Theme 4: batch-vs-loop)
+
+Eight behavior-preserving performance fixes from the RLM function/API-call
+audit (2026-05-14, Theme 4). All keep output identical — only faster.
+
+- **`OptimizedInvertedIndex`** — added a `docToTerms` reverse index; `addDocument` / `removeDocument` / `clear` now touch only a document's own posting lists instead of scanning every list (O(V·n) → O(terms·n) per mutation).
+- **`searchAlgorithms.calculateTFIDF`** — tokenizes each document once and reuses `calculateIDFFromTokenSets` instead of re-tokenizing every document on every term lookup.
+- **`indexes.getEntitiesWithAllWords`** — multi-word intersection now sorts posting sets by size and iterates the smallest, instead of spreading a `Set` to an array each iteration.
+- **`QueryCostEstimator.recommendMethod`** — hoists `getRecommendedMethodOnly` out of the per-method loop (was O(N²) — each `estimateMethod` recomputed it; now O(N)).
+- **`SearchCache`** — dropped the `accessOrder: string[]` array and its O(n) `removeFromAccessOrder`; LRU order now rides on the backing `Map`'s insertion order (get = delete+re-set, evict = first key) — all LRU ops O(1).
+- **`Node2Vec.topKSimilar`** — replaced the full O(V log V) sort with a bounded size-k min-heap (O(V log k)); tie-break (score desc, then iteration index) reproduces the previous stable-sort-then-slice exactly.
+- **`EntityValidator.validateAll`** — parallelized with `Promise.all` instead of a sequential `await` loop (`validate()` has no shared mutable state; result order preserved).
+- **`RefIndex.purgeEntities(names[])`** — new batch method (single mutex acquire + single sidecar rewrite); `EntityManager.deleteEntities` calls it once instead of looping `purgeEntity` per name. `purgeEntity` (single) retained for existing callers.
+
+Audit claims #1 (`TFIDFIndexManager` IDF recalc), #5 (`SemanticSearch.indexAll` fallback) and #7 (`QueryPlanCache` eviction loop) were **verified and rejected**: `recalculateAllIDF` on add/remove is *correct* because `IDF = log(N/df)` depends on the total document count N (the suggested "fix" would have introduced a stale-IDF bug); the `indexAll` fallback is intentional post-batch-failure degradation; `evictIfNeeded` early-returns O(1) when under capacity.
+
+Reviewed: code-reviewer — "nothing blocks commit," all 8 confirmed behavior-preserving (confidence 80-90). Code-simplifier — comment-density trims applied. Verified: typecheck + lint exit 0; search + core + utils regression 3981/3981 (two pre-existing Windows temp-dir parallel-contention flakes excluded — `columns-review-fixes` and `segments-review-fixes`, both pass in isolation, neither touches a Theme-4 file).
+
 ### Fixed (SchemaValidator.validateAll silently dropped duplicate-named entities)
 
 - **`SchemaValidator.validateAll`** keyed its `Map<string, EntityValidationResult>` by `entity.name`, so two entities sharing a name silently overwrote each other — a validator hiding the exact problem it exists to catch. It now tracks name counts and pushes an explicit `unique-name` validation error (`isValid: false`) onto every kept result whose name is duplicated. Behavior change: on a duplicate name the *first* occurrence's schema result is kept (was: last). No production callers — only the test surface used `validateAll` — so this is a pure correctness improvement, not an API break.

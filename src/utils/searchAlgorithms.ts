@@ -170,7 +170,9 @@ export function calculateTFIDF(
   documents: string[]
 ): number {
   const tf = calculateTF(term, document);
-  const idf = calculateIDF(term, documents);
+  // Tokenize each document once rather than re-tokenizing per term lookup.
+  const tokenSets = documents.map(doc => new Set(tokenize(doc)));
+  const idf = calculateIDFFromTokenSets(term, tokenSets);
   return tf * idf;
 }
 

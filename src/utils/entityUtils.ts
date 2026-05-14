@@ -301,7 +301,8 @@ export function addUniqueTags(
   const existing = normalizeTags(existingTags);
   const toAdd = normalizeTags(newTags);
 
-  const uniqueNew = toAdd.filter(tag => !existing.includes(tag));
+  const existingSet = new Set(existing);
+  const uniqueNew = toAdd.filter(tag => !existingSet.has(tag));
   return [...existing, ...uniqueNew];
 }
 
@@ -319,8 +320,8 @@ export function removeTags(
 ): string[] {
   if (!existingTags || existingTags.length === 0) return [];
 
-  const toRemoveNormalized = normalizeTags(tagsToRemove);
-  return existingTags.filter(tag => !toRemoveNormalized.includes(tag.toLowerCase()));
+  const toRemoveNormalized = new Set(normalizeTags(tagsToRemove));
+  return existingTags.filter(tag => !toRemoveNormalized.has(tag.toLowerCase()));
 }
 
 // ==================== Date Utilities ====================

@@ -193,6 +193,36 @@ describe('RefIndex', () => {
   });
 
   // -------------------------------------------------------------------------
+  describe('purgeEntities (batch)', () => {
+    it('removes aliases for many entities with a single rewrite and returns total count', async () => {
+      await index.register('a1', 'Alice');
+      await index.register('a2', 'Alice');
+      await index.register('b1', 'Bob');
+      await index.register('c1', 'Carol');
+
+      const count = await index.purgeEntities(['Alice', 'Bob', 'NonExistent']);
+      expect(count).toBe(3);
+      expect(await index.resolve('a1')).toBeNull();
+      expect(await index.resolve('a2')).toBeNull();
+      expect(await index.resolve('b1')).toBeNull();
+      // Untouched entity survives
+      expect(await index.resolve('c1')).toBe('Carol');
+
+      // State is persisted (identical to per-name loop)
+      const reloaded = new RefIndex(indexPath);
+      expect(await reloaded.resolve('a1')).toBeNull();
+      expect(await reloaded.resolve('c1')).toBe('Carol');
+    });
+
+    it('returns 0 and is a no-op when no names match', async () => {
+      await index.register('keep', 'Keeper');
+      const count = await index.purgeEntities(['Ghost1', 'Ghost2']);
+      expect(count).toBe(0);
+      expect(await index.resolve('keep')).toBe('Keeper');
+    });
+  });
+
+  // -------------------------------------------------------------------------
   describe('listRefs', () => {
     beforeEach(async () => {
       await index.register('ref1', 'Alice', 'First alias');

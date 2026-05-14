@@ -233,6 +233,39 @@ describe('topKSimilar', () => {
     expect(top[1]!.score).toBeGreaterThanOrEqual(top[2]!.score);
     expect(top.every((t) => t.name !== 'a1')).toBe(true);
   });
+
+  it('matches a full-sort-then-slice reference, including ties (heap equivalence)', () => {
+    // Build embeddings with deliberate score ties against the target so
+    // tie-break order (insertion order wins) is observable.
+    const dim = 4;
+    const target = new Float32Array([1, 0, 0, 0]);
+    const embeddings = new Map<string, Float32Array>();
+    // Scores vs target = first component. Repeated values force ties.
+    const specs: Array<[string, number]> = [
+      ['e0', 0.5], ['e1', 0.9], ['e2', 0.5], ['e3', 0.1],
+      ['e4', 0.9], ['e5', 0.3], ['e6', 0.5], ['e7', 0.9],
+      ['e8', 0.0], ['e9', 0.3],
+    ];
+    for (const [name, s] of specs) {
+      embeddings.set(name, new Float32Array([s, 0, 0, 0]));
+    }
+    const exclude = new Set(['e8']);
+
+    // Reference: stable full sort by descending score, then slice.
+    const reference = [...embeddings.entries()]
+      .filter(([name]) => !exclude.has(name))
+      .map(([name, vec]) => ({ name, score: similarity(target, vec) }))
+      .sort((a, b) => b.score - a.score) // Array.sort is stable in V8
+      .slice(0, 4);
+
+    const actual = topKSimilar(target, embeddings, 4, exclude);
+    expect(actual).toEqual(reference);
+  });
+
+  it('returns [] for k <= 0', () => {
+    const embeddings = new Map([['a', new Float32Array([1, 0])]]);
+    expect(topKSimilar(new Float32Array([1, 0]), embeddings, 0)).toEqual([]);
+  });
 });
 
 function uniqueCount(arr: string[]): number {

@@ -367,9 +367,7 @@ export class EntityManager {
 
       // Purge all aliases for deleted entities from the ref index
       if (this.refIndex) {
-        for (const name of namesToDelete) {
-          await this.refIndex.purgeEntity(name);
-        }
+        await this.refIndex.purgeEntities([...namesToDelete]);
       }
     } finally {
       release();

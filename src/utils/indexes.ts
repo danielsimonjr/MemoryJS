@@ -357,11 +357,23 @@ export class ObservationIndex {
   getEntitiesWithAllWords(words: string[]): Set<string> {
     if (words.length === 0) return new Set();
 
-    let result = new Set(this.getEntitiesWithWord(words[0]));
+    // Gather one posting set per word; any empty set => empty intersection.
+    const postingSets: Set<string>[] = [];
+    for (const word of words) {
+      const entities = this.getEntitiesWithWord(word);
+      if (entities.size === 0) return new Set();
+      postingSets.push(entities);
+    }
 
-    for (let i = 1; i < words.length && result.size > 0; i++) {
-      const wordEntities = this.getEntitiesWithWord(words[i]);
-      result = new Set([...result].filter(e => wordEntities.has(e)));
+    // Iterate the smallest set, probing the larger ones with O(1) .has().
+    postingSets.sort((a, b) => a.size - b.size);
+
+    const result = new Set<string>();
+    outer: for (const entity of postingSets[0]) {
+      for (let i = 1; i < postingSets.length; i++) {
+        if (!postingSets[i].has(entity)) continue outer;
+      }
+      result.add(entity);
     }
 
     return result;

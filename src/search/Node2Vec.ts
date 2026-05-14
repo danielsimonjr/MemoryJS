@@ -409,13 +409,59 @@ export function topKSimilar(
   k: number,
   excludeNames: Set<string> = new Set(),
 ): Array<{ name: string; score: number }> {
-  const heap: Array<{ name: string; score: number }> = [];
+  if (k <= 0) return [];
+
+  // Bounded size-k min-heap → O(V log k) vs an O(V log V) full sort.
+  // `idx` is the iteration index so ties resolve like the previous
+  // stable-sort-then-slice (lower index wins).
+  interface HeapEntry { name: string; score: number; idx: number }
+
+  // True when `a` precedes `b` in final output (higher score, then lower idx).
+  const before = (a: HeapEntry, b: HeapEntry): boolean =>
+    a.score > b.score || (a.score === b.score && a.idx < b.idx);
+
+  // Root is the *worst* of the current top-k — first to be displaced.
+  // Invariant: no parent comes `before` its child.
+  const heap: HeapEntry[] = [];
+  const siftUp = (i: number): void => {
+    while (i > 0) {
+      const parent = (i - 1) >> 1;
+      if (!before(heap[parent]!, heap[i]!)) break;
+      [heap[parent], heap[i]] = [heap[i]!, heap[parent]!];
+      i = parent;
+    }
+  };
+  const siftDown = (i: number): void => {
+    const n = heap.length;
+    for (;;) {
+      const l = 2 * i + 1;
+      const r = 2 * i + 2;
+      let worst = i;
+      if (l < n && before(heap[worst]!, heap[l]!)) worst = l;
+      if (r < n && before(heap[worst]!, heap[r]!)) worst = r;
+      if (worst === i) break;
+      [heap[worst], heap[i]] = [heap[i]!, heap[worst]!];
+      i = worst;
+    }
+  };
+
+  let idx = 0;
   for (const [name, vec] of embeddings) {
+    const i = idx++;
     if (excludeNames.has(name)) continue;
-    heap.push({ name, score: similarity(target, vec) });
+    const entry: HeapEntry = { name, score: similarity(target, vec), idx: i };
+    if (heap.length < k) {
+      heap.push(entry);
+      siftUp(heap.length - 1);
+    } else if (before(entry, heap[0]!)) {
+      heap[0] = entry;
+      siftDown(0);
+    }
   }
-  heap.sort((a, b) => b.score - a.score);
-  return heap.slice(0, k);
+
+  // Heap holds the top-k unordered; sort into final output order.
+  heap.sort((a, b) => (before(a, b) ? -1 : before(b, a) ? 1 : 0));
+  return heap.map(({ name, score }) => ({ name, score }));
 }
 
 // ==================== Internals ====================
