@@ -1,7 +1,7 @@
 # MemoryJS - System Architecture
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; security follow-up via PRs #38 + #39)
-**Last Updated**: 2026-04-25
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Last Updated**: 2026-05-14
 
 ---
 
@@ -38,25 +38,24 @@ MemoryJS is a TypeScript knowledge graph library providing:
 ### Key Statistics (v1.15.0)
 
 Numbers below are extracted from the authoritative `dependency-summary.compact.json`
-produced by `tools/create-dependency-graph` on 2026-05-13. To regenerate run
-`node --experimental-strip-types tools/create-dependency-graph/create-dependency-graph.ts`.
+produced by `tools/create-dependency-graph` on 2026-05-14. To regenerate run
+`npx tsx tools/create-dependency-graph/create-dependency-graph.ts` (or the
+`node --experimental-strip-types` variant on newer Node versions).
 
 | Metric | Value |
 |--------|-------|
-| Source files | 231 TypeScript files |
-| Lines of code | 76,495 |
-| Total exports | 1,203 |
-| Re-exports (barrel) | 715 |
-| Classes | 208 |
-| Interfaces | 474 |
-| Functions | 217 |
-| Type guards | 17 |
+| Source files | 235 TypeScript files |
+| Lines of code | 79,378 |
+| Total exports | 1,246 |
+| Re-exports (barrel) | 742 |
+| Classes | 214 |
+| Interfaces | 501 |
+| Functions | 225 |
+| Type guards | 21 |
 | Enums | 4 |
-| Type-only imports | 316 |
-| Runtime circular dependencies | 1 |
+| Type-only imports | 326 |
+| Runtime circular dependencies | 1 (`EntityValidator → EntityValidator`) |
 | Type-only circular dependencies | 3 |
-| Tests passing | 7,098 |
-| Test files | 273 |
 | Modules | 11 |
 
 ### Module Distribution
@@ -64,12 +63,12 @@ produced by `tools/create-dependency-graph` on 2026-05-13. To regenerate run
 | Module | Files | Key Exports |
 |--------|-------|-------------|
 | `adapters/` | 4 | `IDatabaseAdapter`, `IVectorDBAdapter`, `LangChainMemoryAdapter`, `RestRouter` (Phase 4) |
-| `agent/` | 62 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware** |
+| `agent/` | 65 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (Phase 1 prospective), **FailureManager** (Sprint 4), **PlanManager** (Sprint 5), **ReflectionManager** (Sprint 8, aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages |
 | `core/` | 25 | ManagerContext, EntityManager (+OCC, +temporal validity, +state machine), RelationManager (+temporal invalidation), ObservationManager (+bitemporal axis), HierarchyManager, GraphStorage (+mmap branch), SQLiteStorage (+read pool, +partial index advisor), GraphTraversal (+HITS/clique/Louvain), TransactionManager, RefIndex, **FileSegmentStorage** (Phase 7), **WriteAheadLog** + **EntityProxy** (Phase 6), **JsonlColumnStore** (Phase 8), **TieredIndex** (`LRUHotTier`/`DiskWarmTier`/`BrotliColdTier`, Phase 9), **IMmapBackend** / **BufferMmapBackend** / **FsReadMmapBackend** (Phase 11) |
 | `search/` | 55 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental, Phase 1), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, **SparqlExecutor** (minimal subset, Phase 6), **PartialIndexAdvisor** |
 | `features/` | 20 | IOManager (+RDF/Turtle/JSON-LD export), **BackupManager** (extracted Phase 5), TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker, **CRDT** (Phase 5), **AnomalyDetector** (Phase 5) |
 | `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
-| `types/` | 7 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure |
+| `types/` | 7 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`) |
 | `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** (Phase 5) |
 | `cli/` | 16 | `memory` / `memoryjs` binary commands (with pipe support, Phase 0) |
 | `entry/` | 1 | `src/index.ts` |
@@ -320,6 +319,28 @@ class AgentMemoryManager {
 - **ArtifactManager**: Stable artifact creation with auto-registered refs
 - **DistillationPipeline**: Post-retrieval policy-based memory filtering
 
+**Phase 2 memory-type managers** (sit alongside `AgentMemoryManager` as
+dedicated per-type write paths; accessed via `ctx.<getter>` rather than
+through `AgentMemoryManager`):
+- **ProspectiveMemoryManager** (`ctx.prospectiveMemory`) — intentions-to-act
+  with discriminated `ProspectiveLifecycle` (`pending` / `fired` /
+  `cancelled` / `expired`); `ProspectivePromotionStage` promotes fired
+  `inject-context` actions to episodic. Catalog Type 4.
+- **FailureManager** (`ctx.failureManager`) — pre-task failure lookup with
+  structured `FailureRecord` (`applicability_hint` is the retrieval key);
+  `markResolved` returns discriminated `MarkResolvedResult`. Catalog Type 9.
+- **PlanManager** (`ctx.plan`) — hierarchical goal trees with branded
+  `PlanId` / `GoalNodeId`, discriminated `PlanLifecycle` /
+  `GoalNodeLifecycle`, `validatePlanInvariants` after every mutation,
+  cycle-protected DFS. Catalog Type 6.
+- **ReflectionManager** (`ctx.reflectionManager`) — additive reflections
+  produced by `ReflectionStage` (pattern + trajectory + experience); content-
+  hash dedup at create; `ReflectionScope` discriminator. Catalog Type 10.
+- **TrustLevel mixin** on `MemorySource` (Sprint 6) — discriminated
+  categorical label complementing the numeric `reliability`/`confidence`
+  scores; powers the `'trust_level'` `ConflictStrategy`. Catalog Type 12
+  (Provenance).
+
 #### Features Module (`features/`)
 
 **Components**: IOManager, ArchiveManager, StreamingExporter, AnalyticsManager, CompressionManager, TagManager, ObservationNormalizer, KeywordExtractor
@@ -416,15 +437,23 @@ interface Entity {
 
 ```typescript
 interface AgentEntity extends Entity {
-  memoryType: 'working' | 'episodic' | 'semantic';  // Memory classification
+  memoryType: MemoryType;    // 'working' | 'episodic' | 'semantic' | 'procedural'
+                             // | 'prospective' | 'failure' | 'plan' | 'reflection'
   sessionId?: string;        // Session grouping
   expiresAt?: string;        // TTL for working memory
   accessCount: number;       // Retrieval frequency
   lastAccessedAt?: string;   // Most recent access
   confidence: number;        // Belief strength (0.0-1.0)
   agentId?: string;          // Owning agent
-  visibility: 'private' | 'shared' | 'public';
+  visibility: 'private' | 'team' | 'org' | 'shared' | 'public';
+  source?: MemorySource;     // Provenance (with optional TrustLevel mixin)
 }
+
+// Per-type entity specializations extend AgentEntity with a typed record:
+interface ProspectiveEntity extends AgentEntity { memoryType: 'prospective'; trigger: ProspectiveTrigger; action: ProspectiveAction; lifecycle: ProspectiveLifecycle; }
+interface FailureEntity     extends AgentEntity { memoryType: 'failure';     failureRecord: FailureRecord; }
+interface PlanEntity        extends AgentEntity { memoryType: 'plan';        planRecord: PlanRecord; }
+interface ReflectionEntity  extends AgentEntity { memoryType: 'reflection';  reflectionRecord: ReflectionRecord; }
 ```
 
 ### Relation

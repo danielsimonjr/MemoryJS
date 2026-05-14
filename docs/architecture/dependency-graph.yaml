@@ -1,10 +1,10 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
   version: 1.15.0
-  lastUpdated: "2026-05-13"
-  totalFiles: 231
+  lastUpdated: "2026-05-14"
+  totalFiles: 235
   totalModules: 11
-  totalExports: 1203
+  totalExports: 1246
 entryPoints:
   - file: src/index.ts
     type: main
@@ -499,13 +499,14 @@ modules:
         - file: ../types/agent-memory.js
           imports:
             - AgentEntity
+            - AgentMetadata
             - ConflictInfo
             - ConflictStrategy
           typeOnly: true
         - file: ../types/agent-memory.js
           imports:
-            - AgentMetadata
-          typeOnly: true
+            - compareTrustLevel
+            - inferTrustLevel
       exports:
         - ConflictResolver
       classes:
@@ -540,6 +541,7 @@ modules:
         - file: ../types/agent-memory.js
           imports:
             - isAgentEntity
+            - isProspectiveMemory
         - file: ./WorkingMemoryManager.js
           imports:
             - WorkingMemoryManager
@@ -557,14 +559,31 @@ modules:
         - file: ./RuleEvaluator.js
           imports:
             - RuleEvaluator
+        - file: ./ReflectionManager.js
+          imports:
+            - ReflectionManager
+          typeOnly: true
+        - file: ./TrajectoryCompressor.js
+          imports:
+            - TrajectoryCompressor
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - ReflectionScope
+          typeOnly: true
       exports:
         - ConsolidationPipeline
+        - ProspectivePromotionStage
+        - ReflectionStage
       classes:
         - ConsolidationPipeline
+        - ProspectivePromotionStage
+        - ReflectionStage
       interfaces:
         - ConsolidationPipelineConfig
         - PipelineStage
         - StageResult
+        - ReflectionStageConfig
     src/agent/ConsolidationScheduler.ts:
       description: Consolidation Scheduler
       externalDependencies: []
@@ -637,6 +656,8 @@ modules:
             - TokenBreakdown
             - ExcludedEntity
             - ScoredEntity
+            - ProspectiveTrigger
+            - TriggerCondition
           typeOnly: true
         - file: ../types/agent-memory.js
           imports:
@@ -945,6 +966,39 @@ modules:
       interfaces:
         - FailureDistillationConfig
         - FailureDistillationResult
+    src/agent/FailureManager.ts:
+      description: Failure Memory Manager (Phase 2 Sprint 4)
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - randomUUID
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - IGraphStorage
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - FailureEntity
+            - FailureLifecycle
+            - FailureRecord
+            - MarkResolvedResult
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - isFailureMemory
+            - toIsoDateTime
+      exports:
+        - FailureManager
+      classes:
+        - FailureManager
+      interfaces:
+        - FailureManagerConfig
+        - FailureEntityOptions
+        - LookupOptions
+        - GetAllOptions
     src/agent/HeuristicManager.ts:
       description: Heuristic Guidelines Manager
       externalDependencies: []
@@ -1032,11 +1086,49 @@ modules:
             - type CreateEpisodeOptions
             - type TimelineOptions
           reExport: true
+        - file: ./ProspectiveMemoryManager.js
+          imports:
+            - ProspectiveMemoryManager
+            - type ProspectiveMemoryConfig
+            - type ProcedureInvoker
+            - type ScheduleOptions
+          reExport: true
+        - file: ./FailureManager.js
+          imports:
+            - FailureManager
+            - type FailureManagerConfig
+            - type FailureInput
+            - type FailureEntityOptions
+            - type LookupOptions
+            - type GetAllOptions
+          reExport: true
+        - file: ./PlanManager.js
+          imports:
+            - PlanManager
+            - type PlanManagerConfig
+            - type CreatePlanOptions
+            - type PushSubGoalOptions
+            - type ListPlansOptions
+          reExport: true
+        - file: ./ReflectionManager.js
+          imports:
+            - "// Aliased to avoid name collision with `src/search/ReflectionManager`\r\n  // (progressive search refinement"
+            - "predates this module). The class\r\n  // itself is named `ReflectionManager` inside `src/agent/`; this\r\n  // barrel re-exports it under the more specific public name.\r\n  ReflectionManager"
+            - type ArchiveReflectionResult
+            - type ReflectionManagerConfig
+            - type ReflectionInput
+            - type ReflectionEntityOptions
+            - type ListReflectionsOptions
+            - type RelevanceOptions
+          reExport: true
         - file: ./ConsolidationPipeline.js
           imports:
             - ConsolidationPipeline
+            - ProspectivePromotionStage
+            - ReflectionStage
             - type ConsolidationPipelineConfig
             - type PipelineStage
+            - type ReflectionStageConfig
             - type StageResult
           reExport: true
         - file: ./SummarizationService.js
@@ -1355,9 +1447,35 @@ modules:
         - type EpisodicMemoryConfig
         - type CreateEpisodeOptions
         - type TimelineOptions
+        - ProspectiveMemoryManager
+        - type ProspectiveMemoryConfig
+        - type ProcedureInvoker
+        - type ScheduleOptions
+        - FailureManager
+        - type FailureManagerConfig
+        - type FailureInput
+        - type FailureEntityOptions
+        - type LookupOptions
+        - type GetAllOptions
+        - PlanManager
+        - type PlanManagerConfig
+        - type CreatePlanOptions
+        - type PushSubGoalOptions
+        - type ListPlansOptions
+        - "// Aliased to avoid name collision with `src/search/ReflectionManager`\r\n  // (progressive search refinement"
+        - "predates this module). The class\r\n  // itself is named `ReflectionManager` inside `src/agent/`; this\r\n  // barrel re-exports it under the more specific public name.\r\n  ReflectionManager"
+        - type ArchiveReflectionResult
+        - type ReflectionManagerConfig
+        - type ReflectionInput
+        - type ReflectionEntityOptions
+        - type ListReflectionsOptions
+        - type RelevanceOptions
         - ConsolidationPipeline
+        - ProspectivePromotionStage
+        - ReflectionStage
         - type ConsolidationPipelineConfig
         - type PipelineStage
+        - type ReflectionStageConfig
         - type StageResult
         - SummarizationService
         - type ISummarizationProvider
@@ -1558,9 +1676,35 @@ modules:
         - type EpisodicMemoryConfig
         - type CreateEpisodeOptions
         - type TimelineOptions
+        - ProspectiveMemoryManager
+        - type ProspectiveMemoryConfig
+        - type ProcedureInvoker
+        - type ScheduleOptions
+        - FailureManager
+        - type FailureManagerConfig
+        - type FailureInput
+        - type FailureEntityOptions
+        - type LookupOptions
+        - type GetAllOptions
+        - PlanManager
+        - type PlanManagerConfig
+        - type CreatePlanOptions
+        - type PushSubGoalOptions
+        - type ListPlansOptions
+        - "// Aliased to avoid name collision with `src/search/ReflectionManager`\r\n  // (progressive search refinement"
+        - "predates this module). The class\r\n  // itself is named `ReflectionManager` inside `src/agent/`; this\r\n  // barrel re-exports it under the more specific public name.\r\n  ReflectionManager"
+        - type ArchiveReflectionResult
+        - type ReflectionManagerConfig
+        - type ReflectionInput
+        - type ReflectionEntityOptions
+        - type ListReflectionsOptions
+        - type RelevanceOptions
         - ConsolidationPipeline
+        - ProspectivePromotionStage
+        - ReflectionStage
         - type ConsolidationPipelineConfig
         - type PipelineStage
+        - type ReflectionStageConfig
         - type StageResult
         - SummarizationService
         - type ISummarizationProvider
@@ -1937,6 +2081,44 @@ modules:
         - PatternDetector
       classes:
         - PatternDetector
+    src/agent/PlanManager.ts:
+      description: Plan / Goal-Stack Manager (Phase 2 Sprint 5)
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - randomUUID
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - IGraphStorage
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - GoalNode
+            - GoalNodeId
+            - GoalNodeLifecycle
+            - GoalNodeTransition
+            - MarkResolvedResult
+            - PlanEntity
+            - PlanId
+            - PlanLifecycle
+            - PlanRecord
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - isPlanMemory
+            - toIsoDateTime
+      exports:
+        - PlanManager
+      classes:
+        - PlanManager
+      interfaces:
+        - PlanManagerConfig
+        - CreatePlanOptions
+        - PushSubGoalOptions
+        - ListPlansOptions
     src/agent/procedural/index.ts:
       description: Procedural Memory Module — Barrel Export (3B.4)
       externalDependencies: []
@@ -1946,6 +2128,7 @@ modules:
           imports:
             - ProcedureManager
             - type ProcedureManagerConfig
+            - type InvocationResult
           reExport: true
         - file: ./ProcedureStore.js
           imports:
@@ -1960,6 +2143,7 @@ modules:
       exports:
         - ProcedureManager
         - type ProcedureManagerConfig
+        - type InvocationResult
         - ProcedureStore
         - decodeProcedure
         - PROCEDURE_ENTITY_TYPE
@@ -1967,6 +2151,7 @@ modules:
       reExported:
         - ProcedureManager
         - type ProcedureManagerConfig
+        - type InvocationResult
         - ProcedureStore
         - decodeProcedure
         - PROCEDURE_ENTITY_TYPE
@@ -2080,6 +2265,46 @@ modules:
         - ProfileResponse
         - ProfileManagerConfig
         - ProfileOptions
+    src/agent/ProspectiveMemoryManager.ts:
+      description: Prospective Memory Manager
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - randomBytes
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - IGraphStorage
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - CancelResult
+            - FiredEvent
+            - IsoDateTime
+            - ObservationContext
+            - ProspectiveAction
+            - ProspectiveEntity
+            - ProspectiveLifecycle
+            - ProspectiveTrigger
+            - TriggerCondition
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - isProspectiveMemory
+            - toIsoDateTime
+            - toPositiveInt
+        - file: ../utils/logger.js
+          imports:
+            - logger
+      exports:
+        - ProspectiveMemoryManager
+      classes:
+        - ProspectiveMemoryManager
+      interfaces:
+        - ProspectiveMemoryConfig
+        - ScheduleOptions
     src/agent/rbac/index.ts:
       description: RBAC Module — Barrel Export (η.6.1)
       externalDependencies: []
@@ -2198,6 +2423,41 @@ modules:
         - RoleAssignmentStore
       interfaces:
         - RoleAssignmentStoreOptions
+    src/agent/ReflectionManager.ts:
+      description: Reflection Memory Manager (Phase 2 Sprint 8)
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - createHash
+            - randomUUID
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - IGraphStorage
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - ReflectionEntity
+            - ReflectionId
+            - ReflectionRecord
+            - ReflectionScope
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - isReflectionMemory
+            - toIsoDateTime
+      exports:
+        - ReflectionManager
+      classes:
+        - ReflectionManager
+      interfaces:
+        - ReflectionManagerConfig
+        - ReflectionInput
+        - ReflectionEntityOptions
+        - ListReflectionsOptions
+        - RelevanceOptions
     src/agent/retrieval/ActiveRetrievalController.ts:
       description: Active Retrieval Controller (3B.5)
       externalDependencies: []
@@ -3697,6 +3957,19 @@ modules:
         - file: ../agent/procedural/ProcedureManager.js
           imports:
             - ProcedureManager
+        - file: ../agent/ProspectiveMemoryManager.js
+          imports:
+            - ProspectiveMemoryManager
+            - ProcedureInvoker
+        - file: ../agent/FailureManager.js
+          imports:
+            - FailureManager
+        - file: ../agent/PlanManager.js
+          imports:
+            - PlanManager
+        - file: ../agent/ReflectionManager.js
+          imports:
+            - ReflectionManager
         - file: ../agent/causal/CausalReasoner.js
           imports:
             - CausalReasoner
@@ -6840,6 +7113,10 @@ modules:
             - ContextProfile
           typeOnly: true
       exports:
+        - TRUST_LEVEL_ORDER
+        - DEFAULT_TRUST_THRESHOLDS
+        - compareTrustLevel
+        - inferTrustLevel
         - isProfileEntity
         - isAgentEntity
         - isSessionEntity
@@ -6847,6 +7124,12 @@ modules:
         - isEpisodicMemory
         - isSemanticMemory
         - isProceduralMemory
+        - toIsoDateTime
+        - toPositiveInt
+        - isProspectiveMemory
+        - isFailureMemory
+        - isPlanMemory
+        - isReflectionMemory
         - AccessContextBuilder
       classes:
         - AccessContextBuilder
@@ -6868,6 +7151,17 @@ modules:
         - ForgetOptions
         - DecayResult
         - ForgetResult
+        - ProspectiveEntity
+        - FiredEvent
+        - ObservationContext
+        - FailureRecord
+        - FailureEntity
+        - GoalNode
+        - GoalEvent
+        - PlanRecord
+        - PlanEntity
+        - ReflectionRecord
+        - ReflectionEntity
         - ConsolidateOptions
         - ConsolidationResult
         - SummarizationResult
@@ -6887,6 +7181,8 @@ modules:
         - GroupMembership
         - AgentMetadata
       functions:
+        - compareTrustLevel
+        - inferTrustLevel
         - isProfileEntity
         - isAgentEntity
         - isSessionEntity
@@ -6894,6 +7190,15 @@ modules:
         - isEpisodicMemory
         - isSemanticMemory
         - isProceduralMemory
+        - toIsoDateTime
+        - toPositiveInt
+        - isProspectiveMemory
+        - isFailureMemory
+        - isPlanMemory
+        - isReflectionMemory
+      constants:
+        - TRUST_LEVEL_ORDER
+        - DEFAULT_TRUST_THRESHOLDS
     src/types/artifact.ts:
       description: Artifact Type Definitions
       externalDependencies: []
@@ -8960,6 +9265,7 @@ dependencyGraph:
         - src/agent/EpisodicMemoryManager.ts
         - src/agent/ExperienceExtractor.ts
         - src/agent/FailureDistillation.ts
+        - src/agent/FailureManager.ts
         - src/agent/HeuristicManager.ts
         - src/agent/ImportanceScorer.ts
         - src/agent/index.ts
@@ -8971,16 +9277,19 @@ dependencyGraph:
         - src/agent/MultiAgentMemoryManager.ts
         - src/agent/ObserverPipeline.ts
         - src/agent/PatternDetector.ts
+        - src/agent/PlanManager.ts
         - src/agent/procedural/index.ts
         - src/agent/procedural/ProcedureManager.ts
         - src/agent/procedural/ProcedureStore.ts
         - src/agent/procedural/StepSequencer.ts
         - src/agent/ProfileManager.ts
+        - src/agent/ProspectiveMemoryManager.ts
         - src/agent/rbac/index.ts
         - src/agent/rbac/PermissionMatrix.ts
         - src/agent/rbac/RbacMiddleware.ts
         - src/agent/rbac/RbacTypes.ts
         - src/agent/rbac/RoleAssignmentStore.ts
+        - src/agent/ReflectionManager.ts
         - src/agent/retrieval/ActiveRetrievalController.ts
         - src/agent/retrieval/index.ts
         - src/agent/retrieval/QueryRewriter.ts
@@ -9183,19 +9492,19 @@ dependencyGraph:
         - src/workers/index.ts
         - src/workers/levenshteinWorker.ts
 statistics:
-  totalTypeScriptFiles: 231
+  totalTypeScriptFiles: 235
   totalModules: 11
-  totalLinesOfCode: 76495
-  totalExports: 1203
-  totalClasses: 208
-  totalInterfaces: 474
-  totalFunctions: 217
-  totalTypeGuards: 17
+  totalLinesOfCode: 79378
+  totalExports: 1246
+  totalClasses: 214
+  totalInterfaces: 501
+  totalFunctions: 225
+  totalTypeGuards: 21
   totalEnums: 4
-  totalConstants: 67
-  totalReExports: 715
-  totalTypeOnlyImports: 316
+  totalConstants: 69
+  totalReExports: 742
+  totalTypeOnlyImports: 326
   runtimeCircularDeps: 1
   typeOnlyCircularDeps: 3
   unusedFilesCount: 21
-  unusedExportsCount: 394
+  unusedExportsCount: 422

@@ -1,7 +1,7 @@
 # MemoryJS - Project Overview
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; security follow-up via PRs #38 + #39)
-**Last Updated**: 2026-05-13
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Last Updated**: 2026-05-14
 
 ## What Is This?
 
@@ -16,6 +16,8 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
 | **Hierarchical Nesting** | Parent-child relationships for tree organization |
 | **Advanced Search** | Basic / ranked (TF-IDF, BM25) / boolean / fuzzy (N-gram pre-filtered) / semantic / hybrid / temporal / LLM-planned / active iterative retrieval |
 | **Agent Memory System** | Working memory, episodic memory, decay, multi-agent support, role profiles, entropy filtering, recursive consolidation |
+| **Memory Types (Phase 2)** | (v1.15+) Catalog-aligned `MemoryType` slots: `prospective` (intentions-to-act), `failure` (structured pre-task failure lookup), `plan` (hierarchical goal trees), `reflection` (derived pattern + trajectory summary). Per-type managers: `ProspectiveMemoryManager` / `FailureManager` / `PlanManager` / `ReflectionManager`. Pipeline stages: `ProspectivePromotionStage` / `ReflectionStage` |
+| **Trust Hierarchy** | (v1.15+) Discriminated `TrustLevel` mixin on `MemorySource` (`ground-truth` / `verified` / `inferred` / `unverified`); `inferTrustLevel` backfill from `method` + `reliability`; `'trust_level'` `ConflictStrategy` with recency tiebreak |
 | **Bitemporal Versioning** | `validFrom`/`validUntil` on entities, observations, and relations; time-travel queries |
 | **Memory Intelligence** | Validator (consistency / contradictions), TrajectoryCompressor, ExperienceExtractor, PatternDetector |
 | **Memory Theory (3B)** | Procedural memory, active retrieval, causal reasoning, world-model orchestrator |
@@ -63,6 +65,8 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
 │           LLMQueryPlanner / ActiveRetrievalController  │
 │  Memory:  MemoryEngine / MemoryBackend /               │
 │           ContextWindowManager / AgentMemory()         │
+│  Types:   ProspectiveMemoryManager / FailureManager /  │
+│           PlanManager / ReflectionManager              │
 │  Intel:   MemoryValidator / TrajectoryCompressor /     │
 │           ExperienceExtractor / PatternDetector        │
 │  Theory:  ProcedureManager / CausalReasoner /          │

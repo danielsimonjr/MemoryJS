@@ -1,7 +1,7 @@
 # MemoryJS - Component Reference
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34)
-**Last Updated**: 2026-05-13
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Last Updated**: 2026-05-14
 
 ---
 
@@ -624,6 +624,130 @@ export class VisibilityResolver {
 Visibility rules: `private` → owner only; `team` → same team members; `org` → same org members; `shared` → any registered agent; `public` → unrestricted.
 
 ---
+
+### ProspectiveMemoryManager (`agent/ProspectiveMemoryManager.ts`)
+
+**Purpose**: Intentions-to-act at a future time / event / condition. Phase 1 prospective memory. Catalog Type 4.
+
+```typescript
+export class ProspectiveMemoryManager {
+  constructor(storage: IGraphStorage, config?: ProspectiveMemoryConfig)
+
+  async schedule(intention: ProspectiveInput, options?: ScheduleOptions): Promise<ProspectiveEntity>
+  async fire(id: string, result?: unknown): Promise<MarkResolvedResult>
+  async cancel(id: string, reason?: string): Promise<CancelResult>
+  async expireDueIntentions(): Promise<number>
+  async getPending(filter?: { sessionId?: string; agentId?: string }): Promise<ProspectiveEntity[]>
+  async getFired(filter?: { sessionId?: string }): Promise<ProspectiveEntity[]>
+}
+```
+
+`ProspectiveLifecycle` discriminated union (`pending` / `fired` / `cancelled` / `expired`); `ProspectivePromotionStage` promotes fired `inject-context` actions to `'episodic'` with `prospective-fulfilled` tag.
+
+---
+
+### FailureManager (`agent/FailureManager.ts`)
+
+**Purpose**: Pre-task failure lookup. Catalog Type 9 — "the single biggest concrete win available to most agentic systems" per the Phase 2 catalog. Sprint 4.
+
+```typescript
+export class FailureManager {
+  constructor(storage: IGraphStorage, config?: FailureManagerConfig)
+
+  async record(input: FailureInput, options?: FailureEntityOptions): Promise<FailureRecord>
+  async lookupForTask(taskContext: string, options?: LookupOptions): Promise<FailureRecord[]>
+  async markResolved(id: string, reason?: string): Promise<MarkResolvedResult>
+  async getAll(options?: GetAllOptions): Promise<FailureRecord[]>
+}
+```
+
+`FailureRecord` carries `context` / `attempted` / `failure_mode` / `root_cause` / `alternative_taken?` / `applicability_hint` (the retrieval key) / `lifecycle` / `sourceSessionId?`. `markResolved` returns discriminated `MarkResolvedResult` (`'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update'`).
+
+---
+
+### PlanManager (`agent/PlanManager.ts`)
+
+**Purpose**: Hierarchical goal trees with sub-tasks + acceptance criteria. Catalog Type 6. Sprint 5.
+
+```typescript
+export class PlanManager {
+  constructor(storage: IGraphStorage, config?: PlanManagerConfig)
+
+  async createPlan(rootDescription: string, options?: CreatePlanOptions): Promise<PlanRecord>
+  async pushSubGoal(planId: PlanId | string, parentNodeId: GoalNodeId | string, description: string, options?: PushSubGoalOptions): Promise<GoalNode>
+  async transitionNode(planId: PlanId | string, nodeId: GoalNodeId | string, transition: GoalNodeTransition): Promise<void>
+  async markPlanComplete(planId: PlanId | string, note?: string): Promise<MarkResolvedResult>
+  async abandonPlan(planId: PlanId | string, reason?: string): Promise<MarkResolvedResult>
+  async findPlan(planId: PlanId | string): Promise<Readonly<PlanRecord> | null>
+  async findNode(planId: PlanId | string, nodeId: GoalNodeId | string): Promise<Readonly<GoalNode> | null>
+  async getCurrentPath(planId: PlanId | string): Promise<Readonly<GoalNode>[]>
+  async getActivePlan(sessionId: string): Promise<Readonly<PlanRecord> | null>
+  async listPlans(options?: ListPlansOptions): Promise<Readonly<PlanRecord>[]>
+}
+```
+
+`PlanRecord` carries `rootGoal: GoalNode` (recursive tree), `currentNodeId`, history array, discriminated `PlanLifecycle` (`active` / `blocked` / `complete` / `abandoned`) and `GoalNodeLifecycle` (`pending` / `active` / `complete` / `blocked`). Branded `PlanId` / `GoalNodeId`. `validatePlanInvariants` runs after every mutation; cycle-protected DFS in `findNodeInTree` / `findPathToNode`.
+
+---
+
+### ReflectionManager (`agent/ReflectionManager.ts`)
+
+**Purpose**: Derived insights from pattern + trajectory + experience over a candidate set. Additive (no supersession of evidence). Catalog Type 10. Sprint 8. Publicly exported as `ReflectionMemoryManager` to avoid collision with `src/search/ReflectionManager` (progressive query refinement).
+
+```typescript
+export class ReflectionManager {
+  constructor(storage: IGraphStorage, config?: ReflectionManagerConfig)
+
+  async create(input: ReflectionInput, options?: ReflectionEntityOptions): Promise<ReflectionRecord>
+  async list(options?: ListReflectionsOptions): Promise<ReflectionRecord[]>
+  async getAll(): Promise<ReflectionRecord[]>
+  async getRelevantForSession(sessionId: string, options?: RelevanceOptions): Promise<ReflectionRecord[]>
+  async archive(id: ReflectionId | string): Promise<ArchiveReflectionResult>
+}
+```
+
+`ReflectionRecord` carries `scope` (`session` / `project` / `global`), `evidence: string[]` (non-empty), `summary`, `keyInsights[]`, `generalization_confidence ∈ [0, 1]`, `evidenceHash` (SHA-256 of `scope|sorted(evidence)` for Tier-1 content-hash dedup). `archive` returns discriminated `ArchiveReflectionResult`.
+
+---
+
+### ReflectionStage (`agent/ConsolidationPipeline.ts`)
+
+**Purpose**: Pipeline stage that produces `ReflectionEntity` records from candidate episodic + semantic memories. Mirrors `ProspectivePromotionStage`'s self-sufficient pattern. Sprint 8.
+
+```typescript
+export class ReflectionStage implements PipelineStage {
+  readonly name = 'reflection';
+
+  constructor(
+    storage: IGraphStorage,
+    reflectionManager: ReflectionManager,
+    patternDetector: PatternDetector,
+    trajectoryCompressor: TrajectoryCompressor,
+    config?: ReflectionStageConfig
+  )
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult>
+  async runOnSessionEnd(sessionId: string): Promise<StageResult>  // empty/whitespace sessionId throws
+}
+```
+
+Pipeline: gather observations (max-per-run circuit breaker) → `PatternDetector.detectPatterns` → early-return with `[info]`-prefixed `StageResult.errors` entry when below `minConfidence` (default 0.4) → `TrajectoryCompressor.distill` → `generalization_confidence = clamp(min(1 - compressionRatio, maxPatternConfidence), 0, 1)` → `ReflectionManager.create` (content-hash dedup makes re-runs idempotent).
+
+---
+
+### ConflictResolver — `'trust_level'` strategy (Sprint 6)
+
+**Purpose**: Sixth `ConflictStrategy` (alongside `most_recent` / `highest_confidence` / `most_confirmations` / `trusted_agent` / `merge_all`). Resolves by highest categorical `TrustLevel` on `MemorySource.trustLevel` (or `inferTrustLevel` backfill), with recency tiebreak.
+
+```typescript
+// New ConflictStrategy literal
+type ConflictStrategy = ... | 'trust_level' | ...;
+
+// Ordering: 'ground-truth' > 'verified' > 'inferred' > 'unverified'
+// Ties broken by lastModified → createdAt
+```
+
+Backfill from existing `MemorySource` shape (`method` + `reliability`) via `inferTrustLevel(source)`; defensive NaN/non-finite-reliability guard returns `'unverified'`. `DEFAULT_TRUST_THRESHOLDS` exported for per-deployment tuning.
 
 ---
 

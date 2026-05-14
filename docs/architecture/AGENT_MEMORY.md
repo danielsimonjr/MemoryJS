@@ -1,6 +1,6 @@
 # Agent Memory System Design
 
-**Last reviewed**: 2026-05-13 (v1.15.0 — Phases 0–11 performance & scale track shipped via PR #34)
+**Last reviewed**: 2026-05-14 (v1.15.0 + Phase 2 memory-types expansion Sprints 4–6 + 8)
 
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
 
@@ -44,6 +44,33 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   pass through `ctx.compressedEntityCache` (`CompressedMap` with
 >   `BrotliCompressionAdapter`) so retrieved entities cost ~80% less RAM
 >   at rest. No agent-memory API changes; opt-in via env vars.
+> - **Phase 2 memory-types expansion (2026-05)** — Four new catalog-aligned
+>   `MemoryType` slots and one provenance mixin:
+>   - **Sprint 4** — `FailureManager` + `MemoryType: 'failure'`. Structured
+>     `FailureRecord` (`context` / `attempted` / `failure_mode` / `root_cause` /
+>     `applicability_hint`) for pre-task failure lookup. `markResolved` returns
+>     discriminated `MarkResolvedResult`.
+>   - **Sprint 5** — `PlanManager` + `MemoryType: 'plan'`. Hierarchical
+>     `PlanRecord` with `GoalNode` tree, discriminated `PlanLifecycle` /
+>     `GoalNodeLifecycle`, branded `PlanId` / `GoalNodeId`,
+>     `validatePlanInvariants` after every mutation, cycle-protected DFS.
+>   - **Sprint 6 (partial)** — `TrustLevel` discriminated mixin on
+>     `MemorySource` (`ground-truth` / `verified` / `inferred` / `unverified`)
+>     with `inferTrustLevel` backfill and `'trust_level'` `ConflictStrategy`.
+>     `CollaborativeSynthesis.resolveConflicts` ordering integration deferred.
+>   - **Sprint 8** — `ReflectionManager` + `MemoryType: 'reflection'` +
+>     `ReflectionStage` pipeline stage. Additive (no supersession of evidence);
+>     content-hash dedup at create; raw `PatternResult.confidence ≥ 0.4` gate;
+>     session-end scheduling via `runOnSessionEnd(sessionId)` helper.
+>     Aliased export `ReflectionMemoryManager` at the agent barrel to avoid
+>     collision with `src/search/ReflectionManager` (progressive query
+>     refinement).
+>
+>   Common conventions across all four sprints: branded ids, discriminated
+>   lifecycle unions, `MarkResolvedResult`-style returns,
+>   `validate*Invariants` after mutation, `storage.updateEntity:
+>   Promise<boolean>` branched to surface `vanished-mid-update`. See
+>   `docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md` for design rationale.
 
 ## Overview
 
@@ -657,14 +684,103 @@ type ConflictStrategy =
   - Abstract/generalized
   - Entity-centric
 
-### Procedural Memory (Future)
+### Procedural Memory
 
-- **Purpose**: Skills, patterns, procedures
+- **Purpose**: Skills, patterns, procedures (3B.4)
 - **Lifetime**: Permanent
+- **Manager**: `ProcedureManager` + `StepSequencer` + `ProcedureStore`
 - **Characteristics**:
   - Extracted from repeated observations
   - Rule-based patterns
-  - Action sequences
+  - Action sequences executable via `invoke()`
+
+### Prospective Memory (v1.14 / Phase 1)
+
+- **Purpose**: Intentions-to-act at a future time / event / condition
+- **Lifetime**: Append-only-until-fired; expires per TTL
+- **Manager**: `ProspectiveMemoryManager`; `MemoryType: 'prospective'`
+- **Pipeline integration**: `ProspectivePromotionStage` promotes fired
+  `inject-context` actions to `'episodic'` with `prospective-fulfilled` tag
+- **Wake-up surface**: L1.5 layer in `ContextWindowManager.wakeUp`
+- **Trigger kinds**: `time-based` / `time-window` / `event` / `conditional`
+- **Characteristics**:
+  - Single intention per record (flat, not decomposed)
+  - Discriminated `ProspectiveLifecycle` (`pending` / `fired` / `cancelled` /
+    `expired`)
+  - Append-only writes; lifecycle transitions return `CancelResult`
+
+### Failure Memory (Sprint 4)
+
+- **Purpose**: Pre-task lookup of "what failed when I tried similar work
+  before" — catalog frames this as the single biggest concrete win available
+  to most agentic systems
+- **Lifetime**: Permanent; `markResolved` flips status without deletion
+- **Manager**: `FailureManager`; `MemoryType: 'failure'`
+- **Characteristics**:
+  - Structured `FailureRecord` with `context` / `attempted` / `failure_mode`
+    / `root_cause` / `alternative_taken?` / `applicability_hint` (the
+    retrieval key) / `lifecycle` / `sourceSessionId?`
+  - Discriminated `FailureLifecycle` (`open` / `resolved`)
+  - `lookupForTask(taskContext)` substring-match MVP scoring;
+    `SearchManager.semanticSearch` upgrade is a follow-up
+  - `markResolved` returns discriminated `MarkResolvedResult`
+
+### Plan Memory (Sprint 5)
+
+- **Purpose**: Hierarchical goal decomposition + sub-tasks + acceptance
+  criteria. Forward-looking like prospective, but mutable and tree-shaped
+- **Lifetime**: Active until `markPlanComplete` / `abandonPlan`
+- **Manager**: `PlanManager`; `MemoryType: 'plan'`
+- **Characteristics**:
+  - `PlanRecord` with `rootGoal: GoalNode` (recursive tree), `currentNodeId`,
+    history array, optional `sessionId` / `agentId`
+  - Discriminated `PlanLifecycle` (`active` / `blocked` / `complete` /
+    `abandoned`) + `GoalNodeLifecycle` (`pending` / `active` / `complete` /
+    `blocked`)
+  - Branded `PlanId` / `GoalNodeId` minted only via UUID helpers
+  - `validatePlanInvariants` runs after every mutation (unique ids,
+    `currentNodeId ∈ tree`, no cycles)
+  - Cycle-protected DFS in `findNodeInTree` / `findPathToNode`
+  - Unified `transitionNode(planId, nodeId, transition)` state-machine entry
+    point; mutators throw on `storage.updateEntity` returning false
+
+### Reflection Memory (Sprint 8)
+
+- **Purpose**: Derived insights from pattern + trajectory summary +
+  experience extraction over a candidate set. Catalog Type 10
+- **Lifetime**: Permanent; soft-delete via `archive`
+- **Manager**: `ReflectionManager` (publicly aliased as
+  `ReflectionMemoryManager`); `MemoryType: 'reflection'`
+- **Pipeline integration**: `ReflectionStage` — explicit
+  `runOnSessionEnd(sessionId)` helper for session-end triggers, or register
+  on the default pipeline
+- **Characteristics**:
+  - **Additive** (no supersession of evidence entities — episodic
+    observations remain queryable)
+  - `ReflectionScope` discriminator: `session` / `project` / `global`
+  - Content-hash dedup at `create()` (`sha256(scope|sorted(evidence))`)
+  - Raw `PatternResult.confidence ≥ 0.4` gate (default);
+    `generalization_confidence = clamp(min(1 - compressionRatio,
+    maxPatternConfidence), 0, 1)`
+  - `getRelevantForSession` returns reflections matching `sourceSessionId`
+    OR overlapping `evidence ∩ sessionEntityNames`
+
+### Trust Hierarchy Mixin (Sprint 6)
+
+- **Purpose**: Categorical complement to the numeric `reliability` /
+  `confidence` / `AgentMetadata.trustLevel` scores. Discriminated label
+  on `MemorySource` so conflict resolution can use explicit ordering
+  ("user-authored beats tool-verified regardless of recency") instead of
+  scalar comparison
+- **Scope**: Provenance metadata on every memory record (cross-cutting,
+  not a memory-type slot)
+- **Surface**: `MemorySource.trustLevel?: TrustLevel`; `inferTrustLevel`
+  backfill from `method` + `reliability` (defensive NaN guard); new
+  `'trust_level'` `ConflictStrategy` in `ConflictResolver`
+- **Ordering**: `ground-truth` > `verified` > `inferred` > `unverified`;
+  ties broken by recency (`lastModified` → `createdAt`)
+- **Tuning**: `DEFAULT_TRUST_THRESHOLDS` exported for per-deployment
+  override; `compareTrustLevel` standard comparator
 
 ---
 

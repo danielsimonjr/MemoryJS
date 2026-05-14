@@ -1,6 +1,6 @@
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 1.15.0 | **Last Updated**: 2026-05-13
+**Version**: 1.15.0 | **Last Updated**: 2026-05-14
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -32,7 +32,7 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 4 files
-- **agent**: 62 files
+- **agent**: 66 files
 - **cli**: 16 files
 - **core**: 25 files
 - **features**: 20 files
@@ -295,8 +295,8 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../types/agent-memory.js` | `AgentEntity, ConflictInfo, ConflictStrategy` | Import (type-only) |
-| `../types/agent-memory.js` | `AgentMetadata` | Import (type-only) |
+| `../types/agent-memory.js` | `AgentEntity, AgentMetadata, ConflictInfo, ConflictStrategy` | Import (type-only) |
+| `../types/agent-memory.js` | `compareTrustLevel, inferTrustLevel` | Import |
 
 **Exports:**
 - Classes: `ConflictResolver`
@@ -311,16 +311,19 @@ The codebase is organized into the following modules:
 |------|---------|------|
 | `../types/types.js` | `IGraphStorage, Entity` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, ConsolidateOptions, ConsolidationResult, SummarizationResult, PatternResult, MemoryType, MemoryMergeStrategy, MergeResult, DuplicatePair, ConsolidationTrigger, ConsolidationRule` | Import (type-only) |
-| `../types/agent-memory.js` | `isAgentEntity` | Import |
+| `../types/agent-memory.js` | `isAgentEntity, isProspectiveMemory` | Import |
 | `./WorkingMemoryManager.js` | `WorkingMemoryManager` | Import (type-only) |
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
 | `./SummarizationService.js` | `SummarizationService` | Import |
 | `./PatternDetector.js` | `PatternDetector` | Import |
 | `./RuleEvaluator.js` | `RuleEvaluator` | Import |
+| `./ReflectionManager.js` | `ReflectionManager` | Import (type-only) |
+| `./TrajectoryCompressor.js` | `TrajectoryCompressor` | Import (type-only) |
+| `../types/agent-memory.js` | `ReflectionScope` | Import (type-only) |
 
 **Exports:**
-- Classes: `ConsolidationPipeline`
-- Interfaces: `ConsolidationPipelineConfig`, `PipelineStage`, `StageResult`
+- Classes: `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`
+- Interfaces: `ConsolidationPipelineConfig`, `PipelineStage`, `StageResult`, `ReflectionStageConfig`
 
 ---
 
@@ -366,7 +369,7 @@ The codebase is organized into the following modules:
 | `../utils/logger.js` | `logger` | Import |
 | `../types/types.js` | `IGraphStorage, Entity` | Import (type-only) |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
-| `../types/agent-memory.js` | `AgentEntity, SalienceContext, ContextRetrievalOptions, ContextPackage, TokenBreakdown, ExcludedEntity, ScoredEntity` | Import (type-only) |
+| `../types/agent-memory.js` | `AgentEntity, SalienceContext, ContextRetrievalOptions, ContextPackage, TokenBreakdown, ExcludedEntity, ScoredEntity, ProspectiveTrigger, TriggerCondition` | Import (type-only) |
 | `../types/agent-memory.js` | `isAgentEntity` | Import |
 | `./SalienceEngine.js` | `SalienceEngine` | Import |
 | `./DistillationPolicy.js` | `IDistillationPolicy` | Import (type-only) |
@@ -539,6 +542,26 @@ The codebase is organized into the following modules:
 
 ---
 
+### `src/agent/FailureManager.ts` - Failure Memory Manager (Phase 2 Sprint 4)
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `randomUUID` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../types/agent-memory.js` | `FailureEntity, FailureLifecycle, FailureRecord, MarkResolvedResult` | Import (type-only) |
+| `../types/agent-memory.js` | `isFailureMemory, toIsoDateTime` | Import |
+
+**Exports:**
+- Classes: `FailureManager`
+- Interfaces: `FailureManagerConfig`, `FailureEntityOptions`, `LookupOptions`, `GetAllOptions`
+
+---
+
 ### `src/agent/HeuristicManager.ts` - Heuristic Guidelines Manager
 
 **Exports:**
@@ -567,7 +590,15 @@ The codebase is organized into the following modules:
 | `./SessionManager.js` | `SessionManager, type SessionConfig, type StartSessionOptions, type SessionHistoryOptions, type EndSessionResult` | Re-export |
 | `./SessionQueryBuilder.js` | `SessionQueryBuilder, type SessionSearchOptions, type EntityWithContext, type SearchFunction` | Re-export |
 | `./EpisodicMemoryManager.js` | `EpisodicMemoryManager, EpisodicRelations, type EpisodicMemoryConfig, type CreateEpisodeOptions, type TimelineOptions` | Re-export |
-| `./ConsolidationPipeline.js` | `ConsolidationPipeline, type ConsolidationPipelineConfig, type PipelineStage, type StageResult` | Re-export |
+| `./ProspectiveMemoryManager.js` | `ProspectiveMemoryManager, type ProspectiveMemoryConfig, type ProcedureInvoker, type ScheduleOptions` | Re-export |
+| `./FailureManager.js` | `FailureManager, type FailureManagerConfig, type FailureInput, type FailureEntityOptions, type LookupOptions, type GetAllOptions` | Re-export |
+| `./PlanManager.js` | `PlanManager, type PlanManagerConfig, type CreatePlanOptions, type PushSubGoalOptions, type ListPlansOptions` | Re-export |
+| `./ReflectionManager.js` | `// Aliased to avoid name collision with `src/search/ReflectionManager`
+  // (progressive search refinement, predates this module). The class
+  // itself is named `ReflectionManager` inside `src/agent/`; this
+  // barrel re-exports it under the more specific public name.
+  ReflectionManager, type ArchiveReflectionResult, type ReflectionManagerConfig, type ReflectionInput, type ReflectionEntityOptions, type ListReflectionsOptions, type RelevanceOptions` | Re-export |
+| `./ConsolidationPipeline.js` | `ConsolidationPipeline, ProspectivePromotionStage, ReflectionStage, type ConsolidationPipelineConfig, type PipelineStage, type ReflectionStageConfig, type StageResult` | Re-export |
 | `./SummarizationService.js` | `SummarizationService, type ISummarizationProvider, type SummarizationConfig, type GroupingResult` | Re-export |
 | `./PatternDetector.js` | `PatternDetector` | Re-export |
 | `./RuleEvaluator.js` | `RuleEvaluator` | Re-export |
@@ -609,7 +640,11 @@ The codebase is organized into the following modules:
 | `./rbac/index.js` | `DEFAULT_PERMISSION_MATRIX, permissionsForRole, RoleAssignmentStore, RbacMiddleware, type Role, type Permission, type ResourceType, type RoleAssignment, type RbacPolicy, type PermissionMatrix, type PermissionMatrixRow, type ResourcePermissionOverrides, type RoleAssignmentStoreOptions, type RbacMiddlewareOptions` | Re-export |
 
 **Exports:**
-- Re-exports: `AccessTracker`, `type AccessStats`, `type AccessTrackerConfig`, `type AccessContext`, `DecayEngine`, `type DecayEngineConfig`, `type DecayOperationOptions`, `type ReinforcementOptions`, `type DecayResult`, `type ForgetOptions`, `type ForgetResult`, `DecayScheduler`, `type DecaySchedulerConfig`, `type DecayCycleResult`, `WorkingMemoryManager`, `type WorkingMemoryConfig`, `type SessionMemoryFilter`, `type PromotionMarkOptions`, `type PromotionCriteria`, `type PromotionResult`, `type ConfirmationResult`, `SessionManager`, `type SessionConfig`, `type StartSessionOptions`, `type SessionHistoryOptions`, `type EndSessionResult`, `SessionQueryBuilder`, `type SessionSearchOptions`, `type EntityWithContext`, `type SearchFunction`, `EpisodicMemoryManager`, `EpisodicRelations`, `type EpisodicMemoryConfig`, `type CreateEpisodeOptions`, `type TimelineOptions`, `ConsolidationPipeline`, `type ConsolidationPipelineConfig`, `type PipelineStage`, `type StageResult`, `SummarizationService`, `type ISummarizationProvider`, `type SummarizationConfig`, `type GroupingResult`, `PatternDetector`, `RuleEvaluator`, `SalienceEngine`, `type SalienceEngineConfig`, `ContextWindowManager`, `type ContextWindowManagerConfig`, `type SpilloverResult`, `type WakeUpOptions`, `type WakeUpResult`, `MemoryFormatter`, `type MemoryFormatterConfig`, `MultiAgentMemoryManager`, `type MultiAgentConfig`, `ConflictResolver`, `type ConflictResolverConfig`, `type ResolutionResult`, `SessionCheckpointManager`, `type SessionCheckpointData`, `AgentMemoryManager`, `type CreateMemoryOptions`, `type RetrieveContextOptions`, `CollaborativeSynthesis`, `type CollaborativeSynthesisConfig`, `type SynthesisResult`, `type AgentMemoryConfig`, `loadConfigFromEnv`, `mergeConfig`, `validateConfig`, `ArtifactManager`, `type IDistillationPolicy`, `type DistilledMemory`, `type DistillationConfig`, `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`, `DistillationPipeline`, `type DistillationStats`, `type DistillationResult`, `type AgentRole`, `type RoleProfile`, `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`, `EntropyFilterStage`, `computeEntropy`, `passesEntropyFilter`, `type EntropyFilterConfig`, `LowEntropyContentError`, `FailureDistillation`, `type FailureDistillationResult`, `type FailureDistillationConfig`, `CognitiveLoadAnalyzer`, `type CognitiveLoadConfig`, `VisibilityResolver`, `ConsolidationScheduler`, `type ConsolidationSchedulerConfig`, `type ConsolidationCycleResult`, `DreamEngine`, `type DreamEngineConfig`, `type DreamPhaseConfig`, `type DreamEngineCallbacks`, `type DreamPhaseResult`, `type DreamCycleResult`, `ProfileManager`, `type ProfileResponse`, `type ProfileManagerConfig`, `type ProfileOptions`, `ObserverPipeline`, `type ObservationScore`, `type ObserverPipelineOptions`, `type ObserverPipelineStats`, `WorkThreadManager`, `type WorkThread`, `type WorkThreadStatus`, `type WorkThreadFilter`, `type CreateWorkThreadOptions`, `ContextProfileManager`, `type ContextProfile`, `type ProfileConfig`, `MemoryEngine`, `type MemoryEngineConfig`, `type AddTurnOptions`, `type AddTurnResult`, `type DedupTier`, `type DuplicateCheckResult`, `type MemoryEngineEventName`, `ImportanceScorer`, `type ImportanceScorerConfig`, `type ScoreOptions`, `InMemoryBackend`, `SQLiteBackend`, `type SQLiteBackendOptions`, `MemoryValidator`, `type MemoryValidatorConfig`, `type MemoryValidationResult`, `type MemoryValidationIssue`, `type Contradiction`, `TrajectoryCompressor`, `type TrajectoryCompressorConfig`, `type DistillOptions`, `type CompressedMemory`, `type Granularity`, `type RedundancyGroup`, `type TrajectoryMergeStrategy`, `ExperienceExtractor`, `type ExperienceExtractorConfig`, `type Trajectory`, `type Action`, `type Outcome`, `type Rule`, `type HeuristicGuideline`, `type DecisionRule`, `type ClusterMethod`, `type TrajectoryCluster`, `type ExperienceType`, `type Experience`, `CollaborationAuditEnforcer`, `type AttributionMode`, `type CollaborationAuditEnforcerOptions`, `QueryRewriter`, `ActiveRetrievalController`, `type RewriteResult`, `type RetrievalContext`, `type RetrievalDecision`, `type RetrievalRound`, `type AdaptiveResult`, `type ActiveRetrievalConfig`, `WorldStateSnapshot`, `WorldModelManager`, `type WorldStateEntity`, `type WorldStateChange`, `type WorldModelManagerOptions`, `ProcedureManager`, `ProcedureStore`, `StepSequencer`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `type ProcedureManagerConfig`, `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `type CausalRelationType`, `type CausalChain`, `type CausalCycle`, `type CausalReasonerConfig`, `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `RoleAssignmentStore`, `RbacMiddleware`, `type Role`, `type Permission`, `type ResourceType`, `type RoleAssignment`, `type RbacPolicy`, `type PermissionMatrix`, `type PermissionMatrixRow`, `type ResourcePermissionOverrides`, `type RoleAssignmentStoreOptions`, `type RbacMiddlewareOptions`
+- Re-exports: `AccessTracker`, `type AccessStats`, `type AccessTrackerConfig`, `type AccessContext`, `DecayEngine`, `type DecayEngineConfig`, `type DecayOperationOptions`, `type ReinforcementOptions`, `type DecayResult`, `type ForgetOptions`, `type ForgetResult`, `DecayScheduler`, `type DecaySchedulerConfig`, `type DecayCycleResult`, `WorkingMemoryManager`, `type WorkingMemoryConfig`, `type SessionMemoryFilter`, `type PromotionMarkOptions`, `type PromotionCriteria`, `type PromotionResult`, `type ConfirmationResult`, `SessionManager`, `type SessionConfig`, `type StartSessionOptions`, `type SessionHistoryOptions`, `type EndSessionResult`, `SessionQueryBuilder`, `type SessionSearchOptions`, `type EntityWithContext`, `type SearchFunction`, `EpisodicMemoryManager`, `EpisodicRelations`, `type EpisodicMemoryConfig`, `type CreateEpisodeOptions`, `type TimelineOptions`, `ProspectiveMemoryManager`, `type ProspectiveMemoryConfig`, `type ProcedureInvoker`, `type ScheduleOptions`, `FailureManager`, `type FailureManagerConfig`, `type FailureInput`, `type FailureEntityOptions`, `type LookupOptions`, `type GetAllOptions`, `PlanManager`, `type PlanManagerConfig`, `type CreatePlanOptions`, `type PushSubGoalOptions`, `type ListPlansOptions`, `// Aliased to avoid name collision with `src/search/ReflectionManager`
+  // (progressive search refinement`, `predates this module). The class
+  // itself is named `ReflectionManager` inside `src/agent/`; this
+  // barrel re-exports it under the more specific public name.
+  ReflectionManager`, `type ArchiveReflectionResult`, `type ReflectionManagerConfig`, `type ReflectionInput`, `type ReflectionEntityOptions`, `type ListReflectionsOptions`, `type RelevanceOptions`, `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `type ConsolidationPipelineConfig`, `type PipelineStage`, `type ReflectionStageConfig`, `type StageResult`, `SummarizationService`, `type ISummarizationProvider`, `type SummarizationConfig`, `type GroupingResult`, `PatternDetector`, `RuleEvaluator`, `SalienceEngine`, `type SalienceEngineConfig`, `ContextWindowManager`, `type ContextWindowManagerConfig`, `type SpilloverResult`, `type WakeUpOptions`, `type WakeUpResult`, `MemoryFormatter`, `type MemoryFormatterConfig`, `MultiAgentMemoryManager`, `type MultiAgentConfig`, `ConflictResolver`, `type ConflictResolverConfig`, `type ResolutionResult`, `SessionCheckpointManager`, `type SessionCheckpointData`, `AgentMemoryManager`, `type CreateMemoryOptions`, `type RetrieveContextOptions`, `CollaborativeSynthesis`, `type CollaborativeSynthesisConfig`, `type SynthesisResult`, `type AgentMemoryConfig`, `loadConfigFromEnv`, `mergeConfig`, `validateConfig`, `ArtifactManager`, `type IDistillationPolicy`, `type DistilledMemory`, `type DistillationConfig`, `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`, `DistillationPipeline`, `type DistillationStats`, `type DistillationResult`, `type AgentRole`, `type RoleProfile`, `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`, `EntropyFilterStage`, `computeEntropy`, `passesEntropyFilter`, `type EntropyFilterConfig`, `LowEntropyContentError`, `FailureDistillation`, `type FailureDistillationResult`, `type FailureDistillationConfig`, `CognitiveLoadAnalyzer`, `type CognitiveLoadConfig`, `VisibilityResolver`, `ConsolidationScheduler`, `type ConsolidationSchedulerConfig`, `type ConsolidationCycleResult`, `DreamEngine`, `type DreamEngineConfig`, `type DreamPhaseConfig`, `type DreamEngineCallbacks`, `type DreamPhaseResult`, `type DreamCycleResult`, `ProfileManager`, `type ProfileResponse`, `type ProfileManagerConfig`, `type ProfileOptions`, `ObserverPipeline`, `type ObservationScore`, `type ObserverPipelineOptions`, `type ObserverPipelineStats`, `WorkThreadManager`, `type WorkThread`, `type WorkThreadStatus`, `type WorkThreadFilter`, `type CreateWorkThreadOptions`, `ContextProfileManager`, `type ContextProfile`, `type ProfileConfig`, `MemoryEngine`, `type MemoryEngineConfig`, `type AddTurnOptions`, `type AddTurnResult`, `type DedupTier`, `type DuplicateCheckResult`, `type MemoryEngineEventName`, `ImportanceScorer`, `type ImportanceScorerConfig`, `type ScoreOptions`, `InMemoryBackend`, `SQLiteBackend`, `type SQLiteBackendOptions`, `MemoryValidator`, `type MemoryValidatorConfig`, `type MemoryValidationResult`, `type MemoryValidationIssue`, `type Contradiction`, `TrajectoryCompressor`, `type TrajectoryCompressorConfig`, `type DistillOptions`, `type CompressedMemory`, `type Granularity`, `type RedundancyGroup`, `type TrajectoryMergeStrategy`, `ExperienceExtractor`, `type ExperienceExtractorConfig`, `type Trajectory`, `type Action`, `type Outcome`, `type Rule`, `type HeuristicGuideline`, `type DecisionRule`, `type ClusterMethod`, `type TrajectoryCluster`, `type ExperienceType`, `type Experience`, `CollaborationAuditEnforcer`, `type AttributionMode`, `type CollaborationAuditEnforcerOptions`, `QueryRewriter`, `ActiveRetrievalController`, `type RewriteResult`, `type RetrievalContext`, `type RetrievalDecision`, `type RetrievalRound`, `type AdaptiveResult`, `type ActiveRetrievalConfig`, `WorldStateSnapshot`, `WorldModelManager`, `type WorldStateEntity`, `type WorldStateChange`, `type WorldModelManagerOptions`, `ProcedureManager`, `ProcedureStore`, `StepSequencer`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `type ProcedureManagerConfig`, `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `type CausalRelationType`, `type CausalChain`, `type CausalCycle`, `type CausalReasonerConfig`, `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `RoleAssignmentStore`, `RbacMiddleware`, `type Role`, `type Permission`, `type ResourceType`, `type RoleAssignment`, `type RbacPolicy`, `type PermissionMatrix`, `type PermissionMatrixRow`, `type ResourcePermissionOverrides`, `type RoleAssignmentStoreOptions`, `type RbacMiddlewareOptions`
 
 ---
 
@@ -735,17 +770,37 @@ The codebase is organized into the following modules:
 
 ---
 
+### `src/agent/PlanManager.ts` - Plan / Goal-Stack Manager (Phase 2 Sprint 5)
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `randomUUID` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../types/agent-memory.js` | `GoalNode, GoalNodeId, GoalNodeLifecycle, GoalNodeTransition, MarkResolvedResult, PlanEntity, PlanId, PlanLifecycle, PlanRecord` | Import (type-only) |
+| `../types/agent-memory.js` | `isPlanMemory, toIsoDateTime` | Import |
+
+**Exports:**
+- Classes: `PlanManager`
+- Interfaces: `PlanManagerConfig`, `CreatePlanOptions`, `PushSubGoalOptions`, `ListPlansOptions`
+
+---
+
 ### `src/agent/procedural/index.ts` - Procedural Memory Module — Barrel Export (3B.4)
 
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./ProcedureManager.js` | `ProcedureManager, type ProcedureManagerConfig` | Re-export |
+| `./ProcedureManager.js` | `ProcedureManager, type ProcedureManagerConfig, type InvocationResult` | Re-export |
 | `./ProcedureStore.js` | `ProcedureStore, decodeProcedure, PROCEDURE_ENTITY_TYPE` | Re-export |
 | `./StepSequencer.js` | `StepSequencer` | Re-export |
 
 **Exports:**
-- Re-exports: `ProcedureManager`, `type ProcedureManagerConfig`, `ProcedureStore`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `StepSequencer`
+- Re-exports: `ProcedureManager`, `type ProcedureManagerConfig`, `type InvocationResult`, `ProcedureStore`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `StepSequencer`
 
 ---
 
@@ -816,6 +871,27 @@ The codebase is organized into the following modules:
 
 ---
 
+### `src/agent/ProspectiveMemoryManager.ts` - Prospective Memory Manager
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `randomBytes` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../types/agent-memory.js` | `CancelResult, FiredEvent, IsoDateTime, ObservationContext, ProspectiveAction, ProspectiveEntity, ProspectiveLifecycle, ProspectiveTrigger, TriggerCondition` | Import (type-only) |
+| `../types/agent-memory.js` | `isProspectiveMemory, toIsoDateTime, toPositiveInt` | Import |
+| `../utils/logger.js` | `logger` | Import |
+
+**Exports:**
+- Classes: `ProspectiveMemoryManager`
+- Interfaces: `ProspectiveMemoryConfig`, `ScheduleOptions`
+
+---
+
 ### `src/agent/rbac/index.ts` - RBAC Module — Barrel Export (η.6.1)
 
 **Internal Dependencies:**
@@ -877,6 +953,26 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `RoleAssignmentStore`
 - Interfaces: `RoleAssignmentStoreOptions`
+
+---
+
+### `src/agent/ReflectionManager.ts` - Reflection Memory Manager (Phase 2 Sprint 8)
+
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `createHash, randomUUID` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../types/agent-memory.js` | `ReflectionEntity, ReflectionId, ReflectionRecord, ReflectionScope` | Import (type-only) |
+| `../types/agent-memory.js` | `isReflectionMemory, toIsoDateTime` | Import |
+
+**Exports:**
+- Classes: `ReflectionManager`
+- Interfaces: `ReflectionManagerConfig`, `ReflectionInput`, `ReflectionEntityOptions`, `ListReflectionsOptions`, `RelevanceOptions`
 
 ---
 
@@ -1706,6 +1802,10 @@ The codebase is organized into the following modules:
 | `../agent/ExperienceExtractor.js` | `ExperienceExtractor` | Import |
 | `../agent/PatternDetector.js` | `PatternDetector` | Import |
 | `../agent/procedural/ProcedureManager.js` | `ProcedureManager` | Import |
+| `../agent/ProspectiveMemoryManager.js` | `ProspectiveMemoryManager, ProcedureInvoker` | Import |
+| `../agent/FailureManager.js` | `FailureManager` | Import |
+| `../agent/PlanManager.js` | `PlanManager` | Import |
+| `../agent/ReflectionManager.js` | `ReflectionManager` | Import |
 | `../agent/causal/CausalReasoner.js` | `CausalReasoner` | Import |
 | `../agent/rbac/RbacMiddleware.js` | `RbacMiddleware` | Import |
 | `../agent/rbac/RoleAssignmentStore.js` | `RoleAssignmentStore` | Import |
@@ -3248,8 +3348,9 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Classes: `AccessContextBuilder`
-- Interfaces: `ConflictInfo`, `ObservationSource`, `MemorySource`, `AgentEntity`, `AgentObservation`, `SessionEntity`, `ProfileEntity`, `AccessContext`, `SalienceContext`, `SalienceWeights`, `SalienceComponents`, `ScoredEntity`, `WorkingMemoryOptions`, `DecayOptions`, `ForgetOptions`, `DecayResult`, `ForgetResult`, `ConsolidateOptions`, `ConsolidationResult`, `SummarizationResult`, `PatternResult`, `MergeResult`, `DuplicatePair`, `DistilledLesson`, `CognitiveLoadMetrics`, `AdaptiveReductionResult`, `RuleConditions`, `ConsolidationRule`, `RuleEvaluationResult`, `ContextRetrievalOptions`, `TokenBreakdown`, `ContextPackage`, `ExcludedEntity`, `GroupMembership`, `AgentMetadata`
-- Functions: `isProfileEntity`, `isAgentEntity`, `isSessionEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`
+- Interfaces: `ConflictInfo`, `ObservationSource`, `MemorySource`, `AgentEntity`, `AgentObservation`, `SessionEntity`, `ProfileEntity`, `AccessContext`, `SalienceContext`, `SalienceWeights`, `SalienceComponents`, `ScoredEntity`, `WorkingMemoryOptions`, `DecayOptions`, `ForgetOptions`, `DecayResult`, `ForgetResult`, `ProspectiveEntity`, `FiredEvent`, `ObservationContext`, `FailureRecord`, `FailureEntity`, `GoalNode`, `GoalEvent`, `PlanRecord`, `PlanEntity`, `ReflectionRecord`, `ReflectionEntity`, `ConsolidateOptions`, `ConsolidationResult`, `SummarizationResult`, `PatternResult`, `MergeResult`, `DuplicatePair`, `DistilledLesson`, `CognitiveLoadMetrics`, `AdaptiveReductionResult`, `RuleConditions`, `ConsolidationRule`, `RuleEvaluationResult`, `ContextRetrievalOptions`, `TokenBreakdown`, `ContextPackage`, `ExcludedEntity`, `GroupMembership`, `AgentMetadata`
+- Functions: `compareTrustLevel`, `inferTrustLevel`, `isProfileEntity`, `isAgentEntity`, `isSessionEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `toIsoDateTime`, `toPositiveInt`, `isProspectiveMemory`, `isFailureMemory`, `isPlanMemory`, `isReflectionMemory`
+- Constants: `TRUST_LEVEL_ORDER`, `DEFAULT_TRUST_THRESHOLDS`
 
 ---
 
@@ -3874,7 +3975,7 @@ The codebase is organized into the following modules:
 | `CollaborationAuditEnforcer` | 4 files | 1 files |
 | `CollaborativeSynthesis` | 4 files | 2 files |
 | `ConflictResolver` | 1 files | 5 files |
-| `ConsolidationPipeline` | 7 files | 6 files |
+| `ConsolidationPipeline` | 9 files | 6 files |
 | `ConsolidationScheduler` | 4 files | 2 files |
 | `ContextProfileManager` | 1 files | 3 files |
 | `ContextWindowManager` | 7 files | 6 files |
@@ -3887,9 +3988,9 @@ The codebase is organized into the following modules:
 | `EpisodicMemoryManager` | 2 files | 6 files |
 | `ExperienceExtractor` | 2 files | 2 files |
 | `FailureDistillation` | 3 files | 1 files |
+| `FailureManager` | 2 files | 2 files |
 | `HeuristicManager` | 0 files | 0 files |
 | `ImportanceScorer` | 0 files | 3 files |
-| `index` | 47 files | 1 files |
 
 ---
 
@@ -3933,7 +4034,7 @@ graph TD
         N6[AgentMemoryManager]
         N7[ArtifactManager]
         N8[CausalReasoner]
-        N9[...57 more]
+        N9[...61 more]
     end
 
     subgraph Cli
@@ -4045,21 +4146,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 231 |
+| Total TypeScript Files | 235 |
 | Total Modules | 11 |
-| Total Lines of Code | 76495 |
-| Total Exports | 1203 |
-| Total Re-exports | 715 |
-| Total Classes | 208 |
-| Total Interfaces | 474 |
-| Total Functions | 217 |
-| Total Type Guards | 17 |
+| Total Lines of Code | 79378 |
+| Total Exports | 1246 |
+| Total Re-exports | 742 |
+| Total Classes | 214 |
+| Total Interfaces | 501 |
+| Total Functions | 225 |
+| Total Type Guards | 21 |
 | Total Enums | 4 |
-| Type-only Imports | 316 |
+| Type-only Imports | 326 |
 | Runtime Circular Deps | 1 |
 | Type-only Circular Deps | 3 |
 
 ---
 
-*Last Updated*: 2026-05-13
+*Last Updated*: 2026-05-14
 *Version*: 1.15.0

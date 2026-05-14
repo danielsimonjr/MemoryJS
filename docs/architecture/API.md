@@ -1,7 +1,23 @@
 # MemoryJS - API Reference
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34)
-**Last Updated**: 2026-05-13
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Last Updated**: 2026-05-14
+
+> **Phase 2 memory-types expansion (2026-05):** Four catalog-aligned memory-type
+> slots and one provenance mixin. New managers: `ProspectiveMemoryManager`
+> (Phase 1 prospective, accessed via `ctx.prospectiveMemory`), `FailureManager`
+> (`ctx.failureManager`), `PlanManager` (`ctx.plan`), `ReflectionManager`
+> (`ctx.reflectionManager`, publicly aliased as `ReflectionMemoryManager`).
+> New pipeline stages: `ProspectivePromotionStage` and `ReflectionStage` (with
+> `runOnSessionEnd(sessionId)` helper). New types: `ProspectiveEntity` /
+> `FailureEntity` / `PlanEntity` / `ReflectionEntity` per memory-type slot.
+> Trust-hierarchy mixin: `MemorySource.trustLevel?: TrustLevel` (`ground-truth`
+> / `verified` / `inferred` / `unverified`), `inferTrustLevel` backfill,
+> `'trust_level'` `ConflictStrategy` with recency tiebreak. Each manager
+> follows the conventions: discriminated lifecycle unions, branded ids
+> (where applicable), `MarkResolvedResult`-style discriminated returns,
+> `validate*Invariants` post-mutation, `storage.updateEntity: Promise<boolean>`
+> branched to surface `vanished-mid-update`.
 
 > **v1.15.0 additions (Phases 0–11):** memory-mapped file backends
 > (`IMmapBackend` / `BufferMmapBackend` / `FsReadMmapBackend`), segment-sharded

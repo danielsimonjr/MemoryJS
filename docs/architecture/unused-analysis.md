@@ -1,11 +1,11 @@
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-05-13
+**Generated**: 2026-05-14
 
 ## Summary
 
 - **Potentially unused files**: 21
-- **Potentially unused exports**: 394
+- **Potentially unused exports**: 422
 
 ## Potentially Unused Files
 
@@ -68,6 +68,10 @@ These exports are not imported by any other file in the codebase:
 - `SynthesisResult` (interface)
 - `ConflictResolutionPolicy` (type)
 
+### `src/agent/ConsolidationPipeline.ts`
+
+- `ReflectionStageConfig` (interface)
+
 ### `src/agent/ConsolidationScheduler.ts`
 
 - `ConsolidationSchedulerConfig` (interface)
@@ -116,6 +120,14 @@ These exports are not imported by any other file in the codebase:
 - `FailureDistillationConfig` (interface)
 - `FailureDistillationResult` (interface)
 
+### `src/agent/FailureManager.ts`
+
+- `FailureManagerConfig` (interface)
+- `FailureEntityOptions` (interface)
+- `LookupOptions` (interface)
+- `GetAllOptions` (interface)
+- `FailureInput` (type)
+
 ### `src/agent/ImportanceScorer.ts`
 
 - `ImportanceScorerConfig` (interface)
@@ -140,14 +152,27 @@ These exports are not imported by any other file in the codebase:
 - `ObservationScore` (interface)
 - `ObserverPipelineStats` (interface)
 
+### `src/agent/PlanManager.ts`
+
+- `PlanManagerConfig` (interface)
+- `CreatePlanOptions` (interface)
+- `PushSubGoalOptions` (interface)
+- `ListPlansOptions` (interface)
+
 ### `src/agent/procedural/ProcedureManager.ts`
 
 - `ProcedureManagerConfig` (interface)
+- `InvocationResult` (type)
 
 ### `src/agent/ProfileManager.ts`
 
 - `ProfileResponse` (interface)
 - `ProfileOptions` (interface)
+
+### `src/agent/ProspectiveMemoryManager.ts`
+
+- `ProspectiveMemoryConfig` (interface)
+- `ScheduleOptions` (interface)
 
 ### `src/agent/rbac/PermissionMatrix.ts`
 
@@ -160,6 +185,15 @@ These exports are not imported by any other file in the codebase:
 ### `src/agent/rbac/RoleAssignmentStore.ts`
 
 - `RoleAssignmentStoreOptions` (interface)
+
+### `src/agent/ReflectionManager.ts`
+
+- `ReflectionManagerConfig` (interface)
+- `ReflectionInput` (interface)
+- `ReflectionEntityOptions` (interface)
+- `ListReflectionsOptions` (interface)
+- `RelevanceOptions` (interface)
+- `ArchiveReflectionResult` (type)
 
 ### `src/agent/retrieval/ActiveRetrievalController.ts`
 
@@ -546,13 +580,22 @@ These exports are not imported by any other file in the codebase:
 - `ProfileEntity` (interface)
 - `SalienceWeights` (interface)
 - `DecayOptions` (interface)
+- `GoalEvent` (interface)
 - `GroupMembership` (interface)
 - `MemoryAcquisitionMethod` (type)
+- `TrustLevel` (type)
+- `PositiveInt` (type)
+- `AtLeastOne` (type)
+- `FailureMemoryEntity` (type)
+- `PlanMemoryEntity` (type)
+- `ReflectionMemoryEntity` (type)
 - `WorkingMemoryEntity` (type)
 - `EpisodicMemoryEntity` (type)
 - `SemanticMemoryEntity` (type)
 - `ProceduralMemoryEntity` (type)
 - `ConsolidationAction` (type)
+- `TRUST_LEVEL_ORDER` (constant)
+- `DEFAULT_TRUST_THRESHOLDS` (constant)
 
 ### `src/types/progress.ts`
 

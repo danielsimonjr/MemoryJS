@@ -1,7 +1,7 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34)
-**Last Updated**: 2026-05-13
+**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Last Updated**: 2026-05-14
 
 > Most data-flow patterns documented here remain accurate. New flows added
 > in v1.9–v1.15: temporal-validity invalidation cascade (η.4.4),
@@ -17,6 +17,33 @@
 > write-ahead log commit-then-apply (v1.15.0 Phase 6), and `BackupManager`'s
 > three-step delete (path-validate → symlink-check → unlink-then-cleanup-meta).
 > See the relevant per-manager sections below.
+>
+> **Phase 2 memory-types expansion (2026-05)** added five new flows:
+> - **Failure lookup (Sprint 4):** Pre-task `FailureManager.lookupForTask`
+>   substring-scores `applicability_hint` (3×), `context` (2×), `attempted`
+>   (1×). `markResolved` branches on `storage.updateEntity` boolean to
+>   surface `'vanished-mid-update'` vs. `'already-resolved'`.
+> - **Plan-tree mutation (Sprint 5):** `loadPlanMutable` → deep-clone →
+>   tree mutation → `validatePlanInvariants` (uniqueness, currentNodeId ∈
+>   tree, no cycles) → `persistPlan`. The deep clone IS the rollback —
+>   invariant failure throws without touching storage. Read paths skip the
+>   clone (`Readonly<T>` is type-only).
+> - **Trust-level resolution (Sprint 6):** `ConflictResolver` with
+>   `'trust_level'` strategy calls `inferTrustLevel(source)` per memory
+>   (explicit `source.trustLevel` wins; otherwise NaN-guard then method-
+>   based mapping); `compareTrustLevel` orders results; recency tiebreak
+>   on equal tier.
+> - **Reflection emission (Sprint 8):** `ReflectionStage.runOnSessionEnd(sessionId)`
+>   → load `episodic + semantic` candidates filtered by `sessionId` →
+>   collect observations (max-per-run circuit breaker) → `PatternDetector`
+>   → early-return-with-`[info]`-error when below `minConfidence` →
+>   `TrajectoryCompressor.distill` → clamp confidence to `[0, 1]` →
+>   `ReflectionManager.create` with content-hash dedup (`sha256(scope|sorted(evidence))`).
+> - **Prospective promotion (Phase 1, integrated 2026-04):**
+>   `ProspectivePromotionStage` scans storage for fired `inject-context`
+>   intentions, promotes them to `'episodic'` with `prospective-fulfilled`
+>   tag, branches on `storage.updateEntity` boolean to surface
+>   vanished-mid-batch as errors.
 
 ---
 

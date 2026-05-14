@@ -1,18 +1,21 @@
 # Test Coverage Analysis
 
-**Generated**: 2026-05-13 (regenerated from current `tests/` directory + the
+**Generated**: 2026-05-14 (regenerated from current `tests/` directory + the
 authoritative `dependency-summary.compact.json` produced by
 `tools/create-dependency-graph`). Reflects v1.15.0 — Phases 0–11 brought 880+
 new tests via PR #34 (mmap, segments, columns, tiered index, compression,
 SPARQL, WAL, BackupManager, CRDT, ABAC) plus the security-audit follow-ups
-in PRs #38 and #39.
+in PRs #38 and #39. **Phase 2 memory-types expansion (2026-05)** added 6
+new test files covering the four new managers + trust-hierarchy mixin
+(ProspectiveMemoryManager, FailureManager, PlanManager, ReflectionManager,
+ReflectionStage, trust-level).
 
 ## Summary
 
 | Metric | Count | Source |
 |--------|-------|--------|
-| Total source files | 231 | dep-graph |
-| Total test files | 273 | filesystem scan |
+| Total source files | 235 | dep-graph |
+| Total test files | 279 | filesystem scan |
 | Lines of source code | 76,495 | dep-graph |
 | Total exports | 1,203 | dep-graph |
 | Re-exports (barrel) | 715 | dep-graph |
