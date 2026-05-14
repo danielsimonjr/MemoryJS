@@ -234,9 +234,34 @@ export class SchemaValidator {
    */
   validateAll(entities: Entity[]): Map<string, EntityValidationResult> {
     const results = new Map<string, EntityValidationResult>();
+    const nameCounts = new Map<string, number>();
 
     for (const entity of entities) {
-      results.set(entity.name, this.validate(entity));
+      const count = (nameCounts.get(entity.name) ?? 0) + 1;
+      nameCounts.set(entity.name, count);
+      // First occurrence is validated and kept. A Map keyed by name cannot
+      // hold later duplicates — rather than letting them silently overwrite
+      // the first result, they're surfaced as an explicit error below.
+      if (count === 1) {
+        results.set(entity.name, this.validate(entity));
+      }
+    }
+
+    // A validator that silently collapses duplicate names hides the exact
+    // problem it exists to catch. Flag every duplicated name on its kept
+    // result instead.
+    for (const [name, count] of nameCounts) {
+      if (count > 1) {
+        const result = results.get(name);
+        if (!result) continue;
+        result.errors.push({
+          field: 'name',
+          message: `Duplicate entity name '${name}': ${count} entities share this name`,
+          severity: 'error',
+          rule: 'unique-name',
+        });
+        result.isValid = false;
+      }
     }
 
     return results;

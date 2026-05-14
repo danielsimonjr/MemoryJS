@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (SchemaValidator.validateAll silently dropped duplicate-named entities)
+
+- **`SchemaValidator.validateAll`** keyed its `Map<string, EntityValidationResult>` by `entity.name`, so two entities sharing a name silently overwrote each other — a validator hiding the exact problem it exists to catch. It now tracks name counts and pushes an explicit `unique-name` validation error (`isValid: false`) onto every kept result whose name is duplicated. Behavior change: on a duplicate name the *first* occurrence's schema result is kept (was: last). No production callers — only the test surface used `validateAll` — so this is a pure correctness improvement, not an API break.
+- Surfaced by the RLM function/API-call consistency audit (2026-05-14, audit Theme 4). The audit also flagged `SQLiteVectorStore.add/remove/clear` and `WorkerPoolManager.resetInstance` as silent-failure candidates; both were **verified as false positives** — `better-sqlite3`'s embedding methods are synchronous `: void` (no floating promise), and `resetInstance` is a test-only helper whose `.catch()` swallow is deliberate and commented. The remaining audit themes are tracked as tasks for later prioritization.
+
 ### Added (lint: no-unused-updateentity-return rule)
 
 - **New project-local ESLint rule `memoryjs/no-unused-updateentity-return`** (`eslint-rules/no-unused-updateentity-return.mjs`, wired as `error` in `eslint.config.mjs`). Flags any `storage.updateEntity(...)` call whose `Promise<boolean>` return is discarded — that boolean signals whether the entity still existed (`false` = vanished mid-update). Ignoring it was the recurring "silent-failure" pattern caught by review agents across Phase 2 Sprints 2/4/5/8. Name-based: matches receivers resolving to `storage` / `this.storage` / `*.storage`; deliberately does not flag `entityManager.updateEntity` (returns an `Entity`, different contract). 15 `RuleTester` cases in `tests/unit/eslint/no-unused-updateentity-return.test.ts`.
