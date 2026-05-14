@@ -301,7 +301,7 @@ describe('ArtifactManager', () => {
         description: 'Shell output from step 1',
       });
 
-      const refs = await refIndex.listRefs({ entityName: artifact.name });
+      const refs = await refIndex.listRefs(artifact.name);
       expect(refs[0]?.description).toBe('Shell output from step 1');
     });
 
@@ -312,7 +312,7 @@ describe('ArtifactManager', () => {
         artifactType: 'api_response',
       });
 
-      const refs = await refIndex.listRefs({ entityName: artifact.name });
+      const refs = await refIndex.listRefs(artifact.name);
       expect(refs[0]?.description).toBeTruthy();
     });
   });

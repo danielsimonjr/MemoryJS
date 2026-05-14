@@ -152,19 +152,19 @@ export class EntityManager {
   }
 
   /**
-   * List all registered aliases, optionally filtered by entity name.
+   * List all registered aliases, optionally filtered to one entity.
    *
-   * @param filter - Optional filter criteria
+   * @param entityName - When given, only aliases pointing at this entity
    * @returns Array of RefEntry objects
    * @throws {ValidationError} If no RefIndex is configured
    */
-  async listRefs(filter?: { entityName?: string }): Promise<RefEntry[]> {
+  async listRefs(entityName?: string): Promise<RefEntry[]> {
     if (!this.refIndex) {
       throw new ValidationError('RefIndex not configured', [
         'Call setRefIndex() before using listRefs()',
       ]);
     }
-    return this.refIndex.listRefs(filter);
+    return this.refIndex.listRefs(entityName);
   }
 
   /**

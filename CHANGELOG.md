@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (API audit Theme 6: parameter-style consistency) — **BREAKING**
+
+Verification of the audit's 10 flagged "parameter-style inconsistency"
+classes against the audit's *own* rule (positional for ≤3 required
+params; options object for 4+ params or any optional param) found **8 of
+10 were false positives** — methods with optional params correctly use a
+trailing options object, and the "mixed within a class" the audit
+flagged is each method correctly matching its own shape. (`SearchCache`
+was misread entirely — its `Record<string, unknown>` parameter is a
+schema-less *cache key*, not an options bag.) `PartialIndexAdvisor.record`
+was deliberately left alone — `FilterObservation` is a cohesive *named
+domain type*, not an options bag; unwrapping it would destroy a
+meaningful abstraction.
+
+One genuine fix — a single optional field needlessly wrapped in an object,
+the lone outlier in two otherwise-positional classes:
+
+- **`RefIndex.listRefs`** and **`EntityManager.listRefs`**: `listRefs(filter?: { entityName?: string })` → `listRefs(entityName?: string)`.
+
+**Migration:** `listRefs({ entityName: 'X' })` → `listRefs('X')`; `listRefs()` (no filter) is unchanged.
+
+Verified: typecheck + lint exit 0; RefIndex + EntityManager + ArtifactManager suites 163/163.
+
 ### Changed (API audit Theme 5: absent-value sentinel standardized to `undefined`) — **BREAKING**
 
 Applies the Theme 1 policy: "absent value" is signalled with `T | undefined`,

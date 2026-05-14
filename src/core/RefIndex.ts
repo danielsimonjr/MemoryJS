@@ -208,19 +208,19 @@ export class RefIndex {
   }
 
   /**
-   * List all registered refs with optional filtering.
+   * List all registered refs, optionally filtered to one entity.
    *
-   * @param filter - Optional filter criteria
+   * @param entityName - When given, only refs pointing at this entity
    * @returns Array of RefEntry objects
    */
-  async listRefs(filter?: { entityName?: string }): Promise<RefEntry[]> {
+  async listRefs(entityName?: string): Promise<RefEntry[]> {
     return this.mutex.runExclusive(async () => {
       await this.ensureLoaded();
 
       const all = Array.from(this.entries.values());
 
-      if (filter?.entityName !== undefined) {
-        return all.filter(e => e.entityName === filter.entityName);
+      if (entityName !== undefined) {
+        return all.filter(e => e.entityName === entityName);
       }
 
       return all;

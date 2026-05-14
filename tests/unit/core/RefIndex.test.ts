@@ -236,18 +236,18 @@ describe('RefIndex', () => {
     });
 
     it('filters by entityName', async () => {
-      const aliceRefs = await index.listRefs({ entityName: 'Alice' });
+      const aliceRefs = await index.listRefs('Alice');
       expect(aliceRefs).toHaveLength(2);
       expect(aliceRefs.every(e => e.entityName === 'Alice')).toBe(true);
     });
 
     it('returns empty array when filter matches no refs', async () => {
-      const result = await index.listRefs({ entityName: 'NoSuchEntity' });
+      const result = await index.listRefs('NoSuchEntity');
       expect(result).toEqual([]);
     });
 
     it('each entry has the expected shape', async () => {
-      const entries = await index.listRefs({ entityName: 'Alice' });
+      const entries = await index.listRefs('Alice');
       for (const entry of entries) {
         expect(entry).toHaveProperty('ref');
         expect(entry).toHaveProperty('entityName', 'Alice');
@@ -465,7 +465,7 @@ describe('EntityManager — ref integration', () => {
       ]);
       await manager.registerRef('ref-bob', 'Bob');
 
-      const aliceOnly = await manager.listRefs({ entityName: 'Alice' });
+      const aliceOnly = await manager.listRefs('Alice');
       expect(aliceOnly).toHaveLength(1);
       expect(aliceOnly[0].ref).toBe('ref-alice');
     });
