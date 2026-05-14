@@ -4,11 +4,11 @@
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-[![Tests](https://img.shields.io/badge/tests-7098%20passing-brightgreen.svg)](https://github.com/danielsimonjr/memoryjs)
+[![Tests](https://img.shields.io/badge/tests-7127%20passing-brightgreen.svg)](https://github.com/danielsimonjr/memoryjs)
 
 A **TypeScript knowledge graph library** for managing entities, relations, and observations with **advanced search**, **hierarchical organization**, **bitemporal versioning**, **causal reasoning**, **role-based access control**, **multi-agent collaboration**, **memory-mapped I/O**, **segment-sharded JSONL**, **tiered indexing**, and **multiple storage backends**.
 
-> Core library powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). **231 TypeScript files**, **76,495 lines of code**, **7098 passing tests**, dual storage backends (JSONL/SQLite + pluggable `IMemoryBackend`), comprehensive search (BM25 with incremental indexing, TF-IDF, fuzzy with N-gram pre-filter, semantic, hybrid, temporal, LLM-planned, active iterative retrieval, minimal SPARQL subset), and a complete **Agent Memory System** for AI agents — role profiles, entropy filtering, recursive consolidation, collaborative synthesis with conflict resolution, failure distillation, cognitive load analysis, visibility hierarchies, RBAC, optimistic concurrency, audit attribution, procedural memory, causal reasoning, and a world-model orchestrator.
+> Core library powering [@danielsimonjr/memory-mcp](https://www.npmjs.com/package/@danielsimonjr/memory-mcp). **235 TypeScript files**, **79,378 lines of code**, **7127+ passing tests**, dual storage backends (JSONL/SQLite + pluggable `IMemoryBackend`), comprehensive search (BM25 with incremental indexing, TF-IDF, fuzzy with N-gram pre-filter, semantic, hybrid, temporal, LLM-planned, active iterative retrieval, minimal SPARQL subset), and a complete **Agent Memory System** for AI agents — role profiles, entropy filtering, recursive consolidation, collaborative synthesis with conflict resolution, failure distillation, cognitive load analysis, visibility hierarchies, RBAC, optimistic concurrency, audit attribution, procedural memory, causal reasoning, world-model orchestrator, and the Phase 2 catalog-aligned memory-type slots: **prospective** (intentions-to-act), **failure** (structured pre-task lookup), **plan** (hierarchical goal trees), **reflection** (derived pattern + trajectory summary) + a discriminated `TrustLevel` provenance mixin.
 
 ## Table of Contents
 
@@ -58,18 +58,18 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 
 | Module | Files | Key Components |
 |--------|-------|----------------|
-| `agent/` | 62 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver, **MemoryEngine**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **InMemoryBackend** / **SQLiteBackend** |
+| `agent/` | 65 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis, FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver, **MemoryEngine**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **InMemoryBackend** / **SQLiteBackend**, **ProspectiveMemoryManager**, **FailureManager**, **PlanManager**, **ReflectionManager** (Phase 2 memory-type slots), **ReflectionStage** + **ProspectivePromotionStage** (pipeline stages) |
 | `core/` | 25 | ManagerContext, EntityManager (with OCC), RelationManager (with temporal validity), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage, SQLiteStorage, GraphTraversal, TransactionManager, RefIndex, **FileSegmentStorage**, **WriteAheadLog** + **EntityProxy**, **JsonlColumnStore**, **TieredIndex** (`LRUHotTier`/`DiskWarmTier`/`BrotliColdTier`), **IMmapBackend** / **BufferMmapBackend** / **FsReadMmapBackend** |
 | `search/` | 55 | SearchManager, RankedSearch (TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalQueryParser, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, EmbeddingService, VectorStore, **SparqlExecutor** (minimal subset), **PartialIndexAdvisor** |
 | `features/` | 20 | IOManager (with RDF/Turtle/JSON-LD export), **BackupManager**, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker, **CRDT**, **AnomalyDetector** |
 | `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, MemoryMonitor, schemas (Zod), **ICompressionAdapter** / **BrotliCompressionAdapter** / **ZlibCompressionAdapter** / **IdentityCompressionAdapter** / **CompressedMap**, structured `logger`, scheduler/explainPlan/indexHealth diagnostics |
-| `types/` | 7 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity, Procedure |
+| `types/` | 7 | Entity, Relation, AgentEntity, SessionEntity, ArtifactEntity, Procedure, **ProspectiveEntity** / **FailureEntity** / **PlanEntity** / **ReflectionEntity** (Phase 2 per-type entities), **TrustLevel** mixin on `MemorySource` |
 | `security/` | 5 | **PiiRedactor** + bundled patterns (email/SSN/CC/phone/IP), **ABAC + RLS + API keys** |
 | `cli/` | 16 | `memory` / `memoryjs` binary commands (entity, relation, search, observation, tag, hierarchy, graph, io, maintenance) + pipe support |
 | `adapters/` | 4 | `IDatabaseAdapter` / `IVectorDBAdapter` interfaces, `LangChainMemoryAdapter`, `RestRouter` |
 | `workers/` | 2 | Levenshtein distance calculations |
 
-**Total:** 231 TypeScript files | 76,495 lines of code | 7098 passing tests | 11 modules | 1 runtime + 3 type-only circular dependencies (see `docs/architecture/DEPENDENCY_GRAPH.md`)
+**Total:** 235 TypeScript files | 79,378 lines of code | 7127+ passing tests | 11 modules | 1 runtime + 3 type-only circular dependencies (see `docs/architecture/DEPENDENCY_GRAPH.md`)
 
 ### Agent Memory
 
@@ -87,6 +87,11 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 | Causal reasoning (causes / effects / counterfactuals / cycle detection) | `ctx.causalReasoner.findCauses()` / `findEffects()` / `counterfactual()` |
 | World-state orchestrator | `ctx.worldModelManager.getCurrentState()` / `predictOutcome()` |
 | Per-agent persistent journal | `AgentMemoryManager.writeDiary()` / `readDiary()` |
+| Prospective memory (intentions-to-act with discriminated lifecycle) | `ctx.prospectiveMemory.schedule()` / `fire()` / `cancel()` |
+| Failure memory (pre-task `applicability_hint` lookup) | `ctx.failureManager.record()` / `lookupForTask()` / `markResolved()` |
+| Plan memory (hierarchical goal trees with invariant validation) | `ctx.plan.createPlan()` / `pushSubGoal()` / `transitionNode()` / `getCurrentPath()` |
+| Reflection memory (additive derived insights with content-hash dedup) | `ctx.reflectionManager.create()` / `getRelevantForSession()` / `archive()` |
+| Trust hierarchy (`ground-truth` / `verified` / `inferred` / `unverified`) | `MemorySource.trustLevel?:` + `'trust_level'` `ConflictStrategy` + `inferTrustLevel()` backfill |
 
 ### Search & Retrieval
 
@@ -159,9 +164,15 @@ A **TypeScript knowledge graph library** for managing entities, relations, and o
 
 ## What's New
 
-The latest release is **v1.15.0** — a twelve-phase performance & scale track adding mmap-backed I/O, segment-sharded JSONL, columnar observation storage, tiered indexing, pluggable in-memory compression, a minimal SPARQL subset, write-ahead log, extracted `BackupManager`, CRDT primitives, ABAC + RLS + API keys, HITS / clique / Louvain graph algorithms, and a hardened security baseline (`crypto.randomBytes` for IDs, ReDoS-resistant regex escapes, bounded `TaskQueue`).
+**Unreleased (Phase 2 memory-types expansion, 2026-05)** — Four catalog-aligned `MemoryType` slots and one provenance mixin land on top of v1.15:
+- **Sprint 4 — Failure Memory**: `FailureManager` + `MemoryType: 'failure'` + `ctx.failureManager`. Structured `FailureRecord` with `applicability_hint` retrieval key; pre-task `lookupForTask(taskContext)` scoring; discriminated `MarkResolvedResult`.
+- **Sprint 5 — Plan / Goal Stack**: `PlanManager` + `MemoryType: 'plan'` + `ctx.plan`. Recursive `GoalNode` tree with discriminated `PlanLifecycle` / `GoalNodeLifecycle`, branded `PlanId` / `GoalNodeId`, `validatePlanInvariants` after every mutation, cycle-protected DFS.
+- **Sprint 6 — Trust Hierarchy formalization (partial)**: `TrustLevel` discriminated mixin on `MemorySource` (`'ground-truth' | 'verified' | 'inferred' | 'unverified'`) with `inferTrustLevel` backfill and `'trust_level'` `ConflictStrategy`. `CollaborativeSynthesis.resolveConflicts` ordering integration deferred.
+- **Sprint 8 — Reflection Log scheduled pass**: `ReflectionManager` + `MemoryType: 'reflection'` + `ReflectionStage` pipeline stage + `ctx.reflectionManager` (publicly aliased as `ReflectionMemoryManager`). Additive (no supersession); content-hash dedup at create; session-end scheduling via `runOnSessionEnd(sessionId)` helper.
 
-See [CHANGELOG.md](CHANGELOG.md) for the full per-version history. The implementation roadmap and remaining items live in [`docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`](docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md).
+**v1.15.0** — Twelve-phase performance & scale track adding mmap-backed I/O, segment-sharded JSONL, columnar observation storage, tiered indexing, pluggable in-memory compression, a minimal SPARQL subset, write-ahead log, extracted `BackupManager`, CRDT primitives, ABAC + RLS + API keys, HITS / clique / Louvain graph algorithms, and a hardened security baseline (`crypto.randomBytes` for IDs, ReDoS-resistant regex escapes, bounded `TaskQueue`).
+
+See [CHANGELOG.md](CHANGELOG.md) for the full per-version history. The roadmap and remaining items live in [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) and [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md).
 
 ## Installation
 
@@ -657,13 +668,27 @@ await agent.endSession(session.name);
 ### Memory Types
 
 ```typescript
-type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural';
+type MemoryType =
+  | 'working'      // Short-term, session-scoped memories that may be promoted
+  | 'episodic'     // Timeline-based event memories with temporal ordering
+  | 'semantic'     // Long-term factual knowledge
+  | 'procedural'   // Learned behaviors and patterns (3B.4)
+  | 'prospective'  // (Phase 1) Intentions-to-act at a future time / event / condition
+  | 'failure'      // (Phase 2 Sprint 4) Pre-task failure lookup with applicability_hint
+  | 'plan'         // (Phase 2 Sprint 5) Hierarchical goal trees with sub-tasks + acceptance criteria
+  | 'reflection';  // (Phase 2 Sprint 8) Additive derived insights with content-hash dedup
 ```
 
 - **Working Memory**: Short-term, session-scoped memories that may be promoted
 - **Episodic Memory**: Timeline-based event memories with temporal ordering
 - **Semantic Memory**: Long-term factual knowledge
-- **Procedural Memory**: Learned behaviors and patterns
+- **Procedural Memory**: Learned behaviors and patterns (`ctx.procedureManager`)
+- **Prospective Memory**: Forward-looking intentions with discriminated `ProspectiveLifecycle` (`pending` / `fired` / `cancelled` / `expired`); `ctx.prospectiveMemory`. Catalog Type 4
+- **Failure Memory**: Structured `FailureRecord` with `applicability_hint` as the retrieval key; `markResolved` returns discriminated `MarkResolvedResult`; `ctx.failureManager`. Catalog Type 9
+- **Plan Memory**: Recursive `GoalNode` tree with discriminated `PlanLifecycle` / `GoalNodeLifecycle`, branded `PlanId` / `GoalNodeId`, `validatePlanInvariants` after every mutation; `ctx.plan`. Catalog Type 6
+- **Reflection Memory**: Additive (no supersession of evidence entities) with `ReflectionScope` discriminator (`session` / `project` / `global`); content-hash dedup at `create`; `ctx.reflectionManager`. Catalog Type 10. Produced by `ReflectionStage` pipeline stage
+
+**Trust-hierarchy mixin** (Phase 2 Sprint 6, Catalog Type 12): every `MemorySource` may carry an optional categorical `trustLevel?: TrustLevel` (`'ground-truth' | 'verified' | 'inferred' | 'unverified'`) — backfilled from `method` + `reliability` via `inferTrustLevel(source)`. Powers the `'trust_level'` `ConflictStrategy` with recency tiebreak.
 
 ### Decay System
 
@@ -846,6 +871,46 @@ const results = await agent.searchCrossAgent('agent_2', 'query');
 | `redact(text)` | Apply patterns; returns redacted string |
 | `redactWithStats(text)` | Returns `{ text, stats: { totalRedactedBytes, countsByPattern } }` |
 | `redactGraph(graph)` | Apply to every observation in a graph-shaped object |
+
+### ProspectiveMemoryManager (`ctx.prospectiveMemory`)
+
+| Method | Description |
+|--------|-------------|
+| `schedule(intention, options?)` | Persist a `ProspectiveEntity`; trigger kind `time-based` / `time-window` / `event` / `conditional` |
+| `fire(id, result?)` | Transition `pending → fired`; returns discriminated `MarkResolvedResult` |
+| `cancel(id, reason?)` | Transition `pending → cancelled`; returns `CancelResult` |
+| `expireDueIntentions()` | Bulk-expire past-due pending intentions; returns count |
+| `getPending(filter?)` / `getFired(filter?)` | Query by `sessionId` / `agentId` |
+
+### FailureManager (`ctx.failureManager`)
+
+| Method | Description |
+|--------|-------------|
+| `record(input, options?)` | Persist a structured `FailureRecord`; validates five required non-empty fields |
+| `lookupForTask(taskContext, options?)` | Pre-task substring-match scoring (`applicability_hint` 3× / `context` 2× / `attempted` 1×) |
+| `markResolved(id, reason?)` | Returns discriminated `MarkResolvedResult` (`resolved` / `already-resolved` / `not-found` / `vanished-mid-update`) |
+| `getAll(options?)` | Filter by `status` and/or `sourceSessionId` |
+
+### PlanManager (`ctx.plan`)
+
+| Method | Description |
+|--------|-------------|
+| `createPlan(rootDescription, options?)` | Create a single-node plan tree; mints branded `PlanId` |
+| `pushSubGoal(planId, parentNodeId, description, options?)` | Append a child `GoalNode`; throws on `persistPlan` failure |
+| `transitionNode(planId, nodeId, transition)` | Unified `GoalNodeLifecycle` state-machine entry point |
+| `markPlanComplete(planId, note?)` / `abandonPlan(planId, reason?)` | Plan-level lifecycle; returns `MarkResolvedResult` |
+| `findPlan` / `findNode` / `getCurrentPath` | `Readonly<>` reads (clone-free) |
+| `getActivePlan(sessionId)` / `listPlans(options?)` | Session-scoped + filtered queries |
+
+### ReflectionManager (`ctx.reflectionManager`)
+
+| Method | Description |
+|--------|-------------|
+| `create(input, options?)` | Persist a `ReflectionRecord`; content-hash dedup on `sha256(scope\|sorted(evidence))` |
+| `list(options?)` | Filter by `scope` / `sourceSessionId` / `minConfidence` / `includeArchived` / `limit` |
+| `getRelevantForSession(sessionId, options?)` | Reflections matching `sourceSessionId` OR overlapping evidence; confidence-sorted |
+| `archive(id)` | Soft-delete; returns discriminated `ArchiveReflectionResult` |
+| `ReflectionStage.runOnSessionEnd(sessionId)` | Pipeline stage helper — runs the reflection pass scoped to one session |
 
 ## Configuration
 
