@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-05-14
+
+Major release. Bundles the Phase 2 memory-types expansion (Sprints 4–8 —
+all additive) and a seven-theme function/API-call consistency &
+efficiency pass driven by an RLM audit. Four of the seven audit themes
+carry **breaking changes**; see the Migration guide below.
+
+### Migration from 1.x
+
+All breaking changes are small, mechanical call-site updates — full
+detail in each theme's entry below.
+
+- **`async` removed from 3 methods** (Theme 3). `AccessTracker.getAccessStats`
+  now returns `AccessStats` (was `Promise<AccessStats>`), `AccessTracker.flush`
+  returns `void`, `ConsolidationPipeline.isPromotionEligible` returns
+  `boolean`. → Drop `await` from calls; rewrite any `.then()`/`.catch()`/
+  `.resolves` on their results as synchronous. (`await` on a non-Promise is
+  harmless, so plain `await`-ed call sites keep working.)
+- **Absent-value sentinel is now `undefined`, not `null`** (Theme 5), on
+  `AgentMemoryManager.copyMemory`/`mergeCrossAgent`,
+  `MultiAgentMemoryManager.transferMemory`/`copyMemory`/`mergeCrossAgent`,
+  `ProcedureStore.load`, `OptimizedInvertedIndex.getPostingList`,
+  `TFIDFIndexManager.loadIndex`/`getIndex`,
+  `TemporalQueryParser.parseTemporalExpression`. → Replace `=== null` /
+  `!== null` checks on their results with `=== undefined` / `!== undefined`
+  (or loose `== null` / `!= null`, which catch both). Truthy checks are
+  unaffected.
+- **`listRefs` filter unwrapped** (Theme 6) on `RefIndex` and
+  `EntityManager`. → `listRefs({ entityName: 'X' })` becomes
+  `listRefs('X')`; `listRefs()` with no argument is unchanged.
+- **`BM25Search.remove()` removed** (Theme 7). → Use `removeDocument()` —
+  identical signature and behaviour.
+
+Non-breaking-but-notable: a new `Result<T, E>` type (`src/types/result.ts`)
+and a documented error-handling policy (`CONTRIBUTING.md`) — see Theme 1.
+
 ### Removed (API audit Theme 7: naming-verb consistency) — **BREAKING**
 
 Theme 7 was the most opinion-laden audit finding, and verification bore
