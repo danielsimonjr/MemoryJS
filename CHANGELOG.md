@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (lint: no-unused-updateentity-return rule)
+
+- **New project-local ESLint rule `memoryjs/no-unused-updateentity-return`** (`eslint-rules/no-unused-updateentity-return.mjs`, wired as `error` in `eslint.config.mjs`). Flags any `storage.updateEntity(...)` call whose `Promise<boolean>` return is discarded — that boolean signals whether the entity still existed (`false` = vanished mid-update). Ignoring it was the recurring "silent-failure" pattern caught by review agents across Phase 2 Sprints 2/4/5/8. Name-based: matches receivers resolving to `storage` / `this.storage` / `*.storage`; deliberately does not flag `entityManager.updateEntity` (returns an `Entity`, different contract). 15 `RuleTester` cases in `tests/unit/eslint/no-unused-updateentity-return.test.ts`.
+- **Triaged all 31 flagged call sites** — every discard is now a conscious decision:
+  - **4 real fixes.** `ConsolidationPipeline.mergeMemories` now captures the survivor-write boolean and **throws before the destructive delete-others step** if it failed (was: silent — would delete the merged entities with no survivor to hold their data). `ProspectiveMemoryManager.cancel` returns `'not-found'` when the write races a delete (`CancelResult` already modelled it); `expireOverdue` and `applyTagRelated` gate their count / returned-names list on the boolean so they only report transitions that actually persisted.
+  - **27 explicit waivers** (`// eslint-disable-next-line ... -- <reason>`), in three reason categories: background dream-sweep writes (best-effort over a graph snapshot, reconciled next cycle); best-effort metadata / telemetry writes on void methods; and ~14 sites where the entity is existence-checked at method entry and closing the microtask-gap TOCTOU race properly needs a storage-level atomic check-and-set — those waivers name **task #55** (`storage.updateEntityIf`) as the systemic fix, giving #55 a precise grep target. Scattering 17 inconsistent local `throw`s was rejected in favour of the one primitive.
+- **Reviewed**: code-reviewer — ship-ready, one cosmetic finding (stale `mergeEntities` → `mergeMemories` in a throw message) applied; confirmed the `mergeMemories` throw is safe (the sole internal caller wraps it in try/catch). Code-simplifier — "nothing meaningful to change."
+- **Verification**: `npm run lint` exit 0, `npm run typecheck` exit 0, `RuleTester` 15/15, broad regression 3354/3354 (one transient Windows temp-dir flake in an untouched columnar-store test, passes 12/12 in isolation).
+
 ### Fixed (pre-existing lint debt)
 
 - **`src/core/SQLiteStorage.ts`** — four `console.warn` calls in `rowToEntity` / `rowToRelation` (malformed-JSON salvage paths) now route through the project `logger` like the rest of the file. They predated the `no-console` rule and had gone unnoticed because the sprint work gated on `typecheck` + `vitest` rather than `npm run lint`.

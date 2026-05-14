@@ -381,6 +381,7 @@ export class AccessTracker {
     const entity = this.storage.getEntityByName(entityName);
     if (!entity) return;
 
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort access telemetry; nothing to update if the entity vanished
     await this.storage.updateEntity(entityName, {
       accessCount: record.totalAccesses,
       lastAccessedAt: record.lastAccessedAt,

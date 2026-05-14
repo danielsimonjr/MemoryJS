@@ -338,6 +338,7 @@ export class ConsolidationPipeline {
       // This is the default behavior
     }
 
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates as Partial<Entity>);
 
     // Reinforce the memory to reset decay
@@ -523,6 +524,7 @@ export class ConsolidationPipeline {
 
     // Update entity with summarized observations
     if (result.compressionRatio > 1) {
+      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- summarized observations are best-effort; the SummarizationResult is still returned and the op is re-runnable
       await this.storage.updateEntity(entityName, {
         observations: result.summaries,
         lastModified: new Date().toISOString(),
@@ -820,8 +822,19 @@ export class ConsolidationPipeline {
       lastModified: new Date().toISOString(),
     };
 
-    // Update survivor
-    await this.storage.updateEntity(survivor.name, updates as Partial<Entity>);
+    // Update survivor. If the survivor vanished between merge-planning and
+    // this write, abort BEFORE the destructive delete-others step below —
+    // proceeding would delete the merged entities with no survivor to hold
+    // their data.
+    const survivorPersisted = await this.storage.updateEntity(
+      survivor.name,
+      updates as Partial<Entity>
+    );
+    if (!survivorPersisted) {
+      throw new Error(
+        `ConsolidationPipeline.mergeMemories: survivor '${survivor.name}' vanished mid-merge; aborting before delete to prevent data loss`
+      );
+    }
 
     // Record merge in audit trail
     await this.recordMerge(entityNames, survivor.name, strategy);

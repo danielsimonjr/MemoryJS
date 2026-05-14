@@ -719,6 +719,7 @@ export class EntityManager {
 
     if (newTags.length > 0) {
       // OPTIMIZED: Use updateEntity for in-place update + append
+      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
       await this.storage.updateEntity(entityName, { tags: [...existingTags, ...newTags] });
     }
 
@@ -759,6 +760,7 @@ export class EntityManager {
 
     // Update entity via storage if tags were removed
     if (newTags.length < originalLength) {
+      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
       await this.storage.updateEntity(entityName, { tags: newTags });
     }
 
@@ -787,6 +789,7 @@ export class EntityManager {
     }
 
     // Use updateEntity for in-place update + append
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, { importance });
 
     return { entityName, importance };

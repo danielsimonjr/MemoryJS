@@ -179,6 +179,7 @@ export class MemoryEngine {
     });
 
     const hash = this.computeContentHash(content);
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- contentHash decorates an entity created microtasks earlier; the returned `enriched` value still carries the hash
     await this.deps.storage.updateEntity(entity.name, { contentHash: hash });
     const enriched: AgentEntity = { ...entity, contentHash: hash };
 

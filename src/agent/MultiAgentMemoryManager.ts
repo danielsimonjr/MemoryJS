@@ -361,6 +361,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
     // Update ownership
     memory.agentId = toAgentId;
     memory.lastModified = new Date().toISOString();
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort lastModified write; a vanish is caught by the entityIndex check below before the authoritative saveGraph
     await this.storage.updateEntity(memoryName, {
       lastModified: memory.lastModified,
     } as Partial<Entity>);

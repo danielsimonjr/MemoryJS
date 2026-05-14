@@ -544,6 +544,7 @@ export class WorkThreadManager {
    * Persist a thread's state to storage by updating its entity observation.
    */
   private async persistThread(thread: WorkThread): Promise<void> {
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked by callers; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(thread.id, {
       observations: [JSON.stringify(this.serializeThread(thread))],
       lastModified: thread.updatedAt,

@@ -519,6 +519,7 @@ export class WorkingMemoryManager {
         currentExpires.getTime() + additionalHours * 60 * 60 * 1000
       );
 
+      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
       await this.storage.updateEntity(name, {
         expiresAt: newExpires.toISOString(),
         lastModified: new Date().toISOString(),
@@ -579,6 +580,7 @@ export class WorkingMemoryManager {
       }
     }
 
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates);
   }
 
@@ -721,6 +723,7 @@ export class WorkingMemoryManager {
     }
 
     // Persist changes
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates);
 
     // Remove from session index
@@ -791,6 +794,7 @@ export class WorkingMemoryManager {
       lastModified: new Date().toISOString(),
     };
 
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates);
 
     // Check auto-promotion

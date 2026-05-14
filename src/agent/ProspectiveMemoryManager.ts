@@ -288,11 +288,13 @@ export class ProspectiveMemoryManager {
           cancelledAt: now,
           fireCount: 0,
         };
-        await this.storage.updateEntity(entityName, {
+        const ok = await this.storage.updateEntity(entityName, {
           lifecycle: newLifecycle,
           lastModified: now,
         } as unknown as Partial<Entity>);
-        return 'cancelled';
+        // The intention vanished between the read above and this write — a
+        // concurrent delete. `CancelResult` already models this as 'not-found'.
+        return ok ? 'cancelled' : 'not-found';
       }
     }
   }
@@ -321,11 +323,13 @@ export class ProspectiveMemoryManager {
           fireCount: entity.lifecycle.fireCount,
           expiredAt: nowIso,
         };
-        await this.storage.updateEntity(entity.name, {
+        const ok = await this.storage.updateEntity(entity.name, {
           lifecycle: newLifecycle,
           lastModified: nowIso,
         } as unknown as Partial<Entity>);
-        count++;
+        // Only count intentions that actually persisted — one that raced a
+        // delete mid-sweep was not transitioned.
+        if (ok) count++;
       }
     }
     return count;
@@ -448,6 +452,7 @@ export class ProspectiveMemoryManager {
       newLifecycle = { status: 'fired', firedAt: nowIso, fireCount: newFireCount };
     }
 
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- fire() still returns the FiredEvent and runs the action; a delete racing the lifecycle write is a pathological narrow race
     await this.storage.updateEntity(entity.name, {
       lifecycle: newLifecycle,
       lastModified: nowIso,
@@ -510,11 +515,12 @@ export class ProspectiveMemoryManager {
       const existingTags = entity.tags ?? [];
       const newTags = Array.from(new Set([...existingTags, ...action.tagsToAdd]));
       if (newTags.length === existingTags.length) continue; // no change
-      await this.storage.updateEntity(entity.name, {
+      const ok = await this.storage.updateEntity(entity.name, {
         tags: newTags,
         lastModified: nowIso,
       });
-      tagged.push(entity.name);
+      // Only report entities whose tags actually persisted.
+      if (ok) tagged.push(entity.name);
     }
     return tagged;
   }
