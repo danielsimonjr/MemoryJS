@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (API audit Theme 1: error-signalling contract)
+
+The RLM audit's #1 finding was that four error-signalling styles —
+`throw` / `return null` / discriminated union / **silent** — coexist with
+no documented rule, mixed even within single classes. Theme 1 establishes
+the **contract**; the call-site migration is follow-up work (the
+`null` → `undefined` mechanical pass is Theme 5 / #64).
+
+- **`Result<T, E>`** (`src/types/result.ts`) — a discriminated-union return
+  type for *expected* domain failures, exported from the types barrel.
+  Discriminated on an `ok` boolean so callers narrow with a plain
+  `if (result.ok)`. Ships with `ok()` / `err()` constructors, `isOk()` /
+  `isErr()` type guards, and `unwrap()` / `unwrapOr()` / `mapOk()` helpers.
+  11 unit tests.
+- **`CONTRIBUTING.md` > Error Handling** — expanded from three bullets to
+  the full policy: (1) `throw` (custom `utils/errors.ts` classes) for
+  programmer errors; (2) `return Result<T, E>` for expected domain
+  failures the caller should branch on — existing discriminated unions
+  like `MarkResolvedResult` / `CancelResult` follow the same spirit;
+  (3) never swallow silently — re-emit on an error channel, or mark a
+  deliberate discard with an `eslint-disable` + reason; (4) the
+  absent-value sentinel is `T | undefined`, never `T | null`.
+
+This is additive — no existing signatures changed. Subsequent themes and
+follow-up tasks migrate call sites onto the contract.
+
 ### Changed (API audit Theme 3: needless async) — **BREAKING**
 
 Removed the `async` keyword from six methods that had no `await` in their

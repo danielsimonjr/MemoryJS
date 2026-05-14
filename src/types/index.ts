@@ -241,3 +241,8 @@ export {
   createThrottledProgress,
   createDetailedProgressReporter,
 } from './progress.js';
+
+// Result<T, E> — discriminated-union return type for expected domain
+// failures (see CONTRIBUTING.md > Error Handling).
+export type { Result } from './result.js';
+export { ok, err, isOk, isErr, unwrap, unwrapOr, mapOk } from './result.js';
