@@ -60,8 +60,8 @@ describe('3B.4 Procedural Memory', () => {
       expect(loaded?.triggers).toEqual(['password reset', 'forgot password']);
     });
 
-    it('returns null for unknown id', async () => {
-      expect(await manager.getProcedure('does-not-exist')).toBeNull();
+    it('returns undefined for unknown id', async () => {
+      expect(await manager.getProcedure('does-not-exist')).toBeUndefined();
     });
 
     it('throws when steps is omitted', async () => {

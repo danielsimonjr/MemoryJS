@@ -91,8 +91,8 @@ export class ProcedureManager {
     return procedure;
   }
 
-  /** Load by id, or null. */
-  async getProcedure(id: string): Promise<Procedure | null> {
+  /** Load by id, or undefined. */
+  async getProcedure(id: string): Promise<Procedure | undefined> {
     return this.store.load(id);
   }
 

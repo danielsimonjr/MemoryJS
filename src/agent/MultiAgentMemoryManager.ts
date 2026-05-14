@@ -339,23 +339,23 @@ export class MultiAgentMemoryManager extends EventEmitter {
    * @param memoryName - Memory to transfer
    * @param fromAgentId - Current owner
    * @param toAgentId - New owner
-   * @returns Updated memory or null if not found/unauthorized
+   * @returns Updated memory or undefined if not found/unauthorized
    */
   async transferMemory(
     memoryName: string,
     fromAgentId: string,
     toAgentId: string
-  ): Promise<AgentEntity | null> {
+  ): Promise<AgentEntity | undefined> {
     const entity = this.storage.getEntityByName(memoryName);
     if (!entity || !isAgentEntity(entity)) {
-      return null;
+      return undefined;
     }
 
     const memory = entity as AgentEntity;
 
     // Verify ownership
     if (memory.agentId !== fromAgentId) {
-      return null;
+      return undefined;
     }
 
     // Update ownership
@@ -741,7 +741,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
    * @param memoryName - Memory to copy
    * @param requestingAgentId - Agent making the copy
    * @param options - Copy options
-   * @returns New copied memory or null if not accessible
+   * @returns New copied memory or undefined if not accessible
    */
   async copyMemory(
     memoryName: string,
@@ -751,15 +751,15 @@ export class MultiAgentMemoryManager extends EventEmitter {
       annotation?: string;
       visibility?: MemoryVisibility;
     }
-  ): Promise<AgentEntity | null> {
+  ): Promise<AgentEntity | undefined> {
     // Check if memory is visible to requesting agent
     if (!this.isMemoryVisible(memoryName, requestingAgentId)) {
-      return null;
+      return undefined;
     }
 
     const entity = this.storage.getEntityByName(memoryName);
     if (!entity || !isAgentEntity(entity)) {
-      return null;
+      return undefined;
     }
 
     const sourceMemory = entity as AgentEntity;
@@ -970,9 +970,9 @@ export class MultiAgentMemoryManager extends EventEmitter {
       resolveConflicts?: boolean;
       conflictStrategy?: ConflictStrategy;
     }
-  ): Promise<AgentEntity | null> {
+  ): Promise<AgentEntity | undefined> {
     if (memoryNames.length < 2) {
-      return null;
+      return undefined;
     }
 
     // Gather memories
@@ -985,7 +985,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
     }
 
     if (memories.length < 2) {
-      return null;
+      return undefined;
     }
 
     // Check for conflicts if requested

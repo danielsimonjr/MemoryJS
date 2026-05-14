@@ -232,16 +232,16 @@ export class OptimizedInvertedIndex implements IIndexHealth {
    * Get posting list for a term.
    *
    * @param term - Term to look up
-   * @returns Posting list result or null if term not found
+   * @returns Posting list result or undefined if term not found
    */
-  getPostingList(term: string): PostingListResult | null {
+  getPostingList(term: string): PostingListResult | undefined {
     if (this.finalized) {
       const arr = this.postingLists.get(term);
-      if (!arr) return null;
+      if (!arr) return undefined;
       return { term, docIds: arr };
     } else {
       const list = this.tempPostingLists.get(term);
-      if (!list) return null;
+      if (!list) return undefined;
       // Sort and return as Uint32Array
       const sorted = list.slice().sort((a, b) => a - b);
       return { term, docIds: new Uint32Array(sorted) };

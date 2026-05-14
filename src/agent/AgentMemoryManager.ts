@@ -439,7 +439,7 @@ export class AgentMemoryManager extends EventEmitter {
     return this.multiAgentManager.searchCrossAgent(requestingAgentId, query, options);
   }
 
-  async copyMemory(sourceMemoryName: string, targetAgentId: string): Promise<AgentEntity | null> {
+  async copyMemory(sourceMemoryName: string, targetAgentId: string): Promise<AgentEntity | undefined> {
     return this.multiAgentManager.copyMemory(sourceMemoryName, targetAgentId);
   }
 
@@ -465,7 +465,7 @@ export class AgentMemoryManager extends EventEmitter {
     memoryNames: string[],
     targetAgentId: string,
     options?: { resolveConflicts?: boolean; conflictStrategy?: ConflictStrategy }
-  ): Promise<AgentEntity | null> {
+  ): Promise<AgentEntity | undefined> {
     return this.multiAgentManager.mergeCrossAgent(memoryNames, targetAgentId, options);
   }
 

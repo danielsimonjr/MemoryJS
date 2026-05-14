@@ -31,7 +31,7 @@ interface SerializedTFIDFIndex {
  */
 export class TFIDFIndexManager implements IIndexHealth {
   private indexPath: string;
-  private index: TFIDFIndex | null = null;
+  private index: TFIDFIndex | undefined = undefined;
 
   constructor(storageDir: string) {
     this.indexPath = path.join(storageDir, '.indexes', INDEX_FILENAME);
@@ -166,9 +166,9 @@ export class TFIDFIndexManager implements IIndexHealth {
   /**
    * Load index from disk.
    *
-   * @returns Loaded index or null if not found
+   * @returns Loaded index or undefined if not found
    */
-  async loadIndex(): Promise<TFIDFIndex | null> {
+  async loadIndex(): Promise<TFIDFIndex | undefined> {
     try {
       const data = await fs.readFile(this.indexPath, 'utf-8');
       const serialized: SerializedTFIDFIndex = JSON.parse(data);
@@ -183,7 +183,7 @@ export class TFIDFIndexManager implements IIndexHealth {
       return this.index;
     } catch (error) {
       // Index doesn't exist or is invalid
-      return null;
+      return undefined;
     }
   }
 
@@ -216,9 +216,9 @@ export class TFIDFIndexManager implements IIndexHealth {
   /**
    * Get the current cached index.
    *
-   * @returns Cached index or null if not loaded
+   * @returns Cached index or undefined if not loaded
    */
-  getIndex(): TFIDFIndex | null {
+  getIndex(): TFIDFIndex | undefined {
     return this.index;
   }
 
@@ -226,7 +226,7 @@ export class TFIDFIndexManager implements IIndexHealth {
    * Clear the cached index and delete from disk.
    */
   async clearIndex(): Promise<void> {
-    this.index = null;
+    this.index = undefined;
     try {
       await fs.unlink(this.indexPath);
     } catch {
@@ -495,7 +495,7 @@ export class TFIDFIndexManager implements IIndexHealth {
    * @returns True if index is available
    */
   isInitialized(): boolean {
-    return this.index !== null;
+    return this.index !== undefined;
   }
 
   /**

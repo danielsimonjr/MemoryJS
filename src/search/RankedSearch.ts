@@ -98,9 +98,9 @@ export class RankedSearch {
   /**
    * Load the TF-IDF index from disk if available.
    */
-  private async ensureIndexLoaded(): Promise<TFIDFIndex | null> {
+  private async ensureIndexLoaded(): Promise<TFIDFIndex | undefined> {
     if (!this.indexManager) {
-      return null;
+      return undefined;
     }
 
     // Return cached index if already loaded

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (API audit Theme 5: absent-value sentinel standardized to `undefined`) — **BREAKING**
+
+Applies the Theme 1 policy: "absent value" is signalled with `T | undefined`,
+never `T | null`. Six methods (verified — the audit's seventh claim,
+`MemoryMonitor.getComponentUsage`, was already `T | undefined`) converted,
+with every call site updated:
+
+- `AgentMemoryManager.copyMemory` / `mergeCrossAgent`
+- `MultiAgentMemoryManager.transferMemory` / `copyMemory` / `mergeCrossAgent`
+- `ProcedureStore.load` (+ `ProcedureManager.getProcedure`, which propagated the type)
+- `OptimizedInvertedIndex.getPostingList`
+- `TFIDFIndexManager.loadIndex` / `getIndex` — the private `index` field and `isInitialized()` (`this.index !== null`) were converted in lockstep so the guard didn't silently break; `RankedSearch.ensureIndexLoaded` propagated
+- `TemporalQueryParser.parseTemporalExpression` (+ its private `parseCustomPattern` / `parseWithChrono` helpers)
+
+**Migration:** these methods now return `undefined` instead of `null` for the
+absent case. Replace `=== null` / `!== null` checks on their results with
+`=== undefined` / `!== undefined` (or loose `== null` / `!= null`, which
+catch both). Truthy checks (`if (result)`, `if (!result)`) are unaffected.
+
+Two related findings were investigated and left for follow-up tasks (both
+judgment-heavy, not mechanical): `MultiAgentMemoryManager` mixes `throw`
+(`registerAgent`, `unregisterAgent`) with absent-return (`transferMemory`,
+`copyMemory`, ...) for arguably the same failure category; and
+`BatchTransaction`'s fluent `return this` methods share verb names with
+`TransactionManager`'s `void`-returning counterparts. Recorded on #64.
+
+Verified: typecheck + lint exit 0; agent + search regression 3352/3352.
+
 ### Added (API audit Theme 1: error-signalling contract)
 
 The RLM audit's #1 finding was that four error-signalling styles —
