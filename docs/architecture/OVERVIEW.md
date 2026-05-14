@@ -1,6 +1,6 @@
 # MemoryJS - Project Overview
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
 **Last Updated**: 2026-05-14
 
 ## What Is This?
@@ -38,6 +38,7 @@ MemoryJS is a **TypeScript knowledge graph library** for managing entities, rela
 | **CRDT** | (v1.15.0) Convergent replicated data type primitives for multi-writer scenarios (currently scaffolded; awaiting wiring) |
 | **ABAC + RLS + API keys** | (v1.15.0) Attribute-based access control with row-level security predicates; API-key-scoped access alongside RBAC |
 | **Graph Algorithms (extended)** | (v1.15.0) HITS, clique enumeration, Louvain community detection alongside existing shortest path / centrality / connected components |
+| **Error-Handling Contract** | (v2.0.0) `Result<T, E>` discriminated-union type (`ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk`) in `src/types/result.ts`; a documented policy (`CONTRIBUTING.md`): throw for programmer errors, return `Result` for expected domain failures, absent-value sentinel is `T \| undefined` not `T \| null` |
 
 ## Quick Architecture Overview
 
@@ -141,13 +142,13 @@ interface Relation {
 
 ## Directory Structure
 
-> Counts below are from `dependency-summary.compact.json` (2026-05-13)
+> Counts below are from `dependency-summary.compact.json` (2026-05-14)
 > — the authoritative output of `tools/create-dependency-graph`. Repo
-> totals: **231 source files, 76,495 LOC, 1,203 exports, 208 classes,
-> 474 interfaces, 217 functions, 1 runtime + 3 type-only circular dependencies.**
+> totals: **236 source files, 79,841 LOC, 1,262 exports, 214 classes,
+> 501 interfaces, 232 functions, 1 runtime + 3 type-only circular dependencies.**
 
 ```
-src/ (231 TypeScript files, 76,495 lines of code)
+src/ (236 TypeScript files, 79,841 lines of code)
 ├── index.ts              # Entry point, main exports
 │
 ├── adapters/ (4 files)   # External-system adapter interfaces (Phase 4)
@@ -156,7 +157,7 @@ src/ (231 TypeScript files, 76,495 lines of code)
 │   ├── LangChainMemoryAdapter.ts
 │   └── RestRouter.ts
 │
-├── agent/ (62 files)     # Agent Memory System
+├── agent/ (66 files)     # Agent Memory System
 │   ├── AgentMemoryManager.ts     # Unified facade for all agent operations
 │   ├── AgentMemoryConfig.ts      # Configuration with env var loading
 │   ├── SessionManager.ts         # Session lifecycle management
@@ -230,9 +231,10 @@ src/ (231 TypeScript files, 76,495 lines of code)
 │   ├── AnomalyDetector.ts        # Phase 5 — LSH-backed anomaly detection
 │   └── ...
 │
-├── types/ (7 files)      # TypeScript definitions
+├── types/ (8 files)      # TypeScript definitions
 │   ├── types.ts                  # Core type definitions
 │   ├── agent-memory.ts           # Agent memory types
+│   ├── result.ts                 # Result<T,E> discriminated union (v2.0.0)
 │   └── index.ts                  # Barrel export
 │
 ├── utils/ (34 files)     # Shared utilities

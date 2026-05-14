@@ -1,6 +1,6 @@
 # MemoryJS - API Reference
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
 **Last Updated**: 2026-05-14
 
 > **Phase 2 memory-types expansion (2026-05):** Four catalog-aligned memory-type
@@ -447,12 +447,13 @@ const entities = await ctx.entityManager.createEntities([
 ]);
 ```
 
-### getEntityByName
+### getEntity
 
-Retrieve a single entity by name.
+Retrieve a single entity by name. (The O(1) `storage.getEntityByName(name): Entity | undefined`
+is the underlying `IGraphStorage` primitive; `EntityManager` exposes `getEntity`.)
 
 ```typescript
-async getEntityByName(name: string): Promise<Entity | null>
+async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null>
 ```
 
 ### updateEntity (with Optimistic Concurrency Control)
@@ -1618,6 +1619,36 @@ interface SearchFilters {
   modifiedBefore?: string;
 }
 ```
+
+### Result\<T, E\> (v2.0.0)
+
+Discriminated-union return type for operations with expected, caller-handled
+failure modes (`src/types/result.ts`, exported from the types barrel).
+Introduced by the v2.0.0 Theme 1 error-signalling audit.
+
+```typescript
+type Result<T, E = Error> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: E };
+
+// constructors
+ok<T>(value: T): Result<T, never>
+err<E>(error: E): Result<never, E>
+
+// type guards
+isOk<T, E>(result: Result<T, E>): result is { ok: true; value: T }
+isErr<T, E>(result: Result<T, E>): result is { ok: false; error: E }
+
+// extractors
+unwrap<T, E>(result: Result<T, E>): T          // throws if err
+unwrapOr<T, E>(result: Result<T, E>, fallback: T): T
+mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
+```
+
+**Error-signalling policy** (`CONTRIBUTING.md` > Error Handling): `throw` for
+programmer errors (bad arguments, invariant violations); return `Result<T, E>`
+for expected domain failures the caller is meant to branch on; never swallow a
+failure silently; the absent-value sentinel is `T | undefined`, never `T | null`.
 
 ---
 

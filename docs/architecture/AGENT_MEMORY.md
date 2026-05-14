@@ -1,6 +1,6 @@
 # Agent Memory System Design
 
-**Last reviewed**: 2026-05-14 (v1.15.0 + Phase 2 memory-types expansion Sprints 4–6 + 8)
+**Last reviewed**: 2026-05-14 (v2.0.0 + Phase 2 memory-types expansion Sprints 4–6 + 8)
 
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
 
@@ -71,6 +71,16 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   `validate*Invariants` after mutation, `storage.updateEntity:
 >   Promise<boolean>` branched to surface `vanished-mid-update`. See
 >   `docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md` for design rationale.
+> - **v2.0.0 (seven-theme function/API-call consistency & efficiency audit)** —
+>   Two changes touch the agent-memory surface directly: `AccessTracker.getAccessStats`
+>   and `AccessTracker.flush` dropped their needless `Promise` wrappers (now
+>   synchronous — Theme 3, breaking), and the absent-value sentinel was
+>   standardized to `undefined` across `AgentMemoryManager.copyMemory` /
+>   `mergeCrossAgent` and `MultiAgentMemoryManager.transferMemory` / `copyMemory`
+>   / `mergeCrossAgent` (were `T | null` — Theme 5, breaking). New shared
+>   `Result<T, E>` discriminated union (`src/types/result.ts`) plus a documented
+>   error-signalling policy (`CONTRIBUTING.md`): throw for programmer errors,
+>   return `Result` for expected domain failures, never swallow silently.
 
 ## Overview
 
@@ -247,7 +257,7 @@ interface AccessTracker {
   /**
    * Get access statistics for an entity
    */
-  getAccessStats(entityName: string): Promise<AccessStats>;
+  getAccessStats(entityName: string): AccessStats; // v2.0.0: synchronous (Theme 3)
 
   /**
    * Calculate recency score (0.0-1.0) based on last access
@@ -632,7 +642,7 @@ interface MultiAgentMemoryManager {
   mergeCrossAgent(
     entityNames: string[],
     trustWeights?: Record<string, number>
-  ): Promise<AgentEntity>;
+  ): Promise<AgentEntity | undefined>; // v2.0.0: undefined when < 2 inputs (Theme 5)
 }
 
 interface AgentMetadata {

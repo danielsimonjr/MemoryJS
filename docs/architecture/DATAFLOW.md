@@ -1,6 +1,6 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
 **Last Updated**: 2026-05-14
 
 > Most data-flow patterns documented here remain accurate. New flows added
@@ -1267,6 +1267,27 @@ Indexes are rebuilt on `loadGraph()` and incrementally updated on mutations via 
 ---
 
 ## Error Handling Flow
+
+### Error-Signalling Contract (v2.0.0)
+
+As of v2.0.0 the codebase has one documented error-signalling policy
+(`CONTRIBUTING.md` > Error Handling); the flows below should be read
+against it:
+
+- **`throw`** — for *programmer errors*: bad arguments, invariant
+  violations, "this should never happen" states. These use the custom
+  error classes below and propagate to the application as exceptions.
+- **`return Result<T, E>`** — for *expected domain failures* the caller is
+  meant to branch on. `Result<T, E>` (`src/types/result.ts`) is a
+  discriminated union (`ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk`);
+  the caller narrows with a plain `if (result.ok)`. Existing discriminated
+  returns (`MarkResolvedResult`, `CancelResult`, `ArchiveReflectionResult`)
+  follow the same spirit.
+- **Never swallow silently** — a failure that can't be handled is at least
+  re-emitted on an error channel (`logger`, a `StageResult.errors[]` entry,
+  an event). Deliberate fire-and-forget discards carry an `eslint-disable`
+  with a reason (see `memoryjs/no-unused-updateentity-return`).
+- **Absent-value sentinel is `T | undefined`**, never `T | null`.
 
 ### Error Class Hierarchy
 

@@ -2,29 +2,31 @@
 
 **Generated**: 2026-05-14 (regenerated from current `tests/` directory + the
 authoritative `dependency-summary.compact.json` produced by
-`tools/create-dependency-graph`). Reflects v1.15.0 — Phases 0–11 brought 880+
+`tools/create-dependency-graph`). Reflects v2.0.0 — Phases 0–11 brought 880+
 new tests via PR #34 (mmap, segments, columns, tiered index, compression,
 SPARQL, WAL, BackupManager, CRDT, ABAC) plus the security-audit follow-ups
 in PRs #38 and #39. **Phase 2 memory-types expansion (2026-05)** added 6
 new test files covering the four new managers + trust-hierarchy mixin
 (ProspectiveMemoryManager, FailureManager, PlanManager, ReflectionManager,
-ReflectionStage, trust-level).
+ReflectionStage, trust-level). The **v2.0.0 API-consistency audit** added
+the `result` test file (`Result<T,E>` type guards) plus the
+`no-unused-updateentity-return` ESLint rule's `RuleTester` suite.
 
 ## Summary
 
 | Metric | Count | Source |
 |--------|-------|--------|
-| Total source files | 235 | dep-graph |
-| Total test files | 279 | filesystem scan |
-| Lines of source code | 76,495 | dep-graph |
-| Total exports | 1,203 | dep-graph |
-| Re-exports (barrel) | 715 | dep-graph |
-| Classes | 208 | dep-graph |
-| Interfaces | 474 | dep-graph |
-| Functions | 217 | dep-graph |
-| Type guards | 17 | dep-graph |
+| Total source files | 236 | dep-graph |
+| Total test files | 281 | filesystem scan |
+| Lines of source code | 79,841 | dep-graph |
+| Total exports | 1,262 | dep-graph |
+| Re-exports (barrel) | 750 | dep-graph |
+| Classes | 214 | dep-graph |
+| Interfaces | 501 | dep-graph |
+| Functions | 232 | dep-graph |
+| Type guards | 23 | dep-graph |
 | Enums | 4 | dep-graph |
-| Type-only imports | 316 | dep-graph |
+| Type-only imports | 326 | dep-graph |
 | Runtime circular dependencies | 1 | dep-graph |
 | Type-only circular dependencies | 3 | dep-graph |
 | Modules | 11 | dep-graph |
@@ -79,13 +81,13 @@ where a single test file may cover multiple small classes.
 | `features/` | 17 | 17 | 10 | 22 | 1.29 |
 | `search/` | 37 | 39 | 10 | 37 | 0.95 |
 | `security/` | 2 | 1 | 4 | 1 | 1.00 |
-| `types/` | 7 | 2 | 10+ | 6 | n/a (type defs) |
+| `types/` | 8 | 2 | 10+ | 6 | n/a (type defs) |
 | `utils/` | 26 | 32 | 10 | 22 | 0.69 |
 | `workers/` | 2 | 0 | 2 | 2 | n/a (function-based) |
 
 > Interface counts above are "in summary" — the dep-graph compact JSON
 > caps the interface list per module at the most prominent ~10. The
-> repo total is **384 interfaces** across all modules.
+> repo total is **501 interfaces** across all modules.
 
 ### Test file counts by directory
 
@@ -240,11 +242,12 @@ All search algorithms covered:
 - **PiiRedactor.test.ts** — covers default pattern bank (email/SSN/CC/phone/IPv4),
   custom patterns, redactWithStats, redactGraph
 
-### Unit Tests — Types (6 files)
+### Unit Tests — Types (8 files)
 
 - agent-memory, **entity-content-hash** (v1.11),
   **entity-new-fields** (η.4.4 + supersession), profile-entity,
-  progress, search
+  progress, search, **trust-level** (v2.0.0 TrustLevel mixin),
+  **result** (v2.0.0 `Result<T,E>` constructors / guards / helpers)
 
 ### Unit Tests — CLI (6 files)
 
@@ -430,5 +433,5 @@ export default defineConfig({
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-04-25
+**Last Updated**: 2026-05-14
 **Maintained By**: Daniel Simon Jr.

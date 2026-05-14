@@ -1,6 +1,6 @@
 # MemoryJS - Component Reference
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
 **Last Updated**: 2026-05-14
 
 ---
@@ -26,7 +26,7 @@ MemoryJS follows a layered architecture with specialized components:
 ┌─────────────────────────────────────────────────────────────┐
 │  adapters/         │  External-system adapters (4 files)    │
 ├─────────────────────────────────────────────────────────────┤
-│  agent/            │  Agent memory system (62 files)        │
+│  agent/            │  Agent memory system (66 files)        │
 ├─────────────────────────────────────────────────────────────┤
 │  core/             │  Central managers + storage (25 files) │
 ├─────────────────────────────────────────────────────────────┤
@@ -36,7 +36,7 @@ MemoryJS follows a layered architecture with specialized components:
 ├─────────────────────────────────────────────────────────────┤
 │  utils/            │  Shared utilities (34 files)           │
 ├─────────────────────────────────────────────────────────────┤
-│  types/            │  TypeScript definitions (7 files)      │
+│  types/            │  TypeScript definitions (8 files)      │
 ├─────────────────────────────────────────────────────────────┤
 │  security/         │  PII / ABAC / RLS / API keys (5 files) │
 ├─────────────────────────────────────────────────────────────┤
@@ -48,8 +48,8 @@ MemoryJS follows a layered architecture with specialized components:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 231 TypeScript files | 76,495 LOC | 1,203 exports | 208 classes | 474 interfaces | 7,098 passing tests
-(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-05-13)
+**Total:** 236 TypeScript files | 79,841 LOC | 1,262 exports | 214 classes | 501 interfaces
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-05-14; see `TEST_COVERAGE.md` for test counts)
 
 ### New since v1.13: dedicated sub-modules under `agent/`
 
@@ -296,10 +296,11 @@ export class ConsolidationPipeline {
 ```typescript
 export class AccessTracker {
   async recordAccess(entityName: string, context?: AccessContext): Promise<void>
-  async getAccessStats(entityName: string): Promise<AccessStats>
+  getAccessStats(entityName: string): AccessStats     // v2.0.0: synchronous (was Promise)
   calculateRecencyScore(entityName: string, halfLifeHours?: number): number
   async getFrequentlyAccessed(limit: number): Promise<Entity[]>
   async getRecentlyAccessed(limit: number): Promise<Entity[]>
+  flush(): void                                       // v2.0.0: synchronous (was Promise)
 }
 ```
 
@@ -1655,6 +1656,25 @@ interface StructuredQuery {
 }
 ```
 
+### Result Types (`types/result.ts`) — v2.0.0
+
+```typescript
+// Discriminated-union return type for expected domain failures.
+// Per the error-handling policy (CONTRIBUTING.md): throw for programmer
+// errors, return Result for failures the caller should branch on.
+type Result<T, E = Error> =
+  | { readonly ok: true;  readonly value: T }
+  | { readonly ok: false; readonly error: E };
+
+ok<T>(value: T): Result<T, never>
+err<E>(error: E): Result<never, E>
+isOk<T, E>(result: Result<T, E>): result is { ok: true; value: T }
+isErr<T, E>(result: Result<T, E>): result is { ok: false; error: E }
+unwrap<T, E>(result: Result<T, E>): T          // returns value, or throws error
+unwrapOr<T, E>(result: Result<T, E>, fallback: T): T
+mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
+```
+
 ---
 
 ## Component Dependencies
@@ -1715,6 +1735,6 @@ interface StructuredQuery {
 
 ---
 
-**Document Version**: 1.7
-**Last Updated**: 2026-04-09
+**Document Version**: 2.0
+**Last Updated**: 2026-05-14
 **Maintained By**: Daniel Simon Jr.

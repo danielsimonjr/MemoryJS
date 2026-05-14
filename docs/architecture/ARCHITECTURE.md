@@ -1,6 +1,6 @@
 # MemoryJS - System Architecture
 
-**Version**: 1.15.0 (Phases 0–11 performance & scale track shipped via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8 shipped 2026-05)
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
 **Last Updated**: 2026-05-14
 
 ---
@@ -35,7 +35,7 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (v1.15.0)
+### Key Statistics (v2.0.0)
 
 Numbers below are extracted from the authoritative `dependency-summary.compact.json`
 produced by `tools/create-dependency-graph` on 2026-05-14. To regenerate run
@@ -44,14 +44,14 @@ produced by `tools/create-dependency-graph` on 2026-05-14. To regenerate run
 
 | Metric | Value |
 |--------|-------|
-| Source files | 235 TypeScript files |
-| Lines of code | 79,378 |
-| Total exports | 1,246 |
-| Re-exports (barrel) | 742 |
+| Source files | 236 TypeScript files |
+| Lines of code | 79,841 |
+| Total exports | 1,262 |
+| Re-exports (barrel) | 750 |
 | Classes | 214 |
 | Interfaces | 501 |
-| Functions | 225 |
-| Type guards | 21 |
+| Functions | 232 |
+| Type guards | 23 |
 | Enums | 4 |
 | Type-only imports | 326 |
 | Runtime circular dependencies | 1 (`EntityValidator → EntityValidator`) |
@@ -63,12 +63,12 @@ produced by `tools/create-dependency-graph` on 2026-05-14. To regenerate run
 | Module | Files | Key Exports |
 |--------|-------|-------------|
 | `adapters/` | 4 | `IDatabaseAdapter`, `IVectorDBAdapter`, `LangChainMemoryAdapter`, `RestRouter` (Phase 4) |
-| `agent/` | 65 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (Phase 1 prospective), **FailureManager** (Sprint 4), **PlanManager** (Sprint 5), **ReflectionManager** (Sprint 8, aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages |
+| `agent/` | 66 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (Phase 1 prospective), **FailureManager** (Sprint 4), **PlanManager** (Sprint 5), **ReflectionManager** (Sprint 8, aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages |
 | `core/` | 25 | ManagerContext, EntityManager (+OCC, +temporal validity, +state machine), RelationManager (+temporal invalidation), ObservationManager (+bitemporal axis), HierarchyManager, GraphStorage (+mmap branch), SQLiteStorage (+read pool, +partial index advisor), GraphTraversal (+HITS/clique/Louvain), TransactionManager, RefIndex, **FileSegmentStorage** (Phase 7), **WriteAheadLog** + **EntityProxy** (Phase 6), **JsonlColumnStore** (Phase 8), **TieredIndex** (`LRUHotTier`/`DiskWarmTier`/`BrotliColdTier`, Phase 9), **IMmapBackend** / **BufferMmapBackend** / **FsReadMmapBackend** (Phase 11) |
 | `search/` | 55 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental, Phase 1), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, **SparqlExecutor** (minimal subset, Phase 6), **PartialIndexAdvisor** |
 | `features/` | 20 | IOManager (+RDF/Turtle/JSON-LD export), **BackupManager** (extracted Phase 5), TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker, **CRDT** (Phase 5), **AnomalyDetector** (Phase 5) |
 | `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
-| `types/` | 7 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`) |
+| `types/` | 8 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`), **`Result<T, E>`** (v2.0.0 — `ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk` in `result.ts`) |
 | `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** (Phase 5) |
 | `cli/` | 16 | `memory` / `memoryjs` binary commands (with pipe support, Phase 0) |
 | `entry/` | 1 | `src/index.ts` |
@@ -224,7 +224,7 @@ class EntityManager {
 
   // Core Operations
   async createEntities(entities: Entity[]): Promise<Entity[]>
-  async getEntityByName(name: string): Promise<Entity | null>
+  async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null>
   async deleteEntities(names: string[]): Promise<void>
 
   // Tag Operations
@@ -287,7 +287,7 @@ class AgentMemoryManager {
   // Session Management
   async startSession(options?: SessionOptions): Promise<SessionEntity>
   async endSession(sessionId: string): Promise<void>
-  async getActiveSession(): Promise<SessionEntity | null>
+  async getActiveSession(): Promise<SessionEntity | undefined>
 
   // Working Memory
   async addWorkingMemory(sessionId: string, content: string, options?): Promise<AgentEntity>
@@ -542,6 +542,28 @@ interface KnowledgeGraph {
 **Trade-offs**:
 - Higher-level abstraction may hide granular control
 - Additional complexity for simple use cases
+
+### 7. Why a `Result<T, E>` Error-Handling Contract? (v2.0.0)
+
+**Decision**: One documented error-signalling policy across the codebase
+(`CONTRIBUTING.md` > Error Handling), backed by a `Result<T, E>`
+discriminated-union type in `src/types/result.ts`.
+
+**Rationale**:
+- The v2.0.0 API audit found four error-signalling styles coexisting with
+  no rule — `throw`, `return null`, discriminated unions, and silent
+  swallowing — mixed even within single classes.
+- The policy: **throw** for programmer errors (bad arguments, invariant
+  violations); **return `Result<T, E>`** for expected domain failures the
+  caller should branch on; **never swallow** silently; the absent-value
+  sentinel is `T | undefined`, never `T | null`.
+- `Result<T, E>` (`ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk`) is
+  discriminated on an `ok` boolean — callers narrow with a plain
+  `if (result.ok)`.
+
+**Trade-offs**:
+- The contract is established in v2.0.0; migrating every existing call
+  site onto it is incremental follow-up work.
 
 ---
 

@@ -5,7 +5,7 @@
 ## Summary
 
 - **Potentially unused files**: 21
-- **Potentially unused exports**: 422
+- **Potentially unused exports**: 423
 
 ## Potentially Unused Files
 
@@ -602,6 +602,10 @@ These exports are not imported by any other file in the codebase:
 - `ProgressInfo` (interface)
 - `ProgressOptions` (interface)
 - `ProgressInfoCallback` (type)
+
+### `src/types/result.ts`
+
+- `Result` (type)
 
 ### `src/types/search.ts`
 

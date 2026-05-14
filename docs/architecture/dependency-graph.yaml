@@ -1,10 +1,10 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  version: 1.15.0
+  version: 2.0.0
   lastUpdated: "2026-05-14"
-  totalFiles: 235
+  totalFiles: 236
   totalModules: 11
-  totalExports: 1246
+  totalExports: 1262
 entryPoints:
   - file: src/index.ts
     type: main
@@ -542,6 +542,9 @@ modules:
           imports:
             - isAgentEntity
             - isProspectiveMemory
+        - file: ../utils/textSimilarity.js
+          imports:
+            - tokenize
         - file: ./WorkingMemoryManager.js
           imports:
             - WorkingMemoryManager
@@ -642,6 +645,7 @@ modules:
           imports:
             - IGraphStorage
             - Entity
+            - ReadonlyKnowledgeGraph
           typeOnly: true
         - file: ../core/GraphStorage.js
           imports:
@@ -1918,6 +1922,7 @@ modules:
         - file: ../types/types.js
           imports:
             - IGraphStorage
+            - ReadonlyKnowledgeGraph
           typeOnly: true
         - file: ../types/agent-memory.js
           imports:
@@ -4435,6 +4440,7 @@ modules:
             - ValidationReport
             - ValidationIssue
             - ValidationWarning
+            - ReadonlyKnowledgeGraph
           typeOnly: true
       exports:
         - AnalyticsManager
@@ -7113,6 +7119,7 @@ modules:
             - ContextProfile
           typeOnly: true
       exports:
+        - MEMORY_TYPES
         - TRUST_LEVEL_ORDER
         - DEFAULT_TRUST_THRESHOLDS
         - compareTrustLevel
@@ -7197,6 +7204,7 @@ modules:
         - isPlanMemory
         - isReflectionMemory
       constants:
+        - MEMORY_TYPES
         - TRUST_LEVEL_ORDER
         - DEFAULT_TRUST_THRESHOLDS
     src/types/artifact.ts:
@@ -7237,6 +7245,7 @@ modules:
           reExport: true
         - file: ./agent-memory.js
           imports:
+            - MEMORY_TYPES
             - isAgentEntity
             - isSessionEntity
             - isProfileEntity
@@ -7256,9 +7265,20 @@ modules:
             - createThrottledProgress
             - createDetailedProgressReporter
           reExport: true
+        - file: ./result.js
+          imports:
+            - ok
+            - err
+            - isOk
+            - isErr
+            - unwrap
+            - unwrapOr
+            - mapOk
+          reExport: true
       exports:
         - QueryTraceBuilder
         - ENTITY_STATUS_TRANSITIONS
+        - MEMORY_TYPES
         - isAgentEntity
         - isSessionEntity
         - isProfileEntity
@@ -7271,9 +7291,17 @@ modules:
         - createProgressInfo
         - createThrottledProgress
         - createDetailedProgressReporter
+        - ok
+        - err
+        - isOk
+        - isErr
+        - unwrap
+        - unwrapOr
+        - mapOk
       reExported:
         - QueryTraceBuilder
         - ENTITY_STATUS_TRANSITIONS
+        - MEMORY_TYPES
         - isAgentEntity
         - isSessionEntity
         - isProfileEntity
@@ -7286,6 +7314,13 @@ modules:
         - createProgressInfo
         - createThrottledProgress
         - createDetailedProgressReporter
+        - ok
+        - err
+        - isOk
+        - isErr
+        - unwrap
+        - unwrapOr
+        - mapOk
     src/types/procedure.ts:
       description: Procedural Memory Types (3B.4)
       externalDependencies: []
@@ -7313,6 +7348,27 @@ modules:
         - createProgressInfo
         - createThrottledProgress
         - createDetailedProgressReporter
+    src/types/result.ts:
+      description: Result<T, E> — discriminated-union return type for operations with
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - ok
+        - err
+        - isOk
+        - isErr
+        - unwrap
+        - unwrapOr
+        - mapOk
+      functions:
+        - ok
+        - err
+        - isOk
+        - isErr
+        - unwrap
+        - unwrapOr
+        - mapOk
     src/types/search.ts:
       description: Search Types
       externalDependencies: []
@@ -9449,6 +9505,7 @@ dependencyGraph:
         - src/types/index.ts
         - src/types/procedure.ts
         - src/types/progress.ts
+        - src/types/result.ts
         - src/types/search.ts
         - src/types/types.ts
     - name: Utils
@@ -9492,19 +9549,19 @@ dependencyGraph:
         - src/workers/index.ts
         - src/workers/levenshteinWorker.ts
 statistics:
-  totalTypeScriptFiles: 235
+  totalTypeScriptFiles: 236
   totalModules: 11
-  totalLinesOfCode: 79378
-  totalExports: 1246
+  totalLinesOfCode: 79841
+  totalExports: 1262
   totalClasses: 214
   totalInterfaces: 501
-  totalFunctions: 225
-  totalTypeGuards: 21
+  totalFunctions: 232
+  totalTypeGuards: 23
   totalEnums: 4
-  totalConstants: 69
-  totalReExports: 742
+  totalConstants: 70
+  totalReExports: 750
   totalTypeOnlyImports: 326
   runtimeCircularDeps: 1
   typeOnlyCircularDeps: 3
   unusedFilesCount: 21
-  unusedExportsCount: 422
+  unusedExportsCount: 423

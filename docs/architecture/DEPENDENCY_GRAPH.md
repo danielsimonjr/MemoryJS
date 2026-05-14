@@ -1,6 +1,6 @@
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 1.15.0 | **Last Updated**: 2026-05-14
+**Version**: 2.0.0 | **Last Updated**: 2026-05-14
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -39,7 +39,7 @@ The codebase is organized into the following modules:
 - **entry**: 1 file
 - **search**: 55 files
 - **security**: 5 files
-- **types**: 7 files
+- **types**: 8 files
 - **utils**: 34 files
 - **workers**: 2 files
 
@@ -312,6 +312,7 @@ The codebase is organized into the following modules:
 | `../types/types.js` | `IGraphStorage, Entity` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, ConsolidateOptions, ConsolidationResult, SummarizationResult, PatternResult, MemoryType, MemoryMergeStrategy, MergeResult, DuplicatePair, ConsolidationTrigger, ConsolidationRule` | Import (type-only) |
 | `../types/agent-memory.js` | `isAgentEntity, isProspectiveMemory` | Import |
+| `../utils/textSimilarity.js` | `tokenize` | Import |
 | `./WorkingMemoryManager.js` | `WorkingMemoryManager` | Import (type-only) |
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
 | `./SummarizationService.js` | `SummarizationService` | Import |
@@ -367,7 +368,7 @@ The codebase is organized into the following modules:
 | File | Imports | Type |
 |------|---------|------|
 | `../utils/logger.js` | `logger` | Import |
-| `../types/types.js` | `IGraphStorage, Entity` | Import (type-only) |
+| `../types/types.js` | `IGraphStorage, Entity, ReadonlyKnowledgeGraph` | Import (type-only) |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, SalienceContext, ContextRetrievalOptions, ContextPackage, TokenBreakdown, ExcludedEntity, ScoredEntity, ProspectiveTrigger, TriggerCondition` | Import (type-only) |
 | `../types/agent-memory.js` | `isAgentEntity` | Import |
@@ -677,7 +678,7 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../types/types.js` | `IGraphStorage` | Import (type-only) |
+| `../types/types.js` | `IGraphStorage, ReadonlyKnowledgeGraph` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity` | Import (type-only) |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
 | `./EpisodicMemoryManager.js` | `EpisodicMemoryManager` | Import (type-only) |
@@ -2078,7 +2079,7 @@ The codebase is organized into the following modules:
 | File | Imports | Type |
 |------|---------|------|
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
-| `../types/index.js` | `GraphStats, ValidationReport, ValidationIssue, ValidationWarning` | Import (type-only) |
+| `../types/index.js` | `GraphStats, ValidationReport, ValidationIssue, ValidationWarning, ReadonlyKnowledgeGraph` | Import (type-only) |
 
 **Exports:**
 - Classes: `AnalyticsManager`
@@ -3350,7 +3351,7 @@ The codebase is organized into the following modules:
 - Classes: `AccessContextBuilder`
 - Interfaces: `ConflictInfo`, `ObservationSource`, `MemorySource`, `AgentEntity`, `AgentObservation`, `SessionEntity`, `ProfileEntity`, `AccessContext`, `SalienceContext`, `SalienceWeights`, `SalienceComponents`, `ScoredEntity`, `WorkingMemoryOptions`, `DecayOptions`, `ForgetOptions`, `DecayResult`, `ForgetResult`, `ProspectiveEntity`, `FiredEvent`, `ObservationContext`, `FailureRecord`, `FailureEntity`, `GoalNode`, `GoalEvent`, `PlanRecord`, `PlanEntity`, `ReflectionRecord`, `ReflectionEntity`, `ConsolidateOptions`, `ConsolidationResult`, `SummarizationResult`, `PatternResult`, `MergeResult`, `DuplicatePair`, `DistilledLesson`, `CognitiveLoadMetrics`, `AdaptiveReductionResult`, `RuleConditions`, `ConsolidationRule`, `RuleEvaluationResult`, `ContextRetrievalOptions`, `TokenBreakdown`, `ContextPackage`, `ExcludedEntity`, `GroupMembership`, `AgentMetadata`
 - Functions: `compareTrustLevel`, `inferTrustLevel`, `isProfileEntity`, `isAgentEntity`, `isSessionEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `toIsoDateTime`, `toPositiveInt`, `isProspectiveMemory`, `isFailureMemory`, `isPlanMemory`, `isReflectionMemory`
-- Constants: `TRUST_LEVEL_ORDER`, `DEFAULT_TRUST_THRESHOLDS`
+- Constants: `MEMORY_TYPES`, `TRUST_LEVEL_ORDER`, `DEFAULT_TRUST_THRESHOLDS`
 
 ---
 
@@ -3375,12 +3376,13 @@ The codebase is organized into the following modules:
 | `./types/index.js` | `Entity, Relation, KnowledgeGraph, SearchResult` | Import |
 | `./search.js` | `QueryTraceBuilder` | Re-export |
 | `./types.js` | `ENTITY_STATUS_TRANSITIONS` | Re-export |
-| `./agent-memory.js` | `isAgentEntity, isSessionEntity, isProfileEntity, isWorkingMemory, isEpisodicMemory, isSemanticMemory, isProceduralMemory, AccessContextBuilder` | Re-export |
+| `./agent-memory.js` | `MEMORY_TYPES, isAgentEntity, isSessionEntity, isProfileEntity, isWorkingMemory, isEpisodicMemory, isSemanticMemory, isProceduralMemory, AccessContextBuilder` | Re-export |
 | `./artifact.js` | `isArtifactEntity` | Re-export |
 | `./progress.js` | `createProgressInfo, createThrottledProgress, createDetailedProgressReporter` | Re-export |
+| `./result.js` | `ok, err, isOk, isErr, unwrap, unwrapOr, mapOk` | Re-export |
 
 **Exports:**
-- Re-exports: `QueryTraceBuilder`, `ENTITY_STATUS_TRANSITIONS`, `isAgentEntity`, `isSessionEntity`, `isProfileEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `AccessContextBuilder`, `isArtifactEntity`, `createProgressInfo`, `createThrottledProgress`, `createDetailedProgressReporter`
+- Re-exports: `QueryTraceBuilder`, `ENTITY_STATUS_TRANSITIONS`, `MEMORY_TYPES`, `isAgentEntity`, `isSessionEntity`, `isProfileEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `AccessContextBuilder`, `isArtifactEntity`, `createProgressInfo`, `createThrottledProgress`, `createDetailedProgressReporter`, `ok`, `err`, `isOk`, `isErr`, `unwrap`, `unwrapOr`, `mapOk`
 
 ---
 
@@ -3393,6 +3395,13 @@ The codebase is organized into the following modules:
 **Exports:**
 - Interfaces: `ProgressInfo`, `ProgressOptions`
 - Functions: `createProgressInfo`, `createThrottledProgress`, `createDetailedProgressReporter`
+
+---
+
+### `src/types/result.ts` - Result<T, E> — discriminated-union return type for operations with
+
+**Exports:**
+- Functions: `ok`, `err`, `isOk`, `isErr`, `unwrap`, `unwrapOr`, `mapOk`
 
 ---
 
@@ -3975,7 +3984,7 @@ The codebase is organized into the following modules:
 | `CollaborationAuditEnforcer` | 4 files | 1 files |
 | `CollaborativeSynthesis` | 4 files | 2 files |
 | `ConflictResolver` | 1 files | 5 files |
-| `ConsolidationPipeline` | 9 files | 6 files |
+| `ConsolidationPipeline` | 10 files | 6 files |
 | `ConsolidationScheduler` | 4 files | 2 files |
 | `ContextProfileManager` | 1 files | 3 files |
 | `ContextWindowManager` | 7 files | 6 files |
@@ -4091,7 +4100,7 @@ graph TD
         N42[index]
         N43[procedure]
         N44[progress]
-        N45[...2 more]
+        N45[...3 more]
     end
 
     subgraph Utils
@@ -4146,15 +4155,15 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 235 |
+| Total TypeScript Files | 236 |
 | Total Modules | 11 |
-| Total Lines of Code | 79378 |
-| Total Exports | 1246 |
-| Total Re-exports | 742 |
+| Total Lines of Code | 79841 |
+| Total Exports | 1262 |
+| Total Re-exports | 750 |
 | Total Classes | 214 |
 | Total Interfaces | 501 |
-| Total Functions | 225 |
-| Total Type Guards | 21 |
+| Total Functions | 232 |
+| Total Type Guards | 23 |
 | Total Enums | 4 |
 | Type-only Imports | 326 |
 | Runtime Circular Deps | 1 |
@@ -4163,4 +4172,4 @@ graph TD
 ---
 
 *Last Updated*: 2026-05-14
-*Version*: 1.15.0
+*Version*: 2.0.0
