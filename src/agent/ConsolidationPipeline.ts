@@ -417,10 +417,10 @@ export class ConsolidationPipeline {
    * @param options - Criteria for eligibility
    * @returns True if eligible
    */
-  async isPromotionEligible(
+  isPromotionEligible(
     entityName: string,
     options?: Pick<ConsolidateOptions, 'minConfidence' | 'minConfirmations'>
-  ): Promise<boolean> {
+  ): boolean {
     const entity = this.storage.getEntityByName(entityName);
     if (!entity || !isAgentEntity(entity)) {
       return false;

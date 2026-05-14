@@ -327,11 +327,11 @@ export class ParallelSearchExecutor {
   /**
    * Execute symbolic search layer with timing.
    */
-  private async executeSymbolicLayer(
+  private executeSymbolicLayer(
     entities: readonly Entity[],
     filters: SymbolicFilters | undefined,
     _timeoutMs: number
-  ): Promise<{ results: Map<string, number>; timing: LayerTiming }> {
+  ): { results: Map<string, number>; timing: LayerTiming } {
     const startTime = Date.now();
     const results = new Map<string, number>();
 
@@ -522,7 +522,7 @@ export class ParallelSearchExecutor {
   private async withCancel<R extends { results: Map<string, number>; timing: LayerTiming }>(
     signal: AbortSignal | undefined,
     layer: 'semantic' | 'lexical' | 'symbolic',
-    work: () => Promise<R>,
+    work: () => R | Promise<R>,
   ): Promise<R> {
     if (signal?.aborted) {
       const now = Date.now();
@@ -564,7 +564,7 @@ export class ParallelSearchExecutor {
         } as R);
       };
       signal.addEventListener('abort', onAbort, { once: true });
-      work().then(
+      Promise.resolve(work()).then(
         (value) => {
           if (settled) return;
           settled = true;

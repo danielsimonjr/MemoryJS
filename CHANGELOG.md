@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (API audit Theme 3: needless async) — **BREAKING**
+
+Removed the `async` keyword from six methods that had no `await` in their
+bodies and weren't bound by any async interface — they were gratuitously
+wrapping synchronous work in a Promise + microtask.
+
+- **`AccessTracker.getAccessStats(name)`** — now returns `AccessStats` (was `Promise<AccessStats>`). **Breaking.**
+- **`AccessTracker.flush()`** — now returns `void` (was `Promise<void>`). **Breaking.**
+- **`ConsolidationPipeline.isPromotionEligible(...)`** — now returns `boolean` (was `Promise<boolean>`). **Breaking.**
+- `PlanManager.loadPlanMutable` / `loadPlanReadonly` — private; now sync (`structuredClone` + an O(1) lookup were already synchronous). Internal call sites updated. Non-breaking.
+- `ParallelSearchExecutor.executeSymbolicLayer` — private; symbolic search is synchronous. `withCancel`'s `work` param widened to `() => R | Promise<R>` (`Promise.resolve(work())` normalises both) so it still accepts the async layers. Non-breaking.
+
+**Migration:** drop `await` from calls to `getAccessStats` / `flush` / `isPromotionEligible` — `await` on a non-Promise is harmless, so existing `await`-ed call sites keep working, but `.then()`/`.catch()`/`.resolves` on their results must be rewritten as synchronous.
+
+The audit also recommended enabling `@typescript-eslint/require-await` project-wide — **this was assessed and rejected.** Verification found ~31 of the ~45-65 methods it would flag are *interface-conformance* async (`InMemoryColumnStore`/`InMemoryDatabaseAdapter`/`InMemoryTier`/`LRUHotTier`/`InMemoryVectorAdapter`/`BufferMmapBackend` etc. — in-memory implementations of `IColumnStore`/`IDatabaseAdapter`/`IIndexTier`/`IVectorDBAdapter`/`IMmapBackend` whose sibling implementations do real I/O). Those are `async`-with-no-`await` *correctly*; a global rule would force ~31 boilerplate `eslint-disable` comments onto correct-by-design code — noise, not consistency. Two further audit items were also dropped: `EpisodicMemoryManager.iterateForward`/`iterateBackward` (false positive — they `await getTimeline`), and four "returns-a-promise-without-await" methods (`ReflectionManager.getAll`, `SemanticSearch.isAvailable`, `BatchProcessor.processWithRetry`, `TFIDFIndexManager.updateIndex` — functionally fine; removing `async` there carries a subtle sync-throw-vs-reject behaviour change not worth a microtask).
+
+Verified: typecheck + lint exit 0; agent + search + ManagerContext regression 3469/3469.
+
 ### Changed (performance — API audit Theme 2: redundant loadGraph() / O(n) scans)
 
 Eleven behavior-preserving fixes from the RLM function/API-call audit

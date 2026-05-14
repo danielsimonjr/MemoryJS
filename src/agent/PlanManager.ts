@@ -182,7 +182,7 @@ export class PlanManager {
   ): Promise<GoalNode> {
     validateNonEmpty(description, 'description');
 
-    const plan = await this.loadPlanMutable(planId);
+    const plan = this.loadPlanMutable(planId);
     if (!plan) throw new Error(`PlanManager.pushSubGoal: plan '${planId}' not found`);
 
     const parent = findNodeInTree(plan.rootGoal, parentNodeId as GoalNodeId);
@@ -236,7 +236,7 @@ export class PlanManager {
     nodeId: GoalNodeId | string,
     transition: GoalNodeTransition
   ): Promise<void> {
-    const plan = await this.loadPlanMutable(planId);
+    const plan = this.loadPlanMutable(planId);
     if (!plan) throw new Error(`PlanManager.transitionNode: plan '${planId}' not found`);
 
     const node = findNodeInTree(plan.rootGoal, nodeId as GoalNodeId);
@@ -293,7 +293,7 @@ export class PlanManager {
     planId: PlanId | string,
     note?: string
   ): Promise<MarkResolvedResult> {
-    const plan = await this.loadPlanMutable(planId);
+    const plan = this.loadPlanMutable(planId);
     if (!plan) return 'not-found';
     if (plan.lifecycle.status === 'complete') return 'already-resolved';
     const nowIso = toIsoDateTime(new Date());
@@ -310,7 +310,7 @@ export class PlanManager {
     planId: PlanId | string,
     reason?: string
   ): Promise<MarkResolvedResult> {
-    const plan = await this.loadPlanMutable(planId);
+    const plan = this.loadPlanMutable(planId);
     if (!plan) return 'not-found';
     if (plan.lifecycle.status === 'abandoned') return 'already-resolved';
     const nowIso = toIsoDateTime(new Date());
@@ -335,14 +335,14 @@ export class PlanManager {
     planId: PlanId | string,
     nodeId: GoalNodeId | string
   ): Promise<Readonly<GoalNode> | null> {
-    const plan = await this.loadPlanReadonly(planId);
+    const plan = this.loadPlanReadonly(planId);
     if (!plan) return null;
     return findNodeInTree(plan.rootGoal as GoalNode, nodeId as GoalNodeId);
   }
 
   /** Return the root → currentNode path. */
   async getCurrentPath(planId: PlanId | string): Promise<Readonly<GoalNode>[]> {
-    const plan = await this.loadPlanReadonly(planId);
+    const plan = this.loadPlanReadonly(planId);
     if (!plan) return [];
     const path: GoalNode[] = [];
     findPathToNode(plan.rootGoal as GoalNode, plan.currentNodeId, path);
@@ -380,7 +380,7 @@ export class PlanManager {
 
   // ==================== Internal ====================
 
-  private async loadPlanMutable(planId: PlanId | string): Promise<PlanRecord | null> {
+  private loadPlanMutable(planId: PlanId | string): PlanRecord | null {
     const entity = this.storage.getEntityByName(planId);
     if (!entity || !isPlanMemory(entity)) return null;
     // Deep clone so callers can mutate locally then we persist back —
@@ -394,7 +394,7 @@ export class PlanManager {
    * `structuredClone` cost here. Mutating callers MUST use
    * `loadPlanMutable`.
    */
-  private async loadPlanReadonly(planId: PlanId | string): Promise<Readonly<PlanRecord> | null> {
+  private loadPlanReadonly(planId: PlanId | string): Readonly<PlanRecord> | null {
     const entity = this.storage.getEntityByName(planId);
     if (!entity || !isPlanMemory(entity)) return null;
     return entity.planRecord;
