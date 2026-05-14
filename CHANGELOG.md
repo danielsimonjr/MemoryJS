@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed (API audit Theme 7: naming-verb consistency) — **BREAKING**
+
+Theme 7 was the most opinion-laden audit finding, and verification bore
+that out — 7 of its 9 claims are defensible **style judgment calls**, not
+defects (the codebase is internally consistent on un-prefixed accessors
+like `stats()`/`size()`/`health()`, on algorithm acronyms `bfs`/`dfs`,
+and on fluent-builder prepositions), and 1 is a **false positive**:
+`SQLiteBackend`'s `get_weighted` / `delete_session` / `list_sessions`
+`snake_case` is *interface-mandated* and explicitly documented in
+`MemoryBackend.ts` as a deliberate verbatim match to the Context Engine
+PRD spec (MEM-04) — renaming would break that alignment.
+
+One genuine fix:
+
+- **`BM25Search.remove()` removed** — it was an undocumented legacy alias;
+  `removeDocument()` (which had merely delegated to it) is the preferred
+  name and now carries the implementation directly. **Migration:**
+  replace `bm25.remove(name)` with `bm25.removeDocument(name)` — identical
+  signature and behaviour.
+
+Verified: typecheck + lint exit 0; `BM25Search` suite 28/28.
+
 ### Changed (API audit Theme 6: parameter-style consistency) — **BREAKING**
 
 Verification of the audit's 10 flagged "parameter-style inconsistency"

@@ -420,19 +420,12 @@ export class BM25Search {
 
   /**
    * Incrementally remove an entity from the index, mirroring
-   * `TFIDFIndexManager.removeDocument`. Use this in preference to the
-   * legacy `remove()` alias.
-   */
-  removeDocument(entityName: string): boolean {
-    return this.remove(entityName);
-  }
-
-  /**
-   * Remove an entity from the index.
+   * `TFIDFIndexManager.removeDocument`.
    *
    * @param entityName - Name of entity to remove
+   * @returns `true` if the entity was in the index and removed
    */
-  remove(entityName: string): boolean {
+  removeDocument(entityName: string): boolean {
     if (!this.index) {
       return false;
     }

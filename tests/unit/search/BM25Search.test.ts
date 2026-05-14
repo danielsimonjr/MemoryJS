@@ -218,7 +218,7 @@ describe('BM25Search', () => {
       await bm25.buildIndex();
       const statsBefore = bm25.getIndexStats();
 
-      const removed = bm25.remove('Machine_Learning_Doc');
+      const removed = bm25.removeDocument('Machine_Learning_Doc');
       expect(removed).toBe(true);
 
       const statsAfter = bm25.getIndexStats();
@@ -227,7 +227,7 @@ describe('BM25Search', () => {
 
     it('should return false when removing non-existent entity', async () => {
       await bm25.buildIndex();
-      const removed = bm25.remove('Non_Existent');
+      const removed = bm25.removeDocument('Non_Existent');
       expect(removed).toBe(false);
     });
   });
