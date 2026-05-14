@@ -711,11 +711,15 @@ export class GraphTraversal {
       scores.set(entity.name, initialScore);
     }
 
-    // Build outgoing links map
+    // Build outgoing and incoming links maps once. Pre-computing inLinks
+    // (mirrors the pattern in calculateHITS) avoids an O(n) getRelationsTo()
+    // call per entity on every power-iteration step.
     const outLinks = new Map<string, string[]>();
+    const inLinks = new Map<string, string[]>();
     for (const entity of graph.entities) {
       const outgoing = this.storage.getRelationsFrom(entity.name);
       outLinks.set(entity.name, outgoing.map(r => r.to));
+      inLinks.set(entity.name, this.storage.getRelationsTo(entity.name).map(r => r.from));
     }
 
     // Power iteration
@@ -735,10 +739,9 @@ export class GraphTraversal {
       // Calculate new scores
       for (const entity of graph.entities) {
         let incomingScore = 0;
-        const incoming = this.storage.getRelationsTo(entity.name);
+        const incoming = inLinks.get(entity.name)!;
 
-        for (const relation of incoming) {
-          const source = relation.from;
+        for (const source of incoming) {
           const sourceOutCount = outLinks.get(source)?.length || 1;
           incomingScore += scores.get(source)! / sourceOutCount;
         }

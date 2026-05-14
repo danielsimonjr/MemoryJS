@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
-import type { IGraphStorage } from '../types/types.js';
+import type { IGraphStorage, ReadonlyKnowledgeGraph } from '../types/types.js';
 import type { AgentEntity } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { EpisodicMemoryManager } from './EpisodicMemoryManager.js';
@@ -243,13 +243,15 @@ export class MemoryEngine {
   }
 
   async checkDuplicate(content: string, sessionId: string): Promise<DuplicateCheckResult> {
+    // Load the graph snapshot once and share it across every tier check.
+    const graph = await this.deps.storage.loadGraph();
     if (this.cfg.semanticDedupEnabled && this.deps.semanticSearch) {
-      const ts = await this.checkTierSemantic(content, sessionId);
+      const ts = await this.checkTierSemantic(content, sessionId, graph);
       if (ts.isDuplicate) return ts;
     }
-    const t1 = await this.checkTierExact(content, sessionId);
+    const t1 = await this.checkTierExact(content, sessionId, graph);
     if (t1.isDuplicate) return t1;
-    const recent = await this.getRecentSessionEntities(sessionId, this.cfg.dedupScanWindow);
+    const recent = await this.getRecentSessionEntities(sessionId, this.cfg.dedupScanWindow, graph);
     const t2 = this.checkTierPrefix(content, recent);
     if (t2.isDuplicate) return t2;
     const t3 = this.checkTierJaccard(content, recent);
@@ -257,9 +259,13 @@ export class MemoryEngine {
     return { isDuplicate: false };
   }
 
-  private async checkTierSemantic(content: string, sessionId: string): Promise<DuplicateCheckResult> {
+  private async checkTierSemantic(
+    content: string,
+    sessionId: string,
+    graph?: ReadonlyKnowledgeGraph,
+  ): Promise<DuplicateCheckResult> {
     if (!this.deps.semanticSearch) return { isDuplicate: false };
-    const graph = await this.deps.storage.loadGraph();
+    graph ??= await this.deps.storage.loadGraph();
     const results = await this.deps.semanticSearch.search(graph, content, 5, this.cfg.semanticThreshold);
     for (const hit of results) {
       if (hit.similarity < this.cfg.semanticThreshold) continue;
@@ -275,9 +281,13 @@ export class MemoryEngine {
     return createHash('sha256').update(content).digest('hex');
   }
 
-  private async checkTierExact(content: string, sessionId: string): Promise<DuplicateCheckResult> {
+  private async checkTierExact(
+    content: string,
+    sessionId: string,
+    graph?: ReadonlyKnowledgeGraph,
+  ): Promise<DuplicateCheckResult> {
     const hash = this.computeContentHash(content);
-    const graph = await this.deps.storage.loadGraph();
+    graph ??= await this.deps.storage.loadGraph();
     const candidates = graph.entities.filter(
       (e) => (e as AgentEntity).contentHash === hash,
     ) as AgentEntity[];
@@ -289,8 +299,9 @@ export class MemoryEngine {
   private async getRecentSessionEntities(
     sessionId: string,
     windowSize: number,
+    graph?: ReadonlyKnowledgeGraph,
   ): Promise<AgentEntity[]> {
-    const graph = await this.deps.storage.loadGraph();
+    graph ??= await this.deps.storage.loadGraph();
     const sessionEntities = graph.entities.filter(
       (e) => (e as AgentEntity).sessionId === sessionId,
     ) as AgentEntity[];

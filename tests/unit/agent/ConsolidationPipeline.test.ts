@@ -1351,6 +1351,47 @@ describe('ConsolidationPipeline', () => {
       const duplicates = await pipeline.findDuplicates(0.5);
       expect(duplicates.length).toBe(0);
     });
+
+    it('prefilter equivalence: different entityType is never a duplicate, identical-token same-type pair still is', async () => {
+      const now = new Date().toISOString();
+      const base = {
+        memoryType: 'episodic' as const,
+        createdAt: now,
+        lastModified: now,
+        importance: 5,
+        accessCount: 0,
+        confidence: 0.8,
+        confirmationCount: 1,
+        visibility: 'private' as const,
+      };
+
+      const entities: AgentEntity[] = [
+        // Same observation tokens but DIFFERENT entityType -> similarity 0,
+        // must not be reported even though tokens overlap.
+        { name: 'a1', entityType: 'note', observations: ['shared overlapping text'], ...base },
+        { name: 'a2', entityType: 'fact', observations: ['shared overlapping text'], ...base },
+        // Same entityType AND identical observations -> similarity 1, must be reported.
+        { name: 'b1', entityType: 'note', observations: ['identical body content'], ...base },
+        { name: 'b2', entityType: 'note', observations: ['identical body content'], ...base },
+      ];
+
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(storage, workingMemory, decayEngine);
+
+      const duplicates = await pipeline.findDuplicates(0.9);
+
+      // Exactly the same-type identical pair, no cross-type pair.
+      expect(duplicates.length).toBe(1);
+      expect([duplicates[0].entity1, duplicates[0].entity2].sort()).toEqual(['b1', 'b2']);
+      expect(duplicates[0].similarity).toBeCloseTo(1, 5);
+      expect(
+        duplicates.some(
+          d =>
+            [d.entity1, d.entity2].includes('a1') ||
+            [d.entity1, d.entity2].includes('a2')
+        )
+      ).toBe(false);
+    });
   });
 
   describe('autoMergeDuplicates', () => {

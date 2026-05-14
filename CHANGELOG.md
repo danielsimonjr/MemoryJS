@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (performance — API audit Theme 2: redundant loadGraph() / O(n) scans)
+
+Eleven behavior-preserving fixes from the RLM function/API-call audit
+(2026-05-14, Theme 2). All keep output identical.
+
+- **`ContextWindowManager.retrieveWithBudgetAllocation`** — loads the graph once and threads the snapshot into `retrieveWorkingMemory` / `retrieveEpisodicRecent` / `retrieveSemanticRelevant` (optional `graph?: ReadonlyKnowledgeGraph` param, default-load fallback). 3 loads → 1.
+- **`MemoryEngine.checkDuplicate`** — same pattern: one load threaded into the three tier checks. Up to 3 → 1.
+- **`EpisodicMemoryManager.getEpisodeCount`** — implemented directly as load → filter → count, dropping the O(n log n) sort it inherited from `getTimeline` (the count never used the ordering).
+- **`ConsolidationPipeline.findDuplicates`** — added a per-entity observation-token fingerprint; pairs that provably score 0 (different `entityType` or no shared token) are skipped before the expensive similarity comparison. Guarded with `threshold > 0`; pair iteration order — and the stable sort — unchanged.
+- **`EntityManager.getVersionChain`** — replaced a `getEntity()` call (loadGraph + O(n) find) with O(1) `getEntityByName()`. 2 loads → 1.
+- **`HierarchyManager.getAncestors` / `getDescendants` / `wouldCreateCycle`** — build a `Map<name,Entity>` / `Map<parentId,Entity[]>` once, then O(1) lookups in the traversal loops instead of `.find` / `.filter` per level (O(depth×n) → O(depth)).
+- **`GraphTraversal.calculatePageRank`** — builds an `inLinks` Map once before the iteration loop instead of calling `getRelationsTo()` per entity per iteration.
+- **`TagManager`** / **`SavedSearchManager`** — added lazy in-memory caches (plus an O(1) name index for saved searches) so reads no longer re-deserialise the JSONL sidecar on every call. The `save*` methods invalidate the cache on a write failure (e.g. EPERM under a Dropbox lock) so cache and disk can't durably diverge; `list*` methods return a shallow copy so callers can't corrupt the cached array.
+- **`SemanticSearch`** — `search` / `findSimilar` share a `buildEntityMap` helper instead of two identical inline build loops.
+- **`AnalyticsManager.getGraphStats`** — accepts an optional `preloadedGraph`; the CLI `maintenance stats` action now loads the graph once and passes it, merging two iteration passes into one.
+
+Audit claims were verified before fixing — three rejected: **#5** (`ProspectiveMemoryManager` schedule loads — overstated, at most one load and only on the `sessionId` path), **#8** (`SQLiteStorage` relation queries — `RelationIndex` already gives O(1) for the JSONL backend), and **#2** (`DreamEngine.runDreamCycle` "5 redundant loads") — the latter rejected *after* code review caught that the per-phase reloads are load-*after-mutate*: phases mutate the graph, so a single shared snapshot would let a later phase resurrect data an earlier phase pruned. The DreamEngine change was reverted.
+
+Reviewed: code-reviewer caught the DreamEngine regression (reverted) and a cache-vs-disk divergence risk in the two new caches (fixed via catch-and-invalidate). Code-simplifier — extracted a `HierarchyManager.indexByName` helper, trimmed a comment. Verified: typecheck + lint exit 0; agent + core + features + search regression 5007/5009 (the two failures are the pre-existing Windows temp-dir parallel-contention flakes — `columns-review-fixes` + `segments-review-fixes` — both pass in isolation, neither touches a Theme-2 file).
+
 ### Changed (performance — API audit Theme 4: batch-vs-loop)
 
 Eight behavior-preserving performance fixes from the RLM function/API-call

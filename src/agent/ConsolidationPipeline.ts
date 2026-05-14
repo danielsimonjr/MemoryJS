@@ -22,6 +22,7 @@ import type {
   ConsolidationRule,
 } from '../types/agent-memory.js';
 import { isAgentEntity, isProspectiveMemory } from '../types/agent-memory.js';
+import { tokenize } from '../utils/textSimilarity.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
@@ -909,6 +910,22 @@ export class ConsolidationPipeline {
       isAgentEntity(e)
     ) as AgentEntity[];
 
+    // Cheap per-entity token fingerprint. `calculateEntitySimilarity` can
+    // only score > 0 when two entities share an observation token AND have
+    // the same entityType — so pairs failing that pre-check always score 0
+    // and are safe to skip for any threshold > 0. Same `tokenize()` as
+    // `calculateTextSimilarity`, so the check never rejects a > 0 pair.
+    const fingerprints: Set<string>[] = agentEntities.map(
+      (e) => new Set(tokenize((e.observations ?? []).join(' ')))
+    );
+    const sharesToken = (a: Set<string>, b: Set<string>): boolean => {
+      const [small, large] = a.size <= b.size ? [a, b] : [b, a];
+      for (const tok of small) {
+        if (large.has(tok)) return true;
+      }
+      return false;
+    };
+
     for (let i = 0; i < agentEntities.length; i++) {
       for (let j = i + 1; j < agentEntities.length; j++) {
         const e1 = agentEntities[i];
@@ -921,6 +938,13 @@ export class ConsolidationPipeline {
           e1.sessionId !== e2.sessionId
         ) {
           continue;
+        }
+
+        // Cheap pre-filter: skip pairs that provably score 0 (different type
+        // or no shared observation token). Only safe when threshold > 0.
+        if (threshold > 0) {
+          if (e1.entityType !== e2.entityType) continue;
+          if (!sharesToken(fingerprints[i], fingerprints[j])) continue;
         }
 
         const similarity = this.calculateEntitySimilarity(e1, e2);

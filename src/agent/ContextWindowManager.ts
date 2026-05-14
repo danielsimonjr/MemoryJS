@@ -8,7 +8,7 @@
  */
 
 import { logger } from '../utils/logger.js';
-import type { IGraphStorage, Entity } from '../types/types.js';
+import type { IGraphStorage, Entity, ReadonlyKnowledgeGraph } from '../types/types.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import type {
   AgentEntity,
@@ -419,9 +419,10 @@ export class ContextWindowManager {
   async retrieveWorkingMemory(
     sessionId: string | undefined,
     budget: number,
-    context: SalienceContext = {}
+    context: SalienceContext = {},
+    graph?: ReadonlyKnowledgeGraph
   ): Promise<{ entities: AgentEntity[]; tokens: number }> {
-    const graph = await this.storage.loadGraph();
+    graph ??= await this.storage.loadGraph();
     let candidates = graph.entities
       .filter(isAgentEntity)
       .filter((e) => (e as AgentEntity).memoryType === 'working') as AgentEntity[];
@@ -456,9 +457,10 @@ export class ContextWindowManager {
    */
   async retrieveEpisodicRecent(
     budget: number,
-    context: SalienceContext = {}
+    context: SalienceContext = {},
+    graph?: ReadonlyKnowledgeGraph
   ): Promise<{ entities: AgentEntity[]; tokens: number }> {
-    const graph = await this.storage.loadGraph();
+    graph ??= await this.storage.loadGraph();
     const episodic = graph.entities
       .filter(isAgentEntity)
       .filter((e) => (e as AgentEntity).memoryType === 'episodic') as AgentEntity[];
@@ -509,9 +511,10 @@ export class ContextWindowManager {
    */
   async retrieveSemanticRelevant(
     budget: number,
-    context: SalienceContext = {}
+    context: SalienceContext = {},
+    graph?: ReadonlyKnowledgeGraph
   ): Promise<{ entities: AgentEntity[]; tokens: number }> {
-    const graph = await this.storage.loadGraph();
+    graph ??= await this.storage.loadGraph();
     const semantic = graph.entities
       .filter(isAgentEntity)
       .filter((e) => (e as AgentEntity).memoryType === 'semantic') as AgentEntity[];
@@ -621,17 +624,19 @@ export class ContextWindowManager {
       ? Math.floor(remainingBudget * this.config.semanticBudgetPct)
       : 0;
 
-    // Retrieve from each source
+    // Retrieve from each source — load the graph once and share the snapshot
+    const graph = await this.storage.loadGraph();
+
     const workingResult = includeWorkingMemory
-      ? await this.retrieveWorkingMemory(context.currentSession, workingBudget, context)
+      ? await this.retrieveWorkingMemory(context.currentSession, workingBudget, context, graph)
       : { entities: [], tokens: 0 };
 
     const episodicResult = includeEpisodicRecent
-      ? await this.retrieveEpisodicRecent(episodicBudget, context)
+      ? await this.retrieveEpisodicRecent(episodicBudget, context, graph)
       : { entities: [], tokens: 0 };
 
     const semanticResult = includeSemanticRelevant
-      ? await this.retrieveSemanticRelevant(semanticBudget, context)
+      ? await this.retrieveSemanticRelevant(semanticBudget, context, graph)
       : { entities: [], tokens: 0 };
 
     // Combine all memories

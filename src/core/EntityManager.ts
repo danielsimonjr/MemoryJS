@@ -467,7 +467,9 @@ export class EntityManager {
    * ```
    */
   async getVersionChain(entityName: string): Promise<Entity[]> {
-    const entity = await this.getEntity(entityName);
+    // OPTIMIZED: O(1) NameIndex lookup instead of getEntity()'s loadGraph()+find();
+    // the single loadGraph() below is the only graph load needed.
+    const entity = this.storage.getEntityByName(entityName);
     if (!entity) return [];
 
     const rootName = entity.rootEntityName ?? entity.name;
