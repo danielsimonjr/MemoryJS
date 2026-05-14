@@ -390,8 +390,15 @@ export class GraphStorage implements IGraphStorage {
       const entityMap = new Map<string, Entity>();
       const relationMap = new Map<string, Relation>();
 
+      // A JSONL line is a tagged entity or relation. `JSON.parse` returns
+      // `any`; narrowing on the `type` discriminator below gives us a
+      // properly-typed `Entity` / `Relation` without an explicit `any`.
+      type JsonlLine =
+        | ({ type: 'entity' } & Entity)
+        | ({ type: 'relation' } & Relation);
+
       for (const line of lines) {
-        let item: any;
+        let item: JsonlLine;
         try {
           item = JSON.parse(line);
         } catch {
@@ -406,7 +413,7 @@ export class GraphStorage implements IGraphStorage {
           if (!item.lastModified) item.lastModified = item.createdAt;
 
           // Use name as key - later entries override earlier ones
-          entityMap.set(item.name, item as Entity);
+          entityMap.set(item.name, item);
         }
 
         if (item.type === 'relation') {
@@ -417,7 +424,7 @@ export class GraphStorage implements IGraphStorage {
 
           // Use composite key for relations
           const key = `${item.from}:${item.to}:${item.relationType}`;
-          relationMap.set(key, item as Relation);
+          relationMap.set(key, item);
         }
       }
 

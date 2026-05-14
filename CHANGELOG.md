@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (pre-existing lint debt)
+
+- **`src/core/SQLiteStorage.ts`** — four `console.warn` calls in `rowToEntity` / `rowToRelation` (malformed-JSON salvage paths) now route through the project `logger` like the rest of the file. They predated the `no-console` rule and had gone unnoticed because the sprint work gated on `typecheck` + `vitest` rather than `npm run lint`.
+- **`src/core/GraphStorage.ts`** — the JSONL line parser's `let item: any` is replaced with a `JsonlLine` discriminated union (`{ type: 'entity' } & Entity | { type: 'relation' } & Relation`); narrowing on `item.type` also removes the two downstream `as Entity` / `as Relation` casts. Resolves the lone `@typescript-eslint/no-explicit-any` violation.
+- These were surfaced (not caused) while wiring the new `memoryjs/no-unused-updateentity-return` rule — `npm run lint` exits 0 again.
+
 ### Changed (MemoryType literal deduplication)
 
 - **`MEMORY_TYPES` const tuple** is now the single source of truth for the memory-type slot set in `src/types/agent-memory.ts`. `MemoryType` is derived via `(typeof MEMORY_TYPES)[number]` instead of a hand-written string union, and `isAgentEntity` checks membership against `MEMORY_TYPES` instead of a duplicated inline literal array. Previously the union and the guard's allowlist were maintained separately and drifted twice (when `'plan'` and `'reflection'` were added). Exported from the types barrel as a runtime value — convention-matches the existing `ENTITY_STATUS_TRANSITIONS` const-tuple.
