@@ -211,6 +211,7 @@ export type {
 
 // Agent Memory Type Guards and Classes
 export {
+  MEMORY_TYPES,
   isAgentEntity,
   isSessionEntity,
   isProfileEntity,

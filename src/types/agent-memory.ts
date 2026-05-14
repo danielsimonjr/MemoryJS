@@ -18,9 +18,33 @@ import type { ContextProfile } from '../agent/ContextProfileManager.js';
  * - working: Short-term, session-scoped, TTL-based
  * - episodic: Conversation history, events, experiences
  * - semantic: Long-term facts, concepts, knowledge
- * - procedural: Skills, patterns, procedures (future)
+ * - procedural: Skills, patterns, procedures (3B.4)
+ * - prospective: Intentions-to-act at a future time / event (Phase 1)
+ * - failure: Structured pre-task failure lookup (Phase 2 Sprint 4)
+ * - plan: Hierarchical goal trees (Phase 2 Sprint 5)
+ * - reflection: Derived pattern + trajectory insights (Phase 2 Sprint 8)
  */
-export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural' | 'prospective' | 'failure' | 'plan' | 'reflection';
+
+/**
+ * Single source of truth for the set of memory-type slots. `MemoryType`
+ * is derived from this tuple, and runtime guards (`isAgentEntity`) check
+ * membership against it — so adding a slot here updates the type, the
+ * guard, and every drift-guard test in one edit. Previously the union
+ * and the `isAgentEntity` allowlist were hand-maintained separately and
+ * fell out of sync twice ('plan', 'reflection').
+ */
+export const MEMORY_TYPES = [
+  'working',
+  'episodic',
+  'semantic',
+  'procedural',
+  'prospective',
+  'failure',
+  'plan',
+  'reflection',
+] as const;
+
+export type MemoryType = (typeof MEMORY_TYPES)[number];
 
 /**
  * Classification of memory access frequency.
@@ -830,7 +854,7 @@ export function isAgentEntity(entity: unknown): entity is AgentEntity {
     typeof e.name === 'string' &&
     typeof e.entityType === 'string' &&
     typeof e.memoryType === 'string' &&
-    ['working', 'episodic', 'semantic', 'procedural', 'prospective', 'failure', 'plan', 'reflection'].includes(e.memoryType as string) &&
+    (MEMORY_TYPES as readonly string[]).includes(e.memoryType) &&
     typeof e.accessCount === 'number' &&
     typeof e.confidence === 'number' &&
     typeof e.confirmationCount === 'number' &&

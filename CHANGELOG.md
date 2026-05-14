@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (MemoryType literal deduplication)
+
+- **`MEMORY_TYPES` const tuple** is now the single source of truth for the memory-type slot set in `src/types/agent-memory.ts`. `MemoryType` is derived via `(typeof MEMORY_TYPES)[number]` instead of a hand-written string union, and `isAgentEntity` checks membership against `MEMORY_TYPES` instead of a duplicated inline literal array. Previously the union and the guard's allowlist were maintained separately and drifted twice (when `'plan'` and `'reflection'` were added). Exported from the types barrel as a runtime value — convention-matches the existing `ENTITY_STATUS_TRANSITIONS` const-tuple.
+- **Drift-guard test**: the `isAgentEntity` "all memory types" test now iterates `MEMORY_TYPES` rather than a hand-listed subset (it had gone stale — covered only 4 of 8 slots). New `MEMORY_TYPES` test pins the exact slot set.
+- **Reviewed**: code-reviewer — zero findings ≥70 confidence (union equivalence, `as readonly string[]` cast soundness, and public-export convention-fit all verified). Code-simplifier collapsed an over-specified 3-test block to 1 tight assertion (typecheck already covers the compile-time assignability the dropped tests restated at runtime).
+- **Verification**: `npm run typecheck` exit 0; 1989/1989 sibling regression across types + agent + ManagerContext suites (68 files); refactor's own test file 68/68. No behavior change.
+
 ### Added (Reflection Log scheduled pass — Phase 2 Sprint 8)
 
 - **`MemoryType` union extended with `'reflection'`**: closes Phase 2 Sprint 8 of the memory-types expansion (see [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 10). Catalog Type 10 (Reflection Log) closure: existing pattern/trajectory/experience scaffolding (`PatternDetector`, `TrajectoryCompressor`, `ExperienceExtractor`) now has an explicit `ReflectionRecord` schema and a scheduled pass that produces them. **Additive** by design — reflections sit as a derived layer alongside their evidence entities; episodic observations remain queryable.
