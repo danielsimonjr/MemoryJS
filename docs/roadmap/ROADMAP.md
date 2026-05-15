@@ -48,10 +48,10 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 ### Priority 2 — within 1–2 sprints
 
-#### 1. Tool Affordance Memory (Phase 2 Sprint 7 — new memory type)
-- Open Q4 from `MEMORY_TYPES_EXPANSION_PHASE_2.md` § 6 resolved: **MemoryJS ships both the memory type AND a built-in observation pipeline**. Documented scope expansion.
-- **Implementation plan**: [`TOOL_AFFORDANCE_PLAN.md`](./TOOL_AFFORDANCE_PLAN.md) — four phases (Tool A `ToolAffordanceManager` → Tool B `ToolCallObserver` → Tool C MCP adapter → Tool D docs close)
-- Effort: ~4 workflow turns
+#### 1. ~~Tool Affordance Memory (Phase 2 Sprint 7 — new memory type)~~ — ✅ shipped (v2.0.x)
+- Closed via four workflow turns per [`TOOL_AFFORDANCE_PLAN.md`](./TOOL_AFFORDANCE_PLAN.md): Tool A `ToolAffordanceManager` + `'tool_affordance'` memory type, Tool B `ToolCallObserver` producer pipeline, Tool C `MCPToolObserverAdapter` protocol shim, Tool D CLI + docs close
+- Scope expansion: MemoryJS now tracks tool-call outcomes via `ctx.toolCallObserver` in addition to entity-layer memories. Documented on the Phase 2 Q4 resolution
+- Manager surface: `recordOutcome` / `rollingStats` / `suggestTool` / `get` / `list` / `remove`. Observer: `observeStart` / `observeComplete` / `observeError` / `observePartial` / `cancel`. MCP shim: `wrapToolCall(envelope, handler)`. CLI: `memory tool-affordance list|show|stats|suggest`
 
 #### 2. ~~Reflection Log scheduled pass (Phase 2 Sprint 8)~~ — ✅ shipped
 - Closed via `ReflectionManager` (`src/agent/ReflectionManager.ts`) + `MemoryType: 'reflection'` extension + `ctx.reflectionManager` lazy getter + `ReflectionStage` appended to `ConsolidationPipeline`

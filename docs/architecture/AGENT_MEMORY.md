@@ -101,6 +101,19 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   `ObservationDedupReportStage` emits `[info]`-prefixed diagnostic
 >   entries when registered on a pipeline. Report-only; merge/strip
 >   actions deferred as follow-ups.
+> - **v2.0.x (Tool Affordance — scope expansion)** —
+>   `ToolAffordanceManager` (`MemoryType: 'tool_affordance'`,
+>   `ctx.toolAffordanceManager`) tracks per-tool rolling outcome stats
+>   (success rate, common failure modes, avg duration) for adaptive
+>   tool selection. Companion `ToolCallObserver`
+>   (`ctx.toolCallObserver`) is the producer pipeline —
+>   `observeStart` / `observeComplete` / `observeError` /
+>   `observePartial`. Companion `MCPToolObserverAdapter` shims MCP-shaped
+>   envelopes (no `@modelcontextprotocol/sdk` dep — structural typing).
+>   **Scope expansion**: MemoryJS now tracks tool-call outcomes, not
+>   just memories. Explicit user decision on the Phase 2 doc's open
+>   Q4 ("scope of tool"). CLI: `memory tool-affordance
+>   list|show|stats|suggest`.
 > - **v2.0.x (Phase 3 Project Context)** — `ProjectContextManager` ships
 >   structured project-knowledge memory (`MemoryType: 'project_context'`),
 >   one record per `projectId` with `facts` / `conventions` / `commands` /
@@ -854,6 +867,42 @@ type ConflictStrategy =
     (negation prefixes: `don't` / `do not` / `never` / `avoid`)
   - `HeuristicManager.add` accepts an optional content-addressed `id`
     for caller-managed idempotency
+
+### Tool Affordance (catalog Type 8)
+
+- **Purpose**: Per-tool rolling outcome statistics for adaptive tool
+  selection — "which tools work / fail for which task patterns,
+  including success rates, common failure modes, and cost estimates."
+  Closes the catalog's Type 8
+- **Lifetime**: Permanent; one record per `toolName` (entity name is
+  `tool-affordance-${toolName}`)
+- **Manager**: `ToolAffordanceManager`; `MemoryType: 'tool_affordance'`;
+  accessed via `ctx.toolAffordanceManager`
+- **Schema**: `outcomes[]` (rolling window of `ToolCallOutcome`,
+  default 100) + derived `successRate` / `commonFailureModes[]` /
+  `avgDurationMs` / `totalCalls` lifetime
+- **Manager surface**: `recordOutcome(toolName, {outcome,
+  errorMessage?, durationMs?})` (creates on first call, appends +
+  recomputes on subsequent — OCC-protected with
+  `VersionConflictError` re-thrown so producers decide retry policy);
+  `rollingStats(toolName)` returns the flat snake-case shape;
+  `suggestTool(taskHint, {limit?, minScore?})` ranks by
+  `successRate × recencyFactor`; `get` / `list` / `remove`
+- **Producer pipeline** (Phase Tool B): `ToolCallObserver`
+  (`ctx.toolCallObserver`) is the canonical caller. `observeStart` →
+  `observeComplete` / `observeError` / `observePartial` close the
+  observation, compute `durationMs`, and emit `toolCall:*` events for
+  telemetry subscribers
+- **MCP adapter** (Phase Tool C): `MCPToolObserverAdapter`
+  (`src/adapters/MCPToolObserverAdapter.ts`) wraps MCP-shaped tool-call
+  envelopes (`{name}` / `{tool}` / `{method: 'tools/call', params:
+  {name}}`); structural typing — no `@modelcontextprotocol/sdk` dep
+  added
+- **CLI**: `memory tool-affordance list|show|stats|suggest`
+- **Scope expansion note**: MemoryJS now tracks tool-call outcomes,
+  not just memories. This was an explicit, user-approved scope decision
+  on the Phase 2 doc's open Q4 — see
+  [`TOOL_AFFORDANCE_PLAN.md`](../roadmap/TOOL_AFFORDANCE_PLAN.md)
 
 ### Project Context (Phase 3)
 
