@@ -59,7 +59,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - New `ReflectionRecord` schema with `scope: 'session' | 'project' | 'global'`, `evidence: string[]`, `generalization_confidence: number`, `keyInsights[]`, content-hash dedup on `sha256(scope + sorted(evidence))`
 - **Additive** by design (no supersession of evidence entities); raw `PatternResult.confidence ≥ 0.4` gate; session-end scheduling via explicit `runOnSessionEnd(sessionId)` helper (no `SessionManager` coupling)
 - 29 unit tests across `ReflectionManager` (19) + `ReflectionStage` (10); 1986/1986 sibling agent + types + ManagerContext tests green
-- Deferred to a follow-up: `ExperienceExtractor.synthesizeExperience` wiring (`experienceType` field remains optional). `PatternResult.sourceEntities` narrowing closed in v2.0.x — `detectPatterns` now accepts optional `entityNames` and `ReflectionStage` attributes evidence only to entities whose observations matched a qualifying pattern.
+- Sprint 8 follow-ups closed in v2.0.x: (a) `PatternResult.sourceEntities` narrowing — `detectPatterns` now accepts optional `entityNames` and `ReflectionStage` attributes evidence only to entities whose observations matched a qualifying pattern; (b) `ExperienceExtractor.synthesizeExperience` wiring — `ReflectionStageConfig.experienceExtractor` (optional) drives `ReflectionRecord.experienceType` via `Experience.type` classification.
 - Aliased export `ReflectionMemoryManager` at the agent barrel to avoid collision with existing `src/search/ReflectionManager` (progressive query refinement)
 
 #### 3. Concrete Vector-DB drivers (MEM-06)
@@ -161,7 +161,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 | Track | Outstanding items |
 |-------|-------------------|
-| **Agent memory** (Phase 3B finish + Phase 2 expansions) | 3B.8 Heuristic Guidelines Manager, **Tool Affordance Memory** (new type); deferred follow-ups: Trust Hierarchy `CollaborativeSynthesis` integration, `ExperienceExtractor` wiring in `ReflectionStage`, archive/`markResolved` race-condition fix |
+| **Agent memory** (Phase 3B finish + Phase 2 expansions) | 3B.8 Heuristic Guidelines Manager, **Tool Affordance Memory** (new type); deferred follow-ups: Trust Hierarchy `CollaborativeSynthesis` integration, archive/`markResolved` race-condition fix |
 | **Dedup** | Entity-level observation dedup |
 | **Backends** | MEM-05 PostgreSQL, MEM-06 concrete vector DBs |
 | **Search** | Spell correction, query DSL frontend |

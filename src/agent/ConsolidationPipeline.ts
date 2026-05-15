@@ -30,6 +30,11 @@ import { PatternDetector } from './PatternDetector.js';
 import { RuleEvaluator } from './RuleEvaluator.js';
 import type { ReflectionManager } from './ReflectionManager.js';
 import type { TrajectoryCompressor } from './TrajectoryCompressor.js';
+import type {
+  ExperienceExtractor,
+  Trajectory,
+  TrajectoryCluster,
+} from './ExperienceExtractor.js';
 import type { ReflectionScope } from '../types/agent-memory.js';
 
 /**
@@ -1394,6 +1399,14 @@ export interface ReflectionStageConfig {
   scope?: ReflectionScope;
   /** Circuit-breaker on observations per run (default 500). */
   maxObservationsPerRun?: number;
+  /**
+   * Optional `ExperienceExtractor` (Phase δ.3). When supplied, the stage
+   * builds a `TrajectoryCluster` from the qualifying candidates and
+   * passes the resulting `Experience.type` as `ReflectionInput.experienceType`
+   * on the created reflection. When omitted, `experienceType` is left
+   * undefined.
+   */
+  experienceExtractor?: ExperienceExtractor;
 }
 
 /**
@@ -1429,6 +1442,7 @@ export class ReflectionStage implements PipelineStage {
   private readonly minPatternOccurrences: number;
   private readonly scope: ReflectionScope;
   private readonly maxObservationsPerRun: number;
+  private readonly experienceExtractor?: ExperienceExtractor;
 
   constructor(
     private readonly storage: IGraphStorage,
@@ -1441,6 +1455,7 @@ export class ReflectionStage implements PipelineStage {
     this.minPatternOccurrences = config.minPatternOccurrences ?? 2;
     this.scope = config.scope ?? 'session';
     this.maxObservationsPerRun = config.maxObservationsPerRun ?? 500;
+    this.experienceExtractor = config.experienceExtractor;
   }
 
   async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
@@ -1465,8 +1480,7 @@ export class ReflectionStage implements PipelineStage {
 
   private async runInternal(sessionId: string | undefined): Promise<StageResult> {
     const graph = await this.storage.loadGraph();
-    const candidates = graph.entities.filter((e) => {
-      if (!isAgentEntity(e)) return false;
+    const candidates = graph.entities.filter(isAgentEntity).filter((e) => {
       if (e.memoryType !== 'episodic' && e.memoryType !== 'semantic') return false;
       if (sessionId !== undefined && e.sessionId !== sessionId) return false;
       return true;
@@ -1545,6 +1559,32 @@ export class ReflectionStage implements PipelineStage {
     );
     const keyInsights = patterns.slice(0, 5).map((p) => p.pattern);
 
+    // Optional Phase δ.3 wiring: when an `ExperienceExtractor` is
+    // supplied, classify the cluster and tag the reflection's
+    // `experienceType`. Entities expose no `actions` field, so
+    // observation-heavy clusters consistently classify as 'heuristic'
+    // — by design for the reflection use case.
+    let experienceType: string | undefined;
+    if (this.experienceExtractor) {
+      const trajectories: Trajectory[] = candidates.map((e) => ({
+        id: e.name,
+        sessionId: e.sessionId ?? '',
+        observations: e.observations ?? [],
+        actions: [],
+        outcome: 'unknown',
+        context: {},
+        timestamp: e.createdAt ?? new Date().toISOString(),
+      }));
+      const cluster: TrajectoryCluster = {
+        id: `reflection-${Date.now()}`,
+        method: 'semantic',
+        trajectories,
+        cohesion: maxPatternConfidence,
+      };
+      const experience = await this.experienceExtractor.synthesizeExperience(cluster);
+      experienceType = experience.type;
+    }
+
     try {
       await this.reflectionManager.create({
         scope: this.scope,
@@ -1552,6 +1592,7 @@ export class ReflectionStage implements PipelineStage {
         summary: compression.summary || keyInsights[0] || 'pattern reflection',
         generalization_confidence: confidence,
         keyInsights,
+        experienceType,
         sourceSessionId: sessionId,
       });
       return { processed: candidates.length, transformed: 1, errors };

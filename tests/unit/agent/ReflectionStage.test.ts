@@ -14,6 +14,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ReflectionStage } from '../../../src/agent/ConsolidationPipeline.js';
 import { ReflectionManager } from '../../../src/agent/ReflectionManager.js';
 import { PatternDetector } from '../../../src/agent/PatternDetector.js';
+import { ExperienceExtractor } from '../../../src/agent/ExperienceExtractor.js';
 import type { TrajectoryCompressor } from '../../../src/agent/TrajectoryCompressor.js';
 import type { Entity, KnowledgeGraph, IGraphStorage } from '../../../src/types/types.js';
 import type { ConsolidateOptions } from '../../../src/types/agent-memory.js';
@@ -245,6 +246,45 @@ describe('ReflectionStage', () => {
 
     const reflections = await rm.list();
     expect(reflections).toHaveLength(1);
+  });
+
+  it('sets experienceType on the reflection when ExperienceExtractor is wired', async () => {
+    for (let i = 0; i < 5; i++) {
+      const cuisines = ['Italian', 'Mexican', 'Japanese', 'Thai', 'Indian'];
+      storage._entities.set(
+        `e${i}`,
+        makeEpisodicEntity(`e${i}`, [`User prefers ${cuisines[i]} food`])
+      );
+    }
+    const ee = new ExperienceExtractor(pd);
+    const wiredStage = new ReflectionStage(storage, rm, pd, tc, {
+      minConfidence: 0.4,
+      experienceExtractor: ee,
+    });
+
+    const result = await wiredStage.process([], emptyOptions);
+    expect(result.transformed).toBe(1);
+
+    const reflection = (await rm.list())[0];
+    // Entities carry no actions, so synthesizeExperience's heuristic
+    // classifies observation-heavy clusters as 'heuristic'.
+    expect(reflection.experienceType).toBe('heuristic');
+  });
+
+  it('leaves experienceType undefined when no ExperienceExtractor is wired', async () => {
+    for (let i = 0; i < 5; i++) {
+      const cuisines = ['Italian', 'Mexican', 'Japanese', 'Thai', 'Indian'];
+      storage._entities.set(
+        `e${i}`,
+        makeEpisodicEntity(`e${i}`, [`User prefers ${cuisines[i]} food`])
+      );
+    }
+
+    const result = await stage.process([], emptyOptions);
+    expect(result.transformed).toBe(1);
+
+    const reflection = (await rm.list())[0];
+    expect(reflection.experienceType).toBeUndefined();
   });
 
   it('narrows evidence to entities that contributed to a pattern, excluding noise', async () => {

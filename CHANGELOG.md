@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of attributing evidence to every scanned candidate. Closes Sprint 8
   follow-up #54.
 
+### Added
+
+- **`ReflectionStageConfig.experienceExtractor`** (optional). When supplied,
+  `ReflectionStage` builds a `TrajectoryCluster` from the qualifying
+  candidates and uses `ExperienceExtractor.synthesizeExperience(cluster).type`
+  as the new reflection's `experienceType`. Omitting it preserves the prior
+  behavior (`experienceType` left undefined). Closes Sprint 8 follow-up #53.
+
 ## [2.0.0] - 2026-05-14
 
 Major release. Bundles the Phase 2 memory-types expansion (Sprints 4–8 —
