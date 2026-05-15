@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`PatternDetector.detectPatterns`** now accepts an optional `entityNames?: string[]`
+  parameter parallel to `observations`. When provided, the returned
+  `PatternResult.sourceEntities` lists the entities whose observations actually
+  matched the pattern (deduplicated, sorted). Length mismatch throws. Omitting
+  the argument preserves the previous `sourceEntities: []` behavior.
+- **`ReflectionStage`** now narrows reflection `evidence` to entities that
+  contributed observations to a qualifying pattern (`confidence >= minConfidence`),
+  instead of attributing evidence to every scanned candidate. Closes Sprint 8
+  follow-up #54.
+
 ## [2.0.0] - 2026-05-14
 
 Major release. Bundles the Phase 2 memory-types expansion (Sprints 4–8 —

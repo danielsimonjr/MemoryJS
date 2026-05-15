@@ -246,4 +246,30 @@ describe('ReflectionStage', () => {
     const reflections = await rm.list();
     expect(reflections).toHaveLength(1);
   });
+
+  it('narrows evidence to entities that contributed to a pattern, excluding noise', async () => {
+    // Five pattern-bearing entities...
+    for (let i = 0; i < 5; i++) {
+      const cuisines = ['Italian', 'Mexican', 'Japanese', 'Thai', 'Indian'];
+      storage._entities.set(
+        `pref${i}`,
+        makeEpisodicEntity(`pref${i}`, [`User prefers ${cuisines[i]} food`])
+      );
+    }
+    // ...plus one noise entity whose observation matches no pattern
+    // (different token count → never joins the "User prefers {X} food" template).
+    storage._entities.set(
+      'noise1',
+      makeEpisodicEntity('noise1', ['Weather today is quite cold'])
+    );
+
+    const result = await stage.process([], emptyOptions);
+    expect(result.transformed).toBe(1);
+
+    const reflection = (await rm.list())[0];
+    expect(reflection.evidence).toEqual(
+      expect.arrayContaining(['pref0', 'pref1', 'pref2', 'pref3', 'pref4'])
+    );
+    expect(reflection.evidence).not.toContain('noise1');
+  });
 });

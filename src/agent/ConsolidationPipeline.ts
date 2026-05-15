@@ -1477,17 +1477,20 @@ export class ReflectionStage implements PipelineStage {
     }
 
     const observations: string[] = [];
+    const observationEntityNames: string[] = [];
     for (const entity of candidates) {
       for (const obs of entity.observations ?? []) {
         if (observations.length >= this.maxObservationsPerRun) break;
         observations.push(obs);
+        observationEntityNames.push(entity.name);
       }
       if (observations.length >= this.maxObservationsPerRun) break;
     }
 
     const patterns = this.patternDetector.detectPatterns(
       observations,
-      this.minPatternOccurrences
+      this.minPatternOccurrences,
+      observationEntityNames
     );
     const maxPatternConfidence = patterns.reduce((m, p) => Math.max(m, p.confidence), 0);
     if (patterns.length === 0 || maxPatternConfidence < this.minConfidence) {
@@ -1520,14 +1523,17 @@ export class ReflectionStage implements PipelineStage {
       return { processed: candidates.length, transformed: 0, errors };
     }
 
-    // `PatternResult.sourceEntities` is currently unpopulated by
-    // `PatternDetector.detectPatterns` (the detector tracks source
-    // *texts* internally but doesn't surface them on the result type).
-    // For now, attribute evidence to all scanned candidates — a future
-    // PatternDetector enhancement could narrow this to exact matches.
-    // Entity names are already unique by storage contract, so a Set
-    // would be redundant.
-    const evidence = candidates.map((e) => e.name);
+    // Narrow `evidence` to entities whose observations actually matched a
+    // qualifying pattern. `detectPatterns` populates `sourceEntities` from
+    // the parallel `observationEntityNames` we passed; we union those
+    // across patterns above `minConfidence` and dedup+sort for determinism.
+    const evidence = [
+      ...new Set(
+        patterns
+          .filter((p) => p.confidence >= this.minConfidence)
+          .flatMap((p) => p.sourceEntities)
+      ),
+    ].sort();
 
     // Clamp to `[0, 1]` defensively: `TrajectoryCompressor.compressionRatio`
     // can exceed 1.0 in edge cases (ellipsis suffix on very short totals,
