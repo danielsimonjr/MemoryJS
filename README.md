@@ -1,6 +1,6 @@
 # MemoryJS
 
-[![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/danielsimonjr/memoryjs)
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)

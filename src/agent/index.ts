@@ -375,6 +375,76 @@ export {
   type CausalReasonerConfig,
 } from './causal/index.js';
 
+// ==================== v2.1.0 — Phase 3 + 3B.8 + Tool Affordance ====================
+
+// Phase 3B.8 — Heuristic Guidelines (storage-backed)
+export {
+  HeuristicManager,
+  type AddHeuristicOptions,
+  type HeuristicMatch,
+  type HeuristicConflict,
+  type HeuristicUpdateResult,
+} from './HeuristicManager.js';
+
+// Phase 3 — `do_not_remember` exclusion rules
+export {
+  ExclusionManager,
+  type AddExclusionRuleInput,
+  type ExclusionCheckResult,
+} from './ExclusionManager.js';
+
+// Phase 3 — Decision Rationale (runtime-queryable ADR memory)
+export {
+  DecisionManager,
+  type DecisionInput,
+  type DecisionEntityOptions,
+  type AcceptDecisionResult,
+  type RejectDecisionResult,
+  type SupersedeDecisionResult,
+  type ListDecisionsOptions,
+} from './DecisionManager.js';
+
+// Phase 3 — Project Context (structured per-projectId knowledge)
+export {
+  ProjectContextManager,
+  type ProjectContextManagerConfig,
+  type ProjectContextUpsertInput,
+  type ForContextOptions,
+} from './ProjectContextManager.js';
+
+// Cross-entity observation dedup (read-only)
+export {
+  ObservationDedupManager,
+  type DuplicateObservationOccurrence,
+  type DuplicateObservationGroup,
+  type ObservationDedupFilter,
+  type ObservationDedupManagerConfig,
+} from './ObservationDedupManager.js';
+
+// Tool Affordance (catalog Type 8) — memory type
+export {
+  ToolAffordanceManager,
+  type ToolAffordanceManagerConfig,
+  type RecordOutcomeInput,
+  type ToolAffordanceStats,
+  type SuggestToolOptions,
+  type ToolSuggestion,
+} from './ToolAffordanceManager.js';
+
+// Tool Affordance — producer pipeline (canonical caller for the manager)
+export {
+  ToolCallObserver,
+  type ToolCallEvent,
+} from './ToolCallObserver.js';
+
+// Re-export the v2.1.0 ObservationDedupReportStage from ConsolidationPipeline.ts
+export {
+  ObservationDedupReportStage,
+  HeuristicExtractionStage,
+  type ObservationDedupReportStageConfig,
+  type HeuristicExtractionStageConfig,
+} from './ConsolidationPipeline.js';
+
 // η.6.1 Role-Based Access Control
 export {
   DEFAULT_PERMISSION_MATRIX,

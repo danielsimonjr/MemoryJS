@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-05-15
+
+Phase 3 of the memory-types expansion is fully shipped
+(`do_not_remember` + Decision Rationale + Project Context) along with
+3B.8 Heuristic Guidelines Manager, cross-entity Observation Dedup,
+Tool Affordance (memory type + ToolCallObserver producer pipeline +
+MCP adapter), Spell Correction, and REST Router rate-limit + pagination
+helpers. Two soft-breaks (HeuristicManager storage-backed refactor —
+the class was `@experimental`; `MemoryEngine.AddTurnResult.entity`
+became optional, only matters on the opt-in `ExclusionManager` write-block
+path) fit the project's `@experimental` / opt-in stability policy and
+land in a minor bump.
+
 ### Breaking
 
 - **`HeuristicManager` is now storage-backed** (Phase 3B.8a). Constructor
