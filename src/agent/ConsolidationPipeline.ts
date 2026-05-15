@@ -21,7 +21,12 @@ import type {
   ConsolidationTrigger,
   ConsolidationRule,
 } from '../types/agent-memory.js';
-import { isAgentEntity, isProspectiveMemory } from '../types/agent-memory.js';
+import {
+  isAgentEntity,
+  isFailureMemory,
+  isProspectiveMemory,
+  isReflectionMemory,
+} from '../types/agent-memory.js';
 import { tokenize } from '../utils/textSimilarity.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
@@ -35,6 +40,9 @@ import type {
   Trajectory,
   TrajectoryCluster,
 } from './ExperienceExtractor.js';
+import type { HeuristicManager } from './HeuristicManager.js';
+import type { HeuristicId } from '../types/agent-memory.js';
+import { createHash } from 'crypto';
 import type { ReflectionScope } from '../types/agent-memory.js';
 
 /**
@@ -1605,4 +1613,179 @@ export class ReflectionStage implements PipelineStage {
       return { processed: candidates.length, transformed: 0, errors };
     }
   }
+}
+
+// ==================== HeuristicExtractionStage (3B.8b) ====================
+
+/** Configuration for `HeuristicExtractionStage`. */
+export interface HeuristicExtractionStageConfig {
+  /**
+   * Minimum `ReflectionRecord.generalization_confidence` to consider a
+   * reflection as an extraction source. Default 0.4.
+   */
+  minConfidence?: number;
+  /** Circuit-breaker on heuristics emitted per run. Default 50. */
+  maxPerRun?: number;
+  /**
+   * Initial confidence applied to heuristics derived from resolved
+   * failures. Default 0.6.
+   */
+  failureConfidence?: number;
+  /**
+   * Cap on the initial confidence applied to heuristics derived from
+   * reflections (`min(generalization_confidence, cap)`). Default 0.7 —
+   * reflections are aggregates so we trust them more than a single
+   * resolved failure, but cap below 1.0 to leave headroom for
+   * `reinforce` to keep raising it.
+   */
+  reflectionConfidenceCap?: number;
+}
+
+/**
+ * Pipeline stage that crystallises resolved `FailureRecord`s and
+ * qualifying `ReflectionRecord`s into `HeuristicEntity` records.
+ *
+ * Triggers:
+ * - The default `ConsolidationPipeline.runAutoConsolidation()` cycle
+ *   (env-gated by `MEMORY_HEURISTIC_AUTO_EXTRACT`; the stage itself
+ *   does not read env vars — `ManagerContext` is the gate).
+ * - `runOnResolution(failureId)` for an explicit single-failure pass,
+ *   mirroring `ReflectionStage.runOnSessionEnd`.
+ *
+ * Extraction rules (deliberately conservative):
+ * 1. **Resolved failures** with non-empty `resolvedReason` AND
+ *    `alternative_taken`:
+ *    - condition = `failureRecord.applicability_hint`
+ *    - action    = `"Avoid: ${attempted}. Prefer: ${alternative_taken}"`
+ *    - initialConfidence = `failureConfidence` (default 0.6)
+ * 2. **Reflections** with `experienceType` set AND
+ *    `generalization_confidence >= minConfidence` AND non-empty
+ *    `keyInsights[]`: one heuristic per insight.
+ *    - condition = `reflectionRecord.summary`
+ *    - action    = the `keyInsight` string
+ *    - initialConfidence = `min(generalization_confidence, reflectionConfidenceCap)`
+ *
+ * Content-hash dedup: each candidate is content-addressed by
+ * `h_${sha256(condition + '|' + action)}` and `HeuristicManager.add`
+ * is called with that explicit id — repeat runs are idempotent.
+ */
+export class HeuristicExtractionStage implements PipelineStage {
+  readonly name = 'heuristic-extraction';
+  private readonly minConfidence: number;
+  private readonly maxPerRun: number;
+  private readonly failureConfidence: number;
+  private readonly reflectionConfidenceCap: number;
+
+  constructor(
+    private readonly storage: IGraphStorage,
+    private readonly heuristicManager: HeuristicManager,
+    config: HeuristicExtractionStageConfig = {},
+  ) {
+    this.minConfidence = config.minConfidence ?? 0.4;
+    this.maxPerRun = config.maxPerRun ?? 50;
+    this.failureConfidence = config.failureConfidence ?? 0.6;
+    this.reflectionConfidenceCap = config.reflectionConfidenceCap ?? 0.7;
+  }
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
+    return this.runInternal(undefined);
+  }
+
+  /**
+   * Scope the extraction to a single failure. Useful as a session-end
+   * or `markResolved`-time hook so a single resolution immediately
+   * produces its heuristic without waiting on the next consolidation
+   * cycle.
+   */
+  async runOnResolution(failureId: string): Promise<StageResult> {
+    if (typeof failureId !== 'string' || failureId.trim().length === 0) {
+      throw new Error(
+        `HeuristicExtractionStage.runOnResolution: failureId must be a non-empty string; received ${
+          typeof failureId === 'string' ? `'${failureId}'` : typeof failureId
+        }`,
+      );
+    }
+    return this.runInternal(failureId);
+  }
+
+  private async runInternal(scopedFailureId: string | undefined): Promise<StageResult> {
+    const graph = await this.storage.loadGraph();
+    const errors: string[] = [];
+    let transformed = 0;
+    let processed = 0;
+
+    type Candidate = { condition: string; action: string; initialConfidence: number };
+    const candidates: Candidate[] = [];
+
+    for (const entity of graph.entities) {
+      if (candidates.length >= this.maxPerRun) break;
+
+      if (isFailureMemory(entity)) {
+        if (scopedFailureId !== undefined && entity.name !== scopedFailureId) continue;
+        const fr = entity.failureRecord;
+        if (fr.lifecycle.status !== 'resolved') continue;
+        if (!fr.lifecycle.resolvedReason || fr.lifecycle.resolvedReason.trim().length === 0) continue;
+        if (!fr.alternative_taken || fr.alternative_taken.trim().length === 0) continue;
+        processed++;
+        candidates.push({
+          condition: fr.applicability_hint,
+          action: `Avoid: ${fr.attempted}. Prefer: ${fr.alternative_taken}`,
+          initialConfidence: this.failureConfidence,
+        });
+        continue;
+      }
+
+      if (scopedFailureId !== undefined) continue; // runOnResolution: failures only
+
+      if (isReflectionMemory(entity)) {
+        const rr = entity.reflectionRecord;
+        if (rr.archived === true) continue;
+        if (!rr.experienceType) continue;
+        if (rr.generalization_confidence < this.minConfidence) continue;
+        if (!rr.keyInsights || rr.keyInsights.length === 0) continue;
+        processed++;
+        const conf = Math.min(rr.generalization_confidence, this.reflectionConfidenceCap);
+        for (const insight of rr.keyInsights) {
+          if (candidates.length >= this.maxPerRun) break;
+          if (!insight || insight.trim().length === 0) continue;
+          candidates.push({
+            condition: rr.summary,
+            action: insight,
+            initialConfidence: conf,
+          });
+        }
+      }
+    }
+
+    for (const c of candidates) {
+      const id = `h_${heuristicContentHash(c.condition, c.action)}` as HeuristicId;
+      try {
+        const before = this.storage.getEntityByName(id);
+        await this.heuristicManager.add({
+          id,
+          condition: c.condition,
+          action: c.action,
+          initialConfidence: c.initialConfidence,
+        });
+        if (!before) transformed++;
+      } catch (err) {
+        errors.push(
+          `HeuristicExtractionStage: add('${id}') failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
+    return { processed, transformed, errors };
+  }
+}
+
+/**
+ * Stable content hash for a (condition, action) pair. Pipe separator
+ * is safe — neither field contains `|` in any well-formed extraction
+ * source we've encountered.
+ */
+function heuristicContentHash(condition: string, action: string): string {
+  return createHash('sha256').update(`${condition}|${action}`).digest('hex').slice(0, 16);
 }

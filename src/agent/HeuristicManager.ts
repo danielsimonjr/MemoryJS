@@ -40,6 +40,15 @@ export interface AddHeuristicOptions {
   importance?: number;
   /** Optional owning agent. */
   agentId?: string;
+  /**
+   * Optional explicit id. When supplied and an entity with this id
+   * already exists, `add` returns the existing id without writing —
+   * the path used by content-addressed extractors like
+   * `HeuristicExtractionStage` to make extraction idempotent. The
+   * caller is responsible for ensuring `id` reflects content (e.g.
+   * `h_<sha256(condition|action)>`).
+   */
+  id?: HeuristicId;
 }
 
 /** Result of a `match` query. */
@@ -96,7 +105,10 @@ export class HeuristicManager {
 
   /** Register a new heuristic. Returns the generated `HeuristicId`. */
   async add(options: AddHeuristicOptions): Promise<HeuristicId> {
-    const id = `h_${randomUUID()}` as HeuristicId;
+    const id = options.id ?? (`h_${randomUUID()}` as HeuristicId);
+    if (options.id !== undefined && isHeuristicMemory(this.storage.getEntityByName(id))) {
+      return id; // content-addressed idempotent path
+    }
     const now = toIsoDateTime(new Date());
     const record: Heuristic = {
       id,

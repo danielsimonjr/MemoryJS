@@ -59,8 +59,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   process restarts.
 - **`ctx.heuristicManager`** lazy getter on `ManagerContext`, wired with
   `(storage, entityManager)`. Closes the "not wired into ManagerContext"
-  half of 3B.8; `HeuristicExtractionStage` (3B.8b, pending #69) and docs
-  close (3B.8c, pending #70) follow as separate workflow turns.
+  half of 3B.8.
+- **`HeuristicExtractionStage`** (Phase 3B.8b) — pluggable `PipelineStage`
+  that crystallises resolved `FailureRecord`s (with `resolvedReason` +
+  `alternative_taken`) and qualifying `ReflectionRecord`s (with
+  `experienceType` set and `generalization_confidence >= minConfidence`)
+  into `HeuristicEntity` records. One heuristic per reflection
+  `keyInsight`; content-hash dedup (`h_${sha256(condition|action)}`)
+  makes repeat runs idempotent. Configurable `minConfidence` /
+  `maxPerRun` / `failureConfidence` / `reflectionConfidenceCap`.
+  `runOnResolution(failureId)` helper mirrors
+  `ReflectionStage.runOnSessionEnd` for explicit single-failure passes.
+  Not auto-registered on `ConsolidationPipeline` — construct and
+  `registerStage()` explicitly (or call `runOnResolution` from a
+  `markResolved` hook). Docs close (3B.8c, pending #70) follows.
+- **`HeuristicManager.add` accepts an optional `id`** for content-addressed
+  idempotency: if supplied and an entity with that id already exists,
+  `add` returns the existing id without writing. Caller-managed
+  `(condition, action)`-based ids — see `HeuristicExtractionStage` for
+  the canonical sha256 pattern.
 - **`ReflectionStageConfig.experienceExtractor`** (optional). When supplied,
   `ReflectionStage` builds a `TrajectoryCluster` from the qualifying
   candidates and uses `ExperienceExtractor.synthesizeExperience(cluster).type`
