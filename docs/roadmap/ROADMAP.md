@@ -36,9 +36,10 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Verified: 31/31 trust-level + `ConflictResolver` tests; 1957/1957 sibling agent + types + ManagerContext suites green
 
 #### 4. Heuristic Guidelines Manager (3B.8)
-- `src/agent/HeuristicManager.ts` exists as scaffold but is not wired into the `ConsolidationPipeline`
+- `src/agent/HeuristicManager.ts` exists as scaffold (in-memory `Map`, `@experimental`) but is not wired into `ManagerContext` or `ConsolidationPipeline`
 - Final 3B item — closing it completes the entire "From Storage to Experience" memory evolution series
-- Effort: medium (1–2 weeks)
+- **Implementation plan**: [`HEURISTIC_3B8_PLAN.md`](./HEURISTIC_3B8_PLAN.md) — three phases, one workflow turn each (3B.8a storage-backed facade → 3B.8b extraction stage → 3B.8c docs + roadmap close)
+- Effort: medium (~3 workflow turns)
 
 #### 5. Entity-level observation deduplication
 - `MemoryEngine` covers turn-level dedup (Tier 1–4 chain). Entity-level passes — finding cross-entity duplicate observations — still TBD
