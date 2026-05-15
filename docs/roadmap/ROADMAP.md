@@ -161,7 +161,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 | Track | Outstanding items |
 |-------|-------------------|
-| **Agent memory** (Phase 3B finish + Phase 2 expansions) | 3B.8 Heuristic Guidelines Manager, **Plan / Goal Stack** (new type), **Tool Affordance Memory** (new type), **Failure Memory hardening**, **Trust Hierarchy formalization**, **Reflection Log scheduled pass** |
+| **Agent memory** (Phase 3B finish + Phase 2 expansions) | 3B.8 Heuristic Guidelines Manager, **Tool Affordance Memory** (new type); deferred follow-ups: Trust Hierarchy `CollaborativeSynthesis` integration, `ExperienceExtractor` wiring in `ReflectionStage`, `PatternResult.sourceEntities` narrowing, archive/`markResolved` race-condition fix |
 | **Dedup** | Entity-level observation dedup |
 | **Backends** | MEM-05 PostgreSQL, MEM-06 concrete vector DBs |
 | **Search** | Spell correction, query DSL frontend |
