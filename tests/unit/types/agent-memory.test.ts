@@ -75,6 +75,7 @@ describe('MEMORY_TYPES', () => {
       'failure',
       'plan',
       'reflection',
+      'heuristic',
     ]);
   });
 });

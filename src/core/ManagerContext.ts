@@ -72,6 +72,7 @@ import { SQLiteBackend } from '../agent/SQLiteBackend.js';
 import { MemoryValidator } from '../agent/MemoryValidator.js';
 import { TrajectoryCompressor } from '../agent/TrajectoryCompressor.js';
 import { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
+import { HeuristicManager } from '../agent/HeuristicManager.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
 import {
@@ -162,6 +163,7 @@ export class ManagerContext {
   private _memoryValidator?: MemoryValidator;
   private _trajectoryCompressor?: TrajectoryCompressor;
   private _experienceExtractor?: ExperienceExtractor;
+  private _heuristicManager?: HeuristicManager;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
@@ -768,6 +770,21 @@ export class ManagerContext {
       this._experienceExtractor = new ExperienceExtractor(this.patternDetector);
     }
     return this._experienceExtractor;
+  }
+
+  /**
+   * `HeuristicManager` (Phase 3B.8a, v2.0.x) — storage-backed registry of
+   * `condition → action` heuristic guidelines. `@experimental` match
+   * algorithm. Lazy. The companion `HeuristicExtractionStage` (3B.8b,
+   * pending) will crystallise resolved failures + qualifying reflections
+   * into heuristic entities; for now the manager is the explicit
+   * `add` / `match` / `reinforce` surface.
+   */
+  get heuristicManager(): HeuristicManager {
+    if (!this._heuristicManager) {
+      this._heuristicManager = new HeuristicManager(this.storage, this.entityManager);
+    }
+    return this._heuristicManager;
   }
 
   /** Lazy `PatternDetector` instance — backs `experienceExtractor`

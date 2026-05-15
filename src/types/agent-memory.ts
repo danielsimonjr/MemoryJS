@@ -42,6 +42,7 @@ export const MEMORY_TYPES = [
   'failure',
   'plan',
   'reflection',
+  'heuristic',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];
@@ -1428,6 +1429,68 @@ export function isReflectionMemory(entity: unknown): entity is ReflectionEntity 
 
 /** Utility alias for reflection-memory entities. */
 export type ReflectionMemoryEntity = ReflectionEntity;
+
+// ==================== Heuristic Memory (Phase 3B.8) ====================
+
+/** Branded identifier for heuristic-memory entities. */
+export type HeuristicId = string & { readonly __heuristicId: unique symbol };
+
+/**
+ * A single heuristic — a natural-language condition mapped to an action,
+ * with provenance and confidence tracking. Promoted from
+ * `HeuristicManager.ts` to live with sibling memory-type records.
+ *
+ * @experimental Match algorithm (Jaccard token-overlap × confidence) and
+ *   conflict-detection are conservative v1; may evolve toward
+ *   semantic-similarity matching.
+ */
+export interface Heuristic {
+  id: HeuristicId;
+  /** Natural-language condition that triggers the action. */
+  condition: string;
+  /** Recommended action when the condition matches. */
+  action: string;
+  /** Optional priority for tie-breaking when multiple heuristics match (higher wins). */
+  priority?: number;
+  /** Number of times `reinforce` has been called. */
+  support: number;
+  /** Number of times `recordContradiction` has been called. */
+  contradictions: number;
+  /** Confidence in `[0, 1]`, updated on every reinforce / contradict. */
+  confidence: number;
+  /** ISO 8601 timestamp of creation. */
+  createdAt: IsoDateTime;
+  /** ISO 8601 timestamp of last reinforce / contradict. */
+  lastUpdatedAt: IsoDateTime;
+}
+
+/**
+ * Heuristic entity — `AgentEntity` carrying a `Heuristic` record.
+ * `name === heuristicRecord.id`.
+ */
+export interface HeuristicEntity extends AgentEntity {
+  memoryType: 'heuristic';
+  heuristicRecord: Heuristic;
+}
+
+/** Type guard for heuristic-memory entities. */
+export function isHeuristicMemory(entity: unknown): entity is HeuristicEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'heuristic') return false;
+  const hr = (entity as HeuristicEntity).heuristicRecord as
+    | { id?: unknown; condition?: unknown; action?: unknown; confidence?: unknown }
+    | undefined;
+  return (
+    typeof hr === 'object' &&
+    hr !== null &&
+    typeof hr.id === 'string' &&
+    typeof hr.condition === 'string' &&
+    typeof hr.action === 'string' &&
+    typeof hr.confidence === 'number'
+  );
+}
+
+/** Utility alias for heuristic-memory entities. */
+export type HeuristicMemoryEntity = HeuristicEntity;
 
 // ==================== Utility Types ====================
 

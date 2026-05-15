@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
+- **`HeuristicManager` is now storage-backed** (Phase 3B.8a). Constructor
+  signature changed from `new HeuristicManager()` to
+  `new HeuristicManager(storage, entityManager)`. All write methods are
+  now async — `add` returns `Promise<HeuristicId>` instead of `string`;
+  `reinforce` / `recordContradiction` return a new discriminated
+  `HeuristicUpdateResult` (`'updated' | 'not-found' | 'conflict' |
+  'vanished-mid-update'`) — `'conflict'` surfaces `EntityManager.updateEntity`
+  `VersionConflictError`, matching the #55 OCC pattern. `match` /
+  `detectConflicts` / `list` / `size` are now async; `get(id)` stays sync
+  via `storage.getEntityByName`. The class keeps its `@experimental` tag.
+  Callers using `ctx.heuristicManager` (the new lazy getter — Added below)
+  see no breakage. Direct `new HeuristicManager()` consumers — only the
+  in-tree smoke test existed — must update construction + await calls.
 - **`FailureManager` and `ReflectionManager` constructors now require an
   `EntityManager`** as the second positional argument
   (`new FailureManager(storage, entityManager, config?)` /
@@ -39,6 +52,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`'heuristic'` memory type** (Phase 3B.8a) — added to `MEMORY_TYPES`
+  with companion `HeuristicEntity`, `HeuristicId` (branded), `Heuristic`
+  record (promoted from `HeuristicManager.ts` to `src/types/agent-memory.ts`),
+  and `isHeuristicMemory` type guard. Heuristics now persist across
+  process restarts.
+- **`ctx.heuristicManager`** lazy getter on `ManagerContext`, wired with
+  `(storage, entityManager)`. Closes the "not wired into ManagerContext"
+  half of 3B.8; `HeuristicExtractionStage` (3B.8b, pending #69) and docs
+  close (3B.8c, pending #70) follow as separate workflow turns.
 - **`ReflectionStageConfig.experienceExtractor`** (optional). When supplied,
   `ReflectionStage` builds a `TrajectoryCluster` from the qualifying
   candidates and uses `ExperienceExtractor.synthesizeExperience(cluster).type`

@@ -1,46 +1,33 @@
 /**
- * Heuristic Guidelines Manager
+ * Heuristic Guidelines Manager — Phase 3B.8 (storage-backed, v2.0.x).
  *
- * Crystallises implicit patterns into explicit natural-language
- * strategies (heuristics). Each heuristic is a `condition → action`
- * rule with a confidence score, support count, and conflict status.
+ * Crystallises implicit patterns into explicit natural-language strategies
+ * (heuristics). Each heuristic is a `condition → action` rule with a
+ * confidence score, support count, and conflict status.
  *
- * Phase 3 step 34 — closes the last unshipped Phase 3B item. v1 is
- * a pure in-memory store with explicit `add` / `match` / `reinforce`
- * APIs; semantic-similarity matching and graph-induction are
- * follow-ups (the API is shaped so they can be added without breaking
- * the current shape).
+ * **Phase 3B.8a (v2.0.x)**: promoted from an in-memory `Map` scaffold to a
+ * storage-backed facade. Writes go through `EntityManager.updateEntity` with
+ * `expectedVersion` OCC (mirroring the v2.0.x #55 race fix on
+ * `FailureManager` / `ReflectionManager`). The `Heuristic` record type
+ * itself moved to `src/types/agent-memory.ts` to live with sibling
+ * memory-type records.
  *
  * @module agent/HeuristicManager
- * @experimental Match algorithm (Jaccard token-overlap × confidence)
- *   and conflict-detection heuristics are conservative v1; may evolve
- *   toward semantic-similarity matching.
+ * @experimental Match algorithm (Jaccard token-overlap × confidence) and
+ *   conflict-detection heuristics are conservative v1; may evolve toward
+ *   semantic-similarity matching.
  */
 
-/**
- * A single heuristic — a natural-language condition mapped to an
- * action, with provenance and confidence tracking.
- */
-export interface Heuristic {
-  /** Stable id, generated at registration time. */
-  id: string;
-  /** Natural-language condition that triggers the action. */
-  condition: string;
-  /** Recommended action when the condition matches. */
-  action: string;
-  /** Optional priority for tie-breaking when multiple heuristics match (higher wins). */
-  priority?: number;
-  /** Number of times the heuristic was reinforced via `reinforce()`. */
-  support: number;
-  /** Number of times a contradiction with this heuristic was reported via `recordContradiction()`. */
-  contradictions: number;
-  /** Confidence score in [0, 1], updated on every reinforce/contradict. */
-  confidence: number;
-  /** ISO 8601 timestamp of creation. */
-  createdAt: string;
-  /** ISO 8601 timestamp of last reinforce/contradict. */
-  lastUpdatedAt: string;
-}
+import { randomUUID } from 'crypto';
+import type { Entity, IGraphStorage } from '../types/types.js';
+import type {
+  Heuristic,
+  HeuristicEntity,
+  HeuristicId,
+} from '../types/agent-memory.js';
+import { isHeuristicMemory, toIsoDateTime } from '../types/agent-memory.js';
+import type { EntityManager } from '../core/EntityManager.js';
+import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
 
 /** Input shape for `add`. */
 export interface AddHeuristicOptions {
@@ -49,6 +36,10 @@ export interface AddHeuristicOptions {
   priority?: number;
   /** Initial confidence (default 0.5 — neutral). */
   initialConfidence?: number;
+  /** Optional importance applied to the persisted entity. Default 5. */
+  importance?: number;
+  /** Optional owning agent. */
+  agentId?: string;
 }
 
 /** Result of a `match` query. */
@@ -62,32 +53,52 @@ export interface HeuristicMatch {
 export interface HeuristicConflict {
   a: Heuristic;
   b: Heuristic;
-  /** `'overlap'` = same condition, different actions; `'contradiction'` = directly opposing actions on overlapping conditions. */
+  /**
+   * `'overlap'` = same condition, different actions; `'contradiction'` =
+   * directly opposing actions on overlapping conditions.
+   */
   kind: 'overlap' | 'contradiction';
   /** Free-text explanation suitable for surfacing to the user. */
   reason: string;
 }
 
 /**
- * In-memory heuristic registry.
+ * Discriminated result from `reinforce` / `recordContradiction`. Mirrors
+ * the `MarkResolvedResult` / `ArchiveReflectionResult` shape (Sprint
+ * cross-cut #55) so consumers branch the same way across agent-memory
+ * managers.
+ */
+export type HeuristicUpdateResult =
+  | 'updated'
+  | 'not-found'
+  | 'conflict'
+  | 'vanished-mid-update';
+
+/**
+ * Storage-backed heuristic registry.
  *
  * @example
  * ```typescript
- * const mgr = new HeuristicManager();
- * const id = mgr.add({ condition: 'user asks for code review', action: 'request the PR URL first' });
- * const matches = mgr.match('please review my code');
- * mgr.reinforce(id);
+ * const mgr = ctx.heuristicManager;
+ * const id = await mgr.add({ condition: 'user asks for code review', action: 'request the PR URL first' });
+ * const matches = await mgr.match('please review my code');
+ * await mgr.reinforce(id);
  * ```
  */
 export class HeuristicManager {
-  private readonly heuristics: Map<string, Heuristic> = new Map();
-  private nextId: number = 1;
+  private readonly storage: IGraphStorage;
+  private readonly entityManager: EntityManager;
 
-  /** Register a new heuristic. Returns the generated id. */
-  add(options: AddHeuristicOptions): string {
-    const id = this.generateId();
-    const now = new Date().toISOString();
-    this.heuristics.set(id, {
+  constructor(storage: IGraphStorage, entityManager: EntityManager) {
+    this.storage = storage;
+    this.entityManager = entityManager;
+  }
+
+  /** Register a new heuristic. Returns the generated `HeuristicId`. */
+  async add(options: AddHeuristicOptions): Promise<HeuristicId> {
+    const id = `h_${randomUUID()}` as HeuristicId;
+    const now = toIsoDateTime(new Date());
+    const record: Heuristic = {
       id,
       condition: options.condition,
       action: options.action,
@@ -97,106 +108,121 @@ export class HeuristicManager {
       confidence: clamp01(options.initialConfidence ?? 0.5),
       createdAt: now,
       lastUpdatedAt: now,
-    });
+    };
+    const entity: HeuristicEntity = {
+      name: id,
+      entityType: 'heuristic',
+      observations: [`[heuristic] ${options.condition} → ${options.action}`],
+      createdAt: now,
+      lastModified: now,
+      importance: options.importance ?? 5,
+      memoryType: 'heuristic',
+      agentId: options.agentId,
+      visibility: 'private',
+      accessCount: 0,
+      confidence: record.confidence,
+      confirmationCount: 0,
+      heuristicRecord: record,
+    };
+    try {
+      await this.storage.appendEntity(entity as unknown as Entity);
+    } catch (err) {
+      const cause = err instanceof Error ? err.message : String(err);
+      throw new Error(`HeuristicManager.add: failed to persist '${id}': ${cause}`);
+    }
     return id;
   }
 
-  /** Look up by id. */
-  get(id: string): Heuristic | undefined {
-    return this.heuristics.get(id);
+  /** Look up by id. Synchronous via the storage name-index. */
+  get(id: HeuristicId | string): Heuristic | undefined {
+    const entity = this.storage.getEntityByName(id);
+    return isHeuristicMemory(entity) ? entity.heuristicRecord : undefined;
   }
 
   /** Number of registered heuristics. */
-  size(): number {
-    return this.heuristics.size;
+  async size(): Promise<number> {
+    const all = await this.loadAllHeuristics();
+    return all.length;
   }
 
   /** Remove a heuristic. Returns true if it existed. */
-  remove(id: string): boolean {
-    return this.heuristics.delete(id);
+  async remove(id: HeuristicId | string): Promise<boolean> {
+    if (!isHeuristicMemory(this.storage.getEntityByName(id))) return false;
+    await this.entityManager.deleteEntities([id]);
+    return true;
   }
 
   /** Drop every heuristic. */
-  clear(): void {
-    this.heuristics.clear();
-    this.nextId = 1;
+  async clear(): Promise<void> {
+    const all = await this.loadAllHeuristicEntities();
+    if (all.length === 0) return;
+    await this.entityManager.deleteEntities(all.map((e) => e.name));
   }
 
   /**
-   * Find heuristics whose condition matches the supplied input. The
-   * v1 matcher uses a simple keyword-overlap score (intersection of
-   * token sets, weighted by the heuristic's confidence). Returns
-   * matches sorted by descending score, then by priority.
+   * Find heuristics whose condition matches the supplied input. Jaccard
+   * token-overlap × confidence, descending; ties broken by priority.
    */
-  match(input: string, options: { limit?: number; minScore?: number } = {}): HeuristicMatch[] {
+  async match(
+    input: string,
+    options: { limit?: number; minScore?: number } = {},
+  ): Promise<HeuristicMatch[]> {
     const limit = options.limit ?? 10;
     const minScore = options.minScore ?? 0.1;
     const inputTokens = tokenSet(input);
     if (inputTokens.size === 0) return [];
 
+    const all = await this.loadAllHeuristics();
     const matches: HeuristicMatch[] = [];
-    for (const h of this.heuristics.values()) {
+    for (const h of all) {
       const condTokens = tokenSet(h.condition);
       if (condTokens.size === 0) continue;
       let intersect = 0;
       for (const t of inputTokens) if (condTokens.has(t)) intersect++;
-      // Jaccard similarity: |A ∩ B| / |A ∪ B|. Symmetric so a
-      // one-token query against a richer condition isn't penalised
-      // out of proportion. Equivalent to
-      // `intersect / (a.size + b.size - intersect)`.
       const unionSize = inputTokens.size + condTokens.size - intersect;
       const overlap = unionSize === 0 ? 0 : intersect / unionSize;
       const score = overlap * h.confidence;
-      if (score >= minScore) {
-        matches.push({ heuristic: h, score });
-      }
+      if (score >= minScore) matches.push({ heuristic: h, score });
     }
     matches.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      const pa = a.heuristic.priority ?? 0;
-      const pb = b.heuristic.priority ?? 0;
-      return pb - pa;
+      return (b.heuristic.priority ?? 0) - (a.heuristic.priority ?? 0);
     });
     return matches.slice(0, limit);
   }
 
   /**
-   * Reinforce a heuristic: record a successful application. Increases
-   * confidence asymptotically toward 1 via a fixed-step rule
-   * (`new = old + (1 - old) * 0.1`). Bumps `support`.
+   * Reinforce a heuristic: record a successful application. Bumps
+   * `support`; raises confidence asymptotically toward 1 via
+   * `new = old + (1 - old) * 0.1`. OCC-protected.
    */
-  reinforce(id: string): Heuristic | undefined {
-    const h = this.heuristics.get(id);
-    if (!h) return undefined;
-    h.support++;
-    h.confidence = clamp01(h.confidence + (1 - h.confidence) * 0.1);
-    h.lastUpdatedAt = new Date().toISOString();
-    return h;
+  async reinforce(id: HeuristicId | string): Promise<HeuristicUpdateResult> {
+    return this.applyUpdate(id, (h) => ({
+      ...h,
+      support: h.support + 1,
+      confidence: clamp01(h.confidence + (1 - h.confidence) * 0.1),
+    }));
   }
 
   /**
-   * Record a contradiction: a counter-example where the heuristic's
-   * action did NOT lead to the desired outcome. Decreases confidence
-   * symmetrically (`new = old - old * 0.2`) and bumps `contradictions`.
+   * Record a contradiction: a counter-example. Bumps `contradictions`;
+   * lowers confidence symmetrically (`new = old - old * 0.2`).
+   * OCC-protected.
    */
-  recordContradiction(id: string): Heuristic | undefined {
-    const h = this.heuristics.get(id);
-    if (!h) return undefined;
-    h.contradictions++;
-    h.confidence = clamp01(h.confidence - h.confidence * 0.2);
-    h.lastUpdatedAt = new Date().toISOString();
-    return h;
+  async recordContradiction(id: HeuristicId | string): Promise<HeuristicUpdateResult> {
+    return this.applyUpdate(id, (h) => ({
+      ...h,
+      contradictions: h.contradictions + 1,
+      confidence: clamp01(h.confidence - h.confidence * 0.2),
+    }));
   }
 
   /**
-   * Detect conflicts across registered heuristics. Pair-wise
-   * comparison is O(n²) but n is expected to stay small (typically
-   * < 100). Returns `overlap` when two heuristics fire on the same
-   * condition tokens with different actions, and `contradiction` when
-   * one heuristic's action verbatim negates another's.
+   * Detect conflicts across registered heuristics. Pair-wise comparison
+   * is O(n²); n is expected to stay small (typically < 100).
    */
-  detectConflicts(): HeuristicConflict[] {
-    const all = [...this.heuristics.values()];
+  async detectConflicts(): Promise<HeuristicConflict[]> {
+    const all = await this.loadAllHeuristics();
     const conflicts: HeuristicConflict[] = [];
     for (let i = 0; i < all.length; i++) {
       for (let j = i + 1; j < all.length; j++) {
@@ -208,7 +234,7 @@ export class HeuristicManager {
         for (const t of aTokens) if (bTokens.has(t)) intersect++;
         const overlap = intersect / Math.max(aTokens.size, bTokens.size, 1);
         if (overlap < 0.5) continue;
-        if (a.action === b.action) continue; // identical actions don't conflict
+        if (a.action === b.action) continue;
         const kind: HeuristicConflict['kind'] = isContradiction(a.action, b.action)
           ? 'contradiction'
           : 'overlap';
@@ -226,25 +252,58 @@ export class HeuristicManager {
     return conflicts;
   }
 
-  /**
-   * Iterate every registered heuristic. Useful for serialisation /
-   * diagnostics.
-   */
-  list(): Heuristic[] {
-    return [...this.heuristics.values()];
+  /** Every registered heuristic. */
+  async list(): Promise<Heuristic[]> {
+    return this.loadAllHeuristics();
   }
 
-  private generateId(): string {
-    return `h_${this.nextId++}`;
+  // ==================== Internal ====================
+
+  private async applyUpdate(
+    id: HeuristicId | string,
+    mutate: (h: Heuristic) => Heuristic,
+  ): Promise<HeuristicUpdateResult> {
+    const entity = this.storage.getEntityByName(id);
+    if (!isHeuristicMemory(entity)) return 'not-found';
+    const updated: Heuristic = {
+      ...mutate(entity.heuristicRecord),
+      lastUpdatedAt: toIsoDateTime(new Date()),
+    };
+    try {
+      await this.entityManager.updateEntity(
+        id,
+        {
+          heuristicRecord: updated,
+          lastModified: updated.lastUpdatedAt,
+          confidence: updated.confidence,
+        } as unknown as Partial<Entity>,
+        { expectedVersion: entity.version ?? 1 },
+      );
+      return 'updated';
+    } catch (err) {
+      if (err instanceof VersionConflictError) return 'conflict';
+      if (err instanceof EntityNotFoundError) return 'vanished-mid-update';
+      throw err;
+    }
+  }
+
+  private async loadAllHeuristicEntities(): Promise<HeuristicEntity[]> {
+    const graph = await this.storage.loadGraph();
+    return graph.entities.filter(isHeuristicMemory);
+  }
+
+  private async loadAllHeuristics(): Promise<Heuristic[]> {
+    const ents = await this.loadAllHeuristicEntities();
+    return ents.map((e) => e.heuristicRecord);
   }
 }
 
+// ==================== Helpers ====================
+
 /**
  * Common English stopwords filtered from condition / input tokens.
- * Replaces the previous `length >= 3` filter so important short tokens
- * like "PR", "AI", "go" are retained, while noise like "is", "the",
- * "an" still gets dropped. List is conservative — favours retaining
- * tokens over filtering them out.
+ * Conservative — favours retaining short but meaningful tokens like
+ * "PR" / "AI" / "go" while dropping pure noise like "is" / "the".
  */
 const HEURISTIC_STOPWORDS: ReadonlySet<string> = new Set([
   'a', 'an', 'the', 'is', 'be', 'are', 'was', 'were', 'to', 'of', 'in', 'on',
@@ -267,10 +326,10 @@ function clamp01(n: number): number {
 }
 
 /**
- * Coarse contradiction heuristic: an action contradicts another when
- * one is the literal negation of the other (e.g. "do X" vs "don't do
- * X"). Conservative — false negatives are preferred over false
- * positives so the user isn't bombarded with phantom conflicts.
+ * Coarse contradiction heuristic: an action contradicts another when one
+ * is the literal negation of the other (e.g. "do X" vs "don't do X").
+ * Conservative — false negatives are preferred so the user isn't bombarded
+ * with phantom conflicts.
  */
 function isContradiction(a: string, b: string): boolean {
   const an = a.toLowerCase().replace(/\s+/g, ' ').trim();
