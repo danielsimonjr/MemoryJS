@@ -49,11 +49,9 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 ### Priority 2 — within 1–2 sprints
 
 #### 1. Tool Affordance Memory (Phase 2 Sprint 7 — new memory type)
-- No current support; high adaptive-tool-selection value
-- `ToolAffordanceRecord` with `tool_name` / `recent_success_rate` / `common_failure_modes` / `cost_estimate` / rolling-window stats
-- Needs an upstream tool-observation pipeline (open Q4 in Phase 2 doc — scope decision)
-- Effort: medium (~7 days)
-- Design: [`MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 8
+- Open Q4 from `MEMORY_TYPES_EXPANSION_PHASE_2.md` § 6 resolved: **MemoryJS ships both the memory type AND a built-in observation pipeline**. Documented scope expansion.
+- **Implementation plan**: [`TOOL_AFFORDANCE_PLAN.md`](./TOOL_AFFORDANCE_PLAN.md) — four phases (Tool A `ToolAffordanceManager` → Tool B `ToolCallObserver` → Tool C MCP adapter → Tool D docs close)
+- Effort: ~4 workflow turns
 
 #### 2. ~~Reflection Log scheduled pass (Phase 2 Sprint 8)~~ — ✅ shipped
 - Closed via `ReflectionManager` (`src/agent/ReflectionManager.ts`) + `MemoryType: 'reflection'` extension + `ctx.reflectionManager` lazy getter + `ReflectionStage` appended to `ConsolidationPipeline`
