@@ -52,6 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ObservationDedupReportStage`** (Phase B) — diagnostic
+  `PipelineStage` that calls `ObservationDedupManager.findDuplicateObservations`
+  (and optionally `findJaccardDuplicates` when `includeJaccard: true`),
+  emitting one `[info]`-prefixed entry per duplicate group on
+  `StageResult.errors`. Mirrors `ReflectionStage`'s diagnostic convention
+  — never mutates, `transformed` always 0. Not auto-registered on the
+  default `ConsolidationPipeline`; consumers `registerStage()` explicitly
+  when they want periodic reporting.
 - **`ObservationDedupManager`** (Phase A) — read-only cross-entity
   duplicate-observation finder. Complementary to `MemoryEngine` (which
   is turn-/session-scoped, pre-write) and `CompressionManager.findDuplicates`

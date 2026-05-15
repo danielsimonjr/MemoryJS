@@ -42,6 +42,10 @@ import type {
 } from './ExperienceExtractor.js';
 import type { HeuristicManager } from './HeuristicManager.js';
 import type { HeuristicId } from '../types/agent-memory.js';
+import type {
+  ObservationDedupManager,
+  ObservationDedupFilter,
+} from './ObservationDedupManager.js';
 import { createHash } from 'crypto';
 import type { ReflectionScope } from '../types/agent-memory.js';
 
@@ -1788,4 +1792,66 @@ export class HeuristicExtractionStage implements PipelineStage {
  */
 function heuristicContentHash(condition: string, action: string): string {
   return createHash('sha256').update(`${condition}|${action}`).digest('hex').slice(0, 16);
+}
+
+// ==================== ObservationDedupReportStage (Phase B) ====================
+
+/** Configuration for `ObservationDedupReportStage`. */
+export interface ObservationDedupReportStageConfig {
+  /** Pass-through filter forwarded to `findDuplicateObservations`. */
+  filter?: ObservationDedupFilter;
+  /**
+   * When `true`, also run `findJaccardDuplicates` and report those
+   * groups. Default `false` — the exact tier is cheap; Jaccard is
+   * O(o²) and opt-in.
+   */
+  includeJaccard?: boolean;
+}
+
+/**
+ * Diagnostic `PipelineStage` that reports cross-entity duplicate
+ * observations without mutating anything. Emits one `[info]`-prefixed
+ * entry per duplicate group on `StageResult.errors`, mirroring
+ * `ReflectionStage`'s diagnostic convention (the `[info]` prefix marks
+ * the entry as non-fatal — aggregators that gate on `errors.length`
+ * should filter it out). `transformed` is always 0.
+ *
+ * Not auto-registered on `ConsolidationPipeline` — construct and
+ * `registerStage()` explicitly when you want periodic reporting.
+ */
+export class ObservationDedupReportStage implements PipelineStage {
+  readonly name = 'observation-dedup-report';
+  private readonly filter?: ObservationDedupFilter;
+  private readonly includeJaccard: boolean;
+
+  constructor(
+    private readonly manager: ObservationDedupManager,
+    config: ObservationDedupReportStageConfig = {},
+  ) {
+    this.filter = config.filter;
+    this.includeJaccard = config.includeJaccard ?? false;
+  }
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
+    const errors: string[] = [];
+    const exact = await this.manager.findDuplicateObservations(this.filter);
+    for (const g of exact) {
+      errors.push(
+        `[info] ObservationDedupReportStage: ${g.occurrences.length} occurrences of "${truncate(g.observation, 80)}" (tier=exact)`,
+      );
+    }
+    if (this.includeJaccard) {
+      const jaccard = await this.manager.findJaccardDuplicates(this.filter);
+      for (const g of jaccard) {
+        errors.push(
+          `[info] ObservationDedupReportStage: ${g.occurrences.length} occurrences ~~ "${truncate(g.observation, 80)}" (tier=jaccard)`,
+        );
+      }
+    }
+    return { processed: errors.length, transformed: 0, errors };
+  }
+}
+
+function truncate(s: string, n: number): string {
+  return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
 }
