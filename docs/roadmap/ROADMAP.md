@@ -41,9 +41,9 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Stage surface: scans resolved `FailureRecord`s and qualifying `ReflectionRecord`s with `experienceType` + `keyInsights[]`. Configurable `minConfidence` / `maxPerRun` / `failureConfidence` / `reflectionConfidenceCap`. `runOnResolution(failureId)` helper for explicit single-failure passes. Not auto-registered on the default pipeline — construct and `registerStage()` explicitly
 
 #### 5. Entity-level observation deduplication
-- `MemoryEngine` covers turn-level dedup (Tier 1–4 chain). Entity-level passes — finding cross-entity duplicate observations — still TBD
-- Could reuse the existing four-tier dedup machinery applied at observation granularity
-- Effort: medium
+- `MemoryEngine` covers turn-level dedup (Tier 1–4 chain) and `CompressionManager.findDuplicates` covers entity-level grouping; the gap is **cross-entity duplicate observations** — distinct entities containing the same literal observation string
+- **Implementation plan**: [`OBSERVATION_DEDUP_PLAN.md`](./OBSERVATION_DEDUP_PLAN.md) — report-only `ObservationDedupManager` (exact + Jaccard + opt-in semantic) over three workflow turns (Phase A manager + types + getter → Phase B pipeline-stage report → Phase C docs close)
+- Effort: medium (~3 workflow turns)
 
 ### Priority 2 — within 1–2 sprints
 
