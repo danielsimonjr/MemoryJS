@@ -52,6 +52,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`SpellChecker`** (`src/search/SpellChecker.ts`) — spell-correction layer
+  over the existing `NGramIndex`. Two-stage: bigram Jaccard pre-filter
+  (default `ngramSize: 2` — trigrams miss short transpositions like
+  "alcie" → "alice") + Levenshtein re-rank for final ordering.
+  `suggest(query, {limit?, minScore?, maxDistance?})` returns
+  `Array<{correction, score, distance}>` sorted by score desc, distance
+  asc. Vocabulary auto-built from entity names + tag values
+  (configurable). Lazy on first `suggest()`; explicit `rebuild()` after
+  bulk entity churn. Exposed via `ctx.spellChecker` lazy getter.
 - **`ContextWindowManager.wakeUp` project-context layer** (Phase PC B) —
   `WakeUpOptions` gains `maxProjectContextTokens?: number` (default 300);
   `WakeUpResult` gains `projectContext: string` (empty when no

@@ -73,10 +73,9 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - `IDatabaseAdapter` interface shipped; concrete `PostgreSQLBackend` not started
 - Effort: high (PostgreSQL ↔ FTS / pg_trgm parity work)
 
-#### 5. Spell correction layer
-- `NGramIndex` infrastructure exists; spell-correction layer absent
-- Could plug into `QueryAnalyzer` to suggest corrections at parse time
-- Effort: medium
+#### 5. ~~Spell correction layer~~ — ✅ shipped (v2.0.x)
+- Closed via `src/search/SpellChecker.ts` — two-stage bigram-Jaccard pre-filter + Levenshtein re-rank, vocabulary auto-built from entity names + tag values, exposed via `ctx.spellChecker`
+- Optional `QueryAnalyzer` integration ("did you mean…?" at parse time) deferred as a separate follow-up — the standalone manager API is the v1 surface
 
 #### 6. Query Language DSL frontend
 - `QueryParser` + `QueryDslError` + `QueryAnalyzer` shipped

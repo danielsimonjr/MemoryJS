@@ -16,6 +16,7 @@ import { BatchTransaction } from './TransactionManager.js';
 import type { BatchResult, BatchOptions, Entity } from '../types/index.js';
 import { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { MaterializedViewsManager } from '../search/MaterializedViews.js';
+import { SpellChecker } from '../search/SpellChecker.js';
 import { ObservationStore } from './ObservationStore.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
@@ -172,6 +173,7 @@ export class ManagerContext {
   private _exclusionManager?: ExclusionManager;
   private _decisionManager?: DecisionManager;
   private _projectContextManager?: ProjectContextManager;
+  private _spellChecker?: SpellChecker;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
@@ -856,6 +858,19 @@ export class ManagerContext {
       );
     }
     return this._projectContextManager;
+  }
+
+  /**
+   * `SpellChecker` — spell-correction layer over the existing
+   * `NGramIndex`. Vocabulary auto-builds from entity names + tag values
+   * (configurable). `suggest(query, opts?)` returns ranked corrections
+   * filtered by score and Levenshtein distance. Lazy.
+   */
+  get spellChecker(): SpellChecker {
+    if (!this._spellChecker) {
+      this._spellChecker = new SpellChecker(this.storage);
+    }
+    return this._spellChecker;
   }
 
   /** Lazy `PatternDetector` instance — backs `experienceExtractor`
