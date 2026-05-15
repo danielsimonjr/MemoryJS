@@ -52,6 +52,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`RateLimiter`** (`src/adapters/RateLimiter.ts`) — in-memory
+  token-bucket rate limiter for REST handlers. `check(key)` consumes a
+  token and returns `{ allowed, remaining, resetAt? }`. Bucket creation
+  is lazy on first check; `prune(maxAgeMs)` drops stale buckets.
+  Single-process; multi-host deployments need a shared backend (deferred).
+- **`paginate` + `parsePaginationParams`** (`src/adapters/pagination.ts`) —
+  composable pagination helpers. `parsePaginationParams(query, {maxLimit?,
+  defaultLimit?})` falls back to defaults on garbage input; `paginate(items,
+  params)` returns `{ page, total, nextCursor? }`. Default limit 50,
+  max 200. Wired into `RestRouter.withDefaults` for `/entities` and
+  `/search` — both now respect `?limit=&offset=` and surface
+  `total` + `nextCursor` in responses.
 - **`SpellChecker`** (`src/search/SpellChecker.ts`) — spell-correction layer
   over the existing `NGramIndex`. Two-stage: bigram Jaccard pre-filter
   (default `ngramSize: 2` — trigrams miss short transpositions like

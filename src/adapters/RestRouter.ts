@@ -21,6 +21,7 @@
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { ManagerContext } from '../core/ManagerContext.js';
 import { logger } from '../utils/logger.js';
+import { paginate, parsePaginationParams } from './pagination.js';
 
 /** HTTP methods this router handles. */
 export type RestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -162,9 +163,11 @@ export class RestRouter {
   static withDefaults(ctx: ManagerContext): RestRouter {
     const router = new RestRouter(ctx);
     router
-      .get('/entities', async (_req, c) => {
+      .get('/entities', async (req, c) => {
         const graph = await c.storage.loadGraph();
-        return { status: 200, body: { entities: graph.entities } };
+        const params = parsePaginationParams(req.query);
+        const result = paginate(graph.entities, params);
+        return { status: 200, body: { entities: result.page, total: result.total, nextCursor: result.nextCursor } };
       })
       .get('/entities/:name', async (req, c) => {
         const entity = await c.entityManager.getEntity(req.params.name!);
@@ -205,8 +208,21 @@ export class RestRouter {
       })
       .get('/search', async (req, c) => {
         const q = req.query.q ?? '';
-        const results = await c.searchManager.searchNodes(q);
-        return { status: 200, body: { results } };
+        // searchNodes returns a KnowledgeGraph; paginate over its
+        // entities array — relations stay with the unpaginated result
+        // since they reference entity names that may not all be present
+        // on a given page (clients re-fetch as needed).
+        const result = await c.searchManager.searchNodes(q);
+        const params = parsePaginationParams(req.query);
+        const paginated = paginate(result.entities, params);
+        return {
+          status: 200,
+          body: {
+            entities: paginated.page,
+            total: paginated.total,
+            nextCursor: paginated.nextCursor,
+          },
+        };
       });
     return router;
   }

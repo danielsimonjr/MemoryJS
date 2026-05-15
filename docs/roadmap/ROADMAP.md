@@ -82,10 +82,10 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Full DSL frontend (SQL-like syntax, visual query builder) still pending
 - Effort: high
 
-#### 7. REST API generation polish
-- `RestRouter` scaffold shipped
-- Fastify plugin wrapper + OpenAPI generation + rate-limiting + pagination middleware pending
-- Effort: medium
+#### 7. REST API generation polish — ⚠️ partial (v2.0.x)
+- Shipped in v2.0.x: `RateLimiter` (`src/adapters/RateLimiter.ts`, in-memory token bucket) + pagination helpers (`paginate` / `parsePaginationParams` in `src/adapters/pagination.ts`, wired into `RestRouter.withDefaults` `/entities` and `/search`)
+- **Still pending** (each warrants a go/no-go): Fastify plugin wrapper (adds dep — flagged by minimal-deps policy); OpenAPI generation (substantial — would parse `RouteDefinition` into OpenAPI 3.0 spec)
+- Effort remaining: medium per deferred piece
 
 ### Priority 3 — within the next quarter
 
