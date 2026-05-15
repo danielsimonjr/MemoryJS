@@ -129,7 +129,19 @@ recommends "explicit user action only" for promotion (Phase 2 doc §4.7).
 
 ---
 
-## Type 2 — Project Context structured schema
+## Type 2 — Project Context structured schema — ✅ shipped (v2.0.x)
+
+Closed via three workflow turns: Phase PC A (`ProjectContextManager` +
+schema + `ctx.projectContextManager`), Phase PC B
+(`ContextWindowManager.wakeUp` integration —
+`WakeUpResult.projectContext` field with `maxProjectContextTokens`
+budget), Phase PC C (CLI `memory project-context
+show|append-fact|append-convention|append-command|append-glossary|clear`
++ docs close).
+
+**Phase 3 of the memory-types expansion is now fully shipped** —
+`do_not_remember` (Excl A/B/C), Decision Rationale (Dec A/B/C), and
+Project Context (PC A/B/C) all closed.
 
 ### Catalog motivation
 
@@ -319,8 +331,9 @@ recommended sequence — by smallest-incremental-value first:
 
 1. ~~**`do_not_remember`**~~ — ✅ shipped (v2.0.x).
 2. ~~**Decision Rationale**~~ — ✅ shipped (v2.0.x).
-3. **Project Context** — medium effort, touches `wakeUp` integration.
-   Best done after the wakeUp layer surface is otherwise quiet.
+3. ~~**Project Context**~~ — ✅ shipped (v2.0.x).
+
+**Phase 3 complete.**
 
 Each type is independently ship-able. The recommended pace is one type
 per planning + 3 implementation turns.

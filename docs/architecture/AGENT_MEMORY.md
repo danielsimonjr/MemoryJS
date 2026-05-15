@@ -101,6 +101,18 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   `ObservationDedupReportStage` emits `[info]`-prefixed diagnostic
 >   entries when registered on a pipeline. Report-only; merge/strip
 >   actions deferred as follow-ups.
+> - **v2.0.x (Phase 3 Project Context)** — `ProjectContextManager` ships
+>   structured project-knowledge memory (`MemoryType: 'project_context'`),
+>   one record per `projectId` with `facts` / `conventions` / `commands` /
+>   `glossary` arrays. `upsert` merges with array append+dedup;
+>   `forContext(projectId, {budgetChars})` renders prose for wakeUp.
+>   `ContextWindowManager.wakeUp` gains `WakeUpResult.projectContext` —
+>   when `options.projectId` is set, the layer is populated automatically
+>   (token budget via `maxProjectContextTokens`, default 300). Consumers
+>   concatenate above `l0`. CLI: `memory project-context
+>   show|append-fact|append-convention|append-command|append-glossary|clear`.
+>   **Closes Phase 3 of the memory-types expansion fully** —
+>   `do_not_remember`, Decision Rationale, and Project Context all shipped.
 > - **v2.0.x (Phase 3 Decision Rationale)** — `DecisionManager` ships a
 >   runtime-queryable ADR-equivalent memory (`MemoryType: 'decision'`).
 >   Lifecycle: proposed → accepted | rejected; accepted → superseded.
@@ -842,6 +854,34 @@ type ConflictStrategy =
     (negation prefixes: `don't` / `do not` / `never` / `avoid`)
   - `HeuristicManager.add` accepts an optional content-addressed `id`
     for caller-managed idempotency
+
+### Project Context (Phase 3)
+
+- **Purpose**: Structured project-knowledge memory — runtime-queryable
+  companion to unstructured CLAUDE.md content. Catalog Type 2 enhancement
+- **Lifetime**: Permanent; one record per `projectId` (uniqueness
+  enforced at manager level). Entity name is
+  `project-context-${projectId}`
+- **Manager**: `ProjectContextManager`; `MemoryType: 'project_context'`;
+  accessed via `ctx.projectContextManager`
+- **Schema**: `facts[]` / `conventions[]` / `commands[]` (name + command +
+  purpose) / `glossary[]` (term + definition). Plus `id` (== projectId),
+  `timestamp`, `lastUpdated`
+- **Manager surface**: `upsert(projectId, partial)` with array
+  append+dedup and scalar overwrite; typed appenders (`appendFact` /
+  `appendConvention` / `appendCommand` / `appendGlossaryTerm` —
+  auto-create the record on first call); removers (`removeFact` /
+  `removeConvention` / `removeCommand` (by name) / `removeGlossaryTerm`
+  (by term)); `clear(projectId)` wipes the four arrays but keeps the
+  entity; `get(projectId)` is sync via name index; `forContext(projectId,
+  {budgetChars?})` formats as prose with ellipsis truncation. Mutations
+  OCC-protected via `EntityManager.updateEntity({expectedVersion})`
+- **wakeUp integration** (Phase PC B): when `options.projectId` is set,
+  `ContextWindowManager.wakeUp` populates `WakeUpResult.projectContext`
+  with the prose summary (token budget via `maxProjectContextTokens`,
+  default 300). Consumers concatenate `projectContext` ABOVE `l0` for
+  system-prompt assembly; the result type is flat
+- **CLI**: `memory project-context show|append-fact|append-convention|append-command|append-glossary|clear`
 
 ### Decision Rationale (Phase 3)
 

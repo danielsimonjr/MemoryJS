@@ -90,10 +90,11 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 ### Priority 3 — within the next quarter
 
-#### Phase 3 memory-types expansion (Decision Rationale + Project Context + `do_not_remember`)
-- Three new memory types from the Phase 2 backlog's P3/P4 section, planned together for governance/PII coherence
-- **Implementation plan**: [`MEMORY_TYPES_EXPANSION_PHASE_3.md`](./MEMORY_TYPES_EXPANSION_PHASE_3.md) — three independent types; recommended sequence: `do_not_remember` → Decision Rationale → Project Context (smallest-blast-radius first)
-- Effort: ~3 workflow turns per type (9 total if all three ship); each type is independently ship-able
+#### ~~Phase 3 memory-types expansion (Decision Rationale + Project Context + `do_not_remember`)~~ — ✅ shipped (v2.0.x)
+- All three types from the Phase 2 backlog's P3/P4 section shipped via 9 workflow turns (3 per type) per [`MEMORY_TYPES_EXPANSION_PHASE_3.md`](./MEMORY_TYPES_EXPANSION_PHASE_3.md)
+- `do_not_remember`: storage-backed `ExclusionManager` (substring-mode v1; regex deferred) + write-block in `MemoryEngine.addTurn` (returns `{blocked, blockedByRuleId}`) + throw in `WorkingMemoryManager.createWorkingMemory` (`MemoryWriteBlockedError`). CLI: `memory exclude`
+- Decision Rationale: storage-backed `DecisionManager` with discriminated lifecycle (proposed → accepted | rejected; accepted → superseded) + ADR markdown dual-write (`exportAsAdrMarkdown` / static `parseAdrMarkdown`). CLI: `memory decision`
+- Project Context: storage-backed `ProjectContextManager` (one record per `projectId`; facts/conventions/commands/glossary) + `ContextWindowManager.wakeUp` integration (`WakeUpResult.projectContext` field). CLI: `memory project-context`
 
 #### 8. Framework integrations
 - `LangChainMemoryAdapter` scaffolded in `src/adapters/`
