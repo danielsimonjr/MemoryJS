@@ -52,6 +52,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ToolAffordanceManager` + `'tool_affordance'` memory type** (Phase
+  Tool A, catalog Type 8) — per-tool rolling outcome statistics for
+  adaptive tool selection. One record per `toolName`; entity name is
+  `tool-affordance-${toolName}`. `recordOutcome(toolName, {outcome,
+  errorMessage?, durationMs?})` creates on first call, appends to a
+  rolling window (default 100; oldest dropped), recomputes
+  `successRate`, refreshes `commonFailureModes` (top-N by frequency),
+  updates `avgDurationMs`. `rollingStats(toolName)` returns the flat
+  `{success_rate, total_calls, common_failure_modes, avg_duration_ms}`
+  shape. `suggestTool(taskHint, {limit?, minScore?})` substring-matches
+  against tool names and ranks by `successRate × recencyFactor`
+  (recency decays linearly from 1.0 at ≤1 day to 0.1 at ≥30 days).
+  `get(toolName)` sync via name index; `list()` enumerates; `remove()`
+  drops. OCC-protected mutations; `VersionConflictError` re-thrown to
+  the caller (no auto-retry — producers like the upcoming
+  `ToolCallObserver` decide on retry policy). Exposed via
+  `ctx.toolAffordanceManager` lazy getter. New types:
+  `ToolAffordanceRecord`, `ToolAffordanceEntity`, `ToolAffordanceId`,
+  `ToolCallOutcome`, `ToolAffordanceManagerConfig`, `RecordOutcomeInput`,
+  `ToolAffordanceStats`, `SuggestToolOptions`, `ToolSuggestion`;
+  `isToolAffordanceMemory` type guard. Phase Tool B (`ToolCallObserver`
+  producer pipeline) follows.
 - **`RateLimiter`** (`src/adapters/RateLimiter.ts`) — in-memory
   token-bucket rate limiter for REST handlers. `check(key)` consumes a
   token and returns `{ allowed, remaining, resetAt? }`. Bucket creation

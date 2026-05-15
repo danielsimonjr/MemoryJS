@@ -79,6 +79,7 @@ describe('MEMORY_TYPES', () => {
       'exclusion',
       'decision',
       'project_context',
+      'tool_affordance',
     ]);
   });
 });

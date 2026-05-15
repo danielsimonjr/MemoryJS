@@ -46,6 +46,7 @@ export const MEMORY_TYPES = [
   'exclusion',
   'decision',
   'project_context',
+  'tool_affordance',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];
@@ -1714,6 +1715,71 @@ export function isProjectContextMemory(entity: unknown): entity is ProjectContex
 
 /** Utility alias for project-context entities. */
 export type ProjectContextMemoryEntity = ProjectContextEntity;
+
+// ==================== Tool Affordance Memory (Phase Tool A) ====================
+
+/** Branded identifier for tool-affordance entities. */
+export type ToolAffordanceId = string & { readonly __toolAffordanceId: unique symbol };
+
+/** A single tool-call outcome (one element of the rolling window). */
+export interface ToolCallOutcome {
+  outcome: 'success' | 'failure' | 'partial';
+  /** Error / reason text (when outcome is `failure` or `partial`). */
+  errorMessage?: string;
+  /** Wall-clock duration in milliseconds. */
+  durationMs?: number;
+  /** When the call completed. */
+  timestamp: IsoDateTime;
+}
+
+/**
+ * Rolling-window outcome statistics per tool. One record per `toolName`
+ * (uniqueness enforced; entity name is `tool-affordance-${toolName}`).
+ */
+export interface ToolAffordanceRecord {
+  id: ToolAffordanceId;
+  toolName: string;
+  /** First observation timestamp. */
+  timestamp: IsoDateTime;
+  /** Most recent outcome timestamp. */
+  lastUpdated: IsoDateTime;
+  /** Rolling window of recent outcomes, capped by manager config. */
+  outcomes: ToolCallOutcome[];
+  /** Pre-computed top-N failure-mode strings ranked by frequency. */
+  commonFailureModes: string[];
+  /** Rolling-mean duration. Undefined when no outcome carries duration. */
+  avgDurationMs?: number;
+  /** Fraction of successful outcomes in the rolling window (0..1). */
+  successRate: number;
+  /** Lifetime call count — increments past `outcomes.length` after window cap. */
+  totalCalls: number;
+}
+
+/** Persisted shape of a tool-affordance entity. */
+export interface ToolAffordanceEntity extends AgentEntity {
+  memoryType: 'tool_affordance';
+  toolAffordanceRecord: ToolAffordanceRecord;
+}
+
+/** Type guard for tool-affordance entities. */
+export function isToolAffordanceMemory(entity: unknown): entity is ToolAffordanceEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'tool_affordance') return false;
+  const tar = (entity as ToolAffordanceEntity).toolAffordanceRecord as
+    | { id?: unknown; toolName?: unknown; outcomes?: unknown; successRate?: unknown; totalCalls?: unknown }
+    | undefined;
+  return (
+    typeof tar === 'object' &&
+    tar !== null &&
+    typeof tar.id === 'string' &&
+    typeof tar.toolName === 'string' &&
+    Array.isArray(tar.outcomes) &&
+    typeof tar.successRate === 'number' &&
+    typeof tar.totalCalls === 'number'
+  );
+}
+
+/** Utility alias for tool-affordance entities. */
+export type ToolAffordanceMemoryEntity = ToolAffordanceEntity;
 
 // ==================== Utility Types ====================
 

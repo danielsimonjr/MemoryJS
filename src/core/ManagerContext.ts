@@ -78,6 +78,7 @@ import { ObservationDedupManager } from '../agent/ObservationDedupManager.js';
 import { ExclusionManager } from '../agent/ExclusionManager.js';
 import { DecisionManager } from '../agent/DecisionManager.js';
 import { ProjectContextManager } from '../agent/ProjectContextManager.js';
+import { ToolAffordanceManager } from '../agent/ToolAffordanceManager.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
 import {
@@ -174,6 +175,7 @@ export class ManagerContext {
   private _decisionManager?: DecisionManager;
   private _projectContextManager?: ProjectContextManager;
   private _spellChecker?: SpellChecker;
+  private _toolAffordanceManager?: ToolAffordanceManager;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
@@ -871,6 +873,20 @@ export class ManagerContext {
       this._spellChecker = new SpellChecker(this.storage);
     }
     return this._spellChecker;
+  }
+
+  /**
+   * `ToolAffordanceManager` (catalog Type 8, Phase Tool A) — per-tool
+   * rolling outcome statistics for adaptive tool selection. Producer
+   * side: `ToolCallObserver` (Phase Tool B, pending) is the canonical
+   * caller; direct `recordOutcome` use is supported for custom
+   * pipelines. Lazy.
+   */
+  get toolAffordanceManager(): ToolAffordanceManager {
+    if (!this._toolAffordanceManager) {
+      this._toolAffordanceManager = new ToolAffordanceManager(this.storage, this.entityManager);
+    }
+    return this._toolAffordanceManager;
   }
 
   /** Lazy `PatternDetector` instance — backs `experienceExtractor`
