@@ -52,6 +52,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`MCPToolObserverAdapter`** (`src/adapters/MCPToolObserverAdapter.ts`,
+  Phase Tool C) — light MCP protocol shim. `wrapToolCall(envelope,
+  handler)` extracts the tool name from the envelope (supports
+  `{name}` / `{tool}` / `{method: 'tools/call', params: {name}}`
+  shapes, falls back to `'unknown'`), runs the handler inside an
+  `observeStart` / `observeComplete` window, and re-throws on error
+  after `observeError`. Static `extractToolName(envelope)` exported
+  for callers that want the name without observation. **Structural
+  typing** — no `@modelcontextprotocol/sdk` dep added.
 - **`ToolCallObserver`** (Phase Tool B) — canonical producer pipeline
   for `ToolAffordanceManager`. `observeStart(toolName, args?)` returns
   a `callId`; `observeComplete(callId, meta?)` / `observeError(callId,
