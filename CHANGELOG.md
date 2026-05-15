@@ -26,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   candidates and uses `ExperienceExtractor.synthesizeExperience(cluster).type`
   as the new reflection's `experienceType`. Omitting it preserves the prior
   behavior (`experienceType` left undefined). Closes Sprint 8 follow-up #53.
+- **`CollaborativeSynthesis.ConflictResolutionPolicy`** gains a
+  `{ strategy: 'trust_level' }` variant. `resolveConflicts` now sorts
+  candidates by categorical `TrustLevel` (via `inferTrustLevel(entity.source)`
+  + `compareTrustLevel`) descending, with `lastModified` as recency tiebreak —
+  mirroring `ConflictResolver.resolveTrustLevel`. Closes Sprint 6 follow-up #51.
 
 ## [2.0.0] - 2026-05-14
 

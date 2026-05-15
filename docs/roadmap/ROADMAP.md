@@ -32,7 +32,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 #### 3. ~~Trust Hierarchy formalization (Phase 2 Sprint 6)~~ — ✅ shipped (partial)
 - Closed (type + backfill + `ConflictResolver` strategy): `TrustLevel` union (`'ground-truth' | 'verified' | 'inferred' | 'unverified'`) added to `MemorySource.trustLevel?:`; `inferTrustLevel(source)` backfill from `method` + `reliability` with `DEFAULT_TRUST_THRESHOLDS` overridable defaults; `compareTrustLevel` standard comparator; new `'trust_level'` `ConflictStrategy` with recency tiebreak in `ConflictResolver.resolveTrustLevel`
-- Deferred to a follow-up sprint per scope cut: `CollaborativeSynthesis.resolveConflicts` ordering integration (its own consumer surface)
+- `CollaborativeSynthesis.resolveConflicts` ordering integration closed in v2.0.x — `ConflictResolutionPolicy` gains a `{ strategy: 'trust_level' }` variant that sorts candidates by categorical `TrustLevel` descending with recency tiebreak, mirroring `ConflictResolver.resolveTrustLevel`.
 - Verified: 31/31 trust-level + `ConflictResolver` tests; 1957/1957 sibling agent + types + ManagerContext suites green
 
 #### 4. Heuristic Guidelines Manager (3B.8)
@@ -161,7 +161,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 | Track | Outstanding items |
 |-------|-------------------|
-| **Agent memory** (Phase 3B finish + Phase 2 expansions) | 3B.8 Heuristic Guidelines Manager, **Tool Affordance Memory** (new type); deferred follow-ups: Trust Hierarchy `CollaborativeSynthesis` integration, archive/`markResolved` race-condition fix |
+| **Agent memory** (Phase 3B finish + Phase 2 expansions) | 3B.8 Heuristic Guidelines Manager, **Tool Affordance Memory** (new type); deferred follow-up: archive/`markResolved` race-condition fix |
 | **Dedup** | Entity-level observation dedup |
 | **Backends** | MEM-05 PostgreSQL, MEM-06 concrete vector DBs |
 | **Search** | Spell correction, query DSL frontend |
