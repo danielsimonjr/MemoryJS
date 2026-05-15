@@ -40,10 +40,11 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Manager surface: `add` / `get` / `match` (Jaccard × confidence) / `reinforce` / `recordContradiction` / `detectConflicts` / `remove` / `clear` / `list` / `size`. Mutating writes use `EntityManager` OCC; `reinforce`/`recordContradiction` return discriminated `HeuristicUpdateResult` (`'updated' | 'not-found' | 'conflict' | 'vanished-mid-update'`). `@experimental` tag on the match algorithm stays — future evolution toward semantic-similarity matching is in scope
 - Stage surface: scans resolved `FailureRecord`s and qualifying `ReflectionRecord`s with `experienceType` + `keyInsights[]`. Configurable `minConfidence` / `maxPerRun` / `failureConfidence` / `reflectionConfidenceCap`. `runOnResolution(failureId)` helper for explicit single-failure passes. Not auto-registered on the default pipeline — construct and `registerStage()` explicitly
 
-#### 5. Entity-level observation deduplication
-- `MemoryEngine` covers turn-level dedup (Tier 1–4 chain) and `CompressionManager.findDuplicates` covers entity-level grouping; the gap is **cross-entity duplicate observations** — distinct entities containing the same literal observation string
-- **Implementation plan**: [`OBSERVATION_DEDUP_PLAN.md`](./OBSERVATION_DEDUP_PLAN.md) — report-only `ObservationDedupManager` (exact + Jaccard + opt-in semantic) over three workflow turns (Phase A manager + types + getter → Phase B pipeline-stage report → Phase C docs close)
-- Effort: medium (~3 workflow turns)
+#### 5. ~~Entity-level observation deduplication~~ — ✅ shipped (v2.0.x)
+- Closed via storage-backed `ObservationDedupManager` (`src/agent/ObservationDedupManager.ts`) + `ctx.observationDedupManager` lazy getter (Phase A) and `ObservationDedupReportStage` diagnostic pipeline stage (Phase B). Report-only — finds cross-entity duplicate observations without mutating; consumers decide on merge/strip
+- Manager surface: `findDuplicateObservations(filter?)` (exact-hash, cheap) and `findJaccardDuplicates(filter?)` (token Jaccard with union-find grouping, opt-in expensive path). Filter supports `entityType` / `projectId` / `sessionId` scoping plus `minOccurrences` (default 2) and `maxGroups` (default 100) circuit-breakers
+- Stage surface: `ObservationDedupReportStage` emits one `[info]`-prefixed entry per duplicate group on `StageResult.errors`; `transformed` always 0. Not auto-registered. `includeJaccard: true` opts in to the Jaccard tier
+- Follow-ups (deferred): auto-merge into shared semantic entity (needs relation-design decision), auto-strip from individuals (destructive — needs governance)
 
 ### Priority 2 — within 1–2 sprints
 
@@ -162,7 +163,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 | Track | Outstanding items |
 |-------|-------------------|
 | **Agent memory** (Phase 3B finish + Phase 2 expansions) | **Tool Affordance Memory** (new type) |
-| **Dedup** | Entity-level observation dedup |
+| **Dedup** | _(none outstanding — entity-level observation dedup shipped v2.0.x; merge/strip actions deferred as design follow-ups)_ |
 | **Backends** | MEM-05 PostgreSQL, MEM-06 concrete vector DBs |
 | **Search** | Spell correction, query DSL frontend |
 | **Integration** | Elasticsearch, REST API polish, framework adapters, GraphQL |
@@ -170,7 +171,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 | **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport, affective tagging (deferred P3) |
 | **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline) |
 
-**Genuinely active P1/P2 items: 7.** Everything else is gated, strategic, or long-horizon.
+**Genuinely active P1/P2 items: 6.** Everything else is gated, strategic, or long-horizon.
 
 ---
 

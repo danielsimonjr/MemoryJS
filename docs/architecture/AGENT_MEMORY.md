@@ -91,6 +91,16 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   idempotency (3B.8b). Mutating writes use `EntityManager` OCC and surface
 >   `'conflict'` via a new `HeuristicUpdateResult`, matching the #55 pattern.
 >   Both constructors are breaking; the class was `@experimental`.
+> - **v2.0.x (Entity-level observation dedup)** — `ObservationDedupManager`
+>   surfaces cross-entity duplicate observation strings (the gap between
+>   `MemoryEngine`'s turn-level dedup and `CompressionManager`'s
+>   entity-grouping dedup). `findDuplicateObservations` (SHA-256 exact)
+>   and `findJaccardDuplicates` (token Jaccard with union-find grouping)
+>   take a `{entityType, projectId, sessionId, minOccurrences, maxGroups}`
+>   filter. `ctx.observationDedupManager` lazy getter; companion
+>   `ObservationDedupReportStage` emits `[info]`-prefixed diagnostic
+>   entries when registered on a pipeline. Report-only; merge/strip
+>   actions deferred as follow-ups.
 
 ## Overview
 
