@@ -43,6 +43,7 @@ export const MEMORY_TYPES = [
   'plan',
   'reflection',
   'heuristic',
+  'exclusion',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];
@@ -1491,6 +1492,78 @@ export function isHeuristicMemory(entity: unknown): entity is HeuristicEntity {
 
 /** Utility alias for heuristic-memory entities. */
 export type HeuristicMemoryEntity = HeuristicEntity;
+
+// ==================== Exclusion Memory (Phase 3 — do_not_remember) ====================
+
+/**
+ * Matching mode for an `ExclusionRule`.
+ *
+ * v1 ships **substring only**. `'regex'` is deferred — the ReDoS surface
+ * requires a careful design (`vm.runInNewContext` timeout, max length cap,
+ * governance integration) that's out of scope for the first phase.
+ */
+export type ExclusionMode = 'substring';
+
+/**
+ * When an `ExclusionRule` applies. `'future-only'` write-blocks new
+ * matching content; `'past-only'` hard-deletes existing matches on add
+ * but does not block future writes; `'both'` does both (the default).
+ */
+export type ExclusionScope = 'future-only' | 'past-only' | 'both';
+
+/**
+ * Content-pattern exclusion rule (`do_not_remember`). The rule itself is
+ * stored as an `ExclusionEntity`; the runtime mechanism is hard-delete
+ * for past matches + write-block for future matches.
+ *
+ * Distinct from `PiiRedactor` (structural pattern redaction for
+ * credit-card / SSN-style content). `ExclusionRule` is user-supplied
+ * free-form content filtering.
+ */
+export interface ExclusionRule {
+  id: string;
+  timestamp: IsoDateTime;
+  /** Pattern to match. Interpretation depends on `mode`. */
+  pattern: string;
+  mode: ExclusionMode;
+  scope: ExclusionScope;
+  /** Optional restriction by `entityType`. When unset, matches all types. */
+  entityType?: string;
+  /** Optional free-text justification. */
+  reason?: string;
+  /** Number of past memories deleted when the rule was added. */
+  deletedCount?: number;
+  /** Number of future writes blocked by this rule (updated on each block). */
+  blockedCount: number;
+}
+
+/**
+ * Persisted shape of an exclusion-rule entity. `exclusionRule` is the
+ * canonical state; the entity's `name` matches `exclusionRule.id`.
+ */
+export interface ExclusionEntity extends AgentEntity {
+  memoryType: 'exclusion';
+  exclusionRule: ExclusionRule;
+}
+
+/** Type guard for exclusion-memory entities. */
+export function isExclusionMemory(entity: unknown): entity is ExclusionEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'exclusion') return false;
+  const er = (entity as ExclusionEntity).exclusionRule as
+    | { id?: unknown; pattern?: unknown; mode?: unknown; scope?: unknown }
+    | undefined;
+  return (
+    typeof er === 'object' &&
+    er !== null &&
+    typeof er.id === 'string' &&
+    typeof er.pattern === 'string' &&
+    typeof er.mode === 'string' &&
+    typeof er.scope === 'string'
+  );
+}
+
+/** Utility alias for exclusion-memory entities. */
+export type ExclusionMemoryEntity = ExclusionEntity;
 
 // ==================== Utility Types ====================
 

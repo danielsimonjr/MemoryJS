@@ -74,6 +74,7 @@ import { TrajectoryCompressor } from '../agent/TrajectoryCompressor.js';
 import { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
 import { HeuristicManager } from '../agent/HeuristicManager.js';
 import { ObservationDedupManager } from '../agent/ObservationDedupManager.js';
+import { ExclusionManager } from '../agent/ExclusionManager.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
 import {
@@ -166,6 +167,7 @@ export class ManagerContext {
   private _experienceExtractor?: ExperienceExtractor;
   private _heuristicManager?: HeuristicManager;
   private _observationDedupManager?: ObservationDedupManager;
+  private _exclusionManager?: ExclusionManager;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
@@ -801,6 +803,20 @@ export class ManagerContext {
       this._observationDedupManager = new ObservationDedupManager(this.storage);
     }
     return this._observationDedupManager;
+  }
+
+  /**
+   * `ExclusionManager` (Phase 3, v2.0.x) — user-supplied content-pattern
+   * exclusion rules (`do_not_remember`). Hard-deletes existing matches
+   * on `add` and (in Phase Excl B) write-blocks future matches at the
+   * `MemoryEngine.addTurn` / `WorkingMemoryManager.add` hot paths. v1
+   * ships `substring` matching only; `regex` is deferred. Lazy.
+   */
+  get exclusionManager(): ExclusionManager {
+    if (!this._exclusionManager) {
+      this._exclusionManager = new ExclusionManager(this.storage, this.entityManager);
+    }
+    return this._exclusionManager;
   }
 
   /** Lazy `PatternDetector` instance — backs `experienceExtractor`

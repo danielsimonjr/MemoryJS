@@ -52,6 +52,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ExclusionManager` + `'exclusion'` memory type** (Phase 3 `do_not_remember`,
+  Phase Excl A) — user-supplied content-pattern exclusion rules.
+  `add(input)` validates and (when `scope` is `'past-only'` or `'both'`)
+  hard-deletes existing entities whose observations contain the
+  pattern, returning the rule with `deletedCount` populated.
+  `check(content, entityType?)` returns
+  `{ blocked, ruleId?, reason? }` against active forward-blocking
+  rules. `findMatchingMemories(input)` is a dry-run preview.
+  `remove(id)` drops the rule but does NOT restore previously deleted
+  memories (the contract is "user said forget"). Distinct from
+  `PiiRedactor` (structural redaction) — this is free-form content
+  filtering. **v1 ships `substring` matching only**; `regex` is
+  deferred (ReDoS surface needs careful design). Exposed via
+  `ctx.exclusionManager` lazy getter. Phase Excl B will wire
+  `check()` into `MemoryEngine.addTurn` and `WorkingMemoryManager.add`.
+  New public types: `ExclusionRule`, `ExclusionEntity`,
+  `ExclusionMode`, `ExclusionScope`, `AddExclusionRuleInput`,
+  `ExclusionCheckResult`; new type guard `isExclusionMemory`.
 - **`ObservationDedupReportStage`** (Phase B) — diagnostic
   `PipelineStage` that calls `ObservationDedupManager.findDuplicateObservations`
   (and optionally `findJaccardDuplicates` when `includeJaccard: true`),
