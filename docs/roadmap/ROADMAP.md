@@ -90,6 +90,11 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 ### Priority 3 — within the next quarter
 
+#### Phase 3 memory-types expansion (Decision Rationale + Project Context + `do_not_remember`)
+- Three new memory types from the Phase 2 backlog's P3/P4 section, planned together for governance/PII coherence
+- **Implementation plan**: [`MEMORY_TYPES_EXPANSION_PHASE_3.md`](./MEMORY_TYPES_EXPANSION_PHASE_3.md) — three independent types; recommended sequence: `do_not_remember` → Decision Rationale → Project Context (smallest-blast-radius first)
+- Effort: ~3 workflow turns per type (9 total if all three ship); each type is independently ship-able
+
 #### 8. Framework integrations
 - `LangChainMemoryAdapter` scaffolded in `src/adapters/`
 - LlamaIndex, Haystack, Semantic Kernel adapters not started
