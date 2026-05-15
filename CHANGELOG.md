@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking
+
+- **`FailureManager` and `ReflectionManager` constructors now require an
+  `EntityManager`** as the second positional argument
+  (`new FailureManager(storage, entityManager, config?)` /
+  `new ReflectionManager(storage, entityManager, config?)`). `markResolved`
+  and `archive` now route their writes through `EntityManager.updateEntity`
+  with `expectedVersion` OCC instead of `storage.updateEntity` directly,
+  fixing the read-check-write race where two concurrent writers could each
+  observe an open/unarchived entity and have the later write silently
+  overwrite the earlier one's `reason` / `archivedAt`. Both result-type
+  unions (`MarkResolvedResult` and `ArchiveReflectionResult`) gain a new
+  `'conflict'` variant that surfaces when `VersionConflictError` is caught.
+  Callers using `ctx.failureManager` / `ctx.reflectionManager` (the
+  documented path) are unaffected — `ManagerContext` wires `entityManager`
+  automatically. Direct-construction consumers must update call sites and
+  handle the new `'conflict'` arm. Closes Sprint cross-cut #55.
+
 ### Changed
 
 - **`PatternDetector.detectPatterns`** now accepts an optional `entityNames?: string[]`

@@ -32,6 +32,8 @@ import type {
   MarkResolvedResult,
 } from '../types/agent-memory.js';
 import { isFailureMemory, toIsoDateTime } from '../types/agent-memory.js';
+import type { EntityManager } from '../core/EntityManager.js';
+import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
 
 /** Configuration for `FailureManager`. */
 export interface FailureManagerConfig {
@@ -95,10 +97,16 @@ export interface GetAllOptions {
  */
 export class FailureManager {
   private readonly storage: IGraphStorage;
+  private readonly entityManager: EntityManager;
   private readonly defaultLookupLimit: number;
 
-  constructor(storage: IGraphStorage, config: FailureManagerConfig = {}) {
+  constructor(
+    storage: IGraphStorage,
+    entityManager: EntityManager,
+    config: FailureManagerConfig = {},
+  ) {
     this.storage = storage;
+    this.entityManager = entityManager;
     this.defaultLookupLimit = config.defaultLookupLimit ?? 5;
   }
 
@@ -224,6 +232,12 @@ export class FailureManager {
    * - `'vanished-mid-update'`— entity disappeared between read and
    *                            write (concurrent delete / governance
    *                            rollback / segment-mode flush)
+   * - `'conflict'`           — another writer mutated the entity
+   *                            between our read and our write (OCC
+   *                            via `EntityManager.updateEntity`'s
+   *                            `expectedVersion`). Caller should
+   *                            re-read and retry if their reason is
+   *                            still relevant.
    */
   async markResolved(id: string, reason?: string): Promise<MarkResolvedResult> {
     const entity = this.storage.getEntityByName(id);
@@ -238,12 +252,21 @@ export class FailureManager {
       ...entity.failureRecord,
       lifecycle: newLifecycle,
     };
-    const ok = await this.storage.updateEntity(id, {
-      failureRecord: updatedRecord,
-      lastModified: now,
-    } as unknown as Partial<Entity>);
-    if (!ok) return 'vanished-mid-update';
-    return 'resolved';
+    try {
+      await this.entityManager.updateEntity(
+        id,
+        {
+          failureRecord: updatedRecord,
+          lastModified: now,
+        } as unknown as Partial<Entity>,
+        { expectedVersion: entity.version ?? 1 },
+      );
+      return 'resolved';
+    } catch (err) {
+      if (err instanceof VersionConflictError) return 'conflict';
+      if (err instanceof EntityNotFoundError) return 'vanished-mid-update';
+      throw err;
+    }
   }
 
   // ==================== Get-all ====================

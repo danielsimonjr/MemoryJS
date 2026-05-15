@@ -15,9 +15,37 @@ import { ReflectionStage } from '../../../src/agent/ConsolidationPipeline.js';
 import { ReflectionManager } from '../../../src/agent/ReflectionManager.js';
 import { PatternDetector } from '../../../src/agent/PatternDetector.js';
 import { ExperienceExtractor } from '../../../src/agent/ExperienceExtractor.js';
+import type { EntityManager } from '../../../src/core/EntityManager.js';
 import type { TrajectoryCompressor } from '../../../src/agent/TrajectoryCompressor.js';
+import { VersionConflictError, EntityNotFoundError } from '../../../src/utils/errors.js';
 import type { Entity, KnowledgeGraph, IGraphStorage } from '../../../src/types/types.js';
 import type { ConsolidateOptions } from '../../../src/types/agent-memory.js';
+
+function createFakeEntityManager(storage: IGraphStorage): EntityManager {
+  return {
+    updateEntity: vi.fn(async (
+      name: string,
+      updates: Partial<Entity>,
+      options?: { expectedVersion?: number },
+    ) => {
+      const entity = storage.getEntityByName(name);
+      if (!entity) throw new EntityNotFoundError(name);
+      if (options?.expectedVersion !== undefined) {
+        const live = entity.version ?? 1;
+        if (live !== options.expectedVersion) {
+          throw new VersionConflictError(name, options.expectedVersion, live);
+        }
+      }
+      const merged: Partial<Entity> = { ...updates };
+      if (options?.expectedVersion !== undefined) {
+        merged.version = (entity.version ?? 1) + 1;
+      }
+      const ok = await storage.updateEntity(name, merged);
+      if (!ok) throw new EntityNotFoundError(name);
+      return { ...entity, ...merged } as Entity;
+    }),
+  } as unknown as EntityManager;
+}
 
 function createMockStorage(): IGraphStorage & { _entities: Map<string, Entity> } {
   const entities = new Map<string, Entity>();
@@ -99,7 +127,7 @@ describe('ReflectionStage', () => {
 
   beforeEach(() => {
     storage = createMockStorage();
-    rm = new ReflectionManager(storage);
+    rm = new ReflectionManager(storage, createFakeEntityManager(storage));
     pd = new PatternDetector();
     tc = makeTrajectoryCompressorStub();
     stage = new ReflectionStage(storage, rm, pd, tc, { minConfidence: 0.4 });

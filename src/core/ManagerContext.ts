@@ -823,7 +823,7 @@ export class ManagerContext {
    */
   get failureManager(): FailureManager {
     if (!this._failureManager) {
-      this._failureManager = new FailureManager(this.storage, {
+      this._failureManager = new FailureManager(this.storage, this.entityManager, {
         defaultLookupLimit: this.getEnvNumber('MEMORY_FAILURE_LOOKUP_LIMIT', 5),
       });
     }
@@ -856,7 +856,7 @@ export class ManagerContext {
    */
   get reflectionManager(): ReflectionManager {
     if (!this._reflectionManager) {
-      this._reflectionManager = new ReflectionManager(this.storage);
+      this._reflectionManager = new ReflectionManager(this.storage, this.entityManager);
     }
     return this._reflectionManager;
   }

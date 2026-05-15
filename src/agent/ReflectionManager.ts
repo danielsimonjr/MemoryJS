@@ -31,13 +31,16 @@ import type {
   ReflectionScope,
 } from '../types/agent-memory.js';
 import { isReflectionMemory, toIsoDateTime } from '../types/agent-memory.js';
+import type { EntityManager } from '../core/EntityManager.js';
+import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
 
 /** Discriminated return from `archive`. Mirrors `MarkResolvedResult`. */
 export type ArchiveReflectionResult =
   | 'archived'
   | 'not-found'
   | 'already-archived'
-  | 'vanished-mid-update';
+  | 'vanished-mid-update'
+  | 'conflict';
 
 export interface ReflectionManagerConfig {
   /** Maximum reflections returned by `getRelevantForSession` (default 10). */
@@ -87,10 +90,16 @@ export interface RelevanceOptions {
 
 export class ReflectionManager {
   private readonly storage: IGraphStorage;
+  private readonly entityManager: EntityManager;
   private readonly defaultRelevanceLimit: number;
 
-  constructor(storage: IGraphStorage, config: ReflectionManagerConfig = {}) {
+  constructor(
+    storage: IGraphStorage,
+    entityManager: EntityManager,
+    config: ReflectionManagerConfig = {},
+  ) {
     this.storage = storage;
+    this.entityManager = entityManager;
     this.defaultRelevanceLimit = config.defaultRelevanceLimit ?? 10;
   }
 
@@ -211,11 +220,21 @@ export class ReflectionManager {
       archived: true,
       archivedAt: now,
     };
-    const ok = await this.storage.updateEntity(id, {
-      reflectionRecord: updated,
-      lastModified: now,
-    } as unknown as Partial<Entity>);
-    return ok ? 'archived' : 'vanished-mid-update';
+    try {
+      await this.entityManager.updateEntity(
+        id,
+        {
+          reflectionRecord: updated,
+          lastModified: now,
+        } as unknown as Partial<Entity>,
+        { expectedVersion: entity.version ?? 1 },
+      );
+      return 'archived';
+    } catch (err) {
+      if (err instanceof VersionConflictError) return 'conflict';
+      if (err instanceof EntityNotFoundError) return 'vanished-mid-update';
+      throw err;
+    }
   }
 
   // ==================== Internal ====================

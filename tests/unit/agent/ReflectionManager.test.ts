@@ -9,11 +9,13 @@
  * - getAll() convenience
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ReflectionManager } from '../../../src/agent/ReflectionManager.js';
+import type { EntityManager } from '../../../src/core/EntityManager.js';
 import type { Entity, KnowledgeGraph, IGraphStorage } from '../../../src/types/types.js';
 import type { ReflectionEntity } from '../../../src/types/agent-memory.js';
 import { isReflectionMemory } from '../../../src/types/agent-memory.js';
+import { VersionConflictError, EntityNotFoundError } from '../../../src/utils/errors.js';
 
 /** Minimal in-memory storage that satisfies the duck-typed `IGraphStorage` slice ReflectionManager needs. */
 function createMockStorage(): IGraphStorage & {
@@ -48,13 +50,42 @@ function createMockStorage(): IGraphStorage & {
   } as unknown as IGraphStorage & { _entities: Map<string, Entity> };
 }
 
+/** Fake EntityManager mirroring `updateEntity` OCC semantics. */
+function createFakeEntityManager(storage: IGraphStorage): EntityManager {
+  return {
+    updateEntity: vi.fn(async (
+      name: string,
+      updates: Partial<Entity>,
+      options?: { expectedVersion?: number },
+    ) => {
+      const entity = storage.getEntityByName(name);
+      if (!entity) throw new EntityNotFoundError(name);
+      if (options?.expectedVersion !== undefined) {
+        const live = entity.version ?? 1;
+        if (live !== options.expectedVersion) {
+          throw new VersionConflictError(name, options.expectedVersion, live);
+        }
+      }
+      const merged: Partial<Entity> = { ...updates };
+      if (options?.expectedVersion !== undefined) {
+        merged.version = (entity.version ?? 1) + 1;
+      }
+      const ok = await storage.updateEntity(name, merged);
+      if (!ok) throw new EntityNotFoundError(name);
+      return { ...entity, ...merged } as Entity;
+    }),
+  } as unknown as EntityManager;
+}
+
 describe('ReflectionManager', () => {
   let storage: ReturnType<typeof createMockStorage>;
+  let entityManager: EntityManager;
   let rm: ReflectionManager;
 
   beforeEach(() => {
     storage = createMockStorage();
-    rm = new ReflectionManager(storage);
+    entityManager = createFakeEntityManager(storage);
+    rm = new ReflectionManager(storage, entityManager);
   });
 
   describe('create', () => {
@@ -294,6 +325,18 @@ describe('ReflectionManager', () => {
       const result = await rm.archive(rec.id);
       expect(result).toBe('vanished-mid-update');
       storage.updateEntity = original;
+    });
+
+    it('returns "conflict" when EntityManager.updateEntity throws VersionConflictError', async () => {
+      const rec = await rm.create({
+        scope: 'session',
+        evidence: ['e'],
+        summary: 's',
+        generalization_confidence: 0.7,
+      });
+      (entityManager.updateEntity as ReturnType<typeof vi.fn>)
+        .mockRejectedValueOnce(new VersionConflictError(rec.id, 1, 2));
+      expect(await rm.archive(rec.id)).toBe('conflict');
     });
   });
 

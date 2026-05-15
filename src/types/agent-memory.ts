@@ -1226,7 +1226,12 @@ export type FailureMemoryEntity = FailureEntity;
  * distinguish "id not found" / "already resolved" / "successfully
  * resolved" without lying via a single boolean.
  */
-export type MarkResolvedResult = 'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update';
+export type MarkResolvedResult =
+  | 'resolved'
+  | 'already-resolved'
+  | 'not-found'
+  | 'vanished-mid-update'
+  | 'conflict';
 
 // ==================== Plan / Goal-Stack Types ====================
 

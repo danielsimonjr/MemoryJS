@@ -21,9 +21,11 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FailureManager } from '../../../src/agent/FailureManager.js';
+import type { EntityManager } from '../../../src/core/EntityManager.js';
 import type { IGraphStorage, Entity } from '../../../src/types/types.js';
 import type { FailureRecord, FailureEntity } from '../../../src/types/agent-memory.js';
 import { isFailureMemory } from '../../../src/types/agent-memory.js';
+import { VersionConflictError, EntityNotFoundError } from '../../../src/utils/errors.js';
 
 /** FailureManager doesn't read relations; mock only the entity surface. */
 function createMockStorage(initialEntities: Entity[] = []): IGraphStorage {
@@ -43,6 +45,38 @@ function createMockStorage(initialEntities: Entity[] = []): IGraphStorage {
   } as unknown as IGraphStorage;
 }
 
+/**
+ * Minimal fake EntityManager satisfying the surface FailureManager
+ * uses (`updateEntity` with optional `expectedVersion` OCC). Delegates
+ * to the mock storage so tests can observe writes via their existing
+ * `storage.updateEntity` spy, then layers OCC + version bump on top.
+ */
+function createFakeEntityManager(storage: IGraphStorage): EntityManager {
+  return {
+    updateEntity: vi.fn(async (
+      name: string,
+      updates: Partial<Entity>,
+      options?: { expectedVersion?: number },
+    ) => {
+      const entity = storage.getEntityByName(name);
+      if (!entity) throw new EntityNotFoundError(name);
+      if (options?.expectedVersion !== undefined) {
+        const live = entity.version ?? 1;
+        if (live !== options.expectedVersion) {
+          throw new VersionConflictError(name, options.expectedVersion, live);
+        }
+      }
+      const merged: Partial<Entity> = { ...updates };
+      if (options?.expectedVersion !== undefined) {
+        merged.version = (entity.version ?? 1) + 1;
+      }
+      const ok = await storage.updateEntity(name, merged);
+      if (!ok) throw new EntityNotFoundError(name); // vanished mid-update
+      return { ...entity, ...merged } as Entity;
+    }),
+  } as unknown as EntityManager;
+}
+
 /** Convenience factory for valid `record()` input. */
 function validInput(overrides: Partial<Parameters<FailureManager['record']>[0]> = {}): Parameters<FailureManager['record']>[0] {
   return {
@@ -57,11 +91,13 @@ function validInput(overrides: Partial<Parameters<FailureManager['record']>[0]> 
 
 describe('FailureManager', () => {
   let storage: IGraphStorage;
+  let entityManager: EntityManager;
   let fm: FailureManager;
 
   beforeEach(() => {
     storage = createMockStorage();
-    fm = new FailureManager(storage);
+    entityManager = createFakeEntityManager(storage);
+    fm = new FailureManager(storage, entityManager);
   });
 
   // ==================== record() ====================
@@ -248,6 +284,16 @@ describe('FailureManager', () => {
       // Force updateEntity to return false (simulating concurrent delete)
       (storage.updateEntity as ReturnType<typeof vi.fn>).mockResolvedValueOnce(false);
       expect(await fm.markResolved(rec.id)).toBe('vanished-mid-update');
+    });
+
+    it('returns "conflict" when EntityManager.updateEntity throws VersionConflictError', async () => {
+      const rec = await fm.record(validInput());
+      // Simulate a concurrent writer having bumped the version between
+      // our read and our write — EntityManager surfaces this as a
+      // VersionConflictError, which markResolved must translate.
+      (entityManager.updateEntity as ReturnType<typeof vi.fn>)
+        .mockRejectedValueOnce(new VersionConflictError(rec.id, 1, 2));
+      expect(await fm.markResolved(rec.id, 'should conflict')).toBe('conflict');
     });
 
     it('accepts optional reason; absence is fine', async () => {
