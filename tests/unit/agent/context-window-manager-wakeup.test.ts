@@ -53,6 +53,60 @@ describe('ContextWindowManager.wakeUp', () => {
 
   // ==================== L1.5: pending prospective intentions ====================
 
+  // ==================== Project Context (Phase PC B) ====================
+
+  describe('project context (L0 prepend)', () => {
+    it('returns empty projectContext when no projectId is supplied', async () => {
+      const result = await amm.contextWindowManager.wakeUp();
+      expect(result.projectContext).toBe('');
+    });
+
+    it('returns empty projectContext when no record exists for projectId', async () => {
+      const result = await amm.contextWindowManager.wakeUp({ projectId: 'proj_unknown' });
+      expect(result.projectContext).toBe('');
+    });
+
+    it('surfaces project facts/conventions/commands/glossary when present', async () => {
+      await ctx.projectContextManager.upsert('proj_alpha', {
+        facts: ['Built with TypeScript'],
+        conventions: ['Use Result<T,E>'],
+        commands: [{ name: 'test', command: 'npm test', purpose: 'Run tests' }],
+        glossary: [{ term: 'OCC', definition: 'Optimistic Concurrency Control' }],
+      });
+      const result = await amm.contextWindowManager.wakeUp({ projectId: 'proj_alpha' });
+      expect(result.projectContext).toContain('Facts');
+      expect(result.projectContext).toContain('TypeScript');
+      expect(result.projectContext).toContain('Conventions');
+      expect(result.projectContext).toContain('Result<T,E>');
+      expect(result.projectContext).toContain('npm test');
+      expect(result.projectContext).toContain('OCC');
+    });
+
+    it('honors maxProjectContextTokens budget by truncating', async () => {
+      await ctx.projectContextManager.upsert('proj_alpha', {
+        facts: Array.from({ length: 30 }, (_, i) => `Fact ${i} is a longer-than-average sentence to exhaust the budget.`),
+      });
+      const result = await amm.contextWindowManager.wakeUp({
+        projectId: 'proj_alpha',
+        maxProjectContextTokens: 20,
+      });
+      // 20 tokens × default multiplier 1.3 ≈ 26 raw tokens →
+      // estimateStringTokens returns chars/4-ish, so budget chars are
+      // roughly 20*4 = 80. Generous upper bound to accommodate
+      // truncation marker.
+      expect(result.projectContext.length).toBeLessThanOrEqual(200);
+    });
+
+    it('includes projectContext tokens in totalTokens', async () => {
+      await ctx.projectContextManager.upsert('proj_alpha', {
+        facts: ['Built with TypeScript'],
+      });
+      const withCtx = await amm.contextWindowManager.wakeUp({ projectId: 'proj_alpha' });
+      const withoutCtx = await amm.contextWindowManager.wakeUp({ projectId: 'proj_unknown' });
+      expect(withCtx.totalTokens).toBeGreaterThan(withoutCtx.totalTokens);
+    });
+  });
+
   describe('L1.5 — pending prospective intentions', () => {
     it('returns empty l1_5 when there are no pending intentions', async () => {
       const result = await amm.contextWindowManager.wakeUp();

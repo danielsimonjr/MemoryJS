@@ -76,6 +76,15 @@ export interface WakeUpOptions {
   maxL1Tokens?: number;
   /** Token budget for L1.5 pending-intentions block. Default 200. */
   maxL1_5Tokens?: number;
+  /**
+   * Token budget for the Phase PC B `projectContext` block (facts /
+   * conventions / commands / glossary from the active project's
+   * `ProjectContextRecord`). Default 300. Only consulted when `projectId`
+   * is set and a record exists. The block is rendered ABOVE L0 in the
+   * conceptual layer stack — consumers concatenate fields in their
+   * preferred order; `WakeUpResult` is flat.
+   */
+  maxProjectContextTokens?: number;
   includeL1?: boolean;
   /** Whether to surface pending prospective intentions in L1.5. Default true. */
   includeL1_5?: boolean;
@@ -89,6 +98,14 @@ export interface WakeUpOptions {
  * Result from the wakeUp method.
  */
 export interface WakeUpResult {
+  /**
+   * Phase PC B (v2.0.x): structured project knowledge (facts /
+   * conventions / commands / glossary) from the active
+   * `ProjectContextRecord`, when `options.projectId` is supplied AND a
+   * record exists. Empty string otherwise. Rendered prose; consumers
+   * concatenate ABOVE `l0` for system-prompt assembly.
+   */
+  projectContext: string;
   l0: string;
   /** Pending prospective intentions, sorted by next-fire-time, capped by `maxL1_5Tokens`. */
   l1_5: string;
@@ -1135,8 +1152,37 @@ export class ContextWindowManager {
     const maxL0 = options.maxL0Tokens ?? 100;
     const maxL1 = options.maxL1Tokens ?? 500;
     const maxL1_5 = options.maxL1_5Tokens ?? 200;
+    const maxProjectCtx = options.maxProjectContextTokens ?? 300;
     const includeL1 = options.includeL1 ?? true;
     const includeL1_5 = options.includeL1_5 ?? true;
+
+    // Project context (Phase PC B): structured project knowledge from
+    // the active ProjectContextRecord. Empty when no projectId is set
+    // or no record exists. Dynamic import mirrors the L0 / L1.5 pattern.
+    let projectContext = '';
+    let projectContextTokens = 0;
+    if (options.projectId) {
+      try {
+        const { ProjectContextManager } = await import('./ProjectContextManager.js');
+        const { EntityManager } = await import('../core/EntityManager.js');
+        const concreteStorage = this.storage as GraphStorage;
+        const pcm = new ProjectContextManager(
+          concreteStorage,
+          new EntityManager(concreteStorage),
+        );
+        // Budget converted chars≈tokens*4 (matches estimateStringTokens'
+        // implicit char-per-token model); forContext truncates with an
+        // ellipsis when over budget.
+        projectContext = await pcm.forContext(options.projectId, {
+          budgetChars: maxProjectCtx * 4,
+        });
+        projectContextTokens = this.estimateStringTokens(projectContext);
+      } catch (err) {
+        if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
+          logger.error('[ContextWindowManager.wakeUp] project context loading failed:', err);
+        }
+      }
+    }
 
     // L0: Profile static facts
     let l0 = '';
@@ -1249,8 +1295,12 @@ export class ContextWindowManager {
       }
     }
 
-    const totalTokens = this.estimateStringTokens(l0) + l1_5Tokens + this.estimateStringTokens(l1);
-    return { l0, l1_5, l1, totalTokens, entityCount, pendingIntentionCount };
+    const totalTokens =
+      projectContextTokens +
+      this.estimateStringTokens(l0) +
+      l1_5Tokens +
+      this.estimateStringTokens(l1);
+    return { projectContext, l0, l1_5, l1, totalTokens, entityCount, pendingIntentionCount };
   }
 
   // ==================== Context Compression ====================

@@ -52,6 +52,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ContextWindowManager.wakeUp` project-context layer** (Phase PC B) —
+  `WakeUpOptions` gains `maxProjectContextTokens?: number` (default 300);
+  `WakeUpResult` gains `projectContext: string` (empty when no
+  `projectId` is supplied or no record exists). When `projectId` is set,
+  `wakeUp` dynamic-imports `ProjectContextManager` (mirrors the L0 /
+  L1.5 dynamic-import pattern), calls `forContext(projectId, {budgetChars})`,
+  and includes the rendered prose in `totalTokens`. Consumers
+  concatenate `projectContext` ABOVE `l0` for system-prompt assembly —
+  the result type is flat. **Additive** (new field on `WakeUpResult`,
+  not breaking).
 - **`ProjectContextManager` + `'project_context'` memory type** (Phase 3
   Project Context, Phase PC A) — structured project-knowledge memory.
   One record per `projectId` (uniqueness enforced; entity name is
