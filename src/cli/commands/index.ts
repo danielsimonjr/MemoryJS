@@ -16,6 +16,7 @@ import { registerHierarchyCommands } from './hierarchy.js';
 import { registerGraphCommands } from './graph.js';
 import { registerIOCommands } from './io.js';
 import { registerMaintenanceCommands } from './maintenance.js';
+import { registerExclusionCommands } from './exclusion.js';
 
 export function registerCommands(program: Command): void {
   registerEntityCommands(program);
@@ -27,4 +28,5 @@ export function registerCommands(program: Command): void {
   registerGraphCommands(program);
   registerIOCommands(program);
   registerMaintenanceCommands(program);
+  registerExclusionCommands(program);
 }

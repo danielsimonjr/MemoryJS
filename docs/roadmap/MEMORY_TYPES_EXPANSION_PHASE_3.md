@@ -200,7 +200,14 @@ shipped phase. Manual entry is the v1 path.
 
 ---
 
-## Type 3 — `do_not_remember` list
+## Type 3 — `do_not_remember` list — ✅ shipped (v2.0.x)
+
+Closed via three workflow turns: Phase Excl A (`ExclusionManager` + types
++ `ctx.exclusionManager`), Phase Excl B (`MemoryEngine.addTurn` +
+`WorkingMemoryManager.createWorkingMemory` integration with
+`memoryEngine:writeBlocked` event and `MemoryWriteBlockedError` throw),
+Phase Excl C (CLI `memory exclude add|list|remove` + docs close).
+v1 ships `substring` matching only; `regex` deferred.
 
 ### Catalog motivation
 
@@ -304,9 +311,7 @@ storage decorator if user demand materialises.
 These three types are independent; the user may pick any order. The
 recommended sequence — by smallest-incremental-value first:
 
-1. **`do_not_remember`** — smallest blast radius, single hot path. Lets
-   privacy-conscious users opt out of remembering anything they don't
-   want stored. **Low effort, immediate user value.**
+1. ~~**`do_not_remember`**~~ — ✅ shipped (v2.0.x).
 2. **Decision Rationale** — medium effort, primarily additive (the ADR
    dual-write is a follow-up). Provides "have we decided X?" recall.
 3. **Project Context** — medium effort, touches `wakeUp` integration.

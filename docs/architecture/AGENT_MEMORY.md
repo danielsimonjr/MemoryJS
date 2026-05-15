@@ -101,6 +101,14 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   `ObservationDedupReportStage` emits `[info]`-prefixed diagnostic
 >   entries when registered on a pipeline. Report-only; merge/strip
 >   actions deferred as follow-ups.
+> - **v2.0.x (Phase 3 `do_not_remember`)** — `ExclusionManager` registers
+>   content-pattern exclusion rules (`MemoryType: 'exclusion'`).
+>   `add()` hard-deletes existing matches on past-scope; `check()` is
+>   wired into `MemoryEngine.addTurn` (returns `blocked: true` result +
+>   `memoryEngine:writeBlocked` event) and `WorkingMemoryManager.createWorkingMemory`
+>   (throws `MemoryWriteBlockedError`). v1 ships substring matching only;
+>   `regex` mode reserved on the `ExclusionMode` union as a future
+>   widening point. CLI: `memory exclude add|list|remove`.
 
 ## Overview
 
@@ -825,6 +833,32 @@ type ConflictStrategy =
     (negation prefixes: `don't` / `do not` / `never` / `avoid`)
   - `HeuristicManager.add` accepts an optional content-addressed `id`
     for caller-managed idempotency
+
+### Exclusion (`do_not_remember`, Phase 3)
+
+- **Purpose**: User-supplied content-pattern exclusion rules. Hard-delete
+  existing matches on `add`; write-block future matches at the two hot
+  write paths (`MemoryEngine.addTurn`, `WorkingMemoryManager.createWorkingMemory`).
+  Distinct from `PiiRedactor` (which does structural pattern redaction for
+  credit-card / SSN-shaped content) — this is free-form user-supplied
+  content filtering
+- **Lifetime**: Permanent; remove via `ExclusionManager.remove` (does
+  NOT restore previously-deleted memories — the contract is "user said
+  forget")
+- **Manager**: `ExclusionManager`; `MemoryType: 'exclusion'`; accessed
+  via `ctx.exclusionManager`
+- **Hot-path integration**: `MemoryEngine.addTurn` returns
+  `{ blocked: true, blockedByRuleId, blockedReason? }` and emits
+  `memoryEngine:writeBlocked` when a rule matches.
+  `WorkingMemoryManager.createWorkingMemory` throws
+  `MemoryWriteBlockedError`. Both run BEFORE other gates (dedup /
+  entropy) — user policy beats heuristics
+- **CLI**: `memory exclude add <pattern>` / `memory exclude list` /
+  `memory exclude remove <id>` for the hand-typed-rule use case
+- **v1 scope cut**: substring matching only. `regex` mode is reserved
+  on the `ExclusionMode` union as a future widening point — its ReDoS
+  surface requires a careful design (timeout + max length cap +
+  governance integration) that's deferred
 
 ### Trust Hierarchy Mixin (Sprint 6)
 
