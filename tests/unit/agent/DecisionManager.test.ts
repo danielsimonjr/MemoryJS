@@ -293,4 +293,101 @@ describe('DecisionManager', () => {
       expect(await mgr.list({ status: 'proposed' })).toHaveLength(1);
     });
   });
+
+  // ==================== ADR markdown dual-write (Phase Dec B) ====================
+
+  describe('exportAsAdrMarkdown', () => {
+    it('renders a DecisionRecord as ADR-format markdown', async () => {
+      const rec = await mgr.propose({
+        context: 'Selecting a hashing algorithm',
+        decision: 'Use argon2id',
+        alternatives: ['bcrypt', 'scrypt'],
+        consequences: ['Higher memory cost', 'GPU-resistant'],
+      });
+      const md = mgr.exportAsAdrMarkdown(rec.id);
+      expect(md).toMatch(/^# /m); // has a top-level heading
+      expect(md).toContain('## Status');
+      expect(md).toContain('Proposed');
+      expect(md).toContain('## Context');
+      expect(md).toContain('Selecting a hashing algorithm');
+      expect(md).toContain('## Decision');
+      expect(md).toContain('argon2id');
+      expect(md).toContain('## Consequences');
+      expect(md).toContain('- Higher memory cost');
+      expect(md).toContain('## Alternatives');
+      expect(md).toContain('- bcrypt');
+    });
+
+    it('reflects the current lifecycle status', async () => {
+      const rec = await mgr.propose({
+        context: 'c', decision: 'd', alternatives: [], consequences: [],
+      });
+      await mgr.accept(rec.id);
+      const md = mgr.exportAsAdrMarkdown(rec.id);
+      expect(md).toContain('## Status');
+      expect(md).toContain('Accepted');
+    });
+
+    it('throws when the decision does not exist', () => {
+      expect(() => mgr.exportAsAdrMarkdown('decision-does-not-exist')).toThrow(/not found/i);
+    });
+  });
+
+  describe('parseAdrMarkdown', () => {
+    it('round-trips a record through export → parse', async () => {
+      const original = await mgr.propose({
+        context: 'Selecting a hashing algorithm',
+        decision: 'Use argon2id',
+        alternatives: ['bcrypt', 'scrypt'],
+        consequences: ['Higher memory cost', 'GPU-resistant'],
+      });
+      const md = mgr.exportAsAdrMarkdown(original.id);
+      const parsed = DecisionManager.parseAdrMarkdown(md);
+      expect(parsed).not.toBeNull();
+      expect(parsed!.context).toBe(original.context);
+      expect(parsed!.decision).toBe(original.decision);
+      expect(parsed!.alternatives).toEqual(original.alternatives);
+      expect(parsed!.consequences).toEqual(original.consequences);
+    });
+
+    it('returns null when required sections are missing', () => {
+      const malformed = '# A title only — no Context or Decision';
+      expect(DecisionManager.parseAdrMarkdown(malformed)).toBeNull();
+    });
+
+    it('parses a hand-written ADR with mixed whitespace', () => {
+      const md = [
+        '# 42. Use argon2id for password hashing',
+        '',
+        'Date: 2026-05-15',
+        '',
+        '## Status',
+        '',
+        'Accepted',
+        '',
+        '## Context',
+        '',
+        'We need to choose a password hashing algorithm that resists',
+        'GPU-accelerated attacks while staying within the request budget.',
+        '',
+        '## Decision',
+        '',
+        'Use argon2id with a 64 MiB memory cost and 3 iterations.',
+        '',
+        '## Consequences',
+        '',
+        '- Higher memory footprint per auth request',
+        '- Better attack resistance',
+        '',
+      ].join('\n');
+      const parsed = DecisionManager.parseAdrMarkdown(md);
+      expect(parsed).not.toBeNull();
+      expect(parsed!.context).toContain('password hashing algorithm');
+      expect(parsed!.decision).toContain('argon2id');
+      expect(parsed!.consequences).toEqual([
+        'Higher memory footprint per auth request',
+        'Better attack resistance',
+      ]);
+    });
+  });
 });

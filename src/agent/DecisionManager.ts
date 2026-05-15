@@ -263,6 +263,94 @@ export class DecisionManager {
     return this.applyUpdate(id, entity.version, lifecycle, 'superseded') as Promise<SupersedeDecisionResult>;
   }
 
+  // ==================== ADR markdown dual-write (Phase Dec B) ====================
+
+  /**
+   * Render a stored decision as ADR-format markdown. Pure function;
+   * synchronous via the storage name-index.
+   *
+   * @throws Error when the decision is not found.
+   */
+  exportAsAdrMarkdown(id: DecisionId | string): string {
+    const rec = this.get(id);
+    if (!rec) {
+      throw new Error(`DecisionManager.exportAsAdrMarkdown: decision '${id}' not found`);
+    }
+    const title = firstLine(rec.decision);
+    const lines: string[] = [];
+    lines.push(`# ${rec.id}: ${title}`);
+    lines.push('');
+    lines.push(`Date: ${rec.timestamp}`);
+    lines.push('');
+    lines.push('## Status');
+    lines.push('');
+    lines.push(formatStatus(rec.status));
+    if (rec.supersedes) {
+      lines.push('');
+      lines.push(`Supersedes: ${rec.supersedes}`);
+    }
+    lines.push('');
+    lines.push('## Context');
+    lines.push('');
+    lines.push(rec.context);
+    lines.push('');
+    lines.push('## Decision');
+    lines.push('');
+    lines.push(rec.decision);
+    if (rec.consequences.length > 0) {
+      lines.push('');
+      lines.push('## Consequences');
+      lines.push('');
+      for (const c of rec.consequences) lines.push(`- ${c}`);
+    }
+    if (rec.alternatives.length > 0) {
+      lines.push('');
+      lines.push('## Alternatives');
+      lines.push('');
+      for (const a of rec.alternatives) lines.push(`- ${a}`);
+    }
+    lines.push('');
+    return lines.join('\n');
+  }
+
+  /**
+   * Parse a hand-written or previously-exported ADR into a
+   * `DecisionInput` shape. Returns `null` when the required `## Context`
+   * and `## Decision` sections are missing or empty — callers should
+   * branch on null rather than catch.
+   *
+   * Static so callers can parse without instantiating a manager.
+   * Status / supersedes-link in the markdown are informational only;
+   * imports flow through `propose()` and start as `'proposed'`.
+   */
+  static parseAdrMarkdown(text: string): DecisionInput | null {
+    const sections = new Map<string, string[]>();
+    let current: string | null = null;
+    for (const rawLine of text.split(/\r?\n/)) {
+      const line = rawLine;
+      const m = /^##\s+(.+?)\s*$/.exec(line);
+      if (m) {
+        current = m[1]!.toLowerCase();
+        if (!sections.has(current)) sections.set(current, []);
+        continue;
+      }
+      if (current !== null) {
+        sections.get(current)!.push(line);
+      }
+    }
+
+    const contextLines = trimBlock(sections.get('context'));
+    const decisionLines = trimBlock(sections.get('decision'));
+    if (contextLines.length === 0 || decisionLines.length === 0) return null;
+
+    return {
+      context: contextLines.join('\n').trim(),
+      decision: decisionLines.join('\n').trim(),
+      alternatives: parseBulletList(sections.get('alternatives')),
+      consequences: parseBulletList(sections.get('consequences')),
+    };
+  }
+
   // ==================== Internal ====================
 
   private async applyUpdate(
@@ -309,4 +397,33 @@ function validateNonEmpty(value: unknown, fieldName: string): void {
       `DecisionManager: ${fieldName} must be a non-empty string; received ${JSON.stringify(value)}`,
     );
   }
+}
+
+function firstLine(s: string): string {
+  const idx = s.indexOf('\n');
+  return (idx === -1 ? s : s.slice(0, idx)).trim();
+}
+
+function formatStatus(s: DecisionStatus): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function trimBlock(lines: string[] | undefined): string[] {
+  if (!lines) return [];
+  // Drop leading/trailing blanks; preserve internal structure.
+  let start = 0;
+  let end = lines.length;
+  while (start < end && lines[start]!.trim() === '') start++;
+  while (end > start && lines[end - 1]!.trim() === '') end--;
+  return lines.slice(start, end);
+}
+
+function parseBulletList(lines: string[] | undefined): string[] {
+  if (!lines) return [];
+  const items: string[] = [];
+  for (const raw of lines) {
+    const m = /^\s*[-*+]\s+(.+?)\s*$/.exec(raw);
+    if (m) items.push(m[1]!);
+  }
+  return items;
 }

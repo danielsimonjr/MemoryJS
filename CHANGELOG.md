@@ -52,6 +52,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **ADR markdown dual-write on `DecisionManager`** (Phase Dec B):
+  - `exportAsAdrMarkdown(id)` — synchronous; renders a stored decision
+    as ADR-format markdown (`# title`, `## Status`, `## Context`,
+    `## Decision`, `## Consequences` bullet list, `## Alternatives`
+    bullet list, optional `Supersedes:` link). Throws when the
+    decision is not found.
+  - `DecisionManager.parseAdrMarkdown(text)` — static; parses a
+    hand-written or previously-exported ADR into a `DecisionInput`.
+    Returns `null` when required `## Context` or `## Decision` sections
+    are missing or empty. Status / supersedes in the markdown are
+    informational only — imports flow through `propose()` and start as
+    `'proposed'`. Bidirectional bridge between existing `docs/adrs/`
+    markdown and the runtime store.
 - **`DecisionManager` + `'decision'` memory type** (Phase 3 Decision
   Rationale, Phase Dec A) — runtime-queryable ADR-equivalent memory.
   `propose(input)` creates a `'proposed'` decision; lifecycle:
