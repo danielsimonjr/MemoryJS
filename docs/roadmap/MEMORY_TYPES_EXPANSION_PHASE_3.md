@@ -35,7 +35,13 @@ in a single review pass.
 
 ---
 
-## Type 1 — Decision Rationale
+## Type 1 — Decision Rationale — ✅ shipped (v2.0.x)
+
+Closed via three workflow turns: Phase Dec A (`DecisionManager` +
+discriminated lifecycle + `ctx.decisionManager`), Phase Dec B
+(`exportAsAdrMarkdown` + static `parseAdrMarkdown`), Phase Dec C
+(CLI `memory decision propose|accept|reject|supersede|list|find|export|import`
++ docs close).
 
 ### Catalog motivation
 
@@ -312,8 +318,7 @@ These three types are independent; the user may pick any order. The
 recommended sequence — by smallest-incremental-value first:
 
 1. ~~**`do_not_remember`**~~ — ✅ shipped (v2.0.x).
-2. **Decision Rationale** — medium effort, primarily additive (the ADR
-   dual-write is a follow-up). Provides "have we decided X?" recall.
+2. ~~**Decision Rationale**~~ — ✅ shipped (v2.0.x).
 3. **Project Context** — medium effort, touches `wakeUp` integration.
    Best done after the wakeUp layer surface is otherwise quiet.
 

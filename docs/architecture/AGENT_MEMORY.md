@@ -101,6 +101,15 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   `ObservationDedupReportStage` emits `[info]`-prefixed diagnostic
 >   entries when registered on a pipeline. Report-only; merge/strip
 >   actions deferred as follow-ups.
+> - **v2.0.x (Phase 3 Decision Rationale)** — `DecisionManager` ships a
+>   runtime-queryable ADR-equivalent memory (`MemoryType: 'decision'`).
+>   Lifecycle: proposed → accepted | rejected; accepted → superseded.
+>   All lifecycle mutations are OCC-protected and return discriminated
+>   results with `'conflict'` / `'illegal-transition'` arms.
+>   `findByContext` substring search; `getChain` walks the supersedes
+>   link. ADR markdown dual-write via `exportAsAdrMarkdown(id)` /
+>   `DecisionManager.parseAdrMarkdown(text)` (static). CLI:
+>   `memory decision propose|accept|reject|supersede|list|find|export|import`.
 > - **v2.0.x (Phase 3 `do_not_remember`)** — `ExclusionManager` registers
 >   content-pattern exclusion rules (`MemoryType: 'exclusion'`).
 >   `add()` hard-deletes existing matches on past-scope; `check()` is
@@ -833,6 +842,36 @@ type ConflictStrategy =
     (negation prefixes: `don't` / `do not` / `never` / `avoid`)
   - `HeuristicManager.add` accepts an optional content-addressed `id`
     for caller-managed idempotency
+
+### Decision Rationale (Phase 3)
+
+- **Purpose**: Runtime-queryable architecture-decision-record (ADR)
+  memory. Lets an agent answer "have we already decided X?" without
+  scanning markdown files. Catalog Type 11
+- **Lifetime**: Permanent. Lifecycle:
+  proposed → accepted | rejected; accepted → superseded
+- **Manager**: `DecisionManager`; `MemoryType: 'decision'`; accessed via
+  `ctx.decisionManager`
+- **Lifecycle methods**: `propose(input, options?)` (defaults to importance 8) /
+  `accept(id)` / `reject(id, reason)` / `supersede(id, by)`. All return
+  discriminated results (`'accepted' | 'already-accepted' | 'not-found' |
+  'illegal-transition' | 'conflict' | 'vanished-mid-update'`) — same shape
+  as `MarkResolvedResult` across agent-memory managers. OCC-protected via
+  `EntityManager.updateEntity({expectedVersion})`
+- **Query**: `findByContext(query)` substring-matches against
+  `context` / `decision` / `consequences`. `getChain(id)` walks the
+  `supersedes` link backward to the original proposal (cycle-protected).
+  `list({status?, sourceSessionId?, sourceProjectId?, limit?})`
+  enumerates with filters
+- **ADR markdown dual-write**: `exportAsAdrMarkdown(id)` renders the
+  canonical ADR layout; `DecisionManager.parseAdrMarkdown(text)` (static)
+  parses a hand-written or previously-exported ADR into a
+  `DecisionInput`. Returns `null` when required `## Context` or
+  `## Decision` sections are missing. Status / Supersedes in the
+  markdown are informational only — imports flow through `propose()` and
+  start as `'proposed'`. File IO stays out of the manager; consumers
+  (CLI) own `fs.readFileSync` / `writeFileSync`
+- **CLI**: `memory decision propose|accept|reject|supersede|list|find|export|import`
 
 ### Exclusion (`do_not_remember`, Phase 3)
 

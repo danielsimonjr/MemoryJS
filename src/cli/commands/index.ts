@@ -17,6 +17,7 @@ import { registerGraphCommands } from './graph.js';
 import { registerIOCommands } from './io.js';
 import { registerMaintenanceCommands } from './maintenance.js';
 import { registerExclusionCommands } from './exclusion.js';
+import { registerDecisionCommands } from './decision.js';
 
 export function registerCommands(program: Command): void {
   registerEntityCommands(program);
@@ -29,4 +30,5 @@ export function registerCommands(program: Command): void {
   registerIOCommands(program);
   registerMaintenanceCommands(program);
   registerExclusionCommands(program);
+  registerDecisionCommands(program);
 }
