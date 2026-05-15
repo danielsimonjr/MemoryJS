@@ -52,6 +52,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ObservationDedupManager`** (Phase A) — read-only cross-entity
+  duplicate-observation finder. Complementary to `MemoryEngine` (which
+  is turn-/session-scoped, pre-write) and `CompressionManager.findDuplicates`
+  (which groups whole similar entities). Surfaces observation *strings*
+  that appear verbatim or near-verbatim across distinct entities.
+  `findDuplicateObservations(filter?)` runs the SHA-256 exact tier;
+  `findJaccardDuplicates(filter?)` runs the token-Jaccard tier
+  (configurable `jaccardThreshold`, default 0.85). Filter supports
+  `entityType` / `projectId` / `sessionId` scoping plus `minOccurrences`
+  (default 2) and `maxGroups` (default 100) circuit-breakers. New public
+  types: `DuplicateObservationOccurrence`, `DuplicateObservationGroup`,
+  `ObservationDedupFilter`, `ObservationDedupManagerConfig`. Exposed via
+  `ctx.observationDedupManager` lazy getter. Report-only — no mutations;
+  merge/strip actions are deferred follow-ups.
 - **`'heuristic'` memory type** (Phase 3B.8a) — added to `MEMORY_TYPES`
   with companion `HeuristicEntity`, `HeuristicId` (branded), `Heuristic`
   record (promoted from `HeuristicManager.ts` to `src/types/agent-memory.ts`),

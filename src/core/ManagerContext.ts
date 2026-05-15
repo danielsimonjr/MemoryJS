@@ -73,6 +73,7 @@ import { MemoryValidator } from '../agent/MemoryValidator.js';
 import { TrajectoryCompressor } from '../agent/TrajectoryCompressor.js';
 import { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
 import { HeuristicManager } from '../agent/HeuristicManager.js';
+import { ObservationDedupManager } from '../agent/ObservationDedupManager.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
 import {
@@ -164,6 +165,7 @@ export class ManagerContext {
   private _trajectoryCompressor?: TrajectoryCompressor;
   private _experienceExtractor?: ExperienceExtractor;
   private _heuristicManager?: HeuristicManager;
+  private _observationDedupManager?: ObservationDedupManager;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
@@ -785,6 +787,20 @@ export class ManagerContext {
       this._heuristicManager = new HeuristicManager(this.storage, this.entityManager);
     }
     return this._heuristicManager;
+  }
+
+  /**
+   * `ObservationDedupManager` — read-only cross-entity duplicate-observation
+   * finder. Complementary to `MemoryEngine` (turn-level) and
+   * `CompressionManager.findDuplicates` (entity-level); this manager
+   * surfaces observation strings that appear verbatim or
+   * near-verbatim across distinct entities. Lazy.
+   */
+  get observationDedupManager(): ObservationDedupManager {
+    if (!this._observationDedupManager) {
+      this._observationDedupManager = new ObservationDedupManager(this.storage);
+    }
+    return this._observationDedupManager;
   }
 
   /** Lazy `PatternDetector` instance — backs `experienceExtractor`
