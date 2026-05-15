@@ -35,11 +35,10 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - `CollaborativeSynthesis.resolveConflicts` ordering integration closed in v2.0.x — `ConflictResolutionPolicy` gains a `{ strategy: 'trust_level' }` variant that sorts candidates by categorical `TrustLevel` descending with recency tiebreak, mirroring `ConflictResolver.resolveTrustLevel`.
 - Verified: 31/31 trust-level + `ConflictResolver` tests; 1957/1957 sibling agent + types + ManagerContext suites green
 
-#### 4. Heuristic Guidelines Manager (3B.8)
-- `src/agent/HeuristicManager.ts` exists as scaffold (in-memory `Map`, `@experimental`) but is not wired into `ManagerContext` or `ConsolidationPipeline`
-- Final 3B item — closing it completes the entire "From Storage to Experience" memory evolution series
-- **Implementation plan**: [`HEURISTIC_3B8_PLAN.md`](./HEURISTIC_3B8_PLAN.md) — three phases, one workflow turn each (3B.8a storage-backed facade → 3B.8b extraction stage → 3B.8c docs + roadmap close)
-- Effort: medium (~3 workflow turns)
+#### 4. ~~Heuristic Guidelines Manager (3B.8)~~ — ✅ shipped (v2.0.x)
+- Closed via storage-backed `HeuristicManager` (`src/agent/HeuristicManager.ts`) + `MemoryType: 'heuristic'` + `HeuristicEntity` + `ctx.heuristicManager` lazy getter (3B.8a) and `HeuristicExtractionStage` in `ConsolidationPipeline` that crystallises resolved failures + qualifying reflections into heuristics with content-hash idempotency (3B.8b). Last 3B item — closes the entire "From Storage to Experience" memory evolution series
+- Manager surface: `add` / `get` / `match` (Jaccard × confidence) / `reinforce` / `recordContradiction` / `detectConflicts` / `remove` / `clear` / `list` / `size`. Mutating writes use `EntityManager` OCC; `reinforce`/`recordContradiction` return discriminated `HeuristicUpdateResult` (`'updated' | 'not-found' | 'conflict' | 'vanished-mid-update'`). `@experimental` tag on the match algorithm stays — future evolution toward semantic-similarity matching is in scope
+- Stage surface: scans resolved `FailureRecord`s and qualifying `ReflectionRecord`s with `experienceType` + `keyInsights[]`. Configurable `minConfidence` / `maxPerRun` / `failureConfidence` / `reflectionConfidenceCap`. `runOnResolution(failureId)` helper for explicit single-failure passes. Not auto-registered on the default pipeline — construct and `registerStage()` explicitly
 
 #### 5. Entity-level observation deduplication
 - `MemoryEngine` covers turn-level dedup (Tier 1–4 chain). Entity-level passes — finding cross-entity duplicate observations — still TBD
@@ -162,7 +161,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 | Track | Outstanding items |
 |-------|-------------------|
-| **Agent memory** (Phase 3B finish + Phase 2 expansions) | 3B.8 Heuristic Guidelines Manager, **Tool Affordance Memory** (new type) |
+| **Agent memory** (Phase 3B finish + Phase 2 expansions) | **Tool Affordance Memory** (new type) |
 | **Dedup** | Entity-level observation dedup |
 | **Backends** | MEM-05 PostgreSQL, MEM-06 concrete vector DBs |
 | **Search** | Spell correction, query DSL frontend |
@@ -171,7 +170,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 | **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport, affective tagging (deferred P3) |
 | **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline) |
 
-**Genuinely active P1/P2 items: 8.** Everything else is gated, strategic, or long-horizon.
+**Genuinely active P1/P2 items: 7.** Everything else is gated, strategic, or long-horizon.
 
 ---
 

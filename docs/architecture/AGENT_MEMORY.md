@@ -1,6 +1,6 @@
 # Agent Memory System Design
 
-**Last reviewed**: 2026-05-14 (v2.0.0 + Phase 2 memory-types expansion Sprints 4–6 + 8)
+**Last reviewed**: 2026-05-15 (v2.0.x + Phase 2 memory-types expansion Sprints 4–6 + 8 + Phase 3B.8 Heuristic Guidelines Manager)
 
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
 
@@ -81,6 +81,16 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   `Result<T, E>` discriminated union (`src/types/result.ts`) plus a documented
 >   error-signalling policy (`CONTRIBUTING.md`): throw for programmer errors,
 >   return `Result` for expected domain failures, never swallow silently.
+> - **v2.0.x (Phase 3B.8 Heuristic Guidelines Manager)** — Last 3B item,
+>   closes the "From Storage to Experience" series. Storage-backed
+>   `HeuristicManager` (`@experimental` match algorithm) with new
+>   `MemoryType: 'heuristic'`, `HeuristicEntity`, `HeuristicId`, and
+>   `ctx.heuristicManager` lazy getter (3B.8a). Companion
+>   `HeuristicExtractionStage` crystallises resolved `FailureRecord`s and
+>   qualifying `ReflectionRecord`s into heuristics with content-hash
+>   idempotency (3B.8b). Mutating writes use `EntityManager` OCC and surface
+>   `'conflict'` via a new `HeuristicUpdateResult`, matching the #55 pattern.
+>   Both constructors are breaking; the class was `@experimental`.
 
 ## Overview
 
@@ -774,6 +784,37 @@ type ConflictStrategy =
     maxPatternConfidence), 0, 1)`
   - `getRelevantForSession` returns reflections matching `sourceSessionId`
     OR overlapping `evidence ∩ sessionEntityNames`
+
+### Heuristic Guidelines (Phase 3B.8)
+
+- **Purpose**: Crystallise implicit patterns into explicit
+  natural-language `condition → action` strategies. Catalog Type 11 —
+  the final 3B item, closes the "From Storage to Experience" memory
+  evolution series
+- **Lifetime**: Permanent; remove via `HeuristicManager.remove`
+- **Manager**: storage-backed `HeuristicManager` (`@experimental` match
+  algorithm); `MemoryType: 'heuristic'`; accessed via `ctx.heuristicManager`
+- **Pipeline integration**: `HeuristicExtractionStage` — scans resolved
+  `FailureRecord`s (with `resolvedReason` + `alternative_taken`) and
+  qualifying `ReflectionRecord`s (with `experienceType` set and
+  `generalization_confidence >= minConfidence`). One heuristic per
+  reflection `keyInsight`. Content-hash idempotency
+  (`h_${sha256(condition|action)}`). `runOnResolution(failureId)` helper
+  for explicit single-failure passes; not auto-registered on the default
+  pipeline
+- **Characteristics**:
+  - `Heuristic` record carries `condition`, `action`, `confidence`,
+    `support`, `contradictions`, `priority?`
+  - `match(input)` — Jaccard token-overlap × confidence, descending;
+    ties broken by `priority`
+  - `reinforce` / `recordContradiction` — OCC-protected via
+    `EntityManager.updateEntity({expectedVersion})`; new discriminated
+    `HeuristicUpdateResult` (`'updated' | 'not-found' | 'conflict' |
+    'vanished-mid-update'`) — `'conflict'` surfaces `VersionConflictError`
+  - `detectConflicts` — pair-wise overlap/contradiction detection
+    (negation prefixes: `don't` / `do not` / `never` / `avoid`)
+  - `HeuristicManager.add` accepts an optional content-addressed `id`
+    for caller-managed idempotency
 
 ### Trust Hierarchy Mixin (Sprint 6)
 
