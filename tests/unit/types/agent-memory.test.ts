@@ -77,6 +77,7 @@ describe('MEMORY_TYPES', () => {
       'reflection',
       'heuristic',
       'exclusion',
+      'decision',
     ]);
   });
 });

@@ -44,6 +44,7 @@ export const MEMORY_TYPES = [
   'reflection',
   'heuristic',
   'exclusion',
+  'decision',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];
@@ -1564,6 +1565,84 @@ export function isExclusionMemory(entity: unknown): entity is ExclusionEntity {
 
 /** Utility alias for exclusion-memory entities. */
 export type ExclusionMemoryEntity = ExclusionEntity;
+
+// ==================== Decision Memory (Phase 3 — Decision Rationale) ====================
+
+/** Branded identifier for decision-memory entities. */
+export type DecisionId = string & { readonly __decisionId: unique symbol };
+
+/**
+ * Discriminated lifecycle for a `DecisionRecord`. Mirrors
+ * `FailureLifecycle`'s shape so consumers can switch uniformly.
+ */
+export type DecisionLifecycle =
+  | { status: 'proposed' }
+  | { status: 'accepted'; acceptedAt: IsoDateTime }
+  | { status: 'superseded'; supersededAt: IsoDateTime; supersededBy: DecisionId }
+  | { status: 'rejected'; rejectedAt: IsoDateTime; rejectedReason: string };
+
+/** Top-level status discriminator from `DecisionLifecycle`. */
+export type DecisionStatus = DecisionLifecycle['status'];
+
+/**
+ * Runtime-queryable architecture-decision-record (ADR-equivalent).
+ * Lets an agent answer "have we already decided X?" without scanning
+ * markdown files.
+ *
+ * The `status` field is duplicated from the `lifecycle` discriminator
+ * for convenient flat-shape filtering (`list({ status: 'accepted' })`);
+ * the two are kept in lockstep by the manager.
+ */
+export interface DecisionRecord {
+  id: DecisionId;
+  timestamp: IsoDateTime;
+  status: DecisionStatus;
+  lifecycle: DecisionLifecycle;
+  /** Problem-space description — the question the decision answers. */
+  context: string;
+  /** The chosen path. */
+  decision: string;
+  /** Considered-but-not-chosen options. */
+  alternatives: string[];
+  /** Anticipated downstream effects. */
+  consequences: string[];
+  /** Optional paths to related ADRs or code. */
+  relatedFiles?: string[];
+  /** Backward link to the decision this one replaces (if any). */
+  supersedes?: DecisionId;
+  sourceSessionId?: string;
+  sourceProjectId?: string;
+}
+
+/**
+ * Persisted shape of a decision-memory entity. `decisionRecord` is the
+ * canonical state; the entity's `name` matches `decisionRecord.id`.
+ */
+export interface DecisionEntity extends AgentEntity {
+  memoryType: 'decision';
+  decisionRecord: DecisionRecord;
+}
+
+/** Type guard for decision-memory entities. */
+export function isDecisionMemory(entity: unknown): entity is DecisionEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'decision') return false;
+  const dr = (entity as DecisionEntity).decisionRecord as
+    | { id?: unknown; status?: unknown; context?: unknown; decision?: unknown; lifecycle?: unknown }
+    | undefined;
+  return (
+    typeof dr === 'object' &&
+    dr !== null &&
+    typeof dr.id === 'string' &&
+    typeof dr.status === 'string' &&
+    typeof dr.context === 'string' &&
+    typeof dr.decision === 'string' &&
+    typeof dr.lifecycle === 'object' &&
+    dr.lifecycle !== null
+  );
+}
+
+/** Utility alias for decision-memory entities. */
+export type DecisionMemoryEntity = DecisionEntity;
 
 // ==================== Utility Types ====================
 

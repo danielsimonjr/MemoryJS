@@ -75,6 +75,7 @@ import { ExperienceExtractor } from '../agent/ExperienceExtractor.js';
 import { HeuristicManager } from '../agent/HeuristicManager.js';
 import { ObservationDedupManager } from '../agent/ObservationDedupManager.js';
 import { ExclusionManager } from '../agent/ExclusionManager.js';
+import { DecisionManager } from '../agent/DecisionManager.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
 import {
@@ -168,6 +169,7 @@ export class ManagerContext {
   private _heuristicManager?: HeuristicManager;
   private _observationDedupManager?: ObservationDedupManager;
   private _exclusionManager?: ExclusionManager;
+  private _decisionManager?: DecisionManager;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
@@ -821,6 +823,19 @@ export class ManagerContext {
       this._exclusionManager = new ExclusionManager(this.storage, this.entityManager);
     }
     return this._exclusionManager;
+  }
+
+  /**
+   * `DecisionManager` (Phase 3 Decision Rationale) — runtime-queryable
+   * architecture-decision-record (ADR) memory. Lifecycle:
+   * proposed → accepted | rejected; accepted → superseded. OCC-protected
+   * via `EntityManager.updateEntity({expectedVersion})`. Lazy.
+   */
+  get decisionManager(): DecisionManager {
+    if (!this._decisionManager) {
+      this._decisionManager = new DecisionManager(this.storage, this.entityManager);
+    }
+    return this._decisionManager;
   }
 
   /** Lazy `PatternDetector` instance — backs `experienceExtractor`

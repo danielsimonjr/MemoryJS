@@ -52,6 +52,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`DecisionManager` + `'decision'` memory type** (Phase 3 Decision
+  Rationale, Phase Dec A) — runtime-queryable ADR-equivalent memory.
+  `propose(input)` creates a `'proposed'` decision; lifecycle:
+  proposed → accepted | rejected; accepted → superseded. All lifecycle
+  mutations (`accept` / `reject` / `supersede`) route through
+  `EntityManager.updateEntity({expectedVersion})` and return discriminated
+  result types (`AcceptDecisionResult` / `RejectDecisionResult` /
+  `SupersedeDecisionResult`) with `'conflict'` / `'illegal-transition'`
+  / `'not-found'` / `'vanished-mid-update'` arms — matching the #55
+  pattern across the agent-memory track. `findByContext(query)`
+  substring-searches across `context` / `decision` / `consequences`.
+  `getChain(id)` walks the `supersedes` link backward (cycle-protected)
+  to the original proposal. `list({status?, sourceSessionId?,
+  sourceProjectId?, limit?})` supports filtered enumeration. Exposed via
+  `ctx.decisionManager` lazy getter. Phase Dec B (ADR markdown
+  dual-write) and Phase Dec C (CLI + docs close) follow. New public
+  types: `DecisionRecord`, `DecisionEntity`, `DecisionId`,
+  `DecisionLifecycle`, `DecisionStatus`, `DecisionInput`,
+  `DecisionEntityOptions`; new type guard `isDecisionMemory`.
 - **Exclusion wiring on the two hot write paths** (Phase Excl B):
   - `MemoryEngine.addTurn` consults `exclusionManager.check(content)` before
     duplicate detection. When a rule matches, returns
