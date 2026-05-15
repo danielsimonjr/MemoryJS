@@ -52,6 +52,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ToolCallObserver`** (Phase Tool B) — canonical producer pipeline
+  for `ToolAffordanceManager`. `observeStart(toolName, args?)` returns
+  a `callId`; `observeComplete(callId, meta?)` / `observeError(callId,
+  error)` / `observePartial(callId, reason)` close the observation,
+  compute `durationMs`, and call `recordOutcome`. `cancel(callId)`
+  drops the in-flight entry without recording. No-op on unknown
+  `callId` (defensive — won't pollute stats with phantom outcomes).
+  Public `events` EventEmitter fires `toolCall:start` /
+  `toolCall:complete` / `toolCall:error` / `toolCall:partial` for
+  telemetry. Exposed via `ctx.toolCallObserver` lazy getter (auto-wires
+  `toolAffordanceManager`). Phase Tool C (MCP adapter) follows.
 - **`ToolAffordanceManager` + `'tool_affordance'` memory type** (Phase
   Tool A, catalog Type 8) — per-tool rolling outcome statistics for
   adaptive tool selection. One record per `toolName`; entity name is

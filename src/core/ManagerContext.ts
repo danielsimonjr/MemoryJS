@@ -79,6 +79,7 @@ import { ExclusionManager } from '../agent/ExclusionManager.js';
 import { DecisionManager } from '../agent/DecisionManager.js';
 import { ProjectContextManager } from '../agent/ProjectContextManager.js';
 import { ToolAffordanceManager } from '../agent/ToolAffordanceManager.js';
+import { ToolCallObserver } from '../agent/ToolCallObserver.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
 import {
@@ -176,6 +177,7 @@ export class ManagerContext {
   private _projectContextManager?: ProjectContextManager;
   private _spellChecker?: SpellChecker;
   private _toolAffordanceManager?: ToolAffordanceManager;
+  private _toolCallObserver?: ToolCallObserver;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
@@ -887,6 +889,21 @@ export class ManagerContext {
       this._toolAffordanceManager = new ToolAffordanceManager(this.storage, this.entityManager);
     }
     return this._toolAffordanceManager;
+  }
+
+  /**
+   * `ToolCallObserver` (Phase Tool B) — canonical producer pipeline for
+   * `ToolAffordanceManager`. External systems (MCP server, agent
+   * wrapper, custom runtime) call `observeStart(toolName)` before
+   * running a tool and `observeComplete` / `observeError` /
+   * `observePartial` after. Emits events for telemetry subscribers.
+   * Lazy; auto-wires `toolAffordanceManager`.
+   */
+  get toolCallObserver(): ToolCallObserver {
+    if (!this._toolCallObserver) {
+      this._toolCallObserver = new ToolCallObserver(this.toolAffordanceManager);
+    }
+    return this._toolCallObserver;
   }
 
   /** Lazy `PatternDetector` instance — backs `experienceExtractor`
