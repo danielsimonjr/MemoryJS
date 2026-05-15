@@ -78,6 +78,7 @@ describe('MEMORY_TYPES', () => {
       'heuristic',
       'exclusion',
       'decision',
+      'project_context',
     ]);
   });
 });

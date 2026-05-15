@@ -52,6 +52,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ProjectContextManager` + `'project_context'` memory type** (Phase 3
+  Project Context, Phase PC A) — structured project-knowledge memory.
+  One record per `projectId` (uniqueness enforced; entity name is
+  `project-context-${projectId}`). Schema: `facts[]` / `conventions[]` /
+  `commands[]` (name+command+purpose) / `glossary[]` (term+definition).
+  `upsert(projectId, partial)` merges with append+dedup on arrays and
+  overwrite on scalars; mutations OCC-protected via
+  `EntityManager.updateEntity({expectedVersion})`. Typed appenders:
+  `appendFact` / `appendConvention` / `appendCommand` /
+  `appendGlossaryTerm`. Removers: `removeFact` / `removeConvention` /
+  `removeCommand` (by name) / `removeGlossaryTerm` (by term). `clear()`
+  wipes the four arrays but keeps the entity. `get(projectId)` is sync.
+  `forContext(projectId, {budgetChars?})` formats the record as a prose
+  summary for the Phase PC B `ContextWindowManager.wakeUp` L0 layer.
+  Exposed via `ctx.projectContextManager` lazy getter. New public types:
+  `ProjectContextRecord`, `ProjectContextEntity`,
+  `ProjectContextCommand`, `ProjectContextGlossaryTerm`,
+  `ProjectContextUpsertInput`, `ProjectContextManagerConfig`,
+  `ForContextOptions`; new type guard `isProjectContextMemory`. Phase
+  PC B (wakeUp integration) and Phase PC C (CLI + docs close) follow.
 - **ADR markdown dual-write on `DecisionManager`** (Phase Dec B):
   - `exportAsAdrMarkdown(id)` — synchronous; renders a stored decision
     as ADR-format markdown (`# title`, `## Status`, `## Context`,

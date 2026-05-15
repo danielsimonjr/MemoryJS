@@ -45,6 +45,7 @@ export const MEMORY_TYPES = [
   'heuristic',
   'exclusion',
   'decision',
+  'project_context',
 ] as const;
 
 export type MemoryType = (typeof MEMORY_TYPES)[number];
@@ -1643,6 +1644,76 @@ export function isDecisionMemory(entity: unknown): entity is DecisionEntity {
 
 /** Utility alias for decision-memory entities. */
 export type DecisionMemoryEntity = DecisionEntity;
+
+// ==================== Project Context Memory (Phase 3 — Type 2) ====================
+
+/** A documented project-specific command (build, test, lint, etc.). */
+export interface ProjectContextCommand {
+  name: string;
+  command: string;
+  purpose: string;
+}
+
+/** A domain-term entry in the project glossary. */
+export interface ProjectContextGlossaryTerm {
+  term: string;
+  definition: string;
+}
+
+/**
+ * Structured project knowledge — the runtime-queryable companion to
+ * unstructured CLAUDE.md content. One record per `projectId` (uniqueness
+ * enforced at the manager level). The entity's `name` is
+ * `project-context-${projectId}`.
+ */
+export interface ProjectContextRecord {
+  /** Equal to `projectId`. */
+  id: string;
+  /** Original creation timestamp. */
+  timestamp: IsoDateTime;
+  projectId: string;
+  /** Project-level facts (e.g. "Built with TypeScript"). */
+  facts: string[];
+  /** Project-specific conventions (e.g. "Use Result<T,E>"). */
+  conventions: string[];
+  /** Documented project commands. */
+  commands: ProjectContextCommand[];
+  /** Domain-term glossary. */
+  glossary: ProjectContextGlossaryTerm[];
+  /** Updated on every merge / append / remove. */
+  lastUpdated: IsoDateTime;
+}
+
+/**
+ * Persisted shape of a project-context entity. `projectContextRecord`
+ * is the canonical state. The entity's `name` is
+ * `project-context-${projectId}`.
+ */
+export interface ProjectContextEntity extends AgentEntity {
+  memoryType: 'project_context';
+  projectContextRecord: ProjectContextRecord;
+}
+
+/** Type guard for project-context-memory entities. */
+export function isProjectContextMemory(entity: unknown): entity is ProjectContextEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'project_context') return false;
+  const pcr = (entity as ProjectContextEntity).projectContextRecord as
+    | { id?: unknown; projectId?: unknown; facts?: unknown; conventions?: unknown; commands?: unknown; glossary?: unknown }
+    | undefined;
+  return (
+    typeof pcr === 'object' &&
+    pcr !== null &&
+    typeof pcr.id === 'string' &&
+    typeof pcr.projectId === 'string' &&
+    Array.isArray(pcr.facts) &&
+    Array.isArray(pcr.conventions) &&
+    Array.isArray(pcr.commands) &&
+    Array.isArray(pcr.glossary)
+  );
+}
+
+/** Utility alias for project-context entities. */
+export type ProjectContextMemoryEntity = ProjectContextEntity;
 
 // ==================== Utility Types ====================
 

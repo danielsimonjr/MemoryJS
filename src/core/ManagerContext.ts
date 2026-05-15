@@ -76,6 +76,7 @@ import { HeuristicManager } from '../agent/HeuristicManager.js';
 import { ObservationDedupManager } from '../agent/ObservationDedupManager.js';
 import { ExclusionManager } from '../agent/ExclusionManager.js';
 import { DecisionManager } from '../agent/DecisionManager.js';
+import { ProjectContextManager } from '../agent/ProjectContextManager.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
 import {
@@ -170,6 +171,7 @@ export class ManagerContext {
   private _observationDedupManager?: ObservationDedupManager;
   private _exclusionManager?: ExclusionManager;
   private _decisionManager?: DecisionManager;
+  private _projectContextManager?: ProjectContextManager;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
@@ -836,6 +838,24 @@ export class ManagerContext {
       this._decisionManager = new DecisionManager(this.storage, this.entityManager);
     }
     return this._decisionManager;
+  }
+
+  /**
+   * `ProjectContextManager` (Phase 3 Project Context) — structured
+   * project knowledge (facts / conventions / commands / glossary), one
+   * record per `projectId`. Companion to unstructured CLAUDE.md
+   * content; runtime-queryable. `forContext(projectId)` formats the
+   * record as a prose summary fit for the Phase PC B
+   * `ContextWindowManager.wakeUp` L0 layer. Lazy.
+   */
+  get projectContextManager(): ProjectContextManager {
+    if (!this._projectContextManager) {
+      this._projectContextManager = new ProjectContextManager(
+        this.storage,
+        this.entityManager,
+      );
+    }
+    return this._projectContextManager;
   }
 
   /** Lazy `PatternDetector` instance — backs `experienceExtractor`
