@@ -688,6 +688,10 @@ export class ManagerContext {
           recentTurnsForImportance: Math.trunc(
             this.getEnvNumber('MEMORY_ENGINE_RECENT_TURNS', 10),
           ),
+          // Phase 3 do_not_remember: auto-wire so addTurn consults
+          // active exclusion rules. Direct-construct MemoryEngine
+          // (bypassing this getter) to opt out.
+          exclusionManager: this.exclusionManager,
         },
       );
     }

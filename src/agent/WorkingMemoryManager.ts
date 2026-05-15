@@ -14,7 +14,8 @@ import type {
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { passesEntropyFilter, type EntropyFilterConfig } from './EntropyFilter.js';
-import { LowEntropyContentError } from '../utils/errors.js';
+import { LowEntropyContentError, MemoryWriteBlockedError } from '../utils/errors.js';
+import type { ExclusionManager } from './ExclusionManager.js';
 
 /**
  * Configuration for WorkingMemoryManager.
@@ -37,6 +38,14 @@ export interface WorkingMemoryConfig {
    * being stored. Set to null/undefined to disable (default: disabled).
    */
   entropyFilter?: EntropyFilterConfig;
+  /**
+   * Optional `ExclusionManager` (Phase 3 `do_not_remember`). When
+   * supplied, `createWorkingMemory` calls `exclusionManager.check(content)`
+   * before any other gate (importance, TTL, entropy) and throws
+   * `MemoryWriteBlockedError` if the content matches an active rule.
+   * Omit to disable the write-block path entirely.
+   */
+  exclusionManager?: ExclusionManager;
 }
 
 /**
@@ -142,8 +151,9 @@ export interface ConfirmationResult {
  */
 export class WorkingMemoryManager {
   private readonly storage: IGraphStorage;
-  private readonly config: Required<Omit<WorkingMemoryConfig, 'entropyFilter'>> & {
+  private readonly config: Required<Omit<WorkingMemoryConfig, 'entropyFilter' | 'exclusionManager'>> & {
     entropyFilter?: EntropyFilterConfig;
+    exclusionManager?: ExclusionManager;
   };
 
   // Index: sessionId -> Set of entity names
@@ -158,6 +168,7 @@ export class WorkingMemoryManager {
       autoPromoteConfidenceThreshold: config.autoPromoteConfidenceThreshold ?? 0.8,
       autoPromoteConfirmationThreshold: config.autoPromoteConfirmationThreshold ?? 2,
       entropyFilter: config.entropyFilter,
+      exclusionManager: config.exclusionManager,
     };
     this.sessionIndex = new Map();
   }
@@ -229,6 +240,20 @@ export class WorkingMemoryManager {
     content: string,
     options?: WorkingMemoryOptions
   ): Promise<AgentEntity> {
+    // Exclusion gate (Phase 3 `do_not_remember`): when an
+    // `ExclusionManager` is wired and the content matches an active
+    // rule, throw `MemoryWriteBlockedError` instead of writing.
+    // Runs BEFORE the entropy filter — user policy beats heuristics.
+    if (this.config.exclusionManager) {
+      const verdict = await this.config.exclusionManager.check(
+        content,
+        options?.entityType ?? 'working_memory',
+      );
+      if (verdict.blocked) {
+        throw new MemoryWriteBlockedError(verdict.ruleId ?? 'unknown', verdict.reason);
+      }
+    }
+
     // Entropy gate (optional) — reject low-information content early
     if (this.config.entropyFilter) {
       const { minEntropy = 1.5, minLength = 10 } = this.config.entropyFilter;

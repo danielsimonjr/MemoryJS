@@ -52,6 +52,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Exclusion wiring on the two hot write paths** (Phase Excl B):
+  - `MemoryEngine.addTurn` consults `exclusionManager.check(content)` before
+    duplicate detection. When a rule matches, returns
+    `{ blocked: true, blockedByRuleId, blockedReason?, duplicateDetected: false,
+    importanceScore: 0 }` and emits `memoryEngine:writeBlocked`. No entity
+    is created. `AddTurnResult.entity` is now `AgentEntity | undefined`
+    (narrow on `!result.blocked`).
+  - `WorkingMemoryManager.createWorkingMemory` consults the same check
+    before the entropy gate; throws `MemoryWriteBlockedError` (new export
+    from `src/utils/errors.ts`, lightweight pattern matching
+    `LowEntropyContentError`) when a rule matches.
+  - `MemoryEngineConfig` and `WorkingMemoryConfig` gain an optional
+    `exclusionManager` field. `ManagerContext.memoryEngine` auto-wires
+    `this.exclusionManager`; direct-construct `MemoryEngine` to opt out.
+    `WorkingMemoryManager` consumers opt in via
+    `agentMemory({ workingMemory: { exclusionManager } })`.
 - **`ExclusionManager` + `'exclusion'` memory type** (Phase 3 `do_not_remember`,
   Phase Excl A) — user-supplied content-pattern exclusion rules.
   `add(input)` validates and (when `scope` is `'past-only'` or `'both'`)
