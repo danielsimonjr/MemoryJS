@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2] - 2026-05-16
+
+### Added
+
+- **`memory smoke` / `memoryjs smoke` CLI subcommand** —
+  per-category end-to-end smoke test that exercises every major manager
+  surface (entity, relation, observation, search ×3, tag, hierarchy,
+  graph algorithms, IO export, analytics, validation, decision×3,
+  heuristic×2, project context×2, tool affordance, exclusion,
+  observation dedup, spell ×1). 30 steps run against a fresh temp graph
+  in ~150 ms; flags: `--storage <path>` (override the temp dir),
+  `--keep` (preserve the graph + print its path for interactive
+  dogfooding), `--verbose` (print each step as it runs). Exit code is
+  non-zero if any step fails. New file:
+  `src/cli/commands/smoke.ts`; wired via `commands/index.ts`. Unit
+  tests at `tests/unit/cli/smoke.test.ts` use commander's `parseAsync`
+  instead of spawning a subprocess for fast in-process assertion.
+
 ## [2.1.1] - 2026-05-16
 
 ### Fixed
