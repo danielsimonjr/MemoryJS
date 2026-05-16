@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-05-16
+
+### Fixed
+
+- **`UpdateEntitySchema` now uses `.passthrough()` instead of `.strict()`**
+  so the v2.1.0 subclass managers (`DecisionManager`, `HeuristicManager`,
+  `ProjectContextManager`, `ToolAffordanceManager`, `ExclusionManager`,
+  `ObservationDedupManager`) can attach their domain-specific record
+  fields (`decisionRecord`, `projectContext`, `heuristic`, `lastModified`,
+  etc.) via `EntityManager.updateEntity()` without tripping
+  `"Invalid update data"` validation errors. The bug surfaced as
+  `accept_decision`, `reject_decision`, `supersede_decision`,
+  `reinforce_heuristic`, `record_heuristic_contradiction`,
+  `upsert_project_context` (post-create update path), and the
+  `append_project_*` / `remove_project_*` / `clear_project_context`
+  tools failing with `"Error: Invalid update data"` when consumed from
+  Memory-mcp (memoryjs's own DecisionManager unit tests passed because
+  they used a mock `EntityManager` that skipped validation — the real
+  `EntityManager` path was never exercised end-to-end). 7282-test
+  `npm run test:ci` suite stays green after the change. Discovered while
+  writing handler tests for Memory-mcp v12.3.0's Phase 16 tool surface.
+
 ## [2.1.0] - 2026-05-15
 
 Phase 3 of the memory-types expansion is fully shipped

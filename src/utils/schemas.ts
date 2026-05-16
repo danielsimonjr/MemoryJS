@@ -166,7 +166,11 @@ export const UpdateEntitySchema = z.object({
     recordedAt: z.string().optional(),
   })).optional(),
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
-}).strict();
+  // v2.1.1: subclass managers (DecisionManager, HeuristicManager, ProjectContextManager,
+  // ToolAffordanceManager, ExclusionManager, ObservationDedupManager) attach domain-specific
+  // record fields (decisionRecord, projectContext, heuristic, etc.) and a lastModified
+  // timestamp via updateEntity(). .passthrough() admits those without per-field enumeration.
+}).passthrough();
 
 // ==================== Relation Schemas ====================
 
