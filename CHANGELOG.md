@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-05-17
+
+### Removed
+
+- **16 test-only orphan modules + their test suites + 1 dependent
+  benchmark.** Each module was implemented and unit-tested but never
+  wired to a production code path, never re-exported via `src/index.ts`
+  / `dist/index.d.ts`, never consumed by Memory-mcp. The dep-graph
+  audit (`tools/create-dependency-graph --include-tests`) flagged them
+  as test-island components; cross-referenced honestly against `src/`,
+  `tests/`, `tools/`, the public `.d.ts`, and the Memory-mcp consumer
+  before removal.
+
+  Modules removed (and their tests, ~256 test cases):
+
+  | Module | Path |
+  |---|---|
+  | IDatabaseAdapter | `src/adapters/IDatabaseAdapter.ts` |
+  | IVectorDBAdapter | `src/adapters/IVectorDBAdapter.ts` |
+  | EntityProxy | `src/core/EntityProxy.ts` |
+  | BufferMmapBackend | `src/core/mmap/BufferMmapBackend.ts` |
+  | WriteAheadLog | `src/core/WriteAheadLog.ts` |
+  | AnomalyDetector | `src/features/AnomalyDetector.ts` |
+  | CRDT | `src/features/CRDT.ts` |
+  | BackgroundIndexer | `src/search/BackgroundIndexer.ts` |
+  | LSH | `src/search/LSH.ts` |
+  | Node2Vec | `src/search/Node2Vec.ts` |
+  | PartitionedInvertedIndex | `src/search/PartitionedInvertedIndex.ts` |
+  | QueryLanguage | `src/search/QueryLanguage.ts` |
+  | SearchStream | `src/search/SearchStream.ts` |
+  | SPARQL | `src/search/SPARQL.ts` |
+  | SynonymManager | `src/search/SynonymManager.ts` |
+  | BrotliCompressionAdapter | `src/utils/compression/BrotliCompressionAdapter.ts` |
+
+  Also removed: `tests/performance/compression-adapter-benchmarks.test.ts`
+  (depended on `BrotliCompressionAdapter`).
+
+  **No public-API change**: `dist/index.d.ts` had zero hits for any
+  of these symbols before removal. Anything reaching past the public
+  surface (`import { ... } from '@danielsimonjr/memoryjs/dist/search/SPARQL.js'`)
+  was always unsupported and would now break — but no in-house caller
+  exists. Pre-removal test count: 7308. Post-removal: 7051 (256 tests
+  removed, one unrelated `ObservationColumnStore` flake unchanged).
+
+- **8 redundant `XxxMemoryEntity` type aliases** in
+  `src/types/agent-memory.ts` (`FailureMemoryEntity`,
+  `PlanMemoryEntity`, `ReflectionMemoryEntity`,
+  `HeuristicMemoryEntity`, `ExclusionMemoryEntity`,
+  `DecisionMemoryEntity`, `ProjectContextMemoryEntity`,
+  `ToolAffordanceMemoryEntity`). Each was `type X = Y` indirection
+  left over from a prior rename; the canonical `XxxEntity` names
+  are unchanged and remain the public-API surface.
+
 ## [2.4.0] - 2026-05-17
 
 ### Added

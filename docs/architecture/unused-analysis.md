@@ -1,11 +1,11 @@
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-05-14
+**Generated**: 2026-05-17
 
 ## Summary
 
-- **Potentially unused files**: 21
-- **Potentially unused exports**: 423
+- **Potentially unused files**: 18
+- **Potentially unused exports**: 469
 
 ## Potentially Unused Files
 
@@ -13,9 +13,6 @@ These files are not imported by any other file in the codebase:
 
 - `src/adapters/IDatabaseAdapter.ts`
 - `src/adapters/IVectorDBAdapter.ts`
-- `src/adapters/LangChainMemoryAdapter.ts`
-- `src/adapters/RestRouter.ts`
-- `src/agent/HeuristicManager.ts`
 - `src/cli/index.ts`
 - `src/cli/interactive.ts`
 - `src/core/EntityProxy.ts`
@@ -36,6 +33,32 @@ These files are not imported by any other file in the codebase:
 ## Potentially Unused Exports
 
 These exports are not imported by any other file in the codebase:
+
+### `src/adapters/LangChainMemoryAdapter.ts`
+
+- `ChatMessage` (interface)
+- `MemoryInputs` (interface)
+- `MemoryVariables` (interface)
+- `LangChainMemoryAdapterOptions` (interface)
+
+### `src/adapters/pagination.ts`
+
+- `PaginationParams` (interface)
+- `ParsePaginationOptions` (interface)
+- `PaginatedResult` (interface)
+
+### `src/adapters/RateLimiter.ts`
+
+- `RateLimiterConfig` (interface)
+- `RateLimitVerdict` (interface)
+
+### `src/adapters/RestRouter.ts`
+
+- `RestRequest` (interface)
+- `RestResponse` (interface)
+- `RouteDefinition` (interface)
+- `RestMethod` (type)
+- `RestHandler` (type)
 
 ### `src/agent/AccessTracker.ts`
 
@@ -71,6 +94,8 @@ These exports are not imported by any other file in the codebase:
 ### `src/agent/ConsolidationPipeline.ts`
 
 - `ReflectionStageConfig` (interface)
+- `HeuristicExtractionStageConfig` (interface)
+- `ObservationDedupReportStageConfig` (interface)
 
 ### `src/agent/ConsolidationScheduler.ts`
 
@@ -90,6 +115,15 @@ These exports are not imported by any other file in the codebase:
 - `DecayOperationOptions` (interface)
 - `ReinforcementOptions` (interface)
 
+### `src/agent/DecisionManager.ts`
+
+- `DecisionInput` (interface)
+- `DecisionEntityOptions` (interface)
+- `ListDecisionsOptions` (interface)
+- `AcceptDecisionResult` (type)
+- `RejectDecisionResult` (type)
+- `SupersedeDecisionResult` (type)
+
 ### `src/agent/DistillationPipeline.ts`
 
 - `DistillationStats` (interface)
@@ -101,14 +135,17 @@ These exports are not imported by any other file in the codebase:
 - `DreamEngineCallbacks` (interface)
 - `DreamPhaseResult` (interface)
 
+### `src/agent/ExclusionManager.ts`
+
+- `AddExclusionRuleInput` (interface)
+- `ExclusionCheckResult` (interface)
+
 ### `src/agent/ExperienceExtractor.ts`
 
 - `Action` (interface)
-- `Trajectory` (interface)
 - `Rule` (interface)
 - `HeuristicGuideline` (interface)
 - `DecisionRule` (interface)
-- `TrajectoryCluster` (interface)
 - `Experience` (interface)
 - `ExperienceExtractorConfig` (interface)
 - `Outcome` (type)
@@ -128,6 +165,13 @@ These exports are not imported by any other file in the codebase:
 - `GetAllOptions` (interface)
 - `FailureInput` (type)
 
+### `src/agent/HeuristicManager.ts`
+
+- `AddHeuristicOptions` (interface)
+- `HeuristicMatch` (interface)
+- `HeuristicConflict` (interface)
+- `HeuristicUpdateResult` (type)
+
 ### `src/agent/ImportanceScorer.ts`
 
 - `ImportanceScorerConfig` (interface)
@@ -146,6 +190,12 @@ These exports are not imported by any other file in the codebase:
 
 - `Contradiction` (interface)
 - `MemoryValidatorConfig` (interface)
+
+### `src/agent/ObservationDedupManager.ts`
+
+- `DuplicateObservationOccurrence` (interface)
+- `DuplicateObservationGroup` (interface)
+- `ObservationDedupManagerConfig` (interface)
 
 ### `src/agent/ObserverPipeline.ts`
 
@@ -168,6 +218,12 @@ These exports are not imported by any other file in the codebase:
 
 - `ProfileResponse` (interface)
 - `ProfileOptions` (interface)
+
+### `src/agent/ProjectContextManager.ts`
+
+- `ProjectContextUpsertInput` (interface)
+- `ProjectContextManagerConfig` (interface)
+- `ForContextOptions` (interface)
 
 ### `src/agent/ProspectiveMemoryManager.ts`
 
@@ -229,6 +285,18 @@ These exports are not imported by any other file in the codebase:
 ### `src/agent/SummarizationService.ts`
 
 - `GroupingResult` (interface)
+
+### `src/agent/ToolAffordanceManager.ts`
+
+- `ToolAffordanceManagerConfig` (interface)
+- `RecordOutcomeInput` (interface)
+- `ToolAffordanceStats` (interface)
+- `SuggestToolOptions` (interface)
+- `ToolSuggestion` (interface)
+
+### `src/agent/ToolCallObserver.ts`
+
+- `ToolCallEvent` (type)
 
 ### `src/agent/TrajectoryCompressor.ts`
 
@@ -510,6 +578,12 @@ These exports are not imported by any other file in the codebase:
 - `CorrectedQuery` (interface)
 - `CorrectQueryOptions` (interface)
 
+### `src/search/SpellChecker.ts`
+
+- `SpellCheckerConfig` (interface)
+- `SuggestOptions` (interface)
+- `SpellSuggestion` (interface)
+
 ### `src/search/SymbolicSearch.ts`
 
 - `SymbolicResult` (interface)
@@ -589,6 +663,11 @@ These exports are not imported by any other file in the codebase:
 - `FailureMemoryEntity` (type)
 - `PlanMemoryEntity` (type)
 - `ReflectionMemoryEntity` (type)
+- `HeuristicMemoryEntity` (type)
+- `ExclusionMemoryEntity` (type)
+- `DecisionMemoryEntity` (type)
+- `ProjectContextMemoryEntity` (type)
+- `ToolAffordanceMemoryEntity` (type)
 - `WorkingMemoryEntity` (type)
 - `EpisodicMemoryEntity` (type)
 - `SemanticMemoryEntity` (type)
