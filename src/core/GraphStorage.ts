@@ -89,6 +89,20 @@ const OPTIONAL_PERSISTED_ENTITY_FIELDS: ReadonlyArray<string> = [
   'outcome', 'failureCauses',
   // ArtifactEntity extension (types/artifact.ts)
   'artifactType', 'toolName', 'shortId',
+  // v2.1.0 subclass-manager record fields (sibling to the v2.1.1
+  // UpdateEntitySchema.passthrough fix — same root cause: subclass managers
+  // attach domain records that the persistence allowlist must also admit,
+  // otherwise the records are silently dropped on save and the managers'
+  // list/match/get operations return empty on next load).
+  'heuristicRecord',            // HeuristicEntity
+  'decisionRecord',             // DecisionEntity (includes nested lifecycle)
+  'exclusionRule',              // ExclusionEntity
+  'projectContextRecord',       // ProjectContextEntity
+  'toolAffordanceRecord',       // ToolAffordanceEntity
+  'prospectiveRecord',          // ProspectiveEntity
+  'failureRecord',              // FailureEntity
+  'planRecord',                 // PlanEntity
+  'reflectionRecord',           // ReflectionEntity
 ];
 
 function copyOptionalPersistedFields(

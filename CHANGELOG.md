@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-05-17
+
+### Fixed
+
+- **`OPTIONAL_PERSISTED_ENTITY_FIELDS` in `src/core/GraphStorage.ts`
+  now admits the v2.1.0 subclass-manager record fields**
+  (`heuristicRecord`, `decisionRecord`, `exclusionRule`,
+  `projectContextRecord`, `toolAffordanceRecord`, plus the older
+  `prospectiveRecord`, `failureRecord`, `planRecord`,
+  `reflectionRecord`). The persistence allowlist was the sibling bug to
+  the v2.1.1 `UpdateEntitySchema` strict-mode rejection: subclass
+  managers wrote domain records via `createEntities`/`appendEntity`,
+  but the allowlist silently stripped them on serialisation, so a
+  reload of the JSONL returned base `Entity` shapes without the records
+  and downstream `list()` / `match()` / `get()` calls returned empty.
+  Surfaced while dogfooding the new `memory heuristic list` CLI
+  subcommand against a smoke graph — heuristic created, persisted as a
+  bare entity, list returned 0. 7302-test `npm run test:ci` suite stays
+  green after the change.
+
+### Added
+
+- **`memory heuristic` subcommand group** — `add`, `list`, `count`,
+  `get`, `match`, `reinforce`, `contradict`, `conflicts`, `remove`,
+  `clear` over `ctx.heuristicManager`. JSON output. Fills the gap left
+  by the smoke-only access route in v2.1.0.
+- **`memory obs-dedup` subcommand group** — `find` and `find-jaccard`
+  over `ctx.observationDedupManager` with `--entity-type` (single or
+  comma-list), `--project-id`, `--session-id`, `--min-occurrences`
+  (≥2), `--max-groups` filters.
+- **`memory spell` subcommand group** — `suggest`, `rebuild`, `size`
+  over `ctx.spellChecker`. `suggest` supports `--limit`,
+  `--min-score`, `--max-distance`.
+- **`memory check` repair command** — detects orphan relations (relation
+  whose `from`/`to` references a missing entity), missing parents
+  (entity whose `parentId` references a missing entity), and hierarchy
+  cycles. Dry-run by default; `--apply` deletes orphan relations and
+  clears missing parentIds. Cycles are always reported but never
+  auto-repaired (no safe default for which edge to break). Exit code
+  non-zero when issues exist without `--apply`; zero when issues are
+  successfully repaired via `--apply`. Hierarchy cycle reporting
+  attaches the cycling node to assist human review. New file:
+  `src/cli/commands/check.ts`. Four-test suite at
+  `tests/unit/cli/check.test.ts` exercises clean-graph,
+  broken-graph-dry-run, broken-graph-apply (with on-disk verification),
+  and clean-graph-apply (no-op) paths.
+
 ## [2.2.0] - 2026-05-17
 
 ### Added

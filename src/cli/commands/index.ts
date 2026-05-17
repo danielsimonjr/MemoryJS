@@ -23,6 +23,10 @@ import { registerToolAffordanceCommands } from './toolAffordance.js';
 import { registerSmokeCommand } from './smoke.js';
 import { registerDiagCommand } from './diag.js';
 import { registerInspectCommands } from './inspect.js';
+import { registerHeuristicCommands } from './heuristic.js';
+import { registerObservationDedupCommands } from './observationDedup.js';
+import { registerSpellCommands } from './spell.js';
+import { registerCheckCommand } from './check.js';
 
 export function registerCommands(program: Command): void {
   registerEntityCommands(program);
@@ -41,4 +45,8 @@ export function registerCommands(program: Command): void {
   registerSmokeCommand(program);
   registerDiagCommand(program);
   registerInspectCommands(program);
+  registerHeuristicCommands(program);
+  registerObservationDedupCommands(program);
+  registerSpellCommands(program);
+  registerCheckCommand(program);
 }
