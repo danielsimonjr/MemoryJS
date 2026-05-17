@@ -263,6 +263,82 @@ async function processCommand(
       });
       break;
 
+    case 'show': {
+      const name = args.join(' ');
+      if (!name) {
+        console.log(chalk.yellow('Usage: show <entity-name>'));
+        break;
+      }
+      const { snapshotEntity } = await import('./commands/inspect.js');
+      try {
+        const snap = await snapshotEntity(ctx, name);
+        console.log(JSON.stringify(snap, null, 2));
+      } catch (e) {
+        console.log(chalk.yellow((e as Error).message));
+      }
+      break;
+    }
+
+    case 'tree': {
+      const root = args[0];
+      const { buildTree, renderTreeAscii } = await import('./commands/inspect.js');
+      try {
+        if (root) {
+          const t = await buildTree(ctx, root);
+          process.stdout.write(renderTreeAscii(t));
+        } else {
+          const roots = await ctx.hierarchyManager.getRootEntities();
+          for (const r of roots) {
+            const t = await buildTree(ctx, r.name);
+            process.stdout.write(renderTreeAscii(t));
+          }
+        }
+      } catch (e) {
+        console.log(chalk.yellow((e as Error).message));
+      }
+      break;
+    }
+
+    case 'neighbors': {
+      const name = args.join(' ');
+      if (!name) {
+        console.log(chalk.yellow('Usage: neighbors <entity-name>'));
+        break;
+      }
+      const { neighbors } = await import('./commands/inspect.js');
+      try {
+        const report = await neighbors(ctx, name);
+        console.log(JSON.stringify(report, null, 2));
+      } catch (e) {
+        console.log(chalk.yellow((e as Error).message));
+      }
+      break;
+    }
+
+    case 'diag':
+    case 'health': {
+      // Defer to the same code path the subcommand uses; print summary inline.
+      const graph = await ctx.storage.loadGraph();
+      const names = new Set(graph.entities.map((e) => e.name));
+      const orphans = graph.relations.filter((r) => !names.has(r.from) || !names.has(r.to)).length;
+      const dupNames = graph.entities.length - names.size;
+      console.log(JSON.stringify({
+        entities: graph.entities.length,
+        relations: graph.relations.length,
+        orphan_relations: orphans,
+        duplicate_names: dupNames,
+        storage: ictx.options.storage,
+      }, null, 2));
+      break;
+    }
+
+    case 'size': {
+      const { buildSizeReport } = await import('./commands/inspect.js');
+      const report = await buildSizeReport(ctx, ictx.options.storage);
+      console.log(JSON.stringify(report, null, 2));
+      break;
+    }
+
     default:
       console.log(chalk.yellow(`Unknown command: ${command}. Type "help" for available commands.`));
   }
@@ -282,6 +358,11 @@ ${chalk.green('Available Commands:')}
   ${chalk.cyan('delete <name>')}      Delete entity
   ${chalk.cyan('export [format]')}    Export graph to stdout
   ${chalk.cyan('stats')}              Show graph statistics
+  ${chalk.cyan('show <name>')}        Verbose entity snapshot (obs + relations + hierarchy)
+  ${chalk.cyan('tree [root]')}        ASCII hierarchy tree (all roots if omitted)
+  ${chalk.cyan('neighbors <name>')}   Incoming + outgoing relations + degree counts
+  ${chalk.cyan('diag')} / ${chalk.cyan('health')}     Quick integrity summary
+  ${chalk.cyan('size')}               Graph + storage footprint
   ${chalk.cyan('history')}            Show command history
   ${chalk.cyan('clear')}              Clear screen
   ${chalk.cyan('help')}               Show this help

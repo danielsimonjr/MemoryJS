@@ -21,6 +21,8 @@ import { registerDecisionCommands } from './decision.js';
 import { registerProjectContextCommands } from './projectContext.js';
 import { registerToolAffordanceCommands } from './toolAffordance.js';
 import { registerSmokeCommand } from './smoke.js';
+import { registerDiagCommand } from './diag.js';
+import { registerInspectCommands } from './inspect.js';
 
 export function registerCommands(program: Command): void {
   registerEntityCommands(program);
@@ -37,4 +39,6 @@ export function registerCommands(program: Command): void {
   registerProjectContextCommands(program);
   registerToolAffordanceCommands(program);
   registerSmokeCommand(program);
+  registerDiagCommand(program);
+  registerInspectCommands(program);
 }

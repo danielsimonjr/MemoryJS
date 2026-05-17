@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-05-17
+
+### Added
+
+- **CLI engineering surface — diagnostic + inspection commands** —
+  Eight new top-level CLI subcommands turn `memory` / `memoryjs` into
+  a fast troubleshooting tool that works directly against the library
+  when the MCP server isn't responding. All commands emit JSON by
+  default (pipe-friendly).
+
+  **Diagnostic** (`src/cli/commands/diag.ts`):
+
+  - **`memory diag`** — one-shot snapshot: memoryjs version, node
+    runtime, platform/arch/pid, storage path + size + entity/relation
+    counts, current ISO timestamp. Good first command when something
+    feels off.
+  - **`memory env`** — full catalog of memoryjs env vars with
+    documented defaults vs resolved current values and a `set` flag.
+    `--all` includes vars with no documented default. Mirrors the
+    Environment Variables section of `CLAUDE.md`.
+  - **`memory health`** — fast integrity checks: storage:loadGraph,
+    entities:distinct-names, relations:no-orphans,
+    hierarchy:no-cycles-no-missing-parents. Each check reports per-step
+    duration; exits non-zero with a structured report if any check
+    fails.
+  - **`memory version`** — compact one-line JSON: `memoryjs`, `node`,
+    `platform/arch`. Useful for piping into other tooling.
+
+  **Inspection** (`src/cli/commands/inspect.ts`):
+
+  - **`memory show <entity>`** — verbose snapshot: observations (via
+    ObservationManager), outgoing + incoming relations, tags,
+    importance, timestamps, parent, immediate children, full
+    ancestors list. JSON output.
+  - **`memory tree [root]`** — hierarchy tree. With explicit root,
+    returns that subtree; without, all root entities. `--ascii`
+    renders with ├── / └── connectors for human reading; default is
+    nested JSON.
+  - **`memory neighbors <entity>`** — incoming + outgoing relations
+    with in/out degree counts.
+  - **`memory size`** — graph + storage footprint: entity / relation
+    / observation counts, distinct tag count, avg observations per
+    entity, file byte size, line count.
+
+  **REPL touch-up** (`src/cli/interactive.ts`): the existing
+  `memory interactive` shell now recognises `show <name>`,
+  `tree [root]`, `neighbors <name>`, `diag` / `health`, and `size` —
+  same code path as the subcommands, modest ~80 line additions to
+  keep the live-debug experience useful.
+
+  **Tests**: `tests/unit/cli/diag.test.ts` (5 tests including a
+  deliberately-broken graph with an orphan relation that fails the
+  health check) + `tests/unit/cli/inspect.test.ts` (8 tests covering
+  show / tree JSON / tree ASCII / neighbors / size against a seeded
+  parent/child hierarchy). Both use commander's `parseAsync` in-process
+  rather than spawning subprocesses.
+
+  **Bugs caught during development:**
+
+  - `getEntityByName` reads an in-memory `nameIndex` that's only
+    hydrated by `loadGraph()`. The first draft of `snapshotEntity`,
+    `buildTree`, and `neighbors` called the sync lookup without first
+    awaiting the graph load, so every CLI invocation returned "entity
+    not found" even against a populated graph. Fix: call `loadGraph`
+    before the lookup. Tip: `entity get` worked because
+    `entityManager.getEntity` loads on demand.
+  - ASCII tree connector logic conflated "root has empty prefix" with
+    "children of root have empty prefix" — children rendered at column
+    zero with no `├──` / `└──` markers. Fix: track `isRoot` separately
+    from `prefix`, so children of the root get connectors but no
+    inherited indentation.
+
 ## [2.1.2] - 2026-05-16
 
 ### Added
