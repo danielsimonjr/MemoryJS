@@ -339,6 +339,58 @@ async function processCommand(
       break;
     }
 
+    case 'check': {
+      const apply = args[0] === '--apply';
+      const { detectIssues, applyFixes } = await import('./commands/check.js');
+      const { orphans, missing, cycles } = await detectIssues(ctx);
+      const ok = orphans.length === 0 && missing.length === 0 && cycles.length === 0;
+      const result: Record<string, unknown> = {
+        ok, applied: apply, orphanRelations: orphans, missingParents: missing, hierarchyCycles: cycles,
+      };
+      if (apply && (orphans.length > 0 || missing.length > 0)) {
+        result.actions = await applyFixes(ctx, orphans, missing);
+      }
+      console.log(JSON.stringify(result, null, 2));
+      break;
+    }
+
+    case 'heuristics': {
+      const heuristics = await ctx.heuristicManager.list();
+      console.log(JSON.stringify({ heuristics, count: heuristics.length }, null, 2));
+      break;
+    }
+
+    case 'spell': {
+      const query = args.join(' ');
+      if (!query) {
+        console.log(chalk.yellow('Usage: spell <query>'));
+        break;
+      }
+      const suggestions = await ctx.spellChecker.suggest(query);
+      console.log(JSON.stringify({ query, suggestions, count: suggestions.length }, null, 2));
+      break;
+    }
+
+    case 'cache': {
+      const sub = args[0];
+      const { getAllCacheStats, clearAllSearchCaches } = await import('../utils/searchCache.js');
+      if (sub === 'clear') {
+        clearAllSearchCaches();
+        console.log(JSON.stringify({ cleared: true }, null, 2));
+      } else {
+        console.log(JSON.stringify({ stats: getAllCacheStats() }, null, 2));
+      }
+      break;
+    }
+
+    case 'reindex': {
+      const t = Date.now();
+      await ctx.rankedSearch.buildIndex();
+      await ctx.spellChecker.rebuild();
+      console.log(JSON.stringify({ ok: true, ranked: 'rebuilt', spell: 'rebuilt', durationMs: Date.now() - t }, null, 2));
+      break;
+    }
+
     default:
       console.log(chalk.yellow(`Unknown command: ${command}. Type "help" for available commands.`));
   }
@@ -363,6 +415,11 @@ ${chalk.green('Available Commands:')}
   ${chalk.cyan('neighbors <name>')}   Incoming + outgoing relations + degree counts
   ${chalk.cyan('diag')} / ${chalk.cyan('health')}     Quick integrity summary
   ${chalk.cyan('size')}               Graph + storage footprint
+  ${chalk.cyan('check [--apply]')}    Orphan + missing-parent + cycle detect/repair
+  ${chalk.cyan('heuristics')}         List all heuristics
+  ${chalk.cyan('spell <query>')}      Spell suggestions for a query
+  ${chalk.cyan('cache [clear]')}      Search-cache stats; "cache clear" to bust
+  ${chalk.cyan('reindex')}            Rebuild ranked-search + spell vocabulary
   ${chalk.cyan('history')}            Show command history
   ${chalk.cyan('clear')}              Clear screen
   ${chalk.cyan('help')}               Show this help

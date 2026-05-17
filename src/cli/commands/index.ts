@@ -27,6 +27,8 @@ import { registerHeuristicCommands } from './heuristic.js';
 import { registerObservationDedupCommands } from './observationDedup.js';
 import { registerSpellCommands } from './spell.js';
 import { registerCheckCommand } from './check.js';
+import { registerCacheCommands } from './cache.js';
+import { registerReindexCommand } from './reindex.js';
 
 export function registerCommands(program: Command): void {
   registerEntityCommands(program);
@@ -49,4 +51,6 @@ export function registerCommands(program: Command): void {
   registerObservationDedupCommands(program);
   registerSpellCommands(program);
   registerCheckCommand(program);
+  registerCacheCommands(program);
+  registerReindexCommand(program);
 }

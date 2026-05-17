@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-05-17
+
+### Added
+
+- **`memory cache` subcommand group** (`src/cli/commands/cache.ts`):
+  - **`cache stats`** — per-tier snapshot for the four global search
+    caches (`basic` / `ranked` / `boolean` / `fuzzy`) showing
+    `hits` / `misses` / `size` / `hitRate`. Stats are process-local — a
+    fresh CLI invocation always sees zeros.
+  - **`cache clear`** — bust all four search caches. Idempotent; safe
+    after manual graph edits to drop stale results.
+  - **`cache cleanup`** — sweep TTL-expired entries without dropping
+    live ones.
+- **`memory reindex`** (`src/cli/commands/reindex.ts`) — rebuild
+  search-side indexes that get out of sync if the graph file is
+  modified outside the running process. Rebuilds both the TF-IDF/BM25
+  ranked index and the spell-checker vocabulary by default; `--ranked`
+  or `--spell` to scope. Per-target timing in the JSON output. Each
+  target failure is captured independently — a spell-rebuild crash
+  doesn't mask a ranked-rebuild success.
+  - **`ctx.rankedSearch` constructor caveat**: the default
+    ManagerContext getter constructs `RankedSearch(storage)` without
+    a `storageDir`, so `buildIndex()` refuses (`Index manager not
+    initialized`). The reindex command constructs an ad-hoc
+    `RankedSearch(ctx.storage, dirname(options.storage))` so the
+    rebuild persists alongside the JSONL.
+- **REPL extensions** (`src/cli/interactive.ts`): the
+  `memory interactive` shell now recognises `check [--apply]`,
+  `heuristics`, `spell <query>`, `cache [clear]`, and `reindex` so the
+  live-debug flow stays useful through the v2.3.0+ surface.
+
+### Tests
+
+- `tests/unit/cli/cache-reindex.test.ts` (6 tests via commander
+  `parseAsync`): cache stats four-tier shape, cache clear/cleanup,
+  reindex default (both targets), reindex `--ranked`-only, reindex
+  `--spell`-only.
+
 ## [2.3.0] - 2026-05-17
 
 ### Fixed
