@@ -1222,9 +1222,6 @@ export function isFailureMemory(entity: unknown): entity is FailureEntity {
   );
 }
 
-/** Utility alias for failure-memory entities. */
-export type FailureMemoryEntity = FailureEntity;
-
 /**
  * Discriminated result for `FailureManager.markResolved()`. Mirrors
  * `CancelResult` on the prospective-memory manager so callers can
@@ -1349,9 +1346,6 @@ export function isPlanMemory(entity: unknown): entity is PlanEntity {
   );
 }
 
-/** Utility alias for plan-memory entities. */
-export type PlanMemoryEntity = PlanEntity;
-
 // ==================== Reflection Memory Types (Phase 2 Sprint 8) ====================
 
 /**
@@ -1431,9 +1425,6 @@ export function isReflectionMemory(entity: unknown): entity is ReflectionEntity 
   );
 }
 
-/** Utility alias for reflection-memory entities. */
-export type ReflectionMemoryEntity = ReflectionEntity;
-
 // ==================== Heuristic Memory (Phase 3B.8) ====================
 
 /** Branded identifier for heuristic-memory entities. */
@@ -1492,9 +1483,6 @@ export function isHeuristicMemory(entity: unknown): entity is HeuristicEntity {
     typeof hr.confidence === 'number'
   );
 }
-
-/** Utility alias for heuristic-memory entities. */
-export type HeuristicMemoryEntity = HeuristicEntity;
 
 // ==================== Exclusion Memory (Phase 3 — do_not_remember) ====================
 
@@ -1564,9 +1552,6 @@ export function isExclusionMemory(entity: unknown): entity is ExclusionEntity {
     typeof er.scope === 'string'
   );
 }
-
-/** Utility alias for exclusion-memory entities. */
-export type ExclusionMemoryEntity = ExclusionEntity;
 
 // ==================== Decision Memory (Phase 3 — Decision Rationale) ====================
 
@@ -1643,9 +1628,6 @@ export function isDecisionMemory(entity: unknown): entity is DecisionEntity {
   );
 }
 
-/** Utility alias for decision-memory entities. */
-export type DecisionMemoryEntity = DecisionEntity;
-
 // ==================== Project Context Memory (Phase 3 — Type 2) ====================
 
 /** A documented project-specific command (build, test, lint, etc.). */
@@ -1713,9 +1695,6 @@ export function isProjectContextMemory(entity: unknown): entity is ProjectContex
   );
 }
 
-/** Utility alias for project-context entities. */
-export type ProjectContextMemoryEntity = ProjectContextEntity;
-
 // ==================== Tool Affordance Memory (Phase Tool A) ====================
 
 /** Branded identifier for tool-affordance entities. */
@@ -1777,9 +1756,6 @@ export function isToolAffordanceMemory(entity: unknown): entity is ToolAffordanc
     typeof tar.totalCalls === 'number'
   );
 }
-
-/** Utility alias for tool-affordance entities. */
-export type ToolAffordanceMemoryEntity = ToolAffordanceEntity;
 
 // ==================== Utility Types ====================
 
