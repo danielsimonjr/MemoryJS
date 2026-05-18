@@ -280,6 +280,16 @@ export {
   type PoolEventCallback,
 } from './WorkerPoolManager.js';
 
+// ==================== Worker Task Manager (priority queue + pool facade) ===========
+export {
+  WorkerTaskManager,
+  getWorkerTaskManager,
+  batchProcessViaWorkers,
+  type TaskSubmitOptions,
+  type TaskHandle,
+  type WorkerTaskManagerStats,
+} from './WorkerTaskManager.js';
+
 // ==================== Batch Processor (Phase 12 Sprint 2) ====================
 export {
   BatchProcessor,

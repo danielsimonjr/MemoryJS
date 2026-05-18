@@ -7,6 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-05-17
+
+### Added
+
+- **`WorkerTaskManager`** (`src/utils/WorkerTaskManager.ts`) — thin
+  facade over the existing `WorkerPoolManager` + `TaskQueue`. The two
+  pieces compose well but require boilerplate to use together. Manager
+  owns named pools per `workerType`; queue owns priority scheduling,
+  concurrency caps, timeouts, and cancellation. `WorkerTaskManager`
+  unifies them behind a single submission API:
+
+  ```typescript
+  // One-shot
+  const r = await wtm.submit<number>(
+    'levenshtein', 'levenshteinDistance', ['kitten', 'sitting'],
+    { priority: TaskPriority.HIGH, timeout: 5000 },
+  );
+
+  // Cancellable handle
+  const handle = wtm.submitWithHandle<number>(
+    'levenshtein', 'levenshteinDistance', ['kitten', 'sitting'],
+  );
+  setTimeout(() => handle.cancel(), 100);
+  const dist = await handle.result;
+  ```
+
+  Cancellation semantics: cancel-before-dispatch evicts cleanly (returns
+  `true`); cancel-mid-execution is best-effort (workerpool doesn't
+  expose hard-cancel and terminating mid-task is destructive — sets a
+  flag the wrapping fn can observe, returns `false`).
+
+- **`batchProcessViaWorkers(items, workerType, methodName, mapArgs, opts?)`**
+  — the recommended pattern for agent-system batch operations that
+  benefit from CPU parallelism (entropy filtering across many memories,
+  pairwise similarity for contradiction detection, batch embedding when
+  the provider is local + compute-bound). Fans out one task per item
+  through the shared priority queue; preserves input order in the
+  returned results array. Empty input is a zero-cost no-op. Rejects on
+  first task failure.
+
+  > Sizing note: for small batches (≪ ~50 items) the postMessage
+  > serialisation overhead usually dominates the gain — benchmark
+  > before adopting.
+
+- **`getWorkerTaskManager()`** — singleton accessor used internally by
+  `batchProcessViaWorkers`. Exposed so agent-system diagnostics
+  (`ctx.diagnostics`) can fold queue + pool stats into reports.
+
+### Tests
+
+- `tests/unit/utils/WorkerTaskManager.test.ts` (10 tests) covers
+  routing across worker types, error propagation, handle status
+  transitions, cancel-before-dispatch eviction, cancel-after-completion
+  no-op, stats aggregation, and the `batchProcessViaWorkers`
+  fan-out / empty-input / first-failure paths. Mocks `WorkerPoolManager`
+  with a programmable in-memory `Pool` so tests run without spinning up
+  real worker threads.
+
 ## [2.6.0] - 2026-05-17
 
 ### Added
