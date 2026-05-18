@@ -6,24 +6,7 @@ release where applicable.
 
 ## In progress
 
-- [x] **Investigate workerpool for genuine improvements** — **No changes needed.**
-  Verified that `WorkerpoolPromise.cancel()` is exposed and typed
-  (`types/core/Promise.d.ts:79`); `Pool` already has circuit breaker, memory
-  pressure, retry, ready promise, event emitter, warmup, comprehensive types,
-  dual ESM/CJS build (v10.1.0). The one thing missing — `AbortSignal`
-  integration — would be a generic modernisation, not something memoryjs
-  needs. Skipping per the "as needed for changes in memoryjs" qualifier.
-- [ ] **Fix `WorkerTaskManager.cancel` to propagate through `WorkerpoolPromise.cancel()`**
-  → memoryjs v2.7.0 documented "best-effort" cancellation, but workerpool
-  already exposes hard-cancel via `pool.exec(...).cancel()`. Retain the
-  workerpool-promise reference; call `.cancel()` on it when the handle
-  cancels mid-execution. Add a test that verifies a running worker receives
-  the cancellation. → memoryjs **v2.8.1**.
-- [ ] **Bump Memory-mcp's `@danielsimonjr/memoryjs` dep**
-  → currently `^2.3.0`. Pull in everything since: v12.5.0 engineering tools,
-  v2.5.0 dead-code pass, v2.6.0 PostgreSQL backend, v2.7.0 WorkerTaskManager,
-  v2.8.0/2.8.1 tsvector FTS + cancel fix. Verify typecheck + integration
-  tests pass against the new memoryjs. → Memory-mcp **v12.5.2**.
+_(nothing currently in flight)_
 
 ## Backlog (offered but not yet picked)
 
@@ -34,6 +17,9 @@ release where applicable.
 
 ## Recently completed
 
+- [x] Memory-mcp v12.5.1 — bump `@danielsimonjr/memoryjs` `^2.3.0` → `^2.8.1` (infrastructure-only; 46/46 spot-check green)
+- [x] memoryjs v2.8.1 — `WorkerTaskManager.cancel` propagates through `WorkerpoolPromise.cancel()` for mid-execution cancellation
+- [x] workerpool investigation — **no changes needed**; verified library is feature-complete for memoryjs's needs (cancel + timeout + circuit breaker + memory pressure + event emitter + dual build all present)
 - [x] memoryjs v2.8.0 — tsvector FTS for `PostgreSQLStorage`
 - [x] memoryjs v2.7.0 — `WorkerTaskManager` facade + `batchProcessViaWorkers`
 - [x] memoryjs v2.6.0 — PostgreSQL backend
