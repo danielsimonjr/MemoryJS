@@ -107,6 +107,27 @@ CREATE INDEX IF NOT EXISTS idx_entities_project_id ON entities(project_id);
 CREATE INDEX IF NOT EXISTS idx_entities_content_hash ON entities(content_hash);
 CREATE INDEX IF NOT EXISTS idx_entities_tags_gin ON entities USING GIN(tags);
 
+-- v2.8.0 — generated tsvector column for full-text search.
+-- name is weighted A (highest), observations B, tags C. PostgreSQL 12+
+-- supports GENERATED ALWAYS AS ... STORED; the DO block makes the column
+-- add idempotent on older + newer servers without requiring CREATE OR
+-- REPLACE semantics on ALTER.
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'entities' AND column_name = 'fts_vector'
+  ) THEN
+    ALTER TABLE entities ADD COLUMN fts_vector tsvector
+      GENERATED ALWAYS AS (
+        setweight(to_tsvector('english', name), 'A') ||
+        setweight(to_tsvector('english', coalesce(array_to_string(observations, ' '), '')), 'B') ||
+        setweight(to_tsvector('english', coalesce(array_to_string(tags, ' '), '')), 'C')
+      ) STORED;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_entities_fts_gin ON entities USING GIN(fts_vector);
+
 CREATE TABLE IF NOT EXISTS relations (
   from_name TEXT NOT NULL,
   to_name TEXT NOT NULL,
@@ -484,6 +505,43 @@ export class PostgreSQLStorage implements IGraphStorage {
         (this.incomingRelations.get(entityName)?.length ?? 0) >
       0
     );
+  }
+
+  // ==================== Full-text search ====================
+
+  /**
+   * tsvector-backed full-text search. Uses `plainto_tsquery` so the input is
+   * free-form (no boolean operator syntax required); ranks via `ts_rank` on
+   * the weighted `fts_vector` column (name × A, observations × B, tags × C).
+   *
+   * Results are ordered by descending score and capped at `options.limit`
+   * (default 50). Empty / whitespace-only queries return `[]` without
+   * issuing a SQL call.
+   *
+   * @example
+   * ```typescript
+   * const matches = await storage.fullTextSearch('authentication flow', { limit: 10 });
+   * // → [{ name: 'AuthService', score: 0.62 }, ...]
+   * ```
+   */
+  async fullTextSearch(
+    query: string,
+    options: { limit?: number } = {},
+  ): Promise<Array<{ name: string; score: number }>> {
+    const trimmed = query.trim();
+    if (trimmed.length === 0) return [];
+    await this.initSchema();
+    const pool = await this.getPool();
+    const limit = options.limit ?? 50;
+    const res = await pool.query<{ name: string; score: number }>(
+      `SELECT name, ts_rank(fts_vector, plainto_tsquery('english', $1))::float AS score
+       FROM entities
+       WHERE fts_vector @@ plainto_tsquery('english', $1)
+       ORDER BY score DESC
+       LIMIT $2`,
+      [trimmed, limit],
+    );
+    return res.rows.map((r) => ({ name: r.name, score: Number(r.score) }));
   }
 
   // ==================== Utility ====================

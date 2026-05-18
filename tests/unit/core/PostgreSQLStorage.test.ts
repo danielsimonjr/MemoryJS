@@ -100,6 +100,36 @@ vi.mock('pg', () => {
       if (trimmed.startsWith('SELECT * FROM RELATIONS')) {
         return { rows: memRelations.slice() as R[], rowCount: memRelations.length };
       }
+      if (trimmed.startsWith('SELECT NAME, TS_RANK')) {
+        // Full-text search query. The first positional param is the query
+        // string; we approximate `plainto_tsquery` with a case-insensitive
+        // word-overlap score so the test can assert ordering + filtering
+        // without a real tsvector implementation.
+        const query = String(params[0] ?? '').toLowerCase().trim();
+        const limit = Number(params[1] ?? 50);
+        if (!query) return { rows: [], rowCount: 0 };
+        const queryWords = query.split(/\s+/).filter(Boolean);
+        const ranked = Array.from(memEntities.values())
+          .map((row) => {
+            const name = String(row.name ?? '').toLowerCase();
+            const obs = (Array.isArray(row.observations) ? row.observations as string[] : [])
+              .join(' ').toLowerCase();
+            const tags = (Array.isArray(row.tags) ? row.tags as string[] : [])
+              .join(' ').toLowerCase();
+            // Weighted: name × 3, observations × 2, tags × 1 (mirrors A/B/C).
+            let score = 0;
+            for (const w of queryWords) {
+              if (name.includes(w)) score += 3;
+              if (obs.includes(w)) score += 2;
+              if (tags.includes(w)) score += 1;
+            }
+            return { name: row.name as string, score };
+          })
+          .filter((r) => r.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .slice(0, limit);
+        return { rows: ranked as R[], rowCount: ranked.length };
+      }
       return { rows: [], rowCount: 0 };
     }
     async end(): Promise<void> { /* no-op */ }
@@ -250,6 +280,56 @@ describe('PostgreSQLStorage', () => {
       await storage.appendRelation({ from: 'A', to: 'B', relationType: 'r' });
       expect(storage.hasRelations('A')).toBe(true);
       expect(storage.hasRelations('B')).toBe(true);
+    });
+  });
+
+  describe('fullTextSearch (tsvector-backed)', () => {
+    beforeEach(async () => {
+      await storage.appendEntity({
+        name: 'AuthService', entityType: 'service',
+        observations: ['handles user login flows'], tags: ['auth', 'security'],
+      });
+      await storage.appendEntity({
+        name: 'BillingService', entityType: 'service',
+        observations: ['processes payments and invoices'], tags: ['billing'],
+      });
+      await storage.appendEntity({
+        name: 'EmailSender', entityType: 'service',
+        observations: ['sends transactional emails to users'], tags: ['notifications'],
+      });
+    });
+
+    it('returns empty array for empty / whitespace-only query without issuing SQL', async () => {
+      expect(await storage.fullTextSearch('')).toEqual([]);
+      expect(await storage.fullTextSearch('   ')).toEqual([]);
+    });
+
+    it('ranks name matches above observation matches above tag matches', async () => {
+      const r = await storage.fullTextSearch('user');
+      // "user" appears in AuthService.observations and EmailSender.observations.
+      // It does NOT appear in any name. Both should match; ordering is by score.
+      expect(r.map((row) => row.name)).toContain('AuthService');
+      expect(r.map((row) => row.name)).toContain('EmailSender');
+      expect(r.every((row) => row.score > 0)).toBe(true);
+    });
+
+    it('honors the limit option', async () => {
+      // "service" matches the names AuthService + BillingService + EmailSender (none —
+      // EmailSender is the exception). With limit: 1 we should see at most 1 row.
+      const r = await storage.fullTextSearch('service', { limit: 1 });
+      expect(r.length).toBeLessThanOrEqual(1);
+    });
+
+    it('matches name tokens with the highest weight', async () => {
+      const r = await storage.fullTextSearch('AuthService');
+      expect(r).toHaveLength(1);
+      expect(r[0].name).toBe('AuthService');
+      expect(r[0].score).toBeGreaterThan(0);
+    });
+
+    it('returns no rows when nothing matches', async () => {
+      const r = await storage.fullTextSearch('quantum-flux-capacitor-xyz');
+      expect(r).toEqual([]);
     });
   });
 

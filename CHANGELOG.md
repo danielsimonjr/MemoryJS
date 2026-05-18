@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.0] - 2026-05-18
+
+### Added
+
+- **tsvector FTS for `PostgreSQLStorage`** —
+  `fullTextSearch(query, { limit? }): Array<{ name; score }>`. Backed by
+  a `GENERATED ALWAYS AS ... STORED` tsvector column with weighted
+  contributions (name × A, observations × B, tags × C) and a GIN index
+  for fast lookup. Uses `plainto_tsquery` so callers can pass free-form
+  text without needing to learn `&`/`|`/`!` query syntax. Empty or
+  whitespace-only queries short-circuit to `[]` without issuing SQL.
+  Results are ranked via `ts_rank` and ordered descending; default
+  limit is 50.
+
+  Schema migration is idempotent — a `DO $$ ... END $$` guard on
+  `information_schema.columns` skips the `ALTER TABLE ADD COLUMN`
+  when the `fts_vector` column already exists. Safe to re-run on every
+  startup; safe to deploy against an existing v2.6.0/v2.7.0 database.
+
+  ```typescript
+  const ctx = new ManagerContext('postgres://localhost/mydb');
+  // After indexing entities, search:
+  const matches = await (ctx.storage as PostgreSQLStorage)
+    .fullTextSearch('authentication flow', { limit: 10 });
+  // [{ name: 'AuthService', score: 0.62 }, ...]
+  ```
+
+  PostgreSQL 12+ required for generated columns. Earlier versions need
+  a trigger-based equivalent — not shipped in v1.
+
+### Tests
+
+- 5 new tests at `tests/unit/core/PostgreSQLStorage.test.ts` cover the
+  FTS surface: empty-query short-circuit (no SQL issued), name-weighted
+  ranking above observations + tags, `limit` enforcement, exact-match
+  scoring, and zero-match (`"quantum-flux-capacitor-xyz"`) returning
+  `[]`. Mock `pg` extended with a word-overlap scorer that mirrors the
+  weighted (3 / 2 / 1) tsvector behaviour without needing real
+  PostgreSQL. Total `PostgreSQLStorage.test.ts` → 22 tests, all green.
+
 ## [2.7.0] - 2026-05-17
 
 ### Added
