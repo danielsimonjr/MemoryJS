@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.8.1] - 2026-05-18
+
+### Fixed
+
+- **`WorkerTaskManager.cancel` now propagates through `WorkerpoolPromise.cancel()`
+  for mid-execution cancellation.** The v2.7.0 doc claimed cancel-mid-flight
+  was "best-effort because workerpool doesn't expose hard-cancel" — that was
+  incorrect. workerpool has always shipped `WorkerpoolPromise.cancel()`
+  (`@danielsimonjr/workerpool` types/core/Promise.d.ts:79) and rejects with
+  `CancellationError` when called. WorkerTaskManager now retains the
+  workerpool-promise reference per running task in `liveExecPromises` and
+  invokes `.cancel()` on it when a handle cancels post-dispatch.
+  `TaskHandle.cancel()` returns `true` for both pre-dispatch eviction and
+  successful mid-flight cancellation; `false` only when the underlying
+  workerpool-promise has already settled. The `TaskHandle` JSDoc reflects
+  the new two-tier contract.
+- **New test** `cancel mid-execution propagates to the workerpool promise`
+  in `tests/unit/utils/WorkerTaskManager.test.ts` verifies the propagation:
+  spins a delayed mock exec, asserts the task is `RUNNING`, calls cancel,
+  and asserts the result promise rejects with a cancellation-shaped error.
+  The mocked `Pool.exec` now returns a workerpool-shaped promise with
+  `.cancel()` + `.pending` (mirrors the real `WorkerpoolPromise` interface).
+- No workerpool-side changes were needed — verified by reading
+  `WorkerpoolPromise.cancel(): this`, the `Pool.exec` typed return, and the
+  full feature surface (circuit breaker, memory pressure, retry, ready
+  promise, event emitter, warmup, comprehensive types, dual ESM/CJS build).
+  Honest finding documented in `todo.md`.
+
 ## [2.8.0] - 2026-05-18
 
 ### Added

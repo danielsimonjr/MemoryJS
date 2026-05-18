@@ -43,15 +43,39 @@ vi.mock('../../../src/utils/WorkerPoolManager.js', async () => {
     '../../../src/utils/WorkerPoolManager.js',
   );
 
-  // Mock Pool with just the `exec` method WorkerTaskManager uses.
+  // Mock Pool. `exec` returns a custom thenable that exposes `.cancel()` and
+  // `.pending`, mirroring workerpool's `WorkerpoolPromise` so that
+  // WorkerTaskManager's mid-flight cancellation path can be exercised.
   const makeMockPool = (poolId: string) => ({
-    async exec(methodName: string, args: unknown[]): Promise<unknown> {
+    exec(methodName: string, args: unknown[]) {
       execCalls.push({ poolId, methodName, args, ts: Date.now() });
       const key = `${poolId}:${methodName}`;
       const beh = execBehaviour.get(key);
-      if (beh?.delayMs) await new Promise((r) => setTimeout(r, beh.delayMs));
-      if (beh?.error) throw beh.error;
-      return beh?.result ?? `result-from-${methodName}`;
+      let cancelled = false;
+      let settled = false;
+      const innerPromise = new Promise<unknown>((resolve, reject) => {
+        const finish = () => {
+          settled = true;
+          if (cancelled) {
+            const err = new Error('promise cancelled');
+            err.name = 'CancellationError';
+            reject(err);
+            return;
+          }
+          if (beh?.error) reject(beh.error);
+          else resolve(beh?.result ?? `result-from-${methodName}`);
+        };
+        if (beh?.delayMs) setTimeout(finish, beh.delayMs);
+        else queueMicrotask(finish);
+      });
+      // Augment the promise with workerpool-shaped cancel + pending fields.
+      const aug = innerPromise as Promise<unknown> & {
+        cancel(): void;
+        pending: boolean;
+      };
+      aug.cancel = () => { cancelled = true; };
+      Object.defineProperty(aug, 'pending', { get: () => !settled });
+      return aug;
     },
     terminate: vi.fn(async () => undefined),
     stats: () => ({ totalWorkers: 1, busyWorkers: 0, idleWorkers: 1, pendingTasks: 0, activeTasks: 0 }),
@@ -157,6 +181,22 @@ describe('WorkerTaskManager', () => {
       await handle.result;
       const evicted = handle.cancel();
       expect(evicted).toBe(false);
+    });
+
+    it('cancel mid-execution propagates to the workerpool promise', async () => {
+      // Long-running task so we can observe RUNNING + cancel before settle.
+      execBehaviour.set('p:slow', { delayMs: 500 });
+      const handle = wtm.submitWithHandle('p', 'slow', []);
+      // Yield so the queue dispatches the task to the mock pool.
+      await new Promise((r) => setTimeout(r, 20));
+      expect(handle.status()).toBe(TaskStatus.RUNNING);
+
+      const cancelled = handle.cancel();
+      expect(cancelled).toBe(true);
+      expect(handle.status()).toBe(TaskStatus.CANCELLED);
+      // The result promise rejects with a cancellation error sourced from the
+      // mocked WorkerpoolPromise.
+      await expect(handle.result).rejects.toThrow(/cancel/i);
     });
   });
 

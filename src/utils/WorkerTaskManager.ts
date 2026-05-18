@@ -53,16 +53,25 @@ export interface TaskSubmitOptions {
 
 /**
  * Handle returned by `submitWithHandle`. The `result` promise settles when
- * the task finishes; `cancel()` evicts a still-pending task from the queue
- * (returns `true`) or signals a request-cancellation flag on a running task
- * (returns `false` — `workerpool` itself doesn't support hard-cancel and
- * terminating mid-task is destructive).
+ * the task finishes; `cancel()` performs two-tier cancellation:
+ *
+ *   - If still pending in the queue: evict cleanly. Returns `true`.
+ *   - If already dispatched: propagate to the underlying
+ *     `WorkerpoolPromise.cancel()` so the running worker rejects with
+ *     `CancellationError`. Returns `true` if the workerpool promise was
+ *     still pending at the moment of cancel; `false` if it already settled.
  */
 export interface TaskHandle<R> {
   id: string;
   result: Promise<R>;
   cancel(): boolean;
   status(): TaskStatus;
+}
+
+/** Minimal shape we need from the workerpool exec-promise for cancel propagation. */
+interface CancellableExecPromise<T> extends Promise<T> {
+  cancel?: () => unknown;
+  pending?: boolean;
 }
 
 /**
@@ -111,6 +120,10 @@ export class WorkerTaskManager {
   private readonly touchedPoolIds = new Set<string>();
   private readonly cancelledTaskIds = new Set<string>();
   private readonly handleStatus = new Map<string, TaskStatus>();
+  // Live `pool.exec(...)` promises by task id. Populated when a task starts
+  // running so the handle can call `.cancel()` on the workerpool promise
+  // for mid-execution cancellation. Cleared on completion / failure.
+  private readonly liveExecPromises = new Map<string, CancellableExecPromise<unknown>>();
 
   constructor(opts: {
     /** Max concurrent tasks across the queue. Default: cpus − 1. */
@@ -169,11 +182,19 @@ export class WorkerTaskManager {
         this.handleStatus.set(id, TaskStatus.RUNNING);
         const pool = this.poolManager.getPool(input.workerType, opts.poolConfig);
         this.touchedPoolIds.add(input.workerType);
-        // workerpool's Pool.exec returns a Promise<R>; cast through unknown
-        // because the manager's public API is generic but `exec` is not.
-        return (await (pool as unknown as {
-          exec: (methodName: string, args: unknown[]) => Promise<R>;
-        }).exec(input.methodName, input.args));
+        // workerpool's Pool.exec returns a `WorkerpoolPromise<R>` — a
+        // PromiseLike with `.cancel()` and `.timeout()` methods. We retain
+        // the reference so a TaskHandle.cancel() mid-flight can propagate
+        // to the running worker (workerpool rejects with CancellationError).
+        const execPromise = (pool as unknown as {
+          exec: (methodName: string, args: unknown[]) => CancellableExecPromise<R>;
+        }).exec(input.methodName, input.args);
+        this.liveExecPromises.set(id, execPromise as CancellableExecPromise<unknown>);
+        try {
+          return await execPromise;
+        } finally {
+          this.liveExecPromises.delete(id);
+        }
       },
     };
 
@@ -201,8 +222,25 @@ export class WorkerTaskManager {
         const evicted = this.queue.cancel(id);
         if (evicted) {
           this.handleStatus.set(id, TaskStatus.CANCELLED);
+          return true;
         }
-        return evicted;
+        // Already dispatched — try to propagate to the workerpool promise.
+        const live = this.liveExecPromises.get(id);
+        if (live && typeof live.cancel === 'function') {
+          // workerpool's WorkerpoolPromise has `pending` so we can skip the
+          // call when it's already settled. The mocked test client may not
+          // expose `pending`; treat its absence as "assume pending".
+          if (live.pending === false) return false;
+          try {
+            live.cancel();
+            this.handleStatus.set(id, TaskStatus.CANCELLED);
+            return true;
+          } catch (e) {
+            logger.warn(`[WorkerTaskManager] cancel() on live exec for ${id} threw:`, e);
+            return false;
+          }
+        }
+        return false;
       },
       status: () => this.handleStatus.get(id) ?? TaskStatus.PENDING,
     };
