@@ -1,20 +1,19 @@
-# mmap binding decision gate (Phase 11 task 82)
+# mmap binding decision gate
 
 **Status:** ⏸ Deferred — awaiting user approval of an external native dep.
 
+> **Note (v2.5.0):** The `BufferMmapBackend` reference impl was removed during
+> a dead-code pass. `FsReadMmapBackend` is now the sole production
+> `IMmapBackend` implementation.
+
 ## Background
 
-Phase 11 ships two `IMmapBackend` impls without taking any external
-dep:
+memoryjs ships one `IMmapBackend` impl without taking any external dep:
 
-- `BufferMmapBackend` — reads the whole file into a `Buffer` at open
-  time. Useful for small files (≤ ~100 MB) and tests; no perf
-  benefit vs `fs.readFile` for large files.
-- `FsReadMmapBackend` — pins a `FileHandle` open and services range
-  reads via `fileHandle.read(buffer, offset, length, position)`.
-  Most of the practical mmap benefit (no full-file load,
-  random-access, constant-memory iteration) without a native
-  binding.
+- `FsReadMmapBackend` — pins a `FileHandle` open and services range reads via
+  `fileHandle.read(buffer, offset, length, position)`. Most of the practical
+  mmap benefit (no full-file load, random-access, constant-memory iteration)
+  without a native binding.
 
 A **third backend** wrapping the OS-level `mmap(2)` syscall would
 add:
@@ -66,19 +65,11 @@ free, not transformative.
   `FsReadMmapBackend`. A future `MmapIoBackend` plugs in via the
   same env var without touching the wiring.
 
-## Platform matrix (Phase 11 task 86)
+## Platform matrix
 
-Both shipped backends rely only on Node built-ins (`fs/promises`),
-so the platform matrix is whatever Node supports:
-
-| Platform | `BufferMmapBackend` | `FsReadMmapBackend` |
-|---|---|---|
-| Linux | ✅ | ✅ |
-| macOS | ✅ | ✅ |
-| Windows | ✅ | ✅ |
-
-CI smoke is the existing `npm test` run — no separate platform
-matrix workflow needed for the portable backends. A native
-`MmapIoBackend` (deferred per the decision gate above) would
-require a CI matrix entry, and would land alongside the binding
-in a follow-up phase.
+`FsReadMmapBackend` relies only on Node built-ins (`fs/promises`), so the
+platform matrix is whatever Node supports — Linux, macOS, and Windows all
+work without any platform-specific shim. CI smoke is the existing `npm test`
+run. A native `MmapIoBackend` (deferred per the decision gate above) would
+require a CI matrix entry, and would land alongside the binding in a
+follow-up.

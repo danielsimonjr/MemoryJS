@@ -1,6 +1,6 @@
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 2.4.0 | **Last Updated**: 2026-05-17
+**Version**: 2.5.0 | **Last Updated**: 2026-05-17
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -31,34 +31,21 @@ This document provides a comprehensive dependency graph of all files, components
 
 The codebase is organized into the following modules:
 
-- **adapters**: 8 files
+- **adapters**: 6 files
 - **agent**: 72 files
 - **cli**: 29 files
-- **core**: 25 files
-- **features**: 20 files
+- **core**: 22 files
+- **features**: 18 files
 - **entry**: 1 file
-- **search**: 56 files
+- **search**: 48 files
 - **security**: 5 files
 - **types**: 8 files
-- **utils**: 34 files
+- **utils**: 33 files
 - **workers**: 2 files
 
 ---
 
 ## Adapters Dependencies
-
-### `src/adapters/IDatabaseAdapter.ts` - Database Adapter Interface
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../types/types.js` | `Entity, Relation, KnowledgeGraph` | Import (type-only) |
-
-**Exports:**
-- Classes: `NullDatabaseAdapter`, `InMemoryDatabaseAdapter`
-- Interfaces: `IDatabaseAdapter`
-
----
 
 ### `src/adapters/index.ts` - Adapters Module — Barrel Export
 
@@ -73,14 +60,6 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Re-exports: `RestRouter`, `type RestMethod`, `type RestRequest`, `type RestResponse`, `type RestHandler`, `type RouteDefinition`, `RateLimiter`, `type RateLimiterConfig`, `type RateLimitVerdict`, `paginate`, `parsePaginationParams`, `type PaginationParams`, `type ParsePaginationOptions`, `type PaginatedResult`, `MCPToolObserverAdapter`, `extractToolName`, `LangChainMemoryAdapter`
-
----
-
-### `src/adapters/IVectorDBAdapter.ts` - Vector Database Adapter Interface
-
-**Exports:**
-- Classes: `InMemoryVectorAdapter`
-- Interfaces: `VectorUpsert`, `VectorMatch`, `VectorAdapterStats`, `IVectorDBAdapter`
 
 ---
 
@@ -2085,19 +2064,6 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/core/EntityProxy.ts` - Lazy Entity Hydration (`EntityProxy`)
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../types/types.js` | `Entity` | Import (type-only) |
-
-**Exports:**
-- Classes: `EntityProxy`, `EntityProxyFactory`
-- Interfaces: `EntityProxyStorage`
-
----
-
 ### `src/core/EntityStateMachine.ts` - Entity State Machine
 
 **Internal Dependencies:**
@@ -2312,25 +2278,6 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/core/mmap/BufferMmapBackend.ts` - BufferMmapBackend — slurp-the-whole-file reference impl
-
-**Node.js Built-in Dependencies:**
-| Module | Import |
-|--------|--------|
-| `fs` | `promises` |
-| `path` | `resolve` |
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./IMmapBackend.js` | `IMmapBackend, MmapHandle` | Import (type-only) |
-
-**Exports:**
-- Classes: `BufferMmapBackend`
-- Interfaces: `BufferMmapBackendOptions`
-
----
-
 ### `src/core/mmap/FsReadMmapBackend.ts` - FsReadMmapBackend — Range-Read Over a Pinned File Descriptor
 
 **Node.js Built-in Dependencies:**
@@ -2542,28 +2489,6 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/core/WriteAheadLog.ts` - Write-Ahead Log (WAL)
-
-**Node.js Built-in Dependencies:**
-| Module | Import |
-|--------|--------|
-| `fs` | `promises, openSync, writeSync, fsyncSync, closeSync, existsSync, statSync, constants` |
-| `path` | `dirname, join` |
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../types/types.js` | `Entity, Relation` | Import (type-only) |
-| `../utils/logger.js` | `logger` | Import |
-
-**Exports:**
-- Classes: `WriteAheadLog`
-- Interfaces: `WALOptions`
-- Functions: `applyWALToGraph`
-- Constants: `_internal`
-
----
-
 ## Features Dependencies
 
 ### `src/features/AnalyticsManager.ts` - Analytics Manager
@@ -2576,19 +2501,6 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Classes: `AnalyticsManager`
-
----
-
-### `src/features/AnomalyDetector.ts` - Anomaly Detector
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../types/types.js` | `Entity, KnowledgeGraph, Relation` | Import (type-only) |
-
-**Exports:**
-- Interfaces: `AnomalyReport`, `StructuralAnomalyOptions`, `SemanticAnomalyOptions`
-- Functions: `detectStructuralAnomalies`, `detectSemanticAnomalies`, `detectAllAnomalies`
 
 ---
 
@@ -2693,24 +2605,6 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `ContradictionDetector`
 - Interfaces: `Contradiction`
-
----
-
-### `src/features/CRDT.ts` - CRDT Collaboration Primitives
-
-**Node.js Built-in Dependencies:**
-| Module | Import |
-|--------|--------|
-| `crypto` | `randomBytes` |
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../types/types.js` | `Entity, Relation` | Import (type-only) |
-
-**Exports:**
-- Classes: `VectorClock`, `LWWRegister`, `ORSet`, `CRDTGraph`
-- Interfaces: `VectorClockState`, `LWWRegisterState`, `ORSetState`, `CRDTEntityState`, `CRDTRelationState`, `CRDTGraphState`
 
 ---
 
@@ -2927,23 +2821,6 @@ The codebase is organized into the following modules:
 ---
 
 ## Search Dependencies
-
-### `src/search/BackgroundIndexer.ts` - Background Indexer
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../core/GraphEventEmitter.js` | `GraphEventEmitter` | Import (type-only) |
-| `../types/index.js` | `IGraphStorage` | Import (type-only) |
-| `../utils/logger.js` | `logger` | Import |
-| `./TFIDFIndexManager.js` | `TFIDFIndexManager` | Import (type-only) |
-
-**Exports:**
-- Classes: `BackgroundIndexer`
-- Interfaces: `IndexUpdater`, `BackgroundIndexerOptions`
-- Functions: `makeTFIDFUpdater`
-
----
 
 ### `src/search/BasicSearch.ts` - Basic Search
 
@@ -3210,14 +3087,6 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/search/LSH.ts` - Locality-Sensitive Hashing (LSH)
-
-**Exports:**
-- Classes: `LSHIndex`
-- Interfaces: `LSHOptions`, `LSHResult`
-
----
-
 ### `src/search/MaterializedViews.ts` - Materialized Search Views
 
 **Internal Dependencies:**
@@ -3239,20 +3108,6 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `NGramIndex`
 - Interfaces: `NGramIndexStats`
-
----
-
-### `src/search/Node2Vec.ts` - Node2Vec — biased-random-walk graph embeddings
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../types/types.js` | `Entity, KnowledgeGraph, Relation` | Import (type-only) |
-
-**Exports:**
-- Classes: `BiasedRandomWalk`, `SkipGramTrainer`
-- Interfaces: `Node2VecOptions`, `Node2VecResult`
-- Functions: `computeNode2Vec`, `buildAdjacency`, `similarity`, `topKSimilar`
 
 ---
 
@@ -3296,20 +3151,6 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `PartialIndexAdvisor`
 - Interfaces: `FilterObservation`, `IndexRecommendation`, `PartialIndexAdvisorOptions`
-
----
-
-### `src/search/PartitionedInvertedIndex.ts` - Partitioned Inverted Index
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./OptimizedInvertedIndex.js` | `OptimizedInvertedIndex` | Import |
-| `../utils/IIndexHealth.js` | `IIndexHealth, IndexHealthSnapshot` | Import (type-only) |
-
-**Exports:**
-- Classes: `PartitionedInvertedIndex`
-- Interfaces: `PartitionedIndexSnapshot`
 
 ---
 
@@ -3357,20 +3198,6 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `QueryCostEstimator`
 - Interfaces: `ExtendedQueryCostEstimate`, `LayerRecommendationOptions`, `TokenEstimationOptions`, `AdaptiveDepthConfig`
-
----
-
-### `src/search/QueryLanguage.ts` - Query Language DSL
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../types/types.js` | `Entity, Relation, KnowledgeGraph` | Import (type-only) |
-
-**Exports:**
-- Classes: `QueryDslError`
-- Interfaces: `DslQuery`
-- Functions: `parseDsl`, `executeDsl`, `runDsl`
 
 ---
 
@@ -3537,14 +3364,6 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/search/SearchStream.ts` - Search Stream
-
-**Exports:**
-- Interfaces: `ScoredItem`
-- Functions: `collectStream`
-
----
-
 ### `src/search/SearchSuggestions.ts` - Search Suggestions
 
 **Internal Dependencies:**
@@ -3576,21 +3395,6 @@ The codebase is organized into the following modules:
 
 ---
 
-### `src/search/SPARQL.ts` - SPARQL Minimal Subset
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../types/types.js` | `Entity, KnowledgeGraph, Relation` | Import (type-only) |
-
-**Exports:**
-- Classes: `SparqlError`
-- Interfaces: `Triple`, `SparqlTriplePattern`, `SparqlFilter`, `SparqlSelectQuery`, `SparqlLimits`
-- Functions: `graphToTriples`, `parseSparql`, `evaluateSparql`, `runSparql`
-- Constants: `DEFAULT_PREFIXES`
-
----
-
 ### `src/search/SpellChecker.ts` - SpellChecker — spell-correction layer for entity names and tags.
 
 **Internal Dependencies:**
@@ -3616,19 +3420,6 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `SymbolicSearch`
 - Interfaces: `SymbolicResult`
-
----
-
-### `src/search/SynonymManager.ts` - Synonym Manager
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
-
-**Exports:**
-- Classes: `SynonymManager`
-- Interfaces: `ExpandedQuery`, `ExpandOptions`
 
 ---
 
@@ -3979,24 +3770,6 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `CompressedCache`
 - Interfaces: `CompressedCacheOptions`, `CompressedCacheStats`
-
----
-
-### `src/utils/compression/BrotliCompressionAdapter.ts` - BrotliCompressionAdapter — Brotli-backed ICompressionAdapter
-
-**Node.js Built-in Dependencies:**
-| Module | Import |
-|--------|--------|
-| `zlib` | `brotliCompressSync, brotliDecompressSync, constants` |
-
-**Internal Dependencies:**
-| File | Imports | Type |
-|------|---------|------|
-| `./ICompressionAdapter.js` | `ICompressionAdapter` | Import (type-only) |
-
-**Exports:**
-- Classes: `BrotliCompressionAdapter`
-- Interfaces: `BrotliCompressionAdapterOptions`
 
 ---
 
@@ -4480,9 +4253,7 @@ The codebase is organized into the following modules:
 
 | File | Imports From | Exports To |
 |------|--------------|------------|
-| `IDatabaseAdapter` | 1 files | 0 files |
 | `index` | 5 files | 1 files |
-| `IVectorDBAdapter` | 0 files | 0 files |
 | `LangChainMemoryAdapter` | 3 files | 1 files |
 | `MCPToolObserverAdapter` | 1 files | 1 files |
 | `pagination` | 0 files | 2 files |
@@ -4510,6 +4281,8 @@ The codebase is organized into the following modules:
 | `DreamEngine` | 8 files | 3 files |
 | `EntropyFilter` | 3 files | 3 files |
 | `EpisodicMemoryManager` | 2 files | 6 files |
+| `ExclusionManager` | 3 files | 4 files |
+| `ExperienceExtractor` | 2 files | 3 files |
 
 ---
 
@@ -4541,12 +4314,12 @@ These cycles only involve type imports and are safe (erased at runtime):
 ```mermaid
 graph TD
     subgraph Adapters
-        N0[IDatabaseAdapter]
-        N1[index]
-        N2[IVectorDBAdapter]
-        N3[LangChainMemoryAdapter]
-        N4[MCPToolObserverAdapter]
-        N5[...3 more]
+        N0[index]
+        N1[LangChainMemoryAdapter]
+        N2[MCPToolObserverAdapter]
+        N3[pagination]
+        N4[RateLimiter]
+        N5[...1 more]
     end
 
     subgraph Agent
@@ -4571,18 +4344,18 @@ graph TD
         N18[IColumnStore]
         N19[JsonlColumnStore]
         N20[EntityManager]
-        N21[EntityProxy]
-        N22[EntityStateMachine]
-        N23[...20 more]
+        N21[EntityStateMachine]
+        N22[GraphEventEmitter]
+        N23[...17 more]
     end
 
     subgraph Features
         N24[AnalyticsManager]
-        N25[AnomalyDetector]
-        N26[ArchiveManager]
-        N27[AuditLog]
-        N28[AutoLinker]
-        N29[...15 more]
+        N25[ArchiveManager]
+        N26[AuditLog]
+        N27[AutoLinker]
+        N28[BackupManager]
+        N29[...13 more]
     end
 
     subgraph Entry
@@ -4590,12 +4363,12 @@ graph TD
     end
 
     subgraph Search
-        N31[BackgroundIndexer]
-        N32[BasicSearch]
-        N33[BloomFilter]
-        N34[BloomPreScreener]
-        N35[BM25Search]
-        N36[...51 more]
+        N31[BasicSearch]
+        N32[BloomFilter]
+        N33[BloomPreScreener]
+        N34[BM25Search]
+        N35[BooleanSearch]
+        N36[...43 more]
     end
 
     subgraph Security
@@ -4620,8 +4393,8 @@ graph TD
         N49[BatchProcessor]
         N50[CachePressureCoordinator]
         N51[compressedCache]
-        N52[BrotliCompressionAdapter]
-        N53[...29 more]
+        N52[CompressedMap]
+        N53[...28 more]
     end
 
     subgraph Workers
@@ -4629,9 +4402,11 @@ graph TD
         N55[levenshteinWorker]
     end
 
-    N1 --> N4
-    N1 --> N3
-    N3 --> N42
+    N0 --> N4
+    N0 --> N3
+    N0 --> N2
+    N0 --> N1
+    N1 --> N42
     N6 --> N42
     N8 --> N20
     N8 --> N42
@@ -4643,22 +4418,20 @@ graph TD
     N19 --> N18
     N20 --> N44
     N20 --> N6
-    N20 --> N22
+    N20 --> N21
+    N22 --> N44
     N24 --> N44
-    N26 --> N44
+    N25 --> N44
+    N27 --> N44
     N28 --> N44
     N30 --> N44
     N30 --> N39
-    N30 --> N1
+    N30 --> N0
     N31 --> N44
-    N32 --> N44
-    N34 --> N33
+    N33 --> N32
+    N34 --> N44
     N35 --> N44
     N39 --> N40
-    N39 --> N37
-    N39 --> N41
-    N39 --> N38
-    N44 --> N42
 ```
 
 ---
@@ -4667,21 +4440,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 260 |
+| Total TypeScript Files | 244 |
 | Total Modules | 11 |
-| Total Lines of Code | 85611 |
-| Total Exports | 1359 |
+| Total Lines of Code | 80680 |
+| Total Exports | 1320 |
 | Total Re-exports | 808 |
-| Total Classes | 226 |
-| Total Interfaces | 540 |
-| Total Functions | 253 |
+| Total Classes | 206 |
+| Total Interfaces | 506 |
+| Total Functions | 236 |
 | Total Type Guards | 28 |
 | Total Enums | 4 |
-| Type-only Imports | 356 |
+| Type-only Imports | 341 |
 | Runtime Circular Deps | 1 |
 | Type-only Circular Deps | 3 |
 
 ---
 
 *Last Updated*: 2026-05-17
-*Version*: 2.4.0
+*Version*: 2.5.0

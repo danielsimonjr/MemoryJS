@@ -1,43 +1,10 @@
-# MemoryJS - API Reference
+# MemoryJS — API Reference
 
-**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
-**Last Updated**: 2026-05-14
-
-> **Phase 2 memory-types expansion (2026-05):** Four catalog-aligned memory-type
-> slots and one provenance mixin. New managers: `ProspectiveMemoryManager`
-> (Phase 1 prospective, accessed via `ctx.prospectiveMemory`), `FailureManager`
-> (`ctx.failureManager`), `PlanManager` (`ctx.plan`), `ReflectionManager`
-> (`ctx.reflectionManager`, publicly aliased as `ReflectionMemoryManager`).
-> New pipeline stages: `ProspectivePromotionStage` and `ReflectionStage` (with
-> `runOnSessionEnd(sessionId)` helper). New types: `ProspectiveEntity` /
-> `FailureEntity` / `PlanEntity` / `ReflectionEntity` per memory-type slot.
-> Trust-hierarchy mixin: `MemorySource.trustLevel?: TrustLevel` (`ground-truth`
-> / `verified` / `inferred` / `unverified`), `inferTrustLevel` backfill,
-> `'trust_level'` `ConflictStrategy` with recency tiebreak. Each manager
-> follows the conventions: discriminated lifecycle unions, branded ids
-> (where applicable), `MarkResolvedResult`-style discriminated returns,
-> `validate*Invariants` post-mutation, `storage.updateEntity: Promise<boolean>`
-> branched to surface `vanished-mid-update`.
-
-> **v1.15.0 additions (Phases 0–11):** memory-mapped file backends
-> (`IMmapBackend` / `BufferMmapBackend` / `FsReadMmapBackend`), segment-sharded
-> JSONL (`FileSegmentStorage`), columnar observation store (`JsonlColumnStore`),
-> tiered index (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), pluggable
-> in-memory compression (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity`
-> impls + `CompressedMap`), minimal SPARQL subset (`SparqlExecutor`),
-> write-ahead log + `EntityProxy`, `BackupManager` extracted from `IOManager`,
-> CRDT primitives, ABAC + RLS + API keys, HITS/clique/Louvain graph algos,
-> structured `logger`, bounded `TaskQueue`, security follow-ups (PRs #38/#39).
->
-> **Already shipped (v1.13.0 + Unreleased):** η.4.4 bitemporal versioning,
-> η.5.4 RDF/Turtle/JSON-LD export, η.5.5.a-d Collaboration (conflict view,
-> visibility expansion, OCC, audit enforcer), η.6.1 RBAC, η.6.3 PII redactor,
-> 3B.4 procedural memory, 3B.5 active retrieval, 3B.6 causal reasoning,
-> 3B.7 world model. New methods are documented under the relevant managers below;
-> for a high-level summary see [README.md](../../README.md). For env-var reference
-> see [CLAUDE.md](../../CLAUDE.md).
-
-Complete reference for the MemoryJS library public API.
+Complete reference for the MemoryJS library public API. For a high-level
+summary see [README.md](../../README.md); for environment-variable reference
+see [CLAUDE.md](../../CLAUDE.md). Per-version changes live in
+[CHANGELOG.md](../../CHANGELOG.md) — this document describes the *current*
+surface only.
 
 ---
 
@@ -956,24 +923,6 @@ ctx.diagnostics.indexHealth(): IndexHealthReport
 
 `explainPlan` returns the resolved query AST + which indexes would be hit + cost estimate. `indexHealth` reports the fill rate, fragmentation, and last-rebuild timestamp for each index.
 
-### SparqlExecutor (Phase 6, v1.15.0)
-
-Minimal SPARQL subset over the entity/relation graph: BGP (basic graph patterns), `FILTER`, `OPTIONAL`, `UNION`.
-
-```typescript
-ctx.sparqlExecutor.query(sparql: string): Promise<SparqlBindings[]>
-```
-
-Example:
-```sparql
-SELECT ?engineer ?project
-WHERE {
-  ?engineer rdf:type "person" .
-  ?engineer "works_on" ?project .
-  FILTER (?engineer != "Bob")
-}
-```
-
 ---
 
 ## GraphTraversal
@@ -1037,7 +986,7 @@ interface CentralityResult {
 Find connected components in the graph.
 
 ```typescript
-async getConnectedComponents(): Promise<ConnectedComponentsResult>
+async findConnectedComponents(): Promise<ConnectedComponentsResult>
 ```
 
 **Returns:**
@@ -1187,7 +1136,7 @@ async createBackup(options?: BackupOptions): Promise<BackupInfo>
 Restore from a backup.
 
 ```typescript
-async restoreBackup(backupId: string): Promise<void>
+async restoreFromBackup(backupPath: string): Promise<RestoreResult>
 ```
 
 ### listBackups

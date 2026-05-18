@@ -4,31 +4,15 @@
 
 ## Summary
 
-- **Potentially unused files**: 18
-- **Potentially unused exports**: 469
+- **Potentially unused files**: 2
+- **Potentially unused exports**: 461
 
 ## Potentially Unused Files
 
 These files are not imported by any other file in the codebase:
 
-- `src/adapters/IDatabaseAdapter.ts`
-- `src/adapters/IVectorDBAdapter.ts`
 - `src/cli/index.ts`
 - `src/cli/interactive.ts`
-- `src/core/EntityProxy.ts`
-- `src/core/mmap/BufferMmapBackend.ts`
-- `src/core/WriteAheadLog.ts`
-- `src/features/AnomalyDetector.ts`
-- `src/features/CRDT.ts`
-- `src/search/BackgroundIndexer.ts`
-- `src/search/LSH.ts`
-- `src/search/Node2Vec.ts`
-- `src/search/PartitionedInvertedIndex.ts`
-- `src/search/QueryLanguage.ts`
-- `src/search/SearchStream.ts`
-- `src/search/SPARQL.ts`
-- `src/search/SynonymManager.ts`
-- `src/utils/compression/BrotliCompressionAdapter.ts`
 
 ## Potentially Unused Exports
 
@@ -660,14 +644,6 @@ These exports are not imported by any other file in the codebase:
 - `TrustLevel` (type)
 - `PositiveInt` (type)
 - `AtLeastOne` (type)
-- `FailureMemoryEntity` (type)
-- `PlanMemoryEntity` (type)
-- `ReflectionMemoryEntity` (type)
-- `HeuristicMemoryEntity` (type)
-- `ExclusionMemoryEntity` (type)
-- `DecisionMemoryEntity` (type)
-- `ProjectContextMemoryEntity` (type)
-- `ToolAffordanceMemoryEntity` (type)
 - `WorkingMemoryEntity` (type)
 - `EpisodicMemoryEntity` (type)
 - `SemanticMemoryEntity` (type)

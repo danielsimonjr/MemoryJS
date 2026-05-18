@@ -62,11 +62,11 @@ produced by `tools/create-dependency-graph` on 2026-05-14. To regenerate run
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
-| `adapters/` | 4 | `IDatabaseAdapter`, `IVectorDBAdapter`, `LangChainMemoryAdapter`, `RestRouter` (Phase 4) |
+| `adapters/` | — | `LangChainMemoryAdapter`, `RestRouter`, `RateLimiter`, `pagination` helpers, `MCPToolObserverAdapter` |
 | `agent/` | 66 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (Phase 1 prospective), **FailureManager** (Sprint 4), **PlanManager** (Sprint 5), **ReflectionManager** (Sprint 8, aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages |
-| `core/` | 25 | ManagerContext, EntityManager (+OCC, +temporal validity, +state machine), RelationManager (+temporal invalidation), ObservationManager (+bitemporal axis), HierarchyManager, GraphStorage (+mmap branch), SQLiteStorage (+read pool, +partial index advisor), GraphTraversal (+HITS/clique/Louvain), TransactionManager, RefIndex, **FileSegmentStorage** (Phase 7), **WriteAheadLog** + **EntityProxy** (Phase 6), **JsonlColumnStore** (Phase 8), **TieredIndex** (`LRUHotTier`/`DiskWarmTier`/`BrotliColdTier`, Phase 9), **IMmapBackend** / **BufferMmapBackend** / **FsReadMmapBackend** (Phase 11) |
-| `search/` | 55 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental, Phase 1), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, **SparqlExecutor** (minimal subset, Phase 6), **PartialIndexAdvisor** |
-| `features/` | 20 | IOManager (+RDF/Turtle/JSON-LD export), **BackupManager** (extracted Phase 5), TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker, **CRDT** (Phase 5), **AnomalyDetector** (Phase 5) |
+| `core/` | — | ManagerContext, EntityManager (with optimistic concurrency + temporal validity + state machine), RelationManager (with temporal invalidation), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage (with optional mmap branch), SQLiteStorage (with read-pool + `PartialIndexAdvisor`), GraphTraversal (HITS / clique / Louvain), TransactionManager, RefIndex, `FileSegmentStorage`, `JsonlColumnStore`, `TieredIndex` (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), `IMmapBackend` / `FsReadMmapBackend` |
+| `search/` | — | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, `PartialIndexAdvisor`, `SpellChecker` |
+| `features/` | — | IOManager (with RDF / Turtle / JSON-LD export), `BackupManager`, TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker |
 | `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
 | `types/` | 8 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`), **`Result<T, E>`** (v2.0.0 — `ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk` in `result.ts`) |
 | `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** (Phase 5) |
@@ -259,8 +259,10 @@ class SearchManager {
   async searchRanked(query: string, options?): Promise<SearchResult[]>
   async booleanSearch(query: string, options?): Promise<KnowledgeGraph>
   async fuzzySearch(query: string, options?): Promise<KnowledgeGraph>
-  async hybridSearch(query: string, options?): Promise<HybridSearchResult>
+  async autoSearch(query: string, limit?: number): Promise<AutoSearchResult>
+  async searchByTime(query: string, options?): Promise<Entity[]>
 }
+// Hybrid search lives on `HybridSearchManager`, not `SearchManager`.
 ```
 
 #### GraphTraversal (`core/GraphTraversal.ts`)
@@ -269,12 +271,17 @@ class SearchManager {
 
 ```typescript
 class GraphTraversal {
-  async findShortestPath(from: string, to: string): Promise<string[]>
+  async findShortestPath(from: string, to: string): Promise<PathResult | null>
   async findAllPaths(from: string, to: string, options?): Promise<string[][]>
-  async getCentrality(options?): Promise<Map<string, number>>
-  async getConnectedComponents(): Promise<string[][]>
-  async bfs(startNode: string, visitor: Function): Promise<void>
-  async dfs(startNode: string, visitor: Function): Promise<void>
+  async findConnectedComponents(): Promise<ConnectedComponentsResult>
+  async findCommunities(): Promise<CommunitiesResult>             // Louvain
+  async findCliques(minSize?: number): Promise<string[][]>
+  async calculateDegreeCentrality(): Promise<Map<string, number>>
+  async calculateBetweennessCentrality(): Promise<Map<string, number>>
+  async calculatePageRank(): Promise<Map<string, number>>
+  async calculateHITS(): Promise<HITSResult>
+  bfs(startNode: string, options?: TraversalOptions): TraversalResult
+  dfs(startNode: string, options?: TraversalOptions): TraversalResult
 }
 ```
 

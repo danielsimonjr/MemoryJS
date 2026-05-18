@@ -60,16 +60,14 @@ MemoryJS follows a layered architecture with specialized components:
 - `agent/rbac/` — `RbacMiddleware` + `RoleAssignmentStore` + `PermissionMatrix` (η.6.1)
 - `agent/collaboration/` — `CollaborationAuditEnforcer` (η.5.5.d)
 
-### New in v1.15.0: dedicated sub-modules under `core/` and `utils/`
+### Dedicated sub-modules under `core/` and `utils/`
 
-- `core/mmap/` — `IMmapBackend` + `BufferMmapBackend` + `FsReadMmapBackend` (Phase 11)
-- `core/segments/` — `FileSegmentStorage` (FNV-routed JSONL shards, Phase 7)
-- `core/columns/` — `IColumnStore<T>` + `JsonlColumnStore` + `InMemoryColumnStore` + `ObservationColumn` (Phase 8)
-- `core/tiered/` — `ITieredIndex` + `LRUHotTier` + `DiskWarmTier` + `BrotliColdTier` (Phase 9)
-- `utils/compression/` — `ICompressionAdapter` + `ZlibCompressionAdapter` + `BrotliCompressionAdapter` + `IdentityCompressionAdapter` + `CompressedMap` (Phase 10)
-- `features/BackupManager.ts` — extracted from `IOManager` (Phase 5)
-- `search/SparqlExecutor.ts` — minimal SPARQL BGP/FILTER/OPTIONAL/UNION subset (Phase 6)
-- `core/WriteAheadLog.ts` + `core/EntityProxy.ts` — durable mutation log (Phase 6)
+- `core/mmap/` — `IMmapBackend` + `FsReadMmapBackend`
+- `core/segments/` — `FileSegmentStorage` (FNV-routed JSONL shards)
+- `core/columns/` — `IColumnStore<T>` + `JsonlColumnStore` + `InMemoryColumnStore` + `ObservationColumn`
+- `core/tiered/` — `ITieredIndex` + `LRUHotTier` + `DiskWarmTier` + `BrotliColdTier`
+- `utils/compression/` — `ICompressionAdapter` + `ZlibCompressionAdapter` + `IdentityCompressionAdapter` + `CompressedMap`
+- `features/BackupManager.ts` — extracted from `IOManager`
 
 ---
 
@@ -1415,27 +1413,11 @@ All file-touching paths run through `validateFilePath(path, this.backupDir, true
 
 ---
 
-### CRDT (`features/CRDT.ts`) — Phase 5 (v1.15.0)
-
-**Purpose**: Convergent replicated data type primitives for multi-writer scenarios
-
-Currently scaffolded as standalone types; production wiring deferred. Intended consumer: `MultiAgentMemoryManager` for last-writer-wins / OR-set / G-counter merge semantics across agents writing the same entity concurrently. See `unused-analysis.md` for the wiring TODO.
-
----
-
-### AnomalyDetector (`features/AnomalyDetector.ts`) — Phase 5 (v1.15.0)
-
-**Purpose**: LSH-based anomaly detection over the observation corpus
-
-Uses MinHash + Locality-Sensitive Hashing to find observations that are sparse with respect to the rest of the corpus. Output candidates feed `ContradictionDetector` for higher-precision review.
-
----
-
 ### ContradictionDetector (`features/ContradictionDetector.ts`)
 
-**Purpose**: Semantic-similarity-based contradiction detection with entity versioning support (v1.8.0)
+**Purpose**: Semantic-similarity-based contradiction detection with entity versioning support
 
-Compares observations across the same `rootEntityName` chain to find statements that contradict each other within a configurable threshold. Output feeds `EntityManager.invalidateEntity()` to create a successor entity. v1.15.0 adds tighter integration with `AnomalyDetector` candidates.
+Compares observations across the same `rootEntityName` chain to find statements that contradict each other within a configurable threshold. Output feeds `EntityManager.invalidateEntity()` to create a successor entity.
 
 ---
 
@@ -1517,7 +1499,6 @@ export interface ICompressionAdapter {
 }
 
 export class ZlibCompressionAdapter implements ICompressionAdapter { /* zlib.deflateSync */ }
-export class BrotliCompressionAdapter implements ICompressionAdapter { /* zlib.brotliCompressSync */ }
 export class IdentityCompressionAdapter implements ICompressionAdapter { /* no-op test baseline */ }
 
 export class CompressedMap<K, V> {

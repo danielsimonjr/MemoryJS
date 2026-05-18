@@ -42,7 +42,7 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   parallel reads, and the `JsonlColumnStore` columnar observation backend
 >   for very-wide entity rows. `ContextWindowManager` retrieval results now
 >   pass through `ctx.compressedEntityCache` (`CompressedMap` with
->   `BrotliCompressionAdapter`) so retrieved entities cost ~80% less RAM
+>   `ZlibCompressionAdapter`) so retrieved entities cost less RAM
 >   at rest. No agent-memory API changes; opt-in via env vars.
 > - **Phase 2 memory-types expansion (2026-05)** — Four new catalog-aligned
 >   `MemoryType` slots and one provenance mixin:
