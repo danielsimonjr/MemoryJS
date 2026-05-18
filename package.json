@@ -1,6 +1,6 @@
 {
   "name": "@danielsimonjr/memoryjs",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Core knowledge graph library with search, storage, and graph algorithms",
   "type": "module",
   "main": "dist/index.cjs",
@@ -73,6 +73,14 @@
     "cli-table3": "^0.6.5",
     "commander": "^14.0.3",
     "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "pg": ">=8.0.0"
+  },
+  "peerDependenciesMeta": {
+    "pg": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

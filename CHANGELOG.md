@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-05-17
+
+### Added
+
+- **PostgreSQL backend** (`src/core/PostgreSQLStorage.ts`) — full
+  `IGraphStorage` implementation backed by a PostgreSQL connection pool.
+  Wired into `StorageFactory` and `createStorageFromPath` under
+  `type: 'postgres'` (alias: `'postgresql'`) and selectable via
+  `MEMORY_STORAGE_TYPE=postgres`. The constructor receives a Postgres
+  connection string (e.g. `postgres://user:pass@host:5432/db`) where
+  other backends receive a file path.
+
+  Schema:
+    - `entities` table — first-class columns for every well-known
+      `Entity` field (name, entity_type, observations, parent_id, tags,
+      importance, created_at, last_modified, ttl, confidence, project_id,
+      version, parent_entity_name, root_entity_name, is_latest,
+      superseded_by, content_hash, valid_from, valid_until,
+      observation_meta, lifecycle_status) plus a JSONB `extra` column
+      that holds the v2.1.0 subclass-manager records (`heuristicRecord`,
+      `decisionRecord`, `projectContextRecord`, `toolAffordanceRecord`,
+      `exclusionRule`, `prospectiveRecord`, `failureRecord`, `planRecord`,
+      `reflectionRecord`).
+    - `relations` table — `(from_name, to_name, relation_type)` primary
+      key plus optional JSONB `metadata` + bitemporal `valid_from` /
+      `valid_until` columns.
+    - GIN indexes on `tags` and `idx_entities_{entity_type, project_id,
+      content_hash}` btree indexes for common filter paths.
+    - Idempotent `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT
+      EXISTS` schema bootstrap on first use.
+
+  Behavioural parity with SQLiteStorage / GraphStorage:
+    - In-memory cache + name / outgoing / incoming relation indexes
+      hydrated by `loadGraph` so the synchronous `IGraphStorage`
+      getters (`getEntityByName`, `getRelationsFor`, etc.) all return
+      from the cache.
+    - Write-through cache updates on `appendEntity` / `appendRelation`
+      / `updateEntity`.
+    - `saveGraph` is a truncate-and-reinsert in v1 (correct, simple;
+      diff-based replacement deferred).
+    - `appendEntity` uses `ON CONFLICT (name) DO UPDATE` so re-inserts
+      are upserts — matches the SQLite backend's append-or-update
+      semantics.
+    - `appendRelation` uses `ON CONFLICT DO NOTHING` to dedup on the
+      composite primary key.
+
+  Dependency model: `pg` is declared as an **optional peer
+  dependency** (`peerDependenciesMeta.pg.optional = true`). Users who
+  don't need the postgres backend never see it. When a user requests
+  the postgres backend without `pg` installed, the constructor surfaces
+  a friendly error: `"The 'pg' package is required for the PostgreSQL
+  backend but is not installed. Run: npm install pg @types/pg"`.
+
+  Tests: `tests/unit/core/PostgreSQLStorage.test.ts` (17 tests) mocks
+  the `pg` module with a tiny in-memory SQL interpreter that supports
+  the five distinct statement shapes the storage class issues
+  (DDL, TRUNCATE, INSERT entities, INSERT relations, SELECT *). All
+  IGraphStorage contract surfaces covered: lazy load, cache hydration,
+  append / update round-trip with v2.1.0 subclass-manager record fields,
+  upsert idempotency, sync getters, clearCache, close. Real-database
+  integration tests are intentionally separate from this unit suite —
+  run with `MEMORYJS_TEST_PG_URL=postgres://...` against a real instance.
+
+  Search & FTS: v1 ships LIKE-based search via the cache; the
+  `to_tsvector` / `tsquery` path with GIN-indexed FTS is deferred to a
+  follow-up.
+
 ## [2.5.0] - 2026-05-17
 
 ### Removed

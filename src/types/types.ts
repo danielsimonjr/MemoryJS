@@ -1158,9 +1158,9 @@ export interface LowercaseData {
  * Storage configuration options.
  */
 export interface StorageConfig {
-  /** Storage type: 'jsonl' or 'sqlite' */
-  type: 'jsonl' | 'sqlite';
-  /** Path to storage file */
+  /** Storage type: 'jsonl', 'sqlite', or 'postgres' / 'postgresql' */
+  type: 'jsonl' | 'sqlite' | 'postgres' | 'postgresql';
+  /** Path to storage file (or Postgres connection string when type === 'postgres') */
   path: string;
 }
 

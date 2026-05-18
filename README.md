@@ -6,7 +6,7 @@
 
 A TypeScript knowledge-graph library for AI agents and applications that need
 structured long-term memory. Entities, relations, and observations with
-multiple storage backends (JSONL and SQLite), advanced search (BM25, TF-IDF,
+multiple storage backends (JSONL, SQLite, PostgreSQL), advanced search (BM25, TF-IDF,
 fuzzy, semantic, hybrid, temporal, LLM-planned), graph algorithms, bitemporal
 versioning, RBAC, and a complete Agent Memory System (session lifecycle,
 working / episodic / semantic / procedural memory, decay, salience, consolidation,
