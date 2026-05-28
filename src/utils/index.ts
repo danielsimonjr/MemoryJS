@@ -169,6 +169,7 @@ export {
   validateRelation,
   validateImportance,
   validateTags,
+  validateNonEmpty,
 } from './schemas.js';
 
 // ==================== Formatters ====================

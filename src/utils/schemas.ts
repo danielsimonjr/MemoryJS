@@ -592,3 +592,14 @@ export function validateTags(tags: unknown): ValidationResult {
   if (result.success) return { valid: true, errors: [] };
   return { valid: false, errors: formatZodErrors(result.error) };
 }
+
+/** Validates that a string is non-empty and throws a descriptive error otherwise. */
+export function validateNonEmpty(value: unknown, fieldName: string, prefix: string): void {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    const received =
+      typeof value === 'string'
+        ? `string of length ${value.length} (${JSON.stringify(value.slice(0, 40))})`
+        : `${typeof value} (${value === null ? 'null' : String(value).slice(0, 40)})`;
+    throw new Error(`${prefix}: '${fieldName}' must be a non-empty string; received ${received}`);
+  }
+}
