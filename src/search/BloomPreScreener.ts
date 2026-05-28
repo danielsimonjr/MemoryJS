@@ -18,6 +18,7 @@
 
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { BloomFilter } from './BloomFilter.js';
+import { tokenizeAlphanumeric as tokenize } from '../utils/textSimilarity.js';
 
 /** Pre-screen options. */
 export interface BloomPreScreenerOptions {
@@ -151,8 +152,4 @@ export class BloomPreScreener {
       tagFilterParams: this.tagFilter?.parameters() ?? null,
     };
   }
-}
-
-function tokenize(s: string): string[] {
-  return s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 0);
 }

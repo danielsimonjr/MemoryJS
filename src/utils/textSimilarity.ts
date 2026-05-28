@@ -22,6 +22,16 @@ export function tokenize(text: string): string[] {
 }
 
 /**
+ * Tokenize text into lowercase alphanumeric words, splitting on all non-alphanumeric characters.
+ *
+ * @param s - Input text to tokenize
+ * @returns Array of lowercase tokens
+ */
+export function tokenizeAlphanumeric(s: string): string[] {
+  return s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 0);
+}
+
+/**
  * Build a term frequency vector from tokens.
  *
  * @param tokens - Array of tokens
