@@ -23,6 +23,7 @@
 
 import type { PatternDetector } from './PatternDetector.js';
 import type { PatternResult } from '../types/agent-memory.js';
+import { jaccard } from '../utils/textSimilarity.js';
 
 export type Outcome = 'success' | 'failure' | 'partial' | 'unknown';
 
@@ -385,13 +386,6 @@ function countTokens(texts: string[]): Map<string, number> {
     }
   }
   return out;
-}
-
-function jaccard(a: Set<string>, b: Set<string>): number {
-  if (a.size === 0 && b.size === 0) return 0;
-  let inter = 0;
-  for (const t of a) if (b.has(t)) inter += 1;
-  return inter / (a.size + b.size - inter);
 }
 
 function trajectoryTokens(t: Trajectory, method: ClusterMethod): Set<string> {
