@@ -22,6 +22,17 @@ export function tokenize(text: string): string[] {
 }
 
 /**
+ * Tokenize text into a Set of lowercase alphanumeric words.
+ * Useful for operations like set-intersection.
+ *
+ * @param text - Input text to tokenize
+ * @returns Set of lowercase tokens
+ */
+export function tokenizeToSet(text: string): Set<string> {
+  return new Set(tokenize(text));
+}
+
+/**
  * Build a term frequency vector from tokens.
  *
  * @param tokens - Array of tokens
