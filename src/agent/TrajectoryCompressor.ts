@@ -22,6 +22,7 @@
 
 import type { Entity } from '../types/types.js';
 import type { ContextWindowManager } from './ContextWindowManager.js';
+import { tokenizeToSet } from '../utils/textSimilarity.js';
 
 export interface DistillOptions {
   /** Keep events in the order they arrived. Default true. */
@@ -117,7 +118,7 @@ export class TrajectoryCompressor {
 
     // Score each observation by inverse-novelty: count how many tokens
     // it shares with the rest. High-overlap = "core"; low = outlier.
-    const tokenSets = observations.map((o) => tokenize(o));
+    const tokenSets = observations.map((o) => tokenizeToSet(o));
     const scores = tokenSets.map((set, i) => {
       let overlap = 0;
       for (let j = 0; j < tokenSets.length; j += 1) {
@@ -222,8 +223,8 @@ export class TrajectoryCompressor {
       for (let j = i + 1; j < entities.length; j += 1) {
         if (visited.has(entities[j].name)) continue;
         const sim = jaccard(
-          new Set(entities[i].observations.flatMap((o) => Array.from(tokenize(o)))),
-          new Set(entities[j].observations.flatMap((o) => Array.from(tokenize(o)))),
+          new Set(entities[i].observations.flatMap((o) => Array.from(tokenizeToSet(o)))),
+          new Set(entities[j].observations.flatMap((o) => Array.from(tokenizeToSet(o)))),
         );
         if (sim >= this.redundancyThreshold) {
           cluster.push(entities[j]);
@@ -289,17 +290,6 @@ export class TrajectoryCompressor {
   }
 }
 
-/** Tokenize for redundancy detection (lowercase, alpha-numeric). */
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .split(/\s+/)
-      .filter((t) => t.length > 0),
-  );
-}
-
 function jaccard(a: Set<string>, b: Set<string>): number {
   if (a.size === 0 && b.size === 0) return 0;
   let inter = 0;
@@ -309,7 +299,7 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 
 function pickTop3(observations: string[]): string[] {
   if (observations.length <= 3) return observations;
-  const tokens = observations.map(tokenize);
+  const tokens = observations.map(o => tokenizeToSet(o));
   const scores = tokens.map((set, i) => {
     let overlap = 0;
     for (let j = 0; j < tokens.length; j += 1) {
