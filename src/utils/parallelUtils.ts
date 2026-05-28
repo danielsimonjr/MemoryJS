@@ -121,7 +121,7 @@ export async function parallelMap<T, R>(
     }
 
     // Convert function to string for serialization
-    const fnString = fn.toString();
+    const fnString = Function.prototype.toString.call(fn);
     // Security: reject suspiciously large serialized functions
     if (fnString.length > 100_000) {
       throw new Error('Serialized function exceeds maximum allowed size');
@@ -199,7 +199,7 @@ export async function parallelFilter<T>(
     }
 
     // Convert function to string for serialization
-    const predicateString = predicate.toString();
+    const predicateString = Function.prototype.toString.call(predicate);
     // Security: reject suspiciously large serialized functions
     if (predicateString.length > 100_000) {
       throw new Error('Serialized function exceeds maximum allowed size');

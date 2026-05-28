@@ -287,7 +287,7 @@ export class TaskQueue {
       if (this.useWorkerPool) {
         try {
           const pool = this.getPool();
-          const fnString = task.fn.toString();
+          const fnString = Function.prototype.toString.call(task.fn);
           // Security: reject suspiciously large serialized functions
           if (fnString.length > 100_000) {
             throw new Error('Serialized function exceeds maximum allowed size');
