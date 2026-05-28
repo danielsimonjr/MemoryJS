@@ -7,22 +7,32 @@
  * @module core/ObservationManager
  */
 
-import type { GraphStorage } from './GraphStorage.js';
-import { logger } from '../utils/logger.js';
-import type { AutoLinker, AutoLinkOptions, AutoLinkResult } from '../features/AutoLinker.js';
-import type { DeduplicationOptions, Entity } from '../types/types.js';
-import { EntityNotFoundError, ValidationError } from '../utils/errors.js';
-import type { ContradictionDetector } from '../features/ContradictionDetector.js';
-import type { MemoryValidator, MemoryValidationIssue } from '../agent/MemoryValidator.js';
-import type { EntityManager } from './EntityManager.js';
-import { calculateTextSimilarity } from '../utils/textSimilarity.js';
-import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
+import type { GraphStorage } from "./GraphStorage.js";
+import { logger } from "../utils/logger.js";
+import type {
+  AutoLinker,
+  AutoLinkOptions,
+  AutoLinkResult,
+} from "../features/AutoLinker.js";
+import type { DeduplicationOptions, Entity } from "../types/types.js";
+import { EntityNotFoundError, ValidationError } from "../utils/errors.js";
+import type { ContradictionDetector } from "../features/ContradictionDetector.js";
+import type {
+  MemoryValidator,
+  MemoryValidationIssue,
+} from "../agent/MemoryValidator.js";
+import type { EntityManager } from "./EntityManager.js";
+import { calculateTextSimilarity } from "../utils/textSimilarity.js";
+import type {
+  IColumnStore,
+  ObservationColumn,
+} from "./columns/IColumnStore.js";
 import type {
   EntityCreatedEvent,
   EntityUpdatedEvent,
   EntityDeletedEvent,
   GraphSavedEvent,
-} from '../types/types.js';
+} from "../types/types.js";
 
 /**
  * Default deduplication options used when dedup is enabled without explicit config.
@@ -30,7 +40,7 @@ import type {
 const DEFAULT_DEDUP_OPTIONS: DeduplicationOptions = {
   enabled: true,
   similarityThreshold: 0.85,
-  mergeStrategy: 'keep_longest',
+  mergeStrategy: "keep_longest",
 };
 
 /**
@@ -89,12 +99,15 @@ export class ObservationManager {
 
     const emitter = this.storage.events;
     const unsubs: Array<() => void> = [
-      emitter.on('entity:created', (event: EntityCreatedEvent) => {
+      emitter.on("entity:created", (event: EntityCreatedEvent) => {
         // Async-but-not-awaited: the EventEmitter listener signature
         // is sync. Errors inside shadowWriteColumn already log + swallow.
-        void this.shadowWriteColumn(event.entity.name, event.entity.observations);
+        void this.shadowWriteColumn(
+          event.entity.name,
+          event.entity.observations,
+        );
       }),
-      emitter.on('entity:updated', (event: EntityUpdatedEvent) => {
+      emitter.on("entity:updated", (event: EntityUpdatedEvent) => {
         // Only react when the change touches observations.
         if (event.changes.observations === undefined) return;
         // The post-update entity has the merged state; the storage
@@ -104,7 +117,7 @@ export class ObservationManager {
           void this.shadowWriteColumn(entity.name, entity.observations);
         }
       }),
-      emitter.on('entity:deleted', (event: EntityDeletedEvent) => {
+      emitter.on("entity:deleted", (event: EntityDeletedEvent) => {
         // Drop the column entry so getObservationsFor stops returning
         // ghost observations for the deleted entity (review #2).
         if (this.columnStore !== null) {
@@ -124,7 +137,7 @@ export class ObservationManager {
       // every entity, put each one's observations. O(N) per save,
       // but bulk saves are infrequent (interactive paths use
       // `appendEntity` which emits per-entity events).
-      emitter.on('graph:saved', (_event: GraphSavedEvent) => {
+      emitter.on("graph:saved", (_event: GraphSavedEvent) => {
         void this.resyncFromStorage();
       }),
     ];
@@ -197,7 +210,10 @@ export class ObservationManager {
    *
    * Phase 8 task 67.
    */
-  private async shadowWriteColumn(name: string, observations: string[]): Promise<void> {
+  private async shadowWriteColumn(
+    name: string,
+    observations: string[],
+  ): Promise<void> {
     if (this.columnStore === null) return;
     try {
       await this.columnStore.put(name, [...observations]);
@@ -219,7 +235,7 @@ export class ObservationManager {
    */
   setContradictionDetector(
     detector: ContradictionDetector,
-    entityManager: EntityManager
+    entityManager: EntityManager,
   ): void {
     this.contradictionDetector = detector;
     this.linkedEntityManager = entityManager;
@@ -256,8 +272,10 @@ export class ObservationManager {
    * (lazy). Pass the instance for tests where a stub is convenient;
    * pass the thunk for production wiring through `ManagerContext`.
    */
-  setMemoryValidator(validatorOrProvider: MemoryValidator | (() => MemoryValidator)): void {
-    if (typeof validatorOrProvider === 'function') {
+  setMemoryValidator(
+    validatorOrProvider: MemoryValidator | (() => MemoryValidator),
+  ): void {
+    if (typeof validatorOrProvider === "function") {
       this.memoryValidatorProvider = validatorOrProvider;
     } else {
       this.memoryValidatorProvider = () => validatorOrProvider;
@@ -275,11 +293,13 @@ export class ObservationManager {
    * @returns Resolved options, or undefined if dedup is disabled
    * @internal
    */
-  private resolveDedup(dedup?: DeduplicationOptions): DeduplicationOptions | undefined {
+  private resolveDedup(
+    dedup?: DeduplicationOptions,
+  ): DeduplicationOptions | undefined {
     if (dedup) {
       return dedup.enabled ? dedup : undefined;
     }
-    if (process.env.MEMORY_OBSERVATION_DEDUP === 'true') {
+    if (process.env.MEMORY_OBSERVATION_DEDUP === "true") {
       return DEFAULT_DEDUP_OPTIONS;
     }
     return undefined;
@@ -325,8 +345,15 @@ export class ObservationManager {
   async addObservations(
     observations: { entityName: string; contents: string[] }[],
     dedup?: DeduplicationOptions,
-    options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions }
-  ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
+    options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions },
+  ): Promise<
+    {
+      entityName: string;
+      addedObservations: string[];
+      superseded?: boolean;
+      autoLinkResults?: AutoLinkResult[];
+    }[]
+  > {
     // Two-phase orchestration:
     //
     // Phase 1 (locked) — snapshot, dedup, contradiction-detect.
@@ -342,12 +369,26 @@ export class ObservationManager {
     // Each supersede call atomicaly creates the new-version entity
     // + marks the old one isLatest=false via entityManager's own
     // mutex acquisitions.
-    const supersedeCandidates: { entityName: string; entity: Entity; contents: string[] }[] = [];
+    const supersedeCandidates: {
+      entityName: string;
+      entity: Entity;
+      contents: string[];
+    }[] = [];
 
     const release = await this.storage.graphMutex.acquire();
-    let regularResults: { entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[];
+    let regularResults: {
+      entityName: string;
+      addedObservations: string[];
+      superseded?: boolean;
+      autoLinkResults?: AutoLinkResult[];
+    }[];
     try {
-      regularResults = await this.addObservationsLocked(observations, dedup, options, supersedeCandidates);
+      regularResults = await this.addObservationsLocked(
+        observations,
+        dedup,
+        options,
+        supersedeCandidates,
+      );
     } finally {
       release();
     }
@@ -375,24 +416,46 @@ export class ObservationManager {
     observations: { entityName: string; contents: string[] }[],
     dedup?: DeduplicationOptions,
     options?: { autoLink?: boolean; autoLinkOptions?: AutoLinkOptions },
-    supersedeCandidates?: { entityName: string; entity: Entity; contents: string[] }[]
-  ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
+    supersedeCandidates?: {
+      entityName: string;
+      entity: Entity;
+      contents: string[];
+    }[],
+  ): Promise<
+    {
+      entityName: string;
+      addedObservations: string[];
+      superseded?: boolean;
+      autoLinkResults?: AutoLinkResult[];
+    }[]
+  > {
     const resolvedDedup = this.resolveDedup(dedup);
 
     // Get mutable graph for atomic update
     const graph = await this.storage.getGraphForMutation();
     const timestamp = new Date().toISOString();
-    const results: { entityName: string; addedObservations: string[]; superseded?: boolean }[] = [];
+    const results: {
+      entityName: string;
+      addedObservations: string[];
+      superseded?: boolean;
+    }[] = [];
     let hasChanges = false;
 
+    const entityMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      entityMap.set(entity.name, entity);
+    }
+
     for (const o of observations) {
-      const entity = graph.entities.find(e => e.name === o.entityName);
+      const entity = entityMap.get(o.entityName);
       if (!entity) {
         throw new EntityNotFoundError(o.entityName);
       }
 
       // First pass: filter exact duplicates
-      let nonExactDuplicates = o.contents.filter(content => !entity.observations.includes(content));
+      let nonExactDuplicates = o.contents.filter(
+        (content) => !entity.observations.includes(content),
+      );
 
       // Pre-storage validation hook (v1.14.0, Phase δ.1, T31).
       // Opt-in via `MEMORY_VALIDATE_ON_STORE=true` env var. When enabled
@@ -412,33 +475,41 @@ export class ObservationManager {
       // contradiction findings are still informational only — the
       // contract is "validator hooks downstream consumers, doesn't
       // mutate persistence by itself."
-      if (this.memoryValidatorProvider && process.env.MEMORY_VALIDATE_ON_STORE === 'true') {
+      if (
+        this.memoryValidatorProvider &&
+        process.env.MEMORY_VALIDATE_ON_STORE === "true"
+      ) {
         const validator = this.memoryValidatorProvider();
         const passed: string[] = [];
         for (const content of nonExactDuplicates) {
           const result = await validator.validateConsistency(content, entity);
           // Only `duplicate-observation` is a blocking issue at this layer.
-          const blockingDup = result.issues.some((i: MemoryValidationIssue) => i.kind === 'duplicate-observation');
+          const blockingDup = result.issues.some(
+            (i: MemoryValidationIssue) => i.kind === "duplicate-observation",
+          );
           if (!blockingDup) {
             passed.push(content);
             // Surface advisory issues without blocking.
             if (!result.isValid) {
               const advisories = result.issues
-                .filter((i: MemoryValidationIssue) => i.kind !== 'duplicate-observation')
+                .filter(
+                  (i: MemoryValidationIssue) =>
+                    i.kind !== "duplicate-observation",
+                )
                 .map((i: MemoryValidationIssue) => i.kind);
               if (advisories.length > 0) {
                 logger.warn(
-                  `[ObservationManager] Validator advisory for "${o.entityName}": ${advisories.join(', ')}. ` +
-                  (this.contradictionDetector
-                    ? 'Semantic-contradiction findings will be handled by the v1.8.0 supersede branch.'
-                    : 'No contradiction-detector wired; advisory only.'),
+                  `[ObservationManager] Validator advisory for "${o.entityName}": ${advisories.join(", ")}. ` +
+                    (this.contradictionDetector
+                      ? "Semantic-contradiction findings will be handled by the v1.8.0 supersede branch."
+                      : "No contradiction-detector wired; advisory only."),
                 );
               }
             }
           } else {
             logger.warn(
               `[ObservationManager] Skipping duplicate observation on entity "${o.entityName}". ` +
-              `Suggestions: ${result.suggestions.join('; ')}`,
+                `Suggestions: ${result.suggestions.join("; ")}`,
             );
           }
         }
@@ -450,7 +521,7 @@ export class ObservationManager {
         if (this.contradictionDetector && this.linkedEntityManager) {
           const contradictions = await this.contradictionDetector.detect(
             entity,
-            nonExactDuplicates
+            nonExactDuplicates,
           );
           if (contradictions.length > 0) {
             // Defer supersede to the unlocked post-pass — see
@@ -471,9 +542,13 @@ export class ObservationManager {
               await this.contradictionDetector.supersede(
                 entity,
                 nonExactDuplicates,
-                this.linkedEntityManager
+                this.linkedEntityManager,
               );
-              results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates, superseded: true });
+              results.push({
+                entityName: o.entityName,
+                addedObservations: nonExactDuplicates,
+                superseded: true,
+              });
             }
             continue; // skip normal append for this entity
           }
@@ -484,7 +559,7 @@ export class ObservationManager {
           const addedObservations = this.applyFuzzyDedup(
             nonExactDuplicates,
             entity.observations,
-            resolvedDedup
+            resolvedDedup,
           );
 
           if (addedObservations.length > 0) {
@@ -499,7 +574,10 @@ export class ObservationManager {
           entity.lastModified = timestamp;
           hasChanges = true;
 
-          results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates });
+          results.push({
+            entityName: o.entityName,
+            addedObservations: nonExactDuplicates,
+          });
         }
       } else {
         results.push({ entityName: o.entityName, addedObservations: [] });
@@ -515,8 +593,9 @@ export class ObservationManager {
       if (this.columnStore !== null) {
         for (const r of results) {
           if (r.addedObservations.length > 0) {
-            const entity = graph.entities.find((e) => e.name === r.entityName);
-            if (entity) await this.shadowWriteColumn(entity.name, entity.observations);
+            const entity = entityMap.get(r.entityName);
+            if (entity)
+              await this.shadowWriteColumn(entity.name, entity.observations);
           }
         }
       }
@@ -524,7 +603,8 @@ export class ObservationManager {
 
     // Auto-link: detect entity mentions and create relations
     const shouldAutoLink =
-      (options?.autoLink ?? (process.env.MEMORY_AUTO_LINK === 'true')) && this._autoLinker;
+      (options?.autoLink ?? process.env.MEMORY_AUTO_LINK === "true") &&
+      this._autoLinker;
 
     if (shouldAutoLink && this._autoLinker) {
       const autoLinkResults: AutoLinkResult[] = [];
@@ -533,13 +613,15 @@ export class ObservationManager {
           const linkResult = await this._autoLinker.linkObservations(
             r.entityName,
             r.addedObservations,
-            options?.autoLinkOptions
+            options?.autoLinkOptions,
           );
           autoLinkResults.push(linkResult);
         }
       }
       return results.map((r) => {
-        const linkResult = autoLinkResults.find(lr => lr.sourceEntity === r.entityName);
+        const linkResult = autoLinkResults.find(
+          (lr) => lr.sourceEntity === r.entityName,
+        );
         return linkResult ? { ...r, autoLinkResults: [linkResult] } : r;
       });
     }
@@ -564,7 +646,7 @@ export class ObservationManager {
   private applyFuzzyDedup(
     newObservations: string[],
     existingObservations: string[],
-    options: DeduplicationOptions
+    options: DeduplicationOptions,
   ): string[] {
     const added: string[] = [];
 
@@ -572,13 +654,16 @@ export class ObservationManager {
       let isDuplicate = false;
 
       for (let i = 0; i < existingObservations.length; i++) {
-        const similarity = calculateTextSimilarity(newObs, existingObservations[i]);
+        const similarity = calculateTextSimilarity(
+          newObs,
+          existingObservations[i],
+        );
 
         if (similarity >= options.similarityThreshold) {
           isDuplicate = true;
 
           switch (options.mergeStrategy) {
-            case 'keep_longest':
+            case "keep_longest":
               if (newObs.length > existingObservations[i].length) {
                 existingObservations[i] = newObs;
                 added.push(newObs);
@@ -586,12 +671,12 @@ export class ObservationManager {
               // else: keep existing, don't add new
               break;
 
-            case 'keep_newest':
+            case "keep_newest":
               existingObservations[i] = newObs;
               added.push(newObs);
               break;
 
-            case 'keep_both':
+            case "keep_both":
               // Effectively skip dedup for this pair
               existingObservations.push(newObs);
               added.push(newObs);
@@ -640,7 +725,7 @@ export class ObservationManager {
    * ```
    */
   async deleteObservations(
-    deletions: { entityName: string; observations: string[] }[]
+    deletions: { entityName: string; observations: string[] }[],
   ): Promise<void> {
     // Same locking rationale as addObservations — Phase 8 review #9.
     const release = await this.storage.graphMutex.acquire();
@@ -652,7 +737,7 @@ export class ObservationManager {
   }
 
   private async deleteObservationsLocked(
-    deletions: { entityName: string; observations: string[] }[]
+    deletions: { entityName: string; observations: string[] }[],
   ): Promise<void> {
     // Get mutable graph for atomic update
     const graph = await this.storage.getGraphForMutation();
@@ -660,11 +745,18 @@ export class ObservationManager {
     let hasChanges = false;
     const touchedNames: string[] = [];
 
-    deletions.forEach(d => {
-      const entity = graph.entities.find(e => e.name === d.entityName);
+    const entityMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      entityMap.set(entity.name, entity);
+    }
+
+    deletions.forEach((d) => {
+      const entity = entityMap.get(d.entityName);
       if (entity) {
         const originalLength = entity.observations.length;
-        entity.observations = entity.observations.filter(o => !d.observations.includes(o));
+        entity.observations = entity.observations.filter(
+          (o) => !d.observations.includes(o),
+        );
 
         // Update lastModified timestamp if observations were deleted
         if (entity.observations.length < originalLength) {
@@ -685,8 +777,9 @@ export class ObservationManager {
       // `[]`, so the column store needs to reflect that.
       if (this.columnStore !== null) {
         for (const name of touchedNames) {
-          const entity = graph.entities.find((e) => e.name === name);
-          if (entity) await this.shadowWriteColumn(entity.name, entity.observations);
+          const entity = entityMap.get(name);
+          if (entity)
+            await this.shadowWriteColumn(entity.name, entity.observations);
         }
       }
     }
@@ -716,7 +809,7 @@ export class ObservationManager {
     const release = await this.storage.graphMutex.acquire();
     try {
       const graph = await this.storage.getGraphForMutation();
-      const entity = graph.entities.find(e => e.name === entityName);
+      const entity = graph.entities.find((e) => e.name === entityName);
       if (!entity) throw new EntityNotFoundError(entityName);
       if (!entity.observations.includes(content)) {
         throw new ValidationError(
@@ -726,7 +819,9 @@ export class ObservationManager {
       }
       const ts = ended ?? new Date().toISOString();
       if (!entity.observationMeta) entity.observationMeta = [];
-      const existing = entity.observationMeta.find(m => m.content === content);
+      const existing = entity.observationMeta.find(
+        (m) => m.content === content,
+      );
       if (existing) {
         existing.validUntil = ts;
       } else {
@@ -750,15 +845,18 @@ export class ObservationManager {
    */
   async observationsAsOf(entityName: string, asOf: string): Promise<string[]> {
     if (!/^\d{4}-\d{2}-\d{2}/.test(asOf)) {
-      throw new ValidationError(`asOf must be an ISO 8601 date string, got: '${asOf}'`, []);
+      throw new ValidationError(
+        `asOf must be an ISO 8601 date string, got: '${asOf}'`,
+        [],
+      );
     }
     const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find(e => e.name === entityName);
+    const entity = graph.entities.find((e) => e.name === entityName);
     if (!entity) return [];
     const metaByContent = new Map(
-      (entity.observationMeta ?? []).map(m => [m.content, m]),
+      (entity.observationMeta ?? []).map((m) => [m.content, m]),
     );
-    return entity.observations.filter(obs => {
+    return entity.observations.filter((obs) => {
       const meta = metaByContent.get(obs);
       if (!meta) return true; // unbounded
       if (meta.validFrom && meta.validFrom > asOf) return false;
