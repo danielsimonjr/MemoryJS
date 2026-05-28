@@ -33,6 +33,7 @@ import type {
 import { isReflectionMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
+import { validateNonEmpty, validateNonEmptyArray } from '../utils/validationUtils.js';
 
 /** Discriminated return from `archive`. Mirrors `MarkResolvedResult`. */
 export type ArchiveReflectionResult =
@@ -109,8 +110,8 @@ export class ReflectionManager {
     input: ReflectionInput,
     options: ReflectionEntityOptions = {}
   ): Promise<ReflectionRecord> {
-    validateNonEmptyArray(input.evidence, 'evidence');
-    validateNonEmpty(input.summary, 'summary');
+    validateNonEmptyArray(input.evidence, 'evidence', 'ReflectionManager');
+    validateNonEmpty(input.summary, 'summary', 'ReflectionManager');
     validateConfidence(input.generalization_confidence, 'generalization_confidence');
 
     const evidenceHash = computeEvidenceHash(input.scope, input.evidence);
@@ -269,22 +270,6 @@ function computeEvidenceHash(scope: ReflectionScope, evidence: string[]): string
   const sorted = [...evidence].sort();
   const input = `${scope}|${sorted.join('|')}`;
   return createHash('sha256').update(input).digest('hex');
-}
-
-function validateNonEmpty(value: unknown, fieldName: string): void {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    const received =
-      typeof value === 'string'
-        ? `string of length ${value.length} (${JSON.stringify(value.slice(0, 40))})`
-        : `${typeof value} (${value === null ? 'null' : String(value).slice(0, 40)})`;
-    throw new Error(`ReflectionManager: '${fieldName}' must be a non-empty string; received ${received}`);
-  }
-}
-
-function validateNonEmptyArray(value: unknown, fieldName: string): void {
-  if (!Array.isArray(value) || value.length === 0) {
-    throw new Error(`ReflectionManager: '${fieldName}' must be a non-empty array`);
-  }
 }
 
 function validateConfidence(value: unknown, fieldName: string): void {

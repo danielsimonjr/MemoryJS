@@ -34,6 +34,7 @@ import type {
 import { isFailureMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
+import { validateNonEmpty } from '../utils/validationUtils.js';
 
 /** Configuration for `FailureManager`. */
 export interface FailureManagerConfig {
@@ -125,11 +126,11 @@ export class FailureManager {
    *   `appendEntity` fails (disk full, EPERM, etc.)
    */
   async record(input: FailureInput, options: FailureEntityOptions = {}): Promise<FailureRecord> {
-    validateNonEmpty(input.context, 'context');
-    validateNonEmpty(input.attempted, 'attempted');
-    validateNonEmpty(input.failure_mode, 'failure_mode');
-    validateNonEmpty(input.root_cause, 'root_cause');
-    validateNonEmpty(input.applicability_hint, 'applicability_hint');
+    validateNonEmpty(input.context, 'context', 'FailureManager');
+    validateNonEmpty(input.attempted, 'attempted', 'FailureManager');
+    validateNonEmpty(input.failure_mode, 'failure_mode', 'FailureManager');
+    validateNonEmpty(input.root_cause, 'root_cause', 'FailureManager');
+    validateNonEmpty(input.applicability_hint, 'applicability_hint', 'FailureManager');
 
     const now = new Date();
     const nowIso = toIsoDateTime(now);
@@ -290,18 +291,6 @@ export class FailureManager {
 }
 
 // ==================== Helpers ====================
-
-function validateNonEmpty(value: unknown, fieldName: string): void {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    const received =
-      typeof value === 'string'
-        ? `string of length ${value.length} (${JSON.stringify(value.slice(0, 40))})`
-        : `${typeof value} (${value === null ? 'null' : String(value).slice(0, 40)})`;
-    throw new Error(
-      `FailureManager: '${fieldName}' must be a non-empty string; received ${received}`
-    );
-  }
-}
 
 /**
  * Score a failure record against a list of lowercased query tokens.
