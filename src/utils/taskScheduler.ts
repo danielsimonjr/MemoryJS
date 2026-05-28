@@ -11,7 +11,7 @@
  * @module utils/taskScheduler
  */
 
-import workerpool from '@danielsimonjr/workerpool';
+import os from 'os';
 import { logger } from './logger.js';
 
 /**
@@ -175,33 +175,18 @@ export class TaskQueue {
   private queue: QueuedTask[] = [];
   private running: Map<string, QueuedTask> = new Map();
   private completed: TaskResult[] = [];
-  private pool: workerpool.Pool | null = null;
   private concurrency: number;
-  private defaultTimeout: number;
   private isProcessing = false;
   private totalExecutionTime = 0;
   private totalProcessed = 0;
-  private useWorkerPool: boolean;
   private static readonly MAX_COMPLETED = 10_000;
   private static readonly MAX_QUEUE = 100_000;
 
   constructor(options: { concurrency?: number; timeout?: number; useWorkerPool?: boolean } = {}) {
-    this.concurrency = options.concurrency ?? Math.max(1, workerpool.cpus - 1);
-    this.defaultTimeout = options.timeout ?? 30000;
-    this.useWorkerPool = options.useWorkerPool ?? true;
-  }
-
-  /**
-   * Get or create the worker pool.
-   */
-  private getPool(): workerpool.Pool {
-    if (!this.pool) {
-      this.pool = workerpool.pool({
-        maxWorkers: this.concurrency,
-        workerType: 'thread',
-      });
-    }
-    return this.pool;
+    this.concurrency = options.concurrency ?? Math.max(1, os.cpus().length - 1);
+    // Note: timeout parameter is kept for backward compatibility with tests
+    // but the actual timeout behavior was previously implemented using workerpool.
+    // Timeouts should now be handled at the WorkerTaskManager level.
   }
 
   /**
@@ -281,39 +266,10 @@ export class TaskQueue {
     const startTime = Date.now();
 
     try {
-      // Execute task - try worker pool first, fall back to direct execution
-      let result: unknown;
-
-      if (this.useWorkerPool) {
-        try {
-          const pool = this.getPool();
-          const fnString = task.fn.toString();
-          // Security: reject suspiciously large serialized functions
-          if (fnString.length > 100_000) {
-            throw new Error('Serialized function exceeds maximum allowed size');
-          }
-          const timeout = task.timeout ?? this.defaultTimeout;
-
-          result = await pool
-            .exec(
-              (input: unknown, fnStr: string) => {
-                // SECURITY NOTE: new Function() is required for worker pool serialization.
-                // Safety is ensured by validateFunction() at enqueue() which guarantees
-                // only real Function objects (not user strings) are serialized here.
-                const fn = new Function('return ' + fnStr)();
-                return fn(input);
-              },
-              [task.input, fnString]
-            )
-            .timeout(timeout);
-        } catch {
-          // Fall back to direct execution
-          result = await Promise.resolve(task.fn(task.input));
-        }
-      } else {
-        // Direct execution without worker pool
-        result = await Promise.resolve(task.fn(task.input));
-      }
+      // Execute task directly in current thread.
+      // Dynamic serialization with new Function() has been removed for security reasons.
+      // Concurrency and parallelization is now handled by WorkerTaskManager.
+      let result: unknown = await Promise.resolve(task.fn(task.input));
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -442,12 +398,6 @@ export class TaskQueue {
     }
     this.queue = [];
 
-    // Terminate worker pool
-    if (this.pool) {
-      await this.pool.terminate();
-      this.pool = null;
-    }
-
     this.isProcessing = false;
   }
 }
@@ -491,7 +441,7 @@ export async function batchProcess<T, R>(
   options: TaskBatchOptions = {}
 ): Promise<Array<{ success: true; result: R } | { success: false; error: Error }>> {
   const {
-    concurrency = Math.max(1, workerpool.cpus - 1),
+    concurrency = Math.max(1, os.cpus().length - 1),
     timeout = 30000,
     onProgress,
     stopOnError = false,
