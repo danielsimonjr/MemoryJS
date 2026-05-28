@@ -8,7 +8,7 @@
 
 import type { Entity, SearchResult, TFIDFIndex, TokenizedEntity } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
-import { calculateTF, calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
+import { calculateTFFromTokens, calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { TFIDFIndexManager } from './TFIDFIndexManager.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
@@ -265,15 +265,15 @@ export class RankedSearch {
     const tokenSets = documentData.map(d => d.tokenSet);
 
     for (const docData of documentData) {
-      const { entity, text } = docData;
+      const { entity, tokens } = docData;
 
       // Calculate score for each query term
       let totalScore = 0;
       const matchedFields: SearchResult['matchedFields'] = {};
 
       for (const term of queryTerms) {
-        // Calculate TF using pre-tokenized tokens
-        const tf = calculateTF(term, text);
+        // Calculate TF using pre-tokenized tokens (O(T) vs O(N) re-tokenization)
+        const tf = calculateTFFromTokens(term, tokens);
 
         // Calculate IDF using pre-computed token sets (O(1) per document)
         const idf = calculateIDFFromTokenSets(term, tokenSets);
