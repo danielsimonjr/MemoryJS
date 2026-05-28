@@ -34,11 +34,11 @@ export function registerSearchCommands(program: Command): void {
         if (opts.suggest) {
           const suggestions = await ctx.searchManager.getSearchSuggestions(query);
           if (options.format === 'json') {
-            console.log(JSON.stringify(suggestions, null, 2));
+            logger.log(JSON.stringify(suggestions, null, 2));
           } else {
-            console.log('Search suggestions:');
+            logger.log('Search suggestions:');
             for (const s of suggestions) {
-              console.log(`  ${s}`);
+              logger.log(`  ${s}`);
             }
           }
           return;
@@ -79,7 +79,7 @@ export function registerSearchCommands(program: Command): void {
         // Apply limit
         results = results.slice(0, limit);
 
-        console.log(formatSearchResults(results, options.format));
+        logger.log(formatSearchResults(results, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
