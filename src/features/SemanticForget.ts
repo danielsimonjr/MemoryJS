@@ -135,10 +135,15 @@ export class SemanticForget {
     // Within matching entities, find the best observation match
     let bestMatch: { entity: Entity; observation: string; similarity: number } | null = null;
 
+    const entityMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      entityMap.set(entity.name, entity);
+    }
+
     for (const result of searchResults) {
       // Re-resolve the entity from storage to ensure we have full fields
       const searchEntity = result.entity as Entity;
-      const entity = graph.entities.find(e => e.name === searchEntity.name);
+      const entity = entityMap.get(searchEntity.name);
       if (!entity) continue;
 
       if (options.projectId !== undefined && entity.projectId !== options.projectId) {
