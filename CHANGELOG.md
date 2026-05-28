@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **`DreamEngine.runDreamCycle` now shares a single graph load across read
+  phases.** A local `sharedGraph` memo serves the temporal-anchoring,
+  entropy-pruning, entity-enrichment, and pattern-promotion phases from one
+  `loadGraph()` call, eliminating up to 4 redundant loads per cycle. The memo is
+  invalidated after consolidation and compression — the only phases that
+  *replace* the graph object (in-place `updateEntity` writes stay visible
+  through the live cache reference both storage backends return, so they need no
+  invalidation). Salvaged from the perf-optimize-dream-engine-caching branch
+  (its destructive file deletions were discarded). Full suite (7363) stays green.
+
 ### Security
 
 - **Bumped `@danielsimonjr/workerpool` to `^10.2.0`** (lockfile 10.1.0 → 10.2.0),

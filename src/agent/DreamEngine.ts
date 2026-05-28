@@ -12,7 +12,7 @@
 
 import { EventEmitter } from 'events';
 import { randomUUID } from 'crypto';
-import type { Entity, IGraphStorage, Relation } from '../types/types.js';
+import type { Entity, IGraphStorage, ReadonlyKnowledgeGraph, Relation } from '../types/types.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
 import { CompressionManager } from '../features/CompressionManager.js';
@@ -315,6 +315,14 @@ export class DreamEngine extends EventEmitter {
     let patternsPromoted = 0;
     let relationsRemoved = 0;
 
+    let sharedGraph: ReadonlyKnowledgeGraph | undefined;
+    const getGraph = async () => {
+      if (!sharedGraph) {
+        sharedGraph = await this.storage.loadGraph();
+      }
+      return sharedGraph;
+    };
+
     const runPhase = async (
       name: string,
       enabled: boolean,
@@ -362,7 +370,7 @@ export class DreamEngine extends EventEmitter {
       'temporalAnchoring',
       this.config.phases.temporalAnchoring,
       async () => {
-        const graph = await this.storage.loadGraph();
+        const graph = await getGraph();
         const now = new Date();
         let anchored = 0;
 
@@ -431,7 +439,7 @@ export class DreamEngine extends EventEmitter {
       'entropyPruning',
       this.config.phases.entropyPruning,
       async () => {
-        const graph = await this.storage.loadGraph();
+        const graph = await getGraph();
         let pruned = 0;
 
         for (const entity of graph.entities) {
@@ -465,6 +473,8 @@ export class DreamEngine extends EventEmitter {
       this.config.phases.consolidation,
       async () => {
         const result = await this.pipeline.triggerManualConsolidation();
+        // Invalidate shared graph as consolidation may have changed the graph
+        sharedGraph = undefined;
         return {
           memoriesProcessed: result.memoriesProcessed,
           memoriesPromoted: result.memoriesPromoted,
@@ -485,6 +495,8 @@ export class DreamEngine extends EventEmitter {
           this.config.compressionThreshold,
           false
         );
+        // Invalidate shared graph as compression replaced the graph
+        sharedGraph = undefined;
         return {
           duplicatesFound: result.duplicatesFound,
           entitiesMerged: result.entitiesMerged,
@@ -500,7 +512,7 @@ export class DreamEngine extends EventEmitter {
       'entityEnrichment',
       this.config.phases.entityEnrichment,
       async () => {
-        const graph = await this.storage.loadGraph();
+        const graph = await getGraph();
         let summaries = 0;
 
         for (const entity of graph.entities) {
@@ -534,7 +546,7 @@ export class DreamEngine extends EventEmitter {
       'patternPromotion',
       this.config.phases.patternPromotion,
       async () => {
-        const graph = await this.storage.loadGraph();
+        const graph = await getGraph();
         const allObservations: string[] = graph.entities.flatMap(
           (e) => e.observations
         );
@@ -577,7 +589,7 @@ export class DreamEngine extends EventEmitter {
       'graphHygiene',
       this.config.phases.graphHygiene,
       async () => {
-        const graph = await this.storage.loadGraph();
+        const graph = await getGraph();
         const entityNames = new Set(graph.entities.map((e) => e.name));
         const dangling: Relation[] = [];
 
