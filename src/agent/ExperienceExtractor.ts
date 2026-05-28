@@ -21,6 +21,7 @@
  * @module agent/ExperienceExtractor
  */
 
+import { randomUUID } from 'crypto';
 import type { PatternDetector } from './PatternDetector.js';
 import type { PatternResult } from '../types/agent-memory.js';
 
@@ -333,7 +334,7 @@ export class ExperienceExtractor {
    * cluster as the experience content.
    */
   async synthesizeExperience(cluster: TrajectoryCluster): Promise<Experience> {
-    const id = `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const id = `exp-${Date.now()}-${randomUUID().slice(0, 8)}`;
     const obs = cluster.trajectories.flatMap((t) => t.observations);
     const actionCount = cluster.trajectories.reduce((acc, t) => acc + t.actions.length, 0);
 
