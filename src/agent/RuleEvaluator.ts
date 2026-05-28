@@ -14,6 +14,17 @@ import type {
 } from '../types/agent-memory.js';
 
 /**
+ * Simple rule interface for demonstration.
+ */
+export interface Rule {
+  condition: {
+    type: string;
+    field: string;
+    value: any;
+  };
+}
+
+/**
  * Evaluates rule conditions against entities.
  *
  * @example
@@ -113,5 +124,25 @@ export class RuleEvaluator {
    */
   getCacheSize(): number {
     return this.cache.size;
+  }
+
+  /**
+   * Evaluates a simple rule against a set of facts.
+   *
+   * @param rule - Rule to evaluate
+   * @param facts - Facts to check against
+   * @returns True if the rule evaluates to true
+   */
+  public evaluateRule(rule: Rule, facts: Record<string, any>): boolean {
+    try {
+      // Basic implementation for demonstration
+      if (rule.condition.type === 'equals') {
+        return facts[rule.condition.field] === rule.condition.value;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error evaluating rule:', error);
+      return false;
+    }
   }
 }

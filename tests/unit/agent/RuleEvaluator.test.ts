@@ -4,8 +4,8 @@
  * Tests for consolidation rule condition evaluation.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { RuleEvaluator } from '../../../src/agent/RuleEvaluator.js';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { RuleEvaluator, type Rule } from '../../../src/agent/RuleEvaluator.js';
 import type { AgentEntity, RuleConditions } from '../../../src/types/agent-memory.js';
 
 /**
@@ -224,6 +224,63 @@ describe('RuleEvaluator', () => {
       expect(result.passed).toBe(true);
       expect(Object.keys(result.details)).toHaveLength(6);
       expect(Object.values(result.details).every((v) => v === true)).toBe(true);
+    });
+  });
+
+  describe('evaluateRule', () => {
+    it('should return true when the condition matches', () => {
+      const rule: Rule = {
+        condition: {
+          type: 'equals',
+          field: 'priority',
+          value: 'high',
+        },
+      };
+      const facts = { priority: 'high' };
+      expect(evaluator.evaluateRule(rule, facts)).toBe(true);
+    });
+
+    it('should return false when the condition does not match', () => {
+      const rule: Rule = {
+        condition: {
+          type: 'equals',
+          field: 'priority',
+          value: 'high',
+        },
+      };
+      const facts = { priority: 'low' };
+      expect(evaluator.evaluateRule(rule, facts)).toBe(false);
+    });
+
+    it('should return false for unsupported condition types', () => {
+      const rule: Rule = {
+        condition: {
+          type: 'greater_than',
+          field: 'score',
+          value: 10,
+        },
+      };
+      const facts = { score: 15 };
+      expect(evaluator.evaluateRule(rule, facts)).toBe(false);
+    });
+
+    it('should log an error and return false when an exception occurs during evaluation', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Triggering an error by providing a rule that will cause property access on null/undefined
+      // For example, if rule.condition is null
+      const rule = { condition: null } as unknown as Rule;
+      const facts = { any: 'fact' };
+
+      const result = evaluator.evaluateRule(rule, facts);
+
+      expect(result).toBe(false);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error evaluating rule:',
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
     });
   });
 
