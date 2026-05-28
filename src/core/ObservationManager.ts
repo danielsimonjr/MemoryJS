@@ -385,8 +385,14 @@ export class ObservationManager {
     const results: { entityName: string; addedObservations: string[]; superseded?: boolean }[] = [];
     let hasChanges = false;
 
+    // Create a map for O(1) entity lookups
+    const entityMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      entityMap.set(entity.name, entity);
+    }
+
     for (const o of observations) {
-      const entity = graph.entities.find(e => e.name === o.entityName);
+      const entity = entityMap.get(o.entityName);
       if (!entity) {
         throw new EntityNotFoundError(o.entityName);
       }
@@ -660,8 +666,14 @@ export class ObservationManager {
     let hasChanges = false;
     const touchedNames: string[] = [];
 
+    // Create a map for O(1) entity lookups
+    const entityMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      entityMap.set(entity.name, entity);
+    }
+
     deletions.forEach(d => {
-      const entity = graph.entities.find(e => e.name === d.entityName);
+      const entity = entityMap.get(d.entityName);
       if (entity) {
         const originalLength = entity.observations.length;
         entity.observations = entity.observations.filter(o => !d.observations.includes(o));
