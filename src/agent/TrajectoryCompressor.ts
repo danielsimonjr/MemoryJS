@@ -22,6 +22,7 @@
 
 import type { Entity } from '../types/types.js';
 import type { ContextWindowManager } from './ContextWindowManager.js';
+import { tokenizeToSet as tokenize } from '../utils/textSimilarity.js';
 
 export interface DistillOptions {
   /** Keep events in the order they arrived. Default true. */
@@ -287,17 +288,6 @@ export class TrajectoryCompressor {
     }
     return canonical;
   }
-}
-
-/** Tokenize for redundancy detection (lowercase, alpha-numeric). */
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .split(/\s+/)
-      .filter((t) => t.length > 0),
-  );
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {
