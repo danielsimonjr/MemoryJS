@@ -26,6 +26,7 @@ import type {
 import { ProcedureStore } from './ProcedureStore.js';
 import { StepSequencer } from './StepSequencer.js';
 import { randomUUID } from 'crypto';
+import { tokenizeToSet } from '../../utils/textSimilarity.js';
 
 export interface ProcedureManagerConfig {
   /** EWMA weight for new feedback in `refineProcedure` (default 0.2). */
@@ -166,15 +167,15 @@ export class ProcedureManager {
     candidates: Procedure[],
     threshold: number = 0.0,
   ): Promise<ProcedureMatch[]> {
-    const ctxTokens = tokenize(contextDescription);
+    const ctxTokens = tokenizeToSet(contextDescription, 2);
     if (ctxTokens.size === 0) return [];
 
     const matches: ProcedureMatch[] = [];
     for (const procedure of candidates) {
       const procTokens = new Set<string>();
-      for (const t of tokenize(procedure.name)) procTokens.add(t);
+      for (const t of tokenizeToSet(procedure.name, 2)) procTokens.add(t);
       for (const trig of procedure.triggers ?? []) {
-        for (const t of tokenize(trig)) procTokens.add(t);
+        for (const t of tokenizeToSet(trig, 2)) procTokens.add(t);
       }
       if (procTokens.size === 0) continue;
 
@@ -222,15 +223,6 @@ export class ProcedureManager {
 }
 
 // -------- internals --------
-
-function tokenize(s: string): Set<string> {
-  return new Set(
-    s
-      .toLowerCase()
-      .split(/[^a-z0-9]+/g)
-      .filter(t => t.length >= 2),
-  );
-}
 
 function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));

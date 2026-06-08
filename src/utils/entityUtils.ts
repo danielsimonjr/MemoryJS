@@ -752,8 +752,9 @@ export function validateFilePath(filePath: string, baseDir: string = process.cwd
 
   // Optionally confine the resolved path to the base directory
   if (confineToBase) {
-    const resolvedBase = path.resolve(baseDir) + path.sep;
-    if (!finalNormalized.startsWith(resolvedBase) && finalNormalized !== resolvedBase.slice(0, -1)) {
+    const resolvedBase = path.resolve(baseDir);
+    const relative = path.relative(resolvedBase, finalNormalized);
+    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
       throw new FileOperationError(
         `Path is outside the allowed directory: ${filePath}`,
         filePath
