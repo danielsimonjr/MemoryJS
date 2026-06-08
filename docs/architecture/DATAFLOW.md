@@ -1,15 +1,49 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
+**Last Updated**: 2026-05-14
 
 > Most data-flow patterns documented here remain accurate. New flows added
-> in v1.9–Unreleased: temporal-validity invalidation cascade (η.4.4),
+> in v1.9–v1.15: temporal-validity invalidation cascade (η.4.4),
 > conversation ingestion pipeline (`IOManager.ingest`, v1.9.0), four-tier
 > dedup chain in `MemoryEngine` (v1.11.0), pluggable backend selection
 > (`MEMORY_BACKEND`, v1.12.0), iterative active-retrieval round-robin
-> (3B.5), causal-chain traversal (3B.6), and world-state snapshot diff
-> (3B.7). See the relevant per-manager sections below.
+> (3B.5), causal-chain traversal (3B.6), world-state snapshot diff (3B.7),
+> mmap-branched JSONL load via `IMmapBackend.streamLines` (v1.15.0 Phase 11),
+> FNV-routed segment-shard reads (v1.15.0 Phase 7), columnar observation
+> reads via `JsonlColumnStore` (v1.15.0 Phase 8), tiered-index lookups
+> (`LRUHotTier` → `DiskWarmTier` → `BrotliColdTier`, v1.15.0 Phase 9),
+> compressed entity-cache hits via `CompressedMap` (v1.15.0 Phase 10),
+> write-ahead log commit-then-apply (v1.15.0 Phase 6), and `BackupManager`'s
+> three-step delete (path-validate → symlink-check → unlink-then-cleanup-meta).
+> See the relevant per-manager sections below.
+>
+> **Phase 2 memory-types expansion (2026-05)** added five new flows:
+> - **Failure lookup (Sprint 4):** Pre-task `FailureManager.lookupForTask`
+>   substring-scores `applicability_hint` (3×), `context` (2×), `attempted`
+>   (1×). `markResolved` branches on `storage.updateEntity` boolean to
+>   surface `'vanished-mid-update'` vs. `'already-resolved'`.
+> - **Plan-tree mutation (Sprint 5):** `loadPlanMutable` → deep-clone →
+>   tree mutation → `validatePlanInvariants` (uniqueness, currentNodeId ∈
+>   tree, no cycles) → `persistPlan`. The deep clone IS the rollback —
+>   invariant failure throws without touching storage. Read paths skip the
+>   clone (`Readonly<T>` is type-only).
+> - **Trust-level resolution (Sprint 6):** `ConflictResolver` with
+>   `'trust_level'` strategy calls `inferTrustLevel(source)` per memory
+>   (explicit `source.trustLevel` wins; otherwise NaN-guard then method-
+>   based mapping); `compareTrustLevel` orders results; recency tiebreak
+>   on equal tier.
+> - **Reflection emission (Sprint 8):** `ReflectionStage.runOnSessionEnd(sessionId)`
+>   → load `episodic + semantic` candidates filtered by `sessionId` →
+>   collect observations (max-per-run circuit breaker) → `PatternDetector`
+>   → early-return-with-`[info]`-error when below `minConfidence` →
+>   `TrajectoryCompressor.distill` → clamp confidence to `[0, 1]` →
+>   `ReflectionManager.create` with content-hash dedup (`sha256(scope|sorted(evidence))`).
+> - **Prospective promotion (Phase 1, integrated 2026-04):**
+>   `ProspectivePromotionStage` scans storage for fired `inject-context`
+>   intentions, promotes them to `'episodic'` with `prospective-fulfilled`
+>   tag, branches on `storage.updateEntity` boolean to surface
+>   vanished-mid-batch as errors.
 
 ---
 
@@ -1233,6 +1267,27 @@ Indexes are rebuilt on `loadGraph()` and incrementally updated on mutations via 
 ---
 
 ## Error Handling Flow
+
+### Error-Signalling Contract (v2.0.0)
+
+As of v2.0.0 the codebase has one documented error-signalling policy
+(`CONTRIBUTING.md` > Error Handling); the flows below should be read
+against it:
+
+- **`throw`** — for *programmer errors*: bad arguments, invariant
+  violations, "this should never happen" states. These use the custom
+  error classes below and propagate to the application as exceptions.
+- **`return Result<T, E>`** — for *expected domain failures* the caller is
+  meant to branch on. `Result<T, E>` (`src/types/result.ts`) is a
+  discriminated union (`ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk`);
+  the caller narrows with a plain `if (result.ok)`. Existing discriminated
+  returns (`MarkResolvedResult`, `CancelResult`, `ArchiveReflectionResult`)
+  follow the same spirit.
+- **Never swallow silently** — a failure that can't be handled is at least
+  re-emitted on an error channel (`logger`, a `StageResult.errors[]` entry,
+  an event). Deliberate fire-and-forget discards carry an `eslint-disable`
+  with a reason (see `memoryjs/no-unused-updateentity-return`).
+- **Absent-value sentinel is `T | undefined`**, never `T | null`.
 
 ### Error Class Hierarchy
 

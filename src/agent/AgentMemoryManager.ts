@@ -9,6 +9,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { logger } from '../utils/logger.js';
 import type { IGraphStorage, Entity } from '../types/types.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { EntityManager } from '../core/EntityManager.js';
@@ -122,7 +123,7 @@ export class AgentMemoryManager extends EventEmitter {
         try {
           await this.profileManager.extractFromSession(sessionId);
         } catch (err) {
-          console.error('ProfileManager auto-extract failed:', err);
+          logger.error('ProfileManager auto-extract failed:', err);
         }
       });
     }
@@ -272,7 +273,7 @@ export class AgentMemoryManager extends EventEmitter {
     // fire a maintenance cycle asynchronously.  The cycle runs fire-and-forget
     // so it does not block session teardown.
     if (this._dreamEngine) {
-      void this._dreamEngine.runDreamCycle().catch((err) => { console.error('[AgentMemoryManager] Dream cycle failed:', err); });
+      void this._dreamEngine.runDreamCycle().catch((err) => { logger.error('[AgentMemoryManager] Dream cycle failed:', err); });
     }
 
     return result;
@@ -368,8 +369,18 @@ export class AgentMemoryManager extends EventEmitter {
     return this.memoryFormatter.formatForPrompt(memories, options ?? {});
   }
 
+  /**
+   * Record an access against a memory. Sync API for back-compat; the
+   * underlying call is async. Errors are logged via `logger.error` and
+   * never thrown — callers needing strict error propagation should call
+   * `accessTracker.recordAccess` directly.
+   *
+   * @throws Never (errors are logged, not thrown).
+   */
   recordAccess(memoryName: string, context: AccessContext): void {
-    this.accessTracker.recordAccess(memoryName, context);
+    this.accessTracker.recordAccess(memoryName, context).catch((err) => {
+      logger.error('[AgentMemoryManager.recordAccess] failed:', err);
+    });
   }
 
   // ==================== Decay ====================
@@ -397,8 +408,22 @@ export class AgentMemoryManager extends EventEmitter {
 
   // ==================== Multi-Agent ====================
 
+  /**
+   * Register an agent. Sync API for back-compat — the underlying call is
+   * async and runs fire-and-forget. The `'agent:registered'` event fires
+   * synchronously (immediately after this method returns), regardless of
+   * whether the underlying registration ultimately succeeds.
+   *
+   * Known limitation: a rejection from the underlying async call (e.g. a
+   * duplicate agentId) is logged via `logger.error` but the success event
+   * has already been emitted. Tightening this requires changing the
+   * wrapper to `Promise<void>`, which is a SemVer-breaking change deferred
+   * to the API-tiering work in Phase 2.
+   */
   registerAgent(agentId: string, metadata: Omit<AgentMetadata, 'createdAt' | 'lastActiveAt'>): void {
-    this.multiAgentManager.registerAgent(agentId, metadata);
+    this.multiAgentManager.registerAgent(agentId, metadata).catch((err) => {
+      logger.error('[AgentMemoryManager.registerAgent] failed:', err);
+    });
     this.emit('agent:registered', { agentId });
   }
 
@@ -414,7 +439,7 @@ export class AgentMemoryManager extends EventEmitter {
     return this.multiAgentManager.searchCrossAgent(requestingAgentId, query, options);
   }
 
-  async copyMemory(sourceMemoryName: string, targetAgentId: string): Promise<AgentEntity | null> {
+  async copyMemory(sourceMemoryName: string, targetAgentId: string): Promise<AgentEntity | undefined> {
     return this.multiAgentManager.copyMemory(sourceMemoryName, targetAgentId);
   }
 
@@ -440,7 +465,7 @@ export class AgentMemoryManager extends EventEmitter {
     memoryNames: string[],
     targetAgentId: string,
     options?: { resolveConflicts?: boolean; conflictStrategy?: ConflictStrategy }
-  ): Promise<AgentEntity | null> {
+  ): Promise<AgentEntity | undefined> {
     return this.multiAgentManager.mergeCrossAgent(memoryNames, targetAgentId, options);
   }
 

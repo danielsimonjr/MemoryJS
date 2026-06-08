@@ -19,26 +19,24 @@ export function registerMaintenanceCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
-        const stats = await ctx.analyticsManager.getGraphStats();
         const graph = await ctx.storage.loadGraph();
+        const stats = await ctx.analyticsManager.getGraphStats(graph);
 
-        const observationCount = graph.entities.reduce(
-          (sum, e) => sum + (e.observations?.length || 0),
-          0
-        );
+        let observationCount = 0;
         const allTags = new Set<string>();
-        graph.entities.forEach(e => {
+        for (const e of graph.entities) {
+          observationCount += e.observations?.length || 0;
           (e.tags || []).forEach(tag => allTags.add(tag));
-        });
+        }
 
         if (options.format === 'json') {
-          console.log(JSON.stringify({
+          logger.log(JSON.stringify({
             ...stats,
             observationCount,
             uniqueTagCount: allTags.size,
           }, null, 2));
         } else {
-          console.log(`
+          logger.log(`
 Knowledge Graph Statistics
 ==========================
 Entities:      ${stats.totalEntities}
@@ -86,13 +84,13 @@ Tags Used:     ${allTags.size}
         );
 
         if (options.format === 'json') {
-          console.log(JSON.stringify(result, null, 2));
+          logger.log(JSON.stringify(result, null, 2));
         } else {
           const prefix = dryRun ? '[DRY RUN] Would archive' : 'Archived';
           logger.info(formatSuccess(`${prefix} ${result.archived} entities`));
           if (result.entityNames.length > 0) {
             for (const name of result.entityNames) {
-              console.log(`  - ${name}`);
+              logger.log(`  - ${name}`);
             }
           }
         }
@@ -120,7 +118,7 @@ Tags Used:     ${allTags.size}
         );
 
         if (options.format === 'json') {
-          console.log(JSON.stringify(result, null, 2));
+          logger.log(JSON.stringify(result, null, 2));
         } else {
           const prefix = opts.dryRun ? '[DRY RUN] ' : '';
           logger.info(formatSuccess(`${prefix}Duplicates found: ${result.duplicatesFound}`));
@@ -128,9 +126,9 @@ Tags Used:     ${allTags.size}
           logger.info(`  Observations compressed: ${result.observationsCompressed}`);
           logger.info(`  Relations consolidated: ${result.relationsConsolidated}`);
           if (result.mergedEntities.length > 0) {
-            console.log('\nMerge details:');
+            logger.log('\nMerge details:');
             for (const m of result.mergedEntities) {
-              console.log(`  ${m.kept} <- [${m.merged.join(', ')}]`);
+              logger.log(`  ${m.kept} <- [${m.merged.join(', ')}]`);
             }
           }
         }
@@ -151,7 +149,7 @@ Tags Used:     ${allTags.size}
 
       try {
         const result = await ctx.analyticsManager.validateGraph();
-        console.log(formatValidation(result, options.format));
+        logger.log(formatValidation(result, options.format));
         if (!result.isValid) {
           process.exit(1);
         }

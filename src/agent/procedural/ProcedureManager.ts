@@ -26,11 +26,34 @@ import type {
 import { ProcedureStore } from './ProcedureStore.js';
 import { StepSequencer } from './StepSequencer.js';
 import { randomUUID } from 'crypto';
+import { tokenizeToSet } from '../../utils/textSimilarity.js';
 
 export interface ProcedureManagerConfig {
   /** EWMA weight for new feedback in `refineProcedure` (default 0.2). */
   successRateAlpha?: number;
 }
+
+/**
+ * Result of `ProcedureManager.invoke()`. Discriminated by `found` so
+ * TypeScript narrows `procedure` and `openSequencer` to non-optional
+ * on the `found: true` branch — no caller-side non-null assertions.
+ *
+ * **Semantics**: "resolve-and-prepare", NOT "execute". The library is
+ * action-agnostic — `ProcedureStep.action` is a string identifier that
+ * caller-defined executors interpret. The returned `openSequencer()`
+ * factory yields a fresh `StepSequencer` per call; the caller drives
+ * iteration and downstream effects.
+ */
+export type InvocationResult =
+  | { found: false; procedureId: string; invokedAt: string }
+  | {
+      found: true;
+      procedureId: string;
+      procedure: Procedure;
+      invokedAt: string;
+      /** Factory — yields a fresh `StepSequencer` each call. */
+      openSequencer: () => StepSequencer;
+    };
 
 export class ProcedureManager {
   private readonly store: ProcedureStore;
@@ -69,8 +92,8 @@ export class ProcedureManager {
     return procedure;
   }
 
-  /** Load by id, or null. */
-  async getProcedure(id: string): Promise<Procedure | null> {
+  /** Load by id, or undefined. */
+  async getProcedure(id: string): Promise<Procedure | undefined> {
     return this.store.load(id);
   }
 
@@ -108,6 +131,32 @@ export class ProcedureManager {
   }
 
   /**
+   * Resolve a procedure id to an `InvocationResult` that callers can
+   * execute. Used by `ProspectiveMemoryManager` when a prospective
+   * intention fires with `action: 'invoke'` — the wired
+   * `procedureInvoker` throws on `found: false` and surfaces the error
+   * via `FiredEvent.invocationError`.
+   *
+   * Does NOT execute steps — the library is action-agnostic. The
+   * caller drives iteration via the returned `openSequencer()`
+   * factory.
+   */
+  async invoke(procedureId: string): Promise<InvocationResult> {
+    const procedure = await this.getProcedure(procedureId);
+    const invokedAt = new Date().toISOString();
+    if (!procedure) {
+      return { found: false, procedureId, invokedAt };
+    }
+    return {
+      found: true,
+      procedureId,
+      procedure,
+      invokedAt,
+      openSequencer: () => new StepSequencer(procedure),
+    };
+  }
+
+  /**
    * Token-overlap match: scores each procedure by Jaccard-like overlap
    * between the lowercased context tokens and the union of (`name`,
    * `triggers`). Returns matches in score order, descending. `threshold`
@@ -118,15 +167,15 @@ export class ProcedureManager {
     candidates: Procedure[],
     threshold: number = 0.0,
   ): Promise<ProcedureMatch[]> {
-    const ctxTokens = tokenize(contextDescription);
+    const ctxTokens = tokenizeToSet(contextDescription, 2);
     if (ctxTokens.size === 0) return [];
 
     const matches: ProcedureMatch[] = [];
     for (const procedure of candidates) {
       const procTokens = new Set<string>();
-      for (const t of tokenize(procedure.name)) procTokens.add(t);
+      for (const t of tokenizeToSet(procedure.name, 2)) procTokens.add(t);
       for (const trig of procedure.triggers ?? []) {
-        for (const t of tokenize(trig)) procTokens.add(t);
+        for (const t of tokenizeToSet(trig, 2)) procTokens.add(t);
       }
       if (procTokens.size === 0) continue;
 
@@ -174,15 +223,6 @@ export class ProcedureManager {
 }
 
 // -------- internals --------
-
-function tokenize(s: string): Set<string> {
-  return new Set(
-    s
-      .toLowerCase()
-      .split(/[^a-z0-9]+/g)
-      .filter(t => t.length >= 2),
-  );
-}
 
 function clamp01(x: number): number {
   return Math.max(0, Math.min(1, x));

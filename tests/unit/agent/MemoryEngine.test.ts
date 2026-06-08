@@ -361,6 +361,81 @@ describe('MemoryEngine — addTurn', () => {
   });
 });
 
+describe('MemoryEngine — exclusion wiring (Phase Excl B)', () => {
+  it('returns blocked=true and skips write when content matches an active rule', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const rule = await ctx.exclusionManager.add({
+        pattern: 'password',
+        reason: 'never persist credentials',
+      });
+      const engine = ctx.memoryEngine; // auto-wired ctor
+
+      const result = await engine.addTurn('my password is hunter2', {
+        sessionId: 'sess-A',
+        role: 'user',
+      });
+
+      expect(result.blocked).toBe(true);
+      expect(result.blockedByRuleId).toBe(rule.id);
+      expect(result.blockedReason).toBe('never persist credentials');
+      expect(result.entity).toBeUndefined();
+
+      // Verify nothing was persisted under the session
+      const turns = await engine.getSessionTurns('sess-A');
+      expect(turns).toHaveLength(0);
+    } finally { cleanup(); }
+  });
+
+  it('does not block when no rule matches', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      await ctx.exclusionManager.add({ pattern: 'password' });
+      const engine = ctx.memoryEngine;
+      const result = await engine.addTurn('totally innocuous content', {
+        sessionId: 'sess-A',
+        role: 'user',
+      });
+      expect(result.blocked).toBeFalsy();
+      expect(result.entity).toBeDefined();
+    } finally { cleanup(); }
+  });
+
+  it('fires memoryEngine:writeBlocked event on block', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      await ctx.exclusionManager.add({ pattern: 'secret' });
+      const engine = ctx.memoryEngine;
+      const captured: Array<Record<string, unknown>> = [];
+      engine.events.on('memoryEngine:writeBlocked', (ev) =>
+        captured.push(ev as Record<string, unknown>));
+
+      await engine.addTurn('this is a secret note', {
+        sessionId: 'sess-A',
+        role: 'user',
+      });
+      expect(captured).toHaveLength(1);
+      expect(captured[0]!.sessionId).toBe('sess-A');
+      expect(captured[0]!.role).toBe('user');
+      expect(captured[0]!.ruleId).toMatch(/^exclusion-/);
+    } finally { cleanup(); }
+  });
+
+  it('past-only rules do not block future writes', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      await ctx.exclusionManager.add({ pattern: 'password', scope: 'past-only' });
+      const engine = ctx.memoryEngine;
+      const result = await engine.addTurn('my password is X', {
+        sessionId: 'sess-A',
+        role: 'user',
+      });
+      expect(result.blocked).toBeFalsy();
+      expect(result.entity).toBeDefined();
+    } finally { cleanup(); }
+  });
+});
+
 describe('MemoryEngine — session operations', () => {
   it('getSessionTurns returns all turns for session', async () => {
     const { ctx, cleanup } = mkCtx();

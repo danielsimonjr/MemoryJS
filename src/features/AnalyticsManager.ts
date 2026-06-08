@@ -8,7 +8,7 @@
  */
 
 import type { GraphStorage } from '../core/GraphStorage.js';
-import type { GraphStats, ValidationReport, ValidationIssue, ValidationWarning } from '../types/index.js';
+import type { GraphStats, ValidationReport, ValidationIssue, ValidationWarning, ReadonlyKnowledgeGraph } from '../types/index.js';
 
 /**
  * Manages analytics operations for the knowledge graph.
@@ -169,10 +169,12 @@ export class AnalyticsManager {
    * - Oldest and newest entities/relations
    * - Date ranges for entities and relations
    *
+   * @param preloadedGraph - Optional already-loaded graph to reuse, avoiding a
+   *   redundant `storage.loadGraph()` call when the caller already holds one.
    * @returns Graph statistics object
    */
-  async getGraphStats(): Promise<GraphStats> {
-    const graph = await this.storage.loadGraph();
+  async getGraphStats(preloadedGraph?: ReadonlyKnowledgeGraph): Promise<GraphStats> {
+    const graph = preloadedGraph ?? (await this.storage.loadGraph());
 
     // Calculate entity type counts
     const entityTypesCounts: Record<string, number> = {};

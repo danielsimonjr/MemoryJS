@@ -193,6 +193,36 @@ describe('RefIndex', () => {
   });
 
   // -------------------------------------------------------------------------
+  describe('purgeEntities (batch)', () => {
+    it('removes aliases for many entities with a single rewrite and returns total count', async () => {
+      await index.register('a1', 'Alice');
+      await index.register('a2', 'Alice');
+      await index.register('b1', 'Bob');
+      await index.register('c1', 'Carol');
+
+      const count = await index.purgeEntities(['Alice', 'Bob', 'NonExistent']);
+      expect(count).toBe(3);
+      expect(await index.resolve('a1')).toBeNull();
+      expect(await index.resolve('a2')).toBeNull();
+      expect(await index.resolve('b1')).toBeNull();
+      // Untouched entity survives
+      expect(await index.resolve('c1')).toBe('Carol');
+
+      // State is persisted (identical to per-name loop)
+      const reloaded = new RefIndex(indexPath);
+      expect(await reloaded.resolve('a1')).toBeNull();
+      expect(await reloaded.resolve('c1')).toBe('Carol');
+    });
+
+    it('returns 0 and is a no-op when no names match', async () => {
+      await index.register('keep', 'Keeper');
+      const count = await index.purgeEntities(['Ghost1', 'Ghost2']);
+      expect(count).toBe(0);
+      expect(await index.resolve('keep')).toBe('Keeper');
+    });
+  });
+
+  // -------------------------------------------------------------------------
   describe('listRefs', () => {
     beforeEach(async () => {
       await index.register('ref1', 'Alice', 'First alias');
@@ -206,18 +236,18 @@ describe('RefIndex', () => {
     });
 
     it('filters by entityName', async () => {
-      const aliceRefs = await index.listRefs({ entityName: 'Alice' });
+      const aliceRefs = await index.listRefs('Alice');
       expect(aliceRefs).toHaveLength(2);
       expect(aliceRefs.every(e => e.entityName === 'Alice')).toBe(true);
     });
 
     it('returns empty array when filter matches no refs', async () => {
-      const result = await index.listRefs({ entityName: 'NoSuchEntity' });
+      const result = await index.listRefs('NoSuchEntity');
       expect(result).toEqual([]);
     });
 
     it('each entry has the expected shape', async () => {
-      const entries = await index.listRefs({ entityName: 'Alice' });
+      const entries = await index.listRefs('Alice');
       for (const entry of entries) {
         expect(entry).toHaveProperty('ref');
         expect(entry).toHaveProperty('entityName', 'Alice');
@@ -435,7 +465,7 @@ describe('EntityManager — ref integration', () => {
       ]);
       await manager.registerRef('ref-bob', 'Bob');
 
-      const aliceOnly = await manager.listRefs({ entityName: 'Alice' });
+      const aliceOnly = await manager.listRefs('Alice');
       expect(aliceOnly).toHaveLength(1);
       expect(aliceOnly[0].ref).toBe('ref-alice');
     });

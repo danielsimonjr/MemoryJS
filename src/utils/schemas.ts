@@ -134,6 +134,7 @@ export const CreateEntitySchema = z.object({
     validUntil: z.string().optional(),
     recordedAt: z.string().optional(),
   })).optional(),
+  lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
 }).strict();
 
 /**
@@ -164,7 +165,12 @@ export const UpdateEntitySchema = z.object({
     validUntil: z.string().optional(),
     recordedAt: z.string().optional(),
   })).optional(),
-}).strict();
+  lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
+  // v2.1.1: subclass managers (DecisionManager, HeuristicManager, ProjectContextManager,
+  // ToolAffordanceManager, ExclusionManager, ObservationDedupManager) attach domain-specific
+  // record fields (decisionRecord, projectContext, heuristic, etc.) and a lastModified
+  // timestamp via updateEntity(). .passthrough() admits those without per-field enumeration.
+}).passthrough();
 
 // ==================== Relation Schemas ====================
 
@@ -585,4 +591,22 @@ export function validateTags(tags: unknown): ValidationResult {
   const result = schema.safeParse(tags);
   if (result.success) return { valid: true, errors: [] };
   return { valid: false, errors: formatZodErrors(result.error) };
+}
+
+/** Validate a non-empty string with detailed error reporting. */
+export function validateNonEmpty(value: unknown, fieldName: string, contextName: string = 'Validation'): void {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    const received =
+      typeof value === 'string'
+        ? `string of length ${value.length} (${JSON.stringify(value.slice(0, 40))})`
+        : `${typeof value} (${value === null ? 'null' : String(value).slice(0, 40)})`;
+    throw new Error(`${contextName}: '${fieldName}' must be a non-empty string; received ${received}`);
+  }
+}
+
+/** Validate a non-empty array with detailed error reporting. */
+export function validateNonEmptyArray(value: unknown, fieldName: string, contextName: string = 'Validation'): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`${contextName}: '${fieldName}' must be a non-empty array`);
+  }
 }

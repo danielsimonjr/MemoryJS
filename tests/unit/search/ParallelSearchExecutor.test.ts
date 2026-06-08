@@ -455,4 +455,36 @@ describe('ParallelSearchExecutor', () => {
       );
     });
   });
+
+  describe('AbortSignal cancellation', () => {
+    it('skips every layer synchronously when the signal is already aborted', async () => {
+      mockRankedSearch.searchNodesRanked.mockResolvedValue([]);
+      const ac = new AbortController();
+      ac.abort();
+
+      const result = await executor.execute(testGraph, 'test', { signal: ac.signal });
+
+      // Aborted layers count as graceful no-ops (success: true, error: 'aborted').
+      expect(mockRankedSearch.searchNodesRanked).not.toHaveBeenCalled();
+      for (const t of result.timings) {
+        expect(t.error).toBe('aborted');
+        expect(t.resultCount).toBe(0);
+      }
+    });
+
+    it('resolves immediately when the signal aborts mid-flight', async () => {
+      const ac = new AbortController();
+      // A layer that never resolves until we abort.
+      mockRankedSearch.searchNodesRanked.mockImplementation(
+        () => new Promise(() => {}),
+      );
+
+      const promise = executor.execute(testGraph, 'test', { signal: ac.signal });
+      setImmediate(() => ac.abort());
+      const result = await promise;
+
+      const lexicalTiming = result.timings.find(t => t.layer === 'lexical');
+      expect(lexicalTiming?.error).toBe('aborted');
+    });
+  });
 });

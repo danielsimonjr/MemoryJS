@@ -29,8 +29,8 @@ export function registerObservationCommands(program: Command): void {
 
         const added = result[0]?.addedObservations || [];
         logger.info(formatSuccess(`Added ${added.length} observation(s) to ${entity}`));
-        if (!options.quiet && options.format === 'json') {
-          console.log(JSON.stringify(result, null, 2));
+        if (options.format === 'json') {
+          logger.info(JSON.stringify(result, null, 2));
         }
       } catch (error) {
         logger.error(formatError((error as Error).message));
@@ -83,15 +83,15 @@ export function registerObservationCommands(program: Command): void {
 
         const observations = found.observations || [];
         if (options.format === 'json') {
-          console.log(JSON.stringify(observations, null, 2));
+          logger.log(JSON.stringify(observations, null, 2));
         } else if (options.format === 'csv') {
-          console.log('index,observation');
+          logger.log('index,observation');
           observations.forEach((o, i) => {
-            console.log(`${i + 1},${escapeCSV(o)}`);
+            logger.log(`${i + 1},${escapeCSV(o)}`);
           });
         } else {
-          console.log(`Observations for ${entity} (${observations.length}):`);
-          observations.forEach((o, i) => console.log(`  ${i + 1}. ${o}`));
+          logger.log(`Observations for ${entity} (${observations.length}):`);
+          observations.forEach((o, i) => logger.log(`  ${i + 1}. ${o}`));
         }
       } catch (error) {
         logger.error(formatError((error as Error).message));

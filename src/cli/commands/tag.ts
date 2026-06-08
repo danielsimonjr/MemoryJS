@@ -59,8 +59,8 @@ export function registerTagCommands(program: Command): void {
       try {
         const result = await ctx.tagManager.addTagAlias(alias, canonical, opts.description as string | undefined);
         logger.info(formatSuccess(`Created alias: ${alias} -> ${canonical}`));
-        if (!options.quiet && options.format === 'json') {
-          console.log(JSON.stringify(result, null, 2));
+        if (options.format === 'json') {
+          logger.info(JSON.stringify(result, null, 2));
         }
       } catch (error) {
         logger.error(formatError((error as Error).message));
@@ -79,20 +79,20 @@ export function registerTagCommands(program: Command): void {
       try {
         const aliases = await ctx.tagManager.listTagAliases();
         if (options.format === 'json') {
-          console.log(JSON.stringify(aliases, null, 2));
+          logger.log(JSON.stringify(aliases, null, 2));
         } else if (options.format === 'csv') {
-          console.log('alias,canonical,description');
+          logger.log('alias,canonical,description');
           for (const a of aliases) {
-            console.log(`${escapeCSV(a.alias)},${escapeCSV(a.canonical)},${escapeCSV(a.description || '')}`);
+            logger.log(`${escapeCSV(a.alias)},${escapeCSV(a.canonical)},${escapeCSV(a.description || '')}`);
           }
         } else {
           if (aliases.length === 0) {
-            console.log('No tag aliases defined.');
+            logger.log('No tag aliases defined.');
           } else {
-            console.log(`Tag aliases (${aliases.length}):`);
+            logger.log(`Tag aliases (${aliases.length}):`);
             for (const a of aliases) {
               const desc = a.description ? ` (${a.description})` : '';
-              console.log(`  ${a.alias} -> ${a.canonical}${desc}`);
+              logger.log(`  ${a.alias} -> ${a.canonical}${desc}`);
             }
           }
         }

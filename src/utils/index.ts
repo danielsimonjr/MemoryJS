@@ -80,6 +80,7 @@ export { logger } from './logger.js';
 export {
   levenshteinDistance,
   calculateTF,
+  calculateTFFromTokens,
   calculateIDF,
   calculateIDFFromTokenSets,
   calculateTFIDF,
@@ -169,6 +170,8 @@ export {
   validateRelation,
   validateImportance,
   validateTags,
+  validateNonEmpty,
+  validateNonEmptyArray,
 } from './schemas.js';
 
 // ==================== Formatters ====================
@@ -279,6 +282,16 @@ export {
   type ExtendedPoolStats,
   type PoolEventCallback,
 } from './WorkerPoolManager.js';
+
+// ==================== Worker Task Manager (priority queue + pool facade) ===========
+export {
+  WorkerTaskManager,
+  getWorkerTaskManager,
+  batchProcessViaWorkers,
+  type TaskSubmitOptions,
+  type TaskHandle,
+  type WorkerTaskManagerStats,
+} from './WorkerTaskManager.js';
 
 // ==================== Batch Processor (Phase 12 Sprint 2) ====================
 export {
