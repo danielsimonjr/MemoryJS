@@ -38,7 +38,6 @@ import type {
   PlanRecord,
 } from '../types/agent-memory.js';
 import { isPlanMemory, toIsoDateTime } from '../types/agent-memory.js';
-import { validateNonEmpty } from '../utils/validationUtils.js';
 
 /** Configuration for `PlanManager`. */
 export interface PlanManagerConfig {
@@ -104,7 +103,7 @@ export class PlanManager {
    * @throws {Error} if `description` is empty / whitespace
    */
   async createPlan(rootDescription: string, options: CreatePlanOptions = {}): Promise<PlanRecord> {
-    validateNonEmpty(rootDescription, 'description', 'PlanManager');
+    validateNonEmpty(rootDescription, 'description');
 
     const now = new Date();
     const nowIso = toIsoDateTime(now);
@@ -181,7 +180,7 @@ export class PlanManager {
     description: string,
     options: PushSubGoalOptions = {}
   ): Promise<GoalNode> {
-    validateNonEmpty(description, 'description', 'PlanManager');
+    validateNonEmpty(description, 'description');
 
     const plan = this.loadPlanMutable(planId);
     if (!plan) throw new Error(`PlanManager.pushSubGoal: plan '${planId}' not found`);
@@ -265,7 +264,7 @@ export class PlanManager {
           : { status: 'complete', completedAt: nowIso };
         break;
       case 'blocked':
-        validateNonEmpty(transition.reason, 'reason', 'PlanManager');
+        validateNonEmpty(transition.reason, 'reason');
         newLifecycle = { status: 'blocked', blockedAt: nowIso, blockedReason: transition.reason };
         break;
     }
@@ -438,6 +437,16 @@ function mintPlanId(): PlanId {
 
 function mintGoalNodeId(): GoalNodeId {
   return `node-${randomUUID()}` as GoalNodeId;
+}
+
+function validateNonEmpty(value: unknown, fieldName: string): void {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    const received =
+      typeof value === 'string'
+        ? `string of length ${value.length} (${JSON.stringify(value.slice(0, 40))})`
+        : `${typeof value} (${value === null ? 'null' : String(value).slice(0, 40)})`;
+    throw new Error(`PlanManager: '${fieldName}' must be a non-empty string; received ${received}`);
+  }
 }
 
 /**
