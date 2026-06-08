@@ -32,7 +32,8 @@ describe('ProfileManager.extractFromSession', () => {
     } as unknown as SessionManager;
 
     const mockSalience = {
-      calculateSalience: vi.fn(async (obs: string) => {
+      calculateSalience: vi.fn(async (entity: any) => {
+        const obs = entity.observations?.[0] || '';
         if (obs === 'User prefers TypeScript') {
           return { components: { baseImportance: 0.8, recencyBoost: 0.1 } };
         }
