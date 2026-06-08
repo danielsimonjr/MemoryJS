@@ -110,11 +110,14 @@ export class TFIDFIndexManager implements IIndexHealth {
     const updatedDocuments = new Map(this.index.documents);
 
     // Remove deleted entities
-    for (const entityName of changedEntityNames) {
-      const entity = graph.entities.find(e => e.name === entityName);
-      if (!entity) {
-        updatedDocuments.delete(entityName);
-      }
+    // Use Set deletion instead of graph.entities.find (O(N) -> O(1) for lookups)
+    const deletedEntities = new Set(changedEntityNames);
+    for (let i = 0; i < graph.entities.length; i++) {
+      deletedEntities.delete(graph.entities[i].name);
+      if (deletedEntities.size === 0) break;
+    }
+    for (const entityName of deletedEntities) {
+      updatedDocuments.delete(entityName);
     }
 
     // Update/add changed entities - tokenize once per document
