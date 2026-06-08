@@ -80,6 +80,7 @@ export { logger } from './logger.js';
 export {
   levenshteinDistance,
   calculateTF,
+  calculateTFFromTokens,
   calculateIDF,
   calculateIDFFromTokenSets,
   calculateTFIDF,
