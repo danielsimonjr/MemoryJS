@@ -276,8 +276,7 @@ describe('RuleEvaluator', () => {
 
       expect(result).toBe(false);
       expect(consoleSpy).toHaveBeenCalledWith(
-        'Error evaluating rule:',
-        expect.any(Error)
+        expect.stringContaining('Error evaluating rule:')
       );
 
       consoleSpy.mockRestore();

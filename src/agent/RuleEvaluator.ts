@@ -12,6 +12,7 @@ import type {
   RuleConditions,
   RuleEvaluationResult,
 } from '../types/agent-memory.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * Simple rule interface for demonstration.
@@ -20,7 +21,7 @@ export interface Rule {
   condition: {
     type: string;
     field: string;
-    value: any;
+    value: unknown;
   };
 }
 
@@ -133,15 +134,14 @@ export class RuleEvaluator {
    * @param facts - Facts to check against
    * @returns True if the rule evaluates to true
    */
-  public evaluateRule(rule: Rule, facts: Record<string, any>): boolean {
+  public evaluateRule(rule: Rule, facts: Record<string, unknown>): boolean {
     try {
-      // Basic implementation for demonstration
       if (rule.condition.type === 'equals') {
         return facts[rule.condition.field] === rule.condition.value;
       }
       return false;
     } catch (error) {
-      console.error('Error evaluating rule:', error);
+      logger.error(`Error evaluating rule: ${(error as Error).message}`);
       return false;
     }
   }
