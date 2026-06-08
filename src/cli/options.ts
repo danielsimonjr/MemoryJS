@@ -48,6 +48,7 @@ export function parseGlobalOptions(opts: Record<string, unknown>): GlobalOptions
  */
 export function createLogger(options: GlobalOptions) {
   return {
+    log: (msg: string) => console.log(msg),
     info: (msg: string) => !options.quiet && console.log(msg),
     debug: (msg: string) => options.verbose && console.log(`[DEBUG] ${msg}`),
     error: (msg: string) => console.error(`[ERROR] ${msg}`),

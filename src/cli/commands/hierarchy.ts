@@ -45,7 +45,7 @@ export function registerHierarchyCommands(program: Command): void {
 
       try {
         const children = await ctx.hierarchyManager.getChildren(entity);
-        console.log(formatEntities(children, options.format));
+        logger.log(formatEntities(children, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
@@ -62,7 +62,7 @@ export function registerHierarchyCommands(program: Command): void {
 
       try {
         const ancestors = await ctx.hierarchyManager.getAncestors(entity);
-        console.log(formatEntities(ancestors, options.format));
+        logger.log(formatEntities(ancestors, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
@@ -79,7 +79,7 @@ export function registerHierarchyCommands(program: Command): void {
 
       try {
         const descendants = await ctx.hierarchyManager.getDescendants(entity);
-        console.log(formatEntities(descendants, options.format));
+        logger.log(formatEntities(descendants, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
@@ -96,7 +96,7 @@ export function registerHierarchyCommands(program: Command): void {
 
       try {
         const roots = await ctx.hierarchyManager.getRootEntities();
-        console.log(formatEntities(roots, options.format));
+        logger.log(formatEntities(roots, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);

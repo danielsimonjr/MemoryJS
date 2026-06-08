@@ -56,7 +56,7 @@ export function registerRelationCommands(program: Command): void {
           relations = relations.filter(r => r.relationType === opts.type);
         }
 
-        console.log(formatRelations(relations, options.format));
+        logger.log(formatRelations(relations, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
