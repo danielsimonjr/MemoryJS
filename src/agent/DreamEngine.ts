@@ -390,6 +390,7 @@ export class DreamEngine extends EventEmitter {
           }
 
           if (changed) {
+            // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort background dream sweep over a graph snapshot; a concurrently-deleted entity is reconciled next cycle
             await this.storage.updateEntity(entity.name, { observations: updated });
           }
         }
@@ -412,6 +413,7 @@ export class DreamEngine extends EventEmitter {
         // Mark stale entities with reduced confidence
         for (const entity of stale) {
           const currentConfidence = (entity as Entity & { confidence?: number }).confidence ?? 1;
+          // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort background dream sweep over a graph snapshot; a concurrently-deleted entity is reconciled next cycle
           await this.storage.updateEntity(entity.name, {
             confidence: Math.max(0, currentConfidence - 0.1),
           } as Partial<Entity>);
@@ -419,6 +421,7 @@ export class DreamEngine extends EventEmitter {
 
         // Mark truly expired entities
         for (const entity of expired) {
+          // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort background dream sweep over a graph snapshot; a concurrently-deleted entity is reconciled next cycle
           await this.storage.updateEntity(entity.name, {
             tags: [...(entity.tags ?? []), 'dream:expired'],
           });
@@ -453,6 +456,7 @@ export class DreamEngine extends EventEmitter {
           }
 
           if (changed && kept.length > 0) {
+            // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort background dream sweep over a graph snapshot; a concurrently-deleted entity is reconciled next cycle
             await this.storage.updateEntity(entity.name, { observations: kept });
           }
         }
@@ -522,6 +526,7 @@ export class DreamEngine extends EventEmitter {
             );
             if (keywords.length > 0) {
               const summary = `[summary] Key topics: ${keywords.slice(0, 5).join(', ')}.`;
+              // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort background dream sweep over a graph snapshot; a concurrently-deleted entity is reconciled next cycle
               await this.storage.updateEntity(entity.name, {
                 observations: [...entity.observations, summary],
               });

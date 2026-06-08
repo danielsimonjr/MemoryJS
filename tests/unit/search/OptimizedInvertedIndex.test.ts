@@ -180,9 +180,9 @@ describe('OptimizedInvertedIndex', () => {
       expect(posting!.docIds.length).toBe(2);
     });
 
-    it('should return null for unknown term', () => {
+    it('should return undefined for unknown term', () => {
       const posting = index.getPostingList('unknown');
-      expect(posting).toBeNull();
+      expect(posting).toBeUndefined();
     });
 
     it('should return Uint32Array for posting list', () => {

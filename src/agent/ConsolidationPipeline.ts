@@ -21,12 +21,33 @@ import type {
   ConsolidationTrigger,
   ConsolidationRule,
 } from '../types/agent-memory.js';
-import { isAgentEntity } from '../types/agent-memory.js';
+import {
+  isAgentEntity,
+  isFailureMemory,
+  isProspectiveMemory,
+  isReflectionMemory,
+} from '../types/agent-memory.js';
+import { tokenize } from '../utils/textSimilarity.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
 import { RuleEvaluator } from './RuleEvaluator.js';
+import type { ReflectionManager } from './ReflectionManager.js';
+import type { TrajectoryCompressor } from './TrajectoryCompressor.js';
+import type {
+  ExperienceExtractor,
+  Trajectory,
+  TrajectoryCluster,
+} from './ExperienceExtractor.js';
+import type { HeuristicManager } from './HeuristicManager.js';
+import type { HeuristicId } from '../types/agent-memory.js';
+import type {
+  ObservationDedupManager,
+  ObservationDedupFilter,
+} from './ObservationDedupManager.js';
+import { createHash } from 'crypto';
+import type { ReflectionScope } from '../types/agent-memory.js';
 
 /**
  * Configuration for ConsolidationPipeline.
@@ -335,6 +356,7 @@ export class ConsolidationPipeline {
       // This is the default behavior
     }
 
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates as Partial<Entity>);
 
     // Reinforce the memory to reset decay
@@ -412,10 +434,10 @@ export class ConsolidationPipeline {
    * @param options - Criteria for eligibility
    * @returns True if eligible
    */
-  async isPromotionEligible(
+  isPromotionEligible(
     entityName: string,
     options?: Pick<ConsolidateOptions, 'minConfidence' | 'minConfirmations'>
-  ): Promise<boolean> {
+  ): boolean {
     const entity = this.storage.getEntityByName(entityName);
     if (!entity || !isAgentEntity(entity)) {
       return false;
@@ -520,6 +542,7 @@ export class ConsolidationPipeline {
 
     // Update entity with summarized observations
     if (result.compressionRatio > 1) {
+      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- summarized observations are best-effort; the SummarizationResult is still returned and the op is re-runnable
       await this.storage.updateEntity(entityName, {
         observations: result.summaries,
         lastModified: new Date().toISOString(),
@@ -817,8 +840,19 @@ export class ConsolidationPipeline {
       lastModified: new Date().toISOString(),
     };
 
-    // Update survivor
-    await this.storage.updateEntity(survivor.name, updates as Partial<Entity>);
+    // Update survivor. If the survivor vanished between merge-planning and
+    // this write, abort BEFORE the destructive delete-others step below —
+    // proceeding would delete the merged entities with no survivor to hold
+    // their data.
+    const survivorPersisted = await this.storage.updateEntity(
+      survivor.name,
+      updates as Partial<Entity>
+    );
+    if (!survivorPersisted) {
+      throw new Error(
+        `ConsolidationPipeline.mergeMemories: survivor '${survivor.name}' vanished mid-merge; aborting before delete to prevent data loss`
+      );
+    }
 
     // Record merge in audit trail
     await this.recordMerge(entityNames, survivor.name, strategy);
@@ -893,6 +927,22 @@ export class ConsolidationPipeline {
       isAgentEntity(e)
     ) as AgentEntity[];
 
+    // Cheap per-entity token fingerprint. `calculateEntitySimilarity` can
+    // only score > 0 when two entities share an observation token AND have
+    // the same entityType — so pairs failing that pre-check always score 0
+    // and are safe to skip for any threshold > 0. Same `tokenize()` as
+    // `calculateTextSimilarity`, so the check never rejects a > 0 pair.
+    const fingerprints: Set<string>[] = agentEntities.map(
+      (e) => new Set(tokenize((e.observations ?? []).join(' ')))
+    );
+    const sharesToken = (a: Set<string>, b: Set<string>): boolean => {
+      const [small, large] = a.size <= b.size ? [a, b] : [b, a];
+      for (const tok of small) {
+        if (large.has(tok)) return true;
+      }
+      return false;
+    };
+
     for (let i = 0; i < agentEntities.length; i++) {
       for (let j = i + 1; j < agentEntities.length; j++) {
         const e1 = agentEntities[i];
@@ -905,6 +955,13 @@ export class ConsolidationPipeline {
           e1.sessionId !== e2.sessionId
         ) {
           continue;
+        }
+
+        // Cheap pre-filter: skip pairs that provably score 0 (different type
+        // or no shared observation token). Only safe when threshold > 0.
+        if (threshold > 0) {
+          if (e1.entityType !== e2.entityType) continue;
+          if (!sharesToken(fingerprints[i], fingerprints[j])) continue;
         }
 
         const similarity = this.calculateEntitySimilarity(e1, e2);
@@ -1273,4 +1330,528 @@ export class ConsolidationPipeline {
   async triggerManualConsolidation(): Promise<ConsolidationResult> {
     return this.runAutoConsolidation('manual');
   }
+}
+
+// ==================== ProspectivePromotionStage ====================
+
+/**
+ * Pipeline stage that promotes fired prospective intentions to
+ * episodic memory. Closes the prospective-memory lifecycle: a fired
+ * intention whose action delivered content (`'inject-context'`) becomes
+ * a permanent episodic record tagged `'prospective-fulfilled'`.
+ *
+ * - `invoke` and `tag-related` actions are NOT promoted — they have
+ *   side-effects but no payload worth archiving as episodic content.
+ * - Idempotent: re-running on an already-promoted entity is a no-op
+ *   (the entity's `memoryType` is now `'episodic'`, so the prospective
+ *   filter excludes it).
+ * - Self-sufficient: scans storage independently of the `entities`
+ *   argument from the pipeline (prospective intentions aren't in the
+ *   working-memory candidate set).
+ *
+ * Register via `ConsolidationPipeline.registerStage(new ProspectivePromotionStage(storage))`.
+ */
+export class ProspectivePromotionStage implements PipelineStage {
+  readonly name = 'prospective-promotion';
+
+  constructor(private readonly storage: IGraphStorage) {}
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
+    const graph = await this.storage.loadGraph();
+    const candidates = graph.entities
+      .filter(isProspectiveMemory)
+      .filter((e) => e.lifecycle.status === 'fired' && e.action.kind === 'inject-context');
+
+    let transformed = 0;
+    const errors: string[] = [];
+    const nowIso = new Date().toISOString();
+
+    for (const entity of candidates) {
+      const ctx = `fireCount=${entity.lifecycle.fireCount}, action=${entity.action.kind}`;
+      try {
+        const newTags = Array.from(new Set([...(entity.tags ?? []), 'prospective-fulfilled']));
+        const ok = await this.storage.updateEntity(entity.name, {
+          memoryType: 'episodic',
+          tags: newTags,
+          lastModified: nowIso,
+        } as unknown as Partial<Entity>);
+        if (ok) {
+          transformed++;
+        } else {
+          // updateEntity returns false when the entity is missing —
+          // signals a vanished-mid-batch race (concurrent delete /
+          // governance rollback / segment-mode flush). Surface it
+          // rather than silently counting it as transformed.
+          errors.push(
+            `ProspectivePromotionStage: entity '${entity.name}' disappeared mid-batch (${ctx})`
+          );
+        }
+      } catch (err) {
+        errors.push(
+          `ProspectivePromotionStage: failed to promote '${entity.name}' (${ctx}): ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
+    }
+
+    return { processed: candidates.length, transformed, errors };
+  }
+}
+
+/**
+ * Configuration for `ReflectionStage`.
+ */
+export interface ReflectionStageConfig {
+  /** Minimum `PatternResult.confidence` to qualify (default 0.4). */
+  minConfidence?: number;
+  /** `minOccurrences` argument to `PatternDetector.detectPatterns` (default 2). */
+  minPatternOccurrences?: number;
+  /** Reflection scope written to the new `ReflectionRecord` (default 'session'). */
+  scope?: ReflectionScope;
+  /** Circuit-breaker on observations per run (default 500). */
+  maxObservationsPerRun?: number;
+  /**
+   * Optional `ExperienceExtractor` (Phase δ.3). When supplied, the stage
+   * builds a `TrajectoryCluster` from the qualifying candidates and
+   * passes the resulting `Experience.type` as `ReflectionInput.experienceType`
+   * on the created reflection. When omitted, `experienceType` is left
+   * undefined.
+   */
+  experienceExtractor?: ExperienceExtractor;
+}
+
+/**
+ * Pipeline stage that produces `ReflectionEntity` records from
+ * candidate episodic memories. Mirrors `ProspectivePromotionStage`'s
+ * self-sufficient pattern (scans storage directly; ignores the
+ * `entities` argument).
+ *
+ * Pipeline:
+ * 1. Load episodic candidates from storage (filter by optional session
+ *    when called via `runOnSessionEnd`)
+ * 2. Collect observations up to `maxObservationsPerRun`
+ * 3. Run `PatternDetector.detectPatterns` → early return if all
+ *    patterns are below `minConfidence`
+ * 4. Run `TrajectoryCompressor.distill` → derive
+ *    `generalization_confidence = min(1 - compressionRatio, maxPatternConfidence)`
+ * 5. Call `ReflectionManager.create` once (content-hash dedup at that
+ *    layer handles repeat runs)
+ *
+ * **Additive semantics** (Sprint 8 user decision): evidence entities
+ * are NOT mutated. The reflection sits alongside them as a derived
+ * overlay. Re-running is idempotent because `ReflectionManager.create`
+ * dedups on the evidence-set hash.
+ *
+ * Register on the default pipeline via
+ * `ConsolidationPipeline.registerStage(reflectionStage)`, or invoke
+ * `stage.runOnSessionEnd(sessionId)` directly from session-end
+ * handlers.
+ */
+export class ReflectionStage implements PipelineStage {
+  readonly name = 'reflection';
+  private readonly minConfidence: number;
+  private readonly minPatternOccurrences: number;
+  private readonly scope: ReflectionScope;
+  private readonly maxObservationsPerRun: number;
+  private readonly experienceExtractor?: ExperienceExtractor;
+
+  constructor(
+    private readonly storage: IGraphStorage,
+    private readonly reflectionManager: ReflectionManager,
+    private readonly patternDetector: PatternDetector,
+    private readonly trajectoryCompressor: TrajectoryCompressor,
+    config: ReflectionStageConfig = {}
+  ) {
+    this.minConfidence = config.minConfidence ?? 0.4;
+    this.minPatternOccurrences = config.minPatternOccurrences ?? 2;
+    this.scope = config.scope ?? 'session';
+    this.maxObservationsPerRun = config.maxObservationsPerRun ?? 500;
+    this.experienceExtractor = config.experienceExtractor;
+  }
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
+    return this.runInternal(undefined);
+  }
+
+  /**
+   * Convenience helper for session-end triggers. Scopes the candidate
+   * set to entities whose `sessionId === sessionId`. Sets
+   * `sourceSessionId` on the resulting reflection.
+   */
+  async runOnSessionEnd(sessionId: string): Promise<StageResult> {
+    if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+      throw new Error(
+        `ReflectionStage.runOnSessionEnd: sessionId must be a non-empty string; received ${
+          typeof sessionId === 'string' ? `'${sessionId}'` : typeof sessionId
+        }`
+      );
+    }
+    return this.runInternal(sessionId);
+  }
+
+  private async runInternal(sessionId: string | undefined): Promise<StageResult> {
+    const graph = await this.storage.loadGraph();
+    const candidates = graph.entities.filter(isAgentEntity).filter((e) => {
+      if (e.memoryType !== 'episodic' && e.memoryType !== 'semantic') return false;
+      if (sessionId !== undefined && e.sessionId !== sessionId) return false;
+      return true;
+    });
+
+    if (candidates.length === 0) {
+      return { processed: 0, transformed: 0, errors: [] };
+    }
+
+    const observations: string[] = [];
+    const observationEntityNames: string[] = [];
+    for (const entity of candidates) {
+      for (const obs of entity.observations ?? []) {
+        if (observations.length >= this.maxObservationsPerRun) break;
+        observations.push(obs);
+        observationEntityNames.push(entity.name);
+      }
+      if (observations.length >= this.maxObservationsPerRun) break;
+    }
+
+    const patterns = this.patternDetector.detectPatterns(
+      observations,
+      this.minPatternOccurrences,
+      observationEntityNames
+    );
+    const maxPatternConfidence = patterns.reduce((m, p) => Math.max(m, p.confidence), 0);
+    if (patterns.length === 0 || maxPatternConfidence < this.minConfidence) {
+      // Surface a diagnostic so callers can distinguish "no candidates"
+      // (transformed=0, errors=[]) from "candidates existed but didn't
+      // qualify" (transformed=0, errors=['[info] ...']). The [info]
+      // prefix marks this as non-fatal — pipeline aggregators that
+      // gate on errors.length should filter it out.
+      const reason =
+        patterns.length === 0
+          ? 'no patterns detected'
+          : `max pattern confidence ${maxPatternConfidence.toFixed(2)} < minConfidence ${this.minConfidence}`;
+      return {
+        processed: candidates.length,
+        transformed: 0,
+        errors: [`[info] ReflectionStage: skipped reflection (${reason})`],
+      };
+    }
+
+    let compression: Awaited<ReturnType<TrajectoryCompressor['distill']>>;
+    const errors: string[] = [];
+    try {
+      compression = await this.trajectoryCompressor.distill(observations);
+    } catch (err) {
+      errors.push(
+        `ReflectionStage: TrajectoryCompressor.distill failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+      return { processed: candidates.length, transformed: 0, errors };
+    }
+
+    // Narrow `evidence` to entities whose observations actually matched a
+    // qualifying pattern. `detectPatterns` populates `sourceEntities` from
+    // the parallel `observationEntityNames` we passed; we union those
+    // across patterns above `minConfidence` and dedup+sort for determinism.
+    const evidence = [
+      ...new Set(
+        patterns
+          .filter((p) => p.confidence >= this.minConfidence)
+          .flatMap((p) => p.sourceEntities)
+      ),
+    ].sort();
+
+    // Clamp to `[0, 1]` defensively: `TrajectoryCompressor.compressionRatio`
+    // can exceed 1.0 in edge cases (ellipsis suffix on very short totals,
+    // multibyte expansion). Without the clamp, a negative input crashes
+    // `validateConfidence` in `ReflectionManager.create`.
+    const confidence = Math.max(
+      0,
+      Math.min(1, 1 - compression.compressionRatio, maxPatternConfidence)
+    );
+    const keyInsights = patterns.slice(0, 5).map((p) => p.pattern);
+
+    // Optional Phase δ.3 wiring: when an `ExperienceExtractor` is
+    // supplied, classify the cluster and tag the reflection's
+    // `experienceType`. Entities expose no `actions` field, so
+    // observation-heavy clusters consistently classify as 'heuristic'
+    // — by design for the reflection use case.
+    let experienceType: string | undefined;
+    if (this.experienceExtractor) {
+      const trajectories: Trajectory[] = candidates.map((e) => ({
+        id: e.name,
+        sessionId: e.sessionId ?? '',
+        observations: e.observations ?? [],
+        actions: [],
+        outcome: 'unknown',
+        context: {},
+        timestamp: e.createdAt ?? new Date().toISOString(),
+      }));
+      const cluster: TrajectoryCluster = {
+        id: `reflection-${Date.now()}`,
+        method: 'semantic',
+        trajectories,
+        cohesion: maxPatternConfidence,
+      };
+      const experience = await this.experienceExtractor.synthesizeExperience(cluster);
+      experienceType = experience.type;
+    }
+
+    try {
+      await this.reflectionManager.create({
+        scope: this.scope,
+        evidence,
+        summary: compression.summary || keyInsights[0] || 'pattern reflection',
+        generalization_confidence: confidence,
+        keyInsights,
+        experienceType,
+        sourceSessionId: sessionId,
+      });
+      return { processed: candidates.length, transformed: 1, errors };
+    } catch (err) {
+      errors.push(
+        `ReflectionStage: ReflectionManager.create failed: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
+      return { processed: candidates.length, transformed: 0, errors };
+    }
+  }
+}
+
+// ==================== HeuristicExtractionStage (3B.8b) ====================
+
+/** Configuration for `HeuristicExtractionStage`. */
+export interface HeuristicExtractionStageConfig {
+  /**
+   * Minimum `ReflectionRecord.generalization_confidence` to consider a
+   * reflection as an extraction source. Default 0.4.
+   */
+  minConfidence?: number;
+  /** Circuit-breaker on heuristics emitted per run. Default 50. */
+  maxPerRun?: number;
+  /**
+   * Initial confidence applied to heuristics derived from resolved
+   * failures. Default 0.6.
+   */
+  failureConfidence?: number;
+  /**
+   * Cap on the initial confidence applied to heuristics derived from
+   * reflections (`min(generalization_confidence, cap)`). Default 0.7 —
+   * reflections are aggregates so we trust them more than a single
+   * resolved failure, but cap below 1.0 to leave headroom for
+   * `reinforce` to keep raising it.
+   */
+  reflectionConfidenceCap?: number;
+}
+
+/**
+ * Pipeline stage that crystallises resolved `FailureRecord`s and
+ * qualifying `ReflectionRecord`s into `HeuristicEntity` records.
+ *
+ * Triggers:
+ * - The default `ConsolidationPipeline.runAutoConsolidation()` cycle
+ *   (env-gated by `MEMORY_HEURISTIC_AUTO_EXTRACT`; the stage itself
+ *   does not read env vars — `ManagerContext` is the gate).
+ * - `runOnResolution(failureId)` for an explicit single-failure pass,
+ *   mirroring `ReflectionStage.runOnSessionEnd`.
+ *
+ * Extraction rules (deliberately conservative):
+ * 1. **Resolved failures** with non-empty `resolvedReason` AND
+ *    `alternative_taken`:
+ *    - condition = `failureRecord.applicability_hint`
+ *    - action    = `"Avoid: ${attempted}. Prefer: ${alternative_taken}"`
+ *    - initialConfidence = `failureConfidence` (default 0.6)
+ * 2. **Reflections** with `experienceType` set AND
+ *    `generalization_confidence >= minConfidence` AND non-empty
+ *    `keyInsights[]`: one heuristic per insight.
+ *    - condition = `reflectionRecord.summary`
+ *    - action    = the `keyInsight` string
+ *    - initialConfidence = `min(generalization_confidence, reflectionConfidenceCap)`
+ *
+ * Content-hash dedup: each candidate is content-addressed by
+ * `h_${sha256(condition + '|' + action)}` and `HeuristicManager.add`
+ * is called with that explicit id — repeat runs are idempotent.
+ */
+export class HeuristicExtractionStage implements PipelineStage {
+  readonly name = 'heuristic-extraction';
+  private readonly minConfidence: number;
+  private readonly maxPerRun: number;
+  private readonly failureConfidence: number;
+  private readonly reflectionConfidenceCap: number;
+
+  constructor(
+    private readonly storage: IGraphStorage,
+    private readonly heuristicManager: HeuristicManager,
+    config: HeuristicExtractionStageConfig = {},
+  ) {
+    this.minConfidence = config.minConfidence ?? 0.4;
+    this.maxPerRun = config.maxPerRun ?? 50;
+    this.failureConfidence = config.failureConfidence ?? 0.6;
+    this.reflectionConfidenceCap = config.reflectionConfidenceCap ?? 0.7;
+  }
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
+    return this.runInternal(undefined);
+  }
+
+  /**
+   * Scope the extraction to a single failure. Useful as a session-end
+   * or `markResolved`-time hook so a single resolution immediately
+   * produces its heuristic without waiting on the next consolidation
+   * cycle.
+   */
+  async runOnResolution(failureId: string): Promise<StageResult> {
+    if (typeof failureId !== 'string' || failureId.trim().length === 0) {
+      throw new Error(
+        `HeuristicExtractionStage.runOnResolution: failureId must be a non-empty string; received ${
+          typeof failureId === 'string' ? `'${failureId}'` : typeof failureId
+        }`,
+      );
+    }
+    return this.runInternal(failureId);
+  }
+
+  private async runInternal(scopedFailureId: string | undefined): Promise<StageResult> {
+    const graph = await this.storage.loadGraph();
+    const errors: string[] = [];
+    let transformed = 0;
+    let processed = 0;
+
+    type Candidate = { condition: string; action: string; initialConfidence: number };
+    const candidates: Candidate[] = [];
+
+    for (const entity of graph.entities) {
+      if (candidates.length >= this.maxPerRun) break;
+
+      if (isFailureMemory(entity)) {
+        if (scopedFailureId !== undefined && entity.name !== scopedFailureId) continue;
+        const fr = entity.failureRecord;
+        if (fr.lifecycle.status !== 'resolved') continue;
+        if (!fr.lifecycle.resolvedReason || fr.lifecycle.resolvedReason.trim().length === 0) continue;
+        if (!fr.alternative_taken || fr.alternative_taken.trim().length === 0) continue;
+        processed++;
+        candidates.push({
+          condition: fr.applicability_hint,
+          action: `Avoid: ${fr.attempted}. Prefer: ${fr.alternative_taken}`,
+          initialConfidence: this.failureConfidence,
+        });
+        continue;
+      }
+
+      if (scopedFailureId !== undefined) continue; // runOnResolution: failures only
+
+      if (isReflectionMemory(entity)) {
+        const rr = entity.reflectionRecord;
+        if (rr.archived === true) continue;
+        if (!rr.experienceType) continue;
+        if (rr.generalization_confidence < this.minConfidence) continue;
+        if (!rr.keyInsights || rr.keyInsights.length === 0) continue;
+        processed++;
+        const conf = Math.min(rr.generalization_confidence, this.reflectionConfidenceCap);
+        for (const insight of rr.keyInsights) {
+          if (candidates.length >= this.maxPerRun) break;
+          if (!insight || insight.trim().length === 0) continue;
+          candidates.push({
+            condition: rr.summary,
+            action: insight,
+            initialConfidence: conf,
+          });
+        }
+      }
+    }
+
+    for (const c of candidates) {
+      const id = `h_${heuristicContentHash(c.condition, c.action)}` as HeuristicId;
+      try {
+        const before = this.storage.getEntityByName(id);
+        await this.heuristicManager.add({
+          id,
+          condition: c.condition,
+          action: c.action,
+          initialConfidence: c.initialConfidence,
+        });
+        if (!before) transformed++;
+      } catch (err) {
+        errors.push(
+          `HeuristicExtractionStage: add('${id}') failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
+    return { processed, transformed, errors };
+  }
+}
+
+/**
+ * Stable content hash for a (condition, action) pair. Pipe separator
+ * is safe — neither field contains `|` in any well-formed extraction
+ * source we've encountered.
+ */
+function heuristicContentHash(condition: string, action: string): string {
+  return createHash('sha256').update(`${condition}|${action}`).digest('hex').slice(0, 16);
+}
+
+// ==================== ObservationDedupReportStage (Phase B) ====================
+
+/** Configuration for `ObservationDedupReportStage`. */
+export interface ObservationDedupReportStageConfig {
+  /** Pass-through filter forwarded to `findDuplicateObservations`. */
+  filter?: ObservationDedupFilter;
+  /**
+   * When `true`, also run `findJaccardDuplicates` and report those
+   * groups. Default `false` — the exact tier is cheap; Jaccard is
+   * O(o²) and opt-in.
+   */
+  includeJaccard?: boolean;
+}
+
+/**
+ * Diagnostic `PipelineStage` that reports cross-entity duplicate
+ * observations without mutating anything. Emits one `[info]`-prefixed
+ * entry per duplicate group on `StageResult.errors`, mirroring
+ * `ReflectionStage`'s diagnostic convention (the `[info]` prefix marks
+ * the entry as non-fatal — aggregators that gate on `errors.length`
+ * should filter it out). `transformed` is always 0.
+ *
+ * Not auto-registered on `ConsolidationPipeline` — construct and
+ * `registerStage()` explicitly when you want periodic reporting.
+ */
+export class ObservationDedupReportStage implements PipelineStage {
+  readonly name = 'observation-dedup-report';
+  private readonly filter?: ObservationDedupFilter;
+  private readonly includeJaccard: boolean;
+
+  constructor(
+    private readonly manager: ObservationDedupManager,
+    config: ObservationDedupReportStageConfig = {},
+  ) {
+    this.filter = config.filter;
+    this.includeJaccard = config.includeJaccard ?? false;
+  }
+
+  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult> {
+    const errors: string[] = [];
+    const exact = await this.manager.findDuplicateObservations(this.filter);
+    for (const g of exact) {
+      errors.push(
+        `[info] ObservationDedupReportStage: ${g.occurrences.length} occurrences of "${truncate(g.observation, 80)}" (tier=exact)`,
+      );
+    }
+    if (this.includeJaccard) {
+      const jaccard = await this.manager.findJaccardDuplicates(this.filter);
+      for (const g of jaccard) {
+        errors.push(
+          `[info] ObservationDedupReportStage: ${g.occurrences.length} occurrences ~~ "${truncate(g.observation, 80)}" (tier=jaccard)`,
+        );
+      }
+    }
+    return { processed: errors.length, transformed: 0, errors };
+  }
+}
+
+function truncate(s: string, n: number): string {
+  return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
 }

@@ -6,8 +6,13 @@
  * @module agent/ConflictResolver
  */
 
-import type { AgentEntity, ConflictInfo, ConflictStrategy } from '../types/agent-memory.js';
-import type { AgentMetadata } from '../types/agent-memory.js';
+import type {
+  AgentEntity,
+  AgentMetadata,
+  ConflictInfo,
+  ConflictStrategy,
+} from '../types/agent-memory.js';
+import { compareTrustLevel, inferTrustLevel } from '../types/agent-memory.js';
 import { EventEmitter } from 'events';
 
 /**
@@ -325,6 +330,11 @@ export class ConflictResolver extends EventEmitter {
         auditEntry = `Resolved conflict using trusted_agent strategy. Selected: ${resolvedMemory.name}`;
         break;
 
+      case 'trust_level':
+        resolvedMemory = this.resolveTrustLevel(conflictingMemories);
+        auditEntry = `Resolved conflict using trust_level strategy. Selected: ${resolvedMemory.name}`;
+        break;
+
       case 'merge_all':
         resolvedMemory = this.resolveMergeAll(conflictingMemories);
         auditEntry = `Resolved conflict using merge_all strategy. Merged ${conflictingMemories.length} memories`;
@@ -399,6 +409,29 @@ export class ConflictResolver extends EventEmitter {
       const bestTrust = bestAgent?.trustLevel ?? 0.5;
       const mTrust = mAgent?.trustLevel ?? 0.5;
       return mTrust > bestTrust ? m : best;
+    });
+  }
+
+  /**
+   * Resolve using the categorical `TrustLevel` mixin on `MemorySource`.
+   * Ordering: ground-truth > verified > inferred > unverified. Ties at
+   * the same tier are broken by recency (`lastModified` → `createdAt`).
+   * Memories without a `source` field fall back to `'unverified'`.
+   * @internal
+   */
+  private resolveTrustLevel(memories: AgentEntity[]): AgentEntity {
+    if (memories.length === 0) {
+      throw new Error('resolveTrustLevel: empty memories array');
+    }
+    return memories.reduce((best, m) => {
+      const bestLevel = inferTrustLevel(best.source);
+      const mLevel = inferTrustLevel(m.source);
+      const cmp = compareTrustLevel(mLevel, bestLevel);
+      if (cmp > 0) return m;
+      if (cmp < 0) return best;
+      const bestTime = best.lastModified ?? best.createdAt ?? '1970-01-01';
+      const mTime = m.lastModified ?? m.createdAt ?? '1970-01-01';
+      return mTime > bestTime ? m : best;
     });
   }
 

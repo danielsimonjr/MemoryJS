@@ -1,7 +1,7 @@
 # MemoryJS - System Architecture
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
+**Last Updated**: 2026-05-14
 
 ---
 
@@ -35,41 +35,43 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (v1.14.0 + Unreleased)
+### Key Statistics (v2.0.0)
 
 Numbers below are extracted from the authoritative `dependency-summary.compact.json`
-produced by `tools/create-dependency-graph` on 2026-04-25. To regenerate run
-`npx tsx tools/create-dependency-graph/create-dependency-graph.ts`.
+produced by `tools/create-dependency-graph` on 2026-05-14. To regenerate run
+`npx tsx tools/create-dependency-graph/create-dependency-graph.ts` (or the
+`node --experimental-strip-types` variant on newer Node versions).
 
 | Metric | Value |
 |--------|-------|
-| Source files | 183 TypeScript files |
-| Lines of code | 62,889 |
-| Total exports | 1,104 |
-| Re-exports (barrel) | 699 |
-| Classes | 156 |
-| Interfaces | 384 |
-| Functions | 189 |
-| Type aliases | 17 |
+| Source files | 236 TypeScript files |
+| Lines of code | 79,841 |
+| Total exports | 1,262 |
+| Re-exports (barrel) | 750 |
+| Classes | 214 |
+| Interfaces | 501 |
+| Functions | 232 |
+| Type guards | 23 |
 | Enums | 4 |
-| Constants | 63 |
-| Type-only imports | 269 |
-| Circular dependencies | 1 (self-ref: `EntityValidator`) |
-| Tests passing | 6,157 |
-| Test files | 214 |
+| Type-only imports | 326 |
+| Runtime circular dependencies | 1 (`EntityValidator → EntityValidator`) |
+| Type-only circular dependencies | 3 |
+| Modules | 11 |
 
 ### Module Distribution
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
-| `agent/` | 61 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware** |
-| `core/` | 14 | ManagerContext, EntityManager (+OCC, +temporal validity), RelationManager (+temporal invalidation), ObservationManager (+bitemporal axis), HierarchyManager, GraphStorage, SQLiteStorage, GraphTraversal, TransactionManager, RefIndex |
-| `search/` | 37 | SearchManager, RankedSearch, BM25Search, BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor |
-| `features/` | 17 | IOManager (+RDF/Turtle/JSON-LD export), TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker |
-| `utils/` | 26 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError) |
-| `types/` | 7 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure |
-| `security/` | 2 | **PiiRedactor** + DEFAULT_PII_PATTERNS |
-| `cli/` | 16 | `memory` / `memoryjs` binary commands |
+| `adapters/` | — | `LangChainMemoryAdapter`, `RestRouter`, `RateLimiter`, `pagination` helpers, `MCPToolObserverAdapter` |
+| `agent/` | 66 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (Phase 1 prospective), **FailureManager** (Sprint 4), **PlanManager** (Sprint 5), **ReflectionManager** (Sprint 8, aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages |
+| `core/` | — | ManagerContext, EntityManager (with optimistic concurrency + temporal validity + state machine), RelationManager (with temporal invalidation), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage (with optional mmap branch), SQLiteStorage (with read-pool + `PartialIndexAdvisor`), GraphTraversal (HITS / clique / Louvain), TransactionManager, RefIndex, `FileSegmentStorage`, `JsonlColumnStore`, `TieredIndex` (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), `IMmapBackend` / `FsReadMmapBackend` |
+| `search/` | — | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, `PartialIndexAdvisor`, `SpellChecker` |
+| `features/` | — | IOManager (with RDF / Turtle / JSON-LD export), `BackupManager`, TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog, GovernanceManager, ContradictionDetector, SemanticForget, AutoLinker |
+| `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
+| `types/` | 8 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`), **`Result<T, E>`** (v2.0.0 — `ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk` in `result.ts`) |
+| `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** (Phase 5) |
+| `cli/` | 16 | `memory` / `memoryjs` binary commands (with pipe support, Phase 0) |
+| `entry/` | 1 | `src/index.ts` |
 | `workers/` | 2 | Levenshtein distance calculations |
 
 ---
@@ -222,7 +224,7 @@ class EntityManager {
 
   // Core Operations
   async createEntities(entities: Entity[]): Promise<Entity[]>
-  async getEntityByName(name: string): Promise<Entity | null>
+  async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null>
   async deleteEntities(names: string[]): Promise<void>
 
   // Tag Operations
@@ -257,8 +259,10 @@ class SearchManager {
   async searchRanked(query: string, options?): Promise<SearchResult[]>
   async booleanSearch(query: string, options?): Promise<KnowledgeGraph>
   async fuzzySearch(query: string, options?): Promise<KnowledgeGraph>
-  async hybridSearch(query: string, options?): Promise<HybridSearchResult>
+  async autoSearch(query: string, limit?: number): Promise<AutoSearchResult>
+  async searchByTime(query: string, options?): Promise<Entity[]>
 }
+// Hybrid search lives on `HybridSearchManager`, not `SearchManager`.
 ```
 
 #### GraphTraversal (`core/GraphTraversal.ts`)
@@ -267,12 +271,17 @@ class SearchManager {
 
 ```typescript
 class GraphTraversal {
-  async findShortestPath(from: string, to: string): Promise<string[]>
+  async findShortestPath(from: string, to: string): Promise<PathResult | null>
   async findAllPaths(from: string, to: string, options?): Promise<string[][]>
-  async getCentrality(options?): Promise<Map<string, number>>
-  async getConnectedComponents(): Promise<string[][]>
-  async bfs(startNode: string, visitor: Function): Promise<void>
-  async dfs(startNode: string, visitor: Function): Promise<void>
+  async findConnectedComponents(): Promise<ConnectedComponentsResult>
+  async findCommunities(): Promise<CommunitiesResult>             // Louvain
+  async findCliques(minSize?: number): Promise<string[][]>
+  async calculateDegreeCentrality(): Promise<Map<string, number>>
+  async calculateBetweennessCentrality(): Promise<Map<string, number>>
+  async calculatePageRank(): Promise<Map<string, number>>
+  async calculateHITS(): Promise<HITSResult>
+  bfs(startNode: string, options?: TraversalOptions): TraversalResult
+  dfs(startNode: string, options?: TraversalOptions): TraversalResult
 }
 ```
 
@@ -285,7 +294,7 @@ class AgentMemoryManager {
   // Session Management
   async startSession(options?: SessionOptions): Promise<SessionEntity>
   async endSession(sessionId: string): Promise<void>
-  async getActiveSession(): Promise<SessionEntity | null>
+  async getActiveSession(): Promise<SessionEntity | undefined>
 
   // Working Memory
   async addWorkingMemory(sessionId: string, content: string, options?): Promise<AgentEntity>
@@ -316,6 +325,28 @@ class AgentMemoryManager {
 - **MultiAgentMemoryManager**: Shared memory and conflict resolution
 - **ArtifactManager**: Stable artifact creation with auto-registered refs
 - **DistillationPipeline**: Post-retrieval policy-based memory filtering
+
+**Phase 2 memory-type managers** (sit alongside `AgentMemoryManager` as
+dedicated per-type write paths; accessed via `ctx.<getter>` rather than
+through `AgentMemoryManager`):
+- **ProspectiveMemoryManager** (`ctx.prospectiveMemory`) — intentions-to-act
+  with discriminated `ProspectiveLifecycle` (`pending` / `fired` /
+  `cancelled` / `expired`); `ProspectivePromotionStage` promotes fired
+  `inject-context` actions to episodic. Catalog Type 4.
+- **FailureManager** (`ctx.failureManager`) — pre-task failure lookup with
+  structured `FailureRecord` (`applicability_hint` is the retrieval key);
+  `markResolved` returns discriminated `MarkResolvedResult`. Catalog Type 9.
+- **PlanManager** (`ctx.plan`) — hierarchical goal trees with branded
+  `PlanId` / `GoalNodeId`, discriminated `PlanLifecycle` /
+  `GoalNodeLifecycle`, `validatePlanInvariants` after every mutation,
+  cycle-protected DFS. Catalog Type 6.
+- **ReflectionManager** (`ctx.reflectionManager`) — additive reflections
+  produced by `ReflectionStage` (pattern + trajectory + experience); content-
+  hash dedup at create; `ReflectionScope` discriminator. Catalog Type 10.
+- **TrustLevel mixin** on `MemorySource` (Sprint 6) — discriminated
+  categorical label complementing the numeric `reliability`/`confidence`
+  scores; powers the `'trust_level'` `ConflictStrategy`. Catalog Type 12
+  (Provenance).
 
 #### Features Module (`features/`)
 
@@ -413,15 +444,23 @@ interface Entity {
 
 ```typescript
 interface AgentEntity extends Entity {
-  memoryType: 'working' | 'episodic' | 'semantic';  // Memory classification
+  memoryType: MemoryType;    // 'working' | 'episodic' | 'semantic' | 'procedural'
+                             // | 'prospective' | 'failure' | 'plan' | 'reflection'
   sessionId?: string;        // Session grouping
   expiresAt?: string;        // TTL for working memory
   accessCount: number;       // Retrieval frequency
   lastAccessedAt?: string;   // Most recent access
   confidence: number;        // Belief strength (0.0-1.0)
   agentId?: string;          // Owning agent
-  visibility: 'private' | 'shared' | 'public';
+  visibility: 'private' | 'team' | 'org' | 'shared' | 'public';
+  source?: MemorySource;     // Provenance (with optional TrustLevel mixin)
 }
+
+// Per-type entity specializations extend AgentEntity with a typed record:
+interface ProspectiveEntity extends AgentEntity { memoryType: 'prospective'; trigger: ProspectiveTrigger; action: ProspectiveAction; lifecycle: ProspectiveLifecycle; }
+interface FailureEntity     extends AgentEntity { memoryType: 'failure';     failureRecord: FailureRecord; }
+interface PlanEntity        extends AgentEntity { memoryType: 'plan';        planRecord: PlanRecord; }
+interface ReflectionEntity  extends AgentEntity { memoryType: 'reflection';  reflectionRecord: ReflectionRecord; }
 ```
 
 ### Relation
@@ -510,6 +549,28 @@ interface KnowledgeGraph {
 **Trade-offs**:
 - Higher-level abstraction may hide granular control
 - Additional complexity for simple use cases
+
+### 7. Why a `Result<T, E>` Error-Handling Contract? (v2.0.0)
+
+**Decision**: One documented error-signalling policy across the codebase
+(`CONTRIBUTING.md` > Error Handling), backed by a `Result<T, E>`
+discriminated-union type in `src/types/result.ts`.
+
+**Rationale**:
+- The v2.0.0 API audit found four error-signalling styles coexisting with
+  no rule — `throw`, `return null`, discriminated unions, and silent
+  swallowing — mixed even within single classes.
+- The policy: **throw** for programmer errors (bad arguments, invariant
+  violations); **return `Result<T, E>`** for expected domain failures the
+  caller should branch on; **never swallow** silently; the absent-value
+  sentinel is `T | undefined`, never `T | null`.
+- `Result<T, E>` (`ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk`) is
+  discriminated on an `ok` boolean — callers narrow with a plain
+  `if (result.ok)`.
+
+**Trade-offs**:
+- The contract is established in v2.0.0; migrating every existing call
+  site onto it is incremental follow-up work.
 
 ---
 

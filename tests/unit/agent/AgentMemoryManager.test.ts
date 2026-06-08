@@ -467,10 +467,10 @@ describe('AgentMemoryManager', () => {
       expect(Array.isArray(results)).toBe(true);
     });
 
-    it('copyMemory returns null for non-existent source', async () => {
+    it('copyMemory returns undefined for non-existent source', async () => {
       manager.registerAgent('target', { name: 'T', type: 'llm', trustLevel: 1, capabilities: [] });
       const result = await manager.copyMemory('does-not-exist', 'target');
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
 
     it('detectConflicts returns ConflictInfo[] (possibly empty)', async () => {
@@ -478,10 +478,10 @@ describe('AgentMemoryManager', () => {
       expect(Array.isArray(conflicts)).toBe(true);
     });
 
-    it('mergeCrossAgent returns null when given non-existent memories', async () => {
+    it('mergeCrossAgent returns undefined when given non-existent memories', async () => {
       manager.registerAgent('merger', { name: 'M', type: 'llm', trustLevel: 1, capabilities: [] });
       const result = await manager.mergeCrossAgent(['ghost-1', 'ghost-2'], 'merger');
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
   });
 
