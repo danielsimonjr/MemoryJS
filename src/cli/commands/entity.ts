@@ -40,9 +40,7 @@ export function registerEntityCommands(program: Command): void {
         }]);
 
         logger.info(formatSuccess(`Created entity: ${created.name}`));
-        if (!options.quiet) {
-          console.log(formatEntityDetail(created, options.format));
-        }
+        logger.info(formatEntityDetail(created, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
@@ -63,7 +61,7 @@ export function registerEntityCommands(program: Command): void {
           logger.error(formatError(`Entity "${name}" not found`));
           process.exit(1);
         }
-        console.log(formatEntityDetail(found, options.format));
+        logger.log(formatEntityDetail(found, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
@@ -99,7 +97,7 @@ export function registerEntityCommands(program: Command): void {
           entities = entities.slice(0, opts.limit as number);
         }
 
-        console.log(formatEntities(entities, options.format));
+        logger.log(formatEntities(entities, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
@@ -135,9 +133,7 @@ export function registerEntityCommands(program: Command): void {
         const updated = await ctx.entityManager.updateEntity(name, updates);
 
         logger.info(formatSuccess(`Updated entity: ${updated.name}`));
-        if (!options.quiet) {
-          console.log(formatEntityDetail(updated, options.format));
-        }
+        logger.info(formatEntityDetail(updated, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);

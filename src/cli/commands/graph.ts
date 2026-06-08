@@ -27,7 +27,7 @@ export function registerGraphCommands(program: Command): void {
           logger.error(formatError(`No path found between "${from}" and "${to}"`));
           process.exit(1);
         }
-        console.log(formatPath(result, options.format));
+        logger.log(formatPath(result, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
@@ -74,7 +74,7 @@ export function registerGraphCommands(program: Command): void {
             process.exit(1);
         }
 
-        console.log(formatCentrality(result, options.format));
+        logger.log(formatCentrality(result, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
@@ -91,7 +91,7 @@ export function registerGraphCommands(program: Command): void {
 
       try {
         const result = await ctx.graphTraversal.findConnectedComponents();
-        console.log(formatComponents(result, options.format));
+        logger.log(formatComponents(result, options.format));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);
