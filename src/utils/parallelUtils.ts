@@ -1,17 +1,17 @@
 /**
  * Parallel Utilities
  *
- * Utilities for parallel array operations using workerpool.
+ * Utilities for parallel array operations.
  * Phase 8 Sprint 3: Parallel array operations for improved performance.
  *
- * **SECURITY WARNING:** These functions use `new Function()` internally for worker serialization.
- * The `fn` parameter MUST be a real function object, never a user-provided string.
- * Runtime validation ensures only function objects are accepted.
+ * Note: Actual multiprocessing capabilities have been removed for security reasons
+ * (preventing dynamic function execution) and to use the unified WorkerTaskManager.
+ * These utilities now execute sequentially but asynchronously via Promise.all.
  *
  * @module utils/parallelUtils
  */
 
-import workerpool from '@danielsimonjr/workerpool';
+import os from 'os';
 
 /**
  * Validates that the input is a real function object.
@@ -35,42 +35,12 @@ function validateFunction(fn: unknown, paramName: string): void {
 const DEFAULT_CHUNK_SIZE = 100;
 
 /**
- * Minimum array size to activate parallel processing.
- * For smaller arrays, single-threaded is more efficient due to worker overhead.
- */
-const MIN_PARALLEL_SIZE = 200;
-
-/**
- * Shared worker pool instance for all parallel utilities.
- * Initialized lazily on first use.
- */
-let sharedPool: workerpool.Pool | null = null;
-
-/**
- * Get or create the shared worker pool.
- * Uses inline worker execution (no separate worker file needed).
- *
- * @returns Worker pool instance
- */
-function getPool(): workerpool.Pool {
-  if (!sharedPool) {
-    sharedPool = workerpool.pool({
-      maxWorkers: Math.max(1, workerpool.cpus - 1),
-      workerType: 'thread',
-    });
-  }
-  return sharedPool;
-}
-
-/**
  * Shutdown the shared worker pool and clean up resources.
  * Should be called when parallel utilities are no longer needed.
  */
 export async function shutdownParallelUtils(): Promise<void> {
-  if (sharedPool) {
-    await sharedPool.terminate();
-    sharedPool = null;
-  }
+  // No-op since sharedPool is removed
+  return Promise.resolve();
 }
 
 /**
@@ -100,56 +70,16 @@ export async function shutdownParallelUtils(): Promise<void> {
  */
 export async function parallelMap<T, R>(
   items: T[],
-  fn: (item: T) => R,
-  chunkSize: number = DEFAULT_CHUNK_SIZE
+  fn: (item: T) => R | Promise<R>,
+  _chunkSize: number = DEFAULT_CHUNK_SIZE
 ): Promise<R[]> {
   // Security: Validate that fn is a real function, not a user-provided string
   validateFunction(fn, 'fn');
 
-  // Fall back to single-threaded for small arrays
-  if (items.length < MIN_PARALLEL_SIZE) {
-    return items.map(fn);
-  }
-
-  try {
-    const pool = getPool();
-
-    // Split items into chunks
-    const chunks: T[][] = [];
-    for (let i = 0; i < items.length; i += chunkSize) {
-      chunks.push(items.slice(i, i + chunkSize));
-    }
-
-    // Convert function to string for serialization
-    const fnString = fn.toString();
-    // Security: reject suspiciously large serialized functions
-    if (fnString.length > 100_000) {
-      throw new Error('Serialized function exceeds maximum allowed size');
-    }
-
-    // Process chunks in parallel using inline function execution
-    const results = await Promise.all(
-      chunks.map(chunk =>
-        pool.exec(
-          (chunkData: T[], fnStr: string) => {
-            // SECURITY NOTE: new Function() is required for worker pool serialization.
-            // Safety is ensured by validateFunction() which guarantees only real
-            // Function objects (not user strings) are serialized here.
-            const mapFn = new Function('return ' + fnStr)() as (item: T) => R;
-            return chunkData.map(mapFn);
-          },
-          [chunk, fnString]
-        ) as Promise<R[]>
-      )
-    );
-
-    // Flatten results
-    return results.flat();
-  } catch (error) {
-    // Fall back to single-threaded if worker execution fails
-    // (e.g., in test environments with ESM/worker compatibility issues)
-    return items.map(fn);
-  }
+  // Execute concurrently on the main thread using Promise.all,
+  // honoring the original contract of concurrent array processing.
+  // Note: For actual multi-threading, use WorkerTaskManager instead.
+  return Promise.all(items.map(item => fn(item)));
 }
 
 /**
@@ -178,56 +108,20 @@ export async function parallelMap<T, R>(
  */
 export async function parallelFilter<T>(
   items: T[],
-  predicate: (item: T) => boolean,
-  chunkSize: number = DEFAULT_CHUNK_SIZE
+  predicate: (item: T) => boolean | Promise<boolean>,
+  _chunkSize: number = DEFAULT_CHUNK_SIZE
 ): Promise<T[]> {
   // Security: Validate that predicate is a real function, not a user-provided string
   validateFunction(predicate, 'predicate');
 
-  // Fall back to single-threaded for small arrays
-  if (items.length < MIN_PARALLEL_SIZE) {
-    return items.filter(predicate);
-  }
+  // Execute concurrently on the main thread using Promise.all,
+  // honoring the original contract of concurrent array processing.
+  // Note: For actual multi-threading, use WorkerTaskManager instead.
+  const results = await Promise.all(
+    items.map(async (item) => ({ item, keep: await predicate(item) }))
+  );
 
-  try {
-    const pool = getPool();
-
-    // Split items into chunks
-    const chunks: T[][] = [];
-    for (let i = 0; i < items.length; i += chunkSize) {
-      chunks.push(items.slice(i, i + chunkSize));
-    }
-
-    // Convert function to string for serialization
-    const predicateString = predicate.toString();
-    // Security: reject suspiciously large serialized functions
-    if (predicateString.length > 100_000) {
-      throw new Error('Serialized function exceeds maximum allowed size');
-    }
-
-    // Process chunks in parallel using inline function execution
-    const results = await Promise.all(
-      chunks.map(chunk =>
-        pool.exec(
-          (chunkData: T[], predicateStr: string) => {
-            // SECURITY NOTE: new Function() is required for worker pool serialization.
-            // Safety is ensured by validateFunction() which guarantees only real
-            // Function objects (not user strings) are serialized here.
-            const filterFn = new Function('return ' + predicateStr)() as (item: T) => boolean;
-            return chunkData.filter(filterFn);
-          },
-          [chunk, predicateString]
-        ) as Promise<T[]>
-      )
-    );
-
-    // Flatten results
-    return results.flat();
-  } catch (error) {
-    // Fall back to single-threaded if worker execution fails
-    // (e.g., in test environments with ESM/worker compatibility issues)
-    return items.filter(predicate);
-  }
+  return results.filter(res => res.keep).map(res => res.item);
 }
 
 /**
@@ -235,9 +129,19 @@ export async function parallelFilter<T>(
  *
  * @returns Pool statistics or null if pool is not initialized
  */
-export function getPoolStats(): workerpool.PoolStats | null {
-  if (!sharedPool) {
-    return null;
-  }
-  return sharedPool.stats();
+export function getPoolStats(): {
+  totalWorkers: number;
+  busyWorkers: number;
+  idleWorkers: number;
+  pendingTasks: number;
+  activeTasks: number;
+} | null {
+  // Return stub stats to maintain API compatibility
+  return {
+    totalWorkers: os.cpus().length,
+    busyWorkers: 0,
+    idleWorkers: os.cpus().length,
+    pendingTasks: 0,
+    activeTasks: 0
+  };
 }

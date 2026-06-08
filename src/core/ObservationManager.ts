@@ -381,12 +381,16 @@ export class ObservationManager {
 
     // Get mutable graph for atomic update
     const graph = await this.storage.getGraphForMutation();
+    const entityMap = new Map<string, Entity>();
+    for (const e of graph.entities) {
+      entityMap.set(e.name, e);
+    }
     const timestamp = new Date().toISOString();
     const results: { entityName: string; addedObservations: string[]; superseded?: boolean }[] = [];
     let hasChanges = false;
 
     for (const o of observations) {
-      const entity = graph.entities.find(e => e.name === o.entityName);
+      const entity = entityMap.get(o.entityName);
       if (!entity) {
         throw new EntityNotFoundError(o.entityName);
       }
@@ -515,7 +519,7 @@ export class ObservationManager {
       if (this.columnStore !== null) {
         for (const r of results) {
           if (r.addedObservations.length > 0) {
-            const entity = graph.entities.find((e) => e.name === r.entityName);
+            const entity = entityMap.get(r.entityName);
             if (entity) await this.shadowWriteColumn(entity.name, entity.observations);
           }
         }
@@ -656,12 +660,16 @@ export class ObservationManager {
   ): Promise<void> {
     // Get mutable graph for atomic update
     const graph = await this.storage.getGraphForMutation();
+    const entityMap = new Map<string, Entity>();
+    for (const e of graph.entities) {
+      entityMap.set(e.name, e);
+    }
     const timestamp = new Date().toISOString();
     let hasChanges = false;
     const touchedNames: string[] = [];
 
     deletions.forEach(d => {
-      const entity = graph.entities.find(e => e.name === d.entityName);
+      const entity = entityMap.get(d.entityName);
       if (entity) {
         const originalLength = entity.observations.length;
         entity.observations = entity.observations.filter(o => !d.observations.includes(o));
@@ -685,7 +693,7 @@ export class ObservationManager {
       // `[]`, so the column store needs to reflect that.
       if (this.columnStore !== null) {
         for (const name of touchedNames) {
-          const entity = graph.entities.find((e) => e.name === name);
+          const entity = entityMap.get(name);
           if (entity) await this.shadowWriteColumn(entity.name, entity.observations);
         }
       }
