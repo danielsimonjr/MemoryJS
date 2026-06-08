@@ -24,6 +24,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isProjectContextMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
+import { validateNonEmpty } from '../utils/index.js';
 
 const ENTITY_NAME_PREFIX = 'project-context-';
 
@@ -72,7 +73,7 @@ export class ProjectContextManager {
     projectId: string,
     input: ProjectContextUpsertInput,
   ): Promise<ProjectContextRecord> {
-    validateNonEmpty(projectId, 'projectId');
+    validateNonEmpty(projectId, 'projectId', 'ProjectContextManager');
     const name = projectContextEntityName(projectId);
     const now = toIsoDateTime(new Date());
     const existing = this.storage.getEntityByName(name);
@@ -281,14 +282,6 @@ export class ProjectContextManager {
 }
 
 // ==================== Helpers ====================
-
-function validateNonEmpty(value: unknown, fieldName: string): void {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(
-      `ProjectContextManager: ${fieldName} must be a non-empty string; received ${JSON.stringify(value)}`,
-    );
-  }
-}
 
 function dedupStrings(arr: string[]): string[] {
   return Array.from(new Set(arr));
