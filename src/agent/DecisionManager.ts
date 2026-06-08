@@ -26,6 +26,7 @@ import type {
 import { isDecisionMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
+import { validateNonEmpty } from '../utils/index.js';
 
 /** Input shape for `propose()`. */
 export interface DecisionInput {
@@ -104,8 +105,8 @@ export class DecisionManager {
     input: DecisionInput,
     options: DecisionEntityOptions = {},
   ): Promise<DecisionRecord> {
-    validateNonEmpty(input.context, 'context');
-    validateNonEmpty(input.decision, 'decision');
+    validateNonEmpty(input.context, 'context', 'DecisionManager');
+    validateNonEmpty(input.decision, 'decision', 'DecisionManager');
 
     const id = `decision-${randomUUID()}` as DecisionId;
     const now = toIsoDateTime(new Date());
@@ -229,7 +230,7 @@ export class DecisionManager {
   }
 
   async reject(id: DecisionId | string, reason: string): Promise<RejectDecisionResult> {
-    validateNonEmpty(reason, 'reason');
+    validateNonEmpty(reason, 'reason', 'DecisionManager');
     const entity = this.storage.getEntityByName(id);
     if (!isDecisionMemory(entity)) return 'not-found';
     const cur = entity.decisionRecord;
@@ -390,14 +391,6 @@ export class DecisionManager {
 }
 
 // ==================== Helpers ====================
-
-function validateNonEmpty(value: unknown, fieldName: string): void {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw new Error(
-      `DecisionManager: ${fieldName} must be a non-empty string; received ${JSON.stringify(value)}`,
-    );
-  }
-}
 
 function firstLine(s: string): string {
   const idx = s.indexOf('\n');

@@ -129,7 +129,13 @@ export async function parallelFilter<T>(
  *
  * @returns Pool statistics or null if pool is not initialized
  */
-export function getPoolStats(): any | null {
+export function getPoolStats(): {
+  totalWorkers: number;
+  busyWorkers: number;
+  idleWorkers: number;
+  pendingTasks: number;
+  activeTasks: number;
+} | null {
   // Return stub stats to maintain API compatibility
   return {
     totalWorkers: os.cpus().length,

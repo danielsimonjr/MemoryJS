@@ -22,6 +22,17 @@ export function tokenize(text: string): string[] {
 }
 
 /**
+ * Tokenize text into a set of lowercase alphanumeric words, optionally filtering by minimum length.
+ *
+ * @param text - Input text to tokenize
+ * @param minLength - Minimum length of tokens to include (default: 1)
+ * @returns Set of lowercase tokens
+ */
+export function tokenizeToSet(text: string, minLength: number = 1): Set<string> {
+  return new Set(tokenize(text).filter((t) => t.length >= minLength));
+}
+
+/**
  * Tokenize text into lowercase alphanumeric words, splitting on all non-alphanumeric characters.
  *
  * @param s - Input text to tokenize
