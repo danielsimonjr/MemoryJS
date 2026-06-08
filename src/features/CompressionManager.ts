@@ -337,9 +337,18 @@ export class CompressionManager {
     // Use provided graph or load fresh
     const graph = options.graph ?? await this.storage.getGraphForMutation();
 
+    // Create an O(1) lookup map for requested entities
+    const namesSet = new Set(entityNames);
+    const lookupMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      if (namesSet.has(entity.name)) {
+        lookupMap.set(entity.name, entity);
+      }
+    }
+
     // Versioning guard: prevent merging superseded entities
     for (const name of entityNames) {
-      const e = graph.entities.find(ent => ent.name === name);
+      const e = lookupMap.get(name);
       if (e && e.isLatest === false) {
         throw new ValidationError(
           `Cannot merge superseded entity '${name}'. Use the latest version.`,
@@ -349,7 +358,7 @@ export class CompressionManager {
     }
 
     const entitiesToMerge = entityNames.map(name => {
-      const entity = graph.entities.find(e => e.name === name);
+      const entity = lookupMap.get(name);
       if (!entity) {
         throw new EntityNotFoundError(name);
       }
