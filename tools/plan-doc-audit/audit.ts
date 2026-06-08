@@ -25,7 +25,7 @@
  * @module tools/plan-doc-audit
  */
 
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, statSync, readdirSync } from 'node:fs';
 import { join, relative, sep, isAbsolute } from 'node:path';
 
@@ -131,13 +131,13 @@ export function checkSymbol(
   cwd: string = process.cwd(),
 ): SymbolCheck {
   // Run git grep to find candidate matches
-  let stdout = '';
-  try {
-    stdout = execSync(
-      `git grep -n -w "${symbol.replace(/"/g, '\\"')}" -- ${srcRoot}`,
-      { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'], cwd },
-    );
-  } catch {
+  const { status, stdout } = spawnSync(
+    'git',
+    ['grep', '-n', '-w', symbol, '--', srcRoot],
+    { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'], cwd },
+  );
+
+  if (status !== 0 || !stdout) {
     // git grep returns non-zero when no matches found
     return { symbol, status: 'absent' };
   }
