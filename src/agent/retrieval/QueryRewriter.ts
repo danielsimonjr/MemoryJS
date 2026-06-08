@@ -14,6 +14,8 @@
  * @module agent/retrieval/QueryRewriter
  */
 
+import { tokenize as baseTokenize } from '../../utils/textSimilarity.js';
+
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'of', 'and', 'or', 'but', 'is', 'are', 'was', 'were',
   'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
@@ -25,10 +27,8 @@ const STOPWORDS = new Set([
 ]);
 
 /** Minimal token interface — extracted from any text. */
-function tokenize(s: string): string[] {
-  return s
-    .toLowerCase()
-    .split(/[^a-z0-9]+/g)
+function getValidTokens(s: string): string[] {
+  return baseTokenize(s)
     .filter(t => t.length >= 3 && !STOPWORDS.has(t));
 }
 
@@ -50,12 +50,12 @@ export class QueryRewriter {
     snippets: ReadonlyArray<string>,
     expansionLimit: number = 3,
   ): RewriteResult {
-    const queryTokens = new Set(tokenize(query));
+    const queryTokens = new Set(getValidTokens(query));
     const counts = new Map<string, number>();
 
     for (const s of snippets) {
       const seen = new Set<string>();
-      for (const t of tokenize(s)) {
+      for (const t of getValidTokens(s)) {
         if (queryTokens.has(t)) continue;
         if (seen.has(t)) continue;
         seen.add(t);
