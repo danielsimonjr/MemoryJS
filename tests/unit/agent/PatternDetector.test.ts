@@ -331,4 +331,60 @@ describe('PatternDetector', () => {
       expect(merged).toBe('User likes food');
     });
   });
+
+  // ==================== Source Entity Attribution ====================
+
+  describe('detectPatterns with entityNames', () => {
+    it('attributes sourceEntities only to entities whose observations matched', () => {
+      const observations = [
+        'User prefers Italian food',
+        'User prefers Mexican food',
+        'User prefers Japanese food',
+        'Weather today is quite cold', // noise — no shared pattern
+      ];
+      const entityNames = ['pref1', 'pref2', 'pref3', 'noise1'];
+
+      const patterns = detector.detectPatterns(observations, 2, entityNames);
+
+      expect(patterns.length).toBeGreaterThan(0);
+      const food = patterns.find((p) => p.pattern === 'User prefers {X} food');
+      expect(food).toBeDefined();
+      expect(food!.sourceEntities).toEqual(['pref1', 'pref2', 'pref3']);
+      expect(food!.sourceEntities).not.toContain('noise1');
+    });
+
+    it('maps a shared observation text to every owning entity', () => {
+      const observations = [
+        'User prefers Italian food',
+        'User prefers Italian food', // same text, different entity
+        'User prefers Mexican food',
+      ];
+      const entityNames = ['pref1', 'pref2', 'pref3'];
+
+      const patterns = detector.detectPatterns(observations, 2, entityNames);
+      const food = patterns.find((p) => p.pattern === 'User prefers {X} food');
+      expect(food).toBeDefined();
+      expect(food!.sourceEntities).toEqual(['pref1', 'pref2', 'pref3']);
+    });
+
+    it('leaves sourceEntities empty when entityNames is omitted', () => {
+      const observations = [
+        'User prefers Italian food',
+        'User prefers Mexican food',
+      ];
+      const patterns = detector.detectPatterns(observations, 2);
+      expect(patterns.length).toBeGreaterThan(0);
+      expect(patterns[0].sourceEntities).toEqual([]);
+    });
+
+    it('throws when entityNames length does not match observations', () => {
+      expect(() =>
+        detector.detectPatterns(
+          ['User prefers Italian food', 'User prefers Mexican food'],
+          2,
+          ['pref1']
+        )
+      ).toThrow(/entityNames/);
+    });
+  });
 });

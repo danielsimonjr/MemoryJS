@@ -4,6 +4,10 @@
  * @module agent/procedural
  */
 
-export { ProcedureManager, type ProcedureManagerConfig } from './ProcedureManager.js';
+export {
+  ProcedureManager,
+  type ProcedureManagerConfig,
+  type InvocationResult,
+} from './ProcedureManager.js';
 export { ProcedureStore, decodeProcedure, PROCEDURE_ENTITY_TYPE } from './ProcedureStore.js';
 export { StepSequencer } from './StepSequencer.js';

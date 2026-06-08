@@ -1026,6 +1026,55 @@ describe('WorkingMemoryManager.confirmMemory', () => {
 
 // ==================== Helper Tests ====================
 
+// ==================== Exclusion wiring (Phase Excl B) ====================
+
+describe('WorkingMemoryManager.createWorkingMemory exclusion gate', () => {
+  it('throws MemoryWriteBlockedError when content matches an active rule', async () => {
+    const { MemoryWriteBlockedError } = await import('../../../src/utils/errors.js');
+    const storage = createMockStorage();
+    const fakeExclusion = {
+      check: vi.fn().mockResolvedValue({
+        blocked: true,
+        ruleId: 'exclusion-test-1',
+        reason: 'redact secrets',
+      }),
+    };
+    const wmm = new WorkingMemoryManager(storage, {
+      exclusionManager: fakeExclusion as unknown as Parameters<typeof WorkingMemoryManager>[1]['exclusionManager'],
+    } as WorkingMemoryConfig);
+
+    await expect(
+      wmm.createWorkingMemory('session_1', 'contains a secret password'),
+    ).rejects.toBeInstanceOf(MemoryWriteBlockedError);
+
+    expect(fakeExclusion.check).toHaveBeenCalledTimes(1);
+    // No entity persisted
+    expect(wmm.getSessionMemoryCount('session_1')).toBe(0);
+  });
+
+  it('passes through cleanly when no rule matches', async () => {
+    const storage = createMockStorage();
+    const fakeExclusion = {
+      check: vi.fn().mockResolvedValue({ blocked: false }),
+    };
+    const wmm = new WorkingMemoryManager(storage, {
+      exclusionManager: fakeExclusion as unknown as Parameters<typeof WorkingMemoryManager>[1]['exclusionManager'],
+    } as WorkingMemoryConfig);
+
+    const memory = await wmm.createWorkingMemory('session_1', 'innocuous content');
+    expect(memory).toBeDefined();
+    expect(memory.observations).toEqual(['innocuous content']);
+    expect(fakeExclusion.check).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call exclusion check when no manager is configured', async () => {
+    const storage = createMockStorage();
+    const wmm = new WorkingMemoryManager(storage); // no exclusionManager
+    const memory = await wmm.createWorkingMemory('session_1', 'anything goes');
+    expect(memory).toBeDefined();
+  });
+});
+
 describe('WorkingMemoryManager Helpers', () => {
   it('should return session count', async () => {
     const storage = createMockStorage();

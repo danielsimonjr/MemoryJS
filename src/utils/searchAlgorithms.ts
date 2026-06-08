@@ -91,6 +91,26 @@ export function calculateTF(term: string, document: string): number {
 }
 
 /**
+ * Calculate Term Frequency (TF) from pre-tokenized documents.
+ *
+ * TF = (Number of times term appears in document) / (Total terms in document)
+ *
+ * **Optimized**: Avoids re-tokenizing the document text for each term.
+ *
+ * @param term - The search term (should already be lowercase if possible)
+ * @param tokens - Pre-tokenized lowercase tokens for the document
+ * @returns Term frequency (0.0 to 1.0)
+ */
+export function calculateTFFromTokens(term: string, tokens: string[]): number {
+  const termLower = term.toLowerCase();
+
+  if (tokens.length === 0) return 0;
+
+  const termCount = tokens.filter(t => t === termLower).length;
+  return termCount / tokens.length;
+}
+
+/**
  * Calculate Inverse Document Frequency (IDF) for a term across documents.
  *
  * IDF = log(Total documents / Documents containing term)
@@ -170,7 +190,9 @@ export function calculateTFIDF(
   documents: string[]
 ): number {
   const tf = calculateTF(term, document);
-  const idf = calculateIDF(term, documents);
+  // Tokenize each document once rather than re-tokenizing per term lookup.
+  const tokenSets = documents.map(doc => new Set(tokenize(doc)));
+  const idf = calculateIDFFromTokenSets(term, tokenSets);
   return tf * idf;
 }
 

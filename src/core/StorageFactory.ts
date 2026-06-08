@@ -7,12 +7,15 @@
  * Supported storage types:
  * - 'jsonl': JSONL file-based storage (default) - simple, human-readable
  * - 'sqlite': SQLite database storage (better-sqlite3 native) - indexed, ACID transactions, FTS5
+ * - 'postgres' / 'postgresql': PostgreSQL backend - JSONB, GIN indexes,
+ *     optional peer dep on `pg`
  *
  * @module core/StorageFactory
  */
 
 import { GraphStorage } from './GraphStorage.js';
 import { SQLiteStorage } from './SQLiteStorage.js';
+import { PostgreSQLStorage } from './PostgreSQLStorage.js';
 import type { IGraphStorage, StorageConfig } from '../types/index.js';
 
 /**
@@ -52,10 +55,17 @@ export function createStorage(config: StorageConfig): IGraphStorage {
     case 'sqlite':
       return new SQLiteStorage(config.path);
 
+    case 'postgres':
+    case 'postgresql':
+      // `config.path` is the Postgres connection string for this backend
+      // (e.g. `postgres://user:pass@host:5432/db`). `pg` is an optional peer
+      // dependency — see PostgreSQLStorage for the install message.
+      return new PostgreSQLStorage(config.path);
+
     default:
       throw new Error(
         `Unknown storage type: ${storageType}. ` +
-        `Supported types: jsonl, sqlite`
+        `Supported types: jsonl, sqlite, postgres`
       );
   }
 }
@@ -69,6 +79,8 @@ export function createStorage(config: StorageConfig): IGraphStorage {
  * @returns IGraphStorage implementation
  */
 export function createStorageFromPath(path: string): IGraphStorage {
-  const storageType = (process.env.MEMORY_STORAGE_TYPE as 'jsonl' | 'sqlite') || DEFAULT_STORAGE_TYPE;
+  const storageType =
+    (process.env.MEMORY_STORAGE_TYPE as 'jsonl' | 'sqlite' | 'postgres' | 'postgresql') ||
+    DEFAULT_STORAGE_TYPE;
   return createStorage({ type: storageType, path });
 }

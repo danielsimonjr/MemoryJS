@@ -303,6 +303,7 @@ export class BooleanSearch {
   private parseBooleanQuery(query: string): BooleanQueryNode {
     const tokens = this.tokenizeBooleanQuery(query);
     let position = 0;
+    let depth = 0;
 
     const peek = (): string | undefined => tokens[position];
     const consume = (): string | undefined => tokens[position++];
@@ -354,13 +355,18 @@ export class BooleanSearch {
         throw new Error('Unexpected end of query');
       }
 
-      // Parentheses
+      // Parentheses - enforce nesting depth limit to prevent stack overflow
       if (token === '(') {
+        depth++;
+        if (depth > QUERY_LIMITS.MAX_DEPTH) {
+          throw new Error(`Query nesting depth exceeds maximum of ${QUERY_LIMITS.MAX_DEPTH}`);
+        }
         consume(); // consume '('
         const node = parseOr();
         if (consume() !== ')') {
           throw new Error('Expected closing parenthesis');
         }
+        depth--;
         return node;
       }
 

@@ -18,9 +18,38 @@ import type { ContextProfile } from '../agent/ContextProfileManager.js';
  * - working: Short-term, session-scoped, TTL-based
  * - episodic: Conversation history, events, experiences
  * - semantic: Long-term facts, concepts, knowledge
- * - procedural: Skills, patterns, procedures (future)
+ * - procedural: Skills, patterns, procedures (3B.4)
+ * - prospective: Intentions-to-act at a future time / event (Phase 1)
+ * - failure: Structured pre-task failure lookup (Phase 2 Sprint 4)
+ * - plan: Hierarchical goal trees (Phase 2 Sprint 5)
+ * - reflection: Derived pattern + trajectory insights (Phase 2 Sprint 8)
  */
-export type MemoryType = 'working' | 'episodic' | 'semantic' | 'procedural';
+
+/**
+ * Single source of truth for the set of memory-type slots. `MemoryType`
+ * is derived from this tuple, and runtime guards (`isAgentEntity`) check
+ * membership against it — so adding a slot here updates the type, the
+ * guard, and every drift-guard test in one edit. Previously the union
+ * and the `isAgentEntity` allowlist were hand-maintained separately and
+ * fell out of sync twice ('plan', 'reflection').
+ */
+export const MEMORY_TYPES = [
+  'working',
+  'episodic',
+  'semantic',
+  'procedural',
+  'prospective',
+  'failure',
+  'plan',
+  'reflection',
+  'heuristic',
+  'exclusion',
+  'decision',
+  'project_context',
+  'tool_affordance',
+] as const;
+
+export type MemoryType = (typeof MEMORY_TYPES)[number];
 
 /**
  * Classification of memory access frequency.
@@ -46,6 +75,112 @@ export type MemoryVisibility = 'private' | 'team' | 'org' | 'shared' | 'public';
  * - consolidated: Created by merging other memories
  */
 export type MemoryAcquisitionMethod = 'observed' | 'inferred' | 'told' | 'consolidated';
+
+/**
+ * Trust-hierarchy mixin (Phase 2 Sprint 6, Catalog Type 12 — Provenance).
+ *
+ * Categorical complement to the numeric `MemorySource.reliability` /
+ * `AgentEntity.confidence` / `AgentMetadata.trustLevel` scores. The
+ * catalog frames trust as a discriminated label so conflict-resolution
+ * ordering is explicit ("user-authored beats tool-verified regardless
+ * of recency") rather than a scalar comparison that hides the *kind*
+ * of trust.
+ *
+ * Ordering: `ground-truth` > `verified` > `inferred` > `unverified`.
+ * - **ground-truth**: user-authored or tool-verified at acquisition
+ * - **verified**: confirmed by a second source / observation
+ * - **inferred**: agent inference, not externally confirmed
+ * - **unverified**: imported / low-confidence / unknown
+ */
+export type TrustLevel = 'ground-truth' | 'verified' | 'inferred' | 'unverified';
+
+/**
+ * Numeric ordering for `TrustLevel` — higher = more trustworthy.
+ *
+ * **Prefer `compareTrustLevel`** for ordering decisions; the numeric
+ * values here are an implementation detail of the comparator and may
+ * change. Exposed for tests and the comparator itself, not as a
+ * stable public API for client comparisons.
+ *
+ * @internal
+ */
+export const TRUST_LEVEL_ORDER: Record<TrustLevel, number> = {
+  'ground-truth': 4,
+  verified: 3,
+  inferred: 2,
+  unverified: 1,
+};
+
+/**
+ * Standard sort comparator. Negative → a < b; 0 → equal; positive → a > b.
+ */
+export function compareTrustLevel(a: TrustLevel, b: TrustLevel): number {
+  return TRUST_LEVEL_ORDER[a] - TRUST_LEVEL_ORDER[b];
+}
+
+/**
+ * Per-method reliability thresholds for `inferTrustLevel`. Exported so
+ * deployments that disagree with the conservative defaults (e.g. a
+ * stricter compliance environment requiring `reliability ≥ 0.95` for
+ * `'verified'`) can override without forking the library — pass a
+ * spread-merged object to a wrapping `inferTrustLevel`-with-thresholds
+ * caller.
+ *
+ * The thresholds split the bucket *one tier up*; below the threshold,
+ * the method's lower-tier label is returned (see `inferTrustLevel`).
+ */
+export const DEFAULT_TRUST_THRESHOLDS = {
+  /** `'told'` ≥ this → `'ground-truth'`; lower → `'verified'`. */
+  told: 0.9,
+  /** `'observed'` ≥ this → `'verified'`; lower → `'inferred'`. */
+  observed: 0.8,
+  /** `'consolidated'` ≥ this → `'verified'`; lower → `'inferred'`. */
+  consolidated: 0.7,
+} as const;
+
+/**
+ * Backfill mapping from existing `MemorySource` fields (method + reliability)
+ * to a `TrustLevel`. Explicit `source.trustLevel` takes precedence.
+ *
+ * Mapping rules (precedence top-down):
+ * - explicit `source.trustLevel` → return as-is
+ * - reliability is `NaN` / not a finite number → 'unverified' (defensive;
+ *   `>=` with `NaN` would silently coerce to a *lower* bucket if not caught)
+ * - `method: 'told'` + reliability ≥ 0.9 → 'ground-truth' (user/tool told us)
+ * - `method: 'told'` (lower reliability) → 'verified'
+ * - `method: 'observed'` + reliability ≥ 0.8 → 'verified'
+ * - `method: 'observed'` (lower) → 'inferred'
+ * - `method: 'consolidated'` + reliability ≥ 0.7 → 'verified'
+ * - `method: 'consolidated'` (lower) → 'inferred'
+ * - `method: 'inferred'` → 'inferred' (regardless of reliability)
+ * - undefined source → 'unverified'
+ *
+ * `inferTrustLevel(undefined) === 'unverified'` is the **designed**
+ * total-function contract, not a bug — missing source is a defined
+ * input value.
+ *
+ * Thresholds come from `DEFAULT_TRUST_THRESHOLDS`; tune per-deployment
+ * by either setting `source.trustLevel` explicitly at write time or
+ * wrapping this function with custom thresholds.
+ */
+export function inferTrustLevel(source: MemorySource | undefined): TrustLevel {
+  if (!source) return 'unverified';
+  if (source.trustLevel) return source.trustLevel;
+  const r = source.reliability;
+  if (typeof r !== 'number' || !Number.isFinite(r)) return 'unverified';
+  switch (source.method) {
+    case 'told':
+      return r >= DEFAULT_TRUST_THRESHOLDS.told ? 'ground-truth' : 'verified';
+    case 'observed':
+      return r >= DEFAULT_TRUST_THRESHOLDS.observed ? 'verified' : 'inferred';
+    case 'consolidated':
+      return r >= DEFAULT_TRUST_THRESHOLDS.consolidated ? 'verified' : 'inferred';
+    case 'inferred':
+      return 'inferred';
+    default:
+      return 'unverified';
+  }
+}
 
 /**
  * Session lifecycle status.
@@ -75,6 +210,8 @@ export type TemporalFocus = 'recent' | 'historical' | 'balanced';
  * - highest_confidence: Use the memory with highest confidence score
  * - most_confirmations: Use the memory with most confirmations
  * - trusted_agent: Use the memory from agent with highest trustLevel
+ * - trust_level: Use the memory with highest categorical `TrustLevel`
+ *   (ground-truth > verified > inferred > unverified); recency tiebreak
  * - merge_all: Combine observations from all conflicting memories
  */
 export type ConflictStrategy =
@@ -82,6 +219,7 @@ export type ConflictStrategy =
   | 'highest_confidence'
   | 'most_confirmations'
   | 'trusted_agent'
+  | 'trust_level'
   | 'merge_all';
 
 /**
@@ -153,6 +291,13 @@ export interface MemorySource {
   method: MemoryAcquisitionMethod;
   /** Trust/reliability score (0.0-1.0) */
   reliability: number;
+  /**
+   * Categorical trust label (Phase 2 Sprint 6). Optional — when absent,
+   * `inferTrustLevel(source)` backfills from `method` + `reliability`.
+   * Set explicitly to override the inferred default (e.g. user-authored
+   * memories explicitly marked `'ground-truth'`).
+   */
+  trustLevel?: TrustLevel;
   /** Original entity ID if consolidated from another memory */
   originalEntityId?: string;
 }
@@ -714,7 +859,7 @@ export function isAgentEntity(entity: unknown): entity is AgentEntity {
     typeof e.name === 'string' &&
     typeof e.entityType === 'string' &&
     typeof e.memoryType === 'string' &&
-    ['working', 'episodic', 'semantic', 'procedural'].includes(e.memoryType as string) &&
+    (MEMORY_TYPES as readonly string[]).includes(e.memoryType) &&
     typeof e.accessCount === 'number' &&
     typeof e.confidence === 'number' &&
     typeof e.confirmationCount === 'number' &&
@@ -776,6 +921,840 @@ export function isSemanticMemory(entity: unknown): entity is AgentEntity & { mem
  */
 export function isProceduralMemory(entity: unknown): entity is AgentEntity & { memoryType: 'procedural' } {
   return isAgentEntity(entity) && entity.memoryType === 'procedural';
+}
+
+// ==================== Prospective Memory Types ====================
+
+// ---- Branded primitives ----
+
+/**
+ * Branded ISO 8601 datetime string. Use `toIsoDateTime()` to construct;
+ * this prevents accidentally storing a non-parseable string in a
+ * timestamp field. Compatible with plain `string` consumption (read
+ * paths can pass it where `string` is expected without a cast).
+ */
+export type IsoDateTime = string & { readonly __iso: unique symbol };
+
+/**
+ * Parse / brand a value as `IsoDateTime`. Throws on invalid input.
+ */
+export function toIsoDateTime(value: Date | string): IsoDateTime {
+  const s = typeof value === 'string' ? value : value.toISOString();
+  if (Number.isNaN(new Date(s).getTime())) {
+    throw new Error(`Invalid ISO 8601 datetime: ${JSON.stringify(value)}`);
+  }
+  return s as IsoDateTime;
+}
+
+/** Branded positive integer (≥ 1). Use `toPositiveInt()` to construct. */
+export type PositiveInt = number & { readonly __positiveInt: unique symbol };
+
+/** Construct a `PositiveInt`. Throws on non-integer or non-positive. */
+export function toPositiveInt(n: number): PositiveInt {
+  if (!Number.isInteger(n) || n < 1) {
+    throw new Error(`Expected positive integer (≥ 1), got ${n}`);
+  }
+  return n as PositiveInt;
+}
+
+// ---- At-least-one constraint helper ----
+
+/**
+ * Constrain `T` to require at least one of its keys to be populated.
+ * Used by `TriggerCondition` to make empty `{}` un-constructable at the
+ * type level — the matcher's runtime "anyFieldPopulated" guard is now
+ * a belt to the structural suspenders.
+ */
+export type AtLeastOne<T, K extends keyof T = keyof T> = {
+  [P in K]: Required<Pick<T, P>> & Partial<Omit<T, P>>;
+}[K];
+
+// ---- Trigger condition ----
+
+/**
+ * Fields a `TriggerCondition` can populate. Shared by event-trigger
+ * firing and `cancelOnEvent` cancellation predicates.
+ */
+interface TriggerConditionFields {
+  /** Plain-text substring match against incoming observation content. */
+  text: string;
+  /** Tag match — fires if ANY of these tags is on the related entity. */
+  tags: string[];
+  /** Entity-type filter — fires if observation's entity has this type. */
+  entityType: string;
+  /** Session-id filter — fires only within this session. */
+  sessionId: string;
+}
+
+/**
+ * Trigger condition for event-based scheduling and cancellation.
+ *
+ * **Semantics**: OR / any-of across the populated fields (D2 in
+ * `docs/roadmap/MEMORY_TYPES_EXPANSION.md`). At least one field MUST
+ * be populated — empty conditions are now un-constructable at the
+ * type level.
+ */
+export type TriggerCondition = AtLeastOne<TriggerConditionFields>;
+
+// ---- Trigger ----
+
+/** Trigger describes WHEN a prospective intention should fire. */
+export type ProspectiveTrigger =
+  | { kind: 'time'; at: IsoDateTime }
+  | { kind: 'time-window'; from: IsoDateTime; until?: IsoDateTime }
+  | { kind: 'event'; condition: TriggerCondition }
+  | { kind: 'conditional'; predicate: string; checkIntervalMs?: PositiveInt };
+
+// ---- Action ----
+
+/** Action describes WHAT happens when a prospective intention fires. */
+export type ProspectiveAction =
+  | {
+      kind: 'inject-context';
+      /** Optional target session for the injection. Defaults to the intention's own session. */
+      targetSession?: string;
+      /** Brief = headline only; full = full content. Default 'brief'. */
+      format?: 'brief' | 'full';
+    }
+  | {
+      kind: 'invoke';
+      /** Procedure to invoke via the DI callback. */
+      procedureId: string;
+    }
+  | {
+      kind: 'tag-related';
+      /** Tags to add to entities matching `relatedEntityFilter`. */
+      tagsToAdd: string[];
+      /** Filter for which entities receive the tags. */
+      relatedEntityFilter: TriggerCondition;
+    };
+
+// ---- Lifecycle (discriminated state machine) ----
+
+/**
+ * Lifecycle state of a prospective intention.
+ *
+ * Discriminated by `status`. Each variant carries exactly the fields
+ * valid for that state; illegal combinations like
+ * `{ status: 'pending', firedAt: '...' }` are unrepresentable.
+ *
+ * Transitions:
+ * - `pending` → `fired` (on tick or onObservation match)
+ * - `pending` → `expired` (on `expireOverdue`)
+ * - `pending` → `cancelled` (on `cancel()` or `cancelOnEvent` match)
+ * - `fired` (recurring event-based) → `pending` (if `fireCount < maxFireCount`)
+ * - `fired` → `expired` (if `fireCount >= maxFireCount`)
+ */
+export type ProspectiveLifecycle =
+  | { status: 'pending'; fireCount: number; firedAt?: IsoDateTime }
+  | { status: 'fired'; firedAt: IsoDateTime; fireCount: number }
+  | { status: 'expired'; firedAt?: IsoDateTime; fireCount: number; expiredAt: IsoDateTime }
+  | { status: 'cancelled'; cancelledAt: IsoDateTime; fireCount: number };
+
+/**
+ * Prospective memory — intention-to-act / future-tense memory.
+ *
+ * Extends `AgentEntity` with trigger / action / lifecycle fields.
+ * Persisted via the standard `agentMetadata` round-trip on SQLite or
+ * as plain JSON properties on JSONL.
+ *
+ * @see docs/roadmap/MEMORY_TYPES_EXPANSION.md §4.1 for full design.
+ */
+export interface ProspectiveEntity extends AgentEntity {
+  memoryType: 'prospective';
+  trigger: ProspectiveTrigger;
+  action: ProspectiveAction;
+  /** Discriminated lifecycle — replaces flat status/firedAt/fireCount. */
+  lifecycle: ProspectiveLifecycle;
+  /** Optional cap on `lifecycle.fireCount`. Reaching it transitions to `'expired'`. */
+  maxFireCount?: PositiveInt;
+  /** Optional condition that cancels the intention without firing. OR-semantics. */
+  cancelOnEvent?: TriggerCondition;
+}
+
+/**
+ * Type guard for prospective memory entities. Verifies the entity is
+ * an AgentEntity of the right `memoryType` AND has a structurally
+ * valid `lifecycle` object.
+ */
+export function isProspectiveMemory(entity: unknown): entity is ProspectiveEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'prospective') return false;
+  const e = entity as ProspectiveEntity;
+  const lc = e.lifecycle as { status?: unknown } | undefined;
+  return (
+    typeof lc === 'object' &&
+    lc !== null &&
+    typeof lc.status === 'string' &&
+    ['pending', 'fired', 'expired', 'cancelled'].includes(lc.status)
+  );
+}
+
+/**
+ * Result of `cancel()`. Discriminated so callers can branch on what
+ * actually happened — distinguishes "not found", "already fired",
+ * "already cancelled / expired" from a successful cancellation.
+ */
+export type CancelResult = 'cancelled' | 'not-found' | 'already-fired' | 'already-cancelled' | 'already-expired';
+
+/**
+ * Result of a single fire event from the prospective memory manager.
+ *
+ * Returned by `tick()` and `onObservation()` so callers can observe
+ * what fired and either (a) deliver the `injectionPayload` to a
+ * wake-up channel, (b) react to invoked procedures and their errors,
+ * or (c) audit which related entities were tagged.
+ */
+export interface FiredEvent {
+  /** The intention that fired (post-update, with new lifecycle state). */
+  entity: ProspectiveEntity;
+  /** When it fired. */
+  firedAt: Date;
+  /** Formatted content payload for `action: 'inject-context'`. */
+  injectionPayload?: string;
+  /** Procedure id for `action: 'invoke'`. Always set on invoke firings. */
+  invokedProcedureId?: string;
+  /**
+   * Error from the injected procedure invoker, if it rejected. The
+   * intention still transitions to `fired` — this field tells the
+   * caller the downstream procedure did NOT execute successfully.
+   */
+  invocationError?: Error;
+  /** Names of entities that received tags from `action: 'tag-related'`. */
+  taggedEntityNames?: string[];
+}
+
+/**
+ * Context passed to `onObservation()` to evaluate event-based triggers.
+ */
+export interface ObservationContext {
+  /** Tags associated with the incoming observation. */
+  tags?: string[];
+  /** Entity type of the source entity, if applicable. */
+  entityType?: string;
+  /** Session that produced the observation. */
+  sessionId?: string;
+}
+
+// ==================== Failure Memory Types ====================
+
+/**
+ * Discriminated lifecycle for a `FailureRecord`. Mirrors the
+ * `ProspectiveLifecycle` pattern so `resolvedAt` / `resolvedReason`
+ * are only valid in the `resolved` variant — illegal states like
+ * `{ status: 'open', resolvedAt: '...' }` are unrepresentable.
+ */
+export type FailureLifecycle =
+  | { status: 'open' }
+  | { status: 'resolved'; resolvedAt: IsoDateTime; resolvedReason?: string };
+
+/**
+ * Structured failure-memory record per the Agentic Memory Library
+ * design catalog (Type 9). Designed for **pre-task semantic lookup**:
+ * the `applicability_hint` field is the retrieval key.
+ *
+ * Catalog framing: failure memory is "the single biggest concrete win
+ * available to most agentic systems" because a structured pre-task
+ * lookup of "what failed when I tried similar work before" prevents
+ * the most common class of agentic regression.
+ *
+ * Distinct from `DistilledLesson` (causal-chain output from
+ * `FailureDistillation`): a `FailureRecord` is the *retrievable input
+ * for the next task*. `FailureDistillation` should produce
+ * `FailureRecord`s via `FailureManager.record()` so the two compose
+ * — see `sourceSessionId` for provenance.
+ *
+ * **Embeddings are NOT stored on this type** — they live in a
+ * downstream vector store (when configured) or are computed on demand
+ * by `lookupForTask`. Keeps the public surface small per encapsulation
+ * review.
+ */
+export interface FailureRecord {
+  /** Stable unique id, prefixed `failure-`. */
+  id: string;
+  /** When the failure occurred. */
+  timestamp: IsoDateTime;
+  /** What was being attempted (free-form description). */
+  context: string;
+  /** The specific action / approach taken. */
+  attempted: string;
+  /** What went wrong, verbatim if possible. */
+  failure_mode: string;
+  /** Agent's or user's diagnosis. */
+  root_cause: string;
+  /** What worked instead (optional). */
+  alternative_taken?: string;
+  /**
+   * When does this lesson apply — the retrieval key.
+   * MUST be non-empty (enforced at `record()` time).
+   */
+  applicability_hint: string;
+  /** Discriminated lifecycle — see `FailureLifecycle`. */
+  lifecycle: FailureLifecycle;
+  /**
+   * Session id when this record was produced by
+   * `FailureDistillation`. Optional for manual `record()` calls.
+   */
+  sourceSessionId?: string;
+}
+
+/**
+ * Persisted shape of a failure-memory entity. `failureRecord` is the
+ * canonical state; `observations`/`tags` etc. come from the inherited
+ * `AgentEntity`. The entity's `name` matches `failureRecord.id`.
+ */
+export interface FailureEntity extends AgentEntity {
+  memoryType: 'failure';
+  failureRecord: FailureRecord;
+}
+
+/** Type guard for failure-memory entities. */
+export function isFailureMemory(entity: unknown): entity is FailureEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'failure') return false;
+  const fr = (entity as FailureEntity).failureRecord as
+    | { id?: unknown; lifecycle?: unknown }
+    | undefined;
+  return (
+    typeof fr === 'object' &&
+    fr !== null &&
+    typeof fr.id === 'string' &&
+    typeof fr.lifecycle === 'object' &&
+    fr.lifecycle !== null
+  );
+}
+
+/**
+ * Discriminated result for `FailureManager.markResolved()`. Mirrors
+ * `CancelResult` on the prospective-memory manager so callers can
+ * distinguish "id not found" / "already resolved" / "successfully
+ * resolved" without lying via a single boolean.
+ */
+export type MarkResolvedResult =
+  | 'resolved'
+  | 'already-resolved'
+  | 'not-found'
+  | 'vanished-mid-update'
+  | 'conflict';
+
+// ==================== Plan / Goal-Stack Types ====================
+
+/** Branded plan id — minted only by `PlanManager`. */
+export type PlanId = string & { readonly __planId: unique symbol };
+
+/** Branded goal-node id — minted only by `PlanManager`. */
+export type GoalNodeId = string & { readonly __goalNodeId: unique symbol };
+
+/**
+ * Discriminated lifecycle for a `GoalNode`. Per the pre-implementation
+ * type-design review (single biggest type-quality win): each variant
+ * carries exactly the fields valid in that state, mirroring the
+ * `PlanLifecycle` / `ProspectiveLifecycle` / `FailureLifecycle`
+ * patterns shipped in Sprints 2/3/4.
+ */
+export type GoalNodeLifecycle =
+  | { status: 'pending' }
+  | { status: 'active'; activatedAt: IsoDateTime }
+  | { status: 'complete'; completedAt: IsoDateTime; completionNote?: string }
+  | { status: 'blocked'; blockedAt: IsoDateTime; blockedReason: string };
+
+/**
+ * Recursive goal tree node. Built up via `PlanManager.pushSubGoal`;
+ * transitions via `PlanManager.transitionNode`. Tree integrity
+ * (unique ids, no cycles, currentNodeId ∈ tree) is enforced at
+ * runtime by `validatePlanInvariants` after every mutation.
+ */
+export interface GoalNode {
+  id: GoalNodeId;
+  description: string;
+  lifecycle: GoalNodeLifecycle;
+  /** Free-form criteria for v1. Structured `{id, predicate, met}` deferred. */
+  acceptanceCriteria?: string;
+  children: GoalNode[];
+  createdAt: IsoDateTime;
+}
+
+/**
+ * Plan-level lifecycle. Distinct from `GoalNodeLifecycle` — operates
+ * over the entire plan tree, not individual nodes.
+ */
+export type PlanLifecycle =
+  | { status: 'active' }
+  | { status: 'blocked'; blockedAt: IsoDateTime; blockedReason: string }
+  | { status: 'complete'; completedAt: IsoDateTime; completionNote?: string }
+  | { status: 'abandoned'; abandonedAt: IsoDateTime; abandonedReason?: string };
+
+/**
+ * Audit entry for one node state transition. Plan-local, in-record,
+ * queryable without cross-referencing the global `AuditLog`. Intentional
+ * duplication per type-design review: enables `getCurrentPath` rendering
+ * and "why is this blocked?" debugging without a separate query.
+ */
+export interface GoalEvent {
+  timestamp: IsoDateTime;
+  goalId: GoalNodeId;
+  fromStatus: GoalNodeLifecycle['status'];
+  toStatus: GoalNodeLifecycle['status'];
+  note?: string;
+}
+
+/** Discriminated transition payload for `PlanManager.transitionNode`. */
+export type GoalNodeTransition =
+  | { to: 'pending' }
+  | { to: 'active' }
+  | { to: 'complete'; note?: string }
+  | { to: 'blocked'; reason: string };
+
+/**
+ * Canonical plan / goal-stack record. The whole tree is embedded by
+ * value (round-trips through the `agentMetadata` JSON blob, same path
+ * as `ProspectiveEntity.trigger`). Query methods return `Readonly`
+ * views — all mutations flow through `PlanManager`.
+ */
+export interface PlanRecord {
+  id: PlanId;
+  rootGoal: GoalNode;
+  currentNodeId: GoalNodeId;
+  lifecycle: PlanLifecycle;
+  createdAt: IsoDateTime;
+  lastModified: IsoDateTime;
+  history: GoalEvent[];
+  sessionId?: string;
+  agentId?: string;
+}
+
+/**
+ * Persisted shape of a plan-memory entity.
+ */
+export interface PlanEntity extends AgentEntity {
+  memoryType: 'plan';
+  planRecord: PlanRecord;
+}
+
+/** Type guard for plan-memory entities. */
+export function isPlanMemory(entity: unknown): entity is PlanEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'plan') return false;
+  const pr = (entity as PlanEntity).planRecord as
+    | { id?: unknown; rootGoal?: unknown; lifecycle?: unknown }
+    | undefined;
+  return (
+    typeof pr === 'object' &&
+    pr !== null &&
+    typeof pr.id === 'string' &&
+    typeof pr.rootGoal === 'object' &&
+    pr.rootGoal !== null &&
+    typeof pr.lifecycle === 'object' &&
+    pr.lifecycle !== null
+  );
+}
+
+// ==================== Reflection Memory Types (Phase 2 Sprint 8) ====================
+
+/**
+ * Branded reflection id. Format: `reflection-<timestamp>-<shortrandom>`.
+ * Minted by `ReflectionManager` — do not construct manually.
+ */
+export type ReflectionId = string & { readonly __reflectionId: unique symbol };
+
+/**
+ * Reflection scope (Catalog Type 10). Determines how broadly the
+ * reflection should be retrieved during context assembly.
+ *
+ * - `session`: applies only to the source session
+ * - `project`: applies across a project (multi-session)
+ * - `global`: applies across all projects (durable agent-level insight)
+ */
+export type ReflectionScope = 'session' | 'project' | 'global';
+
+/**
+ * Reflection record (Phase 2 Sprint 8, Catalog Type 10).
+ *
+ * Reflections are derived memories — pattern + trajectory summary +
+ * experience extraction synthesized into a single record with
+ * provenance back to the evidence entities. **Additive** by design:
+ * evidence entities remain queryable; reflections sit on top as
+ * a derived layer (per Sprint 8 user decision).
+ */
+export interface ReflectionRecord {
+  id: ReflectionId;
+  timestamp: IsoDateTime;
+  scope: ReflectionScope;
+  /** TrajectoryCompressor summary or hand-written reflection text. */
+  summary: string;
+  /** Top patterns surfaced from PatternDetector (≤ 5 entries). */
+  keyInsights: string[];
+  /** Entity names that backed this reflection (non-empty). */
+  evidence: string[];
+  /** Combined pattern + compression confidence in `[0.0, 1.0]`. */
+  generalization_confidence: number;
+  /** ExperienceExtractor experience type, if available. */
+  experienceType?: string;
+  sourceSessionId?: string;
+  sourceProjectId?: string;
+  /**
+   * SHA-256 hash of `scope + sorted(evidence)`. Used by
+   * `ReflectionManager.create` for Tier-1 dedup (mirrors
+   * `MemoryEngine.contentHash` pattern from v1.11.0).
+   */
+  evidenceHash: string;
+  /** Whether the reflection has been archived (soft-delete). */
+  archived?: boolean;
+  archivedAt?: IsoDateTime;
+}
+
+/**
+ * Reflection entity — `AgentEntity` carrying a `ReflectionRecord`.
+ * `name === reflectionRecord.id`.
+ */
+export interface ReflectionEntity extends AgentEntity {
+  memoryType: 'reflection';
+  reflectionRecord: ReflectionRecord;
+}
+
+/** Type guard for reflection-memory entities. */
+export function isReflectionMemory(entity: unknown): entity is ReflectionEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'reflection') return false;
+  const rr = (entity as ReflectionEntity).reflectionRecord as
+    | { id?: unknown; scope?: unknown; evidenceHash?: unknown; evidence?: unknown }
+    | undefined;
+  return (
+    typeof rr === 'object' &&
+    rr !== null &&
+    typeof rr.id === 'string' &&
+    typeof rr.scope === 'string' &&
+    typeof rr.evidenceHash === 'string' &&
+    Array.isArray(rr.evidence)
+  );
+}
+
+// ==================== Heuristic Memory (Phase 3B.8) ====================
+
+/** Branded identifier for heuristic-memory entities. */
+export type HeuristicId = string & { readonly __heuristicId: unique symbol };
+
+/**
+ * A single heuristic — a natural-language condition mapped to an action,
+ * with provenance and confidence tracking. Promoted from
+ * `HeuristicManager.ts` to live with sibling memory-type records.
+ *
+ * @experimental Match algorithm (Jaccard token-overlap × confidence) and
+ *   conflict-detection are conservative v1; may evolve toward
+ *   semantic-similarity matching.
+ */
+export interface Heuristic {
+  id: HeuristicId;
+  /** Natural-language condition that triggers the action. */
+  condition: string;
+  /** Recommended action when the condition matches. */
+  action: string;
+  /** Optional priority for tie-breaking when multiple heuristics match (higher wins). */
+  priority?: number;
+  /** Number of times `reinforce` has been called. */
+  support: number;
+  /** Number of times `recordContradiction` has been called. */
+  contradictions: number;
+  /** Confidence in `[0, 1]`, updated on every reinforce / contradict. */
+  confidence: number;
+  /** ISO 8601 timestamp of creation. */
+  createdAt: IsoDateTime;
+  /** ISO 8601 timestamp of last reinforce / contradict. */
+  lastUpdatedAt: IsoDateTime;
+}
+
+/**
+ * Heuristic entity — `AgentEntity` carrying a `Heuristic` record.
+ * `name === heuristicRecord.id`.
+ */
+export interface HeuristicEntity extends AgentEntity {
+  memoryType: 'heuristic';
+  heuristicRecord: Heuristic;
+}
+
+/** Type guard for heuristic-memory entities. */
+export function isHeuristicMemory(entity: unknown): entity is HeuristicEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'heuristic') return false;
+  const hr = (entity as HeuristicEntity).heuristicRecord as
+    | { id?: unknown; condition?: unknown; action?: unknown; confidence?: unknown }
+    | undefined;
+  return (
+    typeof hr === 'object' &&
+    hr !== null &&
+    typeof hr.id === 'string' &&
+    typeof hr.condition === 'string' &&
+    typeof hr.action === 'string' &&
+    typeof hr.confidence === 'number'
+  );
+}
+
+// ==================== Exclusion Memory (Phase 3 — do_not_remember) ====================
+
+/**
+ * Matching mode for an `ExclusionRule`.
+ *
+ * v1 ships **substring only**. `'regex'` is deferred — the ReDoS surface
+ * requires a careful design (`vm.runInNewContext` timeout, max length cap,
+ * governance integration) that's out of scope for the first phase.
+ */
+export type ExclusionMode = 'substring';
+
+/**
+ * When an `ExclusionRule` applies. `'future-only'` write-blocks new
+ * matching content; `'past-only'` hard-deletes existing matches on add
+ * but does not block future writes; `'both'` does both (the default).
+ */
+export type ExclusionScope = 'future-only' | 'past-only' | 'both';
+
+/**
+ * Content-pattern exclusion rule (`do_not_remember`). The rule itself is
+ * stored as an `ExclusionEntity`; the runtime mechanism is hard-delete
+ * for past matches + write-block for future matches.
+ *
+ * Distinct from `PiiRedactor` (structural pattern redaction for
+ * credit-card / SSN-style content). `ExclusionRule` is user-supplied
+ * free-form content filtering.
+ */
+export interface ExclusionRule {
+  id: string;
+  timestamp: IsoDateTime;
+  /** Pattern to match. Interpretation depends on `mode`. */
+  pattern: string;
+  mode: ExclusionMode;
+  scope: ExclusionScope;
+  /** Optional restriction by `entityType`. When unset, matches all types. */
+  entityType?: string;
+  /** Optional free-text justification. */
+  reason?: string;
+  /** Number of past memories deleted when the rule was added. */
+  deletedCount?: number;
+  /** Number of future writes blocked by this rule (updated on each block). */
+  blockedCount: number;
+}
+
+/**
+ * Persisted shape of an exclusion-rule entity. `exclusionRule` is the
+ * canonical state; the entity's `name` matches `exclusionRule.id`.
+ */
+export interface ExclusionEntity extends AgentEntity {
+  memoryType: 'exclusion';
+  exclusionRule: ExclusionRule;
+}
+
+/** Type guard for exclusion-memory entities. */
+export function isExclusionMemory(entity: unknown): entity is ExclusionEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'exclusion') return false;
+  const er = (entity as ExclusionEntity).exclusionRule as
+    | { id?: unknown; pattern?: unknown; mode?: unknown; scope?: unknown }
+    | undefined;
+  return (
+    typeof er === 'object' &&
+    er !== null &&
+    typeof er.id === 'string' &&
+    typeof er.pattern === 'string' &&
+    typeof er.mode === 'string' &&
+    typeof er.scope === 'string'
+  );
+}
+
+// ==================== Decision Memory (Phase 3 — Decision Rationale) ====================
+
+/** Branded identifier for decision-memory entities. */
+export type DecisionId = string & { readonly __decisionId: unique symbol };
+
+/**
+ * Discriminated lifecycle for a `DecisionRecord`. Mirrors
+ * `FailureLifecycle`'s shape so consumers can switch uniformly.
+ */
+export type DecisionLifecycle =
+  | { status: 'proposed' }
+  | { status: 'accepted'; acceptedAt: IsoDateTime }
+  | { status: 'superseded'; supersededAt: IsoDateTime; supersededBy: DecisionId }
+  | { status: 'rejected'; rejectedAt: IsoDateTime; rejectedReason: string };
+
+/** Top-level status discriminator from `DecisionLifecycle`. */
+export type DecisionStatus = DecisionLifecycle['status'];
+
+/**
+ * Runtime-queryable architecture-decision-record (ADR-equivalent).
+ * Lets an agent answer "have we already decided X?" without scanning
+ * markdown files.
+ *
+ * The `status` field is duplicated from the `lifecycle` discriminator
+ * for convenient flat-shape filtering (`list({ status: 'accepted' })`);
+ * the two are kept in lockstep by the manager.
+ */
+export interface DecisionRecord {
+  id: DecisionId;
+  timestamp: IsoDateTime;
+  status: DecisionStatus;
+  lifecycle: DecisionLifecycle;
+  /** Problem-space description — the question the decision answers. */
+  context: string;
+  /** The chosen path. */
+  decision: string;
+  /** Considered-but-not-chosen options. */
+  alternatives: string[];
+  /** Anticipated downstream effects. */
+  consequences: string[];
+  /** Optional paths to related ADRs or code. */
+  relatedFiles?: string[];
+  /** Backward link to the decision this one replaces (if any). */
+  supersedes?: DecisionId;
+  sourceSessionId?: string;
+  sourceProjectId?: string;
+}
+
+/**
+ * Persisted shape of a decision-memory entity. `decisionRecord` is the
+ * canonical state; the entity's `name` matches `decisionRecord.id`.
+ */
+export interface DecisionEntity extends AgentEntity {
+  memoryType: 'decision';
+  decisionRecord: DecisionRecord;
+}
+
+/** Type guard for decision-memory entities. */
+export function isDecisionMemory(entity: unknown): entity is DecisionEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'decision') return false;
+  const dr = (entity as DecisionEntity).decisionRecord as
+    | { id?: unknown; status?: unknown; context?: unknown; decision?: unknown; lifecycle?: unknown }
+    | undefined;
+  return (
+    typeof dr === 'object' &&
+    dr !== null &&
+    typeof dr.id === 'string' &&
+    typeof dr.status === 'string' &&
+    typeof dr.context === 'string' &&
+    typeof dr.decision === 'string' &&
+    typeof dr.lifecycle === 'object' &&
+    dr.lifecycle !== null
+  );
+}
+
+// ==================== Project Context Memory (Phase 3 — Type 2) ====================
+
+/** A documented project-specific command (build, test, lint, etc.). */
+export interface ProjectContextCommand {
+  name: string;
+  command: string;
+  purpose: string;
+}
+
+/** A domain-term entry in the project glossary. */
+export interface ProjectContextGlossaryTerm {
+  term: string;
+  definition: string;
+}
+
+/**
+ * Structured project knowledge — the runtime-queryable companion to
+ * unstructured CLAUDE.md content. One record per `projectId` (uniqueness
+ * enforced at the manager level). The entity's `name` is
+ * `project-context-${projectId}`.
+ */
+export interface ProjectContextRecord {
+  /** Equal to `projectId`. */
+  id: string;
+  /** Original creation timestamp. */
+  timestamp: IsoDateTime;
+  projectId: string;
+  /** Project-level facts (e.g. "Built with TypeScript"). */
+  facts: string[];
+  /** Project-specific conventions (e.g. "Use Result<T,E>"). */
+  conventions: string[];
+  /** Documented project commands. */
+  commands: ProjectContextCommand[];
+  /** Domain-term glossary. */
+  glossary: ProjectContextGlossaryTerm[];
+  /** Updated on every merge / append / remove. */
+  lastUpdated: IsoDateTime;
+}
+
+/**
+ * Persisted shape of a project-context entity. `projectContextRecord`
+ * is the canonical state. The entity's `name` is
+ * `project-context-${projectId}`.
+ */
+export interface ProjectContextEntity extends AgentEntity {
+  memoryType: 'project_context';
+  projectContextRecord: ProjectContextRecord;
+}
+
+/** Type guard for project-context-memory entities. */
+export function isProjectContextMemory(entity: unknown): entity is ProjectContextEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'project_context') return false;
+  const pcr = (entity as ProjectContextEntity).projectContextRecord as
+    | { id?: unknown; projectId?: unknown; facts?: unknown; conventions?: unknown; commands?: unknown; glossary?: unknown }
+    | undefined;
+  return (
+    typeof pcr === 'object' &&
+    pcr !== null &&
+    typeof pcr.id === 'string' &&
+    typeof pcr.projectId === 'string' &&
+    Array.isArray(pcr.facts) &&
+    Array.isArray(pcr.conventions) &&
+    Array.isArray(pcr.commands) &&
+    Array.isArray(pcr.glossary)
+  );
+}
+
+// ==================== Tool Affordance Memory (Phase Tool A) ====================
+
+/** Branded identifier for tool-affordance entities. */
+export type ToolAffordanceId = string & { readonly __toolAffordanceId: unique symbol };
+
+/** A single tool-call outcome (one element of the rolling window). */
+export interface ToolCallOutcome {
+  outcome: 'success' | 'failure' | 'partial';
+  /** Error / reason text (when outcome is `failure` or `partial`). */
+  errorMessage?: string;
+  /** Wall-clock duration in milliseconds. */
+  durationMs?: number;
+  /** When the call completed. */
+  timestamp: IsoDateTime;
+}
+
+/**
+ * Rolling-window outcome statistics per tool. One record per `toolName`
+ * (uniqueness enforced; entity name is `tool-affordance-${toolName}`).
+ */
+export interface ToolAffordanceRecord {
+  id: ToolAffordanceId;
+  toolName: string;
+  /** First observation timestamp. */
+  timestamp: IsoDateTime;
+  /** Most recent outcome timestamp. */
+  lastUpdated: IsoDateTime;
+  /** Rolling window of recent outcomes, capped by manager config. */
+  outcomes: ToolCallOutcome[];
+  /** Pre-computed top-N failure-mode strings ranked by frequency. */
+  commonFailureModes: string[];
+  /** Rolling-mean duration. Undefined when no outcome carries duration. */
+  avgDurationMs?: number;
+  /** Fraction of successful outcomes in the rolling window (0..1). */
+  successRate: number;
+  /** Lifetime call count — increments past `outcomes.length` after window cap. */
+  totalCalls: number;
+}
+
+/** Persisted shape of a tool-affordance entity. */
+export interface ToolAffordanceEntity extends AgentEntity {
+  memoryType: 'tool_affordance';
+  toolAffordanceRecord: ToolAffordanceRecord;
+}
+
+/** Type guard for tool-affordance entities. */
+export function isToolAffordanceMemory(entity: unknown): entity is ToolAffordanceEntity {
+  if (!isAgentEntity(entity) || entity.memoryType !== 'tool_affordance') return false;
+  const tar = (entity as ToolAffordanceEntity).toolAffordanceRecord as
+    | { id?: unknown; toolName?: unknown; outcomes?: unknown; successRate?: unknown; totalCalls?: unknown }
+    | undefined;
+  return (
+    typeof tar === 'object' &&
+    tar !== null &&
+    typeof tar.id === 'string' &&
+    typeof tar.toolName === 'string' &&
+    Array.isArray(tar.outcomes) &&
+    typeof tar.successRate === 'number' &&
+    typeof tar.totalCalls === 'number'
+  );
 }
 
 // ==================== Utility Types ====================

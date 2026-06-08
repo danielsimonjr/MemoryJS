@@ -2,6 +2,7 @@
 
 import workerpool from '@danielsimonjr/workerpool';
 import type { Pool, PoolStats } from '@danielsimonjr/workerpool';
+import { logger } from './logger.js';
 
 export interface WorkerPoolConfig {
   maxWorkers?: number;
@@ -94,7 +95,7 @@ export class WorkerPoolManager {
     };
 
     this.uncaughtExceptionHandler = (err: Error) => {
-      console.error('Uncaught exception:', err.message);
+      logger.error('Uncaught exception:', err.message);
       this.shutdownAllSync();
       process.exit(1);
     };

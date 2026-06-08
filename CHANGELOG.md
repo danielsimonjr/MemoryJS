@@ -5,6 +5,1368 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [2.8.1] - 2026-05-18
+
+### Fixed
+
+- **`WorkerTaskManager.cancel` now propagates through `WorkerpoolPromise.cancel()`
+  for mid-execution cancellation.** The v2.7.0 doc claimed cancel-mid-flight
+  was "best-effort because workerpool doesn't expose hard-cancel" — that was
+  incorrect. workerpool has always shipped `WorkerpoolPromise.cancel()`
+  (`@danielsimonjr/workerpool` types/core/Promise.d.ts:79) and rejects with
+  `CancellationError` when called. WorkerTaskManager now retains the
+  workerpool-promise reference per running task in `liveExecPromises` and
+  invokes `.cancel()` on it when a handle cancels post-dispatch.
+  `TaskHandle.cancel()` returns `true` for both pre-dispatch eviction and
+  successful mid-flight cancellation; `false` only when the underlying
+  workerpool-promise has already settled. The `TaskHandle` JSDoc reflects
+  the new two-tier contract.
+- **New test** `cancel mid-execution propagates to the workerpool promise`
+  in `tests/unit/utils/WorkerTaskManager.test.ts` verifies the propagation:
+  spins a delayed mock exec, asserts the task is `RUNNING`, calls cancel,
+  and asserts the result promise rejects with a cancellation-shaped error.
+  The mocked `Pool.exec` now returns a workerpool-shaped promise with
+  `.cancel()` + `.pending` (mirrors the real `WorkerpoolPromise` interface).
+- No workerpool-side changes were needed — verified by reading
+  `WorkerpoolPromise.cancel(): this`, the `Pool.exec` typed return, and the
+  full feature surface (circuit breaker, memory pressure, retry, ready
+  promise, event emitter, warmup, comprehensive types, dual ESM/CJS build).
+  Honest finding documented in `todo.md`.
+
+## [2.8.0] - 2026-05-18
+
+### Added
+
+- **tsvector FTS for `PostgreSQLStorage`** —
+  `fullTextSearch(query, { limit? }): Array<{ name; score }>`. Backed by
+  a `GENERATED ALWAYS AS ... STORED` tsvector column with weighted
+  contributions (name × A, observations × B, tags × C) and a GIN index
+  for fast lookup. Uses `plainto_tsquery` so callers can pass free-form
+  text without needing to learn `&`/`|`/`!` query syntax. Empty or
+  whitespace-only queries short-circuit to `[]` without issuing SQL.
+  Results are ranked via `ts_rank` and ordered descending; default
+  limit is 50.
+
+  Schema migration is idempotent — a `DO $$ ... END $$` guard on
+  `information_schema.columns` skips the `ALTER TABLE ADD COLUMN`
+  when the `fts_vector` column already exists. Safe to re-run on every
+  startup; safe to deploy against an existing v2.6.0/v2.7.0 database.
+
+  ```typescript
+  const ctx = new ManagerContext('postgres://localhost/mydb');
+  // After indexing entities, search:
+  const matches = await (ctx.storage as PostgreSQLStorage)
+    .fullTextSearch('authentication flow', { limit: 10 });
+  // [{ name: 'AuthService', score: 0.62 }, ...]
+  ```
+
+  PostgreSQL 12+ required for generated columns. Earlier versions need
+  a trigger-based equivalent — not shipped in v1.
+
+### Tests
+
+- 5 new tests at `tests/unit/core/PostgreSQLStorage.test.ts` cover the
+  FTS surface: empty-query short-circuit (no SQL issued), name-weighted
+  ranking above observations + tags, `limit` enforcement, exact-match
+  scoring, and zero-match (`"quantum-flux-capacitor-xyz"`) returning
+  `[]`. Mock `pg` extended with a word-overlap scorer that mirrors the
+  weighted (3 / 2 / 1) tsvector behaviour without needing real
+  PostgreSQL. Total `PostgreSQLStorage.test.ts` → 22 tests, all green.
+
+## [2.7.0] - 2026-05-17
+
+### Added
+
+- **`WorkerTaskManager`** (`src/utils/WorkerTaskManager.ts`) — thin
+  facade over the existing `WorkerPoolManager` + `TaskQueue`. The two
+  pieces compose well but require boilerplate to use together. Manager
+  owns named pools per `workerType`; queue owns priority scheduling,
+  concurrency caps, timeouts, and cancellation. `WorkerTaskManager`
+  unifies them behind a single submission API:
+
+  ```typescript
+  // One-shot
+  const r = await wtm.submit<number>(
+    'levenshtein', 'levenshteinDistance', ['kitten', 'sitting'],
+    { priority: TaskPriority.HIGH, timeout: 5000 },
+  );
+
+  // Cancellable handle
+  const handle = wtm.submitWithHandle<number>(
+    'levenshtein', 'levenshteinDistance', ['kitten', 'sitting'],
+  );
+  setTimeout(() => handle.cancel(), 100);
+  const dist = await handle.result;
+  ```
+
+  Cancellation semantics: cancel-before-dispatch evicts cleanly (returns
+  `true`); cancel-mid-execution is best-effort (workerpool doesn't
+  expose hard-cancel and terminating mid-task is destructive — sets a
+  flag the wrapping fn can observe, returns `false`).
+
+- **`batchProcessViaWorkers(items, workerType, methodName, mapArgs, opts?)`**
+  — the recommended pattern for agent-system batch operations that
+  benefit from CPU parallelism (entropy filtering across many memories,
+  pairwise similarity for contradiction detection, batch embedding when
+  the provider is local + compute-bound). Fans out one task per item
+  through the shared priority queue; preserves input order in the
+  returned results array. Empty input is a zero-cost no-op. Rejects on
+  first task failure.
+
+  > Sizing note: for small batches (≪ ~50 items) the postMessage
+  > serialisation overhead usually dominates the gain — benchmark
+  > before adopting.
+
+- **`getWorkerTaskManager()`** — singleton accessor used internally by
+  `batchProcessViaWorkers`. Exposed so agent-system diagnostics
+  (`ctx.diagnostics`) can fold queue + pool stats into reports.
+
+### Tests
+
+- `tests/unit/utils/WorkerTaskManager.test.ts` (10 tests) covers
+  routing across worker types, error propagation, handle status
+  transitions, cancel-before-dispatch eviction, cancel-after-completion
+  no-op, stats aggregation, and the `batchProcessViaWorkers`
+  fan-out / empty-input / first-failure paths. Mocks `WorkerPoolManager`
+  with a programmable in-memory `Pool` so tests run without spinning up
+  real worker threads.
+
+## [2.6.0] - 2026-05-17
+
+### Added
+
+- **PostgreSQL backend** (`src/core/PostgreSQLStorage.ts`) — full
+  `IGraphStorage` implementation backed by a PostgreSQL connection pool.
+  Wired into `StorageFactory` and `createStorageFromPath` under
+  `type: 'postgres'` (alias: `'postgresql'`) and selectable via
+  `MEMORY_STORAGE_TYPE=postgres`. The constructor receives a Postgres
+  connection string (e.g. `postgres://user:pass@host:5432/db`) where
+  other backends receive a file path.
+
+  Schema:
+    - `entities` table — first-class columns for every well-known
+      `Entity` field (name, entity_type, observations, parent_id, tags,
+      importance, created_at, last_modified, ttl, confidence, project_id,
+      version, parent_entity_name, root_entity_name, is_latest,
+      superseded_by, content_hash, valid_from, valid_until,
+      observation_meta, lifecycle_status) plus a JSONB `extra` column
+      that holds the v2.1.0 subclass-manager records (`heuristicRecord`,
+      `decisionRecord`, `projectContextRecord`, `toolAffordanceRecord`,
+      `exclusionRule`, `prospectiveRecord`, `failureRecord`, `planRecord`,
+      `reflectionRecord`).
+    - `relations` table — `(from_name, to_name, relation_type)` primary
+      key plus optional JSONB `metadata` + bitemporal `valid_from` /
+      `valid_until` columns.
+    - GIN indexes on `tags` and `idx_entities_{entity_type, project_id,
+      content_hash}` btree indexes for common filter paths.
+    - Idempotent `CREATE TABLE IF NOT EXISTS` + `CREATE INDEX IF NOT
+      EXISTS` schema bootstrap on first use.
+
+  Behavioural parity with SQLiteStorage / GraphStorage:
+    - In-memory cache + name / outgoing / incoming relation indexes
+      hydrated by `loadGraph` so the synchronous `IGraphStorage`
+      getters (`getEntityByName`, `getRelationsFor`, etc.) all return
+      from the cache.
+    - Write-through cache updates on `appendEntity` / `appendRelation`
+      / `updateEntity`.
+    - `saveGraph` is a truncate-and-reinsert in v1 (correct, simple;
+      diff-based replacement deferred).
+    - `appendEntity` uses `ON CONFLICT (name) DO UPDATE` so re-inserts
+      are upserts — matches the SQLite backend's append-or-update
+      semantics.
+    - `appendRelation` uses `ON CONFLICT DO NOTHING` to dedup on the
+      composite primary key.
+
+  Dependency model: `pg` is declared as an **optional peer
+  dependency** (`peerDependenciesMeta.pg.optional = true`). Users who
+  don't need the postgres backend never see it. When a user requests
+  the postgres backend without `pg` installed, the constructor surfaces
+  a friendly error: `"The 'pg' package is required for the PostgreSQL
+  backend but is not installed. Run: npm install pg @types/pg"`.
+
+  Tests: `tests/unit/core/PostgreSQLStorage.test.ts` (17 tests) mocks
+  the `pg` module with a tiny in-memory SQL interpreter that supports
+  the five distinct statement shapes the storage class issues
+  (DDL, TRUNCATE, INSERT entities, INSERT relations, SELECT *). All
+  IGraphStorage contract surfaces covered: lazy load, cache hydration,
+  append / update round-trip with v2.1.0 subclass-manager record fields,
+  upsert idempotency, sync getters, clearCache, close. Real-database
+  integration tests are intentionally separate from this unit suite —
+  run with `MEMORYJS_TEST_PG_URL=postgres://...` against a real instance.
+
+  Search & FTS: v1 ships LIKE-based search via the cache; the
+  `to_tsvector` / `tsquery` path with GIN-indexed FTS is deferred to a
+  follow-up.
+
+## [2.5.0] - 2026-05-17
+
+### Removed
+
+- **16 test-only orphan modules + their test suites + 1 dependent
+  benchmark.** Each module was implemented and unit-tested but never
+  wired to a production code path, never re-exported via `src/index.ts`
+  / `dist/index.d.ts`, never consumed by Memory-mcp. The dep-graph
+  audit (`tools/create-dependency-graph --include-tests`) flagged them
+  as test-island components; cross-referenced honestly against `src/`,
+  `tests/`, `tools/`, the public `.d.ts`, and the Memory-mcp consumer
+  before removal.
+
+  Modules removed (and their tests, ~256 test cases):
+
+  | Module | Path |
+  |---|---|
+  | IDatabaseAdapter | `src/adapters/IDatabaseAdapter.ts` |
+  | IVectorDBAdapter | `src/adapters/IVectorDBAdapter.ts` |
+  | EntityProxy | `src/core/EntityProxy.ts` |
+  | BufferMmapBackend | `src/core/mmap/BufferMmapBackend.ts` |
+  | WriteAheadLog | `src/core/WriteAheadLog.ts` |
+  | AnomalyDetector | `src/features/AnomalyDetector.ts` |
+  | CRDT | `src/features/CRDT.ts` |
+  | BackgroundIndexer | `src/search/BackgroundIndexer.ts` |
+  | LSH | `src/search/LSH.ts` |
+  | Node2Vec | `src/search/Node2Vec.ts` |
+  | PartitionedInvertedIndex | `src/search/PartitionedInvertedIndex.ts` |
+  | QueryLanguage | `src/search/QueryLanguage.ts` |
+  | SearchStream | `src/search/SearchStream.ts` |
+  | SPARQL | `src/search/SPARQL.ts` |
+  | SynonymManager | `src/search/SynonymManager.ts` |
+  | BrotliCompressionAdapter | `src/utils/compression/BrotliCompressionAdapter.ts` |
+
+  Also removed: `tests/performance/compression-adapter-benchmarks.test.ts`
+  (depended on `BrotliCompressionAdapter`).
+
+  **No public-API change**: `dist/index.d.ts` had zero hits for any
+  of these symbols before removal. Anything reaching past the public
+  surface (`import { ... } from '@danielsimonjr/memoryjs/dist/search/SPARQL.js'`)
+  was always unsupported and would now break — but no in-house caller
+  exists. Pre-removal test count: 7308. Post-removal: 7051 (256 tests
+  removed, one unrelated `ObservationColumnStore` flake unchanged).
+
+- **8 redundant `XxxMemoryEntity` type aliases** in
+  `src/types/agent-memory.ts` (`FailureMemoryEntity`,
+  `PlanMemoryEntity`, `ReflectionMemoryEntity`,
+  `HeuristicMemoryEntity`, `ExclusionMemoryEntity`,
+  `DecisionMemoryEntity`, `ProjectContextMemoryEntity`,
+  `ToolAffordanceMemoryEntity`). Each was `type X = Y` indirection
+  left over from a prior rename; the canonical `XxxEntity` names
+  are unchanged and remain the public-API surface.
+
+## [2.4.0] - 2026-05-17
+
+### Added
+
+- **`memory cache` subcommand group** (`src/cli/commands/cache.ts`):
+  - **`cache stats`** — per-tier snapshot for the four global search
+    caches (`basic` / `ranked` / `boolean` / `fuzzy`) showing
+    `hits` / `misses` / `size` / `hitRate`. Stats are process-local — a
+    fresh CLI invocation always sees zeros.
+  - **`cache clear`** — bust all four search caches. Idempotent; safe
+    after manual graph edits to drop stale results.
+  - **`cache cleanup`** — sweep TTL-expired entries without dropping
+    live ones.
+- **`memory reindex`** (`src/cli/commands/reindex.ts`) — rebuild
+  search-side indexes that get out of sync if the graph file is
+  modified outside the running process. Rebuilds both the TF-IDF/BM25
+  ranked index and the spell-checker vocabulary by default; `--ranked`
+  or `--spell` to scope. Per-target timing in the JSON output. Each
+  target failure is captured independently — a spell-rebuild crash
+  doesn't mask a ranked-rebuild success.
+  - **`ctx.rankedSearch` constructor caveat**: the default
+    ManagerContext getter constructs `RankedSearch(storage)` without
+    a `storageDir`, so `buildIndex()` refuses (`Index manager not
+    initialized`). The reindex command constructs an ad-hoc
+    `RankedSearch(ctx.storage, dirname(options.storage))` so the
+    rebuild persists alongside the JSONL.
+- **REPL extensions** (`src/cli/interactive.ts`): the
+  `memory interactive` shell now recognises `check [--apply]`,
+  `heuristics`, `spell <query>`, `cache [clear]`, and `reindex` so the
+  live-debug flow stays useful through the v2.3.0+ surface.
+
+### Tests
+
+- `tests/unit/cli/cache-reindex.test.ts` (6 tests via commander
+  `parseAsync`): cache stats four-tier shape, cache clear/cleanup,
+  reindex default (both targets), reindex `--ranked`-only, reindex
+  `--spell`-only.
+
+## [2.3.0] - 2026-05-17
+
+### Fixed
+
+- **`OPTIONAL_PERSISTED_ENTITY_FIELDS` in `src/core/GraphStorage.ts`
+  now admits the v2.1.0 subclass-manager record fields**
+  (`heuristicRecord`, `decisionRecord`, `exclusionRule`,
+  `projectContextRecord`, `toolAffordanceRecord`, plus the older
+  `prospectiveRecord`, `failureRecord`, `planRecord`,
+  `reflectionRecord`). The persistence allowlist was the sibling bug to
+  the v2.1.1 `UpdateEntitySchema` strict-mode rejection: subclass
+  managers wrote domain records via `createEntities`/`appendEntity`,
+  but the allowlist silently stripped them on serialisation, so a
+  reload of the JSONL returned base `Entity` shapes without the records
+  and downstream `list()` / `match()` / `get()` calls returned empty.
+  Surfaced while dogfooding the new `memory heuristic list` CLI
+  subcommand against a smoke graph — heuristic created, persisted as a
+  bare entity, list returned 0. 7302-test `npm run test:ci` suite stays
+  green after the change.
+
+### Added
+
+- **`memory heuristic` subcommand group** — `add`, `list`, `count`,
+  `get`, `match`, `reinforce`, `contradict`, `conflicts`, `remove`,
+  `clear` over `ctx.heuristicManager`. JSON output. Fills the gap left
+  by the smoke-only access route in v2.1.0.
+- **`memory obs-dedup` subcommand group** — `find` and `find-jaccard`
+  over `ctx.observationDedupManager` with `--entity-type` (single or
+  comma-list), `--project-id`, `--session-id`, `--min-occurrences`
+  (≥2), `--max-groups` filters.
+- **`memory spell` subcommand group** — `suggest`, `rebuild`, `size`
+  over `ctx.spellChecker`. `suggest` supports `--limit`,
+  `--min-score`, `--max-distance`.
+- **`memory check` repair command** — detects orphan relations (relation
+  whose `from`/`to` references a missing entity), missing parents
+  (entity whose `parentId` references a missing entity), and hierarchy
+  cycles. Dry-run by default; `--apply` deletes orphan relations and
+  clears missing parentIds. Cycles are always reported but never
+  auto-repaired (no safe default for which edge to break). Exit code
+  non-zero when issues exist without `--apply`; zero when issues are
+  successfully repaired via `--apply`. Hierarchy cycle reporting
+  attaches the cycling node to assist human review. New file:
+  `src/cli/commands/check.ts`. Four-test suite at
+  `tests/unit/cli/check.test.ts` exercises clean-graph,
+  broken-graph-dry-run, broken-graph-apply (with on-disk verification),
+  and clean-graph-apply (no-op) paths.
+
+## [2.2.0] - 2026-05-17
+
+### Added
+
+- **CLI engineering surface — diagnostic + inspection commands** —
+  Eight new top-level CLI subcommands turn `memory` / `memoryjs` into
+  a fast troubleshooting tool that works directly against the library
+  when the MCP server isn't responding. All commands emit JSON by
+  default (pipe-friendly).
+
+  **Diagnostic** (`src/cli/commands/diag.ts`):
+
+  - **`memory diag`** — one-shot snapshot: memoryjs version, node
+    runtime, platform/arch/pid, storage path + size + entity/relation
+    counts, current ISO timestamp. Good first command when something
+    feels off.
+  - **`memory env`** — full catalog of memoryjs env vars with
+    documented defaults vs resolved current values and a `set` flag.
+    `--all` includes vars with no documented default. Mirrors the
+    Environment Variables section of `CLAUDE.md`.
+  - **`memory health`** — fast integrity checks: storage:loadGraph,
+    entities:distinct-names, relations:no-orphans,
+    hierarchy:no-cycles-no-missing-parents. Each check reports per-step
+    duration; exits non-zero with a structured report if any check
+    fails.
+  - **`memory version`** — compact one-line JSON: `memoryjs`, `node`,
+    `platform/arch`. Useful for piping into other tooling.
+
+  **Inspection** (`src/cli/commands/inspect.ts`):
+
+  - **`memory show <entity>`** — verbose snapshot: observations (via
+    ObservationManager), outgoing + incoming relations, tags,
+    importance, timestamps, parent, immediate children, full
+    ancestors list. JSON output.
+  - **`memory tree [root]`** — hierarchy tree. With explicit root,
+    returns that subtree; without, all root entities. `--ascii`
+    renders with ├── / └── connectors for human reading; default is
+    nested JSON.
+  - **`memory neighbors <entity>`** — incoming + outgoing relations
+    with in/out degree counts.
+  - **`memory size`** — graph + storage footprint: entity / relation
+    / observation counts, distinct tag count, avg observations per
+    entity, file byte size, line count.
+
+  **REPL touch-up** (`src/cli/interactive.ts`): the existing
+  `memory interactive` shell now recognises `show <name>`,
+  `tree [root]`, `neighbors <name>`, `diag` / `health`, and `size` —
+  same code path as the subcommands, modest ~80 line additions to
+  keep the live-debug experience useful.
+
+  **Tests**: `tests/unit/cli/diag.test.ts` (5 tests including a
+  deliberately-broken graph with an orphan relation that fails the
+  health check) + `tests/unit/cli/inspect.test.ts` (8 tests covering
+  show / tree JSON / tree ASCII / neighbors / size against a seeded
+  parent/child hierarchy). Both use commander's `parseAsync` in-process
+  rather than spawning subprocesses.
+
+  **Bugs caught during development:**
+
+  - `getEntityByName` reads an in-memory `nameIndex` that's only
+    hydrated by `loadGraph()`. The first draft of `snapshotEntity`,
+    `buildTree`, and `neighbors` called the sync lookup without first
+    awaiting the graph load, so every CLI invocation returned "entity
+    not found" even against a populated graph. Fix: call `loadGraph`
+    before the lookup. Tip: `entity get` worked because
+    `entityManager.getEntity` loads on demand.
+  - ASCII tree connector logic conflated "root has empty prefix" with
+    "children of root have empty prefix" — children rendered at column
+    zero with no `├──` / `└──` markers. Fix: track `isRoot` separately
+    from `prefix`, so children of the root get connectors but no
+    inherited indentation.
+
+## [2.1.2] - 2026-05-16
+
+### Added
+
+- **`memory smoke` / `memoryjs smoke` CLI subcommand** —
+  per-category end-to-end smoke test that exercises every major manager
+  surface (entity, relation, observation, search ×3, tag, hierarchy,
+  graph algorithms, IO export, analytics, validation, decision×3,
+  heuristic×2, project context×2, tool affordance, exclusion,
+  observation dedup, spell ×1). 30 steps run against a fresh temp graph
+  in ~150 ms; flags: `--storage <path>` (override the temp dir),
+  `--keep` (preserve the graph + print its path for interactive
+  dogfooding), `--verbose` (print each step as it runs). Exit code is
+  non-zero if any step fails. New file:
+  `src/cli/commands/smoke.ts`; wired via `commands/index.ts`. Unit
+  tests at `tests/unit/cli/smoke.test.ts` use commander's `parseAsync`
+  instead of spawning a subprocess for fast in-process assertion.
+
+## [2.1.1] - 2026-05-16
+
+### Fixed
+
+- **`UpdateEntitySchema` now uses `.passthrough()` instead of `.strict()`**
+  so the v2.1.0 subclass managers (`DecisionManager`, `HeuristicManager`,
+  `ProjectContextManager`, `ToolAffordanceManager`, `ExclusionManager`,
+  `ObservationDedupManager`) can attach their domain-specific record
+  fields (`decisionRecord`, `projectContext`, `heuristic`, `lastModified`,
+  etc.) via `EntityManager.updateEntity()` without tripping
+  `"Invalid update data"` validation errors. The bug surfaced as
+  `accept_decision`, `reject_decision`, `supersede_decision`,
+  `reinforce_heuristic`, `record_heuristic_contradiction`,
+  `upsert_project_context` (post-create update path), and the
+  `append_project_*` / `remove_project_*` / `clear_project_context`
+  tools failing with `"Error: Invalid update data"` when consumed from
+  Memory-mcp (memoryjs's own DecisionManager unit tests passed because
+  they used a mock `EntityManager` that skipped validation — the real
+  `EntityManager` path was never exercised end-to-end). 7282-test
+  `npm run test:ci` suite stays green after the change. Discovered while
+  writing handler tests for Memory-mcp v12.3.0's Phase 16 tool surface.
+
+## [2.1.0] - 2026-05-15
+
+Phase 3 of the memory-types expansion is fully shipped
+(`do_not_remember` + Decision Rationale + Project Context) along with
+3B.8 Heuristic Guidelines Manager, cross-entity Observation Dedup,
+Tool Affordance (memory type + ToolCallObserver producer pipeline +
+MCP adapter), Spell Correction, and REST Router rate-limit + pagination
+helpers. Two soft-breaks (HeuristicManager storage-backed refactor —
+the class was `@experimental`; `MemoryEngine.AddTurnResult.entity`
+became optional, only matters on the opt-in `ExclusionManager` write-block
+path) fit the project's `@experimental` / opt-in stability policy and
+land in a minor bump.
+
+### Breaking
+
+- **`HeuristicManager` is now storage-backed** (Phase 3B.8a). Constructor
+  signature changed from `new HeuristicManager()` to
+  `new HeuristicManager(storage, entityManager)`. All write methods are
+  now async — `add` returns `Promise<HeuristicId>` instead of `string`;
+  `reinforce` / `recordContradiction` return a new discriminated
+  `HeuristicUpdateResult` (`'updated' | 'not-found' | 'conflict' |
+  'vanished-mid-update'`) — `'conflict'` surfaces `EntityManager.updateEntity`
+  `VersionConflictError`, matching the #55 OCC pattern. `match` /
+  `detectConflicts` / `list` / `size` are now async; `get(id)` stays sync
+  via `storage.getEntityByName`. The class keeps its `@experimental` tag.
+  Callers using `ctx.heuristicManager` (the new lazy getter — Added below)
+  see no breakage. Direct `new HeuristicManager()` consumers — only the
+  in-tree smoke test existed — must update construction + await calls.
+- **`FailureManager` and `ReflectionManager` constructors now require an
+  `EntityManager`** as the second positional argument
+  (`new FailureManager(storage, entityManager, config?)` /
+  `new ReflectionManager(storage, entityManager, config?)`). `markResolved`
+  and `archive` now route their writes through `EntityManager.updateEntity`
+  with `expectedVersion` OCC instead of `storage.updateEntity` directly,
+  fixing the read-check-write race where two concurrent writers could each
+  observe an open/unarchived entity and have the later write silently
+  overwrite the earlier one's `reason` / `archivedAt`. Both result-type
+  unions (`MarkResolvedResult` and `ArchiveReflectionResult`) gain a new
+  `'conflict'` variant that surfaces when `VersionConflictError` is caught.
+  Callers using `ctx.failureManager` / `ctx.reflectionManager` (the
+  documented path) are unaffected — `ManagerContext` wires `entityManager`
+  automatically. Direct-construction consumers must update call sites and
+  handle the new `'conflict'` arm. Closes Sprint cross-cut #55.
+
+### Changed
+
+- **`PatternDetector.detectPatterns`** now accepts an optional `entityNames?: string[]`
+  parameter parallel to `observations`. When provided, the returned
+  `PatternResult.sourceEntities` lists the entities whose observations actually
+  matched the pattern (deduplicated, sorted). Length mismatch throws. Omitting
+  the argument preserves the previous `sourceEntities: []` behavior.
+- **`ReflectionStage`** now narrows reflection `evidence` to entities that
+  contributed observations to a qualifying pattern (`confidence >= minConfidence`),
+  instead of attributing evidence to every scanned candidate. Closes Sprint 8
+  follow-up #54.
+
+### Added
+
+- **`MCPToolObserverAdapter`** (`src/adapters/MCPToolObserverAdapter.ts`,
+  Phase Tool C) — light MCP protocol shim. `wrapToolCall(envelope,
+  handler)` extracts the tool name from the envelope (supports
+  `{name}` / `{tool}` / `{method: 'tools/call', params: {name}}`
+  shapes, falls back to `'unknown'`), runs the handler inside an
+  `observeStart` / `observeComplete` window, and re-throws on error
+  after `observeError`. Static `extractToolName(envelope)` exported
+  for callers that want the name without observation. **Structural
+  typing** — no `@modelcontextprotocol/sdk` dep added.
+- **`ToolCallObserver`** (Phase Tool B) — canonical producer pipeline
+  for `ToolAffordanceManager`. `observeStart(toolName, args?)` returns
+  a `callId`; `observeComplete(callId, meta?)` / `observeError(callId,
+  error)` / `observePartial(callId, reason)` close the observation,
+  compute `durationMs`, and call `recordOutcome`. `cancel(callId)`
+  drops the in-flight entry without recording. No-op on unknown
+  `callId` (defensive — won't pollute stats with phantom outcomes).
+  Public `events` EventEmitter fires `toolCall:start` /
+  `toolCall:complete` / `toolCall:error` / `toolCall:partial` for
+  telemetry. Exposed via `ctx.toolCallObserver` lazy getter (auto-wires
+  `toolAffordanceManager`). Phase Tool C (MCP adapter) follows.
+- **`ToolAffordanceManager` + `'tool_affordance'` memory type** (Phase
+  Tool A, catalog Type 8) — per-tool rolling outcome statistics for
+  adaptive tool selection. One record per `toolName`; entity name is
+  `tool-affordance-${toolName}`. `recordOutcome(toolName, {outcome,
+  errorMessage?, durationMs?})` creates on first call, appends to a
+  rolling window (default 100; oldest dropped), recomputes
+  `successRate`, refreshes `commonFailureModes` (top-N by frequency),
+  updates `avgDurationMs`. `rollingStats(toolName)` returns the flat
+  `{success_rate, total_calls, common_failure_modes, avg_duration_ms}`
+  shape. `suggestTool(taskHint, {limit?, minScore?})` substring-matches
+  against tool names and ranks by `successRate × recencyFactor`
+  (recency decays linearly from 1.0 at ≤1 day to 0.1 at ≥30 days).
+  `get(toolName)` sync via name index; `list()` enumerates; `remove()`
+  drops. OCC-protected mutations; `VersionConflictError` re-thrown to
+  the caller (no auto-retry — producers like the upcoming
+  `ToolCallObserver` decide on retry policy). Exposed via
+  `ctx.toolAffordanceManager` lazy getter. New types:
+  `ToolAffordanceRecord`, `ToolAffordanceEntity`, `ToolAffordanceId`,
+  `ToolCallOutcome`, `ToolAffordanceManagerConfig`, `RecordOutcomeInput`,
+  `ToolAffordanceStats`, `SuggestToolOptions`, `ToolSuggestion`;
+  `isToolAffordanceMemory` type guard. Phase Tool B (`ToolCallObserver`
+  producer pipeline) follows.
+- **`RateLimiter`** (`src/adapters/RateLimiter.ts`) — in-memory
+  token-bucket rate limiter for REST handlers. `check(key)` consumes a
+  token and returns `{ allowed, remaining, resetAt? }`. Bucket creation
+  is lazy on first check; `prune(maxAgeMs)` drops stale buckets.
+  Single-process; multi-host deployments need a shared backend (deferred).
+- **`paginate` + `parsePaginationParams`** (`src/adapters/pagination.ts`) —
+  composable pagination helpers. `parsePaginationParams(query, {maxLimit?,
+  defaultLimit?})` falls back to defaults on garbage input; `paginate(items,
+  params)` returns `{ page, total, nextCursor? }`. Default limit 50,
+  max 200. Wired into `RestRouter.withDefaults` for `/entities` and
+  `/search` — both now respect `?limit=&offset=` and surface
+  `total` + `nextCursor` in responses.
+- **`SpellChecker`** (`src/search/SpellChecker.ts`) — spell-correction layer
+  over the existing `NGramIndex`. Two-stage: bigram Jaccard pre-filter
+  (default `ngramSize: 2` — trigrams miss short transpositions like
+  "alcie" → "alice") + Levenshtein re-rank for final ordering.
+  `suggest(query, {limit?, minScore?, maxDistance?})` returns
+  `Array<{correction, score, distance}>` sorted by score desc, distance
+  asc. Vocabulary auto-built from entity names + tag values
+  (configurable). Lazy on first `suggest()`; explicit `rebuild()` after
+  bulk entity churn. Exposed via `ctx.spellChecker` lazy getter.
+- **`ContextWindowManager.wakeUp` project-context layer** (Phase PC B) —
+  `WakeUpOptions` gains `maxProjectContextTokens?: number` (default 300);
+  `WakeUpResult` gains `projectContext: string` (empty when no
+  `projectId` is supplied or no record exists). When `projectId` is set,
+  `wakeUp` dynamic-imports `ProjectContextManager` (mirrors the L0 /
+  L1.5 dynamic-import pattern), calls `forContext(projectId, {budgetChars})`,
+  and includes the rendered prose in `totalTokens`. Consumers
+  concatenate `projectContext` ABOVE `l0` for system-prompt assembly —
+  the result type is flat. **Additive** (new field on `WakeUpResult`,
+  not breaking).
+- **`ProjectContextManager` + `'project_context'` memory type** (Phase 3
+  Project Context, Phase PC A) — structured project-knowledge memory.
+  One record per `projectId` (uniqueness enforced; entity name is
+  `project-context-${projectId}`). Schema: `facts[]` / `conventions[]` /
+  `commands[]` (name+command+purpose) / `glossary[]` (term+definition).
+  `upsert(projectId, partial)` merges with append+dedup on arrays and
+  overwrite on scalars; mutations OCC-protected via
+  `EntityManager.updateEntity({expectedVersion})`. Typed appenders:
+  `appendFact` / `appendConvention` / `appendCommand` /
+  `appendGlossaryTerm`. Removers: `removeFact` / `removeConvention` /
+  `removeCommand` (by name) / `removeGlossaryTerm` (by term). `clear()`
+  wipes the four arrays but keeps the entity. `get(projectId)` is sync.
+  `forContext(projectId, {budgetChars?})` formats the record as a prose
+  summary for the Phase PC B `ContextWindowManager.wakeUp` L0 layer.
+  Exposed via `ctx.projectContextManager` lazy getter. New public types:
+  `ProjectContextRecord`, `ProjectContextEntity`,
+  `ProjectContextCommand`, `ProjectContextGlossaryTerm`,
+  `ProjectContextUpsertInput`, `ProjectContextManagerConfig`,
+  `ForContextOptions`; new type guard `isProjectContextMemory`. Phase
+  PC B (wakeUp integration) and Phase PC C (CLI + docs close) follow.
+- **ADR markdown dual-write on `DecisionManager`** (Phase Dec B):
+  - `exportAsAdrMarkdown(id)` — synchronous; renders a stored decision
+    as ADR-format markdown (`# title`, `## Status`, `## Context`,
+    `## Decision`, `## Consequences` bullet list, `## Alternatives`
+    bullet list, optional `Supersedes:` link). Throws when the
+    decision is not found.
+  - `DecisionManager.parseAdrMarkdown(text)` — static; parses a
+    hand-written or previously-exported ADR into a `DecisionInput`.
+    Returns `null` when required `## Context` or `## Decision` sections
+    are missing or empty. Status / supersedes in the markdown are
+    informational only — imports flow through `propose()` and start as
+    `'proposed'`. Bidirectional bridge between existing `docs/adrs/`
+    markdown and the runtime store.
+- **`DecisionManager` + `'decision'` memory type** (Phase 3 Decision
+  Rationale, Phase Dec A) — runtime-queryable ADR-equivalent memory.
+  `propose(input)` creates a `'proposed'` decision; lifecycle:
+  proposed → accepted | rejected; accepted → superseded. All lifecycle
+  mutations (`accept` / `reject` / `supersede`) route through
+  `EntityManager.updateEntity({expectedVersion})` and return discriminated
+  result types (`AcceptDecisionResult` / `RejectDecisionResult` /
+  `SupersedeDecisionResult`) with `'conflict'` / `'illegal-transition'`
+  / `'not-found'` / `'vanished-mid-update'` arms — matching the #55
+  pattern across the agent-memory track. `findByContext(query)`
+  substring-searches across `context` / `decision` / `consequences`.
+  `getChain(id)` walks the `supersedes` link backward (cycle-protected)
+  to the original proposal. `list({status?, sourceSessionId?,
+  sourceProjectId?, limit?})` supports filtered enumeration. Exposed via
+  `ctx.decisionManager` lazy getter. Phase Dec B (ADR markdown
+  dual-write) and Phase Dec C (CLI + docs close) follow. New public
+  types: `DecisionRecord`, `DecisionEntity`, `DecisionId`,
+  `DecisionLifecycle`, `DecisionStatus`, `DecisionInput`,
+  `DecisionEntityOptions`; new type guard `isDecisionMemory`.
+- **Exclusion wiring on the two hot write paths** (Phase Excl B):
+  - `MemoryEngine.addTurn` consults `exclusionManager.check(content)` before
+    duplicate detection. When a rule matches, returns
+    `{ blocked: true, blockedByRuleId, blockedReason?, duplicateDetected: false,
+    importanceScore: 0 }` and emits `memoryEngine:writeBlocked`. No entity
+    is created. `AddTurnResult.entity` is now `AgentEntity | undefined`
+    (narrow on `!result.blocked`).
+  - `WorkingMemoryManager.createWorkingMemory` consults the same check
+    before the entropy gate; throws `MemoryWriteBlockedError` (new export
+    from `src/utils/errors.ts`, lightweight pattern matching
+    `LowEntropyContentError`) when a rule matches.
+  - `MemoryEngineConfig` and `WorkingMemoryConfig` gain an optional
+    `exclusionManager` field. `ManagerContext.memoryEngine` auto-wires
+    `this.exclusionManager`; direct-construct `MemoryEngine` to opt out.
+    `WorkingMemoryManager` consumers opt in via
+    `agentMemory({ workingMemory: { exclusionManager } })`.
+- **`ExclusionManager` + `'exclusion'` memory type** (Phase 3 `do_not_remember`,
+  Phase Excl A) — user-supplied content-pattern exclusion rules.
+  `add(input)` validates and (when `scope` is `'past-only'` or `'both'`)
+  hard-deletes existing entities whose observations contain the
+  pattern, returning the rule with `deletedCount` populated.
+  `check(content, entityType?)` returns
+  `{ blocked, ruleId?, reason? }` against active forward-blocking
+  rules. `findMatchingMemories(input)` is a dry-run preview.
+  `remove(id)` drops the rule but does NOT restore previously deleted
+  memories (the contract is "user said forget"). Distinct from
+  `PiiRedactor` (structural redaction) — this is free-form content
+  filtering. **v1 ships `substring` matching only**; `regex` is
+  deferred (ReDoS surface needs careful design). Exposed via
+  `ctx.exclusionManager` lazy getter. Phase Excl B will wire
+  `check()` into `MemoryEngine.addTurn` and `WorkingMemoryManager.add`.
+  New public types: `ExclusionRule`, `ExclusionEntity`,
+  `ExclusionMode`, `ExclusionScope`, `AddExclusionRuleInput`,
+  `ExclusionCheckResult`; new type guard `isExclusionMemory`.
+- **`ObservationDedupReportStage`** (Phase B) — diagnostic
+  `PipelineStage` that calls `ObservationDedupManager.findDuplicateObservations`
+  (and optionally `findJaccardDuplicates` when `includeJaccard: true`),
+  emitting one `[info]`-prefixed entry per duplicate group on
+  `StageResult.errors`. Mirrors `ReflectionStage`'s diagnostic convention
+  — never mutates, `transformed` always 0. Not auto-registered on the
+  default `ConsolidationPipeline`; consumers `registerStage()` explicitly
+  when they want periodic reporting.
+- **`ObservationDedupManager`** (Phase A) — read-only cross-entity
+  duplicate-observation finder. Complementary to `MemoryEngine` (which
+  is turn-/session-scoped, pre-write) and `CompressionManager.findDuplicates`
+  (which groups whole similar entities). Surfaces observation *strings*
+  that appear verbatim or near-verbatim across distinct entities.
+  `findDuplicateObservations(filter?)` runs the SHA-256 exact tier;
+  `findJaccardDuplicates(filter?)` runs the token-Jaccard tier
+  (configurable `jaccardThreshold`, default 0.85). Filter supports
+  `entityType` / `projectId` / `sessionId` scoping plus `minOccurrences`
+  (default 2) and `maxGroups` (default 100) circuit-breakers. New public
+  types: `DuplicateObservationOccurrence`, `DuplicateObservationGroup`,
+  `ObservationDedupFilter`, `ObservationDedupManagerConfig`. Exposed via
+  `ctx.observationDedupManager` lazy getter. Report-only — no mutations;
+  merge/strip actions are deferred follow-ups.
+- **`'heuristic'` memory type** (Phase 3B.8a) — added to `MEMORY_TYPES`
+  with companion `HeuristicEntity`, `HeuristicId` (branded), `Heuristic`
+  record (promoted from `HeuristicManager.ts` to `src/types/agent-memory.ts`),
+  and `isHeuristicMemory` type guard. Heuristics now persist across
+  process restarts.
+- **`ctx.heuristicManager`** lazy getter on `ManagerContext`, wired with
+  `(storage, entityManager)`. Closes the "not wired into ManagerContext"
+  half of 3B.8.
+- **`HeuristicExtractionStage`** (Phase 3B.8b) — pluggable `PipelineStage`
+  that crystallises resolved `FailureRecord`s (with `resolvedReason` +
+  `alternative_taken`) and qualifying `ReflectionRecord`s (with
+  `experienceType` set and `generalization_confidence >= minConfidence`)
+  into `HeuristicEntity` records. One heuristic per reflection
+  `keyInsight`; content-hash dedup (`h_${sha256(condition|action)}`)
+  makes repeat runs idempotent. Configurable `minConfidence` /
+  `maxPerRun` / `failureConfidence` / `reflectionConfidenceCap`.
+  `runOnResolution(failureId)` helper mirrors
+  `ReflectionStage.runOnSessionEnd` for explicit single-failure passes.
+  Not auto-registered on `ConsolidationPipeline` — construct and
+  `registerStage()` explicitly (or call `runOnResolution` from a
+  `markResolved` hook). Docs close (3B.8c, pending #70) follows.
+- **`HeuristicManager.add` accepts an optional `id`** for content-addressed
+  idempotency: if supplied and an entity with that id already exists,
+  `add` returns the existing id without writing. Caller-managed
+  `(condition, action)`-based ids — see `HeuristicExtractionStage` for
+  the canonical sha256 pattern.
+- **`ReflectionStageConfig.experienceExtractor`** (optional). When supplied,
+  `ReflectionStage` builds a `TrajectoryCluster` from the qualifying
+  candidates and uses `ExperienceExtractor.synthesizeExperience(cluster).type`
+  as the new reflection's `experienceType`. Omitting it preserves the prior
+  behavior (`experienceType` left undefined). Closes Sprint 8 follow-up #53.
+- **`CollaborativeSynthesis.ConflictResolutionPolicy`** gains a
+  `{ strategy: 'trust_level' }` variant. `resolveConflicts` now sorts
+  candidates by categorical `TrustLevel` (via `inferTrustLevel(entity.source)`
+  + `compareTrustLevel`) descending, with `lastModified` as recency tiebreak —
+  mirroring `ConflictResolver.resolveTrustLevel`. Closes Sprint 6 follow-up #51.
+
+## [2.0.0] - 2026-05-14
+
+Major release. Bundles the Phase 2 memory-types expansion (Sprints 4–8 —
+all additive) and a seven-theme function/API-call consistency &
+efficiency pass driven by an RLM audit. Four of the seven audit themes
+carry **breaking changes**; see the Migration guide below.
+
+### Migration from 1.x
+
+All breaking changes are small, mechanical call-site updates — full
+detail in each theme's entry below.
+
+- **`async` removed from 3 methods** (Theme 3). `AccessTracker.getAccessStats`
+  now returns `AccessStats` (was `Promise<AccessStats>`), `AccessTracker.flush`
+  returns `void`, `ConsolidationPipeline.isPromotionEligible` returns
+  `boolean`. → Drop `await` from calls; rewrite any `.then()`/`.catch()`/
+  `.resolves` on their results as synchronous. (`await` on a non-Promise is
+  harmless, so plain `await`-ed call sites keep working.)
+- **Absent-value sentinel is now `undefined`, not `null`** (Theme 5), on
+  `AgentMemoryManager.copyMemory`/`mergeCrossAgent`,
+  `MultiAgentMemoryManager.transferMemory`/`copyMemory`/`mergeCrossAgent`,
+  `ProcedureStore.load`, `OptimizedInvertedIndex.getPostingList`,
+  `TFIDFIndexManager.loadIndex`/`getIndex`,
+  `TemporalQueryParser.parseTemporalExpression`. → Replace `=== null` /
+  `!== null` checks on their results with `=== undefined` / `!== undefined`
+  (or loose `== null` / `!= null`, which catch both). Truthy checks are
+  unaffected.
+- **`listRefs` filter unwrapped** (Theme 6) on `RefIndex` and
+  `EntityManager`. → `listRefs({ entityName: 'X' })` becomes
+  `listRefs('X')`; `listRefs()` with no argument is unchanged.
+- **`BM25Search.remove()` removed** (Theme 7). → Use `removeDocument()` —
+  identical signature and behaviour.
+
+Non-breaking-but-notable: a new `Result<T, E>` type (`src/types/result.ts`)
+and a documented error-handling policy (`CONTRIBUTING.md`) — see Theme 1.
+
+### Removed (API audit Theme 7: naming-verb consistency) — **BREAKING**
+
+Theme 7 was the most opinion-laden audit finding, and verification bore
+that out — 7 of its 9 claims are defensible **style judgment calls**, not
+defects (the codebase is internally consistent on un-prefixed accessors
+like `stats()`/`size()`/`health()`, on algorithm acronyms `bfs`/`dfs`,
+and on fluent-builder prepositions), and 1 is a **false positive**:
+`SQLiteBackend`'s `get_weighted` / `delete_session` / `list_sessions`
+`snake_case` is *interface-mandated* and explicitly documented in
+`MemoryBackend.ts` as a deliberate verbatim match to the Context Engine
+PRD spec (MEM-04) — renaming would break that alignment.
+
+One genuine fix:
+
+- **`BM25Search.remove()` removed** — it was an undocumented legacy alias;
+  `removeDocument()` (which had merely delegated to it) is the preferred
+  name and now carries the implementation directly. **Migration:**
+  replace `bm25.remove(name)` with `bm25.removeDocument(name)` — identical
+  signature and behaviour.
+
+Verified: typecheck + lint exit 0; `BM25Search` suite 28/28.
+
+### Changed (API audit Theme 6: parameter-style consistency) — **BREAKING**
+
+Verification of the audit's 10 flagged "parameter-style inconsistency"
+classes against the audit's *own* rule (positional for ≤3 required
+params; options object for 4+ params or any optional param) found **8 of
+10 were false positives** — methods with optional params correctly use a
+trailing options object, and the "mixed within a class" the audit
+flagged is each method correctly matching its own shape. (`SearchCache`
+was misread entirely — its `Record<string, unknown>` parameter is a
+schema-less *cache key*, not an options bag.) `PartialIndexAdvisor.record`
+was deliberately left alone — `FilterObservation` is a cohesive *named
+domain type*, not an options bag; unwrapping it would destroy a
+meaningful abstraction.
+
+One genuine fix — a single optional field needlessly wrapped in an object,
+the lone outlier in two otherwise-positional classes:
+
+- **`RefIndex.listRefs`** and **`EntityManager.listRefs`**: `listRefs(filter?: { entityName?: string })` → `listRefs(entityName?: string)`.
+
+**Migration:** `listRefs({ entityName: 'X' })` → `listRefs('X')`; `listRefs()` (no filter) is unchanged.
+
+Verified: typecheck + lint exit 0; RefIndex + EntityManager + ArtifactManager suites 163/163.
+
+### Changed (API audit Theme 5: absent-value sentinel standardized to `undefined`) — **BREAKING**
+
+Applies the Theme 1 policy: "absent value" is signalled with `T | undefined`,
+never `T | null`. Six methods (verified — the audit's seventh claim,
+`MemoryMonitor.getComponentUsage`, was already `T | undefined`) converted,
+with every call site updated:
+
+- `AgentMemoryManager.copyMemory` / `mergeCrossAgent`
+- `MultiAgentMemoryManager.transferMemory` / `copyMemory` / `mergeCrossAgent`
+- `ProcedureStore.load` (+ `ProcedureManager.getProcedure`, which propagated the type)
+- `OptimizedInvertedIndex.getPostingList`
+- `TFIDFIndexManager.loadIndex` / `getIndex` — the private `index` field and `isInitialized()` (`this.index !== null`) were converted in lockstep so the guard didn't silently break; `RankedSearch.ensureIndexLoaded` propagated
+- `TemporalQueryParser.parseTemporalExpression` (+ its private `parseCustomPattern` / `parseWithChrono` helpers)
+
+**Migration:** these methods now return `undefined` instead of `null` for the
+absent case. Replace `=== null` / `!== null` checks on their results with
+`=== undefined` / `!== undefined` (or loose `== null` / `!= null`, which
+catch both). Truthy checks (`if (result)`, `if (!result)`) are unaffected.
+
+Two related findings were investigated and left for follow-up tasks (both
+judgment-heavy, not mechanical): `MultiAgentMemoryManager` mixes `throw`
+(`registerAgent`, `unregisterAgent`) with absent-return (`transferMemory`,
+`copyMemory`, ...) for arguably the same failure category; and
+`BatchTransaction`'s fluent `return this` methods share verb names with
+`TransactionManager`'s `void`-returning counterparts. Recorded on #64.
+
+Verified: typecheck + lint exit 0; agent + search regression 3352/3352.
+
+### Added (API audit Theme 1: error-signalling contract)
+
+The RLM audit's #1 finding was that four error-signalling styles —
+`throw` / `return null` / discriminated union / **silent** — coexist with
+no documented rule, mixed even within single classes. Theme 1 establishes
+the **contract**; the call-site migration is follow-up work (the
+`null` → `undefined` mechanical pass is Theme 5 / #64).
+
+- **`Result<T, E>`** (`src/types/result.ts`) — a discriminated-union return
+  type for *expected* domain failures, exported from the types barrel.
+  Discriminated on an `ok` boolean so callers narrow with a plain
+  `if (result.ok)`. Ships with `ok()` / `err()` constructors, `isOk()` /
+  `isErr()` type guards, and `unwrap()` / `unwrapOr()` / `mapOk()` helpers.
+  11 unit tests.
+- **`CONTRIBUTING.md` > Error Handling** — expanded from three bullets to
+  the full policy: (1) `throw` (custom `utils/errors.ts` classes) for
+  programmer errors; (2) `return Result<T, E>` for expected domain
+  failures the caller should branch on — existing discriminated unions
+  like `MarkResolvedResult` / `CancelResult` follow the same spirit;
+  (3) never swallow silently — re-emit on an error channel, or mark a
+  deliberate discard with an `eslint-disable` + reason; (4) the
+  absent-value sentinel is `T | undefined`, never `T | null`.
+
+This is additive — no existing signatures changed. Subsequent themes and
+follow-up tasks migrate call sites onto the contract.
+
+### Changed (API audit Theme 3: needless async) — **BREAKING**
+
+Removed the `async` keyword from six methods that had no `await` in their
+bodies and weren't bound by any async interface — they were gratuitously
+wrapping synchronous work in a Promise + microtask.
+
+- **`AccessTracker.getAccessStats(name)`** — now returns `AccessStats` (was `Promise<AccessStats>`). **Breaking.**
+- **`AccessTracker.flush()`** — now returns `void` (was `Promise<void>`). **Breaking.**
+- **`ConsolidationPipeline.isPromotionEligible(...)`** — now returns `boolean` (was `Promise<boolean>`). **Breaking.**
+- `PlanManager.loadPlanMutable` / `loadPlanReadonly` — private; now sync (`structuredClone` + an O(1) lookup were already synchronous). Internal call sites updated. Non-breaking.
+- `ParallelSearchExecutor.executeSymbolicLayer` — private; symbolic search is synchronous. `withCancel`'s `work` param widened to `() => R | Promise<R>` (`Promise.resolve(work())` normalises both) so it still accepts the async layers. Non-breaking.
+
+**Migration:** drop `await` from calls to `getAccessStats` / `flush` / `isPromotionEligible` — `await` on a non-Promise is harmless, so existing `await`-ed call sites keep working, but `.then()`/`.catch()`/`.resolves` on their results must be rewritten as synchronous.
+
+The audit also recommended enabling `@typescript-eslint/require-await` project-wide — **this was assessed and rejected.** Verification found ~31 of the ~45-65 methods it would flag are *interface-conformance* async (`InMemoryColumnStore`/`InMemoryDatabaseAdapter`/`InMemoryTier`/`LRUHotTier`/`InMemoryVectorAdapter`/`BufferMmapBackend` etc. — in-memory implementations of `IColumnStore`/`IDatabaseAdapter`/`IIndexTier`/`IVectorDBAdapter`/`IMmapBackend` whose sibling implementations do real I/O). Those are `async`-with-no-`await` *correctly*; a global rule would force ~31 boilerplate `eslint-disable` comments onto correct-by-design code — noise, not consistency. Two further audit items were also dropped: `EpisodicMemoryManager.iterateForward`/`iterateBackward` (false positive — they `await getTimeline`), and four "returns-a-promise-without-await" methods (`ReflectionManager.getAll`, `SemanticSearch.isAvailable`, `BatchProcessor.processWithRetry`, `TFIDFIndexManager.updateIndex` — functionally fine; removing `async` there carries a subtle sync-throw-vs-reject behaviour change not worth a microtask).
+
+Verified: typecheck + lint exit 0; agent + search + ManagerContext regression 3469/3469.
+
+### Changed (performance — API audit Theme 2: redundant loadGraph() / O(n) scans)
+
+Eleven behavior-preserving fixes from the RLM function/API-call audit
+(2026-05-14, Theme 2). All keep output identical.
+
+- **`ContextWindowManager.retrieveWithBudgetAllocation`** — loads the graph once and threads the snapshot into `retrieveWorkingMemory` / `retrieveEpisodicRecent` / `retrieveSemanticRelevant` (optional `graph?: ReadonlyKnowledgeGraph` param, default-load fallback). 3 loads → 1.
+- **`MemoryEngine.checkDuplicate`** — same pattern: one load threaded into the three tier checks. Up to 3 → 1.
+- **`EpisodicMemoryManager.getEpisodeCount`** — implemented directly as load → filter → count, dropping the O(n log n) sort it inherited from `getTimeline` (the count never used the ordering).
+- **`ConsolidationPipeline.findDuplicates`** — added a per-entity observation-token fingerprint; pairs that provably score 0 (different `entityType` or no shared token) are skipped before the expensive similarity comparison. Guarded with `threshold > 0`; pair iteration order — and the stable sort — unchanged.
+- **`EntityManager.getVersionChain`** — replaced a `getEntity()` call (loadGraph + O(n) find) with O(1) `getEntityByName()`. 2 loads → 1.
+- **`HierarchyManager.getAncestors` / `getDescendants` / `wouldCreateCycle`** — build a `Map<name,Entity>` / `Map<parentId,Entity[]>` once, then O(1) lookups in the traversal loops instead of `.find` / `.filter` per level (O(depth×n) → O(depth)).
+- **`GraphTraversal.calculatePageRank`** — builds an `inLinks` Map once before the iteration loop instead of calling `getRelationsTo()` per entity per iteration.
+- **`TagManager`** / **`SavedSearchManager`** — added lazy in-memory caches (plus an O(1) name index for saved searches) so reads no longer re-deserialise the JSONL sidecar on every call. The `save*` methods invalidate the cache on a write failure (e.g. EPERM under a Dropbox lock) so cache and disk can't durably diverge; `list*` methods return a shallow copy so callers can't corrupt the cached array.
+- **`SemanticSearch`** — `search` / `findSimilar` share a `buildEntityMap` helper instead of two identical inline build loops.
+- **`AnalyticsManager.getGraphStats`** — accepts an optional `preloadedGraph`; the CLI `maintenance stats` action now loads the graph once and passes it, merging two iteration passes into one.
+
+Audit claims were verified before fixing — three rejected: **#5** (`ProspectiveMemoryManager` schedule loads — overstated, at most one load and only on the `sessionId` path), **#8** (`SQLiteStorage` relation queries — `RelationIndex` already gives O(1) for the JSONL backend), and **#2** (`DreamEngine.runDreamCycle` "5 redundant loads") — the latter rejected *after* code review caught that the per-phase reloads are load-*after-mutate*: phases mutate the graph, so a single shared snapshot would let a later phase resurrect data an earlier phase pruned. The DreamEngine change was reverted.
+
+Reviewed: code-reviewer caught the DreamEngine regression (reverted) and a cache-vs-disk divergence risk in the two new caches (fixed via catch-and-invalidate). Code-simplifier — extracted a `HierarchyManager.indexByName` helper, trimmed a comment. Verified: typecheck + lint exit 0; agent + core + features + search regression 5007/5009 (the two failures are the pre-existing Windows temp-dir parallel-contention flakes — `columns-review-fixes` + `segments-review-fixes` — both pass in isolation, neither touches a Theme-2 file).
+
+### Changed (performance — API audit Theme 4: batch-vs-loop)
+
+Eight behavior-preserving performance fixes from the RLM function/API-call
+audit (2026-05-14, Theme 4). All keep output identical — only faster.
+
+- **`OptimizedInvertedIndex`** — added a `docToTerms` reverse index; `addDocument` / `removeDocument` / `clear` now touch only a document's own posting lists instead of scanning every list (O(V·n) → O(terms·n) per mutation).
+- **`searchAlgorithms.calculateTFIDF`** — tokenizes each document once and reuses `calculateIDFFromTokenSets` instead of re-tokenizing every document on every term lookup.
+- **`indexes.getEntitiesWithAllWords`** — multi-word intersection now sorts posting sets by size and iterates the smallest, instead of spreading a `Set` to an array each iteration.
+- **`QueryCostEstimator.recommendMethod`** — hoists `getRecommendedMethodOnly` out of the per-method loop (was O(N²) — each `estimateMethod` recomputed it; now O(N)).
+- **`SearchCache`** — dropped the `accessOrder: string[]` array and its O(n) `removeFromAccessOrder`; LRU order now rides on the backing `Map`'s insertion order (get = delete+re-set, evict = first key) — all LRU ops O(1).
+- **`Node2Vec.topKSimilar`** — replaced the full O(V log V) sort with a bounded size-k min-heap (O(V log k)); tie-break (score desc, then iteration index) reproduces the previous stable-sort-then-slice exactly.
+- **`EntityValidator.validateAll`** — parallelized with `Promise.all` instead of a sequential `await` loop (`validate()` has no shared mutable state; result order preserved).
+- **`RefIndex.purgeEntities(names[])`** — new batch method (single mutex acquire + single sidecar rewrite); `EntityManager.deleteEntities` calls it once instead of looping `purgeEntity` per name. `purgeEntity` (single) retained for existing callers.
+
+Audit claims #1 (`TFIDFIndexManager` IDF recalc), #5 (`SemanticSearch.indexAll` fallback) and #7 (`QueryPlanCache` eviction loop) were **verified and rejected**: `recalculateAllIDF` on add/remove is *correct* because `IDF = log(N/df)` depends on the total document count N (the suggested "fix" would have introduced a stale-IDF bug); the `indexAll` fallback is intentional post-batch-failure degradation; `evictIfNeeded` early-returns O(1) when under capacity.
+
+Reviewed: code-reviewer — "nothing blocks commit," all 8 confirmed behavior-preserving (confidence 80-90). Code-simplifier — comment-density trims applied. Verified: typecheck + lint exit 0; search + core + utils regression 3981/3981 (two pre-existing Windows temp-dir parallel-contention flakes excluded — `columns-review-fixes` and `segments-review-fixes`, both pass in isolation, neither touches a Theme-4 file).
+
+### Fixed (SchemaValidator.validateAll silently dropped duplicate-named entities)
+
+- **`SchemaValidator.validateAll`** keyed its `Map<string, EntityValidationResult>` by `entity.name`, so two entities sharing a name silently overwrote each other — a validator hiding the exact problem it exists to catch. It now tracks name counts and pushes an explicit `unique-name` validation error (`isValid: false`) onto every kept result whose name is duplicated. Behavior change: on a duplicate name the *first* occurrence's schema result is kept (was: last). No production callers — only the test surface used `validateAll` — so this is a pure correctness improvement, not an API break.
+- Surfaced by the RLM function/API-call consistency audit (2026-05-14, audit Theme 4). The audit also flagged `SQLiteVectorStore.add/remove/clear` and `WorkerPoolManager.resetInstance` as silent-failure candidates; both were **verified as false positives** — `better-sqlite3`'s embedding methods are synchronous `: void` (no floating promise), and `resetInstance` is a test-only helper whose `.catch()` swallow is deliberate and commented. The remaining audit themes are tracked as tasks for later prioritization.
+
+### Added (lint: no-unused-updateentity-return rule)
+
+- **New project-local ESLint rule `memoryjs/no-unused-updateentity-return`** (`eslint-rules/no-unused-updateentity-return.mjs`, wired as `error` in `eslint.config.mjs`). Flags any `storage.updateEntity(...)` call whose `Promise<boolean>` return is discarded — that boolean signals whether the entity still existed (`false` = vanished mid-update). Ignoring it was the recurring "silent-failure" pattern caught by review agents across Phase 2 Sprints 2/4/5/8. Name-based: matches receivers resolving to `storage` / `this.storage` / `*.storage`; deliberately does not flag `entityManager.updateEntity` (returns an `Entity`, different contract). 15 `RuleTester` cases in `tests/unit/eslint/no-unused-updateentity-return.test.ts`.
+- **Triaged all 31 flagged call sites** — every discard is now a conscious decision:
+  - **4 real fixes.** `ConsolidationPipeline.mergeMemories` now captures the survivor-write boolean and **throws before the destructive delete-others step** if it failed (was: silent — would delete the merged entities with no survivor to hold their data). `ProspectiveMemoryManager.cancel` returns `'not-found'` when the write races a delete (`CancelResult` already modelled it); `expireOverdue` and `applyTagRelated` gate their count / returned-names list on the boolean so they only report transitions that actually persisted.
+  - **27 explicit waivers** (`// eslint-disable-next-line ... -- <reason>`), in three reason categories: background dream-sweep writes (best-effort over a graph snapshot, reconciled next cycle); best-effort metadata / telemetry writes on void methods; and ~14 sites where the entity is existence-checked at method entry and closing the microtask-gap TOCTOU race properly needs a storage-level atomic check-and-set — those waivers name **task #55** (`storage.updateEntityIf`) as the systemic fix, giving #55 a precise grep target. Scattering 17 inconsistent local `throw`s was rejected in favour of the one primitive.
+- **Reviewed**: code-reviewer — ship-ready, one cosmetic finding (stale `mergeEntities` → `mergeMemories` in a throw message) applied; confirmed the `mergeMemories` throw is safe (the sole internal caller wraps it in try/catch). Code-simplifier — "nothing meaningful to change."
+- **Verification**: `npm run lint` exit 0, `npm run typecheck` exit 0, `RuleTester` 15/15, broad regression 3354/3354 (one transient Windows temp-dir flake in an untouched columnar-store test, passes 12/12 in isolation).
+
+### Fixed (pre-existing lint debt)
+
+- **`src/core/SQLiteStorage.ts`** — four `console.warn` calls in `rowToEntity` / `rowToRelation` (malformed-JSON salvage paths) now route through the project `logger` like the rest of the file. They predated the `no-console` rule and had gone unnoticed because the sprint work gated on `typecheck` + `vitest` rather than `npm run lint`.
+- **`src/core/GraphStorage.ts`** — the JSONL line parser's `let item: any` is replaced with a `JsonlLine` discriminated union (`{ type: 'entity' } & Entity | { type: 'relation' } & Relation`); narrowing on `item.type` also removes the two downstream `as Entity` / `as Relation` casts. Resolves the lone `@typescript-eslint/no-explicit-any` violation.
+- These were surfaced (not caused) while wiring the new `memoryjs/no-unused-updateentity-return` rule — `npm run lint` exits 0 again.
+
+### Changed (MemoryType literal deduplication)
+
+- **`MEMORY_TYPES` const tuple** is now the single source of truth for the memory-type slot set in `src/types/agent-memory.ts`. `MemoryType` is derived via `(typeof MEMORY_TYPES)[number]` instead of a hand-written string union, and `isAgentEntity` checks membership against `MEMORY_TYPES` instead of a duplicated inline literal array. Previously the union and the guard's allowlist were maintained separately and drifted twice (when `'plan'` and `'reflection'` were added). Exported from the types barrel as a runtime value — convention-matches the existing `ENTITY_STATUS_TRANSITIONS` const-tuple.
+- **Drift-guard test**: the `isAgentEntity` "all memory types" test now iterates `MEMORY_TYPES` rather than a hand-listed subset (it had gone stale — covered only 4 of 8 slots). New `MEMORY_TYPES` test pins the exact slot set.
+- **Reviewed**: code-reviewer — zero findings ≥70 confidence (union equivalence, `as readonly string[]` cast soundness, and public-export convention-fit all verified). Code-simplifier collapsed an over-specified 3-test block to 1 tight assertion (typecheck already covers the compile-time assignability the dropped tests restated at runtime).
+- **Verification**: `npm run typecheck` exit 0; 1989/1989 sibling regression across types + agent + ManagerContext suites (68 files); refactor's own test file 68/68. No behavior change.
+
+### Added (Reflection Log scheduled pass — Phase 2 Sprint 8)
+
+- **`MemoryType` union extended with `'reflection'`**: closes Phase 2 Sprint 8 of the memory-types expansion (see [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 2 / Type 10). Catalog Type 10 (Reflection Log) closure: existing pattern/trajectory/experience scaffolding (`PatternDetector`, `TrajectoryCompressor`, `ExperienceExtractor`) now has an explicit `ReflectionRecord` schema and a scheduled pass that produces them. **Additive** by design — reflections sit as a derived layer alongside their evidence entities; episodic observations remain queryable.
+- **New types** in `src/types/agent-memory.ts`:
+  - `ReflectionId = string & { readonly __reflectionId: unique symbol }` — branded; minted via `reflection-${Date.now()}-${shortRandom}`
+  - `ReflectionScope = 'session' | 'project' | 'global'` — retrieval-scope discriminator
+  - `ReflectionRecord` with `id` / `timestamp` / `scope` / `summary` / `keyInsights: string[]` / `evidence: string[]` (non-empty) / `generalization_confidence` ∈ `[0, 1]` / optional `experienceType` / `sourceSessionId` / `sourceProjectId` / `evidenceHash` (SHA-256 of `scope|sorted(evidence)` powering Tier-1 dedup) / `archived?` soft-delete state
+  - `ReflectionEntity` extending `AgentEntity`; `isReflectionMemory` type guard (also requires `Array.isArray(reflectionRecord.evidence)` per silent-failure review); `ReflectionMemoryEntity` alias
+- **`ReflectionManager`** in `src/agent/ReflectionManager.ts`:
+  - `create(input, options?)` — validates non-empty evidence + summary, range-checks `generalization_confidence`, computes content-hash and short-circuits to existing record on dedup hit
+  - `list(options?)` — filter by `scope` / `sourceSessionId` / `sourceProjectId` / `minConfidence` / `includeArchived` / `limit`
+  - `getAll()` — convenience wrapper (`includeArchived: true`)
+  - `getRelevantForSession(sessionId, options?)` — returns reflections matching `sourceSessionId === sessionId` OR overlapping `evidence ∩ sessionEntityNames`; confidence-sorted; `defaultRelevanceLimit` 10
+  - `archive(id)` — returns `ArchiveReflectionResult` (`'archived' | 'not-found' | 'already-archived' | 'vanished-mid-update'`); branches on `storage.updateEntity`'s `Promise<boolean>` per the recurring Sprint 2/4/5/6 silent-failure pattern
+  - `loadAllRecords` errors are wrapped with `ReflectionManager.loadAllRecords:` prefix so subsystem attribution survives a `storage.loadGraph` failure (per silent-failure review)
+- **`ReflectionStage`** appended to `src/agent/ConsolidationPipeline.ts`:
+  - Self-sufficient `PipelineStage` (mirrors `ProspectivePromotionStage`); scans storage directly, ignores the `entities` argument
+  - `process(_, _)` runs over all episodic + semantic entities; `runOnSessionEnd(sessionId)` scopes to one session and stamps `sourceSessionId` on the resulting reflection. Empty/whitespace `sessionId` throws per silent-failure review
+  - Pipeline: gather observations (max-per-run circuit breaker, default 500) → `PatternDetector.detectPatterns` → early-return on no patterns or `maxConfidence < minConfidence` (default 0.4), surfacing reason via `[info]`-prefixed entry in `StageResult.errors` so callers can distinguish "no candidates" from "candidates existed but didn't qualify" → `TrajectoryCompressor.distill` → `generalization_confidence = clamp(min(1 - compressionRatio, maxPatternConfidence), 0, 1)` (defensive clamp covers `compressionRatio` escape from `[0, 1]` per code-reviewer finding) → `ReflectionManager.create` (dedup at write layer means re-running the stage is idempotent)
+- **`ctx.reflectionManager`** lazy getter on `ManagerContext`. `ReflectionStage` is NOT auto-registered on the default pipeline (it needs an injected `TrajectoryCompressor` which itself needs a `ContextWindowManager`); construct it explicitly and either invoke `runOnSessionEnd(sessionId)` from session-end handlers or register it on a `ConsolidationPipeline` instance
+- **Aliased export** `ReflectionMemoryManager` at `src/agent/index.ts` to avoid public-surface collision with `src/search/ReflectionManager` (progressive query refinement — predates this module)
+- **29 new tests**: `tests/unit/agent/ReflectionManager.test.ts` (19 — `create` validation + dedup / `list` filters / `getRelevantForSession` overlap + minConfidence / `archive` discriminated returns / type-guard) + `tests/unit/agent/ReflectionStage.test.ts` (10 — name / empty-graph / below-threshold `[info]` skip / happy path / confidence-clamp / `runOnSessionEnd` scope + empty-sessionId guard / dedup-idempotency / `create`-throw error surfacing / zero-candidate-no-info-errors-emitted)
+- **Reviewed**: pre-implementation `feature-dev:code-architect` produced the integration blueprint with four ADR-level questions (supersession / confidence gate / scheduling trigger / dedup) — all user-locked to recommendations. Post-implementation: code-reviewer flagged 1 IMPORTANT (`compressionRatio` escape clamp — applied), 1 IMPORTANT (`validateNonEmpty` convention drift — applied), 1 NOTE (archive race matches `FailureManager` parity — deferred); silent-failure-hunter flagged 1 HIGH (`runOnSessionEnd('')` guard — applied), 1 MEDIUM (`[info]` skip reason — applied), 3 LOWs (`Array.isArray(evidence)` guard / `loadAllRecords` error wrap — applied; `create` dedup-hit signal — deferred as API design question). Code-simplifier flagged 8 micro-cleanups; 2 applied (typed `compression`, drop redundant Set), 6 deferred (would undo prior fixes, scope-creep on `MemoryType` literal extraction, or sibling-parity arguments)
+- **Verification**: 29/29 Sprint 8 + 1986/1986 across agent + types + ManagerContext suites; typecheck clean
+
+### Added (Trust Hierarchy formalization — Phase 2 Sprint 6, partial)
+
+- **`TrustLevel` discriminated union** on `MemorySource.trustLevel?:` — catalog Type 12 (Provenance) closure. Closes the type+backfill+ConflictResolver-strategy portion of Phase 2 Sprint 6 per scope cut; `CollaborativeSynthesis.resolveConflicts` ordering integration deferred to a follow-up sprint (it's a separate consumer surface and benefits from letting the type bake first). Catalog framing of trust as **categorical** (not scalar) lifts conflict resolution from `0..1` numeric compare to explicit ordering: "user-authored beats tool-verified regardless of recency" stops being a `>` against a magic constant.
+- **New types/functions** in `src/types/agent-memory.ts`:
+  - `TrustLevel = 'ground-truth' | 'verified' | 'inferred' | 'unverified'`
+  - `TRUST_LEVEL_ORDER: Record<TrustLevel, number>` — `@internal`-tagged so client code prefers `compareTrustLevel` over numeric escape-hatch comparisons (per type-design review)
+  - `compareTrustLevel(a, b)` — standard sort comparator (negative / 0 / positive)
+  - `DEFAULT_TRUST_THRESHOLDS` — exported const so deployments can override `told: 0.9` / `observed: 0.8` / `consolidated: 0.7` without forking (per type-design review on fenced-off thresholds)
+  - `inferTrustLevel(source)` — total function (`MemorySource | undefined → TrustLevel`); precedence: explicit `source.trustLevel` → NaN/non-finite reliability guard → method-based mapping → undefined source → `'unverified'`. The NaN guard is load-bearing: `NaN >= 0.9` silently evaluates `false`, which without the guard would coerce malformed `'told'` records to `'verified'` (actively misleading; caught by silent-failure-hunter)
+  - `MemorySource.trustLevel?:` field added; explicit value takes precedence over inference
+- **`'trust_level'` `ConflictStrategy`** added to the union; new private `ConflictResolver.resolveTrustLevel(memories)` resolves by highest categorical `TrustLevel`, with `lastModified → createdAt` recency tiebreak within tier. Empty-array guard throws `'resolveTrustLevel: empty memories array'` (defensive against future direct callers; safe under current `resolveConflict` since the caller guards length earlier)
+- **18 new tests**: `tests/unit/types/trust-level.test.ts` (14 — ordering / explicit-takes-precedence / per-method mapping / NaN+infinite+undefined-reliability defensive / undefined-source) + 4 new cases in `tests/unit/agent/ConflictResolver.test.ts` (highest-trust wins / explicit `source.trustLevel` overrides inferred / recency tiebreak at same tier / fallback to `'unverified'` when `source` missing)
+- **Reviewed**: type-design-analyzer flagged 1 MEDIUM (`DEFAULT_TRUST_THRESHOLDS` extraction — applied), 1 MEDIUM (`@internal` on `TRUST_LEVEL_ORDER` — applied), 1 LOW (`readonly` on `trustLevel?:` — deferred for consistency with sibling `MemorySource` fields); silent-failure-hunter flagged 1 HIGH (NaN guard — applied), 1 MEDIUM (`resolveTrustLevel` empty-array guard — applied), 1 MEDIUM (`undefined`-source warning — deferred: missing source is the **designed** total-function contract, not a bug; logging from `types/` would couple types to runtime), 1 LOW (epoch fallback log — deferred: matches existing `resolveMostRecent` convention). Code-simplifier flagged 5 micro-cleanups; 1 applied (import consolidation), 4 deferred (recompute-in-reduce, epoch sentinel, JSDoc tweaks — all below noise floor)
+- **Verification**: 31/31 Sprint 6 + 1957/1957 across agent + types + ManagerContext suites; typecheck clean
+
+### Added (Plan / Goal Stack — Phase 2 Sprint 5)
+
+- **`MemoryType` union extended with `'plan'`**: closes Phase 2 Sprint 5 of the memory-types expansion (see [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 6). Pairs structurally with prospective memory (intentions × goals × episodes is the full forward-time triplet) — prospective is single, append-only-until-fired intention-to-act; plan is mutable hierarchical goal *tree* with sub-tasks and acceptance criteria.
+- **New types** in `src/types/agent-memory.ts`:
+  - `PlanId` / `GoalNodeId` — branded string aliases; minted only via `randomUUID`-backed helpers in `PlanManager`. Prevents id-type confusion at compile time
+  - `GoalNodeLifecycle` — discriminated union (`{ status: 'pending' }` | `{ status: 'active'; activatedAt }` | `{ status: 'complete'; completedAt; completionNote? }` | `{ status: 'blocked'; blockedAt; blockedReason }`). Mirrors the `FailureLifecycle` / `ProspectiveLifecycle` shape so illegal states like `{ status: 'pending', activatedAt: '...' }` are unrepresentable
+  - `PlanLifecycle` — discriminated union (`active` / `blocked` / `complete` / `abandoned`) for the whole-plan state
+  - `GoalNode` — recursive tree node with `id` / `description` / `lifecycle` / `children: GoalNode[]` / optional `acceptanceCriteria`
+  - `GoalEvent` — `{ timestamp, goalId, fromStatus, toStatus, note? }`; one row per state transition for full history
+  - `GoalNodeTransition` — discriminated union `{ to: 'pending' | 'active' | 'complete'; note? | 'blocked'; reason }` powering the unified `transitionNode` API
+  - `PlanRecord` — id, `rootGoal: GoalNode`, `currentNodeId`, `lifecycle`, `createdAt` / `lastModified`, `history: GoalEvent[]`, optional `sessionId` / `agentId`
+  - `PlanEntity` extending `AgentEntity`; `isPlanMemory` type guard; `PlanMemoryEntity` alias
+- **`PlanManager`** in `src/agent/PlanManager.ts`:
+  - `createPlan(rootDescription, options?)` — wraps `storage.appendEntity` failures with the plan id so EPERM-style races are attributable (CLAUDE.md > Gotchas > Windows atomic writes); seeds history with `plan created` row
+  - `pushSubGoal(planId, parentNodeId, description, options?)` — appends a child under the named parent; validates non-empty `description` with received-type/value error context
+  - `transitionNode(planId, nodeId, transition)` — single state-machine entry point. `to: 'active'` also updates `plan.currentNodeId` so `getCurrentPath` always reflects the focus node. `to: 'blocked'` requires a non-empty `reason`
+  - `markPlanComplete(planId, note?)` / `abandonPlan(planId, reason?)` — return `MarkResolvedResult`; branch on `storage.updateEntity`'s `Promise<boolean>` return to surface `'vanished-mid-update'` separately from `'not-found'` / `'already-resolved'`. Mutators (`pushSubGoal` / `transitionNode`) throw on the same boolean since their existing contract is throw-on-not-found
+  - `findPlan` / `findNode` / `getCurrentPath` — `Readonly<>`-typed reads; clone-free (the `Readonly` cast is type-only, so no `structuredClone` on read paths)
+  - `getActivePlan(sessionId)` — most-recently-modified active plan per session; uses reverse-then-stable-sort to tiebreak when multiple plans share a `lastModified` millisecond (ECMA2019+ stable sort)
+  - `listPlans(options?)` — filter by `sessionId` / `agentId` / `status`
+  - `validatePlanInvariants` runs after every mutation: unique node ids, `currentNodeId ∈ tree`, no cycles. Validate-after-mutate is safe because mutations happen on a `structuredClone`d `PlanRecord` (via `loadPlanMutable`) — the clone is the rollback. Cycle-protected DFS in `findNodeInTree` / `findPathToNode` as defense against corrupted on-disk plans (validation runs *after* these are first called during a mutation)
+- **`ctx.plan`** lazy getter on `ManagerContext`; lifecycle attached to the same lazy-initialization pattern as the other agent memory managers
+- **36 new tests** in `tests/unit/agent/PlanManager.test.ts`: `createPlan` (6) / `pushSubGoal` (5) / `transitionNode` (8 incl. all four transitions + `to: 'active'` `currentNodeId` update + blocked-reason validation) / `markPlanComplete` (4 incl. all `MarkResolvedResult` branches) / `abandonPlan` (3) / read API (5) / `getActivePlan` (3 incl. tiebreak) / `listPlans` (2)
+- **Reviewed**: pre-implementation type-design review reshaped the flat-status draft into the discriminated `GoalNodeLifecycle` + `PlanLifecycle` pair; pre-implementation also produced the unified `transitionNode` (vs. four sibling methods) to avoid re-proving the same invariants four times. Post-implementation: silent-failure-hunter flagged 1 HIGH (`transitionNode` / `pushSubGoal` ignored `persistPlan` return — the recurring Sprint 2/4 pattern), 1 MEDIUM (validate-after-mutate order — defensible, documented), 1 LOW (`findNodeInTree` cycle protection); code-reviewer flagged 1 HIGH (`structuredClone` on read paths — runtime cost for a type-only assertion), 1 MEDIUM (`getActivePlan` reverse-then-sort needed an explanatory comment). All applied; code-simplifier flagged 7 cleanups, 3 applied (inline `persistPlan`, default-param visited sets, drop `foundCurrent` closure), 4 deferred (try/catch asymmetry reflects underlying `appendEntity`/`updateEntity` API split; ternary on `completionNote` matches sibling code; keep `runInvariantCheck` for the docstring)
+- **Verification**: 36/36 PlanManager + 197/197 sibling memory-type suites (FailureManager 29, ProspectiveMemoryManager 51, ManagerContext 117); typecheck clean
+
+### Added (Failure Memory — Phase 2 Sprint 4)
+
+- **`MemoryType` union extended with `'failure'`**: closes Phase 2 Sprint 4 of the memory-types expansion (see [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md) §4 Priority 1 / Type 9). The catalog frames failure memory as "the single biggest concrete win available to most agentic systems" because a structured pre-task lookup of "what failed when I tried similar work before" prevents the most common class of agentic regression.
+- **New types** in `src/types/agent-memory.ts`:
+  - `FailureLifecycle` — discriminated union (`{ status: 'open' }` | `{ status: 'resolved'; resolvedAt; resolvedReason? }`), mirrors the `ProspectiveLifecycle` pattern so illegal states like `{ status: 'open', resolvedAt: '...' }` are unrepresentable
+  - `FailureRecord` — structured failure with `context` / `attempted` / `failure_mode` / `root_cause` / `alternative_taken?` / `applicability_hint` (the retrieval key) / `lifecycle` / `sourceSessionId?`
+  - `FailureEntity` extending `AgentEntity`; `isFailureMemory` type guard; `FailureMemoryEntity` alias
+  - `MarkResolvedResult` discriminated union (`'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update'`) — mirrors `CancelResult` pattern; distinguishes 404 / 409 / TOCTOU race from successful resolve
+- **`FailureManager`** in `src/agent/FailureManager.ts`:
+  - `record(input, options?)` — validates non-empty strings on five required fields with received-type/value in error messages; wraps `storage.appendEntity` failures with the failure id so EPERM-style races are attributable (CLAUDE.md > Gotchas > Windows atomic writes)
+  - `lookupForTask(taskContext, options?)` — substring-match MVP scoring (`applicability_hint` 3×, `context` 2×, `attempted` 1×); excludes resolved by default; `status: 'all'` includes both. JSDoc documents the MVP cliffs (single-char tokens dropped, no stemming) + the `SearchManager.semanticSearch` upgrade path
+  - `markResolved(id, reason?)` — returns `MarkResolvedResult`; branches on `storage.updateEntity`'s `Promise<boolean>` return (Sprint 2's silent-failure pattern) to surface `'vanished-mid-update'` separately from `'not-found'` / `'already-resolved'`
+  - `getAll(options?)` — filter by `status` and/or `sourceSessionId`
+  - Embeddings deliberately NOT on the public `FailureRecord` surface (encapsulation per type-design review) — semantic similarity is delegated to the downstream `SearchManager` / `VectorStore` when the integration upgrade lands
+- **`ctx.failureManager`** lazy getter on `ManagerContext` with `MEMORY_FAILURE_LOOKUP_LIMIT` env var (default `5`)
+- **29 new tests** in `tests/unit/agent/FailureManager.test.ts`: `record()` (8 cases incl. validation, append-error wrapping, received-value error context) / `lookupForTask()` (6) / `markResolved()` (5 incl. all 4 discriminated returns) / `getAll()` (3) / type guard (3) / non-empty validation per required field
+- **Reviewed**: pre-implementation type-design review reshaped the original draft (flat status → discriminated union; dropped `embedding` from public surface; dropped duplicated `tags`; mandatory non-empty validation). Post-implementation: code-reviewer flagged 1 BLOCKING (`ManagerContext` getter ordering — JSDoc detachment) + 1 HIGH (boolean → discriminated) + 2 MEDIUM/LOW; silent-failure-hunter flagged 1 HIGH (`updateEntity` boolean ignored) + 2 MEDIUM (error context, append wrapping) + 1 LOW (superfluous `await`). All applied; re-review clean. Code-simplifier flagged 8 cleanups; 6 applied (filter collapse, dead bindings, mock plumbing, type-guard cast), 2 deferred (`FailureMemoryEntity` alias retained for consistency with sibling memory-type aliases)
+- **Verification**: 218/218 tests pass across `FailureManager` (29 new) + `ProspectiveMemoryManager` (51) + `FailureDistillation` (21) + `ManagerContext` (117); typecheck clean
+
+### Documentation (Phase 2 docs sync)
+
+- **Regenerated dependency graph** via `tools/create-dependency-graph` — `docs/architecture/DEPENDENCY_GRAPH.md` + `dependency-graph.{json,yaml}` + `dependency-summary.compact.json` + `unused-analysis.md` now reflect the post-Sprint-8 codebase (235 source files, 79,378 LOC, 1246 exports, 214 classes, 501 interfaces).
+- **Refreshed all `docs/architecture/` files** to surface the four Phase 2 memory-type slots + trust-hierarchy mixin: `OVERVIEW.md` (capability rows + Layer-2 manager list), `ARCHITECTURE.md` (key statistics + module distribution + `AgentEntity` interface + per-type manager subsection), `AGENT_MEMORY.md` (Phase 2 banner block + five new Memory Types sections), `COMPONENTS.md` (six new component entries), `DATAFLOW.md` (five new Phase 2 data-flow descriptions), `API.md` (Phase 2 banner), `TEST_COVERAGE.md` (file-count refresh).
+- **Refreshed `README.md`** — opening blurb, badges (235 files / 79,378 LOC / 7127+ tests), module-statistics table, Agent Memory capability table (+5 Phase 2 rows), `MemoryType` union code sample (now shows all eight slots), expanded Memory Types prose, "What's New" Phase 2 section, and four new API Reference subsections (`ProspectiveMemoryManager` / `FailureManager` / `PlanManager` / `ReflectionManager`).
+
+### Added (ContextWindowManager.wakeUp — L1.5 prospective layer)
+
+- **L1.5 layer in `ContextWindowManager.wakeUp()`** surfaces pending prospective intentions in the agent's wake-up context. Closes Sprint 3 of 3 for the prospective-memory integration; the full memory-type addition (manager → context wiring → consolidation stage → wake-up surface) is now complete.
+- **`WakeUpOptions` extended** (backward-compatible — new fields are optional):
+  - `maxL1_5Tokens?: number` (default 200) — token budget for the pending-intentions block
+  - `includeL1_5?: boolean` (default true) — disable L1.5 entirely
+  - `sessionId?: string` — filter L1.5 to one session (when omitted, all sessions)
+- **`WakeUpResult` extended** (backward-compatible — new fields added, no existing fields renamed or removed):
+  - `l1_5: string` — formatted pending-intentions block
+  - `pendingIntentionCount: number` — count of intentions surfaced
+- **Per-intention line format**: `[at <iso>] content` (time) / `[window <from> → <until>] content` (time-window) / `[event: text=... tags=... type=... session=...] content` (event — lists ALL populated condition fields per silent-failure-hunter review) / `[conditional: <predicate>] content` (conditional).
+- **Token estimation reuses** the per-line `l1_5Tokens` accumulator rather than re-estimating the joined string in the total — saves one pass and matches the existing L1 pattern.
+- **Error handling** mirrors L0 / L1 exactly: try/catch wraps the entire L1.5 block, missing-module errors are guarded (no noisy log when `ProspectiveMemoryManager` is absent from a partial build), all other errors are logged via `logger.error` and the layer falls back to empty defaults so wake-up continues to L1.
+- **Future-safe formatting**: trigger-kind dispatch is an exhaustive `switch` with a `_exhaustive: never` check — adding a new trigger kind to the `ProspectiveTrigger` union becomes a compile-time error in `ContextWindowManager.ts`. `TriggerCondition` field-rendering is documented with a "keep in sync with `TriggerConditionFields`" comment for the same reason.
+- **10 new tests** in `describe('L1.5 — pending prospective intentions')`: empty when no pending / surfaces time-based / sorts by next-fire-time / filters by sessionId / includes all sessions when sessionId omitted / respects `maxL1_5Tokens` budget / `includeL1_5: false` skips the block / excludes fired / cancelled / expired intentions / formats event-trigger prefix with all populated condition fields / `l1_5` token count contributes to `totalTokens`.
+- **Reviewed**: code-reviewer found one MEDIUM (missing-module guard) + two LOWs (exhaustive switch, drop `void e1` workaround); silent-failure-hunter found one MEDIUM (lossy event prefix); re-review after fixes flagged one LOW (future-proof `formatCondition` against new fields) — all applied. Code-simplifier flagged token double-counting + repeated `amm` declarations — both applied; rejected the `never` removal and the `Partial<{...}>` inlining (would have removed compile-time safety / required exporting an internal type).
+- **Verification**: 14/14 wake-up tests pass; 121/121 across the four ContextWindowManager + ProspectiveMemoryManager test files; typecheck clean.
+
+### Added (ConsolidationPipeline.ProspectivePromotionStage)
+
+- **`ProspectivePromotionStage`** exported from `src/agent/ConsolidationPipeline.ts`: new `PipelineStage` that scans storage for fired prospective intentions whose `action.kind === 'inject-context'` and promotes them to `memoryType: 'episodic'` with a `prospective-fulfilled` tag. Closes Sprint 2 of 3 for the prospective-memory integration; see `docs/roadmap/MEMORY_TYPES_EXPANSION.md` §4.3 row "ConsolidationPipeline".
+- **Semantics**: only `inject-context` actions get promoted — they have content payload worth archiving as episodic memory. `invoke` and `tag-related` actions are side-effect-only and stay untouched (the user can still query them via `getFired()` for audit; they just don't appear in episodic search).
+- **Idempotent**: `isProspectiveMemory()` rejects entities whose `memoryType` is already `'episodic'`, so re-running the stage on a fulfilled entity is a no-op. The `prospective-fulfilled` tag is also deduped via `Array.from(new Set(...))`.
+- **Self-sufficient**: the stage's `entities` argument from the pipeline is intentionally unused — prospective intentions aren't in the working-memory candidate set, so the stage scans storage directly. The pattern mirrors the existing `executeRuleStage` self-sufficiency.
+- **Failure semantics**: per-entity try/catch surfaces all errors on `StageResult.errors` and the batch continues. `storage.updateEntity` returning `false` (entity vanished mid-batch — concurrent delete / governance rollback / segment flush) is also surfaced as an error rather than being silently counted as transformed. Error messages include `fireCount` and `action.kind` for debuggability.
+- **12 new tests** (`tests/unit/agent/ConsolidationPipeline.test.ts > ProspectivePromotionStage`): promotes inject-context fires / does NOT promote invoke / does NOT promote tag-related / does NOT promote pending / does NOT promote expired or cancelled / idempotent on re-run / preserves existing tags / processes multiple in one pass / aggregates throw errors / aggregates vanished-mid-batch errors / error messages include context / stage `name` contract.
+- **Mock-storage update**: the shared `createMockStorage` helper in this test file now returns `boolean` from `updateEntity` matching real `GraphStorage.updateEntity` and `SQLiteStorage.updateEntity` semantics. Existing 78 tests in this file unaffected.
+- **Reviewed**: code-reviewer "ship it" (one LOW on JSDoc verbosity — within local convention, deferred); silent-failure-hunter caught HIGH (`updateEntity` boolean return ignored) + MEDIUM (error-message context) — both fixed and re-reviewed clean; code-simplifier flagged dynamic `import()` in tests as over-engineering — replaced with static import.
+- **Verification**: 90/90 ConsolidationPipeline tests pass; typecheck clean.
+
+### Added (ManagerContext.prospectiveMemory lazy getter)
+
+- **`ctx.prospectiveMemory`** lazy getter on `ManagerContext` (`src/core/ManagerContext.ts`): closes D1 of [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) §6 — wires `ProspectiveMemoryManager` with a `procedureInvoker` closure that delegates to `procedureManager.invoke()` and throws on `found: false`, so the rejection surfaces via `FiredEvent.invocationError` per the existing contract.
+- **Two new env vars** (consumed by the getter):
+  - `MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS` (default `168`)
+  - `MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION` (default `100`)
+- **8 new tests** (`tests/unit/core/ManagerContext.test.ts > prospectiveMemory lazy getter`): lazy memoization, deferred construction (no `_prospectiveMemory` until first access), end-to-end schedule + read-back, both env vars honoured individually, defaults when env vars are unset, DI fire-success when procedure exists, DI not-found surfaces as `FiredEvent.invocationError` while the entity still transitions through the fire path.
+- **Idiomatic conformance**: getter uses `this.getEnvNumber()` private helper (matches the 30+ sibling call sites in the same file); closure captures `this.procedureManager` lazily so the procedural manager doesn't materialize until first fire, not first prospective-getter access.
+- **Reviewed**: code-reviewer flagged one MEDIUM (`getEnvNumber` swap) — applied + re-reviewed clean; code-simplifier suggested three concrete cleanups (drop dead local binding, trim JSDoc, drop test comment cruft) — all applied; `withEnv` test helper deferred to match the existing `cachePressure` block convention in the same file.
+- **Verification**: 168/168 tests pass across `ManagerContext` (117 incl. 8 new) and `ProspectiveMemoryManager` (51); typecheck clean.
+
+### Added (ProcedureManager.invoke — bridge for ProspectiveMemoryManager)
+
+- **`ProcedureManager.invoke(procedureId): Promise<InvocationResult>`** (`src/agent/procedural/ProcedureManager.ts`): resolves a procedure id to an `InvocationResult` discriminated union — `{ found: false, procedureId, invokedAt }` or `{ found: true, procedureId, procedure, invokedAt, openSequencer }`. Used by `ProspectiveMemoryManager`'s `procedureInvoker` callback (D1 in [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) §6): the wired invoker calls `invoke()`, throws on `found: false`, and the throw surfaces via `FiredEvent.invocationError` per the existing contract.
+- **`InvocationResult` discriminated union** — narrowing makes `procedure` and `openSequencer` non-optional on the `found: true` branch without caller-side non-null assertions. `openSequencer` is a factory (not a stateful field) so multiple sequencers per invocation are explicit.
+- **Semantics — "resolve-and-prepare", NOT "execute"**: `ProcedureStep.action` is a string identifier (e.g. `"http.get"`), not executable code. The library is action-agnostic; the caller drives downstream iteration via `result.openSequencer()`. JSDoc on both `invoke()` and `InvocationResult` calls this out so a future reader doesn't assume "invoke = run all steps".
+- **6 new tests** (`tests/unit/agent/ProcedureManager.test.ts`): `found: true` with sequencer factory / `found: false` for unknown id / valid `invokedAt` timestamp / fresh sequencer at cursor 0 / independent sequencers per `openSequencer()` call / independent invocations on repeated `invoke()`.
+- **Reviewed**: pre-implementation type-design review reshaped the original optional-fields proposal into the discriminated union; post-implementation code-reviewer and silent-failure-hunter both passed clean across all severities; code-simplifier found nothing material.
+- **Verification**: 28/28 `ProcedureManager` tests pass; typecheck clean.
+
+### Changed (Prospective memory — review-batch hardening)
+
+Follow-up to the initial `ProspectiveMemoryManager` commit, driven by parallel review agents (`code-reviewer`, `type-design-analyzer`, `silent-failure-hunter`, `pr-test-analyzer`). All BLOCKING / HIGH / MEDIUM / LOW findings addressed in one batch — no items deferred.
+
+**Types** (`src/types/agent-memory.ts`):
+- **Branded `IsoDateTime`** with `toIsoDateTime()` factory — throws on invalid input, catches malformed-timestamp bugs at the boundary instead of `NaN`-comparisons silently returning false
+- **Branded `PositiveInt`** with `toPositiveInt()` factory — rejects 0, negatives, and non-integers for `maxFireCount` and `checkIntervalMs`
+- **`AtLeastOne<>` constraint helper** + reshaped `TriggerCondition` — empty `{}` conditions are now un-constructable at compile time (was: caught at runtime by the `anyFieldPopulated` guard)
+- **`ProspectiveLifecycle` discriminated state machine** replacing the flat `status` / `firedAt` / `fireCount` fields on `ProspectiveEntity`. Variants: `pending` / `fired` / `expired` / `cancelled`. Each carries exactly the fields valid for its state — illegal combinations like `{ status: 'pending', firedAt: '...' }` are unrepresentable (type-design Invariant Expression axis: 2/5 → 4/5)
+- **`CancelResult` discriminated union** (`'cancelled' | 'not-found' | 'already-fired' | 'already-cancelled' | 'already-expired'`) — `cancel()` now distinguishes typo from already-fired from successful cancellation
+- **`FiredEvent.invocationError?: Error`** — surfaces procedureInvoker rejections without unwinding the fire; callers observe partial-success state
+- **`FiredEvent.taggedEntityNames?: string[]`** — names of entities that received tags from `action: 'tag-related'`
+- `isProspectiveMemory` type guard now verifies the discriminated `lifecycle` field
+
+**Manager** (`src/agent/ProspectiveMemoryManager.ts`):
+- **Implemented `action: 'tag-related'`** — previously declared in the union but `fire()` silently no-op'd (pr-test-analyzer BLOCKING finding). Scans entities matching `relatedEntityFilter`, appends `tagsToAdd`, returns names in `FiredEvent.taggedEntityNames`
+- **NaN guards via `safeIsoToMs()`** in `expireOverdue` / `shouldFireOnTick` / `getFired.sinceDate` — malformed `expiresAt` or `trigger.at` strings now produce a `logger.warn` and skip the entity, preventing the "silently never expires" path
+- **`scheduleConditional` JSDoc warning** + one-time `logger.warn` per instance noting predicate evaluation is deferred
+- **Recurring event-based triggers correctly stay `pending`** after fire (was: incorrectly transitioned to `fired` after first match)
+- **`cancel()` returns `CancelResult`** — discriminated status; `_reason` parameter dropped (was unused per code-reviewer)
+- **`fire()` return type tightened** to `Promise<FiredEvent>` (was misleadingly `| undefined`); `if (event)` guards at callers dropped
+- **Procedure invoker errors** surfaced on `FiredEvent.invocationError` + `logger.warn`; no longer swallowed silently via `console.warn` + a forward-comment
+- **Structured `logger`** replaces `console.warn` for all warnings
+- **`confidence?` added to `ScheduleOptions`** — parity with `EpisodicMemoryManager.CreateEpisodeOptions`
+- Config typing simplified to three plain class fields (`defaultExpiryHours`, `maxPendingPerSession`, `procedureInvoker`) — was a complex `Required<Omit<...>> & Pick<...>` intersection
+- Forward-compat shim `// Future: add to AuditLog` removed (CLAUDE.md "don't add half-finished implementations")
+- Best-effort session-cap race noted with a one-line comment
+
+**Tests** (`tests/unit/agent/ProspectiveMemoryManager.test.ts`):
+- Test count: 31 → **51** (+20 net)
+- New cases: `time-window` trigger fires within `[from, until)`, `time-window` does not fire past `until`, session-cap rejection, session-cap is per-session, schedule with `maxFireCount=0` rejects (positive-int brand), negative `maxFireCount` rejects, `scheduleConditional` warns exactly once, `getFired` with `sinceDate` filter, `tick` fires multiple in chronological order, `cancel` returns `'not-found'` for typos, `cancel` returns `'already-fired'` / `'already-cancelled'`, `expireOverdue` with undefined `expiresAt`, `expireOverdue` skips and warns on malformed `expiresAt`, `onObservation` matches on `sessionId` field, `tag-related` action tags matching entities and reports names, `tag-related` does not re-tag, procedureInvoker rejection surfaces on `FiredEvent.invocationError`, `tick` propagates `updateEntity` rejection cleanly, custom `confidence` / `importance` honoured, type guard rejects entities missing the discriminated lifecycle
+- **Test-design refactor**: all 5 prior `setTimeout(100)` sleeps replaced with explicit `tick(new Date(...))` injection — removed Windows-flake risk per `CLAUDE.md > Gotchas > Performance benchmark flakiness`. Zero timer-based tests remain
+- Logger spies updated to `console.warn` (was incorrectly `console.error`)
+
+**Verification**: typecheck clean; 51/51 prospective tests pass; 1573/1573 agent-memory directory tests pass; zero regressions in adjacent managers (`WorkingMemoryManager` 58, `EpisodicMemoryManager` 30, `AgentMemoryManager` 74).
+
+### Added (Prospective memory — new memory type)
+
+- **`MemoryType` union extended with `'prospective'`** (`src/types/agent-memory.ts`): closes the canonical Tulving-aligned taxonomy alongside `'working' | 'episodic' | 'semantic' | 'procedural'`. Type guard `isProspectiveMemory(entity)` mirrors the other four guards. Design rationale + competitive lens in [`docs/roadmap/MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) — no competing library (MemPalace / Supermemory / mem0 / LangChain / LlamaIndex / Letta) ships prospective memory as a typed tier, so this is green-field design space.
+- **`ProspectiveEntity` extending `AgentEntity`** with `trigger` (time / time-window / event / conditional), `action` (inject-context / invoke / tag-related), and lifecycle fields (`status`, `firedAt`, `fireCount`, `maxFireCount`, `cancelOnEvent`). New shared `TriggerCondition` type used by both firing and cancellation. Persists transparently through both JSONL and SQLite backends via the standard `agentMetadata` round-trip — no migration needed.
+- **`ProspectiveMemoryManager`** (`src/agent/ProspectiveMemoryManager.ts`): 11 public methods covering schedule (`scheduleAt` / `scheduleOnEvent` / `scheduleConditional`), read (`getPending` / `getFired`), lifecycle (`tick` / `onObservation` / `cancel` / `expireOverdue`). Sorts pending by next-fire time. `tick` fires past-due time triggers and is idempotent via the `status` field. `onObservation` checks `cancelOnEvent` first (cancel-precedence-over-fire is deterministic).
+- **Design decisions D1–D4 locked** (`docs/roadmap/MEMORY_TYPES_EXPANSION.md` §6):
+  - **D1**: `action: 'invoke'` fires procedures via **dependency-injected callback** (`procedureInvoker` in constructor), not a direct `ProcedureManager` import. Same pattern as `LLMQueryPlanner` + `LLMProvider`. Falling back to no-op when no invoker is wired so the manager is usable without procedural memory.
+  - **D2**: `cancelOnEvent` uses **OR (first-match) semantics** — matches `TriggerCondition` firing semantics. AND-style cancellation is composable from OR + chaining; OR is not recoverable from AND without negation (De Morgan).
+  - **D3**: Default visibility is `'private'` — matches every other memory type. The user's existing `MEMORY_DEFAULT_VISIBILITY` env var remains the global lever.
+  - **D4**: CLI surface ships with library release (`memory prospective schedule`/`list`/`cancel`); MCP follow-up in `@danielsimonjr/memory-mcp` next minor.
+- **31 new tests** (`tests/unit/agent/ProspectiveMemoryManager.test.ts`): coverage of all three schedule paths, `getPending` sort order + session filtering, `tick` idempotency, `onObservation` matching across text / tags / entityType, `maxFireCount` cap, `cancel` semantics, `expireOverdue`, D1 invoker callback (3 cases), D2 OR semantics (3 cases including cancel-precedence-over-fire), type guard.
+- **Note**: this is the manager itself — wiring into `ManagerContext` (lazy getter), `ConsolidationPipeline` (new `ProspectivePromotion` stage), `ContextWindowManager.wakeUp` (new L1.5 layer), CLI commands, and MCP tools ships in follow-up PRs per the 10-day estimate breakdown in [`MEMORY_TYPES_EXPANSION.md`](docs/roadmap/MEMORY_TYPES_EXPANSION.md) §4.7.
+
+---
+
+Phases 0–11 of the long-running `claude/recommend-improvements-5Jly9` branch — see `docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`. **All 12 of 12 Phase 3 items now closed** (step 39 — memory-mapped file support — landed in Phase 11). All Phase 0–2 items + all 12 Phase 3 items + 4 of 7 Phase 4 items + 6 of 10 Phase 5 items + all 5 Phase 7 tasks + all 5 Phase 8 tasks + all 6 Phase 9 tasks + all 5 Phase 10 tasks + all 7 Phase 11 tasks. **All 5 multi-month engineering features from the original deferral list are complete.** Remaining deferrals (Phase 4 steps 42/43/45 and Phase 5 steps 55–58) are all blocked on user-side decisions (external dep approval / strategy decisions), not engineering. No SemVer-breaking changes.
+
+### Added (Phase 11 — Memory-mapped file support)
+
+- **`IMmapBackend` interface + `streamLines` async iterator** (`src/core/mmap/IMmapBackend.ts`): async `open` / `close` / `readRange` / `size` contract for "open a file, read arbitrary byte ranges, close." `streamLines` helper iterates lines as `Buffer`s using a configurable `chunkSize` (default 64 KB) and `maxLineBytes` guard (default 16 MB) — the guard prevents OOM on pathological no-newline files. Uses a `Buffer[]` accumulator pattern that avoids the O(N²) repeated-concat hazard.
+- **`BufferMmapBackend`** (`src/core/mmap/BufferMmapBackend.ts`): reads the entire file into a single `Buffer` at open time. Useful for small files, tests, and as a known-good reference. Defensive copy on `readRange`; idempotent `close`; `openHandleCount()` for test visibility.
+- **`FsReadMmapBackend`** (`src/core/mmap/FsReadMmapBackend.ts`): portable no-deps mmap-equivalent. Pins a `FileHandle` open and services range reads via `fileHandle.read(buffer, offset, length, position)`. Short-read retry loop handles legitimate partial reads (NFS, FUSE, signal-interrupted). Stats the open fd (TOCTOU-safe). Closes the fd before deleting from the map on `close` so no fd leak even if bookkeeping throws. `handle.id` is the resolved absolute path (consistent with `BufferMmapBackend`).
+- **`GraphStorage.loadFromDisk` mmap branch**: routes through `FsReadMmapBackend + streamLines` when `MEMORY_USE_MMAP='true'` AND file size > `MEMORY_MMAP_THRESHOLD_BYTES` (default 100 MB). Strict regex parsing on the threshold accepts `0` to mean "always use mmap". Parse errors include line number + underlying SyntaxError message for debuggable failures on huge files. Segment-storage mode (`MEMORY_STORAGE_SEGMENT_COUNT >= 2`) short-circuits the mmap check.
+- **Benchmark** (`tests/performance/mmap-load-benchmark.test.ts`): always-on sanity check + two perf-gated assertions. Measured on a 50k-entity (~12 MB) synthetic JSONL: `fs.readFile` 710ms / 150 MB heap; `FsReadMmapBackend` 984ms / 117 MB heap. Trade-off confirmed: mmap loses on speed at small sizes (per-chunk syscall overhead) but uses ~22% less peak memory. Advantage flips at multi-GB file sizes where `fs.readFile`'s whole-file string spike dominates.
+- **Decision-gate doc** (`docs/architecture/mmap-binding-decision-gate.md`): surveys native mmap binding options (mmap-io / node-mmap / custom node addon), recommends `mmap-io` if user approves a native dep. The shipped `FsReadMmapBackend` is the default until that decision lands; the native binding plugs in as a third `IMmapBackend` impl via the same env vars.
+- **Two new env vars**: `MEMORY_USE_MMAP` (strict `'true'` literal-match) + `MEMORY_MMAP_THRESHOLD_BYTES` (strict-decimal integer, default 100 MB, `0` accepted to force-on). Documented in `CLAUDE.md`.
+- **72 new tests**: `IMmapBackend` x15 (interface contract + `streamLines` edge cases), `BufferMmapBackend` x16, `FsReadMmapBackend` x17 (incl. 100-concurrent-reads + resource-leak), `GraphStorage` wiring x13 (env-gate resolution + round-trip parity + threshold parsing), benchmark x3 (1 always-on + 2 perf-gated), review-fix regression x8 (max-line guard + parse-error context + threshold-0 + truncation + segment-precedence + handle.id consistency).
+
+### Known issues (Phase 11 — flagged but deferred)
+
+- **Pre-existing concurrent-`loadGraph()` race** (review #3). Two concurrent `loadGraph()` calls both see `cache === null`, both invoke `loadFromDisk()`, both build entity maps, the second clobbers the first. Pre-existing — not introduced by Phase 11 — but mmap mode amplifies the cost (two backend handles = 2× kernel page-cache pressure on a 1 GB file). Documented as a known issue; fix path: cache an in-flight promise in `ensureLoaded`. Out of Phase 11 scope.
+- **Native mmap binding** (task 82 decision gate): `mmap-io` recommended once user approves the external native dep. `FsReadMmapBackend` covers the common case in the meantime.
+
+### Added (Phase 10 — In-memory compression)
+
+- **Compression adapter interface** (`src/utils/compression/ICompressionAdapter.ts`): synchronous `compress(Buffer) → Buffer` + `decompress(Buffer) → Buffer` contract. Sync chosen deliberately — async would force `CompressedMap.get` to be async, rippling through every caller. Reference impls: `ZlibCompressionAdapter` (Node's built-in `zlib.deflateSync`/`inflateSync`, level 0-9 validated) + `IdentityCompressionAdapter` (test baseline). Adapter errors wrap the underlying zlib/brotli message with the adapter name so multi-adapter callers can distinguish "wrong adapter" from "truncated input."
+- **`CompressedMap<K, V>` data structure** (`src/utils/compression/CompressedMap.ts`): Map-like with hot/cold tiering. Hot `Map<K, V>` capped at `hotThreshold` (default 1000); overflow demotes LRU to cold `Map<K, Buffer>`. `get` on cold decompresses + promotes + may cascade-demote. **Compress-then-mutate** in the demotion loop ensures a compression failure (custom adapter, BigInt-in-default-JSON) throws cleanly instead of silently dropping the just-inserted hot entry. Iterator order is **hot insertion order, then cold insertion order — NOT global insertion order**; iteration does NOT promote cold entries (decompresses on-the-fly without touching the LRU). Documented on every iterator method.
+- **`BrotliCompressionAdapter`** (`src/utils/compression/BrotliCompressionAdapter.ts`): Node's built-in `zlib.brotliCompressSync` / `brotliDecompressSync`. Quality 0-11 (default 6) + mode `'generic' | 'text' | 'font'`. Self-contained — does not import `compressionUtil.ts` (that's async; would break the synchronous `ICompressionAdapter` contract). Same error-wrapping pattern as `ZlibCompressionAdapter`.
+- **Compression benchmark** (`tests/performance/compression-adapter-benchmarks.test.ts`): zlib (levels 1/6/9) vs brotli (quality 1/6/11, generic + text modes) on a 50-entity JSON payload. Gated on `SKIP_BENCHMARKS=true`. **Recommendation**: zlib for hot caches (~35% faster compress, ratio diff <15%); brotli for cold storage shards (35% better ratio at quality 11). LZ4 deferred to a future caller-implemented adapter — `ICompressionAdapter` is open to it.
+- **`ctx.compressedEntityCache`** (`src/core/ManagerContext.ts`): lazy getter returning `CompressedMap<string, Entity>` when `MEMORY_CACHE_COMPRESS='true'`. Default: hot threshold 1000, Zlib level 6. **Marked `@internal`** — `GraphStorage.cache` holds a single `KnowledgeGraph` snapshot, not per-entity entries, so direct integration is deferred until that cache is restructured (parallel to Phase 9's `tieredPostingsIndex` deferral).
+- **Decision-gate resolution (task 77)**: shipped without pausing for user approval — `lz4` would require an external dep approval not yet granted; zlib + brotli are both Node built-ins. The future LZ4 adapter is a 1-file additive change against the existing interface.
+- **New env var:** `MEMORY_CACHE_COMPRESS` (strict literal-match on `'true'`). Documented in `CLAUDE.md`. Cached at first `compressedEntityCache` access — restart the process to change. Matches Phase 7/8/9 env-var precedent.
+- **72 new tests**: `ICompressionAdapter` x12 (interface + Zlib + Identity), `CompressedMap` x30 (round-trip, hot/cold tiering, LRU semantics, iteration, generic V, custom serializers, 1000-entry stress), `BrotliCompressionAdapter` x11, benchmark x4 (1 always-on round-trip + 3 perf-gated), wiring x8 (env-var resolution, hot/cold transition past 1000 threshold), review-fix regression x10 (compress-failure rollback x2 + iterator non-promotion x2 + cross-adapter error wrapping x4 + Entity-shape round-trip lock x2).
+
+### Added (Phase 9 — Tiered index architecture)
+
+- **Tier interfaces + reference** (`src/search/tiered/ITieredIndex.ts`): generic `IIndexTier<K, V>` (per-tier contract) + `ITieredIndex<K, V>` (composer) + `TierAccessStats` (hits/misses/promotions/demotions/perTierHits). `InMemoryTier` reference for tests. `HotOnlyIndex` single-tier composer.
+- **`LRUHotTier<K, V>`** (`src/search/tiered/LRUHotTier.ts`): RAM-resident LRU. Map insertion order = LRU order; `get`-hits do delete-then-reinsert for O(1) promotion. `maxEntries` + `maxBytes` bounds with `onEvict` callback (wires to next tier). Per-entry byte estimates cached so delete/replace can subtract precisely. **Oversized-value short-circuit**: values larger than `maxBytes` are demoted directly via `onEvict` instead of nuking the whole hot tier to make room.
+- **`DiskWarmTier<V>`** (`src/search/tiered/DiskWarmTier.ts`): JSONL-sidecar-backed `IIndexTier<string, V>`. Whole-file rewrite per mutation via temp+fsync+rename with Windows EPERM fallback (matches `JsonlColumnStore`). **Whole-map snapshot rollback** on flush failure preserves the exact pre-mutation LRU order (entry-by-entry reconstruction would lose the original position of replaced keys). Per-line malformed tolerance on load. `maxEntries` LRU bound with `onEvict` chain.
+- **`BrotliColdTier<V>`** (`src/search/tiered/BrotliColdTier.ts`): single Brotli-compressed JSONL shard for the long tail. The whole concatenated JSONL stream feeds one `compress()` call so brotli's dictionary spans every entry — vs per-line compression that would lose the size benefit. Configurable quality (0-11, default 6). Whole-shard rewrite per mutation with snapshot-restore rollback.
+- **`TieredIndex<V>`** (`src/search/tiered/TieredIndex.ts`): 3-tier composer. Get-from-warm/cold auto-promotes to hot (write to hot, delete from colder); put always lands in hot AND clears colder tiers so each key exists at exactly one tier. **Per-key serialization** via `Map<key, Promise>` chain — concurrent operations on the same key serialize but different keys still proceed in parallel; prevents stale-write races between concurrent `put(NEW)` + `get(promotes-OLD-back-to-hot)`. **Demotion failure logging** — fire-and-forget `warm.put`/`cold.put` failures during the eviction chain log via `logger.error` instead of silently dropping the evictee. `buildTieredIndex(options)` factory uses deferred construction so eviction callbacks can reference the next tier.
+- **`ctx.tieredPostingsIndex`** (`src/core/ManagerContext.ts`): lazy getter that returns a configured 3-tier composer when `MEMORY_TIERED_INDEX='true'`, otherwise `null`. Sidecars at `<basename>-tiered-warm.jsonl` and `<basename>-tiered-cold.jsonl.br`. Read once at first access (cached for the life of the `ManagerContext`). **Marked `@internal`** until a concrete consumer wires up — `OptimizedInvertedIndex`'s tightly-coupled `Uint32Array` posting layout doesn't map cleanly onto `ITieredIndex<V>`, so the property has loose typing (`TieredIndex<unknown>`) and no in-tree caller today. The integration is intentionally a follow-up phase.
+- **Diagnostics roll-up** (`src/utils/Diagnostics.ts`): new optional `DiagnosticsReport.tieredIndexStats` field exposes per-tier hit rates + counters. `ctx.diagnostics()` populates it when the composer has been initialized (not just env-set — an uninitialized composer reports nothing).
+- **New env var:** `MEMORY_TIERED_INDEX` (strict `'true'` literal-match). Documented in `CLAUDE.md`.
+- **136 new tests**: `ITieredIndex` x19 (interface + reference), `LRUHotTier` x20 + 3 oversized regression, `DiskWarmTier` x30 + 1 LRU-order-after-rollback regression, `BrotliColdTier` x28, `TieredIndex` composer x18 + 4 concurrency regression, wiring + diagnostics x11, `tiered-review-fixes` x10 (covers all 5 substantive review findings).
+
+### Added (Phase 8 — Columnar observation storage)
+
+- **Column store interface** (`src/core/columns/IColumnStore.ts`): generic `IColumnStore<T>` with `get / has / put / delete / batchPut / keys / entries / size / clear / reload`. `ObservationColumn = string[]` named alias. `InMemoryColumnStore<T>` reference impl distinguishes "absent key" from "explicit empty value" via `has()`.
+- **JSONL sidecar backend** (`src/core/columns/JsonlColumnStore.ts`): whole-file rewrite per mutation via temp+fsync+rename (with Windows EPERM fallback). **Snapshot-restore rollback** on flush failure — `put / delete / batchPut / clear` capture pre-mutation cache state and restore it if the disk flush throws, honoring the `IColumnStore.batchPut` "all-or-nothing" contract. Per-line tolerance on load. `reload()` method drops the in-memory cache so external sidecar edits (the migration tool) become visible to long-running processes.
+- **`ObservationManager.getObservationsFor(name)`** (read-path integration): reads column store first when attached, falls back to inline `entity.observations` via `storage.getEntityByName`. Returns a defensive copy. `[]` for unknown entities — no throw.
+- **Event-driven shadow-write fan-out**: `ObservationManager.setColumnStore` subscribes to `entity:created` / `entity:updated` / `entity:deleted` / `graph:saved` on `GraphEventEmitter`. Observation writes from `EntityManager.createEntities`, `updateEntity` with `observations` patch, the v1.8.0 supersede branch, bulk imports, and any other path going through `storage.saveGraph` are mirrored to the column store. `entity:deleted` drops the column entry so `getObservationsFor` doesn't return ghost data for deleted entities. `graph:saved` triggers a full resync from storage for bulk-save paths that don't emit per-entity events.
+- **Shadow-write failure handling**: column-store writes are best-effort — a failure logs a warning but never rejects the calling write. The inline state is already durable via `saveGraph` before the shadow-write runs.
+- **Migration tool** (`tools/observations-to-columns/`): CLI for `extract` / `reinline` over an existing JSONL store. Strict `--segments`-style parsing rejects floats / exponents. `--force` flag protects against clobbering. **Double-extract refusal** — refuses to overwrite a populated sidecar with an empty one (the "already extracted, run reinline instead" footgun). **Orphan recovery** — sidecar entries with no matching entity get written to `<output>.orphans.jsonl` plus a loud `console.warn` so wrong-pairing accidents are recoverable.
+- **New env var:** `MEMORY_OBSERVATIONS_COLUMNAR` (strict literal-match on `'true'`; everything else falls back to inline-only mode). Documented in `CLAUDE.md`. Cached at first `observationManager` access — restart the process to change. Matches Phase 7's `MEMORY_STORAGE_SEGMENT_COUNT` precedent.
+- **Sidecar naming**: `<basename>-observations.jsonl` (hyphen-delimited, matches the convention used by `<basename>-saved-searches.jsonl` / `-tag-aliases.jsonl` / `-ref-index.jsonl`).
+- **84 new tests**: `IColumnStore` x14 (reference impl + interface contract), `JsonlColumnStore` x16 (round-trip, malformed-line tolerance, batchPut single-flush via fs.rename spy), migration tool x29 (`runExtract` + `runReinline` + `parseArgs` + bidirectional round-trip), wiring x13 (`setColumnStore` accessors, `getObservationsFor` fallback, `addObservations` / `deleteObservations` shadow-mirror, env-gated activation, end-to-end through `ManagerContext`), 12 review-fix regression tests (5 rollback × 2 reload × 1 deleted-ghost × 3 bypass-paths × 1 hyphen-path).
+
+### Known issues (Phase 8 — deferred)
+
+- **Pre-existing concurrency hole in `ObservationManager.addObservations`** (review #9). The method calls `storage.getGraphForMutation` (snapshot) → mutate in-memory → `await saveGraph` (mutex-protected) → shadow-write column store (unmutexed). Concurrent `addObservations` calls for the same entity can interleave between save and shadow-write, producing a column-store value that disagrees with the inline value. The race exists pre-Phase-8 at the inline level; Phase 8 makes it observable through the column store. **Fix path:** wrap `addObservations`/`deleteObservations` in `storage.graphMutex.acquire()` like `invalidateObservation` already does. Deferred to a follow-up commit to keep Phase 8 scoped.
+
+### Added (Phase 7 — JSONL segment files)
+
+- **Segment storage interface** (`src/core/segments/ISegmentStorage.ts`): `Segment` / `SegmentId` / `SegmentRouter` / `ISegmentStorage` types. `FnvSegmentRouter` (FNV-1a 32-bit modulo `segmentCount` — deterministic, well-distributed, matches `BloomFilter`'s existing hash). Pure helpers `splitGraphIntoSegments` / `mergeSegmentsIntoGraph` for callers that need the routing logic without I/O. `InMemorySegmentStorage` reference impl with ownership validation (rejects misrouted entities/relations at save time to surface caller bugs early).
+- **File-backed segment storage** (`src/core/segments/FileSegmentStorage.ts`): per-segment JSONL files under `<rootDir>/segments/<id>.jsonl`. Per-file atomic writes via temp+fsync+rename (matches `GraphStorage.durableWriteFile` including the Windows EPERM fallback). **Manifest-based crash-atomic `saveAll`** — writes a `segments/_manifest.json` sidecar listing the staged rename moves, then a crash mid-rename is recovered forward on the next `loadAll`. Loaders never observe a torn snapshot. Per-line malformed-JSONL tolerance (corrupt tail or hand-edit doesn't take down the whole segment). `findOutgoingRelations(name)` reads one segment; `findIncomingRelations(name)` scans every segment (asymmetric by design — documented).
+- **`GraphStorage` wiring** (`src/core/GraphStorage.ts`): new `segmentStorage` field populated from `MEMORY_STORAGE_SEGMENT_COUNT` env. Strict regex parsing (`^[1-9][0-9]*$`) rejects floats, exponents, hex, leading zeros, signs; upper bound `MAX_SEGMENT_COUNT = 1024`. Unset / invalid → single-file mode (byte-identical to pre-Phase-7 behavior). Append paths (`appendEntity`, `appendRelation`, `updateEntity`) fall back to a full saveAll via `appendViaSegmentSave` — less efficient than the single-file per-line append but correct. Per-segment append is a follow-up optimization. Reload-failure path catches the secondary error and surfaces both errors as an aggregated "desynced state" message so callers can detect the corner case.
+- **Migration tool** (`tools/segment-jsonl/`): CLI for splitting an existing single-file JSONL into N segments and merging back. `--force` flag protects against silently clobbering existing segment files or output paths. Strict numeric `--segments` parsing rejects floats/exponents. Bidirectional round-trip survives `split → merge` cycles.
+- **New env var:** `MEMORY_STORAGE_SEGMENT_COUNT` (unset = single-file mode, default). Integer in `[2, 1024]` enables segment mode; anything else falls back to single-file mode rather than throwing (graceful degradation for misconfigured deployments).
+- **90 new tests**: `ISegmentStorage` x20 (FNV determinism + distribution, router validation, split/merge purity, in-memory backend round-trip + ownership), `FileSegmentStorage` x25 (round-trip, on-disk layout, missing-file tolerance, ownership validation, atomicity, stress to 100 entities × 16 segments, findOutgoing/findIncoming with `loadSegment` call-count assertions), migration tool x20 (parseArgs, runSplit, runMerge, round-trip), `GraphStorage` wiring x12 (env-var resolution including non-integer fallback, round-trip parity at =1 / =4, append paths in segment mode), review-fix regression tests x13 (manifest forward-recovery x3, malformed-line tolerance x1, strict-regex parsing x5, save+reload-failure path x1, migration overwrite protection x3).
+
+### Notes (Phase 7 — orchestration pattern)
+
+Phase 7 piloted the agent-driven orchestration pattern from the plan's Phase 7–11 breakdown: the orchestrator writes the foundation task (the interface contract) sequentially in main; parallel agents in git worktrees handle independent file backends + tools; orchestrator reconciles their output and writes the integration task (wiring) itself in main; one general-purpose review subagent on the cumulative diff; orchestrator applies substantive fixes and closes out. Pattern: 1 sequential interface task + 2 parallel worktree tasks + 1 sequential wiring task + 1 review + 1 close-out = ~30 min of orchestrator time on top of agent wall-clock. Saved ~10 min vs sequential execution of tasks 60+63. Pattern carries over directly to Phases 8–11.
+
+The Phase 7 review surfaced 13 findings: 3 critical + 9 substantive + 1 nit. The critical-and-substantive 9 were applied; nit #10 (path-traversal defense-in-depth on `FileSegmentStorage` constructor) and #14 (Windows pathToFileURL heuristic in the CLI) are noted but not actioned. Notable fixes worth flagging:
+
+- **Manifest sidecar for `saveAll`** (review #4): replaces a misleading "two-phase staging" docstring with actual crash-atomicity. Forward recovery on `loadAll` completes any pending renames from a crashed save.
+- **`appendViaSegmentSave` reload-failure handling** (review #1): originally a single `try/catch` that would mask the original save error with a reload error and leave the cache desynced. Now wraps the reload in its own try/catch and throws an aggregated error.
+- **Strict env-var parsing** (review #8): `parseInt('3.7')` silently truncating to `3` was a real footgun. Now uses a `^[1-9][0-9]*$` regex.
+
+### Added (Phase 6)
+
+- **SPARQL minimal subset** (`src/search/SPARQL.ts`): hand-rolled tokenizer + recursive-descent parser + brute-force triple-matching evaluator for SPARQL 1.1 SELECT. Supports `PREFIX`, `SELECT [DISTINCT]`, `WHERE { triples }` with `?var` / `<iri>` / `prefix:local` / `"literal"` terms, `FILTER (?v op rhs)` with `= != < > <= >= LIKE`, `LIMIT`, `OFFSET`. `graphToTriples()` exposes the RDF view of any `KnowledgeGraph` matching the convention `IOManager.exportAsTurtle` already uses. Brute-force join is reordered by selectivity (bound IRIs/literals first), then bounded by `maxSolutions` (default 100k) — protects against CPU-DoS queries when exposed over a network. `FILTER LIKE` patterns are length-capped (default 256 chars) and pre-compiled once per query. Out of scope: OPTIONAL/UNION/MINUS/BIND/GROUP BY, property paths, CONSTRUCT/ASK/DESCRIBE, SPARQL Update — callers needing those should defer to a real engine.
+- **Lazy entity hydration** (`src/core/EntityProxy.ts`): `EntityProxy` carries `(name, entityType)` eagerly; `observations` / `tags` / `importance` / `parentId` / `createdAt` / `lastModified` are loaded via a single `getEntityByName` on first access and cached. `EntityProxyFactory.fromPair / fromIndex / fromName` builders; `seed()` lets a factory pre-populate the cache from an already-loaded record (avoids the second read `hydrate()` would otherwise perform in `fromName`). Returned `observations` / `tags` arrays are `Object.freeze`'d so caller `.push()` fails fast instead of silently corrupting the storage-layer cache. Enables filter-then-hydrate patterns over large entity lists without paying full observation-deserialization cost.
+- **Write-ahead log for JSONL** (`src/core/WriteAheadLog.ts`): append-only `<file>.wal` companion. Synchronous `openSync` / `writeSync` / `fsyncSync` / `closeSync` per append (when `fsyncOnAppend: true`, default) to guarantee durability ordering before the main-file write. First-write does a POSIX directory fsync so a fresh WAL's dirent is durable across crashes. `replay()` reads entries with malformed-tail tolerance (the crash-during-append fingerprint) but throws on mid-log malformed lines unless `{ tolerateGaps: true }` — silent state divergence is worse than an explicit recovery error. `checkpoint()` removes the WAL after the main store has durably absorbed the entries. `applyWALToGraph()` helper applies a replayed sequence to an in-memory `KnowledgeGraph` snapshot. Wiring into `GraphStorage.saveGraph` is intentionally a follow-up — this commit ships the scaffolding so any caller can pick up durability without rebuilding the machinery.
+- **72 new tests** for Phase 6 modules: `SPARQL` x32 (parser edge cases, evaluator joins, FILTER ops including the `<` / `<=` regression fix, LIKE cap, `maxSolutions` cap, selectivity reorder), `EntityProxy` x16 (lazy/cache invariant, factory builders, frozen-array mutation safety), `WriteAheadLog` x24 (append + fsync, hasPending, replay-tail vs replay-middle policy, `tolerateGaps`, checkpoint idempotence, stats, end-to-end recovery, `applyWALToGraph` for every op kind).
+
+### Notes (Phase 6 — remaining deferrals)
+
+- **Phase 3 steps 35 / 37 / 38 / 39 / 41**: columnar observation storage, LZ4 cold tier, JSONL segment files, mmap, tiered index — each is a multi-month feature on its own. None tractable for inclusion in a single phase iteration.
+- **Phase 4 steps 42 / 43 / 45**: NestJS/Express/Next.js framework integrations, GraphQL, Elasticsearch sync — all gated on user dep approval.
+- **Phase 5 steps 55 / 56 / 57 / 58**: encryption at rest (needs key-management strategy), distributed architecture (multi-month, depends on Phase 4 adapter rollout), cloud-native deployment (operations not source-code work), GPU acceleration (needs CUDA/WebGPU dep approval).
+
+### Added (Phase 5)
+
+- **Query Language DSL** (`src/search/QueryLanguage.ts`): SQL-flavored entity/relation DSL with hand-rolled tokenizer + recursive-descent parser + AST executor over `KnowledgeGraph`. Grammar: `FROM entities|relations [WHERE expr] [ORDER BY field [ASC|DESC]] [LIMIT n [OFFSET n]]`. Operators: `= != < > <= >= LIKE CONTAINS`, `value IN field`, `AND / OR / NOT` with parentheses, dotted attribute paths. No external parser dep. `QueryDslError` raised on syntax / unknown source / trailing garbage.
+- **Graph embeddings via node2vec** (`src/search/Node2Vec.ts`): biased-random-walk + Skip-Gram-with-Negative-Sampling embedding builder. `BiasedRandomWalk` with second-order `(p, q)` parameters (1/p toward return, 1/q toward exploration; `p=q=1` reduces to DeepWalk). `SkipGramTrainer` with negative sampling — O(log V) per negative via cumulative-prefix binary search (was O(V) before review fix); excludes both context and center index from negative pool. Deterministic when seeded (mulberry32 PRNG). L2-normalized output embeddings; `topKSimilar` helper. GraphSAGE deferred to a follow-up phase.
+- **Locality-Sensitive Hashing** (`src/search/LSH.ts`): random-hyperplane LSH for cosine-ANN over embeddings. Gaussian hyperplanes via Box-Muller; signed-but-stable bucket keys via unsigned hex packing. Validates `dimensions > 0` and `hyperplanesPerTable ≤ 63` at construction. Diagnostic `bucketStats()` for tuning.
+- **Anomaly detection** (`src/features/AnomalyDetector.ts`): `detectStructuralAnomalies` (z-score on `in` / `out` / `total` degree — surfaces hub nodes + disconnected ones); `detectSemanticAnomalies` (k-NN cosine-distance z-score on embeddings; L2-norm-aware so callers passing un-normalized vectors don't silently produce negative distances); `detectAllAnomalies` combiner. Auto-tag and KG completion deferred.
+- **CRDT collaboration scaffolding** (`src/features/CRDT.ts`): `VectorClock` (with `compare` returning `'concurrent'` on incomparable clocks), `LWWRegister<T>` (ts → replicaId tie-break), `ORSet<T>` (observed-remove set; CSPRNG add-tags via `crypto.randomBytes` so collisions don't corrupt OR-Set semantics under load), `CRDTGraph` (composes the primitives + tombstones for deletes). **Hybrid Logical Clock** ensures strict per-replica monotonicity even when many ops land in the same wall-clock ms — without it, fast back-to-back ops share a ts and tie-break only on replicaId, losing LWW. `merge()` is commutative + associative + idempotent (proved by tests).
+- **Access control — ABAC** (`src/security/ABACPolicy.ts`): attribute-based rule engine. Combining algorithm: highest-priority match wins, ties resolve to deny-overrides, final tie-break on rule id (deterministic for audit logs). Wildcard `*` action support. 11 operators: `eq / neq / in / not-in / contains / starts-with / lt / lte / gt / gte / present / absent`. Nested attribute paths (e.g. `subject.team.name`) flattened with depth cap and `WeakSet` cycle protection. Malformed conditions (e.g. `op: 'in'` with non-array value) throw `ABACPolicyError` rather than silently denying.
+- **Row-level filtering** (`src/security/RowLevelFilter.ts`): composable predicates AND-ed together. Built-ins: `byAttribute` (deny-on-missing by default), `byTenant` (sugar for tenant isolation), `byClassificationCap` (subject clearance ≥ row classification using a ranked vocabulary), `byTagOverlap` (label-based row security).
+- **API key store** (`src/security/APIKeyStore.ts`): in-memory store with SHA-256-hashed records + constant-time validation via `crypto.timingSafeEqual`. `issue` returns plaintext exactly once; later calls only see hashes. Scopes per key; TTL via `ttlSeconds` or explicit `expiresAt`. Revocation is idempotent and preserves the record for audit. `serialize` / `load` round-trip contains no plaintext. JSDoc notes the residual timing leak in the `reason` field — callers should collapse to a single "invalid" before serializing over a network if revocation/expiry status must remain confidential.
+- **147 new tests** for Phase 5 modules: `QueryLanguage` x33, `Node2Vec` x15, `LSH` x11, `AnomalyDetector` x11, `CRDT` x20, `ABACPolicy` x18, `RowLevelFilter` x11, `APIKeyStore` x18.
+
+### Added (Phase 2 — deferred items closed alongside Phase 5)
+
+- **API stability tiers (Phase 2 step 24)**: 19 Phase 0–4 modules tagged in their `@module` JSDoc with `@public` or `@experimental`. Modules: `IIndexHealth`, `Diagnostics`, `IndexHealthMonitor`, `CachePressureCoordinator`, `BackgroundIndexer`, `BloomFilter`, `BloomPreScreener`, `MaterializedViews`, `PartialIndexAdvisor`, `PartitionedInvertedIndex`, `QueryPlanFormatter`, `SearchStream`, `SynonymManager`, `HeuristicManager`, `EntityStateMachine`, `ObservationStore`, `IDatabaseAdapter`, `IVectorDBAdapter`, `LangChainMemoryAdapter`, `RestRouter`. Added a corresponding policy section to `CLAUDE.md`. Took the plan's alt path — tag only Phase 0–4 additions, leave pre-existing modules at the implicit `@public` level — so this is not a SemVer-breaking change. A full audit + per-symbol tiering of pre-Phase-0 modules is deferred to a v2.0.0 cut.
+- **`BackupManager` extraction (Phase 2 step 29, first pass)**: extracted backup lifecycle from `IOManager` into `src/features/BackupManager.ts` (~313 LOC: `create` / `list` / `restore` / `delete` / `cleanOld` + `getDir`). `IOManager` keeps a private `BackupManager` instance and delegates the 6 backup methods to it; pre-extraction public API unchanged. New `IOManager.backupManager` getter exposes the smaller surface for callers who want to avoid the larger `IOManager` dependency. 15 unit tests covering extraction wiring, the full lifecycle, and delegation parity with `IOManager`. The remaining `IOManager` sub-modules (export, import, ingest, visualize) will be extracted in follow-up commits.
+
+### Notes (Phase 5 — deferred items)
+
+- **Step 52 (§13.4 SPARQL)**: full SPARQL 1.1 parser + algebra evaluator is a multi-month project on its own. Deferred to a dedicated phase. Note the RDF half (Turtle / RDF-XML / JSON-LD export) is already shipped in `IOManager`.
+- **Steps 55–58**: §14.3 encryption at rest + GDPR tooling (needs key-management strategy + crypto-library decisions), §14.2 distributed architecture (multi-month, depends on Phase 4 adapter rollout), §14.4 cloud-native deployment (operations work, not source-code), §14.5 GPU acceleration (needs CUDA/WebGPU dep approval). All require user-side decisions before implementation can begin.
+
+### Added (Phase 4)
+
+- **`IDatabaseAdapter` interface** (`src/adapters/IDatabaseAdapter.ts`): contract for backing the knowledge graph with an external database. CRUD methods plus `applyBatch` (atomic — `InMemoryDatabaseAdapter` snapshot-restores on throw), `streamEntities` (AsyncIterable for cursor-style backends), `withTransaction`. Includes `NullDatabaseAdapter` (every method including `connect()` rejects so misconfigured callers fail loud) and `InMemoryDatabaseAdapter` (test-only reference impl). Real Postgres/Mongo adapters live in companion packages — no external dep added.
+- **`IVectorDBAdapter` interface** (`src/adapters/IVectorDBAdapter.ts`): contract for offloading semantic search to an external vector database. `connect` / `upsert` / `query` / `remove` / `stats`. Includes `InMemoryVectorAdapter` (linear-scan cosine reference impl). Zero-magnitude vectors return `NaN` from the similarity helper and are filtered out in `query` rather than silently scoring as 0. Real Weaviate/Pinecone/Qdrant adapters live in companion packages.
+- **`RestRouter`** (`src/adapters/RestRouter.ts`): framework-agnostic dispatch table. `:name`-pattern routes, `RestRequest` / `RestResponse` envelopes, `dispatch(req)` for any framework, plus a built-in Node `http` `serve(req, res)` adapter (auto-parses JSON bodies, writes JSON responses). `RestRouter.withDefaults(ctx)` mounts entity + search routes; the POST handler validates Entity shape (rejects with 400 on malformed body — replaced an unsafe `as never` cast with a real shape check).
+- **`LangChainMemoryAdapter`** (`src/adapters/LangChainMemoryAdapter.ts`): structurally matches LangChain's `BaseChatMemory` contract without taking a `langchain` dep. `loadMemoryVariables` (with defensive timestamp sort against future `MemoryEngine` ordering changes) + `saveContext` + `clear` + configurable input/output/memory keys. Foreign turns (without the `[role=...]` prefix) fall back to `'unknown'` rather than being silently relabeled as `user`.
+- **45 new tests** for adapters and wiring follow-ups: `IDatabaseAdapter` x10, `IVectorDBAdapter` x9, `RestRouter` x8, `LangChainMemoryAdapter` x7, `makeTFIDFUpdater` x3, `setBloomPreScreener` x3, `ctx.observationStore` x3, `applyBatch` atomicity x1, `withTransaction` round-trip x1.
+
+### Changed (Phase 4)
+
+- **`BackgroundIndexer.makeTFIDFUpdater`** (Phase 3 follow-up wiring): the factory's `applyUpsert` now uses `IGraphStorage.getEntityByName` (O(1) via the NameIndex) instead of `loadGraph().find()` (O(n) per upsert). Major perf improvement at scale.
+- **`ObservationStore`** gains `internEntityObservations(entity)` and `releaseEntityObservations(hashes)` convenience helpers; exposed via lazy `ctx.observationStore` getter on `ManagerContext`. JSDoc clarifies the store is per-`ManagerContext` and per-process — no on-disk persistence, no seed from existing graph entities.
+- **`FuzzySearch.setBloomPreScreener` / `hasBloomPreScreener`**: opt-in candidate pre-screen that intersects with the Bloom filter's output BEFORE the Levenshtein scan. Correctness preserved — the pre-screen falls back to the unfiltered candidate set when the screener returns zero matches (regression test verifies "Alise" still finds "Alice" through fuzzy search even though "alise" isn't in any entity's bloom filter).
+
+### Notes (Phase 4 — deferred items)
+
+- **Steps 42 / 43 / 45**: §12.5 NestJS / Express / Next.js framework integrations, §12.4 GraphQL support, §12.3 Elasticsearch sync. Each requires a real external dep (`@nestjs/common`, `graphql`, `@elastic/elasticsearch`) that the plan flags as "gated on dep approval." Skipped pending consumer / dep-approval decisions.
+- **Phase 2 step 24** (API tiering) remains blocked on the v2.0 SemVer cut decision.
+- **Phase 2 step 29** (split `IOManager.ts` 1934 LOC) still pending its own dedicated commit.
+
+### Added (Phase 3)
+
+- **Query result streaming** (`src/search/SearchStream.ts`): `streamArrayInChunks` (chunked yield with `setImmediate` between chunks for early-break responsiveness), `streamMergedByScore` (priority-queue merge over multiple `AsyncIterable<ScoredItem>` sources — precondition: per-source descending order, documented), `collectStream` helper.
+- **Background index maintenance** (`src/search/BackgroundIndexer.ts`): decouples index updates from the write path. Gated on `MEMORY_INDEX_UPDATE_MODE=async`. Per-entity coalescing rules with explicit merge matrix. Concurrent `flush()` calls share an in-flight promise + chain a follow-up drain when the queue grows during a flush — no starvation under sustained writes. Force-flush on max-batch dispatched via `setImmediate` to avoid re-entering the emit handler synchronously.
+- **Observation deduplication** (`src/core/ObservationStore.ts`): content-addressable SHA-256 store with reference counting. `release()` returns tri-state `'removed' | 'decremented' | 'unknown'` so callers distinguish no-ops from successful decrements. `intern` / `get` / `refCount` / `stats` / `internAll` / `getAll`. Entity shape unchanged; wiring into `EntityManager` is a follow-up.
+- **Index partitioning by entity type** (`src/search/PartitionedInvertedIndex.ts`): per-entityType partitioned router over `OptimizedInvertedIndex`. `searchPartition(type, terms)` for typed queries (proportional to per-type document count rather than full graph), `searchAcrossAll(terms)` snapshots the partition list before iterating to protect against concurrent `dropPartition`. `IIndexHealth.health()` rolls partitions up.
+- **Heuristic Guidelines Manager** (`src/agent/HeuristicManager.ts`): closes the **last unshipped Phase 3B item**. `add` / `match` (Jaccard token-overlap × confidence — symmetric so a 1-token query against a 10-token condition isn't penalised out of proportion) / `reinforce` (asymptotic toward 1) / `recordContradiction` (asymptotic toward 0) / `detectConflicts` (overlap vs literal-negation contradiction). Stopword-aware tokeniser keeps short tokens like "PR", "AI", "go".
+- **3 of 4 deferred Phase 2 wirings:** `PartialIndexAdvisor` wired into `SQLiteStorage.recordFilter()` (deferred DDL via `setImmediate` so the calling search returns first); `EmbeddingCache` and `QueryPlanCache` now `implements PressureAwareCache` with single-sort O(n log n) `evictTo`; `ctx.materializedViews` lazy getter exposed on `ManagerContext`. The remaining `BloomPreScreener` → `FuzzySearch` wiring requires FuzzySearch restructuring and stays deferred.
+- **75 new tests** (58 from Phase 3 modules + 17 from review-driven wiring tests): `ObservationStore` x10, `SearchStream` x8, `BackgroundIndexer` x7, `PartitionedInvertedIndex` x8, `HeuristicManager` x8, `PressureAwareCache` interface tests on both caches x10, `recordFilter` round-trip x2, `ctx.materializedViews` + `ctx.cachePressure` x4, plus inline. `test:ci` total now 6150 / 6150 passing.
+
+### Notes (Phase 3 — deferred items)
+
+- **Steps 35–41**: §4.3 columnar storage, §3.2 lazy hydration, §3.4 compressed in-memory (LZ4 cold tier), §5.3 JSONL segments, §5.4 mmap, §2.1 WAL for JSONL, §1.5 tiered index. Each is months of dedicated work — they warrant standalone phases rather than being bundled into a single commit.
+- **Wiring follow-ups still outstanding**: `BloomPreScreener` → `FuzzySearch` (needs FuzzySearch restructuring), `BackgroundIndexer` ↔ `TFIDFEventSync` (no production caller registers a real `IndexUpdater` yet), `ObservationStore` → `EntityManager` (Entity write path still stores full strings).
+- **Phase 2 step 24** (API tiering) remains blocked on the v2.0 SemVer cut decision.
+- **Phase 2 step 29** (split `IOManager.ts` 1934 LOC) still pending its own dedicated commit.
+
+### Added (Phase 2)
+
+- **Pre-execution spell correction** (`src/search/SearchSuggestions.ts`): new `getVocabulary()` (cached Set built from entity names + types + observation tokens), `correctQuery(q, options)` with conservative defaults (skip <4-char tokens, skip exact matches, only substitute on unique closest match within `maxDistance`). New `attachInvalidator(events)` wires the cache to a `GraphEventEmitter` for automatic invalidation on entity create/update/delete.
+- **Synonym expansion** (`src/search/SynonymManager.ts`): new module gated on `MEMORY_SYNONYM_EXPANSION` (default off). `add(group)` registers symmetric mappings; `expand(query)` returns OR-grouped tokens; `autoDetectFromGraph()` adds frequent co-occurrence pairs above `minSupport` (per-entity dedup so a single entity with repeated observations doesn't inflate counts).
+- **SQLite partial-index advisor** (`src/search/PartialIndexAdvisor.ts`): tracks `entityType` / `projectId` filter frequency; recommends `idx_advisor_*` partial indexes; `apply(db)` creates/drops via DDL with runtime column-whitelist re-validation. Indexes the filter column itself (not `entities(name)`). Gated on `MEMORY_SQLITE_AUTO_INDEX`.
+- **`QueryCostEstimator` adaptive feedback** (`src/search/QueryCostEstimator.ts`): new `recordExecution(method, count, ms)` updates a per-method EWMA (alpha=0.2). `getBaseTimeForMethod` prefers the EWMA once seeded; falls back to the configured constant otherwise. Min-bound floor on observed time (`1e-6` ms/entity) prevents zero-sample seeding.
+- **Batch mutation API** (`src/core/ManagerContext.ts`): new `ctx.batch(async (b) => {...}, options?)` wraps the existing `BatchTransaction` builder with a callback-style API. Aborts the batch when the callback throws (clears the queue + propagates).
+- **Materialized search views** (`src/search/MaterializedViews.ts`): `MaterializedViewsManager` registers named views (filter predicates), caches members, auto-invalidates via `entity:created/updated/deleted` events. Race-safe `query()` re-checks `dirty` after `await loadGraph()`.
+- **Bloom filter pre-screening** (`src/search/BloomFilter.ts` + `src/search/BloomPreScreener.ts`): pure-TS `BloomFilter` (FNV-1a + double-hash; `h2` forced odd to prevent subgroup collapse on even-`bitCount` filters). `BloomPreScreener` builds per-entity term filters (dynamic capacity sized to actual token count) plus global type/tag filters. Designed as a candidate-set pre-screen before fuzzy / semantic search.
+- **Cache pressure coordinator** (`src/utils/CachePressureCoordinator.ts`): caches register via `PressureAwareCache { name, currentEntries, evictTo }` interface. Proportional eviction (with `minRetentionEntries` floor) when total exceeds `MEMORY_CACHE_BUDGET_ENTRIES`. Gated — disabled when the env var is unset.
+- **63 new tests** covering DistillationPipeline (6, closing the test gap), SearchSuggestions vocab + correctQuery (6), SynonymManager (8), PartialIndexAdvisor (6), QueryCostEstimator EWMA (6), BloomFilter + BloomPreScreener (12), MaterializedViewsManager (7), CachePressureCoordinator (6), and `ctx.batch()` (3). `test:ci` total now 6092 / 6092 passing.
+
+### Changed (Phase 2)
+
+- **`zod ^3.24.1 → ^4.4.3`**, **`commander ^12.1.0 → ^14.0.3`**, **`chrono-node ^2.9.0 → ^2.9.1`**. All major bumps landed with zero source changes — codebase usage was conservative enough that the test suite (6028 tests) passed before any review fixes were applied.
+- **`CLAUDE.md` env-var matrix** gained `MEMORY_SQLITE_AUTO_INDEX`, `MEMORY_SYNONYM_EXPANSION`, and `MEMORY_CACHE_BUDGET_ENTRIES`.
+
+### Notes (Phase 2 — deferred items)
+
+- **Step 24 (§15.8 API tiering)** — blocked per the plan's risk: marking previously-public symbols `@internal` is itself a SemVer-breaking change, regardless of whether `api-extractor` removes them at build time. Needs an explicit v2.0 cut decision before starting; deferred until that decision is made.
+- **Step 29 (§15.1 split god-object `IOManager.ts` at 1934 LOC)** — too large to bundle into the Phase 2 commit alongside everything else. Will be addressed in a dedicated follow-up commit.
+- **Caller wiring** — the four new infrastructure modules (`PartialIndexAdvisor`, `MaterializedViewsManager`, `BloomPreScreener`, `CachePressureCoordinator`) ship with smoke-test coverage but are NOT yet wired into the search / cache hot paths. Wiring each into the appropriate caller is a follow-up. The contracts were chosen to make wiring straightforward (e.g., `PressureAwareCache` matches the existing `EmbeddingCache` / `QueryPlanCache` shape).
+
+### Added (Phase 1)
+
+- **`SECURITY.md`** — top-level threat model and controls inventory: path confinement (`validateFilePath`), FTS5 query sanitisation (`SQLiteStorage.fullTextSearch`), LIKE wildcard escaping (`simpleSearch`), XML entity encode/decode (`IOManager`), prototype-pollution guard (`sanitizeObject`), PII redaction (`PiiRedactor`), CLI input flow, known limitations, and a maintainer checklist.
+- **`searchManager` graph-analytics additions** (`src/core/GraphTraversal.ts`):
+  - `calculateHITS(maxIter?, tolerance?, topN?)` — Kleinberg's hubs-and-authorities with power iteration and L2 normalisation. Returns `{ hubs, authorities, iterations, converged }`.
+  - `findCliques({ minSize?, maxCliques? })` — Bron-Kerbosch with the Tomita-Tanaka-Takahashi pivot optimisation. Returns maximal cliques sorted longest-first.
+  - `findCommunities({ maxIter?, tolerance? })` — two-phase Louvain (greedy moves → community contraction → repeat). Returns `{ communities, modularity, levels }`. Edge-doubling fix for self-loops.
+- **SQLite read connection pool** (`src/core/SQLiteStorage.ts`): new `MEMORY_SQLITE_READ_POOL_SIZE` env var (default 4). Round-robin read connections via `pickReadConnection()`; reads through `fullTextSearch` and `simpleSearch` use the pool. Pool readers open with `readonly: true`. `closeReadPool()` invoked from both `clearCache` and `close`.
+- **BM25 incrementality** (`src/search/BM25Search.ts`): `addDocument`/`removeDocument`/`updateDocument` mirror the `TFIDFIndexManager` API with O(1) running-average doc-length updates. `addDocument` is a no-op until `buildIndex()` runs (matches TF-IDF semantics).
+- **TFIDFEventSync coalescing** (`src/search/TFIDFEventSync.ts`): index events for the same entity within `MEMORY_INDEX_COALESCE_MS` (default 50 ms) collapse into a single update via a per-entity-name pending Map with explicit merge rules (`create + update → create`, `create + delete → cancel`, etc.). New `flushNow()` for tests, new `{ coalesceMs }` constructor override, `process.on('beforeExit')` drain on shutdown, `disable()` flushes synchronously before unsubscribing.
+- **Entity state machine** (`src/core/EntityStateMachine.ts`): new `Entity.lifecycleStatus?: 'draft' | 'published' | 'archived'` field (named to avoid clashing with the pre-existing `SessionEntity.status` union). `EntityStateMachine` validates transitions; `EntityManager.updateEntity` enforces them. Persisted by both backends. `SearchFilterChain` defaults to `[DEFAULT_ENTITY_STATUS]` (= `'published'`) — drafts and archived entities are excluded from search unless callers opt in.
+- **`AbortSignal` cancellation in `ParallelSearchExecutor`**: new `ParallelSearchOptions.signal?: AbortSignal`. Each layer wrapped in a `withCancel` helper that races against the abort event — already-aborted skips synchronously, mid-flight abort drops results without waiting. Existing executor behaviour unchanged when `signal` is omitted.
+- **`ctx.diagnostics()`** (`src/utils/Diagnostics.ts`): single-call snapshot composing over `ctx.indexHealth()` plus an entity-counts panel. Side-effect-free — uses the new `IGraphStorage.cachedGraph` getter rather than forcing a load.
+- **`IGraphStorage.cachedGraph`** — new public read-only getter on the storage interface (implemented by both `GraphStorage` and `SQLiteStorage`).
+- 23 new smoke tests covering HITS, Bron-Kerbosch, Louvain, `EntityStateMachine`, BM25 incrementality, and `ParallelSearchExecutor` AbortSignal cancellation.
+
+### Changed (Phase 1)
+
+- **Pre-existing latent XML decode-order bug fixed** (`src/features/IOManager.ts`): the import-side `decodeXmlEntities` helper now runs `&amp;` LAST so double-encoded entities like `&amp;lt;` decode to `&lt;` (literal) rather than `<`. The `SECURITY.md` audit surfaced the divergence.
+- **CLAUDE.md env-var matrix** gained the two new Phase 1 vars (`MEMORY_SQLITE_READ_POOL_SIZE`, `MEMORY_INDEX_COALESCE_MS`).
+- **`SearchFilterChain.hasActiveFilters`** now reports `lifecycleStatus` when explicitly set (only the implicit default-to-published is silent).
+
+### Notes
+
+- The previous `[Unreleased]` "Fixed (follow-up — pre-existing issues surfaced during Phase 0)" section already addressed Phase 1 step 10 (`§15.3 Eliminate as any`) early. That work landed in commit `9d19e87`.
+
+## Phase 0 (hygiene + scaffolding)
+
+All seven items in Phase 0 landed plus three review rounds. No SemVer-breaking changes.
+
+### Added
+
+- **ESLint flat config** at `eslint.config.mjs`. Enforces `@typescript-eslint/no-explicit-any`, `no-console`, and `@typescript-eslint/no-floating-promises` at error severity. Logger implementations (`src/utils/logger.ts`, `src/search/QueryLogger.ts`) and the CLI bin entry are excepted from `no-console`. New scripts: `npm run lint` and `npm run lint:fix`.
+- **`searchManager.explainPlan(query)`** — returns `{ ascii, json }`, where `ascii` is a tree-formatted view of the underlying `QueryPlan` (from the existing `QueryPlanner` pipeline) and `json` is the raw plan. New module: `src/search/QueryPlanFormatter.ts`.
+- **`ctx.indexHealth()`** — aggregate health snapshot over `RankedSearch`'s TF-IDF index and the embedding subsystem. Side-effect-free (does not force lazy construction). New modules: `src/utils/IIndexHealth.ts`, `src/utils/IndexHealthMonitor.ts`. Future `ctx.diagnostics()` will compose over this shape.
+- **CLI pipe support** — when stdin is piped (non-TTY) and no positional subcommand is on argv, `memoryjs` reads stdin line-by-line via `readline` and runs each line as a command. Lines starting with `#` are comments; quoted args (single or double, with backslash escapes) are respected. Global flags (`--storage`, `--output-format`, etc.) come from the outer invocation: `cat commands.txt | memoryjs --output-format=table`.
+- **`TFIDFIndexManager.health()`** and **`OptimizedInvertedIndex.health()`** — both now `implements IIndexHealth`. **`RankedSearch.getIndexHealth()`** delegates to its index manager and returns a "disabled" snapshot when no `storageDir` was supplied.
+
+### Changed
+
+- **`package-lock.json` is now committed.** Previously gitignored per the "use `npm ci` in CI" comment, but the same gotcha in `CLAUDE.md` acknowledged "dependencies may drift between machines". Reproducible builds win.
+- **Centralised logging.** 19 `console.*` call sites in non-CLI / non-logger code now route through the existing `src/utils/logger.ts` facade. The 4 `console.*` calls inside `src/utils/logger.ts` itself and the 4 inside `src/search/QueryLogger.ts` are intentional — those modules ARE the logger implementations.
+- **`DecayScheduler.start()`** now `.unref()`s its `setInterval` (mirrors the existing `ConsolidationScheduler` pattern) so the scheduler does not by itself keep the Node.js process alive.
+- **`taskScheduler` floating-promise fixes.** Two `processNext()` callsites that were fire-and-forget without explicit handling now go through a new `kickProcessNext()` helper that wraps each call with `.catch(logger.error)`. Errors that escape `processNext`'s internal try/catch surface in the logger instead of being silently dropped.
+- **`AgentMemoryManager.recordAccess`** and **`registerAgent`** — both now wrap their async-called-from-sync-wrapper invocations in `.catch(logger.error)`. Public signatures unchanged (still `void`); errors that previously rode the unhandled-rejection path now log and continue. Documented as a known limitation; tightening the contract requires an API change deferred to Phase 2 (API tiering).
+- **`DistillationPipeline`, `DistillationStats`, `DistillationResult` marked `@internal`.** No internal consumers; not wired through `ManagerContext`. The symbols remain exported for forward compatibility but are not part of the stable public surface.
+- **CLI safety nets.** New `process.on('unhandledRejection' | 'uncaughtException')` handlers at module load. Both route through the logger and **do not** call `process.exit(1)` — so other handlers (notably `WorkerPoolManager.uncaughtExceptionHandler`'s worker shutdown) get to run and Node's default exit semantics apply.
+- **Migration logging messages.** `entityUtils.ensureMemoryFilePath`'s "Found legacy memory.json" / "Successfully migrated" messages now go through `logger.info` (which writes to stderr like the rest of the logger and prefixes `[INFO]` itself). The duplicate `[INFO]` prefix in the message string was dropped. Visible to anyone scraping these messages from stdout — they now appear on stderr.
+
+### Notes
+
+- A follow-up commit (same `[Unreleased]`) cleared all 18 pre-existing `as any` casts (Phase 1 step 10 done early), removed 4 unused `eslint-disable` directives, and resolved the 10 pre-existing test failures (9 plan-doc-audit signing, 1 entityUtils Windows-path test). `npm run lint` exits 0; `npm run test:ci` passes 6008/6008.
+
+### Fixed (follow-up — pre-existing issues surfaced during Phase 0)
+
+- **All 18 `no-explicit-any` lint errors** (§15.3 / Phase 1 step 10). ENOENT casts now use `NodeJS.ErrnoException`. `(e: any)` filter/sort callback annotations dropped in favour of TS inference. `(this.storage as any)` in `ContextWindowManager.wakeUp` replaced with `as GraphStorage` plus a TODO comment about the deeper storage-abstraction issue (`EntityManager` and `ObservationManager` are typed for the concrete `GraphStorage`, not `IGraphStorage`). `ProfileManager.extractFromSession`'s load-bearing `as any` (it was passing observation strings to `SalienceEngine.calculateSalience` which expects an `AgentEntity`) replaced with `as unknown as AgentEntity` and a TODO documenting the underlying call-signature mismatch. Two `GraphEventListener<any>` cases in `GraphEventEmitter` retained behind explicit `eslint-disable` + comments noting that TS function-parameter contravariance prevents the heterogeneous listener Set from being typed precisely.
+- **4 unused `eslint-disable` directives removed** from `src/features/IOManager.ts` (no-template-curly-in-string block disable + matching enable), `src/utils/parallelUtils.ts` (x2 `no-new-func`), `src/utils/taskScheduler.ts` (`no-new-func`). The `SECURITY NOTE` JSDoc above each kept-line `new Function()` site stays.
+- **`tests/unit/tools/plan-doc-audit.test.ts`** — three `beforeEach` hooks now call `git config commit.gpgsign false` and `git config tag.gpgsign false` after `git init` so the temp-repo commits no longer hit the sandboxed signing server. Restores 9 tests.
+- **`tests/unit/utils/entityUtils.test.ts:769–783`** (`validateFilePath > rejects absolute paths outside baseDir`) — fixtures are now platform-aware (`/etc/test/memory.jsonl` vs `/base` on POSIX; `C:\Users\test\memory.jsonl` vs `C:\base` on Windows). The original hard-coded `C:\` paths were treated as relative on Linux which silently passed the confinement check.
+
 ## [1.15.0] - 2026-04-26
 
 Adds the `PiiRedactor` sub-feature, extends `CreateEntitySchema` and `ExtendedExportFormatSchema` for the η.6.3 / η.4.4 / η.5.4 surfaces, surfaces RDF formats through the CLI, and resolves the global vs subcommand `--format` flag clash. Picked up smoke-test fixes (`b1672c8`, `4b6382a`) discovered during memory-mcp v12.2.0 pre-publish testing on 2026-04-25.

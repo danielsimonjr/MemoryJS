@@ -250,9 +250,9 @@ describe('TFIDFIndexManager', () => {
       expect(loaded?.idf.size).toBe(originalSize);
     });
 
-    it('should return null for non-existent index file', async () => {
+    it('should return undefined for non-existent index file', async () => {
       const loaded = await manager.loadIndex();
-      expect(loaded).toBeNull();
+      expect(loaded).toBeUndefined();
     });
 
     it('should create indexes directory if not exists', async () => {
@@ -281,9 +281,9 @@ describe('TFIDFIndexManager', () => {
   });
 
   describe('getIndex', () => {
-    it('should return null before building', () => {
+    it('should return undefined before building', () => {
       const index = manager.getIndex();
-      expect(index).toBeNull();
+      expect(index).toBeUndefined();
     });
 
     it('should return cached index after building', async () => {
@@ -310,7 +310,7 @@ describe('TFIDFIndexManager', () => {
       await manager.buildIndex(sampleGraph);
       await manager.clearIndex();
 
-      expect(manager.getIndex()).toBeNull();
+      expect(manager.getIndex()).toBeUndefined();
     });
 
     it('should delete index file from disk', async () => {

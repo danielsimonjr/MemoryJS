@@ -8,10 +8,11 @@
 
 import type { Entity, SearchResult, TFIDFIndex, TokenizedEntity } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
-import { calculateTF, calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
+import { calculateTFFromTokens, calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { TFIDFIndexManager } from './TFIDFIndexManager.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
+import type { IndexHealthSnapshot } from '../utils/IIndexHealth.js';
 
 /**
  * Performs TF-IDF ranked search with optional pre-calculated indexes.
@@ -48,6 +49,23 @@ export class RankedSearch {
   }
 
   /**
+   * Surface the underlying TF-IDF index manager's health. Returns a
+   * 'not configured' snapshot when no storageDir was provided to the
+   * constructor (in which case there is no on-disk TF-IDF index).
+   */
+  getIndexHealth(): IndexHealthSnapshot {
+    if (!this.indexManager) {
+      return {
+        name: 'tfidf',
+        initialized: false,
+        documentCount: 0,
+        warnings: ['no storageDir provided to RankedSearch; TF-IDF index disabled'],
+      };
+    }
+    return this.indexManager.health();
+  }
+
+  /**
    * Initialize and build the TF-IDF index for fast searches.
    *
    * Should be called after graph changes to keep index up-to-date.
@@ -80,9 +98,9 @@ export class RankedSearch {
   /**
    * Load the TF-IDF index from disk if available.
    */
-  private async ensureIndexLoaded(): Promise<TFIDFIndex | null> {
+  private async ensureIndexLoaded(): Promise<TFIDFIndex | undefined> {
     if (!this.indexManager) {
-      return null;
+      return undefined;
     }
 
     // Return cached index if already loaded
@@ -265,15 +283,15 @@ export class RankedSearch {
     const tokenSets = documentData.map(d => d.tokenSet);
 
     for (const docData of documentData) {
-      const { entity, text } = docData;
+      const { entity, tokens } = docData;
 
       // Calculate score for each query term
       let totalScore = 0;
       const matchedFields: SearchResult['matchedFields'] = {};
 
       for (const term of queryTerms) {
-        // Calculate TF using pre-tokenized tokens
-        const tf = calculateTF(term, text);
+        // Calculate TF using pre-tokenized tokens (O(T) vs O(N) re-tokenization)
+        const tf = calculateTFFromTokens(term, tokens);
 
         // Calculate IDF using pre-computed token sets (O(1) per document)
         const idf = calculateIDFFromTokenSets(term, tokenSets);
