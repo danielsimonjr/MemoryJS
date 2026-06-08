@@ -19,17 +19,15 @@ export function registerMaintenanceCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
-        const stats = await ctx.analyticsManager.getGraphStats();
         const graph = await ctx.storage.loadGraph();
+        const stats = await ctx.analyticsManager.getGraphStats(graph);
 
-        const observationCount = graph.entities.reduce(
-          (sum, e) => sum + (e.observations?.length || 0),
-          0
-        );
+        let observationCount = 0;
         const allTags = new Set<string>();
-        graph.entities.forEach(e => {
+        for (const e of graph.entities) {
+          observationCount += e.observations?.length || 0;
           (e.tags || []).forEach(tag => allTags.add(tag));
-        });
+        }
 
         if (options.format === 'json') {
           logger.log(JSON.stringify({

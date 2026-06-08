@@ -19,6 +19,7 @@
 
 import type { GraphStorage } from '../core/GraphStorage.js';
 import type { Entity, Relation } from '../types/types.js';
+import { logger } from '../utils/logger.js';
 
 /**
  * A JSON round-trippable value. Matches `@json-ui/core`'s `JSONValue` shape
@@ -209,7 +210,7 @@ export async function createObservableDataModelFromGraph(
   const {
     projection,
     onError = (err) =>
-      console.error('[memoryjs ObservableDataModel adapter]', err),
+      logger.error('[memoryjs ObservableDataModel adapter]', err),
   } = options;
 
   // Warm the storage cache once so all subsequent reads can be synchronous

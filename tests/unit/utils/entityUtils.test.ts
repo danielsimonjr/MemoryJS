@@ -766,19 +766,23 @@ describe('entityUtils', () => {
     // confineToBase=false explicitly (storage layer, MEMORY_FILE_PATH,
     // export output paths).
 
+    // Platform-aware fixtures: `C:\…` is recognised as absolute only on
+    // Windows; on POSIX it's treated as a relative path under cwd, which
+    // breaks the "outside baseDir" assertion. Pick paths that are absolute
+    // on the host platform.
+    const isWindows = process.platform === 'win32';
+    const outsidePath = isWindows ? 'C:\\Users\\test\\memory.jsonl' : '/etc/test/memory.jsonl';
+    const baseOutside = isWindows ? 'C:\\base' : '/base';
+
     it('rejects absolute paths outside baseDir under default confinement', () => {
       // Default confineToBase=true rejects absolute paths that escape baseDir.
-      expect(() =>
-        validateFilePath('C:\\Users\\test\\memory.jsonl', 'C:\\base'),
-      ).toThrow(/outside the allowed directory/);
+      expect(() => validateFilePath(outsidePath, baseOutside)).toThrow(
+        /outside the allowed directory/,
+      );
     });
 
     it('accepts absolute paths when confineToBase=false', () => {
-      const result = validateFilePath(
-        'C:\\Users\\test\\memory.jsonl',
-        'C:\\base',
-        false,
-      );
+      const result = validateFilePath(outsidePath, baseOutside, false);
       expect(result).toContain('memory.jsonl');
     });
 

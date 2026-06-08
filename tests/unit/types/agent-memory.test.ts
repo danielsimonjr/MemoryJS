@@ -13,9 +13,9 @@ import {
   isSemanticMemory,
   isProceduralMemory,
   AccessContextBuilder,
+  MEMORY_TYPES,
   type AgentEntity,
   type SessionEntity,
-  type MemoryType,
   type MemoryVisibility,
 } from '../../../src/types/index.js';
 
@@ -59,6 +59,31 @@ function createSessionEntity(overrides: Partial<SessionEntity> = {}): SessionEnt
   };
 }
 
+// ==================== MEMORY_TYPES const Tests ====================
+
+describe('MEMORY_TYPES', () => {
+  it('pins the exact memory-type slot set (in declared order)', () => {
+    // The single source of truth — `MemoryType` derives from this and
+    // `isAgentEntity` checks membership against it. Adding/removing a
+    // slot updates the type, the guard, and this assertion in one edit.
+    expect(MEMORY_TYPES).toEqual([
+      'working',
+      'episodic',
+      'semantic',
+      'procedural',
+      'prospective',
+      'failure',
+      'plan',
+      'reflection',
+      'heuristic',
+      'exclusion',
+      'decision',
+      'project_context',
+      'tool_affordance',
+    ]);
+  });
+});
+
 // ==================== isAgentEntity Tests ====================
 
 describe('isAgentEntity', () => {
@@ -68,8 +93,11 @@ describe('isAgentEntity', () => {
   });
 
   it('should return true for all memory types', () => {
-    const memoryTypes: MemoryType[] = ['working', 'episodic', 'semantic', 'procedural'];
-    for (const memoryType of memoryTypes) {
+    // Drift guard: iterate the single source-of-truth `MEMORY_TYPES`
+    // tuple so adding a memory type can never leave `isAgentEntity`
+    // behind. Previously this list was hand-maintained and fell out of
+    // sync with the `MemoryType` union twice ('plan', 'reflection').
+    for (const memoryType of MEMORY_TYPES) {
       const entity = createAgentEntity({ memoryType });
       expect(isAgentEntity(entity)).toBe(true);
     }

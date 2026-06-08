@@ -76,7 +76,7 @@ export interface AccessTrackerConfig {
  * ```typescript
  * const tracker = new AccessTracker(storage);
  * await tracker.recordAccess('entity_name', { sessionId: 'session_1' });
- * const stats = await tracker.getAccessStats('entity_name');
+ * const stats = tracker.getAccessStats('entity_name');
  * console.log(stats.accessPattern); // 'frequent', 'occasional', or 'rare'
  * ```
  */
@@ -154,7 +154,7 @@ export class AccessTracker {
    * @param entityName - Entity to get stats for
    * @returns Access statistics including pattern classification
    */
-  async getAccessStats(entityName: string): Promise<AccessStats> {
+  getAccessStats(entityName: string): AccessStats {
     const record = this.accessRecords.get(entityName);
 
     if (!record) {
@@ -329,7 +329,7 @@ export class AccessTracker {
    * Persist all dirty access records to storage.
    * Call periodically or on shutdown.
    */
-  async flush(): Promise<void> {
+  flush(): void {
     if (!this.dirty) return;
 
     // Persistence logic depends on storage backend
@@ -381,6 +381,7 @@ export class AccessTracker {
     const entity = this.storage.getEntityByName(entityName);
     if (!entity) return;
 
+    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort access telemetry; nothing to update if the entity vanished
     await this.storage.updateEntity(entityName, {
       accessCount: record.totalAccesses,
       lastAccessedAt: record.lastAccessedAt,

@@ -77,6 +77,15 @@ export interface ParallelSearchOptions {
   limit?: number;
   /** Timeout per layer in milliseconds (default: 30000) */
   timeoutMs?: number;
+  /**
+   * Cooperative cancellation. If aborted before a layer starts, the layer
+   * is skipped and reported as `success: true, resultCount: 0` with an
+   * `error: 'aborted'` annotation. If aborted while a layer is in flight,
+   * the executor stops waiting on that layer once the abort fires; the
+   * layer's underlying work may still complete in the background but its
+   * results are dropped.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -133,17 +142,38 @@ export class ParallelSearchExecutor {
       symbolic = {},
       limit = SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT,
       timeoutMs = 30000,
+      signal,
     } = options;
 
     const overallStart = Date.now();
     const timings: LayerTiming[] = [];
     const failedLayers: string[] = [];
 
-    // Execute all three layers in parallel
+    // Wrap each layer with cooperative cancellation. When `signal` aborts,
+    // the layer's promise resolves immediately with an empty/aborted shape;
+    // any in-flight work continues in the background but its results are
+    // dropped. This gives the caller a fast no-wait path without forcing
+    // every underlying search method to grow AbortSignal support today.
+    const semanticP = this.withCancel(
+      signal,
+      'semantic',
+      () => this.executeSemanticLayer(graph, query, semantic, limit * 2, timeoutMs),
+    );
+    const lexicalP = this.withCancel(
+      signal,
+      'lexical',
+      () => this.executeLexicalLayer(query, lexical, limit * 2, timeoutMs),
+    );
+    const symbolicP = this.withCancel(
+      signal,
+      'symbolic',
+      () => this.executeSymbolicLayer(graph.entities, symbolic, timeoutMs),
+    );
+
     const [semanticResult, lexicalResult, symbolicResult] = await Promise.all([
-      this.executeSemanticLayer(graph, query, semantic, limit * 2, timeoutMs),
-      this.executeLexicalLayer(query, lexical, limit * 2, timeoutMs),
-      this.executeSymbolicLayer(graph.entities, symbolic, timeoutMs),
+      semanticP,
+      lexicalP,
+      symbolicP,
     ]);
 
     // Collect timing information
@@ -297,11 +327,11 @@ export class ParallelSearchExecutor {
   /**
    * Execute symbolic search layer with timing.
    */
-  private async executeSymbolicLayer(
+  private executeSymbolicLayer(
     entities: readonly Entity[],
     filters: SymbolicFilters | undefined,
     _timeoutMs: number
-  ): Promise<{ results: Map<string, number>; timing: LayerTiming }> {
+  ): { results: Map<string, number>; timing: LayerTiming } {
     const startTime = Date.now();
     const results = new Map<string, number>();
 
@@ -480,5 +510,88 @@ export class ParallelSearchExecutor {
     const speedup = sequentialTime / parallelTime;
 
     return { sequentialTime, parallelTime, speedup };
+  }
+
+  /**
+   * Race a layer's work against an `AbortSignal`. If the signal is already
+   * aborted when called, the layer is skipped synchronously. If it aborts
+   * while the layer is in flight, the returned promise resolves with an
+   * empty/aborted shape — the underlying work may still complete in the
+   * background but its results are not awaited.
+   */
+  private async withCancel<R extends { results: Map<string, number>; timing: LayerTiming }>(
+    signal: AbortSignal | undefined,
+    layer: 'semantic' | 'lexical' | 'symbolic',
+    work: () => R | Promise<R>,
+  ): Promise<R> {
+    if (signal?.aborted) {
+      const now = Date.now();
+      return {
+        results: new Map(),
+        timing: {
+          layer,
+          startTime: now,
+          endTime: now,
+          durationMs: 0,
+          success: true,
+          error: 'aborted',
+          resultCount: 0,
+        },
+      } as R;
+    }
+
+    if (!signal) {
+      return work();
+    }
+
+    return await new Promise<R>((resolve) => {
+      let settled = false;
+      const onAbort = () => {
+        if (settled) return;
+        settled = true;
+        const now = Date.now();
+        resolve({
+          results: new Map(),
+          timing: {
+            layer,
+            startTime: now,
+            endTime: now,
+            durationMs: 0,
+            success: true,
+            error: 'aborted',
+            resultCount: 0,
+          },
+        } as R);
+      };
+      signal.addEventListener('abort', onAbort, { once: true });
+      Promise.resolve(work()).then(
+        (value) => {
+          if (settled) return;
+          settled = true;
+          signal.removeEventListener('abort', onAbort);
+          resolve(value);
+        },
+        (err) => {
+          if (settled) return;
+          settled = true;
+          signal.removeEventListener('abort', onAbort);
+          // Propagate by resolving with a failed-layer shape — matches the
+          // existing graceful-degradation contract in this executor.
+          const now = Date.now();
+          resolve({
+            results: new Map(),
+            timing: {
+              layer,
+              startTime: now,
+              endTime: now,
+              durationMs: 0,
+              success: false,
+              error: err instanceof Error ? err.message : String(err),
+              resultCount: 0,
+            },
+          } as R);
+        },
+      );
+    });
   }
 }

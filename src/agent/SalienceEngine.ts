@@ -271,7 +271,7 @@ export class SalienceEngine {
    */
   private async calculateFrequencyBoost(entity: AgentEntity): Promise<number> {
     // Try to get access stats from tracker for more accurate count
-    const stats = await this.accessTracker.getAccessStats(entity.name);
+    const stats = this.accessTracker.getAccessStats(entity.name);
     const accessCount = stats.totalAccesses > 0 ? stats.totalAccesses : (entity.accessCount ?? 0);
 
     if (accessCount === 0) return 0;

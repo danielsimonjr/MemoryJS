@@ -543,7 +543,23 @@ export class EpisodicMemoryManager {
    * @returns Number of episodic memories
    */
   async getEpisodeCount(sessionId: string): Promise<number> {
-    const timeline = await this.getTimeline(sessionId);
-    return timeline.length;
+    // Equivalent to `(await getTimeline(sessionId)).length` but skips the
+    // O(n log n) createdAt sort and pagination slice — count only.
+    const graph = await this.storage.loadGraph();
+    let count = 0;
+
+    for (const entity of graph.entities) {
+      if (!isAgentEntity(entity)) continue;
+      const agentEntity = entity as AgentEntity;
+
+      if (agentEntity.memoryType !== 'episodic') continue;
+      if (agentEntity.sessionId !== sessionId) continue;
+      // Exclude session entities themselves
+      if (agentEntity.entityType === 'session') continue;
+
+      count++;
+    }
+
+    return count;
   }
 }

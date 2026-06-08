@@ -22,6 +22,27 @@ export function tokenize(text: string): string[] {
 }
 
 /**
+ * Tokenize text into a set of lowercase alphanumeric words, optionally filtering by minimum length.
+ *
+ * @param text - Input text to tokenize
+ * @param minLength - Minimum length of tokens to include (default: 1)
+ * @returns Set of lowercase tokens
+ */
+export function tokenizeToSet(text: string, minLength: number = 1): Set<string> {
+  return new Set(tokenize(text).filter((t) => t.length >= minLength));
+}
+
+/**
+ * Tokenize text into lowercase alphanumeric words, splitting on all non-alphanumeric characters.
+ *
+ * @param s - Input text to tokenize
+ * @returns Array of lowercase tokens
+ */
+export function tokenizeAlphanumeric(s: string): string[] {
+  return s.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 0);
+}
+
+/**
  * Build a term frequency vector from tokens.
  *
  * @param tokens - Array of tokens
@@ -82,4 +103,23 @@ export function calculateTextSimilarity(text1: string, text2: string): number {
 
   // Calculate cosine similarity
   return cosineSimilarity(vec1, vec2);
+}
+
+/**
+ * Calculate Jaccard similarity between two sets of strings.
+ *
+ * Jaccard similarity is defined as the size of the intersection divided by
+ * the size of the union of the two sets.
+ *
+ * @param a - First set of strings
+ * @param b - Second set of strings
+ * @returns Jaccard similarity score (0-1)
+ */
+export function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) {
+    if (b.has(t)) inter += 1;
+  }
+  return inter / (a.size + b.size - inter);
 }

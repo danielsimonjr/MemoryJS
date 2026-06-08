@@ -38,8 +38,11 @@ export interface CacheStats {
  * - Hash-based key generation from query parameters
  */
 export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
+  // LRU order is tracked via the Map's own insertion order: the
+  // least-recently-used key is the first key in iteration order, and
+  // touching a key (delete + re-set) moves it to the end. This makes
+  // get/set/cleanup O(1) per key instead of O(n) array splices.
   private cache: Map<string, CacheEntry<T>> = new Map();
-  private accessOrder: string[] = [];
   private hits = 0;
   private misses = 0;
 
@@ -78,14 +81,13 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     // Check expiration
     if (Date.now() >= entry.expiresAt) {
       this.cache.delete(key);
-      this.removeFromAccessOrder(key);
       this.misses++;
       return undefined;
     }
 
-    // Update access order (move to end = most recently used)
-    this.removeFromAccessOrder(key);
-    this.accessOrder.push(key);
+    // Update access order (move to end = most recently used).
+    this.cache.delete(key);
+    this.cache.set(key, entry);
     this.hits++;
 
     return entry.value;
@@ -100,15 +102,15 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
   set(params: Record<string, unknown>, value: T): void {
     const key = this.generateKey(params);
 
-    // Remove old entry if exists
-    if (this.cache.has(key)) {
-      this.removeFromAccessOrder(key);
-    }
+    // delete-then-set moves an existing key to the end of the Map's
+    // insertion order, which is the LRU order. `delete` returns whether
+    // the key existed.
+    const hadKey = this.cache.delete(key);
 
     // Evict least recently used if at capacity
-    if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
-      const lruKey = this.accessOrder.shift();
-      if (lruKey) {
+    if (this.cache.size >= this.maxSize && !hadKey) {
+      const lruKey = this.cache.keys().next().value;
+      if (lruKey !== undefined) {
         this.cache.delete(lruKey);
       }
     }
@@ -119,7 +121,6 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
       timestamp: Date.now(),
       expiresAt: Date.now() + this.ttlMs,
     });
-    this.accessOrder.push(key);
   }
 
   /**
@@ -127,17 +128,6 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
    */
   clear(): void {
     this.cache.clear();
-    this.accessOrder = [];
-  }
-
-  /**
-   * Remove specific entry from access order.
-   */
-  private removeFromAccessOrder(key: string): void {
-    const index = this.accessOrder.indexOf(key);
-    if (index > -1) {
-      this.accessOrder.splice(index, 1);
-    }
   }
 
   /**
@@ -178,7 +168,6 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
 
     for (const key of keysToDelete) {
       this.cache.delete(key);
-      this.removeFromAccessOrder(key);
     }
   }
 
@@ -201,7 +190,6 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     // Check expiration
     if (Date.now() >= entry.expiresAt) {
       this.cache.delete(key);
-      this.removeFromAccessOrder(key);
       return false;
     }
 

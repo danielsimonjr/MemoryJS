@@ -15,6 +15,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { logger } from '../utils/logger.js';
 import type { ConsolidationPipeline } from './ConsolidationPipeline.js';
 import type { CompressionManager } from '../features/CompressionManager.js';
 import type { ConsolidationResult } from '../types/agent-memory.js';
@@ -213,7 +214,7 @@ export class ConsolidationScheduler extends EventEmitter {
       if (this.config.onError) {
         this.config.onError(err);
       } else {
-        console.error('ConsolidationScheduler cycle error:', err);
+        logger.error('ConsolidationScheduler cycle error:', err);
       }
       this.emit('consolidation:error', err);
     }
