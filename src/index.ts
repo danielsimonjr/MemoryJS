@@ -28,8 +28,3 @@ export * from './agent/index.js';
 
 // Export security primitives (η.6.3)
 export * from './security/index.js';
-
-// Export adapters (REST router, rate limiter, pagination, MCP tool-call observer,
-// LangChain adapter). v2.1.0 added the rate-limiter / pagination / MCP-observer
-// trio; the others pre-existed but weren't barreled until v2.1.0.
-export * from './adapters/index.js';

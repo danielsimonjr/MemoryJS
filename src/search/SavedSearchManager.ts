@@ -21,26 +21,11 @@ export class SavedSearchManager {
   ) {}
 
   /**
-   * In-memory cache of parsed saved searches. Populated lazily on first
-   * {@link loadSavedSearches} call and refreshed on every write
-   * ({@link saveSavedSearches}). Assumes a single writer to the file —
-   * external mutations by another process/instance are not observed until
-   * the cache is invalidated.
-   */
-  private searchCache: SavedSearch[] | null = null;
-
-  /** O(1) name → search index kept in sync with {@link searchCache}. */
-  private searchIndex: Map<string, SavedSearch> | null = null;
-
-  /**
-   * Load all saved searches from JSONL file (cached after first read).
+   * Load all saved searches from JSONL file.
    *
    * @returns Array of saved searches
    */
   private async loadSavedSearches(): Promise<SavedSearch[]> {
-    if (this.searchCache !== null) {
-      return this.searchCache;
-    }
     try {
       const data = await fs.readFile(this.savedSearchesFilePath, 'utf-8');
       const lines = data.split('\n').filter((line: string) => line.trim() !== '');
@@ -52,46 +37,23 @@ export class SavedSearchManager {
           // Skip malformed JSON lines
         }
       }
-      this.setCache(searches);
       return searches;
     } catch (error) {
-      if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-        const empty: SavedSearch[] = [];
-        this.setCache(empty);
-        return empty;
+      if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
+        return [];
       }
       throw error;
     }
   }
 
   /**
-   * Refresh the in-memory cache and its O(1) name index.
-   *
-   * @param searches - Array of saved searches to cache
-   */
-  private setCache(searches: SavedSearch[]): void {
-    this.searchCache = searches;
-    this.searchIndex = new Map(searches.map(s => [s.name, s]));
-  }
-
-  /**
-   * Save searches to JSONL file and refresh the in-memory cache.
+   * Save searches to JSONL file.
    *
    * @param searches - Array of saved searches
    */
   private async saveSavedSearches(searches: SavedSearch[]): Promise<void> {
     const lines = searches.map(s => JSON.stringify(s));
-    try {
-      await fs.writeFile(this.savedSearchesFilePath, lines.join('\n'));
-    } catch (err) {
-      // Write failed (e.g. EPERM under a Dropbox lock). A caller may have
-      // mutated a cached search object or array in place, so the cache now
-      // diverges from disk — drop it so the next read re-syncs from the file.
-      this.searchCache = null;
-      this.searchIndex = null;
-      throw err;
-    }
-    this.setCache(searches);
+    await fs.writeFile(this.savedSearchesFilePath, lines.join('\n'));
   }
 
   /**
@@ -129,8 +91,7 @@ export class SavedSearchManager {
    * @returns Array of all saved searches
    */
   async listSavedSearches(): Promise<SavedSearch[]> {
-    // Shallow copy — the cached array must not be mutated by callers.
-    return [...(await this.loadSavedSearches())];
+    return await this.loadSavedSearches();
   }
 
   /**
@@ -140,8 +101,8 @@ export class SavedSearchManager {
    * @returns Saved search or null if not found
    */
   async getSavedSearch(name: string): Promise<SavedSearch | null> {
-    await this.loadSavedSearches();
-    return this.searchIndex?.get(name) || null;
+    const searches = await this.loadSavedSearches();
+    return searches.find(s => s.name === name) || null;
   }
 
   /**
@@ -155,7 +116,7 @@ export class SavedSearchManager {
    */
   async executeSavedSearch(name: string): Promise<KnowledgeGraph> {
     const searches = await this.loadSavedSearches();
-    const search = this.searchIndex?.get(name);
+    const search = searches.find(s => s.name === name);
 
     if (!search) {
       throw new Error(`Saved search "${name}" not found`);
@@ -209,7 +170,7 @@ export class SavedSearchManager {
     updates: Partial<Omit<SavedSearch, 'name' | 'createdAt' | 'useCount' | 'lastUsed'>>
   ): Promise<SavedSearch> {
     const searches = await this.loadSavedSearches();
-    const search = this.searchIndex?.get(name);
+    const search = searches.find(s => s.name === name);
 
     if (!search) {
       throw new Error(`Saved search "${name}" not found`);

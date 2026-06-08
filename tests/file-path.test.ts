@@ -120,30 +120,28 @@ describe('ensureMemoryFilePath', () => {
       // Create old memory.json file
       await fs.writeFile(oldMemoryPath, '{"test":"data"}');
 
-      // Migration messages now go through `logger.info`, which writes to
-      // `console.error` (the logger's stderr-only design — see
-      // `src/utils/logger.ts`). The logger prefixes the level itself, so the
-      // hand-rolled `[INFO]` prefix on the message string is gone.
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const result = await ensureMemoryFilePath();
 
       expect(result).toBe(defaultMemoryPath);
 
+      // Verify migration happened
       const newFileExists = await fs.access(newMemoryPath).then(() => true).catch(() => false);
       const oldFileExists = await fs.access(oldMemoryPath).then(() => true).catch(() => false);
 
       expect(newFileExists).toBe(true);
       expect(oldFileExists).toBe(false);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[INFO] Found legacy memory.json file, migrating to memory.jsonl for JSONL format compatibility'
+      // Verify console messages (now using console.log instead of console.error)
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[INFO] Found legacy memory.json file')
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[INFO] Successfully migrated memory.json to memory.jsonl'
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[INFO] Successfully migrated')
       );
 
-      consoleErrorSpy.mockRestore();
+      consoleLogSpy.mockRestore();
     });
 
     it('should use new file when both old and new files exist', async () => {

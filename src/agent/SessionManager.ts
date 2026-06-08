@@ -241,7 +241,6 @@ export class SessionManager {
       if (prevSession && isSessionEntity(prevSession)) {
         const relatedIds = prevSession.relatedSessionIds ?? [];
         if (!relatedIds.includes(sessionId)) {
-          // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort back-link to the previous session; the new session is still created if this races a delete
           await this.storage.updateEntity(options.previousSessionId, {
             relatedSessionIds: [...relatedIds, sessionId],
             lastModified: now,
@@ -357,7 +356,6 @@ export class SessionManager {
       updates.outcome = outcome;
     }
 
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- session existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(sessionId, updates);
 
     // Remove from active sessions
@@ -590,7 +588,6 @@ export class SessionManager {
         }
       }
 
-      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- all sessions pre-validated above; remaining links still apply if one races a delete
       await this.storage.updateEntity(id, {
         relatedSessionIds: Array.from(existingRelated),
         lastModified: now,

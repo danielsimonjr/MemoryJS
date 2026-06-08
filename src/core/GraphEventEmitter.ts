@@ -25,7 +25,6 @@ import type {
   GraphSavedEvent,
   GraphLoadedEvent,
 } from '../types/index.js';
-import { logger } from '../utils/logger.js';
 
 /**
  * Phase 10 Sprint 2: Event emitter for graph change notifications.
@@ -57,12 +56,8 @@ import { logger } from '../utils/logger.js';
  */
 export class GraphEventEmitter {
   /**
-   * Map of event types to their registered listeners. The Set stores
-   * listeners typed for different specific event subtypes (one Set per
-   * GraphEventType key). TS can't express this dependent-key relationship
-   * without `any` due to function-parameter contravariance.
+   * Map of event types to their registered listeners.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private listeners: Map<GraphEventType, Set<GraphEventListener<any>>> = new Map();
 
   /**
@@ -390,19 +385,16 @@ export class GraphEventEmitter {
   // ==================== Helper Methods ====================
 
   /**
-   * Safely invoke a listener, optionally catching errors. Listener is
-   * typed `<any>` to match the heterogeneous storage in `this.listeners`
-   * (see field-level comment).
+   * Safely invoke a listener, optionally catching errors.
    * @private
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private invokeListener(listener: GraphEventListener<any>, event: GraphEvent): void {
     if (this.suppressListenerErrors) {
       try {
         listener(event);
       } catch (error) {
         // Log but don't propagate errors from listeners
-        logger.error(`GraphEventEmitter: Listener error for ${event.type}:`, error);
+        console.error(`GraphEventEmitter: Listener error for ${event.type}:`, error);
       }
     } else {
       listener(event);

@@ -15,7 +15,6 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import type { Entity, KnowledgeGraph } from '../types/index.js';
 import { EntityNotFoundError, FileOperationError } from './errors.js';
-import { logger } from './logger.js';
 
 // ==================== Hash Functions ====================
 
@@ -301,8 +300,7 @@ export function addUniqueTags(
   const existing = normalizeTags(existingTags);
   const toAdd = normalizeTags(newTags);
 
-  const existingSet = new Set(existing);
-  const uniqueNew = toAdd.filter(tag => !existingSet.has(tag));
+  const uniqueNew = toAdd.filter(tag => !existing.includes(tag));
   return [...existing, ...uniqueNew];
 }
 
@@ -320,8 +318,8 @@ export function removeTags(
 ): string[] {
   if (!existingTags || existingTags.length === 0) return [];
 
-  const toRemoveNormalized = new Set(normalizeTags(tagsToRemove));
-  return existingTags.filter(tag => !toRemoveNormalized.has(tag.toLowerCase()));
+  const toRemoveNormalized = normalizeTags(tagsToRemove);
+  return existingTags.filter(tag => !toRemoveNormalized.includes(tag.toLowerCase()));
 }
 
 // ==================== Date Utilities ====================
@@ -752,9 +750,8 @@ export function validateFilePath(filePath: string, baseDir: string = process.cwd
 
   // Optionally confine the resolved path to the base directory
   if (confineToBase) {
-    const resolvedBase = path.resolve(baseDir);
-    const relative = path.relative(resolvedBase, finalNormalized);
-    if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    const resolvedBase = path.resolve(baseDir) + path.sep;
+    if (!finalNormalized.startsWith(resolvedBase) && finalNormalized !== resolvedBase.slice(0, -1)) {
       throw new FileOperationError(
         `Path is outside the allowed directory: ${filePath}`,
         filePath
@@ -824,9 +821,9 @@ export async function ensureMemoryFilePath(): Promise<string> {
       return newMemoryPath;
     } catch {
       // Old file exists, new file doesn't - migrate
-      logger.info('Found legacy memory.json file, migrating to memory.jsonl for JSONL format compatibility');
+      console.log('[INFO] Found legacy memory.json file, migrating to memory.jsonl for JSONL format compatibility');
       await fs.rename(oldMemoryPath, newMemoryPath);
-      logger.info('Successfully migrated memory.json to memory.jsonl');
+      console.log('[INFO] Successfully migrated memory.json to memory.jsonl');
       return newMemoryPath;
     }
   } catch {

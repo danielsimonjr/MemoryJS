@@ -190,11 +190,3 @@ export {
   LLMSearchExecutor,
   type LLMSearchExecutorOptions,
 } from './LLMSearchExecutor.js';
-
-// v2.1.0 — Spell correction (NGramIndex + Levenshtein re-rank)
-export {
-  SpellChecker,
-  type SpellCheckerConfig,
-  type SuggestOptions,
-  type SpellSuggestion,
-} from './SpellChecker.js';

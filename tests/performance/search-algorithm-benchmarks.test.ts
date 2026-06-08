@@ -160,7 +160,7 @@ describe('Search Algorithm Benchmarks', () => {
       await bm25.buildIndex();
       const initialStats = bm25.getIndexStats();
 
-      bm25.removeDocument('Entity0');
+      bm25.remove('Entity0');
 
       const updatedStats = bm25.getIndexStats();
       expect(updatedStats!.documents).toBe(initialStats!.documents - 1);

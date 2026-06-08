@@ -18,8 +18,6 @@ export type { IDistillationPolicy, DistilledMemory, DistillationConfig };
 
 /**
  * Statistics from a distillation run.
- *
- * @internal — paired with `DistillationPipeline`.
  */
 export interface DistillationStats {
   /** Number of memories supplied to distill() */
@@ -34,8 +32,6 @@ export interface DistillationStats {
 
 /**
  * Result of a distillation pipeline run.
- *
- * @internal — paired with `DistillationPipeline`.
  */
 export interface DistillationResult {
   /** Memories that survived all policies (only kept: true items) */
@@ -51,11 +47,6 @@ export interface DistillationResult {
  *
  * Each policy is applied in order. After the final policy, per-policy removal
  * stats are synthesised by comparing intermediate counts.
- *
- * @internal
- * Currently has no internal consumers and is not wired through `ManagerContext`.
- * Retained as an exported symbol for forward compatibility, but the public
- * surface is not yet stable.
  *
  * @example
  * ```typescript

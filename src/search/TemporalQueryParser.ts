@@ -71,10 +71,10 @@ export class TemporalQueryParser {
    *
    * @param text - Natural language temporal expression
    * @param referenceDate - Reference date for relative calculations (default: now)
-   * @returns Resolved date range or undefined if text cannot be parsed
+   * @returns Resolved date range or null if text cannot be parsed
    */
-  parseTemporalExpression(text: string, referenceDate?: Date): ParsedTemporalRange | undefined {
-    if (!text || text.trim().length === 0) return undefined;
+  parseTemporalExpression(text: string, referenceDate?: Date): ParsedTemporalRange | null {
+    if (!text || text.trim().length === 0) return null;
 
     const ref = referenceDate ?? new Date();
     const trimmed = text.trim();
@@ -91,7 +91,7 @@ export class TemporalQueryParser {
    * Handle common relative range patterns not covered well by chrono-node.
    * @internal
    */
-  private parseCustomPattern(text: string, ref: Date): ParsedTemporalRange | undefined {
+  private parseCustomPattern(text: string, ref: Date): ParsedTemporalRange | null {
     const lower = text.toLowerCase();
 
     // "in the past N unit(s)" or "past N unit(s)" or "last N unit(s)"
@@ -101,7 +101,7 @@ export class TemporalQueryParser {
     );
     if (pastNMatch) {
       const n = parseInt(pastNMatch[1], 10);
-      if (n > 1_000_000) return undefined; // reject absurd values
+      if (n > 1_000_000) return null; // reject absurd values
       const unit = pastNMatch[2];
       const start = this.subtractUnit(ref, n, unit);
       return { start, end: new Date(ref), originalExpression: text };
@@ -203,32 +203,32 @@ export class TemporalQueryParser {
     );
     if (agoMatch) {
       const n = parseInt(agoMatch[1], 10);
-      if (n > 1_000_000) return undefined; // reject absurd values
+      if (n > 1_000_000) return null; // reject absurd values
       const unit = agoMatch[2];
       const start = this.subtractUnit(ref, n, unit);
       return { start, end: new Date(ref), originalExpression: text };
     }
 
-    return undefined;
+    return null;
   }
 
   /**
    * Use chrono-node to parse expressions not handled by custom patterns.
    * @internal
    */
-  private parseWithChrono(text: string, ref: Date): ParsedTemporalRange | undefined {
+  private parseWithChrono(text: string, ref: Date): ParsedTemporalRange | null {
     // Try to parse as a range (e.g. "between Monday and Wednesday", "Jan 1 to Jan 7")
     const results = chrono.parse(text, ref, { forwardDate: false });
 
     if (results.length === 0) {
       // Try with forwardDate: true as fallback
       const forwardResults = chrono.parse(text, ref, { forwardDate: true });
-      if (forwardResults.length === 0) return undefined;
+      if (forwardResults.length === 0) return null;
 
       const first = forwardResults[0];
       const start = first.start.date();
       const end = first.end ? first.end.date() : new Date(ref);
-      if (!this.isValidRange(start, end)) return undefined;
+      if (!this.isValidRange(start, end)) return null;
       return { start, end, originalExpression: text };
     }
 
@@ -238,7 +238,7 @@ export class TemporalQueryParser {
     // If the parsed result has an explicit end date, use it
     if (first.end) {
       const end = first.end.date();
-      if (!this.isValidRange(start, end)) return undefined;
+      if (!this.isValidRange(start, end)) return null;
       return { start, end, originalExpression: text };
     }
 

@@ -16,23 +16,11 @@ export class TagManager {
   constructor(private tagAliasesFilePath: string) {}
 
   /**
-   * In-memory cache of parsed tag aliases. Populated lazily on first
-   * {@link loadTagAliases} call and refreshed on every write
-   * ({@link saveTagAliases}). Assumes a single writer to the aliases file —
-   * external mutations by another process/instance are not observed until the
-   * cache is invalidated.
-   */
-  private aliasCache: TagAlias[] | null = null;
-
-  /**
-   * Load all tag aliases from JSONL file (cached after first read).
+   * Load all tag aliases from JSONL file.
    *
    * @returns Array of tag aliases
    */
   private async loadTagAliases(): Promise<TagAlias[]> {
-    if (this.aliasCache !== null) {
-      return this.aliasCache;
-    }
     try {
       const data = await fs.readFile(this.tagAliasesFilePath, 'utf-8');
       const lines = data.split('\n').filter((line: string) => line.trim() !== '');
@@ -44,34 +32,23 @@ export class TagManager {
           // Skip malformed JSON lines
         }
       }
-      this.aliasCache = aliases;
       return aliases;
     } catch (error) {
-      if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-        this.aliasCache = [];
-        return this.aliasCache;
+      if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
+        return [];
       }
       throw error;
     }
   }
 
   /**
-   * Save tag aliases to JSONL file and refresh the in-memory cache.
+   * Save tag aliases to JSONL file.
    *
    * @param aliases - Array of tag aliases
    */
   private async saveTagAliases(aliases: TagAlias[]): Promise<void> {
     const lines = aliases.map(a => JSON.stringify(a));
-    try {
-      await fs.writeFile(this.tagAliasesFilePath, lines.join('\n'));
-    } catch (err) {
-      // Write failed (e.g. EPERM under a Dropbox lock). A caller may have
-      // already mutated the cached array, so it now diverges from disk —
-      // drop it so the next read re-syncs from the file.
-      this.aliasCache = null;
-      throw err;
-    }
-    this.aliasCache = aliases;
+    await fs.writeFile(this.tagAliasesFilePath, lines.join('\n'));
   }
 
   /**
@@ -199,8 +176,7 @@ export class TagManager {
    * @returns Array of all tag aliases
    */
   async listTagAliases(): Promise<TagAlias[]> {
-    // Shallow copy — the cached array must not be mutated by callers.
-    return [...(await this.loadTagAliases())];
+    return await this.loadTagAliases();
   }
 
   /**

@@ -133,7 +133,6 @@ export class SessionCheckpointManager {
     // Store as observation on session entity
     const observation = `${CHECKPOINT_PREFIX}${JSON.stringify(checkpointData)}`;
     const currentObs = session.observations ?? [];
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- session existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(sessionId, {
       observations: [...currentObs, observation],
       lastModified: now,
@@ -254,7 +253,6 @@ export class SessionCheckpointManager {
     // Re-read observations after checkpoint added one
     const updatedSession = this.getSessionEntity(sessionId);
     const currentObs = updatedSession.observations ?? [];
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- session existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(sessionId, {
       status: 'suspended',
       lastModified: now,
@@ -300,7 +298,6 @@ export class SessionCheckpointManager {
     // Update session status to active
     const now = new Date().toISOString();
     const currentObs = session.observations ?? [];
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- session existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(sessionId, {
       status: 'active',
       lastModified: now,

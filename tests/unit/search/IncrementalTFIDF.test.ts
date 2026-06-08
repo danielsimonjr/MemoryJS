@@ -302,8 +302,8 @@ describe('TFIDFEventSync', () => {
     // Build initial index
     await indexManager.buildIndex({ entities: [], relations: [] });
 
-    // Create sync (coalesceMs: 0 = synchronous emit→apply for assertions)
-    sync = new TFIDFEventSync(indexManager, storage.events, storage, { coalesceMs: 0 });
+    // Create sync
+    sync = new TFIDFEventSync(indexManager, storage.events, storage);
   });
 
   afterEach(async () => {

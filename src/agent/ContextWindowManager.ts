@@ -7,9 +7,7 @@
  * @module agent/ContextWindowManager
  */
 
-import { logger } from '../utils/logger.js';
-import type { IGraphStorage, Entity, ReadonlyKnowledgeGraph } from '../types/types.js';
-import type { GraphStorage } from '../core/GraphStorage.js';
+import type { IGraphStorage, Entity } from '../types/types.js';
 import type {
   AgentEntity,
   SalienceContext,
@@ -18,8 +16,6 @@ import type {
   TokenBreakdown,
   ExcludedEntity,
   ScoredEntity,
-  ProspectiveTrigger,
-  TriggerCondition,
 } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { SalienceEngine } from './SalienceEngine.js';
@@ -74,22 +70,7 @@ export interface WakeUpOptions {
   projectId?: string;
   maxL0Tokens?: number;
   maxL1Tokens?: number;
-  /** Token budget for L1.5 pending-intentions block. Default 200. */
-  maxL1_5Tokens?: number;
-  /**
-   * Token budget for the Phase PC B `projectContext` block (facts /
-   * conventions / commands / glossary from the active project's
-   * `ProjectContextRecord`). Default 300. Only consulted when `projectId`
-   * is set and a record exists. The block is rendered ABOVE L0 in the
-   * conceptual layer stack — consumers concatenate fields in their
-   * preferred order; `WakeUpResult` is flat.
-   */
-  maxProjectContextTokens?: number;
   includeL1?: boolean;
-  /** Whether to surface pending prospective intentions in L1.5. Default true. */
-  includeL1_5?: boolean;
-  /** Filter L1.5 to a specific session. Omit to include all sessions. */
-  sessionId?: string;
   /** Apply compression to L1 content. Pass a CompressionLevel or true for 'medium'. */
   compress?: boolean | CompressionLevel;
 }
@@ -98,22 +79,10 @@ export interface WakeUpOptions {
  * Result from the wakeUp method.
  */
 export interface WakeUpResult {
-  /**
-   * Phase PC B (v2.0.x): structured project knowledge (facts /
-   * conventions / commands / glossary) from the active
-   * `ProjectContextRecord`, when `options.projectId` is supplied AND a
-   * record exists. Empty string otherwise. Rendered prose; consumers
-   * concatenate ABOVE `l0` for system-prompt assembly.
-   */
-  projectContext: string;
   l0: string;
-  /** Pending prospective intentions, sorted by next-fire-time, capped by `maxL1_5Tokens`. */
-  l1_5: string;
   l1: string;
   totalTokens: number;
   entityCount: number;
-  /** Count of pending prospective intentions surfaced in `l1_5`. */
-  pendingIntentionCount: number;
 }
 
 /**
@@ -436,10 +405,9 @@ export class ContextWindowManager {
   async retrieveWorkingMemory(
     sessionId: string | undefined,
     budget: number,
-    context: SalienceContext = {},
-    graph?: ReadonlyKnowledgeGraph
+    context: SalienceContext = {}
   ): Promise<{ entities: AgentEntity[]; tokens: number }> {
-    graph ??= await this.storage.loadGraph();
+    const graph = await this.storage.loadGraph();
     let candidates = graph.entities
       .filter(isAgentEntity)
       .filter((e) => (e as AgentEntity).memoryType === 'working') as AgentEntity[];
@@ -474,10 +442,9 @@ export class ContextWindowManager {
    */
   async retrieveEpisodicRecent(
     budget: number,
-    context: SalienceContext = {},
-    graph?: ReadonlyKnowledgeGraph
+    context: SalienceContext = {}
   ): Promise<{ entities: AgentEntity[]; tokens: number }> {
-    graph ??= await this.storage.loadGraph();
+    const graph = await this.storage.loadGraph();
     const episodic = graph.entities
       .filter(isAgentEntity)
       .filter((e) => (e as AgentEntity).memoryType === 'episodic') as AgentEntity[];
@@ -528,10 +495,9 @@ export class ContextWindowManager {
    */
   async retrieveSemanticRelevant(
     budget: number,
-    context: SalienceContext = {},
-    graph?: ReadonlyKnowledgeGraph
+    context: SalienceContext = {}
   ): Promise<{ entities: AgentEntity[]; tokens: number }> {
-    graph ??= await this.storage.loadGraph();
+    const graph = await this.storage.loadGraph();
     const semantic = graph.entities
       .filter(isAgentEntity)
       .filter((e) => (e as AgentEntity).memoryType === 'semantic') as AgentEntity[];
@@ -641,19 +607,17 @@ export class ContextWindowManager {
       ? Math.floor(remainingBudget * this.config.semanticBudgetPct)
       : 0;
 
-    // Retrieve from each source — load the graph once and share the snapshot
-    const graph = await this.storage.loadGraph();
-
+    // Retrieve from each source
     const workingResult = includeWorkingMemory
-      ? await this.retrieveWorkingMemory(context.currentSession, workingBudget, context, graph)
+      ? await this.retrieveWorkingMemory(context.currentSession, workingBudget, context)
       : { entities: [], tokens: 0 };
 
     const episodicResult = includeEpisodicRecent
-      ? await this.retrieveEpisodicRecent(episodicBudget, context, graph)
+      ? await this.retrieveEpisodicRecent(episodicBudget, context)
       : { entities: [], tokens: 0 };
 
     const semanticResult = includeSemanticRelevant
-      ? await this.retrieveSemanticRelevant(semanticBudget, context, graph)
+      ? await this.retrieveSemanticRelevant(semanticBudget, context)
       : { entities: [], tokens: 0 };
 
     // Combine all memories
@@ -1151,38 +1115,7 @@ export class ContextWindowManager {
   async wakeUp(options: WakeUpOptions = {}): Promise<WakeUpResult> {
     const maxL0 = options.maxL0Tokens ?? 100;
     const maxL1 = options.maxL1Tokens ?? 500;
-    const maxL1_5 = options.maxL1_5Tokens ?? 200;
-    const maxProjectCtx = options.maxProjectContextTokens ?? 300;
     const includeL1 = options.includeL1 ?? true;
-    const includeL1_5 = options.includeL1_5 ?? true;
-
-    // Project context (Phase PC B): structured project knowledge from
-    // the active ProjectContextRecord. Empty when no projectId is set
-    // or no record exists. Dynamic import mirrors the L0 / L1.5 pattern.
-    let projectContext = '';
-    let projectContextTokens = 0;
-    if (options.projectId) {
-      try {
-        const { ProjectContextManager } = await import('./ProjectContextManager.js');
-        const { EntityManager } = await import('../core/EntityManager.js');
-        const concreteStorage = this.storage as GraphStorage;
-        const pcm = new ProjectContextManager(
-          concreteStorage,
-          new EntityManager(concreteStorage),
-        );
-        // Budget converted chars≈tokens*4 (matches estimateStringTokens'
-        // implicit char-per-token model); forContext truncates with an
-        // ellipsis when over budget.
-        projectContext = await pcm.forContext(options.projectId, {
-          budgetChars: maxProjectCtx * 4,
-        });
-        projectContextTokens = this.estimateStringTokens(projectContext);
-      } catch (err) {
-        if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
-          logger.error('[ContextWindowManager.wakeUp] project context loading failed:', err);
-        }
-      }
-    }
 
     // L0: Profile static facts
     let l0 = '';
@@ -1190,18 +1123,10 @@ export class ContextWindowManager {
       const { ProfileManager } = await import('./ProfileManager.js');
       const { EntityManager } = await import('../core/EntityManager.js');
       const { ObservationManager } = await import('../core/ObservationManager.js');
-      // EntityManager / ObservationManager are typed for the concrete
-      // GraphStorage. ContextWindowManager holds the broader IGraphStorage,
-      // so the cast asserts the runtime is in fact a GraphStorage. Both
-      // shipping implementations (GraphStorage, SQLiteStorage) satisfy the
-      // interface — but only GraphStorage exposes the mutex/graph helpers
-      // those managers reach into. Tracked under the storage-abstraction
-      // refactor in the codebase-health backlog.
-      const concreteStorage = this.storage as GraphStorage;
       const pm = new ProfileManager(
-        concreteStorage,
-        new EntityManager(concreteStorage),
-        new ObservationManager(concreteStorage),
+        this.storage as any,
+        new EntityManager(this.storage as any),
+        new ObservationManager(this.storage as any),
       );
       const profile = await pm.getProfile({ projectId: options.projectId });
       if (profile.static.length > 0) {
@@ -1214,38 +1139,7 @@ export class ContextWindowManager {
       }
     } catch (err) {
       if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
-        logger.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
-      }
-    }
-
-    // L1.5: Pending prospective intentions for the current session.
-    // Relies on `getPending()` ordering — earliest fire-time first.
-    let l1_5 = '';
-    let l1_5Tokens = 0;
-    let pendingIntentionCount = 0;
-    if (includeL1_5) {
-      try {
-        const { ProspectiveMemoryManager } = await import('./ProspectiveMemoryManager.js');
-        const pmm = new ProspectiveMemoryManager(this.storage);
-        const pending = await pmm.getPending({ sessionId: options.sessionId });
-        const lines: string[] = [];
-        for (const intention of pending) {
-          const content = intention.observations[0] ?? '';
-          const prefix = formatTriggerPrefix(intention.trigger);
-          const line = `${prefix} ${content}`;
-          const lineTokens = this.estimateStringTokens(line);
-          if (l1_5Tokens + lineTokens > maxL1_5) break;
-          lines.push(line);
-          l1_5Tokens += lineTokens;
-          pendingIntentionCount++;
-        }
-        l1_5 = lines.join('\n');
-      } catch (err) {
-        // Mirror L0's guard: a missing module is an expected
-        // "feature unavailable" outcome, not an error worth logging.
-        if (!(err instanceof Error && err.message.includes('Cannot find module'))) {
-          logger.error('[ContextWindowManager.wakeUp] L1.5 prospective loading failed:', err);
-        }
+        console.error('[ContextWindowManager.wakeUp] L0 profile loading failed:', err);
       }
     }
 
@@ -1256,12 +1150,12 @@ export class ContextWindowManager {
       try {
         const graph = await this.storage.loadGraph();
         let entities = graph.entities.filter(
-          (e) => e.isLatest !== false && e.entityType !== 'profile' && e.entityType !== 'diary'
+          (e: any) => e.isLatest !== false && e.entityType !== 'profile' && e.entityType !== 'diary'
         );
         if (options.projectId) {
-          entities = entities.filter((e) => e.projectId === options.projectId);
+          entities = entities.filter((e: any) => e.projectId === options.projectId);
         }
-        const sorted = [...entities].sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0));
+        const sorted = [...entities].sort((a: any, b: any) => (b.importance ?? 0) - (a.importance ?? 0));
 
         const lines: string[] = [];
         let tokenCount = 0;
@@ -1276,7 +1170,7 @@ export class ContextWindowManager {
         }
         l1 = lines.join('\n');
       } catch (err) {
-        logger.error('[ContextWindowManager.wakeUp] L1 entity loading failed:', err);
+        console.error('[ContextWindowManager.wakeUp] L1 entity loading failed:', err);
       }
     }
 
@@ -1290,17 +1184,13 @@ export class ContextWindowManager {
         }
         // else: compression skipped — legend overhead exceeds savings
       } catch (err) {
-        logger.error('[ContextWindowManager.wakeUp] Compression failed, using uncompressed:', err);
+        console.error('[ContextWindowManager.wakeUp] Compression failed, using uncompressed:', err);
         // Fall through with uncompressed l1
       }
     }
 
-    const totalTokens =
-      projectContextTokens +
-      this.estimateStringTokens(l0) +
-      l1_5Tokens +
-      this.estimateStringTokens(l1);
-    return { projectContext, l0, l1_5, l1, totalTokens, entityCount, pendingIntentionCount };
+    const totalTokens = this.estimateStringTokens(l0) + this.estimateStringTokens(l1);
+    return { l0, l1, totalTokens, entityCount };
   }
 
   // ==================== Context Compression ====================
@@ -1623,60 +1513,5 @@ export class ContextWindowManager {
     return { text: result, legend };
   }
 
-}
-
-// ==================== Helpers ====================
-
-/**
- * Format a prospective intention's trigger as a wake-up-line prefix.
- *
- * Exhaustive switch on `trigger.kind` with a `never` fall-through —
- * adding a new trigger kind to the union becomes a compile-time
- * error here, preventing silent mislabeling.
- *
- * Event-trigger prefix lists ALL populated condition fields (not just
- * the first) so users can debug "why hasn't this fired?" with a
- * complete picture of the matching predicate.
- */
-function formatTriggerPrefix(trigger: ProspectiveTrigger): string {
-  switch (trigger.kind) {
-    case 'time':
-      return `[at ${trigger.at}]`;
-    case 'time-window':
-      return trigger.until
-        ? `[window ${trigger.from} → ${trigger.until}]`
-        : `[window from ${trigger.from}]`;
-    case 'event':
-      return `[event: ${formatCondition(trigger.condition)}]`;
-    case 'conditional':
-      return `[conditional: ${trigger.predicate}]`;
-    default: {
-      const _exhaustive: never = trigger;
-      void _exhaustive;
-      return '[?]';
-    }
-  }
-}
-
-/**
- * Render a TriggerCondition as a compact "k=v" pair list.
- *
- * Keep in sync with `TriggerConditionFields` in `src/types/agent-memory.ts` —
- * adding a new field there requires adding a new `if` branch here, or the
- * new field will be silently dropped from wake-up prefixes.
- */
-function formatCondition(condition: TriggerCondition): string {
-  const c = condition as Partial<{
-    text: string;
-    tags: string[];
-    entityType: string;
-    sessionId: string;
-  }>;
-  const parts: string[] = [];
-  if (c.text !== undefined) parts.push(`text=${c.text}`);
-  if (c.tags !== undefined && c.tags.length > 0) parts.push(`tags=${c.tags.join(',')}`);
-  if (c.entityType !== undefined) parts.push(`type=${c.entityType}`);
-  if (c.sessionId !== undefined) parts.push(`session=${c.sessionId}`);
-  return parts.length > 0 ? parts.join(' ') : '?';
 }
 

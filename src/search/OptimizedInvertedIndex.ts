@@ -9,8 +9,6 @@
  * @module search/OptimizedInvertedIndex
  */
 
-import type { IIndexHealth, IndexHealthSnapshot } from '../utils/IIndexHealth.js';
-
 /**
  * Statistics about memory usage.
  */
@@ -63,7 +61,7 @@ export interface PostingListResult {
  * console.log(results); // ['entity1']
  * ```
  */
-export class OptimizedInvertedIndex implements IIndexHealth {
+export class OptimizedInvertedIndex {
   /** Map from entity name to integer ID */
   private entityToId: Map<string, number> = new Map();
 
@@ -78,9 +76,6 @@ export class OptimizedInvertedIndex implements IIndexHealth {
 
   /** Temporary posting lists (before finalization) */
   private tempPostingLists: Map<string, number[]> = new Map();
-
-  /** Reverse index: document ID -> set of terms it contains (for O(terms) removal) */
-  private docToTerms: Map<number, Set<string>> = new Map();
 
   /** Whether the index is finalized (posting lists converted to Uint32Array) */
   private finalized: boolean = false;
@@ -106,20 +101,14 @@ export class OptimizedInvertedIndex implements IIndexHealth {
       this.idToEntity.set(docId, entityName);
     }
 
-    // Remove old terms before re-indexing to prevent stale posting list entries.
-    // Use the reverse index so only the terms this doc actually had are touched.
+    // Remove old terms before re-indexing to prevent stale posting list entries
     if (isReindex) {
-      const oldTerms = this.docToTerms.get(docId);
-      if (oldTerms) {
-        for (const term of oldTerms) {
-          const postingList = this.tempPostingLists.get(term);
-          if (!postingList) continue;
-          const idx = postingList.indexOf(docId);
-          if (idx !== -1) {
-            postingList.splice(idx, 1);
-            if (postingList.length === 0) {
-              this.tempPostingLists.delete(term);
-            }
+      for (const [term, postingList] of this.tempPostingLists) {
+        const idx = postingList.indexOf(docId);
+        if (idx !== -1) {
+          postingList.splice(idx, 1);
+          if (postingList.length === 0) {
+            this.tempPostingLists.delete(term);
           }
         }
       }
@@ -142,9 +131,6 @@ export class OptimizedInvertedIndex implements IIndexHealth {
         postingList.push(docId);
       }
     }
-
-    // Keep the reverse index in sync with the unique terms for this document
-    this.docToTerms.set(docId, seenTerms);
   }
 
   /**
@@ -164,22 +150,16 @@ export class OptimizedInvertedIndex implements IIndexHealth {
       this.unfinalize();
     }
 
-    // Remove from posting lists — only the terms this doc actually contained
-    const docTerms = this.docToTerms.get(docId);
-    if (docTerms) {
-      for (const term of docTerms) {
-        const postingList = this.tempPostingLists.get(term);
-        if (!postingList) continue;
-        const idx = postingList.indexOf(docId);
-        if (idx !== -1) {
-          postingList.splice(idx, 1);
-          if (postingList.length === 0) {
-            this.tempPostingLists.delete(term);
-          }
+    // Remove from all posting lists
+    for (const [term, postingList] of this.tempPostingLists) {
+      const idx = postingList.indexOf(docId);
+      if (idx !== -1) {
+        postingList.splice(idx, 1);
+        if (postingList.length === 0) {
+          this.tempPostingLists.delete(term);
         }
       }
     }
-    this.docToTerms.delete(docId);
 
     // Remove ID mappings
     this.entityToId.delete(entityName);
@@ -232,16 +212,16 @@ export class OptimizedInvertedIndex implements IIndexHealth {
    * Get posting list for a term.
    *
    * @param term - Term to look up
-   * @returns Posting list result or undefined if term not found
+   * @returns Posting list result or null if term not found
    */
-  getPostingList(term: string): PostingListResult | undefined {
+  getPostingList(term: string): PostingListResult | null {
     if (this.finalized) {
       const arr = this.postingLists.get(term);
-      if (!arr) return undefined;
+      if (!arr) return null;
       return { term, docIds: arr };
     } else {
       const list = this.tempPostingLists.get(term);
-      if (!list) return undefined;
+      if (!list) return null;
       // Sort and return as Uint32Array
       const sorted = list.slice().sort((a, b) => a - b);
       return { term, docIds: new Uint32Array(sorted) };
@@ -420,7 +400,6 @@ export class OptimizedInvertedIndex implements IIndexHealth {
     this.idToEntity.clear();
     this.postingLists.clear();
     this.tempPostingLists.clear();
-    this.docToTerms.clear();
     this.nextId = 0;
     this.finalized = false;
   }
@@ -455,34 +434,5 @@ export class OptimizedInvertedIndex implements IIndexHealth {
     return this.finalized
       ? this.postingLists.has(term)
       : this.tempPostingLists.has(term);
-  }
-
-  /**
-   * Health snapshot for `IndexHealthMonitor`.
-   *
-   * Staleness is `'unknown'` for an empty / never-built index, `'dirty'`
-   * when there are pending writes that have not been finalised into
-   * `Uint32Array` posting lists, and `'fresh'` otherwise.
-   */
-  health(): IndexHealthSnapshot {
-    const usage = this.getMemoryUsage();
-    const pendingWrites = this.tempPostingLists.size > 0;
-    const initialized = this.entityToId.size > 0;
-    let staleness: 'fresh' | 'dirty' | 'unknown';
-    if (!initialized) {
-      staleness = 'unknown';
-    } else if (pendingWrites) {
-      staleness = 'dirty';
-    } else {
-      staleness = 'fresh';
-    }
-    return {
-      name: 'inverted',
-      initialized,
-      documentCount: usage.documentCount,
-      approxMemoryBytes: usage.totalBytes,
-      staleness,
-      extras: { termCount: usage.termCount, finalized: this.finalized },
-    };
   }
 }

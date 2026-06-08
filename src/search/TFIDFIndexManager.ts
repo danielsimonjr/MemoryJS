@@ -11,7 +11,6 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { TFIDFIndex, DocumentVector, KnowledgeGraph, ReadonlyKnowledgeGraph } from '../types/index.js';
 import { calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
-import type { IIndexHealth, IndexHealthSnapshot } from '../utils/IIndexHealth.js';
 
 const INDEX_VERSION = '1.0';
 const INDEX_FILENAME = 'tfidf-index.json';
@@ -29,9 +28,9 @@ interface SerializedTFIDFIndex {
 /**
  * Manages TF-IDF index lifecycle: building, updating, and persistence.
  */
-export class TFIDFIndexManager implements IIndexHealth {
+export class TFIDFIndexManager {
   private indexPath: string;
-  private index: TFIDFIndex | undefined = undefined;
+  private index: TFIDFIndex | null = null;
 
   constructor(storageDir: string) {
     this.indexPath = path.join(storageDir, '.indexes', INDEX_FILENAME);
@@ -110,14 +109,11 @@ export class TFIDFIndexManager implements IIndexHealth {
     const updatedDocuments = new Map(this.index.documents);
 
     // Remove deleted entities
-    // Use Set deletion instead of graph.entities.find (O(N) -> O(1) for lookups)
-    const deletedEntities = new Set(changedEntityNames);
-    for (let i = 0; i < graph.entities.length; i++) {
-      deletedEntities.delete(graph.entities[i].name);
-      if (deletedEntities.size === 0) break;
-    }
-    for (const entityName of deletedEntities) {
-      updatedDocuments.delete(entityName);
+    for (const entityName of changedEntityNames) {
+      const entity = graph.entities.find(e => e.name === entityName);
+      if (!entity) {
+        updatedDocuments.delete(entityName);
+      }
     }
 
     // Update/add changed entities - tokenize once per document
@@ -169,9 +165,9 @@ export class TFIDFIndexManager implements IIndexHealth {
   /**
    * Load index from disk.
    *
-   * @returns Loaded index or undefined if not found
+   * @returns Loaded index or null if not found
    */
-  async loadIndex(): Promise<TFIDFIndex | undefined> {
+  async loadIndex(): Promise<TFIDFIndex | null> {
     try {
       const data = await fs.readFile(this.indexPath, 'utf-8');
       const serialized: SerializedTFIDFIndex = JSON.parse(data);
@@ -186,7 +182,7 @@ export class TFIDFIndexManager implements IIndexHealth {
       return this.index;
     } catch (error) {
       // Index doesn't exist or is invalid
-      return undefined;
+      return null;
     }
   }
 
@@ -219,9 +215,9 @@ export class TFIDFIndexManager implements IIndexHealth {
   /**
    * Get the current cached index.
    *
-   * @returns Cached index or undefined if not loaded
+   * @returns Cached index or null if not loaded
    */
-  getIndex(): TFIDFIndex | undefined {
+  getIndex(): TFIDFIndex | null {
     return this.index;
   }
 
@@ -229,7 +225,7 @@ export class TFIDFIndexManager implements IIndexHealth {
    * Clear the cached index and delete from disk.
    */
   async clearIndex(): Promise<void> {
-    this.index = undefined;
+    this.index = null;
     try {
       await fs.unlink(this.indexPath);
     } catch {
@@ -498,7 +494,7 @@ export class TFIDFIndexManager implements IIndexHealth {
    * @returns True if index is available
    */
   isInitialized(): boolean {
-    return this.index !== undefined;
+    return this.index !== null;
   }
 
   /**
@@ -508,21 +504,5 @@ export class TFIDFIndexManager implements IIndexHealth {
    */
   getDocumentCount(): number {
     return this.index?.documents.size ?? 0;
-  }
-
-  /**
-   * Health snapshot for `IndexHealthMonitor` / `ctx.indexHealth()`.
-   *
-   * Staleness is `'unknown'` because this manager has no graph reference;
-   * callers wanting a fresh/dirty signal should call `needsRebuild(graph)`
-   * directly.
-   */
-  health(): IndexHealthSnapshot {
-    return {
-      name: 'tfidf',
-      initialized: this.isInitialized(),
-      documentCount: this.getDocumentCount(),
-      staleness: 'unknown',
-    };
   }
 }

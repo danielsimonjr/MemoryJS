@@ -331,37 +331,4 @@ describe('EmbeddingCache', () => {
       expect(result).toEqual([]);
     });
   });
-
-  describe('PressureAwareCache interface', () => {
-    it('exposes a stable name', () => {
-      expect(cache.name).toBe('embedding');
-    });
-
-    it('currentEntries() mirrors size()', () => {
-      cache.set('e1', 't1', [0.1]);
-      cache.set('e2', 't2', [0.2]);
-      expect(cache.currentEntries()).toBe(2);
-      expect(cache.currentEntries()).toBe(cache.size());
-    });
-
-    it('evictTo() drops oldest entries until size <= target', () => {
-      for (let i = 0; i < 10; i++) cache.set(`e${i}`, `text${i}`, [i]);
-      expect(cache.size()).toBe(10);
-      cache.evictTo(3);
-      expect(cache.size()).toBeLessThanOrEqual(3);
-    });
-
-    it('evictTo() is a no-op when already under target', () => {
-      cache.set('e1', 't1', [0.1]);
-      cache.evictTo(100);
-      expect(cache.size()).toBe(1);
-    });
-
-    it('evictTo(0) drops every entry', () => {
-      cache.set('e1', 't1', [0.1]);
-      cache.set('e2', 't2', [0.2]);
-      cache.evictTo(0);
-      expect(cache.size()).toBe(0);
-    });
-  });
 });

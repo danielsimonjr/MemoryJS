@@ -54,35 +54,14 @@ export class PatternDetector {
    *
    * @param observations - Text observations to analyze
    * @param minOccurrences - Minimum pattern frequency (default: 2)
-   * @param entityNames - Optional parallel array mapping each observation to
-   *   its source entity name. When provided, `PatternResult.sourceEntities`
-   *   is populated with the entities whose observations actually matched the
-   *   pattern (deduplicated, sorted). When omitted, `sourceEntities` is `[]`
-   *   (backward-compatible default).
    * @returns Array of detected patterns
    */
   detectPatterns(
     observations: string[],
-    minOccurrences: number = 2,
-    entityNames?: string[]
+    minOccurrences: number = 2
   ): PatternResult[] {
     if (observations.length < 2) {
       return [];
-    }
-
-    let textToEntities: Map<string, string[]> | undefined;
-    if (entityNames !== undefined) {
-      if (entityNames.length !== observations.length) {
-        throw new Error(
-          `PatternDetector.detectPatterns: entityNames length (${entityNames.length}) must match observations length (${observations.length})`
-        );
-      }
-      textToEntities = new Map<string, string[]>();
-      for (let i = 0; i < observations.length; i++) {
-        const list = textToEntities.get(observations[i]) ?? [];
-        if (!list.includes(entityNames[i])) list.push(entityNames[i]);
-        textToEntities.set(observations[i], list);
-      }
     }
 
     const patterns = new Map<string, PatternCandidate>();
@@ -138,13 +117,7 @@ export class PatternDetector {
         variables: [...new Set(p.variables)],
         occurrences: p.sourceTexts.length,
         confidence: Math.min(1, p.sourceTexts.length / observations.length),
-        sourceEntities: textToEntities
-          ? [
-              ...new Set(
-                p.sourceTexts.flatMap((t) => textToEntities!.get(t) ?? [])
-              ),
-            ].sort()
-          : [],
+        sourceEntities: [],
       }))
       .sort((a, b) => b.occurrences - a.occurrences);
   }

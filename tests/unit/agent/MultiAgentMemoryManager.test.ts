@@ -314,20 +314,20 @@ describe('MultiAgentMemoryManager', () => {
       expect(result?.agentId).toBe('agent_2');
     });
 
-    it('should return undefined for non-existent memory', async () => {
+    it('should return null for non-existent memory', async () => {
       const result = await manager.transferMemory('nonexistent', 'agent_1', 'agent_2');
 
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
-    it('should return undefined if not owner', async () => {
+    it('should return null if not owner', async () => {
       await manager.registerAgent('agent_1', {});
       await manager.registerAgent('agent_2', {});
       await manager.createAgentMemory('agent_1', { name: 'owned_by_1' });
 
       const result = await manager.transferMemory('owned_by_1', 'agent_2', 'agent_1');
 
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
   });
 
@@ -731,12 +731,12 @@ describe('MultiAgentMemoryManager', () => {
       expect(copied?.name).toBe('my_custom_copy');
     });
 
-    it('should return undefined for inaccessible memory', async () => {
+    it('should return null for inaccessible memory', async () => {
       await manager.createAgentMemory('agent_1', { name: 'private_orig', visibility: 'private' });
 
       const copied = await manager.copyMemory('private_orig', 'agent_2');
 
-      expect(copied).toBeUndefined();
+      expect(copied).toBeNull();
     });
 
     it('should emit copy event', async () => {
@@ -936,7 +936,7 @@ describe('MultiAgentMemoryManager', () => {
 
       const merged = await manager.mergeCrossAgent(['single_mem'], 'default');
 
-      expect(merged).toBeUndefined();
+      expect(merged).toBeNull();
     });
 
     it('should emit merge event', async () => {

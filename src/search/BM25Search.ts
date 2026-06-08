@@ -354,78 +354,11 @@ export class BM25Search {
   }
 
   /**
-   * Incrementally add an entity to the index, mirroring
-   * `TFIDFIndexManager.addDocument`. Maintains the running average
-   * document length and per-term document-frequency counts so a full
-   * `buildIndex()` is not needed after each entity create.
-   *
-   * Idempotent: if `entity.name` is already in the index, it is replaced
-   * (equivalent to a remove + add).
-   *
-   * @param entity - Entity to index. Only the fields read by
-   *   `entityToText` (name, entityType, observations, tags) are used.
-   */
-  addDocument(entity: { name: string; entityType: string; observations: string[]; tags?: string[] }): void {
-    // Mirror TFIDFIndexManager: addDocument is a no-op until buildIndex() runs.
-    if (!this.index) {
-      return;
-    }
-
-    // If already present, remove first so DF counts and length stats stay
-    // consistent across replaces.
-    if (this.index.documents.has(entity.name)) {
-      this.removeDocument(entity.name);
-    }
-
-    const text = this.entityToText(entity as Entity);
-    const tokens = this.tokenize(text);
-    const termFreqs = new Map<string, number>();
-    for (const token of tokens) {
-      termFreqs.set(token, (termFreqs.get(token) ?? 0) + 1);
-    }
-    for (const term of termFreqs.keys()) {
-      this.index.documentFrequency.set(
-        term,
-        (this.index.documentFrequency.get(term) ?? 0) + 1,
-      );
-    }
-
-    const entry: BM25DocumentEntry = {
-      entityName: entity.name,
-      termFreqs,
-      docLength: tokens.length,
-    };
-    this.index.documents.set(entity.name, entry);
-
-    // Maintain running average document length.
-    const oldTotalLength = this.index.avgDocLength * this.index.totalDocs;
-    this.index.totalDocs = this.index.documents.size;
-    this.index.avgDocLength = this.index.totalDocs > 0
-      ? (oldTotalLength + tokens.length) / this.index.totalDocs
-      : 0;
-  }
-
-  /**
-   * Update an entity in the index. Equivalent to `removeDocument` followed
-   * by `addDocument`; provided for API symmetry with `TFIDFIndexManager`.
-   * No-op when the entity is not yet in the index — call `addDocument`
-   * directly if you need to insert a new entity.
-   */
-  updateDocument(entity: { name: string; entityType: string; observations: string[]; tags?: string[] }): void {
-    if (!this.index || !this.index.documents.has(entity.name)) {
-      return;
-    }
-    this.addDocument(entity);
-  }
-
-  /**
-   * Incrementally remove an entity from the index, mirroring
-   * `TFIDFIndexManager.removeDocument`.
+   * Remove an entity from the index.
    *
    * @param entityName - Name of entity to remove
-   * @returns `true` if the entity was in the index and removed
    */
-  removeDocument(entityName: string): boolean {
+  remove(entityName: string): boolean {
     if (!this.index) {
       return false;
     }
@@ -447,12 +380,14 @@ export class BM25Search {
 
     this.index.documents.delete(entityName);
 
-    // O(1) running-average update: subtract the removed doc's length from
-    // the previous total and divide by the new doc count.
-    const previousTotalLength = this.index.avgDocLength * this.index.totalDocs;
+    // Update totals
     this.index.totalDocs = this.index.documents.size;
+    let totalLength = 0;
+    for (const doc of this.index.documents.values()) {
+      totalLength += doc.docLength;
+    }
     this.index.avgDocLength = this.index.totalDocs > 0
-      ? (previousTotalLength - entry.docLength) / this.index.totalDocs
+      ? totalLength / this.index.totalDocs
       : 0;
 
     return true;

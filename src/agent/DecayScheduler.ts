@@ -10,7 +10,6 @@
 
 import type { DecayResult, ForgetResult, ForgetOptions } from '../types/agent-memory.js';
 import type { DecayEngine } from './DecayEngine.js';
-import { logger } from '../utils/logger.js';
 
 // Re-export for convenience
 export type { DecayResult, ForgetResult } from '../types/agent-memory.js';
@@ -120,15 +119,12 @@ export class DecayScheduler {
 
     this.running = true;
     this.intervalId = setInterval(
-      () => { void this.runDecayCycle(); },
+      () => this.runDecayCycle(),
       this.config.decayIntervalMs
     );
-    // Prevent the interval from keeping the Node.js process alive when the
-    // event loop would otherwise exit (mirrors ConsolidationScheduler pattern).
-    this.intervalId.unref();
 
-    // Run immediately on start (fire-and-forget; cycle catches its own errors)
-    void this.runDecayCycle();
+    // Run immediately on start
+    this.runDecayCycle();
   }
 
   /**
@@ -189,8 +185,8 @@ export class DecayScheduler {
       if (this.config.onError) {
         this.config.onError(error instanceof Error ? error : new Error(String(error)));
       } else {
-        // Default: log via logger facade if no error handler provided
-        logger.error('Decay cycle error:', error);
+        // Default: log to console if no error handler provided
+        console.error('Decay cycle error:', error);
       }
     }
   }

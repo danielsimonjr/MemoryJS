@@ -314,7 +314,7 @@ export class ReflectionManager {
    */
   private calculateAdequacy(
     results: HybridSearchResult[],
-    _analysis: QueryAnalysis,
+    analysis: QueryAnalysis,
     minResults: number
   ): number {
     let score = 0;
@@ -334,6 +334,9 @@ export class ReflectionManager {
       ? results.reduce((sum, r) => sum + r.scores.combined, 0) / results.length
       : 0;
     score += avgScore * weights.relevance;
+
+    // Suppress unused parameter warning - analysis reserved for future enhancements
+    void analysis;
 
     return score;
   }

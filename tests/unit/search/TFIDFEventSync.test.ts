@@ -42,9 +42,8 @@ describe('TFIDFEventSync', () => {
     };
     await indexManager.buildIndex(graph);
 
-    // coalesceMs: 0 forces synchronous emit→apply (default 50 ms window
-    // would defer assertions past the test body).
-    sync = new TFIDFEventSync(indexManager, eventEmitter, storage, { coalesceMs: 0 });
+    // Create sync instance
+    sync = new TFIDFEventSync(indexManager, eventEmitter, storage);
   });
 
   afterEach(async () => {
@@ -172,8 +171,7 @@ describe('TFIDFEventSync', () => {
       const uninitializedSync = new TFIDFEventSync(
         uninitializedManager,
         eventEmitter,
-        storage,
-        { coalesceMs: 0 },
+        storage
       );
 
       uninitializedSync.enable();
@@ -264,8 +262,7 @@ describe('TFIDFEventSync', () => {
       const uninitializedSync = new TFIDFEventSync(
         uninitializedManager,
         eventEmitter,
-        storage,
-        { coalesceMs: 0 }
+        storage
       );
 
       uninitializedSync.enable();
@@ -318,7 +315,7 @@ describe('TFIDFEventSync', () => {
 
   describe('multiple sync instances', () => {
     it('should allow multiple sync instances to operate independently', () => {
-      const sync2 = new TFIDFEventSync(indexManager, eventEmitter, storage, { coalesceMs: 0 });
+      const sync2 = new TFIDFEventSync(indexManager, eventEmitter, storage);
 
       sync.enable();
       sync2.enable();

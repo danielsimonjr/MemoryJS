@@ -207,24 +207,6 @@ export class SemanticSearch {
   }
 
   /**
-   * Build a name → entity lookup map from a knowledge graph.
-   *
-   * Shared by {@link search} and {@link findSimilar}. Not cached: the graph
-   * object may be mutated between calls, so the map is rebuilt each time to
-   * avoid stale-lookup bugs.
-   *
-   * @param graph - Knowledge graph to index
-   * @returns Map keyed by entity name
-   */
-  private buildEntityMap(graph: ReadonlyKnowledgeGraph): Map<string, Entity> {
-    const entityMap = new Map<string, Entity>();
-    for (const entity of graph.entities) {
-      entityMap.set(entity.name, entity);
-    }
-    return entityMap;
-  }
-
-  /**
    * Search for entities semantically similar to a query.
    *
    * @param graph - Knowledge graph to search in
@@ -249,7 +231,10 @@ export class SemanticSearch {
     const vectorResults = this.vectorStore.search(queryEmbedding, effectiveLimit * 2); // Get extra for filtering
 
     // Convert to SemanticSearchResult with entity lookup
-    const entityMap = this.buildEntityMap(graph);
+    const entityMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      entityMap.set(entity.name, entity);
+    }
 
     const results: SemanticSearchResult[] = [];
     for (const result of vectorResults) {
@@ -307,7 +292,10 @@ export class SemanticSearch {
     const vectorResults = this.vectorStore.search(embedding, effectiveLimit + 1);
 
     // Convert to SemanticSearchResult with entity lookup
-    const entityMap = this.buildEntityMap(graph);
+    const entityMap = new Map<string, Entity>();
+    for (const entity of graph.entities) {
+      entityMap.set(entity.name, entity);
+    }
 
     const results: SemanticSearchResult[] = [];
     for (const result of vectorResults) {

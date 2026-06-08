@@ -41,12 +41,12 @@ export class ProcedureStore {
   }
 
   /**
-   * Load a procedure by id, or undefined if not found. Tolerant of partial
+   * Load a procedure by id, or null if not found. Tolerant of partial
    * encodings — steps default to `[]`, meta to zeroed fields.
    */
-  async load(id: string): Promise<Procedure | undefined> {
+  async load(id: string): Promise<Procedure | null> {
     const entity = await this.entityManager.getEntity(id);
-    if (!entity || entity.entityType !== PROCEDURE_ENTITY_TYPE) return undefined;
+    if (!entity || entity.entityType !== PROCEDURE_ENTITY_TYPE) return null;
     return decodeProcedure(id, entity.observations);
   }
 

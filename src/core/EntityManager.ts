@@ -17,11 +17,6 @@ import {
   VersionConflictError,
 } from '../utils/errors.js';
 import type { RefIndex, RefEntry } from './RefIndex.js';
-import { EntityStateMachine } from './EntityStateMachine.js';
-
-// Stateless validator — hoisted to a singleton so updateEntity doesn't
-// allocate one per call.
-const ENTITY_STATE_MACHINE = new EntityStateMachine();
 
 /**
  * Options for constructing an EntityManager.
@@ -152,19 +147,19 @@ export class EntityManager {
   }
 
   /**
-   * List all registered aliases, optionally filtered to one entity.
+   * List all registered aliases, optionally filtered by entity name.
    *
-   * @param entityName - When given, only aliases pointing at this entity
+   * @param filter - Optional filter criteria
    * @returns Array of RefEntry objects
    * @throws {ValidationError} If no RefIndex is configured
    */
-  async listRefs(entityName?: string): Promise<RefEntry[]> {
+  async listRefs(filter?: { entityName?: string }): Promise<RefEntry[]> {
     if (!this.refIndex) {
       throw new ValidationError('RefIndex not configured', [
         'Call setRefIndex() before using listRefs()',
       ]);
     }
-    return this.refIndex.listRefs(entityName);
+    return this.refIndex.listRefs(filter);
   }
 
   /**
@@ -367,7 +362,9 @@ export class EntityManager {
 
       // Purge all aliases for deleted entities from the ref index
       if (this.refIndex) {
-        await this.refIndex.purgeEntities([...namesToDelete]);
+        for (const name of namesToDelete) {
+          await this.refIndex.purgeEntity(name);
+        }
       }
     } finally {
       release();
@@ -467,9 +464,7 @@ export class EntityManager {
    * ```
    */
   async getVersionChain(entityName: string): Promise<Entity[]> {
-    // OPTIMIZED: O(1) NameIndex lookup instead of getEntity()'s loadGraph()+find();
-    // the single loadGraph() below is the only graph load needed.
-    const entity = this.storage.getEntityByName(entityName);
+    const entity = await this.getEntity(entityName);
     if (!entity) return [];
 
     const rootName = entity.rootEntityName ?? entity.name;
@@ -586,15 +581,6 @@ export class EntityManager {
         if (liveVersion !== options.expectedVersion) {
           throw new VersionConflictError(name, options.expectedVersion, liveVersion);
         }
-      }
-
-      // Validate the lifecycle-status transition before assignment.
-      // Throws IllegalStatusTransitionError if illegal.
-      if (
-        updates.lifecycleStatus !== undefined &&
-        updates.lifecycleStatus !== entity.lifecycleStatus
-      ) {
-        ENTITY_STATE_MACHINE.transition(entity.lifecycleStatus, updates.lifecycleStatus, name);
       }
 
       // Apply updates (sanitized to prevent prototype pollution)
@@ -719,7 +705,6 @@ export class EntityManager {
 
     if (newTags.length > 0) {
       // OPTIMIZED: Use updateEntity for in-place update + append
-      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
       await this.storage.updateEntity(entityName, { tags: [...existingTags, ...newTags] });
     }
 
@@ -760,7 +745,6 @@ export class EntityManager {
 
     // Update entity via storage if tags were removed
     if (newTags.length < originalLength) {
-      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
       await this.storage.updateEntity(entityName, { tags: newTags });
     }
 
@@ -789,7 +773,6 @@ export class EntityManager {
     }
 
     // Use updateEntity for in-place update + append
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, { importance });
 
     return { entityName, importance };

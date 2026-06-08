@@ -89,14 +89,7 @@ export class SQLiteBackend implements IMemoryBackend {
     // storage.renameEntity primitive that doesn't exist yet. Adding it
     // touches the durable-storage layer + indexes, so it lands as a
     // separate (T13b) follow-up if needed.
-    // `result.entity` is absent on the `blocked` path (Phase Excl B);
-    // a blocked write never produces an id-mismatch to detect.
-    if (
-      this.options.preserveCallerIds &&
-      !result.duplicateDetected &&
-      result.entity &&
-      turn.id !== result.entity.name
-    ) {
+    if (this.options.preserveCallerIds && !result.duplicateDetected && turn.id !== result.entity.name) {
       throw new Error(
         'SQLiteBackend: preserveCallerIds=true requires storage.renameEntity ' +
           'which is not implemented yet. Default false; see β.3 spec notes.',

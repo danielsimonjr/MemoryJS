@@ -13,7 +13,12 @@ import type { AgentEntity, DecayResult, ForgetOptions, ForgetResult } from '../t
 import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
-import { tokenizeToSet } from '../utils/textSimilarity.js';
+import { tokenize as _tokenize } from '../utils/textSimilarity.js';
+
+/** Local helper — wraps the shared tokenize() into a Set for set-intersection. */
+function tokenize(text: string): Set<string> {
+  return new Set(_tokenize(text));
+}
 
 // Re-export for convenience
 export type { DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
@@ -388,10 +393,10 @@ export class DecayEngine {
     // 4) Relevance boost — token overlap when a query is supplied.
     let relevanceBoost = 0;
     if (queryContext && queryContext.length > 0) {
-      const queryTokens = tokenizeToSet(queryContext);
+      const queryTokens = tokenize(queryContext);
       if (queryTokens.size > 0) {
         const turnText = (entity.observations ?? []).join(' ');
-        const turnTokens = tokenizeToSet(turnText);
+        const turnTokens = tokenize(turnText);
         let intersection = 0;
         for (const t of queryTokens) {
           if (turnTokens.has(t)) intersection += 1;
@@ -518,7 +523,6 @@ export class DecayEngine {
     });
 
     // Persist updates
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(entityName, updates as Record<string, unknown>);
   }
 

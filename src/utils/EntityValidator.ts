@@ -200,10 +200,10 @@ export class EntityValidator {
   async validateAll(entities: Entity[]): Promise<Map<string, EntityValidationResult>> {
     const results = new Map<string, EntityValidationResult>();
 
-    const validated = await Promise.all(entities.map(e => this.validate(e)));
-    entities.forEach((entity, i) => {
-      results.set(entity.name, validated[i]);
-    });
+    for (const entity of entities) {
+      const result = await this.validate(entity);
+      results.set(entity.name, result);
+    }
 
     return results;
   }

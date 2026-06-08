@@ -9,7 +9,6 @@
 
 import type { IGraphStorage } from '../types/types.js';
 import type { AgentEntity, SalienceContext, ScoredEntity } from '../types/agent-memory.js';
-import { compareTrustLevel, inferTrustLevel } from '../types/agent-memory.js';
 import type { GraphTraversal } from '../core/GraphTraversal.js';
 import type { SalienceEngine } from './SalienceEngine.js';
 
@@ -67,8 +66,7 @@ export type ConflictResolutionPolicy =
   | { strategy: 'most_recent' }
   | { strategy: 'highest_confidence' }
   | { strategy: 'highest_score' }
-  | { strategy: 'trusted_agent'; trustedAgentId: string }
-  | { strategy: 'trust_level' };
+  | { strategy: 'trusted_agent'; trustedAgentId: string };
 
 /**
  * Result of a collaborative synthesis operation.
@@ -275,18 +273,6 @@ export class CollaborativeSynthesis {
           const aConf = a.entity.confidence ?? 0.5;
           const bConf = b.entity.confidence ?? 0.5;
           return bConf - aConf;
-        })[0];
-      } else if (policy.strategy === 'trust_level') {
-        // Sort by categorical TrustLevel descending; recency tiebreak
-        // mirrors `ConflictResolver.resolveTrustLevel` (Sprint 6).
-        winner = [...conflict.candidates].sort((a, b) => {
-          const aLvl = inferTrustLevel(a.entity.source);
-          const bLvl = inferTrustLevel(b.entity.source);
-          const cmp = compareTrustLevel(bLvl, aLvl);
-          if (cmp !== 0) return cmp;
-          const aTime = a.entity.lastModified ?? '1970-01-01T00:00:00Z';
-          const bTime = b.entity.lastModified ?? '1970-01-01T00:00:00Z';
-          return bTime.localeCompare(aTime);
         })[0];
       } else {
         // trusted_agent — the named agent wins if they have a candidate;

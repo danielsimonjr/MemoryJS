@@ -79,15 +79,6 @@ const DEFAULT_OPTIONS: Required<QueryPlanCacheOptions> = {
  * Caches query analysis and planning results to avoid redundant computation.
  * Uses LRU (Least Recently Used) eviction when cache is full.
  *
- * Implements `PressureAwareCache` — once constructed, callers should
- * register the instance with `ctx.cachePressure` so coordinated
- * eviction can shrink it under memory pressure:
- *
- * ```typescript
- * const cache = new QueryPlanCache({ maxSize: 500 });
- * ctx.cachePressure.register(cache);
- * ```
- *
  * @example
  * ```typescript
  * const cache = new QueryPlanCache({ maxSize: 500 });
@@ -107,9 +98,6 @@ const DEFAULT_OPTIONS: Required<QueryPlanCacheOptions> = {
  * ```
  */
 export class QueryPlanCache {
-  /** Stable name — implements `PressureAwareCache` for `CachePressureCoordinator`. */
-  readonly name: string = 'queryPlan';
-
   private cache: Map<string, CachedQueryEntry>;
   private options: Required<QueryPlanCacheOptions>;
 
@@ -476,39 +464,6 @@ export class QueryPlanCache {
       this.evictIfNeeded();
 
       this.cache.set(entry.normalizedQuery, entry);
-    }
-  }
-
-  /** `PressureAwareCache` interface — entry count. */
-  currentEntries(): number {
-    return this.cache.size;
-  }
-
-  /**
-   * `PressureAwareCache` interface — drop LRU entries until the cache
-   * is at or below `targetEntries`. Two-pass O(n log n): first pass
-   * removes any expired entries (free wins), second pass sorts the
-   * remaining survivors by access time and bulk-deletes the bottom.
-   * Calling `evictIfNeeded()` in a loop would be O(n²).
-   */
-  evictTo(targetEntries: number): void {
-    // Pass 1: drop expired entries — they're free to evict.
-    for (const [key, entry] of this.cache) {
-      if (this.isExpired(entry)) {
-        this.cache.delete(key);
-        if (this.options.enableStats) this.evictions++;
-      }
-    }
-    if (this.cache.size <= targetEntries) return;
-
-    // Pass 2: sort surviving entries by lastAccessed ascending and
-    // delete the oldest until we're at or under target.
-    const survivors = [...this.cache.entries()];
-    survivors.sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
-    const toRemove = this.cache.size - Math.max(0, targetEntries);
-    for (let i = 0; i < toRemove; i++) {
-      this.cache.delete(survivors[i]![0]);
-      if (this.options.enableStats) this.evictions++;
     }
   }
 }

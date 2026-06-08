@@ -8,7 +8,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { durableWriteFile as durableWriteFileShared } from '../utils/durableWriteFile.js';
+import { randomBytes } from 'crypto';
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import { clearAllSearchCaches } from '../utils/searchCache.js';
@@ -16,46 +16,6 @@ import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex }
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { BatchTransaction } from './TransactionManager.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
-import { dirname } from 'path';
-import { FileSegmentStorage } from './segments/FileSegmentStorage.js';
-import { FnvSegmentRouter } from './segments/ISegmentStorage.js';
-import { FsReadMmapBackend } from './mmap/FsReadMmapBackend.js';
-import { streamLines } from './mmap/IMmapBackend.js';
-
-/**
- * Read `MEMORY_STORAGE_SEGMENT_COUNT` and return a `FileSegmentStorage`
- * when the value parses as an integer in `[2, MAX_SEGMENT_COUNT]`,
- * otherwise `null` (single-file mode — byte-identical to pre-Phase-7
- * behavior). Anything else (unset, floats, exponents, hex literals,
- * out-of-range) falls back to single-file mode rather than throwing
- * so a misconfigured deployment degrades gracefully.
- *
- * Strict parsing: we use `Number(raw)` + `Number.isInteger` instead of
- * `parseInt` because `parseInt('3.7')` silently truncates to `3`,
- * which would surprise an operator who typed a fractional value.
- *
- * Upper bound: 1024 segments is enough for any practical workload
- * and guards against `MEMORY_STORAGE_SEGMENT_COUNT=1000000` causing
- * `loadAll` to do a million ENOENT-rejected file opens.
- *
- * Segment files live under `<dirname(memoryFilePath)>/segments/`.
- */
-const MAX_SEGMENT_COUNT = 1024;
-const SEGMENT_COUNT_PATTERN = /^[1-9][0-9]*$/;
-function resolveSegmentStorage(memoryFilePath: string): FileSegmentStorage | null {
-  const raw = process.env.MEMORY_STORAGE_SEGMENT_COUNT;
-  if (!raw) return null;
-  // Require a plain positive-decimal-integer literal — rejects floats
-  // (`3.7`), exponents (`1e3`), hex (`0x10`), leading zeros (`007`),
-  // signs (`-5`, `+5`), and whitespace. `Number('1e3') === 1000` is
-  // numerically fine, but an operator who typed `1e3` was probably
-  // confused — fail closed so the misconfig surfaces.
-  if (!SEGMENT_COUNT_PATTERN.test(raw)) return null;
-  const count = Number(raw);
-  if (!Number.isInteger(count) || count < 2 || count > MAX_SEGMENT_COUNT) return null;
-  const rootDir = dirname(memoryFilePath);
-  return new FileSegmentStorage(rootDir, new FnvSegmentRouter(count));
-}
 
 // Required fields are always serialized via the explicit literal at each
 // call site. This list is the *optional* fields — additive across schema
@@ -73,8 +33,6 @@ const OPTIONAL_PERSISTED_ENTITY_FIELDS: ReadonlyArray<string> = [
   'ttl', 'confidence',
   // η.4.4 temporal versioning expansion
   'validFrom', 'validUntil', 'observationMeta',
-  // Entity state machine
-  'lifecycleStatus',
   // AgentEntity extension (types/agent-memory.ts)
   'memoryType', 'sessionId', 'conversationId', 'taskId',
   'expiresAt', 'isWorkingMemory', 'promotedAt', 'promotedFrom', 'markedForPromotion',
@@ -89,20 +47,6 @@ const OPTIONAL_PERSISTED_ENTITY_FIELDS: ReadonlyArray<string> = [
   'outcome', 'failureCauses',
   // ArtifactEntity extension (types/artifact.ts)
   'artifactType', 'toolName', 'shortId',
-  // v2.1.0 subclass-manager record fields (sibling to the v2.1.1
-  // UpdateEntitySchema.passthrough fix — same root cause: subclass managers
-  // attach domain records that the persistence allowlist must also admit,
-  // otherwise the records are silently dropped on save and the managers'
-  // list/match/get operations return empty on next load).
-  'heuristicRecord',            // HeuristicEntity
-  'decisionRecord',             // DecisionEntity (includes nested lifecycle)
-  'exclusionRule',              // ExclusionEntity
-  'projectContextRecord',       // ProjectContextEntity
-  'toolAffordanceRecord',       // ToolAffordanceEntity
-  'prospectiveRecord',          // ProspectiveEntity
-  'failureRecord',              // FailureEntity
-  'planRecord',                 // PlanEntity
-  'reflectionRecord',           // ReflectionEntity
 ];
 
 function copyOptionalPersistedFields(
@@ -150,18 +94,6 @@ export class GraphStorage implements IGraphStorage {
    * Null when cache is empty or invalidated.
    */
   private cache: KnowledgeGraph | null = null;
-
-  /**
-   * In-flight load promise. When two concurrent `loadGraph()` /
-   * `ensureLoaded()` calls hit a cold cache, only the first
-   * actually invokes `loadFromDisk`; the second awaits the same
-   * promise. Without this, both would race through `loadFromDisk`,
-   * both would build entity maps, and the second would clobber the
-   * first's cache assignment. The second backend handle in mmap
-   * mode also doubled the kernel page-cache pressure. Flagged in
-   * the Phase 11 review #3 as a pre-existing hole; fixed here.
-   */
-  private loadingPromise: Promise<void> | null = null;
 
   /**
    * Number of pending append operations since last compaction.
@@ -220,15 +152,6 @@ export class GraphStorage implements IGraphStorage {
   private memoryFilePath: string;
 
   /**
-   * When set, reads and writes route through the segment-file
-   * backend instead of the single JSONL file. Activated by setting
-   * `MEMORY_STORAGE_SEGMENT_COUNT >= 2` in the environment.
-   * Default (`null`) preserves byte-identical behavior with the
-   * pre-Phase-7 single-file format.
-   */
-  private segmentStorage: FileSegmentStorage | null;
-
-  /**
    * Create a new GraphStorage instance.
    *
    * @param memoryFilePath - Absolute path to the JSONL file
@@ -240,7 +163,6 @@ export class GraphStorage implements IGraphStorage {
     // already validated it. Tests pass tmpdir() paths; the ".." segment
     // defense-in-depth check still runs.
     this.memoryFilePath = validateFilePath(memoryFilePath, undefined, false);
-    this.segmentStorage = resolveSegmentStorage(this.memoryFilePath);
   }
 
   // ==================== Phase 10 Sprint 2: Event Emitter Access ====================
@@ -297,7 +219,29 @@ export class GraphStorage implements IGraphStorage {
    * @param content - Content to write
    */
   private async durableWriteFile(content: string): Promise<void> {
-    await durableWriteFileShared(this.memoryFilePath, content);
+    // Atomic write: write to temp file, fsync, then rename over target
+    const tmpPath = `${this.memoryFilePath}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
+    const fd = await fs.open(tmpPath, 'w');
+    try {
+      await fd.write(content);
+      await fd.sync();
+    } finally {
+      await fd.close();
+    }
+    try {
+      await fs.rename(tmpPath, this.memoryFilePath);
+    } catch {
+      // Fallback for Windows where rename can fail (EPERM) due to file locking
+      const fallbackFd = await fs.open(this.memoryFilePath, 'w');
+      try {
+        await fallbackFd.write(content);
+        await fallbackFd.sync();
+      } finally {
+        await fallbackFd.close();
+      }
+      // Clean up temp file
+      try { await fs.unlink(tmpPath); } catch { /* ignore */ }
+    }
   }
 
   /**
@@ -333,9 +277,8 @@ export class GraphStorage implements IGraphStorage {
       return this.cache;
     }
 
-    // Cache miss - load from disk via the shared in-flight
-    // promise so concurrent callers don't both invoke loadFromDisk.
-    await this.ensureLoaded();
+    // Cache miss - load from disk
+    await this.loadFromDisk();
     return this.cache!;
   }
 
@@ -360,41 +303,20 @@ export class GraphStorage implements IGraphStorage {
   }
 
   /**
-   * Ensure the cache is loaded from disk. Concurrent callers share
-   * the same in-flight promise so `loadFromDisk` runs at most once
-   * per cold-cache window. On error, the in-flight promise is
-   * cleared (not the cache) so the next caller retries from disk.
+   * Ensure the cache is loaded from disk.
+   *
+   * @returns Promise resolving when cache is populated
    */
   async ensureLoaded(): Promise<void> {
-    if (this.cache !== null) return;
-    if (this.loadingPromise !== null) {
-      await this.loadingPromise;
-      return;
+    if (this.cache === null) {
+      await this.loadFromDisk();
     }
-    this.loadingPromise = this.loadFromDisk().finally(() => {
-      this.loadingPromise = null;
-    });
-    await this.loadingPromise;
   }
 
   /**
    * Internal method to load graph from disk into cache.
    */
   private async loadFromDisk(): Promise<void> {
-    if (this.segmentStorage !== null) {
-      await this.loadFromSegments();
-      return;
-    }
-    // Phase 11 task 84: when MEMORY_USE_MMAP=true AND the file is
-    // larger than the configured threshold, iterate lines via the
-    // FsReadMmapBackend's range-read path instead of slurping the
-    // whole file into a single string. Smaller files stay on the
-    // existing fs.readFile path — for sub-threshold files the
-    // streaming setup overhead doesn't pay off.
-    if (await this.shouldUseMmap()) {
-      await this.loadViaMmap();
-      return;
-    }
     try {
       const data = await fs.readFile(this.memoryFilePath, 'utf-8');
       const lines = data.split('\n').filter((line: string) => line.trim() !== '');
@@ -404,21 +326,8 @@ export class GraphStorage implements IGraphStorage {
       const entityMap = new Map<string, Entity>();
       const relationMap = new Map<string, Relation>();
 
-      // A JSONL line is a tagged entity or relation. `JSON.parse` returns
-      // `any`; narrowing on the `type` discriminator below gives us a
-      // properly-typed `Entity` / `Relation` without an explicit `any`.
-      type JsonlLine =
-        | ({ type: 'entity' } & Entity)
-        | ({ type: 'relation' } & Relation);
-
       for (const line of lines) {
-        let item: JsonlLine;
-        try {
-          item = JSON.parse(line);
-        } catch {
-          // Skip malformed JSON lines (e.g., from partial writes or corruption)
-          continue;
-        }
+        const item = JSON.parse(line);
 
         if (item.type === 'entity') {
           // Add createdAt if missing for backward compatibility
@@ -427,7 +336,7 @@ export class GraphStorage implements IGraphStorage {
           if (!item.lastModified) item.lastModified = item.createdAt;
 
           // Use name as key - later entries override earlier ones
-          entityMap.set(item.name, item);
+          entityMap.set(item.name, item as Entity);
         }
 
         if (item.type === 'relation') {
@@ -438,7 +347,7 @@ export class GraphStorage implements IGraphStorage {
 
           // Use composite key for relations
           const key = `${item.from}:${item.to}:${item.relationType}`;
-          relationMap.set(key, item);
+          relationMap.set(key, item as Relation);
         }
       }
 
@@ -459,7 +368,7 @@ export class GraphStorage implements IGraphStorage {
       this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
     } catch (error) {
       // File doesn't exist - create empty graph
-      if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      if (error instanceof Error && 'code' in error && (error as any).code === 'ENOENT') {
         this.cache = { entities: [], relations: [] };
         this.clearIndexes();
 
@@ -468,151 +377,6 @@ export class GraphStorage implements IGraphStorage {
         return;
       }
       throw error;
-    }
-  }
-
-  /**
-   * Load via the segment backend (activated by `MEMORY_STORAGE_SEGMENT_COUNT
-   * >= 2`). Equivalent to `loadFromDisk` but reads each segment file
-   * separately. An absent `segments/` directory degrades to an empty
-   * graph — matches the ENOENT fallback in the single-file path.
-   */
-  private async loadFromSegments(): Promise<void> {
-    const graph = await this.segmentStorage!.loadAll();
-    this.cache = graph;
-    this.buildEntityIndexes(graph.entities);
-    this.buildRelationIndex(graph.relations);
-    this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
-  }
-
-  /**
-   * Append-path fallback when segment mode is active. Stages the
-   * in-memory mutation via `applyMutation`, then writes the whole
-   * graph through `segmentStorage.saveAll`. On save failure we
-   * reload from disk so the cache + indexes don't diverge from the
-   * persisted state. Matches the write-first-cache-after contract
-   * the single-file append paths use, just at a coarser granularity.
-   *
-   * **Recovery contract on save failure:**
-   * - Speculative cache + index mutations are dropped.
-   * - We `clearIndexes()` first, then `loadFromSegments()` rebuilds
-   *   from disk. The clear is defense-in-depth — `IndexImpl.build()`
-   *   isn't required to be clear-then-add.
-   * - If the reload itself fails (disk error, malformed segment),
-   *   we throw an aggregated `Error` that mentions both the
-   *   original save error and the reload error. The caller should
-   *   treat the storage as desynced and reconstruct it.
-   */
-  private async appendViaSegmentSave(applyMutation: () => void): Promise<void> {
-    applyMutation();
-    try {
-      await this.segmentStorage!.saveAll(this.cache!);
-    } catch (saveErr) {
-      try {
-        this.cache = null;
-        this.clearIndexes();
-        await this.loadFromSegments();
-      } catch (reloadErr) {
-        // Both writes failed — surface both errors so the caller can
-        // tell what happened.
-        const saveMsg = saveErr instanceof Error ? saveErr.message : String(saveErr);
-        const reloadMsg = reloadErr instanceof Error ? reloadErr.message : String(reloadErr);
-        throw new Error(
-          `Segment save failed (${saveMsg}); recovery reload also failed (${reloadMsg}); storage is in a desynced state and must be reconstructed.`,
-        );
-      }
-      throw saveErr;
-    }
-  }
-
-  /**
-   * Phase 11 task 84: decide whether to use the mmap-backed read
-   * path. Activated by `MEMORY_USE_MMAP='true'` (strict literal-
-   * match, matches Phase 7/8/9/10 env precedents) AND file size
-   * > `MEMORY_MMAP_THRESHOLD_BYTES` (default 100 MB).
-   *
-   * Files below the threshold stay on the existing `fs.readFile`
-   * path — for small files the per-line streaming setup overhead
-   * eats the mmap perf benefit.
-   */
-  private async shouldUseMmap(): Promise<boolean> {
-    if (process.env.MEMORY_USE_MMAP !== 'true') return false;
-    const thresholdRaw = process.env.MEMORY_MMAP_THRESHOLD_BYTES;
-    // Phase 11 review #4: accept `0` to mean "always use mmap"
-    // (size > 0 trivially true for any non-empty file). Without
-    // this, `'0'` silently fell back to the 100 MB default which
-    // surprised operators who wrote `MEMORY_MMAP_THRESHOLD_BYTES=0`
-    // to force the mmap path on.
-    const threshold = thresholdRaw && /^(0|[1-9][0-9]*)$/.test(thresholdRaw)
-      ? Number(thresholdRaw)
-      : 100 * 1024 * 1024;
-    try {
-      const stat = await fs.stat(this.memoryFilePath);
-      return stat.size > threshold;
-    } catch {
-      // ENOENT / EACCES — fall back to the regular path which
-      // already handles those cases.
-      return false;
-    }
-  }
-
-  /**
-   * Load via the `FsReadMmapBackend` + `streamLines` helper.
-   * Iterates lines lazily, holding at most one 64 KB chunk in
-   * memory at a time. Compared to `fs.readFile`+split, this avoids
-   * the peak-RSS spike of loading the whole file as a single
-   * string for multi-GB JSONLs.
-   */
-  private async loadViaMmap(): Promise<void> {
-    const backend = new FsReadMmapBackend();
-    const handle = await backend.open(this.memoryFilePath);
-    try {
-      const entityMap = new Map<string, Entity>();
-      const relationMap = new Map<string, Relation>();
-      // Track line number for debuggable parse errors (review #2).
-      // The fs.readFile path doesn't carry line numbers either, but
-      // mmap-mode targets huge files where "which line broke?" is
-      // exactly the information operators need.
-      let lineNumber = 0;
-
-      for await (const lineBuf of streamLines(backend, handle)) {
-        lineNumber++;
-        const line = lineBuf.toString('utf-8').trim();
-        if (line === '') continue;
-        let item: unknown;
-        try {
-          item = JSON.parse(line);
-        } catch (err) {
-          // Surface the underlying SyntaxError message + line
-          // number so a 1 GB file's bad row is locatable.
-          const cause = err instanceof Error ? err.message : String(err);
-          throw new Error(
-            `Failed to parse line ${lineNumber} of ${this.memoryFilePath}: ${cause} (preview: ${line.slice(0, 100)})`,
-          );
-        }
-        const rec = item as Record<string, unknown>;
-        if (rec.type === 'entity') {
-          if (!rec.createdAt) rec.createdAt = new Date().toISOString();
-          if (!rec.lastModified) rec.lastModified = rec.createdAt;
-          entityMap.set(rec.name as string, rec as unknown as Entity);
-        } else if (rec.type === 'relation') {
-          if (!rec.createdAt) rec.createdAt = new Date().toISOString();
-          if (!rec.lastModified) rec.lastModified = rec.createdAt;
-          const key = `${rec.from}:${rec.to}:${rec.relationType}`;
-          relationMap.set(key, rec as unknown as Relation);
-        }
-      }
-
-      const graph: KnowledgeGraph = {
-        entities: Array.from(entityMap.values()),
-        relations: Array.from(relationMap.values()),
-      };
-      this.cache = graph;
-      this.buildEntityIndexes(graph.entities);
-      this.buildRelationIndex(graph.relations);
-      this.eventEmitter.emitGraphLoaded(graph.entities.length, graph.relations.length);
-    } finally {
-      await backend.close(handle);
     }
   }
 
@@ -681,26 +445,6 @@ export class GraphStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        // Segment mode: append-paths route through a full saveAll
-        // instead of a single-line append. Less efficient than the
-        // single-file branch but correct — per-segment append is a
-        // follow-up optimization. saveAll rewrites every segment
-        // from scratch, so `pendingAppends` (the single-file
-        // compaction counter) resets to 0.
-        await this.appendViaSegmentSave(() => {
-          this.cache!.entities.push(entity);
-          this.nameIndex.add(entity);
-          this.typeIndex.add(entity);
-          this.lowercaseCache.set(entity);
-          this.observationIndex.add(entity.name, entity.observations);
-        });
-        this.pendingAppends = 0;
-        clearAllSearchCaches();
-        this.eventEmitter.emitEntityCreated(entity);
-        return;
-      }
-
       const entityData: Record<string, unknown> = {
         type: 'entity',
         name: entity.name,
@@ -767,18 +511,6 @@ export class GraphStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        // Segment mode: full-save fallback (same rationale as appendEntity).
-        await this.appendViaSegmentSave(() => {
-          this.cache!.relations.push(relation);
-          this.relationIndex.add(relation);
-        });
-        this.pendingAppends = 0;
-        clearAllSearchCaches();
-        this.eventEmitter.emitRelationCreated(relation);
-        return;
-      }
-
       // Serialize relation with all fields (Phase 1 Sprint 5: Metadata support)
       const serialized: Record<string, unknown> = {
         type: 'relation',
@@ -866,14 +598,6 @@ export class GraphStorage implements IGraphStorage {
    * @returns Promise resolving when save is complete
    */
   private async saveGraphInternal(graph: KnowledgeGraph): Promise<void> {
-    if (this.segmentStorage !== null) {
-      await this.segmentStorage.saveAll(graph);
-      this.cache = graph;
-      this.buildEntityIndexes(graph.entities);
-      this.buildRelationIndex(graph.relations);
-      this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
-      return;
-    }
     const lines = [
       ...graph.entities.map(e => {
         const entityData: Record<string, unknown> = {
@@ -964,46 +688,11 @@ export class GraphStorage implements IGraphStorage {
       const oldType = entity.entityType;
       const timestamp = new Date().toISOString();
 
-      if (this.segmentStorage !== null) {
-        // Segment mode: route updateEntity through a full saveAll
-        // after applying the in-cache mutation (same write-after-
-        // cache pattern as appendEntity/Relation in segment mode).
-        // Capture pre-mutation state for the change event — deep-
-        // clone array/object fields so the snapshot survives the
-        // in-place `Object.assign` mutation that follows.
-        const previous: Partial<Entity> = {};
-        for (const key of Object.keys(updates)) {
-          const v = (entity as unknown as Record<string, unknown>)[key];
-          (previous as Record<string, unknown>)[key] =
-            v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v;
-        }
-        await this.appendViaSegmentSave(() => {
-          Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
-          entity.lastModified = timestamp;
-          this.nameIndex.add(entity);
-          if (updates.entityType && updates.entityType !== oldType) {
-            this.typeIndex.updateType(entityName, oldType, updates.entityType);
-          }
-          this.lowercaseCache.set(entity);
-          if (updates.observations) {
-            this.observationIndex.remove(entityName);
-            this.observationIndex.add(entityName, entity.observations);
-          }
-        });
-        this.pendingAppends = 0;
-        clearAllSearchCaches();
-        this.eventEmitter.emitEntityUpdated(entityName, updates, previous);
-        return true;
-      }
-
       // Phase 10 Sprint 2: Capture previous values for event
       const previousValues: Partial<Entity> = {};
       for (const key of Object.keys(updates) as Array<keyof Entity>) {
         if (key in entity) {
-          // TS can't prove the per-key value-type alignment when `key` is a
-          // union — runtime correctness holds because `key` is narrowed to a
-          // single Entity field per iteration.
-          (previousValues as Record<string, unknown>)[key] = entity[key];
+          previousValues[key] = entity[key] as any;
         }
       }
 

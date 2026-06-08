@@ -21,10 +21,8 @@
  * @module agent/ExperienceExtractor
  */
 
-import { randomUUID } from 'crypto';
 import type { PatternDetector } from './PatternDetector.js';
 import type { PatternResult } from '../types/agent-memory.js';
-import { tokenizeToSet, jaccard } from '../utils/textSimilarity.js';
 
 export type Outcome = 'success' | 'failure' | 'partial' | 'unknown';
 
@@ -335,7 +333,7 @@ export class ExperienceExtractor {
    * cluster as the experience content.
    */
   async synthesizeExperience(cluster: TrajectoryCluster): Promise<Experience> {
-    const id = `exp-${Date.now()}-${randomUUID().slice(0, 8)}`;
+    const id = `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const obs = cluster.trajectories.flatMap((t) => t.observations);
     const actionCount = cluster.trajectories.reduce((acc, t) => acc + t.actions.length, 0);
 
@@ -369,14 +367,31 @@ export class ExperienceExtractor {
 
 // ---------- helpers ----------
 
+function tokenize(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter((t) => t.length > 2),
+  );
+}
+
 function countTokens(texts: string[]): Map<string, number> {
   const out = new Map<string, number>();
   for (const text of texts) {
-    for (const tok of tokenizeToSet(text, 3)) {
+    for (const tok of tokenize(text)) {
       out.set(tok, (out.get(tok) ?? 0) + 1);
     }
   }
   return out;
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let inter = 0;
+  for (const t of a) if (b.has(t)) inter += 1;
+  return inter / (a.size + b.size - inter);
 }
 
 function trajectoryTokens(t: Trajectory, method: ClusterMethod): Set<string> {
@@ -386,7 +401,7 @@ function trajectoryTokens(t: Trajectory, method: ClusterMethod): Set<string> {
   }
   // semantic = observation tokens
   const all = new Set<string>();
-  for (const o of t.observations) for (const tok of tokenizeToSet(o, 3)) all.add(tok);
+  for (const o of t.observations) for (const tok of tokenize(o)) all.add(tok);
   return all;
 }
 

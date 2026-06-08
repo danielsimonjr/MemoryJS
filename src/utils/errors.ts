@@ -400,44 +400,6 @@ export class LowEntropyContentError extends Error {
 }
 
 /**
- * Thrown when a write is blocked by an active `ExclusionRule`
- * (`do_not_remember`, Phase 3). Carries the matching rule id so
- * callers can introspect or surface to operators.
- *
- * Mirrors `LowEntropyContentError`'s lightweight pattern (extends
- * `Error` directly, no `ErrorCode` integration) — exclusion is a
- * user-policy event, not a structural validation failure.
- *
- * @example
- * ```typescript
- * try {
- *   await wmm.createWorkingMemory(sessionId, content);
- * } catch (err) {
- *   if (err instanceof MemoryWriteBlockedError) {
- *     console.log(`Blocked by rule ${err.ruleId}: ${err.reason}`);
- *   }
- * }
- * ```
- */
-export class MemoryWriteBlockedError extends Error {
-  readonly code = 'MEMORY_WRITE_BLOCKED';
-  readonly ruleId: string;
-  readonly reason?: string;
-
-  constructor(ruleId: string, reason?: string) {
-    super(
-      `Memory write blocked by exclusion rule '${ruleId}'${reason ? `: ${reason}` : ''}`,
-    );
-    this.name = 'MemoryWriteBlockedError';
-    this.ruleId = ruleId;
-    this.reason = reason;
-    if (Error.captureStackTrace) {
-      Error.captureStackTrace(this, this.constructor);
-    }
-  }
-}
-
-/**
  * Phase 9B: Error thrown when an operation is cancelled via AbortSignal.
  *
  * @example

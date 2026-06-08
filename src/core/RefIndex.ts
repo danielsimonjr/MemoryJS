@@ -178,49 +178,19 @@ export class RefIndex {
   }
 
   /**
-   * Batch {@link purgeEntity} — rewrites the JSONL sidecar once for the
-   * whole set instead of once per name.
+   * List all registered refs with optional filtering.
    *
-   * @param entityNames - Entities that were deleted
-   * @returns Total number of refs removed
-   */
-  async purgeEntities(entityNames: string[]): Promise<number> {
-    return this.mutex.runExclusive(async () => {
-      await this.ensureLoaded();
-
-      let count = 0;
-      for (const entityName of entityNames) {
-        const refs = this.reverseIndex.get(entityName);
-        if (!refs || refs.size === 0) continue;
-
-        count += refs.size;
-        for (const ref of refs) {
-          this.entries.delete(ref);
-        }
-        this.reverseIndex.delete(entityName);
-      }
-
-      if (count > 0) {
-        await this.persistAll();
-      }
-      return count;
-    });
-  }
-
-  /**
-   * List all registered refs, optionally filtered to one entity.
-   *
-   * @param entityName - When given, only refs pointing at this entity
+   * @param filter - Optional filter criteria
    * @returns Array of RefEntry objects
    */
-  async listRefs(entityName?: string): Promise<RefEntry[]> {
+  async listRefs(filter?: { entityName?: string }): Promise<RefEntry[]> {
     return this.mutex.runExclusive(async () => {
       await this.ensureLoaded();
 
       const all = Array.from(this.entries.values());
 
-      if (entityName !== undefined) {
-        return all.filter(e => e.entityName === entityName);
+      if (filter?.entityName !== undefined) {
+        return all.filter(e => e.entityName === filter.entityName);
       }
 
       return all;

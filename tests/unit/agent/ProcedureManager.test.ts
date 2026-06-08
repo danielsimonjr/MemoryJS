@@ -60,8 +60,8 @@ describe('3B.4 Procedural Memory', () => {
       expect(loaded?.triggers).toEqual(['password reset', 'forgot password']);
     });
 
-    it('returns undefined for unknown id', async () => {
-      expect(await manager.getProcedure('does-not-exist')).toBeUndefined();
+    it('returns null for unknown id', async () => {
+      expect(await manager.getProcedure('does-not-exist')).toBeNull();
     });
 
     it('throws when steps is omitted', async () => {
@@ -271,99 +271,6 @@ describe('3B.4 Procedural Memory', () => {
         '[procedure-steps]:not-json',
       ]);
       expect(decoded.steps).toEqual([]);
-    });
-  });
-
-  // -------- invoke() (3B.4 — bridge for ProspectiveMemoryManager) --------
-  describe('invoke', () => {
-    it('returns found=true with procedure + openSequencer for an existing procedure', async () => {
-      const proc = await manager.addProcedure({
-        name: 'inv-1',
-        steps: [
-          { order: 1, action: 'a1', parameters: {} },
-          { order: 2, action: 'a2', parameters: {} },
-        ],
-      });
-
-      const result = await manager.invoke(proc.id);
-      expect(result.found).toBe(true);
-      if (result.found) {
-        expect(result.procedureId).toBe(proc.id);
-        expect(result.procedure.id).toBe(proc.id);
-        expect(result.procedure.steps).toHaveLength(2);
-        expect(typeof result.openSequencer).toBe('function');
-      }
-    });
-
-    it('returns found=false for an unknown procedureId', async () => {
-      const result = await manager.invoke('does-not-exist');
-      expect(result.found).toBe(false);
-      if (!result.found) {
-        expect(result.procedureId).toBe('does-not-exist');
-        expect(typeof result.invokedAt).toBe('string');
-        expect(Number.isNaN(new Date(result.invokedAt).getTime())).toBe(false);
-      }
-    });
-
-    it('sets invokedAt to a valid ISO 8601 timestamp', async () => {
-      const proc = await manager.addProcedure({
-        name: 'inv-iso',
-        steps: [{ order: 1, action: 'a', parameters: {} }],
-      });
-      const before = Date.now();
-      const result = await manager.invoke(proc.id);
-      const after = Date.now();
-      const invokedMs = new Date(result.invokedAt).getTime();
-      expect(Number.isNaN(invokedMs)).toBe(false);
-      expect(invokedMs).toBeGreaterThanOrEqual(before);
-      expect(invokedMs).toBeLessThanOrEqual(after);
-    });
-
-    it('openSequencer returns a fresh sequencer at cursor 0', async () => {
-      const proc = await manager.addProcedure({
-        name: 'inv-seq',
-        steps: [
-          { order: 1, action: 'step1', parameters: {} },
-          { order: 2, action: 'step2', parameters: {} },
-        ],
-      });
-      const result = await manager.invoke(proc.id);
-      if (!result.found) throw new Error('expected found');
-      const seq = result.openSequencer();
-      expect(seq).toBeInstanceOf(StepSequencer);
-      expect(seq.cursorIndex).toBe(0);
-      expect(seq.current()?.action).toBe('step1');
-    });
-
-    it('returns independent sequencers per openSequencer call', async () => {
-      const proc = await manager.addProcedure({
-        name: 'inv-indep',
-        steps: [
-          { order: 1, action: 's1', parameters: {} },
-          { order: 2, action: 's2', parameters: {} },
-        ],
-      });
-      const result = await manager.invoke(proc.id);
-      if (!result.found) throw new Error('expected found');
-      const a = result.openSequencer();
-      const b = result.openSequencer();
-      a.next(); // advance one
-      expect(a.cursorIndex).toBe(1);
-      expect(b.cursorIndex).toBe(0); // independent
-    });
-
-    it('returns independent invocations on repeated invoke calls', async () => {
-      const proc = await manager.addProcedure({
-        name: 'inv-repeat',
-        steps: [{ order: 1, action: 's', parameters: {} }],
-      });
-      const r1 = await manager.invoke(proc.id);
-      const r2 = await manager.invoke(proc.id);
-      expect(r1.found).toBe(true);
-      expect(r2.found).toBe(true);
-      // Distinct invokedAt timestamps (or at minimum, both valid)
-      expect(typeof r1.invokedAt).toBe('string');
-      expect(typeof r2.invokedAt).toBe('string');
     });
   });
 

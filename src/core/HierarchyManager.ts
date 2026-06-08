@@ -75,8 +75,6 @@ export class HierarchyManager {
     entityName: string,
     parentName: string
   ): boolean {
-    const byName = this.indexByName(graph);
-
     const visited = new Set<string>();
     let current: string | undefined = parentName;
 
@@ -89,23 +87,11 @@ export class HierarchyManager {
       }
       visited.add(current);
 
-      const currentEntity = byName.get(current);
+      const currentEntity = graph.entities.find(e => e.name === current);
       current = currentEntity?.parentId;
     }
 
     return false;
-  }
-
-  /**
-   * Index a graph's entities by name for O(1) lookup during chain/tree
-   * walks — turns an O(depth*n) walk into O(depth).
-   */
-  private indexByName(graph: ReadonlyKnowledgeGraph): Map<string, Entity> {
-    const byName = new Map<string, Entity>();
-    for (const e of graph.entities) {
-      byName.set(e.name, e);
-    }
-    return byName;
   }
 
   /**
@@ -159,9 +145,8 @@ export class HierarchyManager {
   async getAncestors(entityName: string): Promise<Entity[]> {
     const graph = await this.storage.loadGraph();
     const ancestors: Entity[] = [];
-    const byName = this.indexByName(graph);
 
-    let current = byName.get(entityName);
+    let current = graph.entities.find(e => e.name === entityName);
     if (!current) {
       throw new EntityNotFoundError(entityName);
     }
@@ -170,7 +155,7 @@ export class HierarchyManager {
     while (current.parentId) {
       if (visited.has(current.parentId)) break; // cycle detection
       visited.add(current.parentId);
-      const parent = byName.get(current.parentId);
+      const parent = graph.entities.find(e => e.name === current!.parentId);
       if (!parent) break;
       ancestors.push(parent);
       current = parent;
@@ -191,25 +176,8 @@ export class HierarchyManager {
   async getDescendants(entityName: string): Promise<Entity[]> {
     const graph = await this.storage.loadGraph();
 
-    // Index children by parentId once so each BFS step is O(1) lookup instead
-    // of an O(n) filter. Insertion order matches graph.entities iteration
-    // order, so child arrays are identical to the original .filter() result.
-    const childrenByParent = new Map<string, Entity[]>();
-    let exists = false;
-    for (const e of graph.entities) {
-      if (e.name === entityName) exists = true;
-      if (e.parentId !== undefined) {
-        const bucket = childrenByParent.get(e.parentId);
-        if (bucket) {
-          bucket.push(e);
-        } else {
-          childrenByParent.set(e.parentId, [e]);
-        }
-      }
-    }
-
     // Verify entity exists
-    if (!exists) {
+    if (!graph.entities.find(e => e.name === entityName)) {
       throw new EntityNotFoundError(entityName);
     }
 
@@ -218,7 +186,7 @@ export class HierarchyManager {
 
     while (toProcess.length > 0) {
       const current = toProcess.shift()!;
-      const children = childrenByParent.get(current) ?? [];
+      const children = graph.entities.filter(e => e.parentId === current);
 
       for (const child of children) {
         descendants.push(child);

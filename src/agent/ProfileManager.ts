@@ -12,7 +12,6 @@ import type { EntityManager } from '../core/EntityManager.js';
 import type { ObservationManager } from '../core/ObservationManager.js';
 import type { SessionManager } from './SessionManager.js';
 import { isSessionEntity } from '../types/agent-memory.js';
-import type { AgentEntity } from '../types/agent-memory.js';
 import type { SalienceEngine } from './SalienceEngine.js';
 
 const STATIC_PREFIX = '[static] ';
@@ -156,7 +155,7 @@ export class ProfileManager {
     }
     if (!session) return [];
 
-    const observations = session.observations ?? [];
+    const observations = (session as any).observations ?? [];
     const staticThreshold = this.config.staticThreshold ?? 0.6;
     const dynamicRecencyThreshold = this.config.dynamicRecencyThreshold ?? 0.5;
 
@@ -167,17 +166,10 @@ export class ProfileManager {
     for (const obs of observations) {
       if (existingSet.has(obs)) continue;
 
-      // TODO: SalienceEngine.calculateSalience expects an AgentEntity; we
-      // pass a bare observation string here. The runtime relies on the
-      // engine's nullish-default handling for missing entity fields. A
-      // proper fix is to wrap each observation in a synthetic entity or
-      // to add a string-scoring helper on SalienceEngine. Tracked under
-      // the agent-memory test-coverage gap in Phase 2.
-      const salience = await this.salienceEngine.calculateSalience(
-        obs as unknown as AgentEntity,
-        { temporalFocus: 'recent' }
-      );
-      const components = salience.components;
+      const salience = await this.salienceEngine.calculateSalience(obs, {
+        temporalFocus: 'recent' as any,
+      });
+      const components = (salience as any).components ?? {};
       const baseImportance = components.baseImportance ?? 0;
       const recencyBoost = components.recencyBoost ?? 0;
 

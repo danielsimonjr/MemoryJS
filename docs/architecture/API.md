@@ -1,10 +1,17 @@
-# MemoryJS — API Reference
+# MemoryJS - API Reference
 
-Complete reference for the MemoryJS library public API. For a high-level
-summary see [README.md](../../README.md); for environment-variable reference
-see [CLAUDE.md](../../CLAUDE.md). Per-version changes live in
-[CHANGELOG.md](../../CHANGELOG.md) — this document describes the *current*
-surface only.
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
+
+> **Recently shipped on top of v1.14.0:** η.4.4 bitemporal versioning,
+> η.5.4 RDF/Turtle/JSON-LD export, η.5.5.a-d Collaboration (conflict view,
+> visibility expansion, OCC, audit enforcer), η.6.1 RBAC, η.6.3 PII redactor,
+> 3B.4 procedural memory, 3B.5 active retrieval, 3B.6 causal reasoning,
+> 3B.7 world model. New methods are documented under the relevant managers below;
+> for a high-level summary see [README.md](../../README.md). For env-var reference
+> see [CLAUDE.md](../../CLAUDE.md).
+
+Complete reference for the MemoryJS library public API.
 
 ---
 
@@ -29,13 +36,6 @@ surface only.
 17. [BatchTransaction](#batchtransaction)
 18. [StorageFactory](#storagefactory)
 19. [Types](#types)
-20. [BackupManager](#backupmanager) *(v1.15.0 Phase 5)*
-21. [MemoryEngine](#memoryengine) *(v1.11.0)*
-22. [GovernanceManager](#governancemanager) *(v1.6.0)*
-23. [FreshnessManager](#freshnessmanager) *(v1.6.0)*
-24. [RbacMiddleware + RoleAssignmentStore](#rbacmiddleware--roleassignmentstore) *(η.6.1)*
-25. [ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController](#proceduremanager--causalreasoner--worldmodelmanager--activeretrievalcontroller) *(3B.4–3B.7)*
-26. [IMemoryBackend](#imemorybackend) *(v1.12.0)*
 
 ---
 
@@ -86,21 +86,6 @@ const ctx = new ManagerContext('./memory.db');
 | `contextWindowManager` | `ContextWindowManager` | Token budgeting |
 | `memoryFormatter` | `MemoryFormatter` | Output formatting |
 | `storage` | `IGraphStorage` | Direct storage access |
-| `freshnessManager` | `FreshnessManager` | TTL/confidence freshness reports (v1.6.0) |
-| `governanceManager` | `GovernanceManager` | Policy + audit transactions (v1.6.0) |
-| `refIndex` | `RefIndex` | Named-reference O(1) lookup (v1.6.0) |
-| `semanticForget` | `SemanticForget` | Two-tier deletion with audit (v1.8.0) |
-| `temporalSearch` | `TemporalSearch` | NL time-range search (v1.9.0) |
-| `procedureManager` | `ProcedureManager` | Procedural memory (3B.4) |
-| `causalReasoner` | `CausalReasoner` | Causal find/effects/counterfactual (3B.6) |
-| `worldModelManager` | `WorldModelManager` | World-state orchestrator (3B.7) |
-| `activeRetrieval` | `ActiveRetrievalController` | Iterative query rewriting (3B.5) |
-| `roleAssignmentStore` | `RoleAssignmentStore` | RBAC role grants (η.6.1) |
-| `rbacMiddleware` | `RbacMiddleware` | `checkPermission()` policy (η.6.1) |
-| `memoryEngine` | `MemoryEngine` | Turn-aware conversation memory + 4-tier dedup (v1.11.0) |
-| `memoryBackend` | `IMemoryBackend` | Pluggable backend selector via `MEMORY_BACKEND` (v1.12.0) |
-| `compressedEntityCache` | `CompressedMap<string, Entity>` | In-memory compressed entity cache (v1.15.0 Phase 10) |
-| `diagnostics` | `Diagnostics` | Query `explainPlan` + index health surface (v1.15.0 Phase 0/1) |
 
 ### Methods
 
@@ -414,51 +399,12 @@ const entities = await ctx.entityManager.createEntities([
 ]);
 ```
 
-### getEntity
+### getEntityByName
 
-Retrieve a single entity by name. (The O(1) `storage.getEntityByName(name): Entity | undefined`
-is the underlying `IGraphStorage` primitive; `EntityManager` exposes `getEntity`.)
-
-```typescript
-async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null>
-```
-
-### updateEntity (with Optimistic Concurrency Control)
-
-Update an entity, optionally requiring a specific version (η.5.5.c).
+Retrieve a single entity by name.
 
 ```typescript
-async updateEntity(
-  name: string,
-  updates: Partial<Entity>,
-  options?: { expectedVersion?: number; agentId?: string }
-): Promise<Entity>
-```
-
-If `expectedVersion` is supplied and doesn't match the current `version` field on the entity, throws `VersionConflictError`. Used by `MultiAgentMemoryManager` to safely interleave writes from multiple agents.
-
-### invalidateEntity (η.4.4 — Bitemporal Versioning)
-
-Mark an entity as no longer valid at a given point in time, creating a successor.
-
-```typescript
-async invalidateEntity(name: string, validUntil?: Date): Promise<Entity>
-```
-
-### entityAsOf
-
-Time-travel query — get the version of an entity that was valid at a given timestamp.
-
-```typescript
-async entityAsOf(name: string, asOfDate: Date): Promise<Entity | null>
-```
-
-### entityTimeline
-
-Get the chronological version history of an entity (across `invalidateEntity` cascades).
-
-```typescript
-async entityTimeline(name: string): Promise<Entity[]>
+async getEntityByName(name: string): Promise<Entity | null>
 ```
 
 ### getAllEntities
@@ -593,30 +539,6 @@ Get all relations in the graph.
 async getAllRelations(): Promise<Relation[]>
 ```
 
-### invalidateRelation (v1.9.0 — Temporal Validity)
-
-Mark a relation as ended at a given point in time (creates a `validUntil` boundary without deleting).
-
-```typescript
-async invalidateRelation(relation: Relation, validUntil?: Date): Promise<void>
-```
-
-### queryAsOf (v1.9.0 — Time-Travel Queries)
-
-Get all relations involving an entity that were valid at a given timestamp.
-
-```typescript
-async queryAsOf(entityName: string, asOfDate: Date): Promise<Relation[]>
-```
-
-### timeline (v1.9.0 — Chronological History)
-
-Return the chronological relation history for an entity (creation + invalidation events).
-
-```typescript
-async timeline(entityName: string): Promise<RelationTimelineEntry[]>
-```
-
 ---
 
 ## ObservationManager
@@ -652,26 +574,6 @@ Remove observations from entities.
 
 ```typescript
 async deleteObservations(deletions: ObservationDeletion[]): Promise<ObservationResult[]>
-```
-
-### invalidateObservation (η.4.4 — Bitemporal Axis)
-
-Mark a specific observation index as no longer valid at a given point in time, without removing it from the entity's `observations[]`. Adds an `observationMeta[]` entry recording the boundary.
-
-```typescript
-async invalidateObservation(
-  entityName: string,
-  observationIndex: number,
-  validUntil?: Date
-): Promise<void>
-```
-
-### observationsAsOf (η.4.4 — Time-Travel)
-
-Return the observations that were valid for an entity at a given timestamp.
-
-```typescript
-async observationsAsOf(entityName: string, asOfDate: Date): Promise<string[]>
 ```
 
 ---
@@ -892,37 +794,6 @@ clearBooleanCache(): void
 clearRankedCache(): void
 ```
 
-### searchByTime (v1.9.0 — Temporal Search)
-
-Natural-language time-range search via `chrono-node`.
-
-```typescript
-async searchByTime(query: string, options?: TemporalSearchOptions): Promise<KnowledgeGraph>
-```
-
-Accepts expressions like `"last hour"`, `"yesterday"`, `"between Jan 1 and Feb 1"`. See also `ctx.temporalSearch` for the lower-level `TemporalSearch` instance.
-
-### autoSearch (BM25-incremental, v1.15.0 Phase 1)
-
-Auto-selects the best search strategy for the query (basic / boolean / fuzzy / ranked / semantic / hybrid). BM25 indexing is now incremental — single-entity creates and updates touch only the affected postings list instead of rebuilding the full corpus.
-
-```typescript
-async autoSearch(query: string, options?: SearchOptions): Promise<{
-  results: SearchResult[];
-  selectedMethod: string;
-  selectionReason: string;
-}>
-```
-
-### Diagnostics (Phase 0/1, v1.15.0)
-
-```typescript
-ctx.diagnostics.explainPlan(query: string): QueryPlanExplanation
-ctx.diagnostics.indexHealth(): IndexHealthReport
-```
-
-`explainPlan` returns the resolved query AST + which indexes would be hit + cost estimate. `indexHealth` reports the fill rate, fragmentation, and last-rebuild timestamp for each index.
-
 ---
 
 ## GraphTraversal
@@ -986,7 +857,7 @@ interface CentralityResult {
 Find connected components in the graph.
 
 ```typescript
-async findConnectedComponents(): Promise<ConnectedComponentsResult>
+async getConnectedComponents(): Promise<ConnectedComponentsResult>
 ```
 
 **Returns:**
@@ -1021,30 +892,6 @@ Get all neighbors of an entity with their connecting relations.
 
 ```typescript
 async getNeighborsWithRelations(entityName: string, options?: { direction?: 'in' | 'out' | 'both' }): Promise<NeighborResult[]>
-```
-
-### HITS Algorithm (v1.15.0 Phase 1)
-
-Hyperlink-Induced Topic Search — computes `hub` and `authority` scores for every entity. Useful for identifying high-quality information sources (high authority) vs. broad connectors (high hub).
-
-```typescript
-async hits(options?: { maxIterations?: number; tolerance?: number }): Promise<Map<string, { hub: number; authority: number }>>
-```
-
-### Clique Enumeration (v1.15.0 Phase 1)
-
-Enumerate maximal cliques in the (undirected projection of the) graph via Bron–Kerbosch with pivot selection.
-
-```typescript
-async findMaximalCliques(options?: { minSize?: number; maxCliques?: number }): Promise<string[][]>
-```
-
-### Louvain Community Detection (v1.15.0 Phase 1)
-
-Greedy modularity-optimization community detection. Returns each entity's community ID.
-
-```typescript
-async louvainCommunities(options?: { resolution?: number; maxIterations?: number }): Promise<Map<string, number>>
 ```
 
 ---
@@ -1136,7 +983,7 @@ async createBackup(options?: BackupOptions): Promise<BackupInfo>
 Restore from a backup.
 
 ```typescript
-async restoreFromBackup(backupPath: string): Promise<RestoreResult>
+async restoreBackup(backupId: string): Promise<void>
 ```
 
 ### listBackups
@@ -1149,44 +996,11 @@ async listBackups(): Promise<BackupInfo[]>
 
 ### deleteBackup
 
-Delete a backup. Since v1.15.0 (Phase 5) this delegates to `BackupManager.delete()` which adds a symlink-attack guard before the underlying `fs.unlink`.
+Delete a backup.
 
 ```typescript
 async deleteBackup(backupId: string): Promise<void>
 ```
-
-> All five backup methods (`createBackup` / `listBackups` / `restoreFromBackup` / `deleteBackup` / `cleanOldBackups`) are thin facades over [`BackupManager`](#backupmanager) since v1.15.0 Phase 5. Existing callers see no API change.
-
-### ingest (v1.9.0 — Conversation Ingestion)
-
-Format-agnostic conversation ingestion pipeline.
-
-```typescript
-async ingest(
-  input: string | { messages: ChatMessage[] } | ChatMessage[],
-  options?: IngestOptions
-): Promise<IngestResult>
-```
-
-`input` accepts raw transcript text (auto-split via `splitTranscript`), a `{ messages: [...] }` object, or an array of `ChatMessage`. v1.15.0 hardens transcript splitting with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10 000) guards against ReDoS.
-
-### splitTranscript (v1.9.0)
-
-Pure function that splits a transcript into per-session text segments using delimiter regex.
-
-```typescript
-splitTranscript(content: string, options?: SplitOptions): SplitResult
-```
-
-### exportGraph — Linked-Data formats (η.5.4)
-
-In addition to `json` / `csv` / `graphml` / `gexf` / `dot` / `markdown` / `mermaid`, `exportGraph` accepts W3C Linked-Data targets:
-
-```typescript
-async exportGraph(format: 'turtle' | 'rdf-xml' | 'json-ld', options?: ExportOptions): Promise<string>
-```
-
-Relation predicates that aren't NCName-compatible fall back to RDF reification (`rdf:Statement` / `rdf:subject` / `rdf:predicate` / `rdf:object`).
 
 ---
 
@@ -1445,7 +1259,6 @@ static createStorageFromPath(path: string): IGraphStorage
 
 ```typescript
 interface Entity {
-  // Core (since v1.0)
   name: string;
   entityType: string;
   observations: string[];
@@ -1454,30 +1267,6 @@ interface Entity {
   importance?: number;
   createdAt?: string;
   lastModified?: string;
-
-  // v1.6.0 — Freshness
-  ttl?: number;                    // milliseconds
-  confidence?: number;             // 0.0–1.0 belief strength
-
-  // v1.8.0 — Project scoping + supersession
-  projectId?: string;
-  version?: number;
-  parentEntityName?: string;
-  rootEntityName?: string;
-  isLatest?: boolean;
-  supersededBy?: string;
-
-  // v1.11.0 — Memory Engine dedup
-  contentHash?: string;            // SHA-256 of raw turn content
-
-  // η.4.4 — Bitemporal validity (orthogonal to supersession)
-  validFrom?: string;              // ISO 8601
-  validUntil?: string;              // ISO 8601, undefined = open
-  observationMeta?: Array<{
-    index: number;
-    validFrom?: string;
-    validUntil?: string;
-  }>;
 }
 ```
 
@@ -1490,9 +1279,9 @@ interface AgentEntity extends Entity {
   expiresAt?: string;
   accessCount: number;
   lastAccessedAt?: string;
-  confidence: number;              // 0.0–1.0
+  confidence: number;           // 0.0-1.0
   agentId?: string;
-  visibility: 'private' | 'team' | 'org' | 'shared' | 'public';   // v1.7.0 expanded from 3-level → 5-level
+  visibility: 'private' | 'shared' | 'public';
   promotedAt?: string;
   promotedFrom?: string;
   source?: {
@@ -1501,11 +1290,6 @@ interface AgentEntity extends Entity {
     method: string;
     reliability: number;
   };
-
-  // η.5.5.b — Visibility expansion
-  visibleFrom?: string;            // ISO 8601 time-window start
-  visibleUntil?: string;            // ISO 8601 time-window end
-  allowedRoles?: string[];          // RBAC role predicate (any-of)
 }
 ```
 
@@ -1568,245 +1352,4 @@ interface SearchFilters {
   modifiedBefore?: string;
 }
 ```
-
-### Result\<T, E\> (v2.0.0)
-
-Discriminated-union return type for operations with expected, caller-handled
-failure modes (`src/types/result.ts`, exported from the types barrel).
-Introduced by the v2.0.0 Theme 1 error-signalling audit.
-
-```typescript
-type Result<T, E = Error> =
-  | { readonly ok: true; readonly value: T }
-  | { readonly ok: false; readonly error: E };
-
-// constructors
-ok<T>(value: T): Result<T, never>
-err<E>(error: E): Result<never, E>
-
-// type guards
-isOk<T, E>(result: Result<T, E>): result is { ok: true; value: T }
-isErr<T, E>(result: Result<T, E>): result is { ok: false; error: E }
-
-// extractors
-unwrap<T, E>(result: Result<T, E>): T          // throws if err
-unwrapOr<T, E>(result: Result<T, E>, fallback: T): T
-mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
-```
-
-**Error-signalling policy** (`CONTRIBUTING.md` > Error Handling): `throw` for
-programmer errors (bad arguments, invariant violations); return `Result<T, E>`
-for expected domain failures the caller is meant to branch on; never swallow a
-failure silently; the absent-value sentinel is `T | undefined`, never `T | null`.
-
----
-
-## BackupManager
-
-(v1.15.0 Phase 5) Backup lifecycle extracted from `IOManager`. Accessed via `ctx.ioManager` (delegating facade) or directly via the constructor if you need finer-grained control.
-
-### create
-
-```typescript
-async create(options?: BackupOptions): Promise<BackupResult>
-```
-
-### list
-
-```typescript
-async list(): Promise<BackupInfo[]>
-```
-
-### restore
-
-Reads, optionally Brotli-decompresses, and writes the backup payload over the live storage file. Rejects symbolic links via `fs.lstat().isSymbolicLink()`.
-
-```typescript
-async restore(backupPath: string): Promise<RestoreResult>
-```
-
-### delete
-
-Validates the path stays in `backupDir`, rejects symlinks, unlinks the backup, then attempts to remove the `.meta.json` sidecar (derived via `path.basename` + revalidated independently).
-
-```typescript
-async delete(backupPath: string): Promise<void>
-```
-
-### cleanOld
-
-Keeps the N most recent backups; deletes the rest via `delete()`.
-
-```typescript
-async cleanOld(keepCount?: number): Promise<number>
-```
-
----
-
-## MemoryEngine
-
-(v1.11.0) Turn-aware conversation memory composing over `EpisodicMemoryManager` + `WorkingMemoryManager`. Wired via `ctx.memoryEngine` (lazy getter).
-
-### addTurn
-
-Dedup-first write. Runs the four-tier dedup chain (exact contentHash → 50% prefix overlap → token Jaccard ≥ `MEMORY_ENGINE_JACCARD_THRESHOLD` → optional semantic). Emits `memoryEngine:turnAdded` or `memoryEngine:duplicateDetected`.
-
-```typescript
-async addTurn(content: string, opts: {
-  sessionId: string;
-  role: 'user' | 'assistant' | 'system' | 'tool';
-  agentId?: string;
-}): Promise<AddTurnResult>
-```
-
-### checkDuplicate
-
-Run the dedup chain without writing.
-
-```typescript
-async checkDuplicate(content: string, sessionId: string): Promise<DuplicateResult | null>
-```
-
-### getSessionTurns
-
-Chronological turns for a session.
-
-```typescript
-async getSessionTurns(
-  sessionId: string,
-  opts?: { role?: 'user' | 'assistant' | 'system' | 'tool'; limit?: number }
-): Promise<TurnEntity[]>
-```
-
-### deleteSession / listSessions
-
-```typescript
-async deleteSession(sessionId: string): Promise<{ deletedCount: number }>
-async listSessions(): Promise<SessionEntity[]>
-```
-
-### Events
-
-`MemoryEngine` is a `node:events.EventEmitter`. Subscribe to `memoryEngine:turnAdded`, `memoryEngine:duplicateDetected`, `memoryEngine:sessionDeleted`.
-
-### ImportanceScorer (companion)
-
-Integer [0, 10] scoring via `length × keyword × recent-turn-overlap` signals. Configurable via `MEMORY_ENGINE_LENGTH_WEIGHT` / `KEYWORD_WEIGHT` / `OVERLAP_WEIGHT` / `RECENT_TURNS`.
-
----
-
-## GovernanceManager
-
-(v1.6.0) Policy enforcement and transactional safety for memory mutations. Wired via `ctx.governanceManager` when `MEMORY_GOVERNANCE_ENABLED=true`.
-
-### withTransaction
-
-Wraps a function in a snapshot-based transaction. On exception, the storage is restored to the pre-call snapshot.
-
-```typescript
-async withTransaction<T>(fn: () => Promise<T>): Promise<T>
-```
-
-### rollback
-
-Explicit rollback (rare — `withTransaction` rolls back automatically on throw).
-
-```typescript
-async rollback(): Promise<void>
-```
-
-### GovernancePolicy (interface)
-
-```typescript
-interface GovernancePolicy {
-  canCreate(entity: Partial<Entity>): boolean | Promise<boolean>;
-  canUpdate(entity: Entity, patch: Partial<Entity>): boolean | Promise<boolean>;
-  canDelete(entityName: string): boolean | Promise<boolean>;
-}
-```
-
-Passed to the constructor; consulted before every mutation. Returning `false` (or a rejected Promise) throws and rolls back the transaction.
-
----
-
-## FreshnessManager
-
-(v1.6.0) Wired via `ctx.freshnessManager`.
-
-```typescript
-calculateFreshness(entity: Entity, now?: Date): FreshnessScore
-async getStaleEntities(threshold?: number): Promise<Entity[]>
-async getExpiredEntities(): Promise<Entity[]>
-async generateReport(): Promise<FreshnessReport>
-```
-
-`FreshnessScore.score ∈ [0, 1]` combines `Entity.ttl` (absolute time-to-live in ms) and `Entity.confidence` (belief strength). Used by `SalienceEngine` and `DecayEngine`.
-
----
-
-## RbacMiddleware + RoleAssignmentStore
-
-(η.6.1) Wired via `ctx.rbacMiddleware` and `ctx.roleAssignmentStore` when `MEMORY_RBAC_ENABLED=true`.
-
-```typescript
-ctx.rbacMiddleware.checkPermission(
-  agentId: string,
-  action: 'read' | 'write' | 'delete' | 'admin',
-  resourceType: string,
-  resourceName?: string
-): Promise<boolean>
-
-ctx.roleAssignmentStore.assignRole(agentId: string, role: string): Promise<void>
-ctx.roleAssignmentStore.revokeRole(agentId: string, role: string): Promise<void>
-ctx.roleAssignmentStore.listAssignments(agentId?: string): Promise<RoleAssignment[]>
-```
-
-Optional JSONL persistence when `MEMORY_RBAC_ASSIGNMENTS_FILE` is set.
-
----
-
-## ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController
-
-(3B.4–3B.7) See dedicated component docs in [`COMPONENTS.md`](./COMPONENTS.md). Brief surface:
-
-```typescript
-// 3B.4 — Procedural memory
-ctx.procedureManager.addProcedure(spec: ProcedureSpec): Promise<string>
-ctx.procedureManager.matchProcedure(context: unknown): Promise<ProcedureMatch[]>
-ctx.procedureManager.refineProcedure(id: string, feedback: ProcedureFeedback): Promise<void>
-
-// 3B.5 — Active retrieval
-ctx.activeRetrieval.adaptiveRetrieve(opts: { query: string; maxRounds?: number }): Promise<RetrievalResult>
-
-// 3B.6 — Causal reasoning
-ctx.causalReasoner.findCauses(entity: string): Promise<Entity[]>
-ctx.causalReasoner.findEffects(entity: string): Promise<Entity[]>
-ctx.causalReasoner.counterfactual(scenario: CounterfactualSpec): Promise<CounterfactualResult>
-ctx.causalReasoner.detectCycles(): Promise<CausalCycle[]>
-
-// 3B.7 — World model
-ctx.worldModelManager.getCurrentState(): Promise<WorldStateSnapshot>
-ctx.worldModelManager.validateFact(fact: FactCandidate): Promise<ValidationResult>
-ctx.worldModelManager.predictOutcome(scenario: ScenarioSpec): Promise<OutcomePrediction>
-ctx.worldModelManager.detectStateChange(): Promise<StateChangeEvent[]>
-```
-
----
-
-## IMemoryBackend
-
-(v1.12.0) Pluggable backend interface for `MemoryEngine`. Selected via `MEMORY_BACKEND=sqlite|in-memory` and accessed via `ctx.memoryBackend`.
-
-```typescript
-interface IMemoryBackend {
-  add(entry: MemoryEntry): Promise<void>;
-  get(id: string): Promise<MemoryEntry | null>;
-  get_weighted(filter: WeightedFilter): Promise<WeightedMemoryEntry[]>;
-  delete(id: string): Promise<void>;
-}
-```
-
-`SQLiteBackend` wraps `MemoryEngine` (and transparently spans JSONL + SQLite per `MEMORY_STORAGE_TYPE`). `InMemoryBackend` is ephemeral; suitable for tests and short-lived processes.
-
----
 

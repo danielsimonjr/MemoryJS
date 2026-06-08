@@ -11,8 +11,7 @@
  * @module utils/taskScheduler
  */
 
-import os from 'os';
-import { logger } from './logger.js';
+import workerpool from '@danielsimonjr/workerpool';
 
 /**
  * Validates that the input is a real function object.
@@ -175,18 +174,33 @@ export class TaskQueue {
   private queue: QueuedTask[] = [];
   private running: Map<string, QueuedTask> = new Map();
   private completed: TaskResult[] = [];
+  private pool: workerpool.Pool | null = null;
   private concurrency: number;
+  private defaultTimeout: number;
   private isProcessing = false;
   private totalExecutionTime = 0;
   private totalProcessed = 0;
+  private useWorkerPool: boolean;
   private static readonly MAX_COMPLETED = 10_000;
   private static readonly MAX_QUEUE = 100_000;
 
   constructor(options: { concurrency?: number; timeout?: number; useWorkerPool?: boolean } = {}) {
-    this.concurrency = options.concurrency ?? Math.max(1, os.cpus().length - 1);
-    // Note: timeout parameter is kept for backward compatibility with tests
-    // but the actual timeout behavior was previously implemented using workerpool.
-    // Timeouts should now be handled at the WorkerTaskManager level.
+    this.concurrency = options.concurrency ?? Math.max(1, workerpool.cpus - 1);
+    this.defaultTimeout = options.timeout ?? 30000;
+    this.useWorkerPool = options.useWorkerPool ?? true;
+  }
+
+  /**
+   * Get or create the worker pool.
+   */
+  private getPool(): workerpool.Pool {
+    if (!this.pool) {
+      this.pool = workerpool.pool({
+        maxWorkers: this.concurrency,
+        workerType: 'thread',
+      });
+    }
+    return this.pool;
   }
 
   /**
@@ -200,12 +214,6 @@ export class TaskQueue {
     validateFunction(task.fn, 'task.fn');
 
     return new Promise((resolve, reject) => {
-      // Prevent unbounded queue growth (check before allocating task object)
-      if (this.queue.length >= TaskQueue.MAX_QUEUE) {
-        reject(new Error(`Task queue is full (max ${TaskQueue.MAX_QUEUE} pending tasks)`));
-        return;
-      }
-
       const queuedTask: QueuedTask<T, R> = {
         ...task,
         status: TaskStatus.PENDING,
@@ -228,20 +236,10 @@ export class TaskQueue {
         this.queue.splice(insertIndex, 0, queuedTask as QueuedTask);
       }
 
+      // Start processing if not already running
       if (!this.isProcessing) {
-        this.kickProcessNext();
+        this.processNext();
       }
-    });
-  }
-
-  /**
-   * Fire-and-forget invocation of `processNext` with explicit error logging.
-   * Surfaces any rejection that escapes the inner try/catch instead of
-   * letting `void` swallow it silently.
-   */
-  private kickProcessNext(): void {
-    this.processNext().catch((err) => {
-      logger.error('[TaskQueue.processNext] failed:', err);
     });
   }
 
@@ -266,10 +264,40 @@ export class TaskQueue {
     const startTime = Date.now();
 
     try {
-      // Execute task directly in current thread.
-      // Dynamic serialization with new Function() has been removed for security reasons.
-      // Concurrency and parallelization is now handled by WorkerTaskManager.
-      let result: unknown = await Promise.resolve(task.fn(task.input));
+      // Execute task - try worker pool first, fall back to direct execution
+      let result: unknown;
+
+      if (this.useWorkerPool) {
+        try {
+          const pool = this.getPool();
+          const fnString = task.fn.toString();
+          // Security: reject suspiciously large serialized functions
+          if (fnString.length > 100_000) {
+            throw new Error('Serialized function exceeds maximum allowed size');
+          }
+          const timeout = task.timeout ?? this.defaultTimeout;
+
+          result = await pool
+            .exec(
+              (input: unknown, fnStr: string) => {
+                // SECURITY NOTE: new Function() is required for worker pool serialization.
+                // Safety is ensured by validateFunction() at enqueue() which guarantees
+                // only real Function objects (not user strings) are serialized here.
+                // eslint-disable-next-line no-new-func
+                const fn = new Function('return ' + fnStr)();
+                return fn(input);
+              },
+              [task.input, fnString]
+            )
+            .timeout(timeout);
+        } catch {
+          // Fall back to direct execution
+          result = await Promise.resolve(task.fn(task.input));
+        }
+      } else {
+        // Direct execution without worker pool
+        result = await Promise.resolve(task.fn(task.input));
+      }
 
       const endTime = Date.now();
       const duration = endTime - startTime;
@@ -285,7 +313,11 @@ export class TaskQueue {
 
       this.totalExecutionTime += duration;
       this.totalProcessed++;
-      this.recordCompleted(taskResult);
+      this.completed.push(taskResult);
+      // Evict oldest completed results to prevent unbounded memory growth
+      if (this.completed.length > TaskQueue.MAX_COMPLETED) {
+        this.completed = this.completed.slice(-TaskQueue.MAX_COMPLETED);
+      }
       this.running.delete(task.id);
       task.resolve(taskResult);
     } catch (error) {
@@ -302,23 +334,16 @@ export class TaskQueue {
       };
 
       this.totalProcessed++;
-      this.recordCompleted(taskResult);
+      this.completed.push(taskResult);
+      if (this.completed.length > TaskQueue.MAX_COMPLETED) {
+        this.completed = this.completed.slice(-TaskQueue.MAX_COMPLETED);
+      }
       this.running.delete(task.id);
       task.resolve(taskResult);
     }
 
-    // Drain the queue via fire-and-forget recursion.
-    this.kickProcessNext();
-  }
-
-  /**
-   * Record a completed task result, evicting oldest entries if over capacity.
-   */
-  private recordCompleted(result: TaskResult): void {
-    this.completed.push(result);
-    if (this.completed.length > TaskQueue.MAX_COMPLETED) {
-      this.completed = this.completed.slice(-TaskQueue.MAX_COMPLETED);
-    }
+    // Process next task
+    this.processNext();
   }
 
   /**
@@ -398,6 +423,12 @@ export class TaskQueue {
     }
     this.queue = [];
 
+    // Terminate worker pool
+    if (this.pool) {
+      await this.pool.terminate();
+      this.pool = null;
+    }
+
     this.isProcessing = false;
   }
 }
@@ -441,7 +472,7 @@ export async function batchProcess<T, R>(
   options: TaskBatchOptions = {}
 ): Promise<Array<{ success: true; result: R } | { success: false; error: Error }>> {
   const {
-    concurrency = Math.max(1, os.cpus().length - 1),
+    concurrency = Math.max(1, workerpool.cpus - 1),
     timeout = 30000,
     onProgress,
     stopOnError = false,

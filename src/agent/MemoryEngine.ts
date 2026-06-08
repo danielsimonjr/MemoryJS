@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
-import type { IGraphStorage, ReadonlyKnowledgeGraph } from '../types/types.js';
+import type { IGraphStorage } from '../types/types.js';
 import type { AgentEntity } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { EpisodicMemoryManager } from './EpisodicMemoryManager.js';
@@ -8,7 +8,6 @@ import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { SemanticSearch } from '../search/SemanticSearch.js';
 import type { EmbeddingService } from '../types/index.js';
 import type { ImportanceScorer } from './ImportanceScorer.js';
-import type { ExclusionManager } from './ExclusionManager.js';
 
 const ROLE_PREFIX_RE = /^\[role=[a-z]+\]\s*/i;
 
@@ -41,14 +40,6 @@ export interface MemoryEngineConfig {
   semanticDedupEnabled?: boolean;
   semanticThreshold?: number;
   recentTurnsForImportance?: number;
-  /**
-   * Optional `ExclusionManager` (Phase 3 `do_not_remember`). When
-   * supplied, `addTurn` consults `exclusionManager.check(content)` and
-   * returns a `blocked` result instead of writing if a rule matches.
-   * Omit to disable the write-block path entirely (preserves prior
-   * v2.0.x behavior).
-   */
-  exclusionManager?: ExclusionManager;
 }
 
 export interface AddTurnOptions {
@@ -64,28 +55,12 @@ export interface AddTurnOptions {
 
 export type DedupTier = 'exact' | 'prefix' | 'jaccard' | 'semantic';
 
-/**
- * Result of `addTurn`. `entity` is `undefined` when `blocked === true`
- * (the write never happened); narrow on `!blocked` before accessing it.
- *
- * **v2.0.x change**: `entity` became optional in v2.0.x to support the
- * Phase 3 `do_not_remember` write-block path. Callers should narrow on
- * `result.blocked` (or `result.entity != null`) before dereferencing
- * fields that only exist on the success path.
- */
 export interface AddTurnResult {
-  /** Created or matched entity. Absent when `blocked === true`. */
-  entity?: AgentEntity;
+  entity: AgentEntity;
   duplicateDetected: boolean;
   duplicateOf?: string;
   duplicateTier?: DedupTier;
   importanceScore: number;
-  /** Set to `true` when an `ExclusionRule` matched the write attempt. */
-  blocked?: boolean;
-  /** Id of the matching rule (when `blocked === true`). */
-  blockedByRuleId?: string;
-  /** Free-text reason copied from the rule. */
-  blockedReason?: string;
 }
 
 export interface DuplicateCheckResult {
@@ -97,7 +72,6 @@ export interface DuplicateCheckResult {
 export type MemoryEngineEventName =
   | 'memoryEngine:turnAdded'
   | 'memoryEngine:duplicateDetected'
-  | 'memoryEngine:writeBlocked'
   | 'memoryEngine:sessionDeleted';
 
 /** Resolved configuration with all defaults applied. Used in T5–T10. */
@@ -120,7 +94,6 @@ interface Deps {
   importanceScorer: ImportanceScorer;
   semanticSearch: SemanticSearch | null | undefined;
   embeddingService: EmbeddingService | null | undefined;
-  exclusionManager: ExclusionManager | undefined;
 }
 
 export class MemoryEngine {
@@ -155,7 +128,6 @@ export class MemoryEngine {
       importanceScorer,
       semanticSearch,
       embeddingService,
-      exclusionManager: config.exclusionManager,
     };
     this.cfg = {
       jaccardThreshold: config.jaccardThreshold ?? 0.72,
@@ -169,29 +141,6 @@ export class MemoryEngine {
   }
 
   async addTurn(content: string, options: AddTurnOptions): Promise<AddTurnResult> {
-    // Exclusion check runs BEFORE dedup: don't waste cycles on content
-    // the user said never to write. Skips entirely when no
-    // ExclusionManager is wired (preserves v2.0.x behavior).
-    if (this.deps.exclusionManager) {
-      const verdict = await this.deps.exclusionManager.check(content);
-      if (verdict.blocked) {
-        this.events.emit('memoryEngine:writeBlocked', {
-          attemptedContent: content,
-          sessionId: options.sessionId,
-          role: options.role,
-          ruleId: verdict.ruleId,
-          reason: verdict.reason,
-        });
-        return {
-          duplicateDetected: false,
-          importanceScore: 0,
-          blocked: true,
-          blockedByRuleId: verdict.ruleId,
-          blockedReason: verdict.reason,
-        };
-      }
-    }
-
     const dup = await this.checkDuplicate(content, options.sessionId);
     if (dup.isDuplicate && dup.match) {
       this.events.emit('memoryEngine:duplicateDetected', {
@@ -230,7 +179,6 @@ export class MemoryEngine {
     });
 
     const hash = this.computeContentHash(content);
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- contentHash decorates an entity created microtasks earlier; the returned `enriched` value still carries the hash
     await this.deps.storage.updateEntity(entity.name, { contentHash: hash });
     const enriched: AgentEntity = { ...entity, contentHash: hash };
 
@@ -294,15 +242,13 @@ export class MemoryEngine {
   }
 
   async checkDuplicate(content: string, sessionId: string): Promise<DuplicateCheckResult> {
-    // Load the graph snapshot once and share it across every tier check.
-    const graph = await this.deps.storage.loadGraph();
     if (this.cfg.semanticDedupEnabled && this.deps.semanticSearch) {
-      const ts = await this.checkTierSemantic(content, sessionId, graph);
+      const ts = await this.checkTierSemantic(content, sessionId);
       if (ts.isDuplicate) return ts;
     }
-    const t1 = await this.checkTierExact(content, sessionId, graph);
+    const t1 = await this.checkTierExact(content, sessionId);
     if (t1.isDuplicate) return t1;
-    const recent = await this.getRecentSessionEntities(sessionId, this.cfg.dedupScanWindow, graph);
+    const recent = await this.getRecentSessionEntities(sessionId, this.cfg.dedupScanWindow);
     const t2 = this.checkTierPrefix(content, recent);
     if (t2.isDuplicate) return t2;
     const t3 = this.checkTierJaccard(content, recent);
@@ -310,13 +256,9 @@ export class MemoryEngine {
     return { isDuplicate: false };
   }
 
-  private async checkTierSemantic(
-    content: string,
-    sessionId: string,
-    graph?: ReadonlyKnowledgeGraph,
-  ): Promise<DuplicateCheckResult> {
+  private async checkTierSemantic(content: string, sessionId: string): Promise<DuplicateCheckResult> {
     if (!this.deps.semanticSearch) return { isDuplicate: false };
-    graph ??= await this.deps.storage.loadGraph();
+    const graph = await this.deps.storage.loadGraph();
     const results = await this.deps.semanticSearch.search(graph, content, 5, this.cfg.semanticThreshold);
     for (const hit of results) {
       if (hit.similarity < this.cfg.semanticThreshold) continue;
@@ -332,13 +274,9 @@ export class MemoryEngine {
     return createHash('sha256').update(content).digest('hex');
   }
 
-  private async checkTierExact(
-    content: string,
-    sessionId: string,
-    graph?: ReadonlyKnowledgeGraph,
-  ): Promise<DuplicateCheckResult> {
+  private async checkTierExact(content: string, sessionId: string): Promise<DuplicateCheckResult> {
     const hash = this.computeContentHash(content);
-    graph ??= await this.deps.storage.loadGraph();
+    const graph = await this.deps.storage.loadGraph();
     const candidates = graph.entities.filter(
       (e) => (e as AgentEntity).contentHash === hash,
     ) as AgentEntity[];
@@ -350,9 +288,8 @@ export class MemoryEngine {
   private async getRecentSessionEntities(
     sessionId: string,
     windowSize: number,
-    graph?: ReadonlyKnowledgeGraph,
   ): Promise<AgentEntity[]> {
-    graph ??= await this.deps.storage.loadGraph();
+    const graph = await this.deps.storage.loadGraph();
     const sessionEntities = graph.entities.filter(
       (e) => (e as AgentEntity).sessionId === sessionId,
     ) as AgentEntity[];

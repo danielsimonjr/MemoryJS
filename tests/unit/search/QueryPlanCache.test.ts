@@ -504,38 +504,4 @@ describe('QueryPlanCache', () => {
       expect(cache.has('test')).toBe(false);
     });
   });
-
-  describe('PressureAwareCache interface', () => {
-    it('exposes a stable name', () => {
-      expect(cache.name).toBe('queryPlan');
-    });
-
-    it('currentEntries() reports populated entry count', () => {
-      cache.setAnalysis('q1', createAnalysis('q1'));
-      cache.setAnalysis('q2', createAnalysis('q2'));
-      expect(cache.currentEntries()).toBe(2);
-    });
-
-    it('evictTo() drops oldest entries until size <= target', () => {
-      for (let i = 0; i < 10; i++) {
-        cache.setAnalysis(`q${i}`, createAnalysis(`q${i}`));
-      }
-      expect(cache.currentEntries()).toBe(10);
-      cache.evictTo(3);
-      expect(cache.currentEntries()).toBeLessThanOrEqual(3);
-    });
-
-    it('evictTo() is a no-op when already under target', () => {
-      cache.setAnalysis('q1', createAnalysis('q1'));
-      cache.evictTo(100);
-      expect(cache.currentEntries()).toBe(1);
-    });
-
-    it('evictTo(0) drops every entry', () => {
-      cache.setAnalysis('q1', createAnalysis('q1'));
-      cache.setAnalysis('q2', createAnalysis('q2'));
-      cache.evictTo(0);
-      expect(cache.currentEntries()).toBe(0);
-    });
-  });
 });

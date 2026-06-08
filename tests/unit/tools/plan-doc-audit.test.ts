@@ -90,11 +90,6 @@ describe('plan-doc-audit / checkSymbol against synthetic src/', () => {
     execSync('git init -q', { cwd: tmpRoot });
     execSync('git config user.email t@t.local', { cwd: tmpRoot });
     execSync('git config user.name test', { cwd: tmpRoot });
-    // Disable commit signing — sandboxed CI environments inject a global
-    // gitconfig that requires signing, and the signing server is not
-    // reachable from a temp repo.
-    execSync('git config commit.gpgsign false', { cwd: tmpRoot });
-    execSync('git config tag.gpgsign false', { cwd: tmpRoot });
   });
 
   afterEach(() => {
@@ -178,11 +173,6 @@ describe('plan-doc-audit / auditFile + applyFlips', () => {
     execSync('git init -q', { cwd: tmpRoot });
     execSync('git config user.email t@t.local', { cwd: tmpRoot });
     execSync('git config user.name test', { cwd: tmpRoot });
-    // Disable commit signing — sandboxed CI environments inject a global
-    // gitconfig that requires signing, and the signing server is not
-    // reachable from a temp repo.
-    execSync('git config commit.gpgsign false', { cwd: tmpRoot });
-    execSync('git config tag.gpgsign false', { cwd: tmpRoot });
 
     // Write src with one shipped class and one stub class
     writeFileSync(
@@ -290,11 +280,6 @@ describe('plan-doc-audit / runAudit end-to-end (no symbols)', () => {
     execSync('git init -q', { cwd: tmpRoot });
     execSync('git config user.email t@t.local', { cwd: tmpRoot });
     execSync('git config user.name test', { cwd: tmpRoot });
-    // Disable commit signing — sandboxed CI environments inject a global
-    // gitconfig that requires signing, and the signing server is not
-    // reachable from a temp repo.
-    execSync('git config commit.gpgsign false', { cwd: tmpRoot });
-    execSync('git config tag.gpgsign false', { cwd: tmpRoot });
     execSync('git add .', { cwd: tmpRoot, shell: true as unknown as string });
     execSync('git -c core.autocrlf=false commit -q -m t', { cwd: tmpRoot, shell: true as unknown as string });
   });

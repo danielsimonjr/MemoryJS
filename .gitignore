@@ -41,6 +41,8 @@ tests/test-results/html/
 tests/test-results/summary/
 *.test.db
 
+# Package lock (use npm ci in CI)
+package-lock.json
 tmpclaude-*-cwd
 .claude/worktrees/
 

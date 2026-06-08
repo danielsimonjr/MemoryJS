@@ -149,24 +149,24 @@ describe('TemporalQueryParser', () => {
   // ==================== Invalid inputs ====================
 
   describe('invalid inputs', () => {
-    it('should return undefined for empty string', () => {
-      expect(parser.parseTemporalExpression('')).toBeUndefined();
+    it('should return null for empty string', () => {
+      expect(parser.parseTemporalExpression('')).toBeNull();
     });
 
-    it('should return undefined for whitespace-only string', () => {
-      expect(parser.parseTemporalExpression('   ')).toBeUndefined();
+    it('should return null for whitespace-only string', () => {
+      expect(parser.parseTemporalExpression('   ')).toBeNull();
     });
 
-    it('should return undefined for non-temporal text', () => {
-      expect(parser.parseTemporalExpression('hello world')).toBeUndefined();
+    it('should return null for non-temporal text', () => {
+      expect(parser.parseTemporalExpression('hello world')).toBeNull();
     });
 
-    it('should return undefined for pure numbers', () => {
-      expect(parser.parseTemporalExpression('12345')).toBeUndefined();
+    it('should return null for pure numbers', () => {
+      expect(parser.parseTemporalExpression('12345')).toBeNull();
     });
 
-    it('should return undefined for random words', () => {
-      expect(parser.parseTemporalExpression('foo bar baz qux')).toBeUndefined();
+    it('should return null for random words', () => {
+      expect(parser.parseTemporalExpression('foo bar baz qux')).toBeNull();
     });
   });
 

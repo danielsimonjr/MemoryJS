@@ -1,11 +1,11 @@
 {
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
-    "version": "2.4.0",
-    "lastUpdated": "2026-05-17",
-    "totalFiles": 260,
-    "totalModules": 11,
-    "totalExports": 1359
+    "version": "1.14.0",
+    "lastUpdated": "2026-04-25",
+    "totalFiles": 183,
+    "totalModules": 10,
+    "totalExports": 1104
   },
   "entryPoints": [
     {
@@ -15,296 +15,6 @@
     }
   ],
   "modules": {
-    "adapters": {
-      "src/adapters/IDatabaseAdapter.ts": {
-        "description": "Database Adapter Interface",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "Relation",
-              "KnowledgeGraph"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "NullDatabaseAdapter",
-          "InMemoryDatabaseAdapter"
-        ],
-        "classes": [
-          "NullDatabaseAdapter",
-          "InMemoryDatabaseAdapter"
-        ],
-        "interfaces": [
-          "IDatabaseAdapter"
-        ]
-      },
-      "src/adapters/index.ts": {
-        "description": "Adapters Module — Barrel Export",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./RestRouter.js",
-            "imports": [
-              "RestRouter",
-              "type RestMethod",
-              "type RestRequest",
-              "type RestResponse",
-              "type RestHandler",
-              "type RouteDefinition"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./RateLimiter.js",
-            "imports": [
-              "RateLimiter",
-              "type RateLimiterConfig",
-              "type RateLimitVerdict"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./pagination.js",
-            "imports": [
-              "paginate",
-              "parsePaginationParams",
-              "type PaginationParams",
-              "type ParsePaginationOptions",
-              "type PaginatedResult"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./MCPToolObserverAdapter.js",
-            "imports": [
-              "MCPToolObserverAdapter",
-              "extractToolName"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./LangChainMemoryAdapter.js",
-            "imports": [
-              "LangChainMemoryAdapter"
-            ],
-            "reExport": true
-          }
-        ],
-        "exports": [
-          "RestRouter",
-          "type RestMethod",
-          "type RestRequest",
-          "type RestResponse",
-          "type RestHandler",
-          "type RouteDefinition",
-          "RateLimiter",
-          "type RateLimiterConfig",
-          "type RateLimitVerdict",
-          "paginate",
-          "parsePaginationParams",
-          "type PaginationParams",
-          "type ParsePaginationOptions",
-          "type PaginatedResult",
-          "MCPToolObserverAdapter",
-          "extractToolName",
-          "LangChainMemoryAdapter"
-        ],
-        "reExported": [
-          "RestRouter",
-          "type RestMethod",
-          "type RestRequest",
-          "type RestResponse",
-          "type RestHandler",
-          "type RouteDefinition",
-          "RateLimiter",
-          "type RateLimiterConfig",
-          "type RateLimitVerdict",
-          "paginate",
-          "parsePaginationParams",
-          "type PaginationParams",
-          "type ParsePaginationOptions",
-          "type PaginatedResult",
-          "MCPToolObserverAdapter",
-          "extractToolName",
-          "LangChainMemoryAdapter"
-        ]
-      },
-      "src/adapters/IVectorDBAdapter.ts": {
-        "description": "Vector Database Adapter Interface",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "InMemoryVectorAdapter"
-        ],
-        "classes": [
-          "InMemoryVectorAdapter"
-        ],
-        "interfaces": [
-          "VectorUpsert",
-          "VectorMatch",
-          "VectorAdapterStats",
-          "IVectorDBAdapter"
-        ]
-      },
-      "src/adapters/LangChainMemoryAdapter.ts": {
-        "description": "LangChain Memory Adapter",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../core/ManagerContext.js",
-            "imports": [
-              "ManagerContext"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../agent/MemoryEngine.js",
-            "imports": [
-              "MemoryEngine"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "AgentEntity"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "LangChainMemoryAdapter"
-        ],
-        "classes": [
-          "LangChainMemoryAdapter"
-        ],
-        "interfaces": [
-          "ChatMessage",
-          "MemoryInputs",
-          "MemoryVariables",
-          "LangChainMemoryAdapterOptions"
-        ]
-      },
-      "src/adapters/MCPToolObserverAdapter.ts": {
-        "description": "MCPToolObserverAdapter — Phase Tool C protocol shim.",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../agent/ToolCallObserver.js",
-            "imports": [
-              "ToolCallObserver"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "extractToolName",
-          "MCPToolObserverAdapter"
-        ],
-        "classes": [
-          "MCPToolObserverAdapter"
-        ],
-        "functions": [
-          "extractToolName"
-        ]
-      },
-      "src/adapters/pagination.ts": {
-        "description": "pagination — offset/limit + next-cursor helpers for REST handlers.",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "parsePaginationParams",
-          "paginate"
-        ],
-        "interfaces": [
-          "PaginationParams",
-          "ParsePaginationOptions",
-          "PaginatedResult"
-        ],
-        "functions": [
-          "parsePaginationParams",
-          "paginate"
-        ]
-      },
-      "src/adapters/RateLimiter.ts": {
-        "description": "RateLimiter — in-memory token-bucket rate limiter for REST handlers.",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "RateLimiter"
-        ],
-        "classes": [
-          "RateLimiter"
-        ],
-        "interfaces": [
-          "RateLimiterConfig",
-          "RateLimitVerdict"
-        ]
-      },
-      "src/adapters/RestRouter.ts": {
-        "description": "REST Router",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "http",
-            "imports": [
-              "IncomingMessage",
-              "ServerResponse"
-            ]
-          },
-          {
-            "module": "http",
-            "imports": [
-              "createServer"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../core/ManagerContext.js",
-            "imports": [
-              "ManagerContext"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
-            "file": "./pagination.js",
-            "imports": [
-              "paginate",
-              "parsePaginationParams"
-            ]
-          }
-        ],
-        "exports": [
-          "RestRouter"
-        ],
-        "classes": [
-          "RestRouter"
-        ],
-        "interfaces": [
-          "RestRequest",
-          "RestResponse",
-          "RouteDefinition"
-        ]
-      }
-    },
     "agent": {
       "src/agent/AccessTracker.ts": {
         "description": "Access Tracker",
@@ -476,12 +186,6 @@
           }
         ],
         "internalDependencies": [
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
           {
             "file": "../types/types.js",
             "imports": [
@@ -911,13 +615,6 @@
             "typeOnly": true
           },
           {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "compareTrustLevel",
-              "inferTrustLevel"
-            ]
-          },
-          {
             "file": "../core/GraphTraversal.js",
             "imports": [
               "GraphTraversal"
@@ -960,7 +657,6 @@
             "file": "../types/agent-memory.js",
             "imports": [
               "AgentEntity",
-              "AgentMetadata",
               "ConflictInfo",
               "ConflictStrategy"
             ],
@@ -969,9 +665,9 @@
           {
             "file": "../types/agent-memory.js",
             "imports": [
-              "compareTrustLevel",
-              "inferTrustLevel"
-            ]
+              "AgentMetadata"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -988,14 +684,7 @@
       "src/agent/ConsolidationPipeline.ts": {
         "description": "Consolidation Pipeline",
         "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash"
-            ]
-          }
-        ],
+        "nodeDependencies": [],
         "internalDependencies": [
           {
             "file": "../types/types.js",
@@ -1025,16 +714,7 @@
           {
             "file": "../types/agent-memory.js",
             "imports": [
-              "isAgentEntity",
-              "isFailureMemory",
-              "isProspectiveMemory",
-              "isReflectionMemory"
-            ]
-          },
-          {
-            "file": "../utils/textSimilarity.js",
-            "imports": [
-              "tokenize"
+              "isAgentEntity"
             ]
           },
           {
@@ -1068,81 +748,18 @@
             "imports": [
               "RuleEvaluator"
             ]
-          },
-          {
-            "file": "./ReflectionManager.js",
-            "imports": [
-              "ReflectionManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./TrajectoryCompressor.js",
-            "imports": [
-              "TrajectoryCompressor"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./ExperienceExtractor.js",
-            "imports": [
-              "ExperienceExtractor",
-              "Trajectory",
-              "TrajectoryCluster"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./HeuristicManager.js",
-            "imports": [
-              "HeuristicManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "HeuristicId"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./ObservationDedupManager.js",
-            "imports": [
-              "ObservationDedupManager",
-              "ObservationDedupFilter"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "ReflectionScope"
-            ],
-            "typeOnly": true
           }
         ],
         "exports": [
-          "ConsolidationPipeline",
-          "ProspectivePromotionStage",
-          "ReflectionStage",
-          "HeuristicExtractionStage",
-          "ObservationDedupReportStage"
+          "ConsolidationPipeline"
         ],
         "classes": [
-          "ConsolidationPipeline",
-          "ProspectivePromotionStage",
-          "ReflectionStage",
-          "HeuristicExtractionStage",
-          "ObservationDedupReportStage"
+          "ConsolidationPipeline"
         ],
         "interfaces": [
           "ConsolidationPipelineConfig",
           "PipelineStage",
-          "StageResult",
-          "ReflectionStageConfig",
-          "HeuristicExtractionStageConfig",
-          "ObservationDedupReportStageConfig"
+          "StageResult"
         ]
       },
       "src/agent/ConsolidationScheduler.ts": {
@@ -1157,12 +774,6 @@
           }
         ],
         "internalDependencies": [
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
           {
             "file": "./ConsolidationPipeline.js",
             "imports": [
@@ -1226,24 +837,10 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
             "file": "../types/types.js",
             "imports": [
               "IGraphStorage",
-              "Entity",
-              "ReadonlyKnowledgeGraph"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
+              "Entity"
             ],
             "typeOnly": true
           },
@@ -1256,9 +853,7 @@
               "ContextPackage",
               "TokenBreakdown",
               "ExcludedEntity",
-              "ScoredEntity",
-              "ProspectiveTrigger",
-              "TriggerCondition"
+              "ScoredEntity"
             ],
             "typeOnly": true
           },
@@ -1382,12 +977,6 @@
               "DecayEngine"
             ],
             "typeOnly": true
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
           }
         ],
         "exports": [
@@ -1399,71 +988,6 @@
         "interfaces": [
           "DecaySchedulerConfig",
           "DecayCycleResult"
-        ]
-      },
-      "src/agent/DecisionManager.ts": {
-        "description": "DecisionManager — Phase 3 Decision Rationale (Type 1).",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "DecisionEntity",
-              "DecisionId",
-              "DecisionLifecycle",
-              "DecisionRecord",
-              "DecisionStatus"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isDecisionMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/errors.js",
-            "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
-            ]
-          }
-        ],
-        "exports": [
-          "DecisionManager"
-        ],
-        "classes": [
-          "DecisionManager"
-        ],
-        "interfaces": [
-          "DecisionInput",
-          "DecisionEntityOptions",
-          "ListDecisionsOptions"
         ]
       },
       "src/agent/DistillationPipeline.ts": {
@@ -1726,62 +1250,6 @@
           "EpisodicRelations"
         ]
       },
-      "src/agent/ExclusionManager.ts": {
-        "description": "ExclusionManager — `do_not_remember` content-pattern exclusions",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "ExclusionEntity",
-              "ExclusionMode",
-              "ExclusionRule",
-              "ExclusionScope"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isExclusionMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "ExclusionManager"
-        ],
-        "classes": [
-          "ExclusionManager"
-        ],
-        "interfaces": [
-          "AddExclusionRuleInput",
-          "ExclusionCheckResult"
-        ]
-      },
       "src/agent/ExperienceExtractor.ts": {
         "description": "ExperienceExtractor — Phase δ.3 (ROADMAP §3B.3).",
         "externalDependencies": [],
@@ -1870,134 +1338,6 @@
         "interfaces": [
           "FailureDistillationConfig",
           "FailureDistillationResult"
-        ]
-      },
-      "src/agent/FailureManager.ts": {
-        "description": "Failure Memory Manager (Phase 2 Sprint 4)",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "FailureEntity",
-              "FailureLifecycle",
-              "FailureRecord",
-              "MarkResolvedResult"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isFailureMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/errors.js",
-            "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
-            ]
-          }
-        ],
-        "exports": [
-          "FailureManager"
-        ],
-        "classes": [
-          "FailureManager"
-        ],
-        "interfaces": [
-          "FailureManagerConfig",
-          "FailureEntityOptions",
-          "LookupOptions",
-          "GetAllOptions"
-        ]
-      },
-      "src/agent/HeuristicManager.ts": {
-        "description": "Heuristic Guidelines Manager — Phase 3B.8 (storage-backed, v2.0.x).",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "Heuristic",
-              "HeuristicEntity",
-              "HeuristicId"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isHeuristicMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/errors.js",
-            "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
-            ]
-          }
-        ],
-        "exports": [
-          "HeuristicManager"
-        ],
-        "classes": [
-          "HeuristicManager"
-        ],
-        "interfaces": [
-          "AddHeuristicOptions",
-          "HeuristicMatch",
-          "HeuristicConflict"
         ]
       },
       "src/agent/ImportanceScorer.ts": {
@@ -2099,61 +1439,11 @@
             "reExport": true
           },
           {
-            "file": "./ProspectiveMemoryManager.js",
-            "imports": [
-              "ProspectiveMemoryManager",
-              "type ProspectiveMemoryConfig",
-              "type ProcedureInvoker",
-              "type ScheduleOptions"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./FailureManager.js",
-            "imports": [
-              "FailureManager",
-              "type FailureManagerConfig",
-              "type FailureInput",
-              "type FailureEntityOptions",
-              "type LookupOptions",
-              "type GetAllOptions"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./PlanManager.js",
-            "imports": [
-              "PlanManager",
-              "type PlanManagerConfig",
-              "type CreatePlanOptions",
-              "type PushSubGoalOptions",
-              "type ListPlansOptions"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./ReflectionManager.js",
-            "imports": [
-              "// Aliased to avoid name collision with `src/search/ReflectionManager`\r\n  // (progressive search refinement",
-              "predates this module). The class\r\n  // itself is named `ReflectionManager` inside `src/agent/`; this\r\n  // barrel re-exports it under the more specific public name.\r\n  ReflectionManager",
-              "type ArchiveReflectionResult",
-              "type ReflectionManagerConfig",
-              "type ReflectionInput",
-              "type ReflectionEntityOptions",
-              "type ListReflectionsOptions",
-              "type RelevanceOptions"
-            ],
-            "reExport": true
-          },
-          {
             "file": "./ConsolidationPipeline.js",
             "imports": [
               "ConsolidationPipeline",
-              "ProspectivePromotionStage",
-              "ReflectionStage",
               "type ConsolidationPipelineConfig",
               "type PipelineStage",
-              "type ReflectionStageConfig",
               "type StageResult"
             ],
             "reExport": true
@@ -2536,90 +1826,6 @@
             "reExport": true
           },
           {
-            "file": "./HeuristicManager.js",
-            "imports": [
-              "HeuristicManager",
-              "type AddHeuristicOptions",
-              "type HeuristicMatch",
-              "type HeuristicConflict",
-              "type HeuristicUpdateResult"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./ExclusionManager.js",
-            "imports": [
-              "ExclusionManager",
-              "type AddExclusionRuleInput",
-              "type ExclusionCheckResult"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./DecisionManager.js",
-            "imports": [
-              "DecisionManager",
-              "type DecisionInput",
-              "type DecisionEntityOptions",
-              "type AcceptDecisionResult",
-              "type RejectDecisionResult",
-              "type SupersedeDecisionResult",
-              "type ListDecisionsOptions"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./ProjectContextManager.js",
-            "imports": [
-              "ProjectContextManager",
-              "type ProjectContextManagerConfig",
-              "type ProjectContextUpsertInput",
-              "type ForContextOptions"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./ObservationDedupManager.js",
-            "imports": [
-              "ObservationDedupManager",
-              "type DuplicateObservationOccurrence",
-              "type DuplicateObservationGroup",
-              "type ObservationDedupFilter",
-              "type ObservationDedupManagerConfig"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./ToolAffordanceManager.js",
-            "imports": [
-              "ToolAffordanceManager",
-              "type ToolAffordanceManagerConfig",
-              "type RecordOutcomeInput",
-              "type ToolAffordanceStats",
-              "type SuggestToolOptions",
-              "type ToolSuggestion"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./ToolCallObserver.js",
-            "imports": [
-              "ToolCallObserver",
-              "type ToolCallEvent"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./ConsolidationPipeline.js",
-            "imports": [
-              "ObservationDedupReportStage",
-              "HeuristicExtractionStage",
-              "type ObservationDedupReportStageConfig",
-              "type HeuristicExtractionStageConfig"
-            ],
-            "reExport": true
-          },
-          {
             "file": "./rbac/index.js",
             "imports": [
               "DEFAULT_PERMISSION_MATRIX",
@@ -2676,35 +1882,9 @@
           "type EpisodicMemoryConfig",
           "type CreateEpisodeOptions",
           "type TimelineOptions",
-          "ProspectiveMemoryManager",
-          "type ProspectiveMemoryConfig",
-          "type ProcedureInvoker",
-          "type ScheduleOptions",
-          "FailureManager",
-          "type FailureManagerConfig",
-          "type FailureInput",
-          "type FailureEntityOptions",
-          "type LookupOptions",
-          "type GetAllOptions",
-          "PlanManager",
-          "type PlanManagerConfig",
-          "type CreatePlanOptions",
-          "type PushSubGoalOptions",
-          "type ListPlansOptions",
-          "// Aliased to avoid name collision with `src/search/ReflectionManager`\r\n  // (progressive search refinement",
-          "predates this module). The class\r\n  // itself is named `ReflectionManager` inside `src/agent/`; this\r\n  // barrel re-exports it under the more specific public name.\r\n  ReflectionManager",
-          "type ArchiveReflectionResult",
-          "type ReflectionManagerConfig",
-          "type ReflectionInput",
-          "type ReflectionEntityOptions",
-          "type ListReflectionsOptions",
-          "type RelevanceOptions",
           "ConsolidationPipeline",
-          "ProspectivePromotionStage",
-          "ReflectionStage",
           "type ConsolidationPipelineConfig",
           "type PipelineStage",
-          "type ReflectionStageConfig",
           "type StageResult",
           "SummarizationService",
           "type ISummarizationProvider",
@@ -2855,42 +2035,6 @@
           "type CausalChain",
           "type CausalCycle",
           "type CausalReasonerConfig",
-          "HeuristicManager",
-          "type AddHeuristicOptions",
-          "type HeuristicMatch",
-          "type HeuristicConflict",
-          "type HeuristicUpdateResult",
-          "ExclusionManager",
-          "type AddExclusionRuleInput",
-          "type ExclusionCheckResult",
-          "DecisionManager",
-          "type DecisionInput",
-          "type DecisionEntityOptions",
-          "type AcceptDecisionResult",
-          "type RejectDecisionResult",
-          "type SupersedeDecisionResult",
-          "type ListDecisionsOptions",
-          "ProjectContextManager",
-          "type ProjectContextManagerConfig",
-          "type ProjectContextUpsertInput",
-          "type ForContextOptions",
-          "ObservationDedupManager",
-          "type DuplicateObservationOccurrence",
-          "type DuplicateObservationGroup",
-          "type ObservationDedupFilter",
-          "type ObservationDedupManagerConfig",
-          "ToolAffordanceManager",
-          "type ToolAffordanceManagerConfig",
-          "type RecordOutcomeInput",
-          "type ToolAffordanceStats",
-          "type SuggestToolOptions",
-          "type ToolSuggestion",
-          "ToolCallObserver",
-          "type ToolCallEvent",
-          "ObservationDedupReportStage",
-          "HeuristicExtractionStage",
-          "type ObservationDedupReportStageConfig",
-          "type HeuristicExtractionStageConfig",
           "DEFAULT_PERMISSION_MATRIX",
           "permissionsForRole",
           "RoleAssignmentStore",
@@ -2942,35 +2086,9 @@
           "type EpisodicMemoryConfig",
           "type CreateEpisodeOptions",
           "type TimelineOptions",
-          "ProspectiveMemoryManager",
-          "type ProspectiveMemoryConfig",
-          "type ProcedureInvoker",
-          "type ScheduleOptions",
-          "FailureManager",
-          "type FailureManagerConfig",
-          "type FailureInput",
-          "type FailureEntityOptions",
-          "type LookupOptions",
-          "type GetAllOptions",
-          "PlanManager",
-          "type PlanManagerConfig",
-          "type CreatePlanOptions",
-          "type PushSubGoalOptions",
-          "type ListPlansOptions",
-          "// Aliased to avoid name collision with `src/search/ReflectionManager`\r\n  // (progressive search refinement",
-          "predates this module). The class\r\n  // itself is named `ReflectionManager` inside `src/agent/`; this\r\n  // barrel re-exports it under the more specific public name.\r\n  ReflectionManager",
-          "type ArchiveReflectionResult",
-          "type ReflectionManagerConfig",
-          "type ReflectionInput",
-          "type ReflectionEntityOptions",
-          "type ListReflectionsOptions",
-          "type RelevanceOptions",
           "ConsolidationPipeline",
-          "ProspectivePromotionStage",
-          "ReflectionStage",
           "type ConsolidationPipelineConfig",
           "type PipelineStage",
-          "type ReflectionStageConfig",
           "type StageResult",
           "SummarizationService",
           "type ISummarizationProvider",
@@ -3121,42 +2239,6 @@
           "type CausalChain",
           "type CausalCycle",
           "type CausalReasonerConfig",
-          "HeuristicManager",
-          "type AddHeuristicOptions",
-          "type HeuristicMatch",
-          "type HeuristicConflict",
-          "type HeuristicUpdateResult",
-          "ExclusionManager",
-          "type AddExclusionRuleInput",
-          "type ExclusionCheckResult",
-          "DecisionManager",
-          "type DecisionInput",
-          "type DecisionEntityOptions",
-          "type AcceptDecisionResult",
-          "type RejectDecisionResult",
-          "type SupersedeDecisionResult",
-          "type ListDecisionsOptions",
-          "ProjectContextManager",
-          "type ProjectContextManagerConfig",
-          "type ProjectContextUpsertInput",
-          "type ForContextOptions",
-          "ObservationDedupManager",
-          "type DuplicateObservationOccurrence",
-          "type DuplicateObservationGroup",
-          "type ObservationDedupFilter",
-          "type ObservationDedupManagerConfig",
-          "ToolAffordanceManager",
-          "type ToolAffordanceManagerConfig",
-          "type RecordOutcomeInput",
-          "type ToolAffordanceStats",
-          "type SuggestToolOptions",
-          "type ToolSuggestion",
-          "ToolCallObserver",
-          "type ToolCallEvent",
-          "ObservationDedupReportStage",
-          "HeuristicExtractionStage",
-          "type ObservationDedupReportStageConfig",
-          "type HeuristicExtractionStageConfig",
           "DEFAULT_PERMISSION_MATRIX",
           "permissionsForRole",
           "RoleAssignmentStore",
@@ -3224,7 +2306,7 @@
         ]
       },
       "src/agent/MemoryEngine.ts": {
-        "description": "Optional `ExclusionManager` (Phase 3 `do_not_remember`). When",
+        "description": "MemoryEngine module",
         "externalDependencies": [],
         "nodeDependencies": [
           {
@@ -3244,8 +2326,7 @@
           {
             "file": "../types/types.js",
             "imports": [
-              "IGraphStorage",
-              "ReadonlyKnowledgeGraph"
+              "IGraphStorage"
             ],
             "typeOnly": true
           },
@@ -3295,13 +2376,6 @@
             "file": "./ImportanceScorer.js",
             "imports": [
               "ImportanceScorer"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./ExclusionManager.js",
-            "imports": [
-              "ExclusionManager"
             ],
             "typeOnly": true
           }
@@ -3455,40 +2529,6 @@
           "MultiAgentConfig"
         ]
       },
-      "src/agent/ObservationDedupManager.ts": {
-        "description": "ObservationDedupManager — entity-level cross-observation dedup.",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "ObservationDedupManager"
-        ],
-        "classes": [
-          "ObservationDedupManager"
-        ],
-        "interfaces": [
-          "DuplicateObservationOccurrence",
-          "DuplicateObservationGroup",
-          "ObservationDedupFilter",
-          "ObservationDedupManagerConfig"
-        ]
-      },
       "src/agent/ObserverPipeline.ts": {
         "description": "Observer Pipeline",
         "externalDependencies": [],
@@ -3548,62 +2588,6 @@
           "PatternDetector"
         ]
       },
-      "src/agent/PlanManager.ts": {
-        "description": "Plan / Goal-Stack Manager (Phase 2 Sprint 5)",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "GoalNode",
-              "GoalNodeId",
-              "GoalNodeLifecycle",
-              "GoalNodeTransition",
-              "MarkResolvedResult",
-              "PlanEntity",
-              "PlanId",
-              "PlanLifecycle",
-              "PlanRecord"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isPlanMemory",
-              "toIsoDateTime"
-            ]
-          }
-        ],
-        "exports": [
-          "PlanManager"
-        ],
-        "classes": [
-          "PlanManager"
-        ],
-        "interfaces": [
-          "PlanManagerConfig",
-          "CreatePlanOptions",
-          "PushSubGoalOptions",
-          "ListPlansOptions"
-        ]
-      },
       "src/agent/procedural/index.ts": {
         "description": "Procedural Memory Module — Barrel Export (3B.4)",
         "externalDependencies": [],
@@ -3613,8 +2597,7 @@
             "file": "./ProcedureManager.js",
             "imports": [
               "ProcedureManager",
-              "type ProcedureManagerConfig",
-              "type InvocationResult"
+              "type ProcedureManagerConfig"
             ],
             "reExport": true
           },
@@ -3638,7 +2621,6 @@
         "exports": [
           "ProcedureManager",
           "type ProcedureManagerConfig",
-          "type InvocationResult",
           "ProcedureStore",
           "decodeProcedure",
           "PROCEDURE_ENTITY_TYPE",
@@ -3647,7 +2629,6 @@
         "reExported": [
           "ProcedureManager",
           "type ProcedureManagerConfig",
-          "type InvocationResult",
           "ProcedureStore",
           "decodeProcedure",
           "PROCEDURE_ENTITY_TYPE",
@@ -3803,13 +2784,6 @@
             ]
           },
           {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "AgentEntity"
-            ],
-            "typeOnly": true
-          },
-          {
             "file": "./SalienceEngine.js",
             "imports": [
               "SalienceEngine"
@@ -3827,117 +2801,6 @@
           "ProfileResponse",
           "ProfileManagerConfig",
           "ProfileOptions"
-        ]
-      },
-      "src/agent/ProjectContextManager.ts": {
-        "description": "ProjectContextManager — Phase 3 Project Context (Type 2).",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "ProjectContextCommand",
-              "ProjectContextEntity",
-              "ProjectContextGlossaryTerm",
-              "ProjectContextRecord"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isProjectContextMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "ProjectContextManager"
-        ],
-        "classes": [
-          "ProjectContextManager"
-        ],
-        "interfaces": [
-          "ProjectContextUpsertInput",
-          "ProjectContextManagerConfig",
-          "ForContextOptions"
-        ]
-      },
-      "src/agent/ProspectiveMemoryManager.ts": {
-        "description": "Prospective Memory Manager",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "randomBytes"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "CancelResult",
-              "FiredEvent",
-              "IsoDateTime",
-              "ObservationContext",
-              "ProspectiveAction",
-              "ProspectiveEntity",
-              "ProspectiveLifecycle",
-              "ProspectiveTrigger",
-              "TriggerCondition"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isProspectiveMemory",
-              "toIsoDateTime",
-              "toPositiveInt"
-            ]
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          }
-        ],
-        "exports": [
-          "ProspectiveMemoryManager"
-        ],
-        "classes": [
-          "ProspectiveMemoryManager"
-        ],
-        "interfaces": [
-          "ProspectiveMemoryConfig",
-          "ScheduleOptions"
         ]
       },
       "src/agent/rbac/index.ts": {
@@ -4105,73 +2968,6 @@
         ],
         "interfaces": [
           "RoleAssignmentStoreOptions"
-        ]
-      },
-      "src/agent/ReflectionManager.ts": {
-        "description": "Reflection Memory Manager (Phase 2 Sprint 8)",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash",
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "ReflectionEntity",
-              "ReflectionId",
-              "ReflectionRecord",
-              "ReflectionScope"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isReflectionMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/errors.js",
-            "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
-            ]
-          }
-        ],
-        "exports": [
-          "ReflectionManager"
-        ],
-        "classes": [
-          "ReflectionManager"
-        ],
-        "interfaces": [
-          "ReflectionManagerConfig",
-          "ReflectionInput",
-          "ReflectionEntityOptions",
-          "ListReflectionsOptions",
-          "RelevanceOptions"
         ]
       },
       "src/agent/retrieval/ActiveRetrievalController.ts": {
@@ -4644,97 +3440,6 @@
           "GroupingResult"
         ]
       },
-      "src/agent/ToolAffordanceManager.ts": {
-        "description": "ToolAffordanceManager — Phase Tool A (catalog Type 8).",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "ToolAffordanceEntity",
-              "ToolAffordanceId",
-              "ToolAffordanceRecord",
-              "ToolCallOutcome"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isToolAffordanceMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/errors.js",
-            "imports": [
-              "VersionConflictError"
-            ]
-          }
-        ],
-        "exports": [
-          "ToolAffordanceManager"
-        ],
-        "classes": [
-          "ToolAffordanceManager"
-        ],
-        "interfaces": [
-          "ToolAffordanceManagerConfig",
-          "RecordOutcomeInput",
-          "ToolAffordanceStats",
-          "SuggestToolOptions",
-          "ToolSuggestion"
-        ]
-      },
-      "src/agent/ToolCallObserver.ts": {
-        "description": "ToolCallObserver — Phase Tool B producer pipeline.",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "events",
-            "imports": [
-              "EventEmitter"
-            ]
-          },
-          {
-            "module": "crypto",
-            "imports": [
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "./ToolAffordanceManager.js",
-            "imports": [
-              "ToolAffordanceManager"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "ToolCallObserver"
-        ],
-        "classes": [
-          "ToolCallObserver"
-        ]
-      },
       "src/agent/TrajectoryCompressor.ts": {
         "description": "TrajectoryCompressor — Phase δ.2 (ROADMAP §3B.2).",
         "externalDependencies": [],
@@ -4826,16 +3531,8 @@
           {
             "file": "../utils/errors.js",
             "imports": [
-              "LowEntropyContentError",
-              "MemoryWriteBlockedError"
+              "LowEntropyContentError"
             ]
-          },
-          {
-            "file": "./ExclusionManager.js",
-            "imports": [
-              "ExclusionManager"
-            ],
-            "typeOnly": true
           }
         ],
         "exports": [
@@ -4997,217 +3694,6 @@
       }
     },
     "cli": {
-      "src/cli/commands/cache.ts": {
-        "description": "Cache CLI commands — `memory cache`.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../../utils/searchCache.js",
-            "imports": [
-              "clearAllSearchCaches",
-              "cleanupAllCaches",
-              "getAllCacheStats"
-            ]
-          },
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerCacheCommands"
-        ],
-        "functions": [
-          "registerCacheCommands"
-        ]
-      },
-      "src/cli/commands/check.ts": {
-        "description": "Graph repair CLI command — `memory check`.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../../core/ManagerContext.js",
-            "imports": [
-              "ManagerContext"
-            ]
-          },
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "detectIssues",
-          "applyFixes",
-          "registerCheckCommand"
-        ],
-        "functions": [
-          "registerCheckCommand"
-        ]
-      },
-      "src/cli/commands/decision.ts": {
-        "description": "Decision CLI Commands — `memory decision` (Phase 3 Decision Rationale).",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "readFileSync",
-              "writeFileSync"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../agent/DecisionManager.js",
-            "imports": [
-              "DecisionManager"
-            ]
-          },
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatSuccess",
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerDecisionCommands"
-        ],
-        "functions": [
-          "registerDecisionCommands"
-        ]
-      },
-      "src/cli/commands/diag.ts": {
-        "description": "Diagnostic CLI commands.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          },
-          {
-            "module": "perf_hooks",
-            "imports": [
-              "performance"
-            ]
-          },
-          {
-            "module": "fs",
-            "imports": [
-              "readFileSync"
-            ]
-          },
-          {
-            "module": "url",
-            "imports": [
-              "fileURLToPath"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "dirname",
-              "join"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../core/ManagerContext.js",
-            "imports": [
-              "ManagerContext"
-            ]
-          },
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "Entity"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerDiagCommand"
-        ],
-        "functions": [
-          "registerDiagCommand"
-        ]
-      },
       "src/cli/commands/entity.ts": {
         "description": "Entity CLI Commands",
         "externalDependencies": [
@@ -5243,41 +3729,6 @@
         ],
         "functions": [
           "registerEntityCommands"
-        ]
-      },
-      "src/cli/commands/exclusion.ts": {
-        "description": "Exclusion CLI Commands — `memory exclude` (Phase 3 do_not_remember).",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatSuccess",
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerExclusionCommands"
-        ],
-        "functions": [
-          "registerExclusionCommands"
         ]
       },
       "src/cli/commands/graph.ts": {
@@ -5369,40 +3820,6 @@
           "getOptions",
           "createContext",
           "withErrorHandling"
-        ]
-      },
-      "src/cli/commands/heuristic.ts": {
-        "description": "Heuristic CLI commands — `memory heuristic` (Phase 3B.8).",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerHeuristicCommands"
-        ],
-        "functions": [
-          "registerHeuristicCommands"
         ]
       },
       "src/cli/commands/hierarchy.ts": {
@@ -5506,84 +3923,6 @@
             "imports": [
               "registerMaintenanceCommands"
             ]
-          },
-          {
-            "file": "./exclusion.js",
-            "imports": [
-              "registerExclusionCommands"
-            ]
-          },
-          {
-            "file": "./decision.js",
-            "imports": [
-              "registerDecisionCommands"
-            ]
-          },
-          {
-            "file": "./projectContext.js",
-            "imports": [
-              "registerProjectContextCommands"
-            ]
-          },
-          {
-            "file": "./toolAffordance.js",
-            "imports": [
-              "registerToolAffordanceCommands"
-            ]
-          },
-          {
-            "file": "./smoke.js",
-            "imports": [
-              "registerSmokeCommand"
-            ]
-          },
-          {
-            "file": "./diag.js",
-            "imports": [
-              "registerDiagCommand"
-            ]
-          },
-          {
-            "file": "./inspect.js",
-            "imports": [
-              "registerInspectCommands"
-            ]
-          },
-          {
-            "file": "./heuristic.js",
-            "imports": [
-              "registerHeuristicCommands"
-            ]
-          },
-          {
-            "file": "./observationDedup.js",
-            "imports": [
-              "registerObservationDedupCommands"
-            ]
-          },
-          {
-            "file": "./spell.js",
-            "imports": [
-              "registerSpellCommands"
-            ]
-          },
-          {
-            "file": "./check.js",
-            "imports": [
-              "registerCheckCommand"
-            ]
-          },
-          {
-            "file": "./cache.js",
-            "imports": [
-              "registerCacheCommands"
-            ]
-          },
-          {
-            "file": "./reindex.js",
-            "imports": [
-              "registerReindexCommand"
-            ]
           }
         ],
         "exports": [
@@ -5591,66 +3930,6 @@
         ],
         "functions": [
           "registerCommands"
-        ]
-      },
-      "src/cli/commands/inspect.ts": {
-        "description": "Inspection CLI commands.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../core/ManagerContext.js",
-            "imports": [
-              "ManagerContext"
-            ]
-          },
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "Relation",
-              "ReadonlyKnowledgeGraph"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "snapshotEntity",
-          "buildTree",
-          "renderTreeAscii",
-          "neighbors",
-          "buildSizeReport",
-          "registerInspectCommands"
-        ],
-        "functions": [
-          "registerInspectCommands"
         ]
       },
       "src/cli/commands/io.ts": {
@@ -5781,135 +4060,6 @@
           "registerObservationCommands"
         ]
       },
-      "src/cli/commands/observationDedup.ts": {
-        "description": "Observation-dedup CLI commands — `memory obs-dedup`.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerObservationDedupCommands"
-        ],
-        "functions": [
-          "registerObservationDedupCommands"
-        ]
-      },
-      "src/cli/commands/projectContext.ts": {
-        "description": "Project Context CLI Commands — `memory project-context` (Phase 3 Type 2).",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatSuccess",
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerProjectContextCommands"
-        ],
-        "functions": [
-          "registerProjectContextCommands"
-        ]
-      },
-      "src/cli/commands/reindex.ts": {
-        "description": "Reindex CLI command — `memory reindex`.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [
-          {
-            "module": "path",
-            "imports": [
-              "dirname"
-            ]
-          },
-          {
-            "module": "perf_hooks",
-            "imports": [
-              "performance"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../search/RankedSearch.js",
-            "imports": [
-              "RankedSearch"
-            ]
-          },
-          {
-            "file": "../../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerReindexCommand"
-        ],
-        "functions": [
-          "registerReindexCommand"
-        ]
-      },
       "src/cli/commands/relation.ts": {
         "description": "Relation CLI Commands",
         "externalDependencies": [
@@ -5988,98 +4138,6 @@
           "registerSearchCommands"
         ]
       },
-      "src/cli/commands/smoke.ts": {
-        "description": "Smoke CLI command.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "join"
-            ]
-          },
-          {
-            "module": "os",
-            "imports": [
-              "tmpdir"
-            ]
-          },
-          {
-            "module": "perf_hooks",
-            "imports": [
-              "performance"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../core/ManagerContext.js",
-            "imports": [
-              "ManagerContext"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatSuccess",
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerSmokeCommand"
-        ],
-        "functions": [
-          "registerSmokeCommand"
-        ]
-      },
-      "src/cli/commands/spell.ts": {
-        "description": "Spell CLI commands — `memory spell`.",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerSpellCommands"
-        ],
-        "functions": [
-          "registerSpellCommands"
-        ]
-      },
       "src/cli/commands/tag.ts": {
         "description": "Tag CLI Commands",
         "externalDependencies": [
@@ -6114,40 +4172,6 @@
         ],
         "functions": [
           "registerTagCommands"
-        ]
-      },
-      "src/cli/commands/toolAffordance.ts": {
-        "description": "Tool Affordance CLI Commands — `memory tool-affordance` (Phase Tool D).",
-        "externalDependencies": [
-          {
-            "package": "commander",
-            "imports": [
-              "Command"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./helpers.js",
-            "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
-            ]
-          }
-        ],
-        "exports": [
-          "registerToolAffordanceCommands"
-        ],
-        "functions": [
-          "registerToolAffordanceCommands"
         ]
       },
       "src/cli/config.ts": {
@@ -6265,12 +4289,6 @@
             ]
           },
           {
-            "module": "readline",
-            "imports": [
-              "createInterface"
-            ]
-          },
-          {
             "module": "url",
             "imports": [
               "fileURLToPath"
@@ -6289,12 +4307,6 @@
             "file": "./commands/index.js",
             "imports": [
               "registerCommands"
-            ]
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
             ]
           }
         ],
@@ -6363,60 +4375,6 @@
       }
     },
     "core": {
-      "src/core/columns/IColumnStore.ts": {
-        "description": "Column Store — Interface + In-Memory Reference Impl",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "InMemoryColumnStore"
-        ],
-        "classes": [
-          "InMemoryColumnStore"
-        ],
-        "interfaces": [
-          "IColumnStore"
-        ]
-      },
-      "src/core/columns/JsonlColumnStore.ts": {
-        "description": "JsonlColumnStore — JSONL-sidecar-backed `IColumnStore<T>`",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
-            "file": "../../utils/durableWriteFile.js",
-            "imports": [
-              "durableWriteFile"
-            ]
-          },
-          {
-            "file": "./IColumnStore.js",
-            "imports": [
-              "IColumnStore"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "JsonlColumnStore"
-        ],
-        "classes": [
-          "JsonlColumnStore"
-        ]
-      },
       "src/core/EntityManager.ts": {
         "description": "Entity Manager",
         "externalDependencies": [],
@@ -6463,12 +4421,6 @@
             "typeOnly": true
           },
           {
-            "file": "./EntityStateMachine.js",
-            "imports": [
-              "EntityStateMachine"
-            ]
-          },
-          {
             "file": "../utils/index.js",
             "imports": [
               "BatchCreateEntitiesSchema",
@@ -6498,63 +4450,6 @@
           "GetEntityOptions"
         ]
       },
-      "src/core/EntityProxy.ts": {
-        "description": "Lazy Entity Hydration (`EntityProxy`)",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "EntityProxy",
-          "EntityProxyFactory"
-        ],
-        "classes": [
-          "EntityProxy",
-          "EntityProxyFactory"
-        ],
-        "interfaces": [
-          "EntityProxyStorage"
-        ]
-      },
-      "src/core/EntityStateMachine.ts": {
-        "description": "Entity State Machine",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "ENTITY_STATUS_TRANSITIONS",
-              "EntityStatus"
-            ]
-          }
-        ],
-        "exports": [
-          "DEFAULT_ENTITY_STATUS",
-          "effectiveStatus",
-          "canTransition",
-          "IllegalStatusTransitionError",
-          "EntityStateMachine"
-        ],
-        "classes": [
-          "IllegalStatusTransitionError",
-          "EntityStateMachine"
-        ],
-        "functions": [
-          "effectiveStatus",
-          "canTransition"
-        ],
-        "constants": [
-          "DEFAULT_ENTITY_STATUS"
-        ]
-      },
       "src/core/GraphEventEmitter.ts": {
         "description": "Graph Event Emitter",
         "externalDependencies": [],
@@ -6580,12 +4475,6 @@
               "GraphLoadedEvent"
             ],
             "typeOnly": true
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
           }
         ],
         "exports": [
@@ -6613,19 +4502,13 @@
             ]
           },
           {
-            "module": "path",
+            "module": "crypto",
             "imports": [
-              "dirname"
+              "randomBytes"
             ]
           }
         ],
         "internalDependencies": [
-          {
-            "file": "../utils/durableWriteFile.js",
-            "imports": [
-              "durableWriteFile"
-            ]
-          },
           {
             "file": "../types/index.js",
             "imports": [
@@ -6672,30 +4555,6 @@
             "file": "./GraphEventEmitter.js",
             "imports": [
               "GraphEventEmitter"
-            ]
-          },
-          {
-            "file": "./segments/FileSegmentStorage.js",
-            "imports": [
-              "FileSegmentStorage"
-            ]
-          },
-          {
-            "file": "./segments/ISegmentStorage.js",
-            "imports": [
-              "FnvSegmentRouter"
-            ]
-          },
-          {
-            "file": "./mmap/FsReadMmapBackend.js",
-            "imports": [
-              "FsReadMmapBackend"
-            ]
-          },
-          {
-            "file": "./mmap/IMmapBackend.js",
-            "imports": [
-              "streamLines"
             ]
           }
         ],
@@ -6961,65 +4820,6 @@
         ],
         "internalDependencies": [
           {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
-            "file": "../utils/IndexHealthMonitor.js",
-            "imports": [
-              "IndexHealthMonitor",
-              "IndexHealthReport"
-            ]
-          },
-          {
-            "file": "../utils/Diagnostics.js",
-            "imports": [
-              "buildDiagnosticsReport",
-              "DiagnosticsReport"
-            ]
-          },
-          {
-            "file": "./TransactionManager.js",
-            "imports": [
-              "BatchTransaction"
-            ]
-          },
-          {
-            "file": "../types/index.js",
-            "imports": [
-              "BatchResult",
-              "BatchOptions",
-              "Entity"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/CachePressureCoordinator.js",
-            "imports": [
-              "CachePressureCoordinator"
-            ]
-          },
-          {
-            "file": "../search/MaterializedViews.js",
-            "imports": [
-              "MaterializedViewsManager"
-            ]
-          },
-          {
-            "file": "../search/SpellChecker.js",
-            "imports": [
-              "SpellChecker"
-            ]
-          },
-          {
-            "file": "./ObservationStore.js",
-            "imports": [
-              "ObservationStore"
-            ]
-          },
-          {
             "file": "./GraphStorage.js",
             "imports": [
               "GraphStorage"
@@ -7048,57 +4848,6 @@
             "imports": [
               "ObservationManager"
             ]
-          },
-          {
-            "file": "./columns/JsonlColumnStore.js",
-            "imports": [
-              "JsonlColumnStore"
-            ]
-          },
-          {
-            "file": "../search/tiered/TieredIndex.js",
-            "imports": [
-              "TieredIndex",
-              "buildTieredIndex"
-            ]
-          },
-          {
-            "file": "../search/tiered/LRUHotTier.js",
-            "imports": [
-              "LRUHotTier"
-            ]
-          },
-          {
-            "file": "../search/tiered/DiskWarmTier.js",
-            "imports": [
-              "DiskWarmTier"
-            ]
-          },
-          {
-            "file": "../search/tiered/BrotliColdTier.js",
-            "imports": [
-              "BrotliColdTier"
-            ]
-          },
-          {
-            "file": "../utils/compression/CompressedMap.js",
-            "imports": [
-              "CompressedMap"
-            ]
-          },
-          {
-            "file": "../utils/compression/ICompressionAdapter.js",
-            "imports": [
-              "ZlibCompressionAdapter"
-            ]
-          },
-          {
-            "file": "./columns/IColumnStore.js",
-            "imports": [
-              "IColumnStore",
-              "ObservationColumn"
-            ],
-            "typeOnly": true
           },
           {
             "file": "./HierarchyManager.js",
@@ -7360,48 +5109,6 @@
             ]
           },
           {
-            "file": "../agent/HeuristicManager.js",
-            "imports": [
-              "HeuristicManager"
-            ]
-          },
-          {
-            "file": "../agent/ObservationDedupManager.js",
-            "imports": [
-              "ObservationDedupManager"
-            ]
-          },
-          {
-            "file": "../agent/ExclusionManager.js",
-            "imports": [
-              "ExclusionManager"
-            ]
-          },
-          {
-            "file": "../agent/DecisionManager.js",
-            "imports": [
-              "DecisionManager"
-            ]
-          },
-          {
-            "file": "../agent/ProjectContextManager.js",
-            "imports": [
-              "ProjectContextManager"
-            ]
-          },
-          {
-            "file": "../agent/ToolAffordanceManager.js",
-            "imports": [
-              "ToolAffordanceManager"
-            ]
-          },
-          {
-            "file": "../agent/ToolCallObserver.js",
-            "imports": [
-              "ToolCallObserver"
-            ]
-          },
-          {
             "file": "../agent/PatternDetector.js",
             "imports": [
               "PatternDetector"
@@ -7411,31 +5118,6 @@
             "file": "../agent/procedural/ProcedureManager.js",
             "imports": [
               "ProcedureManager"
-            ]
-          },
-          {
-            "file": "../agent/ProspectiveMemoryManager.js",
-            "imports": [
-              "ProspectiveMemoryManager",
-              "ProcedureInvoker"
-            ]
-          },
-          {
-            "file": "../agent/FailureManager.js",
-            "imports": [
-              "FailureManager"
-            ]
-          },
-          {
-            "file": "../agent/PlanManager.js",
-            "imports": [
-              "PlanManager"
-            ]
-          },
-          {
-            "file": "../agent/ReflectionManager.js",
-            "imports": [
-              "ReflectionManager"
             ]
           },
           {
@@ -7479,97 +5161,6 @@
           "ManagerContextOptions"
         ]
       },
-      "src/core/mmap/BufferMmapBackend.ts": {
-        "description": "BufferMmapBackend — slurp-the-whole-file reference impl",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "resolve"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "./IMmapBackend.js",
-            "imports": [
-              "IMmapBackend",
-              "MmapHandle"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "BufferMmapBackend"
-        ],
-        "classes": [
-          "BufferMmapBackend"
-        ],
-        "interfaces": [
-          "BufferMmapBackendOptions"
-        ]
-      },
-      "src/core/mmap/FsReadMmapBackend.ts": {
-        "description": "FsReadMmapBackend — Range-Read Over a Pinned File Descriptor",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "resolve"
-            ]
-          },
-          {
-            "module": "fs/promises",
-            "imports": [
-              "FileHandle"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "./IMmapBackend.js",
-            "imports": [
-              "IMmapBackend",
-              "MmapHandle"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "FsReadMmapBackend"
-        ],
-        "classes": [
-          "FsReadMmapBackend"
-        ],
-        "interfaces": [
-          "FsReadMmapBackendOptions"
-        ]
-      },
-      "src/core/mmap/IMmapBackend.ts": {
-        "description": "IMmapBackend — Range-Read Interface",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [],
-        "interfaces": [
-          "MmapHandle",
-          "IMmapBackend"
-        ]
-      },
       "src/core/ObservationManager.ts": {
         "description": "Observation Manager",
         "externalDependencies": [],
@@ -7583,12 +5174,6 @@
             "typeOnly": true
           },
           {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
             "file": "../features/AutoLinker.js",
             "imports": [
               "AutoLinker",
@@ -7600,8 +5185,7 @@
           {
             "file": "../types/types.js",
             "imports": [
-              "DeduplicationOptions",
-              "Entity"
+              "DeduplicationOptions"
             ],
             "typeOnly": true
           },
@@ -7639,24 +5223,6 @@
             "imports": [
               "calculateTextSimilarity"
             ]
-          },
-          {
-            "file": "./columns/IColumnStore.js",
-            "imports": [
-              "IColumnStore",
-              "ObservationColumn"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "EntityCreatedEvent",
-              "EntityUpdatedEvent",
-              "EntityDeletedEvent",
-              "GraphSavedEvent"
-            ],
-            "typeOnly": true
           }
         ],
         "exports": [
@@ -7664,28 +5230,6 @@
         ],
         "classes": [
           "ObservationManager"
-        ]
-      },
-      "src/core/ObservationStore.ts": {
-        "description": "Observation Store",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash"
-            ]
-          }
-        ],
-        "internalDependencies": [],
-        "exports": [
-          "ObservationStore"
-        ],
-        "classes": [
-          "ObservationStore"
-        ],
-        "interfaces": [
-          "ObservationStoreStats"
         ]
       },
       "src/core/RefIndex.ts": {
@@ -7772,107 +5316,6 @@
           "RelationManager"
         ]
       },
-      "src/core/segments/FileSegmentStorage.ts": {
-        "description": "File Segment Storage — JSONL-per-segment backend",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          },
-          {
-            "module": "crypto",
-            "imports": [
-              "randomBytes"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "join"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "Entity",
-              "KnowledgeGraph",
-              "Relation"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
-            "file": "../../utils/durableWriteFile.js",
-            "imports": [
-              "durableWriteFile"
-            ]
-          },
-          {
-            "file": "./ISegmentStorage.js",
-            "imports": [
-              "ISegmentStorage",
-              "Segment",
-              "SegmentId",
-              "SegmentRouter",
-              "mergeSegmentsIntoGraph",
-              "splitGraphIntoSegments"
-            ]
-          }
-        ],
-        "exports": [
-          "FileSegmentStorage"
-        ],
-        "classes": [
-          "FileSegmentStorage"
-        ]
-      },
-      "src/core/segments/ISegmentStorage.ts": {
-        "description": "Segment Storage — Interface + Reference Impl",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../../types/types.js",
-            "imports": [
-              "Entity",
-              "Relation",
-              "KnowledgeGraph"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "fnv1a32",
-          "splitGraphIntoSegments",
-          "mergeSegmentsIntoGraph",
-          "FnvSegmentRouter",
-          "InMemorySegmentStorage"
-        ],
-        "classes": [
-          "FnvSegmentRouter",
-          "InMemorySegmentStorage"
-        ],
-        "interfaces": [
-          "SegmentRouter",
-          "Segment",
-          "ISegmentStorage"
-        ],
-        "functions": [
-          "fnv1a32",
-          "splitGraphIntoSegments",
-          "mergeSegmentsIntoGraph"
-        ]
-      },
       "src/core/SQLiteStorage.ts": {
         "description": "SQLite Storage",
         "externalDependencies": [
@@ -7927,19 +5370,6 @@
             "imports": [
               "sanitizeObject",
               "validateFilePath"
-            ]
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
-            "file": "../search/PartialIndexAdvisor.js",
-            "imports": [
-              "PartialIndexAdvisor",
-              "FilterObservation"
             ]
           }
         ],
@@ -8104,65 +5534,6 @@
           "TransitionEvent",
           "TransitionFilter"
         ]
-      },
-      "src/core/WriteAheadLog.ts": {
-        "description": "Write-Ahead Log (WAL)",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises",
-              "openSync",
-              "writeSync",
-              "fsyncSync",
-              "closeSync",
-              "existsSync",
-              "statSync",
-              "constants"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "dirname",
-              "join"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "Relation"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          }
-        ],
-        "exports": [
-          "_internal",
-          "applyWALToGraph",
-          "WriteAheadLog"
-        ],
-        "classes": [
-          "WriteAheadLog"
-        ],
-        "interfaces": [
-          "WALOptions"
-        ],
-        "functions": [
-          "applyWALToGraph"
-        ],
-        "constants": [
-          "_internal"
-        ]
       }
     },
     "features": {
@@ -8184,8 +5555,7 @@
               "GraphStats",
               "ValidationReport",
               "ValidationIssue",
-              "ValidationWarning",
-              "ReadonlyKnowledgeGraph"
+              "ValidationWarning"
             ],
             "typeOnly": true
           }
@@ -8195,37 +5565,6 @@
         ],
         "classes": [
           "AnalyticsManager"
-        ]
-      },
-      "src/features/AnomalyDetector.ts": {
-        "description": "Anomaly Detector",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "KnowledgeGraph",
-              "Relation"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "detectStructuralAnomalies",
-          "detectSemanticAnomalies",
-          "detectAllAnomalies"
-        ],
-        "interfaces": [
-          "AnomalyReport",
-          "StructuralAnomalyOptions",
-          "SemanticAnomalyOptions"
-        ],
-        "functions": [
-          "detectStructuralAnomalies",
-          "detectSemanticAnomalies",
-          "detectAllAnomalies"
         ]
       },
       "src/features/ArchiveManager.ts": {
@@ -8348,74 +5687,6 @@
           "AutoLinkResult"
         ]
       },
-      "src/features/BackupManager.ts": {
-        "description": "Backup Manager",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "basename",
-              "join"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/errors.js",
-            "imports": [
-              "FileOperationError"
-            ]
-          },
-          {
-            "file": "../utils/index.js",
-            "imports": [
-              "compress",
-              "decompress",
-              "hasBrotliExtension",
-              "COMPRESSION_CONFIG"
-            ]
-          },
-          {
-            "file": "../utils/entityUtils.js",
-            "imports": [
-              "validateFilePath"
-            ]
-          },
-          {
-            "file": "../types/index.js",
-            "imports": [
-              "BackupOptions",
-              "BackupResult",
-              "RestoreResult"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "BackupManager"
-        ],
-        "classes": [
-          "BackupManager"
-        ],
-        "interfaces": [
-          "BackupMetadata",
-          "BackupInfo"
-        ]
-      },
       "src/features/CompressionManager.ts": {
         "description": "Compression Manager",
         "externalDependencies": [],
@@ -8456,12 +5727,6 @@
               "EntityNotFoundError",
               "InsufficientEntitiesError",
               "ValidationError"
-            ]
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
             ]
           },
           {
@@ -8514,48 +5779,6 @@
         ],
         "interfaces": [
           "Contradiction"
-        ]
-      },
-      "src/features/CRDT.ts": {
-        "description": "CRDT Collaboration Primitives",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "randomBytes"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "Relation"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "VectorClock",
-          "LWWRegister",
-          "ORSet",
-          "CRDTGraph"
-        ],
-        "classes": [
-          "VectorClock",
-          "LWWRegister",
-          "ORSet",
-          "CRDTGraph"
-        ],
-        "interfaces": [
-          "VectorClockState",
-          "LWWRegisterState",
-          "ORSetState",
-          "CRDTEntityState",
-          "CRDTRelationState",
-          "CRDTGraphState"
         ]
       },
       "src/features/FactExtractor.ts": {
@@ -8928,7 +6151,7 @@
         ]
       },
       "src/features/IOManager.ts": {
-        "description": "Backup lifecycle is delegated to `BackupManager` (extracted in",
+        "description": "Escape a string for a Turtle `STRING_LITERAL_QUOTE` per W3C Turtle 1.1.",
         "externalDependencies": [],
         "nodeDependencies": [
           {
@@ -8980,6 +6203,8 @@
             "file": "../utils/index.js",
             "imports": [
               "compress",
+              "decompress",
+              "hasBrotliExtension",
               "COMPRESSION_CONFIG",
               "STREAMING_CONFIG",
               "checkCancellation",
@@ -8995,12 +6220,6 @@
             "imports": [
               "StreamingExporter",
               "StreamResult"
-            ]
-          },
-          {
-            "file": "./BackupManager.js",
-            "imports": [
-              "BackupManager"
             ]
           },
           {
@@ -9071,12 +6290,6 @@
               "Relation"
             ],
             "typeOnly": true
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
           }
         ],
         "exports": [
@@ -9293,20 +6506,6 @@
               "*"
             ],
             "reExport": true
-          },
-          {
-            "file": "./security/index.js",
-            "imports": [
-              "*"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./adapters/index.js",
-            "imports": [
-              "*"
-            ],
-            "reExport": true
           }
         ],
         "exports": [],
@@ -9316,61 +6515,11 @@
           "* from ./core/index.js",
           "* from ./features/index.js",
           "* from ./search/index.js",
-          "* from ./agent/index.js",
-          "* from ./security/index.js",
-          "* from ./adapters/index.js"
+          "* from ./agent/index.js"
         ]
       }
     },
     "search": {
-      "src/search/BackgroundIndexer.ts": {
-        "description": "Background Indexer",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../core/GraphEventEmitter.js",
-            "imports": [
-              "GraphEventEmitter"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/index.js",
-            "imports": [
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
-            "file": "./TFIDFIndexManager.js",
-            "imports": [
-              "TFIDFIndexManager"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "makeTFIDFUpdater",
-          "BackgroundIndexer"
-        ],
-        "classes": [
-          "BackgroundIndexer"
-        ],
-        "interfaces": [
-          "IndexUpdater",
-          "BackgroundIndexerOptions"
-        ],
-        "functions": [
-          "makeTFIDFUpdater"
-        ]
-      },
       "src/search/BasicSearch.ts": {
         "description": "Basic Search",
         "externalDependencies": [],
@@ -9411,51 +6560,6 @@
         ],
         "classes": [
           "BasicSearch"
-        ]
-      },
-      "src/search/BloomFilter.ts": {
-        "description": "Bloom Filter",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "bloomParams",
-          "BloomFilter"
-        ],
-        "classes": [
-          "BloomFilter"
-        ],
-        "functions": [
-          "bloomParams"
-        ]
-      },
-      "src/search/BloomPreScreener.ts": {
-        "description": "Bloom Pre-Screener",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./BloomFilter.js",
-            "imports": [
-              "BloomFilter"
-            ]
-          }
-        ],
-        "exports": [
-          "BloomPreScreener"
-        ],
-        "classes": [
-          "BloomPreScreener"
-        ],
-        "interfaces": [
-          "BloomPreScreenerOptions"
         ]
       },
       "src/search/BM25Search.ts": {
@@ -9729,12 +6833,6 @@
             ]
           },
           {
-            "file": "../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
             "file": "../utils/constants.js",
             "imports": [
               "SEARCH_LIMITS"
@@ -9752,13 +6850,6 @@
             "imports": [
               "NGramIndex"
             ]
-          },
-          {
-            "file": "./BloomPreScreener.js",
-            "imports": [
-              "BloomPreScreener"
-            ],
-            "typeOnly": true
           }
         ],
         "exports": [
@@ -10235,16 +7326,6 @@
               "type LLMSearchExecutorOptions"
             ],
             "reExport": true
-          },
-          {
-            "file": "./SpellChecker.js",
-            "imports": [
-              "SpellChecker",
-              "type SpellCheckerConfig",
-              "type SuggestOptions",
-              "type SpellSuggestion"
-            ],
-            "reExport": true
           }
         ],
         "exports": [
@@ -10357,11 +7438,7 @@
           "type StructuredQuery",
           "type LLMQueryPlannerConfig",
           "LLMSearchExecutor",
-          "type LLMSearchExecutorOptions",
-          "SpellChecker",
-          "type SpellCheckerConfig",
-          "type SuggestOptions",
-          "type SpellSuggestion"
+          "type LLMSearchExecutorOptions"
         ],
         "reExported": [
           "BasicSearch",
@@ -10473,11 +7550,7 @@
           "type StructuredQuery",
           "type LLMQueryPlannerConfig",
           "LLMSearchExecutor",
-          "type LLMSearchExecutorOptions",
-          "SpellChecker",
-          "type SpellCheckerConfig",
-          "type SuggestOptions",
-          "type SpellSuggestion"
+          "type LLMSearchExecutorOptions"
         ]
       },
       "src/search/LLMQueryPlanner.ts": {
@@ -10534,67 +7607,6 @@
           "LLMSearchExecutorOptions"
         ]
       },
-      "src/search/LSH.ts": {
-        "description": "Locality-Sensitive Hashing (LSH)",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "LSHIndex"
-        ],
-        "classes": [
-          "LSHIndex"
-        ],
-        "interfaces": [
-          "LSHOptions",
-          "LSHResult"
-        ]
-      },
-      "src/search/MaterializedViews.ts": {
-        "description": "Materialized Search Views",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../core/GraphEventEmitter.js",
-            "imports": [
-              "GraphEventEmitter"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./SearchFilterChain.js",
-            "imports": [
-              "SearchFilterChain",
-              "SearchFilters"
-            ]
-          }
-        ],
-        "exports": [
-          "MaterializedViewsManager"
-        ],
-        "classes": [
-          "MaterializedViewsManager"
-        ],
-        "interfaces": [
-          "ViewDefinition",
-          "ViewSnapshot"
-        ]
-      },
       "src/search/NGramIndex.ts": {
         "description": "N-gram Index",
         "externalDependencies": [],
@@ -10610,58 +7622,11 @@
           "NGramIndexStats"
         ]
       },
-      "src/search/Node2Vec.ts": {
-        "description": "Node2Vec — biased-random-walk graph embeddings",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "KnowledgeGraph",
-              "Relation"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "computeNode2Vec",
-          "buildAdjacency",
-          "similarity",
-          "topKSimilar",
-          "BiasedRandomWalk",
-          "SkipGramTrainer"
-        ],
-        "classes": [
-          "BiasedRandomWalk",
-          "SkipGramTrainer"
-        ],
-        "interfaces": [
-          "Node2VecOptions",
-          "Node2VecResult"
-        ],
-        "functions": [
-          "computeNode2Vec",
-          "buildAdjacency",
-          "similarity",
-          "topKSimilar"
-        ]
-      },
       "src/search/OptimizedInvertedIndex.ts": {
         "description": "Optimized Inverted Index",
         "externalDependencies": [],
         "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../utils/IIndexHealth.js",
-            "imports": [
-              "IIndexHealth",
-              "IndexHealthSnapshot"
-            ],
-            "typeOnly": true
-          }
-        ],
+        "internalDependencies": [],
         "exports": [
           "OptimizedInvertedIndex"
         ],
@@ -10724,60 +7689,6 @@
           "LayerTiming",
           "ParallelSearchResult",
           "ParallelSearchOptions"
-        ]
-      },
-      "src/search/PartialIndexAdvisor.ts": {
-        "description": "Partial Index Advisor",
-        "externalDependencies": [
-          {
-            "package": "better-sqlite3",
-            "imports": [
-              "Database"
-            ]
-          }
-        ],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "PartialIndexAdvisor"
-        ],
-        "classes": [
-          "PartialIndexAdvisor"
-        ],
-        "interfaces": [
-          "FilterObservation",
-          "IndexRecommendation",
-          "PartialIndexAdvisorOptions"
-        ]
-      },
-      "src/search/PartitionedInvertedIndex.ts": {
-        "description": "Partitioned Inverted Index",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./OptimizedInvertedIndex.js",
-            "imports": [
-              "OptimizedInvertedIndex"
-            ]
-          },
-          {
-            "file": "../utils/IIndexHealth.js",
-            "imports": [
-              "IIndexHealth",
-              "IndexHealthSnapshot"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "PartitionedInvertedIndex"
-        ],
-        "classes": [
-          "PartitionedInvertedIndex"
-        ],
-        "interfaces": [
-          "PartitionedIndexSnapshot"
         ]
       },
       "src/search/ProximitySearch.ts": {
@@ -10880,39 +7791,6 @@
           "AdaptiveDepthConfig"
         ]
       },
-      "src/search/QueryLanguage.ts": {
-        "description": "Query Language DSL",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "Relation",
-              "KnowledgeGraph"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "parseDsl",
-          "executeDsl",
-          "runDsl",
-          "QueryDslError"
-        ],
-        "classes": [
-          "QueryDslError"
-        ],
-        "interfaces": [
-          "DslQuery"
-        ],
-        "functions": [
-          "parseDsl",
-          "executeDsl",
-          "runDsl"
-        ]
-      },
       "src/search/QueryLogger.ts": {
         "description": "Query Logger",
         "externalDependencies": [],
@@ -11005,30 +7883,6 @@
           "QueryPlanCacheOptions"
         ]
       },
-      "src/search/QueryPlanFormatter.ts": {
-        "description": "Query Plan Formatter",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/index.js",
-            "imports": [
-              "QueryPlan",
-              "SubQuery"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "formatQueryPlanAscii"
-        ],
-        "interfaces": [
-          "ExplainPlanResult"
-        ],
-        "functions": [
-          "formatQueryPlanAscii"
-        ]
-      },
       "src/search/QueryPlanner.ts": {
         "description": "Query Planner - generates execution plans for queries based on analysis.",
         "externalDependencies": [],
@@ -11100,13 +7954,6 @@
               "SearchFilterChain",
               "SearchFilters"
             ]
-          },
-          {
-            "file": "../utils/IIndexHealth.js",
-            "imports": [
-              "IndexHealthSnapshot"
-            ],
-            "typeOnly": true
           }
         ],
         "exports": [
@@ -11207,16 +8054,9 @@
           {
             "file": "../types/index.js",
             "imports": [
-              "Entity",
-              "EntityStatus"
+              "Entity"
             ],
             "typeOnly": true
-          },
-          {
-            "file": "../core/EntityStateMachine.js",
-            "imports": [
-              "DEFAULT_ENTITY_STATUS"
-            ]
           },
           {
             "file": "../utils/index.js",
@@ -11314,25 +8154,6 @@
             ]
           },
           {
-            "file": "./QueryAnalyzer.js",
-            "imports": [
-              "QueryAnalyzer"
-            ]
-          },
-          {
-            "file": "./QueryPlanner.js",
-            "imports": [
-              "QueryPlanner"
-            ]
-          },
-          {
-            "file": "./QueryPlanFormatter.js",
-            "imports": [
-              "formatQueryPlanAscii",
-              "ExplainPlanResult"
-            ]
-          },
-          {
             "file": "../agent/AccessTracker.js",
             "imports": [
               "AccessTracker"
@@ -11350,21 +8171,6 @@
           "SearchOptionsWithTracking"
         ]
       },
-      "src/search/SearchStream.ts": {
-        "description": "Search Stream",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "collectStream"
-        ],
-        "interfaces": [
-          "ScoredItem"
-        ],
-        "functions": [
-          "collectStream"
-        ]
-      },
       "src/search/SearchSuggestions.ts": {
         "description": "Search Suggestions",
         "externalDependencies": [],
@@ -11374,13 +8180,6 @@
             "file": "../core/GraphStorage.js",
             "imports": [
               "GraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../core/GraphEventEmitter.js",
-            "imports": [
-              "GraphEventEmitter"
             ],
             "typeOnly": true
           },
@@ -11396,10 +8195,6 @@
         ],
         "classes": [
           "SearchSuggestions"
-        ],
-        "interfaces": [
-          "CorrectedQuery",
-          "CorrectQueryOptions"
         ]
       },
       "src/search/SemanticSearch.ts": {
@@ -11451,86 +8246,6 @@
           "entityToText"
         ]
       },
-      "src/search/SPARQL.ts": {
-        "description": "SPARQL Minimal Subset",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "KnowledgeGraph",
-              "Relation"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "DEFAULT_PREFIXES",
-          "graphToTriples",
-          "parseSparql",
-          "evaluateSparql",
-          "runSparql",
-          "SparqlError"
-        ],
-        "classes": [
-          "SparqlError"
-        ],
-        "interfaces": [
-          "Triple",
-          "SparqlTriplePattern",
-          "SparqlFilter",
-          "SparqlSelectQuery",
-          "SparqlLimits"
-        ],
-        "functions": [
-          "graphToTriples",
-          "parseSparql",
-          "evaluateSparql",
-          "runSparql"
-        ],
-        "constants": [
-          "DEFAULT_PREFIXES"
-        ]
-      },
-      "src/search/SpellChecker.ts": {
-        "description": "SpellChecker — spell-correction layer for entity names and tags.",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "./NGramIndex.js",
-            "imports": [
-              "NGramIndex"
-            ]
-          },
-          {
-            "file": "../utils/index.js",
-            "imports": [
-              "levenshteinDistance"
-            ]
-          }
-        ],
-        "exports": [
-          "SpellChecker"
-        ],
-        "classes": [
-          "SpellChecker"
-        ],
-        "interfaces": [
-          "SpellCheckerConfig",
-          "SuggestOptions",
-          "SpellSuggestion"
-        ]
-      },
       "src/search/SymbolicSearch.ts": {
         "description": "Symbolic Search Layer - metadata-based filtering using structured predicates.",
         "externalDependencies": [],
@@ -11553,30 +8268,6 @@
         ],
         "interfaces": [
           "SymbolicResult"
-        ]
-      },
-      "src/search/SynonymManager.ts": {
-        "description": "Synonym Manager",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../core/GraphStorage.js",
-            "imports": [
-              "GraphStorage"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "SynonymManager"
-        ],
-        "classes": [
-          "SynonymManager"
-        ],
-        "interfaces": [
-          "ExpandedQuery",
-          "ExpandOptions"
         ]
       },
       "src/search/TemporalQueryParser.ts": {
@@ -11721,14 +8412,6 @@
               "calculateIDFFromTokenSets",
               "tokenize"
             ]
-          },
-          {
-            "file": "../utils/IIndexHealth.js",
-            "imports": [
-              "IIndexHealth",
-              "IndexHealthSnapshot"
-            ],
-            "typeOnly": true
           }
         ],
         "exports": [
@@ -11736,179 +8419,6 @@
         ],
         "classes": [
           "TFIDFIndexManager"
-        ]
-      },
-      "src/search/tiered/BrotliColdTier.ts": {
-        "description": "BrotliColdTier — Brotli-compressed JSONL shard `IIndexTier<string, V>`",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
-            "file": "../../utils/compressionUtil.js",
-            "imports": [
-              "compress",
-              "decompress"
-            ]
-          },
-          {
-            "file": "../../utils/durableWriteFile.js",
-            "imports": [
-              "durableWriteFile"
-            ]
-          },
-          {
-            "file": "./ITieredIndex.js",
-            "imports": [
-              "IIndexTier"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "BrotliColdTier"
-        ],
-        "classes": [
-          "BrotliColdTier"
-        ],
-        "interfaces": [
-          "BrotliColdTierOptions"
-        ]
-      },
-      "src/search/tiered/DiskWarmTier.ts": {
-        "description": "DiskWarmTier — JSONL-sidecar-backed `IIndexTier<string, V>`",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
-            "file": "../../utils/durableWriteFile.js",
-            "imports": [
-              "durableWriteFile"
-            ]
-          },
-          {
-            "file": "./ITieredIndex.js",
-            "imports": [
-              "IIndexTier"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "DiskWarmTier"
-        ],
-        "classes": [
-          "DiskWarmTier"
-        ],
-        "interfaces": [
-          "DiskWarmTierOptions"
-        ]
-      },
-      "src/search/tiered/ITieredIndex.ts": {
-        "description": "Tiered Index — Interface + Single-Tier Reference Impl",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "makeFreshStats",
-          "InMemoryTier",
-          "HotOnlyIndex"
-        ],
-        "classes": [
-          "InMemoryTier",
-          "HotOnlyIndex"
-        ],
-        "interfaces": [
-          "TierAccessStats",
-          "IIndexTier",
-          "ITieredIndex"
-        ],
-        "functions": [
-          "makeFreshStats"
-        ]
-      },
-      "src/search/tiered/LRUHotTier.ts": {
-        "description": "LRU Hot Tier",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./ITieredIndex.js",
-            "imports": [
-              "IIndexTier"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "LRUHotTier"
-        ],
-        "classes": [
-          "LRUHotTier"
-        ],
-        "interfaces": [
-          "LRUHotTierOptions"
-        ]
-      },
-      "src/search/tiered/TieredIndex.ts": {
-        "description": "Tiered Index Composer (hot → warm → cold)",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./ITieredIndex.js",
-            "imports": [
-              "IIndexTier",
-              "ITieredIndex",
-              "TierAccessStats",
-              "makeFreshStats"
-            ]
-          },
-          {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          }
-        ],
-        "exports": [
-          "buildTieredIndex",
-          "TieredIndex"
-        ],
-        "classes": [
-          "TieredIndex"
-        ],
-        "interfaces": [
-          "TieredIndexOptions",
-          "TieredIndexBuildOptions"
-        ],
-        "functions": [
-          "buildTieredIndex"
         ]
       },
       "src/search/VectorStore.ts": {
@@ -11945,52 +8455,6 @@
       }
     },
     "security": {
-      "src/security/ABACPolicy.ts": {
-        "description": "ABAC Policy",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "ABACPolicyError",
-          "ABACPolicy"
-        ],
-        "classes": [
-          "ABACPolicyError",
-          "ABACPolicy"
-        ],
-        "interfaces": [
-          "ABACContext",
-          "ABACCondition",
-          "ABACRule"
-        ]
-      },
-      "src/security/APIKeyStore.ts": {
-        "description": "API Key Store",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash",
-              "randomBytes",
-              "timingSafeEqual"
-            ]
-          }
-        ],
-        "internalDependencies": [],
-        "exports": [
-          "APIKeyStore"
-        ],
-        "classes": [
-          "APIKeyStore"
-        ],
-        "interfaces": [
-          "ValidationResult",
-          "KeyRecord",
-          "IssueOptions",
-          "IssueResult"
-        ]
-      },
       "src/security/index.ts": {
         "description": "Security Module — Barrel Export (η.6.3)",
         "externalDependencies": [],
@@ -12007,38 +8471,6 @@
               "type RedactionResult"
             ],
             "reExport": true
-          },
-          {
-            "file": "./ABACPolicy.js",
-            "imports": [
-              "ABACPolicy",
-              "type ABACContext",
-              "type ABACCondition",
-              "type ABACDecision",
-              "type ABACEffect",
-              "type ABACOp",
-              "type ABACRule"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./RowLevelFilter.js",
-            "imports": [
-              "RowLevelFilter",
-              "type RowPredicate"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "./APIKeyStore.js",
-            "imports": [
-              "APIKeyStore",
-              "type IssueOptions",
-              "type IssueResult",
-              "type KeyRecord",
-              "type ValidationResult"
-            ],
-            "reExport": true
           }
         ],
         "exports": [
@@ -12047,21 +8479,7 @@
           "type PiiPattern",
           "type PiiRedactorOptions",
           "type RedactionStats",
-          "type RedactionResult",
-          "ABACPolicy",
-          "type ABACContext",
-          "type ABACCondition",
-          "type ABACDecision",
-          "type ABACEffect",
-          "type ABACOp",
-          "type ABACRule",
-          "RowLevelFilter",
-          "type RowPredicate",
-          "APIKeyStore",
-          "type IssueOptions",
-          "type IssueResult",
-          "type KeyRecord",
-          "type ValidationResult"
+          "type RedactionResult"
         ],
         "reExported": [
           "PiiRedactor",
@@ -12069,21 +8487,7 @@
           "type PiiPattern",
           "type PiiRedactorOptions",
           "type RedactionStats",
-          "type RedactionResult",
-          "ABACPolicy",
-          "type ABACContext",
-          "type ABACCondition",
-          "type ABACDecision",
-          "type ABACEffect",
-          "type ABACOp",
-          "type ABACRule",
-          "RowLevelFilter",
-          "type RowPredicate",
-          "APIKeyStore",
-          "type IssueOptions",
-          "type IssueResult",
-          "type KeyRecord",
-          "type ValidationResult"
+          "type RedactionResult"
         ]
       },
       "src/security/PiiRedactor.ts": {
@@ -12106,27 +8510,6 @@
         ],
         "constants": [
           "DEFAULT_PII_PATTERNS"
-        ]
-      },
-      "src/security/RowLevelFilter.ts": {
-        "description": "Row-Level Filter",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "Relation"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "RowLevelFilter"
-        ],
-        "classes": [
-          "RowLevelFilter"
         ]
       }
     },
@@ -12152,11 +8535,6 @@
           }
         ],
         "exports": [
-          "MEMORY_TYPES",
-          "TRUST_LEVEL_ORDER",
-          "DEFAULT_TRUST_THRESHOLDS",
-          "compareTrustLevel",
-          "inferTrustLevel",
           "isProfileEntity",
           "isAgentEntity",
           "isSessionEntity",
@@ -12164,17 +8542,6 @@
           "isEpisodicMemory",
           "isSemanticMemory",
           "isProceduralMemory",
-          "toIsoDateTime",
-          "toPositiveInt",
-          "isProspectiveMemory",
-          "isFailureMemory",
-          "isPlanMemory",
-          "isReflectionMemory",
-          "isHeuristicMemory",
-          "isExclusionMemory",
-          "isDecisionMemory",
-          "isProjectContextMemory",
-          "isToolAffordanceMemory",
           "AccessContextBuilder"
         ],
         "classes": [
@@ -12198,30 +8565,6 @@
           "ForgetOptions",
           "DecayResult",
           "ForgetResult",
-          "ProspectiveEntity",
-          "FiredEvent",
-          "ObservationContext",
-          "FailureRecord",
-          "FailureEntity",
-          "GoalNode",
-          "GoalEvent",
-          "PlanRecord",
-          "PlanEntity",
-          "ReflectionRecord",
-          "ReflectionEntity",
-          "Heuristic",
-          "HeuristicEntity",
-          "ExclusionRule",
-          "ExclusionEntity",
-          "DecisionRecord",
-          "DecisionEntity",
-          "ProjectContextCommand",
-          "ProjectContextGlossaryTerm",
-          "ProjectContextRecord",
-          "ProjectContextEntity",
-          "ToolCallOutcome",
-          "ToolAffordanceRecord",
-          "ToolAffordanceEntity",
           "ConsolidateOptions",
           "ConsolidationResult",
           "SummarizationResult",
@@ -12242,31 +8585,13 @@
           "AgentMetadata"
         ],
         "functions": [
-          "compareTrustLevel",
-          "inferTrustLevel",
           "isProfileEntity",
           "isAgentEntity",
           "isSessionEntity",
           "isWorkingMemory",
           "isEpisodicMemory",
           "isSemanticMemory",
-          "isProceduralMemory",
-          "toIsoDateTime",
-          "toPositiveInt",
-          "isProspectiveMemory",
-          "isFailureMemory",
-          "isPlanMemory",
-          "isReflectionMemory",
-          "isHeuristicMemory",
-          "isExclusionMemory",
-          "isDecisionMemory",
-          "isProjectContextMemory",
-          "isToolAffordanceMemory"
-        ],
-        "constants": [
-          "MEMORY_TYPES",
-          "TRUST_LEVEL_ORDER",
-          "DEFAULT_TRUST_THRESHOLDS"
+          "isProceduralMemory"
         ]
       },
       "src/types/artifact.ts": {
@@ -12316,16 +8641,8 @@
             "reExport": true
           },
           {
-            "file": "./types.js",
-            "imports": [
-              "ENTITY_STATUS_TRANSITIONS"
-            ],
-            "reExport": true
-          },
-          {
             "file": "./agent-memory.js",
             "imports": [
-              "MEMORY_TYPES",
               "isAgentEntity",
               "isSessionEntity",
               "isProfileEntity",
@@ -12352,25 +8669,10 @@
               "createDetailedProgressReporter"
             ],
             "reExport": true
-          },
-          {
-            "file": "./result.js",
-            "imports": [
-              "ok",
-              "err",
-              "isOk",
-              "isErr",
-              "unwrap",
-              "unwrapOr",
-              "mapOk"
-            ],
-            "reExport": true
           }
         ],
         "exports": [
           "QueryTraceBuilder",
-          "ENTITY_STATUS_TRANSITIONS",
-          "MEMORY_TYPES",
           "isAgentEntity",
           "isSessionEntity",
           "isProfileEntity",
@@ -12382,19 +8684,10 @@
           "isArtifactEntity",
           "createProgressInfo",
           "createThrottledProgress",
-          "createDetailedProgressReporter",
-          "ok",
-          "err",
-          "isOk",
-          "isErr",
-          "unwrap",
-          "unwrapOr",
-          "mapOk"
+          "createDetailedProgressReporter"
         ],
         "reExported": [
           "QueryTraceBuilder",
-          "ENTITY_STATUS_TRANSITIONS",
-          "MEMORY_TYPES",
           "isAgentEntity",
           "isSessionEntity",
           "isProfileEntity",
@@ -12406,14 +8699,7 @@
           "isArtifactEntity",
           "createProgressInfo",
           "createThrottledProgress",
-          "createDetailedProgressReporter",
-          "ok",
-          "err",
-          "isOk",
-          "isErr",
-          "unwrap",
-          "unwrapOr",
-          "mapOk"
+          "createDetailedProgressReporter"
         ]
       },
       "src/types/procedure.ts": {
@@ -12447,30 +8733,6 @@
           "createProgressInfo",
           "createThrottledProgress",
           "createDetailedProgressReporter"
-        ]
-      },
-      "src/types/result.ts": {
-        "description": "Result<T, E> — discriminated-union return type for operations with",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "ok",
-          "err",
-          "isOk",
-          "isErr",
-          "unwrap",
-          "unwrapOr",
-          "mapOk"
-        ],
-        "functions": [
-          "ok",
-          "err",
-          "isOk",
-          "isErr",
-          "unwrap",
-          "unwrapOr",
-          "mapOk"
         ]
       },
       "src/types/search.ts": {
@@ -12515,9 +8777,7 @@
             "typeOnly": true
           }
         ],
-        "exports": [
-          "ENTITY_STATUS_TRANSITIONS"
-        ],
+        "exports": [],
         "interfaces": [
           "Entity",
           "DeduplicationOptions",
@@ -12593,9 +8853,6 @@
           "QueryAnalysis",
           "SubQuery",
           "QueryPlan"
-        ],
-        "constants": [
-          "ENTITY_STATUS_TRANSITIONS"
         ]
       }
     },
@@ -12647,22 +8904,6 @@
           "filterParallel"
         ]
       },
-      "src/utils/CachePressureCoordinator.ts": {
-        "description": "Cache Pressure Coordinator",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [
-          "CachePressureCoordinator"
-        ],
-        "classes": [
-          "CachePressureCoordinator"
-        ],
-        "interfaces": [
-          "PressureAwareCache",
-          "CachePressureSnapshot"
-        ]
-      },
       "src/utils/compressedCache.ts": {
         "description": "Compressed Cache Utility",
         "externalDependencies": [],
@@ -12700,86 +8941,6 @@
         "interfaces": [
           "CompressedCacheOptions",
           "CompressedCacheStats"
-        ]
-      },
-      "src/utils/compression/BrotliCompressionAdapter.ts": {
-        "description": "BrotliCompressionAdapter — Brotli-backed ICompressionAdapter",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "zlib",
-            "imports": [
-              "brotliCompressSync",
-              "brotliDecompressSync",
-              "constants"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "./ICompressionAdapter.js",
-            "imports": [
-              "ICompressionAdapter"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "BrotliCompressionAdapter"
-        ],
-        "classes": [
-          "BrotliCompressionAdapter"
-        ],
-        "interfaces": [
-          "BrotliCompressionAdapterOptions"
-        ]
-      },
-      "src/utils/compression/CompressedMap.ts": {
-        "description": "CompressedMap<K, V> — Hot/Cold Tiered Map with Compression",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./ICompressionAdapter.js",
-            "imports": [
-              "ICompressionAdapter",
-              "ZlibCompressionAdapter"
-            ]
-          }
-        ],
-        "exports": [
-          "CompressedMap"
-        ],
-        "classes": [
-          "CompressedMap"
-        ],
-        "interfaces": [
-          "CompressedMapOptions"
-        ]
-      },
-      "src/utils/compression/ICompressionAdapter.ts": {
-        "description": "Compression Adapter — Interface + Zlib Reference Impl",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "zlib",
-            "imports": [
-              "deflateSync",
-              "inflateSync"
-            ]
-          }
-        ],
-        "internalDependencies": [],
-        "exports": [
-          "ZlibCompressionAdapter",
-          "IdentityCompressionAdapter"
-        ],
-        "classes": [
-          "ZlibCompressionAdapter",
-          "IdentityCompressionAdapter"
-        ],
-        "interfaces": [
-          "ICompressionAdapter"
         ]
       },
       "src/utils/compressionUtil.ts": {
@@ -12895,62 +9056,6 @@
           "STREAMING_CONFIG"
         ]
       },
-      "src/utils/Diagnostics.ts": {
-        "description": "Diagnostics",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./IndexHealthMonitor.js",
-            "imports": [
-              "IndexHealthReport"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "buildDiagnosticsReport"
-        ],
-        "interfaces": [
-          "EntityCounts",
-          "TieredIndexStatsSnapshot",
-          "DiagnosticsReport"
-        ],
-        "functions": [
-          "buildDiagnosticsReport"
-        ]
-      },
-      "src/utils/durableWriteFile.ts": {
-        "description": "Durable file write helper",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "fs",
-            "imports": [
-              "promises"
-            ]
-          },
-          {
-            "module": "crypto",
-            "imports": [
-              "randomBytes"
-            ]
-          },
-          {
-            "module": "path",
-            "imports": [
-              "dirname"
-            ]
-          }
-        ],
-        "internalDependencies": [],
-        "exports": [
-          "durableWriteFile"
-        ],
-        "functions": [
-          "durableWriteFile"
-        ]
-      },
       "src/utils/entityUtils.ts": {
         "description": "Entity Utilities",
         "externalDependencies": [],
@@ -12982,12 +9087,6 @@
             "imports": [
               "EntityNotFoundError",
               "FileOperationError"
-            ]
-          },
-          {
-            "file": "./logger.js",
-            "imports": [
-              "logger"
             ]
           }
         ],
@@ -13124,7 +9223,6 @@
           "AttributionRequiredError",
           "VersionConflictError",
           "LowEntropyContentError",
-          "MemoryWriteBlockedError",
           "OperationCancelledError",
           "ErrorCode"
         ],
@@ -13145,7 +9243,6 @@
           "AttributionRequiredError",
           "VersionConflictError",
           "LowEntropyContentError",
-          "MemoryWriteBlockedError",
           "OperationCancelledError"
         ],
         "interfaces": [
@@ -13210,17 +9307,6 @@
           "applyPagination",
           "paginateArray",
           "getPaginationMeta"
-        ]
-      },
-      "src/utils/IIndexHealth.ts": {
-        "description": "Index Health interface.",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [],
-        "exports": [],
-        "interfaces": [
-          "IndexHealthSnapshot",
-          "IIndexHealth"
         ]
       },
       "src/utils/index.ts": {
@@ -14168,30 +10254,6 @@
           "ObservationIndex"
         ]
       },
-      "src/utils/IndexHealthMonitor.ts": {
-        "description": "Index Health Monitor",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./IIndexHealth.js",
-            "imports": [
-              "IndexHealthSnapshot"
-            ],
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "IndexHealthMonitor"
-        ],
-        "classes": [
-          "IndexHealthMonitor"
-        ],
-        "interfaces": [
-          "IndexHealthReport",
-          "IndexHealthSources"
-        ]
-      },
       "src/utils/logger.ts": {
         "description": "Simple logging utility for the Memory MCP Server",
         "externalDependencies": [],
@@ -14477,12 +10539,6 @@
               "EntityValidationIssue"
             ],
             "typeOnly": true
-          },
-          {
-            "file": "./logger.js",
-            "imports": [
-              "logger"
-            ]
           }
         ],
         "exports": [
@@ -14564,14 +10620,7 @@
           }
         ],
         "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./logger.js",
-            "imports": [
-              "logger"
-            ]
-          }
-        ],
+        "internalDependencies": [],
         "exports": [
           "batchProcess",
           "rateLimitedProcess",
@@ -14703,14 +10752,7 @@
           }
         ],
         "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./logger.js",
-            "imports": [
-              "logger"
-            ]
-          }
-        ],
+        "internalDependencies": [],
         "exports": [
           "getWorkerPoolManager",
           "WorkerPoolManager"
@@ -14798,35 +10840,28 @@
           "src/types/agent-memory.ts"
         ],
         [
-          "src/core/TransactionManager.ts",
-          "src/core/GraphStorage.ts",
-          "src/core/TransactionManager.ts"
-        ],
-        [
-          "src/agent/ConsolidationPipeline.ts",
           "src/agent/WorkingMemoryManager.ts",
           "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts"
+          "src/agent/ConsolidationPipeline.ts",
+          "src/agent/WorkingMemoryManager.ts"
+        ],
+        [
+          "src/core/GraphStorage.ts",
+          "src/core/TransactionManager.ts",
+          "src/core/GraphStorage.ts"
+        ],
+        [
+          "src/core/GraphStorage.ts",
+          "src/core/TransactionManager.ts",
+          "src/features/IOManager.ts",
+          "src/core/GraphStorage.ts"
         ]
       ],
-      "total": 4,
+      "total": 5,
       "runtimeCount": 1,
-      "typeOnlyCount": 3
+      "typeOnlyCount": 4
     },
     "layers": [
-      {
-        "name": "Adapters",
-        "files": [
-          "src/adapters/IDatabaseAdapter.ts",
-          "src/adapters/index.ts",
-          "src/adapters/IVectorDBAdapter.ts",
-          "src/adapters/LangChainMemoryAdapter.ts",
-          "src/adapters/MCPToolObserverAdapter.ts",
-          "src/adapters/pagination.ts",
-          "src/adapters/RateLimiter.ts",
-          "src/adapters/RestRouter.ts"
-        ]
-      },
       {
         "name": "Agent",
         "files": [
@@ -14846,17 +10881,13 @@
           "src/agent/ContextWindowManager.ts",
           "src/agent/DecayEngine.ts",
           "src/agent/DecayScheduler.ts",
-          "src/agent/DecisionManager.ts",
           "src/agent/DistillationPipeline.ts",
           "src/agent/DistillationPolicy.ts",
           "src/agent/DreamEngine.ts",
           "src/agent/EntropyFilter.ts",
           "src/agent/EpisodicMemoryManager.ts",
-          "src/agent/ExclusionManager.ts",
           "src/agent/ExperienceExtractor.ts",
           "src/agent/FailureDistillation.ts",
-          "src/agent/FailureManager.ts",
-          "src/agent/HeuristicManager.ts",
           "src/agent/ImportanceScorer.ts",
           "src/agent/index.ts",
           "src/agent/InMemoryBackend.ts",
@@ -14865,23 +10896,18 @@
           "src/agent/MemoryFormatter.ts",
           "src/agent/MemoryValidator.ts",
           "src/agent/MultiAgentMemoryManager.ts",
-          "src/agent/ObservationDedupManager.ts",
           "src/agent/ObserverPipeline.ts",
           "src/agent/PatternDetector.ts",
-          "src/agent/PlanManager.ts",
           "src/agent/procedural/index.ts",
           "src/agent/procedural/ProcedureManager.ts",
           "src/agent/procedural/ProcedureStore.ts",
           "src/agent/procedural/StepSequencer.ts",
           "src/agent/ProfileManager.ts",
-          "src/agent/ProjectContextManager.ts",
-          "src/agent/ProspectiveMemoryManager.ts",
           "src/agent/rbac/index.ts",
           "src/agent/rbac/PermissionMatrix.ts",
           "src/agent/rbac/RbacMiddleware.ts",
           "src/agent/rbac/RbacTypes.ts",
           "src/agent/rbac/RoleAssignmentStore.ts",
-          "src/agent/ReflectionManager.ts",
           "src/agent/retrieval/ActiveRetrievalController.ts",
           "src/agent/retrieval/index.ts",
           "src/agent/retrieval/QueryRewriter.ts",
@@ -14893,8 +10919,6 @@
           "src/agent/SessionQueryBuilder.ts",
           "src/agent/SQLiteBackend.ts",
           "src/agent/SummarizationService.ts",
-          "src/agent/ToolAffordanceManager.ts",
-          "src/agent/ToolCallObserver.ts",
           "src/agent/TrajectoryCompressor.ts",
           "src/agent/VisibilityResolver.ts",
           "src/agent/WorkingMemoryManager.ts",
@@ -14907,30 +10931,17 @@
       {
         "name": "Cli",
         "files": [
-          "src/cli/commands/cache.ts",
-          "src/cli/commands/check.ts",
-          "src/cli/commands/decision.ts",
-          "src/cli/commands/diag.ts",
           "src/cli/commands/entity.ts",
-          "src/cli/commands/exclusion.ts",
           "src/cli/commands/graph.ts",
           "src/cli/commands/helpers.ts",
-          "src/cli/commands/heuristic.ts",
           "src/cli/commands/hierarchy.ts",
           "src/cli/commands/index.ts",
-          "src/cli/commands/inspect.ts",
           "src/cli/commands/io.ts",
           "src/cli/commands/maintenance.ts",
           "src/cli/commands/observation.ts",
-          "src/cli/commands/observationDedup.ts",
-          "src/cli/commands/projectContext.ts",
-          "src/cli/commands/reindex.ts",
           "src/cli/commands/relation.ts",
           "src/cli/commands/search.ts",
-          "src/cli/commands/smoke.ts",
-          "src/cli/commands/spell.ts",
           "src/cli/commands/tag.ts",
-          "src/cli/commands/toolAffordance.ts",
           "src/cli/config.ts",
           "src/cli/formatters.ts",
           "src/cli/index.ts",
@@ -14941,45 +10952,31 @@
       {
         "name": "Core",
         "files": [
-          "src/core/columns/IColumnStore.ts",
-          "src/core/columns/JsonlColumnStore.ts",
           "src/core/EntityManager.ts",
-          "src/core/EntityProxy.ts",
-          "src/core/EntityStateMachine.ts",
           "src/core/GraphEventEmitter.ts",
           "src/core/GraphStorage.ts",
           "src/core/GraphTraversal.ts",
           "src/core/HierarchyManager.ts",
           "src/core/index.ts",
           "src/core/ManagerContext.ts",
-          "src/core/mmap/BufferMmapBackend.ts",
-          "src/core/mmap/FsReadMmapBackend.ts",
-          "src/core/mmap/IMmapBackend.ts",
           "src/core/ObservationManager.ts",
-          "src/core/ObservationStore.ts",
           "src/core/RefIndex.ts",
           "src/core/RelationManager.ts",
-          "src/core/segments/FileSegmentStorage.ts",
-          "src/core/segments/ISegmentStorage.ts",
           "src/core/SQLiteStorage.ts",
           "src/core/StorageFactory.ts",
           "src/core/TransactionManager.ts",
-          "src/core/TransitionLedger.ts",
-          "src/core/WriteAheadLog.ts"
+          "src/core/TransitionLedger.ts"
         ]
       },
       {
         "name": "Features",
         "files": [
           "src/features/AnalyticsManager.ts",
-          "src/features/AnomalyDetector.ts",
           "src/features/ArchiveManager.ts",
           "src/features/AuditLog.ts",
           "src/features/AutoLinker.ts",
-          "src/features/BackupManager.ts",
           "src/features/CompressionManager.ts",
           "src/features/ContradictionDetector.ts",
-          "src/features/CRDT.ts",
           "src/features/FactExtractor.ts",
           "src/features/FreshnessManager.ts",
           "src/features/GovernanceManager.ts",
@@ -15002,10 +10999,7 @@
       {
         "name": "Search",
         "files": [
-          "src/search/BackgroundIndexer.ts",
           "src/search/BasicSearch.ts",
-          "src/search/BloomFilter.ts",
-          "src/search/BloomPreScreener.ts",
           "src/search/BM25Search.ts",
           "src/search/BooleanSearch.ts",
           "src/search/EarlyTerminationManager.ts",
@@ -15018,56 +11012,37 @@
           "src/search/index.ts",
           "src/search/LLMQueryPlanner.ts",
           "src/search/LLMSearchExecutor.ts",
-          "src/search/LSH.ts",
-          "src/search/MaterializedViews.ts",
           "src/search/NGramIndex.ts",
-          "src/search/Node2Vec.ts",
           "src/search/OptimizedInvertedIndex.ts",
           "src/search/ParallelSearchExecutor.ts",
-          "src/search/PartialIndexAdvisor.ts",
-          "src/search/PartitionedInvertedIndex.ts",
           "src/search/ProximitySearch.ts",
           "src/search/QuantizedVectorStore.ts",
           "src/search/QueryAnalyzer.ts",
           "src/search/QueryCostEstimator.ts",
-          "src/search/QueryLanguage.ts",
           "src/search/QueryLogger.ts",
           "src/search/QueryParser.ts",
           "src/search/QueryPlanCache.ts",
-          "src/search/QueryPlanFormatter.ts",
           "src/search/QueryPlanner.ts",
           "src/search/RankedSearch.ts",
           "src/search/ReflectionManager.ts",
           "src/search/SavedSearchManager.ts",
           "src/search/SearchFilterChain.ts",
           "src/search/SearchManager.ts",
-          "src/search/SearchStream.ts",
           "src/search/SearchSuggestions.ts",
           "src/search/SemanticSearch.ts",
-          "src/search/SPARQL.ts",
-          "src/search/SpellChecker.ts",
           "src/search/SymbolicSearch.ts",
-          "src/search/SynonymManager.ts",
           "src/search/TemporalQueryParser.ts",
           "src/search/TemporalSearch.ts",
           "src/search/TFIDFEventSync.ts",
           "src/search/TFIDFIndexManager.ts",
-          "src/search/tiered/BrotliColdTier.ts",
-          "src/search/tiered/DiskWarmTier.ts",
-          "src/search/tiered/ITieredIndex.ts",
-          "src/search/tiered/LRUHotTier.ts",
-          "src/search/tiered/TieredIndex.ts",
           "src/search/VectorStore.ts"
         ]
       },
       {
         "name": "Security",
         "files": [
-          "src/security/ABACPolicy.ts",
-          "src/security/APIKeyStore.ts",
           "src/security/index.ts",
-          "src/security/PiiRedactor.ts",
-          "src/security/RowLevelFilter.ts"
+          "src/security/PiiRedactor.ts"
         ]
       },
       {
@@ -15078,7 +11053,6 @@
           "src/types/index.ts",
           "src/types/procedure.ts",
           "src/types/progress.ts",
-          "src/types/result.ts",
           "src/types/search.ts",
           "src/types/types.ts"
         ]
@@ -15088,24 +11062,16 @@
         "files": [
           "src/utils/AsyncMutex.ts",
           "src/utils/BatchProcessor.ts",
-          "src/utils/CachePressureCoordinator.ts",
           "src/utils/compressedCache.ts",
-          "src/utils/compression/BrotliCompressionAdapter.ts",
-          "src/utils/compression/CompressedMap.ts",
-          "src/utils/compression/ICompressionAdapter.ts",
           "src/utils/compressionUtil.ts",
           "src/utils/constants.ts",
-          "src/utils/Diagnostics.ts",
-          "src/utils/durableWriteFile.ts",
           "src/utils/entityUtils.ts",
           "src/utils/EntityValidator.ts",
           "src/utils/errors.ts",
           "src/utils/errorSuggestions.ts",
           "src/utils/formatters.ts",
-          "src/utils/IIndexHealth.ts",
           "src/utils/index.ts",
           "src/utils/indexes.ts",
-          "src/utils/IndexHealthMonitor.ts",
           "src/utils/logger.ts",
           "src/utils/MemoryMonitor.ts",
           "src/utils/operationUtils.ts",
@@ -15132,21 +11098,21 @@
     ]
   },
   "statistics": {
-    "totalTypeScriptFiles": 260,
-    "totalModules": 11,
-    "totalLinesOfCode": 85611,
-    "totalExports": 1359,
-    "totalClasses": 226,
-    "totalInterfaces": 540,
-    "totalFunctions": 253,
-    "totalTypeGuards": 28,
+    "totalTypeScriptFiles": 183,
+    "totalModules": 10,
+    "totalLinesOfCode": 62889,
+    "totalExports": 1104,
+    "totalClasses": 156,
+    "totalInterfaces": 384,
+    "totalFunctions": 189,
+    "totalTypeGuards": 17,
     "totalEnums": 4,
-    "totalConstants": 70,
-    "totalReExports": 808,
-    "totalTypeOnlyImports": 356,
+    "totalConstants": 63,
+    "totalReExports": 699,
+    "totalTypeOnlyImports": 269,
     "runtimeCircularDeps": 1,
-    "typeOnlyCircularDeps": 3,
-    "unusedFilesCount": 18,
-    "unusedExportsCount": 469
+    "typeOnlyCircularDeps": 4,
+    "unusedFilesCount": 2,
+    "unusedExportsCount": 352
   }
 }

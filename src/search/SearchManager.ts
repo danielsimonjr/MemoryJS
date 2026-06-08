@@ -17,9 +17,6 @@ import { FuzzySearch } from './FuzzySearch.js';
 import { SearchSuggestions } from './SearchSuggestions.js';
 import { SavedSearchManager } from './SavedSearchManager.js';
 import { QueryCostEstimator } from './QueryCostEstimator.js';
-import { QueryAnalyzer } from './QueryAnalyzer.js';
-import { QueryPlanner } from './QueryPlanner.js';
-import { formatQueryPlanAscii, type ExplainPlanResult } from './QueryPlanFormatter.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
 
 /**
@@ -55,9 +52,6 @@ export class SearchManager {
   readonly searchSuggestions: SearchSuggestions;
   readonly savedSearchManager: SavedSearchManager;
   readonly queryEstimator: QueryCostEstimator;
-  // Private — only exposed via explainPlan().
-  private readonly queryAnalyzer: QueryAnalyzer;
-  private readonly queryPlanner: QueryPlanner;
   private storage: GraphStorage;
   private accessTracker?: AccessTracker;
   private temporalSearch: TemporalSearch;
@@ -71,27 +65,7 @@ export class SearchManager {
     this.searchSuggestions = new SearchSuggestions(storage);
     this.savedSearchManager = new SavedSearchManager(savedSearchesFilePath, this.basicSearch);
     this.queryEstimator = new QueryCostEstimator();
-    this.queryAnalyzer = new QueryAnalyzer();
-    this.queryPlanner = new QueryPlanner();
     this.temporalSearch = new TemporalSearch(storage);
-  }
-
-  /**
-   * Build and render the execution plan that `SearchManager` would use for a
-   * given query. Useful for debugging slow queries and surfacing the plan
-   * choices in the CLI.
-   *
-   * Reuses the existing `QueryAnalyzer` -> `QueryPlanner` pipeline; does not
-   * introduce a parallel plan model. The returned `json` is the same
-   * `QueryPlan` shape consumed by the rest of the search subsystem.
-   *
-   * @param query - Natural-language query string.
-   * @returns An object with an ASCII tree (`ascii`) and the underlying plan (`json`).
-   */
-  explainPlan(query: string): ExplainPlanResult {
-    const analysis = this.queryAnalyzer.analyze(query);
-    const plan = this.queryPlanner.createPlan(query, analysis);
-    return { ascii: formatQueryPlanAscii(plan), json: plan };
   }
 
   /**

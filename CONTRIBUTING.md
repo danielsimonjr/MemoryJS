@@ -277,66 +277,23 @@ function normalizeQuery(query: string): string {
 
 ### Error Handling
 
-MemoryJS has **one error-signalling contract**. New code must follow it;
-existing code is being migrated to it (API audit Theme 1 / Theme 5).
-
-**1. `throw` for programmer errors.** Bad arguments, invariant violations,
-"this should never happen" states — anything a caller cannot reasonably
-recover from and should not have caused. Use the custom error classes from
-`utils/errors.ts` with a meaningful, specific message.
+- Use custom error classes from `utils/errors.ts`
+- Include meaningful error messages
+- Don't swallow errors silently
 
 ```typescript
 import { EntityNotFoundError, ValidationError } from '../utils/errors.js';
 
-// Good — specific custom error
-if (importance < 0 || importance > 10) {
-  throw new InvalidImportanceError(importance);
+// Good
+if (!entity) {
+  throw new EntityNotFoundError(`Entity '${name}' not found`);
 }
 
-// Avoid — bare Error with a vague message
-if (importance < 0 || importance > 10) {
-  throw new Error('bad importance');
-}
-```
-
-**2. `return Result<T, E>` for expected domain failures.** Outcomes the
-caller is *meant* to branch on — not found, validation failed, conflict,
-"vanished mid-update" — are not exceptional. Return a `Result<T, E>`
-(`src/types/result.ts`): a discriminated union the caller narrows with a
-plain `if (result.ok)`.
-
-```typescript
-import { ok, err, type Result } from '../types/result.js';
-
-function resolveAlias(raw: string): Result<string, 'unknown-alias'> {
-  const canonical = this.aliases.get(raw);
-  return canonical ? ok(canonical) : err('unknown-alias');
-}
-
-const r = resolveAlias(input);
-if (r.ok) {
-  use(r.value);
-} else {
-  logger.debug(`alias miss: ${r.error}`);
+// Avoid
+if (!entity) {
+  throw new Error('not found');
 }
 ```
-
-Discriminated unions for richer outcomes (`MarkResolvedResult`,
-`CancelResult`, `ArchiveReflectionResult`) follow the same spirit — they
-predate `Result<T, E>` and are equally acceptable where a small fixed set
-of named outcomes is clearer than `Result`.
-
-**3. Never swallow an error silently.** A bare `catch {}` or an ignored
-`Promise<boolean>` return is a bug. At minimum, re-emit on an error
-channel — `logger.warn`/`logger.error`, a `StageResult.errors[]` entry, an
-event, or a `Result` failure. A *deliberate* fire-and-forget discard must
-carry an `// eslint-disable-next-line ... -- <reason>` comment explaining
-why a failure is genuinely don't-care there (see
-`memoryjs/no-unused-updateentity-return`).
-
-**4. The absent-value sentinel is `T | undefined`, not `T | null`.** It
-matches `Map.get`, is TypeScript-idiomatic, and lets callers use a single
-`?? ` / `!= null`-free guard. Do not introduce new `T | null` returns.
 
 ---
 

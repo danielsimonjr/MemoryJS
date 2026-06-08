@@ -10,11 +10,9 @@
 import type { Entity, KnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { levenshteinDistance } from '../utils/index.js';
-import { logger } from '../utils/logger.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import { NGramIndex } from './NGramIndex.js';
-import type { BloomPreScreener } from './BloomPreScreener.js';
 import workerpool, { type Pool } from '@danielsimonjr/workerpool';
 import { fileURLToPath } from 'url';
 import { dirname, join, sep, normalize } from 'path';
@@ -137,18 +135,6 @@ export class FuzzySearch {
    */
   private ngramThreshold: number;
 
-  /**
-   * Optional Bloom pre-screener. When attached via
-   * `setBloomPreScreener`, the candidate-set is intersected with the
-   * pre-screener's `intersectCandidates(query)` BEFORE the Levenshtein
-   * scan — entities whose Bloom filter says a query term is absent
-   * are skipped without a downstream comparison.
-   *
-   * Opt-in: callers must build the screener and attach it explicitly;
-   * default behaviour (no screener) matches the pre-Phase-3 path.
-   */
-  private bloomPreScreener: BloomPreScreener | null = null;
-
   constructor(private storage: GraphStorage, options: FuzzySearchOptions = {}) {
     this.useWorkerPool = options.useWorkerPool ?? true;
     this.ngramIndex = options.ngramIndex ?? null;
@@ -229,22 +215,6 @@ export class FuzzySearch {
    */
   clearCache(): void {
     this.fuzzyResultCache.clear();
-  }
-
-  /**
-   * Attach a `BloomPreScreener` for opt-in candidate pre-screening.
-   * Pass `null` to detach. The screener narrows the candidate set
-   * before the Levenshtein scan; correctness is preserved because
-   * Levenshtein re-validates every candidate.
-   */
-  setBloomPreScreener(screener: BloomPreScreener | null): void {
-    this.bloomPreScreener = screener;
-    this.fuzzyResultCache.clear(); // candidate-set change invalidates cache
-  }
-
-  /** Whether a `BloomPreScreener` is currently attached. */
-  hasBloomPreScreener(): boolean {
-    return this.bloomPreScreener !== null;
   }
 
   /**
@@ -335,21 +305,6 @@ export class FuzzySearch {
       // If the NGramIndex returns zero candidates, fall back to full scan to
       // avoid missing results (can happen for very short queries or very high
       // threshold values).
-    }
-
-    // Phase 4 follow-up: optional Bloom pre-screen layered AFTER the
-    // NGram prefilter. The Bloom filter operates on EXACT-match
-    // tokens — but fuzzy search is specifically for queries that
-    // DON'T exact-match (e.g. "Alise" finding "Alice" at Levenshtein
-    // distance 1). When the screener returns zero candidates we
-    // therefore fall back to the larger candidate set rather than
-    // trust the empty result; Levenshtein then has the chance to
-    // find tolerant matches the Bloom filter couldn't see.
-    if (this.bloomPreScreener && this.bloomPreScreener.isBuilt()) {
-      const screened = new Set(this.bloomPreScreener.intersectCandidates(query));
-      if (screened.size > 0 && screened.size < candidateEntities.length) {
-        candidateEntities = candidateEntities.filter((e) => screened.has(e.name));
-      }
     }
 
     // Phase 7 Sprint 3: Use worker pool for large graphs with low thresholds
@@ -518,7 +473,7 @@ export class FuzzySearch {
       return entities.filter(e => matchedNames.has(e.name));
     } catch (error) {
       // Worker execution failed - fall back to single-threaded mode
-      logger.warn(
+      console.warn(
         `Worker pool execution failed, falling back to single-threaded fuzzy search: ${
           error instanceof Error ? error.message : String(error)
         }`

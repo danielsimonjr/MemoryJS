@@ -228,7 +228,6 @@ export class FreshnessManager {
       confidence: 1.0,
     };
 
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await storage.updateEntity(entityName, updates as Record<string, unknown>);
 
     // Return the annotated refreshed entity (createdAt kept from original entity)

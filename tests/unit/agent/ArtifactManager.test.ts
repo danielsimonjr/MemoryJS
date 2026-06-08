@@ -15,7 +15,6 @@ import { tmpdir } from 'os';
 
 import { ArtifactManager } from '../../../src/agent/ArtifactManager.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
-import { ManagerContext } from '../../../src/core/ManagerContext.js';
 import { RefIndex } from '../../../src/core/RefIndex.js';
 import type { IGraphStorage, Entity, KnowledgeGraph } from '../../../src/types/types.js';
 import { isArtifactEntity } from '../../../src/types/artifact.js';
@@ -302,7 +301,7 @@ describe('ArtifactManager', () => {
         description: 'Shell output from step 1',
       });
 
-      const refs = await refIndex.listRefs(artifact.name);
+      const refs = await refIndex.listRefs({ entityName: artifact.name });
       expect(refs[0]?.description).toBe('Shell output from step 1');
     });
 
@@ -313,7 +312,7 @@ describe('ArtifactManager', () => {
         artifactType: 'api_response',
       });
 
-      const refs = await refIndex.listRefs(artifact.name);
+      const refs = await refIndex.listRefs({ entityName: artifact.name });
       expect(refs[0]?.description).toBeTruthy();
     });
   });
@@ -599,17 +598,15 @@ describe('ArtifactManager', () => {
   // ----------------------------------------------------------
 
   describe('ManagerContext — artifactManager lazy getter', () => {
-    // Static-imported above. As of v2.1.0 the ManagerContext module
-    // graph carries ~14 lazy managers; deferring the import to inside
-    // the test body cold-loaded that graph on first access and tripped
-    // vitest's 30s default on Windows / Dropbox. Static import moves
-    // the load to file parse time. 60s budget is defensive headroom.
     it('ManagerContext exposes an artifactManager getter', async () => {
-      const memPath = join(dir, 'test-memory.jsonl');
+      const { ManagerContext } = await import('../../../src/core/ManagerContext.js');
+      const { join: pathJoin } = await import('path');
+      const memPath = pathJoin(dir, 'test-memory.jsonl');
+
       const ctx = new ManagerContext(memPath);
       expect(ctx.artifactManager).toBeDefined();
       // Same instance on second access (lazy singleton)
       expect(ctx.artifactManager).toBe(ctx.artifactManager);
-    }, 60_000);
+    });
   });
 });

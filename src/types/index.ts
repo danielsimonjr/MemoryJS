@@ -136,9 +136,7 @@ export type {
   QueryPlan,
   // Observation deduplication types
   DeduplicationOptions,
-  EntityStatus,
 } from './types.js';
-export { ENTITY_STATUS_TRANSITIONS } from './types.js';
 
 // Agent Memory Types (Phase 1 - Agent Memory System)
 export type {
@@ -211,7 +209,6 @@ export type {
 
 // Agent Memory Type Guards and Classes
 export {
-  MEMORY_TYPES,
   isAgentEntity,
   isSessionEntity,
   isProfileEntity,
@@ -241,8 +238,3 @@ export {
   createThrottledProgress,
   createDetailedProgressReporter,
 } from './progress.js';
-
-// Result<T, E> — discriminated-union return type for expected domain
-// failures (see CONTRIBUTING.md > Error Handling).
-export type { Result } from './result.js';
-export { ok, err, isOk, isErr, unwrap, unwrapOr, mapOk } from './result.js';

@@ -1,4 +1,4 @@
-name: TypeScript
+name: Python
 
 on:
   push:
@@ -15,11 +15,12 @@ jobs:
       packages: ${{ steps.find-packages.outputs.packages }}
     steps:
       - uses: actions/checkout@v4
-      - name: Find JS packages
+
+      - name: Find Python packages
         id: find-packages
         working-directory: src
         run: |
-          PACKAGES=$(find . -name package.json -not -path "*/node_modules/*" -exec dirname {} \; | sed 's/^\.\///' | jq -R -s -c 'split("\n")[:-1]')
+          PACKAGES=$(find . -name pyproject.toml -exec dirname {} \; | sed 's/^\.\///' | jq -R -s -c 'split("\n")[:-1]')
           echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
 
   test:
@@ -32,30 +33,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: 22
-          cache: npm
+          python-version-file: "src/${{ matrix.package }}/.python-version"
 
       - name: Install dependencies
         working-directory: src/${{ matrix.package }}
-        run: npm ci
+        run: uv sync --frozen --all-extras --dev
 
       - name: Check if tests exist
         id: check-tests
         working-directory: src/${{ matrix.package }}
         run: |
-          if npm run test --silent 2>/dev/null; then
+          if [ -d "tests" ] || [ -d "test" ] || grep -q "pytest" pyproject.toml; then
             echo "has-tests=true" >> $GITHUB_OUTPUT
           else
             echo "has-tests=false" >> $GITHUB_OUTPUT
           fi
-        continue-on-error: true
 
       - name: Run tests
         if: steps.check-tests.outputs.has-tests == 'true'
         working-directory: src/${{ matrix.package }}
-        run: npm test
+        run: uv run pytest
 
   build:
     needs: [detect-packages, test]
@@ -67,48 +70,52 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          node-version: 22
-          cache: npm
+          python-version-file: "src/${{ matrix.package }}/.python-version"
 
       - name: Install dependencies
         working-directory: src/${{ matrix.package }}
-        run: npm ci
+        run: uv sync --frozen --all-extras --dev
+
+      - name: Run pyright
+        working-directory: src/${{ matrix.package }}
+        run: uv run --frozen pyright
 
       - name: Build package
         working-directory: src/${{ matrix.package }}
-        run: npm run build
+        run: uv build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.package }}
+          path: src/${{ matrix.package }}/dist/
 
   publish:
     runs-on: ubuntu-latest
     needs: [build, detect-packages]
     if: github.event_name == 'release'
-    environment: release
 
     strategy:
       matrix:
         package: ${{ fromJson(needs.detect-packages.outputs.packages) }}
     name: Publish ${{ matrix.package }}
 
+    environment: release
     permissions:
-      contents: read
-      id-token: write
+      id-token: write # Required for trusted publishing
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
         with:
-          node-version: 22
-          cache: npm
-          registry-url: "https://registry.npmjs.org"
+          name: dist-${{ matrix.package }}
+          path: dist/
 
-      - name: Install dependencies
-        working-directory: src/${{ matrix.package }}
-        run: npm ci
-
-      - name: Publish package
-        working-directory: src/${{ matrix.package }}
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

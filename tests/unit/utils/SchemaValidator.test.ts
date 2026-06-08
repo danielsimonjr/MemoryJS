@@ -362,30 +362,6 @@ describe('SchemaValidator', () => {
       expect(results.get('Alice')?.entity.name).toBe('Alice');
       expect(results.get('Bob')?.entity.name).toBe('Bob');
     });
-
-    it('should flag duplicate entity names instead of silently dropping them', () => {
-      // A Map keyed by name cannot structurally hold duplicates — the bug
-      // was that later occurrences silently overwrote earlier ones, so a
-      // *validator* hid the exact problem it exists to catch.
-      const entities = [
-        createEntity({ name: 'Dup' }),
-        createEntity({ name: 'Unique' }),
-        createEntity({ name: 'Dup' }),
-        createEntity({ name: 'Dup' }),
-      ];
-      const results = validator.validateAll(entities);
-
-      const dup = results.get('Dup');
-      expect(dup).toBeDefined();
-      expect(dup?.isValid).toBe(false);
-      const dupError = dup?.errors.find((e) => e.rule === 'unique-name');
-      expect(dupError).toBeDefined();
-      expect(dupError?.field).toBe('name');
-      expect(dupError?.message).toContain('3'); // 3 entities share the name
-
-      // The non-duplicated entity is unaffected.
-      expect(results.get('Unique')?.errors.some((e) => e.rule === 'unique-name')).toBe(false);
-    });
   });
 
   describe('Error Messages', () => {

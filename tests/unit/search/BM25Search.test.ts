@@ -218,7 +218,7 @@ describe('BM25Search', () => {
       await bm25.buildIndex();
       const statsBefore = bm25.getIndexStats();
 
-      const removed = bm25.removeDocument('Machine_Learning_Doc');
+      const removed = bm25.remove('Machine_Learning_Doc');
       expect(removed).toBe(true);
 
       const statsAfter = bm25.getIndexStats();
@@ -227,7 +227,7 @@ describe('BM25Search', () => {
 
     it('should return false when removing non-existent entity', async () => {
       await bm25.buildIndex();
-      const removed = bm25.removeDocument('Non_Existent');
+      const removed = bm25.remove('Non_Existent');
       expect(removed).toBe(false);
     });
   });
@@ -244,47 +244,6 @@ describe('BM25Search', () => {
       expect(STOPWORDS.has('machine')).toBe(false);
       expect(STOPWORDS.has('learning')).toBe(false);
       expect(STOPWORDS.has('python')).toBe(false);
-    });
-  });
-
-  describe('Incremental updates (addDocument / removeDocument / updateDocument)', () => {
-    it('addDocument inserts a new document into a built index', async () => {
-      await bm25.buildIndex();
-      const before = bm25.getIndexStats()!.documents;
-      bm25.addDocument({ name: 'Inserted', entityType: 'note', observations: ['fresh content here'] });
-      expect(bm25.getIndexStats()!.documents).toBe(before + 1);
-    });
-
-    it('addDocument before buildIndex is a no-op (mirrors TFIDFIndexManager)', () => {
-      const fresh = new BM25Search(storage);
-      fresh.addDocument({ name: 'X', entityType: 'note', observations: ['hello'] });
-      expect(fresh.getIndexStats()).toBeNull();
-    });
-
-    it('addDocument is idempotent on repeat calls for the same entity', async () => {
-      await bm25.buildIndex();
-      const before = bm25.getIndexStats()!.documents;
-      const entity = { name: 'Twice', entityType: 'note', observations: ['hello world'] };
-      bm25.addDocument(entity);
-      bm25.addDocument(entity);
-      expect(bm25.getIndexStats()!.documents).toBe(before + 1);
-    });
-
-    it('updateDocument is a no-op for an entity not yet in the index', async () => {
-      await bm25.buildIndex();
-      const before = bm25.getIndexStats()!.documents;
-      bm25.updateDocument({ name: 'NotInIndex', entityType: 'note', observations: ['x'] });
-      expect(bm25.getIndexStats()!.documents).toBe(before);
-    });
-
-    it('removeDocument followed by addDocument round-trips the document count', async () => {
-      await bm25.buildIndex();
-      const before = bm25.getIndexStats()!.documents;
-      const inserted = { name: 'RoundTrip', entityType: 'note', observations: ['transient body'] };
-      bm25.addDocument(inserted);
-      expect(bm25.getIndexStats()!.documents).toBe(before + 1);
-      expect(bm25.removeDocument('RoundTrip')).toBe(true);
-      expect(bm25.getIndexStats()!.documents).toBe(before);
     });
   });
 

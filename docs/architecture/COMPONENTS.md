@@ -1,7 +1,7 @@
 # MemoryJS - Component Reference
 
-**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
-**Last Updated**: 2026-05-14
+**Version**: 1.14.0 + Unreleased
+**Last Updated**: 2026-04-25
 
 ---
 
@@ -24,32 +24,28 @@ MemoryJS follows a layered architecture with specialized components:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  adapters/         │  External-system adapters (4 files)    │
+│  agent/            │  Agent memory system (61 files)        │
 ├─────────────────────────────────────────────────────────────┤
-│  agent/            │  Agent memory system (66 files)        │
+│  core/             │  Central managers and storage (14 files)│
 ├─────────────────────────────────────────────────────────────┤
-│  core/             │  Central managers + storage (25 files) │
+│  search/           │  Search implementations (37 files)     │
 ├─────────────────────────────────────────────────────────────┤
-│  search/           │  Search implementations (55 files)     │
+│  features/         │  Advanced capabilities (17 files)      │
 ├─────────────────────────────────────────────────────────────┤
-│  features/         │  Advanced capabilities (20 files)      │
+│  utils/            │  Shared utilities (26 files)           │
 ├─────────────────────────────────────────────────────────────┤
-│  utils/            │  Shared utilities (34 files)           │
+│  types/            │  TypeScript definitions (7 files)      │
 ├─────────────────────────────────────────────────────────────┤
-│  types/            │  TypeScript definitions (8 files)      │
-├─────────────────────────────────────────────────────────────┤
-│  security/         │  PII / ABAC / RLS / API keys (5 files) │
+│  security/         │  PII redaction (2 files; η.6.3)        │
 ├─────────────────────────────────────────────────────────────┤
 │  cli/              │  CLI binary commands (16 files)        │
-├─────────────────────────────────────────────────────────────┤
-│  entry/            │  Library entry point (1 file)          │
 ├─────────────────────────────────────────────────────────────┤
 │  workers/          │  Web workers (2 files)                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 236 TypeScript files | 79,841 LOC | 1,262 exports | 214 classes | 501 interfaces
-(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-05-14; see `TEST_COVERAGE.md` for test counts)
+**Total:** 183 TypeScript files | 62,889 LOC | 1,104 exports | 156 classes | 384 interfaces | 6,157 passing tests
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`)
 
 ### New since v1.13: dedicated sub-modules under `agent/`
 
@@ -59,15 +55,6 @@ MemoryJS follows a layered architecture with specialized components:
 - `agent/world/` — `WorldModelManager` + `WorldStateSnapshot` (3B.7)
 - `agent/rbac/` — `RbacMiddleware` + `RoleAssignmentStore` + `PermissionMatrix` (η.6.1)
 - `agent/collaboration/` — `CollaborationAuditEnforcer` (η.5.5.d)
-
-### Dedicated sub-modules under `core/` and `utils/`
-
-- `core/mmap/` — `IMmapBackend` + `FsReadMmapBackend`
-- `core/segments/` — `FileSegmentStorage` (FNV-routed JSONL shards)
-- `core/columns/` — `IColumnStore<T>` + `JsonlColumnStore` + `InMemoryColumnStore` + `ObservationColumn`
-- `core/tiered/` — `ITieredIndex` + `LRUHotTier` + `DiskWarmTier` + `BrotliColdTier`
-- `utils/compression/` — `ICompressionAdapter` + `ZlibCompressionAdapter` + `IdentityCompressionAdapter` + `CompressedMap`
-- `features/BackupManager.ts` — extracted from `IOManager`
 
 ---
 
@@ -294,11 +281,10 @@ export class ConsolidationPipeline {
 ```typescript
 export class AccessTracker {
   async recordAccess(entityName: string, context?: AccessContext): Promise<void>
-  getAccessStats(entityName: string): AccessStats     // v2.0.0: synchronous (was Promise)
+  async getAccessStats(entityName: string): Promise<AccessStats>
   calculateRecencyScore(entityName: string, halfLifeHours?: number): number
   async getFrequentlyAccessed(limit: number): Promise<Entity[]>
   async getRecentlyAccessed(limit: number): Promise<Entity[]>
-  flush(): void                                       // v2.0.0: synchronous (was Promise)
 }
 ```
 
@@ -623,130 +609,6 @@ export class VisibilityResolver {
 Visibility rules: `private` → owner only; `team` → same team members; `org` → same org members; `shared` → any registered agent; `public` → unrestricted.
 
 ---
-
-### ProspectiveMemoryManager (`agent/ProspectiveMemoryManager.ts`)
-
-**Purpose**: Intentions-to-act at a future time / event / condition. Phase 1 prospective memory. Catalog Type 4.
-
-```typescript
-export class ProspectiveMemoryManager {
-  constructor(storage: IGraphStorage, config?: ProspectiveMemoryConfig)
-
-  async schedule(intention: ProspectiveInput, options?: ScheduleOptions): Promise<ProspectiveEntity>
-  async fire(id: string, result?: unknown): Promise<MarkResolvedResult>
-  async cancel(id: string, reason?: string): Promise<CancelResult>
-  async expireDueIntentions(): Promise<number>
-  async getPending(filter?: { sessionId?: string; agentId?: string }): Promise<ProspectiveEntity[]>
-  async getFired(filter?: { sessionId?: string }): Promise<ProspectiveEntity[]>
-}
-```
-
-`ProspectiveLifecycle` discriminated union (`pending` / `fired` / `cancelled` / `expired`); `ProspectivePromotionStage` promotes fired `inject-context` actions to `'episodic'` with `prospective-fulfilled` tag.
-
----
-
-### FailureManager (`agent/FailureManager.ts`)
-
-**Purpose**: Pre-task failure lookup. Catalog Type 9 — "the single biggest concrete win available to most agentic systems" per the Phase 2 catalog. Sprint 4.
-
-```typescript
-export class FailureManager {
-  constructor(storage: IGraphStorage, config?: FailureManagerConfig)
-
-  async record(input: FailureInput, options?: FailureEntityOptions): Promise<FailureRecord>
-  async lookupForTask(taskContext: string, options?: LookupOptions): Promise<FailureRecord[]>
-  async markResolved(id: string, reason?: string): Promise<MarkResolvedResult>
-  async getAll(options?: GetAllOptions): Promise<FailureRecord[]>
-}
-```
-
-`FailureRecord` carries `context` / `attempted` / `failure_mode` / `root_cause` / `alternative_taken?` / `applicability_hint` (the retrieval key) / `lifecycle` / `sourceSessionId?`. `markResolved` returns discriminated `MarkResolvedResult` (`'resolved' | 'already-resolved' | 'not-found' | 'vanished-mid-update'`).
-
----
-
-### PlanManager (`agent/PlanManager.ts`)
-
-**Purpose**: Hierarchical goal trees with sub-tasks + acceptance criteria. Catalog Type 6. Sprint 5.
-
-```typescript
-export class PlanManager {
-  constructor(storage: IGraphStorage, config?: PlanManagerConfig)
-
-  async createPlan(rootDescription: string, options?: CreatePlanOptions): Promise<PlanRecord>
-  async pushSubGoal(planId: PlanId | string, parentNodeId: GoalNodeId | string, description: string, options?: PushSubGoalOptions): Promise<GoalNode>
-  async transitionNode(planId: PlanId | string, nodeId: GoalNodeId | string, transition: GoalNodeTransition): Promise<void>
-  async markPlanComplete(planId: PlanId | string, note?: string): Promise<MarkResolvedResult>
-  async abandonPlan(planId: PlanId | string, reason?: string): Promise<MarkResolvedResult>
-  async findPlan(planId: PlanId | string): Promise<Readonly<PlanRecord> | null>
-  async findNode(planId: PlanId | string, nodeId: GoalNodeId | string): Promise<Readonly<GoalNode> | null>
-  async getCurrentPath(planId: PlanId | string): Promise<Readonly<GoalNode>[]>
-  async getActivePlan(sessionId: string): Promise<Readonly<PlanRecord> | null>
-  async listPlans(options?: ListPlansOptions): Promise<Readonly<PlanRecord>[]>
-}
-```
-
-`PlanRecord` carries `rootGoal: GoalNode` (recursive tree), `currentNodeId`, history array, discriminated `PlanLifecycle` (`active` / `blocked` / `complete` / `abandoned`) and `GoalNodeLifecycle` (`pending` / `active` / `complete` / `blocked`). Branded `PlanId` / `GoalNodeId`. `validatePlanInvariants` runs after every mutation; cycle-protected DFS in `findNodeInTree` / `findPathToNode`.
-
----
-
-### ReflectionManager (`agent/ReflectionManager.ts`)
-
-**Purpose**: Derived insights from pattern + trajectory + experience over a candidate set. Additive (no supersession of evidence). Catalog Type 10. Sprint 8. Publicly exported as `ReflectionMemoryManager` to avoid collision with `src/search/ReflectionManager` (progressive query refinement).
-
-```typescript
-export class ReflectionManager {
-  constructor(storage: IGraphStorage, config?: ReflectionManagerConfig)
-
-  async create(input: ReflectionInput, options?: ReflectionEntityOptions): Promise<ReflectionRecord>
-  async list(options?: ListReflectionsOptions): Promise<ReflectionRecord[]>
-  async getAll(): Promise<ReflectionRecord[]>
-  async getRelevantForSession(sessionId: string, options?: RelevanceOptions): Promise<ReflectionRecord[]>
-  async archive(id: ReflectionId | string): Promise<ArchiveReflectionResult>
-}
-```
-
-`ReflectionRecord` carries `scope` (`session` / `project` / `global`), `evidence: string[]` (non-empty), `summary`, `keyInsights[]`, `generalization_confidence ∈ [0, 1]`, `evidenceHash` (SHA-256 of `scope|sorted(evidence)` for Tier-1 content-hash dedup). `archive` returns discriminated `ArchiveReflectionResult`.
-
----
-
-### ReflectionStage (`agent/ConsolidationPipeline.ts`)
-
-**Purpose**: Pipeline stage that produces `ReflectionEntity` records from candidate episodic + semantic memories. Mirrors `ProspectivePromotionStage`'s self-sufficient pattern. Sprint 8.
-
-```typescript
-export class ReflectionStage implements PipelineStage {
-  readonly name = 'reflection';
-
-  constructor(
-    storage: IGraphStorage,
-    reflectionManager: ReflectionManager,
-    patternDetector: PatternDetector,
-    trajectoryCompressor: TrajectoryCompressor,
-    config?: ReflectionStageConfig
-  )
-
-  async process(_entities: AgentEntity[], _options: ConsolidateOptions): Promise<StageResult>
-  async runOnSessionEnd(sessionId: string): Promise<StageResult>  // empty/whitespace sessionId throws
-}
-```
-
-Pipeline: gather observations (max-per-run circuit breaker) → `PatternDetector.detectPatterns` → early-return with `[info]`-prefixed `StageResult.errors` entry when below `minConfidence` (default 0.4) → `TrajectoryCompressor.distill` → `generalization_confidence = clamp(min(1 - compressionRatio, maxPatternConfidence), 0, 1)` → `ReflectionManager.create` (content-hash dedup makes re-runs idempotent).
-
----
-
-### ConflictResolver — `'trust_level'` strategy (Sprint 6)
-
-**Purpose**: Sixth `ConflictStrategy` (alongside `most_recent` / `highest_confidence` / `most_confirmations` / `trusted_agent` / `merge_all`). Resolves by highest categorical `TrustLevel` on `MemorySource.trustLevel` (or `inferTrustLevel` backfill), with recency tiebreak.
-
-```typescript
-// New ConflictStrategy literal
-type ConflictStrategy = ... | 'trust_level' | ...;
-
-// Ordering: 'ground-truth' > 'verified' > 'inferred' > 'unverified'
-// Ties broken by lastModified → createdAt
-```
-
-Backfill from existing `MemorySource` shape (`method` + `reliability`) via `inferTrustLevel(source)`; defensive NaN/non-finite-reliability guard returns `'unverified'`. `DEFAULT_TRUST_THRESHOLDS` exported for per-deployment tuning.
 
 ---
 
@@ -1218,38 +1080,31 @@ export class IOManager {
     options?: ImportOptions
   ): Promise<ImportResult>
 
-  // Backup (delegated to BackupManager since Phase 5 / v1.15.0)
-  async createBackup(options?: BackupOptions): Promise<BackupResult>
+  // Backup
+  async createBackup(options?: BackupOptions): Promise<BackupInfo>
+  async restoreBackup(backupId: string): Promise<void>
   async listBackups(): Promise<BackupInfo[]>
-  async restoreFromBackup(backupPath: string): Promise<RestoreResult>
-  async deleteBackup(backupPath: string): Promise<void>
-  async cleanOldBackups(keepCount?: number): Promise<number>
-
-  // Conversation ingestion (v1.9.0)
-  async ingest(input: string | { messages: ChatMessage[] }, options?: IngestOptions): Promise<IngestResult>
-  splitTranscript(content: string, options?: SplitOptions): SplitResult
+  async deleteBackup(backupId: string): Promise<void>
 }
-```
 
-Supported formats: `json`, `csv`, `graphml`, `gexf`, `dot`, `markdown`, `mermaid`, and (η.5.4) `turtle`, `rdf-xml`, `json-ld`. v1.15.0 hardens `splitTranscript()` with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10,000) guards against ReDoS.
+type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid';
+```
 
 ---
 
 ### TagManager (`features/TagManager.ts`)
 
-**Purpose**: Tag alias management and bulk operations
+**Purpose**: Tag aliases and synonyms
 
 ```typescript
 export class TagManager {
-  constructor(storage: IGraphStorage)
+  constructor(tagAliasesFilePath: string)
 
-  addAlias(canonical: string, alias: string): Promise<void>
-  removeAlias(alias: string): Promise<void>
-  resolveAlias(tag: string): Promise<string>
-  listAliases(): Promise<Map<string, string[]>>
-
-  async addTags(entityName: string, tags: string[]): Promise<void>
-  async removeTags(entityName: string, tags: string[]): Promise<void>
+  async resolveTag(tag: string): Promise<string>
+  async addTagAlias(alias: string, canonical: string, description?: string): Promise<TagAlias>
+  async listTagAliases(): Promise<TagAlias[]>
+  async removeTagAlias(alias: string): Promise<boolean>
+  async getAliasesForTag(canonicalTag: string): Promise<string[]>
 }
 ```
 
@@ -1257,19 +1112,22 @@ export class TagManager {
 
 ### CompressionManager (`features/CompressionManager.ts`)
 
-**Purpose**: Duplicate detection and entity merging
+**Purpose**: Duplicate detection and merging
 
 ```typescript
 export class CompressionManager {
   constructor(storage: IGraphStorage)
 
-  async findDuplicates(threshold?: number): Promise<DuplicateGroup[]>
-  async mergeEntities(primary: string, duplicates: string[]): Promise<void>
-  async compressGraph(): Promise<CompressionResult>
+  async findDuplicates(threshold?: number): Promise<string[][]>
+  async mergeEntities(entityNames: string[], targetName?: string): Promise<Entity>
+  async compressGraph(threshold?: number, dryRun?: boolean): Promise<CompressionResult>
 }
 ```
 
-Similarity scoring uses observation content with configurable threshold (default 0.8). Compresses graph by merging high-similarity duplicates into a primary entity.
+**Similarity Algorithm**:
+```
+score = (nameSim × 0.4) + (typeSim × 0.3) + (obsSim × 0.2) + (tagSim × 0.1)
+```
 
 ---
 
@@ -1281,19 +1139,16 @@ Similarity scoring uses observation content with configurable threshold (default
 export class AnalyticsManager {
   constructor(storage: IGraphStorage)
 
-  async getStats(): Promise<GraphStats>
-  async validateGraph(): Promise<ValidationResult>
-  async findOrphanEntities(): Promise<Entity[]>
-  async findDanglingRelations(): Promise<Relation[]>
+  async getGraphStats(): Promise<GraphStats>
+  async validateGraph(): Promise<ValidationReport>
 }
 
-export interface GraphStats {
+interface GraphStats {
   entityCount: number;
   relationCount: number;
-  observationCount: number;
-  averageObservationsPerEntity: number;
-  entityTypeDistribution: Record<string, number>;
-  topTags: Array<{ tag: string; count: number }>;
+  entityTypes: Record<string, number>;
+  tagCounts: Record<string, number>;
+  importanceDistribution: Record<number, number>;
 }
 ```
 
@@ -1301,20 +1156,20 @@ export interface GraphStats {
 
 ### ArchiveManager (`features/ArchiveManager.ts`)
 
-**Purpose**: Archive low-importance or old entities to compressed storage
+**Purpose**: Entity archival
 
 ```typescript
 export class ArchiveManager {
-  constructor(storage: IGraphStorage, archiveDir?: string)
+  constructor(storage: IGraphStorage)
 
-  async archive(criteria: ArchiveCriteria): Promise<ArchiveResult>
-  async restore(archiveId: string): Promise<void>
-  async listArchives(): Promise<ArchiveInfo[]>
+  async archiveEntities(criteria: ArchiveCriteria, dryRun?: boolean): Promise<ArchiveResult>
 }
 
-export interface ArchiveCriteria {
+interface ArchiveCriteria {
+  olderThan?: string;
   minImportance?: number;
-  olderThan?: number;  // milliseconds
+  maxImportance?: number;
+  tags?: string[];
   entityTypes?: string[];
 }
 ```
@@ -1323,45 +1178,46 @@ export interface ArchiveCriteria {
 
 ### FreshnessManager (`features/FreshnessManager.ts`)
 
-**Purpose**: TTL/confidence freshness reporting (v1.6.0)
+**Purpose**: Track and report entity freshness based on TTL and confidence fields
 
 ```typescript
 export class FreshnessManager {
   constructor(storage: IGraphStorage)
 
-  calculateFreshness(entity: Entity, now?: Date): FreshnessScore
+  calculateFreshness(entity: Entity): FreshnessScore
   async getStaleEntities(threshold?: number): Promise<Entity[]>
   async getExpiredEntities(): Promise<Entity[]>
   async generateReport(): Promise<FreshnessReport>
 }
 
-export interface FreshnessScore {
-  score: number;        // 0-1, higher = fresher
-  isExpired: boolean;
-  reason: string;
+interface FreshnessScore {
+  entityName: string;
+  freshnessRatio: number;  // 0.0 = expired, 1.0 = fully fresh
+  ttlRemainingMs: number;
+  confidence: number;
 }
 ```
 
-Combines `Entity.ttl` (absolute time-to-live) and `Entity.confidence` (belief strength) into a single freshness score used by `SalienceEngine` and decay routines.
+`Entity.ttl` (ms) and `Entity.confidence` (0–1) are new optional fields added in v1.6.0. `DecayEngine` uses TTL for decay calculations; `SalienceEngine` adds `freshnessWeight` to salience score.
 
 ---
 
 ### AuditLog (`features/AuditLog.ts`)
 
-**Purpose**: Immutable JSONL audit trail for all mutations (v1.6.0)
+**Purpose**: Immutable operation history persisted as JSONL
 
 ```typescript
 export class AuditLog {
   constructor(logFilePath: string)
 
   async append(entry: AuditEntry): Promise<void>
-  async query(filter: AuditQueryFilter): Promise<AuditEntry[]>
-  async getEntityHistory(entityName: string): Promise<AuditEntry[]>
+  async query(filter?: AuditFilter): Promise<AuditEntry[]>
+  async tail(limit: number): Promise<AuditEntry[]>
 }
 
-export interface AuditEntry {
+interface AuditEntry {
   timestamp: string;
-  operation: 'create' | 'update' | 'delete' | 'rollback' | 'archive';
+  operation: 'create' | 'update' | 'delete';
   entityName?: string;
   actor?: string;
   metadata?: Record<string, unknown>;
@@ -1390,34 +1246,6 @@ export class GovernanceManager {
 ```
 
 Wraps `EntityManager` mutations with policy checks. `withTransaction` snapshots current state for rollback. Emits to `AuditLog` on every committed operation.
-
----
-
-### BackupManager (`features/BackupManager.ts`) — Phase 5 (v1.15.0)
-
-**Purpose**: Backup lifecycle extracted from `IOManager` — create / list / restore / delete / cleanOld
-
-```typescript
-export class BackupManager {
-  constructor(storage: GraphStorage, backupDir: string)
-
-  async create(options?: BackupOptions): Promise<BackupResult>
-  async list(): Promise<BackupInfo[]>
-  async restore(backupPath: string): Promise<RestoreResult>
-  async delete(backupPath: string): Promise<void>
-  async cleanOld(keepCount?: number): Promise<number>
-}
-```
-
-All file-touching paths run through `validateFilePath(path, this.backupDir, true)` — paths must stay inside the backup directory. `restore()` and `delete()` both reject symbolic links via `fs.lstat().isSymbolicLink()` to prevent symlink-escape attacks. Metadata sidecar files (`.meta.json`) are derived via `path.basename()` and independently revalidated before unlink. `IOManager` delegates all backup operations to this class.
-
----
-
-### ContradictionDetector (`features/ContradictionDetector.ts`)
-
-**Purpose**: Semantic-similarity-based contradiction detection with entity versioning support
-
-Compares observations across the same `rootEntityName` chain to find statements that contradict each other within a configurable threshold. Output feeds `EntityManager.invalidateEntity()` to create a successor entity.
 
 ---
 
@@ -1465,51 +1293,6 @@ export function tokenize(text: string): string[]
 - Tag utilities: `normalizeTag`, `normalizeTags`, `hasMatchingTag`
 - Date utilities: `isWithinDateRange`, `getCurrentTimestamp`
 - Filter utilities: `isWithinImportanceRange`, `filterByImportance`
-- Path security: `validateFilePath(path, baseDir?, confineToBase?)` — default `confineToBase=true` since v1.15.0 (PR #38); throws on `..` segments unconditionally; opts out at explicit user-input call sites (CLI, `ensureMemoryFilePath`)
-
-### logger (`utils/logger.ts`) — Phase 0 (v1.15.0)
-
-**Purpose**: Structured logger replacing scattered `console.*` calls
-
-Stderr-only by design (logger never writes to stdout — CLI commands keep their output channel clean). Honors `LOG_LEVEL=debug|info|warn|error`. Used by `GraphStorage`, `SQLiteStorage`, `TaskQueue`, `MemoryEngine`, and all `Phase 0+` components.
-
-### taskScheduler (`utils/taskScheduler.ts`) — Phase 0 (v1.15.0)
-
-**Purpose**: Priority task queue with bounded resource use
-
-```typescript
-export class TaskQueue {
-  // Bounded — MAX_QUEUE = 100,000 pending, MAX_COMPLETED = 10,000 results retained
-  enqueue<T, R>(task: Task<T, R>): Promise<TaskResult<R>>
-  // ...
-}
-```
-
-`enqueue` validates `task.fn` is a real function object (rejects strings to prevent code-injection via `new Function`). The `recordCompleted` helper centralizes eviction. v1.15.0 adds `kickProcessNext` for explicit-error logging on swallowed rejections.
-
-### compression/ (`utils/compression/`) — Phase 10 (v1.15.0)
-
-**Purpose**: Pluggable in-memory compression for entity caches and tiered storage
-
-```typescript
-export interface ICompressionAdapter {
-  readonly name: string;
-  compress(input: Buffer): Buffer;
-  decompress(input: Buffer): Buffer;
-}
-
-export class ZlibCompressionAdapter implements ICompressionAdapter { /* zlib.deflateSync */ }
-export class IdentityCompressionAdapter implements ICompressionAdapter { /* no-op test baseline */ }
-
-export class CompressedMap<K, V> {
-  // Map<K, V> implementation that compresses values at rest
-  get(key: K): V | undefined
-  set(key: K, value: V): this
-  // ...
-}
-```
-
-Sync API chosen deliberately — async would force `CompressedMap.get` to be async, rippling through every caller. Adapter errors wrap the underlying zlib/brotli message with the adapter `name` so multi-adapter callers can distinguish "wrong adapter" from "truncated input." Wired via `ctx.compressedEntityCache`.
 
 ---
 
@@ -1637,25 +1420,6 @@ interface StructuredQuery {
 }
 ```
 
-### Result Types (`types/result.ts`) — v2.0.0
-
-```typescript
-// Discriminated-union return type for expected domain failures.
-// Per the error-handling policy (CONTRIBUTING.md): throw for programmer
-// errors, return Result for failures the caller should branch on.
-type Result<T, E = Error> =
-  | { readonly ok: true;  readonly value: T }
-  | { readonly ok: false; readonly error: E };
-
-ok<T>(value: T): Result<T, never>
-err<E>(error: E): Result<never, E>
-isOk<T, E>(result: Result<T, E>): result is { ok: true; value: T }
-isErr<T, E>(result: Result<T, E>): result is { ok: false; error: E }
-unwrap<T, E>(result: Result<T, E>): T          // returns value, or throws error
-unwrapOr<T, E>(result: Result<T, E>, fallback: T): T
-mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
-```
-
 ---
 
 ## Component Dependencies
@@ -1716,6 +1480,6 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2026-05-14
+**Document Version**: 1.7
+**Last Updated**: 2026-04-09
 **Maintained By**: Daniel Simon Jr.

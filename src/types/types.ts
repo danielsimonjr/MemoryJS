@@ -32,23 +32,6 @@
  * };
  * ```
  */
-/**
- * Lifecycle state for an `Entity`. See `EntityStateMachine` for transitions.
- */
-export type EntityStatus = 'draft' | 'published' | 'archived';
-
-/**
- * Allowed status transitions. Each entry is `[from, to]`. Used by both the
- * runtime guard in `EntityStateMachine` and any caller that needs to gate
- * UI on whether a transition is legal.
- */
-export const ENTITY_STATUS_TRANSITIONS: ReadonlyArray<readonly [EntityStatus, EntityStatus]> = [
-  ['draft', 'published'],
-  ['draft', 'archived'],
-  ['published', 'archived'],
-  ['archived', 'published'],
-] as const;
-
 export interface Entity {
   /** Unique name identifying the entity */
   name: string;
@@ -133,23 +116,6 @@ export interface Entity {
    * entity types leave this undefined.
    */
   contentHash?: string;
-
-  // ==================== Entity State Machine ====================
-
-  /**
-   * Lifecycle state. `'draft'` is in-flight / pre-publish, `'published'`
-   * is the live default, `'archived'` is removed from default search.
-   * Undefined is treated as `'published'` for back-compat with entities
-   * created before this field existed.
-   *
-   * Named `lifecycleStatus` (not `status`) to avoid a name clash with the
-   * pre-existing `SessionEntity.status` (`SessionStatus` union), which is
-   * a different concept on a subtype.
-   *
-   * Allowed transitions: `draft → published`, `published → archived`,
-   * `archived → published` (un-archive). See `EntityStateMachine`.
-   */
-  lifecycleStatus?: EntityStatus;
 
   // ==================== η.4.4: Temporal Versioning Expansion ====================
 
@@ -1158,9 +1124,9 @@ export interface LowercaseData {
  * Storage configuration options.
  */
 export interface StorageConfig {
-  /** Storage type: 'jsonl', 'sqlite', or 'postgres' / 'postgresql' */
-  type: 'jsonl' | 'sqlite' | 'postgres' | 'postgresql';
-  /** Path to storage file (or Postgres connection string when type === 'postgres') */
+  /** Storage type: 'jsonl' or 'sqlite' */
+  type: 'jsonl' | 'sqlite';
+  /** Path to storage file */
   path: string;
 }
 
@@ -1198,14 +1164,6 @@ export interface IGraphStorage {
    * @returns Promise resolving when ready
    */
   ensureLoaded(): Promise<void>;
-
-  /**
-   * In-memory cached graph if one is currently loaded, else null.
-   * Side-effect-free getter — does NOT trigger a load. Used by
-   * `Diagnostics` and similar observability surfaces that want a cheap
-   * peek at the current state without forcing I/O.
-   */
-  readonly cachedGraph: ReadonlyKnowledgeGraph | null;
 
   // ==================== Write Operations ====================
 
@@ -1407,7 +1365,7 @@ export interface CentralityResult {
   /** Top N entities by centrality (name and score) */
   topEntities: Array<{ name: string; score: number }>;
   /** Centrality algorithm used */
-  algorithm: 'degree' | 'betweenness' | 'pagerank' | 'hits-hubs' | 'hits-authorities';
+  algorithm: 'degree' | 'betweenness' | 'pagerank';
 }
 
 /**

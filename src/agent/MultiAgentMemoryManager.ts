@@ -339,29 +339,28 @@ export class MultiAgentMemoryManager extends EventEmitter {
    * @param memoryName - Memory to transfer
    * @param fromAgentId - Current owner
    * @param toAgentId - New owner
-   * @returns Updated memory or undefined if not found/unauthorized
+   * @returns Updated memory or null if not found/unauthorized
    */
   async transferMemory(
     memoryName: string,
     fromAgentId: string,
     toAgentId: string
-  ): Promise<AgentEntity | undefined> {
+  ): Promise<AgentEntity | null> {
     const entity = this.storage.getEntityByName(memoryName);
     if (!entity || !isAgentEntity(entity)) {
-      return undefined;
+      return null;
     }
 
     const memory = entity as AgentEntity;
 
     // Verify ownership
     if (memory.agentId !== fromAgentId) {
-      return undefined;
+      return null;
     }
 
     // Update ownership
     memory.agentId = toAgentId;
     memory.lastModified = new Date().toISOString();
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort lastModified write; a vanish is caught by the entityIndex check below before the authoritative saveGraph
     await this.storage.updateEntity(memoryName, {
       lastModified: memory.lastModified,
     } as Partial<Entity>);
@@ -741,7 +740,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
    * @param memoryName - Memory to copy
    * @param requestingAgentId - Agent making the copy
    * @param options - Copy options
-   * @returns New copied memory or undefined if not accessible
+   * @returns New copied memory or null if not accessible
    */
   async copyMemory(
     memoryName: string,
@@ -751,15 +750,15 @@ export class MultiAgentMemoryManager extends EventEmitter {
       annotation?: string;
       visibility?: MemoryVisibility;
     }
-  ): Promise<AgentEntity | undefined> {
+  ): Promise<AgentEntity | null> {
     // Check if memory is visible to requesting agent
     if (!this.isMemoryVisible(memoryName, requestingAgentId)) {
-      return undefined;
+      return null;
     }
 
     const entity = this.storage.getEntityByName(memoryName);
     if (!entity || !isAgentEntity(entity)) {
-      return undefined;
+      return null;
     }
 
     const sourceMemory = entity as AgentEntity;
@@ -970,9 +969,9 @@ export class MultiAgentMemoryManager extends EventEmitter {
       resolveConflicts?: boolean;
       conflictStrategy?: ConflictStrategy;
     }
-  ): Promise<AgentEntity | undefined> {
+  ): Promise<AgentEntity | null> {
     if (memoryNames.length < 2) {
-      return undefined;
+      return null;
     }
 
     // Gather memories
@@ -985,7 +984,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
     }
 
     if (memories.length < 2) {
-      return undefined;
+      return null;
     }
 
     // Check for conflicts if requested
