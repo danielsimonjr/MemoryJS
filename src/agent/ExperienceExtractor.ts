@@ -24,7 +24,7 @@
 import { randomUUID } from 'crypto';
 import type { PatternDetector } from './PatternDetector.js';
 import type { PatternResult } from '../types/agent-memory.js';
-import { jaccard } from '../utils/textSimilarity.js';
+import { tokenizeToSet, jaccard } from '../utils/textSimilarity.js';
 
 export type Outcome = 'success' | 'failure' | 'partial' | 'unknown';
 
@@ -369,20 +369,10 @@ export class ExperienceExtractor {
 
 // ---------- helpers ----------
 
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .split(/\s+/)
-      .filter((t) => t.length > 2),
-  );
-}
-
 function countTokens(texts: string[]): Map<string, number> {
   const out = new Map<string, number>();
   for (const text of texts) {
-    for (const tok of tokenize(text)) {
+    for (const tok of tokenizeToSet(text, 3)) {
       out.set(tok, (out.get(tok) ?? 0) + 1);
     }
   }
@@ -396,7 +386,7 @@ function trajectoryTokens(t: Trajectory, method: ClusterMethod): Set<string> {
   }
   // semantic = observation tokens
   const all = new Set<string>();
-  for (const o of t.observations) for (const tok of tokenize(o)) all.add(tok);
+  for (const o of t.observations) for (const tok of tokenizeToSet(o, 3)) all.add(tok);
   return all;
 }
 
