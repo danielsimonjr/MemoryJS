@@ -80,6 +80,7 @@ export { logger } from './logger.js';
 export {
   levenshteinDistance,
   calculateTF,
+  calculateTFFromTokens,
   calculateIDF,
   calculateIDFFromTokenSets,
   calculateTFIDF,
@@ -169,6 +170,8 @@ export {
   validateRelation,
   validateImportance,
   validateTags,
+  validateNonEmpty,
+  validateNonEmptyArray,
 } from './schemas.js';
 
 // ==================== Formatters ====================

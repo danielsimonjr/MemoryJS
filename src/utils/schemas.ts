@@ -592,3 +592,21 @@ export function validateTags(tags: unknown): ValidationResult {
   if (result.success) return { valid: true, errors: [] };
   return { valid: false, errors: formatZodErrors(result.error) };
 }
+
+/** Validate a non-empty string with detailed error reporting. */
+export function validateNonEmpty(value: unknown, fieldName: string, contextName: string = 'Validation'): void {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    const received =
+      typeof value === 'string'
+        ? `string of length ${value.length} (${JSON.stringify(value.slice(0, 40))})`
+        : `${typeof value} (${value === null ? 'null' : String(value).slice(0, 40)})`;
+    throw new Error(`${contextName}: '${fieldName}' must be a non-empty string; received ${received}`);
+  }
+}
+
+/** Validate a non-empty array with detailed error reporting. */
+export function validateNonEmptyArray(value: unknown, fieldName: string, contextName: string = 'Validation'): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new Error(`${contextName}: '${fieldName}' must be a non-empty array`);
+  }
+}
