@@ -174,6 +174,9 @@ export class ProfileManager {
         memoryType: 'working',
         importance: 5,
         confidence: 1.0,
+        accessCount: 0,
+        confirmationCount: 0,
+        visibility: 'private',
       };
 
       const salience = await this.salienceEngine.calculateSalience(
