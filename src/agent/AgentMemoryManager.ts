@@ -10,7 +10,7 @@
 
 import { EventEmitter } from 'events';
 import { logger } from '../utils/logger.js';
-import type { IGraphStorage } from '../types/types.js';
+import type { IGraphStorage, Entity } from '../types/types.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { EntityManager } from '../core/EntityManager.js';
 import { ObservationManager } from '../core/ObservationManager.js';
@@ -621,7 +621,7 @@ export class AgentMemoryManager extends EventEmitter {
     const formatted = `[${timestamp}]${topicPrefix} ${entry}`;
 
     const graph = await this.storage.loadGraph();
-    const existing = graph.entities.find((e) => e.name === entityName);
+    const existing = graph.entities.find((e: Entity) => e.name === entityName);
 
     if (!existing) {
       try {
@@ -651,7 +651,7 @@ export class AgentMemoryManager extends EventEmitter {
   ): Promise<string[]> {
     const entityName = `diary-${agentId}`;
     const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find((e) => e.name === entityName);
+    const entity = graph.entities.find((e: Entity) => e.name === entityName);
 
     if (!entity) return [];
 
