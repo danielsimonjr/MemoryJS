@@ -12,6 +12,18 @@ import type {
   RuleConditions,
   RuleEvaluationResult,
 } from '../types/agent-memory.js';
+import { logger } from '../utils/logger.js';
+
+/**
+ * Simple rule interface for demonstration.
+ */
+export interface Rule {
+  condition: {
+    type: string;
+    field: string;
+    value: unknown;
+  };
+}
 
 /**
  * Evaluates rule conditions against entities.
@@ -113,5 +125,24 @@ export class RuleEvaluator {
    */
   getCacheSize(): number {
     return this.cache.size;
+  }
+
+  /**
+   * Evaluates a simple rule against a set of facts.
+   *
+   * @param rule - Rule to evaluate
+   * @param facts - Facts to check against
+   * @returns True if the rule evaluates to true
+   */
+  public evaluateRule(rule: Rule, facts: Record<string, unknown>): boolean {
+    try {
+      if (rule.condition.type === 'equals') {
+        return facts[rule.condition.field] === rule.condition.value;
+      }
+      return false;
+    } catch (error) {
+      logger.error(`Error evaluating rule: ${(error as Error).message}`);
+      return false;
+    }
   }
 }

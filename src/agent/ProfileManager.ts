@@ -167,14 +167,20 @@ export class ProfileManager {
     for (const obs of observations) {
       if (existingSet.has(obs)) continue;
 
-      // TODO: SalienceEngine.calculateSalience expects an AgentEntity; we
-      // pass a bare observation string here. The runtime relies on the
-      // engine's nullish-default handling for missing entity fields. A
-      // proper fix is to wrap each observation in a synthetic entity or
-      // to add a string-scoring helper on SalienceEngine. Tracked under
-      // the agent-memory test-coverage gap in Phase 2.
+      const syntheticEntity: AgentEntity = {
+        name: `synthetic-obs-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        entityType: 'observation',
+        observations: [obs],
+        memoryType: 'working',
+        importance: 5,
+        confidence: 1.0,
+        accessCount: 0,
+        confirmationCount: 0,
+        visibility: 'private',
+      };
+
       const salience = await this.salienceEngine.calculateSalience(
-        obs as unknown as AgentEntity,
+        syntheticEntity,
         { temporalFocus: 'recent' }
       );
       const components = salience.components;
