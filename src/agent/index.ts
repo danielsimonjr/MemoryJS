@@ -475,4 +475,8 @@ export {
   MemoryReconstructor,
   ReconstructiveMemory,
   type ReconstructiveMemoryConfig,
+  MemoryGraphBridge,
+  TOPIC_SUMMARIZES,
+  type ReconstructiveBacking,
+  type BridgePersistResult,
 } from './reconstruction/index.js';

@@ -16,3 +16,5 @@ export { MemoryDistiller, extractJson } from './MemoryDistiller.js';
 export { MemoryReconstructor } from './MemoryReconstructor.js';
 export { ReconstructiveMemory } from './ReconstructiveMemory.js';
 export type { ReconstructiveMemoryConfig } from './ReconstructiveMemory.js';
+export { MemoryGraphBridge, TOPIC_SUMMARIZES } from './MemoryGraphBridge.js';
+export type { ReconstructiveBacking, BridgePersistResult } from './MemoryGraphBridge.js';

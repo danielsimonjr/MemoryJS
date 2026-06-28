@@ -69,6 +69,12 @@ export class MemoryReconstructor {
   constructor(
     private readonly graph: CueTagContentGraph,
     private readonly llm?: LLMProvider,
+    /**
+     * Optional semantic similarity in `[0, 1]` (e.g. `SemanticSearch`), used to
+     * rank candidates during routing/answer when a live-store backing supplies
+     * it. Falls back to lexical overlap when absent.
+     */
+    private readonly similarityFn?: (query: string, text: string) => Promise<number>,
   ) {
     this.toolkit = new MemoryToolkit(graph);
   }
@@ -99,7 +105,7 @@ export class MemoryReconstructor {
       const candidate = this.traverse(active, actions);
 
       // f_route + state update — lines 14-15.
-      const routed = this.route(query, candidate.contents, seen, opts.perStepBudget);
+      const routed = await this.route(query, candidate.contents, seen, opts.perStepBudget);
       for (const node of routed) {
         seen.add(node.id);
         evidence.push(node);
@@ -225,33 +231,58 @@ export class MemoryReconstructor {
    * nodes, and keep the top `budget`. This is the noise-pruning step that keeps
    * the reconstructed context focused.
    */
-  private route(
+  private async route(
     query: string,
     candidates: ContentNode[],
     seen: Set<string>,
     budget: number,
-  ): ContentNode[] {
+  ): Promise<ContentNode[]> {
     const queryTerms = new Set(this.keywords.extractTop(query, 12));
-    const scored = new Map<string, { node: ContentNode; score: number }>();
-
+    const unique = new Map<string, ContentNode>();
     for (const node of candidates) {
-      if (seen.has(node.id) || scored.has(node.id)) continue;
-      scored.set(node.id, { node, score: this.relevance(node, queryTerms) });
+      if (!seen.has(node.id)) unique.set(node.id, node);
     }
 
-    return [...scored.values()]
+    const scored = await Promise.all(
+      [...unique.values()].map(async node => ({
+        node,
+        score: await this.relevance(query, node, queryTerms),
+      })),
+    );
+
+    return scored
       .sort((a, b) => b.score - a.score)
       .slice(0, budget)
       .map(s => s.node);
   }
 
-  private relevance(node: ContentNode, queryTerms: Set<string>): number {
-    if (queryTerms.size === 0) return 1;
+  /**
+   * Relevance of a candidate to the query. Uses semantic similarity when a
+   * backing supplies it (embedding-based, captures paraphrase), otherwise falls
+   * back to lexical keyword overlap.
+   */
+  private async relevance(
+    query: string,
+    node: ContentNode,
+    queryTerms: Set<string>,
+  ): Promise<number> {
+    // Semantic facts are compact and high-value; give them a mild prior.
+    const layerBonus = node.layer === 'semantic' ? 0.5 : 0;
+
+    if (this.similarityFn) {
+      try {
+        const sim = await this.similarityFn(query, node.text);
+        // Scale into a comparable range with the lexical path.
+        return sim * 10 + layerBonus;
+      } catch {
+        // Fall through to lexical scoring.
+      }
+    }
+
+    if (queryTerms.size === 0) return 1 + layerBonus;
     const nodeTerms = this.keywords.extract(node.text).map(k => k.keyword);
     let overlap = 0;
     for (const term of nodeTerms) if (queryTerms.has(term)) overlap++;
-    // Semantic facts are compact and high-value; give them a mild prior.
-    const layerBonus = node.layer === 'semantic' ? 0.5 : 0;
     return overlap + layerBonus;
   }
 
@@ -294,9 +325,10 @@ export class MemoryReconstructor {
 
     // Extractive fallback: the highest-relevance evidence item.
     const queryTerms = new Set(this.keywords.extractTop(query, 12));
-    const best = [...evidence].sort(
-      (a, b) => this.relevance(b, queryTerms) - this.relevance(a, queryTerms),
-    )[0];
+    const ranked = await Promise.all(
+      evidence.map(async node => ({ node, score: await this.relevance(query, node, queryTerms) })),
+    );
+    const best = ranked.sort((a, b) => b.score - a.score)[0].node;
     return { answer: best.text, confidence: 0.4 };
   }
 }

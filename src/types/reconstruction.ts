@@ -61,6 +61,13 @@ export interface ContentNode {
   person?: string;
   /** Free-form provenance (e.g. originating dialogue id). */
   origin?: string;
+  /**
+   * Name of the persisted MemoryJS entity backing this content node, set when the
+   * graph is bridged to the live store (episodic→`EpisodicMemoryManager` timeline,
+   * semantic→entity/observation graph, topic→topic entity). Absent when running
+   * the self-contained in-memory graph.
+   */
+  entityName?: string;
 }
 
 /** A `(cue, tag, content)` association — one edge of the relation set `R`. */

@@ -32,6 +32,11 @@ import { CueTagContentGraph } from './CueTagContentGraph.js';
 import { MemoryDistiller } from './MemoryDistiller.js';
 import { MemoryReconstructor } from './MemoryReconstructor.js';
 import { MemoryToolkit } from './MemoryToolkit.js';
+import {
+  MemoryGraphBridge,
+  type BridgePersistResult,
+  type ReconstructiveBacking,
+} from './MemoryGraphBridge.js';
 
 /** Configuration for {@link ReconstructiveMemory}. */
 export interface ReconstructiveMemoryConfig {
@@ -39,12 +44,21 @@ export interface ReconstructiveMemoryConfig {
   llmProvider?: LLMProvider;
   /** Pre-existing graph snapshot to restore from. */
   snapshot?: CTCGraphSnapshot;
+  /**
+   * Optional live-store backing. When supplied, ingested memory is persisted
+   * into MemoryJS's episodic / semantic / topic modules (durable + searchable),
+   * and semantic similarity is reused for reconstruction routing. When absent,
+   * the facade runs the self-contained in-memory graph.
+   */
+  backing?: ReconstructiveBacking;
 }
 
 export class ReconstructiveMemory {
   private graph: CueTagContentGraph;
   private readonly distiller: MemoryDistiller;
   private readonly llm?: LLMProvider;
+  private readonly bridge?: MemoryGraphBridge;
+  private lastPersist?: BridgePersistResult;
 
   constructor(config: ReconstructiveMemoryConfig = {}) {
     this.llm = config.llmProvider;
@@ -52,17 +66,30 @@ export class ReconstructiveMemory {
       ? CueTagContentGraph.fromSnapshot(config.snapshot)
       : new CueTagContentGraph();
     this.distiller = new MemoryDistiller(this.llm);
+    this.bridge = config.backing ? new MemoryGraphBridge(config.backing) : undefined;
+    this.backing = config.backing;
   }
+
+  private readonly backing?: ReconstructiveBacking;
 
   /**
    * Construction phase: distil raw dialogue into Cue–Tag–Content structure and
-   * merge it into the in-memory graph. Returns the distillation result for
-   * inspection. Multiple `ingest` calls accumulate into the same graph.
+   * merge it into the in-memory graph. When a live-store backing is configured,
+   * the episodic / semantic / topic layers are also persisted into the
+   * corresponding MemoryJS modules. Multiple `ingest` calls accumulate.
    */
   async ingest(turns: DialogueTurn[]): Promise<DistillationResult> {
     const result = await this.distiller.distill(turns);
     this.distiller.buildGraph(result, this.graph);
+    if (this.bridge) {
+      this.lastPersist = await this.bridge.persist(result, this.graph);
+    }
     return result;
+  }
+
+  /** Summary of what the most recent `ingest` persisted to the live store. */
+  get lastPersistResult(): BridgePersistResult | undefined {
+    return this.lastPersist;
   }
 
   /**
@@ -73,7 +100,7 @@ export class ReconstructiveMemory {
     query: string,
     options?: ReconstructionOptions,
   ): Promise<ReconstructionResult> {
-    const reconstructor = new MemoryReconstructor(this.graph, this.llm);
+    const reconstructor = new MemoryReconstructor(this.graph, this.llm, this.backing?.similarity);
     return reconstructor.reconstruct(query, options);
   }
 

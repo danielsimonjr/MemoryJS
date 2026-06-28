@@ -97,6 +97,7 @@ import { ActiveRetrievalController } from '../agent/retrieval/ActiveRetrievalCon
 import {
   ReconstructiveMemory,
   type ReconstructiveMemoryConfig,
+  type ReconstructiveBacking,
 } from '../agent/reconstruction/index.js';
 
 /**
@@ -1081,11 +1082,46 @@ export class ManagerContext {
    */
   reconstructiveMemory(config?: ReconstructiveMemoryConfig): ReconstructiveMemory {
     if (config) {
-      this._reconstructiveMemory = new ReconstructiveMemory(config);
+      // Default the live-store backing to this context's managers unless the
+      // caller opts out by passing their own (or `backing: undefined` explicitly).
+      const backing = 'backing' in config ? config.backing : this.buildReconstructiveBacking();
+      this._reconstructiveMemory = new ReconstructiveMemory({ ...config, backing });
     } else if (!this._reconstructiveMemory) {
-      this._reconstructiveMemory = new ReconstructiveMemory();
+      this._reconstructiveMemory = new ReconstructiveMemory({
+        backing: this.buildReconstructiveBacking(),
+      });
     }
     return this._reconstructiveMemory;
+  }
+
+  /**
+   * Build a {@link ReconstructiveBacking} that bridges the Cue–Tag–Content
+   * layers to this context's live modules: episodic episodes onto the
+   * `EpisodicMemoryManager` timeline, semantic facts into the entity graph +
+   * `SemanticSearch`, and topic links as relations.
+   */
+  private buildReconstructiveBacking(): ReconstructiveBacking {
+    const semantic = this.semanticSearch;
+    return {
+      // Agent entities (memoryType/sessionId/…) bypass the plain-Entity schema by
+      // appending directly to storage — the same path EpisodicMemoryManager uses.
+      // Names already present are skipped so repeated ingests don't duplicate
+      // anchor (person/topic) entities.
+      createEntities: async entities => {
+        const graph = await this.storage.loadGraph();
+        const existing = new Set(graph.entities.map(e => e.name));
+        for (const entity of entities) {
+          if (existing.has(entity.name)) continue;
+          existing.add(entity.name);
+          await this.storage.appendEntity(entity);
+        }
+      },
+      createRelations: relations => this.relationManager.createRelations(relations),
+      similarity: semantic
+        ? (a, b) => semantic.calculateSimilarity(a, b)
+        : undefined,
+      indexEntity: semantic ? entity => semantic.indexEntity(entity) : undefined,
+    };
   }
 
   /**
