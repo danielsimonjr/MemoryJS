@@ -94,6 +94,11 @@ import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
 import { WorldModelManager } from '../agent/world/WorldModelManager.js';
 import { ActiveRetrievalController } from '../agent/retrieval/ActiveRetrievalController.js';
+import {
+  ReconstructiveMemory,
+  type ReconstructiveMemoryConfig,
+  type ReconstructiveBacking,
+} from '../agent/reconstruction/index.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -189,6 +194,7 @@ export class ManagerContext {
   private _roleAssignmentStore?: RoleAssignmentStore;
   private _worldModelManager?: WorldModelManager;
   private _activeRetrieval?: ActiveRetrievalController;
+  private _reconstructiveMemory?: ReconstructiveMemory;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -1061,6 +1067,61 @@ export class ManagerContext {
       this._activeRetrieval = new ActiveRetrievalController(this.rankedSearch);
     }
     return this._activeRetrieval;
+  }
+
+  /**
+   * `ReconstructiveMemory` — MRAgent-style associative memory ("Memory is
+   * Reconstructed, Not Retrieved"). Builds a Cue–Tag–Content graph from
+   * dialogue (`ingest`) and answers queries via active, multi-step memory
+   * reconstruction (`reconstruct`). Lazy; works zero-config with heuristic
+   * distillation/reconstruction, or pass an `LLMProvider` for the paper's
+   * LLM-driven distillation and answer synthesis.
+   *
+   * @param config Optional LLM provider / restored graph snapshot. Passing a
+   *   config re-instantiates the facade (invalidates the cached instance).
+   */
+  reconstructiveMemory(config?: ReconstructiveMemoryConfig): ReconstructiveMemory {
+    if (config) {
+      // Default the live-store backing to this context's managers unless the
+      // caller opts out by passing their own (or `backing: undefined` explicitly).
+      const backing = 'backing' in config ? config.backing : this.buildReconstructiveBacking();
+      this._reconstructiveMemory = new ReconstructiveMemory({ ...config, backing });
+    } else if (!this._reconstructiveMemory) {
+      this._reconstructiveMemory = new ReconstructiveMemory({
+        backing: this.buildReconstructiveBacking(),
+      });
+    }
+    return this._reconstructiveMemory;
+  }
+
+  /**
+   * Build a {@link ReconstructiveBacking} that bridges the Cue–Tag–Content
+   * layers to this context's live modules: episodic episodes onto the
+   * `EpisodicMemoryManager` timeline, semantic facts into the entity graph +
+   * `SemanticSearch`, and topic links as relations.
+   */
+  private buildReconstructiveBacking(): ReconstructiveBacking {
+    const semantic = this.semanticSearch;
+    return {
+      // Agent entities (memoryType/sessionId/…) bypass the plain-Entity schema by
+      // appending directly to storage — the same path EpisodicMemoryManager uses.
+      // Names already present are skipped so repeated ingests don't duplicate
+      // anchor (person/topic) entities.
+      createEntities: async entities => {
+        const graph = await this.storage.loadGraph();
+        const existing = new Set(graph.entities.map(e => e.name));
+        for (const entity of entities) {
+          if (existing.has(entity.name)) continue;
+          existing.add(entity.name);
+          await this.storage.appendEntity(entity);
+        }
+      },
+      createRelations: relations => this.relationManager.createRelations(relations),
+      similarity: semantic
+        ? (a, b) => semantic.calculateSimilarity(a, b)
+        : undefined,
+      indexEntity: semantic ? entity => semantic.indexEntity(entity) : undefined,
+    };
   }
 
   /**

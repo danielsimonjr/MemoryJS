@@ -462,3 +462,21 @@ export {
   type RoleAssignmentStoreOptions,
   type RbacMiddlewareOptions,
 } from './rbac/index.js';
+
+// Reconstructive (MRAgent-style) associative memory — "Memory is Reconstructed,
+// Not Retrieved": Cue–Tag–Content graph + active multi-step reconstruction.
+export {
+  CueTagContentGraph,
+  normalizeKey,
+  MemoryToolkit,
+  type EventKeywords,
+  MemoryDistiller,
+  extractJson,
+  MemoryReconstructor,
+  ReconstructiveMemory,
+  type ReconstructiveMemoryConfig,
+  MemoryGraphBridge,
+  TOPIC_SUMMARIZES,
+  type ReconstructiveBacking,
+  type BridgePersistResult,
+} from './reconstruction/index.js';
