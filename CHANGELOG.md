@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Bumped `@danielsimonjr/workerpool` to `^10.2.0`** (lockfile 10.1.0 → 10.2.0),
+  which carries the upstream fix for an RCE in worker-function serialization.
+  The app-level sink was already removed in master (`taskScheduler.ts` no longer
+  uses `new Function()`); this bump closes the library-level exposure as
+  defense-in-depth. Typecheck, build, and the full suite (7363 passed) stay green.
+
 ## [2.8.1] - 2026-05-18
 
 ### Fixed
