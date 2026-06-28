@@ -242,6 +242,25 @@ export {
   createDetailedProgressReporter,
 } from './progress.js';
 
+// Reconstructive (MRAgent-style) associative memory types — Cue–Tag–Content
+// graph nodes, distillation results, and active reconstruction structures.
+export type {
+  ContentLayer,
+  CueNode,
+  TagNode,
+  ContentNode,
+  CTCTriple,
+  CTCGraphSnapshot,
+  DistilledSentence,
+  PersonalFact,
+  DistillationResult as ReconstructionDistillationResult,
+  DialogueTurn,
+  TraversalActionType,
+  TraversalStep,
+  ReconstructionResult,
+  ReconstructionOptions,
+} from './reconstruction.js';
+
 // Result<T, E> — discriminated-union return type for expected domain
 // failures (see CONTRIBUTING.md > Error Handling).
 export type { Result } from './result.js';

@@ -44,7 +44,7 @@ SKIP_BENCHMARKS=true npm test
 
 ```
 src/
-├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility, MemoryEngine + ImportanceScorer for turn-aware memory with four-tier dedup)
+├── agent/     # Agent Memory System (sessions, working memory, episodic, decay, artifacts, distillation, role profiles, entropy, consolidation scheduler, collaborative synthesis, failure distillation, cognitive load, visibility, MemoryEngine + ImportanceScorer for turn-aware memory with four-tier dedup, reconstruction/ MRAgent Cue–Tag–Content associative memory + active reconstruction)
 ├── cli/       # CLI commands (bin: `memory` / `memoryjs`)
 ├── core/      # Storage backends, entity/relation/observation managers, transactions, RefIndex
 ├── search/    # Search algorithms (BM25, TF-IDF, fuzzy, semantic, hybrid, temporal, LLM-planned)
@@ -90,6 +90,7 @@ ctx.roleAssignmentStore // η.6.1 RBAC role grants registry
 ctx.rbacMiddleware      // η.6.1 RBAC policy (checkPermission)
 ctx.worldModelManager   // 3B.7 World Model orchestrator (snapshots + diff)
 ctx.activeRetrieval     // 3B.5 Active Retrieval (iterative query rewriting)
+ctx.reconstructiveMemory() // MRAgent Cue–Tag–Content associative memory + active multi-step reconstruction
 ```
 
 **v1.9.0 Additions:**
@@ -140,6 +141,12 @@ ctx.activeRetrieval     // 3B.5 Active Retrieval (iterative query rewriting)
 - **Cognitive load** (v1.7.0): `CognitiveLoadAnalyzer` — token density + redundancy ratio + observation diversity → `CognitiveLoadReport`; used by `ContextWindowManager` to prune high-load sections
 - **Visibility hierarchies** (v1.7.0): `VisibilityResolver` — five-level model (`private` | `team` | `org` | `shared` | `public`) with `GroupMembership` registry
 - **Memory Engine** (v1.11.0): `MemoryEngine` — turn-aware conversation memory facade composing over `EpisodicMemoryManager` + `WorkingMemoryManager`. Public API: `addTurn(content, opts)` (dedup-first write with importance scoring + event emission), `checkDuplicate(content, sessionId)`, `getSessionTurns(sessionId, { role?, limit? })` (chronological), `deleteSession`, `listSessions`. Four-tier dedup chain: `checkTierExact` (SHA-256 contentHash) / `checkTierPrefix` (50% prefix overlap) / `checkTierJaccard` (token Jaccard ≥ 0.72) / optional `checkTierSemantic` (embedding similarity). Emits `memoryEngine:turnAdded` / `memoryEngine:duplicateDetected` / `memoryEngine:sessionDeleted` on its own `node:events` `EventEmitter`. Companion: `ImportanceScorer` (length × keyword × recent-turn-overlap signals → integer [0, 10]). Wired via `ctx.memoryEngine` lazy getter; `agentMemory(config)` invalidates the cache on re-instantiation.
+- **Reconstructive Memory** (`src/agent/reconstruction/`): MRAgent implementation of *"Memory is Reconstructed, Not Retrieved: Graph Memory for LLM Agents"* (Ji, Li & Hooi, ICML 2026). Models memory as a heterogeneous **Cue–Tag–Content** associative graph `M = (C, V, R)` where associative **tags** bridge fine-grained cues to memory contents, organised into three multi-granular layers (`episodic` / `semantic` / `topic`). Components:
+  - `CueTagContentGraph` — the CTC graph with O(1) mapping operators (paper Eq. 5/8/9): `tagsForCue` (φ_{c→g}), `contentsForCueTag` (φ_{(c,g)→v}), `cueTagsForContent` (reverse φ_{v→(c,g)}), `episodesForTopic` (φ_{τ→e}); snapshot round-trip via `toSnapshot`/`fromSnapshot`.
+  - `MemoryToolkit` — the seven typed traversal operators (paper Table 4): `queryTagEvents`, `queryConversationTime`, `queryEventKeywords`, `queryEventContext`, `queryPersonalInformation`, `queryPersonalAspect`, `queryTopicEvents`.
+  - `MemoryDistiller` — construction pipeline (§3.3/App. B.1): rewrite (pronoun resolution + temporal normalisation + episodic segmentation) → tag + cue extraction → semantic-fact extraction → topic abstraction. Uses an optional `LLMProvider` (paper's App. E prompts) with deterministic heuristic fallback (zero-config), mirroring `LLMQueryPlanner`.
+  - `MemoryReconstructor` — **active reconstruction** loop (Algorithm 1): maintains reconstruction state `S(t) = (Z(t), H(t))` and iterates action-selection (`f_select`) → controlled traversal (forward/reverse/topic actions) → routing+prune (`f_route`) → stop, accumulating evidence across reasoning turns. LLM answer synthesis (App. E QA prompt) with extractive fallback.
+  - `ReconstructiveMemory` — facade: `ingest(turns)` (construction) + `reconstruct(query, opts)` (Algorithm 1) + `toolkit` / `memoryGraph` / `toSnapshot`. Wired via `ctx.reconstructiveMemory(config?)` lazy getter (passing `config` re-instantiates). `@experimental`.
 
 ### Data Model
 

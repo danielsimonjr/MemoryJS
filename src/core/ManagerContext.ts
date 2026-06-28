@@ -94,6 +94,10 @@ import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
 import { WorldModelManager } from '../agent/world/WorldModelManager.js';
 import { ActiveRetrievalController } from '../agent/retrieval/ActiveRetrievalController.js';
+import {
+  ReconstructiveMemory,
+  type ReconstructiveMemoryConfig,
+} from '../agent/reconstruction/index.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -189,6 +193,7 @@ export class ManagerContext {
   private _roleAssignmentStore?: RoleAssignmentStore;
   private _worldModelManager?: WorldModelManager;
   private _activeRetrieval?: ActiveRetrievalController;
+  private _reconstructiveMemory?: ReconstructiveMemory;
   private _accessTracker?: AccessTracker;
   private _decayEngine?: DecayEngine;
   private _decayScheduler?: DecayScheduler;
@@ -1061,6 +1066,26 @@ export class ManagerContext {
       this._activeRetrieval = new ActiveRetrievalController(this.rankedSearch);
     }
     return this._activeRetrieval;
+  }
+
+  /**
+   * `ReconstructiveMemory` — MRAgent-style associative memory ("Memory is
+   * Reconstructed, Not Retrieved"). Builds a Cue–Tag–Content graph from
+   * dialogue (`ingest`) and answers queries via active, multi-step memory
+   * reconstruction (`reconstruct`). Lazy; works zero-config with heuristic
+   * distillation/reconstruction, or pass an `LLMProvider` for the paper's
+   * LLM-driven distillation and answer synthesis.
+   *
+   * @param config Optional LLM provider / restored graph snapshot. Passing a
+   *   config re-instantiates the facade (invalidates the cached instance).
+   */
+  reconstructiveMemory(config?: ReconstructiveMemoryConfig): ReconstructiveMemory {
+    if (config) {
+      this._reconstructiveMemory = new ReconstructiveMemory(config);
+    } else if (!this._reconstructiveMemory) {
+      this._reconstructiveMemory = new ReconstructiveMemory();
+    }
+    return this._reconstructiveMemory;
   }
 
   /**
