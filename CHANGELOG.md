@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Forced `esbuild` to `^0.28.1` via `overrides`** (was 0.27.7), closing the
+  low-severity dev-server arbitrary-file-read advisory (GHSA, `< 0.28.1`). The
+  bump jumps esbuild past tsup's declared `^0.27.0` floor, so it's pinned through
+  an override rather than a dependency bump — verified safe: tsup build (ESM +
+  CJS + DTS) and the full vitest suite (7363 passed) are green on 0.28.1. Dev
+  tooling only; never shipped in the published package.
 - **Bumped `@danielsimonjr/workerpool` to `^10.2.0`** (lockfile 10.1.0 → 10.2.0),
   which carries the upstream fix for an RCE in worker-function serialization.
   The app-level sink was already removed in master (`taskScheduler.ts` no longer
