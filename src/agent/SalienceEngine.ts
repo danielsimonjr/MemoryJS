@@ -19,6 +19,7 @@ import { AccessTracker } from './AccessTracker.js';
 import { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
+import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
 
 /**
  * Configuration for SalienceEngine.
@@ -50,6 +51,13 @@ export interface SalienceEngineConfig {
    * The freshness factor is subtracted from the final score proportionally.
    */
   freshnessWeight?: number;
+  /**
+   * Weight for graph connectivity boost (default: 0 = disabled).
+   * The connectivity signal is an entity's relation degree normalized
+   * by the maximum degree in the graph, in [0, 1]. With the default
+   * weight of 0 the signal is never computed and scores are unchanged.
+   */
+  connectivityWeight?: number;
 }
 
 /**
@@ -81,6 +89,7 @@ export class SalienceEngine {
   private readonly freshnessManager: FreshnessManager;
   private readonly config: Required<SalienceEngineConfig>;
   private _cachedMaxAccessCount: number | undefined;
+  private _cachedDegreeMap: DegreeMap | undefined;
 
   constructor(
     storage: IGraphStorage,
@@ -105,6 +114,7 @@ export class SalienceEngine {
       useSemanticSimilarity: config.useSemanticSimilarity ?? true,
       uniquenessThreshold: config.uniquenessThreshold ?? 0.5,
       freshnessWeight: config.freshnessWeight ?? 0.15,
+      connectivityWeight: config.connectivityWeight ?? 0,
     };
   }
 
@@ -119,6 +129,7 @@ export class SalienceEngine {
    * - Frequency: Log-normalized access count relative to max
    * - Context: Text similarity to current task/session/query
    * - Novelty: Inverse of recency (rewards less recently accessed)
+   * - Connectivity: Relation degree normalized by max degree (opt-in, weight 0 by default)
    *
    * @param entity - AgentEntity to calculate salience for
    * @param context - Context information for relevance scoring
@@ -134,6 +145,13 @@ export class SalienceEngine {
     const frequencyBoost = await this.calculateFrequencyBoost(entity);
     const contextRelevance = this.calculateContextRelevance(entity, context);
     const noveltyBoost = this.calculateNoveltyBoost(entity, context);
+    // Connectivity is only computed when enabled (weight > 0) so the
+    // default configuration performs no extra graph reads and scores
+    // remain bit-identical to the pre-connectivity behavior.
+    const connectivityBoost =
+      this.config.connectivityWeight > 0
+        ? await this.calculateConnectivityBoost(entity)
+        : 0;
 
     // Apply weights and sum (base salience from existing factors)
     let salienceScore =
@@ -141,7 +159,8 @@ export class SalienceEngine {
       recencyBoost * this.config.recencyWeight +
       frequencyBoost * this.config.frequencyWeight +
       contextRelevance * this.config.contextWeight +
-      noveltyBoost * this.config.noveltyWeight;
+      noveltyBoost * this.config.noveltyWeight +
+      connectivityBoost * this.config.connectivityWeight;
 
     // Feature 5: Apply freshness penalty.
     // Expired entities are strongly penalised; stale entities less so.
@@ -158,6 +177,7 @@ export class SalienceEngine {
       frequencyBoost,
       contextRelevance,
       noveltyBoost,
+      connectivityBoost,
     };
 
     return {
@@ -180,6 +200,11 @@ export class SalienceEngine {
   ): Promise<ScoredEntity[]> {
     // Pre-compute max access count once for all entities
     this._cachedMaxAccessCount = await this.getMaxAccessCount();
+    // Pre-compute the degree map once per batch (mirrors the
+    // _cachedMaxAccessCount semantics: valid for this ranking only)
+    if (this.config.connectivityWeight > 0) {
+      this._cachedDegreeMap = await this.getDegreeMap();
+    }
     try {
       const scored = await Promise.all(
         entities.map((e) => this.calculateSalience(e, context))
@@ -187,6 +212,7 @@ export class SalienceEngine {
       return scored.sort((a, b) => b.salienceScore - a.salienceScore);
     } finally {
       this._cachedMaxAccessCount = undefined;
+      this._cachedDegreeMap = undefined;
     }
   }
 
@@ -554,7 +580,31 @@ export class SalienceEngine {
     return 1 - avgSimilarity;
   }
 
+  /**
+   * Calculate connectivity boost component.
+   * Relation degree of the entity normalized by the maximum degree
+   * in the graph. Well-connected (hub) entities score closer to 1;
+   * isolated entities score 0.
+   *
+   * @param entity - Entity to calculate for
+   * @returns Score between 0 and 1
+   */
+  private async calculateConnectivityBoost(entity: AgentEntity): Promise<number> {
+    // Use pre-computed degree map if available (batch ranking)
+    const degreeMap = this._cachedDegreeMap ?? (await this.getDegreeMap());
+    return normalizedDegree(degreeMap, entity.name);
+  }
+
   // ==================== Helper Methods ====================
+
+  /**
+   * Compute the relation degree map for the current graph.
+   * Used for normalizing connectivity scores.
+   */
+  private async getDegreeMap(): Promise<DegreeMap> {
+    const graph = await this.storage.loadGraph();
+    return computeDegreeMap(graph);
+  }
 
   /**
    * Get the maximum access count across all entities.

@@ -1191,6 +1191,7 @@ export class ManagerContext {
         minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
         importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
         accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
+        connectivityProtection: this.getEnvNumber('MEMORY_DECAY_CONNECTIVITY_PROTECTION', 0),
         // PRD MEM-01 (v1.12.0). decayRate is auto-derived from halfLifeHours
         // when env-var unset (NaN check avoids overriding the auto-derive).
         decayRate: this.envNumberOrUndefined('MEMORY_PRD_DECAY_RATE'),
@@ -1302,6 +1303,7 @@ export class ManagerContext {
    * - MEMORY_SALIENCE_FREQUENCY_WEIGHT (default: 0.2)
    * - MEMORY_SALIENCE_CONTEXT_WEIGHT (default: 0.2)
    * - MEMORY_SALIENCE_NOVELTY_WEIGHT (default: 0.1)
+   * - MEMORY_SALIENCE_CONNECTIVITY_WEIGHT (default: 0 = disabled)
    */
   get salienceEngine(): SalienceEngine {
     if (!this._salienceEngine) {
@@ -1315,6 +1317,7 @@ export class ManagerContext {
           frequencyWeight: this.getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2),
           contextWeight: this.getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2),
           noveltyWeight: this.getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1),
+          connectivityWeight: this.getEnvNumber('MEMORY_SALIENCE_CONNECTIVITY_WEIGHT', 0),
         }
       );
     }

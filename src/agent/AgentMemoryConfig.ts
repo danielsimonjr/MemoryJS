@@ -94,6 +94,7 @@ export function loadConfigFromEnv(): AgentMemoryConfig {
       minImportance: getEnvNumber(`${ENV_PREFIX}DECAY_MIN_IMPORTANCE`),
       importanceModulation: getEnvBool(`${ENV_PREFIX}DECAY_IMPORTANCE_MOD`),
       accessModulation: getEnvBool(`${ENV_PREFIX}DECAY_ACCESS_MOD`),
+      connectivityProtection: getEnvNumber(`${ENV_PREFIX}DECAY_CONNECTIVITY_PROTECTION`),
     },
     salience: {
       importanceWeight: getEnvNumber(`${ENV_PREFIX}SALIENCE_IMPORTANCE_WEIGHT`),
@@ -101,6 +102,7 @@ export function loadConfigFromEnv(): AgentMemoryConfig {
       frequencyWeight: getEnvNumber(`${ENV_PREFIX}SALIENCE_FREQUENCY_WEIGHT`),
       contextWeight: getEnvNumber(`${ENV_PREFIX}SALIENCE_CONTEXT_WEIGHT`),
       noveltyWeight: getEnvNumber(`${ENV_PREFIX}SALIENCE_NOVELTY_WEIGHT`),
+      connectivityWeight: getEnvNumber(`${ENV_PREFIX}SALIENCE_CONNECTIVITY_WEIGHT`),
     },
     contextWindow: {
       defaultMaxTokens: getEnvNumber(`${ENV_PREFIX}CONTEXT_MAX_TOKENS`),
@@ -181,6 +183,13 @@ export function validateConfig(config: AgentMemoryConfig): void {
     throw new Error('decay.minImportance must be between 0 and 10');
   }
 
+  if (
+    config.decay?.connectivityProtection !== undefined &&
+    (config.decay.connectivityProtection < 0 || config.decay.connectivityProtection > 1)
+  ) {
+    throw new Error('decay.connectivityProtection must be between 0 and 1');
+  }
+
   // Validate salience weights
   const salienceWeights = [
     config.salience?.importanceWeight,
@@ -188,6 +197,7 @@ export function validateConfig(config: AgentMemoryConfig): void {
     config.salience?.frequencyWeight,
     config.salience?.contextWeight,
     config.salience?.noveltyWeight,
+    config.salience?.connectivityWeight,
   ].filter((w) => w !== undefined);
 
   if (salienceWeights.some((w) => w! < 0 || w! > 1)) {
