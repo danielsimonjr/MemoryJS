@@ -14,6 +14,7 @@ import type { IGraphStorage, Entity } from '../types/types.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { EntityManager } from '../core/EntityManager.js';
 import { ObservationManager } from '../core/ObservationManager.js';
+import { RelationManager } from '../core/RelationManager.js';
 import type {
   AgentEntity,
   AgentMetadata,
@@ -103,6 +104,7 @@ export class AgentMemoryManager extends EventEmitter {
   private _profileManager?: ProfileManager;
   private _entityManager?: EntityManager;
   private _observationManager?: ObservationManager;
+  private _relationManager?: RelationManager;
   private _workThreadManager?: WorkThreadManager;
   private _checkpointManager?: SessionCheckpointManager;
 
@@ -220,6 +222,13 @@ export class AgentMemoryManager extends EventEmitter {
     return (this._observationManager ??= new ObservationManager(this.storage as GraphStorage));
   }
 
+  /**
+   * Internal RelationManager, created on demand from the underlying storage.
+   */
+  private get relationManager(): RelationManager {
+    return (this._relationManager ??= new RelationManager(this.storage as GraphStorage));
+  }
+
   /** Profile manager for persistent user/agent profile facts */
   get profileManager(): ProfileManager {
     return (this._profileManager ??= new ProfileManager(
@@ -253,7 +262,8 @@ export class AgentMemoryManager extends EventEmitter {
 
   get checkpointManager(): SessionCheckpointManager {
     return (this._checkpointManager ??= new SessionCheckpointManager(
-      this.storage, this.workingMemory, this.decayEngine
+      this.storage, this.workingMemory, this.decayEngine,
+      this.entityManager, this.relationManager
     ));
   }
 
