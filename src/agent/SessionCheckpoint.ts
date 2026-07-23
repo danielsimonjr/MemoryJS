@@ -2,16 +2,47 @@
  * Session Checkpoint Manager
  *
  * Provides session checkpointing, crash recovery, and sleep/wake
- * functionality for agent memory sessions. Checkpoints capture
- * working memory state and decay snapshots, stored as observations
- * on the session entity.
+ * functionality for agent memory sessions. Checkpoints are persisted as
+ * real graph structure instead of JSON blobs, so checkpoint content is
+ * queryable and traversable:
+ *
+ * - Each checkpoint is its own `entityType: 'session-checkpoint'` entity
+ *   (name = checkpoint id `checkpoint_{sessionId}_{timestamp}`), with
+ *   `parentId` set to the session entity for hierarchy integration.
+ * - Scalar fields are human-readable observation lines:
+ *   `[session-id]: <id>`, `[label]: <name>` (when present), and
+ *   `[created-at]: <ISO timestamp>`.
+ * - The working-memory snapshot is one line per memory:
+ *   `[working-memory]: <JSON-name>` for membership (order-preserving) and
+ *   `[decay]: <JSON-name>=<importance>` for the importance snapshot —
+ *   names are JSON-encoded so arbitrary strings (equals signs, newlines,
+ *   unicode) roundtrip.
+ * - Arbitrary metadata roundtrips via `[meta]: <JSON-key>=<JSON-value>`
+ *   lines (key and value JSON-encoded separately).
+ * - Relations wire it together: session —`has_checkpoint`→ checkpoint,
+ *   and checkpoint —`snapshots`→ each working-memory entity that still
+ *   exists at write time. Observation lines remain the source of truth
+ *   for the snapshot content (so a checkpoint survives working-memory
+ *   deletion, whose cascade drops the `snapshots` relation).
+ *
+ * Ordering: `listCheckpoints` sorts by the `[created-at]` scalar (newest
+ * first, ties broken by the numeric id suffix) — the module only ever
+ * needs "latest checkpoint", so no `precedes` chain is maintained.
+ *
+ * Legacy `[CHECKPOINT] {json}` observations on session entities remain
+ * decodable via `decodeLegacyCheckpoint` and are auto-migrated to the
+ * decomposed shape on read; use `migrateLegacySessionCheckpoints` for
+ * bulk migration.
  *
  * @module agent/SessionCheckpoint
  */
 
-import type { IGraphStorage } from '../types/types.js';
+import type { Entity, IGraphStorage, Relation } from '../types/types.js';
 import type { SessionEntity } from '../types/agent-memory.js';
 import { isSessionEntity } from '../types/agent-memory.js';
+import { EntityNotFoundError } from '../utils/errors.js';
+import type { EntityManager } from '../core/EntityManager.js';
+import type { RelationManager } from '../core/RelationManager.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
 
@@ -40,21 +71,46 @@ export interface SessionCheckpointData {
   };
 }
 
-/** Prefix used to identify checkpoint observations on session entities. */
-const CHECKPOINT_PREFIX = '[CHECKPOINT] ';
+// ==================== Constants ====================
+
+/** Legacy sentinel prefix for JSON-blob checkpoint observations. */
+const LEGACY_CHECKPOINT_PREFIX = '[CHECKPOINT] ';
+
+/** Entity type for decomposed checkpoint entities. */
+export const SESSION_CHECKPOINT_ENTITY_TYPE = 'session-checkpoint';
+
+/** Relation type: session —has_checkpoint→ checkpoint entity. */
+export const HAS_CHECKPOINT_RELATION = 'has_checkpoint';
+
+/** Relation type: checkpoint —snapshots→ working-memory entity. */
+export const SNAPSHOTS_RELATION = 'snapshots';
+
+/** Scalar observation prefixes on checkpoint entities. */
+const SESSION_ID_PREFIX = '[session-id]: ';
+const LABEL_PREFIX = '[label]: ';
+const CREATED_AT_PREFIX = '[created-at]: ';
+
+/** List observation prefixes on checkpoint entities. */
+const WORKING_MEMORY_PREFIX = '[working-memory]: ';
+const DECAY_PREFIX = '[decay]: ';
+const META_PREFIX = '[meta]: ';
 
 // ==================== SessionCheckpointManager ====================
 
 /**
  * Manages session checkpoints for crash recovery and sleep/wake.
  *
- * Stores checkpoint data as JSON-serialized observations on the
- * session entity, prefixed with `[CHECKPOINT]`. This avoids
- * requiring a separate storage mechanism.
+ * Persists each checkpoint as a dedicated `session-checkpoint` entity
+ * linked to its session via a `has_checkpoint` relation (see the module
+ * doc for the full decomposed schema). Legacy JSON-blob checkpoints
+ * stored as `[CHECKPOINT]` observations on session entities are
+ * auto-migrated on read.
  *
  * @example
  * ```typescript
- * const mgr = new SessionCheckpointManager(storage, workingMemory, decayEngine);
+ * const mgr = new SessionCheckpointManager(
+ *   storage, workingMemory, decayEngine, entityManager, relationManager
+ * );
  *
  * // Create a checkpoint
  * const cp = await mgr.checkpoint('session_123', 'before-experiment');
@@ -73,15 +129,21 @@ export class SessionCheckpointManager {
   private readonly storage: IGraphStorage;
   private readonly workingMemoryManager: WorkingMemoryManager;
   private readonly decayEngine: DecayEngine;
+  private readonly entityManager: EntityManager;
+  private readonly relationManager: RelationManager;
 
   constructor(
     storage: IGraphStorage,
     workingMemoryManager: WorkingMemoryManager,
-    decayEngine: DecayEngine
+    decayEngine: DecayEngine,
+    entityManager: EntityManager,
+    relationManager: RelationManager
   ) {
     this.storage = storage;
     this.workingMemoryManager = workingMemoryManager;
     this.decayEngine = decayEngine;
+    this.entityManager = entityManager;
+    this.relationManager = relationManager;
   }
 
   // ==================== Checkpoint Creation ====================
@@ -90,8 +152,8 @@ export class SessionCheckpointManager {
    * Create a checkpoint for a session.
    *
    * Captures the current working memory entity names and their
-   * importance values, storing the data as a JSON-serialized
-   * observation on the session entity.
+   * importance values, persisting them as a dedicated
+   * `session-checkpoint` entity plus linking relations.
    *
    * @param sessionId - Session to checkpoint
    * @param name - Optional user-provided label
@@ -104,9 +166,15 @@ export class SessionCheckpointManager {
       throw new Error(`Cannot checkpoint session with status '${session.status}': ${sessionId}`);
     }
 
-    const now = new Date().toISOString();
-    const timestamp = Date.now();
+    // Entity names must be unique — bump the millisecond timestamp while
+    // the derived name is taken (rapid successive checkpoints can land in
+    // the same millisecond).
+    let timestamp = Date.now();
+    while (this.storage.getEntityByName(`checkpoint_${sessionId}_${timestamp}`)) {
+      timestamp++;
+    }
     const checkpointId = `checkpoint_${sessionId}_${timestamp}`;
+    const now = new Date(timestamp).toISOString();
 
     // Collect working memory state
     const memories = await this.workingMemoryManager.getSessionMemories(sessionId);
@@ -130,13 +198,18 @@ export class SessionCheckpointManager {
       },
     };
 
-    // Store as observation on session entity
-    const observation = `${CHECKPOINT_PREFIX}${JSON.stringify(checkpointData)}`;
-    const currentObs = session.observations ?? [];
+    // Persist as a decomposed checkpoint entity + relations
+    await persistDecomposedCheckpoints(
+      this.entityManager,
+      this.relationManager,
+      [checkpointData]
+    );
+
+    // Keep the session's liveness signal fresh (detectAbnormalEndings
+    // keys off lastModified).
     // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- session existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(sessionId, {
-      observations: [...currentObs, observation],
-      lastModified: now,
+      lastModified: new Date().toISOString(),
     } as Record<string, unknown>);
 
     return checkpointData;
@@ -183,8 +256,10 @@ export class SessionCheckpointManager {
   /**
    * List all checkpoints for a session.
    *
-   * Parses checkpoint observations from the session entity and
-   * returns them sorted by timestamp (newest first).
+   * Collects `session-checkpoint` entities linked to the session via
+   * `has_checkpoint` relations and returns them sorted by creation time
+   * (newest first). Legacy `[CHECKPOINT]` blob observations found on the
+   * session entity are auto-migrated to the decomposed shape first.
    *
    * @param sessionId - Session to list checkpoints for
    * @returns Array of checkpoint data, newest first
@@ -192,7 +267,8 @@ export class SessionCheckpointManager {
    */
   async listCheckpoints(sessionId: string): Promise<SessionCheckpointData[]> {
     const session = this.getSessionEntity(sessionId);
-    return this.parseCheckpoints(session);
+    await this.migrateSessionLegacyCheckpoints(session);
+    return this.collectCheckpoints(sessionId);
   }
 
   // ==================== Abnormal Ending Detection ====================
@@ -251,7 +327,7 @@ export class SessionCheckpointManager {
 
     // Update session status to suspended
     const now = new Date().toISOString();
-    // Re-read observations after checkpoint added one
+    // Re-read observations in case checkpointing mutated the session
     const updatedSession = this.getSessionEntity(sessionId);
     const currentObs = updatedSession.observations ?? [];
     // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- session existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
@@ -286,8 +362,8 @@ export class SessionCheckpointManager {
     if (checkpointId) {
       targetCheckpointId = checkpointId;
     } else {
-      // Find most recent checkpoint
-      const checkpoints = this.parseCheckpoints(session);
+      // Find most recent checkpoint (auto-migrates legacy blobs)
+      const checkpoints = await this.listCheckpoints(sessionId);
       if (checkpoints.length === 0) {
         throw new Error(`No checkpoints available for session: ${sessionId}`);
       }
@@ -297,9 +373,11 @@ export class SessionCheckpointManager {
     // Restore from checkpoint
     await this.restore(targetCheckpointId);
 
-    // Update session status to active
+    // Update session status to active. Re-read observations in case
+    // legacy-checkpoint migration rewrote them above.
     const now = new Date().toISOString();
-    const currentObs = session.observations ?? [];
+    const currentSession = this.getSessionEntity(sessionId);
+    const currentObs = currentSession.observations ?? [];
     // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- session existence-checked at entry; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(sessionId, {
       status: 'active',
@@ -323,58 +401,313 @@ export class SessionCheckpointManager {
   }
 
   /**
-   * Parse checkpoint observations from a session entity.
-   * Returns checkpoints sorted newest first.
+   * Collect decomposed checkpoint entities for a session via its
+   * `has_checkpoint` relations. Returns checkpoints sorted newest first.
    * @internal
    */
-  private parseCheckpoints(session: SessionEntity): SessionCheckpointData[] {
-    const observations = session.observations ?? [];
+  private async collectCheckpoints(sessionId: string): Promise<SessionCheckpointData[]> {
+    const relations = await this.relationManager.getRelations(sessionId);
     const checkpoints: SessionCheckpointData[] = [];
-
-    for (const obs of observations) {
-      if (!obs.startsWith(CHECKPOINT_PREFIX)) continue;
-      try {
-        const json = obs.slice(CHECKPOINT_PREFIX.length);
-        const data = JSON.parse(json) as SessionCheckpointData;
-        checkpoints.push(data);
-      } catch {
-        // Skip malformed checkpoint observations
-      }
+    for (const rel of relations) {
+      if (rel.from !== sessionId || rel.relationType !== HAS_CHECKPOINT_RELATION) continue;
+      const entity = this.storage.getEntityByName(rel.to);
+      if (!entity || entity.entityType !== SESSION_CHECKPOINT_ENTITY_TYPE) continue;
+      checkpoints.push(decodeCheckpointEntity(entity));
     }
-
-    // Sort newest first
-    checkpoints.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-
+    checkpoints.sort(compareNewestFirst);
     return checkpoints;
   }
 
   /**
-   * Find a checkpoint by ID across all sessions.
+   * Auto-migrate any legacy `[CHECKPOINT]` blob observations on the given
+   * session entity to the decomposed shape, stripping the migrated blobs
+   * from the session's observations. Malformed blobs are left in place
+   * (they were already skipped by the legacy parser). Returns the
+   * migrated checkpoints (empty when nothing was migrated).
+   * @internal
+   */
+  private async migrateSessionLegacyCheckpoints(
+    session: SessionEntity
+  ): Promise<SessionCheckpointData[]> {
+    return migrateSessionEntityCheckpoints(
+      this.entityManager,
+      this.relationManager,
+      session
+    );
+  }
+
+  /**
+   * Find a checkpoint by ID. Checkpoint IDs double as entity names, so
+   * the decomposed lookup is O(1); when the entity is missing, sessions
+   * still carrying legacy blobs are migrated and re-checked.
    * @internal
    */
   private async findCheckpointById(checkpointId: string): Promise<SessionCheckpointData | null> {
-    // Extract sessionId from checkpoint ID: checkpoint_{sessionId}_{timestamp}
-    const parts = checkpointId.split('_');
-    // sessionId may itself contain underscores (e.g., session_12345_abcdef)
-    // checkpoint ID format: checkpoint_{sessionId}_{timestamp}
-    // The timestamp is the last part, so we take everything between 'checkpoint_' and the last '_'
-    if (parts.length < 3 || parts[0] !== 'checkpoint') {
-      return null;
+    const entity = this.storage.getEntityByName(checkpointId);
+    if (entity && entity.entityType === SESSION_CHECKPOINT_ENTITY_TYPE) {
+      return decodeCheckpointEntity(entity);
     }
 
-    // Try to find via the session entity
-    // The sessionId is embedded in the checkpoint ID after "checkpoint_"
-    // We need to search all sessions since sessionId format varies
+    // Legacy fallback: migrate sessions that still store checkpoint
+    // blobs, then look for the requested id among what was migrated.
     const graph = await this.storage.loadGraph();
-    for (const entity of graph.entities) {
-      if (!isSessionEntity(entity)) continue;
-      const checkpoints = this.parseCheckpoints(entity);
-      const match = checkpoints.find((cp) => cp.id === checkpointId);
+    const legacySessions = graph.entities.filter(
+      (e): e is SessionEntity => isSessionEntity(e) && hasLegacyCheckpointObservations(e.observations ?? [])
+    );
+    for (const session of legacySessions) {
+      const migrated = await this.migrateSessionLegacyCheckpoints(session);
+      const match = migrated.find((cp) => cp.id === checkpointId);
       if (match) return match;
     }
 
+    return null;
+  }
+}
+
+// ==================== Bulk Migration ====================
+
+/**
+ * Scan every session entity and migrate any legacy `[CHECKPOINT] {json}`
+ * blob observations to the decomposed graph shape (checkpoint entities +
+ * `has_checkpoint` / `snapshots` relations), mirroring
+ * `migrateLegacyProcedures`.
+ *
+ * @returns Number of checkpoints migrated.
+ */
+export async function migrateLegacySessionCheckpoints(
+  entityManager: EntityManager,
+  relationManager: RelationManager
+): Promise<number> {
+  const sessions = await entityManager.listEntities({ entityType: 'session' });
+  const legacySessions = sessions.filter(
+    (e): e is SessionEntity => isSessionEntity(e) && hasLegacyCheckpointObservations(e.observations ?? [])
+  );
+
+  let migrated = 0;
+  for (const session of legacySessions) {
+    const checkpoints = await migrateSessionEntityCheckpoints(
+      entityManager,
+      relationManager,
+      session
+    );
+    migrated += checkpoints.length;
+  }
+  return migrated;
+}
+
+/**
+ * Decode + persist the legacy blobs on one session entity, then strip
+ * the migrated blob observations from the session.
+ * @internal
+ */
+async function migrateSessionEntityCheckpoints(
+  entityManager: EntityManager,
+  relationManager: RelationManager,
+  session: SessionEntity
+): Promise<SessionCheckpointData[]> {
+  const observations = session.observations ?? [];
+  if (!hasLegacyCheckpointObservations(observations)) return [];
+
+  const migrated: SessionCheckpointData[] = [];
+  const remaining: string[] = [];
+  for (const obs of observations) {
+    const decoded = decodeLegacyCheckpoint(obs);
+    if (decoded) {
+      migrated.push(decoded);
+    } else {
+      remaining.push(obs);
+    }
+  }
+  if (migrated.length === 0) return [];
+
+  await persistDecomposedCheckpoints(entityManager, relationManager, migrated);
+
+  try {
+    // EntityManager.updateEntity bumps lastModified itself.
+    await entityManager.updateEntity(session.name, { observations: remaining });
+  } catch (err) {
+    // Session vanished between enumeration and update (concurrent delete).
+    // Preserve the tolerant semantics of the previous storage-level write:
+    // the checkpoints were already persisted, there is nothing to strip.
+    if (!(err instanceof EntityNotFoundError)) throw err;
+  }
+
+  return migrated;
+}
+
+// ==================== Encoding / Decoding ====================
+
+/** True when the observation list still carries legacy checkpoint blobs. */
+function hasLegacyCheckpointObservations(observations: string[]): boolean {
+  return observations.some((obs) => obs.startsWith(LEGACY_CHECKPOINT_PREFIX));
+}
+
+/**
+ * Persist checkpoints in the decomposed shape: one `session-checkpoint`
+ * entity per checkpoint (parented to its session) plus a
+ * `has_checkpoint` relation from the session and `snapshots` relations
+ * to working-memory entities that currently exist. Relations to missing
+ * endpoints are skipped (RelationManager rejects dangling relations);
+ * the observation lines keep the full snapshot regardless.
+ */
+async function persistDecomposedCheckpoints(
+  entityManager: EntityManager,
+  relationManager: RelationManager,
+  checkpoints: SessionCheckpointData[]
+): Promise<void> {
+  if (checkpoints.length === 0) return;
+
+  await entityManager.createEntities(
+    checkpoints.map((cp) => ({
+      name: cp.id,
+      entityType: SESSION_CHECKPOINT_ENTITY_TYPE,
+      observations: encodeCheckpointObservations(cp),
+      parentId: cp.sessionId,
+    }))
+  );
+
+  const existing = new Set((await entityManager.listEntities()).map((e) => e.name));
+
+  const relations: Relation[] = [];
+  for (const cp of checkpoints) {
+    if (existing.has(cp.sessionId)) {
+      relations.push({ from: cp.sessionId, to: cp.id, relationType: HAS_CHECKPOINT_RELATION });
+    }
+    for (const memoryName of cp.state.workingMemories) {
+      if (existing.has(memoryName)) {
+        relations.push({ from: cp.id, to: memoryName, relationType: SNAPSHOTS_RELATION });
+      }
+    }
+  }
+  if (relations.length > 0) {
+    await relationManager.createRelations(relations);
+  }
+}
+
+/** Observation lines for a checkpoint entity (see module doc). */
+function encodeCheckpointObservations(cp: SessionCheckpointData): string[] {
+  const observations: string[] = [`${SESSION_ID_PREFIX}${cp.sessionId}`];
+  if (cp.name !== undefined) {
+    observations.push(`${LABEL_PREFIX}${cp.name}`);
+  }
+  observations.push(`${CREATED_AT_PREFIX}${cp.timestamp}`);
+  for (const memoryName of cp.state.workingMemories) {
+    observations.push(`${WORKING_MEMORY_PREFIX}${JSON.stringify(memoryName)}`);
+  }
+  for (const [key, value] of Object.entries(cp.state.decaySnapshot)) {
+    observations.push(`${DECAY_PREFIX}${JSON.stringify(key)}=${JSON.stringify(value)}`);
+  }
+  for (const [key, value] of Object.entries(cp.state.metadata)) {
+    const json = JSON.stringify(value);
+    if (json !== undefined) {
+      observations.push(`${META_PREFIX}${JSON.stringify(key)}=${json}`);
+    }
+  }
+  return observations;
+}
+
+/** Inverse of `encodeCheckpointObservations`. Tolerant of unknown lines. */
+function decodeCheckpointEntity(entity: Entity): SessionCheckpointData {
+  const data: SessionCheckpointData = {
+    id: entity.name,
+    sessionId: entity.parentId ?? '',
+    timestamp: '',
+    state: { workingMemories: [], decaySnapshot: {}, metadata: {} },
+  };
+
+  for (const obs of entity.observations ?? []) {
+    if (obs.startsWith(SESSION_ID_PREFIX)) {
+      data.sessionId = obs.slice(SESSION_ID_PREFIX.length);
+    } else if (obs.startsWith(LABEL_PREFIX)) {
+      data.name = obs.slice(LABEL_PREFIX.length);
+    } else if (obs.startsWith(CREATED_AT_PREFIX)) {
+      data.timestamp = obs.slice(CREATED_AT_PREFIX.length);
+    } else if (obs.startsWith(WORKING_MEMORY_PREFIX)) {
+      try {
+        const name: unknown = JSON.parse(obs.slice(WORKING_MEMORY_PREFIX.length));
+        if (typeof name === 'string') data.state.workingMemories.push(name);
+      } catch {
+        // Skip malformed lines
+      }
+    } else if (obs.startsWith(DECAY_PREFIX)) {
+      const kv = decodeKeyValueLine(obs.slice(DECAY_PREFIX.length));
+      if (kv && typeof kv[1] === 'number') data.state.decaySnapshot[kv[0]] = kv[1];
+    } else if (obs.startsWith(META_PREFIX)) {
+      const kv = decodeKeyValueLine(obs.slice(META_PREFIX.length));
+      if (kv) data.state.metadata[kv[0]] = kv[1];
+    }
+  }
+
+  return data;
+}
+
+/**
+ * Split `<JSON-string>=<JSON-value>` at the `=` separating the key from
+ * the value (never inside the key — `"` inside a JSON string is escaped,
+ * so a simple escape-aware scan finds the key's closing quote). Returns
+ * null on malformed input.
+ */
+function decodeKeyValueLine(body: string): [string, unknown] | null {
+  if (!body.startsWith('"')) return null;
+  let i = 1;
+  while (i < body.length && body[i] !== '"') {
+    i += body[i] === '\\' ? 2 : 1;
+  }
+  if (i >= body.length || body[i + 1] !== '=') return null;
+  try {
+    const key: unknown = JSON.parse(body.slice(0, i + 1));
+    const value: unknown = JSON.parse(body.slice(i + 2));
+    if (typeof key !== 'string') return null;
+    return [key, value];
+  } catch {
+    return null;
+  }
+}
+
+/** Newest-first ordering: `[created-at]` desc, numeric id suffix desc. */
+function compareNewestFirst(a: SessionCheckpointData, b: SessionCheckpointData): number {
+  const delta = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+  if (delta !== 0 && Number.isFinite(delta)) return delta;
+  return checkpointSequence(b.id) - checkpointSequence(a.id);
+}
+
+/** Numeric millisecond suffix of a checkpoint id (0 when unparsable). */
+function checkpointSequence(id: string): number {
+  const n = Number(id.slice(id.lastIndexOf('_') + 1));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Pure decoder for a single legacy `[CHECKPOINT] {json}` observation
+ * line. Returns null when the line is not a well-formed legacy blob.
+ *
+ * @deprecated Legacy decoder — kept for reading pre-decomposition
+ * observations. `SessionCheckpointManager` auto-migrates such blobs on
+ * read; new code should go through `SessionCheckpointManager`.
+ */
+export function decodeLegacyCheckpoint(observation: string): SessionCheckpointData | null {
+  if (!observation.startsWith(LEGACY_CHECKPOINT_PREFIX)) return null;
+  try {
+    const parsed = JSON.parse(observation.slice(LEGACY_CHECKPOINT_PREFIX.length)) as
+      | Partial<SessionCheckpointData>
+      | null;
+    if (!parsed || typeof parsed.id !== 'string' || typeof parsed.sessionId !== 'string') {
+      return null;
+    }
+    const state = parsed.state ?? { workingMemories: [], decaySnapshot: {}, metadata: {} };
+    const data: SessionCheckpointData = {
+      id: parsed.id,
+      sessionId: parsed.sessionId,
+      timestamp: typeof parsed.timestamp === 'string' ? parsed.timestamp : '',
+      state: {
+        workingMemories: Array.isArray(state.workingMemories) ? state.workingMemories : [],
+        decaySnapshot: state.decaySnapshot ?? {},
+        metadata: state.metadata ?? {},
+      },
+    };
+    if (typeof parsed.name === 'string') data.name = parsed.name;
+    return data;
+  } catch {
     return null;
   }
 }

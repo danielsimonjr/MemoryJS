@@ -14,6 +14,7 @@ import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphSt
 import { clearAllSearchCaches } from '../utils/searchCache.js';
 import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
+import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { BatchTransaction } from './TransactionManager.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
 import { dirname } from 'path';
@@ -67,6 +68,7 @@ function resolveSegmentStorage(memoryFilePath: string): FileSegmentStorage | nul
 //   src/types/artifact.ts         ArtifactEntity
 const OPTIONAL_PERSISTED_ENTITY_FIELDS: ReadonlyArray<string> = [
   // Core Entity (types/types.ts)
+  'id',
   'tags', 'importance', 'parentId', 'projectId',
   'version', 'parentEntityName', 'rootEntityName', 'isLatest', 'supersededBy',
   'contentHash',
@@ -1071,6 +1073,85 @@ export class GraphStorage implements IGraphStorage {
       }
 
       return true;
+    });
+  }
+
+  /**
+   * Atomically rename an entity, rewriting every stored reference to the
+   * old name:
+   * - `Relation.from` / `Relation.to`
+   * - other entities' `parentId`
+   * - version-chain fields on all entities (`parentEntityName`,
+   *   `rootEntityName`, `supersededBy`) — including self-references on
+   *   the renamed entity itself.
+   *
+   * The entity's `id`, `createdAt`, and all other fields are preserved;
+   * only `lastModified` is bumped. Referencing entities/relations keep
+   * their own timestamps (a rename is a pure reference rewrite, their
+   * content did not change).
+   *
+   * Implementation: load-mutate-save via `saveGraphInternal`, which fully
+   * rewrites the file and rebuilds every in-memory index (NameIndex /
+   * TypeIndex / LowercaseCache / RelationIndex / ObservationIndex) — the
+   * same pattern other bulk mutations use. This also makes segment mode
+   * (`MEMORY_STORAGE_SEGMENT_COUNT >= 2`) correct for free: `saveAll`
+   * re-routes every entity through `fnv1a32(name) % N`, so the renamed
+   * entity migrates to its new owning segment atomically (manifest-based
+   * multi-file commit).
+   *
+   * Does NOT emit entity events itself — `EntityManager.renameEntity`
+   * emits `entity:renamed` + `entity:deleted` + `entity:created` after
+   * the storage write succeeds. (`saveGraphInternal` still emits its
+   * usual `graph:saved`.)
+   *
+   * @param oldName - Current entity name (must exist)
+   * @param newName - New entity name (must not exist)
+   * @returns The renamed entity
+   * @throws {EntityNotFoundError} If `oldName` does not exist
+   * @throws {DuplicateEntityError} If `newName` already exists
+   */
+  async renameEntity(oldName: string, newName: string): Promise<Entity> {
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (!this.nameIndex.has(oldName)) {
+        throw new EntityNotFoundError(oldName);
+      }
+      if (this.nameIndex.has(newName)) {
+        throw new DuplicateEntityError(newName);
+      }
+
+      // Deep-copy the graph (same shape as getGraphForMutation) so a
+      // failed save leaves the cache untouched.
+      const graph: KnowledgeGraph = {
+        entities: this.cache!.entities.map(e => ({
+          ...e,
+          observations: [...e.observations],
+          tags: e.tags ? [...e.tags] : undefined,
+        })),
+        relations: this.cache!.relations.map(r => ({ ...r })),
+      };
+
+      const renamed = graph.entities.find(e => e.name === oldName)!;
+      renamed.name = newName;
+      renamed.lastModified = new Date().toISOString();
+
+      // Rewrite all name references (including self-references on the
+      // renamed entity's own version-chain fields).
+      for (const e of graph.entities) {
+        if (e.parentId === oldName) e.parentId = newName;
+        if (e.parentEntityName === oldName) e.parentEntityName = newName;
+        if (e.rootEntityName === oldName) e.rootEntityName = newName;
+        if (e.supersededBy === oldName) e.supersededBy = newName;
+      }
+      for (const r of graph.relations) {
+        if (r.from === oldName) r.from = newName;
+        if (r.to === oldName) r.to = newName;
+      }
+
+      // Full rewrite + index rebuild (same pattern as other bulk ops).
+      await this.saveGraphInternal(graph);
+      return renamed;
     });
   }
 

@@ -108,6 +108,7 @@ export type {
   EntityCreatedEvent,
   EntityUpdatedEvent,
   EntityDeletedEvent,
+  EntityRenamedEvent,
   RelationCreatedEvent,
   RelationDeletedEvent,
   ObservationAddedEvent,

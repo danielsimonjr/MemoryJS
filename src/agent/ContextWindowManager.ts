@@ -369,7 +369,7 @@ export class ContextWindowManager {
       const hybridInput = candidates.map((e) => ({
         entity: e as import('../types/types.js').Entity,
         scores: { semantic: 0, lexical: 0, symbolic: 0, combined: 1.0 },
-        matchedLayers: [] as ('semantic' | 'lexical' | 'symbolic')[],
+        matchedLayers: [] as import('../types/types.js').HybridSearchResult['matchedLayers'],
       }));
       const distilled = await this.distillationPolicy.distill(hybridInput, {
         queryKeywords: context.queryText ? context.queryText.split(/\s+/) : [],

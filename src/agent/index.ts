@@ -153,6 +153,11 @@ export {
 export {
   SessionCheckpointManager,
   type SessionCheckpointData,
+  SESSION_CHECKPOINT_ENTITY_TYPE,
+  HAS_CHECKPOINT_RELATION,
+  SNAPSHOTS_RELATION,
+  migrateLegacySessionCheckpoints,
+  decodeLegacyCheckpoint,
 } from './SessionCheckpoint.js';
 
 export {
@@ -257,6 +262,11 @@ export {
 
 export {
   WorkThreadManager,
+  migrateLegacyWorkThreads,
+  decodeLegacyWorkThread,
+  WORK_THREAD_ENTITY_TYPE,
+  CHILD_OF_RELATION,
+  BLOCKED_BY_RELATION,
   type WorkThread,
   type WorkThreadStatus,
   type WorkThreadFilter,

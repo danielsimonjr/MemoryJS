@@ -35,6 +35,8 @@ import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
 import { SearchManager } from '../search/SearchManager.js';
 import { RankedSearch } from '../search/RankedSearch.js';
+import { GraphRankPrior } from '../search/GraphRankPrior.js';
+import { HybridSearchManager } from '../search/HybridSearchManager.js';
 import { LLMQueryPlanner } from '../search/LLMQueryPlanner.js';
 import { LLMSearchExecutor } from '../search/LLMSearchExecutor.js';
 import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
@@ -145,6 +147,8 @@ export class ManagerContext {
   private _graphTraversal?: GraphTraversal;
   private _searchManager?: SearchManager;
   private _rankedSearch?: RankedSearch;
+  private _graphRankPrior?: GraphRankPrior;
+  private _hybridSearchManager?: HybridSearchManager;
   private _ioManager?: IOManager;
   private _tagManager?: TagManager;
   private _analyticsManager?: AnalyticsManager;
@@ -282,10 +286,17 @@ export class ManagerContext {
 
   /** EntityManager - Entity CRUD and tag operations */
   get entityManager(): EntityManager {
-    return (this._entityManager ??= new EntityManager(
-      this.storage,
-      { defaultProjectId: this.defaultProjectId }
-    ));
+    if (!this._entityManager) {
+      this._entityManager = new EntityManager(
+        this.storage,
+        { defaultProjectId: this.defaultProjectId }
+      );
+      // Wire the RefIndex so stable aliases survive renames
+      // (EntityManager.renameEntity remaps them) and are purged on
+      // deletes. RefIndex is lazy — no disk I/O until first use.
+      this._entityManager.setRefIndex(this.refIndex);
+    }
+    return this._entityManager;
   }
 
   /** RelationManager - Relation CRUD */
@@ -454,7 +465,46 @@ export class ManagerContext {
 
   /** RankedSearch - TF-IDF/BM25 ranked search */
   get rankedSearch(): RankedSearch {
-    return (this._rankedSearch ??= new RankedSearch(this.storage));
+    if (!this._rankedSearch) {
+      this._rankedSearch = new RankedSearch(this.storage);
+      // Optional graph-connectivity boost. When MEMORY_RANKED_GRAPH_BOOST is
+      // 0/unset (the default), the prior is not even constructed — zero overhead.
+      const graphBoost = this.getEnvNumber('MEMORY_RANKED_GRAPH_BOOST', 0);
+      if (graphBoost > 0) {
+        this._rankedSearch.setGraphPrior(this.graphRankPrior, graphBoost);
+      }
+    }
+    return this._rankedSearch;
+  }
+
+  /**
+   * GraphRankPrior — cached graph-connectivity ranking signal (normalized
+   * PageRank with degree fallback). Built over the existing GraphTraversal
+   * and auto-invalidated via the storage GraphEventEmitter.
+   * @experimental
+   */
+  get graphRankPrior(): GraphRankPrior {
+    return (this._graphRankPrior ??= new GraphRankPrior(this.graphTraversal, {
+      events: this.storage.events,
+    }));
+  }
+
+  /**
+   * HybridSearchManager — semantic + lexical + symbolic (+ optional graph)
+   * layered search. Reads MEMORY_HYBRID_GRAPH_WEIGHT at first access; when
+   * 0/unset (the default), the GraphRankPrior is not attached — zero overhead.
+   */
+  get hybridSearchManager(): HybridSearchManager {
+    if (!this._hybridSearchManager) {
+      const graphWeight = this.getEnvNumber('MEMORY_HYBRID_GRAPH_WEIGHT', 0);
+      this._hybridSearchManager =
+        graphWeight > 0
+          ? new HybridSearchManager(this.semanticSearch, this.rankedSearch, this.graphRankPrior, {
+              graphWeight,
+            })
+          : new HybridSearchManager(this.semanticSearch, this.rankedSearch);
+    }
+    return this._hybridSearchManager;
   }
 
   /**
@@ -929,7 +979,7 @@ export class ManagerContext {
    */
   get procedureManager(): ProcedureManager {
     if (!this._procedureManager) {
-      this._procedureManager = new ProcedureManager(this.entityManager);
+      this._procedureManager = new ProcedureManager(this.entityManager, this.relationManager);
     }
     return this._procedureManager;
   }
@@ -1191,6 +1241,7 @@ export class ManagerContext {
         minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
         importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
         accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
+        connectivityProtection: this.getEnvNumber('MEMORY_DECAY_CONNECTIVITY_PROTECTION', 0),
         // PRD MEM-01 (v1.12.0). decayRate is auto-derived from halfLifeHours
         // when env-var unset (NaN check avoids overriding the auto-derive).
         decayRate: this.envNumberOrUndefined('MEMORY_PRD_DECAY_RATE'),
@@ -1302,6 +1353,7 @@ export class ManagerContext {
    * - MEMORY_SALIENCE_FREQUENCY_WEIGHT (default: 0.2)
    * - MEMORY_SALIENCE_CONTEXT_WEIGHT (default: 0.2)
    * - MEMORY_SALIENCE_NOVELTY_WEIGHT (default: 0.1)
+   * - MEMORY_SALIENCE_CONNECTIVITY_WEIGHT (default: 0 = disabled)
    */
   get salienceEngine(): SalienceEngine {
     if (!this._salienceEngine) {
@@ -1315,6 +1367,7 @@ export class ManagerContext {
           frequencyWeight: this.getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2),
           contextWeight: this.getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2),
           noveltyWeight: this.getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1),
+          connectivityWeight: this.getEnvNumber('MEMORY_SALIENCE_CONNECTIVITY_WEIGHT', 0),
         }
       );
     }

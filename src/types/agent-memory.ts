@@ -710,6 +710,12 @@ export interface SalienceComponents {
   contextRelevance: number;
   /** Novelty contribution */
   noveltyBoost: number;
+  /**
+   * Graph connectivity contribution (relation degree normalized by max
+   * degree). Optional for backwards compatibility; 0 when the
+   * connectivity signal is disabled (connectivityWeight = 0).
+   */
+  connectivityBoost?: number;
 }
 
 /**

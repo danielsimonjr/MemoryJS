@@ -178,6 +178,38 @@ export class RefIndex {
   }
 
   /**
+   * Remap every alias pointing at `oldName` to point at `newName`.
+   * Called by `EntityManager.renameEntity` so registered refs survive
+   * entity renames (the reason this index exists). Silent no-op when no
+   * refs point at `oldName`.
+   *
+   * @param oldName - Entity name before the rename
+   * @param newName - Entity name after the rename
+   * @returns Number of refs remapped
+   */
+  async renameEntity(oldName: string, newName: string): Promise<number> {
+    return this.mutex.runExclusive(async () => {
+      await this.ensureLoaded();
+
+      const refs = this.reverseIndex.get(oldName);
+      if (!refs || refs.size === 0) return 0;
+
+      const count = refs.size;
+      for (const ref of refs) {
+        const entry = this.entries.get(ref);
+        if (entry) {
+          entry.entityName = newName;
+        }
+        this.addToReverseIndex(newName, ref);
+      }
+      this.reverseIndex.delete(oldName);
+
+      await this.persistAll();
+      return count;
+    });
+  }
+
+  /**
    * Batch {@link purgeEntity} — rewrites the JSONL sidecar once for the
    * whole set instead of once per name.
    *

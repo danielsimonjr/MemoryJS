@@ -1,5 +1,6 @@
 /**
- * Hybrid Search Manager - orchestrates semantic, lexical, and symbolic search.
+ * Hybrid Search Manager - orchestrates semantic, lexical, symbolic, and
+ * (optionally) graph-connectivity search layers.
  * @module search/HybridSearchManager
  */
 
@@ -12,6 +13,7 @@ import type {
 } from '../types/index.js';
 import type { SemanticSearch } from './SemanticSearch.js';
 import type { RankedSearch } from './RankedSearch.js';
+import type { GraphRankPrior } from './GraphRankPrior.js';
 import { SymbolicSearch } from './SymbolicSearch.js';
 import { SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
 
@@ -21,22 +23,99 @@ export const DEFAULT_HYBRID_WEIGHTS = {
   symbolic: 0.2,
 };
 
-/** Combines semantic, lexical, and symbolic search layers with configurable weights. */
+/** Default number of top results whose neighbors are expanded. */
+export const DEFAULT_NEIGHBOR_TOP_K = 10;
+/** Default damping applied to a neighbor's inherited combined score. */
+export const DEFAULT_NEIGHBOR_DAMPING = 0.3;
+
+/**
+ * Matched-layer union including the graph-connectivity channel.
+ *
+ * @deprecated The canonical `HybridSearchResult['matchedLayers']` union
+ * (src/types) now includes `'graph'`. Use
+ * `HybridSearchResult['matchedLayers'][number]` instead. Kept as an alias
+ * for back-compat (exported from the search barrel).
+ */
+export type HybridSearchLayer = HybridSearchResult['matchedLayers'][number];
+
+/**
+ * HybridSearchResult variant whose scores may carry the normalized
+ * graph-connectivity score. Now that the canonical `matchedLayers` union
+ * includes `'graph'`, this type differs from HybridSearchResult only by
+ * the optional `scores.graph` field, so every GraphHybridSearchResult is a
+ * valid HybridSearchResult (and vice versa when the graph layer did not
+ * run). Results produced with the graph channel enabled conform to this
+ * shape.
+ */
+export interface GraphHybridSearchResult extends HybridSearchResult {
+  scores: HybridSearchResult['scores'] & {
+    /** Normalized graph-connectivity score. Present when the graph layer ran. */
+    graph?: number;
+  };
+}
+
+/** One-hop neighbor expansion options (only a single hop is supported). */
+export interface NeighborExpansionOptions {
+  /** Number of hops to expand. Only 1 is supported. */
+  hops: 1;
+  /** Number of top-ranked results to expand from (default: 10). */
+  topK?: number;
+  /** Damping factor applied to the parent's combined score (default: 0.3). */
+  damping?: number;
+}
+
+/** Additive graph-channel options for hybrid search. All default off. */
+export interface GraphHybridOptions {
+  /**
+   * Weight for the graph-connectivity channel (normalized PageRank via
+   * GraphRankPrior). Default 0 = channel disabled. Requires a GraphRankPrior
+   * to have been passed to the constructor.
+   */
+  graphWeight?: number;
+  /**
+   * One-hop neighbor expansion: after scoring, neighbors of the top-K
+   * results are appended with a damped combined score and re-sorted.
+   * Requires a GraphRankPrior. Off unless provided.
+   */
+  expandNeighbors?: NeighborExpansionOptions;
+}
+
+/**
+ * Combines semantic, lexical, symbolic, and (optionally) graph-connectivity
+ * search layers with configurable weights.
+ */
 export class HybridSearchManager {
   private symbolicSearch: SymbolicSearch;
 
+  /**
+   * @param semanticSearch - Semantic layer (null = layer disabled)
+   * @param rankedSearch - Lexical layer (TF-IDF/BM25)
+   * @param graphPrior - Optional graph-connectivity signal provider; when
+   *   absent, the graph channel and neighbor expansion are inert
+   * @param defaults - Default per-search graph options (e.g. env-configured
+   *   graphWeight); per-call options override these
+   */
   constructor(
     private semanticSearch: SemanticSearch | null,
-    private rankedSearch: RankedSearch
+    private rankedSearch: RankedSearch,
+    private graphPrior: GraphRankPrior | null = null,
+    private defaults: GraphHybridOptions = {}
   ) {
     this.symbolicSearch = new SymbolicSearch();
   }
 
-  /** Perform hybrid search combining all three layers. */
+  /**
+   * Perform hybrid search combining all layers.
+   *
+   * When the graph channel or expandNeighbors is enabled, matchedLayers may
+   * include 'graph' and results additionally conform to
+   * GraphHybridSearchResult (`scores.graph` carries the normalized
+   * graph-connectivity score).
+   */
   async search(
     graph: ReadonlyKnowledgeGraph,
     query: string,
-    options: Partial<HybridSearchOptions> = {}
+    options: Partial<HybridSearchOptions> & GraphHybridOptions = {}
   ): Promise<HybridSearchResult[]> {
     const {
       semanticWeight = DEFAULT_HYBRID_WEIGHTS.semantic,
@@ -47,12 +126,8 @@ export class HybridSearchManager {
       symbolic = {},
       limit = SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT,
     } = options;
-
-    // Normalize weights
-    const totalWeight = semanticWeight + lexicalWeight + symbolicWeight;
-    const normSemantic = semanticWeight / totalWeight;
-    const normLexical = lexicalWeight / totalWeight;
-    const normSymbolic = symbolicWeight / totalWeight;
+    const graphWeight = options.graphWeight ?? this.defaults.graphWeight ?? 0;
+    const expandNeighbors = options.expandNeighbors ?? this.defaults.expandNeighbors;
 
     // Execute searches in parallel
     const [semanticResults, lexicalResults, symbolicResults] = await Promise.all([
@@ -61,19 +136,53 @@ export class HybridSearchManager {
       this.executeSymbolicSearch(graph.entities, symbolic),
     ]);
 
+    // Graph-connectivity layer: normalized PageRank over the candidate union.
+    const graphActive = graphWeight > 0 && this.graphPrior !== null;
+    let graphResults = new Map<string, number>();
+    if (graphActive) {
+      const candidateNames = new Set<string>([
+        ...semanticResults.keys(),
+        ...lexicalResults.keys(),
+        ...symbolicResults.keys(),
+      ]);
+      graphResults = await this.graphPrior!.getScores([...candidateNames]);
+    }
+
+    // Normalize weights (graph participates only when active)
+    const totalWeight =
+      semanticWeight + lexicalWeight + symbolicWeight + (graphActive ? graphWeight : 0);
+    const weights = {
+      semantic: semanticWeight / totalWeight,
+      lexical: lexicalWeight / totalWeight,
+      symbolic: symbolicWeight / totalWeight,
+      graph: graphActive ? graphWeight / totalWeight : 0,
+    };
+
+    // Create entity lookup map (shared by merge and neighbor expansion)
+    const entityMap = new Map(graph.entities.map(e => [e.name, e]));
+
     // Merge results
     const merged = this.mergeResults(
-      graph.entities,
+      entityMap,
       semanticResults,
       lexicalResults,
       symbolicResults,
-      { semantic: normSemantic, lexical: normLexical, symbolic: normSymbolic }
+      graphResults,
+      weights,
+      graphActive
     );
 
     // Sort by combined score and limit
-    return merged
+    let ranked = merged
       .sort((a, b) => b.scores.combined - a.scores.combined)
       .slice(0, limit);
+
+    // Optional one-hop neighbor expansion (off by default)
+    if (expandNeighbors && this.graphPrior) {
+      ranked = this.expandOneHop(ranked, expandNeighbors, entityMap, limit);
+    }
+
+    return ranked;
   }
 
   /**
@@ -163,26 +272,27 @@ export class HybridSearchManager {
   }
 
   /**
-   * Merge results from all three layers.
+   * Merge results from all layers.
    */
   private mergeResults(
-    entities: readonly Entity[],
+    entityMap: Map<string, Entity>,
     semanticScores: Map<string, number>,
     lexicalScores: Map<string, number>,
     symbolicScores: Map<string, number>,
-    weights: { semantic: number; lexical: number; symbolic: number }
-  ): HybridSearchResult[] {
-    // Collect all unique entity names that have at least one non-zero score
+    graphScores: Map<string, number>,
+    weights: { semantic: number; lexical: number; symbolic: number; graph: number },
+    graphActive: boolean
+  ): GraphHybridSearchResult[] {
+    // Collect all unique entity names that have at least one non-zero score.
+    // Graph scores only rank existing candidates — they never introduce new
+    // ones (the candidate union was built from the text layers).
     const allNames = new Set([
       ...semanticScores.keys(),
       ...lexicalScores.keys(),
       ...symbolicScores.keys(),
     ]);
 
-    // Create entity lookup map
-    const entityMap = new Map(entities.map(e => [e.name, e]));
-
-    const results: HybridSearchResult[] = [];
+    const results: GraphHybridSearchResult[] = [];
 
     for (const name of allNames) {
       const entity = entityMap.get(name);
@@ -191,28 +301,80 @@ export class HybridSearchManager {
       const semantic = semanticScores.get(name) ?? 0;
       const lexical = lexicalScores.get(name) ?? 0;
       const symbolic = symbolicScores.get(name) ?? 0;
+      const graph = graphScores.get(name) ?? 0;
 
       const combined =
         semantic * weights.semantic +
         lexical * weights.lexical +
-        symbolic * weights.symbolic;
+        symbolic * weights.symbolic +
+        graph * weights.graph;
 
-      const matchedLayers: ('semantic' | 'lexical' | 'symbolic')[] = [];
+      const matchedLayers: HybridSearchResult['matchedLayers'] = [];
       if (semantic > 0) matchedLayers.push('semantic');
       if (lexical > 0) matchedLayers.push('lexical');
       if (symbolic > 0) matchedLayers.push('symbolic');
+      if (graphActive && graph > 0) matchedLayers.push('graph');
 
       // Skip if no layers matched meaningfully
       if (matchedLayers.length === 0) continue;
 
       results.push({
         entity,
-        scores: { semantic, lexical, symbolic, combined },
+        scores: graphActive
+          ? { semantic, lexical, symbolic, combined, graph }
+          : { semantic, lexical, symbolic, combined },
         matchedLayers,
       });
     }
 
     return results;
+  }
+
+  /**
+   * One-hop neighbor expansion: append unseen neighbors of the top-K results
+   * with a damped combined score (`damping * parent.combined`), tagged with
+   * matchedLayers ['graph'], then re-sort and re-apply the limit.
+   *
+   * Neighbors already present in the result set are never duplicated.
+   */
+  private expandOneHop(
+    results: GraphHybridSearchResult[],
+    options: NeighborExpansionOptions,
+    entityMap: Map<string, Entity>,
+    limit: number
+  ): GraphHybridSearchResult[] {
+    const topK = options.topK ?? DEFAULT_NEIGHBOR_TOP_K;
+    const damping = options.damping ?? DEFAULT_NEIGHBOR_DAMPING;
+
+    const seen = new Set(results.map(r => r.entity.name));
+    const added: GraphHybridSearchResult[] = [];
+
+    for (const parent of results.slice(0, topK)) {
+      for (const neighborName of this.graphPrior!.neighbors(parent.entity.name)) {
+        if (seen.has(neighborName)) continue;
+        const entity = entityMap.get(neighborName);
+        if (!entity) continue;
+        seen.add(neighborName);
+        added.push({
+          entity,
+          scores: {
+            semantic: 0,
+            lexical: 0,
+            symbolic: 0,
+            combined: damping * parent.scores.combined,
+          },
+          matchedLayers: ['graph'],
+        });
+      }
+    }
+
+    if (added.length === 0) {
+      return results;
+    }
+
+    return [...results, ...added]
+      .sort((a, b) => b.scores.combined - a.scores.combined)
+      .slice(0, limit);
   }
 
   /**
@@ -222,7 +384,7 @@ export class HybridSearchManager {
   async searchWithEntities(
     graph: ReadonlyKnowledgeGraph,
     query: string,
-    options: Partial<HybridSearchOptions> = {}
+    options: Partial<HybridSearchOptions> & GraphHybridOptions = {}
   ): Promise<HybridSearchResult[]> {
     return this.search(graph, query, options);
   }

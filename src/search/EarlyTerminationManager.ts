@@ -352,15 +352,22 @@ export class EarlyTerminationManager {
     const entityTypes = new Set(results.map(r => r.entity.entityType));
     const typeDiversity = Math.min(entityTypes.size / 3, 1);
 
-    // Layer diversity
-    const layerCounts = { semantic: 0, lexical: 0, symbolic: 0 };
+    // Layer diversity. 'graph' results (neighbor expansion / graph channel)
+    // count as an active layer, but the denominator stays the three
+    // executable text layers — clamp so diversity never exceeds 1.
+    const layerCounts: Record<HybridSearchResult['matchedLayers'][number], number> = {
+      semantic: 0,
+      lexical: 0,
+      symbolic: 0,
+      graph: 0,
+    };
     for (const result of results) {
       for (const layer of result.matchedLayers) {
         layerCounts[layer]++;
       }
     }
     const activeLayers = Object.values(layerCounts).filter(c => c > 0).length;
-    const layerDiversity = activeLayers / 3;
+    const layerDiversity = Math.min(activeLayers / 3, 1);
 
     // Combined diversity
     return (typeDiversity + layerDiversity) / 2;
@@ -374,7 +381,10 @@ export class EarlyTerminationManager {
     const layers = new Set<SearchLayer>();
     for (const result of results) {
       for (const layer of result.matchedLayers) {
-        layers.add(layer);
+        // 'graph' is a scoring channel, not an executable search layer here.
+        if (layer !== 'graph') {
+          layers.add(layer);
+        }
       }
     }
     return Array.from(layers);

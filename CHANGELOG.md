@@ -7,7 +7,118 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Graph connectivity as a first-class search ranking signal** (knowledge-
+  graph-as-core convergence, Gap 1 — see
+  `docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`). New
+  `GraphRankPrior` (`@experimental`): cached, event-invalidated normalized
+  PageRank provider over `GraphTraversal`, with degree-only fallback beyond
+  `maxPageRankEntities` (default 50k). `HybridScorer` gains a fourth `graph`
+  channel (default weight 0 — prior behavior preserved); `HybridSearchManager`
+  can feed it and optionally expand results with damped one-hop neighbors
+  (`expandNeighbors`); `RankedSearch.setGraphPrior()` applies an opt-in
+  PageRank boost. Wired via `ctx.graphRankPrior` / `ctx.hybridSearchManager`;
+  env knobs `MEMORY_HYBRID_GRAPH_WEIGHT` and `MEMORY_RANKED_GRAPH_BOOST`
+  (default 0 = the prior is never constructed, zero overhead).
+- **Graph connectivity in salience scoring and decay protection** (Gap 2).
+  `SalienceEngine` gains a `connectivityWeight` factor (normalized entity
+  degree, cached per ranking batch); `DecayEngine` gains
+  `connectivityProtection` — well-connected entities decay slower in the
+  legacy decay path (PRD variant untouched). Both default to 0 = off with
+  bit-identical scores to prior behavior (asserted by tests). Env knobs:
+  `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`, `MEMORY_DECAY_CONNECTIVITY_PROTECTION`
+  (plus `AGENT_MEMORY_*` variants). Shared degree math in
+  `src/agent/connectivity.ts` (`@internal`).
+
+- **Stable entity ids + `renameEntity` primitive** (graph-core prerequisite).
+  `Entity.id` — opaque UUID assigned at creation, preserved across updates,
+  renames, and both backends' persistence (`name` remains the public key;
+  `id` is forward-compat infrastructure for v2 reference migration). SQLite
+  DBs migrate automatically (guarded `ALTER TABLE` + idempotent NULL-id
+  backfill at init). New `renameEntity(oldName, newName)` on both storage
+  backends atomically rewrites `Relation.from`/`to`, children `parentId`,
+  and version-chain fields; segment-routing-aware on JSONL, single
+  FK-guarded transaction on SQLite (FTS5/embeddings/caches stay consistent).
+  `EntityManager.renameEntity` validates like `createEntities`, remaps
+  `RefIndex` aliases (the RefIndex is now actually wired into EntityManager
+  via ManagerContext — previously never connected), and emits a new
+  `entity:renamed` event plus `entity:deleted`/`entity:created` so derived
+  views (TF-IDF, embeddings, `GraphRankPrior`) stay consistent without new
+  event handling. `IGraphStorage.renameEntity` is optional so third-party
+  and test implementations remain valid.
+
+### Fixed
+
+- **`SQLiteStorage` now has a `GraphEventEmitter`** (`storage.events`),
+  emitting the same typed events at the same mutation points as the JSONL
+  backend (parity asserted by a recorded-sequence test; `renameEntity`
+  emission stays manager-level for exactly-once semantics). This fixes a
+  family of silent staleness/crash bugs on the SQLite backend: TF-IDF
+  event sync never fired, `GraphRankPrior` never invalidated, and the
+  columnar observation store (`MEMORY_OBSERVATIONS_COLUMNAR=true`)
+  crashed at wiring time. `IGraphStorage.events` is declared as an
+  optional member (same third-party-compat precedent as `renameEntity`).
+- **`GraphRankPrior` missed manager-level batch mutations on both
+  backends** — manager CRUD persists via `saveGraph` and emits only
+  `graph:saved`, which the prior didn't subscribe to, leaving stale
+  PageRank after `createEntities`/`deleteEntities`/relation changes.
+  Now also invalidates on `graph:saved` (regression-tested on JSONL and
+  SQLite).
+- **Dependency advisories resolved** via `npm audit fix` + upstream merge:
+  `brace-expansion` DoS (GHSA-3jxr-9vmj-r5cp), `js-yaml` quadratic CPU
+  (GHSA-52cp-r559-cp3m). 0 vulnerabilities.
+- **`SQLiteStorage` was missing the `graphMutex` field** that every
+  manager-level batch mutation path acquires (`EntityManager.createEntities`
+  etc.), so batch mutations crashed on a raw SQLite backend. Added the
+  `AsyncMutex` mirroring `GraphStorage`.
+
+- **`EntityManager.listEntities(filter?)`** — public bulk-enumeration API
+  (TypeIndex fast path when filtering by `entityType`); replaces the
+  `entityManager['storage']` private-access pattern at all three call
+  sites (`WorldModelManager`, procedure/checkpoint migrators).
+- **`HybridSearchResult.matchedLayers` now includes `'graph'`**, removing
+  the interim downcast in `HybridSearchManager` (`HybridSearchLayer` kept
+  as a `@deprecated` alias) and teaching `EarlyTerminationManager` to
+  count the graph layer for result diversity.
+
 ### Changed
+
+- **`ProcedureStore` decomposed from JSON-blob observations into real graph
+  structure** (Gap 3). Steps are now first-class `procedure-step` entities
+  (`parentId` = procedure; `[order]`/`[action]`/`[timeout]`/`[param]`
+  observations with escape-safe JSON key=value encoding) linked via
+  `has_step`, `precedes`, and `has_fallback` relations; procedure metadata
+  becomes human-readable scalar observations (`[success-rate]:`,
+  `[execution-count]:`); triggers live in tags only. `load()` auto-migrates
+  legacy `[procedure-steps]:`/`[procedure-meta]:` entities in place;
+  `migrateLegacyProcedures()` bulk-migrates; `decodeProcedure` stays exported
+  as the `@deprecated` legacy decoder. **Breaking (internal surface):**
+  `ProcedureStore`/`ProcedureManager` constructors now also take a
+  `RelationManager` — callers going through `ctx.procedureManager` are
+  unaffected.
+- **`WorkThreadManager` thread blob decomposed** (Gap 3, continued). Threads
+  are no longer one serialized-JSON observation: scalar fields become
+  `[title]`/`[status]`/`[owner]`/`[priority]`/timestamps observation lines,
+  metadata becomes escape-safe `[meta]:` key=value lines, and
+  `parentId`/`blockedBy` are rehydrated from the `child_of`/`blocked_by`
+  relations (the graph edges are now the source of truth). Legacy threads
+  auto-migrate on load; `migrateLegacyWorkThreads()` bulk-migrates. Public
+  API unchanged.
+- **`SessionCheckpoint` blobs decomposed** (Gap 3, completed). Each
+  checkpoint is a `session-checkpoint` entity (`parentId` = session) with
+  scalar + escape-safe per-item observation lines, `has_checkpoint` and
+  `snapshots` relations. Legacy `[CHECKPOINT] {json}` observations
+  auto-migrate on read (blob lines stripped from the session);
+  `migrateLegacySessionCheckpoints()` bulk-migrates. Method signatures
+  unchanged; constructor now takes `entityManager`/`relationManager`
+  (facade wired). This completes blob decomposition for all managers named
+  in the feasibility assessment.
+- **Graph-core contracts documented** (Gap 4): `InMemoryBackend` is
+  explicitly ephemeral-by-design (durability belongs to `SQLiteBackend`
+  through the Entity/Relation graph); `ReconstructiveMemory`'s CTC graph is
+  a specialized index, with bridge persistence into the entity graph as the
+  default system-of-record path.
 
 - **`DreamEngine.runDreamCycle` now shares a single graph load across read
   phases.** A local `sharedGraph` memo serves the temporal-anchoring,

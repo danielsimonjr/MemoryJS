@@ -53,6 +53,15 @@ export interface Entity {
   /** Unique name identifying the entity */
   name: string;
 
+  /**
+   * Stable opaque identifier (UUID), assigned at creation by
+   * `EntityManager.createEntities` and preserved across renames
+   * (`renameEntity` never touches it). NOT yet used as a reference key —
+   * `name` remains the public primary key; `id` is forward-compat
+   * infrastructure for v2 stable-id references.
+   */
+  id?: string;
+
   /** Type/category of the entity (e.g., "person", "project", "concept") */
   entityType: string;
 
@@ -1243,6 +1252,42 @@ export interface IGraphStorage {
   updateEntity(entityName: string, updates: Partial<Entity>): Promise<boolean>;
 
   /**
+   * Atomically rename an entity, rewriting every stored reference to the
+   * old name: `Relation.from`/`Relation.to`, other entities' `parentId`,
+   * and the version-chain fields (`parentEntityName`, `rootEntityName`,
+   * `supersededBy`). The entity's `id`, `createdAt`, and all other fields
+   * are preserved; `lastModified` is updated.
+   *
+   * OPTIONAL member: kept optional so pre-existing third-party / test
+   * implementations of this interface remain valid without changes.
+   * Both first-party backends (`GraphStorage`, `SQLiteStorage`)
+   * implement it; `EntityManager.renameEntity` requires it.
+   *
+   * @param oldName - Current entity name (must exist)
+   * @param newName - New entity name (must not exist)
+   * @returns Promise resolving to the renamed entity
+   * @throws EntityNotFoundError if `oldName` does not exist
+   * @throws DuplicateEntityError if `newName` already exists
+   */
+  renameEntity?(oldName: string, newName: string): Promise<Entity>;
+
+  /**
+   * Graph event emitter powering event-driven derived views (TF-IDF sync,
+   * rank priors, embedding caches, columnar observation mirroring).
+   *
+   * OPTIONAL member: kept optional so pre-existing third-party / test
+   * implementations of this interface remain valid without changes (same
+   * precedent as `renameEntity`). Both first-party backends
+   * (`GraphStorage`, `SQLiteStorage`) expose one; derived views no-op
+   * gracefully when it is absent.
+   *
+   * Typed via an inline type-only import: `types.ts` is the root of the
+   * module layering (zero imports), so a top-level import from core would
+   * invert it; `import()` in type position is erased at compile time.
+   */
+  readonly events?: import('../core/GraphEventEmitter.js').GraphEventEmitter;
+
+  /**
    * Compact the storage by removing duplicates.
    *
    * @returns Promise resolving when compaction is complete
@@ -1828,6 +1873,7 @@ export type GraphEventType =
   | 'entity:created'
   | 'entity:updated'
   | 'entity:deleted'
+  | 'entity:renamed'
   | 'relation:created'
   | 'relation:deleted'
   | 'observation:added'
@@ -1895,6 +1941,31 @@ export interface EntityDeletedEvent extends GraphEventBase {
   type: 'entity:deleted';
   entityName: string;
   entity?: Entity; // The entity before deletion (if available)
+}
+
+/**
+ * Event emitted when an entity is renamed via `renameEntity`.
+ *
+ * Note for listeners: a rename ALSO emits `entity:deleted` (for the old
+ * name) followed by `entity:created` (for the renamed entity) so derived
+ * views that only understand create/delete (TF-IDF sync, rank priors,
+ * embedding caches) stay consistent without learning this event. Listeners
+ * therefore observe the sequence: `entity:renamed`, `entity:deleted`,
+ * `entity:created`.
+ *
+ * @example
+ * ```typescript
+ * emitter.on('entity:renamed', (event) => {
+ *   console.log(`${event.oldName} -> ${event.newName}`);
+ * });
+ * ```
+ */
+export interface EntityRenamedEvent extends GraphEventBase {
+  type: 'entity:renamed';
+  oldName: string;
+  newName: string;
+  /** The entity after the rename (name === newName). */
+  entity: Entity;
 }
 
 /**
@@ -2002,6 +2073,7 @@ export type GraphEvent =
   | EntityCreatedEvent
   | EntityUpdatedEvent
   | EntityDeletedEvent
+  | EntityRenamedEvent
   | RelationCreatedEvent
   | RelationDeletedEvent
   | ObservationAddedEvent
@@ -2025,6 +2097,7 @@ export interface GraphEventMap {
   'entity:created': EntityCreatedEvent;
   'entity:updated': EntityUpdatedEvent;
   'entity:deleted': EntityDeletedEvent;
+  'entity:renamed': EntityRenamedEvent;
   'relation:created': RelationCreatedEvent;
   'relation:deleted': RelationDeletedEvent;
   'observation:added': ObservationAddedEvent;
@@ -2210,7 +2283,7 @@ export interface HybridSearchResult {
     symbolic: number;
     combined: number;
   };
-  matchedLayers: ('semantic' | 'lexical' | 'symbolic')[];
+  matchedLayers: ('semantic' | 'lexical' | 'symbolic' | 'graph')[];
 }
 
 // ==================== Query Analysis Types (Phase 11) ====================

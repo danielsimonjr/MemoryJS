@@ -88,6 +88,8 @@ const relationTypeSchema = z.string()
  * Used for validating full entity objects including timestamps.
  */
 export const EntitySchema = z.object({
+  /** Stable opaque identifier (assigned at creation, survives renames). */
+  id: z.string().min(1).optional(),
   name: entityNameSchema,
   entityType: entityTypeSchema,
   observations: z.array(observationSchema),
@@ -105,6 +107,8 @@ export const EntitySchema = z.object({
  * Timestamps are optional and will be auto-generated if not provided.
  */
 export const CreateEntitySchema = z.object({
+  /** Stable opaque identifier. Auto-generated (UUID) when absent; caller-supplied ids are preserved. */
+  id: z.string().min(1).optional(),
   name: entityNameSchema,
   entityType: entityTypeSchema,
   observations: z.array(observationSchema),

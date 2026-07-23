@@ -8,12 +8,13 @@
  * @module agent/DecayEngine
  */
 
-import type { IGraphStorage } from '../types/types.js';
+import type { IGraphStorage, ReadonlyKnowledgeGraph } from '../types/types.js';
 import type { AgentEntity, DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
 import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
 import { tokenizeToSet } from '../utils/textSimilarity.js';
+import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
 
 // Re-export for convenience
 export type { DecayResult, ForgetOptions, ForgetResult } from '../types/agent-memory.js';
@@ -48,6 +49,25 @@ export interface DecayEngineConfig {
    * Enable to make low-confidence memories decay faster in importance.
    */
   applyConfidenceToImportance?: boolean;
+  /**
+   * Connectivity protection strength in [0, 1] (default: 0 = off).
+   * Well-connected entities decay slower:
+   * `effectiveDecayFactor = decayFactor + (1 - decayFactor) × connectivityProtection × normalizedDegree`
+   * where `normalizedDegree` is the entity's relation degree divided by
+   * the maximum degree in the graph. At protection 1 a max-degree entity
+   * does not decay at all; at 0 behavior is unchanged. Values outside
+   * [0, 1] are clamped. Applies only to the legacy
+   * `calculateEffectiveImportance` path, never to
+   * `calculatePrdEffectiveImportance`.
+   *
+   * Because `calculateEffectiveImportance` is synchronous, degrees are
+   * read from a cached snapshot that is refreshed by the batch
+   * operations (`applyDecay`, `getDecayedMemories`, `getMemoriesAtRisk`,
+   * `forgetWeakMemories`) or explicitly via
+   * `refreshConnectivitySnapshot()`. Before the first refresh no
+   * protection is applied.
+   */
+  connectivityProtection?: number;
 
   // ==== PRD MEM-01 (v1.12.0 — Memory Engine Decay Extensions) ====
   /**
@@ -122,6 +142,8 @@ export class DecayEngine {
   private readonly accessTracker: AccessTracker;
   private readonly config: Required<DecayEngineConfig>;
   private readonly freshnessManager: FreshnessManager;
+  /** Degree snapshot for connectivity protection (see refreshConnectivitySnapshot). */
+  private _connectivityDegrees: DegreeMap | undefined;
 
   constructor(
     storage: IGraphStorage,
@@ -139,6 +161,7 @@ export class DecayEngine {
       ttlExpiredDecayMultiplier: config.ttlExpiredDecayMultiplier ?? 3.0,
       confidenceDecayRate: config.confidenceDecayRate ?? 0.001,
       applyConfidenceToImportance: config.applyConfidenceToImportance ?? false,
+      connectivityProtection: Math.max(0, Math.min(1, config.connectivityProtection ?? 0)),
       // PRD MEM-01: derive decayRate from halfLifeHours when not given.
       decayRate: config.decayRate ?? Math.LN2 / (halfLifeHours * 3600),
       freshnessCoefficient: config.freshnessCoefficient ?? 0.01,
@@ -254,7 +277,9 @@ export class DecayEngine {
    * Formula: base_importance * decay_factor * strength_multiplier * confidence_factor
    *
    * - base_importance: Entity's stated importance (0-10)
-   * - decay_factor: Time-based decay (0-1), accelerated for past-TTL entities
+   * - decay_factor: Time-based decay (0-1), accelerated for past-TTL entities;
+   *   when `connectivityProtection` > 0 and a degree snapshot is available,
+   *   lifted toward 1 for well-connected entities (see DecayEngineConfig)
    * - strength_multiplier: Boost from confirmations and accesses
    * - confidence_factor: Decayed confidence based on entity age
    *
@@ -283,6 +308,16 @@ export class DecayEngine {
       entity  // Pass entity for TTL-awareness
     );
 
+    // Connectivity protection: well-connected entities decay slower.
+    // At protection 1 and max degree the decay factor becomes 1 (no decay);
+    // at protection 0 (default) the decay factor is unchanged.
+    let effectiveDecayFactor = decayFactor;
+    if (this.config.connectivityProtection > 0 && this._connectivityDegrees) {
+      const degree = normalizedDegree(this._connectivityDegrees, entity.name);
+      effectiveDecayFactor =
+        decayFactor + (1 - decayFactor) * this.config.connectivityProtection * degree;
+    }
+
     // Calculate strength multiplier if access modulation enabled
     let strengthMultiplier = 1;
     if (this.config.accessModulation) {
@@ -295,7 +330,7 @@ export class DecayEngine {
       : 1.0;
 
     // Combine factors
-    const effectiveImportance = baseImportance * decayFactor * strengthMultiplier * confidenceFactor;
+    const effectiveImportance = baseImportance * effectiveDecayFactor * strengthMultiplier * confidenceFactor;
 
     // Apply minimum floor
     return Math.min(10, Math.max(effectiveImportance, this.config.minImportance));
@@ -336,6 +371,34 @@ export class DecayEngine {
    */
   getFreshnessManager(): FreshnessManager {
     return this.freshnessManager;
+  }
+
+  // ==================== Connectivity Protection ====================
+
+  /**
+   * Refresh the degree snapshot used for connectivity protection.
+   *
+   * `calculateEffectiveImportance` is synchronous, so it reads entity
+   * degrees from this cached snapshot. The batch operations
+   * (`applyDecay`, `getDecayedMemories`, `getMemoriesAtRisk`,
+   * `forgetWeakMemories`) refresh it automatically from the graph they
+   * already load; call this method directly before ad-hoc single-entity
+   * scoring when relations may have changed. No-op cost when
+   * `connectivityProtection` is 0 apart from the graph load.
+   */
+  async refreshConnectivitySnapshot(): Promise<void> {
+    const graph = await this.storage.loadGraph();
+    this._connectivityDegrees = computeDegreeMap(graph);
+  }
+
+  /**
+   * Refresh the degree snapshot from an already-loaded graph.
+   * Skipped entirely when connectivity protection is disabled.
+   */
+  private maybeRefreshConnectivity(graph: ReadonlyKnowledgeGraph): void {
+    if (this.config.connectivityProtection > 0) {
+      this._connectivityDegrees = computeDegreeMap(graph);
+    }
   }
 
   // ==================== PRD-aligned Effective Importance (v1.12.0) ====================
@@ -421,6 +484,7 @@ export class DecayEngine {
    */
   async getDecayedMemories(threshold: number): Promise<AgentEntity[]> {
     const graph = await this.storage.loadGraph();
+    this.maybeRefreshConnectivity(graph);
     const decayed: AgentEntity[] = [];
 
     for (const entity of graph.entities) {
@@ -451,6 +515,7 @@ export class DecayEngine {
    */
   async getMemoriesAtRisk(threshold: number = 1.0): Promise<AgentEntity[]> {
     const graph = await this.storage.loadGraph();
+    this.maybeRefreshConnectivity(graph);
     const atRisk: AgentEntity[] = [];
     const minImportance = this.config.minImportance;
 
@@ -555,6 +620,7 @@ export class DecayEngine {
    */
   async forgetWeakMemories(options: ForgetOptions): Promise<ForgetResult> {
     const graph = await this.storage.loadGraph();
+    this.maybeRefreshConnectivity(graph);
     const now = Date.now();
 
     const forgottenNames: string[] = [];
@@ -648,6 +714,7 @@ export class DecayEngine {
   async applyDecay(options: DecayOperationOptions = {}): Promise<DecayResult> {
     const startTime = Date.now();
     const graph = await this.storage.loadGraph();
+    this.maybeRefreshConnectivity(graph);
 
     let entitiesProcessed = 0;
     let totalDecay = 0;

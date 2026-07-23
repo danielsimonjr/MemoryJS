@@ -7,6 +7,7 @@
  * @module core/EntityManager
  */
 
+import { randomUUID } from 'node:crypto';
 import type { Entity, LongRunningOperationOptions, AccessContext } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
@@ -277,6 +278,10 @@ export class EntityManager {
 
         const entity: Entity = {
           ...e,
+          // Stable opaque identifier: assigned at creation, preserved
+          // across renames. Caller-supplied ids win (import/replication
+          // flows); absent ids get a fresh UUID.
+          id: e.id ?? randomUUID(),
           createdAt: e.createdAt || timestamp,
           lastModified: e.lastModified || timestamp,
         };
@@ -420,6 +425,46 @@ export class EntityManager {
     }
 
     return entity;
+  }
+
+  /**
+   * List all entities in the graph, optionally filtered by entity type.
+   *
+   * This is the public bulk-enumeration API — use it instead of reaching
+   * into the storage layer (`entityManager['storage'].loadGraph()`).
+   *
+   * Performance: when an `entityType` filter is given, the storage layer's
+   * TypeIndex fast path (`getEntitiesByType`) resolves matches in O(k) for
+   * k matching entities. Without a filter the full graph is loaded — O(n)
+   * in graph size — so avoid unfiltered calls in hot paths on large graphs.
+   *
+   * The returned array is always a fresh copy (safe to sort/mutate), but
+   * the Entity objects inside are the storage layer's live references —
+   * treat them as read-only, same as `getEntity` results.
+   *
+   * @param filter - Optional filter. `entityType` matches case-insensitively
+   *   (TypeIndex semantics, same as `storage.getEntitiesByType`).
+   * @returns Array of matching entities (empty when nothing matches)
+   *
+   * @example
+   * ```typescript
+   * const manager = new EntityManager(storage);
+   *
+   * // All entities
+   * const all = await manager.listEntities();
+   *
+   * // Only procedures (O(k) via TypeIndex)
+   * const procedures = await manager.listEntities({ entityType: 'procedure' });
+   * ```
+   */
+  async listEntities(filter?: { entityType?: string }): Promise<Entity[]> {
+    if (filter?.entityType !== undefined) {
+      // Fast path: TypeIndex + NameIndex lookup, no full-graph scan.
+      await this.storage.ensureLoaded();
+      return this.storage.getEntitiesByType(filter.entityType);
+    }
+    const graph = await this.storage.loadGraph();
+    return [...graph.entities];
   }
 
   /**
@@ -612,6 +657,105 @@ export class EntityManager {
     } finally {
       release();
     }
+  }
+
+  /**
+   * Rename an entity, atomically rewriting every core-graph reference to
+   * the old name.
+   *
+   * Delegates to the storage-level `renameEntity` primitive (implemented
+   * by both `GraphStorage` and `SQLiteStorage`), which rewrites:
+   * - `Relation.from` / `Relation.to`
+   * - other entities' `parentId`
+   * - version-chain fields (`parentEntityName`, `rootEntityName`,
+   *   `supersededBy`)
+   *
+   * The entity's `id`, `createdAt`, and all other fields are preserved;
+   * `lastModified` is bumped. Registered `RefIndex` aliases pointing at
+   * the old name are remapped to the new name (when a RefIndex is
+   * configured via `setRefIndex` — `ManagerContext` wires this
+   * automatically).
+   *
+   * **Events**: on backends with an event emitter (JSONL `GraphStorage`),
+   * emits a typed `entity:renamed` event, followed by `entity:deleted`
+   * (old name) and `entity:created` (renamed entity) so create/delete-only
+   * derived views (TF-IDF event sync, rank priors, embedding caches) stay
+   * consistent without learning the new event type. Listeners therefore
+   * observe: `entity:renamed`, `entity:deleted`, `entity:created`.
+   * Both first-party backends expose an emitter (`storage.events`), so
+   * this sequence fires on JSONL and SQLite alike; the guard below only
+   * protects third-party storage implementations without one.
+   *
+   * **Known limitations (intentionally out of scope)**:
+   * - Archived snapshots (`ArchiveManager` compressed archives) keep the
+   *   old name — they are point-in-time exports, not live references.
+   * - The audit log is immutable by design; historical records keep the
+   *   old name.
+   * - Agent-memory soft references stored inside `agentMetadata` blobs or
+   *   observation text (e.g. `promotedFrom`, `previousSessionId`,
+   *   free-text mentions) are not rewritten.
+   * - JSONL-backend vector-store sidecars are not rewritten; the emitted
+   *   delete+create events let embedding caches re-index the new name.
+   *
+   * @param oldName - Current entity name (must exist)
+   * @param newName - New entity name (must not exist; must pass the same
+   *   validation as `createEntities`, including the reserved `profile-` /
+   *   `diary-` namespace rules)
+   * @returns The renamed entity
+   * @throws {ValidationError} If `newName` fails name validation or
+   *   violates a reserved namespace
+   * @throws {EntityNotFoundError} If `oldName` does not exist
+   * @throws {DuplicateEntityError} If `newName` already exists
+   */
+  async renameEntity(oldName: string, newName: string): Promise<Entity> {
+    // New name must pass the same schema checks as createEntities names.
+    const validation = EntityNamesSchema.safeParse([newName]);
+    if (!validation.success) {
+      const errors = validation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
+      throw new ValidationError('Invalid new entity name', errors);
+    }
+
+    await this.storage.ensureLoaded();
+    const existing = this.storage.getEntityByName(oldName);
+    if (!existing) {
+      throw new EntityNotFoundError(oldName);
+    }
+
+    // Reserved namespaces — same rules as createEntities.
+    if (newName.startsWith('profile-') && existing.entityType !== 'profile') {
+      throw new ValidationError(
+        `Entity name '${newName}' is reserved for the profile system. ` +
+        `Use entityType='profile' or choose a different name.`,
+        []
+      );
+    }
+    if (newName.startsWith('diary-') && existing.entityType !== 'diary') {
+      throw new ValidationError(
+        `Entity name '${newName}' is reserved for the diary system. ` +
+        `Use entityType='diary' or choose a different name.`,
+        []
+      );
+    }
+
+    // Storage primitive re-validates existence/uniqueness under its own
+    // mutex (closes the TOCTOU gap) and performs the atomic rewrite.
+    const renamed = await this.storage.renameEntity(oldName, newName);
+
+    // Remap stable aliases so refs survive the rename.
+    if (this.refIndex) {
+      await this.refIndex.renameEntity(oldName, newName);
+    }
+
+    // Emit events on backends that have an emitter (both first-party
+    // backends do; the guard covers third-party storage without one).
+    const events = (this.storage as Partial<Pick<GraphStorage, 'events'>>).events;
+    if (events) {
+      events.emitEntityRenamed(oldName, newName, renamed);
+      events.emitEntityDeleted(oldName);
+      events.emitEntityCreated(renamed);
+    }
+
+    return renamed;
   }
 
   /**

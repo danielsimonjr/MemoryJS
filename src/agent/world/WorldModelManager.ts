@@ -57,8 +57,7 @@ export class WorldModelManager {
    * descending and truncated — high-importance entities preferred.
    */
   async getCurrentState(): Promise<WorldStateSnapshot> {
-    const graph = await this.entityManager['storage'].loadGraph();
-    let entities = graph.entities as Entity[];
+    let entities: Entity[] = await this.entityManager.listEntities();
     if (entities.length > this.maxSnapshotSize) {
       entities = [...entities]
         .sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0))

@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { HierarchyManager } from '../../../src/core/HierarchyManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
+import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import { EntityNotFoundError, ValidationError } from '../../../src/utils/errors.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -703,5 +704,107 @@ describe('EntityManager', () => {
           .rejects.toThrow('Entity "NonExistent" not found');
       });
     });
+  });
+});
+
+/**
+ * listEntities — public bulk-enumeration API, exercised on both backends.
+ */
+describe('EntityManager.listEntities', () => {
+  const seed = async (manager: EntityManager) => {
+    await manager.createEntities([
+      { name: 'Alice', entityType: 'person', observations: ['a'] },
+      { name: 'Bob', entityType: 'person', observations: ['b'] },
+      { name: 'Acme', entityType: 'organization', observations: ['c'] },
+    ]);
+  };
+
+  const behavesLikeListEntities = (getManager: () => EntityManager) => {
+    it('should return all entities when no filter is given', async () => {
+      const manager = getManager();
+      await seed(manager);
+
+      const all = await manager.listEntities();
+      expect(all.map(e => e.name).sort()).toEqual(['Acme', 'Alice', 'Bob']);
+    });
+
+    it('should return only entities of the given entityType', async () => {
+      const manager = getManager();
+      await seed(manager);
+
+      const people = await manager.listEntities({ entityType: 'person' });
+      expect(people.map(e => e.name).sort()).toEqual(['Alice', 'Bob']);
+      expect(people.every(e => e.entityType === 'person')).toBe(true);
+    });
+
+    it('should match entityType case-insensitively (TypeIndex semantics)', async () => {
+      const manager = getManager();
+      await seed(manager);
+
+      const orgs = await manager.listEntities({ entityType: 'Organization' });
+      expect(orgs.map(e => e.name)).toEqual(['Acme']);
+    });
+
+    it('should return an empty array for an unknown entityType', async () => {
+      const manager = getManager();
+      await seed(manager);
+
+      expect(await manager.listEntities({ entityType: 'nope' })).toEqual([]);
+    });
+
+    it('should return an empty array on an empty graph', async () => {
+      const manager = getManager();
+      expect(await manager.listEntities()).toEqual([]);
+    });
+
+    it('should return a fresh array (caller mutation does not corrupt the graph)', async () => {
+      const manager = getManager();
+      await seed(manager);
+
+      const first = await manager.listEntities();
+      first.length = 0; // mutate the returned array
+
+      const second = await manager.listEntities();
+      expect(second).toHaveLength(3);
+    });
+  };
+
+  describe('JSONL backend (GraphStorage)', () => {
+    let testDir: string;
+    let manager: EntityManager;
+
+    beforeEach(async () => {
+      testDir = join(tmpdir(), `list-entities-jsonl-${Date.now()}-${Math.random()}`);
+      await fs.mkdir(testDir, { recursive: true });
+      const storage = new GraphStorage(join(testDir, 'graph.jsonl'));
+      manager = new EntityManager(storage);
+    });
+
+    afterEach(async () => {
+      await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
+    });
+
+    behavesLikeListEntities(() => manager);
+  });
+
+  describe('SQLite backend (SQLiteStorage)', () => {
+    let testDir: string;
+    let storage: SQLiteStorage | null;
+    let manager: EntityManager;
+
+    beforeEach(async () => {
+      testDir = join(tmpdir(), `list-entities-sqlite-${Date.now()}-${Math.random()}`);
+      await fs.mkdir(testDir, { recursive: true });
+      storage = new SQLiteStorage(join(testDir, 'graph.db'));
+      manager = new EntityManager(storage as unknown as GraphStorage);
+    });
+
+    afterEach(async () => {
+      storage?.close();
+      storage = null;
+      await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
+    });
+
+    behavesLikeListEntities(() => manager);
   });
 });

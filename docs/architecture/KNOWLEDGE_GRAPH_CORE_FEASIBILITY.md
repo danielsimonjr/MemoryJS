@@ -1,7 +1,14 @@
 # Feasibility: Making the Knowledge Graph the Core of MemoryJS
 
-**Status:** Assessment (2026-07-23)
+**Status:** Assessment (2026-07-23) — **convergence phase 1 implemented** (same date, this branch)
 **Scope:** Evaluates whether the Entity/Relation knowledge graph can — and should — become the architectural core of the library, and what that would take.
+
+> **Implementation status:**
+> - **Gap 1 (search):** ✅ `GraphRankPrior` (cached, event-invalidated normalized PageRank), fourth `graph` channel in `HybridScorer`, one-hop `expandNeighbors` in `HybridSearchManager`, opt-in PageRank boost in `RankedSearch`. Default-off (`MEMORY_HYBRID_GRAPH_WEIGHT`, `MEMORY_RANKED_GRAPH_BOOST`).
+> - **Gap 2 (salience/decay):** ✅ `connectivityWeight` in `SalienceEngine`, `connectivityProtection` in `DecayEngine` (legacy path). Default-off, bit-identical prior behavior asserted by tests.
+> - **Gap 3 (blob decomposition):** ✅ complete for all named managers. `ProcedureStore` — steps are `procedure-step` entities with `has_step`/`precedes`/`has_fallback` relations. `WorkThreadManager` — scalar observation lines + `child_of`/`blocked_by` relations as source of truth. `SessionCheckpoint` — checkpoints are `session-checkpoint` entities with `has_checkpoint`/`snapshots` relations. All three auto-migrate legacy blobs on read and export bulk migrators. `ProfileManager` needed no change — its `[static]`/`[dynamic]` prefixes are already line-per-observation (contract documented in its header).
+> - **Gap 4 (parallel models):** ✅ contracts documented in `InMemoryBackend` (ephemeral by design) and `ReconstructiveMemory` (CTC graph is an index; bridge persistence is the default system-of-record path).
+> - **Prerequisite (identity):** ✅ staged as designed — `Entity.id` (UUID, both backends, SQLite auto-migration) + `renameEntity` primitive (atomic reference rewrite on both backends, RefIndex remap, `entity:renamed` event). Reference-site migration to `id` remains the v2.0 cut.
 
 ---
 

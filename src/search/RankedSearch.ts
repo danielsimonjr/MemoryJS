@@ -13,12 +13,20 @@ import { SEARCH_LIMITS } from '../utils/constants.js';
 import { TFIDFIndexManager } from './TFIDFIndexManager.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import type { IndexHealthSnapshot } from '../utils/IIndexHealth.js';
+import type { GraphRankPrior } from './GraphRankPrior.js';
 
 /**
  * Performs TF-IDF ranked search with optional pre-calculated indexes.
  */
 export class RankedSearch {
   private indexManager: TFIDFIndexManager | null = null;
+
+  /**
+   * Optional graph-connectivity prior. When set with a positive boost, final
+   * scores are multiplied by `(1 + boost * normalizedPageRank)`. Default off.
+   */
+  private graphPrior: GraphRankPrior | null = null;
+  private graphBoost: number = 0;
 
   /**
    * Phase 4 Sprint 2: Fallback token cache for entities.
@@ -37,6 +45,22 @@ export class RankedSearch {
     if (storageDir) {
       this.indexManager = new TFIDFIndexManager(storageDir);
     }
+  }
+
+  /**
+   * Attach (or detach) a graph-connectivity prior for score boosting.
+   *
+   * When both a prior and a positive boost are set, `searchNodesRanked`
+   * multiplies each result's score by `(1 + boost * normalizedPageRank)`
+   * and re-sorts. A boost of 0 (the default) disables the behavior entirely.
+   *
+   * @param prior - GraphRankPrior instance, or null to detach
+   * @param boost - Multiplicative boost factor (default 0 = off)
+   * @experimental
+   */
+  setGraphPrior(prior: GraphRankPrior | null, boost: number = 0): void {
+    this.graphPrior = prior;
+    this.graphBoost = Number.isFinite(boost) && boost > 0 ? boost : 0;
   }
 
   /**
@@ -165,7 +189,28 @@ export class RankedSearch {
       scored = scored.filter(r => r.entity.projectId === projectId);
     }
 
+    // Optional graph-connectivity boost (off unless setGraphPrior enabled it)
+    scored = await this.applyGraphBoost(scored);
+
     return scored.slice(0, effectiveLimit);
+  }
+
+  /**
+   * Multiply each result's score by `(1 + boost * normalizedPageRank)` and
+   * re-sort. No-op when no prior/boost is configured (the default).
+   */
+  private async applyGraphBoost(results: SearchResult[]): Promise<SearchResult[]> {
+    if (!this.graphPrior || this.graphBoost <= 0 || results.length === 0) {
+      return results;
+    }
+
+    const priorScores = await this.graphPrior.getScores(results.map(r => r.entity.name));
+    return results
+      .map(r => ({
+        ...r,
+        score: r.score * (1 + this.graphBoost * (priorScores.get(r.entity.name) ?? 0)),
+      }))
+      .sort((a, b) => b.score - a.score);
   }
 
   /**
