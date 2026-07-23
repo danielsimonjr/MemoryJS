@@ -23,6 +23,12 @@ export interface SymbolicSearchResult {
   entity?: Entity;
 }
 
+/**
+ * Result from the graph-connectivity layer (e.g. normalized PageRank from
+ * GraphRankPrior). Same shape as the symbolic layer results.
+ */
+export type GraphLayerResult = SymbolicSearchResult;
+
 export interface ScoredResult {
   entityName: string;
   entity: Entity;
@@ -30,13 +36,15 @@ export interface ScoredResult {
     semantic: number;
     lexical: number;
     symbolic: number;
+    graph: number;
     combined: number;
   };
-  matchedLayers: ('semantic' | 'lexical' | 'symbolic')[];
+  matchedLayers: ('semantic' | 'lexical' | 'symbolic' | 'graph')[];
   rawScores: {
     semantic?: number;
     lexical?: number;
     symbolic?: number;
+    graph?: number;
   };
 }
 
@@ -44,12 +52,15 @@ export interface HybridWeights {
   semantic: number;
   lexical: number;
   symbolic: number;
+  /** Graph-connectivity channel weight. Default 0 = disabled (legacy behavior). */
+  graph: number;
 }
 
 export const DEFAULT_SCORER_WEIGHTS: HybridWeights = {
   semantic: 0.4,
   lexical: 0.4,
   symbolic: 0.2,
+  graph: 0,
 };
 
 export interface HybridScorerOptions {
@@ -117,12 +128,22 @@ export class HybridScorer {
     return normalized;
   }
 
-  /** Combine results from all three search layers. */
+  /**
+   * Combine results from all search layers.
+   *
+   * @param semanticResults - Semantic similarity layer results
+   * @param lexicalResults - Lexical (TF-IDF/BM25) layer results
+   * @param symbolicResults - Symbolic/metadata layer results
+   * @param entityMap - Entity lookup map by name
+   * @param graphResults - Optional graph-connectivity layer results
+   *   (default: empty — legacy three-layer behavior)
+   */
   combine(
     semanticResults: SemanticLayerResult[],
     lexicalResults: LexicalSearchResult[],
     symbolicResults: SymbolicSearchResult[],
-    entityMap: Map<string, Entity>
+    entityMap: Map<string, Entity>,
+    graphResults: GraphLayerResult[] = []
   ): ScoredResult[] {
     // Build score maps
     const semanticScores = new Map<string, number>();
@@ -140,10 +161,16 @@ export class HybridScorer {
       symbolicScores.set(result.entityName, result.score);
     }
 
+    const graphScores = new Map<string, number>();
+    for (const result of graphResults) {
+      graphScores.set(result.entityName, result.score);
+    }
+
     // Normalize scores
     const normalizedSemantic = this.minMaxNormalize(semanticScores);
     const normalizedLexical = this.minMaxNormalize(lexicalScores);
     const normalizedSymbolic = this.minMaxNormalize(symbolicScores);
+    const normalizedGraph = this.minMaxNormalize(graphScores);
 
     // Calculate effective weights
     let effectiveWeights = { ...this.weights };
@@ -151,7 +178,8 @@ export class HybridScorer {
       effectiveWeights = this.getNormalizedWeights(
         semanticResults.length > 0,
         lexicalResults.length > 0,
-        symbolicResults.length > 0
+        symbolicResults.length > 0,
+        graphResults.length > 0
       );
     }
 
@@ -160,6 +188,7 @@ export class HybridScorer {
       ...normalizedSemantic.keys(),
       ...normalizedLexical.keys(),
       ...normalizedSymbolic.keys(),
+      ...normalizedGraph.keys(),
     ]);
 
     // Calculate combined scores
@@ -171,15 +200,17 @@ export class HybridScorer {
       const semanticScore = normalizedSemantic.get(entityName) ?? 0;
       const lexicalScore = normalizedLexical.get(entityName) ?? 0;
       const symbolicScore = normalizedSymbolic.get(entityName) ?? 0;
+      const graphScore = normalizedGraph.get(entityName) ?? 0;
 
       // Calculate weighted combination
       const combined =
         semanticScore * effectiveWeights.semantic +
         lexicalScore * effectiveWeights.lexical +
-        symbolicScore * effectiveWeights.symbolic;
+        symbolicScore * effectiveWeights.symbolic +
+        graphScore * effectiveWeights.graph;
 
       // Track matched layers
-      const matchedLayers: ('semantic' | 'lexical' | 'symbolic')[] = [];
+      const matchedLayers: ScoredResult['matchedLayers'] = [];
       const rawScores: ScoredResult['rawScores'] = {};
 
       if (semanticScores.has(entityName)) {
@@ -194,6 +225,10 @@ export class HybridScorer {
         matchedLayers.push('symbolic');
         rawScores.symbolic = symbolicScores.get(entityName);
       }
+      if (graphScores.has(entityName)) {
+        matchedLayers.push('graph');
+        rawScores.graph = graphScores.get(entityName);
+      }
 
       // Skip if below minimum score or no layers matched
       if (combined < this.minScore || matchedLayers.length === 0) {
@@ -207,6 +242,7 @@ export class HybridScorer {
           semantic: semanticScore,
           lexical: lexicalScore,
           symbolic: symbolicScore,
+          graph: graphScore,
           combined,
         },
         matchedLayers,
@@ -222,16 +258,18 @@ export class HybridScorer {
   getNormalizedWeights(
     hasSemantic: boolean,
     hasLexical: boolean,
-    hasSymbolic: boolean
+    hasSymbolic: boolean,
+    hasGraph: boolean = false
   ): HybridWeights {
     let totalActiveWeight = 0;
     if (hasSemantic) totalActiveWeight += this.weights.semantic;
     if (hasLexical) totalActiveWeight += this.weights.lexical;
     if (hasSymbolic) totalActiveWeight += this.weights.symbolic;
+    if (hasGraph) totalActiveWeight += this.weights.graph;
 
     // If no layers are active, return zero weights
     if (totalActiveWeight === 0) {
-      return { semantic: 0, lexical: 0, symbolic: 0 };
+      return { semantic: 0, lexical: 0, symbolic: 0, graph: 0 };
     }
 
     // Normalize active weights to sum to 1
@@ -239,6 +277,7 @@ export class HybridScorer {
       semantic: hasSemantic ? this.weights.semantic / totalActiveWeight : 0,
       lexical: hasLexical ? this.weights.lexical / totalActiveWeight : 0,
       symbolic: hasSymbolic ? this.weights.symbolic / totalActiveWeight : 0,
+      graph: hasGraph ? this.weights.graph / totalActiveWeight : 0,
     };
   }
 
@@ -247,7 +286,8 @@ export class HybridScorer {
     semanticScores: Map<string, number>,
     lexicalScores: Map<string, number>,
     symbolicScores: Map<string, number>,
-    entityMap: Map<string, Entity>
+    entityMap: Map<string, Entity>,
+    graphScores: Map<string, number> = new Map()
   ): ScoredResult[] {
     // Convert maps to result arrays
     const semanticResults: SemanticLayerResult[] = [];
@@ -265,19 +305,32 @@ export class HybridScorer {
       symbolicResults.push({ entityName, score });
     }
 
-    return this.combine(semanticResults, lexicalResults, symbolicResults, entityMap);
+    const graphResults: GraphLayerResult[] = [];
+    for (const [entityName, score] of graphScores) {
+      graphResults.push({ entityName, score });
+    }
+
+    return this.combine(
+      semanticResults,
+      lexicalResults,
+      symbolicResults,
+      entityMap,
+      graphResults
+    );
   }
 
   /** Calculate combined score for a single entity. */
   calculateScore(
     semanticScore: number,
     lexicalScore: number,
-    symbolicScore: number
+    symbolicScore: number,
+    graphScore: number = 0
   ): number {
     return (
       semanticScore * this.weights.semantic +
       lexicalScore * this.weights.lexical +
-      symbolicScore * this.weights.symbolic
+      symbolicScore * this.weights.symbolic +
+      graphScore * this.weights.graph
     );
   }
 }

@@ -35,6 +35,8 @@ import { HierarchyManager } from './HierarchyManager.js';
 import { GraphTraversal } from './GraphTraversal.js';
 import { SearchManager } from '../search/SearchManager.js';
 import { RankedSearch } from '../search/RankedSearch.js';
+import { GraphRankPrior } from '../search/GraphRankPrior.js';
+import { HybridSearchManager } from '../search/HybridSearchManager.js';
 import { LLMQueryPlanner } from '../search/LLMQueryPlanner.js';
 import { LLMSearchExecutor } from '../search/LLMSearchExecutor.js';
 import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
@@ -145,6 +147,8 @@ export class ManagerContext {
   private _graphTraversal?: GraphTraversal;
   private _searchManager?: SearchManager;
   private _rankedSearch?: RankedSearch;
+  private _graphRankPrior?: GraphRankPrior;
+  private _hybridSearchManager?: HybridSearchManager;
   private _ioManager?: IOManager;
   private _tagManager?: TagManager;
   private _analyticsManager?: AnalyticsManager;
@@ -454,7 +458,46 @@ export class ManagerContext {
 
   /** RankedSearch - TF-IDF/BM25 ranked search */
   get rankedSearch(): RankedSearch {
-    return (this._rankedSearch ??= new RankedSearch(this.storage));
+    if (!this._rankedSearch) {
+      this._rankedSearch = new RankedSearch(this.storage);
+      // Optional graph-connectivity boost. When MEMORY_RANKED_GRAPH_BOOST is
+      // 0/unset (the default), the prior is not even constructed — zero overhead.
+      const graphBoost = this.getEnvNumber('MEMORY_RANKED_GRAPH_BOOST', 0);
+      if (graphBoost > 0) {
+        this._rankedSearch.setGraphPrior(this.graphRankPrior, graphBoost);
+      }
+    }
+    return this._rankedSearch;
+  }
+
+  /**
+   * GraphRankPrior — cached graph-connectivity ranking signal (normalized
+   * PageRank with degree fallback). Built over the existing GraphTraversal
+   * and auto-invalidated via the storage GraphEventEmitter.
+   * @experimental
+   */
+  get graphRankPrior(): GraphRankPrior {
+    return (this._graphRankPrior ??= new GraphRankPrior(this.graphTraversal, {
+      events: this.storage.events,
+    }));
+  }
+
+  /**
+   * HybridSearchManager — semantic + lexical + symbolic (+ optional graph)
+   * layered search. Reads MEMORY_HYBRID_GRAPH_WEIGHT at first access; when
+   * 0/unset (the default), the GraphRankPrior is not attached — zero overhead.
+   */
+  get hybridSearchManager(): HybridSearchManager {
+    if (!this._hybridSearchManager) {
+      const graphWeight = this.getEnvNumber('MEMORY_HYBRID_GRAPH_WEIGHT', 0);
+      this._hybridSearchManager =
+        graphWeight > 0
+          ? new HybridSearchManager(this.semanticSearch, this.rankedSearch, this.graphRankPrior, {
+              graphWeight,
+            })
+          : new HybridSearchManager(this.semanticSearch, this.rankedSearch);
+    }
+    return this._hybridSearchManager;
   }
 
   /**

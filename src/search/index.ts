@@ -79,7 +79,23 @@ export {
 
 // Phase 11 Sprint 1: Hybrid Search
 export { SymbolicSearch, type SymbolicResult } from './SymbolicSearch.js';
-export { HybridSearchManager, DEFAULT_HYBRID_WEIGHTS } from './HybridSearchManager.js';
+export {
+  HybridSearchManager,
+  DEFAULT_HYBRID_WEIGHTS,
+  DEFAULT_NEIGHBOR_TOP_K,
+  DEFAULT_NEIGHBOR_DAMPING,
+  type HybridSearchLayer,
+  type GraphHybridOptions,
+  type GraphHybridSearchResult,
+  type NeighborExpansionOptions,
+} from './HybridSearchManager.js';
+
+// Graph connectivity ranking signal (@experimental)
+export {
+  GraphRankPrior,
+  DEFAULT_MAX_PAGERANK_ENTITIES,
+  type GraphRankPriorOptions,
+} from './GraphRankPrior.js';
 
 // Phase 11 Sprint 3: Query Analysis
 export { QueryAnalyzer } from './QueryAnalyzer.js';
@@ -116,6 +132,7 @@ export {
   type SemanticLayerResult,
   type LexicalSearchResult,
   type SymbolicSearchResult,
+  type GraphLayerResult,
   type ScoredResult,
   type HybridWeights,
   type HybridScorerOptions,
