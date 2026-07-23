@@ -929,7 +929,7 @@ export class ManagerContext {
    */
   get procedureManager(): ProcedureManager {
     if (!this._procedureManager) {
-      this._procedureManager = new ProcedureManager(this.entityManager);
+      this._procedureManager = new ProcedureManager(this.entityManager, this.relationManager);
     }
     return this._procedureManager;
   }

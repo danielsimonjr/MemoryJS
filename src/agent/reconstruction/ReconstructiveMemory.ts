@@ -16,6 +16,15 @@
  * console.log(result.answer, result.evidence);
  * ```
  *
+ * **Contract (graph-core):** the in-memory {@link CueTagContentGraph} is a
+ * specialized associative *index*, not a second system-of-record. Durability
+ * and graph queryability come from persisting through
+ * {@link MemoryGraphBridge} into the Entity/Relation graph — which is the
+ * default when constructed via `ctx.reconstructiveMemory()` (the context
+ * wires its own `entityManager`/`relationManager`/`semanticSearch` as the
+ * backing). Passing `backing: undefined` opts out and makes the instance
+ * ephemeral; treat that as a testing/short-lived-process mode.
+ *
  * @module agent/reconstruction/ReconstructiveMemory
  * @experimental
  */

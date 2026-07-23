@@ -4,7 +4,10 @@
  * First-class type definitions for stored, executable procedures —
  * skills / how-to sequences distinct from semantic facts and episodic
  * events. Procedures are persisted as `entityType: 'procedure'` entities
- * with the step list encoded in `observations` as JSON.
+ * whose steps are decomposed into `entityType: 'procedure-step'` child
+ * entities linked via `has_step` / `precedes` / `has_fallback` relations
+ * (see `agent/procedural/ProcedureStore`); step fields are stored as
+ * one human-readable observation line each, not JSON blobs.
  *
  * @module types/procedure
  */

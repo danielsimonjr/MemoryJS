@@ -12,6 +12,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
+import { RelationManager } from '../../../src/core/RelationManager.js';
 import {
   ProcedureManager,
   StepSequencer,
@@ -24,6 +25,7 @@ describe('3B.4 Procedural Memory', () => {
   let testDir: string;
   let storage: GraphStorage;
   let entityManager: EntityManager;
+  let relationManager: RelationManager;
   let manager: ProcedureManager;
 
   beforeEach(async () => {
@@ -31,7 +33,8 @@ describe('3B.4 Procedural Memory', () => {
     await fs.mkdir(testDir, { recursive: true });
     storage = new GraphStorage(join(testDir, 'memory.jsonl'));
     entityManager = new EntityManager(storage);
-    manager = new ProcedureManager(entityManager);
+    relationManager = new RelationManager(storage);
+    manager = new ProcedureManager(entityManager, relationManager);
   });
 
   afterEach(async () => {
@@ -381,7 +384,8 @@ describe('3B.4 Procedural Memory', () => {
       // Force a fresh storage read.
       const fresh = new GraphStorage(storage.getFilePath());
       const freshEntities = new EntityManager(fresh);
-      const freshManager = new ProcedureManager(freshEntities);
+      const freshRelations = new RelationManager(fresh);
+      const freshManager = new ProcedureManager(freshEntities, freshRelations);
       const loaded = await freshManager.getProcedure(created.id);
       expect(loaded?.steps).toHaveLength(2);
       expect(loaded?.steps[0].parameters.x).toBe('1');

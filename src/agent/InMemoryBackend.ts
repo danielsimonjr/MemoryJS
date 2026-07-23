@@ -8,6 +8,14 @@
  * persistence. Suitable as the default backend when no SQLite/Postgres
  * configuration exists, and as the fast/clean fixture in unit tests.
  *
+ * **Contract (graph-core):** this backend is *ephemeral by design* — it is
+ * an in-process turn buffer, not part of the knowledge graph's
+ * system-of-record. Anything that must survive the process or be
+ * queryable/traversable as graph content belongs in `SQLiteBackend`,
+ * which routes through `MemoryEngine` into the Entity/Relation graph.
+ * Do not extend this class with durability features; swap backends
+ * instead (`MEMORY_BACKEND=sqlite`).
+ *
  * Scoring delegates to `DecayEngine.calculatePrdEffectiveImportance` so
  * `get_weighted` returns the same PRD-formula scores that
  * `SQLiteBackend` (T13) will produce.

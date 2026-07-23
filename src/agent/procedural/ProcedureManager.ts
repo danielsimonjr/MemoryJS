@@ -17,6 +17,7 @@
  */
 
 import type { EntityManager } from '../../core/EntityManager.js';
+import type { RelationManager } from '../../core/RelationManager.js';
 import type {
   Procedure,
   ProcedureStep,
@@ -61,9 +62,10 @@ export class ProcedureManager {
 
   constructor(
     entityManager: EntityManager,
+    relationManager: RelationManager,
     config: ProcedureManagerConfig = {},
   ) {
-    this.store = new ProcedureStore(entityManager);
+    this.store = new ProcedureStore(entityManager, relationManager);
     this.successRateAlpha = config.successRateAlpha ?? 0.2;
   }
 
