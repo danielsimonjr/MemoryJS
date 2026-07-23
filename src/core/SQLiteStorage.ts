@@ -26,8 +26,10 @@ import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import { clearAllSearchCaches } from '../utils/searchCache.js';
 import { NameIndex, TypeIndex } from '../utils/indexes.js';
-import { sanitizeObject, validateFilePath } from '../utils/index.js';
+import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
+import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { randomUUID } from 'node:crypto';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 
 /**
@@ -51,6 +53,16 @@ export class SQLiteStorage implements IGraphStorage {
    * to protect our in-memory cache and index operations.
    */
   private mutex = new Mutex();
+
+  /**
+   * Application-level mutex for managers to serialize validate+mutate+save.
+   * Mirrors `GraphStorage.graphMutex` — `EntityManager` / `RelationManager` /
+   * `ObservationManager` acquire it around their read-modify-write cycles,
+   * so it must exist on every backend those managers can be handed.
+   * (Previously missing here, which made manager-level batch mutations
+   * crash on the SQLite backend.)
+   */
+  readonly graphMutex = new AsyncMutex();
 
   /**
    * SQLite database instance for writes and write-transaction reads.
@@ -196,6 +208,7 @@ export class SQLiteStorage implements IGraphStorage {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS entities (
         name TEXT PRIMARY KEY,
+        id TEXT,
         entityType TEXT NOT NULL,
         observations TEXT NOT NULL,
         tags TEXT,
@@ -361,6 +374,27 @@ export class SQLiteStorage implements IGraphStorage {
       // problem: future schema additions just extend the JSON shape.
       this.db.exec('ALTER TABLE entities ADD COLUMN agentMetadata TEXT');
     }
+    if (!columnNames.has('id')) {
+      // Stable opaque entity identifier (survives renames). New DBs get
+      // the column via CREATE TABLE; this ALTER covers pre-existing DBs.
+      this.db.exec('ALTER TABLE entities ADD COLUMN id TEXT');
+    }
+
+    // Backfill: assign a stable id to any row that lacks one (pre-id DBs,
+    // or rows written by code paths that bypass EntityManager). Idempotent
+    // — the WHERE clause makes re-runs a no-op. Done in JS (not
+    // randomblob SQL) so ids are proper RFC 4122 UUIDs, matching
+    // EntityManager.createEntities.
+    const missing = this.db.prepare('SELECT name FROM entities WHERE id IS NULL').all() as Array<{ name: string }>;
+    if (missing.length > 0) {
+      const backfill = this.db.prepare('UPDATE entities SET id = ? WHERE name = ?');
+      const tx = this.db.transaction(() => {
+        for (const row of missing) {
+          backfill.run(randomUUID(), row.name);
+        }
+      });
+      tx();
+    }
 
     // Create indexes (idempotent)
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`);
@@ -479,6 +513,9 @@ export class SQLiteStorage implements IGraphStorage {
       createdAt: row.createdAt,
       lastModified: row.lastModified,
     };
+
+    // Stable entity id (survives renames)
+    if (row.id != null) entity.id = row.id;
 
     // v1.8.0: version chain and projectId fields
     if (row.projectId != null) entity.projectId = row.projectId;
@@ -623,13 +660,14 @@ export class SQLiteStorage implements IGraphStorage {
 
         // Insert all entities
         const entityStmt = this.db!.prepare(`
-          INSERT INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO entities (name, id, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         for (const entity of graph.entities) {
           entityStmt.run(
             entity.name,
+            entity.id ?? null,
             entity.entityType,
             JSON.stringify(entity.observations),
             entity.tags ? JSON.stringify(entity.tags) : null,
@@ -711,12 +749,13 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Use INSERT OR REPLACE to handle updates
       const stmt = this.db.prepare(`
-        INSERT OR REPLACE INTO entities (name, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO entities (name, id, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       stmt.run(
         entity.name,
+        entity.id ?? null,
         entity.entityType,
         JSON.stringify(entity.observations),
         entity.tags ? JSON.stringify(entity.tags) : null,
@@ -835,6 +874,7 @@ export class SQLiteStorage implements IGraphStorage {
       // Update in database
       const stmt = this.db.prepare(`
         UPDATE entities SET
+          id = ?,
           entityType = ?,
           observations = ?,
           tags = ?,
@@ -853,6 +893,7 @@ export class SQLiteStorage implements IGraphStorage {
       `);
 
       stmt.run(
+        entity.id ?? null,
         entity.entityType,
         JSON.stringify(entity.observations),
         entity.tags ? JSON.stringify(entity.tags) : null,
@@ -881,6 +922,114 @@ export class SQLiteStorage implements IGraphStorage {
       this.pendingChanges++;
 
       return true;
+    });
+  }
+
+  /**
+   * Atomically rename an entity, rewriting every stored reference to the
+   * old name inside a single SQLite transaction:
+   * - `entities.name` (+ `lastModified` bump on the renamed row)
+   * - `relations.fromEntity` / `relations.toEntity`
+   * - other entities' `parentId`
+   * - version-chain columns (`parentEntityName`, `rootEntityName`,
+   *   `supersededBy` — all native columns, not JSON fields)
+   * - `embeddings.entityName` (when the embeddings table exists)
+   *
+   * FTS5 stays in sync automatically: the `entities_au` AFTER UPDATE
+   * trigger re-indexes each touched row (delete old values / insert new).
+   *
+   * Foreign keys are toggled OFF around the transaction (same pattern as
+   * `saveGraph`): `relations.fromEntity/toEntity` and `entities.parentId`
+   * reference `entities(name)` with no ON UPDATE action, so renaming the
+   * parent key first would otherwise fail the FK check mid-flight.
+   *
+   * Referencing rows keep their own timestamps (a rename is a pure
+   * reference rewrite; their content did not change).
+   *
+   * Does NOT emit entity events (SQLiteStorage has no event emitter —
+   * pre-existing design); `EntityManager.renameEntity` handles event
+   * emission when the backend supports it.
+   *
+   * @param oldName - Current entity name (must exist)
+   * @param newName - New entity name (must not exist)
+   * @returns The renamed entity
+   * @throws {EntityNotFoundError} If `oldName` does not exist
+   * @throws {DuplicateEntityError} If `newName` already exists
+   */
+  async renameEntity(oldName: string, newName: string): Promise<Entity> {
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (!this.db) throw new Error('Database not initialized');
+
+      const entity = this.nameIndex.get(oldName);
+      if (!entity) {
+        throw new EntityNotFoundError(oldName);
+      }
+      if (this.nameIndex.has(newName)) {
+        throw new DuplicateEntityError(newName);
+      }
+
+      const timestamp = new Date().toISOString();
+
+      const hasEmbeddings = this.db
+        .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='embeddings'`)
+        .get() !== undefined;
+
+      // FK toggle must happen outside the transaction (PRAGMA foreign_keys
+      // is a no-op inside one).
+      this.db.pragma('foreign_keys = OFF');
+      try {
+        const tx = this.db.transaction(() => {
+          this.db!.prepare('UPDATE entities SET name = ?, lastModified = ? WHERE name = ?')
+            .run(newName, timestamp, oldName);
+          this.db!.prepare('UPDATE relations SET fromEntity = ? WHERE fromEntity = ?')
+            .run(newName, oldName);
+          this.db!.prepare('UPDATE relations SET toEntity = ? WHERE toEntity = ?')
+            .run(newName, oldName);
+          this.db!.prepare('UPDATE entities SET parentId = ? WHERE parentId = ?')
+            .run(newName, oldName);
+          this.db!.prepare('UPDATE entities SET parentEntityName = ? WHERE parentEntityName = ?')
+            .run(newName, oldName);
+          this.db!.prepare('UPDATE entities SET rootEntityName = ? WHERE rootEntityName = ?')
+            .run(newName, oldName);
+          this.db!.prepare('UPDATE entities SET supersededBy = ? WHERE supersededBy = ?')
+            .run(newName, oldName);
+          if (hasEmbeddings) {
+            this.db!.prepare('UPDATE embeddings SET entityName = ? WHERE entityName = ?')
+              .run(newName, oldName);
+          }
+        });
+        tx();
+      } finally {
+        this.db.pragma('foreign_keys = ON');
+      }
+
+      // Update the in-memory cache to mirror the committed transaction.
+      entity.name = newName;
+      entity.lastModified = timestamp;
+      for (const e of this.cache!.entities) {
+        if (e.parentId === oldName) e.parentId = newName;
+        if (e.parentEntityName === oldName) e.parentEntityName = newName;
+        if (e.rootEntityName === oldName) e.rootEntityName = newName;
+        if (e.supersededBy === oldName) e.supersededBy = newName;
+      }
+      for (const r of this.cache!.relations) {
+        if (r.from === oldName) r.from = newName;
+        if (r.to === oldName) r.to = newName;
+      }
+
+      // Rebuild name/type indexes (key changed) and refresh caches.
+      this.nameIndex.build(this.cache!.entities);
+      this.typeIndex.build(this.cache!.entities);
+      this.lowercaseCache.delete(oldName);
+      this.updateLowercaseCache(entity);
+      this.clearBidirectionalCache();
+      clearAllSearchCaches();
+
+      this.pendingChanges++;
+
+      return entity;
     });
   }
 
@@ -1486,6 +1635,8 @@ export class SQLiteStorage implements IGraphStorage {
 
 interface EntityRow {
   name: string;
+  /** Stable opaque entity identifier (survives renames). */
+  id: string | null;
   entityType: string;
   observations: string;
   tags: string | null;

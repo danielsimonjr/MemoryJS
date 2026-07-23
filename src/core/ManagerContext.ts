@@ -286,10 +286,17 @@ export class ManagerContext {
 
   /** EntityManager - Entity CRUD and tag operations */
   get entityManager(): EntityManager {
-    return (this._entityManager ??= new EntityManager(
-      this.storage,
-      { defaultProjectId: this.defaultProjectId }
-    ));
+    if (!this._entityManager) {
+      this._entityManager = new EntityManager(
+        this.storage,
+        { defaultProjectId: this.defaultProjectId }
+      );
+      // Wire the RefIndex so stable aliases survive renames
+      // (EntityManager.renameEntity remaps them) and are purged on
+      // deletes. RefIndex is lazy — no disk I/O until first use.
+      this._entityManager.setRefIndex(this.refIndex);
+    }
+    return this._entityManager;
   }
 
   /** RelationManager - Relation CRUD */

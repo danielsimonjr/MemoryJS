@@ -18,6 +18,7 @@ import type {
   EntityCreatedEvent,
   EntityUpdatedEvent,
   EntityDeletedEvent,
+  EntityRenamedEvent,
   RelationCreatedEvent,
   RelationDeletedEvent,
   ObservationAddedEvent,
@@ -282,6 +283,28 @@ export class GraphEventEmitter {
       type: 'entity:deleted',
       timestamp: new Date().toISOString(),
       entityName,
+      entity,
+    };
+    this.emit(event);
+  }
+
+  /**
+   * Emit an entity:renamed event.
+   *
+   * Note: `EntityManager.renameEntity` also emits `entity:deleted` (old
+   * name) + `entity:created` (renamed entity) immediately after this event
+   * so create/delete-only derived views stay consistent.
+   *
+   * @param oldName - Entity name before the rename
+   * @param newName - Entity name after the rename
+   * @param entity - The renamed entity (name === newName)
+   */
+  emitEntityRenamed(oldName: string, newName: string, entity: Entity): void {
+    const event: EntityRenamedEvent = {
+      type: 'entity:renamed',
+      timestamp: new Date().toISOString(),
+      oldName,
+      newName,
       entity,
     };
     this.emit(event);
