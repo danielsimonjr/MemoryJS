@@ -84,7 +84,9 @@ ctx.refIndex            // Named reference index for O(1) entity lookup
 ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
 ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider)
 ctx.agentMemory()       // Agent Memory System facade
-ctx.procedureManager    // 3B.4 Procedural Memory (executable procedures)
+ctx.procedureManager    // 3B.4 Procedural Memory (steps as procedure-step entities + has_step/precedes/has_fallback relations)
+ctx.graphRankPrior      // Cached normalized-PageRank ranking signal (event-invalidated, degree fallback)
+ctx.hybridSearchManager // Semantic + lexical + symbolic (+ optional graph channel) layered search
 ctx.causalReasoner      // 3B.6 Causal Reasoning (findCauses/findEffects/counterfactual)
 ctx.roleAssignmentStore // η.6.1 RBAC role grants registry
 ctx.rbacMiddleware      // η.6.1 RBAC policy (checkPermission)
@@ -112,7 +114,7 @@ ctx.reconstructiveMemory() // MRAgent Cue–Tag–Content associative memory + a
 - **Text search**: `BasicSearch` (substring), `BooleanSearch` (AND/OR/NOT with AST), `FuzzySearch` (Levenshtein via worker pool, N-gram pre-filtered)
 - **Ranked search**: `RankedSearch` (TF-IDF via `TFIDFIndexManager`), `BM25Search` (Okapi BM25 with stopwords)
 - **Semantic search**: `SemanticSearch` + `EmbeddingService` + `VectorStore`/`QuantizedVectorStore` (requires embedding provider)
-- **Hybrid search**: `HybridSearchManager` + `HybridScorer` + `SymbolicSearch` - combines semantic, lexical, and symbolic signals
+- **Hybrid search**: `HybridSearchManager` + `HybridScorer` + `SymbolicSearch` - combines semantic, lexical, symbolic, and (opt-in) graph-connectivity signals; `GraphRankPrior` provides cached normalized PageRank with one-hop neighbor expansion (`expandNeighbors`)
 - **Temporal search**: `TemporalQueryParser` (chrono-node NL time parsing) + `TemporalSearch` — `searchByTime()` on SearchManager
 - **LLM-planned search**: `LLMQueryPlanner` (NL → `StructuredQuery`) + `LLMSearchExecutor` — optional `LLMProvider`, keyword fallback
 - **N-gram index**: `NGramIndex` (trigram + Jaccard similarity) — pre-filter for `FuzzySearch` before Levenshtein
@@ -261,7 +263,17 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 
 Decay: `MEMORY_AUTO_DECAY` (false), `MEMORY_DECAY_HALF_LIFE_HOURS` (168), `MEMORY_DECAY_MIN_IMPORTANCE` (0.1), `MEMORY_DECAY_INTERVAL_MS` (3600000), `MEMORY_AUTO_FORGET` (false), `MEMORY_FORGET_THRESHOLD` (0.05)
 
-Salience weights (all 0-1): `MEMORY_SALIENCE_IMPORTANCE_WEIGHT` (0.25), `MEMORY_SALIENCE_RECENCY_WEIGHT` (0.25), `MEMORY_SALIENCE_FREQUENCY_WEIGHT` (0.2), `MEMORY_SALIENCE_CONTEXT_WEIGHT` (0.2), `MEMORY_SALIENCE_NOVELTY_WEIGHT` (0.1)
+Salience weights (all 0-1): `MEMORY_SALIENCE_IMPORTANCE_WEIGHT` (0.25), `MEMORY_SALIENCE_RECENCY_WEIGHT` (0.25), `MEMORY_SALIENCE_FREQUENCY_WEIGHT` (0.2), `MEMORY_SALIENCE_CONTEXT_WEIGHT` (0.2), `MEMORY_SALIENCE_NOVELTY_WEIGHT` (0.1), `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` (0 = disabled; normalized entity degree)
+
+### Graph-connectivity signals (knowledge-graph-as-core convergence)
+All default to 0 = off with behavior identical to before they existed. See `docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`.
+
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `MEMORY_HYBRID_GRAPH_WEIGHT` | Number (0–1) | `0` | Weight of the `graph` channel (normalized PageRank via `GraphRankPrior`) in `HybridScorer`. When 0, the prior is never constructed. |
+| `MEMORY_RANKED_GRAPH_BOOST` | Number ≥ 0 | `0` | `RankedSearch` post-scoring boost: `score × (1 + boost × normalizedPageRank)`. |
+| `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` | Number (0–1) | `0` | Adds normalized entity degree to the salience weighted sum (other weights are not renormalized). |
+| `MEMORY_DECAY_CONNECTIVITY_PROTECTION` | Number (0–1) | `0` | Legacy decay path only: well-connected entities decay slower (`effectiveDecayFactor = decayFactor + (1 − decayFactor) × protection × normalizedDegree`). Requires a degree snapshot (refreshed by batch decay ops or `refreshConnectivitySnapshot()`). |
 
 Context window: `MEMORY_CONTEXT_MAX_TOKENS` (4000), `MEMORY_CONTEXT_TOKEN_MULTIPLIER` (1.3), `MEMORY_CONTEXT_RESERVE_BUFFER` (100)
 

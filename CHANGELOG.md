@@ -7,7 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Graph connectivity as a first-class search ranking signal** (knowledge-
+  graph-as-core convergence, Gap 1 — see
+  `docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`). New
+  `GraphRankPrior` (`@experimental`): cached, event-invalidated normalized
+  PageRank provider over `GraphTraversal`, with degree-only fallback beyond
+  `maxPageRankEntities` (default 50k). `HybridScorer` gains a fourth `graph`
+  channel (default weight 0 — prior behavior preserved); `HybridSearchManager`
+  can feed it and optionally expand results with damped one-hop neighbors
+  (`expandNeighbors`); `RankedSearch.setGraphPrior()` applies an opt-in
+  PageRank boost. Wired via `ctx.graphRankPrior` / `ctx.hybridSearchManager`;
+  env knobs `MEMORY_HYBRID_GRAPH_WEIGHT` and `MEMORY_RANKED_GRAPH_BOOST`
+  (default 0 = the prior is never constructed, zero overhead).
+- **Graph connectivity in salience scoring and decay protection** (Gap 2).
+  `SalienceEngine` gains a `connectivityWeight` factor (normalized entity
+  degree, cached per ranking batch); `DecayEngine` gains
+  `connectivityProtection` — well-connected entities decay slower in the
+  legacy decay path (PRD variant untouched). Both default to 0 = off with
+  bit-identical scores to prior behavior (asserted by tests). Env knobs:
+  `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`, `MEMORY_DECAY_CONNECTIVITY_PROTECTION`
+  (plus `AGENT_MEMORY_*` variants). Shared degree math in
+  `src/agent/connectivity.ts` (`@internal`).
+
 ### Changed
+
+- **`ProcedureStore` decomposed from JSON-blob observations into real graph
+  structure** (Gap 3). Steps are now first-class `procedure-step` entities
+  (`parentId` = procedure; `[order]`/`[action]`/`[timeout]`/`[param]`
+  observations with escape-safe JSON key=value encoding) linked via
+  `has_step`, `precedes`, and `has_fallback` relations; procedure metadata
+  becomes human-readable scalar observations (`[success-rate]:`,
+  `[execution-count]:`); triggers live in tags only. `load()` auto-migrates
+  legacy `[procedure-steps]:`/`[procedure-meta]:` entities in place;
+  `migrateLegacyProcedures()` bulk-migrates; `decodeProcedure` stays exported
+  as the `@deprecated` legacy decoder. **Breaking (internal surface):**
+  `ProcedureStore`/`ProcedureManager` constructors now also take a
+  `RelationManager` — callers going through `ctx.procedureManager` are
+  unaffected.
+- **Graph-core contracts documented** (Gap 4): `InMemoryBackend` is
+  explicitly ephemeral-by-design (durability belongs to `SQLiteBackend`
+  through the Entity/Relation graph); `ReconstructiveMemory`'s CTC graph is
+  a specialized index, with bridge persistence into the entity graph as the
+  default system-of-record path.
 
 - **`DreamEngine.runDreamCycle` now shares a single graph load across read
   phases.** A local `sharedGraph` memo serves the temporal-anchoring,
