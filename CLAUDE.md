@@ -155,6 +155,7 @@ ctx.reconstructiveMemory() // MRAgent Cue–Tag–Content associative memory + a
 
 **Entity** (`src/types/types.ts`): Primary graph nodes with:
 - `name` (unique identifier), `entityType`, `observations[]`
+- Optional `id` (stable opaque UUID, assigned at creation, preserved across updates/renames on both backends; `name` remains the public key — `id` is forward-compat for v2 reference migration)
 - Optional: `parentId` (hierarchy), `tags[]`, `importance` (0-10), timestamps
 - Optional (v1.6.0): `ttl` (time-to-live for freshness), `confidence` (0.0–1.0 belief strength)
 - Optional (v1.8.0): `projectId` (project scoping), `version`/`parentEntityName`/`rootEntityName`/`isLatest`/`supersededBy` (memory versioning)
@@ -196,7 +197,8 @@ ctx.reconstructiveMemory() // MRAgent Cue–Tag–Content associative memory + a
 - TF-IDF auto-sync: `TFIDFEventSync` keeps index current with storage
 - Worker pool: CPU-intensive Levenshtein calculations offloaded to workers (`dist/workers/` built separately by tsup)
 - Transaction support: `TransactionManager` for atomic batch operations
-- Named references: `RefIndex` JSONL sidecar provides O(1) stable-name lookups independent of entity name changes
+- Named references: `RefIndex` JSONL sidecar provides O(1) stable-name lookups independent of entity name changes; wired into `EntityManager` by `ManagerContext` so refs remap on `renameEntity` and purge on delete
+- Entity rename: `EntityManager.renameEntity(oldName, newName)` — storage-level primitive on both backends that atomically rewrites relation endpoints, children `parentId`, and version-chain fields; emits `entity:renamed` + `entity:deleted`/`entity:created` so derived indexes stay consistent
 - Governance: `GovernanceManager` wraps mutations with policy checks and rollback; `AuditLog` appends every operation immutably
 - Distillation: `IDistillationPolicy` applied post-retrieval in `ContextWindowManager` before formatting for LLM prompts
 - Role-aware salience: `RoleProfileManager` applies role presets to `SalienceEngine` weights and `ContextWindowManager` budget splits

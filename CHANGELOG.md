@@ -31,6 +31,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (plus `AGENT_MEMORY_*` variants). Shared degree math in
   `src/agent/connectivity.ts` (`@internal`).
 
+- **Stable entity ids + `renameEntity` primitive** (graph-core prerequisite).
+  `Entity.id` — opaque UUID assigned at creation, preserved across updates,
+  renames, and both backends' persistence (`name` remains the public key;
+  `id` is forward-compat infrastructure for v2 reference migration). SQLite
+  DBs migrate automatically (guarded `ALTER TABLE` + idempotent NULL-id
+  backfill at init). New `renameEntity(oldName, newName)` on both storage
+  backends atomically rewrites `Relation.from`/`to`, children `parentId`,
+  and version-chain fields; segment-routing-aware on JSONL, single
+  FK-guarded transaction on SQLite (FTS5/embeddings/caches stay consistent).
+  `EntityManager.renameEntity` validates like `createEntities`, remaps
+  `RefIndex` aliases (the RefIndex is now actually wired into EntityManager
+  via ManagerContext — previously never connected), and emits a new
+  `entity:renamed` event plus `entity:deleted`/`entity:created` so derived
+  views (TF-IDF, embeddings, `GraphRankPrior`) stay consistent without new
+  event handling. `IGraphStorage.renameEntity` is optional so third-party
+  and test implementations remain valid.
+
+### Fixed
+
+- **`SQLiteStorage` was missing the `graphMutex` field** that every
+  manager-level batch mutation path acquires (`EntityManager.createEntities`
+  etc.), so batch mutations crashed on a raw SQLite backend. Added the
+  `AsyncMutex` mirroring `GraphStorage`.
+
 ### Changed
 
 - **`ProcedureStore` decomposed from JSON-blob observations into real graph
