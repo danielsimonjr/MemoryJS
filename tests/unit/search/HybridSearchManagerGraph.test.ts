@@ -8,7 +8,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { HybridSearchManager } from '../../../src/search/HybridSearchManager.js';
 import type { GraphRankPrior } from '../../../src/search/GraphRankPrior.js';
-import type { Entity, ReadonlyKnowledgeGraph } from '../../../src/types/index.js';
+import type {
+  Entity,
+  HybridSearchResult,
+  ReadonlyKnowledgeGraph,
+} from '../../../src/types/index.js';
 
 describe('HybridSearchManager graph integration', () => {
   const mockSemanticSearch = {
@@ -136,6 +140,28 @@ describe('HybridSearchManager graph integration', () => {
 
       expect(fake.getScores).toHaveBeenCalledTimes(1);
       expect(results[0].entity.name).toBe('Connected');
+    });
+
+    it("should type matchedLayers containing 'graph' as plain HybridSearchResult (no downcast)", async () => {
+      const { prior } = makeFakePrior({ Connected: 1, Isolated: 0 });
+      const manager = new HybridSearchManager(
+        mockSemanticSearch as never,
+        mockRankedSearch as never,
+        prior
+      );
+      mockRankedSearch.searchNodesRanked.mockResolvedValue([
+        { entity: testGraph.entities[0], score: 5 },
+      ]);
+
+      // Compile-level proof: the canonical HybridSearchResult type (from
+      // src/types) now admits 'graph' in matchedLayers — no
+      // GraphHybridSearchResult assertion required on either side.
+      const results: HybridSearchResult[] = await manager.search(testGraph, 'test', {
+        graphWeight: 0.3,
+      });
+      const layers: HybridSearchResult['matchedLayers'] = results[0].matchedLayers;
+
+      expect(layers).toContain('graph');
     });
 
     it('should ignore a positive graph weight when no prior is attached', async () => {

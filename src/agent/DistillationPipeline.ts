@@ -154,7 +154,7 @@ export class DistillationPipeline {
           symbolic: 0,
           combined: dm.distilledScore,
         },
-        matchedLayers: [] as ('semantic' | 'lexical' | 'symbolic')[],
+        matchedLayers: [] as HybridSearchResult['matchedLayers'],
       }));
 
       const prevCount = currentDistilledOutput.length;

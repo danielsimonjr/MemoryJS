@@ -28,26 +28,30 @@ export const DEFAULT_NEIGHBOR_TOP_K = 10;
 /** Default damping applied to a neighbor's inherited combined score. */
 export const DEFAULT_NEIGHBOR_DAMPING = 0.3;
 
-/** Matched-layer union including the graph-connectivity channel. */
-export type HybridSearchLayer = 'semantic' | 'lexical' | 'symbolic' | 'graph';
+/**
+ * Matched-layer union including the graph-connectivity channel.
+ *
+ * @deprecated The canonical `HybridSearchResult['matchedLayers']` union
+ * (src/types) now includes `'graph'`. Use
+ * `HybridSearchResult['matchedLayers'][number]` instead. Kept as an alias
+ * for back-compat (exported from the search barrel).
+ */
+export type HybridSearchLayer = HybridSearchResult['matchedLayers'][number];
 
 /**
- * HybridSearchResult variant whose matchedLayers may include 'graph' and
- * whose scores may carry the normalized graph-connectivity score. Every
- * HybridSearchResult is assignable to this type; results produced with the
- * graph channel or neighbor expansion enabled conform to this shape.
+ * HybridSearchResult variant whose scores may carry the normalized
+ * graph-connectivity score. Now that the canonical `matchedLayers` union
+ * includes `'graph'`, this type differs from HybridSearchResult only by
+ * the optional `scores.graph` field, so every GraphHybridSearchResult is a
+ * valid HybridSearchResult (and vice versa when the graph layer did not
+ * run). Results produced with the graph channel enabled conform to this
+ * shape.
  */
-export interface GraphHybridSearchResult {
-  entity: Entity;
-  scores: {
-    semantic: number;
-    lexical: number;
-    symbolic: number;
-    combined: number;
+export interface GraphHybridSearchResult extends HybridSearchResult {
+  scores: HybridSearchResult['scores'] & {
     /** Normalized graph-connectivity score. Present when the graph layer ran. */
     graph?: number;
   };
-  matchedLayers: HybridSearchLayer[];
 }
 
 /** One-hop neighbor expansion options (only a single hop is supported). */
@@ -103,10 +107,10 @@ export class HybridSearchManager {
   /**
    * Perform hybrid search combining all layers.
    *
-   * The declared return type stays HybridSearchResult[] for compatibility;
-   * when the graph channel or expandNeighbors is enabled, results conform to
-   * the wider GraphHybridSearchResult shape (matchedLayers may include
-   * 'graph').
+   * When the graph channel or expandNeighbors is enabled, matchedLayers may
+   * include 'graph' and results additionally conform to
+   * GraphHybridSearchResult (`scores.graph` carries the normalized
+   * graph-connectivity score).
    */
   async search(
     graph: ReadonlyKnowledgeGraph,
@@ -178,11 +182,7 @@ export class HybridSearchManager {
       ranked = this.expandOneHop(ranked, expandNeighbors, entityMap, limit);
     }
 
-    // Safe downcast: HybridSearchResult is assignable to GraphHybridSearchResult
-    // (the wider type only adds 'graph' to the matchedLayers union and an
-    // optional graph score), so the reverse assertion is structurally sound
-    // for callers that never enable the graph channel.
-    return ranked as HybridSearchResult[];
+    return ranked;
   }
 
   /**
@@ -309,7 +309,7 @@ export class HybridSearchManager {
         symbolic * weights.symbolic +
         graph * weights.graph;
 
-      const matchedLayers: HybridSearchLayer[] = [];
+      const matchedLayers: HybridSearchResult['matchedLayers'] = [];
       if (semantic > 0) matchedLayers.push('semantic');
       if (lexical > 0) matchedLayers.push('lexical');
       if (symbolic > 0) matchedLayers.push('symbolic');

@@ -40,6 +40,7 @@
 import type { Entity, IGraphStorage, Relation } from '../types/types.js';
 import type { SessionEntity } from '../types/agent-memory.js';
 import { isSessionEntity } from '../types/agent-memory.js';
+import { EntityNotFoundError } from '../utils/errors.js';
 import type { EntityManager } from '../core/EntityManager.js';
 import type { RelationManager } from '../core/RelationManager.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
@@ -201,7 +202,6 @@ export class SessionCheckpointManager {
     await persistDecomposedCheckpoints(
       this.entityManager,
       this.relationManager,
-      this.storage,
       [checkpointData]
     );
 
@@ -430,7 +430,6 @@ export class SessionCheckpointManager {
     session: SessionEntity
   ): Promise<SessionCheckpointData[]> {
     return migrateSessionEntityCheckpoints(
-      this.storage,
       this.entityManager,
       this.relationManager,
       session
@@ -479,18 +478,14 @@ export async function migrateLegacySessionCheckpoints(
   entityManager: EntityManager,
   relationManager: RelationManager
 ): Promise<number> {
-  // EntityManager exposes no bulk enumeration — reach through to storage
-  // (same pattern as migrateLegacyProcedures).
-  const storage = entityManager['storage'];
-  const graph = await storage.loadGraph();
-  const legacySessions = graph.entities.filter(
+  const sessions = await entityManager.listEntities({ entityType: 'session' });
+  const legacySessions = sessions.filter(
     (e): e is SessionEntity => isSessionEntity(e) && hasLegacyCheckpointObservations(e.observations ?? [])
   );
 
   let migrated = 0;
   for (const session of legacySessions) {
     const checkpoints = await migrateSessionEntityCheckpoints(
-      storage,
       entityManager,
       relationManager,
       session
@@ -506,7 +501,6 @@ export async function migrateLegacySessionCheckpoints(
  * @internal
  */
 async function migrateSessionEntityCheckpoints(
-  storage: IGraphStorage,
   entityManager: EntityManager,
   relationManager: RelationManager,
   session: SessionEntity
@@ -526,13 +520,17 @@ async function migrateSessionEntityCheckpoints(
   }
   if (migrated.length === 0) return [];
 
-  await persistDecomposedCheckpoints(entityManager, relationManager, storage, migrated);
+  await persistDecomposedCheckpoints(entityManager, relationManager, migrated);
 
-  // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- session came from the live graph a moment ago; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
-  await storage.updateEntity(session.name, {
-    observations: remaining,
-    lastModified: new Date().toISOString(),
-  } as Record<string, unknown>);
+  try {
+    // EntityManager.updateEntity bumps lastModified itself.
+    await entityManager.updateEntity(session.name, { observations: remaining });
+  } catch (err) {
+    // Session vanished between enumeration and update (concurrent delete).
+    // Preserve the tolerant semantics of the previous storage-level write:
+    // the checkpoints were already persisted, there is nothing to strip.
+    if (!(err instanceof EntityNotFoundError)) throw err;
+  }
 
   return migrated;
 }
@@ -555,7 +553,6 @@ function hasLegacyCheckpointObservations(observations: string[]): boolean {
 async function persistDecomposedCheckpoints(
   entityManager: EntityManager,
   relationManager: RelationManager,
-  storage: IGraphStorage,
   checkpoints: SessionCheckpointData[]
 ): Promise<void> {
   if (checkpoints.length === 0) return;
@@ -569,8 +566,7 @@ async function persistDecomposedCheckpoints(
     }))
   );
 
-  const graph = await storage.loadGraph();
-  const existing = new Set(graph.entities.map((e) => e.name));
+  const existing = new Set((await entityManager.listEntities()).map((e) => e.name));
 
   const relations: Relation[] = [];
   for (const cp of checkpoints) {

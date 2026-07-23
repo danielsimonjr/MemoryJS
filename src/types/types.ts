@@ -2267,7 +2267,7 @@ export interface HybridSearchResult {
     symbolic: number;
     combined: number;
   };
-  matchedLayers: ('semantic' | 'lexical' | 'symbolic')[];
+  matchedLayers: ('semantic' | 'lexical' | 'symbolic' | 'graph')[];
 }
 
 // ==================== Query Analysis Types (Phase 11) ====================

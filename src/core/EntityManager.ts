@@ -428,6 +428,46 @@ export class EntityManager {
   }
 
   /**
+   * List all entities in the graph, optionally filtered by entity type.
+   *
+   * This is the public bulk-enumeration API — use it instead of reaching
+   * into the storage layer (`entityManager['storage'].loadGraph()`).
+   *
+   * Performance: when an `entityType` filter is given, the storage layer's
+   * TypeIndex fast path (`getEntitiesByType`) resolves matches in O(k) for
+   * k matching entities. Without a filter the full graph is loaded — O(n)
+   * in graph size — so avoid unfiltered calls in hot paths on large graphs.
+   *
+   * The returned array is always a fresh copy (safe to sort/mutate), but
+   * the Entity objects inside are the storage layer's live references —
+   * treat them as read-only, same as `getEntity` results.
+   *
+   * @param filter - Optional filter. `entityType` matches case-insensitively
+   *   (TypeIndex semantics, same as `storage.getEntitiesByType`).
+   * @returns Array of matching entities (empty when nothing matches)
+   *
+   * @example
+   * ```typescript
+   * const manager = new EntityManager(storage);
+   *
+   * // All entities
+   * const all = await manager.listEntities();
+   *
+   * // Only procedures (O(k) via TypeIndex)
+   * const procedures = await manager.listEntities({ entityType: 'procedure' });
+   * ```
+   */
+  async listEntities(filter?: { entityType?: string }): Promise<Entity[]> {
+    if (filter?.entityType !== undefined) {
+      // Fast path: TypeIndex + NameIndex lookup, no full-graph scan.
+      await this.storage.ensureLoaded();
+      return this.storage.getEntitiesByType(filter.entityType);
+    }
+    const graph = await this.storage.loadGraph();
+    return [...graph.entities];
+  }
+
+  /**
    * List all distinct project IDs in the graph (excluding global entities).
    *
    * Scans all entities and collects unique projectId values, excluding

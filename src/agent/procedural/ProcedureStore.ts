@@ -271,15 +271,11 @@ export async function migrateLegacyProcedures(
   entityManager: EntityManager,
   relationManager: RelationManager,
 ): Promise<number> {
-  // EntityManager exposes no bulk enumeration — reach through to storage
-  // (same pattern as WorldModelManager).
-  const graph = await entityManager['storage'].loadGraph();
-  const legacyIds = graph.entities
-    .filter(
-      e =>
-        e.entityType === PROCEDURE_ENTITY_TYPE &&
-        hasLegacyEncoding(e.observations),
-    )
+  const procedures = await entityManager.listEntities({
+    entityType: PROCEDURE_ENTITY_TYPE,
+  });
+  const legacyIds = procedures
+    .filter(e => hasLegacyEncoding(e.observations))
     .map(e => e.name);
 
   const store = new ProcedureStore(entityManager, relationManager);
