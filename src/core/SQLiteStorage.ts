@@ -31,6 +31,7 @@ import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { randomUUID } from 'node:crypto';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
+import { GraphEventEmitter } from './GraphEventEmitter.js';
 
 /**
  * SQLiteStorage manages persistence of the knowledge graph using native SQLite.
@@ -151,6 +152,15 @@ export class SQLiteStorage implements IGraphStorage {
   private bidirectionalRelationCache: Map<string, Relation[]> = new Map();
 
   /**
+   * Event emitter for graph change notifications. Mirrors
+   * `GraphStorage.eventEmitter` so event-driven derived views
+   * (`TFIDFEventSync`, `GraphRankPrior`, embedding caches, the columnar
+   * observation shadow store, `TransitionLedger`) work identically on the
+   * SQLite backend.
+   */
+  private eventEmitter: GraphEventEmitter = new GraphEventEmitter();
+
+  /**
    * Validated database file path (after path traversal checks).
    */
   private readonly validatedDbFilePath: string;
@@ -167,6 +177,36 @@ export class SQLiteStorage implements IGraphStorage {
     // already validated it. Tests pass tmpdir() paths; the ".." segment
     // defense-in-depth check still runs.
     this.validatedDbFilePath = validateFilePath(dbFilePath, undefined, false);
+  }
+
+  /**
+   * Get the event emitter for subscribing to graph changes.
+   *
+   * Emission parity with `GraphStorage` (one-for-one at the equivalent
+   * mutation points):
+   * - `graph:loaded` — after `loadCache()` populates the in-memory cache
+   * - `graph:saved` — after `saveGraph()` commits a full-graph write
+   * - `entity:created` — `appendEntity()`
+   * - `relation:created` — `appendRelation()`
+   * - `entity:updated` — `updateEntity()` (with `previousValues`)
+   * - rename events (`entity:renamed` → `entity:deleted` → `entity:created`)
+   *   are emitted by `EntityManager.renameEntity` (manager level, same as
+   *   the JSONL path) — `renameEntity()` here intentionally emits nothing
+   *   so each event fires exactly once.
+   *
+   * @returns GraphEventEmitter instance
+   *
+   * @example
+   * ```typescript
+   * const storage = new SQLiteStorage('/data/memory.db');
+   *
+   * storage.events.on('entity:created', (event) => {
+   *   console.log(`Entity ${event.entity.name} created`);
+   * });
+   * ```
+   */
+  get events(): GraphEventEmitter {
+    return this.eventEmitter;
   }
 
   /**
@@ -483,6 +523,9 @@ export class SQLiteStorage implements IGraphStorage {
     // Build indexes for O(1) lookups
     this.nameIndex.build(entities);
     this.typeIndex.build(entities);
+
+    // Emit graph:loaded (parity with GraphStorage.loadFromDisk)
+    this.eventEmitter.emitGraphLoaded(entities.length, relations.length);
   }
 
   /**
@@ -730,6 +773,9 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Phase 4 Sprint 1: Clear bidirectional relation cache on full save
       this.clearBidirectionalCache();
+
+      // Emit graph:saved (parity with GraphStorage.saveGraphInternal)
+      this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
     });
   }
 
@@ -788,6 +834,9 @@ export class SQLiteStorage implements IGraphStorage {
       clearAllSearchCaches();
 
       this.pendingChanges++;
+
+      // Emit entity:created (parity with GraphStorage.appendEntity)
+      this.eventEmitter.emitEntityCreated(entity);
     });
   }
 
@@ -840,6 +889,9 @@ export class SQLiteStorage implements IGraphStorage {
       this.invalidateBidirectionalCache(relation.to);
 
       this.pendingChanges++;
+
+      // Emit relation:created (parity with GraphStorage.appendRelation)
+      this.eventEmitter.emitRelationCreated(relation);
     });
   }
 
@@ -866,6 +918,18 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Track old type for index update
       const oldType = entity.entityType;
+
+      // Capture previous values for the entity:updated event BEFORE the
+      // in-place mutation (parity with GraphStorage.updateEntity).
+      const previousValues: Partial<Entity> = {};
+      for (const key of Object.keys(updates) as Array<keyof Entity>) {
+        if (key in entity) {
+          // TS can't prove the per-key value-type alignment when `key` is a
+          // union — runtime correctness holds because `key` is narrowed to a
+          // single Entity field per iteration.
+          (previousValues as Record<string, unknown>)[key] = entity[key];
+        }
+      }
 
       // Apply updates to cached entity (sanitized to prevent prototype pollution)
       Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
@@ -921,6 +985,9 @@ export class SQLiteStorage implements IGraphStorage {
 
       this.pendingChanges++;
 
+      // Emit entity:updated (parity with GraphStorage.updateEntity)
+      this.eventEmitter.emitEntityUpdated(entityName, updates, previousValues);
+
       return true;
     });
   }
@@ -946,9 +1013,14 @@ export class SQLiteStorage implements IGraphStorage {
    * Referencing rows keep their own timestamps (a rename is a pure
    * reference rewrite; their content did not change).
    *
-   * Does NOT emit entity events (SQLiteStorage has no event emitter —
-   * pre-existing design); `EntityManager.renameEntity` handles event
-   * emission when the backend supports it.
+   * Does NOT emit entity events itself — `EntityManager.renameEntity`
+   * emits `entity:renamed` + `entity:deleted` + `entity:created` after
+   * the storage write succeeds (same division of responsibility as the
+   * JSONL path). Emitting here as well would double-fire those events.
+   * Unlike `GraphStorage.renameEntity` (which routes through
+   * `saveGraphInternal` and therefore also emits `graph:saved` as an
+   * implementation artifact of the full-file rewrite), this targeted SQL
+   * transaction emits no `graph:saved` — no full-graph write happens.
    *
    * @param oldName - Current entity name (must exist)
    * @param newName - New entity name (must not exist)

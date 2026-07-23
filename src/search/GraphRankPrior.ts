@@ -5,7 +5,10 @@
  * PageRank and degree centrality as ranking priors so that well-connected
  * entities can be boosted over isolated ones. The full-graph computation is
  * cached and lazily invalidated on graph mutation via GraphEventEmitter
- * subscription (entity created/updated/deleted, relation created/deleted) —
+ * subscription (entity created/updated/deleted, relation created/deleted,
+ * and graph saved — the latter covers manager-level batch mutations like
+ * `EntityManager.createEntities` / `RelationManager.createRelations`,
+ * which persist via `storage.saveGraph` and emit only `graph:saved`) —
  * recomputation happens on next access, not eagerly per event.
  *
  * Cost guard: when the graph exceeds `maxPageRankEntities` (default 50 000),
@@ -34,8 +37,11 @@ export interface GraphRankPriorOptions {
   dampingFactor?: number;
   /**
    * Event emitter to subscribe to for cache invalidation. When provided,
-   * entity:created/updated/deleted and relation:created/deleted events mark
-   * the cached scores stale (lazy recompute on next access).
+   * entity:created/updated/deleted, relation:created/deleted, and
+   * graph:saved events mark the cached scores stale (lazy recompute on
+   * next access). graph:saved matters because manager-level batch
+   * mutations (create/delete entities and relations) persist via a full
+   * `saveGraph` and emit no per-item events.
    */
   events?: GraphEventEmitter;
 }
@@ -104,7 +110,13 @@ export class GraphRankPrior {
         options.events.on('entity:updated', invalidate),
         options.events.on('entity:deleted', invalidate),
         options.events.on('relation:created', invalidate),
-        options.events.on('relation:deleted', invalidate)
+        options.events.on('relation:deleted', invalidate),
+        // Manager-level batch mutations (EntityManager.createEntities /
+        // deleteEntities, RelationManager.createRelations / deleteRelations)
+        // persist via storage.saveGraph and emit ONLY graph:saved — without
+        // this subscription the prior would serve stale PageRank after any
+        // manager-level mutation, on both backends.
+        options.events.on('graph:saved', invalidate)
       );
     }
   }

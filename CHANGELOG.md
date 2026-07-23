@@ -50,10 +50,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`SQLiteStorage` now has a `GraphEventEmitter`** (`storage.events`),
+  emitting the same typed events at the same mutation points as the JSONL
+  backend (parity asserted by a recorded-sequence test; `renameEntity`
+  emission stays manager-level for exactly-once semantics). This fixes a
+  family of silent staleness/crash bugs on the SQLite backend: TF-IDF
+  event sync never fired, `GraphRankPrior` never invalidated, and the
+  columnar observation store (`MEMORY_OBSERVATIONS_COLUMNAR=true`)
+  crashed at wiring time. `IGraphStorage.events` is declared as an
+  optional member (same third-party-compat precedent as `renameEntity`).
+- **`GraphRankPrior` missed manager-level batch mutations on both
+  backends** — manager CRUD persists via `saveGraph` and emits only
+  `graph:saved`, which the prior didn't subscribe to, leaving stale
+  PageRank after `createEntities`/`deleteEntities`/relation changes.
+  Now also invalidates on `graph:saved` (regression-tested on JSONL and
+  SQLite).
+- **Dependency advisories resolved** via `npm audit fix` + upstream merge:
+  `brace-expansion` DoS (GHSA-3jxr-9vmj-r5cp), `js-yaml` quadratic CPU
+  (GHSA-52cp-r559-cp3m). 0 vulnerabilities.
 - **`SQLiteStorage` was missing the `graphMutex` field** that every
   manager-level batch mutation path acquires (`EntityManager.createEntities`
   etc.), so batch mutations crashed on a raw SQLite backend. Added the
   `AsyncMutex` mirroring `GraphStorage`.
+
+- **`EntityManager.listEntities(filter?)`** — public bulk-enumeration API
+  (TypeIndex fast path when filtering by `entityType`); replaces the
+  `entityManager['storage']` private-access pattern at all three call
+  sites (`WorldModelManager`, procedure/checkpoint migrators).
+- **`HybridSearchResult.matchedLayers` now includes `'graph'`**, removing
+  the interim downcast in `HybridSearchManager` (`HybridSearchLayer` kept
+  as a `@deprecated` alias) and teaching `EarlyTerminationManager` to
+  count the graph layer for result diversity.
 
 ### Changed
 

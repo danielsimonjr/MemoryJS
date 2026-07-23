@@ -1272,6 +1272,22 @@ export interface IGraphStorage {
   renameEntity?(oldName: string, newName: string): Promise<Entity>;
 
   /**
+   * Graph event emitter powering event-driven derived views (TF-IDF sync,
+   * rank priors, embedding caches, columnar observation mirroring).
+   *
+   * OPTIONAL member: kept optional so pre-existing third-party / test
+   * implementations of this interface remain valid without changes (same
+   * precedent as `renameEntity`). Both first-party backends
+   * (`GraphStorage`, `SQLiteStorage`) expose one; derived views no-op
+   * gracefully when it is absent.
+   *
+   * Typed via an inline type-only import: `types.ts` is the root of the
+   * module layering (zero imports), so a top-level import from core would
+   * invert it; `import()` in type position is erased at compile time.
+   */
+  readonly events?: import('../core/GraphEventEmitter.js').GraphEventEmitter;
+
+  /**
    * Compact the storage by removing duplicates.
    *
    * @returns Promise resolving when compaction is complete

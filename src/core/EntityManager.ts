@@ -682,8 +682,9 @@ export class EntityManager {
    * derived views (TF-IDF event sync, rank priors, embedding caches) stay
    * consistent without learning the new event type. Listeners therefore
    * observe: `entity:renamed`, `entity:deleted`, `entity:created`.
-   * `SQLiteStorage` has no event emitter (pre-existing design), so no
-   * entity events fire on that backend.
+   * Both first-party backends expose an emitter (`storage.events`), so
+   * this sequence fires on JSONL and SQLite alike; the guard below only
+   * protects third-party storage implementations without one.
    *
    * **Known limitations (intentionally out of scope)**:
    * - Archived snapshots (`ArchiveManager` compressed archives) keep the
@@ -745,8 +746,8 @@ export class EntityManager {
       await this.refIndex.renameEntity(oldName, newName);
     }
 
-    // Emit events on backends that have an emitter (GraphStorage). The
-    // SQLite backend has no emitter — see method JSDoc.
+    // Emit events on backends that have an emitter (both first-party
+    // backends do; the guard covers third-party storage without one).
     const events = (this.storage as Partial<Pick<GraphStorage, 'events'>>).events;
     if (events) {
       events.emitEntityRenamed(oldName, newName, renamed);
