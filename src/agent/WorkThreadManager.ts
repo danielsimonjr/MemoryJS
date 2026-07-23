@@ -1,9 +1,27 @@
 /**
  * Work Thread Manager
  *
- * Manages work threads for coordinating tasks across agents.
- * Threads are stored as entities with entityType 'work_thread',
- * using relations for parent-child and blocking relationships.
+ * Manages work threads for coordinating tasks across agents. Threads are
+ * persisted as real graph structure instead of JSON blobs, so thread
+ * content is queryable and traversable:
+ *
+ * - Each thread is an `entityType: 'work_thread'` entity (name =
+ *   `thread.id`). Its observations carry human-readable scalar lines
+ *   (`[title]: Ship feature X`, `[status]: active`, `[owner]: agent_1`,
+ *   `[priority]: 8`, `[created-at]: …`, `[updated-at]: …`) plus the
+ *   free-text description as a plain observation.
+ * - Custom metadata encodes one `[meta]: <JSON-key>=<JSON-value>` line per
+ *   entry — key and value are JSON-encoded separately so arbitrary strings
+ *   (equals signs, newlines, unicode) roundtrip.
+ * - Cross-thread references are real relations, not payload fields:
+ *   thread —`child_of`→ parent thread, and thread —`blocked_by`→ each
+ *   blocker thread. `load()` rehydrates `parentId` / `blockedBy` from
+ *   those relations.
+ *
+ * Legacy single-JSON-observation threads (the pre-decomposition shape)
+ * remain decodable via `decodeLegacyWorkThread` and are auto-migrated to
+ * the decomposed shape on `load()`; use `migrateLegacyWorkThreads` for
+ * bulk migration.
  *
  * @module agent/WorkThreadManager
  */
@@ -89,13 +107,22 @@ const VALID_TRANSITIONS: Record<WorkThreadStatus, WorkThreadStatus[]> = {
 };
 
 /** Relation type for parent-child thread relationships */
-const CHILD_OF_RELATION = 'child_of';
+export const CHILD_OF_RELATION = 'child_of';
 
 /** Relation type for blocking relationships */
-const BLOCKED_BY_RELATION = 'blocked_by';
+export const BLOCKED_BY_RELATION = 'blocked_by';
 
 /** Entity type for work thread entities */
-const WORK_THREAD_ENTITY_TYPE = 'work_thread';
+export const WORK_THREAD_ENTITY_TYPE = 'work_thread';
+
+/** Scalar observation prefixes on the thread entity. */
+const TITLE_PREFIX = '[title]: ';
+const STATUS_PREFIX = '[status]: ';
+const OWNER_PREFIX = '[owner]: ';
+const PRIORITY_PREFIX = '[priority]: ';
+const CREATED_AT_PREFIX = '[created-at]: ';
+const UPDATED_AT_PREFIX = '[updated-at]: ';
+const META_PREFIX = '[meta]: ';
 
 // ==================== Manager ====================
 
@@ -126,40 +153,84 @@ export class WorkThreadManager {
    * Load existing work threads from storage into memory.
    *
    * Scans the graph for entities with entityType 'work_thread' and
-   * rehydrates the in-memory Map from their serialized observations.
-   * Must be called after construction to restore state from a previous session.
+   * rehydrates the in-memory Map from their scalar observation lines,
+   * deriving `parentId` / `blockedBy` from `child_of` / `blocked_by`
+   * relations. Must be called after construction to restore state from a
+   * previous session.
+   *
+   * **Side effect (auto-migration):** threads still stored in the legacy
+   * single-JSON-observation shape are decoded with the legacy decoder and
+   * rewritten in place to the decomposed shape (scalar lines + relations)
+   * before returning.
    *
    * @returns Number of threads loaded
    */
   async load(): Promise<number> {
     const graph = await this.storage.loadGraph();
+
+    // Index relations once: parent + blockers per thread entity, plus a
+    // presence set so legacy migration can append only missing relations.
+    const threadNames = new Set<string>();
+    for (const entity of graph.entities) {
+      if (entity.entityType === WORK_THREAD_ENTITY_TYPE) threadNames.add(entity.name);
+    }
+    const parentOf = new Map<string, string>();
+    const blockersOf = new Map<string, string[]>();
+    const existingRelations = new Set<string>();
+    for (const relation of graph.relations) {
+      existingRelations.add(relationKey(relation));
+      if (!threadNames.has(relation.from)) continue;
+      if (relation.relationType === CHILD_OF_RELATION) {
+        if (!parentOf.has(relation.from)) parentOf.set(relation.from, relation.to);
+      } else if (relation.relationType === BLOCKED_BY_RELATION) {
+        const blockers = blockersOf.get(relation.from) ?? [];
+        blockers.push(relation.to);
+        blockersOf.set(relation.from, blockers);
+      }
+    }
+
     let loaded = 0;
+    const legacyThreads: WorkThread[] = [];
 
     for (const entity of graph.entities) {
       if (entity.entityType !== WORK_THREAD_ENTITY_TYPE) continue;
       if (!entity.observations || entity.observations.length === 0) continue;
 
-      try {
-        // Thread state is stored as JSON in the first observation
-        const data = JSON.parse(entity.observations[0]) as Record<string, unknown>;
-        const thread: WorkThread = {
-          id: entity.name,
-          title: data.title as string,
-          description: data.description as string | undefined,
-          status: data.status as WorkThreadStatus,
-          owner: data.owner as string | undefined,
-          parentId: data.parentId as string | undefined,
-          blockedBy: data.blockedBy as string[] | undefined,
-          priority: data.priority as number | undefined,
-          createdAt: data.createdAt as string,
-          updatedAt: data.updatedAt as string,
-          metadata: data.metadata as Record<string, unknown> | undefined,
-        };
+      let thread: WorkThread | null;
+      if (isLegacyWorkThreadEncoding(entity.observations)) {
+        thread = decodeLegacyWorkThread(entity.name, entity.observations);
+        if (thread) legacyThreads.push(thread);
+      } else {
+        thread = decodeThreadObservations(
+          entity,
+          parentOf.get(entity.name),
+          blockersOf.get(entity.name)
+        );
+      }
 
-        this.threads.set(entity.name, thread);
-        loaded++;
-      } catch {
-        // Skip entities with malformed observation data
+      if (!thread) continue; // Skip entities with malformed observation data
+      this.threads.set(entity.name, thread);
+      loaded++;
+    }
+
+    // Auto-migrate legacy blobs in place: rewrite observations to the
+    // decomposed shape and ensure the relations the payload implied exist
+    // (they normally already do — the old code also created them).
+    for (const thread of legacyThreads) {
+      await this.persistThread(thread);
+      const implied: Relation[] = [];
+      if (thread.parentId !== undefined) {
+        implied.push({ from: thread.id, to: thread.parentId, relationType: CHILD_OF_RELATION });
+      }
+      for (const blockerId of thread.blockedBy ?? []) {
+        implied.push({ from: thread.id, to: blockerId, relationType: BLOCKED_BY_RELATION });
+      }
+      for (const relation of implied) {
+        const key = relationKey(relation);
+        if (!existingRelations.has(key)) {
+          await this.storage.appendRelation(relation);
+          existingRelations.add(key);
+        }
       }
     }
 
@@ -207,7 +278,7 @@ export class WorkThreadManager {
     const entity: Entity = {
       name: id,
       entityType: WORK_THREAD_ENTITY_TYPE,
-      observations: [JSON.stringify(this.serializeThread(thread))],
+      observations: encodeThreadObservations(thread),
       createdAt: now,
       lastModified: now,
     };
@@ -428,11 +499,9 @@ export class WorkThreadManager {
     );
     if (relationsToRemove.length > 0) {
       const mutableGraph = await this.storage.getGraphForMutation();
-      const removeSet = new Set(
-        relationsToRemove.map(r => `${r.from}\0${r.to}\0${r.relationType}`)
-      );
+      const removeSet = new Set(relationsToRemove.map(relationKey));
       mutableGraph.relations = mutableGraph.relations.filter(
-        (r) => !removeSet.has(`${r.from}\0${r.to}\0${r.relationType}`)
+        (r) => !removeSet.has(relationKey(r))
       );
       await this.storage.saveGraph(mutableGraph);
     }
@@ -541,34 +610,221 @@ export class WorkThreadManager {
   }
 
   /**
-   * Persist a thread's state to storage by updating its entity observation.
+   * Persist a thread's state to storage by rewriting its scalar
+   * observation lines. Relations (`child_of` / `blocked_by`) are managed
+   * by `create` / `block` / `unblock`, not here.
    */
   private async persistThread(thread: WorkThread): Promise<void> {
     // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked by callers; closing this microtask-gap TOCTOU race needs storage-level atomic check-and-set (task #55)
     await this.storage.updateEntity(thread.id, {
-      observations: [JSON.stringify(this.serializeThread(thread))],
+      observations: encodeThreadObservations(thread),
       lastModified: thread.updatedAt,
     });
   }
+}
 
-  /**
-   * Serialize a thread to a plain object for JSON storage.
-   */
-  private serializeThread(thread: WorkThread): Record<string, unknown> {
-    const data: Record<string, unknown> = {
-      title: thread.title,
-      status: thread.status,
-      createdAt: thread.createdAt,
-      updatedAt: thread.updatedAt,
+// ==================== Bulk Migration ====================
+
+/**
+ * Scan every `entityType: 'work_thread'` entity and migrate any that
+ * still use the legacy single-JSON-observation encoding to the
+ * decomposed shape (scalar observation lines + `child_of` / `blocked_by`
+ * relations). Mirrors `migrateLegacyProcedures`.
+ *
+ * @returns Number of threads migrated.
+ */
+export async function migrateLegacyWorkThreads(storage: IGraphStorage): Promise<number> {
+  const graph = await storage.loadGraph();
+  const legacyCount = graph.entities.filter(
+    (e) =>
+      e.entityType === WORK_THREAD_ENTITY_TYPE &&
+      e.observations !== undefined &&
+      e.observations.length > 0 &&
+      isLegacyWorkThreadEncoding(e.observations)
+  ).length;
+
+  if (legacyCount > 0) {
+    // load() auto-migrates legacy entities in place.
+    await new WorkThreadManager(storage).load();
+  }
+  return legacyCount;
+}
+
+// ==================== Encoding / Decoding ====================
+
+/** Composite identity key for a relation (used for dedup / removal). */
+function relationKey(relation: Relation): string {
+  return `${relation.from}\0${relation.to}\0${relation.relationType}`;
+}
+
+/** True when the thread status string is one of the known statuses. */
+function isWorkThreadStatus(value: string): value is WorkThreadStatus {
+  return value in VALID_TRANSITIONS;
+}
+
+/**
+ * True when the observation list still uses the legacy shape: a single
+ * JSON-object blob and no decomposed `[status]:` scalar line.
+ */
+function isLegacyWorkThreadEncoding(observations: string[]): boolean {
+  if (observations.some((obs) => obs.startsWith(STATUS_PREFIX))) return false;
+  const first = observations[0];
+  if (typeof first !== 'string' || !first.startsWith('{')) return false;
+  try {
+    const parsed: unknown = JSON.parse(first);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Observation list for a thread entity: scalar `[key]: value` lines, the
+ * free-text description as a plain observation, and one
+ * `[meta]: <JSON-key>=<JSON-value>` line per metadata entry.
+ *
+ * Note: an empty-string description and metadata entries whose values
+ * JSON cannot represent (`undefined`, functions, symbols) are omitted —
+ * the legacy JSON blob dropped the latter too.
+ */
+function encodeThreadObservations(thread: WorkThread): string[] {
+  const observations: string[] = [
+    `${TITLE_PREFIX}${thread.title}`,
+    `${STATUS_PREFIX}${thread.status}`,
+  ];
+  if (thread.description !== undefined && thread.description !== '') {
+    observations.push(thread.description);
+  }
+  if (thread.owner !== undefined) {
+    observations.push(`${OWNER_PREFIX}${thread.owner}`);
+  }
+  if (thread.priority !== undefined) {
+    observations.push(`${PRIORITY_PREFIX}${thread.priority}`);
+  }
+  observations.push(`${CREATED_AT_PREFIX}${thread.createdAt}`);
+  observations.push(`${UPDATED_AT_PREFIX}${thread.updatedAt}`);
+  for (const [key, value] of Object.entries(thread.metadata ?? {})) {
+    const encodedValue = JSON.stringify(value);
+    if (encodedValue === undefined) continue;
+    observations.push(`${META_PREFIX}${JSON.stringify(key)}=${encodedValue}`);
+  }
+  return observations;
+}
+
+/**
+ * Inverse of `encodeThreadObservations`. `parentId` / `blockedBy` come
+ * from the caller (derived from `child_of` / `blocked_by` relations).
+ * Returns null when the entity has no valid `[status]:` line — the marker
+ * of the decomposed shape.
+ */
+function decodeThreadObservations(
+  entity: Entity,
+  parentId: string | undefined,
+  blockedBy: string[] | undefined
+): WorkThread | null {
+  let title = '';
+  let status: WorkThreadStatus | undefined;
+  let owner: string | undefined;
+  let priority: number | undefined;
+  let createdAt: string | undefined;
+  let updatedAt: string | undefined;
+  let metadata: Record<string, unknown> | undefined;
+  const descriptionLines: string[] = [];
+
+  for (const obs of entity.observations) {
+    if (obs.startsWith(TITLE_PREFIX)) {
+      title = obs.slice(TITLE_PREFIX.length);
+    } else if (obs.startsWith(STATUS_PREFIX)) {
+      const value = obs.slice(STATUS_PREFIX.length);
+      if (isWorkThreadStatus(value)) status = value;
+    } else if (obs.startsWith(OWNER_PREFIX)) {
+      owner = obs.slice(OWNER_PREFIX.length);
+    } else if (obs.startsWith(PRIORITY_PREFIX)) {
+      const n = Number(obs.slice(PRIORITY_PREFIX.length));
+      if (Number.isFinite(n)) priority = n;
+    } else if (obs.startsWith(CREATED_AT_PREFIX)) {
+      createdAt = obs.slice(CREATED_AT_PREFIX.length);
+    } else if (obs.startsWith(UPDATED_AT_PREFIX)) {
+      updatedAt = obs.slice(UPDATED_AT_PREFIX.length);
+    } else if (obs.startsWith(META_PREFIX)) {
+      const kv = decodeMetaLine(obs.slice(META_PREFIX.length));
+      if (kv) (metadata ??= {})[kv[0]] = kv[1];
+    } else {
+      descriptionLines.push(obs);
+    }
+  }
+
+  if (status === undefined) return null;
+
+  const fallbackTimestamp = entity.createdAt ?? entity.lastModified ?? new Date().toISOString();
+  return {
+    id: entity.name,
+    title,
+    description: descriptionLines.length > 0 ? descriptionLines.join('\n') : undefined,
+    status,
+    owner,
+    parentId,
+    blockedBy: blockedBy && blockedBy.length > 0 ? [...blockedBy] : undefined,
+    priority,
+    createdAt: createdAt ?? fallbackTimestamp,
+    updatedAt: updatedAt ?? entity.lastModified ?? createdAt ?? fallbackTimestamp,
+    metadata,
+  };
+}
+
+/**
+ * Split `<JSON-string>=<JSON-value>` at the `=` separating the key from
+ * the value (never inside the key — `"` inside a JSON string is escaped,
+ * so a simple escape-aware scan finds the key's closing quote). Returns
+ * null on malformed input.
+ */
+function decodeMetaLine(body: string): [string, unknown] | null {
+  if (!body.startsWith('"')) return null;
+  let i = 1;
+  while (i < body.length && body[i] !== '"') {
+    i += body[i] === '\\' ? 2 : 1;
+  }
+  if (i >= body.length || body[i + 1] !== '=') return null;
+  try {
+    const key: unknown = JSON.parse(body.slice(0, i + 1));
+    const value: unknown = JSON.parse(body.slice(i + 2));
+    if (typeof key !== 'string') return null;
+    return [key, value];
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pure decoder for the legacy single-JSON-observation thread shape
+ * (`JSON.stringify({ title, status, … })` in `observations[0]`).
+ *
+ * @deprecated Legacy decoder — kept for reading pre-decomposition
+ * entities. `WorkThreadManager.load()` auto-migrates such entities; new
+ * code should go through `WorkThreadManager`.
+ */
+export function decodeLegacyWorkThread(
+  id: string,
+  observations: string[]
+): WorkThread | null {
+  if (observations.length === 0) return null;
+  try {
+    const data = JSON.parse(observations[0]) as Record<string, unknown>;
+    if (typeof data !== 'object' || data === null) return null;
+    return {
+      id,
+      title: data.title as string,
+      description: data.description as string | undefined,
+      status: data.status as WorkThreadStatus,
+      owner: data.owner as string | undefined,
+      parentId: data.parentId as string | undefined,
+      blockedBy: data.blockedBy as string[] | undefined,
+      priority: data.priority as number | undefined,
+      createdAt: data.createdAt as string,
+      updatedAt: data.updatedAt as string,
+      metadata: data.metadata as Record<string, unknown> | undefined,
     };
-
-    if (thread.description !== undefined) data.description = thread.description;
-    if (thread.owner !== undefined) data.owner = thread.owner;
-    if (thread.parentId !== undefined) data.parentId = thread.parentId;
-    if (thread.blockedBy !== undefined) data.blockedBy = thread.blockedBy;
-    if (thread.priority !== undefined) data.priority = thread.priority;
-    if (thread.metadata !== undefined) data.metadata = thread.metadata;
-
-    return data;
+  } catch {
+    return null;
   }
 }
