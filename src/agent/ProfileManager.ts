@@ -4,6 +4,13 @@
  * Manages user profiles stored as Entity instances with entityType 'profile'.
  * Observations are tagged [static] or [dynamic] to classify facts.
  *
+ * **Contract (graph-core):** the `[static]`/`[dynamic]` prefixes are the
+ * accepted line-per-observation format — one human-readable fact per
+ * observation, individually indexable and searchable. This is NOT the
+ * JSON-blob antipattern that ProcedureStore/WorkThreadManager/
+ * SessionCheckpoint were migrated away from (a whole structured record
+ * serialized into a single opaque observation); no decomposition needed.
+ *
  * @module agent/ProfileManager
  */
 
