@@ -1,6 +1,5 @@
 # Feasibility: Making the Knowledge Graph the Core of MemoryJS
 
-<<<<<<< HEAD
 **Status:** Assessment (2026-07-23) — **convergence phase 1 implemented** (same date, this branch)
 **Scope:** Evaluates whether the Entity/Relation knowledge graph can — and should — become the architectural core of the library, and what that would take.
 
@@ -11,11 +10,6 @@
 > - **Gap 4 (parallel models):** ✅ contracts documented in `InMemoryBackend` (ephemeral by design) and `ReconstructiveMemory` (CTC graph is an index; bridge persistence is the default system-of-record path).
 > - **Prerequisite (identity):** ✅ staged as designed — `Entity.id` (UUID, both backends, SQLite auto-migration) + `renameEntity` primitive (atomic reference rewrite on both backends, RefIndex remap, `entity:renamed` event). Reference-site migration to `id` remains the v2.0 cut.
 
-=======
-**Status:** Assessment (2026-07-23)
-**Scope:** Evaluates whether the Entity/Relation knowledge graph can — and should — become the architectural core of the library, and what that would take.
-
->>>>>>> origin/master
 ---
 
 ## Verdict
