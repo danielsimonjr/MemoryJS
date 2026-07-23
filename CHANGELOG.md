@@ -70,6 +70,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ProcedureStore`/`ProcedureManager` constructors now also take a
   `RelationManager` — callers going through `ctx.procedureManager` are
   unaffected.
+- **`WorkThreadManager` thread blob decomposed** (Gap 3, continued). Threads
+  are no longer one serialized-JSON observation: scalar fields become
+  `[title]`/`[status]`/`[owner]`/`[priority]`/timestamps observation lines,
+  metadata becomes escape-safe `[meta]:` key=value lines, and
+  `parentId`/`blockedBy` are rehydrated from the `child_of`/`blocked_by`
+  relations (the graph edges are now the source of truth). Legacy threads
+  auto-migrate on load; `migrateLegacyWorkThreads()` bulk-migrates. Public
+  API unchanged.
+- **`SessionCheckpoint` blobs decomposed** (Gap 3, completed). Each
+  checkpoint is a `session-checkpoint` entity (`parentId` = session) with
+  scalar + escape-safe per-item observation lines, `has_checkpoint` and
+  `snapshots` relations. Legacy `[CHECKPOINT] {json}` observations
+  auto-migrate on read (blob lines stripped from the session);
+  `migrateLegacySessionCheckpoints()` bulk-migrates. Method signatures
+  unchanged; constructor now takes `entityManager`/`relationManager`
+  (facade wired). This completes blob decomposition for all managers named
+  in the feasibility assessment.
 - **Graph-core contracts documented** (Gap 4): `InMemoryBackend` is
   explicitly ephemeral-by-design (durability belongs to `SQLiteBackend`
   through the Entity/Relation graph); `ReconstructiveMemory`'s CTC graph is
