@@ -6,14 +6,31 @@
  * @module search/RankedSearch
  */
 
-import type { Entity, SearchResult, TFIDFIndex, TokenizedEntity } from '../types/index.js';
+import type { Entity, SearchResult, TFIDFIndex, TokenizedEntity, GraphEventType } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import { calculateTFFromTokens, calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { TFIDFIndexManager } from './TFIDFIndexManager.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import type { IndexHealthSnapshot } from '../utils/IIndexHealth.js';
 import type { GraphRankPrior } from './GraphRankPrior.js';
+
+/**
+ * Events that can change entity text content or corpus membership — the two
+ * things the fallback token cache derives from. Relation events are
+ * deliberately excluded (relations never feed tokenization).
+ */
+const TOKEN_CACHE_INVALIDATING_EVENTS: readonly GraphEventType[] = [
+  'entity:created',
+  'entity:updated',
+  'entity:deleted',
+  'entity:renamed',
+  'observation:added',
+  'observation:deleted',
+  'graph:saved',
+  'graph:loaded',
+];
 
 /**
  * Performs TF-IDF ranked search with optional pre-calculated indexes.
@@ -37,6 +54,25 @@ export class RankedSearch {
   private cachedEntityCount: number = 0;
   private cachedEntityNames: string | null = null;
 
+  /**
+   * S1 optimization: event-driven token-cache invalidation.
+   *
+   * When the storage exposes a GraphEventEmitter (both first-party backends
+   * do), `mutationGeneration` is bumped on every event that can change
+   * entity text or corpus membership, and the per-query cache check becomes
+   * an O(1) generation comparison instead of building an O(N) `namesKey`
+   * string. When no emitter is available (e.g. minimal test doubles), the
+   * legacy count + namesKey check is kept unchanged as a fallback.
+   *
+   * The event-driven path is also *more* correct than namesKey: an
+   * observation-only update leaves the name set unchanged (namesKey would
+   * serve stale tokens) but bumps the generation here.
+   */
+  private mutationGeneration: number = 0;
+  private tokenCacheGeneration: number = -1;
+  private eventDriven: boolean;
+  private eventUnsubscribers: Array<() => void> = [];
+
   constructor(
     private storage: GraphStorage,
     storageDir?: string
@@ -45,6 +81,38 @@ export class RankedSearch {
     if (storageDir) {
       this.indexManager = new TFIDFIndexManager(storageDir);
     }
+
+    // Subscribe for cheap generation-based token-cache invalidation when the
+    // storage exposes an event emitter (guarded so structural test doubles
+    // without `.events` keep working via the namesKey fallback).
+    const events = (storage as { events?: GraphEventEmitter }).events;
+    if (events && typeof events.on === 'function') {
+      const bump = (): void => {
+        this.mutationGeneration++;
+      };
+      for (const eventType of TOKEN_CACHE_INVALIDATING_EVENTS) {
+        this.eventUnsubscribers.push(events.on(eventType, bump));
+      }
+      this.eventDriven = true;
+    } else {
+      this.eventDriven = false;
+    }
+  }
+
+  /**
+   * Unsubscribe from storage events. The instance remains usable — cache
+   * invalidation reverts to the legacy count + namesKey comparison so
+   * searches after a dispose never serve tokens for a changed entity set.
+   */
+  dispose(): void {
+    for (const unsubscribe of this.eventUnsubscribers) {
+      unsubscribe();
+    }
+    this.eventUnsubscribers = [];
+    this.eventDriven = false;
+    // Force the fallback comparison to treat the next search as cold.
+    this.clearTokenCache();
+    this.cachedEntityNames = null;
   }
 
   /**
@@ -294,13 +362,26 @@ export class RankedSearch {
   ): SearchResult[] {
     const results: SearchResult[] = [];
 
-    // Phase 4 Sprint 2: Check if cache needs invalidation
-    // Check both count and entity name set to detect renames/replacements
-    const namesKey = entities.map(e => e.name).join('\0');
-    if (entities.length !== this.cachedEntityCount || namesKey !== this.cachedEntityNames) {
-      this.clearTokenCache();
-      this.cachedEntityCount = entities.length;
-      this.cachedEntityNames = namesKey;
+    // Check if cache needs invalidation.
+    if (this.eventDriven) {
+      // S1: O(1) generation comparison — the generation is bumped by storage
+      // events for every mutation that can change entity text or membership,
+      // so no per-query O(N) namesKey string is needed. Cache entries are
+      // keyed by entity name and independent of the (possibly filtered)
+      // subset passed in, so subset changes never require invalidation.
+      if (this.mutationGeneration !== this.tokenCacheGeneration) {
+        this.clearTokenCache();
+        this.tokenCacheGeneration = this.mutationGeneration;
+      }
+    } else {
+      // Legacy fallback (storage without an event emitter): check both count
+      // and entity name set to detect renames/replacements.
+      const namesKey = entities.map(e => e.name).join('\0');
+      if (entities.length !== this.cachedEntityCount || namesKey !== this.cachedEntityNames) {
+        this.clearTokenCache();
+        this.cachedEntityCount = entities.length;
+        this.cachedEntityNames = namesKey;
+      }
     }
 
     // Phase 4 Sprint 2: Get or compute tokenized data for each entity
@@ -324,8 +405,21 @@ export class RankedSearch {
       return tokenized;
     });
 
-    // Pre-compute token sets for IDF calculation (O(1) lookup per document)
+    // Pre-compute token sets for IDF calculation
     const tokenSets = documentData.map(d => d.tokenSet);
+
+    // S1: IDF is a per-term corpus constant (loop-invariant across
+    // documents), so hoist it out of the per-document loop. Computing it
+    // inside the loop rescanned all N token sets per (document, term) pair —
+    // O(N^2 * terms). This single pass is O(N * terms) and, because
+    // calculateIDFFromTokenSets is deterministic in (term, tokenSets),
+    // produces bit-identical scores.
+    const idfByTerm = new Map<string, number>();
+    for (const term of queryTerms) {
+      if (!idfByTerm.has(term)) {
+        idfByTerm.set(term, calculateIDFFromTokenSets(term, tokenSets));
+      }
+    }
 
     for (const docData of documentData) {
       const { entity, tokens } = docData;
@@ -338,8 +432,8 @@ export class RankedSearch {
         // Calculate TF using pre-tokenized tokens (O(T) vs O(N) re-tokenization)
         const tf = calculateTFFromTokens(term, tokens);
 
-        // Calculate IDF using pre-computed token sets (O(1) per document)
-        const idf = calculateIDFFromTokenSets(term, tokenSets);
+        // IDF from the per-query hoisted map (O(1) per document)
+        const idf = idfByTerm.get(term) ?? 0;
 
         // TF-IDF score
         const score = tf * idf;

@@ -22,6 +22,7 @@
 import { GraphTraversal } from '../core/GraphTraversal.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
+import type { EntityUpdatedEvent } from '../types/types.js';
 
 /**
  * Options for {@link GraphRankPrior}.
@@ -44,6 +45,17 @@ export interface GraphRankPriorOptions {
    * `saveGraph` and emit no per-item events.
    */
   events?: GraphEventEmitter;
+  /**
+   * Debounce window (ms) for event-driven invalidation. During the window
+   * the stale cache keeps being served and further invalidation triggers
+   * coalesce into a single deferred invalidation; when the window elapses
+   * the cache is dropped and the next access recomputes once.
+   *
+   * Default 0 = invalidate immediately on every qualifying event (the
+   * pre-existing behavior). Direct calls to {@link GraphRankPrior.invalidate}
+   * are always immediate regardless of this setting.
+   */
+  invalidationDebounceMs?: number;
 }
 
 /** Default entity-count threshold for skipping PageRank. */
@@ -85,6 +97,10 @@ export class GraphRankPrior {
   /** In-flight computation, deduplicating concurrent accesses. */
   private pending: Promise<ConnectivityCache> | null = null;
   private unsubscribers: Array<() => void> = [];
+  /** Debounce window for event-driven invalidation (0 = immediate). */
+  private readonly invalidationDebounceMs: number;
+  /** Pending deferred invalidation timer, or null when none is scheduled. */
+  private invalidateTimer: NodeJS.Timeout | null = null;
 
   /**
    * Create a new GraphRankPrior.
@@ -102,12 +118,26 @@ export class GraphRankPrior {
         ? options.maxPageRankEntities
         : DEFAULT_MAX_PAGERANK_ENTITIES;
     this.dampingFactor = options.dampingFactor ?? 0.85;
+    this.invalidationDebounceMs =
+      options.invalidationDebounceMs !== undefined &&
+      Number.isFinite(options.invalidationDebounceMs) &&
+      options.invalidationDebounceMs > 0
+        ? options.invalidationDebounceMs
+        : 0;
 
     if (options.events) {
-      const invalidate = (): void => this.invalidate();
+      const invalidate = (): void => this.scheduleInvalidate();
       this.unsubscribers.push(
         options.events.on('entity:created', invalidate),
-        options.events.on('entity:updated', invalidate),
+        // entity:updated is filtered: connectivity (relations + entity
+        // membership) can only change via relation events, entity
+        // creation/deletion, or a rename — observation/tag/importance-only
+        // updates leave PageRank and degree untouched, so they skip.
+        options.events.on('entity:updated', (event) => {
+          if (this.updateAffectsConnectivity(event)) {
+            this.scheduleInvalidate();
+          }
+        }),
         options.events.on('entity:deleted', invalidate),
         options.events.on('relation:created', invalidate),
         options.events.on('relation:deleted', invalidate),
@@ -119,6 +149,56 @@ export class GraphRankPrior {
         options.events.on('graph:saved', invalidate)
       );
     }
+  }
+
+  /**
+   * Decide whether an entity:updated event can change graph connectivity.
+   *
+   * The connectivity signals (PageRank, degree, and their normalization)
+   * are computed exclusively from the relation set plus entity *names* —
+   * no other entity field participates. An update event never adds or
+   * removes entities or relations, so the only update that can perturb the
+   * cached scores is one that touches `name` (renames additionally emit
+   * entity:renamed + entity:deleted + entity:created, but we stay
+   * conservative here rather than rely on that).
+   *
+   * Conservative default: when the event carries no changed-field
+   * information at all (empty `changes` and no `previousValues`), assume
+   * connectivity may have changed and invalidate — preserving the previous
+   * behavior for untyped/legacy emitters.
+   * @internal
+   */
+  private updateAffectsConnectivity(event: EntityUpdatedEvent): boolean {
+    const changedKeys = new Set<string>([
+      ...Object.keys(event.changes ?? {}),
+      ...Object.keys(event.previousValues ?? {}),
+    ]);
+    if (changedKeys.size === 0) {
+      return true; // No field information — invalidate conservatively.
+    }
+    return changedKeys.has('name');
+  }
+
+  /**
+   * Invalidate now (debounce 0, the default) or coalesce into a single
+   * deferred invalidation within the debounce window, serving the stale
+   * cache in the meantime.
+   * @internal
+   */
+  private scheduleInvalidate(): void {
+    if (this.invalidationDebounceMs <= 0) {
+      this.invalidate();
+      return;
+    }
+    if (this.invalidateTimer !== null) {
+      return; // Window already open — this trigger coalesces into it.
+    }
+    this.invalidateTimer = setTimeout(() => {
+      this.invalidateTimer = null;
+      this.invalidate();
+    }, this.invalidationDebounceMs);
+    // Don't keep the event loop alive for a debounce timer.
+    this.invalidateTimer.unref?.();
   }
 
   /**
@@ -200,6 +280,10 @@ export class GraphRankPrior {
       unsubscribe();
     }
     this.unsubscribers = [];
+    if (this.invalidateTimer !== null) {
+      clearTimeout(this.invalidateTimer);
+      this.invalidateTimer = null;
+    }
     this.invalidate();
   }
 

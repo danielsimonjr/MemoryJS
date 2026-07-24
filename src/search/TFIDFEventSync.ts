@@ -75,11 +75,26 @@ export class TFIDFEventSync {
    */
   private readonly coalesceMs: number;
 
+  /**
+   * S5: debounce window (ms) for the graph:saved full-rebuild path.
+   * Batch mutations (imports, restores, manager-level `saveGraph` writes)
+   * may emit ONLY graph:saved with no per-entity events — without this
+   * subscription the index would silently go stale and `searchWithIndex`
+   * would skip the missing entities (invisible results). Default 100.
+   */
+  private readonly rebuildDebounceMs: number;
+
   /** Pending op per entity name. Last op wins. */
   private pendingOps: Map<string, PendingOp> = new Map();
 
   /** Timer ref for the next scheduled flush, or null when no flush pending. */
   private flushTimer: NodeJS.Timeout | null = null;
+
+  /** Timer ref for the next scheduled full rebuild, or null when none pending. */
+  private rebuildTimer: NodeJS.Timeout | null = null;
+
+  /** In-flight full rebuild, or null. Exposed to tests via rebuildNow(). */
+  private rebuildInFlight: Promise<void> | null = null;
 
   /** beforeExit handler — fires `flushNow()` if the process is winding down with pending ops. */
   private readonly beforeExitHandler: () => void = () => this.flushNow();
@@ -92,12 +107,15 @@ export class TFIDFEventSync {
    * @param storage - Storage to fetch entity data from (for updates)
    * @param options.coalesceMs - Override the env-var default. Useful in
    *   tests that need synchronous emit→apply semantics (pass `0`).
+   * @param options.rebuildDebounceMs - Debounce window for the graph:saved
+   *   full-rebuild path (default 100). Multiple graph:saved events within
+   *   the window coalesce into one rebuild.
    */
   constructor(
     indexManager: TFIDFIndexManager,
     eventEmitter: GraphEventEmitter,
     storage: IGraphStorage,
-    options: { coalesceMs?: number } = {},
+    options: { coalesceMs?: number; rebuildDebounceMs?: number } = {},
   ) {
     this.indexManager = indexManager;
     this.eventEmitter = eventEmitter;
@@ -112,6 +130,13 @@ export class TFIDFEventSync {
       const parsed = raw === undefined ? 50 : parseInt(raw, 10);
       this.coalesceMs = Number.isFinite(parsed) && parsed >= 0 ? parsed : 50;
     }
+
+    this.rebuildDebounceMs =
+      options.rebuildDebounceMs !== undefined &&
+      Number.isFinite(options.rebuildDebounceMs) &&
+      options.rebuildDebounceMs >= 0
+        ? options.rebuildDebounceMs
+        : 100;
   }
 
   /**
@@ -135,6 +160,15 @@ export class TFIDFEventSync {
 
     this.unsubscribers.push(
       this.eventEmitter.on('entity:deleted', this.handleEntityDeleted.bind(this))
+    );
+
+    // S5 staleness fix: batch mutations (imports, restores, manager-level
+    // saveGraph writes) may emit ONLY graph:saved — schedule a debounced
+    // full rebuild so the index reflects them. Per-entity events need not
+    // cancel it: the rebuild is idempotent, and the debounce prevents
+    // rebuild storms.
+    this.unsubscribers.push(
+      this.eventEmitter.on('graph:saved', this.handleGraphSaved.bind(this))
     );
 
     // Drain any pending coalesced ops before the process exits — without
@@ -164,6 +198,15 @@ export class TFIDFEventSync {
     this.enabled = false;
     process.removeListener('beforeExit', this.beforeExitHandler);
     this.flushNow();
+
+    // A rebuild scheduled by graph:saved cannot run synchronously here
+    // (it awaits storage). Cancel the timer and kick it off best-effort so
+    // the index is not left stale after disable().
+    if (this.rebuildTimer !== null) {
+      clearTimeout(this.rebuildTimer);
+      this.rebuildTimer = null;
+      void this.runRebuild();
+    }
   }
 
   /**
@@ -194,22 +237,30 @@ export class TFIDFEventSync {
     }
     const ops = [...this.pendingOps.values()];
     this.pendingOps.clear();
-    for (const op of ops) {
-      if (op.op === 'delete') {
-        this.indexManager.removeDocument(op.name);
-      } else if (op.op === 'create') {
-        this.indexManager.addDocument({
-          name: op.name,
-          entityType: op.entityType,
-          observations: op.observations,
-        });
-      } else {
-        this.indexManager.updateDocument({
-          name: op.name,
-          entityType: op.entityType,
-          observations: op.observations,
-        });
+    // S5: defer IDF recalculation to a single pass for the whole batch —
+    // add/remove used to trigger a full O(documents x vocabulary)
+    // recalculation EACH, making a flush of B ops O(B x vocabulary).
+    this.indexManager.beginIdfBatch();
+    try {
+      for (const op of ops) {
+        if (op.op === 'delete') {
+          this.indexManager.removeDocument(op.name);
+        } else if (op.op === 'create') {
+          this.indexManager.addDocument({
+            name: op.name,
+            entityType: op.entityType,
+            observations: op.observations,
+          });
+        } else {
+          this.indexManager.updateDocument({
+            name: op.name,
+            entityType: op.entityType,
+            observations: op.observations,
+          });
+        }
       }
+    } finally {
+      this.indexManager.endIdfBatch();
     }
   }
 
@@ -285,13 +336,14 @@ export class TFIDFEventSync {
    * Handle entity:updated event.
    * @private
    */
-  private async handleEntityUpdated(event: EntityUpdatedEvent): Promise<void> {
+  private handleEntityUpdated(event: EntityUpdatedEvent): void {
     if (!this.indexManager.isInitialized()) {
       return;
     }
-    // Fetch the current entity state.
-    const graph = await this.storage.loadGraph();
-    const entity = graph.entities.find(e => e.name === event.entityName);
+    // Fetch the current entity state via the O(1) name index (available on
+    // both first-party backends) instead of an O(N) scan of
+    // loadGraph().entities per event.
+    const entity = this.storage.getEntityByName(event.entityName);
     if (!entity) return;
     this.mergeOp({
       op: 'update',
@@ -312,5 +364,80 @@ export class TFIDFEventSync {
     }
     this.mergeOp({ op: 'delete', name: event.entityName });
     this.scheduleFlush();
+  }
+
+  /**
+   * Handle graph:saved by scheduling a debounced full index rebuild.
+   *
+   * Batch mutations (imports, restores, manager-level `saveGraph` writes)
+   * may emit ONLY this event — with no per-entity events the incremental
+   * path never sees the change and `searchWithIndex` silently skips the
+   * missing entities. The rebuild is idempotent, so per-entity events that
+   * covered the same change in the window cause no inconsistency — the
+   * debounce merely prevents rebuild storms. With `rebuildDebounceMs: 0`
+   * the rebuild starts immediately (still asynchronously).
+   * @private
+   */
+  private handleGraphSaved(): void {
+    if (!this.indexManager.isInitialized()) {
+      return;
+    }
+    if (this.rebuildDebounceMs === 0) {
+      void this.runRebuild();
+      return;
+    }
+    if (this.rebuildTimer !== null) return; // a rebuild is already pending
+    this.rebuildTimer = setTimeout(() => {
+      this.rebuildTimer = null;
+      void this.runRebuild();
+    }, this.rebuildDebounceMs);
+    // Don't keep the event loop alive for a debounce timer.
+    this.rebuildTimer.unref?.();
+  }
+
+  /**
+   * Run (or join) a full rebuild from current storage state. Errors are
+   * swallowed — the index simply stays stale until the next trigger — so a
+   * floating rebuild can never surface as an unhandled rejection.
+   */
+  private runRebuild(): Promise<void> {
+    if (this.rebuildInFlight) {
+      return this.rebuildInFlight;
+    }
+    const rebuild = (async (): Promise<void> => {
+      try {
+        const graph = await this.storage.loadGraph();
+        await this.indexManager.buildIndex(graph);
+        // Pending per-entity ops describe mutations already persisted in
+        // storage, so the rebuild has covered them. Leaving them queued is
+        // harmless (re-applying current state is idempotent), but dropping
+        // them saves the redundant work.
+        this.pendingOps.clear();
+      } catch {
+        // Stale index until the next graph:saved / entity event. Rebuild
+        // failures must not crash the process from a floating promise.
+      } finally {
+        this.rebuildInFlight = null;
+      }
+    })();
+    this.rebuildInFlight = rebuild;
+    return rebuild;
+  }
+
+  /**
+   * Force any scheduled graph:saved rebuild to run now and resolve when it
+   * completes. Resolves immediately when nothing is scheduled or in flight.
+   * Useful for tests and shutdown paths.
+   */
+  async rebuildNow(): Promise<void> {
+    if (this.rebuildTimer !== null) {
+      clearTimeout(this.rebuildTimer);
+      this.rebuildTimer = null;
+      await this.runRebuild();
+      return;
+    }
+    if (this.rebuildInFlight) {
+      await this.rebuildInFlight;
+    }
   }
 }
