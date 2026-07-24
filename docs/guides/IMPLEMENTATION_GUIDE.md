@@ -732,9 +732,10 @@ import {
 // Levenshtein distance (edit distance)
 const distance = levenshteinDistance('TypeScript', 'JavaScript');
 
-// TF-IDF calculation
-const tokens = tokenize('TypeScript is a typed programming language');
-const tf = calculateTF('typescript', tokens);
+// TF-IDF calculation — calculateTF tokenizes the raw document internally
+const doc = 'TypeScript is a typed programming language';
+const tokens = tokenize(doc); // string[] of lowercase word tokens
+const tf = calculateTF('typescript', doc);
 const idf = calculateIDF('typescript', allDocuments);
 const tfidf = calculateTFIDF('typescript', document, corpus);
 ```
