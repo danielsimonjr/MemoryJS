@@ -33,7 +33,7 @@ import type { LLMProvider } from '../../search/LLMQueryPlanner.js';
 import type {
   CTCGraphSnapshot,
   DialogueTurn,
-  DistillationResult,
+  ConversationDistillationResult,
   ReconstructionOptions,
   ReconstructionResult,
 } from '../../types/reconstruction.js';
@@ -87,7 +87,7 @@ export class ReconstructiveMemory {
    * the episodic / semantic / topic layers are also persisted into the
    * corresponding MemoryJS modules. Multiple `ingest` calls accumulate.
    */
-  async ingest(turns: DialogueTurn[]): Promise<DistillationResult> {
+  async ingest(turns: DialogueTurn[]): Promise<ConversationDistillationResult> {
     const result = await this.distiller.distill(turns);
     this.distiller.buildGraph(result, this.graph);
     if (this.bridge) {

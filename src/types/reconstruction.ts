@@ -121,7 +121,7 @@ export interface PersonalFact {
 }
 
 /** Result of running the LLM distillation pipeline over a dialogue. */
-export interface DistillationResult {
+export interface ConversationDistillationResult {
   /** Conversation reference date (ISO `YYYY-MM-DD`). */
   conversationTime?: string;
   /** Rewritten episodic sentences. */

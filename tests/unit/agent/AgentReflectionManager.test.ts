@@ -1,5 +1,5 @@
 /**
- * ReflectionManager — Phase 2 Sprint 8 Unit Tests
+ * AgentReflectionManager — Phase 2 Sprint 8 Unit Tests
  *
  * Covers:
  * - create() validation, content-hash dedup, invariants
@@ -10,14 +10,14 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ReflectionManager } from '../../../src/agent/ReflectionManager.js';
+import { AgentReflectionManager } from '../../../src/agent/AgentReflectionManager.js';
 import type { EntityManager } from '../../../src/core/EntityManager.js';
 import type { Entity, KnowledgeGraph, IGraphStorage } from '../../../src/types/types.js';
 import type { ReflectionEntity } from '../../../src/types/agent-memory.js';
 import { isReflectionMemory } from '../../../src/types/agent-memory.js';
 import { VersionConflictError, EntityNotFoundError } from '../../../src/utils/errors.js';
 
-/** Minimal in-memory storage that satisfies the duck-typed `IGraphStorage` slice ReflectionManager needs. */
+/** Minimal in-memory storage that satisfies the duck-typed `IGraphStorage` slice AgentReflectionManager needs. */
 function createMockStorage(): IGraphStorage & {
   _entities: Map<string, Entity>;
 } {
@@ -39,7 +39,7 @@ function createMockStorage(): IGraphStorage & {
     async loadGraph(): Promise<KnowledgeGraph> {
       return { entities: Array.from(entities.values()), relations: [] };
     },
-    // Stubs for unused methods (kept loose; ReflectionManager touches few of these)
+    // Stubs for unused methods (kept loose; AgentReflectionManager touches few of these)
     async getGraphForMutation() {
       return { entities: Array.from(entities.values()), relations: [] };
     },
@@ -77,15 +77,15 @@ function createFakeEntityManager(storage: IGraphStorage): EntityManager {
   } as unknown as EntityManager;
 }
 
-describe('ReflectionManager', () => {
+describe('AgentReflectionManager', () => {
   let storage: ReturnType<typeof createMockStorage>;
   let entityManager: EntityManager;
-  let rm: ReflectionManager;
+  let rm: AgentReflectionManager;
 
   beforeEach(() => {
     storage = createMockStorage();
     entityManager = createFakeEntityManager(storage);
-    rm = new ReflectionManager(storage, entityManager);
+    rm = new AgentReflectionManager(storage, entityManager);
   });
 
   describe('create', () => {

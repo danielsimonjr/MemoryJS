@@ -1,20 +1,20 @@
 {
   "metadata": {
-    "generatedAt": "2026-07-24T00:47:02.353Z",
-    "totalSourceFiles": 256,
+    "generatedAt": "2026-07-24T01:43:57.405Z",
+    "totalSourceFiles": 255,
     "totalTestFiles": 301,
     "testedCount": 235,
-    "untestedCount": 21,
-    "coveragePercent": "91.8",
+    "untestedCount": 20,
+    "coveragePercent": "92.2",
     "effectiveCoverage": {
       "policyLoaded": false,
-      "activeFiles": 256,
+      "activeFiles": 255,
       "testedActive": 235,
-      "activeUntested": 21,
+      "activeUntested": 20,
       "excludedTotal": 0,
-      "percent": "91.8",
+      "percent": "92.2",
       "breakdown": {
-        "active_untested": 21
+        "active_untested": 20
       }
     }
   },
@@ -38,8 +38,7 @@
     "src/cli/commands/toolAffordance.ts",
     "src/utils/Diagnostics.ts",
     "src/utils/IIndexHealth.ts",
-    "src/utils/IndexHealthMonitor.ts",
-    "src/workers/index.ts"
+    "src/utils/IndexHealthMonitor.ts"
   ],
   "testedFiles": [
     "src/adapters/LangChainMemoryAdapter.ts",
@@ -51,6 +50,7 @@
     "src/agent/AccessTracker.ts",
     "src/agent/AgentMemoryConfig.ts",
     "src/agent/AgentMemoryManager.ts",
+    "src/agent/AgentReflectionManager.ts",
     "src/agent/ArtifactManager.ts",
     "src/agent/CognitiveLoadAnalyzer.ts",
     "src/agent/CollaborativeSynthesis.ts",
@@ -86,7 +86,6 @@
     "src/agent/ProfileManager.ts",
     "src/agent/ProjectContextManager.ts",
     "src/agent/ProspectiveMemoryManager.ts",
-    "src/agent/ReflectionManager.ts",
     "src/agent/RoleProfiles.ts",
     "src/agent/RuleEvaluator.ts",
     "src/agent/SQLiteBackend.ts",
@@ -334,6 +333,13 @@
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/core/ManagerContext.test.ts"
     ],
+    "src/agent/AgentReflectionManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/AgentReflectionManager.test.ts",
+      "tests/unit/agent/ReflectionStage.test.ts"
+    ],
     "src/agent/ArtifactManager.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -576,13 +582,6 @@
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/ProspectiveMemoryManager.test.ts"
-    ],
-    "src/agent/ReflectionManager.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/ReflectionManager.test.ts",
-      "tests/unit/agent/ReflectionStage.test.ts"
     ],
     "src/agent/RoleProfiles.ts": [
       "tests/file-path.test.ts",
@@ -920,6 +919,7 @@
       "tests/performance/v10-benchmarks.test.ts",
       "tests/performance/write-performance.test.ts",
       "tests/unit/adapters/MCPToolObserverAdapter.test.ts",
+      "tests/unit/agent/AgentReflectionManager.test.ts",
       "tests/unit/agent/ArtifactManager.test.ts",
       "tests/unit/agent/CollaborationAuditEnforcer.test.ts",
       "tests/unit/agent/DecisionManager.test.ts",
@@ -931,7 +931,6 @@
       "tests/unit/agent/ProcedureManager.test.ts",
       "tests/unit/agent/ProcedureStore.test.ts",
       "tests/unit/agent/ProjectContextManager.test.ts",
-      "tests/unit/agent/ReflectionManager.test.ts",
       "tests/unit/agent/ReflectionStage.test.ts",
       "tests/unit/agent/SessionCheckpoint.test.ts",
       "tests/unit/agent/ToolAffordanceManager.test.ts",
@@ -1758,6 +1757,7 @@
       "tests/unit/agent/AccessTracker.test.ts",
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/AgentReflectionManager.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/agent/CognitiveLoadAnalyzer.test.ts",
       "tests/unit/agent/CollaborativeSynthesis.test.ts",
@@ -1783,7 +1783,6 @@
       "tests/unit/agent/ObservationDedupReportStage.test.ts",
       "tests/unit/agent/PlanManager.test.ts",
       "tests/unit/agent/ProspectiveMemoryManager.test.ts",
-      "tests/unit/agent/ReflectionManager.test.ts",
       "tests/unit/agent/ReflectionStage.test.ts",
       "tests/unit/agent/RoleProfiles.test.ts",
       "tests/unit/agent/RuleEvaluator.test.ts",
@@ -2213,6 +2212,7 @@
       "tests/unit/adapters/MCPToolObserverAdapter.test.ts",
       "tests/unit/agent/AccessTracker.test.ts",
       "tests/unit/agent/ActiveRetrieval.test.ts",
+      "tests/unit/agent/AgentReflectionManager.test.ts",
       "tests/unit/agent/ArtifactManager.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/agent/CollaborativeSynthesis.test.ts",
@@ -2240,7 +2240,6 @@
       "tests/unit/agent/PlanManager.test.ts",
       "tests/unit/agent/ProjectContextManager.test.ts",
       "tests/unit/agent/ProspectiveMemoryManager.test.ts",
-      "tests/unit/agent/ReflectionManager.test.ts",
       "tests/unit/agent/ReflectionStage.test.ts",
       "tests/unit/agent/SalienceEngine.test.ts",
       "tests/unit/agent/SessionCheckpoint.test.ts",
@@ -2462,6 +2461,7 @@
       "tests/knowledge-graph.test.ts",
       "tests/unit/adapters/MCPToolObserverAdapter.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/AgentReflectionManager.test.ts",
       "tests/unit/agent/CollaborationAuditEnforcer.test.ts",
       "tests/unit/agent/DecisionManager.test.ts",
       "tests/unit/agent/EntropyFilter.test.ts",
@@ -2469,7 +2469,6 @@
       "tests/unit/agent/HeuristicExtractionStage.test.ts",
       "tests/unit/agent/HeuristicManager.test.ts",
       "tests/unit/agent/ProjectContextManager.test.ts",
-      "tests/unit/agent/ReflectionManager.test.ts",
       "tests/unit/agent/ReflectionStage.test.ts",
       "tests/unit/agent/ToolAffordanceManager.test.ts",
       "tests/unit/agent/ToolCallObserver.test.ts",
@@ -2604,6 +2603,9 @@
     "src/utils/textSimilarity.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
+      "tests/performance/embedding-benchmarks.test.ts",
+      "tests/unit/search/SemanticSearch.test.ts",
+      "tests/unit/search/VectorStore.test.ts",
       "tests/unit/utils/entityUtils.test.ts",
       "tests/unit/utils/formatters.test.ts",
       "tests/unit/utils/schemas.test.ts",
@@ -2619,7 +2621,6 @@
       "tests/unit/utils/searchAlgorithms.test.ts",
       "tests/unit/utils/validators.test.ts"
     ],
-    "src/workers/index.ts": [],
     "src/workers/levenshteinWorker.ts": [
       "tests/unit/workers/levenshteinWorker.test.ts"
     ]
@@ -2748,7 +2749,7 @@
       "src/agent/ProspectiveMemoryManager.ts",
       "src/agent/FailureManager.ts",
       "src/agent/PlanManager.ts",
-      "src/agent/ReflectionManager.ts",
+      "src/agent/AgentReflectionManager.ts",
       "src/agent/ConsolidationPipeline.ts",
       "src/agent/SummarizationService.ts",
       "src/agent/PatternDetector.ts",
@@ -3061,7 +3062,7 @@
       "src/agent/ProspectiveMemoryManager.ts",
       "src/agent/FailureManager.ts",
       "src/agent/PlanManager.ts",
-      "src/agent/ReflectionManager.ts",
+      "src/agent/AgentReflectionManager.ts",
       "src/agent/ConsolidationPipeline.ts",
       "src/agent/SummarizationService.ts",
       "src/agent/PatternDetector.ts",
@@ -3168,7 +3169,8 @@
       "src/search/EmbeddingCache.ts",
       "src/search/IncrementalIndexer.ts",
       "src/search/EmbeddingService.ts",
-      "src/search/VectorStore.ts"
+      "src/search/VectorStore.ts",
+      "src/utils/textSimilarity.ts"
     ],
     "tests/performance/foundation-benchmarks.test.ts": [
       "src/core/GraphStorage.ts",
@@ -3368,7 +3370,7 @@
       "src/agent/ProspectiveMemoryManager.ts",
       "src/agent/FailureManager.ts",
       "src/agent/PlanManager.ts",
-      "src/agent/ReflectionManager.ts",
+      "src/agent/AgentReflectionManager.ts",
       "src/agent/ConsolidationPipeline.ts",
       "src/agent/SummarizationService.ts",
       "src/agent/PatternDetector.ts",
@@ -3439,6 +3441,13 @@
       "src/agent/reconstruction/ReconstructiveMemory.ts",
       "src/agent/reconstruction/MemoryGraphBridge.ts",
       "src/core/GraphStorage.ts"
+    ],
+    "tests/unit/agent/AgentReflectionManager.test.ts": [
+      "src/agent/AgentReflectionManager.ts",
+      "src/core/EntityManager.ts",
+      "src/types/types.ts",
+      "src/types/agent-memory.ts",
+      "src/utils/errors.ts"
     ],
     "tests/unit/agent/ArtifactManager.test.ts": [
       "src/agent/ArtifactManager.ts",
@@ -3697,16 +3706,9 @@
       "src/types/types.ts",
       "src/types/agent-memory.ts"
     ],
-    "tests/unit/agent/ReflectionManager.test.ts": [
-      "src/agent/ReflectionManager.ts",
-      "src/core/EntityManager.ts",
-      "src/types/types.ts",
-      "src/types/agent-memory.ts",
-      "src/utils/errors.ts"
-    ],
     "tests/unit/agent/ReflectionStage.test.ts": [
       "src/agent/ConsolidationPipeline.ts",
-      "src/agent/ReflectionManager.ts",
+      "src/agent/AgentReflectionManager.ts",
       "src/agent/PatternDetector.ts",
       "src/agent/ExperienceExtractor.ts",
       "src/core/EntityManager.ts",
@@ -4678,6 +4680,7 @@
       "src/search/LLMQueryPlanner.ts",
       "src/search/LLMSearchExecutor.ts",
       "src/search/SpellChecker.ts",
+      "src/utils/textSimilarity.ts",
       "src/types/index.ts",
       "src/types/search.ts",
       "src/types/types.ts",
@@ -4743,7 +4746,8 @@
       "src/types/reconstruction.ts"
     ],
     "tests/unit/search/VectorStore.test.ts": [
-      "src/search/VectorStore.ts"
+      "src/search/VectorStore.ts",
+      "src/utils/textSimilarity.ts"
     ],
     "tests/unit/search/search-filter-chain-project.test.ts": [
       "src/search/SearchFilterChain.ts",
@@ -5156,10 +5160,6 @@
     },
     {
       "file": "src/utils/IndexHealthMonitor.ts",
-      "category": null
-    },
-    {
-      "file": "src/workers/index.ts",
       "category": null
     }
   ]

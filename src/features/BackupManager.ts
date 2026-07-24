@@ -31,28 +31,14 @@ import type {
   BackupResult,
   RestoreResult,
 } from '../types/index.js';
+import type { BackupMetadata, BackupInfo } from './IOManager.js';
 
-/** Persisted alongside each backup as `<backup>.meta.json`. */
-export interface BackupMetadata {
-  timestamp: string;
-  entityCount: number;
-  relationCount: number;
-  fileSize: number;
-  description?: string;
-  compressed: boolean;
-  originalSize: number;
-  compressionRatio?: number;
-  compressionFormat: 'brotli' | 'none';
-}
-
-/** Returned by `listBackups()`. */
-export interface BackupInfo {
-  fileName: string;
-  filePath: string;
-  metadata: BackupMetadata;
-  compressed: boolean;
-  size: number;
-}
+// Canonical `BackupMetadata` / `BackupInfo` live in IOManager.ts (the optional
+// compression fields honestly describe pre-compression backup metas read from
+// disk). Re-exported here (same binding — type-only, so the
+// IOManager -> BackupManager value-import cycle is erased at compile time)
+// for callers that import from this module directly.
+export type { BackupMetadata, BackupInfo } from './IOManager.js';
 
 /**
  * Backup lifecycle owner. `IOManager` instantiates one per storage and

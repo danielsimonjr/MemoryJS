@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { RuleEvaluator, type Rule } from '../../../src/agent/RuleEvaluator.js';
+import { RuleEvaluator, type EvaluatorRule } from '../../../src/agent/RuleEvaluator.js';
 import type { AgentEntity, RuleConditions } from '../../../src/types/agent-memory.js';
 
 /**
@@ -229,7 +229,7 @@ describe('RuleEvaluator', () => {
 
   describe('evaluateRule', () => {
     it('should return true when the condition matches', () => {
-      const rule: Rule = {
+      const rule: EvaluatorRule = {
         condition: {
           type: 'equals',
           field: 'priority',
@@ -241,7 +241,7 @@ describe('RuleEvaluator', () => {
     });
 
     it('should return false when the condition does not match', () => {
-      const rule: Rule = {
+      const rule: EvaluatorRule = {
         condition: {
           type: 'equals',
           field: 'priority',
@@ -253,7 +253,7 @@ describe('RuleEvaluator', () => {
     });
 
     it('should return false for unsupported condition types', () => {
-      const rule: Rule = {
+      const rule: EvaluatorRule = {
         condition: {
           type: 'greater_than',
           field: 'score',
@@ -269,7 +269,7 @@ describe('RuleEvaluator', () => {
 
       // Triggering an error by providing a rule that will cause property access on null/undefined
       // For example, if rule.condition is null
-      const rule = { condition: null } as unknown as Rule;
+      const rule = { condition: null } as unknown as EvaluatorRule;
       const facts = { any: 'fact' };
 
       const result = evaluator.evaluateRule(rule, facts);

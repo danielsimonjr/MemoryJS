@@ -20,7 +20,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 
 /** Result of a `validate()` call. */
-export interface ValidationResult {
+export interface KeyValidationResult {
   valid: boolean;
   /** Set when `valid: true` — the matched record's metadata. */
   keyId?: string;
@@ -128,7 +128,7 @@ export class APIKeyStore {
    * to avoid leaking key state to an attacker who already knows the
    * plaintext.
    */
-  validate(plaintext: string, requiredScopes: readonly string[] = []): ValidationResult {
+  validate(plaintext: string, requiredScopes: readonly string[] = []): KeyValidationResult {
     const hash = sha256(plaintext);
     const candidateId = this.byHash.get(hash);
     if (!candidateId) return { valid: false, reason: 'unknown' };

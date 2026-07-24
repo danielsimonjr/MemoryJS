@@ -80,7 +80,7 @@ function validateConfig(config: Record<string, unknown>): Partial<GlobalOptions>
 /**
  * Merge config file with CLI options. CLI takes precedence.
  */
-export function mergeConfig(
+export function mergeCliConfig(
   fileConfig: Partial<GlobalOptions>,
   cliOptions: Partial<GlobalOptions>
 ): GlobalOptions {

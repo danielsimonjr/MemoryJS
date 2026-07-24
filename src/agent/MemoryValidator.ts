@@ -53,10 +53,10 @@ export interface MemoryValidationResult {
   suggestions: string[];
 }
 
-/** Per-spec extended Contradiction shape with a conflict type and
+/** Per-spec extended `MemoryContradiction` shape with a conflict type and
  * severity tag. The lighter `ContradictionDetector.Contradiction` shape
  * (similarity-only) is converted up at the boundary. */
-export interface Contradiction {
+export interface MemoryContradiction {
   observation1: string;
   observation2: string;
   conflictType: 'factual' | 'temporal' | 'logical';
@@ -140,12 +140,12 @@ export class MemoryValidator {
    * Delegates to `ContradictionDetector.detect` against a synthetic
    * "new observations" set (every observation paired against the rest).
    *
-   * Per ROADMAP §3B.1 spec, returns the extended Contradiction shape
+   * Per ROADMAP §3B.1 spec, returns the extended MemoryContradiction shape
    * (with `conflictType` + `severity`) — these are derived heuristically
    * from similarity score because the underlying detector is similarity-
    * only.
    */
-  async detectContradictions(entity: Entity): Promise<Contradiction[]> {
+  async detectContradictions(entity: Entity): Promise<MemoryContradiction[]> {
     if (entity.observations.length < 2) return [];
 
     // Re-run the detector pair-wise. We feed the same observation list as
@@ -153,7 +153,7 @@ export class MemoryValidator {
     // skips exact matches internally so this is safe.
     const raw = await this.contradictionDetector.detect(entity, entity.observations);
 
-    const out: Contradiction[] = [];
+    const out: MemoryContradiction[] = [];
     const seen = new Set<string>();
     for (const c of raw) {
       // Dedup symmetric pairs (a-vs-b == b-vs-a).
@@ -308,10 +308,10 @@ export class MemoryValidator {
 }
 
 /** Map a similarity-only `ContradictionDetector` finding to the spec'd
- * `Contradiction` shape. Severity is bucketed from similarity; conflict
+ * `MemoryContradiction` shape. Severity is bucketed from similarity; conflict
  * type defaults to `factual` because we don't have richer signal to
  * distinguish factual-vs-temporal-vs-logical from raw similarity. */
-function rawToTyped(c: DetectorContradiction): Contradiction {
+function rawToTyped(c: DetectorContradiction): MemoryContradiction {
   const sev: 'low' | 'medium' | 'high' =
     c.similarity >= 0.95 ? 'high' : c.similarity >= 0.85 ? 'medium' : 'low';
   return {

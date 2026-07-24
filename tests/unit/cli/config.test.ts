@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { findConfigFile, loadConfig, mergeConfig } from '../../../src/cli/config.js';
+import { findConfigFile, loadConfig, mergeCliConfig } from '../../../src/cli/config.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -232,7 +232,7 @@ describe('CLI Config', () => {
     });
   });
 
-  describe('mergeConfig', () => {
+  describe('mergeCliConfig', () => {
     it('should use CLI options over file config', () => {
       const fileConfig = {
         storage: './file.jsonl',
@@ -247,7 +247,7 @@ describe('CLI Config', () => {
         verbose: false,
       };
 
-      const result = mergeConfig(fileConfig, cliOptions);
+      const result = mergeCliConfig(fileConfig, cliOptions);
       expect(result).toEqual(cliOptions);
     });
 
@@ -260,7 +260,7 @@ describe('CLI Config', () => {
       };
       const cliOptions = {};
 
-      const result = mergeConfig(fileConfig, cliOptions);
+      const result = mergeCliConfig(fileConfig, cliOptions);
       expect(result.storage).toBe('./file.jsonl');
       expect(result.format).toBe('table');
       expect(result.quiet).toBe(true);
@@ -268,7 +268,7 @@ describe('CLI Config', () => {
     });
 
     it('should use defaults when neither file nor CLI provides values', () => {
-      const result = mergeConfig({}, {});
+      const result = mergeCliConfig({}, {});
       expect(result.storage).toBe('./memory.jsonl');
       expect(result.format).toBe('json');
       expect(result.quiet).toBe(false);
@@ -283,7 +283,7 @@ describe('CLI Config', () => {
         format: 'csv' as const,
       };
 
-      const result = mergeConfig(fileConfig, cliOptions);
+      const result = mergeCliConfig(fileConfig, cliOptions);
       expect(result.storage).toBe('./file.jsonl');
       expect(result.format).toBe('csv');
       expect(result.quiet).toBe(false);
@@ -300,7 +300,7 @@ describe('CLI Config', () => {
         verbose: false,
       };
 
-      const result = mergeConfig(fileConfig, cliOptions);
+      const result = mergeCliConfig(fileConfig, cliOptions);
       expect(result.quiet).toBe(false);
       expect(result.verbose).toBe(false);
     });
@@ -314,7 +314,7 @@ describe('CLI Config', () => {
         storage: undefined as unknown as string,
       };
 
-      const result = mergeConfig(fileConfig, cliOptions);
+      const result = mergeCliConfig(fileConfig, cliOptions);
       // undefined should fall through to file config
       expect(result.storage).toBe('./file.jsonl');
     });

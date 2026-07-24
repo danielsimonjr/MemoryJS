@@ -87,18 +87,19 @@ export {
 } from './PlanManager.js';
 
 export {
-  // Aliased to avoid name collision with `src/search/ReflectionManager`
-  // (progressive search refinement, predates this module). The class
-  // itself is named `ReflectionManager` inside `src/agent/`; this
-  // barrel re-exports it under the more specific public name.
-  ReflectionManager as ReflectionMemoryManager,
+  // Renamed from `ReflectionManager` (collided with `src/search/ReflectionManager`,
+  // which made both names ambiguous — and therefore silently excluded — at the
+  // package root under ESM `export *` semantics).
+  AgentReflectionManager,
+  // Back-compat alias (pre-rename public name; same binding, so not ambiguous).
+  AgentReflectionManager as ReflectionMemoryManager,
   type ArchiveReflectionResult,
   type ReflectionManagerConfig as ReflectionMemoryManagerConfig,
   type ReflectionInput,
   type ReflectionEntityOptions,
   type ListReflectionsOptions,
   type RelevanceOptions,
-} from './ReflectionManager.js';
+} from './AgentReflectionManager.js';
 
 export {
   ConsolidationPipeline,
@@ -119,7 +120,11 @@ export {
 
 export { PatternDetector } from './PatternDetector.js';
 
-export { RuleEvaluator } from './RuleEvaluator.js';
+export {
+  RuleEvaluator,
+  // Renamed from `Rule` (collided with ExperienceExtractor's textual `Rule`).
+  type EvaluatorRule,
+} from './RuleEvaluator.js';
 
 export {
   SalienceEngine,
@@ -309,7 +314,9 @@ export {
   type MemoryValidatorConfig,
   type MemoryValidationResult,
   type MemoryValidationIssue,
-  type Contradiction as MemoryValidatorContradiction,
+  // Renamed from `Contradiction` (ContradictionDetector's public v1.8 shape keeps the name).
+  type MemoryContradiction,
+  type MemoryContradiction as MemoryValidatorContradiction,
 } from './MemoryValidator.js';
 
 export {

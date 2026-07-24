@@ -19,7 +19,7 @@
  *   on `storage.updateEntity`'s `Promise<boolean>` per the recurring
  *   Sprint 2/4/5/6 silent-failure pattern.
  *
- * @module agent/ReflectionManager
+ * @module agent/AgentReflectionManager
  */
 
 import { createHash, randomUUID } from 'crypto';
@@ -89,7 +89,7 @@ export interface RelevanceOptions {
   limit?: number;
 }
 
-export class ReflectionManager {
+export class AgentReflectionManager {
   private readonly storage: IGraphStorage;
   private readonly entityManager: EntityManager;
   private readonly defaultRelevanceLimit: number;
@@ -110,8 +110,8 @@ export class ReflectionManager {
     input: ReflectionInput,
     options: ReflectionEntityOptions = {}
   ): Promise<ReflectionRecord> {
-    validateNonEmptyArray(input.evidence, 'evidence', 'ReflectionManager');
-    validateNonEmpty(input.summary, 'summary', 'ReflectionManager');
+    validateNonEmptyArray(input.evidence, 'evidence', 'AgentReflectionManager');
+    validateNonEmpty(input.summary, 'summary', 'AgentReflectionManager');
     validateConfidence(input.generalization_confidence, 'generalization_confidence');
 
     const evidenceHash = computeEvidenceHash(input.scope, input.evidence);
@@ -159,7 +159,7 @@ export class ReflectionManager {
       await this.storage.appendEntity(entity as unknown as Entity);
     } catch (err) {
       const cause = err instanceof Error ? err.message : String(err);
-      throw new Error(`ReflectionManager.create: failed to persist '${id}': ${cause}`);
+      throw new Error(`AgentReflectionManager.create: failed to persist '${id}': ${cause}`);
     }
     return record;
   }
@@ -246,7 +246,7 @@ export class ReflectionManager {
       graph = await this.storage.loadGraph();
     } catch (err) {
       const cause = err instanceof Error ? err.message : String(err);
-      throw new Error(`ReflectionManager.loadAllRecords: storage.loadGraph failed: ${cause}`);
+      throw new Error(`AgentReflectionManager.loadAllRecords: storage.loadGraph failed: ${cause}`);
     }
     return graph.entities
       .filter(isReflectionMemory)
@@ -280,7 +280,7 @@ function validateConfidence(value: unknown, fieldName: string): void {
     value > 1
   ) {
     throw new Error(
-      `ReflectionManager: '${fieldName}' must be a finite number in [0, 1]; received ${String(value)}`
+      `AgentReflectionManager: '${fieldName}' must be a finite number in [0, 1]; received ${String(value)}`
     );
   }
 }
