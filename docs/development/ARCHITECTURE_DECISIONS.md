@@ -37,6 +37,62 @@ This document captures key architectural decisions made during MemoryJS developm
 >   linked by relations, so they're directly queryable/indexable instead
 >   of requiring blob-parsing; legacy blob formats auto-migrate on load
 >   and their decoders are `@deprecated` rather than removed.
+> - **Delta persistence over full-graph rewrite (S2)**: manager mutations
+>   (`createEntities`/`updateEntity`/`deleteEntities`/relation CRUD) now
+>   persist via per-item append/update/delete primitives on both storage
+>   backends instead of `loadGraph()` + mutate + `saveGraph()` of the
+>   entire graph. `saveGraph`/`graph:saved` is reserved for true
+>   full-graph writes (import/restore, transactions, JSONL compaction);
+>   every other mutation fires per-item events (`entity:created` etc.)
+>   exactly once per logical change, even for batch calls. Chosen over
+>   keeping `graph:saved` as the universal mutation signal because that
+>   coupling was the root cause of the write-amplification and
+>   stale-derived-view problems the same batch fixed (`GraphRankPrior`,
+>   TF-IDF sync, search caches) — see the updated `GraphEventEmitter`
+>   JSDoc (`src/core/GraphEventEmitter.ts`) for the exact event contract.
+> - **Governance enforcement chokepoint on `EntityManager` (Sec1)**: rather
+>   than adding a second parallel mutation path (e.g. routing everything
+>   through `GovernanceManager.withTransaction`), governance hooks
+>   (`GovernanceHooks` = `GovernancePolicy` + fire-and-forget `audit`) are
+>   injected directly into `EntityManager` via `setGovernanceHooks()` and
+>   consulted inline in `createEntities`/`updateEntity`/`batchUpdate`/
+>   `deleteEntities`/`renameEntity`. `ManagerContext` wires this
+>   automatically when `MEMORY_GOVERNANCE_ENABLED === 'true'` (strict
+>   literal match, read once at first `entityManager` access). Chosen
+>   because `EntityManager` is already the single mutation surface all
+>   callers (agent memory, CLI, reconstructive-memory backing) go through
+>   — a second enforcement path would only cover callers who remembered
+>   to opt in. Denials throw `GovernanceError`; audit failures never fail
+>   the underlying write (fire-and-forget, logged).
+> - **Subpath exports + `sideEffects: false` + lazy heavy deps (S7–S9)**:
+>   `package.json` gains 9 subpath exports (`./core`, `./search`,
+>   `./agent`, `./features`, `./utils`, `./types`, `./sqlite`, plus the
+>   root and CJS/ESM dual conditions) and a package-wide `sideEffects:
+>   false` so bundlers can tree-shake unused managers. `chrono-node` is
+>   now a lazy `await import()` behind `TemporalQueryParser`'s call
+>   sites rather than a top-level import. `SQLiteStorage` is no longer
+>   statically imported by `StorageFactory` — a small registry
+>   (`registerSQLiteStorage` / `preloadSQLiteStorage`) in
+>   `src/core/StorageFactory.ts` receives the constructor via a module
+>   side effect in `src/core/sqlite-register.ts` (registered by the core
+>   barrel) or an explicit dynamic `import()`, so JSONL-only consumers
+>   never load the `better-sqlite3` native addon. Chosen over making
+>   `createStorage` itself always-async (a bigger breaking change) —
+>   the registry pattern keeps the existing synchronous factory API
+>   while deferring the native-addon load to whoever actually needs
+>   SQLite. The root barrel (`src/index.ts`) still eagerly evaluates
+>   `SQLiteStorage` via the core barrel re-export — full removal from the
+>   default import graph is a documented v3 follow-up (tracked in
+>   `docs/development/OPTIMIZATION_OPPORTUNITIES.md`, item S9).
+> - **Event reification over ad-hoc n-ary relations (R1)**: brainapi2-style
+>   "who did what, to whom, where, when" events are modeled as first-class
+>   `entityType: 'event'` hub entities with role-typed relations
+>   (`actor_of`/`targeted`/`occurred_in`/`participant_in`) rather than
+>   inventing a new relation-properties schema for n-ary facts. Chosen
+>   because it's a pure convention layer over existing storage (no schema
+>   change) and reuses existing indexes (`TypeIndex`, `RelationIndex`) for
+>   O(k)/O(1) queries instead of full-graph scans. `EventManager` is
+>   `@experimental` and wired as `ctx.eventManager`.
 
 ## Table of Contents
 

@@ -1,7 +1,19 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence)
+**Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1–R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence)
 **Last Updated**: 2026-07-24
+
+> **Unreleased — the single biggest data-flow change since the last review**:
+> manager mutations no longer read-modify-write the whole graph. The
+> per-operation flow diagrams below (Create/Delete Entities, Add
+> Observations, Create Relations, Import) still show the pre-optimization
+> `storage.saveGraph(graph)` PERSIST step for illustrative simplicity — the
+> semantics of *what* gets persisted and *which* events fire have changed;
+> see [Batch Mutation Delta Flow](#batch-mutation-delta-flow-s2) for the
+> current, accurate mechanics. Three more flows added in this pass:
+> [Governance-Enforced Mutation Flow](#governance-enforced-mutation-flow-sec1),
+> [Ingest-with-Provenance Flow](#ingest-with-provenance-flow-r4br5), and
+> [Explain Evidence-Path Flow](#explain-evidence-path-flow-r2).
 
 > Most data-flow patterns documented here remain accurate. New flows added
 > in v1.9–v1.15: temporal-validity invalidation cascade (η.4.4),
@@ -79,6 +91,10 @@
 11. [Caching Strategy](#caching-strategy)
 12. [Index Architecture](#index-architecture)
 13. [Error Handling Flow](#error-handling-flow)
+14. [Batch Mutation Delta Flow (S2)](#batch-mutation-delta-flow-s2)
+15. [Governance-Enforced Mutation Flow (Sec1)](#governance-enforced-mutation-flow-sec1)
+16. [Ingest-with-Provenance Flow (R4b/R5)](#ingest-with-provenance-flow-r4br5)
+17. [Explain Evidence-Path Flow (R2)](#explain-evidence-path-flow-r2)
 
 ---
 
@@ -1492,6 +1508,238 @@ KnowledgeGraphError (base)
   ]
 }
 ```
+
+---
+
+## Batch Mutation Delta Flow (S2)
+
+Manager mutations (`EntityManager.createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`, `RelationManager.createRelations`/`deleteRelations`) persist via targeted delta primitives instead of `loadGraph()` + mutate-in-memory + `saveGraph()` of the entire graph:
+
+```
+createEntities(entities)  [example — same shape for update/delete/relation paths]
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. ACQUIRE graphMutex                                        │
+│    Prevents a TOCTOU race between the read-only validation   │
+│    snapshot below and the delta write.                       │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. READ-ONLY SNAPSHOT (validation only)                       │
+│    storage.loadGraph() — used to check duplicates/graph-size  │
+│    limits; NOT mutated and NOT the thing that gets persisted  │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. VALIDATE + GOVERNANCE (if wired — see the flow below)      │
+│    Schema validation, importance range, governance canCreate  │
+│    consulted for every new entity BEFORE the write (one       │
+│    denial blocks the whole batch atomically)                  │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. DELTA WRITE (one fsync / one SQLite transaction)            │
+│    storage.appendEntities(newEntities)                         │
+│    JSONL: appends new lines to the file (no full rewrite)      │
+│    SQLite: single INSERT-per-row transaction                   │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 5. EMIT PER-ITEM EVENTS                                       │
+│    entity:created fired once per created entity — NOT          │
+│    graph:saved. Derived views (TF-IDF sync, GraphRankPrior)    │
+│    receive a targeted invalidation instead of a "resync        │
+│    everything" signal.                                         │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 6. RELEASE graphMutex; fire audit hooks (if governed)          │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: Entity[]
+```
+
+`graph:saved` is now reserved for true full-graph writes — explicit `saveGraph` callers (import/restore, `TransactionManager`, legacy bulk paths) and the JSONL backend's internal compaction/rename rewrites. See the `GraphEventEmitter` module JSDoc (`src/core/GraphEventEmitter.ts`) for the exhaustive event contract. This closes the root cause behind several previously-documented staleness issues: `GraphRankPrior`, TF-IDF sync, and search-result caches used to only see batch mutations via the coarse `graph:saved` signal (or not at all, if they only subscribed to per-item events).
+
+---
+
+## Governance-Enforced Mutation Flow (Sec1)
+
+Applies only when `MEMORY_GOVERNANCE_ENABLED === 'true'` (strict literal, checked once at first `ctx.entityManager` access). Unset = this flow does not run at all — zero overhead, identical to pre-Sec1 behavior.
+
+```
+ctx.entityManager (first access, env var == 'true')
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. ManagerContext builds ctx.governanceManager (if not yet    │
+│    built) and calls entityManager.setGovernanceHooks({         │
+│      canCreate:  entity          => gov.getPolicy().canCreate?.(entity)  ?? true, │
+│      canUpdate:  (entity, patch) => gov.getPolicy().canUpdate?.(entity, patch) ?? true, │
+│      canDelete:  entity          => gov.getPolicy().canDelete?.(entity)  ?? true, │
+│      audit:      event           => gov.appendAudit({ ...event, status: 'committed' }), │
+│    })                                                          │
+│    Policy is read LIVE via getPolicy() — a setPolicy() call    │
+│    after construction takes effect on the next mutation.       │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼  (every subsequent createEntities/updateEntity/batchUpdate/deleteEntities/renameEntity call)
+┌─────────────────────────────────────────────────────────────┐
+│ 2. PRE-MUTATION POLICY CHECK (before any write)                │
+│    For every entity in the batch: canCreate / canUpdate /      │
+│    canDelete consulted. A single denial throws                 │
+│    GovernanceError and blocks the ENTIRE batch atomically       │
+│    (matches the delta write's all-or-nothing semantics) —       │
+│    nothing in the batch is written.                             │
+└─────────────────────────────────────────────────────────────┘
+      │ (all checks passed)
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. DELTA WRITE (Batch Mutation Delta Flow, above)               │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. FIRE-AND-FORGET AUDIT                                        │
+│    audit(event) → GovernanceManager.appendAudit → AuditLog.append│
+│    Applies redactAuditSnapshots (Sec6, opt-in) to before/after   │
+│    snapshots if configured. Failure here is logged as a          │
+│    warning and NEVER rolls back or fails the write that already  │
+│    succeeded — the write and the audit are decoupled.            │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: normal mutation result (or throws GovernanceError pre-write)
+```
+
+Contrast with `GovernanceManager.withTransaction()` (unchanged, still available): that path snapshots the whole graph up front and rolls back to the snapshot on any exception inside the callback — a heavier, opt-in mechanism for callers who want full rollback semantics rather than per-mutation policy gating.
+
+---
+
+## Ingest-with-Provenance Flow (R4b/R5)
+
+```
+ctx.ioManager.ingest(input, options)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. NORMALIZE INPUT                                              │
+│    Raw transcript text / { messages } / ChatMessage[]           │
+│    → chunked via _chunkMessages (chunkBy: exchange|paragraph|fixed)│
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. PER CHUNK: DEDUP CHECK                                       │
+│    SHA-256 of the chunk's rendered text vs. existing entities'  │
+│    contentHash / observation hash — skip if already ingested    │
+│    (result.skippedDuplicates++), no tokens spent on skips        │
+└─────────────────────────────────────────────────────────────┘
+      │ (new chunk)
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. R5 MODE DIAL (only if options.llmProvider is set)            │
+│    'lightweight' → heuristic-only (LLM never called)             │
+│    'balanced'    → auto (default, = pre-R5 behaviour)            │
+│    'accurate'    → llm-preferred; heuristicStrictness: 'strict'  │
+│                    when no options.validate hook is supplied     │
+│    MemoryDistiller.distill(turns) → extra [distilled] … lines    │
+│    + tokenUsage accounting (exact when the provider reports it,  │
+│    chars/4 approximate otherwise)                                │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. CREATE CHUNK ENTITY (unless dryRun)                          │
+│    em.createEntities([{                                          │
+│      name: '<source>-<NNN>', observations: [...raw, ...distilled],│
+│      contentHash: <chunk SHA-256>,     // dedup on re-ingest      │
+│      observationMeta: [{ content, recordedAt, sourceRef: chunkId }]│
+│    }])                                                            │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼ (after all chunks processed)
+┌─────────────────────────────────────────────────────────────┐
+│ 5. WRITE MANIFEST + DERIVED_FROM RELATIONS (unless dryRun)      │
+│    em.createEntities([{ name: 'ingest-<id>', entityType:         │
+│      'ingest-manifest', observations: manifestLines }])          │
+│    manifestLines[i] = '[chunk]: ' + JSON.stringify(               │
+│      { id, source, offset, length, hash[, text if keepSourceText] })│
+│    rm.createRelations(createdEntities.map(e => ({ from: e.name,  │
+│      to: manifestEntity, relationType: 'derived_from' })))        │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 6. ACCURATE-MODE VALIDATION (only if mode==='accurate' &&       │
+│    options.validate && !dryRun)                                  │
+│    result.validation = await options.validate({ ingestId,        │
+│      manifestEntity, entities: createdEntities,                  │
+│      relations: createdRelations })                              │
+│    Never mutates — purely a feedback report on result.validation.│
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: IngestResult { entitiesCreated, observationsAdded,
+     skippedDuplicates, entityNames, ingestId, manifestEntity,
+     chunkCount, tokenUsage?, validation? }
+```
+
+The manifest + `derived_from` relations + per-observation `sourceRef` together let evidence paths extend `answer → relation → observation → source chunk` — see [Explain Evidence-Path Flow](#explain-evidence-path-flow-r2) below for how a search result traces back to its anchors.
+
+---
+
+## Explain Evidence-Path Flow (R2)
+
+Applies only when a caller passes `explain: true` to `HybridSearchManager.search` or `LLMSearchExecutor.execute`. Omitting it is byte-identical to pre-R2 output — `EvidencePathBuilder` is never constructed.
+
+```
+search(query, { explain: true })
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. RUN NORMAL HYBRID SEARCH                                     │
+│    Semantic / lexical / symbolic (+ opt-in graph) layers        │
+│    execute exactly as without explain; each layer's direct       │
+│    matches become that result's "anchors" (EvidenceAnchor:        │
+│    { name, viaLayer, score })                                     │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. BUILD ADJACENCY INDEX (once per search call)                 │
+│    new EvidencePathBuilder(graph, { maxDepth, maxPathsPerResult})│
+│    One pass over graph.relations; self-loops excluded             │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. PER RESULT: BOUNDED BFS FROM EACH ANCHOR                      │
+│    builder.buildForResult(resultName, anchors)                   │
+│    ├── Dedupe anchors by name (first occurrence wins);            │
+│    │   try in descending score order                               │
+│    ├── Anchor === result → trivial single-node path                │
+│    ├── Otherwise: BFS over the undirected projection of the        │
+│    │   graph (relation direction preserved in output, ignored      │
+│    │   for traversal), capped at maxDepth hops (default 3) —       │
+│    │   BFS guarantees each returned path is a SHORTEST path        │
+│    └── Stop collecting once maxPathsPerResult (default 3) paths    │
+│        are found; set truncated: true if anchors remained or       │
+│        maxDepth was hit with unexplored frontier                    │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Result gains: evidencePaths: { paths: EvidencePath[], truncated: boolean }
+```
+
+`EvidencePath` entries carry the node sequence, the relations traversed (direction preserved), the originating anchor name, and its `viaLayer`. Evidence paths compose with the ingest provenance chain above — a result whose anchor observation carries `observationMeta.sourceRef` can trace all the way back to the original ingested chunk.
 
 ---
 
