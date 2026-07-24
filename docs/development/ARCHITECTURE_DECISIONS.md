@@ -80,10 +80,13 @@ This document captures key architectural decisions made during MemoryJS developm
 >   `createStorage` itself always-async (a bigger breaking change) —
 >   the registry pattern keeps the existing synchronous factory API
 >   while deferring the native-addon load to whoever actually needs
->   SQLite. The root barrel (`src/index.ts`) still eagerly evaluates
->   `SQLiteStorage` via the core barrel re-export — full removal from the
->   default import graph is a documented v3 follow-up (tracked in
->   `docs/development/OPTIMIZATION_OPPORTUNITIES.md`, item S9).
+>   SQLite. The root barrel (`src/index.ts`) still *evaluates* the
+>   `SQLiteStorage` module via the core barrel re-export, but that module
+>   no longer loads the native addon at evaluation time: `better-sqlite3`
+>   is now lazily `createRequire`'d inside `SQLiteStorage` on first
+>   instantiation (post-merge S9 completion), so importing the package
+>   root no longer loads the addon at all. JSONL-only consumers never pay
+>   the addon load or its `NODE_MODULE_VERSION` ABI-mismatch failure mode.
 > - **Event reification over ad-hoc n-ary relations (R1)**: brainapi2-style
 >   "who did what, to whom, where, when" events are modeled as first-class
 >   `entityType: 'event'` hub entities with role-typed relations
