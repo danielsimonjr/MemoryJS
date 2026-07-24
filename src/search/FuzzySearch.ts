@@ -17,7 +17,7 @@ import { NGramIndex } from './NGramIndex.js';
 import type { BloomPreScreener } from './BloomPreScreener.js';
 import workerpool, { type Pool } from '@danielsimonjr/workerpool';
 import { fileURLToPath } from 'url';
-import { dirname, join, sep, normalize } from 'path';
+import { dirname, join, normalize } from 'path';
 import { existsSync } from 'fs';
 
 /**
@@ -153,26 +153,65 @@ export class FuzzySearch {
     this.useWorkerPool = options.useWorkerPool ?? true;
     this.ngramIndex = options.ngramIndex ?? null;
     this.ngramThreshold = options.ngramThreshold ?? 0.1;
-    // Calculate worker path using ESM module resolution
+    // Resolve the Levenshtein worker across every build layout. The worker
+    // always ships at dist/workers/levenshteinWorker.{js,cjs}, but the file
+    // that runs THIS code can live at several depths depending on the build:
+    //   - dist/search/FuzzySearch.js         (unbundled tsc; currentDir=dist/search)
+    //   - dist/search/index.js               (tsup subpath entry; currentDir=dist/search)
+    //   - dist/<hash>.js  or  dist/index.js  (tsup shared chunk / root bundle; currentDir=dist)
+    //   - dist/cli/index.js                  (CLI bundle; currentDir=dist/cli)
+    //   - src/search/FuzzySearch.ts          (vitest; worker lives under <root>/dist)
+    // A single hard-coded relative path only matched the unbundled dist/search
+    // case, so bundled consumers silently lost the worker pool. Probe an
+    // ordered candidate list and take the first that exists.
     const currentFileUrl = import.meta.url;
     const currentDir = dirname(fileURLToPath(currentFileUrl));
+    const resolved = FuzzySearch.resolveWorkerPath(currentFileUrl, currentDir);
 
-    // Check if we're running from src/ (during tests) or dist/ (production)
-    const isRunningFromSrc = currentDir.includes(`${sep}src${sep}`);
-
-    if (isRunningFromSrc) {
-      // During tests, worker is in dist/workers/ relative to project root
-      const projectRoot = join(currentDir, '..', '..');
-      this.workerPath = normalize(join(projectRoot, 'dist', 'workers', 'levenshteinWorker.js'));
+    if (resolved) {
+      this.workerPath = resolved;
     } else {
-      // In production, worker is in dist/workers/ relative to current dist/search/
+      // No worker binary found for any known layout — run single-threaded.
       this.workerPath = normalize(join(currentDir, '..', 'workers', 'levenshteinWorker.js'));
+      this.useWorkerPool = false;
     }
+  }
 
-    // Validate resolved worker path exists and is within expected package structure
-    if (!existsSync(this.workerPath)) {
-      this.useWorkerPool = false; // Fall back to non-worker mode
+  /**
+   * Resolve the Levenshtein worker path across all build layouts.
+   *
+   * Extension preference follows the caller's own module extension (a `.cjs`
+   * bundle prefers the CJS worker, otherwise the ESM `.js` worker) so the
+   * spawned worker matches the host's module system; the other extension is
+   * still tried as a fallback. Returns the first existing candidate, or
+   * `null` when no worker binary is present (single-threaded fallback).
+   *
+   * Exposed (via a static method) so the resolution logic is unit-testable
+   * without constructing a full `FuzzySearch` against real storage.
+   */
+  static resolveWorkerPath(moduleUrl: string, currentDir: string): string | null {
+    const preferCjs = moduleUrl.endsWith('.cjs');
+    const exts = preferCjs ? ['.cjs', '.js'] : ['.js', '.cjs'];
+
+    // Directory roots that may contain a sibling/descendant `workers/` dir,
+    // ordered from most- to least-specific relative to `currentDir`.
+    const workerDirs = [
+      join(currentDir, 'workers'), // currentDir = dist root (bundled chunk/root)
+      join(currentDir, '..', 'workers'), // currentDir = dist/search | dist/cli
+      join(currentDir, '..', '..', 'dist', 'workers'), // src/search during tests
+      join(currentDir, '..', 'dist', 'workers'), // src root fallback
+      join(currentDir, '..', '..', 'workers'), // deeper nesting fallback
+    ];
+
+    for (const dir of workerDirs) {
+      for (const ext of exts) {
+        const candidate = normalize(join(dir, `levenshteinWorker${ext}`));
+        if (existsSync(candidate)) {
+          return candidate;
+        }
+      }
     }
+    return null;
   }
 
   /**

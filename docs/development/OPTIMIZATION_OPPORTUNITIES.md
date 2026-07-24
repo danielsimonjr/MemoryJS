@@ -1,14 +1,20 @@
 # Optimization Opportunities — Speed & Security
 
 **Status:** Investigation (2026-07-24) — **18 of 20 items implemented same day** (this branch).
-Implemented: S1–S10 (S9 partially — root import still evaluates SQLiteStorage via the core barrel;
-non-core subpaths are clean; full removal is a documented v3 follow-up), Sec1–Sec10 (Sec1 via the
-env-gated `GovernanceHooks` chokepoint on `EntityManager`). Headline measurements: ranked search
-~3.3s → ~16ms at 4k entities (~170×); SQLite sequential writes 23 → 1,972 ops/s (84×); JSONL 6.1×;
-warm root import ~220ms → ~150ms with chrono-node fully lazy; type-only cycles 39 → 4 (0 runtime);
-tool-verified 0 orphans / 0 duplicates. Remaining open: the S9 root-barrel follow-up and the
-pre-existing bundled-dist worker-path bug surfaced during S7 (fuzzy-search worker pool silently
-disabled in production bundles — needs its own fix).
+Implemented: S1–S10 + Sec1–Sec10 (Sec1 via the env-gated `GovernanceHooks` chokepoint on
+`EntityManager`). Headline measurements: ranked search ~3.3s → ~16ms at 4k entities (~170×);
+SQLite sequential writes 23 → 1,972 ops/s (84×); JSONL 6.1×; warm root import ~220ms → ~150ms
+with chrono-node fully lazy; type-only cycles 39 → 4 (0 runtime); tool-verified 0 orphans /
+0 duplicates.
+
+**Both follow-ups closed (post-merge):** S9 completed — `better-sqlite3` is now lazily
+`createRequire`'d inside `SQLiteStorage` (loaded on first instantiation, not at module
+evaluation), so the root/core import no longer loads the native addon at all (verified: absent
+from `require.cache` after a root import, present after actual SQLite use). The pre-existing
+bundled-dist worker-path bug is fixed — `FuzzySearch.resolveWorkerPath` probes an ordered
+candidate list across every build layout (bundled root chunk, subpath entry, CLI bundle,
+unbundled tsc, src-during-tests) and prefers the extension matching the host module, so the
+worker pool is no longer silently disabled in production bundles.
 **Method:** Derived from the `create-dependency-graph` tool reports (module graph, fan-in/out, circular-dependency split, file inventory) plus targeted source verification. Every finding below was confirmed against source with `file:line` evidence; leads that the reports suggested but source refuted are listed at the end so they are not re-investigated.
 
 **How to read this:** Each item has evidence, when it actually hurts (workload shape), a concrete fix, expected win, and risk. Ranked within each half by value/effort. Nothing here is applied yet — this is the analysis, not the change.

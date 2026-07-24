@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Lazy `better-sqlite3` load (S9 completion)**: the native addon is now
+  loaded via `createRequire` on first `SQLiteStorage` instantiation rather
+  than at module evaluation, so importing the root/core package entry no
+  longer loads it. JSONL-only consumers never pay the addon load and never
+  hit its `NODE_MODULE_VERSION` ABI-mismatch failure mode. SQLite behavior
+  is unchanged when actually used.
+- **Fuzzy-search worker pool in bundled builds**: `FuzzySearch` resolved
+  the Levenshtein worker at a single hard-coded relative path that only
+  matched the unbundled `dist/search` layout, so after code-splitting the
+  worker pool was silently disabled in production bundles (search fell back
+  to single-threaded). `resolveWorkerPath` now probes an ordered candidate
+  list across all layouts and prefers the extension matching the host
+  module.
+
 ### Added (brainapi2-inspired features)
 
 - **Event reification (R1)**: `ctx.eventManager` — actions become

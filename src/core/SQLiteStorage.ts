@@ -20,8 +20,29 @@
  * @module core/SQLiteStorage
  */
 
-import Database from 'better-sqlite3';
+import { createRequire } from 'node:module';
+import type Database from 'better-sqlite3';
 import type { Database as DatabaseType, Statement } from 'better-sqlite3';
+
+/**
+ * Lazy loader for the `better-sqlite3` native addon.
+ *
+ * The addon is loaded on first `SQLiteStorage` instantiation rather than at
+ * module evaluation, so importing this module (transitively, via the core
+ * barrel / root package entry) does NOT load the native binding. JSONL-only
+ * consumers therefore never pay the addon load — and never hit its
+ * ABI-mismatch failure mode (`NODE_MODULE_VERSION`). `createRequire` resolves
+ * in both the ESM and CJS builds (tsup shims `import.meta.url` for CJS).
+ */
+type DatabaseCtor = typeof Database;
+let cachedDatabaseCtor: DatabaseCtor | undefined;
+function loadDatabaseCtor(): DatabaseCtor {
+  if (cachedDatabaseCtor === undefined) {
+    const require = createRequire(import.meta.url);
+    cachedDatabaseCtor = require('better-sqlite3') as DatabaseCtor;
+  }
+  return cachedDatabaseCtor;
+}
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import {
@@ -281,7 +302,9 @@ export class SQLiteStorage implements IGraphStorage {
   private initialize(): void {
     if (this.initialized) return;
 
-    // Open database (creates file if it doesn't exist)
+    // Open database (creates file if it doesn't exist). The native addon is
+    // loaded lazily here — see loadDatabaseCtor.
+    const Database = loadDatabaseCtor();
     this.db = new Database(this.validatedDbFilePath);
 
     // Enable foreign keys and WAL mode for better performance
@@ -1896,6 +1919,7 @@ export class SQLiteStorage implements IGraphStorage {
     const size = Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 4;
     if (size <= 1) return; // Single-writer fallback; reads go through this.db.
 
+    const Database = loadDatabaseCtor();
     for (let i = 0; i < size; i++) {
       const conn = new Database(this.validatedDbFilePath, { readonly: true });
       // Foreign keys are still meaningful on a read-only handle (for
