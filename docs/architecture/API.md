@@ -36,6 +36,7 @@ surface only.
 24. [RbacMiddleware + RoleAssignmentStore](#rbacmiddleware--roleassignmentstore) *(η.6.1)*
 25. [ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController](#proceduremanager--causalreasoner--worldmodelmanager--activeretrievalcontroller) *(3B.4–3B.7)*
 26. [IMemoryBackend](#imemorybackend) *(v1.12.0)*
+27. [GraphRankPrior + HybridSearchManager](#graphrankprior--hybridsearchmanager) *(Unreleased)*
 
 ---
 
@@ -101,6 +102,8 @@ const ctx = new ManagerContext('./memory.db');
 | `memoryBackend` | `IMemoryBackend` | Pluggable backend selector via `MEMORY_BACKEND` (v1.12.0) |
 | `compressedEntityCache` | `CompressedMap<string, Entity>` | In-memory compressed entity cache (v1.15.0 Phase 10) |
 | `diagnostics` | `Diagnostics` | Query `explainPlan` + index health surface (v1.15.0 Phase 0/1) |
+| `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (Unreleased, `@experimental`) |
+| `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search (Unreleased) |
 
 ### Methods
 
@@ -431,7 +434,7 @@ Update an entity, optionally requiring a specific version (η.5.5.c).
 async updateEntity(
   name: string,
   updates: Partial<Entity>,
-  options?: { expectedVersion?: number; agentId?: string }
+  options?: { expectedVersion?: number }
 ): Promise<Entity>
 ```
 
@@ -439,19 +442,23 @@ If `expectedVersion` is supplied and doesn't match the current `version` field o
 
 ### invalidateEntity (η.4.4 — Bitemporal Versioning)
 
-Mark an entity as no longer valid at a given point in time, creating a successor.
+Mark an entity as no longer valid by setting `validUntil` (does not delete the entity; `entityAsOf` still returns it for past timestamps). Idempotent — a second call updates the existing `validUntil`.
 
 ```typescript
-async invalidateEntity(name: string, validUntil?: Date): Promise<Entity>
+async invalidateEntity(name: string, ended?: string): Promise<void>
 ```
+
+`ended` is an ISO 8601 timestamp string; defaults to the current time. Throws `EntityNotFoundError` if `name` doesn't exist.
 
 ### entityAsOf
 
 Time-travel query — get the version of an entity that was valid at a given timestamp.
 
 ```typescript
-async entityAsOf(name: string, asOfDate: Date): Promise<Entity | null>
+async entityAsOf(name: string, asOf: string): Promise<Entity | null>
 ```
+
+`asOf` is an ISO 8601 date string. Throws `ValidationError` if it isn't.
 
 ### entityTimeline
 
@@ -534,6 +541,35 @@ Merge two tags into a target tag.
 async mergeTags(tag1: string, tag2: string, targetTag: string): Promise<number>
 ```
 
+### listEntities (Unreleased)
+
+Public bulk enumeration, replacing the old `entityManager['storage']` private-access pattern.
+
+```typescript
+async listEntities(filter?: { entityType?: string }): Promise<Entity[]>
+```
+
+When `filter.entityType` is supplied, takes an O(k) `TypeIndex` fast path (`storage.getEntitiesByType`) instead of a full-graph scan.
+
+### renameEntity (Unreleased)
+
+Atomically rename an entity, rewriting every stored reference to the old name.
+
+```typescript
+async renameEntity(oldName: string, newName: string): Promise<Entity>
+```
+
+Delegates to the storage-level `renameEntity` primitive (an optional member on `IGraphStorage`; both `GraphStorage` and `SQLiteStorage` implement it). Rewrites `Relation.from`/`Relation.to`, other entities' `parentId`, and version-chain fields (`parentEntityName`, `rootEntityName`, `supersededBy`); remaps `RefIndex` aliases pointing at the old name. The entity's `id`, `createdAt`, and all other fields are preserved; `lastModified` is bumped. `newName` must pass the same validation as `createEntities` (including the reserved `profile-`/`diary-` namespaces).
+
+**Events:** emits `entity:renamed`, then `entity:deleted` (old name), then `entity:created` (renamed entity) — so event listeners that only understand create/delete stay consistent.
+
+**Throws:** `ValidationError` if `newName` is invalid, `EntityNotFoundError` if `oldName` doesn't exist, `DuplicateEntityError` if `newName` already exists.
+
+**Example:**
+```typescript
+const renamed = await ctx.entityManager.renameEntity('Alice', 'Alice Smith');
+```
+
 ---
 
 ## RelationManager
@@ -595,26 +631,40 @@ async getAllRelations(): Promise<Relation[]>
 
 ### invalidateRelation (v1.9.0 — Temporal Validity)
 
-Mark a relation as ended at a given point in time (creates a `validUntil` boundary without deleting).
+Mark the active (non-terminated) relation matching `from`/`relationType`/`to` as ended, by setting `properties.validUntil` (without deleting it).
 
 ```typescript
-async invalidateRelation(relation: Relation, validUntil?: Date): Promise<void>
+async invalidateRelation(
+  from: string,
+  relationType: string,
+  to: string,
+  ended?: string   // ISO 8601 timestamp; defaults to current time
+): Promise<void>
 ```
+
+Throws `RelationNotFoundError` if no active relation matches.
 
 ### queryAsOf (v1.9.0 — Time-Travel Queries)
 
 Get all relations involving an entity that were valid at a given timestamp.
 
 ```typescript
-async queryAsOf(entityName: string, asOfDate: Date): Promise<Relation[]>
+async queryAsOf(
+  entityName: string,
+  asOf: string,   // ISO 8601 date string
+  options?: { direction?: 'outgoing' | 'incoming' | 'both' }  // default 'both'
+): Promise<Relation[]>
 ```
 
 ### timeline (v1.9.0 — Chronological History)
 
-Return the chronological relation history for an entity (creation + invalidation events).
+Return all relations involving an entity sorted chronologically by `properties.validFrom` (unbounded relations last).
 
 ```typescript
-async timeline(entityName: string): Promise<RelationTimelineEntry[]>
+async timeline(
+  entityName: string,
+  options?: { direction?: 'outgoing' | 'incoming' | 'both' }  // default 'both'
+): Promise<Relation[]>
 ```
 
 ---
@@ -656,13 +706,13 @@ async deleteObservations(deletions: ObservationDeletion[]): Promise<ObservationR
 
 ### invalidateObservation (η.4.4 — Bitemporal Axis)
 
-Mark a specific observation index as no longer valid at a given point in time, without removing it from the entity's `observations[]`. Adds an `observationMeta[]` entry recording the boundary.
+Mark a specific observation (matched by its content string) as no longer valid at a given point in time, without removing it from the entity's `observations[]`. Adds an `observationMeta[]` entry recording the boundary.
 
 ```typescript
 async invalidateObservation(
   entityName: string,
-  observationIndex: number,
-  validUntil?: Date
+  content: string,
+  ended?: string   // ISO 8601 timestamp; defaults to current time
 ): Promise<void>
 ```
 
@@ -671,8 +721,10 @@ async invalidateObservation(
 Return the observations that were valid for an entity at a given timestamp.
 
 ```typescript
-async observationsAsOf(entityName: string, asOfDate: Date): Promise<string[]>
+async observationsAsOf(entityName: string, asOf: string): Promise<string[]>
 ```
+
+`asOf` is an ISO 8601 date string.
 
 ---
 
@@ -1317,9 +1369,15 @@ async validateGraph(): Promise<ValidationReport>
 **Returns:**
 ```typescript
 interface ValidationReport {
-  valid: boolean;
-  errors: ValidationError[];
-  warnings: ValidationWarning[];
+  isValid: boolean;
+  issues: ValidationIssue[];    // type: 'orphaned_relation' | 'duplicate_entity' | 'invalid_data'
+  warnings: ValidationWarning[]; // type: 'isolated_entity' | 'empty_observations' | 'missing_metadata'
+  summary: {
+    totalErrors: number;
+    totalWarnings: number;
+    orphanedRelationsCount: number;
+    entitiesWithoutRelationsCount: number;
+  };
 }
 ```
 
@@ -1433,9 +1491,13 @@ async execute(options?: { force?: boolean }): Promise<BatchResult>
 Create storage backend instances.
 
 ```typescript
-static createStorage(config: { storagePath: string; storageType?: 'jsonl' | 'sqlite' }): IGraphStorage
-static createStorageFromPath(path: string): IGraphStorage
+createStorage(config: { type: 'jsonl' | 'sqlite' | 'postgres' | 'postgresql'; path: string }): IGraphStorage
+createStorageFromPath(path: string): IGraphStorage
 ```
+
+(Free functions, not static class methods — `MEMORY_STORAGE_TYPE` overrides `config.type` when set.)
+
+`IGraphStorage` gained two optional members (Unreleased) so existing third-party/test implementations remain valid without changes: `renameEntity?(oldName, newName): Promise<Entity>` (storage-level rename primitive; both `GraphStorage` and `SQLiteStorage` implement it) and `readonly events?: GraphEventEmitter` (also now implemented by `SQLiteStorage`, giving it full event parity with `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created` — so event-driven derived views like `TFIDFEventSync` and `GraphRankPrior` work on the SQLite backend too). `SQLiteStorage` also gained the `graphMutex` member already present on `GraphStorage` (fixes a crash in batch manager mutations against the raw SQLite backend).
 
 ---
 
@@ -1454,6 +1516,12 @@ interface Entity {
   importance?: number;
   createdAt?: string;
   lastModified?: string;
+
+  // Unreleased — stable identity
+  id?: string;                    // Opaque UUID, assigned at creation (crypto.randomUUID),
+                                   // preserved across updates/renames/persistence on both
+                                   // backends. `name` remains the public key; `id` is
+                                   // forward-compat for v2 reference migration.
 
   // v1.6.0 — Freshness
   ttl?: number;                    // milliseconds
@@ -1807,6 +1875,73 @@ interface IMemoryBackend {
 ```
 
 `SQLiteBackend` wraps `MemoryEngine` (and transparently spans JSONL + SQLite per `MEMORY_STORAGE_TYPE`). `InMemoryBackend` is ephemeral; suitable for tests and short-lived processes.
+
+---
+
+## GraphRankPrior + HybridSearchManager
+
+(Unreleased — knowledge-graph-as-core convergence) Graph-connectivity as a first-class ranking signal. All new weights/options default to `0`/off with behavior identical to before they existed. See `docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`.
+
+### GraphRankPrior
+
+`@experimental`. Cached graph-connectivity ranking signal: normalized PageRank over `GraphTraversal`, with a degree-only fallback beyond `maxPageRankEntities` (default 50 000). Event-invalidated (per-item entity/relation events + `graph:saved`, which covers manager-level batch mutations). Wired via `ctx.graphRankPrior` (lazy getter).
+
+```typescript
+new GraphRankPrior(
+  source: GraphTraversal | GraphStorage,
+  options?: {
+    maxPageRankEntities?: number;  // default 50_000
+    dampingFactor?: number;        // default 0.85
+    events?: GraphEventEmitter;    // enables auto-invalidation
+  }
+)
+
+async getScores(names: string[]): Promise<Map<string, number>>  // normalized [0, 1]
+async getPageRank(entityName: string): Promise<number>
+async getDegree(entityName: string): Promise<number>
+neighbors(entityName: string): string[]                          // one-hop, both directions
+isDegreeFallback(): boolean | undefined
+invalidate(): void
+dispose(): void
+```
+
+### HybridSearchManager
+
+Combines semantic, lexical, symbolic, and (optionally) graph-connectivity search layers. Wired via `ctx.hybridSearchManager` (lazy getter; attaches `graphRankPrior` only when `MEMORY_HYBRID_GRAPH_WEIGHT > 0`).
+
+```typescript
+new HybridSearchManager(
+  semanticSearch: SemanticSearch | null,
+  rankedSearch: RankedSearch,
+  graphPrior?: GraphRankPrior | null,          // optional graph-connectivity channel
+  defaults?: { graphWeight?: number; expandNeighbors?: { hops: 1; topK?: number; damping?: number } }
+)
+
+async search(
+  graph: ReadonlyKnowledgeGraph,
+  query: string,
+  options?: Partial<HybridSearchOptions> & {
+    graphWeight?: number;        // graph channel weight (default 0 = off)
+    expandNeighbors?: { hops: 1; topK?: number; damping?: number };  // one-hop expansion
+  }
+): Promise<HybridSearchResult[]>
+```
+
+`HybridSearchResult.matchedLayers` can now include `'graph'`; `scores.graph` carries the normalized graph-connectivity contribution when the channel is active. `HybridSearchLayer` (`= HybridSearchResult['matchedLayers'][number]`) is a `@deprecated` alias kept for back-compat.
+
+### RankedSearch.setGraphPrior (Unreleased)
+
+Opt-in post-scoring boost for TF-IDF/BM25 ranked search.
+
+```typescript
+setGraphPrior(prior: GraphRankPrior | null, boost?: number): void
+```
+
+Multiplies each result's score by `score × (1 + boost × normalizedPageRank)` and re-sorts. No-op when no prior/boost is configured (the default). `ManagerContext` wires this automatically when `MEMORY_RANKED_GRAPH_BOOST > 0`.
+
+### Related env vars
+
+`MEMORY_HYBRID_GRAPH_WEIGHT`, `MEMORY_RANKED_GRAPH_BOOST`, `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`, `MEMORY_DECAY_CONNECTIVITY_PROTECTION` (see [CLAUDE.md](../../CLAUDE.md) for the full table).
 
 ---
 

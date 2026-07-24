@@ -29,11 +29,12 @@ Complete API documentation for all public classes, methods, and types.
 11. [AnalyticsManager](#analyticsmanager)
 12. [ArchiveManager](#archivemanager)
 13. [SemanticSearch](#semanticsearch)
-14. [HybridSearchManager](#hybridsearchmanager)
-15. [Storage Classes](#storage-classes)
-16. [Utility Functions](#utility-functions)
-17. [Types & Interfaces](#types--interfaces)
-18. [Error Classes](#error-classes)
+14. [GraphRankPrior](#graphrankprior) *(Unreleased)*
+15. [HybridSearchManager](#hybridsearchmanager)
+16. [Storage Classes](#storage-classes)
+17. [Utility Functions](#utility-functions)
+18. [Types & Interfaces](#types--interfaces)
+19. [Error Classes](#error-classes)
 
 ---
 
@@ -69,6 +70,8 @@ new ManagerContext(storagePath: string)
 | `archiveManager` | `ArchiveManager` | Archival (lazy) |
 | `rankedSearch` | `RankedSearch` | TF-IDF search (lazy) |
 | `semanticSearch` | `SemanticSearch` | Vector search (lazy, requires config) |
+| `graphRankPrior` | `GraphRankPrior` | Cached graph-connectivity ranking signal (lazy, `@experimental`, Unreleased) |
+| `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) search (lazy, Unreleased) |
 
 ### Example
 
@@ -592,16 +595,16 @@ Orchestrates all search operations.
 
 ### Methods
 
-#### search
+#### searchNodes
 
 ```typescript
-async search(
+async searchNodes(
   query: string,
   options?: SearchOptions
 ): Promise<KnowledgeGraph>
 ```
 
-Basic substring search.
+Basic substring search across entity names, observations, and types.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -614,7 +617,7 @@ Basic substring search.
 | `options.offset` | `number` | No | Skip results |
 
 ```typescript
-const results = await ctx.searchManager.search('TypeScript', {
+const results = await ctx.searchManager.searchNodes('TypeScript', {
   tags: ['programming'],
   minImportance: 5,
   limit: 20
@@ -623,10 +626,10 @@ const results = await ctx.searchManager.search('TypeScript', {
 
 ---
 
-#### searchRanked
+#### searchNodesRanked
 
 ```typescript
-async searchRanked(
+async searchNodesRanked(
   query: string,
   options?: RankedSearchOptions
 ): Promise<SearchResult[]>
@@ -644,7 +647,7 @@ TF-IDF ranked search with relevance scores.
 **Returns**: `SearchResult[]` with score and matchedFields
 
 ```typescript
-const ranked = await ctx.searchManager.searchRanked('programming language', {
+const ranked = await ctx.searchManager.searchNodesRanked('programming language', {
   limit: 10,
   minScore: 0.3
 });
@@ -707,35 +710,9 @@ const results = await ctx.searchManager.fuzzySearch('Typscript', {
 
 ---
 
-#### hybridSearch
-
-```typescript
-async hybridSearch(
-  query: string,
-  options?: HybridSearchOptions
-): Promise<HybridSearchResult>
-```
-
-Three-layer search combining semantic, lexical, and symbolic signals.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `query` | `string` | Yes | Search query |
-| `options.weights.semantic` | `number` | No | Semantic weight (default: 0.4) |
-| `options.weights.lexical` | `number` | No | Lexical weight (default: 0.4) |
-| `options.weights.symbolic` | `number` | No | Symbolic weight (default: 0.2) |
-| `options.filters` | `SymbolicFilters` | No | Metadata filters |
-| `options.limit` | `number` | No | Max results |
-
-```typescript
-const results = await ctx.searchManager.hybridSearch('machine learning', {
-  weights: { semantic: 0.5, lexical: 0.3, symbolic: 0.2 },
-  filters: { tags: ['ai'], minImportance: 5 },
-  limit: 20
-});
-```
-
----
+> **Note:** hybrid (semantic + lexical + symbolic + optional graph) search is
+> not a `SearchManager` method — it is `ctx.hybridSearchManager.search(graph,
+> query, options)`. See [HybridSearchManager](#hybridsearchmanager) below.
 
 #### getSearchSuggestions
 
@@ -803,18 +780,19 @@ Graph algorithms and path finding.
 
 ```typescript
 async findShortestPath(
-  from: string,
-  to: string
-): Promise<string[] | null>
+  source: string,
+  target: string,
+  options?: PathOptions   // { maxDepth?, direction?, relationTypes? }
+): Promise<PathResult | null>
 ```
 
-Finds shortest path between two entities using BFS.
+Finds shortest path between two entities using Dijkstra's algorithm.
 
-**Returns**: Path as array of entity names, or null if no path exists
+**Returns**: `PathResult` (`{ path: string[], relations: Relation[], length: number }`), or `null` if no path exists
 
 ```typescript
-const path = await ctx.graphTraversal.findShortestPath('Alice', 'Bob');
-// ['Alice', 'Charlie', 'Bob']
+const result = await ctx.graphTraversal.findShortestPath('Alice', 'Bob');
+// result?.path === ['Alice', 'Charlie', 'Bob']
 ```
 
 ---
@@ -823,81 +801,64 @@ const path = await ctx.graphTraversal.findShortestPath('Alice', 'Bob');
 
 ```typescript
 async findAllPaths(
-  from: string,
-  to: string,
+  source: string,
+  target: string,
+  maxDepth?: number,     // default 5
   options?: PathOptions
-): Promise<string[][]>
+): Promise<PathResult[]>
 ```
 
-Finds all paths between entities.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `from` | `string` | Yes | Start entity |
-| `to` | `string` | Yes | End entity |
-| `options.maxDepth` | `number` | No | Maximum path length |
-| `options.maxPaths` | `number` | No | Maximum paths to return |
+Finds all paths between entities up to `maxDepth`.
 
 ---
 
-#### getCentrality
+#### Centrality methods
 
 ```typescript
-async getCentrality(
-  options?: CentralityOptions
-): Promise<Map<string, number>>
+async calculateDegreeCentrality(
+  direction?: 'in' | 'out' | 'both', topN?: number
+): Promise<CentralityResult>
+async calculateBetweennessCentrality(
+  options?: { approximate?: boolean; sampleRate?: number; topN?: number }
+): Promise<CentralityResult>
+async calculatePageRank(
+  dampingFactor?: number, maxIterations?: number, tolerance?: number, topN?: number
+): Promise<CentralityResult>
 ```
 
-Calculates centrality metrics for all nodes.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `options.algorithm` | `string` | No | `'degree'`, `'betweenness'`, `'pagerank'` |
+Three separate methods (there is no unified `getCentrality()`). Each resolves to a `CentralityResult` (`{ scores: Map<string, number>, ... }`).
 
 ```typescript
-const centrality = await ctx.graphTraversal.getCentrality({ algorithm: 'pagerank' });
-centrality.forEach((score, name) => {
+const pageRank = await ctx.graphTraversal.calculatePageRank();
+pageRank.scores.forEach((score, name) => {
   console.log(`${name}: ${score.toFixed(4)}`);
 });
 ```
 
 ---
 
-#### getConnectedComponents
+#### findConnectedComponents
 
 ```typescript
-async getConnectedComponents(): Promise<string[][]>
+async findConnectedComponents(): Promise<ConnectedComponentsResult>
 ```
 
 Finds connected components (subgraphs).
 
-**Returns**: Array of entity name arrays, one per component
+**Returns**: `{ components: string[][], count: number, largestComponentSize: number }`
 
 ---
 
-#### bfs
+#### bfs / dfs
 
 ```typescript
-async bfs(
-  startNode: string,
-  visitor: (node: string, depth: number) => void
-): Promise<void>
+bfs(startEntity: string, options?: TraversalOptions): TraversalResult
+dfs(startEntity: string, options?: TraversalOptions): TraversalResult
 ```
 
-Breadth-first traversal with visitor callback.
+Breadth-first / depth-first traversal. Both are **synchronous** (no `Promise`) and take an options object rather than a visitor callback.
 
----
-
-#### dfs
-
-```typescript
-async dfs(
-  startNode: string,
-  visitor: (node: string, depth: number) => void
-): Promise<void>
-```
-
-Depth-first traversal with visitor callback.
+**Returns**: `TraversalResult` (`{ nodes: string[], depths: Map<string, number>, parents: Map<string, string> }`)
 
 ---
 
@@ -975,10 +936,10 @@ console.log(`Would create ${result.entitiesCreated}, update ${result.entitiesUpd
 #### createBackup
 
 ```typescript
-async createBackup(options?: BackupOptions): Promise<BackupInfo>
+async createBackup(options?: BackupOptions | string): Promise<BackupResult>
 ```
 
-Creates a timestamped backup.
+Creates a timestamped backup. `BackupResult` carries `path` (not `id`) — pass that to `restoreFromBackup`/`deleteBackup`.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -987,18 +948,18 @@ Creates a timestamped backup.
 
 ```typescript
 const backup = await ctx.ioManager.createBackup({ compress: true });
-console.log(`Backup created: ${backup.id}`);
+console.log(`Backup created: ${backup.path}`);
 ```
 
 ---
 
-#### restoreBackup
+#### restoreFromBackup
 
 ```typescript
-async restoreBackup(backupId: string): Promise<void>
+async restoreFromBackup(backupPath: string): Promise<RestoreResult>
 ```
 
-Restores from a backup.
+Restores the graph from a backup file (by path — since v1.15.0 Phase 5 delegates to `BackupManager.restore()`, which rejects symlinks).
 
 ---
 
@@ -1008,17 +969,27 @@ Restores from a backup.
 async listBackups(): Promise<BackupInfo[]>
 ```
 
-Lists all available backups.
+Lists all available backups, sorted newest first.
 
 ---
 
 #### deleteBackup
 
 ```typescript
-async deleteBackup(backupId: string): Promise<void>
+async deleteBackup(backupPath: string): Promise<void>
 ```
 
-Deletes a backup.
+Deletes a backup by path. Since v1.15.0 Phase 5 delegates to `BackupManager.delete()`, which validates the path stays in the backup directory and rejects symlinks.
+
+---
+
+#### cleanOldBackups
+
+```typescript
+async cleanOldBackups(keepCount?: number): Promise<number>
+```
+
+Keeps the `keepCount` most recent backups (default 10); deletes the rest.
 
 ---
 
@@ -1209,8 +1180,14 @@ Validates graph integrity.
 ```typescript
 {
   isValid: boolean;
-  issues: ValidationIssue[];
-  warnings: ValidationWarning[];
+  issues: ValidationIssue[];       // type: 'orphaned_relation' | 'duplicate_entity' | 'invalid_data'
+  warnings: ValidationWarning[];   // type: 'isolated_entity' | 'empty_observations' | 'missing_metadata'
+  summary: {
+    totalErrors: number;
+    totalWarnings: number;
+    orphanedRelationsCount: number;
+    entitiesWithoutRelationsCount: number;
+  };
 }
 ```
 
@@ -1253,34 +1230,44 @@ const result = await ctx.archiveManager.archiveEntities({
 
 ## SemanticSearch
 
-Vector similarity search using embeddings.
+Vector similarity search using embeddings. Note the constructor takes no
+`storage` argument — `graph` is passed per-call to `indexAll`/`search`/
+`findSimilar` instead.
 
 ### Constructor
 
 ```typescript
 new SemanticSearch(
-  storage: IGraphStorage,
   embeddingService: EmbeddingService,
-  vectorStore: IVectorStore
+  vectorStore?: IVectorStore   // defaults to a new InMemoryVectorStore
 )
 ```
 
 ### Methods
 
+#### isAvailable
+
+```typescript
+async isAvailable(): Promise<boolean>
+```
+
 #### indexAll
 
 ```typescript
-async indexAll(options?: SemanticIndexOptions): Promise<void>
+async indexAll(
+  graph: ReadonlyKnowledgeGraph,
+  options?: SemanticIndexOptions   // { forceReindex?, onProgress?, batchSize?, signal? }
+): Promise<{ indexed: number; skipped: number; errors: number }>
 ```
 
-Indexes all entities for semantic search.
+Indexes all entities for semantic search. Incremental — entities already indexed are skipped unless `forceReindex` is set.
 
 ```typescript
 const embedding = await createEmbeddingService({ provider: 'openai' });
-const vectorStore = createVectorStore('memory', storage);
-const semantic = new SemanticSearch(storage, embedding, vectorStore);
+const semantic = new SemanticSearch(embedding);
 
-await semantic.indexAll();
+const graph = await ctx.entityManager.getAllEntities().then(entities => ({ entities, relations: [] }));
+await semantic.indexAll(graph);
 ```
 
 ---
@@ -1288,10 +1275,10 @@ await semantic.indexAll();
 #### indexEntity
 
 ```typescript
-async indexEntity(entity: Entity): Promise<void>
+async indexEntity(entity: Entity): Promise<boolean>
 ```
 
-Indexes a single entity.
+Indexes a single entity. Returns `false` on embedding failure instead of throwing.
 
 ---
 
@@ -1299,18 +1286,17 @@ Indexes a single entity.
 
 ```typescript
 async search(
+  graph: ReadonlyKnowledgeGraph,
   query: string,
-  options?: SemanticSearchOptions
+  limit?: number,          // default SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT
+  minSimilarity?: number   // default SEMANTIC_SEARCH_LIMITS.MIN_SIMILARITY
 ): Promise<SemanticSearchResult[]>
 ```
 
 Searches by semantic similarity.
 
 ```typescript
-const results = await semantic.search('functional programming concepts', {
-  limit: 10,
-  minScore: 0.7
-});
+const results = await semantic.search(graph, 'functional programming concepts', 10, 0.7);
 ```
 
 ---
@@ -1319,32 +1305,81 @@ const results = await semantic.search('functional programming concepts', {
 
 ```typescript
 async findSimilar(
+  graph: ReadonlyKnowledgeGraph,
   entityName: string,
-  options?: FindSimilarOptions
+  limit?: number,
+  minSimilarity?: number
 ): Promise<SemanticSearchResult[]>
 ```
 
 Finds entities similar to a given entity.
 
 ```typescript
-const similar = await semantic.findSimilar('TypeScript', { limit: 5 });
+const similar = await semantic.findSimilar(graph, 'TypeScript', 5);
+```
+
+---
+
+## GraphRankPrior
+
+(Unreleased, `@experimental`) Cached graph-connectivity ranking signal — normalized PageRank over `GraphTraversal`, with a degree-only fallback once the graph exceeds `maxPageRankEntities`. Event-invalidated (entity/relation events + `graph:saved`, so manager-level batch mutations don't leave it stale). Wired via `ctx.graphRankPrior` (lazy getter).
+
+### Constructor
+
+```typescript
+new GraphRankPrior(
+  source: GraphTraversal | GraphStorage,
+  options?: {
+    maxPageRankEntities?: number;  // default 50_000
+    dampingFactor?: number;        // default 0.85
+    events?: GraphEventEmitter;    // enables auto-invalidation
+  }
+)
+```
+
+### Methods
+
+```typescript
+async getScores(names: string[]): Promise<Map<string, number>>  // normalized [0, 1]
+async getPageRank(entityName: string): Promise<number>
+async getDegree(entityName: string): Promise<number>
+neighbors(entityName: string): string[]         // one-hop, both directions
+isDegreeFallback(): boolean | undefined
+invalidate(): void
+dispose(): void
+```
+
+```typescript
+const prior = ctx.graphRankPrior;
+const scores = await prior.getScores(['Alice', 'Bob']);
 ```
 
 ---
 
 ## HybridSearchManager
 
-Three-layer hybrid search.
+Combines semantic, lexical, symbolic, and (optionally) graph-connectivity search layers with configurable weights. Wired via `ctx.hybridSearchManager` (lazy getter; attaches the graph channel only when `MEMORY_HYBRID_GRAPH_WEIGHT > 0`).
 
 ### Constructor
 
 ```typescript
 new HybridSearchManager(
-  storage: IGraphStorage,
-  semanticSearch?: SemanticSearch,
-  rankedSearch?: RankedSearch
+  semanticSearch: SemanticSearch | null,
+  rankedSearch: RankedSearch,
+  graphPrior?: GraphRankPrior | null,
+  defaults?: {
+    graphWeight?: number;
+    expandNeighbors?: { hops: 1; topK?: number; damping?: number };
+  }
 )
 ```
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `semanticSearch` | `SemanticSearch \| null` | Yes | Semantic layer; `null` disables it |
+| `rankedSearch` | `RankedSearch` | Yes | Lexical layer (TF-IDF/BM25) |
+| `graphPrior` | `GraphRankPrior \| null` | No | Graph-connectivity signal; absent = graph channel inert (default `null`) |
+| `defaults` | `GraphHybridOptions` | No | Default `graphWeight`/`expandNeighbors`, overridable per call |
 
 ### Methods
 
@@ -1352,13 +1387,46 @@ new HybridSearchManager(
 
 ```typescript
 async search(
-  query: string,
   graph: ReadonlyKnowledgeGraph,
-  options?: HybridSearchOptions
-): Promise<HybridSearchResult>
+  query: string,
+  options?: Partial<HybridSearchOptions> & {
+    graphWeight?: number;  // graph channel weight, default 0 (off)
+    expandNeighbors?: { hops: 1; topK?: number; damping?: number };
+  }
+): Promise<HybridSearchResult[]>
 ```
 
-Executes hybrid search combining all three layers.
+Executes hybrid search combining all layers and returns results sorted by `scores.combined`, descending. Note the parameter order: `graph` first, then `query` (opposite of most other search methods in this library).
+
+`matchedLayers` can include `'graph'`; `scores.graph` carries the normalized graph-connectivity contribution when that channel is active.
+
+```typescript
+const results = await ctx.hybridSearchManager.search(graph, 'machine learning', {
+  semanticWeight: 0.5,
+  lexicalWeight: 0.3,
+  symbolicWeight: 0.2,
+  symbolic: { tags: ['ai'], importance: { min: 5 } },
+  limit: 20,
+});
+```
+
+#### searchWithEntities
+
+Alias for `search()`.
+
+```typescript
+async searchWithEntities(
+  graph: ReadonlyKnowledgeGraph,
+  query: string,
+  options?: Partial<HybridSearchOptions> & GraphHybridOptions
+): Promise<HybridSearchResult[]>
+```
+
+#### getSymbolicSearch
+
+```typescript
+getSymbolicSearch(): SymbolicSearch
+```
 
 ---
 
@@ -1388,6 +1456,8 @@ new SQLiteStorage(dbPath: string)
 | `saveGraph(graph)` | Saves graph |
 | `searchFTS(query)` | FTS5 full-text search |
 | `close()` | Close database connection |
+
+Since Unreleased, `SQLiteStorage` also implements `renameEntity(oldName, newName)` (the storage-level primitive backing `EntityManager.renameEntity`), `events` (a `GraphEventEmitter` with full parity to `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created`), and `graphMutex` (fixes a crash in batch manager mutations against the raw SQLite backend). `IGraphStorage.renameEntity` and `.events` are both optional interface members so third-party/test implementations remain valid without changes.
 
 ### Factory Functions
 
@@ -1484,8 +1554,13 @@ interface Entity {
   importance?: number;
   createdAt?: string;
   lastModified?: string;
+  id?: string;  // Unreleased — stable opaque UUID assigned at creation, preserved across
+                // updates/renames/persistence; `name` remains the public key
 }
 ```
+
+> See [docs/architecture/API.md](../architecture/API.md#entity) for the full
+> field set (freshness, versioning, bitemporal, Memory Engine dedup fields).
 
 ### Relation
 
@@ -1520,23 +1595,42 @@ interface SearchResult {
 
 ### HybridSearchResult
 
+`HybridSearchManager.search()` resolves to `HybridSearchResult[]` — a flat array, not a wrapper object.
+
 ```typescript
 interface HybridSearchResult {
-  results: Array<{
-    entity: Entity;
-    score: number;
-    layerScores: {
-      semantic: number;
-      lexical: number;
-      symbolic: number;
-    };
-  }>;
-  timing: {
+  entity: Entity;
+  scores: {
     semantic: number;
     lexical: number;
     symbolic: number;
-    total: number;
+    combined: number;
+    graph?: number;  // present when the graph channel is active (Unreleased)
   };
+  matchedLayers: ('semantic' | 'lexical' | 'symbolic' | 'graph')[];
+}
+```
+
+### HybridSearchOptions
+
+```typescript
+interface HybridSearchOptions {
+  semanticWeight: number;   // default 0.5
+  lexicalWeight: number;    // default 0.3
+  symbolicWeight: number;   // default 0.2
+  semantic?: { minSimilarity?: number; topK?: number };
+  lexical?: { useStopwords?: boolean; useStemming?: boolean };
+  symbolic?: SymbolicFilters;
+  limit?: number;
+}
+
+interface SymbolicFilters {
+  tags?: string[];
+  entityTypes?: string[];
+  dateRange?: { start: string; end: string };
+  importance?: { min?: number; max?: number };
+  parentId?: string;
+  hasObservations?: boolean;
 }
 ```
 
@@ -1631,6 +1725,16 @@ class EntityManager {
   // v1.8 — supersession chain navigation
   getVersionChain(entityName: string): Promise<Entity[]>;
   getLatestVersion(entityName: string): Promise<Entity | null>;
+
+  // Unreleased — knowledge-graph-as-core convergence
+  /** Public bulk enumeration; O(k) TypeIndex fast path when filtered. */
+  listEntities(filter?: { entityType?: string }): Promise<Entity[]>;
+  /**
+   * Atomically renames an entity: rewrites Relation.from/to, children's
+   * parentId, version-chain fields, and RefIndex aliases. Emits
+   * entity:renamed -> entity:deleted -> entity:created.
+   */
+  renameEntity(oldName: string, newName: string): Promise<Entity>;
 }
 ```
 
@@ -2005,6 +2109,7 @@ ctx.semanticForget / governanceManager / freshnessManager
 // Search extensions
 ctx.semanticSearch / temporalSearch / activeRetrieval
 ctx.llmQueryPlanner() / queryNaturalLanguage()
+ctx.graphRankPrior / hybridSearchManager   // Unreleased — knowledge-graph-as-core convergence
 
 // Memory + agent
 ctx.memoryEngine / memoryBackend / contextWindowManager / agentMemory()

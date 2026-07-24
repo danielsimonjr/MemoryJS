@@ -18,6 +18,9 @@ A concise cheat sheet for common MemoryJS operations.
 > - **Conflict resolution**: `synth.resolveConflicts(result, { strategy: 'highest_confidence' })` (η.5.5.a)
 > - **Audit attribution**: `new CollaborationAuditEnforcer(em, log).updateEntity(name, updates, agentId)` (η.5.5.d)
 > - **Visibility**: `AgentEntity.allowedRoles` + `visibleFrom` / `visibleUntil` (η.5.5.b)
+> - **Rename**: `entityManager.renameEntity(oldName, newName)` — rewrites relations/parentId/version-chain, emits `entity:renamed` (Unreleased)
+> - **List entities**: `entityManager.listEntities({ entityType? })` (Unreleased)
+> - **Graph-ranked search**: `ctx.hybridSearchManager.search(graph, query, { graphWeight })` / `ctx.graphRankPrior.getScores(names)` / `rankedSearch.setGraphPrior(prior, boost)` (Unreleased, `@experimental`)
 
 ---
 
@@ -59,6 +62,14 @@ await ctx.entityManager.removeTags('Alice', ['active']);
 
 // Importance (0-10)
 await ctx.entityManager.setImportance('Alice', 8);
+
+// List (Unreleased) — filter uses an O(k) TypeIndex fast path
+const all = await ctx.entityManager.listEntities();
+const people = await ctx.entityManager.listEntities({ entityType: 'person' });
+
+// Rename (Unreleased) — rewrites relations, parentId, version-chain fields;
+// emits entity:renamed then entity:deleted/entity:created
+await ctx.entityManager.renameEntity('Alice', 'Alice Smith');
 ```
 
 ---
@@ -120,15 +131,15 @@ const subtree = await ctx.hierarchyManager.getSubtree('Department');
 
 | Method | Use Case |
 |--------|----------|
-| `search()` | Basic substring matching |
-| `searchRanked()` | TF-IDF relevance ranking |
-| `booleanSearch()` | AND/OR/NOT operators |
-| `fuzzySearch()` | Typo tolerance |
-| `hybridSearch()` | Combined semantic+lexical+symbolic |
+| `searchManager.searchNodes()` | Basic substring matching |
+| `searchManager.searchNodesRanked()` | TF-IDF relevance ranking |
+| `searchManager.booleanSearch()` | AND/OR/NOT operators |
+| `searchManager.fuzzySearch()` | Typo tolerance |
+| `hybridSearchManager.search()` | Combined semantic+lexical+symbolic(+graph) |
 
 ```typescript
 // Basic search with filters
-const results = await ctx.searchManager.search('query', {
+const results = await ctx.searchManager.searchNodes('query', {
   tags: ['important'],
   minImportance: 5,
   maxImportance: 10,
@@ -136,7 +147,7 @@ const results = await ctx.searchManager.search('query', {
 });
 
 // Ranked search (TF-IDF)
-const ranked = await ctx.searchManager.searchRanked('query', {
+const ranked = await ctx.searchManager.searchNodesRanked('query', {
   limit: 20,
   minScore: 0.3
 });
@@ -151,11 +162,19 @@ const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', {
   threshold: 0.7  // 0.0-1.0
 });
 
-// Hybrid search (multi-layer)
-const hybrid = await ctx.searchManager.hybridSearch('query', {
-  weights: { semantic: 0.4, lexical: 0.4, symbolic: 0.2 },
-  filters: { tags: ['ai'], minImportance: 3 }
+// Hybrid search (multi-layer) — note: this is ctx.hybridSearchManager, not
+// ctx.searchManager; graph first, then query
+const graph = await ctx.entityManager.getAllEntities().then(entities => ({ entities, relations: [] }));
+const hybrid = await ctx.hybridSearchManager.search(graph, 'query', {
+  semanticWeight: 0.4,
+  lexicalWeight: 0.4,
+  symbolicWeight: 0.2,
+  symbolic: { tags: ['ai'], importance: { min: 3 } }
 });
+
+// Graph-connectivity boost (Unreleased, @experimental, all default off)
+const ranked2 = await ctx.searchManager.searchNodesRanked('query'); // ctx.rankedSearch auto-boosts when MEMORY_RANKED_GRAPH_BOOST > 0
+const scores = await ctx.graphRankPrior.getScores(['Alice', 'Bob']);
 ```
 
 ---
@@ -163,23 +182,24 @@ const hybrid = await ctx.searchManager.hybridSearch('query', {
 ## Graph Algorithms
 
 ```typescript
-// Shortest path
-const path = await ctx.graphTraversal.findShortestPath('A', 'B');
+// Shortest path (Dijkstra) — resolves to PathResult | null
+const result = await ctx.graphTraversal.findShortestPath('A', 'B');
+// result?.path, result?.relations, result?.length
 
 // All paths
-const paths = await ctx.graphTraversal.findAllPaths('A', 'B', { maxDepth: 5 });
+const paths = await ctx.graphTraversal.findAllPaths('A', 'B', 5); // maxDepth
 
-// Centrality
-const centrality = await ctx.graphTraversal.getCentrality({
-  algorithm: 'pagerank'  // 'degree' | 'betweenness' | 'pagerank'
-});
+// Centrality — three separate methods, no unified getCentrality()
+const pageRank = await ctx.graphTraversal.calculatePageRank();
+const degree = await ctx.graphTraversal.calculateDegreeCentrality('both');
+const betweenness = await ctx.graphTraversal.calculateBetweennessCentrality();
 
 // Connected components
-const components = await ctx.graphTraversal.getConnectedComponents();
+const components = await ctx.graphTraversal.findConnectedComponents();
 
-// Traversal
-await ctx.graphTraversal.bfs('Start', (node, depth) => console.log(node));
-await ctx.graphTraversal.dfs('Start', (node, depth) => console.log(node));
+// Traversal — synchronous, options object (not a visitor callback)
+const bfsResult = ctx.graphTraversal.bfs('Start');   // { nodes, depths, parents }
+const dfsResult = ctx.graphTraversal.dfs('Start');
 ```
 
 ---
@@ -203,11 +223,11 @@ const result = await ctx.ioManager.importGraph('json', data, {
   dryRun: true
 });
 
-// Backup
+// Backup — BackupResult carries `path`, not `id`
 const backup = await ctx.ioManager.createBackup({ compress: true });
-await ctx.ioManager.restoreBackup(backup.id);
+await ctx.ioManager.restoreFromBackup(backup.path);
 const backups = await ctx.ioManager.listBackups();
-await ctx.ioManager.deleteBackup(backup.id);
+await ctx.ioManager.deleteBackup(backup.path);
 ```
 
 ---
@@ -259,20 +279,20 @@ await ctx.tagManager.removeTagAlias('ml');
 ## Semantic Search (requires embeddings)
 
 ```typescript
-import { createEmbeddingService, createVectorStore, SemanticSearch } from '@danielsimonjr/memoryjs';
+import { createEmbeddingService, SemanticSearch } from '@danielsimonjr/memoryjs';
 
-const embedding = await createEmbeddingService({ provider: 'openai' });
-const vectorStore = createVectorStore('memory', storage);
-const semantic = new SemanticSearch(storage, embedding, vectorStore);
+const embedding = createEmbeddingService({ provider: 'openai' });  // or use ctx.semanticSearch directly
+const semantic = new SemanticSearch(embedding);   // vectorStore defaults to InMemoryVectorStore
+const graph = { entities: await ctx.entityManager.getAllEntities(), relations: [] };
 
 // Index entities
-await semantic.indexAll();
+await semantic.indexAll(graph);
 
 // Search by meaning
-const results = await semantic.search('functional programming');
+const results = await semantic.search(graph, 'functional programming');
 
 // Find similar entities
-const similar = await semantic.findSimilar('TypeScript', { limit: 5 });
+const similar = await semantic.findSimilar(graph, 'TypeScript', 5);
 ```
 
 ---
@@ -303,8 +323,12 @@ try {
 | Variable | Values | Default |
 |----------|--------|---------|
 | `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` |
-| `EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `none` |
-| `OPENAI_API_KEY` | API key | - |
+| `MEMORY_EMBEDDING_PROVIDER` | `openai`, `local`, `none` | `local` |
+| `MEMORY_OPENAI_API_KEY` | API key | - |
+| `MEMORY_HYBRID_GRAPH_WEIGHT` | Number (0-1) | `0` (off) |
+| `MEMORY_RANKED_GRAPH_BOOST` | Number (≥0) | `0` (off) |
+
+See [CLAUDE.md](../../CLAUDE.md) for the complete environment-variable reference.
 
 ---
 
@@ -314,7 +338,7 @@ try {
 
 ```typescript
 interface Entity {
-  name: string;              // Unique ID (1-500 chars)
+  name: string;              // Unique key (1-500 chars)
   entityType: string;        // Category
   observations: string[];    // Facts
   parentId?: string;         // Hierarchy parent
@@ -322,6 +346,9 @@ interface Entity {
   importance?: number;       // Priority (0-10)
   createdAt?: string;        // ISO timestamp
   lastModified?: string;     // ISO timestamp
+  id?: string;               // Stable opaque UUID (Unreleased) — assigned at creation,
+                              // preserved across renames/updates; name stays the public key
+  // ...plus freshness/versioning/bitemporal fields — see docs/architecture/API.md#entity
 }
 ```
 
