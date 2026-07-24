@@ -1,11 +1,11 @@
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-05-17
+**Generated**: 2026-07-24
 
 ## Summary
 
 - **Potentially unused files**: 2
-- **Potentially unused exports**: 461
+- **Potentially unused exports**: 469
 
 ## Potentially Unused Files
 
@@ -25,12 +25,6 @@ These exports are not imported by any other file in the codebase:
 - `MemoryVariables` (interface)
 - `LangChainMemoryAdapterOptions` (interface)
 
-### `src/adapters/pagination.ts`
-
-- `PaginationParams` (interface)
-- `ParsePaginationOptions` (interface)
-- `PaginatedResult` (interface)
-
 ### `src/adapters/RateLimiter.ts`
 
 - `RateLimiterConfig` (interface)
@@ -44,6 +38,12 @@ These exports are not imported by any other file in the codebase:
 - `RestMethod` (type)
 - `RestHandler` (type)
 
+### `src/adapters/pagination.ts`
+
+- `PaginationParams` (interface)
+- `ParsePaginationOptions` (interface)
+- `PaginatedResult` (interface)
+
 ### `src/agent/AccessTracker.ts`
 
 - `AccessStats` (interface)
@@ -54,20 +54,9 @@ These exports are not imported by any other file in the codebase:
 - `CreateMemoryOptions` (interface)
 - `RetrieveContextOptions` (interface)
 
-### `src/agent/causal/CausalReasoner.ts`
-
-- `CausalCycle` (interface)
-- `CausalReasonerConfig` (interface)
-- `CausalRelationType` (type)
-
 ### `src/agent/CognitiveLoadAnalyzer.ts`
 
 - `CognitiveLoadConfig` (interface)
-
-### `src/agent/collaboration/CollaborationAuditEnforcer.ts`
-
-- `CollaborationAuditEnforcerOptions` (interface)
-- `AttributionMode` (type)
 
 ### `src/agent/CollaborativeSynthesis.ts`
 
@@ -193,11 +182,6 @@ These exports are not imported by any other file in the codebase:
 - `PushSubGoalOptions` (interface)
 - `ListPlansOptions` (interface)
 
-### `src/agent/procedural/ProcedureManager.ts`
-
-- `ProcedureManagerConfig` (interface)
-- `InvocationResult` (type)
-
 ### `src/agent/ProfileManager.ts`
 
 - `ProfileResponse` (interface)
@@ -214,18 +198,6 @@ These exports are not imported by any other file in the codebase:
 - `ProspectiveMemoryConfig` (interface)
 - `ScheduleOptions` (interface)
 
-### `src/agent/rbac/PermissionMatrix.ts`
-
-- `PermissionMatrixRow` (type)
-
-### `src/agent/rbac/RbacMiddleware.ts`
-
-- `RbacMiddlewareOptions` (interface)
-
-### `src/agent/rbac/RoleAssignmentStore.ts`
-
-- `RoleAssignmentStoreOptions` (interface)
-
 ### `src/agent/ReflectionManager.ts`
 
 - `ReflectionManagerConfig` (interface)
@@ -235,22 +207,18 @@ These exports are not imported by any other file in the codebase:
 - `RelevanceOptions` (interface)
 - `ArchiveReflectionResult` (type)
 
-### `src/agent/retrieval/ActiveRetrievalController.ts`
-
-- `RetrievalContext` (interface)
-- `RetrievalDecision` (interface)
-- `RetrievalRound` (interface)
-- `AdaptiveResult` (interface)
-- `ActiveRetrievalConfig` (interface)
-
-### `src/agent/retrieval/QueryRewriter.ts`
-
-- `RewriteResult` (interface)
-
 ### `src/agent/RoleProfiles.ts`
 
 - `RoleProfile` (interface)
 - `AgentRole` (type)
+
+### `src/agent/RuleEvaluator.ts`
+
+- `Rule` (interface)
+
+### `src/agent/SQLiteBackend.ts`
+
+- `SQLiteBackendOptions` (interface)
 
 ### `src/agent/SessionManager.ts`
 
@@ -261,10 +229,6 @@ These exports are not imported by any other file in the codebase:
 - `SessionSearchOptions` (interface)
 - `EntityWithContext` (interface)
 - `SearchFunction` (type)
-
-### `src/agent/SQLiteBackend.ts`
-
-- `SQLiteBackendOptions` (interface)
 
 ### `src/agent/SummarizationService.ts`
 
@@ -291,18 +255,66 @@ These exports are not imported by any other file in the codebase:
 - `Granularity` (type)
 - `TrajectoryMergeStrategy` (type)
 
-### `src/agent/WorkingMemoryManager.ts`
-
-- `SessionMemoryFilter` (interface)
-- `PromotionMarkOptions` (interface)
-- `PromotionCriteria` (interface)
-
 ### `src/agent/WorkThreadManager.ts`
 
 - `WorkThread` (interface)
 - `WorkThreadFilter` (interface)
 - `CreateWorkThreadOptions` (interface)
 - `WorkThreadStatus` (type)
+
+### `src/agent/WorkingMemoryManager.ts`
+
+- `SessionMemoryFilter` (interface)
+- `PromotionMarkOptions` (interface)
+- `PromotionCriteria` (interface)
+
+### `src/agent/causal/CausalReasoner.ts`
+
+- `CausalCycle` (interface)
+- `CausalReasonerConfig` (interface)
+- `CausalRelationType` (type)
+
+### `src/agent/collaboration/CollaborationAuditEnforcer.ts`
+
+- `CollaborationAuditEnforcerOptions` (interface)
+- `AttributionMode` (type)
+
+### `src/agent/procedural/ProcedureManager.ts`
+
+- `ProcedureManagerConfig` (interface)
+- `InvocationResult` (type)
+
+### `src/agent/rbac/PermissionMatrix.ts`
+
+- `PermissionMatrixRow` (type)
+
+### `src/agent/rbac/RbacMiddleware.ts`
+
+- `RbacMiddlewareOptions` (interface)
+
+### `src/agent/rbac/RoleAssignmentStore.ts`
+
+- `RoleAssignmentStoreOptions` (interface)
+
+### `src/agent/reconstruction/MemoryToolkit.ts`
+
+- `EventKeywords` (interface)
+
+### `src/agent/reconstruction/ReconstructiveMemory.ts`
+
+- `ReconstructiveMemoryConfig` (interface)
+
+### `src/agent/retrieval/ActiveRetrievalController.ts`
+
+- `RetrievalContext` (interface)
+- `RetrievalDecision` (interface)
+- `RetrievalRound` (interface)
+- `AdaptiveResult` (interface)
+- `ActiveRetrievalConfig` (interface)
+
+### `src/agent/retrieval/QueryRewriter.ts`
+
+- `RewriteResult` (interface)
 
 ### `src/agent/world/WorldModelManager.ts`
 
@@ -319,10 +331,6 @@ These exports are not imported by any other file in the codebase:
 ### `src/cli/options.ts`
 
 - `defaultOptions` (constant)
-
-### `src/core/columns/IColumnStore.ts`
-
-- `InMemoryColumnStore` (class)
 
 ### `src/core/EntityManager.ts`
 
@@ -343,10 +351,6 @@ These exports are not imported by any other file in the codebase:
 
 - `ManagerContextOptions` (interface)
 
-### `src/core/mmap/FsReadMmapBackend.ts`
-
-- `FsReadMmapBackendOptions` (interface)
-
 ### `src/core/ObservationStore.ts`
 
 - `ObservationStoreStats` (interface)
@@ -354,11 +358,6 @@ These exports are not imported by any other file in the codebase:
 ### `src/core/RefIndex.ts`
 
 - `RefIndexStats` (interface)
-
-### `src/core/segments/ISegmentStorage.ts`
-
-- `fnv1a32` (function)
-- `InMemorySegmentStorage` (class)
 
 ### `src/core/TransactionManager.ts`
 
@@ -369,6 +368,19 @@ These exports are not imported by any other file in the codebase:
 
 - `TransitionEvent` (interface)
 - `TransitionFilter` (interface)
+
+### `src/core/columns/IColumnStore.ts`
+
+- `InMemoryColumnStore` (class)
+
+### `src/core/mmap/FsReadMmapBackend.ts`
+
+- `FsReadMmapBackendOptions` (interface)
+
+### `src/core/segments/ISegmentStorage.ts`
+
+- `fnv1a32` (function)
+- `InMemorySegmentStorage` (class)
 
 ### `src/features/ArchiveManager.ts`
 
@@ -439,6 +451,12 @@ These exports are not imported by any other file in the codebase:
 - `SemanticForgetResult` (interface)
 - `SemanticForgetOptions` (interface)
 
+### `src/search/BM25Search.ts`
+
+- `BM25DocumentEntry` (interface)
+- `BM25Index` (interface)
+- `BM25Config` (interface)
+
 ### `src/search/BloomFilter.ts`
 
 - `bloomParams` (function)
@@ -446,12 +464,6 @@ These exports are not imported by any other file in the codebase:
 ### `src/search/BloomPreScreener.ts`
 
 - `BloomPreScreenerOptions` (interface)
-
-### `src/search/BM25Search.ts`
-
-- `BM25DocumentEntry` (interface)
-- `BM25Index` (interface)
-- `BM25Config` (interface)
 
 ### `src/search/EarlyTerminationManager.ts`
 
@@ -469,6 +481,10 @@ These exports are not imported by any other file in the codebase:
 - `FuzzySearchOptions` (interface)
 - `DEFAULT_FUZZY_THRESHOLD` (constant)
 
+### `src/search/GraphRankPrior.ts`
+
+- `GraphRankPriorOptions` (interface)
+
 ### `src/search/HybridScorer.ts`
 
 - `SemanticLayerResult` (interface)
@@ -477,6 +493,14 @@ These exports are not imported by any other file in the codebase:
 - `ScoredResult` (interface)
 - `HybridWeights` (interface)
 - `HybridScorerOptions` (interface)
+- `GraphLayerResult` (type)
+
+### `src/search/HybridSearchManager.ts`
+
+- `GraphHybridSearchResult` (interface)
+- `NeighborExpansionOptions` (interface)
+- `GraphHybridOptions` (interface)
+- `HybridSearchLayer` (type)
 
 ### `src/search/IncrementalIndexer.ts`
 
@@ -484,10 +508,6 @@ These exports are not imported by any other file in the codebase:
 - `IncrementalIndexerOptions` (interface)
 - `FlushResult` (interface)
 - `IndexOperationType` (type)
-
-### `src/search/LLMQueryPlanner.ts`
-
-- `LLMProvider` (interface)
 
 ### `src/search/LLMSearchExecutor.ts`
 
@@ -576,6 +596,10 @@ These exports are not imported by any other file in the codebase:
 
 - `TemporalFilterField` (type)
 
+### `src/search/VectorStore.ts`
+
+- `SQLiteStorageWithEmbeddings` (interface)
+
 ### `src/search/tiered/BrotliColdTier.ts`
 
 - `BrotliColdTierOptions` (interface)
@@ -597,10 +621,6 @@ These exports are not imported by any other file in the codebase:
 
 - `TieredIndexOptions` (interface)
 - `TieredIndexBuildOptions` (interface)
-
-### `src/search/VectorStore.ts`
-
-- `SQLiteStorageWithEmbeddings` (interface)
 
 ### `src/security/ABACPolicy.ts`
 
@@ -715,6 +735,7 @@ These exports are not imported by any other file in the codebase:
 - `OperationResult` (interface)
 - `BatchOptions` (interface)
 - `GraphEventBase` (interface)
+- `EntityRenamedEvent` (interface)
 - `RelationCreatedEvent` (interface)
 - `RelationDeletedEvent` (interface)
 - `ObservationDeletedEvent` (interface)
@@ -757,6 +778,43 @@ These exports are not imported by any other file in the codebase:
 - `PressureAwareCache` (interface)
 - `CachePressureSnapshot` (interface)
 
+### `src/utils/Diagnostics.ts`
+
+- `EntityCounts` (interface)
+- `TieredIndexStatsSnapshot` (interface)
+
+### `src/utils/EntityValidator.ts`
+
+- `EntityValidatorConfig` (interface)
+
+### `src/utils/IndexHealthMonitor.ts`
+
+- `IndexHealthSources` (interface)
+
+### `src/utils/MemoryMonitor.ts`
+
+- `ComponentMemoryUsage` (interface)
+- `MemoryUsageStats` (interface)
+- `MemoryThresholds` (interface)
+- `MemoryAlert` (interface)
+- `MemoryChangeCallback` (type)
+
+### `src/utils/SchemaValidator.ts`
+
+- `JsonSchema` (interface)
+
+### `src/utils/WorkerPoolManager.ts`
+
+- `ExtendedPoolStats` (interface)
+- `PoolEventCallback` (type)
+
+### `src/utils/WorkerTaskManager.ts`
+
+- `_resetWorkerTaskManagerForTests` (function)
+- `TaskSubmitOptions` (interface)
+- `TaskHandle` (interface)
+- `WorkerTaskManagerStats` (interface)
+
 ### `src/utils/compressedCache.ts`
 
 - `CompressedCacheOptions` (interface)
@@ -781,11 +839,6 @@ These exports are not imported by any other file in the codebase:
 - `CompressionQuality` (type)
 - `EMBEDDING_ENV_VARS` (constant)
 
-### `src/utils/Diagnostics.ts`
-
-- `EntityCounts` (interface)
-- `TieredIndexStatsSnapshot` (interface)
-
 ### `src/utils/entityUtils.ts`
 
 - `fnv1aHash` (function)
@@ -799,10 +852,6 @@ These exports are not imported by any other file in the codebase:
 - `sanitizeObject` (function)
 - `CommonSearchFilters` (interface)
 
-### `src/utils/EntityValidator.ts`
-
-- `EntityValidatorConfig` (interface)
-
 ### `src/utils/errors.ts`
 
 - `ErrorOptions` (interface)
@@ -813,18 +862,6 @@ These exports are not imported by any other file in the codebase:
 - `validatePagination` (function)
 - `ValidatedPagination` (interface)
 - `ToolResponse` (type)
-
-### `src/utils/IndexHealthMonitor.ts`
-
-- `IndexHealthSources` (interface)
-
-### `src/utils/MemoryMonitor.ts`
-
-- `ComponentMemoryUsage` (interface)
-- `MemoryUsageStats` (interface)
-- `MemoryThresholds` (interface)
-- `MemoryAlert` (interface)
-- `MemoryChangeCallback` (type)
 
 ### `src/utils/operationUtils.ts`
 
@@ -864,10 +901,6 @@ These exports are not imported by any other file in the codebase:
 - `ImportFormatSchema` (constant)
 - `OptionalTagsSchema` (constant)
 
-### `src/utils/SchemaValidator.ts`
-
-- `JsonSchema` (interface)
-
 ### `src/utils/searchCache.ts`
 
 - `CacheStats` (interface)
@@ -876,17 +909,7 @@ These exports are not imported by any other file in the codebase:
 
 - `batchProcess` (function)
 - `debounce` (function)
-- `TaskQueue` (class)
-- `Task` (interface)
-- `TaskResult` (interface)
 - `TaskBatchOptions` (interface)
-- `QueueStats` (interface)
-
-### `src/utils/WorkerPoolManager.ts`
-
-- `WorkerPoolConfig` (interface)
-- `ExtendedPoolStats` (interface)
-- `PoolEventCallback` (type)
 
 ### `src/workers/levenshteinWorker.ts`
 
