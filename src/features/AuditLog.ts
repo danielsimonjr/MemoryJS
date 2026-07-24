@@ -88,6 +88,19 @@ export interface AuditFilter {
   fromTime?: string;
   /** Filter to entries at or before this ISO 8601 timestamp */
   toTime?: string;
+  /**
+   * Case-insensitive free-text substring matched against each entry's
+   * serialized JSON text (so it can match anything: entity names, agent
+   * ids, and before/after payload contents).
+   */
+  text?: string;
+  /**
+   * Maximum number of entries to return. When more entries match, the
+   * MOST RECENT `limit` matches are kept (chronological order within the
+   * returned slice is preserved). Non-finite or non-positive values are
+   * ignored (no cap).
+   */
+  limit?: number;
 }
 
 /**
@@ -244,15 +257,18 @@ export class AuditLog {
    * Query audit entries by filter criteria.
    *
    * All filter fields are optional; providing multiple fields applies
-   * them as AND conditions.
+   * them as AND conditions. `text` performs a case-insensitive substring
+   * match over each entry's serialized JSON; `limit` caps the result to
+   * the most recent N matches (chronological order preserved).
    *
    * @param filter - Filter criteria
    * @returns Matching audit entries in chronological order
    */
   async query(filter: AuditFilter): Promise<AuditEntry[]> {
     const entries = await this.loadAll();
+    const needle = filter.text !== undefined ? filter.text.toLowerCase() : undefined;
 
-    return entries.filter(entry => {
+    const matched = entries.filter(entry => {
       if (filter.operation !== undefined && entry.operation !== filter.operation) {
         return false;
       }
@@ -268,8 +284,16 @@ export class AuditLog {
       if (filter.toTime !== undefined && entry.timestamp > filter.toTime) {
         return false;
       }
+      if (needle !== undefined && !JSON.stringify(entry).toLowerCase().includes(needle)) {
+        return false;
+      }
       return true;
     });
+
+    if (filter.limit !== undefined && Number.isFinite(filter.limit) && filter.limit > 0) {
+      return matched.slice(-Math.floor(filter.limit));
+    }
+    return matched;
   }
 
   /**

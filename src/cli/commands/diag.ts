@@ -36,8 +36,12 @@ import { formatError } from '../formatters.js';
  * Entries flagged `secret: true` hold credentials; the `env` command never
  * prints their plaintext value — only a `'***set***'` marker when present.
  * The `set` flag stays accurate so triage output remains useful.
+ *
+ * Exported so `memory doctor` (cli/commands/doctor.ts) can lint the same
+ * catalog (numeric-default detection) without duplicating it. The `env`
+ * command's behavior is unchanged by the export.
  */
-const ENV_VAR_CATALOG: Array<{ name: string; defaultValue: string; description: string; secret?: boolean }> = [
+export const ENV_VAR_CATALOG: Array<{ name: string; defaultValue: string; description: string; secret?: boolean }> = [
   // Core
   { name: 'MEMORY_STORAGE_TYPE', defaultValue: 'jsonl', description: 'jsonl | sqlite — storage backend selector' },
   { name: 'MEMORY_FILE_PATH', defaultValue: '(repo default)', description: 'Custom storage file path' },
