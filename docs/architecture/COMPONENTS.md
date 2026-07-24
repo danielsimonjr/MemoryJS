@@ -564,15 +564,16 @@ Walks the relation graph up to `hopDepth` hops, collects all agent-contributed o
 
 ```typescript
 export class FailureDistillation {
-  constructor(storage: IGraphStorage, pipeline: ConsolidationPipeline)
+  constructor(storage: IGraphStorage, config?: FailureDistillationConfig)
 
-  async distill(failureEntityName: string): Promise<DistillationResult>
+  async distillFromSession(sessionId: string): Promise<FailureDistillationResult>
 }
 
-interface DistillationResult {
-  lessons: AgentEntity[];        // Promoted semantic memories
-  causalChain: string[];         // Ordered entity names in the failure path
-  contributionScores: Map<string, number>;  // Per-step causal weight
+interface FailureDistillationResult {
+  sessionId: string;             // Session that was analyzed
+  lessons: DistilledLesson[];    // Distilled lessons produced
+  createdEntities: string[];     // Names of created procedural memory entities
+  episodesAnalyzed: number;      // Episodic entities traced in the causal chain
 }
 ```
 
@@ -698,12 +699,12 @@ export class PlanManager {
 
 ---
 
-### ReflectionManager (`agent/ReflectionManager.ts`)
+### AgentReflectionManager (`agent/AgentReflectionManager.ts`)
 
-**Purpose**: Derived insights from pattern + trajectory + experience over a candidate set. Additive (no supersession of evidence). Catalog Type 10. Sprint 8. Publicly exported as `ReflectionMemoryManager` to avoid collision with `src/search/ReflectionManager` (progressive query refinement).
+**Purpose**: Derived insights from pattern + trajectory + experience over a candidate set. Additive (no supersession of evidence). Catalog Type 10. Sprint 8. Renamed from `ReflectionManager` in v2.9.x (the name collided with `src/search/ReflectionManager` — progressive query refinement — and ESM ambiguous-star-export rules silently dropped both from the package root); the historical barrel alias `ReflectionMemoryManager` is retained for back-compat.
 
 ```typescript
-export class ReflectionManager {
+export class AgentReflectionManager {
   constructor(storage: IGraphStorage, config?: ReflectionManagerConfig)
 
   async create(input: ReflectionInput, options?: ReflectionEntityOptions): Promise<ReflectionRecord>

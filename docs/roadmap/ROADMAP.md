@@ -54,7 +54,7 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Manager surface: `recordOutcome` / `rollingStats` / `suggestTool` / `get` / `list` / `remove`. Observer: `observeStart` / `observeComplete` / `observeError` / `observePartial` / `cancel`. MCP shim: `wrapToolCall(envelope, handler)`. CLI: `memory tool-affordance list|show|stats|suggest`
 
 #### 2. ~~Reflection Log scheduled pass (Phase 2 Sprint 8)~~ — ✅ shipped
-- Closed via `ReflectionManager` (`src/agent/ReflectionManager.ts`) + `MemoryType: 'reflection'` extension + `ctx.reflectionManager` lazy getter + `ReflectionStage` appended to `ConsolidationPipeline`
+- Closed via `AgentReflectionManager` (`src/agent/AgentReflectionManager.ts`; renamed from `ReflectionManager` in v2.9.x, back-compat alias `ReflectionMemoryManager`) + `MemoryType: 'reflection'` extension + `ctx.reflectionManager` lazy getter + `ReflectionStage` appended to `ConsolidationPipeline`
 - New `ReflectionRecord` schema with `scope: 'session' | 'project' | 'global'`, `evidence: string[]`, `generalization_confidence: number`, `keyInsights[]`, content-hash dedup on `sha256(scope + sorted(evidence))`
 - **Additive** by design (no supersession of evidence entities); raw `PatternResult.confidence ≥ 0.4` gate; session-end scheduling via explicit `runOnSessionEnd(sessionId)` helper (no `SessionManager` coupling)
 - 29 unit tests across `ReflectionManager` (19) + `ReflectionStage` (10); 1986/1986 sibling agent + types + ManagerContext tests green

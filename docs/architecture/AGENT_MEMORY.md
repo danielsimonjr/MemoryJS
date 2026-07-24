@@ -58,13 +58,14 @@ This document specifies the architectural design for transforming MemoryJS into 
 >     `MemorySource` (`ground-truth` / `verified` / `inferred` / `unverified`)
 >     with `inferTrustLevel` backfill and `'trust_level'` `ConflictStrategy`.
 >     `CollaborativeSynthesis.resolveConflicts` ordering integration deferred.
->   - **Sprint 8** — `ReflectionManager` + `MemoryType: 'reflection'` +
->     `ReflectionStage` pipeline stage. Additive (no supersession of evidence);
->     content-hash dedup at create; raw `PatternResult.confidence ≥ 0.4` gate;
->     session-end scheduling via `runOnSessionEnd(sessionId)` helper.
->     Aliased export `ReflectionMemoryManager` at the agent barrel to avoid
->     collision with `src/search/ReflectionManager` (progressive query
->     refinement).
+>   - **Sprint 8** — `AgentReflectionManager` (class renamed from
+>     `ReflectionManager` in v2.9.x duplicate resolution) + `MemoryType:
+>     'reflection'` + `ReflectionStage` pipeline stage. Additive (no
+>     supersession of evidence); content-hash dedup at create; raw
+>     `PatternResult.confidence ≥ 0.4` gate; session-end scheduling via
+>     `runOnSessionEnd(sessionId)` helper. Back-compat barrel alias
+>     `ReflectionMemoryManager` retained; `src/search/ReflectionManager`
+>     (progressive query refinement) keeps the short name.
 >
 >   Common conventions across all four sprints: branded ids, discriminated
 >   lifecycle unions, `MarkResolvedResult`-style returns,
@@ -892,8 +893,10 @@ type ConflictStrategy =
 - **Purpose**: Derived insights from pattern + trajectory summary +
   experience extraction over a candidate set. Catalog Type 10
 - **Lifetime**: Permanent; soft-delete via `archive`
-- **Manager**: `ReflectionManager` (publicly aliased as
-  `ReflectionMemoryManager`); `MemoryType: 'reflection'`
+- **Manager**: `AgentReflectionManager` (renamed from `ReflectionManager`
+  in v2.9.x — collision with `src/search/ReflectionManager` broke
+  package-root exports; back-compat barrel alias `ReflectionMemoryManager`
+  retained); `MemoryType: 'reflection'`
 - **Pipeline integration**: `ReflectionStage` — explicit
   `runOnSessionEnd(sessionId)` helper for session-end triggers, or register
   on the default pipeline
