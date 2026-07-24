@@ -33,8 +33,60 @@ export class TFIDFIndexManager implements IIndexHealth {
   private indexPath: string;
   private index: TFIDFIndex | undefined = undefined;
 
+  /**
+   * S5: deferred-IDF batching. While > 0, the incremental document methods
+   * (`addDocument` / `removeDocument` / `updateDocument`) skip their IDF
+   * recalculation and set {@link deferredIdfDirty} instead; a single
+   * `recalculateAllIDF()` runs when the outermost {@link endIdfBatch}
+   * closes. Nesting-safe (depth counter).
+   */
+  private idfBatchDepth = 0;
+  /** True when at least one batched op skipped an IDF recalculation. */
+  private deferredIdfDirty = false;
+
   constructor(storageDir: string) {
     this.indexPath = path.join(storageDir, '.indexes', INDEX_FILENAME);
+  }
+
+  /**
+   * S5: open a deferred-IDF batch. Incremental document mutations made
+   * before the matching {@link endIdfBatch} update term frequencies
+   * immediately but defer the (O(documents x vocabulary)) IDF
+   * recalculation, so a batch of B mutations pays for exactly one IDF pass
+   * instead of B. Always pair with `endIdfBatch()` in a try/finally.
+   *
+   * The public single-document methods keep their immediate-recalculation
+   * behavior when no batch is open.
+   */
+  beginIdfBatch(): void {
+    this.idfBatchDepth++;
+  }
+
+  /**
+   * S5: close a deferred-IDF batch. When the outermost batch closes and any
+   * batched mutation deferred an IDF recalculation, a single full
+   * `recalculateAllIDF()` runs. A full recalculation is a superset of the
+   * per-term recalculation `updateDocument` would have done — IDF is
+   * `log(N/df)`, a pure function of the final document set — so batched
+   * results are identical to sequential unbatched calls.
+   */
+  endIdfBatch(): void {
+    if (this.idfBatchDepth === 0) {
+      return;
+    }
+    this.idfBatchDepth--;
+    if (this.idfBatchDepth === 0 && this.deferredIdfDirty) {
+      this.deferredIdfDirty = false;
+      this.recalculateAllIDF();
+    }
+  }
+
+  /**
+   * Whether a deferred-IDF batch is currently open.
+   * @internal exposed for tests
+   */
+  isIdfBatchOpen(): boolean {
+    return this.idfBatchDepth > 0;
   }
 
   /**
@@ -310,8 +362,13 @@ export class TFIDFIndexManager implements IIndexHealth {
     });
 
     // Update IDF for ALL terms because N changed (total document count)
-    // IDF = log(N/df), and N has increased
-    this.recalculateAllIDF();
+    // IDF = log(N/df), and N has increased. Deferred to a single pass at
+    // endIdfBatch() when a batch is open (S5).
+    if (this.idfBatchDepth > 0) {
+      this.deferredIdfDirty = true;
+    } else {
+      this.recalculateAllIDF();
+    }
 
     // Update timestamp
     this.index.lastUpdated = new Date().toISOString();
@@ -344,8 +401,13 @@ export class TFIDFIndexManager implements IIndexHealth {
     this.index.documents.delete(entityName);
 
     // Update IDF for ALL terms because N changed (total document count)
-    // IDF = log(N/df), and N has decreased
-    this.recalculateAllIDF();
+    // IDF = log(N/df), and N has decreased. Deferred to a single pass at
+    // endIdfBatch() when a batch is open (S5).
+    if (this.idfBatchDepth > 0) {
+      this.deferredIdfDirty = true;
+    } else {
+      this.recalculateAllIDF();
+    }
 
     // Update timestamp
     this.index.lastUpdated = new Date().toISOString();
@@ -407,9 +469,15 @@ export class TFIDFIndexManager implements IIndexHealth {
       }
     }
 
-    // Recalculate IDF for changed terms
+    // Recalculate IDF for changed terms (deferred to a single full pass at
+    // endIdfBatch() when a batch is open — the full pass is a superset and
+    // yields identical values, S5)
     if (changedTerms.size > 0) {
-      this.recalculateIDFForTerms(changedTerms);
+      if (this.idfBatchDepth > 0) {
+        this.deferredIdfDirty = true;
+      } else {
+        this.recalculateIDFForTerms(changedTerms);
+      }
     }
 
     // Update timestamp

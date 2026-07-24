@@ -19,11 +19,22 @@ jobs:
           node-version: 22
           cache: npm
 
-      # package-lock.json is gitignored in this repo (see CLAUDE.md), so use
-      # `npm install` rather than `npm ci`. better-sqlite3 is a native dep but
-      # ships ubuntu prebuilds, so install resolves without a local toolchain.
+      # package-lock.json is tracked, so `npm ci` pins the build to the
+      # reviewed lockfile. better-sqlite3 is a native dep but ships ubuntu
+      # prebuilds, so install resolves without a local toolchain.
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      # Supply-chain gate: fail on known high/critical advisories in the
+      # resolved dependency tree.
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      # Duplicate-symbol gate. --no-regen checks against the committed
+      # docs/architecture/duplicate-symbols.json instead of regenerating it
+      # (regeneration mutates that artifact and is slow).
+      - name: Check duplicate symbols
+        run: npm run tools:check-duplicates -- --no-regen
 
       - name: Typecheck
         run: npm run typecheck
@@ -60,11 +71,13 @@ jobs:
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       # prepublishOnly (clean + build + test:ci) runs automatically on publish.
+      # --provenance publishes a signed provenance attestation (uses the
+      # id-token: write permission granted above).
       - name: Publish package
-        run: npm publish --access public
+        run: npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           SKIP_BENCHMARKS: "true"

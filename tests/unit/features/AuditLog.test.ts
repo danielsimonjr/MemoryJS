@@ -6,11 +6,14 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { AuditLog } from '../../../src/features/AuditLog.js';
+import { AuditLog, AUDIT_GENESIS_HASH } from '../../../src/features/AuditLog.js';
 import { promises as fs } from 'fs';
+import { createHash } from 'crypto';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import type { AuditEntry } from '../../../src/features/AuditLog.js';
+
+const sha256 = (text: string): string => createHash('sha256').update(text, 'utf-8').digest('hex');
 
 describe('AuditLog', () => {
   let auditLog: AuditLog;
@@ -312,6 +315,162 @@ describe('AuditLog', () => {
 
       const s = await auditLog.stats();
       expect(s.totalEntries).toBe(3);
+    });
+  });
+
+  // ==================== Sec5: hash chaining / tamper evidence ====================
+
+  describe('hash chaining (Sec5)', () => {
+    async function appendN(n: number): Promise<AuditEntry[]> {
+      const out: AuditEntry[] = [];
+      for (let i = 0; i < n; i++) {
+        out.push(await auditLog.append({ operation: 'create', entityName: `E${i}`, status: 'committed' }));
+      }
+      return out;
+    }
+
+    it('stamps monotonic seq and genesis prevHash on a fresh file', async () => {
+      const entries = await appendN(3);
+      expect(entries.map(e => e.seq)).toEqual([0, 1, 2]);
+      expect(entries[0].prevHash).toBe(AUDIT_GENESIS_HASH);
+
+      const lines = (await fs.readFile(testFilePath, 'utf-8')).trim().split('\n');
+      expect(entries[1].prevHash).toBe(sha256(lines[0]));
+      expect(entries[2].prevHash).toBe(sha256(lines[1]));
+    });
+
+    it('verifyChain reports valid after N appends', async () => {
+      await appendN(5);
+      const result = await new AuditLog(testFilePath).verifyChain();
+      expect(result.valid).toBe(true);
+      expect(result.totalChecked).toBe(5);
+      expect(result.legacyLines).toBe(0);
+      expect(result.malformedLines).toBe(0);
+      expect(result.brokenAt).toBeUndefined();
+    });
+
+    it('verifyChain on a nonexistent file is valid with nothing checked', async () => {
+      const result = await new AuditLog(join(testDir, 'no-such.jsonl')).verifyChain();
+      expect(result).toEqual({ valid: true, totalChecked: 0, legacyLines: 0, malformedLines: 0 });
+    });
+
+    it('detects tampering of a middle line at the right index', async () => {
+      await appendN(5);
+      const lines = (await fs.readFile(testFilePath, 'utf-8')).trim().split('\n');
+      // Tamper line 2's content while keeping it valid JSON with its own
+      // seq/prevHash intact — only the successor's prevHash can catch this.
+      const doctored = JSON.parse(lines[2]) as AuditEntry;
+      doctored.entityName = 'TAMPERED';
+      lines[2] = JSON.stringify(doctored);
+      await fs.writeFile(testFilePath, lines.join('\n') + '\n');
+
+      const result = await new AuditLog(testFilePath).verifyChain();
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBe(3); // detected via line 3's prevHash mismatch
+    });
+
+    it('detects a removed middle line (seq gap vs entry count)', async () => {
+      await appendN(5);
+      const lines = (await fs.readFile(testFilePath, 'utf-8')).trim().split('\n');
+      lines.splice(2, 1); // truncate the middle of the chain
+      await fs.writeFile(testFilePath, lines.join('\n') + '\n');
+
+      const result = await new AuditLog(testFilePath).verifyChain();
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBe(2); // seq jumps from 1 to 3 at index 2
+    });
+
+    it('detects a reordered chain', async () => {
+      await appendN(4);
+      const lines = (await fs.readFile(testFilePath, 'utf-8')).trim().split('\n');
+      [lines[1], lines[2]] = [lines[2], lines[1]];
+      await fs.writeFile(testFilePath, lines.join('\n') + '\n');
+
+      const result = await new AuditLog(testFilePath).verifyChain();
+      expect(result.valid).toBe(false);
+      expect(result.brokenAt).toBe(1);
+    });
+
+    it('reports malformed lines instead of silently skipping (verifyChain)', async () => {
+      await appendN(3);
+      await fs.appendFile(testFilePath, 'this is not json\n');
+
+      const fresh = new AuditLog(testFilePath);
+      const result = await fresh.verifyChain();
+      expect(result.valid).toBe(false);
+      expect(result.malformedLines).toBe(1);
+      expect(result.firstMalformedIndex).toBe(3);
+      expect(result.brokenAt).toBe(3);
+
+      // loadAll keeps skipping for compat but exposes the count.
+      const entries = await fresh.loadAll();
+      expect(entries).toHaveLength(3);
+      expect(fresh.malformedLineCount).toBe(1);
+    });
+
+    it('loads a legacy file (no seq/prevHash) and reports it as unverifiable-but-not-broken', async () => {
+      const legacy = [
+        { id: 'l1', timestamp: '2024-01-01T00:00:00Z', operation: 'create', entityName: 'Old1', status: 'committed' },
+        { id: 'l2', timestamp: '2024-01-02T00:00:00Z', operation: 'update', entityName: 'Old1', status: 'committed' },
+      ];
+      await fs.writeFile(testFilePath, legacy.map(e => JSON.stringify(e)).join('\n') + '\n');
+
+      const log = new AuditLog(testFilePath);
+      const entries = await log.loadAll();
+      expect(entries).toHaveLength(2);
+      expect(entries[0].seq).toBeUndefined();
+
+      // "legacy-style" result: valid (nothing provably broken) but
+      // totalChecked === 0 with legacyLines > 0 flags "nothing verifiable".
+      const result = await log.verifyChain();
+      expect(result.valid).toBe(true);
+      expect(result.totalChecked).toBe(0);
+      expect(result.legacyLines).toBe(2);
+    });
+
+    it('anchors new appends to the tail of a legacy file and verifies from there', async () => {
+      const legacy = [
+        { id: 'l1', timestamp: '2024-01-01T00:00:00Z', operation: 'create', entityName: 'Old1', status: 'committed' },
+        { id: 'l2', timestamp: '2024-01-02T00:00:00Z', operation: 'update', entityName: 'Old1', status: 'committed' },
+      ];
+      await fs.writeFile(testFilePath, legacy.map(e => JSON.stringify(e)).join('\n') + '\n');
+
+      const log = new AuditLog(testFilePath);
+      const appended = await log.append({ operation: 'delete', entityName: 'Old1', status: 'committed' });
+      expect(appended.seq).toBe(2); // legacy lines occupy 0..1
+      expect(appended.prevHash).toBe(sha256(JSON.stringify(legacy[1])));
+
+      const result = await log.verifyChain();
+      expect(result.valid).toBe(true);
+      expect(result.totalChecked).toBe(1);
+      expect(result.legacyLines).toBe(2);
+    });
+
+    it('creates the audit file with mode 0600', async () => {
+      if (process.platform === 'win32') return; // POSIX modes don't apply
+      await auditLog.append({ operation: 'create', entityName: 'A', status: 'committed' });
+      const stat = await fs.stat(testFilePath);
+      expect(stat.mode & 0o777).toBe(0o600);
+    });
+
+    it('keeps the chain intact across instance restarts', async () => {
+      await appendN(2);
+      const resumed = new AuditLog(testFilePath);
+      await resumed.append({ operation: 'archive', entityName: 'E9', status: 'committed' });
+      const result = await new AuditLog(testFilePath).verifyChain();
+      expect(result.valid).toBe(true);
+      expect(result.totalChecked).toBe(3);
+    });
+
+    it('serializes concurrent appends without breaking the chain', async () => {
+      await Promise.all(
+        Array.from({ length: 10 }, (_, i) =>
+          auditLog.append({ operation: 'create', entityName: `C${i}`, status: 'committed' })
+        )
+      );
+      const result = await new AuditLog(testFilePath).verifyChain();
+      expect(result.valid).toBe(true);
+      expect(result.totalChecked).toBe(10);
     });
   });
 });

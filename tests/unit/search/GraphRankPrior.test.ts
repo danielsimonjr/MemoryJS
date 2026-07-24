@@ -5,7 +5,7 @@
  * caching, event-driven invalidation, degree-only fallback, and dispose.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { GraphRankPrior } from '../../../src/search/GraphRankPrior.js';
 import { GraphTraversal } from '../../../src/core/GraphTraversal.js';
 import { GraphEventEmitter } from '../../../src/core/GraphEventEmitter.js';
@@ -253,6 +253,191 @@ describe('GraphRankPrior', () => {
       events.emitEntityCreated(createEntity('AfterDispose'));
       await prior.getScores(['Hub']);
       expect(spy).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('S4: update-event connectivity filtering', () => {
+    it('should NOT invalidate on an observation-only update (cache object preserved)', async () => {
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const events = new GraphEventEmitter();
+      const spy = vi.spyOn(traversal, 'calculatePageRank');
+      const prior = new GraphRankPrior(traversal, { events });
+
+      await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(1);
+      const cacheBefore = (prior as unknown as { cache: object | null }).cache;
+      expect(cacheBefore).not.toBeNull();
+
+      // Observation content cannot change relations or entity membership.
+      events.emitEntityUpdated('Hub', { observations: ['new observation'] });
+
+      const scores = await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(1); // no recompute
+      // The cached scores are literally the same object — not a rebuild.
+      expect((prior as unknown as { cache: object | null }).cache).toBe(cacheBefore);
+      expect(scores.get('Hub')).toBe(1);
+    });
+
+    it('should NOT invalidate on tag/importance-only updates', async () => {
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const events = new GraphEventEmitter();
+      const spy = vi.spyOn(traversal, 'calculatePageRank');
+      const prior = new GraphRankPrior(traversal, { events });
+
+      await prior.getScores(['Hub']);
+      events.emitEntityUpdated('Hub', { tags: ['t1'], importance: 9 });
+      events.emitEntityUpdated(
+        'Hub',
+        { observations: ['x'] },
+        { observations: ['Observation for Hub'] }
+      );
+      await prior.getScores(['Hub']);
+
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should invalidate when an update touches the name field', async () => {
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const events = new GraphEventEmitter();
+      const spy = vi.spyOn(traversal, 'calculatePageRank');
+      const prior = new GraphRankPrior(traversal, { events });
+
+      await prior.getScores(['Hub']);
+      events.emitEntityUpdated('Hub', { name: 'RenamedHub' });
+      await prior.getScores(['Hub']);
+
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should invalidate conservatively when the update carries no field information', async () => {
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const events = new GraphEventEmitter();
+      const spy = vi.spyOn(traversal, 'calculatePageRank');
+      const prior = new GraphRankPrior(traversal, { events });
+
+      await prior.getScores(['Hub']);
+      events.emitEntityUpdated('Hub', {}); // empty changes, no previousValues
+      await prior.getScores(['Hub']);
+
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should still invalidate on relation events', async () => {
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const events = new GraphEventEmitter();
+      const spy = vi.spyOn(traversal, 'calculatePageRank');
+      const prior = new GraphRankPrior(traversal, { events });
+
+      await prior.getScores(['Hub']);
+      events.emitRelationCreated(createRelation('Lone', 'Hub'));
+      await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(2);
+
+      events.emitRelationDeleted('Lone', 'Hub', 'links_to');
+      await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('S4: invalidation debounce', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should coalesce N invalidations in the window into one recompute and serve the stale cache meanwhile', async () => {
+      vi.useFakeTimers();
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const events = new GraphEventEmitter();
+      const spy = vi.spyOn(traversal, 'calculatePageRank');
+      const prior = new GraphRankPrior(traversal, {
+        events,
+        invalidationDebounceMs: 100,
+      });
+
+      await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(1);
+      const cacheBefore = (prior as unknown as { cache: object | null }).cache;
+
+      // N invalidation triggers within the window
+      for (let i = 0; i < 5; i++) {
+        events.emitRelationCreated(createRelation('Lone', `N${i}`));
+      }
+
+      // Inside the window: stale cache is served, no recompute yet.
+      await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect((prior as unknown as { cache: object | null }).cache).toBe(cacheBefore);
+
+      // Window elapses: the coalesced invalidation fires once.
+      vi.advanceTimersByTime(100);
+      expect((prior as unknown as { cache: object | null }).cache).toBeNull();
+
+      await prior.getScores(['Hub']);
+      await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(2); // exactly one recompute for all 5 events
+    });
+
+    it('should open a new window for events after the previous one fired', async () => {
+      vi.useFakeTimers();
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const events = new GraphEventEmitter();
+      const spy = vi.spyOn(traversal, 'calculatePageRank');
+      const prior = new GraphRankPrior(traversal, {
+        events,
+        invalidationDebounceMs: 50,
+      });
+
+      await prior.getScores(['Hub']);
+      events.emitRelationCreated(createRelation('A', 'B'));
+      vi.advanceTimersByTime(50);
+      await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(2);
+
+      events.emitRelationCreated(createRelation('B', 'C'));
+      vi.advanceTimersByTime(50);
+      await prior.getScores(['Hub']);
+      expect(spy).toHaveBeenCalledTimes(3);
+    });
+
+    it('should keep direct invalidate() immediate even with a debounce configured', async () => {
+      vi.useFakeTimers();
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const prior = new GraphRankPrior(traversal, {
+        events: new GraphEventEmitter(),
+        invalidationDebounceMs: 100,
+      });
+
+      await prior.getScores(['Hub']);
+      expect((prior as unknown as { cache: object | null }).cache).not.toBeNull();
+      prior.invalidate();
+      expect((prior as unknown as { cache: object | null }).cache).toBeNull();
+    });
+
+    it('should cancel a pending debounced invalidation on dispose', async () => {
+      vi.useFakeTimers();
+      const { entities, relations } = makeHubGraph();
+      const traversal = new GraphTraversal(makeFakeStorage(entities, relations));
+      const events = new GraphEventEmitter();
+      const prior = new GraphRankPrior(traversal, {
+        events,
+        invalidationDebounceMs: 100,
+      });
+
+      await prior.getScores(['Hub']);
+      events.emitRelationCreated(createRelation('A', 'B'));
+      prior.dispose();
+
+      // Advancing past the window must not throw or resurrect the timer.
+      expect(() => vi.advanceTimersByTime(200)).not.toThrow();
+      expect(events.listenerCount('relation:created')).toBe(0);
     });
   });
 

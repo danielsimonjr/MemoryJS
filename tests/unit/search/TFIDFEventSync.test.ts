@@ -316,6 +316,171 @@ describe('TFIDFEventSync', () => {
     });
   });
 
+  describe('S5: batched IDF recalculation on flush', () => {
+    type WithPrivateIdf = { recalculateAllIDF: () => void };
+
+    it('should trigger exactly one IDF recalculation for a coalesced batch of B creates', () => {
+      // Large coalesce window: ops queue up until the explicit flushNow().
+      const batchedSync = new TFIDFEventSync(indexManager, eventEmitter, storage, {
+        coalesceMs: 10_000,
+      });
+      batchedSync.enable();
+      const idfSpy = vi.spyOn(indexManager as unknown as WithPrivateIdf, 'recalculateAllIDF');
+
+      const B = 5;
+      for (let i = 0; i < B; i++) {
+        eventEmitter.emitEntityCreated({
+          name: `Batch${i}`,
+          entityType: 'person',
+          observations: [`observation ${i}`],
+        });
+      }
+      expect(idfSpy).not.toHaveBeenCalled(); // still queued
+
+      batchedSync.flushNow();
+
+      expect(idfSpy).toHaveBeenCalledTimes(1); // one pass for the whole batch
+      expect(indexManager.getDocumentCount()).toBe(2 + B);
+      batchedSync.disable();
+    });
+
+    it('should produce the same index as per-op flushes', async () => {
+      const batchedSync = new TFIDFEventSync(indexManager, eventEmitter, storage, {
+        coalesceMs: 10_000,
+      });
+      batchedSync.enable();
+      for (let i = 0; i < 3; i++) {
+        eventEmitter.emitEntityCreated({
+          name: `Cmp${i}`,
+          entityType: 'person',
+          observations: [`compare observation ${i}`],
+        });
+      }
+      eventEmitter.emitEntityDeleted('Bob');
+      batchedSync.flushNow();
+      batchedSync.disable();
+
+      // Reference: a fresh index built from the equivalent final corpus.
+      const reference = new TFIDFIndexManager(testDir);
+      const entities = [
+        { name: 'Alice', entityType: 'person', observations: ['Developer'] },
+        ...Array.from({ length: 3 }, (_, i) => ({
+          name: `Cmp${i}`,
+          entityType: 'person',
+          observations: [`compare observation ${i}`],
+        })),
+      ];
+      const refIndex = await reference.buildIndex({ entities, relations: [] });
+      const actual = indexManager.getIndex()!;
+      expect([...actual.documents.keys()].sort()).toEqual(
+        [...refIndex.documents.keys()].sort()
+      );
+      expect(actual.idf.size).toBe(refIndex.idf.size);
+      for (const [term, value] of refIndex.idf) {
+        expect(actual.idf.get(term)).toBe(value);
+      }
+    });
+  });
+
+  describe('S5: update handler uses O(1) entity lookup', () => {
+    it('should use storage.getEntityByName instead of scanning loadGraph()', async () => {
+      const entity: Entity = {
+        name: 'Alice',
+        entityType: 'person',
+        observations: ['Developer', 'Team Lead'],
+      };
+      await storage.saveGraph({ entities: [entity], relations: [] });
+
+      sync.enable();
+      const getByNameSpy = vi.spyOn(storage, 'getEntityByName');
+      const loadGraphSpy = vi.spyOn(storage, 'loadGraph');
+      const updateDocumentSpy = vi.spyOn(indexManager, 'updateDocument');
+
+      eventEmitter.emitEntityUpdated('Alice', { observations: ['Developer', 'Team Lead'] });
+
+      expect(getByNameSpy).toHaveBeenCalledWith('Alice');
+      expect(loadGraphSpy).not.toHaveBeenCalled(); // no O(N) scan
+      expect(updateDocumentSpy).toHaveBeenCalledWith({
+        name: 'Alice',
+        entityType: 'person',
+        observations: ['Developer', 'Team Lead'],
+      });
+    });
+  });
+
+  describe('S5: graph:saved debounced full rebuild', () => {
+    it('should reflect entities after a bare storage.saveGraph() with no per-entity events', async () => {
+      // Subscribe to the STORAGE's own emitter — saveGraph emits only
+      // graph:saved (no per-entity events), the exact staleness scenario.
+      const storageSync = new TFIDFEventSync(indexManager, storage.events, storage, {
+        coalesceMs: 0,
+        rebuildDebounceMs: 10,
+      });
+      storageSync.enable();
+
+      await storage.saveGraph({
+        entities: [
+          { name: 'Imported1', entityType: 'doc', observations: ['bulk imported one'] },
+          { name: 'Imported2', entityType: 'doc', observations: ['bulk imported two'] },
+        ],
+        relations: [],
+      });
+
+      await storageSync.rebuildNow();
+
+      const index = indexManager.getIndex()!;
+      expect(index.documents.has('Imported1')).toBe(true);
+      expect(index.documents.has('Imported2')).toBe(true);
+      // Stale pre-save documents were replaced by the rebuild.
+      expect(index.documents.has('Alice')).toBe(false);
+      storageSync.disable();
+    });
+
+    it('should coalesce a storm of graph:saved events into a single rebuild', async () => {
+      const stormSync = new TFIDFEventSync(indexManager, eventEmitter, storage, {
+        coalesceMs: 0,
+        rebuildDebounceMs: 25,
+      });
+      stormSync.enable();
+      const buildSpy = vi.spyOn(indexManager, 'buildIndex');
+
+      for (let i = 0; i < 5; i++) {
+        eventEmitter.emitGraphSaved(i, 0);
+      }
+
+      await vi.waitFor(() => expect(buildSpy).toHaveBeenCalledTimes(1), {
+        timeout: 2000,
+      });
+      // Give any (incorrect) extra rebuilds a chance to fire, then re-check.
+      await new Promise(resolve => setTimeout(resolve, 75));
+      expect(buildSpy).toHaveBeenCalledTimes(1);
+      stormSync.disable();
+    });
+
+    it('should ignore graph:saved when the index is not initialized', async () => {
+      const uninitializedManager = new TFIDFIndexManager(testDir);
+      const uninitializedSync = new TFIDFEventSync(
+        uninitializedManager,
+        eventEmitter,
+        storage,
+        { coalesceMs: 0, rebuildDebounceMs: 5 }
+      );
+      uninitializedSync.enable();
+      const buildSpy = vi.spyOn(uninitializedManager, 'buildIndex');
+
+      eventEmitter.emitGraphSaved(1, 0);
+      await new Promise(resolve => setTimeout(resolve, 30));
+
+      expect(buildSpy).not.toHaveBeenCalled();
+      uninitializedSync.disable();
+    });
+
+    it('rebuildNow should resolve immediately when nothing is pending', async () => {
+      sync.enable();
+      await expect(sync.rebuildNow()).resolves.toBeUndefined();
+    });
+  });
+
   describe('multiple sync instances', () => {
     it('should allow multiple sync instances to operate independently', () => {
       const sync2 = new TFIDFEventSync(indexManager, eventEmitter, storage, { coalesceMs: 0 });

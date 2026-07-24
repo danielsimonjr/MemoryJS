@@ -6,6 +6,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { RankedSearch } from '../../../src/search/RankedSearch.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
+import {
+  tokenize,
+  calculateTFFromTokens,
+  calculateIDFFromTokenSets,
+} from '../../../src/utils/index.js';
+import type { Entity } from '../../../src/types/index.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -639,6 +645,120 @@ describe('RankedSearch', () => {
       // Results should be the same
       expect(results1.length).toBe(results2.length);
       expect(results1[0].entity.name).toBe(results2[0].entity.name);
+    });
+  });
+
+  describe('S1: hoisted IDF scoring (searchWithoutIndex)', () => {
+    /**
+     * Reference implementation of the pre-S1 naive formula: TF x IDF with
+     * calculateIDFFromTokenSets evaluated inside the per-document,
+     * per-term loop. The S1 optimization hoists the (loop-invariant) IDF
+     * out of the document loop — scores must stay bit-identical.
+     */
+    function naiveRankedScores(
+      entities: Entity[],
+      query: string,
+      limit: number
+    ): Array<{ name: string; score: number }> {
+      const queryTerms = tokenize(query);
+      const docs = entities.map(e => {
+        const tokens = tokenize([e.name, e.entityType, ...e.observations].join(' '));
+        return { entity: e, tokens, tokenSet: new Set(tokens) };
+      });
+      const tokenSets = docs.map(d => d.tokenSet);
+
+      const scored: Array<{ name: string; score: number }> = [];
+      for (const doc of docs) {
+        let totalScore = 0;
+        for (const term of queryTerms) {
+          const tf = calculateTFFromTokens(term, doc.tokens);
+          // Deliberately recomputed per (document, term): the naive formula
+          const idf = calculateIDFFromTokenSets(term, tokenSets);
+          totalScore += tf * idf;
+        }
+        if (totalScore > 0) {
+          scored.push({ name: doc.entity.name, score: totalScore });
+        }
+      }
+      return scored.sort((a, b) => b.score - a.score).slice(0, limit);
+    }
+
+    it('produces bit-identical scores to the naive per-document IDF formula', async () => {
+      // Multi-term query with a duplicated term, rare terms, common terms,
+      // and a non-matching term — exercises TF, IDF, and dedup paths.
+      const queries = [
+        'python python engineer design',
+        'Figma',
+        'person project company nonexistentterm',
+        'ai automation',
+      ];
+
+      const graph = await storage.loadGraph();
+      for (const query of queries) {
+        const expected = naiveRankedScores([...graph.entities], query, 50);
+        const actual = (await rankedSearch.searchNodesRanked(query)).map(r => ({
+          name: r.entity.name,
+          score: r.score,
+        }));
+        // toEqual compares numbers with strict equality: bit-identical.
+        expect(actual).toEqual(expected);
+      }
+    });
+
+    it('invalidates the token cache on content-only mutations (event-driven generation)', async () => {
+      // Warm the token cache.
+      const before = await rankedSearch.searchNodesRanked('xylophone');
+      expect(before).toHaveLength(0);
+
+      // Change ONLY observation content: entity count and name set stay
+      // identical, so the legacy namesKey check could not detect this.
+      const graph = await storage.loadGraph();
+      const entities = graph.entities.map(e =>
+        e.name === 'Alice'
+          ? { ...e, observations: [...e.observations, 'Plays the xylophone'] }
+          : e
+      );
+      await storage.saveGraph({ entities, relations: [...graph.relations] });
+
+      const after = await rankedSearch.searchNodesRanked('xylophone');
+      expect(after).toHaveLength(1);
+      expect(after[0].entity.name).toBe('Alice');
+    });
+
+    it('falls back to namesKey invalidation for storages without an event emitter', async () => {
+      const entities: Entity[] = [
+        { name: 'One', entityType: 'test', observations: ['alpha content'] },
+        { name: 'Two', entityType: 'test', observations: ['beta content'] },
+      ];
+      // Minimal storage double: loadGraph only, no `.events` emitter.
+      const fakeStorage = {
+        loadGraph: async () => ({ entities, relations: [] }),
+      } as unknown as GraphStorage;
+      const search = new RankedSearch(fakeStorage);
+
+      const first = await search.searchNodesRanked('alpha');
+      expect(first).toHaveLength(1);
+
+      // Membership change is detected by the count/namesKey fallback.
+      entities.push({ name: 'Three', entityType: 'test', observations: ['alpha again'] });
+      const second = await search.searchNodesRanked('alpha');
+      expect(second).toHaveLength(2);
+    });
+
+    it('keeps detecting mutations after dispose() via the fallback path', async () => {
+      rankedSearch.dispose();
+
+      const before = await rankedSearch.searchNodesRanked('zebrafish');
+      expect(before).toHaveLength(0);
+
+      await entityManager.createEntities([
+        { name: 'Zeb', entityType: 'animal', observations: ['A zebrafish specimen'] },
+      ]);
+
+      // Count changed -> fallback namesKey check invalidates the cache.
+      const after = await rankedSearch.searchNodesRanked('zebrafish');
+      expect(after).toHaveLength(1);
+      expect(after[0].entity.name).toBe('Zeb');
     });
   });
 });

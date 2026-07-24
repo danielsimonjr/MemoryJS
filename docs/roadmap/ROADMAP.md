@@ -159,6 +159,76 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 - Per `GAP_ANALYSIS_VS_SUPERMEMORY.md`: "Out of scope for core library; better suited as separate packages or MCP tools"
 - **Spin out** as `memoryjs-clawvault` sibling repo when there's pull
 
+### Competitive research — brainapi2-inspired additions (2026-07-24)
+
+> Source: exploration of [Lumen-Labs/brainapi2](https://github.com/Lumen-Labs/brainapi2) (Python/FastAPI
+> knowledge-graph memory server, LLM agent-swarm ingestion). Ideas below are the *deltas* — features
+> where brainapi2 does something MemoryJS genuinely lacks. Rejected as duplicative or off-mission:
+> wholesale append-only-never-delete (conflicts with the decay/forgetting pillar), MCP server itself
+> (memory-mcp exists), Celery/Redis/OAuth deployment infra, multi-brain scoping (`projectId` covers it),
+> document OCR pipeline, chat-agent layer, config-YAML plugin registry (library-shaped extension points
+> `IDistillationPolicy`/providers already cover it), and their temporal agent (a stub; MemoryJS is ahead).
+> Suggested order: R2 → R4 → R5 → R1 → R3.
+
+#### R1. Event reification — n-ary "triangle" model with first-class event hubs
+- brainapi2 reifies every action as an event node: `(Actor)-[MADE]->(EventHub)-[TARGETED]->(Target)` +
+  `[OCCURRED_WITHIN]` context edges, grouped by a `flow_key`. Fixes the arity limit of flat triples —
+  "who did what, to whom, where, when" becomes one queryable unit
+- MemoryJS delta: `Relation` is a flat triple; episodic memory stores events as entities but without
+  role-typed edges. Fit: an `EventManager` minting `entityType:'event'` entities with `actor_of` /
+  `target_of` / `occurred_in` / `occurred_at` relations + `flowKey` tag — pure convention layer over
+  existing storage; `GraphTraversal` + `TemporalSearch` are the query substrate; `IOManager.ingest()`
+  is the producer. Effort: **M**
+
+#### R2. Traceable reasoning paths in query answers (`explain: true`)
+- brainapi2's `/retrieve/context` returns the answer **plus the graph path that derived it** (`triples`,
+  hop dicts with `via_uuid` breadcrumbs, depth/hop caps, truncation flag) — evidence paths instead of
+  opaque similarity hits
+- MemoryJS delta: all the ingredients exist (Dijkstra/all-paths, hybrid scoring, causal chains) but no
+  search API returns *why*. Add `explain: true` to `HybridSearchManager`/`LLMSearchExecutor` annotating
+  results with `evidencePaths: { nodes, relations, viaQueryTerm }[]`. Best differentiator-per-effort of
+  this batch — the core argument for graph memory over vector RAG. Effort: **M**
+
+#### R3. Relation-level consolidation with corrective feedback (Janitor pattern)
+- brainapi2's Janitor validates new relationships against a 2nd-degree-neighbor snapshot and feeds
+  structured corrections back to the writer (≤3 iterations); semantic edge dedup via embedding
+  similarity >0.90 on relation descriptions
+- MemoryJS delta: consolidation/dedup is entity/observation-centric; relations get no semantic dedup,
+  no neighborhood validation, no corrective loop. Fit: `RelationConsolidator` stage in
+  `ConsolidationPipeline` — exact-key tier, embedding-similarity tier via `EmbeddingService`, optional
+  `LLMProvider` validation tier (mirrors the `LLMQueryPlanner` optional-provider pattern). Guards the
+  graph as LLM-driven ingestion grows. Effort: **M**
+
+#### R4. Queryable provenance: audit query API + source-chunk linkage
+- brainapi2 exposes provenance as a retrieval surface (`/retrieve/changelogs` with filters,
+  `/retrieve/text-chunks` linking every fact to the source text that produced it)
+- MemoryJS delta: `AuditLog` is write-only (no query API) and observations don't record their ingestion
+  source. (a) `ctx.auditQuery({ entity?, opType?, timeRange?, text?, limit })` + `memory audit` CLI —
+  Effort: **S**; (b) `sourceRef` on observations written by `ingest()` (chunk id into an ingest
+  manifest) so evidence paths (R2) extend answer → relation → observation → source chunk — Effort: **M**
+
+#### R5. Ingestion cost/quality dial (`mode: accurate | balanced | lightweight`)
+- brainapi2 runs its whole swarm under one mode switch (full extraction + validation loops vs
+  important-entities-only, skip validation), with per-stage token accounting
+- MemoryJS delta: `ingest()`/`MemoryDistiller` pick LLM-vs-heuristic by provider *presence*, not by
+  caller intent, and report no cost. Add `mode` to `IngestOptions` (lightweight = heuristics only;
+  balanced = LLM extract, no validation; accurate = LLM extract + R3 consolidation pass) + token-usage
+  summary in the ingest result. Effort: **S**
+
+#### R6–R9. Second tier (validate demand before scheduling)
+- **R6 Polarity-aware synergies**: `polarity` on entities + `findSynergies()` blending embedding and
+  bridge-structure similarity to find allied/*opposing* entities (their `entity_sibilings.py` weights
+  direct ×1.30 / indirect ×0.70). Needs evidence agent users want alliance/opposition queries. Effort: M
+- **R7 NL-guided neighbor retrieval**: `lookFor?: string` on traversal/neighbor options, ranking
+  candidate neighbors by embedding similarity to a free-text description of the desired connection.
+  Small, high-utility for agent tool use. Effort: S
+- **R8 Self-documenting MCP meta-tool**: a `get_search_operation_instructions`-style tool teaching the
+  calling LLM the recommended search workflow at runtime, + a bounded read-only structured-query escape
+  hatch. Validate against memory-mcp's current surface. Effort: S
+- **R9 `memory doctor` preflight**: CLI diagnostics for the documented gotchas — Node version,
+  `better-sqlite3` ABI (`NODE_MODULE_VERSION` mismatch), `dist/workers/` presence, embedding-provider
+  reachability, strict-literal env flags. Effort: S
+
 ---
 
 ## Status Summary

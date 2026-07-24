@@ -71,6 +71,50 @@ describe('ZlibCompressionAdapter', () => {
     const back = b.decompress(a.compress(input));
     expect(back.equals(input)).toBe(true);
   });
+
+  describe('decompression output cap (Sec8)', () => {
+    it('throws a clear error naming the limit when output exceeds an injected cap', () => {
+      const writer = new ZlibCompressionAdapter();
+      const bomb = writer.compress(Buffer.from('a'.repeat(1024 * 1024)));
+      expect(bomb.length).toBeLessThan(10_000); // sanity: highly compressible
+
+      const capped = new ZlibCompressionAdapter(6, 1024);
+      expect(() => capped.decompress(bomb)).toThrow(/maximum allowed size of 1024 bytes/);
+    });
+
+    it('normal roundtrips are unaffected by a cap that is not exceeded', () => {
+      const adapter = new ZlibCompressionAdapter(6, 2 * 1024 * 1024);
+      const input = Buffer.from('a'.repeat(1024 * 1024));
+      const back = adapter.decompress(adapter.compress(input));
+      expect(back.equals(input)).toBe(true);
+    });
+
+    it('rejects an invalid maxOutputLength at construction', () => {
+      expect(() => new ZlibCompressionAdapter(6, 0)).toThrow(/maxOutputLength/);
+      expect(() => new ZlibCompressionAdapter(6, -5)).toThrow(/maxOutputLength/);
+      expect(() => new ZlibCompressionAdapter(6, 1.5)).toThrow(/maxOutputLength/);
+    });
+
+    it('honors the MEMORY_MAX_DECOMPRESSED_BYTES env var (read at construction)', () => {
+      const previous = process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+      process.env.MEMORY_MAX_DECOMPRESSED_BYTES = '2048';
+      try {
+        const writer = new ZlibCompressionAdapter();
+        const bomb = writer.compress(Buffer.from('b'.repeat(1024 * 1024)));
+        const envCapped = new ZlibCompressionAdapter();
+        expect(() => envCapped.decompress(bomb)).toThrow(/maximum allowed size of 2048 bytes/);
+      } finally {
+        if (previous === undefined) delete process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+        else process.env.MEMORY_MAX_DECOMPRESSED_BYTES = previous;
+      }
+    });
+
+    it('corrupt input still reports the corruption error, not the cap error', () => {
+      const capped = new ZlibCompressionAdapter(6, 1024);
+      expect(() => capped.decompress(Buffer.from([0xff, 0xff, 0xff, 0xff])))
+        .toThrow(/corrupted, truncated, or produced by a different adapter/);
+    });
+  });
 });
 
 describe('IdentityCompressionAdapter', () => {

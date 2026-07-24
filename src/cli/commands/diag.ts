@@ -32,8 +32,12 @@ import { formatError } from '../formatters.js';
  * Catalog of all memoryjs env vars (current value + documented default).
  * Mirrors the Environment Variables section of `CLAUDE.md` so operators can
  * see the contract without leaving the terminal.
+ *
+ * Entries flagged `secret: true` hold credentials; the `env` command never
+ * prints their plaintext value — only a `'***set***'` marker when present.
+ * The `set` flag stays accurate so triage output remains useful.
  */
-const ENV_VAR_CATALOG: Array<{ name: string; defaultValue: string; description: string }> = [
+const ENV_VAR_CATALOG: Array<{ name: string; defaultValue: string; description: string; secret?: boolean }> = [
   // Core
   { name: 'MEMORY_STORAGE_TYPE', defaultValue: 'jsonl', description: 'jsonl | sqlite — storage backend selector' },
   { name: 'MEMORY_FILE_PATH', defaultValue: '(repo default)', description: 'Custom storage file path' },
@@ -41,7 +45,7 @@ const ENV_VAR_CATALOG: Array<{ name: string; defaultValue: string; description: 
   { name: 'LOG_LEVEL', defaultValue: '(none)', description: 'debug | info | warn | error' },
   // Embeddings
   { name: 'MEMORY_EMBEDDING_PROVIDER', defaultValue: 'local', description: 'openai | local | none' },
-  { name: 'MEMORY_OPENAI_API_KEY', defaultValue: '(unset)', description: 'OpenAI API key (when provider=openai)' },
+  { name: 'MEMORY_OPENAI_API_KEY', defaultValue: '(unset)', description: 'OpenAI API key (when provider=openai)', secret: true },
   { name: 'MEMORY_EMBEDDING_MODEL', defaultValue: '(provider default)', description: 'Override embedding model name' },
   { name: 'MEMORY_AUTO_INDEX_EMBEDDINGS', defaultValue: 'false', description: 'Auto-index new entities for semantic search' },
   // Read pool / coalescing
@@ -241,7 +245,9 @@ export function registerDiagCommand(program: Command): void {
         const current = process.env[spec.name];
         return {
           name: spec.name,
-          value: current ?? null,
+          // Never emit plaintext secrets (Sec3): this output is designed to be
+          // pasted into issues/support threads. Mask with a presence marker.
+          value: spec.secret ? (current !== undefined ? '***set***' : null) : current ?? null,
           default: spec.defaultValue,
           set: current !== undefined,
           description: spec.description,

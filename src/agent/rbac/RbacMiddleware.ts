@@ -31,10 +31,13 @@ export interface RbacMiddlewareOptions {
   /** Per-resource-type overrides layered on top of `matrix`. */
   overrides?: ResourcePermissionOverrides;
   /**
-   * Default role granted to agents with NO assignments. Defaults to
-   * `'reader'` (read-only) — matches the
-   * `MEMORY_RBAC_DEFAULT_ROLE` env var convention from CLAUDE.md.
-   * Pass `undefined` to deny unregistered agents entirely.
+   * Default role granted to agents with NO assignments. When the key is
+   * omitted entirely, defaults to `'reader'` (read-only). Pass an explicit
+   * `defaultRole: undefined` to deny unregistered agents entirely.
+   *
+   * There is no env var for this — configure it here (a
+   * `MEMORY_RBAC_DEFAULT_ROLE` env var was once referenced in docs but
+   * never existed).
    */
   defaultRole?: string;
 }
@@ -50,9 +53,14 @@ export class RbacMiddleware implements RbacPolicy {
   ) {
     this.matrix = options?.matrix ?? DEFAULT_PERMISSION_MATRIX;
     this.overrides = options?.overrides;
-    this.defaultRole = options?.defaultRole === undefined && options !== undefined
-      ? options.defaultRole // explicit `undefined` ⇒ no default role (deny)
-      : options?.defaultRole ?? 'reader';
+    // Key-presence semantics (Sec2): only an options object that explicitly
+    // carries the `defaultRole` key overrides the documented `'reader'`
+    // default. `new RbacMiddleware(store, { matrix })` therefore still
+    // defaults to 'reader', while `{ defaultRole: undefined }` means
+    // deny-unregistered.
+    this.defaultRole = options !== undefined && 'defaultRole' in options
+      ? options.defaultRole // explicit key (possibly `undefined` ⇒ deny)
+      : 'reader';
   }
 
   checkPermission(

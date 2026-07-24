@@ -4,7 +4,7 @@
  * Tests for TF-IDF index building, updating, persistence, and lifecycle.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TFIDFIndexManager } from '../../../src/search/TFIDFIndexManager.js';
 import type { KnowledgeGraph } from '../../../src/types/index.js';
 import { promises as fs } from 'fs';
@@ -422,6 +422,107 @@ describe('TFIDFIndexManager', () => {
 
       const index = await manager.buildIndex(graph);
       expect(index.documents.has('LongObs')).toBe(true);
+    });
+  });
+
+  describe('S5: deferred-IDF batching', () => {
+    type WithPrivateIdf = { recalculateAllIDF: () => void };
+
+    const newEntity = (i: number) => ({
+      name: `Batch${i}`,
+      entityType: 'test',
+      observations: [`batched observation ${i}`, `shared corpus token`],
+    });
+
+    it('should run exactly one IDF recalculation for a batch of adds', async () => {
+      await manager.buildIndex(sampleGraph);
+      const spy = vi.spyOn(manager as unknown as WithPrivateIdf, 'recalculateAllIDF');
+
+      manager.beginIdfBatch();
+      for (let i = 0; i < 5; i++) {
+        manager.addDocument(newEntity(i));
+      }
+      expect(spy).not.toHaveBeenCalled(); // deferred while the batch is open
+      manager.endIdfBatch();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(manager.getDocumentCount()).toBe(sampleGraph.entities.length + 5);
+    });
+
+    it('should produce IDF values identical to unbatched sequential calls', async () => {
+      const batched = new TFIDFIndexManager(testDir);
+      const unbatched = new TFIDFIndexManager(testDir);
+      await batched.buildIndex(sampleGraph);
+      await unbatched.buildIndex(sampleGraph);
+
+      const ops = (m: TFIDFIndexManager): void => {
+        m.addDocument(newEntity(1));
+        m.addDocument(newEntity(2));
+        m.updateDocument({
+          name: 'Alice',
+          entityType: 'person',
+          observations: ['Rewritten profile with fresh vocabulary'],
+        });
+        m.removeDocument('Bob');
+      };
+
+      batched.beginIdfBatch();
+      ops(batched);
+      batched.endIdfBatch();
+
+      ops(unbatched); // immediate recalculation per op (existing behavior)
+
+      const batchedIdf = batched.getIndex()!.idf;
+      const unbatchedIdf = unbatched.getIndex()!.idf;
+      expect(batchedIdf.size).toBe(unbatchedIdf.size);
+      for (const [term, value] of unbatchedIdf) {
+        expect(batchedIdf.get(term)).toBe(value); // bit-identical
+      }
+      expect([...batched.getIndex()!.documents.keys()].sort()).toEqual(
+        [...unbatched.getIndex()!.documents.keys()].sort()
+      );
+    });
+
+    it('should keep public single-document methods immediate when no batch is open', async () => {
+      await manager.buildIndex(sampleGraph);
+      const spy = vi.spyOn(manager as unknown as WithPrivateIdf, 'recalculateAllIDF');
+
+      manager.addDocument(newEntity(1));
+      expect(spy).toHaveBeenCalledTimes(1);
+      manager.removeDocument('Batch1');
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should support nested batches (recalculate once at the outermost end)', async () => {
+      await manager.buildIndex(sampleGraph);
+      const spy = vi.spyOn(manager as unknown as WithPrivateIdf, 'recalculateAllIDF');
+
+      manager.beginIdfBatch();
+      manager.addDocument(newEntity(1));
+      manager.beginIdfBatch();
+      manager.addDocument(newEntity(2));
+      manager.endIdfBatch();
+      expect(spy).not.toHaveBeenCalled(); // inner end does not flush
+      manager.endIdfBatch();
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(manager.isIdfBatchOpen()).toBe(false);
+    });
+
+    it('should not recalculate when the batch contained only no-op mutations', async () => {
+      await manager.buildIndex(sampleGraph);
+      const spy = vi.spyOn(manager as unknown as WithPrivateIdf, 'recalculateAllIDF');
+
+      manager.beginIdfBatch();
+      manager.removeDocument('DoesNotExist'); // no-op
+      manager.endIdfBatch();
+
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('should tolerate endIdfBatch without a matching begin', () => {
+      expect(() => manager.endIdfBatch()).not.toThrow();
+      expect(manager.isIdfBatchOpen()).toBe(false);
     });
   });
 });

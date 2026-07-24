@@ -24,15 +24,36 @@ export interface RoleAssignmentStoreOptions {
 export class RoleAssignmentStore {
   private readonly assignments = new Map<string, RoleAssignment[]>();
   private readonly persistencePath?: string;
+  private corruptLines = 0;
 
   constructor(options?: RoleAssignmentStoreOptions) {
     this.persistencePath = options?.persistencePath;
   }
 
   /**
+   * Number of unparseable lines skipped during the most recent
+   * {@link hydrate} call (`0` before any hydrate, or when the file is clean).
+   *
+   * **Fail-open implication:** skipped lines can include `revoke` records.
+   * A corrupted revoke line means the corresponding grant is silently
+   * re-activated on hydrate — i.e. corruption fails *open*, not closed.
+   * Callers relying on RBAC for enforcement should treat
+   * `corruptLineCount > 0` as an integrity alarm and refuse to proceed
+   * (or rebuild the sidecar from a trusted source) rather than serving
+   * permissions from a partially-replayed file.
+   */
+  get corruptLineCount(): number {
+    return this.corruptLines;
+  }
+
+  /**
    * Replay the JSONL persistence file (if configured) into the in-memory
    * map. Idempotent — safe to call multiple times. No-op when no path
    * is set or the file does not exist.
+   *
+   * Unparseable lines are skipped but **counted** — inspect
+   * {@link corruptLineCount} after hydrating. See that accessor's JSDoc
+   * for why a non-zero count must not be ignored (corrupt revokes fail open).
    */
   async hydrate(): Promise<void> {
     if (!this.persistencePath) return;
@@ -44,17 +65,23 @@ export class RoleAssignmentStore {
       throw e;
     }
     this.assignments.clear();
+    this.corruptLines = 0;
     for (const line of content.split('\n')) {
       if (!line.trim()) continue;
       try {
         const rec = JSON.parse(line) as StoreRecord;
         if (rec.op === 'assign') {
           this.applyAssign(rec.assignment);
-        } else {
+        } else if (rec.op === 'revoke') {
           this.applyRevoke(rec.agentId, rec.role, rec.resourceType);
+        } else {
+          // Parseable JSON but not a known record shape — still corrupt.
+          this.corruptLines++;
         }
       } catch {
-        // Tolerate corrupt lines — log via console.warn would leak.
+        // Tolerate corrupt lines (surfaced via corruptLineCount) —
+        // logging the raw line via console.warn would leak grant data.
+        this.corruptLines++;
       }
     }
   }
@@ -129,6 +156,8 @@ export class RoleAssignmentStore {
   private async persist(record: StoreRecord): Promise<void> {
     if (!this.persistencePath) return;
     const line = JSON.stringify(record) + '\n';
-    await fs.appendFile(this.persistencePath, line, 'utf-8');
+    // mode applies on initial file creation only (POSIX): the sidecar holds
+    // grant data, so keep it owner-read/write (0600), not world-readable.
+    await fs.appendFile(this.persistencePath, line, { encoding: 'utf-8', mode: 0o600 });
   }
 }

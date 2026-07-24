@@ -16,6 +16,7 @@ import type { Entity } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { AuditLog, type AuditEntry } from './AuditLog.js';
 import { KnowledgeGraphError } from '../utils/errors.js';
+import { sanitizeObject } from '../utils/entityUtils.js';
 
 // ==================== Policy ====================
 
@@ -104,7 +105,11 @@ export class GovernanceTransaction {
       throw new KnowledgeGraphError(`Entity "${entity.name}" already exists`, 'DUPLICATE_ENTITY');
     }
 
-    const created: Entity = { ...entity, createdAt: timestamp, lastModified: timestamp };
+    // Prototype-pollution guard (Sec4): same sanitization EntityManager applies.
+    const sanitized = sanitizeObject(
+      entity as unknown as Record<string, unknown>
+    ) as unknown as Omit<Entity, 'createdAt' | 'lastModified'>;
+    const created: Entity = { ...sanitized, createdAt: timestamp, lastModified: timestamp };
     graph.entities.push(created);
     await this.storage.saveGraph(graph);
 
@@ -151,7 +156,9 @@ export class GovernanceTransaction {
 
     const before = { ...existing } as unknown as object;
     const timestamp = new Date().toISOString();
-    Object.assign(existing, updates);
+    // Prototype-pollution guard (Sec4): same sanitization EntityManager applies
+    // (`EntityManager.updateEntity` / `batchUpdate` parity).
+    Object.assign(existing, sanitizeObject(updates as Record<string, unknown>));
     existing.lastModified = timestamp;
     await this.storage.saveGraph(graph);
 
@@ -428,12 +435,7 @@ export class GovernanceManager {
         }
         // Only recreate if it doesn't already exist
         if (!graph.entities.some(e => e.name === target.entityName)) {
-          const restored: Entity = {
-            ...(target.before as Entity),
-            ...pickEntityFields(target.before),
-            lastModified: timestamp,
-          };
-          graph.entities.push(restored);
+          graph.entities.push(restoreEntityFromSnapshot(target.before, target.entityName, timestamp));
         }
         break;
       }
@@ -449,12 +451,7 @@ export class GovernanceManager {
           );
         }
         const entityIdx = graph.entities.findIndex(e => e.name === target.entityName);
-        const safeSnapshot = pickEntityFields(target.before);
-        const restored: Entity = {
-          ...(target.before as Entity),
-          ...safeSnapshot,
-          lastModified: timestamp,
-        };
+        const restored = restoreEntityFromSnapshot(target.before, target.entityName, timestamp);
         if (entityIdx !== -1) {
           // Replace the entity entirely from the snapshot to avoid stale fields
           graph.entities[entityIdx] = restored;
@@ -481,6 +478,31 @@ export class GovernanceManager {
 }
 
 // ==================== Helpers ====================
+
+/**
+ * Build a restorable {@link Entity} from an unvalidated audit snapshot.
+ *
+ * Constructed **exclusively** from the {@link pickEntityFields} whitelist —
+ * the raw snapshot is never spread onto the result, so extra/malicious fields
+ * planted in a (writable) audit file cannot reach the live graph (Sec4/Sec1
+ * related bug: the previous `{...(before as Entity), ...pickEntityFields(before)}`
+ * shape let every raw snapshot field through, defeating the whitelist).
+ *
+ * Required Entity identity fields are defaulted defensively when the snapshot
+ * lacks them: `name` falls back to the audit entry's `entityName`, `entityType`
+ * to `'unknown'`, `observations` to `[]`. Whitelisted snapshot values win over
+ * these defaults when present.
+ */
+function restoreEntityFromSnapshot(snapshot: object, entityName: string, timestamp: string): Entity {
+  const safe = pickEntityFields(snapshot);
+  return {
+    name: entityName,
+    entityType: 'unknown',
+    observations: [],
+    ...safe,
+    lastModified: timestamp,
+  };
+}
 
 /**
  * Safe field whitelist for audit snapshot restoration.

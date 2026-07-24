@@ -68,6 +68,14 @@ export interface ICompressionAdapter {
  * matches zlib's default and is well-tuned for general-purpose
  * payloads.
  *
+ * **Decompression-bomb guard (Sec8):** `decompress` caps the output
+ * size at 256 MB by default (a crafted few-KB deflate payload can
+ * otherwise expand to exhaust process memory). Configure per instance
+ * via the `maxOutputLength` constructor param, or globally via the
+ * `MEMORY_MAX_DECOMPRESSED_BYTES` env var (positive integer, bytes;
+ * read at construction). Exceeding the cap throws an error naming
+ * the limit.
+ *
  * @example
  * ```typescript
  * const adapter = new ZlibCompressionAdapter();
@@ -79,12 +87,26 @@ export interface ICompressionAdapter {
 export class ZlibCompressionAdapter implements ICompressionAdapter {
   readonly name = 'zlib';
 
-  constructor(private readonly level: number = 6) {
+  private readonly maxOutputLength: number;
+
+  constructor(
+    private readonly level: number = 6,
+    maxOutputLength?: number,
+  ) {
     if (!Number.isInteger(level) || level < 0 || level > 9) {
       throw new Error(
         `ZlibCompressionAdapter: level must be an integer in [0, 9], got ${level}`,
       );
     }
+    if (
+      maxOutputLength !== undefined &&
+      (!Number.isInteger(maxOutputLength) || maxOutputLength <= 0)
+    ) {
+      throw new Error(
+        `ZlibCompressionAdapter: maxOutputLength must be a positive integer, got ${maxOutputLength}`,
+      );
+    }
+    this.maxOutputLength = maxOutputLength ?? resolveDefaultMaxOutputLength();
   }
 
   compress(input: Buffer): Buffer {
@@ -103,13 +125,35 @@ export class ZlibCompressionAdapter implements ICompressionAdapter {
     // throws here with the wrapper identifying the adapter — letting
     // multi-adapter callers distinguish "wrong adapter" from "truncated input."
     try {
-      return inflateSync(input);
+      return inflateSync(input, { maxOutputLength: this.maxOutputLength });
     } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE') {
+        throw new Error(
+          `ZlibCompressionAdapter: decompress aborted — output exceeds the maximum ` +
+          `allowed size of ${this.maxOutputLength} bytes (decompression-bomb guard). ` +
+          `Raise the limit via the maxOutputLength constructor param or the ` +
+          `MEMORY_MAX_DECOMPRESSED_BYTES env var if this payload is trusted.`,
+        );
+      }
       throw new Error(
         `ZlibCompressionAdapter: decompress failed — input is likely corrupted, truncated, or produced by a different adapter: ${(err as Error).message}`,
       );
     }
   }
+}
+
+/**
+ * Default decompression output cap: `MEMORY_MAX_DECOMPRESSED_BYTES` env var
+ * (positive integer, bytes) when valid, else 256 MB. Mirrors
+ * `utils/compressionUtil.ts`; duplicated locally to keep this module
+ * dependency-free (it is imported from hot data-structure paths).
+ */
+function resolveDefaultMaxOutputLength(): number {
+  const env = process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+  if (env !== undefined && /^[1-9][0-9]*$/.test(env.trim())) {
+    return Number.parseInt(env.trim(), 10);
+  }
+  return 256 * 1024 * 1024;
 }
 
 /**
