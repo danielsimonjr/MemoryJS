@@ -21,6 +21,7 @@ import {
   getCompressionRatio,
   createMetadata,
   createUncompressedMetadata,
+  DEFAULT_MAX_DECOMPRESSED_BYTES,
 } from '../../../src/utils/compressionUtil.js';
 import { COMPRESSION_CONFIG } from '../../../src/utils/constants.js';
 
@@ -37,6 +38,97 @@ describe('compressionUtil', () => {
     } catch {
       // Ignore cleanup errors
     }
+  });
+
+  describe('decompression output cap (Sec8)', () => {
+    // ~1 MB of 'a' compresses to a few hundred bytes — a miniature
+    // decompression bomb for cap testing.
+    const bombPlaintext = 'a'.repeat(1024 * 1024);
+
+    it('exports a generous 256MB default cap', () => {
+      expect(DEFAULT_MAX_DECOMPRESSED_BYTES).toBe(256 * 1024 * 1024);
+    });
+
+    it('decompress throws a clear error naming the limit when output exceeds an injected cap', async () => {
+      const { compressed } = await compress(bombPlaintext);
+      expect(compressed.length).toBeLessThan(10_000); // sanity: highly compressible
+
+      await expect(decompress(compressed, { maxOutputLength: 1024 }))
+        .rejects.toThrow(/maximum allowed size of 1024 bytes/);
+    });
+
+    it('decompress succeeds when the cap is not exceeded', async () => {
+      const { compressed } = await compress(bombPlaintext);
+      const out = await decompress(compressed, { maxOutputLength: 2 * 1024 * 1024 });
+      expect(out.toString('utf-8')).toBe(bombPlaintext);
+    });
+
+    it('normal roundtrips are unaffected by the default cap', async () => {
+      const original = 'ordinary payload well under any cap';
+      const { compressed } = await compress(original);
+      const out = await decompress(compressed);
+      expect(out.toString('utf-8')).toBe(original);
+    });
+
+    it('honors the MEMORY_MAX_DECOMPRESSED_BYTES env var', async () => {
+      const previous = process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+      process.env.MEMORY_MAX_DECOMPRESSED_BYTES = '2048';
+      try {
+        const { compressed } = await compress(bombPlaintext);
+        await expect(decompress(compressed)).rejects.toThrow(/maximum allowed size of 2048 bytes/);
+      } finally {
+        if (previous === undefined) delete process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+        else process.env.MEMORY_MAX_DECOMPRESSED_BYTES = previous;
+      }
+    });
+
+    it('an explicit maxOutputLength option overrides the env var', async () => {
+      const previous = process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+      process.env.MEMORY_MAX_DECOMPRESSED_BYTES = '1024';
+      try {
+        const { compressed } = await compress(bombPlaintext);
+        const out = await decompress(compressed, { maxOutputLength: 2 * 1024 * 1024 });
+        expect(out.length).toBe(bombPlaintext.length);
+      } finally {
+        if (previous === undefined) delete process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+        else process.env.MEMORY_MAX_DECOMPRESSED_BYTES = previous;
+      }
+    });
+
+    it('invalid env values fall back to the default (no throw on normal payloads)', async () => {
+      const previous = process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+      process.env.MEMORY_MAX_DECOMPRESSED_BYTES = 'not-a-number';
+      try {
+        const { compressed } = await compress('small payload');
+        const out = await decompress(compressed);
+        expect(out.toString('utf-8')).toBe('small payload');
+      } finally {
+        if (previous === undefined) delete process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+        else process.env.MEMORY_MAX_DECOMPRESSED_BYTES = previous;
+      }
+    });
+
+    it('decompressFile enforces the cap', async () => {
+      const inputPath = join(tempDir, 'bomb.jsonl');
+      const compressedPath = join(tempDir, 'bomb.jsonl.br');
+      const outputPath = join(tempDir, 'bomb-out.jsonl');
+      await fs.writeFile(inputPath, bombPlaintext);
+      await compressFile(inputPath, compressedPath);
+
+      await expect(decompressFile(compressedPath, outputPath, { maxOutputLength: 1024 }))
+        .rejects.toThrow(/maximum allowed size of 1024 bytes/);
+
+      // And with an adequate cap it round-trips.
+      await decompressFile(compressedPath, outputPath, { maxOutputLength: 2 * 1024 * 1024 });
+      const restored = await fs.readFile(outputPath, 'utf-8');
+      expect(restored).toBe(bombPlaintext);
+    });
+
+    it('corrupt input still reports a decompression failure, not a cap failure', async () => {
+      const garbage = Buffer.from([0x01, 0x02, 0x03, 0x04, 0x05]);
+      await expect(decompress(garbage, { maxOutputLength: 1024 }))
+        .rejects.toThrow(/Brotli decompression failed/);
+    });
   });
 
   describe('compress/decompress roundtrip', () => {

@@ -443,4 +443,197 @@ describe('GovernanceManager', () => {
       expect(entries).toHaveLength(1);
     });
   });
+
+  // ==================== Sec4: prototype-pollution guard ====================
+
+  describe('prototype-pollution guard (Sec4)', () => {
+    it('updateEntity with a JSON-parsed __proto__ payload does not pollute', async () => {
+      await storage.saveGraph({
+        entities: [{ name: 'Alice', entityType: 'person', observations: [] }],
+        relations: [],
+      });
+
+      const malicious = JSON.parse('{"__proto__":{"polluted":true},"observations":["ok"]}');
+      await governance.withTransaction(async (tx) => {
+        await tx.updateEntity('Alice', malicious);
+      });
+
+      // Global prototype untouched…
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      // …and the stored entity's prototype chain untouched (the dangerous
+      // key was dropped, the legitimate field applied).
+      const graph = await storage.loadGraph();
+      const alice = graph.entities.find(e => e.name === 'Alice') as unknown as Record<string, unknown>;
+      expect(alice.polluted).toBeUndefined();
+      expect(alice.observations).toEqual(['ok']);
+    });
+
+    it('updateEntity strips constructor/prototype keys', async () => {
+      await storage.saveGraph({
+        entities: [{ name: 'Alice', entityType: 'person', observations: [] }],
+        relations: [],
+      });
+
+      const malicious = JSON.parse('{"constructor":{"prototype":{"hacked":true}},"importance":5}');
+      await governance.withTransaction(async (tx) => {
+        await tx.updateEntity('Alice', malicious);
+      });
+
+      expect(({} as Record<string, unknown>).hacked).toBeUndefined();
+      const graph = await storage.loadGraph();
+      const alice = graph.entities.find(e => e.name === 'Alice');
+      expect(alice!.importance).toBe(5);
+      expect(Object.prototype.hasOwnProperty.call(alice, 'constructor')).toBe(false);
+    });
+
+    it('createEntity with a JSON-parsed __proto__ payload does not pollute', async () => {
+      const malicious = JSON.parse(
+        '{"name":"Bob","entityType":"person","observations":[],"__proto__":{"polluted":true}}'
+      );
+      await governance.withTransaction(async (tx) => {
+        await tx.createEntity(malicious);
+      });
+
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      const graph = await storage.loadGraph();
+      const bob = graph.entities.find(e => e.name === 'Bob') as unknown as Record<string, unknown>;
+      expect(bob).toBeDefined();
+      expect(bob.polluted).toBeUndefined();
+    });
+
+    it('behaves like EntityManager for the same malicious update (parity)', async () => {
+      // Same payload through both hardened paths ⇒ same observable outcome:
+      // dangerous keys dropped, legitimate fields applied, no pollution.
+      const payload = () => JSON.parse('{"__proto__":{"polluted":true},"importance":7}');
+
+      const { ManagerContext } = await import('../../../src/core/ManagerContext.js');
+      const emPath = join(testDir, 'parity-em.jsonl');
+      const ctx = new ManagerContext(emPath);
+      await ctx.entityManager.createEntities([{ name: 'P', entityType: 'person', observations: [] }]);
+      await ctx.entityManager.updateEntity('P', payload());
+      const viaEntityManager = await ctx.entityManager.getEntity('P') as unknown as Record<string, unknown>;
+
+      await storage.saveGraph({
+        entities: [{ name: 'P', entityType: 'person', observations: [] }],
+        relations: [],
+      });
+      await governance.withTransaction(async (tx) => {
+        await tx.updateEntity('P', payload());
+      });
+      const graph = await storage.loadGraph();
+      const viaGovernance = graph.entities.find(e => e.name === 'P') as unknown as Record<string, unknown>;
+
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      expect(viaEntityManager!.polluted).toBeUndefined();
+      expect(viaGovernance.polluted).toBeUndefined();
+      expect(viaEntityManager!.importance).toBe(7);
+      expect(viaGovernance.importance).toBe(7);
+    });
+  });
+
+  // ==================== Sec1-related: rollback snapshot whitelist ====================
+
+  describe('rollback snapshot whitelist (raw-spread fix)', () => {
+    it('a doctored delete-audit entry cannot inject extra fields into the restored entity', async () => {
+      // Simulate an attacker who can write the (writable) audit sidecar:
+      // a delete entry whose before-snapshot smuggles non-whitelisted fields.
+      const doctored = await auditLog.append({
+        operation: 'delete',
+        entityName: 'Victim',
+        before: {
+          name: 'Victim',
+          entityType: 'person',
+          observations: ['legit'],
+          importance: 3,
+          maliciousField: 'pwn',
+          isAdmin: true,
+          supersededBy: 'attacker-controlled',
+        },
+        after: undefined,
+        status: 'committed',
+      });
+
+      await governance.rollback(doctored.id);
+
+      const graph = await storage.loadGraph();
+      const restored = graph.entities.find(e => e.name === 'Victim') as unknown as Record<string, unknown>;
+      expect(restored).toBeDefined();
+      // Whitelisted fields survive…
+      expect(restored.entityType).toBe('person');
+      expect(restored.observations).toEqual(['legit']);
+      expect(restored.importance).toBe(3);
+      // …non-whitelisted fields do not reach the graph.
+      expect(restored.maliciousField).toBeUndefined();
+      expect(restored.isAdmin).toBeUndefined();
+      expect(restored.supersededBy).toBeUndefined();
+    });
+
+    it('a doctored update-audit entry cannot inject extra fields on rollback', async () => {
+      await storage.saveGraph({
+        entities: [{ name: 'Alice', entityType: 'person', observations: ['current'] }],
+        relations: [],
+      });
+
+      const doctored = await auditLog.append({
+        operation: 'update',
+        entityName: 'Alice',
+        before: {
+          name: 'Alice',
+          entityType: 'person',
+          observations: ['original'],
+          evilFlag: true,
+        },
+        after: { name: 'Alice', entityType: 'person', observations: ['current'] },
+        status: 'committed',
+      });
+
+      await governance.rollback(doctored.id);
+
+      const graph = await storage.loadGraph();
+      const alice = graph.entities.find(e => e.name === 'Alice') as unknown as Record<string, unknown>;
+      expect(alice.observations).toEqual(['original']);
+      expect(alice.evilFlag).toBeUndefined();
+    });
+
+    it('rollback of a delete with a minimal snapshot still restores a well-formed entity', async () => {
+      const doctored = await auditLog.append({
+        operation: 'delete',
+        entityName: 'Minimal',
+        before: { observations: ['only-observations'] },
+        after: undefined,
+        status: 'committed',
+      });
+
+      await governance.rollback(doctored.id);
+
+      const graph = await storage.loadGraph();
+      const restored = graph.entities.find(e => e.name === 'Minimal');
+      expect(restored).toBeDefined();
+      expect(restored!.entityType).toBe('unknown'); // defensive default
+      expect(restored!.observations).toEqual(['only-observations']);
+      expect(restored!.lastModified).toBeDefined();
+    });
+
+    it('non-string entries in snapshot observations/tags are filtered out', async () => {
+      const doctored = await auditLog.append({
+        operation: 'delete',
+        entityName: 'Mixed',
+        before: {
+          name: 'Mixed',
+          entityType: 'person',
+          observations: ['keep', { evil: true }, 42, 'also-keep'],
+          tags: ['t1', null, 't2'],
+        },
+        after: undefined,
+        status: 'committed',
+      });
+
+      await governance.rollback(doctored.id);
+
+      const graph = await storage.loadGraph();
+      const restored = graph.entities.find(e => e.name === 'Mixed');
+      expect(restored!.observations).toEqual(['keep', 'also-keep']);
+      expect(restored!.tags).toEqual(['t1', 't2']);
+    });
+  });
 });

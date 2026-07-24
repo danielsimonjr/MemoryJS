@@ -20,6 +20,44 @@ const compressAsync = promisify(brotliCompress);
 const decompressAsync = promisify(brotliDecompress);
 
 /**
+ * Default output-size cap for decompression: 256 MB. Generous for graph
+ * backups while preventing decompression bombs (a few-KB crafted `.br`
+ * payload expanding to exhaust process memory).
+ *
+ * Override per call via `DecompressionOptions.maxOutputLength`, or globally
+ * via the `MEMORY_MAX_DECOMPRESSED_BYTES` env var (positive integer, bytes).
+ */
+export const DEFAULT_MAX_DECOMPRESSED_BYTES = 256 * 1024 * 1024;
+
+/**
+ * Resolve the effective decompression output cap:
+ * explicit option > `MEMORY_MAX_DECOMPRESSED_BYTES` env var > 256 MB default.
+ * Invalid env values (non-integer, <= 0) fall back to the default.
+ */
+function resolveMaxOutputLength(explicit?: number): number {
+  if (explicit !== undefined && Number.isInteger(explicit) && explicit > 0) {
+    return explicit;
+  }
+  const env = process.env.MEMORY_MAX_DECOMPRESSED_BYTES;
+  if (env !== undefined && /^[1-9][0-9]*$/.test(env.trim())) {
+    return Number.parseInt(env.trim(), 10);
+  }
+  return DEFAULT_MAX_DECOMPRESSED_BYTES;
+}
+
+/**
+ * Options for decompression operations.
+ */
+export interface DecompressionOptions {
+  /**
+   * Maximum allowed decompressed output size in bytes. Exceeding it throws
+   * a clear error naming the limit instead of exhausting memory.
+   * @default 256 MB (or `MEMORY_MAX_DECOMPRESSED_BYTES` env var when set)
+   */
+  maxOutputLength?: number;
+}
+
+/**
  * Options for compression operations.
  */
 export interface CompressionOptions {
@@ -157,9 +195,16 @@ export async function compress(
 /**
  * Decompress brotli-compressed data.
  *
+ * Output size is capped (decompression-bomb guard, Sec8): by default 256 MB,
+ * configurable via `options.maxOutputLength` or the
+ * `MEMORY_MAX_DECOMPRESSED_BYTES` env var. Exceeding the cap throws an error
+ * naming the limit.
+ *
  * @param data - The compressed data as a Buffer
+ * @param options - Decompression options (output-size cap)
  * @returns The decompressed data as a Buffer
- * @throws Error if decompression fails (corrupt or invalid data)
+ * @throws Error if decompression fails (corrupt or invalid data) or the
+ *         decompressed output exceeds the configured cap
  *
  * @example
  * ```typescript
@@ -168,7 +213,10 @@ export async function compress(
  * const jsonData = decompressed.toString('utf-8');
  * ```
  */
-export async function decompress(data: Buffer): Promise<Buffer> {
+export async function decompress(
+  data: Buffer,
+  options: DecompressionOptions = {}
+): Promise<Buffer> {
   if (!Buffer.isBuffer(data)) {
     throw new Error('Input must be a Buffer');
   }
@@ -177,12 +225,34 @@ export async function decompress(data: Buffer): Promise<Buffer> {
     return Buffer.alloc(0);
   }
 
+  const maxOutputLength = resolveMaxOutputLength(options.maxOutputLength);
+
   try {
-    return await decompressAsync(data);
+    return await decompressAsync(data, { maxOutputLength });
   } catch (error) {
+    if (isOutputLimitError(error)) {
+      throw new Error(
+        `Brotli decompression aborted: output exceeds the maximum allowed size of ` +
+        `${maxOutputLength} bytes (decompression-bomb guard). Raise the limit via the ` +
+        `maxOutputLength option or the MEMORY_MAX_DECOMPRESSED_BYTES env var if this ` +
+        `payload is trusted.`
+      );
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(`Brotli decompression failed: ${message}`);
   }
+}
+
+/**
+ * Detect Node's "output would exceed maxOutputLength" zlib failure
+ * (`ERR_BUFFER_TOO_LARGE`) so it can be reported distinctly from
+ * corrupt-input failures.
+ */
+function isOutputLimitError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE'
+  );
 }
 
 /**
@@ -238,9 +308,14 @@ export async function compressFile(
 /**
  * Decompress a file and write the result to disk.
  *
+ * Output size is capped like {@link decompress} (256 MB default,
+ * `options.maxOutputLength` / `MEMORY_MAX_DECOMPRESSED_BYTES` override).
+ *
  * @param inputPath - Path to the compressed input file
  * @param outputPath - Path for the decompressed output file
- * @throws Error if file not found or decompression fails
+ * @param options - Decompression options (output-size cap)
+ * @throws Error if file not found, decompression fails, or the output
+ *         exceeds the configured cap
  *
  * @example
  * ```typescript
@@ -249,10 +324,11 @@ export async function compressFile(
  */
 export async function decompressFile(
   inputPath: string,
-  outputPath: string
+  outputPath: string,
+  options: DecompressionOptions = {}
 ): Promise<void> {
   const input = await fs.readFile(inputPath);
-  const decompressed = await decompress(input);
+  const decompressed = await decompress(input, options);
   await fs.writeFile(outputPath, decompressed);
 }
 

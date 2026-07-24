@@ -64,6 +64,45 @@ describe('diag CLI commands', () => {
     expect(out.vars.some((v) => v.name === 'MEMORYJS_STORAGE_PATH')).toBe(true);
   });
 
+  it('env masks MEMORY_OPENAI_API_KEY and never prints the plaintext (Sec3)', async () => {
+    const previous = process.env.MEMORY_OPENAI_API_KEY;
+    const rawSecret = 'sk-super-secret-key-value-12345';
+    process.env.MEMORY_OPENAI_API_KEY = rawSecret;
+    try {
+      const program = makeProgram();
+      await program.parseAsync(['node', 'memory', '--storage', storagePath, 'env', '--all']);
+
+      const out = lastJson() as { vars: Array<{ name: string; value: string | null; set: boolean }> };
+      const keyRow = out.vars.find((v) => v.name === 'MEMORY_OPENAI_API_KEY');
+      expect(keyRow).toBeDefined();
+      expect(keyRow!.value).toBe('***set***');
+      expect(keyRow!.set).toBe(true); // presence flag stays accurate
+
+      // The raw value must not appear anywhere in the command output.
+      const fullOutput = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+      expect(fullOutput).toContain('***set***');
+      expect(fullOutput).not.toContain(rawSecret);
+    } finally {
+      if (previous === undefined) delete process.env.MEMORY_OPENAI_API_KEY;
+      else process.env.MEMORY_OPENAI_API_KEY = previous;
+    }
+  });
+
+  it('env reports secret vars as null/unset when the env var is absent', async () => {
+    const previous = process.env.MEMORY_OPENAI_API_KEY;
+    delete process.env.MEMORY_OPENAI_API_KEY;
+    try {
+      const program = makeProgram();
+      await program.parseAsync(['node', 'memory', '--storage', storagePath, 'env', '--all']);
+      const out = lastJson() as { vars: Array<{ name: string; value: string | null; set: boolean }> };
+      const keyRow = out.vars.find((v) => v.name === 'MEMORY_OPENAI_API_KEY');
+      expect(keyRow!.value).toBeNull();
+      expect(keyRow!.set).toBe(false);
+    } finally {
+      if (previous !== undefined) process.env.MEMORY_OPENAI_API_KEY = previous;
+    }
+  });
+
   it('diag emits a snapshot with version + storage + runtime', async () => {
     // Seed an entity so the storage counts are non-zero.
     const ctx = new ManagerContext(storagePath);
