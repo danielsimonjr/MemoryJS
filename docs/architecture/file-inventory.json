@@ -1,19 +1,11 @@
 {
   "generated": "2026-07-24",
-<<<<<<< HEAD
   "totalFiles": 570,
-=======
-  "totalFiles": 571,
->>>>>>> origin/master
   "byDisposition": {
     "reachable": 252,
     "build-entry": 3,
     "test-only": 0,
-<<<<<<< HEAD
     "orphan": 0,
-=======
-    "orphan": 1,
->>>>>>> origin/master
     "test": 300,
     "tool": 10,
     "config": 2,
@@ -22,11 +14,7 @@
   },
   "byArea": {
     "benchmarks": 3,
-<<<<<<< HEAD
     "src": 255,
-=======
-    "src": 256,
->>>>>>> origin/master
     "tests": 300,
     "tools": 10,
     "config": 2
@@ -117,7 +105,6 @@
       "loc": 696
     },
     {
-<<<<<<< HEAD
       "file": "src/agent/AgentReflectionManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -125,8 +112,6 @@
       "loc": 287
     },
     {
-=======
->>>>>>> origin/master
       "file": "src/agent/ArtifactManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -313,11 +298,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-<<<<<<< HEAD
       "loc": 500
-=======
-      "loc": 493
->>>>>>> origin/master
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -523,16 +504,6 @@
       "loc": 141
     },
     {
-<<<<<<< HEAD
-=======
-      "file": "src/agent/ReflectionManager.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "reachable",
-      "loc": 287
-    },
-    {
->>>>>>> origin/master
       "file": "src/agent/retrieval/ActiveRetrievalController.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -726,11 +697,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-<<<<<<< HEAD
       "loc": 32
-=======
-      "loc": 53
->>>>>>> origin/master
     },
     {
       "file": "src/cli/commands/heuristic.ts",
@@ -1073,11 +1040,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-<<<<<<< HEAD
       "loc": 309
-=======
-      "loc": 323
->>>>>>> origin/master
     },
     {
       "file": "src/features/CompressionManager.ts",
@@ -1518,11 +1481,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-<<<<<<< HEAD
       "loc": 361
-=======
-      "loc": 393
->>>>>>> origin/master
     },
     {
       "file": "src/security/ABACPolicy.ts",
@@ -1578,11 +1537,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-<<<<<<< HEAD
       "loc": 272
-=======
-      "loc": 269
->>>>>>> origin/master
     },
     {
       "file": "src/types/procedure.ts",
@@ -1743,11 +1698,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-<<<<<<< HEAD
       "loc": 388
-=======
-      "loc": 387
->>>>>>> origin/master
     },
     {
       "file": "src/utils/indexes.ts",
@@ -1845,11 +1796,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-<<<<<<< HEAD
       "loc": 141
-=======
-      "loc": 126
->>>>>>> origin/master
     },
     {
       "file": "src/utils/validators.ts",
@@ -1873,16 +1820,6 @@
       "loc": 352
     },
     {
-<<<<<<< HEAD
-=======
-      "file": "src/workers/index.ts",
-      "package": "@danielsimonjr/memoryjs",
-      "area": "src",
-      "disposition": "orphan",
-      "loc": 16
-    },
-    {
->>>>>>> origin/master
       "file": "src/workers/levenshteinWorker.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -2212,7 +2149,6 @@
       "loc": 667
     },
     {
-<<<<<<< HEAD
       "file": "tests/unit/agent/AgentReflectionManager.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -2220,8 +2156,6 @@
       "loc": 362
     },
     {
-=======
->>>>>>> origin/master
       "file": "tests/unit/agent/ArtifactManager.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -2593,16 +2527,6 @@
       "loc": 116
     },
     {
-<<<<<<< HEAD
-=======
-      "file": "tests/unit/agent/ReflectionManager.test.ts",
-      "package": "(root)",
-      "area": "tests",
-      "disposition": "test",
-      "loc": 362
-    },
-    {
->>>>>>> origin/master
       "file": "tests/unit/agent/ReflectionStage.test.ts",
       "package": "(root)",
       "area": "tests",

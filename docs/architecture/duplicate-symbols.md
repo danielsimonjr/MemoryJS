@@ -10,48 +10,25 @@ Names that are OWN-DEFINED (not merely re-exported) by >= 2 distinct files, then
 
 | Category | Count |
 | --- | --: |
-<<<<<<< HEAD
 | **TRUE_DUPLICATE** (actionable) | 0 |
 | ALIAS_DELEGATION | 0 |
 | ALLOWLISTED | 1 |
 | _Total flagged names_ | 1 |
-=======
-| **TRUE_DUPLICATE** (actionable) | 4 |
-| ALIAS_DELEGATION | 0 |
-| ALLOWLISTED | 1 |
-| _Total flagged names_ | 5 |
->>>>>>> origin/master
 
 ## Summary — types (interface/type/enum)
 
 | Category | Count |
 | --- | --: |
-<<<<<<< HEAD
 | **TRUE_DUPLICATE** (actionable) | 0 |
 | ALIAS_DELEGATION | 0 |
 | ALLOWLISTED | 0 |
 | _Total flagged names_ | 0 |
-=======
-| **TRUE_DUPLICATE** (actionable) | 6 |
-| ALIAS_DELEGATION | 0 |
-| ALLOWLISTED | 0 |
-| _Total flagged names_ | 6 |
->>>>>>> origin/master
 
 ## Runtime duplicates
 
 ### TRUE_DUPLICATE — actionable merge targets
 
-<<<<<<< HEAD
 _None._
-=======
-| Name | Category | Defining files (public?, sub-tag) | Canonical hint |
-| --- | --- | --- | --- |
-| `cosineSimilarity` | function | `src/search/VectorStore.ts` (public, PLAIN)<br>`src/utils/textSimilarity.ts` (public, PLAIN) | **AMBIGUOUS** |
-| `mergeConfig` | function | `src/agent/AgentMemoryConfig.ts` (public, PLAIN)<br>`src/cli/config.ts` (internal, PLAIN) | `src/agent/AgentMemoryConfig.ts` |
-| `ReflectionManager` | class | `src/agent/ReflectionManager.ts` (public, PLAIN)<br>`src/search/ReflectionManager.ts` (public, PLAIN) | **AMBIGUOUS** |
-| `tokenize` | function | `src/utils/searchAlgorithms.ts` (public, PLAIN)<br>`src/utils/textSimilarity.ts` (public, PLAIN) | **AMBIGUOUS** |
->>>>>>> origin/master
 
 ### ALIAS_DELEGATION — const-alias forwards (not independent bodies)
 
@@ -67,18 +44,7 @@ _None._
 
 ### TRUE_DUPLICATE
 
-<<<<<<< HEAD
 _None._
-=======
-| Name | Category | Defining files (public?, sub-tag) | Canonical hint |
-| --- | --- | --- | --- |
-| `BackupInfo` | interface | `src/features/BackupManager.ts` (internal, PLAIN)<br>`src/features/IOManager.ts` (public, PLAIN) | `src/features/IOManager.ts` |
-| `BackupMetadata` | interface | `src/features/BackupManager.ts` (internal, PLAIN)<br>`src/features/IOManager.ts` (public, PLAIN) | `src/features/IOManager.ts` |
-| `Contradiction` | interface | `src/agent/MemoryValidator.ts` (public, PLAIN)<br>`src/features/ContradictionDetector.ts` (public, PLAIN) | **AMBIGUOUS** |
-| `DistillationResult` | interface | `src/agent/DistillationPipeline.ts` (public, PLAIN)<br>`src/types/reconstruction.ts` (public, PLAIN) | **AMBIGUOUS** |
-| `Rule` | interface | `src/agent/ExperienceExtractor.ts` (public, PLAIN)<br>`src/agent/RuleEvaluator.ts` (internal, PLAIN) | `src/agent/ExperienceExtractor.ts` |
-| `ValidationResult` | interface | `src/security/APIKeyStore.ts` (public, PLAIN)<br>`src/utils/schemas.ts` (public, PLAIN) | **AMBIGUOUS** |
->>>>>>> origin/master
 
 ### ALIAS_DELEGATION
 

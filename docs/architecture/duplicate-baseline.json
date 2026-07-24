@@ -1,53 +1,6 @@
 {
   "generated": "2026-07-24",
   "note": "The in-progress dedup campaign backlog: TRUE_DUPLICATE names accepted as of `generated`. `node tools/create-dependency-graph/check-duplicates.mjs` fails only on NEW TRUE_DUPLICATE names beyond this set — as names are consolidated, re-run this generator to shrink the baseline. Not auto-run; a human re-seeds it deliberately after reviewing what changed.",
-<<<<<<< HEAD
   "runtime": {},
   "types": {}
-=======
-  "runtime": {
-    "cosineSimilarity": [
-      "src/search/VectorStore.ts",
-      "src/utils/textSimilarity.ts"
-    ],
-    "mergeConfig": [
-      "src/agent/AgentMemoryConfig.ts",
-      "src/cli/config.ts"
-    ],
-    "ReflectionManager": [
-      "src/agent/ReflectionManager.ts",
-      "src/search/ReflectionManager.ts"
-    ],
-    "tokenize": [
-      "src/utils/searchAlgorithms.ts",
-      "src/utils/textSimilarity.ts"
-    ]
-  },
-  "types": {
-    "BackupInfo": [
-      "src/features/BackupManager.ts",
-      "src/features/IOManager.ts"
-    ],
-    "BackupMetadata": [
-      "src/features/BackupManager.ts",
-      "src/features/IOManager.ts"
-    ],
-    "Contradiction": [
-      "src/agent/MemoryValidator.ts",
-      "src/features/ContradictionDetector.ts"
-    ],
-    "DistillationResult": [
-      "src/agent/DistillationPipeline.ts",
-      "src/types/reconstruction.ts"
-    ],
-    "Rule": [
-      "src/agent/ExperienceExtractor.ts",
-      "src/agent/RuleEvaluator.ts"
-    ],
-    "ValidationResult": [
-      "src/security/APIKeyStore.ts",
-      "src/utils/schemas.ts"
-    ]
-  }
->>>>>>> origin/master
 }

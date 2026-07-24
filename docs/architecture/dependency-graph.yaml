@@ -2,15 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 2.9.0
   lastUpdated: "2026-07-24"
-<<<<<<< HEAD
   totalFiles: 255
   totalModules: 11
   totalExports: 1627
-=======
-  totalFiles: 256
-  totalModules: 11
-  totalExports: 1631
->>>>>>> origin/master
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -1715,56 +1709,6 @@ modules:
       interfaces:
         - ProspectiveMemoryConfig
         - ScheduleOptions
-<<<<<<< HEAD
-=======
-    src/agent/ReflectionManager.ts:
-      description: Reflection Memory Manager (Phase 2 Sprint 8)
-      externalDependencies: []
-      nodeDependencies:
-        - module: crypto
-          imports:
-            - createHash
-            - randomUUID
-      internalDependencies:
-        - file: ../types/types.js
-          imports:
-            - Entity
-            - IGraphStorage
-          typeOnly: true
-        - file: ../types/agent-memory.js
-          imports:
-            - ReflectionEntity
-            - ReflectionId
-            - ReflectionRecord
-            - ReflectionScope
-          typeOnly: true
-        - file: ../types/agent-memory.js
-          imports:
-            - isReflectionMemory
-            - toIsoDateTime
-        - file: ../core/EntityManager.js
-          imports:
-            - EntityManager
-          typeOnly: true
-        - file: ../utils/errors.js
-          imports:
-            - VersionConflictError
-            - EntityNotFoundError
-        - file: ../utils/index.js
-          imports:
-            - validateNonEmpty
-            - validateNonEmptyArray
-      exports:
-        - ReflectionManager
-      classes:
-        - ReflectionManager
-      interfaces:
-        - ReflectionManagerConfig
-        - ReflectionInput
-        - ReflectionEntityOptions
-        - ListReflectionsOptions
-        - RelevanceOptions
->>>>>>> origin/master
     src/agent/RoleProfiles.ts:
       description: Role Profiles
       externalDependencies: []
@@ -1813,11 +1757,7 @@ modules:
       classes:
         - RuleEvaluator
       interfaces:
-<<<<<<< HEAD
         - EvaluatorRule
-=======
-        - Rule
->>>>>>> origin/master
     src/agent/SQLiteBackend.ts:
       description: "`SQLiteBackend` — durable `IMemoryBackend` adapter wrapping the"
       externalDependencies: []
@@ -2388,16 +2328,10 @@ modules:
             - PushSubGoalOptions
             - ListPlansOptions
           reExport: true
-<<<<<<< HEAD
         - file: ./AgentReflectionManager.js
           imports:
             - AgentReflectionManager
             - AgentReflectionManager
-=======
-        - file: ./ReflectionManager.js
-          imports:
-            - ReflectionManager
->>>>>>> origin/master
             - ArchiveReflectionResult
             - ReflectionManagerConfig
             - ReflectionInput
@@ -2429,10 +2363,7 @@ modules:
         - file: ./RuleEvaluator.js
           imports:
             - RuleEvaluator
-<<<<<<< HEAD
             - EvaluatorRule
-=======
->>>>>>> origin/master
           reExport: true
         - file: ./SalienceEngine.js
           imports:
@@ -2622,12 +2553,8 @@ modules:
             - MemoryValidatorConfig
             - MemoryValidationResult
             - MemoryValidationIssue
-<<<<<<< HEAD
             - MemoryContradiction
             - MemoryContradiction
-=======
-            - Contradiction
->>>>>>> origin/master
           reExport: true
         - file: ./TrajectoryCompressor.js
           imports:
@@ -2849,10 +2776,7 @@ modules:
         - CreatePlanOptions
         - PushSubGoalOptions
         - ListPlansOptions
-<<<<<<< HEAD
         - AgentReflectionManager
-=======
->>>>>>> origin/master
         - ReflectionMemoryManager
         - ArchiveReflectionResult
         - ReflectionMemoryManagerConfig
@@ -2873,10 +2797,7 @@ modules:
         - GroupingResult
         - PatternDetector
         - RuleEvaluator
-<<<<<<< HEAD
         - EvaluatorRule
-=======
->>>>>>> origin/master
         - SalienceEngine
         - SalienceEngineConfig
         - ContextWindowManager
@@ -2982,10 +2903,7 @@ modules:
         - MemoryValidatorConfig
         - MemoryValidationResult
         - MemoryValidationIssue
-<<<<<<< HEAD
         - MemoryContradiction
-=======
->>>>>>> origin/master
         - MemoryValidatorContradiction
         - TrajectoryCompressor
         - TrajectoryCompressorConfig
@@ -3099,13 +3017,7 @@ modules:
         - BridgePersistResult
         - LookupOptions
         - GetAllOptions
-<<<<<<< HEAD
         - ReflectionManagerConfig
-=======
-        - ReflectionManager
-        - ReflectionManagerConfig
-        - Contradiction
->>>>>>> origin/master
         - IMemoryBackend
         - MemoryTurn
         - WeightedTurn
@@ -3161,11 +3073,7 @@ modules:
         - CreatePlanOptions
         - PushSubGoalOptions
         - ListPlansOptions
-<<<<<<< HEAD
         - AgentReflectionManager
-=======
-        - ReflectionManager
->>>>>>> origin/master
         - ArchiveReflectionResult
         - ReflectionManagerConfig
         - ReflectionInput
@@ -3185,10 +3093,7 @@ modules:
         - GroupingResult
         - PatternDetector
         - RuleEvaluator
-<<<<<<< HEAD
         - EvaluatorRule
-=======
->>>>>>> origin/master
         - SalienceEngine
         - SalienceEngineConfig
         - ContextWindowManager
@@ -3294,11 +3199,7 @@ modules:
         - MemoryValidatorConfig
         - MemoryValidationResult
         - MemoryValidationIssue
-<<<<<<< HEAD
         - MemoryContradiction
-=======
-        - Contradiction
->>>>>>> origin/master
         - TrajectoryCompressor
         - TrajectoryCompressorConfig
         - DistillOptions
@@ -3743,11 +3644,7 @@ modules:
         - file: ../../types/reconstruction.js
           imports:
             - DialogueTurn
-<<<<<<< HEAD
             - ConversationDistillationResult
-=======
-            - DistillationResult
->>>>>>> origin/master
             - DistilledSentence
             - PersonalFact
           typeOnly: true
@@ -3780,11 +3677,7 @@ modules:
             - EpisodicRelations
         - file: ../../types/reconstruction.js
           imports:
-<<<<<<< HEAD
             - ConversationDistillationResult
-=======
-            - DistillationResult
->>>>>>> origin/master
           typeOnly: true
         - file: ./CueTagContentGraph.js
           imports:
@@ -3867,11 +3760,7 @@ modules:
           imports:
             - CTCGraphSnapshot
             - DialogueTurn
-<<<<<<< HEAD
             - ConversationDistillationResult
-=======
-            - DistillationResult
->>>>>>> origin/master
             - ReconstructionOptions
             - ReconstructionResult
           typeOnly: true
@@ -4007,11 +3896,7 @@ modules:
       internalDependencies:
         - file: ../../utils/textSimilarity.js
           imports:
-<<<<<<< HEAD
             - tokenizeStripped
-=======
-            - tokenize
->>>>>>> origin/master
       exports:
         - QueryRewriter
       classes:
@@ -7887,7 +7772,6 @@ modules:
             - IVectorStore
             - VectorSearchResult
           typeOnly: true
-<<<<<<< HEAD
         - file: ../utils/textSimilarity.js
           imports:
             - cosineSimilarity
@@ -7895,28 +7779,19 @@ modules:
           imports:
             - cosineSimilarity
           reExport: true
-=======
->>>>>>> origin/master
       exports:
         - cosineSimilarity
         - createVectorStore
         - InMemoryVectorStore
         - SQLiteVectorStore
-<<<<<<< HEAD
       reExported:
         - cosineSimilarity
-=======
->>>>>>> origin/master
       classes:
         - InMemoryVectorStore
         - SQLiteVectorStore
       interfaces:
         - SQLiteStorageWithEmbeddings
       functions:
-<<<<<<< HEAD
-=======
-        - cosineSimilarity
->>>>>>> origin/master
         - createVectorStore
     src/search/index.ts:
       description: Search Module Barrel Export
@@ -8621,11 +8496,7 @@ modules:
             - IssueOptions
             - IssueResult
             - KeyRecord
-<<<<<<< HEAD
             - KeyValidationResult
-=======
-            - ValidationResult
->>>>>>> origin/master
           reExport: true
       exports:
         - PiiRedactor
@@ -8648,11 +8519,7 @@ modules:
         - IssueResult
         - KeyRecord
         - APIKeyValidationResult
-<<<<<<< HEAD
         - KeyValidationResult
-=======
-        - ValidationResult
->>>>>>> origin/master
       reExported:
         - PiiRedactor
         - DEFAULT_PII_PATTERNS
@@ -8673,11 +8540,7 @@ modules:
         - IssueOptions
         - IssueResult
         - KeyRecord
-<<<<<<< HEAD
         - KeyValidationResult
-=======
-        - ValidationResult
->>>>>>> origin/master
   types:
     src/types/agent-memory.ts:
       description: Agent Memory Type Definitions
@@ -9057,12 +8920,8 @@ modules:
             - CTCGraphSnapshot
             - DistilledSentence
             - PersonalFact
-<<<<<<< HEAD
             - ConversationDistillationResult
             - ConversationDistillationResult
-=======
-            - DistillationResult
->>>>>>> origin/master
             - DialogueTurn
             - TraversalActionType
             - TraversalStep
@@ -9263,11 +9122,7 @@ modules:
         - CTCGraphSnapshot
         - DistilledSentence
         - PersonalFact
-<<<<<<< HEAD
         - ConversationDistillationResult
-=======
-        - DistillationResult
->>>>>>> origin/master
         - DialogueTurn
         - TraversalActionType
         - TraversalStep
@@ -9462,11 +9317,7 @@ modules:
         - CTCGraphSnapshot
         - DistilledSentence
         - PersonalFact
-<<<<<<< HEAD
         - ConversationDistillationResult
-=======
-        - DistillationResult
->>>>>>> origin/master
         - DialogueTurn
         - TraversalActionType
         - TraversalStep
@@ -9514,11 +9365,7 @@ modules:
         - CTCGraphSnapshot
         - DistilledSentence
         - PersonalFact
-<<<<<<< HEAD
         - ConversationDistillationResult
-=======
-        - DistillationResult
->>>>>>> origin/master
         - DialogueTurn
         - TraversalStep
         - ReconstructionResult
@@ -10826,10 +10673,7 @@ modules:
         - JsonSchema
         - AsyncMutex
         - AsyncMutexOptions
-<<<<<<< HEAD
         - tokenizeStripped
-=======
->>>>>>> origin/master
         - textTokenize
         - buildTFVector
         - textCosineSimilarity
@@ -11093,10 +10937,7 @@ modules:
         - JsonSchema
         - AsyncMutex
         - AsyncMutexOptions
-<<<<<<< HEAD
         - tokenizeStripped
-=======
->>>>>>> origin/master
         - buildTFVector
         - cosineSimilarity
         - calculateTextSimilarity
@@ -11407,11 +11248,7 @@ modules:
       nodeDependencies: []
       internalDependencies: []
       exports:
-<<<<<<< HEAD
         - tokenizeStripped
-=======
-        - tokenize
->>>>>>> origin/master
         - tokenizeToSet
         - tokenizeAlphanumeric
         - buildTFVector
@@ -11419,11 +11256,7 @@ modules:
         - calculateTextSimilarity
         - jaccard
       functions:
-<<<<<<< HEAD
         - tokenizeStripped
-=======
-        - tokenize
->>>>>>> origin/master
         - tokenizeToSet
         - tokenizeAlphanumeric
         - buildTFVector
@@ -11485,48 +11318,6 @@ modules:
         - all
         - when
   workers:
-<<<<<<< HEAD
-=======
-    src/workers/index.ts:
-      description: Workers Module
-      externalDependencies: []
-      nodeDependencies: []
-      internalDependencies:
-        - file: ./levenshteinWorker.js
-          imports:
-            - levenshteinDistance
-            - similarity
-            - searchEntities
-          reExport: true
-        - file: "@danielsimonjr/workerpool"
-          imports:
-            - Pool
-            - PoolStats
-          reExport: true
-          typeOnly: true
-        - file: ./levenshteinWorker.js
-          imports:
-            - WorkerInput
-            - MatchResult
-          reExport: true
-          typeOnly: true
-      exports:
-        - levenshteinDistance
-        - similarity
-        - searchEntities
-        - Pool
-        - PoolStats
-        - WorkerInput
-        - MatchResult
-      reExported:
-        - levenshteinDistance
-        - similarity
-        - searchEntities
-        - Pool
-        - PoolStats
-        - WorkerInput
-        - MatchResult
->>>>>>> origin/master
     src/workers/levenshteinWorker.ts:
       description: Levenshtein Worker
       externalDependencies:
@@ -11743,11 +11534,7 @@ dependencyGraph:
         - src/agent/WorkingMemoryManager.ts
         - src/agent/EntropyFilter.ts
         - src/agent/ConsolidationPipeline.ts
-<<<<<<< HEAD
         - src/agent/AgentReflectionManager.ts
-=======
-        - src/agent/ReflectionManager.ts
->>>>>>> origin/master
         - src/types/agent-memory.ts
       - - src/agent/ContextWindowManager.ts
         - src/agent/ProfileManager.ts
@@ -11805,18 +11592,12 @@ dependencyGraph:
       - - src/types/agent-memory.ts
         - src/agent/RoleProfiles.ts
         - src/types/agent-memory.ts
-<<<<<<< HEAD
       - - src/features/IOManager.ts
         - src/features/BackupManager.ts
         - src/features/IOManager.ts
     total: 37
     runtimeCount: 0
     typeOnlyCount: 37
-=======
-    total: 36
-    runtimeCount: 0
-    typeOnlyCount: 36
->>>>>>> origin/master
   layers:
     - name: Adapters
       files:
@@ -11867,10 +11648,6 @@ dependencyGraph:
         - src/agent/ProfileManager.ts
         - src/agent/ProjectContextManager.ts
         - src/agent/ProspectiveMemoryManager.ts
-<<<<<<< HEAD
-=======
-        - src/agent/ReflectionManager.ts
->>>>>>> origin/master
         - src/agent/RoleProfiles.ts
         - src/agent/RuleEvaluator.ts
         - src/agent/SQLiteBackend.ts
@@ -12105,7 +11882,6 @@ reachability:
     - src/index.ts
     - src/workers/levenshteinWorker.ts
   reachableCount: 255
-<<<<<<< HEAD
   dormantCount: 0
   orphaned: []
   testOnly: []
@@ -12131,31 +11907,3 @@ statistics:
   testOnlyFiles: 0
   unusedFilesCount: 0
   unusedExportsCount: 36
-=======
-  dormantCount: 1
-  orphaned:
-    - src/workers/index.ts
-  testOnly: []
-statistics:
-  totalTypeScriptFiles: 256
-  totalModules: 11
-  totalLinesOfCode: 85702
-  totalExports: 1631
-  totalClasses: 215
-  totalInterfaces: 532
-  totalFunctions: 256
-  totalTypeGuards: 28
-  totalEnums: 4
-  totalConstants: 82
-  totalReExports: 1067
-  totalTypeOnlyImports: 397
-  runtimeCircularDeps: 0
-  typeOnlyCircularDeps: 36
-  entryRoots: 3
-  reachableFiles: 255
-  dormantFiles: 1
-  orphanedFiles: 1
-  testOnlyFiles: 0
-  unusedFilesCount: 0
-  unusedExportsCount: 39
->>>>>>> origin/master

@@ -3,15 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "2.9.0",
     "lastUpdated": "2026-07-24",
-<<<<<<< HEAD
     "totalFiles": 255,
     "totalModules": 11,
     "totalExports": 1627
-=======
-    "totalFiles": 256,
-    "totalModules": 11,
-    "totalExports": 1631
->>>>>>> origin/master
   },
   "entryPoints": [
     {
@@ -2689,83 +2683,6 @@
           "ScheduleOptions"
         ]
       },
-<<<<<<< HEAD
-=======
-      "src/agent/ReflectionManager.ts": {
-        "description": "Reflection Memory Manager (Phase 2 Sprint 8)",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash",
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "ReflectionEntity",
-              "ReflectionId",
-              "ReflectionRecord",
-              "ReflectionScope"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isReflectionMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/errors.js",
-            "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
-            ]
-          },
-          {
-            "file": "../utils/index.js",
-            "imports": [
-              "validateNonEmpty",
-              "validateNonEmptyArray"
-            ]
-          }
-        ],
-        "exports": [
-          "ReflectionManager"
-        ],
-        "classes": [
-          "ReflectionManager"
-        ],
-        "interfaces": [
-          "ReflectionManagerConfig",
-          "ReflectionInput",
-          "ReflectionEntityOptions",
-          "ListReflectionsOptions",
-          "RelevanceOptions"
-        ]
-      },
->>>>>>> origin/master
       "src/agent/RoleProfiles.ts": {
         "description": "Role Profiles",
         "externalDependencies": [],
@@ -2837,11 +2754,7 @@
           "RuleEvaluator"
         ],
         "interfaces": [
-<<<<<<< HEAD
           "EvaluatorRule"
-=======
-          "Rule"
->>>>>>> origin/master
         ]
       },
       "src/agent/SQLiteBackend.ts": {
@@ -3710,16 +3623,10 @@
             "reExport": true
           },
           {
-<<<<<<< HEAD
             "file": "./AgentReflectionManager.js",
             "imports": [
               "AgentReflectionManager",
               "AgentReflectionManager",
-=======
-            "file": "./ReflectionManager.js",
-            "imports": [
-              "ReflectionManager",
->>>>>>> origin/master
               "ArchiveReflectionResult",
               "ReflectionManagerConfig",
               "ReflectionInput",
@@ -3762,12 +3669,8 @@
           {
             "file": "./RuleEvaluator.js",
             "imports": [
-<<<<<<< HEAD
               "RuleEvaluator",
               "EvaluatorRule"
-=======
-              "RuleEvaluator"
->>>>>>> origin/master
             ],
             "reExport": true
           },
@@ -4041,12 +3944,8 @@
               "MemoryValidatorConfig",
               "MemoryValidationResult",
               "MemoryValidationIssue",
-<<<<<<< HEAD
               "MemoryContradiction",
               "MemoryContradiction"
-=======
-              "Contradiction"
->>>>>>> origin/master
             ],
             "reExport": true
           },
@@ -4325,10 +4224,7 @@
           "CreatePlanOptions",
           "PushSubGoalOptions",
           "ListPlansOptions",
-<<<<<<< HEAD
           "AgentReflectionManager",
-=======
->>>>>>> origin/master
           "ReflectionMemoryManager",
           "ArchiveReflectionResult",
           "ReflectionMemoryManagerConfig",
@@ -4349,10 +4245,7 @@
           "GroupingResult",
           "PatternDetector",
           "RuleEvaluator",
-<<<<<<< HEAD
           "EvaluatorRule",
-=======
->>>>>>> origin/master
           "SalienceEngine",
           "SalienceEngineConfig",
           "ContextWindowManager",
@@ -4458,10 +4351,7 @@
           "MemoryValidatorConfig",
           "MemoryValidationResult",
           "MemoryValidationIssue",
-<<<<<<< HEAD
           "MemoryContradiction",
-=======
->>>>>>> origin/master
           "MemoryValidatorContradiction",
           "TrajectoryCompressor",
           "TrajectoryCompressorConfig",
@@ -4575,13 +4465,7 @@
           "BridgePersistResult",
           "LookupOptions",
           "GetAllOptions",
-<<<<<<< HEAD
           "ReflectionManagerConfig",
-=======
-          "ReflectionManager",
-          "ReflectionManagerConfig",
-          "Contradiction",
->>>>>>> origin/master
           "IMemoryBackend",
           "MemoryTurn",
           "WeightedTurn",
@@ -4638,11 +4522,7 @@
           "CreatePlanOptions",
           "PushSubGoalOptions",
           "ListPlansOptions",
-<<<<<<< HEAD
           "AgentReflectionManager",
-=======
-          "ReflectionManager",
->>>>>>> origin/master
           "ArchiveReflectionResult",
           "ReflectionManagerConfig",
           "ReflectionInput",
@@ -4662,10 +4542,7 @@
           "GroupingResult",
           "PatternDetector",
           "RuleEvaluator",
-<<<<<<< HEAD
           "EvaluatorRule",
-=======
->>>>>>> origin/master
           "SalienceEngine",
           "SalienceEngineConfig",
           "ContextWindowManager",
@@ -4771,11 +4648,7 @@
           "MemoryValidatorConfig",
           "MemoryValidationResult",
           "MemoryValidationIssue",
-<<<<<<< HEAD
           "MemoryContradiction",
-=======
-          "Contradiction",
->>>>>>> origin/master
           "TrajectoryCompressor",
           "TrajectoryCompressorConfig",
           "DistillOptions",
@@ -5354,11 +5227,7 @@
             "file": "../../types/reconstruction.js",
             "imports": [
               "DialogueTurn",
-<<<<<<< HEAD
               "ConversationDistillationResult",
-=======
-              "DistillationResult",
->>>>>>> origin/master
               "DistilledSentence",
               "PersonalFact"
             ],
@@ -5411,11 +5280,7 @@
           {
             "file": "../../types/reconstruction.js",
             "imports": [
-<<<<<<< HEAD
               "ConversationDistillationResult"
-=======
-              "DistillationResult"
->>>>>>> origin/master
             ],
             "typeOnly": true
           },
@@ -5546,11 +5411,7 @@
             "imports": [
               "CTCGraphSnapshot",
               "DialogueTurn",
-<<<<<<< HEAD
               "ConversationDistillationResult",
-=======
-              "DistillationResult",
->>>>>>> origin/master
               "ReconstructionOptions",
               "ReconstructionResult"
             ],
@@ -5754,11 +5615,7 @@
           {
             "file": "../../utils/textSimilarity.js",
             "imports": [
-<<<<<<< HEAD
               "tokenizeStripped"
-=======
-              "tokenize"
->>>>>>> origin/master
             ]
           }
         ],
@@ -11934,7 +11791,6 @@
               "VectorSearchResult"
             ],
             "typeOnly": true
-<<<<<<< HEAD
           },
           {
             "file": "../utils/textSimilarity.js",
@@ -11948,8 +11804,6 @@
               "cosineSimilarity"
             ],
             "reExport": true
-=======
->>>>>>> origin/master
           }
         ],
         "exports": [
@@ -11958,12 +11812,9 @@
           "InMemoryVectorStore",
           "SQLiteVectorStore"
         ],
-<<<<<<< HEAD
         "reExported": [
           "cosineSimilarity"
         ],
-=======
->>>>>>> origin/master
         "classes": [
           "InMemoryVectorStore",
           "SQLiteVectorStore"
@@ -11972,10 +11823,6 @@
           "SQLiteStorageWithEmbeddings"
         ],
         "functions": [
-<<<<<<< HEAD
-=======
-          "cosineSimilarity",
->>>>>>> origin/master
           "createVectorStore"
         ]
       },
@@ -12899,11 +12746,7 @@
               "IssueOptions",
               "IssueResult",
               "KeyRecord",
-<<<<<<< HEAD
               "KeyValidationResult"
-=======
-              "ValidationResult"
->>>>>>> origin/master
             ],
             "reExport": true
           }
@@ -12929,11 +12772,7 @@
           "IssueResult",
           "KeyRecord",
           "APIKeyValidationResult",
-<<<<<<< HEAD
           "KeyValidationResult"
-=======
-          "ValidationResult"
->>>>>>> origin/master
         ],
         "reExported": [
           "PiiRedactor",
@@ -12955,11 +12794,7 @@
           "IssueOptions",
           "IssueResult",
           "KeyRecord",
-<<<<<<< HEAD
           "KeyValidationResult"
-=======
-          "ValidationResult"
->>>>>>> origin/master
         ]
       }
     },
@@ -13399,12 +13234,8 @@
               "CTCGraphSnapshot",
               "DistilledSentence",
               "PersonalFact",
-<<<<<<< HEAD
               "ConversationDistillationResult",
               "ConversationDistillationResult",
-=======
-              "DistillationResult",
->>>>>>> origin/master
               "DialogueTurn",
               "TraversalActionType",
               "TraversalStep",
@@ -13611,11 +13442,7 @@
           "CTCGraphSnapshot",
           "DistilledSentence",
           "PersonalFact",
-<<<<<<< HEAD
           "ConversationDistillationResult",
-=======
-          "DistillationResult",
->>>>>>> origin/master
           "DialogueTurn",
           "TraversalActionType",
           "TraversalStep",
@@ -13811,11 +13638,7 @@
           "CTCGraphSnapshot",
           "DistilledSentence",
           "PersonalFact",
-<<<<<<< HEAD
           "ConversationDistillationResult",
-=======
-          "DistillationResult",
->>>>>>> origin/master
           "DialogueTurn",
           "TraversalActionType",
           "TraversalStep",
@@ -13871,11 +13694,7 @@
           "CTCGraphSnapshot",
           "DistilledSentence",
           "PersonalFact",
-<<<<<<< HEAD
           "ConversationDistillationResult",
-=======
-          "DistillationResult",
->>>>>>> origin/master
           "DialogueTurn",
           "TraversalStep",
           "ReconstructionResult",
@@ -15479,10 +15298,7 @@
           "JsonSchema",
           "AsyncMutex",
           "AsyncMutexOptions",
-<<<<<<< HEAD
           "tokenizeStripped",
-=======
->>>>>>> origin/master
           "textTokenize",
           "buildTFVector",
           "textCosineSimilarity",
@@ -15747,10 +15563,7 @@
           "JsonSchema",
           "AsyncMutex",
           "AsyncMutexOptions",
-<<<<<<< HEAD
           "tokenizeStripped",
-=======
->>>>>>> origin/master
           "buildTFVector",
           "cosineSimilarity",
           "calculateTextSimilarity"
@@ -16150,11 +15963,7 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
-<<<<<<< HEAD
           "tokenizeStripped",
-=======
-          "tokenize",
->>>>>>> origin/master
           "tokenizeToSet",
           "tokenizeAlphanumeric",
           "buildTFVector",
@@ -16163,11 +15972,7 @@
           "jaccard"
         ],
         "functions": [
-<<<<<<< HEAD
           "tokenizeStripped",
-=======
-          "tokenize",
->>>>>>> origin/master
           "tokenizeToSet",
           "tokenizeAlphanumeric",
           "buildTFVector",
@@ -16242,61 +16047,6 @@
       }
     },
     "workers": {
-<<<<<<< HEAD
-=======
-      "src/workers/index.ts": {
-        "description": "Workers Module",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./levenshteinWorker.js",
-            "imports": [
-              "levenshteinDistance",
-              "similarity",
-              "searchEntities"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "@danielsimonjr/workerpool",
-            "imports": [
-              "Pool",
-              "PoolStats"
-            ],
-            "reExport": true,
-            "typeOnly": true
-          },
-          {
-            "file": "./levenshteinWorker.js",
-            "imports": [
-              "WorkerInput",
-              "MatchResult"
-            ],
-            "reExport": true,
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "levenshteinDistance",
-          "similarity",
-          "searchEntities",
-          "Pool",
-          "PoolStats",
-          "WorkerInput",
-          "MatchResult"
-        ],
-        "reExported": [
-          "levenshteinDistance",
-          "similarity",
-          "searchEntities",
-          "Pool",
-          "PoolStats",
-          "WorkerInput",
-          "MatchResult"
-        ]
-      },
->>>>>>> origin/master
       "src/workers/levenshteinWorker.ts": {
         "description": "Levenshtein Worker",
         "externalDependencies": [
@@ -16578,11 +16328,7 @@
           "src/agent/WorkingMemoryManager.ts",
           "src/agent/EntropyFilter.ts",
           "src/agent/ConsolidationPipeline.ts",
-<<<<<<< HEAD
           "src/agent/AgentReflectionManager.ts",
-=======
-          "src/agent/ReflectionManager.ts",
->>>>>>> origin/master
           "src/types/agent-memory.ts"
         ],
         [
@@ -16656,7 +16402,6 @@
           "src/types/agent-memory.ts",
           "src/agent/RoleProfiles.ts",
           "src/types/agent-memory.ts"
-<<<<<<< HEAD
         ],
         [
           "src/features/IOManager.ts",
@@ -16667,13 +16412,6 @@
       "total": 37,
       "runtimeCount": 0,
       "typeOnlyCount": 37
-=======
-        ]
-      ],
-      "total": 36,
-      "runtimeCount": 0,
-      "typeOnlyCount": 36
->>>>>>> origin/master
     },
     "layers": [
       {
@@ -16729,10 +16467,6 @@
           "src/agent/ProfileManager.ts",
           "src/agent/ProjectContextManager.ts",
           "src/agent/ProspectiveMemoryManager.ts",
-<<<<<<< HEAD
-=======
-          "src/agent/ReflectionManager.ts",
->>>>>>> origin/master
           "src/agent/RoleProfiles.ts",
           "src/agent/RuleEvaluator.ts",
           "src/agent/SQLiteBackend.ts",
@@ -16999,7 +16733,6 @@
       "src/workers/levenshteinWorker.ts"
     ],
     "reachableCount": 255,
-<<<<<<< HEAD
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
@@ -17026,35 +16759,5 @@
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
     "unusedExportsCount": 36
-=======
-    "dormantCount": 1,
-    "orphaned": [
-      "src/workers/index.ts"
-    ],
-    "testOnly": []
-  },
-  "statistics": {
-    "totalTypeScriptFiles": 256,
-    "totalModules": 11,
-    "totalLinesOfCode": 85702,
-    "totalExports": 1631,
-    "totalClasses": 215,
-    "totalInterfaces": 532,
-    "totalFunctions": 256,
-    "totalTypeGuards": 28,
-    "totalEnums": 4,
-    "totalConstants": 82,
-    "totalReExports": 1067,
-    "totalTypeOnlyImports": 397,
-    "runtimeCircularDeps": 0,
-    "typeOnlyCircularDeps": 36,
-    "entryRoots": 3,
-    "reachableFiles": 255,
-    "dormantFiles": 1,
-    "orphanedFiles": 1,
-    "testOnlyFiles": 0,
-    "unusedFilesCount": 0,
-    "unusedExportsCount": 39
->>>>>>> origin/master
   }
 }
