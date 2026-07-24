@@ -63,6 +63,59 @@ export interface IngestInput {
   metadata?: Record<string, unknown>;
 }
 
+// ==================== R4b/R5: ingest provenance + cost/quality dial ====================
+
+/** Relation type linking each ingested entity to its ingest manifest (R4b). */
+export const INGEST_DERIVED_FROM_RELATION = 'derived_from';
+
+/** Entity type of the per-run ingest manifest entity (R4b). */
+export const INGEST_MANIFEST_ENTITY_TYPE = 'ingest-manifest';
+
+/**
+ * Observation prefix for manifest chunk lines (house pattern: prefix +
+ * `JSON.stringify` payload — escape-safe, cf. `ProcedureStore`).
+ */
+export const INGEST_CHUNK_PREFIX = '[chunk]: ';
+
+/**
+ * Ingestion cost/quality dial (R5).
+ *
+ * - `'lightweight'` — heuristic extraction only; the LLM provider is NEVER
+ *   called, even when configured (distiller mode `'heuristic-only'`).
+ * - `'balanced'` (default) — current behaviour: LLM extraction when a
+ *   provider is present, heuristic fallback otherwise (distiller `'auto'`).
+ * - `'accurate'` — LLM extraction when available (distiller
+ *   `'llm-preferred'`) plus a validation pass via the {@link IngestOptions.validate}
+ *   hook. Without a validator, accurate degrades to balanced with stricter
+ *   heuristic thresholds (distiller `heuristicStrictness: 'strict'`).
+ */
+export type IngestMode = 'accurate' | 'balanced' | 'lightweight';
+
+/** Summed LLM token usage for one ingest run (R5). */
+export interface IngestTokenUsage {
+  input: number;
+  output: number;
+  /** True when any component was estimated via the chars/4 heuristic. */
+  approximate: boolean;
+}
+
+/** Artifacts produced by an ingest run, handed to the accurate-mode validator. */
+export interface IngestProduced {
+  ingestId: string;
+  /** Name of the `ingest-<id>` manifest entity. */
+  manifestEntity: string;
+  /** Chunk entities created this run (as written to storage). */
+  entities: Entity[];
+  /** `derived_from` relations created this run. */
+  relations: Relation[];
+}
+
+/** Feedback returned by an accurate-mode ingest validator. */
+export interface IngestValidationFeedback {
+  valid: boolean;
+  issues?: string[];
+}
+
 export interface IngestOptions {
   projectId?: string;
   entityType?: string;
@@ -71,6 +124,31 @@ export interface IngestOptions {
   maxChunkSize?: number;
   deduplicateThreshold?: number;
   dryRun?: boolean;
+  /** R5 cost/quality dial. Default `'balanced'` (= pre-R5 behaviour). */
+  mode?: IngestMode;
+  /**
+   * R4b: store the raw chunk TEXT in the manifest chunk lines. Default
+   * `false` — manifests store only `{ id, source, offset, length, hash }`
+   * so no source text is duplicated into the graph. Stored text is capped
+   * at 4000 chars per chunk (flagged `truncated: true` when cut).
+   */
+  keepSourceText?: boolean;
+  /**
+   * R5: optional LLM provider for distillation-based enrichment. When set
+   * (and mode is not `'lightweight'`), each ingested chunk is additionally
+   * distilled via `MemoryDistiller` and the resulting self-contained
+   * sentences are appended as `[distilled] …` observations. Absent ⇒
+   * ingest behaves exactly as before (raw observations only).
+   */
+  llmProvider?: import('../search/LLMQueryPlanner.js').LLMProvider;
+  /**
+   * R5: validation hook invoked in `'accurate'` mode (only) after entities,
+   * manifest and relations are written. This is the structural seam a
+   * relation-consolidation/validation stage plugs into later; ingest itself
+   * only records the feedback on the result (no corrective action).
+   * Skipped on `dryRun` (nothing is produced).
+   */
+  validate?: (produced: IngestProduced) => Promise<IngestValidationFeedback>;
 }
 
 export interface IngestResult {
@@ -78,6 +156,16 @@ export interface IngestResult {
   observationsAdded: number;
   skippedDuplicates: number;
   entityNames: string[];
+  /** R4b: stable id of this ingest run (8 hex chars). */
+  ingestId: string;
+  /** R4b: name of the `ingest-<id>` manifest entity (written unless dryRun or zero chunks). */
+  manifestEntity: string;
+  /** R4b: total source chunks produced from the input (including skipped duplicates). */
+  chunkCount: number;
+  /** R5: summed LLM token usage; present only when the LLM was invoked. */
+  tokenUsage?: IngestTokenUsage;
+  /** R5: feedback returned by the accurate-mode validator, when invoked. */
+  validation?: IngestValidationFeedback;
 }
 
 export interface BackupMetadata {
@@ -1355,6 +1443,18 @@ export class IOManager {
   /**
    * Ingest pre-normalized conversation data into the knowledge graph.
    * Format-agnostic: users normalize chat exports before calling.
+   *
+   * R4b provenance: every run writes an `ingest-<id>` manifest entity
+   * (`entityType: 'ingest-manifest'`) with one `[chunk]: <JSON>` line per
+   * source chunk (`{ id, source, offset, length, hash }`; raw text only when
+   * `keepSourceText: true`). Each created entity records per-observation
+   * `sourceRef` provenance via `observationMeta` and is linked to the
+   * manifest with a `derived_from` relation.
+   *
+   * R5 mode dial: see {@link IngestMode}. Distillation-based enrichment
+   * (extra `[distilled] …` observations + token accounting) activates only
+   * when an {@link IngestOptions.llmProvider} is supplied; without one every
+   * mode preserves the raw-observation behaviour.
    */
   async ingest(
     input: IngestInput | IngestInput[],
@@ -1364,54 +1464,142 @@ export class IOManager {
     const entityType = options.entityType ?? 'memory';
     const chunkBy = options.chunkBy ?? 'exchange';
     const dryRun = options.dryRun ?? false;
+    const mode: IngestMode = options.mode ?? 'balanced';
+    const keepSourceText = options.keepSourceText ?? false;
     const baseTags = [...(options.tags ?? []), 'ingested'];
+
+    const { createHash, randomBytes } = await import('crypto');
+    const ingestId = randomBytes(4).toString('hex');
+    const manifestEntity = `ingest-${ingestId}`;
 
     const result: IngestResult = {
       entitiesCreated: 0,
       observationsAdded: 0,
       skippedDuplicates: 0,
       entityNames: [],
+      ingestId,
+      manifestEntity,
+      chunkCount: 0,
     };
 
-    // Build dedup set from existing entities using content hash to avoid || delimiter collisions
-    const { createHash } = await import('crypto');
-    const graph = await this.storage.loadGraph();
-    const existingObsSet = new Set(
-      graph.entities.map(e => createHash('sha256').update(e.observations.join('\n')).digest('hex'))
-    );
+    // R5: distillation-based enrichment is active only when a provider is
+    // supplied. Mode maps onto the distiller dial: lightweight → heuristic-only
+    // (provider never called), balanced → auto, accurate → llm-preferred
+    // (strict heuristics when no external validator is configured).
+    let distiller: import('../agent/reconstruction/MemoryDistiller.js').MemoryDistiller | undefined;
+    if (options.llmProvider && !dryRun) {
+      const { MemoryDistiller } = await import('../agent/reconstruction/MemoryDistiller.js');
+      distiller = new MemoryDistiller(options.llmProvider, {
+        mode:
+          mode === 'lightweight' ? 'heuristic-only'
+          : mode === 'accurate' ? 'llm-preferred'
+          : 'auto',
+        heuristicStrictness: mode === 'accurate' && !options.validate ? 'strict' : 'normal',
+      });
+    }
 
-    // Create EntityManager once, reuse across all chunks
+    // Build dedup set from existing entities using content hash to avoid || delimiter collisions.
+    // Entities enriched by a previous run carry the raw-chunk hash in `contentHash`.
+    const graph = await this.storage.loadGraph();
+    const existingObsSet = new Set<string>();
+    for (const e of graph.entities) {
+      existingObsSet.add(createHash('sha256').update(e.observations.join('\n')).digest('hex'));
+      if (e.contentHash) existingObsSet.add(e.contentHash);
+    }
+
+    // Create managers once, reuse across all chunks
     const { EntityManager } = await import('../core/EntityManager.js');
     const em = new EntityManager(this.storage);
+
+    const manifestLines: string[] = [];
+    const createdEntities: Entity[] = [];
+    let chunkNo = 0;
+    let tokenUsage: IngestTokenUsage | undefined;
 
     for (const inp of inputs) {
       const chunks = this._chunkMessages(inp.messages, chunkBy, options.maxChunkSize);
       const source = inp.source ?? `ingest-${new Date().toISOString().slice(0, 10)}`;
+      // Char offset of the current chunk within this input's rendered text
+      // (chunks joined by '\n' — matches the hashed representation).
+      let offset = 0;
 
       for (let i = 0; i < chunks.length; i++) {
         const chunk = chunks[i];
         const entityName = `${source}-${String(i + 1).padStart(3, '0')}`;
         const observations = chunk.map(m => `[${m.role}] ${m.content}`);
-        const obsKey = createHash('sha256').update(observations.join('\n')).digest('hex');
+        const chunkText = observations.join('\n');
+        const obsKey = createHash('sha256').update(chunkText).digest('hex');
+
+        // R4b: manifest chunk line (escape-safe: prefix + JSON.stringify).
+        chunkNo++;
+        const chunkId = `${ingestId}-chunk-${chunkNo}`;
+        const chunkRecord: Record<string, unknown> = {
+          id: chunkId,
+          source,
+          offset,
+          length: chunkText.length,
+          hash: obsKey,
+        };
+        if (keepSourceText) {
+          const MAX_TEXT = 4000;
+          chunkRecord.text = chunkText.slice(0, MAX_TEXT);
+          if (chunkText.length > MAX_TEXT) chunkRecord.truncated = true;
+        }
+        manifestLines.push(`${INGEST_CHUNK_PREFIX}${JSON.stringify(chunkRecord)}`);
+        offset += chunkText.length + 1;
 
         if (existingObsSet.has(obsKey)) {
           result.skippedDuplicates++;
           continue;
         }
 
+        // R5: optional enrichment pass (after dedup — no tokens spent on skips).
+        let extraObs: string[] = [];
+        if (distiller) {
+          const turns = chunk.map((m, j) => ({
+            id: `${chunkId}:${j + 1}`,
+            speaker: m.role,
+            text: m.content,
+            timestamp: m.timestamp,
+          }));
+          const distilled = await distiller.distill(turns);
+          const seen = new Set(observations);
+          extraObs = distilled.sentences
+            .map(s => `[distilled] ${s.text}`.slice(0, 5000))
+            .filter(o => o.length > 0 && !seen.has(o) && (seen.add(o), true));
+          if (distilled.tokenUsage) {
+            tokenUsage = {
+              input: (tokenUsage?.input ?? 0) + distilled.tokenUsage.input,
+              output: (tokenUsage?.output ?? 0) + distilled.tokenUsage.output,
+              approximate: (tokenUsage?.approximate ?? false) || distilled.tokenUsage.approximate,
+            };
+          }
+        }
+
+        const allObs = [...observations, ...extraObs];
         result.entitiesCreated++;
-        result.observationsAdded += observations.length;
+        result.observationsAdded += allObs.length;
         result.entityNames.push(entityName);
 
         if (!dryRun) {
+          const recordedAt = new Date().toISOString();
           try {
-            await em.createEntities([{
+            const [created] = await em.createEntities([{
               name: entityName,
               entityType,
-              observations,
+              observations: allObs,
               tags: [...baseTags],
               projectId: options.projectId,
+              // R4b: raw-chunk hash — used for dedup on re-ingest.
+              contentHash: obsKey,
+              // R4b: per-observation source-chunk provenance.
+              observationMeta: allObs.map(content => ({
+                content,
+                recordedAt,
+                sourceRef: chunkId,
+              })),
             }]);
+            createdEntities.push(created);
           } catch (err) {
             throw new Error(
               `[ingest] Failed to create entity '${entityName}' (source: ${source}, chunk: ${i + 1}): ${err instanceof Error ? err.message : String(err)}`
@@ -1420,6 +1608,47 @@ export class IOManager {
           existingObsSet.add(obsKey);
         }
       }
+    }
+
+    result.chunkCount = chunkNo;
+    if (tokenUsage) result.tokenUsage = tokenUsage;
+
+    // R4b: write the manifest + derived_from relations.
+    const createdRelations: Relation[] = [];
+    if (!dryRun && manifestLines.length > 0) {
+      try {
+        await em.createEntities([{
+          name: manifestEntity,
+          entityType: INGEST_MANIFEST_ENTITY_TYPE,
+          observations: manifestLines,
+          tags: [...baseTags, INGEST_MANIFEST_ENTITY_TYPE],
+          projectId: options.projectId,
+        }]);
+      } catch (err) {
+        throw new Error(
+          `[ingest] Failed to create manifest '${manifestEntity}': ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+      if (createdEntities.length > 0) {
+        const { RelationManager } = await import('../core/RelationManager.js');
+        const rm = new RelationManager(this.storage);
+        const relations = createdEntities.map(e => ({
+          from: e.name,
+          to: manifestEntity,
+          relationType: INGEST_DERIVED_FROM_RELATION,
+        }));
+        createdRelations.push(...await rm.createRelations(relations));
+      }
+    }
+
+    // R5: accurate-mode validation pass (the consolidator seam).
+    if (mode === 'accurate' && options.validate && !dryRun) {
+      result.validation = await options.validate({
+        ingestId,
+        manifestEntity,
+        entities: createdEntities,
+        relations: createdRelations,
+      });
     }
 
     return result;

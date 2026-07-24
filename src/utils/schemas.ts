@@ -137,6 +137,8 @@ export const CreateEntitySchema = z.object({
     validFrom: z.string().optional(),
     validUntil: z.string().optional(),
     recordedAt: z.string().optional(),
+    // R4b: ingest source-chunk provenance (`<ingestId>-chunk-<n>`)
+    sourceRef: z.string().optional(),
   })).optional(),
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
 }).strict();
@@ -202,6 +204,8 @@ export const UpdateEntitySchema = z.object({
     validFrom: z.string().optional(),
     validUntil: z.string().optional(),
     recordedAt: z.string().optional(),
+    // R4b: ingest source-chunk provenance (`<ingestId>-chunk-<n>`)
+    sourceRef: z.string().optional(),
   })).optional(),
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
   // AgentEntity extension (src/types/agent-memory.ts)

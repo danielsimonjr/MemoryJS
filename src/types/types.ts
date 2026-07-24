@@ -191,6 +191,12 @@ export interface Entity {
     validUntil?: string;
     /** ISO 8601 — when this fact was recorded (bitemporal axis). */
     recordedAt?: string;
+    /**
+     * R4b provenance: id of the ingest source chunk that produced this
+     * observation (`<ingestId>-chunk-<n>`). Resolvable against the
+     * `ingest-<ingestId>` manifest entity written by `IOManager.ingest()`.
+     */
+    sourceRef?: string;
   }>;
 }
 

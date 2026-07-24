@@ -132,6 +132,17 @@ export interface ConversationDistillationResult {
   personalFacts: PersonalFact[];
   /** sentence-id → extracted cue surface forms. */
   keywords: Record<string, string[]>;
+  /**
+   * R5: LLM token usage for this distillation run. Present only when the
+   * LLM path was actually invoked. `approximate: true` marks counts derived
+   * from the chars/4 heuristic (the base {@link LLMProvider} surface returns
+   * no usage); exact counts come from providers that expose `getLastUsage()`.
+   */
+  tokenUsage?: {
+    input: number;
+    output: number;
+    approximate: boolean;
+  };
 }
 
 /** Raw dialogue input accepted by the distiller. */
