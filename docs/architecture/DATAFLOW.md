@@ -1,7 +1,7 @@
 # MemoryJS - Data Flow Documentation
 
-**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
-**Last Updated**: 2026-05-14
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence)
+**Last Updated**: 2026-07-24
 
 > Most data-flow patterns documented here remain accurate. New flows added
 > in v1.9–v1.15: temporal-validity invalidation cascade (η.4.4),
@@ -44,6 +44,23 @@
 >   intentions, promotes them to `'episodic'` with `prospective-fulfilled`
 >   tag, branches on `storage.updateEntity` boolean to surface
 >   vanished-mid-batch as errors.
+>
+> **Knowledge-graph-as-core convergence (2026-07)** added two more flows,
+> both documented in full below:
+> - **Entity rename** (`EntityManager.renameEntity`): atomic rewrite of
+>   every stored `name` reference, followed by a fixed three-event emission
+>   sequence (`entity:renamed` → `entity:deleted` → `entity:created`) — see
+>   [Entity Rename Flow](#entity-rename-flow).
+> - **Graph-connectivity signal propagation** (`GraphRankPrior`): a single
+>   cached PageRank/degree computation feeding four independent opt-in
+>   consumers (`RankedSearch` boost, `HybridScorer` graph channel,
+>   `SalienceEngine` connectivity weight, `DecayEngine` connectivity
+>   protection) — see
+>   [Graph-Connectivity Signal Flow](#graph-connectivity-signal-flow).
+> Also: `SQLiteStorage` now emits the same `GraphEventEmitter` events as
+> JSONL `GraphStorage` (see the updated
+> [TF-IDF Event Sync Flow](#tf-idf-event-sync-flow)), so every event-driven
+> derived view works on both backends.
 
 ---
 
@@ -58,9 +75,10 @@
 7. [Compression Operations](#compression-operations)
 8. [Import/Export Operations](#importexport-operations)
 9. [Agent Memory Operations](#agent-memory-operations)
-10. [Caching Strategy](#caching-strategy)
-11. [Index Architecture](#index-architecture)
-12. [Error Handling Flow](#error-handling-flow)
+10. [Graph-Connectivity Signal Flow](#graph-connectivity-signal-flow)
+11. [Caching Strategy](#caching-strategy)
+12. [Index Architecture](#index-architecture)
+13. [Error Handling Flow](#error-handling-flow)
 
 ---
 
@@ -298,6 +316,65 @@ addObservations([{ entityName, contents }])
       ▼
    Return: { entityName, addedObservations }[]
 ```
+
+### Entity Rename Flow
+
+```
+renameEntity(oldName, newName)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. VALIDATE NEW NAME                                         │
+│    EntityNamesSchema.safeParse([newName])                    │
+│    └── Same checks as createEntities (length, reserved        │
+│        namespace prefixes, etc.)                              │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. LOOKUP + EXISTENCE CHECKS                                  │
+│    ├── oldName must exist → else EntityNotFoundError          │
+│    └── newName must NOT exist → else DuplicateEntityError     │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. STORAGE-LEVEL ATOMIC REWRITE                               │
+│    storage.renameEntity(oldName, newName) — optional          │
+│    IGraphStorage member, implemented by both GraphStorage      │
+│    (JSONL, segment-routing-aware) and SQLiteStorage:           │
+│    ├── Rewrite Relation.from / Relation.to                    │
+│    ├── Rewrite other entities' parentId                       │
+│    ├── Rewrite version-chain fields (parentEntityName,        │
+│    │   rootEntityName, supersededBy)                           │
+│    └── Preserve id / createdAt; bump lastModified              │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. REMAP REFINDEX ALIASES                                     │
+│    Any stable-name aliases pointing at oldName now point       │
+│    at newName (only if a RefIndex is wired — ManagerContext    │
+│    does this automatically)                                   │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 5. EMIT EVENTS (fixed order, exactly once)                    │
+│    events.emitEntityRenamed(oldName, newName, entity)          │
+│      └── 'entity:renamed'                                     │
+│    events.emit('entity:deleted', oldName)                     │
+│    events.emit('entity:created', entity)                      │
+│    └── Lets create/delete-only derived views (TF-IDF sync,     │
+│        GraphRankPrior) stay consistent without learning the    │
+│        new event type. Fires on both JSONL and SQLite.         │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+   Return: Entity (renamed)
+```
+
+**Known limitations**: archived snapshots, the immutable audit log, and free-text soft references (e.g. `promotedFrom` inside agent-memory blobs) keep the old name — only structural references (relations, `parentId`, version chain, `RefIndex`) are rewritten.
 
 ---
 
@@ -619,10 +696,10 @@ Query String
 
 ### TF-IDF Event Sync Flow
 
-`TFIDFEventSync` listens to `GraphEventEmitter` to keep the TF-IDF index current:
+`TFIDFEventSync` listens to `GraphEventEmitter` to keep the TF-IDF index current. **Both storage backends now emit identical events** — `SQLiteStorage.events` has full parity with JSONL `GraphStorage.events` (previously only JSONL fired these events, so TF-IDF sync silently went stale on SQLite):
 
 ```
-GraphEventEmitter
+GraphEventEmitter (GraphStorage OR SQLiteStorage — same event surface)
       │
       ├── entity:created ──► TFIDFEventSync.addToIndex(entities)
       │                       └── Index new entity documents
@@ -633,9 +710,16 @@ GraphEventEmitter
       ├── entity:deleted ──► TFIDFEventSync.removeFromIndex(names)
       │                       └── Remove entity documents from index
       │
+      ├── entity:renamed ──► (handled via the entity:deleted + entity:created
+      │                       that immediately follow — see Entity Rename
+      │                       Flow above; TFIDFEventSync does not need to
+      │                       special-case the rename event itself)
+      │
       └── observation:added ─► TFIDFEventSync.reindex(entities)
                                 └── Re-index affected entity documents
 ```
+
+`GraphRankPrior` subscribes to the same emitter (`entity:created/updated/deleted`, `relation:created/deleted`, plus `graph:saved` — the latter covers manager-level batch mutations like `EntityManager.createEntities`, which persist via a full `saveGraph` and emit no per-item events) to invalidate its cached PageRank/degree scores. See [Graph-Connectivity Signal Flow](#graph-connectivity-signal-flow).
 
 ---
 
@@ -1165,6 +1249,65 @@ createAgentMemory(agentId, entityData)
       │
       ▼
    Return: AgentEntity
+```
+
+---
+
+## Graph-Connectivity Signal Flow
+
+All four consumers below share a single cached `GraphRankPrior` instance per `ManagerContext` (`ctx.graphRankPrior`) rather than each recomputing PageRank independently. Every knob defaults to `0`/off — when unset, `GraphRankPrior` is never constructed and behavior is byte-for-byte identical to before the feature existed.
+
+```
+GraphRankPrior (wraps GraphTraversal)
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. FIRST SCORE ACCESS (getScores / getPageRank / getDegree)  │
+│    ├── cache hit? → return cached ConnectivityCache          │
+│    └── cache miss/stale → compute():                         │
+│        ├── calculateDegreeCentrality('both', 0) — O(V + E)   │
+│        ├── if entityCount <= maxPageRankEntities (50,000):    │
+│        │     calculatePageRank(dampingFactor=0.85)            │
+│        │   else: skip PageRank, use degree as the signal       │
+│        └── minMaxNormalize(pageRank ?? degree) → [0, 1]        │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼ (normalized scores feed four independent, opt-in consumers)
+┌─────────────────────────────────────────────────────────────┐
+│ RankedSearch.setGraphPrior(prior, boost)                      │
+│   score × (1 + boost × normalizedPageRank)                     │
+│   Env: MEMORY_RANKED_GRAPH_BOOST (default 0)                   │
+├─────────────────────────────────────────────────────────────┤
+│ HybridScorer graph channel (HybridSearchManager)               │
+│   combined += graphScore × effectiveWeights.graph               │
+│   matchedLayers includes 'graph' when it contributed            │
+│   Env: MEMORY_HYBRID_GRAPH_WEIGHT (default 0)                   │
+│   expandNeighbors: one-hop neighbors added at damping 0.3 ×      │
+│   parent's combined score                                       │
+├─────────────────────────────────────────────────────────────┤
+│ SalienceEngine connectivity boost                               │
+│   weighted sum += connectivityWeight × normalizedDegree          │
+│   (other weights are NOT renormalized)                          │
+│   Env: MEMORY_SALIENCE_CONNECTIVITY_WEIGHT /                    │
+│        AGENT_MEMORY_SALIENCE_CONNECTIVITY_WEIGHT (default 0)    │
+├─────────────────────────────────────────────────────────────┤
+│ DecayEngine connectivity protection (legacy decay path only)    │
+│   effectiveDecayFactor = decayFactor +                           │
+│     (1 − decayFactor) × connectivityProtection × normalizedDegree│
+│   Requires a degree snapshot — refreshed by batch decay ops       │
+│   or refreshConnectivitySnapshot()                                │
+│   Env: MEMORY_DECAY_CONNECTIVITY_PROTECTION /                    │
+│        AGENT_MEMORY_DECAY_CONNECTIVITY_PROTECTION (default 0)    │
+└─────────────────────────────────────────────────────────────┘
+      │
+      ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. INVALIDATION (event-driven, both storage backends)         │
+│    GraphEventEmitter: entity:created/updated/deleted,          │
+│    relation:created/deleted, graph:saved → prior.invalidate()  │
+│    └── Next access recomputes lazily; concurrent callers        │
+│        share one in-flight computation                          │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---

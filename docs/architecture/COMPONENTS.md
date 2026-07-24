@@ -1,7 +1,7 @@
 # MemoryJS - Component Reference
 
-**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
-**Last Updated**: 2026-05-14
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, graph-connectivity signals)
+**Last Updated**: 2026-07-24
 
 ---
 
@@ -166,6 +166,12 @@ effective_importance = base_importance × decay_factor × strength_multiplier
 decay_factor = e^(-ln(2) × age_hours / half_life_hours)
 ```
 
+**Connectivity protection** (opt-in, `connectivityProtection` config, default 0, range `[0, 1]`) — legacy decay path only; well-connected entities decay slower:
+```
+effective_decay_factor = decay_factor + (1 − decay_factor) × connectivityProtection × normalizedDegree
+```
+Requires a degree snapshot, refreshed by batch decay operations or the public `refreshConnectivitySnapshot()` method; before the first refresh the protection term is a no-op. Env: `MEMORY_DECAY_CONNECTIVITY_PROTECTION` / `AGENT_MEMORY_DECAY_CONNECTIVITY_PROTECTION`.
+
 ---
 
 ### DecayScheduler (`agent/DecayScheduler.ts`)
@@ -206,6 +212,7 @@ export class SalienceEngine {
 - Frequency boost
 - Context relevance
 - Novelty bonus
+- Connectivity boost (opt-in, `connectivityWeight` config, default 0) — normalized entity degree added to the weighted sum; other weights are not renormalized. Surfaced as `SalienceComponents.connectivityBoost`. Env: `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` / `AGENT_MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`.
 
 ---
 
@@ -401,6 +408,8 @@ export class CompositeDistillationPolicy implements IDistillationPolicy {
 
 export class NoOpDistillationPolicy implements IDistillationPolicy {
   // Pass-through; used when distillation is disabled
+}
+```
 
 ---
 
@@ -750,20 +759,49 @@ Backfill from existing `MemorySource` shape (`method` + `reliability`) via `infe
 
 ---
 
+## Core Components
+
+### EntityManager (`core/EntityManager.ts`) — stable identity + rename
+
+**Purpose**: Entity CRUD, tag operations, and (new) atomic rename with reference rewriting
+
+```typescript
+export class EntityManager {
+  constructor(storage: IGraphStorage, options?: { defaultProjectId?: string })
+
+  async createEntities(entities: Entity[]): Promise<Entity[]>
+  async listEntities(filter?: { entityType?: string }): Promise<Entity[]>
+  async renameEntity(oldName: string, newName: string): Promise<Entity>
+  // ...
+}
+```
+
+`Entity.id?: string` — a stable opaque UUID assigned by `createEntities` (`crypto.randomUUID()`) and preserved across updates/renames on both backends (SQLite auto-migrates the column with a NULL backfill at init). `name` remains the public key; `id` is forward-compat infrastructure for a future v2 reference migration.
+
+`listEntities(filter?)` is the public bulk-enumeration surface — replaces the old `entityManager['storage']` private-access pattern. A `filter.entityType` takes the O(k) `TypeIndex` fast path instead of a full-graph scan.
+
+`renameEntity(oldName, newName)` validates the new name like `createEntities`, then delegates to the storage-level `renameEntity` primitive (optional member on `IGraphStorage`; implemented by both `GraphStorage` and `SQLiteStorage`) which atomically rewrites `Relation.from`/`Relation.to`, other entities' `parentId`, and version-chain fields (`parentEntityName`, `rootEntityName`, `supersededBy`). Registered `RefIndex` aliases are remapped. Throws `EntityNotFoundError` / `DuplicateEntityError`. Segment-mode JSONL storage (`MEMORY_STORAGE_SEGMENT_COUNT`) is routing-aware — a rename that changes an entity's shard is handled correctly. Emits `entity:renamed`, then `entity:deleted` (old name), then `entity:created` (renamed entity) so create/delete-only derived views (TF-IDF sync, `GraphRankPrior`) stay consistent without learning the new event type.
+
+---
+
 ### GraphEventEmitter (`core/GraphEventEmitter.ts`)
 
-**Purpose**: Event-driven updates for TF-IDF sync
+**Purpose**: Event-driven updates for TF-IDF sync, rank priors, and other derived views
 
 ```typescript
 export class GraphEventEmitter {
-  on(event: GraphEvent, listener: EventListener): void
+  on(event: GraphEvent, listener: EventListener): () => void  // returns unsubscribe fn
   off(event: GraphEvent, listener: EventListener): void
   emit(event: GraphEvent, data: EventData): void
+  emitEntityRenamed(oldName: string, newName: string, entity: Entity): void
 }
 
-type GraphEvent = 'entity:created' | 'entity:updated' | 'entity:deleted' |
-                  'relation:created' | 'relation:deleted' | 'graph:loaded';
+type GraphEvent = 'entity:created' | 'entity:updated' | 'entity:deleted' | 'entity:renamed' |
+                  'relation:created' | 'relation:deleted' | 'observation:added' |
+                  'observation:deleted' | 'graph:saved' | 'graph:loaded';
 ```
+
+**Event parity across backends**: `SQLiteStorage` now exposes its own `GraphEventEmitter` (`storage.events`) with the same event surface as `GraphStorage` (JSONL) — `graph:loaded`/`graph:saved`, `entity:created`/`updated`, `relation:created`, and the rename sequence (emitted once at the `EntityManager` level, not duplicated per-backend). `IGraphStorage.events?` is an optional interface member so third-party/test storage implementations without an emitter remain valid; derived views degrade gracefully when it's absent. This means event-driven derived views — `TFIDFEventSync`, `GraphRankPrior`, the columnar observation store (`MEMORY_OBSERVATIONS_COLUMNAR`) — now work identically on both the JSONL and SQLite backends, where previously they only worked on JSONL.
 
 ---
 
@@ -835,6 +873,8 @@ export class RankedSearch {
     query: string,
     options?: RankedSearchOptions
   ): Promise<SearchResult[]>
+
+  setGraphPrior(prior: GraphRankPrior, boost: number): void
 }
 
 interface SearchResult {
@@ -843,6 +883,30 @@ interface SearchResult {
   matchedFields: string[];
 }
 ```
+
+`setGraphPrior` is an opt-in post-scoring boost: `score × (1 + boost × normalizedPageRank)`. Wired automatically by `ManagerContext.rankedSearch` when `MEMORY_RANKED_GRAPH_BOOST > 0`; otherwise the prior is never constructed and there is zero overhead.
+
+---
+
+### GraphRankPrior (`search/GraphRankPrior.ts`) — `@experimental`
+
+**Purpose**: Cached graph-connectivity ranking signal (normalized PageRank with a degree-centrality fallback), shared by `RankedSearch`, `HybridSearchManager`, `SalienceEngine`, and `DecayEngine`
+
+```typescript
+export class GraphRankPrior {
+  constructor(source: GraphTraversal | GraphStorage, options?: GraphRankPriorOptions)
+
+  async getScores(names: string[]): Promise<Map<string, number>>  // normalized [0, 1]
+  async getPageRank(entityName: string): Promise<number>
+  async getDegree(entityName: string): Promise<number>
+  neighbors(entityName: string): string[]           // one-hop, both directions
+  isDegreeFallback(): boolean | undefined
+  invalidate(): void
+  dispose(): void
+}
+```
+
+Wraps `GraphTraversal`'s existing PageRank/degree-centrality implementations and caches the full-graph computation until invalidated. Above `maxPageRankEntities` (default 50,000) PageRank is skipped in favor of a single O(V + E) degree-centrality pass. **Event-invalidated**: subscribes to `entity:created/updated/deleted`, `relation:created/deleted`, and `graph:saved` on the storage's `GraphEventEmitter` — the `graph:saved` subscription matters because manager-level batch mutations (`EntityManager.createEntities`, `RelationManager.createRelations`, etc.) persist via a full `saveGraph` and emit no per-item events; without it the prior would silently serve stale rankings after any batch write, on both backends. Wired as the `ctx.graphRankPrior` lazy getter — constructing it is cheap; the PageRank computation itself only runs on first score access.
 
 ---
 
@@ -935,14 +999,15 @@ export class SemanticSearch {
 
 ### HybridSearchManager (`search/HybridSearchManager.ts`)
 
-**Purpose**: Three-layer hybrid search combining semantic, lexical, and symbolic signals
+**Purpose**: Layered hybrid search combining semantic, lexical, symbolic, and (opt-in) graph-connectivity signals
 
 ```typescript
 export class HybridSearchManager {
   constructor(
-    storage: IGraphStorage,
-    semanticSearch?: SemanticSearch,
-    tfidfManager?: TFIDFIndexManager
+    semanticSearch: SemanticSearch | null,
+    rankedSearch: RankedSearch,
+    graphPrior?: GraphRankPrior,
+    defaults?: { graphWeight?: number; expandNeighbors?: boolean }
   )
 
   async search(
@@ -952,7 +1017,7 @@ export class HybridSearchManager {
 }
 
 interface HybridSearchOptions {
-  weights?: { semantic?: number; lexical?: number; symbolic?: number };
+  weights?: { semantic?: number; lexical?: number; symbolic?: number; graph?: number };
   filters?: SymbolicFilters;
   limit?: number;
   minScore?: number;
@@ -963,6 +1028,9 @@ interface HybridSearchOptions {
 - **Semantic**: Vector similarity via embeddings (default weight: 0.4)
 - **Lexical**: TF-IDF/BM25 text matching (default weight: 0.4)
 - **Symbolic**: Metadata filtering (default weight: 0.2)
+- **Graph** (opt-in, default weight: 0): normalized PageRank via `GraphRankPrior`; `HybridSearchResult.matchedLayers` includes `'graph'` when it contributed. `expandNeighbors` additionally pulls in one-hop neighbors of top results at damping 0.3 × the parent's combined score.
+
+Wired as the `ctx.hybridSearchManager` lazy getter, which reads `MEMORY_HYBRID_GRAPH_WEIGHT` once at first access — when 0/unset (the default), `GraphRankPrior` is never attached and behavior is identical to before the graph channel existed.
 
 ---
 
@@ -1171,7 +1239,7 @@ Query completion and suggestion generation based on entity names, types, tags, a
 Metadata-based filtering by importance range, tags, entity types, and date ranges. Provides the symbolic layer for hybrid search scoring.
 
 #### HybridScorer (`search/HybridScorer.ts`)
-Score fusion for hybrid search results. Normalizes and combines scores from semantic, lexical, and symbolic layers using configurable weights.
+Score fusion for hybrid search results. Normalizes and combines scores from semantic, lexical, symbolic, and (opt-in) graph-connectivity layers using configurable `HybridWeights` (`graph` defaults to 0 — inert unless a caller opts in). `ScoredResult.matchedLayers` can include `'graph'`; the pre-existing `HybridSearchLayer` type alias is `@deprecated` in favor of the union living directly on `matchedLayers`.
 
 #### ProximitySearch (`search/ProximitySearch.ts`)
 Scores entities based on term proximity within observations. Terms appearing closer together receive higher relevance scores.
@@ -1688,9 +1756,15 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 │    │     ├── BooleanSearch ────────┤   GraphStorage (JSONL)  │
 │    │     ├── FuzzySearch ──────────┤   (+ NGramIndex)   OR   │
 │    │     ├── SemanticSearch ───────┤   SQLiteStorage         │
-│    │     ├── HybridSearchMgr ──────┤                         │
-│    │     ├── TemporalSearch ───────┤                         │
-│    │     └── LLMSearchExecutor ────┤                         │
+│    │     ├── HybridSearchMgr ──────┤   (both expose          │
+│    │     ├── TemporalSearch ───────┤    .events: GraphEvent- │
+│    │     └── LLMSearchExecutor ────┤    Emitter — full parity)│
+│    │                               │                         │
+│    ├── GraphRankPrior ─────────────┤  (feeds RankedSearch,   │
+│    │                               │   HybridSearchMgr,      │
+│    │                               │   SalienceEngine,       │
+│    │                               │   DecayEngine — all     │
+│    │                               │   opt-in, default off)  │
 │    │                               │                         │
 │    ├── IOManager ──────────────────┤                         │
 │    │                               │                         │
@@ -1717,5 +1791,5 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-05-14
+**Last Updated**: 2026-07-24
 **Maintained By**: Daniel Simon Jr.
