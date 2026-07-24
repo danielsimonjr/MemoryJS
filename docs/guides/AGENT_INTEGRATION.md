@@ -1,7 +1,7 @@
 # AI Agent Integration Guide
 
 **Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Last Updated**: 2026-07-24
 
 > **Updated agent-memory surface (v1.7+):**
 > - **Role profiles** — `MEMORY_AGENT_ROLE` env var (`researcher` /
@@ -20,6 +20,14 @@
 > - **Multi-agent collaboration** (η.5.5) — visibility expansion (role +
 >   time-window gates), OCC, audit attribution enforcer, conflict view.
 > - **RBAC** (η.6.1) — `ctx.rbacMiddleware.checkPermission()`.
+> - **Graph connectivity signals** (Unreleased) — opt-in, default 0 = off:
+>   `ctx.graphRankPrior` (cached PageRank) feeds a `graph` channel in
+>   `ctx.hybridSearchManager` / `RankedSearch.setGraphPrior()`;
+>   `SalienceEngine.connectivityWeight` and `DecayEngine.connectivityProtection`
+>   add the same normalized-degree signal to salience scoring and decay.
+> - **Stable entity ids + rename** (Unreleased) — `Entity.id` (UUID,
+>   forward-compat) and `EntityManager.renameEntity()` for atomic renames
+>   that keep relations, hierarchy, and refs consistent.
 >
 > See the Quick-Start sections of [README.md](../../README.md) for working
 > examples covering each new surface.
@@ -323,19 +331,24 @@ await ctx.relationManager.createRelations([
 | User Query Type | Best Search Strategy | Why |
 |-----------------|---------------------|-----|
 | Direct recall | `search()` | Fast, exact matching |
-| "What do I know about X" | `searchRanked()` | Relevance scoring |
+| "What do I know about X" | `ctx.rankedSearch.searchNodesRanked()` | Relevance scoring |
 | Typo-prone input | `fuzzySearch()` | Typo tolerance |
 | Semantic questions | `semanticSearch()` | Meaning-based |
-| Complex retrieval | `hybridSearch()` | Combined signals |
+| Complex retrieval | `ctx.hybridSearchManager.search()` | Combined signals |
 
 ### RAG Retrieval Pattern
 
 ```typescript
 async function retrieveContext(userQuery: string): Promise<string> {
   // 1. Hybrid search for comprehensive retrieval
-  const hybridResults = await ctx.searchManager.hybridSearch(userQuery, {
-    weights: { semantic: 0.4, lexical: 0.4, symbolic: 0.2 },
-    filters: { minImportance: 3 },
+  // ctx.hybridSearchManager (lazy getter) takes the loaded graph + query;
+  // returns HybridSearchResult[] directly (not wrapped in { results }).
+  const graph = await ctx.storage.loadGraph();
+  const hybridResults = await ctx.hybridSearchManager.search(graph, userQuery, {
+    semanticWeight: 0.4,
+    lexicalWeight: 0.4,
+    symbolicWeight: 0.2,
+    symbolic: { importance: { min: 3 } },
     limit: 10
   });
 
@@ -347,7 +360,7 @@ async function retrieveContext(userQuery: string): Promise<string> {
 
   // 3. Get related entities via graph traversal
   const relatedNames = new Set<string>();
-  for (const result of hybridResults.results.slice(0, 3)) {
+  for (const result of hybridResults.slice(0, 3)) {
     const { incoming, outgoing } = await ctx.relationManager
       .getRelationsForEntity(result.entity.name);
     [...incoming, ...outgoing].forEach(r => {
@@ -359,7 +372,7 @@ async function retrieveContext(userQuery: string): Promise<string> {
   // 4. Format for LLM context
   return formatForContext([
     ...criticalEntities.entities,
-    ...hybridResults.results.map(r => r.entity),
+    ...hybridResults.map(r => r.entity),
     ...await getEntitiesByNames([...relatedNames])
   ]);
 }
@@ -395,11 +408,12 @@ async function getProjectContext(projectName: string): Promise<KnowledgeGraph> {
 }
 
 // For "What did we discuss about X?"
+// TF-IDF ranked search lives on ctx.rankedSearch, with positional
+// (query, tags?, minImportance?, maxImportance?, limit?) args.
 async function getConversationHistory(topic: string): Promise<Entity[]> {
-  return ctx.searchManager.searchRanked(topic, {
-    tags: ['conversation'],
-    limit: 10
-  }).then(r => r.map(sr => sr.entity));
+  return ctx.rankedSearch
+    .searchNodesRanked(topic, ['conversation'], undefined, undefined, 10)
+    .then(r => r.map(sr => sr.entity));
 }
 ```
 
@@ -443,7 +457,7 @@ async function processUserMessage(message: string, intent: Intent) {
 
 async function handleCorrection(original: string, corrected: string) {
   // Find original fact
-  const results = await ctx.searchManager.searchRanked(original, { limit: 1 });
+  const results = await ctx.rankedSearch.searchNodesRanked(original, undefined, undefined, undefined, 1);
 
   if (results.length > 0) {
     const entity = results[0].entity;
@@ -585,12 +599,13 @@ class ConversationMemory {
     const session = await this.ctx.entityManager.getEntityByName(`session_${this.sessionId}`);
 
     // Search for relevant memories
-    const relevant = await this.ctx.searchManager.hybridSearch(currentQuery, {
+    const graph = await this.ctx.storage.loadGraph();
+    const relevant = await this.ctx.hybridSearchManager.search(graph, currentQuery, {
       limit: 10,
-      filters: { minImportance: 3 }
+      symbolic: { importance: { min: 3 } }
     });
 
-    return formatContext(session, relevant.results);
+    return formatContext(session, relevant);
   }
 }
 ```
@@ -814,16 +829,17 @@ const recallTool = {
     required: ['query']
   },
   handler: async ({ query, limit = 10 }) => {
-    const results = await ctx.searchManager.hybridSearch(query, {
+    const graph = await ctx.storage.loadGraph();
+    const results = await ctx.hybridSearchManager.search(graph, query, {
       limit,
-      filters: { minImportance: 2 }
+      symbolic: { importance: { min: 2 } }
     });
     return {
-      memories: results.results.map(r => ({
+      memories: results.map(r => ({
         name: r.entity.name,
         type: r.entity.entityType,
         facts: r.entity.observations,
-        score: r.score
+        score: r.scores.combined
       }))
     };
   }
@@ -926,10 +942,11 @@ server.setRequestHandler('tools/call', async (request) => {
       return { content: [{ type: 'text', text: JSON.stringify(entities[0]) }] };
 
     case 'search_memory':
-      const results = await ctx.searchManager.hybridSearch(args.query, {
+      const graph = await ctx.storage.loadGraph();
+      const results = await ctx.hybridSearchManager.search(graph, args.query, {
         limit: args.limit || 10
       });
-      return { content: [{ type: 'text', text: JSON.stringify(results.results) }] };
+      return { content: [{ type: 'text', text: JSON.stringify(results) }] };
 
     case 'add_relation':
       await ctx.relationManager.createRelations([args]);
@@ -954,7 +971,7 @@ await server.connect(transport);
 | Entity Count | Recommended Storage | Search Strategy |
 |--------------|--------------------|-----------------|
 | < 500 | JSONL | Any |
-| 500-2,000 | JSONL or SQLite | Prefer `searchRanked` |
+| 500-2,000 | JSONL or SQLite | Prefer `ctx.rankedSearch` |
 | 2,000-10,000 | SQLite | Use filters, limit results |
 | > 10,000 | SQLite | Aggressive filtering, pagination |
 
@@ -968,7 +985,7 @@ await ctx.entityManager.createEntities(manyEntities);  // Single I/O
 await ctx.searchManager.search(query, { minImportance: 5 });  // Reduce results
 
 // 3. Limit results
-await ctx.searchManager.hybridSearch(query, { limit: 10 });  // Cap processing
+await ctx.hybridSearchManager.search(await ctx.storage.loadGraph(), query, { limit: 10 });  // Cap processing
 
 // 4. Use specific searches for specific needs
 await ctx.searchManager.search('exact term');      // Fast, exact
@@ -1079,10 +1096,13 @@ class AgentMemory {
     const profile = await this.ctx.entityManager.getEntityByName('user_profile');
 
     // Get relevant memories
-    const results = await this.ctx.searchManager.hybridSearch(query, {
-      weights: { semantic: 0.4, lexical: 0.4, symbolic: 0.2 },
+    const graph = await this.ctx.storage.loadGraph();
+    const results = await this.ctx.hybridSearchManager.search(graph, query, {
+      semanticWeight: 0.4,
+      lexicalWeight: 0.4,
+      symbolicWeight: 0.2,
       limit: 10,
-      filters: { minImportance: 3 }
+      symbolic: { importance: { min: 3 } }
     });
 
     // Get active preferences
@@ -1094,8 +1114,8 @@ class AgentMemory {
     // Format context
     let context = `## User Profile\n${profile?.observations.join('\n')}\n\n`;
     context += `## Preferences\n${prefs.entities.map(e => e.observations.join('; ')).join('\n')}\n\n`;
-    context += `## Relevant Memories\n${results.results.map(r =>
-      `- ${r.entity.name}: ${r.entity.observations[0]} (score: ${r.score.toFixed(2)})`
+    context += `## Relevant Memories\n${results.map(r =>
+      `- ${r.entity.name}: ${r.entity.observations[0]} (score: ${r.scores.combined.toFixed(2)})`
     ).join('\n')}`;
 
     return context;
@@ -1133,7 +1153,7 @@ console.log(context);
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-04-25
+**Last Updated**: 2026-07-24
 
 ---
 
@@ -1452,6 +1472,65 @@ const jsonld = ctx.ioManager.exportGraph(graph, 'json-ld');    // JSON-LD 1.1
 //   a graph edge they can traverse
 ```
 
+### Graph connectivity — ranking, salience, and decay signal (Unreleased)
+
+Part of the "knowledge-graph-as-core convergence" work: an entity's
+relation degree (normalized against the graph's max degree) becomes an
+optional signal in search ranking, salience scoring, and decay. Every
+knob below defaults to 0 = off, with scores bit-identical to prior
+behavior until explicitly enabled.
+
+```typescript
+// 1. Graph channel in hybrid search — set MEMORY_HYBRID_GRAPH_WEIGHT
+// (or pass graphWeight per-call) to blend normalized PageRank into
+// hybrid results. ctx.hybridSearchManager wires ctx.graphRankPrior in
+// automatically when the env weight is nonzero.
+const results = await ctx.hybridSearchManager.search(graph, 'auth flow', {
+  graphWeight: 0.2,
+  expandNeighbors: { hops: 1, topK: 10 }, // damped one-hop neighbor expansion
+});
+
+// 2. Opt-in PageRank boost on RankedSearch directly
+ctx.rankedSearch.setGraphPrior(ctx.graphRankPrior, /* boost */ 0.5);
+// score × (1 + boost × normalizedPageRank)
+
+// 3. Salience: reward well-connected entities during retrieval ranking
+const salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine, {
+  connectivityWeight: 0.1, // adds components.connectivityBoost to the weighted sum
+});
+
+// 4. Decay: protect well-connected entities from decaying as fast
+const decayEngine = new DecayEngine(storage, accessTracker, {
+  connectivityProtection: 0.5, // [0, 1]; legacy calculateEffectiveImportance path only
+});
+// calculateEffectiveImportance is synchronous, so the degree snapshot must
+// be refreshed before ad-hoc single-entity scoring if relations changed
+// since the last batch decay op:
+await decayEngine.refreshConnectivitySnapshot();
+```
+
+Env vars: `MEMORY_HYBRID_GRAPH_WEIGHT`, `MEMORY_RANKED_GRAPH_BOOST`,
+`MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` (+ `AGENT_MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`),
+`MEMORY_DECAY_CONNECTIVITY_PROTECTION` (+ `AGENT_MEMORY_DECAY_CONNECTIVITY_PROTECTION`).
+See [CONFIGURATION.md](./CONFIGURATION.md) for the full table.
+
+### Stable entity ids + atomic rename (Unreleased)
+
+```typescript
+const [alice] = await ctx.entityManager.createEntities([
+  { name: 'Alice', entityType: 'person', observations: ['Engineer'] },
+]);
+// alice.id — opaque UUID, stable across renames/updates; `name` stays
+// the public key. Forward-compat for v2 reference migration.
+
+// Atomic rename: rewrites Relation.from/to, children's parentId, and
+// version-chain fields (parentEntityName/rootEntityName/supersededBy) in
+// one operation; remaps RefIndex aliases; emits entity:renamed then
+// entity:deleted/entity:created so derived indexes (TF-IDF, embeddings,
+// GraphRankPrior) stay consistent without extra handling.
+const renamed = await ctx.entityManager.renameEntity('Alice', 'Alice Chen');
+```
+
 ### Quick reference — every new accessor on `ManagerContext`
 
 | Accessor | Shipped in | What |
@@ -1468,3 +1547,5 @@ const jsonld = ctx.ioManager.exportGraph(graph, 'json-ld');    // JSON-LD 1.1
 | `ctx.activeRetrieval` | 3B.5 | Iterative query rewriting |
 | `ctx.roleAssignmentStore` | η.6.1 | Role grants registry |
 | `ctx.rbacMiddleware` | η.6.1 | RbacPolicy.checkPermission |
+| `ctx.graphRankPrior` | Unreleased | Cached normalized PageRank (`@experimental`) |
+| `ctx.hybridSearchManager` | Unreleased | Semantic + lexical + symbolic + graph layered search |
