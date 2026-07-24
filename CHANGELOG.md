@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance
+
+- **Delta persistence (S2)**: manager mutations no longer deep-copy and
+  rewrite the whole graph. New batch storage primitives on both backends;
+  O(changed) writes. Measured: SQLite sequential creates 23 → 1,972 ops/s
+  (84×), JSONL 6.1×. Per-item events now fire for batch mutations;
+  `graph:saved` only for true full-graph writes.
+- **Ranked-search IDF hoist (S1)**: O(N²·terms) → O(N·terms) with
+  bit-identical scores; ~170× at 4k entities. Storage-event generation
+  counter replaces the O(N) cache key (also fixes observation-only-update
+  staleness).
+- **SQLite tuning (S3)**: `synchronous=NORMAL` (override via
+  `MEMORY_SQLITE_SYNCHRONOUS`), busy_timeout/cache_size/temp_store,
+  prepared-statement caching, O(1) cache maintenance.
+- **GraphRankPrior granularity (S4)** + **TF-IDF batch sync (S5)** +
+  **generation-based search-cache invalidation (S6)**.
+- **Load time (S7–S10)**: `sideEffects: false` + 9 subpath exports with
+  ESM chunk splitting; chrono-node fully lazy (root import no longer loads
+  it); StorageFactory no longer statically imports SQLiteStorage (`./sqlite`
+  subpath; root-barrel eager load is a documented v3 follow-up); types
+  layer is now a leaf (type-only cycles 39 → 4, ESLint-enforced). Warm
+  root import ~220ms → ~150ms; `./search` subpath ~40ms.
+
+### Security
+
+- **Governance enforced (Sec1)**: `ctx.governanceManager` +
+  `MEMORY_GOVERNANCE_ENABLED='true'` wires policy checks + fire-and-forget
+  audit into all EntityManager mutations (`GovernanceError` on denial);
+  `canUpdate` now receives the update patch. Previously the env var was a
+  no-op and no mutation path was governed.
+- **AuditLog tamper-evidence (Sec5)**: seq + SHA-256 `prevHash` chaining,
+  `verifyChain()`, 0o600 file mode, malformed-line reporting, honest
+  trust-boundary docs. **PII redaction wired (Sec6)**: opt-in `redactPii`
+  on exports/backups and `redactAuditSnapshots` on governance.
+- **Mass assignment closed (Sec7)**: `UpdateEntitySchema` strips unknown
+  keys via an explicit allow-list (name/id spoof-proof); updateEntity now
+  applies validated data. **Prototype-pollution parity (Sec4)** +
+  whitelist-only rollback restore in GovernanceManager.
+- **REST auth (Sec9)**: `ApiKeyAuthMiddleware` (Bearer/X-Api-Key,
+  timing-safe, scope checks) + `RestRouter` auth option. **RBAC fixes
+  (Sec2)**: default-role key-presence semantics, 0o600 sidecar, corrupt-line
+  surfacing. **`memory env` masks the API key (Sec3)**. **Decompression
+  bomb caps (Sec8)**: 256MB default, `MEMORY_MAX_DECOMPRESSED_BYTES`.
+  **CI hardening (Sec10)**: `npm ci`, `npm publish --provenance`, audit +
+  duplicate gates.
+
 ### Changed
 
 - **Export-collision cleanup: dead-code deletion, duplicate consolidation, and
