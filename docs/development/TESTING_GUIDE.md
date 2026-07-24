@@ -1,9 +1,11 @@
 # Testing Guide
 
-**Last reviewed**: 2026-04-25. Current totals: **6157 passing / 5 failing
-(pre-existing) / 3 skipped** across **214 test files**. Test patterns
-below remain accurate; new test layouts (per-module under
-`tests/unit/agent/<sub-module>/`) follow the same Vitest conventions.
+**Last reviewed**: 2026-07-24. Current totals: **7507 passing / 1 failing
+(pre-existing flaky timing benchmark — `compression-benchmarks.test.ts`,
+see CLAUDE.md "Performance benchmark flakiness" gotcha) / 9 skipped**
+across **301 test files** (7517 tests total). Test patterns below remain
+accurate; new test layouts (per-module under `tests/unit/agent/<sub-module>/`)
+follow the same Vitest conventions.
 
 Comprehensive guide to testing in MemoryJS.
 

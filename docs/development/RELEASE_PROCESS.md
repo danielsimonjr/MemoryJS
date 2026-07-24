@@ -1,6 +1,6 @@
 # Release Process
 
-**Last reviewed**: 2026-04-25. Current `package.json` is at v1.14.0. Tags
+**Last reviewed**: 2026-07-24. Current `package.json` is at v2.9.0. Tags
 v1.11.0–v1.14.0 are pushed; npm publish is gated on token refresh in
 `~/.npmrc`. Process below remains accurate.
 

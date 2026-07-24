@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased)
+**Last reviewed**: 2026-07-24 (v2.9.0)
 
 This document captures key architectural decisions made during MemoryJS development, including context, alternatives considered, and rationale.
 
@@ -21,6 +21,22 @@ This document captures key architectural decisions made during MemoryJS developm
 > - Active retrieval uses pure symbolic token-overlap expansion (no LLM)
 >   to keep `ctx.activeRetrieval` zero-dep; for LLM-driven decomposition
 >   use `ctx.llmQueryPlanner` instead (3B.5).
+> - `Entity.id` is an additive, opaque UUID assigned at creation
+>   (forward-compat for v2 reference migration) — `name` stays the public
+>   key and addressing contract; nothing about entity lookup/rename
+>   semantics changes for existing callers (knowledge-graph-as-core
+>   convergence).
+> - `SQLiteStorage` gained a `GraphEventEmitter` with full event parity
+>   to `GraphStorage` — event-driven derived views (TF-IDF sync,
+>   `GraphRankPrior`, columnar observation store) are no longer a
+>   JSONL-only capability; `renameEntity` emission stays manager-level
+>   (`EntityManager`) on both backends for exactly-once semantics.
+> - Blob decomposition (`ProcedureStore`, `WorkThreadManager`,
+>   `SessionCheckpointManager`): sub-parts (procedure steps, checkpoints)
+>   move from single JSON-blob observations to first-class typed entities
+>   linked by relations, so they're directly queryable/indexable instead
+>   of requiring blob-parsing; legacy blob formats auto-migrate on load
+>   and their decoders are `@deprecated` rather than removed.
 
 ## Table of Contents
 

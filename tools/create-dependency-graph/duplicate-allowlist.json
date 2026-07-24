@@ -1,0 +1,10 @@
+{
+  "description": "Human-curated set of legitimately-independent duplicate own-definitions. A symbol name + file matching an entry here is tagged ALLOWLISTED in duplicate-symbols.md instead of TRUE_DUPLICATE, and check-duplicates.mjs never fails on it. Patterns: a trailing '*' on a name is a prefix match, literal '*' matches any name; a trailing '/**' on a file glob is a directory-prefix match, anything else is an exact path.",
+  "entries": [
+    {
+      "names": ["levenshteinDistance", "similarity", "searchEntities"],
+      "filesGlob": ["src/workers/**"],
+      "reason": "Worker bundle is built standalone to dist/workers/ and loaded by file path at runtime (see tsup.config.ts); it deliberately keeps local copies rather than importing across the worker bundle boundary."
+    }
+  ]
+}

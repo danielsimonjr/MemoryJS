@@ -1,7 +1,7 @@
 # MemoryJS - System Architecture
 
-**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit)
-**Last Updated**: 2026-05-14
+**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, opt-in graph-connectivity signals)
+**Last Updated**: 2026-07-24
 
 ---
 
@@ -225,7 +225,9 @@ class EntityManager {
   // Core Operations
   async createEntities(entities: Entity[]): Promise<Entity[]>
   async getEntity(name: string, options?: GetEntityOptions): Promise<Entity | null>
+  async listEntities(filter?: { entityType?: string }): Promise<Entity[]>
   async deleteEntities(names: string[]): Promise<void>
+  async renameEntity(oldName: string, newName: string): Promise<Entity>
 
   // Tag Operations
   async addTags(entityName: string, tags: string[]): Promise<Entity>
@@ -264,6 +266,8 @@ class SearchManager {
 }
 // Hybrid search lives on `HybridSearchManager`, not `SearchManager`.
 ```
+
+`ManagerContext` also exposes `ctx.graphRankPrior` (`GraphRankPrior`, `@experimental`) — a cached normalized-PageRank/degree-centrality signal, event-invalidated via the storage's `GraphEventEmitter` — and `ctx.hybridSearchManager` (`HybridSearchManager`), both lazy getters. Neither is constructed unless a caller opts in via the graph-connectivity env vars (`MEMORY_HYBRID_GRAPH_WEIGHT`, `MEMORY_RANKED_GRAPH_BOOST`); `ctx.rankedSearch` also wires `setGraphPrior` automatically when `MEMORY_RANKED_GRAPH_BOOST > 0`.
 
 #### GraphTraversal (`core/GraphTraversal.ts`)
 
@@ -392,13 +396,22 @@ Beyond the primary search classes, the search module includes:
 
 ```typescript
 interface IGraphStorage {
-  loadGraph(): Promise<KnowledgeGraph>
+  loadGraph(): Promise<ReadonlyKnowledgeGraph>
+  getGraphForMutation(): Promise<KnowledgeGraph>
   saveGraph(graph: KnowledgeGraph): Promise<void>
+  appendEntity(entity: Entity): Promise<void>
+  appendRelation(relation: Relation): Promise<void>
+  updateEntity(entityName: string, updates: Partial<Entity>): Promise<boolean>
 
-  // Optional methods for SQLite
+  // Optional members — kept optional so third-party/test IGraphStorage
+  // implementations remain valid without changes.
+  renameEntity?(oldName: string, newName: string): Promise<Entity>
+  readonly events?: GraphEventEmitter
   searchFTS?(query: string): Promise<Entity[]>
 }
 ```
+
+Both first-party backends (`GraphStorage`, `SQLiteStorage`) implement `renameEntity` and expose `events` — `EntityManager.renameEntity` requires the former; event-driven derived views (TF-IDF sync, `GraphRankPrior`, columnar observation mirroring) rely on the latter and now work identically on both backends.
 
 #### GraphStorage (JSONL)
 
@@ -406,6 +419,7 @@ interface IGraphStorage {
 - In-memory caching with write-through invalidation
 - Atomic writes via temp file + rename
 - Backward compatibility for legacy formats
+- `GraphEventEmitter` (`storage.events`) for reactive derived views
 
 #### SQLiteStorage
 
@@ -413,6 +427,8 @@ interface IGraphStorage {
 - WAL mode for better concurrency
 - Referential integrity with ON DELETE CASCADE
 - ACID transactions
+- `GraphEventEmitter` (`storage.events`) with full parity to `GraphStorage` — `graph:loaded`/`graph:saved`, `entity:created`/`updated`, `relation:created`, plus the manager-level rename sequence (`entity:renamed` → `entity:deleted` → `entity:created`). Previously only the JSONL backend emitted events, so TF-IDF sync, `GraphRankPrior`, and similar derived views silently went stale on SQLite; that gap is closed.
+- `graphMutex` guards batch manager mutations (previously missing, which crashed batch operations against a raw SQLite backend)
 
 #### SQLiteVectorStore
 
@@ -426,7 +442,14 @@ Persists vector embeddings to SQLite for semantic search, avoiding re-computatio
 
 ```typescript
 interface Entity {
-  name: string;              // Unique identifier (1-500 chars)
+  name: string;              // Unique identifier (1-500 chars) — the public key
+  id?: string;                // Stable opaque UUID, assigned at creation
+                               // (crypto.randomUUID); preserved across
+                               // updates/renames on both backends. `name`
+                               // remains the public key; `id` is forward-
+                               // compat infrastructure for v2 reference
+                               // migration. SQLite auto-migrates the column
+                               // (NULL backfill) at init.
   entityType: string;        // Category (e.g., "person", "project")
   observations: string[];    // Free-form text descriptions
   createdAt: string;         // ISO 8601 timestamp
@@ -437,8 +460,19 @@ interface Entity {
   // v1.6.0: freshness governance
   ttl?: number;              // Optional time-to-live in milliseconds
   confidence?: number;       // Optional belief strength 0.0–1.0
+  // v1.8.0: project scoping + memory versioning
+  projectId?: string;
+  version?: number;
+  parentEntityName?: string;
+  rootEntityName?: string;
+  isLatest?: boolean;
+  supersededBy?: string;
+  // v1.11.0: MemoryEngine dedup
+  contentHash?: string;      // SHA-256 of raw content — O(1) exact-equality dedup
 }
 ```
+
+`renameEntity(oldName, newName)` (`EntityManager`) is the storage-level primitive that keeps every stored reference to `name` consistent across a rename: it atomically rewrites `Relation.from`/`Relation.to`, other entities' `parentId`, and the version-chain fields (`parentEntityName`/`rootEntityName`/`supersededBy`) above, remaps `RefIndex` aliases, and emits `entity:renamed` → `entity:deleted` → `entity:created`. `id` is not yet a reference key anywhere in the codebase — `renameEntity` exists precisely because `name` still is.
 
 ### AgentEntity (extends Entity)
 
@@ -518,6 +552,8 @@ interface KnowledgeGraph {
 - Decouples storage operations from indexing
 - Enables reactive search optimization
 
+**Backend parity**: `SQLiteStorage` now exposes its own `GraphEventEmitter` with the same event surface as JSONL `GraphStorage`, so every event-driven derived view (`TFIDFEventSync`, `GraphRankPrior`, the columnar observation store) works identically regardless of storage backend — previously these only worked reliably on JSONL.
+
 ### 4. Why Worker Pool for Fuzzy Search?
 
 **Decision**: Use `@danielsimonjr/workerpool` for Levenshtein calculations
@@ -572,6 +608,32 @@ discriminated-union type in `src/types/result.ts`.
 - The contract is established in v2.0.0; migrating every existing call
   site onto it is incremental follow-up work.
 
+### 8. Why Stable Entity IDs + a `renameEntity` Primitive?
+
+**Decision**: Add an optional `Entity.id` (UUID, assigned at creation, immutable thereafter) alongside a storage-level `renameEntity` primitive that atomically rewrites every reference to an entity's `name`.
+
+**Rationale**:
+- `name` is the primary key throughout the codebase (`Relation.from`/`to`, `parentId`, version-chain fields) — renaming an entity has always meant either leaving dangling references or hand-rolling a rewrite.
+- `id` gives a stable, rename-proof handle for the future (v2 reference migration) without breaking any existing `name`-keyed code today — it is inert until adopted.
+- `renameEntity` closes the immediate gap: relations, hierarchy, versioning, and `RefIndex` aliases all stay consistent across a rename on both storage backends.
+
+**Trade-offs**:
+- `id` is not yet used as a reference key anywhere — it is pure forward-compat cost until a v2 migration lands.
+- `renameEntity` is an optional `IGraphStorage` member (not required), so third-party storage backends that don't implement it simply can't support renames yet.
+
+### 9. Why Opt-In Graph-Connectivity Signals (Default Off)?
+
+**Decision**: Layer a normalized-PageRank/degree-centrality signal (`GraphRankPrior`) on top of existing search and agent-memory scoring — `RankedSearch` boost, `HybridScorer` graph channel, `SalienceEngine` connectivity weight, `DecayEngine` connectivity protection — all gated behind env vars that default to `0` (off).
+
+**Rationale**:
+- The knowledge graph's own connectivity (which entities are well-linked) is a signal search and memory scoring weren't using at all; well-connected entities are frequently the ones worth surfacing or protecting from decay.
+- Making every knob default to `0` means the feature is zero-overhead and behaviorally invisible until a deployment explicitly opts in — `GraphRankPrior` itself is never constructed unless a weight is non-zero.
+- Centralizing the computation in one cached, event-invalidated class (`GraphRankPrior`) means every consumer shares one PageRank computation instead of each recomputing its own.
+
+**Trade-offs**:
+- Four independent opt-in knobs (`MEMORY_HYBRID_GRAPH_WEIGHT`, `MEMORY_RANKED_GRAPH_BOOST`, `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`, `MEMORY_DECAY_CONNECTIVITY_PROTECTION`) is more surface area than a single global switch, but lets each consumer tune independently.
+- PageRank is skipped above 50,000 entities (degree-centrality fallback) — a deliberate scalability cap rather than an unbounded computation.
+
 ---
 
 ## Storage Architecture
@@ -589,6 +651,7 @@ Single line containing the entire graph as JSON. Simple, portable, human-readabl
 ```sql
 CREATE TABLE entities (
   name TEXT PRIMARY KEY,
+  id TEXT,            -- stable opaque UUID (auto-migrated column, NULL-backfilled for pre-existing rows)
   entity_type TEXT NOT NULL,
   observations TEXT,  -- JSON array
   parent_id TEXT REFERENCES entities(name),

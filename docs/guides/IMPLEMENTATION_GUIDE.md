@@ -1,7 +1,7 @@
 # MemoryJS Developer Implementation Guide
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 **Based on**: Dependency Graph Analysis & Codebase Exploration
 
 > The dependency graph + module list have been refreshed for v1.14.0+.
@@ -172,7 +172,7 @@ await ctx.relationManager.createRelations([
 ]);
 
 // Search
-const results = await ctx.searchManager.search('TypeScript');
+const results = await ctx.searchManager.searchNodes('TypeScript');
 console.log(results.entities); // Returns matching entities
 console.log(results.relations); // Returns related relations
 ```
@@ -270,6 +270,16 @@ await ctx.entityManager.setImportance('Alice', 8);
 
 // Delete entities (cascades to relations)
 await ctx.entityManager.deleteEntities(['Alice']);
+
+// Rename an entity in place — atomically rewrites relation endpoints,
+// children's parentId, and version-chain fields; remaps RefIndex aliases.
+// Replaces the old delete-then-recreate-then-relink workaround.
+const renamed = await ctx.entityManager.renameEntity('Alice', 'Alice Chen');
+
+// Bulk enumeration (public API — avoids reaching into private storage).
+// `entityType` filter takes the TypeIndex fast path.
+const allEntities = await ctx.entityManager.listEntities();
+const people = await ctx.entityManager.listEntities({ entityType: 'person' });
 ```
 
 **Key Features**:
@@ -279,6 +289,8 @@ await ctx.entityManager.deleteEntities(['Alice']);
 - Batch operations (single I/O cycle)
 - Zod schema validation
 - Event emission for TF-IDF sync
+- `renameEntity()` / `listEntities()` — atomic rename with reference
+  rewriting, and public bulk enumeration (both backends)
 
 #### RelationManager (`src/core/RelationManager.ts`)
 
@@ -364,6 +376,11 @@ await ctx.graphTraversal.bfs('Alice', (node, depth) => {
 - WAL mode for better concurrency
 - ACID transactions
 - 3-10x faster than JSONL for large graphs
+- Full `GraphEventEmitter` parity with `GraphStorage` (`storage.events`) —
+  derived views like `TFIDFEventSync` and `GraphRankPrior` stay in sync on
+  either backend, not just JSONL
+- `id` column auto-added (with NULL backfill) on existing databases at
+  construction time — no manual migration needed
 
 ```typescript
 // Storage selection via file extension
@@ -388,29 +405,35 @@ Orchestrates all search types:
 
 ```typescript
 // Basic substring search
-const results = await ctx.searchManager.search('TypeScript', {
+const results = await ctx.searchManager.searchNodes('TypeScript', {
   tags: ['programming'],
   minImportance: 5
 });
 
-// TF-IDF ranked search
-const ranked = await ctx.searchManager.searchRanked('TypeScript programming', {
-  limit: 10,
-  minScore: 0.5
-});
+// TF-IDF ranked search (canonical home: ctx.rankedSearch)
+const ranked = await ctx.rankedSearch.searchNodesRanked(
+  'TypeScript programming',
+  undefined, // tags
+  undefined, // minImportance
+  undefined, // maxImportance
+  10         // limit
+);
+ranked.forEach(r => console.log(`${r.entity.name} (score: ${r.score})`));
 
 // Boolean search with operators
 const boolean = await ctx.searchManager.booleanSearch(
   'name:TypeScript AND (type:language OR observation:Microsoft)'
 );
 
-// Fuzzy search (typo-tolerant)
-const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', {
-  threshold: 0.7  // 0.0-1.0, higher = stricter
-});
+// Fuzzy search (typo-tolerant) - threshold is a positional number, not an
+// options-object field: fuzzySearch(query, threshold, tags?, minImportance?, maxImportance?)
+const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', 0.7); // 0.0-1.0, higher = stricter
 
-// Smart search with query analysis
-const smart = await ctx.searchManager.smartSearch('What languages compile to JavaScript?');
+// Automatic search - analyzes the query and selects the best strategy
+// (basic/ranked/boolean/fuzzy); returns { results, selectedMethod, selectionReason }
+const auto = await ctx.searchManager.autoSearch('What languages compile to JavaScript?');
+console.log(auto.selectedMethod, auto.selectionReason);
+auto.results.forEach(r => console.log(r.entity.name, r.score));
 ```
 
 #### Search Strategies Comparison
@@ -430,28 +453,57 @@ const smart = await ctx.searchManager.smartSearch('What languages compile to Jav
 Three-layer hybrid search combining multiple signals:
 
 ```typescript
-const hybrid = await ctx.searchManager.hybridSearch('machine learning concepts', {
-  weights: {
-    semantic: 0.4,  // Vector similarity
-    lexical: 0.4,   // TF-IDF text matching
-    symbolic: 0.2   // Metadata filtering
-  },
-  filters: {
+// hybridSearchManager.search() takes the loaded graph, the query, and a
+// weights/filters options object; it returns HybridSearchResult[] directly
+// (not wrapped in a `.results` property).
+const graph = await ctx.storage.loadGraph();
+const hybrid = await ctx.hybridSearchManager.search(graph, 'machine learning concepts', {
+  semanticWeight: 0.4,  // Vector similarity
+  lexicalWeight: 0.4,   // TF-IDF text matching
+  symbolicWeight: 0.2,  // Metadata filtering
+  symbolic: {
     tags: ['ai', 'ml'],
-    minImportance: 3,
+    importance: { min: 3 },
     entityTypes: ['concept', 'technology']
   },
-  limit: 20,
-  minScore: 0.3
+  limit: 20
 });
 
-// Results include layer breakdown
-hybrid.results.forEach(r => {
-  console.log(`${r.entity.name}: ${r.score}`);
-  console.log(`  Semantic: ${r.layerScores.semantic}`);
-  console.log(`  Lexical: ${r.layerScores.lexical}`);
-  console.log(`  Symbolic: ${r.layerScores.symbolic}`);
+// Results include per-layer score breakdown
+hybrid.forEach(r => {
+  console.log(`${r.entity.name}: ${r.scores.combined}`);
+  console.log(`  Semantic: ${r.scores.semantic}`);
+  console.log(`  Lexical: ${r.scores.lexical}`);
+  console.log(`  Symbolic: ${r.scores.symbolic}`);
 });
+```
+
+#### Graph-connectivity channel (v2.9.0, @experimental, opt-in)
+
+`HybridSearchManager` has a fourth, optional `graph` channel — a
+normalized-PageRank ranking signal via `GraphRankPrior` — plus one-hop
+neighbor expansion. Both are entirely additive and default to off:
+
+```typescript
+// Zero code changes needed: set MEMORY_HYBRID_GRAPH_WEIGHT=0.15 and
+// ctx.hybridSearchManager attaches the GraphRankPrior automatically.
+const graph = await ctx.storage.loadGraph();
+const results = await ctx.hybridSearchManager.search(graph, 'machine learning frameworks', {
+  semanticWeight: 0.4,
+  lexicalWeight: 0.4,
+  symbolicWeight: 0.2,
+  graphWeight: 0.15,               // per-call override; env-configured by default
+  expandNeighbors: { hops: 1, topK: 10 }, // append well-connected one-hop neighbors
+});
+
+results.forEach(r => {
+  console.log(r.entity.name, r.scores.combined, r.matchedLayers);
+  // matchedLayers may include 'graph'; r.scores.graph carries the raw signal
+});
+
+// RankedSearch also supports a standalone PageRank boost
+// (MEMORY_RANKED_GRAPH_BOOST, or ctx.rankedSearch.setGraphPrior(prior, boost)):
+// score × (1 + boost × normalizedPageRank), no HybridSearchManager required.
 ```
 
 #### SemanticSearch (`src/search/SemanticSearch.ts`)
@@ -891,6 +943,9 @@ interface Entity {
   name: string;              // Unique identifier (1-500 chars)
   entityType: string;        // Category (e.g., "person", "project")
   observations: string[];    // Free-form text descriptions
+  id?: string;                // Stable opaque UUID, assigned at creation
+                              // (preserved across updates/renames on both
+                              // backends). `name` remains the public key.
   parentId?: string;         // Hierarchical parent (optional)
   tags?: string[];           // Categories (lowercase, max 50)
   importance?: number;       // Priority 0-10 (optional)
@@ -898,6 +953,11 @@ interface Entity {
   lastModified?: string;     // ISO 8601 timestamp (auto-updated)
 }
 ```
+
+> `Entity` has grown several more optional fields over time (`ttl`,
+> `confidence`, `projectId`, versioning fields, `contentHash`, bitemporal
+> `validFrom`/`validUntil`) — see `src/types/types.ts` for the full,
+> current interface. All are additive and default to `undefined`.
 
 ### Relation (Graph Edge)
 
@@ -1008,6 +1068,7 @@ const ctx = new ManagerContext('./memory.db');
 | Write Speed | Full rewrite | Incremental |
 | Concurrent Access | Limited | WAL mode |
 | Full-Text Search | In-memory | FTS5 BM25 |
+| `GraphEventEmitter` events | Yes | Yes (full parity) |
 | Best For | <2K entities | >2K entities |
 
 ---
@@ -1020,9 +1081,9 @@ const ctx = new ManagerContext('./memory.db');
 Query
   │
   ▼
-┌─────────────────────────────────────────┐
-│ 1. SearchManager.search(query, options) │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│ 1. SearchManager.searchNodes(query, options) │
+└─────────────────────────────────────────────┘
   │
   ▼
 ┌─────────────────────────────────────────┐
@@ -1143,18 +1204,17 @@ for (const entity of entities) {
 
 ```typescript
 // Graph is cached after first load
-const results1 = await ctx.searchManager.search('query1'); // Loads from disk
-const results2 = await ctx.searchManager.search('query2'); // Uses cache
+const results1 = await ctx.searchManager.searchNodes('query1'); // Loads from disk
+const results2 = await ctx.searchManager.searchNodes('query2'); // Uses cache
 ```
 
 #### 3. Filter Early
 
 ```typescript
 // Apply filters to reduce processing
-await ctx.searchManager.search('query', {
+await ctx.searchManager.searchNodes('query', {
   tags: ['important'],
-  minImportance: 5,
-  entityType: 'project'
+  minImportance: 5
 });
 ```
 
@@ -1466,12 +1526,12 @@ try {
 
 | Need | Strategy |
 |------|----------|
-| Simple text match | `search()` |
-| Relevance ranking | `searchRanked()` |
-| Complex logic | `booleanSearch()` |
-| Typo tolerance | `fuzzySearch()` |
-| Semantic meaning | `semanticSearch()` (requires embeddings) |
-| Combined signals | `hybridSearch()` |
+| Simple text match | `searchManager.searchNodes()` |
+| Relevance ranking | `rankedSearch.searchNodesRanked()` |
+| Complex logic | `searchManager.booleanSearch()` |
+| Typo tolerance | `searchManager.fuzzySearch()` |
+| Semantic meaning | `semanticSearch.search()` (requires embeddings) |
+| Combined signals | `hybridSearchManager.search()` |
 
 ### 4. Index for Semantic Search
 
@@ -1508,7 +1568,7 @@ const ctx = new ManagerContext('./memory.db');
 
 ```typescript
 console.time('search');
-const results = await ctx.searchManager.search(query);
+const results = await ctx.searchManager.searchNodes(query);
 console.timeEnd('search');
 
 // Use memory monitor for large operations
@@ -1587,13 +1647,13 @@ await exporter.exportToFile('./export.json', {
 const ctx = new ManagerContext('./memory.db');
 
 // 2. Add filters to reduce result set
-await ctx.searchManager.search(query, {
+await ctx.searchManager.searchNodes(query, {
   tags: ['relevant'],
   minImportance: 5
 });
 
-// 3. Use limit parameter
-await ctx.searchManager.searchRanked(query, { limit: 10 });
+// 3. Use limit parameter (limit is positional on searchNodesRanked)
+await ctx.rankedSearch.searchNodesRanked(query, undefined, undefined, undefined, 10);
 ```
 
 ---
@@ -1621,5 +1681,5 @@ await ctx.searchManager.searchRanked(query, { limit: 10 });
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-07-24
 **Generated From**: Dependency Graph Analysis & Codebase Exploration

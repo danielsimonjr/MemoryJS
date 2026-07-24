@@ -1,7 +1,7 @@
 # MemoryJS Configuration Reference
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 
 Complete reference for all configuration options, environment variables, and customization settings.
 
@@ -12,7 +12,9 @@ Complete reference for all configuration options, environment variables, and cus
 > governance, freshness, role profiles, entropy filter, consolidation
 > scheduler, cognitive load, default visibility, Memory Engine knobs,
 > PRD decay extensions, Memory Backend selector, RBAC defaults, audit
-> attribution, validation-on-store. See CLAUDE.md for the ~50 full set.
+> attribution, validation-on-store, and (v2.9.0) graph-connectivity
+> signals for hybrid search/salience/decay. See CLAUDE.md for the ~50
+> full set.
 
 ---
 
@@ -850,11 +852,11 @@ const ctx = new ManagerContext(config.storagePath);
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-04-25
+**Last Updated**: 2026-07-24
 
 ---
 
-## Complete Environment Variable Reference (v1.6 → Unreleased)
+## Complete Environment Variable Reference (v1.6 → v2.9.0)
 
 The original sections above cover the v1.1-era variables. Below is the
 complete current set. Defaults shown in parens; **bold** values are
@@ -943,6 +945,20 @@ opt-in / require explicit configuration.
 | `MEMORY_CONSOLIDATION_INTERVAL_MS` | number | `3600000` |
 | `MEMORY_COGNITIVE_LOAD_MAX` | number 0–1 | `0.8` |
 | `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
+
+### Graph-connectivity signals (v2.9.0 — knowledge-graph-as-core convergence)
+
+All default to `0` = off with behavior identical to before they existed
+(scores are bit-identical to prior behavior until enabled). See
+`docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md` for the design
+rationale.
+
+| Variable | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `MEMORY_HYBRID_GRAPH_WEIGHT` | Number (0–1) | `0` | Weight of the `graph` channel (normalized PageRank via `GraphRankPrior`) in `HybridScorer`/`ctx.hybridSearchManager`. When 0, the prior is never constructed. |
+| `MEMORY_RANKED_GRAPH_BOOST` | Number ≥ 0 | `0` | `RankedSearch` post-scoring boost: `score × (1 + boost × normalizedPageRank)`, applied via `setGraphPrior()`. |
+| `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` | Number (0–1) | `0` | Adds `components.connectivityBoost` (normalized entity degree) to `SalienceEngine`'s weighted sum; other weights are not renormalized. `AgentMemoryConfig` equivalent: `AGENT_MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`. |
+| `MEMORY_DECAY_CONNECTIVITY_PROTECTION` | Number (0–1) | `0` | Legacy `DecayEngine.calculateEffectiveImportance` path only: well-connected entities decay slower (`effectiveDecayFactor = decayFactor + (1 − decayFactor) × protection × normalizedDegree`). Requires a degree snapshot (refreshed by batch decay ops or `DecayEngine.refreshConnectivitySnapshot()`). Does not affect `calculatePrdEffectiveImportance`. `AgentMemoryConfig` equivalent: `AGENT_MEMORY_DECAY_CONNECTIVITY_PROTECTION`. |
 
 ### Memory Engine (v1.11)
 

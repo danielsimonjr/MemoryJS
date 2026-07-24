@@ -1,6 +1,6 @@
 # MemoryJS Recipes
 
-**Last refreshed**: 2026-04-25 (v1.14.0 + Unreleased)
+**Last refreshed**: 2026-07-24 (v2.9.0)
 
 > Ready-to-use code patterns and solutions for common tasks. Recipes
 > below cover the v1.1-era surface; for examples covering Memory Engine,
@@ -525,6 +525,38 @@ function calculateRelevance(text: string, query: string): number {
   return matches / queryTerms.length;
 }
 ```
+
+### Graph-Connectivity-Aware Ranking (v2.9.0, opt-in)
+
+Well-connected entities (hubs) often deserve a ranking boost. Two
+env-gated, default-off ways to fold graph connectivity into scoring —
+no code changes required if you're happy with the defaults:
+
+```typescript
+// Option 1: boost RankedSearch/TF-IDF results by normalized PageRank.
+// Enable via MEMORY_RANKED_GRAPH_BOOST=0.5, or wire it up in code:
+ctx.rankedSearch.setGraphPrior(ctx.graphRankPrior, 0.5);
+const boosted = await ctx.searchManager.searchNodesRanked('typescript api', undefined, undefined, undefined, 10);
+// score × (1 + 0.5 × normalizedPageRank) — hub entities rank higher
+
+// Option 2: add the graph channel to hybrid search, plus one-hop
+// neighbor expansion so results pull in closely-related entities.
+// Enable via MEMORY_HYBRID_GRAPH_WEIGHT=0.15, or per-call:
+async function graphAwareSearch(ctx: ManagerContext, query: string) {
+  const graph = await ctx.storage.loadGraph();
+  return ctx.hybridSearchManager.search(graph, query, {
+    semanticWeight: 0.4,
+    lexicalWeight: 0.4,
+    symbolicWeight: 0.2,
+    graphWeight: 0.15,
+    expandNeighbors: { hops: 1, topK: 10 },
+  });
+}
+```
+
+Both are cheap to leave off (the `GraphRankPrior` isn't even constructed
+until a non-zero weight/boost requests it) and cheap to try — no schema
+or storage changes involved.
 
 ---
 

@@ -1,7 +1,7 @@
 # MemoryJS Performance Tuning Guide
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 
 > **Performance-relevant additions since v1.1:**
 >
@@ -24,6 +24,16 @@
 >   over-budget queries before any search work happens.
 > - **World model snapshot cap** (3B.7) — `maxSnapshotSize` (default 1000)
 >   keeps state-diff cost bounded; over-cap prefers high-importance.
+> - **Graph-connectivity ranking signal** (`GraphRankPrior`, unreleased,
+>   `@experimental`) — cached normalized PageRank over `GraphTraversal`,
+>   with a degree-only O(V+E) fallback beyond `maxPageRankEntities`
+>   (default 50,000) so cost stays bounded on very large graphs;
+>   event-invalidated on both backends (SQLite now emits the same
+>   `GraphEventEmitter` events as JSONL). Opt-in and zero overhead when
+>   unused — `MEMORY_HYBRID_GRAPH_WEIGHT` (hybrid search channel),
+>   `MEMORY_RANKED_GRAPH_BOOST` (ranked-search boost),
+>   `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` (salience), and
+>   `MEMORY_DECAY_CONNECTIVITY_PROTECTION` (decay) all default to `0`.
 
 Comprehensive guide for optimizing MemoryJS performance at different scales.
 
@@ -848,4 +858,4 @@ const eventSync = new TFIDFEventSync(indexManager, ctx.storage, eventEmitter);
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-07-24

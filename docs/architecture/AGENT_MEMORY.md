@@ -1,6 +1,6 @@
 # Agent Memory System Design
 
-**Last reviewed**: 2026-05-15 (v2.0.x + Phase 2 memory-types expansion Sprints 4–6 + 8 + Phase 3B.8 Heuristic Guidelines Manager)
+**Last reviewed**: 2026-07-24 (v2.0.x + Phase 2 memory-types expansion Sprints 4–6 + 8 + Phase 3B.8 Heuristic Guidelines Manager + v2.9.0 knowledge-graph-as-core convergence)
 
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
 
@@ -23,14 +23,14 @@ This document specifies the architectural design for transforming MemoryJS into 
 > - **v1.13.0 (Phase δ)** — `MemoryValidator` (consistency / contradictions /
 >   reliability), `TrajectoryCompressor`, `ExperienceExtractor`. All
 >   wrap-and-extend per ADR-011.
-> - **Unreleased (η.4.4)** — Bitemporal validity for entities + observations
+> - **v2.9.0 (η.4.4)** — Bitemporal validity for entities + observations
 >   (`validFrom` / `validUntil` / `observationMeta[]`).
-> - **Unreleased (η.5.5)** — Multi-agent conflict view, visibility expansion
+> - **v2.9.0 (η.5.5)** — Multi-agent conflict view, visibility expansion
 >   (role + time-window gates), optimistic concurrency control, audit
 >   attribution enforcer.
-> - **Unreleased (η.6.1 / η.6.3)** — RBAC (Role / Permission / Matrix /
+> - **v2.9.0 (η.6.1 / η.6.3)** — RBAC (Role / Permission / Matrix /
 >   Middleware), `PiiRedactor` for export-time PII scrubbing.
-> - **Unreleased (3B.4–3B.7)** — Procedural memory (`ProcedureManager` +
+> - **v2.9.0 (3B.4–3B.7)** — Procedural memory (`ProcedureManager` +
 >   `StepSequencer`), active retrieval (`ActiveRetrievalController` with
 >   iterative query rewriting), causal reasoning (`CausalReasoner`),
 >   world-model orchestrator (`WorldModelManager` + `WorldStateSnapshot`).
@@ -91,6 +91,51 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   idempotency (3B.8b). Mutating writes use `EntityManager` OCC and surface
 >   `'conflict'` via a new `HeuristicUpdateResult`, matching the #55 pattern.
 >   Both constructors are breaking; the class was `@experimental`.
+> - **v2.9.0 (knowledge-graph-as-core convergence)** — Stable
+>   `Entity.id` (opaque UUID assigned at creation, preserved across
+>   updates/renames/persistence on both backends) + new
+>   `EntityManager.renameEntity(oldName, newName)` primitive (atomically
+>   rewrites relation endpoints, children `parentId`, version-chain
+>   fields; emits `entity:renamed` then `entity:deleted`/`entity:created`;
+>   `RefIndex` is now actually wired into `EntityManager` by
+>   `ManagerContext` so refs remap on rename / purge on delete).
+>   `SQLiteStorage` gained full `GraphEventEmitter` parity with
+>   `GraphStorage` (`storage.events`), so event-driven derived views
+>   (TF-IDF sync, `GraphRankPrior`, columnar observation store) now work
+>   on the SQLite backend too. Graph connectivity lands as an opt-in
+>   signal across search, salience, and decay — every knob below
+>   defaults to 0 = off with behavior identical to before: new
+>   `GraphRankPrior` (`@experimental`, cached normalized PageRank over
+>   `GraphTraversal` with degree-only fallback) feeds a fourth `graph`
+>   channel on `HybridScorer`/`HybridSearchManager`
+>   (`MEMORY_HYBRID_GRAPH_WEIGHT`) and an opt-in `RankedSearch` boost
+>   (`MEMORY_RANKED_GRAPH_BOOST`); `SalienceEngine` gains
+>   `connectivityWeight` → a `connectivityBoost` component (normalized
+>   entity degree) in `ScoredEntity.components`
+>   (`MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` /
+>   `AGENT_MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`); `DecayEngine` gains
+>   `connectivityProtection` (legacy decay path only — well-connected
+>   entities decay slower; requires a degree snapshot refreshed by the
+>   batch decay operations or the new public
+>   `refreshConnectivitySnapshot()`) via
+>   `MEMORY_DECAY_CONNECTIVITY_PROTECTION` /
+>   `AGENT_MEMORY_DECAY_CONNECTIVITY_PROTECTION`. Separately,
+>   `ProcedureStore`, `WorkThreadManager`, and `SessionCheckpointManager`
+>   all had their single-JSON-blob-observation storage decomposed into
+>   real entity+relation graph structure (steps/threads/checkpoints as
+>   first-class entities linked via `has_step`/`precedes`/`has_fallback`,
+>   `child_of`/`blocked_by`, and `has_checkpoint`/`snapshots` relations
+>   respectively) — see the Procedural Memory entry below and the
+>   per-file JSDoc; legacy blob encodings auto-migrate on read, with
+>   bulk `migrateLegacy*` helpers and `@deprecated` decoders retained for
+>   direct use. Public method signatures are unchanged except
+>   `SessionCheckpointManager`'s constructor, which now takes
+>   `entityManager`/`relationManager` (facade-wired, no caller impact).
+>   Contract clarifications: `InMemoryBackend` is documented
+>   ephemeral-by-design (durability belongs to the SQLite-backed
+>   `IMemoryBackend`); `ReconstructiveMemory`'s CTC graph is documented
+>   as a specialized index, with bridge persistence into the entity
+>   graph as the default system-of-record path.
 > - **v2.0.x (Entity-level observation dedup)** — `ObservationDedupManager`
 >   surfaces cross-entity duplicate observation strings (the gap between
 >   `MemoryEngine`'s turn-level dedup and `CompressionManager`'s
@@ -417,6 +462,13 @@ interface DecayResult {
 }
 ```
 
+> **Shipped `DecayEngineConfig` also has** (see the Decay Formula section
+> below): `connectivityProtection` (v2.9.0, default 0) — well-connected
+> entities decay slower in this legacy path; and the PRD-scale sibling
+> fields (`decayRate`/`freshnessCoefficient`/`relevanceWeight`/
+> `minImportanceThreshold`, v1.12) that back the separate
+> `calculatePrdEffectiveImportance` method, not shown above.
+
 ### 3. Consolidation Pipeline
 
 Manages transition from working memory to long-term storage.
@@ -547,9 +599,17 @@ interface ScoredEntity {
     frequencyBoost: number;
     contextRelevance: number;
     noveltyBoost: number;
+    connectivityBoost: number; // v2.9.0: normalized entity degree, only computed when connectivityWeight > 0
   };
 }
 ```
+
+> **Shipped `SalienceEngineConfig` also has** `connectivityWeight`
+> (v2.9.0, default 0 = disabled) — weight applied to
+> `components.connectivityBoost` above. With the default weight the
+> signal is never computed, so scores are bit-identical to prior
+> behavior. `rankEntitiesBySalience` caches the degree map once per
+> ranking batch when enabled.
 
 ### 5. Context Window Manager
 
@@ -765,6 +825,17 @@ type ConflictStrategy =
   - Extracted from repeated observations
   - Rule-based patterns
   - Action sequences executable via `invoke()`
+  - **Storage (v2.9.0)**: `ProcedureStore` persists steps as
+    first-class `procedure-step` entities (name
+    `${procId}::step-${order}`, `parentId` = procedure) carrying
+    `[order]`/`[action]`/`[timeout]`/`[param]` observation lines, linked
+    via `has_step`/`precedes`/`has_fallback` relations — not a single
+    JSON blob. Legacy `[procedure-steps]:` blob entities auto-migrate on
+    `load()`; `migrateLegacyProcedures(entityManager, relationManager)`
+    bulk-migrates and `decodeProcedure` remains as the `@deprecated`
+    legacy decoder. `ProcedureStore`/`ProcedureManager` constructors
+    take an added `RelationManager` — callers going through
+    `ctx.procedureManager` are unaffected.
 
 ### Prospective Memory (v1.14 / Phase 1)
 
@@ -1105,6 +1176,27 @@ where:
   half_life_hours = base_half_life * (1 + importance_boost)
     where importance_boost = base_importance / 10
 ```
+
+**Connectivity protection (v2.9.0, off by default):** when
+`DecayEngine`'s `connectivityProtection` config is > 0, `decay_factor`
+above is replaced by an `effective_decay_factor` that is lifted toward 1
+for well-connected entities:
+
+```
+effective_decay_factor = decay_factor +
+  (1 - decay_factor) * connectivity_protection * normalized_degree
+
+where normalized_degree = entity's relation degree / max degree in graph
+```
+
+`normalized_degree` comes from a cached snapshot (`calculateEffectiveImportance`
+is synchronous) refreshed automatically by the batch decay operations
+(`applyDecay`, `getDecayedMemories`, `getMemoriesAtRisk`,
+`forgetWeakMemories`) or explicitly via `refreshConnectivitySnapshot()`;
+before the first refresh no protection is applied. At `connectivity_protection
+= 1` a max-degree entity does not decay at all; at `0` (default) behavior is
+unchanged. This applies only to `calculateEffectiveImportance` — the PRD-scale
+`calculatePrdEffectiveImportance` path is untouched.
 
 ---
 

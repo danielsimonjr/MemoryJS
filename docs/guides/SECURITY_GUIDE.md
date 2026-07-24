@@ -1,7 +1,7 @@
 # MemoryJS Security Guide
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 
 > **Security-relevant additions since v1.1:**
 >
@@ -881,4 +881,4 @@ npm update @danielsimonjr/memoryjs
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-07-24
