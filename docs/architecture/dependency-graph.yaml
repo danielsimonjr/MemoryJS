@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 2.9.0
   lastUpdated: "2026-07-24"
-  totalFiles: 256
+  totalFiles: 255
   totalModules: 11
-  totalExports: 1631
+  totalExports: 1627
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -426,6 +426,53 @@ modules:
       interfaces:
         - CreateMemoryOptions
         - RetrieveContextOptions
+    src/agent/AgentReflectionManager.ts:
+      description: Reflection Memory Manager (Phase 2 Sprint 8)
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - createHash
+            - randomUUID
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - IGraphStorage
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - ReflectionEntity
+            - ReflectionId
+            - ReflectionRecord
+            - ReflectionScope
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - isReflectionMemory
+            - toIsoDateTime
+        - file: ../core/EntityManager.js
+          imports:
+            - EntityManager
+          typeOnly: true
+        - file: ../utils/errors.js
+          imports:
+            - VersionConflictError
+            - EntityNotFoundError
+        - file: ../utils/index.js
+          imports:
+            - validateNonEmpty
+            - validateNonEmptyArray
+      exports:
+        - AgentReflectionManager
+      classes:
+        - AgentReflectionManager
+      interfaces:
+        - ReflectionManagerConfig
+        - ReflectionInput
+        - ReflectionEntityOptions
+        - ListReflectionsOptions
+        - RelevanceOptions
     src/agent/ArtifactManager.ts:
       description: Artifact Manager
       externalDependencies: []
@@ -577,7 +624,7 @@ modules:
             - isReflectionMemory
         - file: ../utils/textSimilarity.js
           imports:
-            - tokenize
+            - tokenizeStripped
         - file: ./WorkingMemoryManager.js
           imports:
             - WorkingMemoryManager
@@ -595,9 +642,9 @@ modules:
         - file: ./RuleEvaluator.js
           imports:
             - RuleEvaluator
-        - file: ./ReflectionManager.js
+        - file: ./AgentReflectionManager.js
           imports:
-            - ReflectionManager
+            - AgentReflectionManager
           typeOnly: true
         - file: ./TrajectoryCompressor.js
           imports:
@@ -1405,7 +1452,7 @@ modules:
       interfaces:
         - MemoryValidationIssue
         - MemoryValidationResult
-        - Contradiction
+        - MemoryContradiction
         - MemoryValidatorConfig
     src/agent/MultiAgentMemoryManager.ts:
       description: Multi-Agent Memory Manager
@@ -1662,53 +1709,6 @@ modules:
       interfaces:
         - ProspectiveMemoryConfig
         - ScheduleOptions
-    src/agent/ReflectionManager.ts:
-      description: Reflection Memory Manager (Phase 2 Sprint 8)
-      externalDependencies: []
-      nodeDependencies:
-        - module: crypto
-          imports:
-            - createHash
-            - randomUUID
-      internalDependencies:
-        - file: ../types/types.js
-          imports:
-            - Entity
-            - IGraphStorage
-          typeOnly: true
-        - file: ../types/agent-memory.js
-          imports:
-            - ReflectionEntity
-            - ReflectionId
-            - ReflectionRecord
-            - ReflectionScope
-          typeOnly: true
-        - file: ../types/agent-memory.js
-          imports:
-            - isReflectionMemory
-            - toIsoDateTime
-        - file: ../core/EntityManager.js
-          imports:
-            - EntityManager
-          typeOnly: true
-        - file: ../utils/errors.js
-          imports:
-            - VersionConflictError
-            - EntityNotFoundError
-        - file: ../utils/index.js
-          imports:
-            - validateNonEmpty
-            - validateNonEmptyArray
-      exports:
-        - ReflectionManager
-      classes:
-        - ReflectionManager
-      interfaces:
-        - ReflectionManagerConfig
-        - ReflectionInput
-        - ReflectionEntityOptions
-        - ListReflectionsOptions
-        - RelevanceOptions
     src/agent/RoleProfiles.ts:
       description: Role Profiles
       externalDependencies: []
@@ -1757,7 +1757,7 @@ modules:
       classes:
         - RuleEvaluator
       interfaces:
-        - Rule
+        - EvaluatorRule
     src/agent/SQLiteBackend.ts:
       description: "`SQLiteBackend` — durable `IMemoryBackend` adapter wrapping the"
       externalDependencies: []
@@ -2328,9 +2328,10 @@ modules:
             - PushSubGoalOptions
             - ListPlansOptions
           reExport: true
-        - file: ./ReflectionManager.js
+        - file: ./AgentReflectionManager.js
           imports:
-            - ReflectionManager
+            - AgentReflectionManager
+            - AgentReflectionManager
             - ArchiveReflectionResult
             - ReflectionManagerConfig
             - ReflectionInput
@@ -2362,6 +2363,7 @@ modules:
         - file: ./RuleEvaluator.js
           imports:
             - RuleEvaluator
+            - EvaluatorRule
           reExport: true
         - file: ./SalienceEngine.js
           imports:
@@ -2551,7 +2553,8 @@ modules:
             - MemoryValidatorConfig
             - MemoryValidationResult
             - MemoryValidationIssue
-            - Contradiction
+            - MemoryContradiction
+            - MemoryContradiction
           reExport: true
         - file: ./TrajectoryCompressor.js
           imports:
@@ -2773,6 +2776,7 @@ modules:
         - CreatePlanOptions
         - PushSubGoalOptions
         - ListPlansOptions
+        - AgentReflectionManager
         - ReflectionMemoryManager
         - ArchiveReflectionResult
         - ReflectionMemoryManagerConfig
@@ -2793,6 +2797,7 @@ modules:
         - GroupingResult
         - PatternDetector
         - RuleEvaluator
+        - EvaluatorRule
         - SalienceEngine
         - SalienceEngineConfig
         - ContextWindowManager
@@ -2898,6 +2903,7 @@ modules:
         - MemoryValidatorConfig
         - MemoryValidationResult
         - MemoryValidationIssue
+        - MemoryContradiction
         - MemoryValidatorContradiction
         - TrajectoryCompressor
         - TrajectoryCompressorConfig
@@ -3011,9 +3017,7 @@ modules:
         - BridgePersistResult
         - LookupOptions
         - GetAllOptions
-        - ReflectionManager
         - ReflectionManagerConfig
-        - Contradiction
         - IMemoryBackend
         - MemoryTurn
         - WeightedTurn
@@ -3069,7 +3073,7 @@ modules:
         - CreatePlanOptions
         - PushSubGoalOptions
         - ListPlansOptions
-        - ReflectionManager
+        - AgentReflectionManager
         - ArchiveReflectionResult
         - ReflectionManagerConfig
         - ReflectionInput
@@ -3089,6 +3093,7 @@ modules:
         - GroupingResult
         - PatternDetector
         - RuleEvaluator
+        - EvaluatorRule
         - SalienceEngine
         - SalienceEngineConfig
         - ContextWindowManager
@@ -3194,7 +3199,7 @@ modules:
         - MemoryValidatorConfig
         - MemoryValidationResult
         - MemoryValidationIssue
-        - Contradiction
+        - MemoryContradiction
         - TrajectoryCompressor
         - TrajectoryCompressorConfig
         - DistillOptions
@@ -3639,7 +3644,7 @@ modules:
         - file: ../../types/reconstruction.js
           imports:
             - DialogueTurn
-            - DistillationResult
+            - ConversationDistillationResult
             - DistilledSentence
             - PersonalFact
           typeOnly: true
@@ -3672,7 +3677,7 @@ modules:
             - EpisodicRelations
         - file: ../../types/reconstruction.js
           imports:
-            - DistillationResult
+            - ConversationDistillationResult
           typeOnly: true
         - file: ./CueTagContentGraph.js
           imports:
@@ -3755,7 +3760,7 @@ modules:
           imports:
             - CTCGraphSnapshot
             - DialogueTurn
-            - DistillationResult
+            - ConversationDistillationResult
             - ReconstructionOptions
             - ReconstructionResult
           typeOnly: true
@@ -3891,7 +3896,7 @@ modules:
       internalDependencies:
         - file: ../../utils/textSimilarity.js
           imports:
-            - tokenize
+            - tokenizeStripped
       exports:
         - QueryRewriter
       classes:
@@ -4217,20 +4222,15 @@ modules:
           imports:
             - findConfigFile
             - loadConfig
-            - mergeConfig
-        - file: ../formatters.js
-          imports:
-            - formatError
+            - mergeCliConfig
       exports:
         - createLogger
         - GlobalOptions
         - getOptions
         - createContext
-        - withErrorHandling
       functions:
         - getOptions
         - createContext
-        - withErrorHandling
     src/cli/commands/heuristic.ts:
       description: Heuristic CLI commands — `memory heuristic` (Phase 3B.8).
       externalDependencies:
@@ -4702,11 +4702,11 @@ modules:
       exports:
         - findConfigFile
         - loadConfig
-        - mergeConfig
+        - mergeCliConfig
       functions:
         - findConfigFile
         - loadConfig
-        - mergeConfig
+        - mergeCliConfig
     src/cli/formatters.ts:
       description: CLI Output Formatters
       externalDependencies:
@@ -5329,9 +5329,9 @@ modules:
         - file: ../agent/PlanManager.js
           imports:
             - PlanManager
-        - file: ../agent/ReflectionManager.js
+        - file: ../agent/AgentReflectionManager.js
           imports:
-            - ReflectionManager
+            - AgentReflectionManager
         - file: ../agent/causal/CausalReasoner.js
           imports:
             - CausalReasoner
@@ -6061,13 +6061,26 @@ modules:
             - BackupResult
             - RestoreResult
           typeOnly: true
+        - file: ./IOManager.js
+          imports:
+            - BackupMetadata
+            - BackupInfo
+          typeOnly: true
+        - file: ./IOManager.js
+          imports:
+            - BackupMetadata
+            - BackupInfo
+          reExport: true
+          typeOnly: true
       exports:
         - BackupManager
-      classes:
-        - BackupManager
-      interfaces:
         - BackupMetadata
         - BackupInfo
+      reExported:
+        - BackupMetadata
+        - BackupInfo
+      classes:
+        - BackupManager
     src/features/CompressionManager.ts:
       description: Compression Manager
       externalDependencies: []
@@ -7759,18 +7772,26 @@ modules:
             - IVectorStore
             - VectorSearchResult
           typeOnly: true
+        - file: ../utils/textSimilarity.js
+          imports:
+            - cosineSimilarity
+        - file: ../utils/textSimilarity.js
+          imports:
+            - cosineSimilarity
+          reExport: true
       exports:
         - cosineSimilarity
         - createVectorStore
         - InMemoryVectorStore
         - SQLiteVectorStore
+      reExported:
+        - cosineSimilarity
       classes:
         - InMemoryVectorStore
         - SQLiteVectorStore
       interfaces:
         - SQLiteStorageWithEmbeddings
       functions:
-        - cosineSimilarity
         - createVectorStore
     src/search/index.ts:
       description: Search Module Barrel Export
@@ -8405,7 +8426,7 @@ modules:
       classes:
         - APIKeyStore
       interfaces:
-        - ValidationResult
+        - KeyValidationResult
         - KeyRecord
         - IssueOptions
         - IssueResult
@@ -8475,7 +8496,7 @@ modules:
             - IssueOptions
             - IssueResult
             - KeyRecord
-            - ValidationResult
+            - KeyValidationResult
           reExport: true
       exports:
         - PiiRedactor
@@ -8498,7 +8519,7 @@ modules:
         - IssueResult
         - KeyRecord
         - APIKeyValidationResult
-        - ValidationResult
+        - KeyValidationResult
       reExported:
         - PiiRedactor
         - DEFAULT_PII_PATTERNS
@@ -8519,7 +8540,7 @@ modules:
         - IssueOptions
         - IssueResult
         - KeyRecord
-        - ValidationResult
+        - KeyValidationResult
   types:
     src/types/agent-memory.ts:
       description: Agent Memory Type Definitions
@@ -8899,7 +8920,8 @@ modules:
             - CTCGraphSnapshot
             - DistilledSentence
             - PersonalFact
-            - DistillationResult
+            - ConversationDistillationResult
+            - ConversationDistillationResult
             - DialogueTurn
             - TraversalActionType
             - TraversalStep
@@ -9100,7 +9122,7 @@ modules:
         - CTCGraphSnapshot
         - DistilledSentence
         - PersonalFact
-        - DistillationResult
+        - ConversationDistillationResult
         - DialogueTurn
         - TraversalActionType
         - TraversalStep
@@ -9295,7 +9317,7 @@ modules:
         - CTCGraphSnapshot
         - DistilledSentence
         - PersonalFact
-        - DistillationResult
+        - ConversationDistillationResult
         - DialogueTurn
         - TraversalActionType
         - TraversalStep
@@ -9343,7 +9365,7 @@ modules:
         - CTCGraphSnapshot
         - DistilledSentence
         - PersonalFact
-        - DistillationResult
+        - ConversationDistillationResult
         - DialogueTurn
         - TraversalStep
         - ReconstructionResult
@@ -10387,7 +10409,8 @@ modules:
           reExport: true
         - file: ./textSimilarity.js
           imports:
-            - tokenize
+            - tokenizeStripped
+            - tokenizeStripped
             - buildTFVector
             - cosineSimilarity
             - calculateTextSimilarity
@@ -10650,6 +10673,7 @@ modules:
         - JsonSchema
         - AsyncMutex
         - AsyncMutexOptions
+        - tokenizeStripped
         - textTokenize
         - buildTFVector
         - textCosineSimilarity
@@ -10913,6 +10937,7 @@ modules:
         - JsonSchema
         - AsyncMutex
         - AsyncMutexOptions
+        - tokenizeStripped
         - buildTFVector
         - cosineSimilarity
         - calculateTextSimilarity
@@ -11223,7 +11248,7 @@ modules:
       nodeDependencies: []
       internalDependencies: []
       exports:
-        - tokenize
+        - tokenizeStripped
         - tokenizeToSet
         - tokenizeAlphanumeric
         - buildTFVector
@@ -11231,7 +11256,7 @@ modules:
         - calculateTextSimilarity
         - jaccard
       functions:
-        - tokenize
+        - tokenizeStripped
         - tokenizeToSet
         - tokenizeAlphanumeric
         - buildTFVector
@@ -11293,45 +11318,6 @@ modules:
         - all
         - when
   workers:
-    src/workers/index.ts:
-      description: Workers Module
-      externalDependencies: []
-      nodeDependencies: []
-      internalDependencies:
-        - file: ./levenshteinWorker.js
-          imports:
-            - levenshteinDistance
-            - similarity
-            - searchEntities
-          reExport: true
-        - file: "@danielsimonjr/workerpool"
-          imports:
-            - Pool
-            - PoolStats
-          reExport: true
-          typeOnly: true
-        - file: ./levenshteinWorker.js
-          imports:
-            - WorkerInput
-            - MatchResult
-          reExport: true
-          typeOnly: true
-      exports:
-        - levenshteinDistance
-        - similarity
-        - searchEntities
-        - Pool
-        - PoolStats
-        - WorkerInput
-        - MatchResult
-      reExported:
-        - levenshteinDistance
-        - similarity
-        - searchEntities
-        - Pool
-        - PoolStats
-        - WorkerInput
-        - MatchResult
     src/workers/levenshteinWorker.ts:
       description: Levenshtein Worker
       externalDependencies:
@@ -11548,7 +11534,7 @@ dependencyGraph:
         - src/agent/WorkingMemoryManager.ts
         - src/agent/EntropyFilter.ts
         - src/agent/ConsolidationPipeline.ts
-        - src/agent/ReflectionManager.ts
+        - src/agent/AgentReflectionManager.ts
         - src/types/agent-memory.ts
       - - src/agent/ContextWindowManager.ts
         - src/agent/ProfileManager.ts
@@ -11606,9 +11592,12 @@ dependencyGraph:
       - - src/types/agent-memory.ts
         - src/agent/RoleProfiles.ts
         - src/types/agent-memory.ts
-    total: 36
+      - - src/features/IOManager.ts
+        - src/features/BackupManager.ts
+        - src/features/IOManager.ts
+    total: 37
     runtimeCount: 0
-    typeOnlyCount: 36
+    typeOnlyCount: 37
   layers:
     - name: Adapters
       files:
@@ -11623,6 +11612,7 @@ dependencyGraph:
         - src/agent/AccessTracker.ts
         - src/agent/AgentMemoryConfig.ts
         - src/agent/AgentMemoryManager.ts
+        - src/agent/AgentReflectionManager.ts
         - src/agent/ArtifactManager.ts
         - src/agent/CognitiveLoadAnalyzer.ts
         - src/agent/CollaborativeSynthesis.ts
@@ -11658,7 +11648,6 @@ dependencyGraph:
         - src/agent/ProfileManager.ts
         - src/agent/ProjectContextManager.ts
         - src/agent/ProspectiveMemoryManager.ts
-        - src/agent/ReflectionManager.ts
         - src/agent/RoleProfiles.ts
         - src/agent/RuleEvaluator.ts
         - src/agent/SQLiteBackend.ts
@@ -11886,7 +11875,6 @@ dependencyGraph:
         - src/utils/validators.ts
     - name: Workers
       files:
-        - src/workers/index.ts
         - src/workers/levenshteinWorker.ts
 reachability:
   roots:
@@ -11894,29 +11882,28 @@ reachability:
     - src/index.ts
     - src/workers/levenshteinWorker.ts
   reachableCount: 255
-  dormantCount: 1
-  orphaned:
-    - src/workers/index.ts
+  dormantCount: 0
+  orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 256
+  totalTypeScriptFiles: 255
   totalModules: 11
-  totalLinesOfCode: 85702
-  totalExports: 1631
+  totalLinesOfCode: 85645
+  totalExports: 1627
   totalClasses: 215
-  totalInterfaces: 532
-  totalFunctions: 256
+  totalInterfaces: 530
+  totalFunctions: 254
   totalTypeGuards: 28
   totalEnums: 4
   totalConstants: 82
-  totalReExports: 1067
+  totalReExports: 1065
   totalTypeOnlyImports: 397
   runtimeCircularDeps: 0
-  typeOnlyCircularDeps: 36
+  typeOnlyCircularDeps: 37
   entryRoots: 3
   reachableFiles: 255
-  dormantFiles: 1
-  orphanedFiles: 1
+  dormantFiles: 0
+  orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 39
+  unusedExportsCount: 36

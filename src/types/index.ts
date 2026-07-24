@@ -254,7 +254,10 @@ export type {
   CTCGraphSnapshot,
   DistilledSentence,
   PersonalFact,
-  DistillationResult as ReconstructionDistillationResult,
+  // Renamed from `DistillationResult` (collided with DistillationPipeline's,
+  // which excluded the name from the package root under ESM `export *`).
+  ConversationDistillationResult,
+  ConversationDistillationResult as ReconstructionDistillationResult,
   DialogueTurn,
   TraversalActionType,
   TraversalStep,

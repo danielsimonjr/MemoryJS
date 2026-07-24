@@ -14,7 +14,7 @@
  * @module agent/retrieval/QueryRewriter
  */
 
-import { tokenize as baseTokenize } from '../../utils/textSimilarity.js';
+import { tokenizeStripped as baseTokenize } from '../../utils/textSimilarity.js';
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'of', 'and', 'or', 'but', 'is', 'are', 'was', 'were',

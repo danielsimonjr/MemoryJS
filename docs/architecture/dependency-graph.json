@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "2.9.0",
     "lastUpdated": "2026-07-24",
-    "totalFiles": 256,
+    "totalFiles": 255,
     "totalModules": 11,
-    "totalExports": 1631
+    "totalExports": 1627
   },
   "entryPoints": [
     {
@@ -664,6 +664,80 @@
           "RetrieveContextOptions"
         ]
       },
+      "src/agent/AgentReflectionManager.ts": {
+        "description": "Reflection Memory Manager (Phase 2 Sprint 8)",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "createHash",
+              "randomUUID"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity",
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "ReflectionEntity",
+              "ReflectionId",
+              "ReflectionRecord",
+              "ReflectionScope"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isReflectionMemory",
+              "toIsoDateTime"
+            ]
+          },
+          {
+            "file": "../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "VersionConflictError",
+              "EntityNotFoundError"
+            ]
+          },
+          {
+            "file": "../utils/index.js",
+            "imports": [
+              "validateNonEmpty",
+              "validateNonEmptyArray"
+            ]
+          }
+        ],
+        "exports": [
+          "AgentReflectionManager"
+        ],
+        "classes": [
+          "AgentReflectionManager"
+        ],
+        "interfaces": [
+          "ReflectionManagerConfig",
+          "ReflectionInput",
+          "ReflectionEntityOptions",
+          "ListReflectionsOptions",
+          "RelevanceOptions"
+        ]
+      },
       "src/agent/ArtifactManager.ts": {
         "description": "Artifact Manager",
         "externalDependencies": [],
@@ -898,7 +972,7 @@
           {
             "file": "../utils/textSimilarity.js",
             "imports": [
-              "tokenize"
+              "tokenizeStripped"
             ]
           },
           {
@@ -934,9 +1008,9 @@
             ]
           },
           {
-            "file": "./ReflectionManager.js",
+            "file": "./AgentReflectionManager.js",
             "imports": [
-              "ReflectionManager"
+              "AgentReflectionManager"
             ],
             "typeOnly": true
           },
@@ -2205,7 +2279,7 @@
         "interfaces": [
           "MemoryValidationIssue",
           "MemoryValidationResult",
-          "Contradiction",
+          "MemoryContradiction",
           "MemoryValidatorConfig"
         ]
       },
@@ -2609,80 +2683,6 @@
           "ScheduleOptions"
         ]
       },
-      "src/agent/ReflectionManager.ts": {
-        "description": "Reflection Memory Manager (Phase 2 Sprint 8)",
-        "externalDependencies": [],
-        "nodeDependencies": [
-          {
-            "module": "crypto",
-            "imports": [
-              "createHash",
-              "randomUUID"
-            ]
-          }
-        ],
-        "internalDependencies": [
-          {
-            "file": "../types/types.js",
-            "imports": [
-              "Entity",
-              "IGraphStorage"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "ReflectionEntity",
-              "ReflectionId",
-              "ReflectionRecord",
-              "ReflectionScope"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../types/agent-memory.js",
-            "imports": [
-              "isReflectionMemory",
-              "toIsoDateTime"
-            ]
-          },
-          {
-            "file": "../core/EntityManager.js",
-            "imports": [
-              "EntityManager"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../utils/errors.js",
-            "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
-            ]
-          },
-          {
-            "file": "../utils/index.js",
-            "imports": [
-              "validateNonEmpty",
-              "validateNonEmptyArray"
-            ]
-          }
-        ],
-        "exports": [
-          "ReflectionManager"
-        ],
-        "classes": [
-          "ReflectionManager"
-        ],
-        "interfaces": [
-          "ReflectionManagerConfig",
-          "ReflectionInput",
-          "ReflectionEntityOptions",
-          "ListReflectionsOptions",
-          "RelevanceOptions"
-        ]
-      },
       "src/agent/RoleProfiles.ts": {
         "description": "Role Profiles",
         "externalDependencies": [],
@@ -2754,7 +2754,7 @@
           "RuleEvaluator"
         ],
         "interfaces": [
-          "Rule"
+          "EvaluatorRule"
         ]
       },
       "src/agent/SQLiteBackend.ts": {
@@ -3623,9 +3623,10 @@
             "reExport": true
           },
           {
-            "file": "./ReflectionManager.js",
+            "file": "./AgentReflectionManager.js",
             "imports": [
-              "ReflectionManager",
+              "AgentReflectionManager",
+              "AgentReflectionManager",
               "ArchiveReflectionResult",
               "ReflectionManagerConfig",
               "ReflectionInput",
@@ -3668,7 +3669,8 @@
           {
             "file": "./RuleEvaluator.js",
             "imports": [
-              "RuleEvaluator"
+              "RuleEvaluator",
+              "EvaluatorRule"
             ],
             "reExport": true
           },
@@ -3942,7 +3944,8 @@
               "MemoryValidatorConfig",
               "MemoryValidationResult",
               "MemoryValidationIssue",
-              "Contradiction"
+              "MemoryContradiction",
+              "MemoryContradiction"
             ],
             "reExport": true
           },
@@ -4221,6 +4224,7 @@
           "CreatePlanOptions",
           "PushSubGoalOptions",
           "ListPlansOptions",
+          "AgentReflectionManager",
           "ReflectionMemoryManager",
           "ArchiveReflectionResult",
           "ReflectionMemoryManagerConfig",
@@ -4241,6 +4245,7 @@
           "GroupingResult",
           "PatternDetector",
           "RuleEvaluator",
+          "EvaluatorRule",
           "SalienceEngine",
           "SalienceEngineConfig",
           "ContextWindowManager",
@@ -4346,6 +4351,7 @@
           "MemoryValidatorConfig",
           "MemoryValidationResult",
           "MemoryValidationIssue",
+          "MemoryContradiction",
           "MemoryValidatorContradiction",
           "TrajectoryCompressor",
           "TrajectoryCompressorConfig",
@@ -4459,9 +4465,7 @@
           "BridgePersistResult",
           "LookupOptions",
           "GetAllOptions",
-          "ReflectionManager",
           "ReflectionManagerConfig",
-          "Contradiction",
           "IMemoryBackend",
           "MemoryTurn",
           "WeightedTurn",
@@ -4518,7 +4522,7 @@
           "CreatePlanOptions",
           "PushSubGoalOptions",
           "ListPlansOptions",
-          "ReflectionManager",
+          "AgentReflectionManager",
           "ArchiveReflectionResult",
           "ReflectionManagerConfig",
           "ReflectionInput",
@@ -4538,6 +4542,7 @@
           "GroupingResult",
           "PatternDetector",
           "RuleEvaluator",
+          "EvaluatorRule",
           "SalienceEngine",
           "SalienceEngineConfig",
           "ContextWindowManager",
@@ -4643,7 +4648,7 @@
           "MemoryValidatorConfig",
           "MemoryValidationResult",
           "MemoryValidationIssue",
-          "Contradiction",
+          "MemoryContradiction",
           "TrajectoryCompressor",
           "TrajectoryCompressorConfig",
           "DistillOptions",
@@ -5222,7 +5227,7 @@
             "file": "../../types/reconstruction.js",
             "imports": [
               "DialogueTurn",
-              "DistillationResult",
+              "ConversationDistillationResult",
               "DistilledSentence",
               "PersonalFact"
             ],
@@ -5275,7 +5280,7 @@
           {
             "file": "../../types/reconstruction.js",
             "imports": [
-              "DistillationResult"
+              "ConversationDistillationResult"
             ],
             "typeOnly": true
           },
@@ -5406,7 +5411,7 @@
             "imports": [
               "CTCGraphSnapshot",
               "DialogueTurn",
-              "DistillationResult",
+              "ConversationDistillationResult",
               "ReconstructionOptions",
               "ReconstructionResult"
             ],
@@ -5610,7 +5615,7 @@
           {
             "file": "../../utils/textSimilarity.js",
             "imports": [
-              "tokenize"
+              "tokenizeStripped"
             ]
           }
         ],
@@ -6132,13 +6137,7 @@
             "imports": [
               "findConfigFile",
               "loadConfig",
-              "mergeConfig"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "mergeCliConfig"
             ]
           }
         ],
@@ -6146,13 +6145,11 @@
           "createLogger",
           "GlobalOptions",
           "getOptions",
-          "createContext",
-          "withErrorHandling"
+          "createContext"
         ],
         "functions": [
           "getOptions",
-          "createContext",
-          "withErrorHandling"
+          "createContext"
         ]
       },
       "src/cli/commands/heuristic.ts": {
@@ -6973,12 +6970,12 @@
         "exports": [
           "findConfigFile",
           "loadConfig",
-          "mergeConfig"
+          "mergeCliConfig"
         ],
         "functions": [
           "findConfigFile",
           "loadConfig",
-          "mergeConfig"
+          "mergeCliConfig"
         ]
       },
       "src/cli/formatters.ts": {
@@ -8047,9 +8044,9 @@
             ]
           },
           {
-            "file": "../agent/ReflectionManager.js",
+            "file": "../agent/AgentReflectionManager.js",
             "imports": [
-              "ReflectionManager"
+              "AgentReflectionManager"
             ]
           },
           {
@@ -9200,17 +9197,36 @@
               "RestoreResult"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./IOManager.js",
+            "imports": [
+              "BackupMetadata",
+              "BackupInfo"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./IOManager.js",
+            "imports": [
+              "BackupMetadata",
+              "BackupInfo"
+            ],
+            "reExport": true,
+            "typeOnly": true
           }
         ],
         "exports": [
-          "BackupManager"
+          "BackupManager",
+          "BackupMetadata",
+          "BackupInfo"
+        ],
+        "reExported": [
+          "BackupMetadata",
+          "BackupInfo"
         ],
         "classes": [
           "BackupManager"
-        ],
-        "interfaces": [
-          "BackupMetadata",
-          "BackupInfo"
         ]
       },
       "src/features/CompressionManager.ts": {
@@ -11775,6 +11791,19 @@
               "VectorSearchResult"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "cosineSimilarity"
+            ]
+          },
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "cosineSimilarity"
+            ],
+            "reExport": true
           }
         ],
         "exports": [
@@ -11782,6 +11811,9 @@
           "createVectorStore",
           "InMemoryVectorStore",
           "SQLiteVectorStore"
+        ],
+        "reExported": [
+          "cosineSimilarity"
         ],
         "classes": [
           "InMemoryVectorStore",
@@ -11791,7 +11823,6 @@
           "SQLiteStorageWithEmbeddings"
         ],
         "functions": [
-          "cosineSimilarity",
           "createVectorStore"
         ]
       },
@@ -12621,7 +12652,7 @@
           "APIKeyStore"
         ],
         "interfaces": [
-          "ValidationResult",
+          "KeyValidationResult",
           "KeyRecord",
           "IssueOptions",
           "IssueResult"
@@ -12715,7 +12746,7 @@
               "IssueOptions",
               "IssueResult",
               "KeyRecord",
-              "ValidationResult"
+              "KeyValidationResult"
             ],
             "reExport": true
           }
@@ -12741,7 +12772,7 @@
           "IssueResult",
           "KeyRecord",
           "APIKeyValidationResult",
-          "ValidationResult"
+          "KeyValidationResult"
         ],
         "reExported": [
           "PiiRedactor",
@@ -12763,7 +12794,7 @@
           "IssueOptions",
           "IssueResult",
           "KeyRecord",
-          "ValidationResult"
+          "KeyValidationResult"
         ]
       }
     },
@@ -13203,7 +13234,8 @@
               "CTCGraphSnapshot",
               "DistilledSentence",
               "PersonalFact",
-              "DistillationResult",
+              "ConversationDistillationResult",
+              "ConversationDistillationResult",
               "DialogueTurn",
               "TraversalActionType",
               "TraversalStep",
@@ -13410,7 +13442,7 @@
           "CTCGraphSnapshot",
           "DistilledSentence",
           "PersonalFact",
-          "DistillationResult",
+          "ConversationDistillationResult",
           "DialogueTurn",
           "TraversalActionType",
           "TraversalStep",
@@ -13606,7 +13638,7 @@
           "CTCGraphSnapshot",
           "DistilledSentence",
           "PersonalFact",
-          "DistillationResult",
+          "ConversationDistillationResult",
           "DialogueTurn",
           "TraversalActionType",
           "TraversalStep",
@@ -13662,7 +13694,7 @@
           "CTCGraphSnapshot",
           "DistilledSentence",
           "PersonalFact",
-          "DistillationResult",
+          "ConversationDistillationResult",
           "DialogueTurn",
           "TraversalStep",
           "ReconstructionResult",
@@ -14999,7 +15031,8 @@
           {
             "file": "./textSimilarity.js",
             "imports": [
-              "tokenize",
+              "tokenizeStripped",
+              "tokenizeStripped",
               "buildTFVector",
               "cosineSimilarity",
               "calculateTextSimilarity"
@@ -15265,6 +15298,7 @@
           "JsonSchema",
           "AsyncMutex",
           "AsyncMutexOptions",
+          "tokenizeStripped",
           "textTokenize",
           "buildTFVector",
           "textCosineSimilarity",
@@ -15529,6 +15563,7 @@
           "JsonSchema",
           "AsyncMutex",
           "AsyncMutexOptions",
+          "tokenizeStripped",
           "buildTFVector",
           "cosineSimilarity",
           "calculateTextSimilarity"
@@ -15928,7 +15963,7 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
-          "tokenize",
+          "tokenizeStripped",
           "tokenizeToSet",
           "tokenizeAlphanumeric",
           "buildTFVector",
@@ -15937,7 +15972,7 @@
           "jaccard"
         ],
         "functions": [
-          "tokenize",
+          "tokenizeStripped",
           "tokenizeToSet",
           "tokenizeAlphanumeric",
           "buildTFVector",
@@ -16012,58 +16047,6 @@
       }
     },
     "workers": {
-      "src/workers/index.ts": {
-        "description": "Workers Module",
-        "externalDependencies": [],
-        "nodeDependencies": [],
-        "internalDependencies": [
-          {
-            "file": "./levenshteinWorker.js",
-            "imports": [
-              "levenshteinDistance",
-              "similarity",
-              "searchEntities"
-            ],
-            "reExport": true
-          },
-          {
-            "file": "@danielsimonjr/workerpool",
-            "imports": [
-              "Pool",
-              "PoolStats"
-            ],
-            "reExport": true,
-            "typeOnly": true
-          },
-          {
-            "file": "./levenshteinWorker.js",
-            "imports": [
-              "WorkerInput",
-              "MatchResult"
-            ],
-            "reExport": true,
-            "typeOnly": true
-          }
-        ],
-        "exports": [
-          "levenshteinDistance",
-          "similarity",
-          "searchEntities",
-          "Pool",
-          "PoolStats",
-          "WorkerInput",
-          "MatchResult"
-        ],
-        "reExported": [
-          "levenshteinDistance",
-          "similarity",
-          "searchEntities",
-          "Pool",
-          "PoolStats",
-          "WorkerInput",
-          "MatchResult"
-        ]
-      },
       "src/workers/levenshteinWorker.ts": {
         "description": "Levenshtein Worker",
         "externalDependencies": [
@@ -16345,7 +16328,7 @@
           "src/agent/WorkingMemoryManager.ts",
           "src/agent/EntropyFilter.ts",
           "src/agent/ConsolidationPipeline.ts",
-          "src/agent/ReflectionManager.ts",
+          "src/agent/AgentReflectionManager.ts",
           "src/types/agent-memory.ts"
         ],
         [
@@ -16419,11 +16402,16 @@
           "src/types/agent-memory.ts",
           "src/agent/RoleProfiles.ts",
           "src/types/agent-memory.ts"
+        ],
+        [
+          "src/features/IOManager.ts",
+          "src/features/BackupManager.ts",
+          "src/features/IOManager.ts"
         ]
       ],
-      "total": 36,
+      "total": 37,
       "runtimeCount": 0,
-      "typeOnlyCount": 36
+      "typeOnlyCount": 37
     },
     "layers": [
       {
@@ -16443,6 +16431,7 @@
           "src/agent/AccessTracker.ts",
           "src/agent/AgentMemoryConfig.ts",
           "src/agent/AgentMemoryManager.ts",
+          "src/agent/AgentReflectionManager.ts",
           "src/agent/ArtifactManager.ts",
           "src/agent/CognitiveLoadAnalyzer.ts",
           "src/agent/CollaborativeSynthesis.ts",
@@ -16478,7 +16467,6 @@
           "src/agent/ProfileManager.ts",
           "src/agent/ProjectContextManager.ts",
           "src/agent/ProspectiveMemoryManager.ts",
-          "src/agent/ReflectionManager.ts",
           "src/agent/RoleProfiles.ts",
           "src/agent/RuleEvaluator.ts",
           "src/agent/SQLiteBackend.ts",
@@ -16733,7 +16721,6 @@
       {
         "name": "Workers",
         "files": [
-          "src/workers/index.ts",
           "src/workers/levenshteinWorker.ts"
         ]
       }
@@ -16746,33 +16733,31 @@
       "src/workers/levenshteinWorker.ts"
     ],
     "reachableCount": 255,
-    "dormantCount": 1,
-    "orphaned": [
-      "src/workers/index.ts"
-    ],
+    "dormantCount": 0,
+    "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 256,
+    "totalTypeScriptFiles": 255,
     "totalModules": 11,
-    "totalLinesOfCode": 85702,
-    "totalExports": 1631,
+    "totalLinesOfCode": 85645,
+    "totalExports": 1627,
     "totalClasses": 215,
-    "totalInterfaces": 532,
-    "totalFunctions": 256,
+    "totalInterfaces": 530,
+    "totalFunctions": 254,
     "totalTypeGuards": 28,
     "totalEnums": 4,
     "totalConstants": 82,
-    "totalReExports": 1067,
+    "totalReExports": 1065,
     "totalTypeOnlyImports": 397,
     "runtimeCircularDeps": 0,
-    "typeOnlyCircularDeps": 36,
+    "typeOnlyCircularDeps": 37,
     "entryRoots": 3,
     "reachableFiles": 255,
-    "dormantFiles": 1,
-    "orphanedFiles": 1,
+    "dormantFiles": 0,
+    "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 39
+    "unusedExportsCount": 36
   }
 }

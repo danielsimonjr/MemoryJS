@@ -1356,7 +1356,7 @@ export function isPlanMemory(entity: unknown): entity is PlanEntity {
 
 /**
  * Branded reflection id. Format: `reflection-<timestamp>-<shortrandom>`.
- * Minted by `ReflectionManager` — do not construct manually.
+ * Minted by `AgentReflectionManager` — do not construct manually.
  */
 export type ReflectionId = string & { readonly __reflectionId: unique symbol };
 
@@ -1397,7 +1397,7 @@ export interface ReflectionRecord {
   sourceProjectId?: string;
   /**
    * SHA-256 hash of `scope + sorted(evidence)`. Used by
-   * `ReflectionManager.create` for Tier-1 dedup (mirrors
+   * `AgentReflectionManager.create` for Tier-1 dedup (mirrors
    * `MemoryEngine.contentHash` pattern from v1.11.0).
    */
   evidenceHash: string;

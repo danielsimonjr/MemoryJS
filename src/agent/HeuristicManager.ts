@@ -8,7 +8,7 @@
  * **Phase 3B.8a (v2.0.x)**: promoted from an in-memory `Map` scaffold to a
  * storage-backed facade. Writes go through `EntityManager.updateEntity` with
  * `expectedVersion` OCC (mirroring the v2.0.x #55 race fix on
- * `FailureManager` / `ReflectionManager`). The `Heuristic` record type
+ * `FailureManager` / `AgentReflectionManager`). The `Heuristic` record type
  * itself moved to `src/types/agent-memory.ts` to live with sibling
  * memory-type records.
  *

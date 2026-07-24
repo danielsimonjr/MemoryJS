@@ -8,44 +8,12 @@
  */
 
 import type { IVectorStore, VectorSearchResult } from '../types/index.js';
+import { cosineSimilarity } from '../utils/textSimilarity.js';
 
-/**
- * Calculate cosine similarity between two vectors.
- *
- * Uses an optimized inner loop without array methods for maximum performance.
- *
- * @param a - First vector
- * @param b - Second vector
- * @returns Cosine similarity score (0.0 to 1.0)
- */
-export function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length) {
-    throw new Error(`Vector dimensions mismatch: ${a.length} vs ${b.length}`);
-  }
-
-  let dotProduct = 0;
-  let magnitudeA = 0;
-  let magnitudeB = 0;
-
-  // Optimized single-pass loop
-  for (let i = 0; i < a.length; i++) {
-    const ai = a[i];
-    const bi = b[i];
-    dotProduct += ai * bi;
-    magnitudeA += ai * ai;
-    magnitudeB += bi * bi;
-  }
-
-  const magnitude = Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB);
-
-  if (magnitude === 0) {
-    return 0;
-  }
-
-  // Clamp to [-1, 1] to handle floating point errors
-  const similarity = dotProduct / magnitude;
-  return Math.max(-1, Math.min(1, similarity));
-}
+// Re-export the canonical implementation (same binding as utils/textSimilarity —
+// reaching the package root via both barrels is NOT ambiguous under ESM because
+// it is one shared binding, which keeps `cosineSimilarity` importable from the root).
+export { cosineSimilarity } from '../utils/textSimilarity.js';
 
 /**
  * In-Memory Vector Store

@@ -379,7 +379,8 @@ export { AsyncMutex, type AsyncMutexOptions } from './AsyncMutex.js';
 
 // ==================== Text Similarity ====================
 export {
-  tokenize as textTokenize,
+  tokenizeStripped,
+  tokenizeStripped as textTokenize,
   buildTFVector,
   cosineSimilarity as textCosineSimilarity,
   calculateTextSimilarity,

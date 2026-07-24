@@ -17,7 +17,7 @@ import { logger } from '../utils/logger.js';
 /**
  * Simple rule interface for demonstration.
  */
-export interface Rule {
+export interface EvaluatorRule {
   condition: {
     type: string;
     field: string;
@@ -134,7 +134,7 @@ export class RuleEvaluator {
    * @param facts - Facts to check against
    * @returns True if the rule evaluates to true
    */
-  public evaluateRule(rule: Rule, facts: Record<string, unknown>): boolean {
+  public evaluateRule(rule: EvaluatorRule, facts: Record<string, unknown>): boolean {
     try {
       if (rule.condition.type === 'equals') {
         return facts[rule.condition.field] === rule.condition.value;

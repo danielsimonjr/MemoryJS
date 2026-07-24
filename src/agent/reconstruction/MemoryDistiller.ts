@@ -23,7 +23,7 @@ import type { LLMProvider } from '../../search/LLMQueryPlanner.js';
 import { KeywordExtractor } from '../../features/KeywordExtractor.js';
 import type {
   DialogueTurn,
-  DistillationResult,
+  ConversationDistillationResult,
   DistilledSentence,
   PersonalFact,
 } from '../../types/reconstruction.js';
@@ -69,7 +69,7 @@ export class MemoryDistiller {
   constructor(private readonly llm?: LLMProvider) {}
 
   /** Run the full distillation pipeline over a dialogue. */
-  async distill(turns: DialogueTurn[]): Promise<DistillationResult> {
+  async distill(turns: DialogueTurn[]): Promise<ConversationDistillationResult> {
     if (this.llm) {
       try {
         return await this.distillWithLLM(turns);
@@ -84,7 +84,7 @@ export class MemoryDistiller {
    * Build (or extend) a {@link CueTagContentGraph} from a distillation result.
    * Episodic, semantic and topic layers are populated in one pass.
    */
-  buildGraph(result: DistillationResult, graph = new CueTagContentGraph()): CueTagContentGraph {
+  buildGraph(result: ConversationDistillationResult, graph = new CueTagContentGraph()): CueTagContentGraph {
     // Topic abstraction layer — create topic content nodes first so episodes can link.
     for (const [topicId, description] of Object.entries(result.topics)) {
       graph.addContent({ id: topicId, layer: 'topic', text: description });
@@ -124,7 +124,7 @@ export class MemoryDistiller {
 
   // ==================== LLM path ====================
 
-  private async distillWithLLM(turns: DialogueTurn[]): Promise<DistillationResult> {
+  private async distillWithLLM(turns: DialogueTurn[]): Promise<ConversationDistillationResult> {
     const dialogueText = turns
       .map(t => `${t.id}${t.speaker ? ` (${t.speaker})` : ''}: ${t.text}`)
       .join('\n');
@@ -197,7 +197,7 @@ export class MemoryDistiller {
 
   // ==================== Heuristic path ====================
 
-  private distillHeuristic(turns: DialogueTurn[]): DistillationResult {
+  private distillHeuristic(turns: DialogueTurn[]): ConversationDistillationResult {
     const refDate = turns.find(t => t.timestamp)?.timestamp;
     const sentences: DistilledSentence[] = [];
     const keywords: Record<string, string[]> = {};

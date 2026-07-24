@@ -27,13 +27,13 @@ import {
   isProspectiveMemory,
   isReflectionMemory,
 } from '../types/agent-memory.js';
-import { tokenize } from '../utils/textSimilarity.js';
+import { tokenizeStripped } from '../utils/textSimilarity.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
 import { RuleEvaluator } from './RuleEvaluator.js';
-import type { ReflectionManager } from './ReflectionManager.js';
+import type { AgentReflectionManager } from './AgentReflectionManager.js';
 import type { TrajectoryCompressor } from './TrajectoryCompressor.js';
 import type {
   ExperienceExtractor,
@@ -930,10 +930,10 @@ export class ConsolidationPipeline {
     // Cheap per-entity token fingerprint. `calculateEntitySimilarity` can
     // only score > 0 when two entities share an observation token AND have
     // the same entityType — so pairs failing that pre-check always score 0
-    // and are safe to skip for any threshold > 0. Same `tokenize()` as
+    // and are safe to skip for any threshold > 0. Same `tokenizeStripped()` as
     // `calculateTextSimilarity`, so the check never rejects a > 0 pair.
     const fingerprints: Set<string>[] = agentEntities.map(
-      (e) => new Set(tokenize((e.observations ?? []).join(' ')))
+      (e) => new Set(tokenizeStripped((e.observations ?? []).join(' ')))
     );
     const sharesToken = (a: Set<string>, b: Set<string>): boolean => {
       const [small, large] = a.size <= b.size ? [a, b] : [b, a];
@@ -1435,12 +1435,12 @@ export interface ReflectionStageConfig {
  *    patterns are below `minConfidence`
  * 4. Run `TrajectoryCompressor.distill` → derive
  *    `generalization_confidence = min(1 - compressionRatio, maxPatternConfidence)`
- * 5. Call `ReflectionManager.create` once (content-hash dedup at that
+ * 5. Call `AgentReflectionManager.create` once (content-hash dedup at that
  *    layer handles repeat runs)
  *
  * **Additive semantics** (Sprint 8 user decision): evidence entities
  * are NOT mutated. The reflection sits alongside them as a derived
- * overlay. Re-running is idempotent because `ReflectionManager.create`
+ * overlay. Re-running is idempotent because `AgentReflectionManager.create`
  * dedups on the evidence-set hash.
  *
  * Register on the default pipeline via
@@ -1458,7 +1458,7 @@ export class ReflectionStage implements PipelineStage {
 
   constructor(
     private readonly storage: IGraphStorage,
-    private readonly reflectionManager: ReflectionManager,
+    private readonly reflectionManager: AgentReflectionManager,
     private readonly patternDetector: PatternDetector,
     private readonly trajectoryCompressor: TrajectoryCompressor,
     config: ReflectionStageConfig = {}
@@ -1564,7 +1564,7 @@ export class ReflectionStage implements PipelineStage {
     // Clamp to `[0, 1]` defensively: `TrajectoryCompressor.compressionRatio`
     // can exceed 1.0 in edge cases (ellipsis suffix on very short totals,
     // multibyte expansion). Without the clamp, a negative input crashes
-    // `validateConfidence` in `ReflectionManager.create`.
+    // `validateConfidence` in `AgentReflectionManager.create`.
     const confidence = Math.max(
       0,
       Math.min(1, 1 - compression.compressionRatio, maxPatternConfidence)
@@ -1610,7 +1610,7 @@ export class ReflectionStage implements PipelineStage {
       return { processed: candidates.length, transformed: 1, errors };
     } catch (err) {
       errors.push(
-        `ReflectionStage: ReflectionManager.create failed: ${
+        `ReflectionStage: AgentReflectionManager.create failed: ${
           err instanceof Error ? err.message : String(err)
         }`
       );

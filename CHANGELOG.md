@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Export-collision cleanup: dead-code deletion, duplicate consolidation, and
+  renames of colliding symbols.** Background: several symbols shared a name
+  across modules whose barrels all reach the package root through `export *`
+  chains. Under ESM semantics an ambiguous name (same name, *different*
+  bindings) is silently **excluded** from the star-export — so those "public"
+  symbols were in fact unimportable from the package root. This release
+  deletes dead code, consolidates true duplicates onto one binding (same
+  binding via multiple barrels is *not* ambiguous, restoring root
+  importability), and renames the same-name-different-meaning symbols.
+  - **Deleted (dead code)**:
+    - `src/workers/index.ts` — orphan barrel; not a tsup entry
+      (`levenshteinWorker.ts` is built directly), not exported by
+      `src/index.ts`, zero imports anywhere.
+    - `withErrorHandling` (`src/cli/commands/helpers.ts`) — definition-only,
+      zero call sites.
+  - **Consolidated (true duplicates)**:
+    - `cosineSimilarity` — canonical implementation now lives in
+      `src/utils/textSimilarity.ts` (gains `VectorStore`'s
+      dimension-mismatch throw and float-error clamp);
+      `src/search/VectorStore.ts` re-exports the same binding, so
+      `cosineSimilarity` is importable from the package root again.
+    - `BackupMetadata` / `BackupInfo` — canonical shapes now live in
+      `src/features/IOManager.ts` (optional compression fields are the honest
+      read-side shape for pre-compression backup metas on disk);
+      `src/features/BackupManager.ts` re-exports the same bindings
+      (type-only, so no import cycle at runtime). No runtime behavior change.
+  - **Renamed** (old → new; the renamed side was the collision loser — the
+    listed keeper retains the original name). Migration list:
+    - `ReflectionManager` (`src/agent/`) → `AgentReflectionManager` (file
+      renamed to `AgentReflectionManager.ts`; `src/search/ReflectionManager`
+      keeps the name). The agent barrel's `ReflectionMemoryManager` alias is
+      preserved (same binding).
+    - `Rule` (`src/agent/RuleEvaluator.ts`) → `EvaluatorRule`
+      (`ExperienceExtractor`'s public textual `Rule` keeps the name).
+    - `ValidationResult` (`src/security/APIKeyStore.ts`) →
+      `KeyValidationResult` (schemas' `{valid, errors}` shape keeps the
+      name; the `APIKeyValidationResult` barrel alias is preserved).
+    - `mergeConfig` (`src/cli/config.ts`) → `mergeCliConfig` (internal to
+      the CLI bundle; `AgentMemoryConfig.mergeConfig` keeps the name).
+    - `Contradiction` (`src/agent/MemoryValidator.ts`) →
+      `MemoryContradiction` (`ContradictionDetector`'s public v1.8 shape
+      keeps the name; the `MemoryValidatorContradiction` barrel alias is
+      preserved).
+    - `DistillationResult` (`src/types/reconstruction.ts`, `@experimental`)
+      → `ConversationDistillationResult` (`DistillationPipeline`'s keeps
+      the name; the `ReconstructionDistillationResult` barrel alias is
+      preserved).
+    - `tokenize` (`src/utils/textSimilarity.ts`) → `tokenizeStripped` (it
+      strips punctuation in place, `'foo-bar'` → `'foobar'`;
+      `utils/searchAlgorithms.tokenize` — the space-substituting version —
+      keeps the name; the `textTokenize` barrel alias is preserved).
+      Tokenization behavior is unchanged everywhere.
+
 ## [2.9.0] - 2026-07-23
 
 ### Added

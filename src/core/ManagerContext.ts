@@ -90,7 +90,7 @@ import {
 } from '../agent/ProspectiveMemoryManager.js';
 import { FailureManager } from '../agent/FailureManager.js';
 import { PlanManager } from '../agent/PlanManager.js';
-import { ReflectionManager } from '../agent/ReflectionManager.js';
+import { AgentReflectionManager } from '../agent/AgentReflectionManager.js';
 import { CausalReasoner } from '../agent/causal/CausalReasoner.js';
 import { RbacMiddleware } from '../agent/rbac/RbacMiddleware.js';
 import { RoleAssignmentStore } from '../agent/rbac/RoleAssignmentStore.js';
@@ -192,7 +192,7 @@ export class ManagerContext {
   private _prospectiveMemory?: ProspectiveMemoryManager;
   private _failureManager?: FailureManager;
   private _plan?: PlanManager;
-  private _reflectionManager?: ReflectionManager;
+  private _reflectionManager?: AgentReflectionManager;
   private _causalReasoner?: CausalReasoner;
   private _rbacMiddleware?: RbacMiddleware;
   private _roleAssignmentStore?: RoleAssignmentStore;
@@ -1036,7 +1036,7 @@ export class ManagerContext {
   }
 
   /**
-   * `ReflectionManager` (Phase 2 Sprint 8) — reflection-memory write
+   * `AgentReflectionManager` (Phase 2 Sprint 8) — reflection-memory write
    * path and read API. Catalog Type 10: derived memories produced by
    * `ReflectionStage` (pattern + trajectory + experience) over a
    * candidate set. **Additive** — reflections do NOT supersede their
@@ -1046,9 +1046,9 @@ export class ManagerContext {
    * invoke `runOnSessionEnd(sessionId)` from session-end handlers, or
    * register it on a `ConsolidationPipeline` instance.
    */
-  get reflectionManager(): ReflectionManager {
+  get reflectionManager(): AgentReflectionManager {
     if (!this._reflectionManager) {
-      this._reflectionManager = new ReflectionManager(this.storage, this.entityManager);
+      this._reflectionManager = new AgentReflectionManager(this.storage, this.entityManager);
     }
     return this._reflectionManager;
   }

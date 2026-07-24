@@ -33,5 +33,5 @@ export {
   type IssueOptions,
   type IssueResult,
   type KeyRecord,
-  type ValidationResult as APIKeyValidationResult,
+  type KeyValidationResult as APIKeyValidationResult,
 } from './APIKeyStore.js';

@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ReflectionStage } from '../../../src/agent/ConsolidationPipeline.js';
-import { ReflectionManager } from '../../../src/agent/ReflectionManager.js';
+import { AgentReflectionManager } from '../../../src/agent/AgentReflectionManager.js';
 import { PatternDetector } from '../../../src/agent/PatternDetector.js';
 import { ExperienceExtractor } from '../../../src/agent/ExperienceExtractor.js';
 import type { EntityManager } from '../../../src/core/EntityManager.js';
@@ -120,14 +120,14 @@ const emptyOptions: ConsolidateOptions = {} as ConsolidateOptions;
 
 describe('ReflectionStage', () => {
   let storage: ReturnType<typeof createMockStorage>;
-  let rm: ReflectionManager;
+  let rm: AgentReflectionManager;
   let pd: PatternDetector;
   let tc: TrajectoryCompressor;
   let stage: ReflectionStage;
 
   beforeEach(() => {
     storage = createMockStorage();
-    rm = new ReflectionManager(storage, createFakeEntityManager(storage));
+    rm = new AgentReflectionManager(storage, createFakeEntityManager(storage));
     pd = new PatternDetector();
     tc = makeTrajectoryCompressorStub();
     stage = new ReflectionStage(storage, rm, pd, tc, { minConfidence: 0.4 });
@@ -237,7 +237,7 @@ describe('ReflectionStage', () => {
     expect(reflections[0].evidence.every((e) => e.startsWith('s1_'))).toBe(true);
   });
 
-  it('surfaces ReflectionManager.create errors on result.errors', async () => {
+  it('surfaces AgentReflectionManager.create errors on result.errors', async () => {
     for (let i = 0; i < 4; i++) {
       const variants = ['A', 'B', 'C', 'D'];
       storage._entities.set(
@@ -245,12 +245,12 @@ describe('ReflectionStage', () => {
         makeEpisodicEntity(`e${i}`, [`A pattern with ${variants[i]}`])
       );
     }
-    // Force ReflectionManager.create to throw
+    // Force AgentReflectionManager.create to throw
     const broken = {
       create: vi.fn(async () => {
         throw new Error('synthetic storage failure');
       }),
-    } as unknown as ReflectionManager;
+    } as unknown as AgentReflectionManager;
     const brokenStage = new ReflectionStage(storage, broken, pd, tc, { minConfidence: 0.0 });
 
     const result = await brokenStage.process([], emptyOptions);
@@ -259,7 +259,7 @@ describe('ReflectionStage', () => {
     expect(result.errors[0]).toMatch(/synthetic storage failure/);
   });
 
-  it('dedup at ReflectionManager.create means re-running the stage is idempotent', async () => {
+  it('dedup at AgentReflectionManager.create means re-running the stage is idempotent', async () => {
     for (let i = 0; i < 5; i++) {
       const variants = ['A', 'B', 'C', 'D', 'E'];
       storage._entities.set(

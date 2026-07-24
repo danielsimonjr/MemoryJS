@@ -26,7 +26,7 @@
 import type { Entity, Relation } from '../../types/types.js';
 import type { AgentEntity } from '../../types/agent-memory.js';
 import { EpisodicRelations } from '../EpisodicMemoryManager.js';
-import type { DistillationResult } from '../../types/reconstruction.js';
+import type { ConversationDistillationResult } from '../../types/reconstruction.js';
 import { CueTagContentGraph, normalizeKey } from './CueTagContentGraph.js';
 
 /** Relation type connecting a topic entity to one of its episodes. */
@@ -86,7 +86,7 @@ export class MemoryGraphBridge {
    * Persist a distillation result into the live store and annotate the in-memory
    * graph's content nodes with their backing entity names.
    */
-  async persist(result: DistillationResult, graph: CueTagContentGraph): Promise<BridgePersistResult> {
+  async persist(result: ConversationDistillationResult, graph: CueTagContentGraph): Promise<BridgePersistResult> {
     const prefix = `mragent-${slug(this.sessionId)}`;
     const entities: AgentEntity[] = [];
     const relations: Relation[] = [];
