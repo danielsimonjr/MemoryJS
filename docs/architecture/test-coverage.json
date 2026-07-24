@@ -1,5 +1,6 @@
 {
   "metadata": {
+<<<<<<< HEAD
     "generatedAt": "2026-07-24T01:43:57.405Z",
     "totalSourceFiles": 255,
     "totalTestFiles": 301,
@@ -15,6 +16,23 @@
       "percent": "92.2",
       "breakdown": {
         "active_untested": 20
+=======
+    "generatedAt": "2026-07-24T00:47:02.353Z",
+    "totalSourceFiles": 256,
+    "totalTestFiles": 301,
+    "testedCount": 235,
+    "untestedCount": 21,
+    "coveragePercent": "91.8",
+    "effectiveCoverage": {
+      "policyLoaded": false,
+      "activeFiles": 256,
+      "testedActive": 235,
+      "activeUntested": 21,
+      "excludedTotal": 0,
+      "percent": "91.8",
+      "breakdown": {
+        "active_untested": 21
+>>>>>>> origin/master
       }
     }
   },
@@ -583,6 +601,16 @@
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/ProspectiveMemoryManager.test.ts"
     ],
+<<<<<<< HEAD
+=======
+    "src/agent/ReflectionManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ReflectionManager.test.ts",
+      "tests/unit/agent/ReflectionStage.test.ts"
+    ],
+>>>>>>> origin/master
     "src/agent/RoleProfiles.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -1757,7 +1785,10 @@
       "tests/unit/agent/AccessTracker.test.ts",
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
+<<<<<<< HEAD
       "tests/unit/agent/AgentReflectionManager.test.ts",
+=======
+>>>>>>> origin/master
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/agent/CognitiveLoadAnalyzer.test.ts",
       "tests/unit/agent/CollaborativeSynthesis.test.ts",
@@ -2621,6 +2652,10 @@
       "tests/unit/utils/searchAlgorithms.test.ts",
       "tests/unit/utils/validators.test.ts"
     ],
+<<<<<<< HEAD
+=======
+    "src/workers/index.ts": [],
+>>>>>>> origin/master
     "src/workers/levenshteinWorker.ts": [
       "tests/unit/workers/levenshteinWorker.test.ts"
     ]
@@ -3706,6 +3741,16 @@
       "src/types/types.ts",
       "src/types/agent-memory.ts"
     ],
+<<<<<<< HEAD
+=======
+    "tests/unit/agent/ReflectionManager.test.ts": [
+      "src/agent/ReflectionManager.ts",
+      "src/core/EntityManager.ts",
+      "src/types/types.ts",
+      "src/types/agent-memory.ts",
+      "src/utils/errors.ts"
+    ],
+>>>>>>> origin/master
     "tests/unit/agent/ReflectionStage.test.ts": [
       "src/agent/ConsolidationPipeline.ts",
       "src/agent/AgentReflectionManager.ts",
@@ -4746,8 +4791,12 @@
       "src/types/reconstruction.ts"
     ],
     "tests/unit/search/VectorStore.test.ts": [
+<<<<<<< HEAD
       "src/search/VectorStore.ts",
       "src/utils/textSimilarity.ts"
+=======
+      "src/search/VectorStore.ts"
+>>>>>>> origin/master
     ],
     "tests/unit/search/search-filter-chain-project.test.ts": [
       "src/search/SearchFilterChain.ts",
@@ -5161,6 +5210,13 @@
     {
       "file": "src/utils/IndexHealthMonitor.ts",
       "category": null
+<<<<<<< HEAD
+=======
+    },
+    {
+      "file": "src/workers/index.ts",
+      "category": null
+>>>>>>> origin/master
     }
   ]
 }

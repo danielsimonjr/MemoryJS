@@ -2,21 +2,115 @@
   "generated": "2026-07-24",
   "note": "This report groups names by OWN definition, not by call graph, then classifies each flagged name: TRUE_DUPLICATE (the actionable merge targets), ALIAS_DELEGATION (a const-alias forward to an imported symbol, not an independent body — excluded once fewer than 2 real bodies remain), and ALLOWLISTED (matches duplicate-allowlist.json: deliberately-independent local helpers/types). A flagged name may be a genuine duplicate OR a legitimately-independent local definition; a human triages TRUE_DUPLICATE entries using the defining files + public flags before merging anything.",
   "summary": {
+<<<<<<< HEAD
     "runtimeDuplicates": 0,
     "typeDuplicates": 0,
     "runtimeByTag": {
       "TRUE_DUPLICATE": 0,
+=======
+    "runtimeDuplicates": 4,
+    "typeDuplicates": 6,
+    "runtimeByTag": {
+      "TRUE_DUPLICATE": 4,
+>>>>>>> origin/master
       "ALIAS_DELEGATION": 0,
       "ALLOWLISTED": 1
     },
     "typeByTag": {
+<<<<<<< HEAD
       "TRUE_DUPLICATE": 0,
+=======
+      "TRUE_DUPLICATE": 6,
+>>>>>>> origin/master
       "ALIAS_DELEGATION": 0,
       "ALLOWLISTED": 0
     }
   },
   "runtime": [
     {
+<<<<<<< HEAD
+=======
+      "name": "cosineSimilarity",
+      "category": "function",
+      "definers": [
+        {
+          "file": "src/search/VectorStore.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/utils/textSimilarity.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "AMBIGUOUS",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+      "name": "mergeConfig",
+      "category": "function",
+      "definers": [
+        {
+          "file": "src/agent/AgentMemoryConfig.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/cli/config.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": false,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "src/agent/AgentMemoryConfig.ts",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+      "name": "ReflectionManager",
+      "category": "class",
+      "definers": [
+        {
+          "file": "src/agent/ReflectionManager.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/search/ReflectionManager.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "AMBIGUOUS",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+      "name": "tokenize",
+      "category": "function",
+      "definers": [
+        {
+          "file": "src/utils/searchAlgorithms.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/utils/textSimilarity.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "AMBIGUOUS",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+>>>>>>> origin/master
       "name": "levenshteinDistance",
       "category": "function",
       "definers": [
@@ -38,5 +132,130 @@
       "tag": "ALLOWLISTED"
     }
   ],
+<<<<<<< HEAD
   "types": []
+=======
+  "types": [
+    {
+      "name": "BackupInfo",
+      "category": "interface",
+      "definers": [
+        {
+          "file": "src/features/BackupManager.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": false,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/features/IOManager.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "src/features/IOManager.ts",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+      "name": "BackupMetadata",
+      "category": "interface",
+      "definers": [
+        {
+          "file": "src/features/BackupManager.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": false,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/features/IOManager.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "src/features/IOManager.ts",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+      "name": "Contradiction",
+      "category": "interface",
+      "definers": [
+        {
+          "file": "src/agent/MemoryValidator.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/features/ContradictionDetector.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "AMBIGUOUS",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+      "name": "DistillationResult",
+      "category": "interface",
+      "definers": [
+        {
+          "file": "src/agent/DistillationPipeline.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/types/reconstruction.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "AMBIGUOUS",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+      "name": "Rule",
+      "category": "interface",
+      "definers": [
+        {
+          "file": "src/agent/ExperienceExtractor.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/agent/RuleEvaluator.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": false,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "src/agent/ExperienceExtractor.ts",
+      "tag": "TRUE_DUPLICATE"
+    },
+    {
+      "name": "ValidationResult",
+      "category": "interface",
+      "definers": [
+        {
+          "file": "src/security/APIKeyStore.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        },
+        {
+          "file": "src/utils/schemas.ts",
+          "package": "@danielsimonjr/memoryjs",
+          "public": true,
+          "tag": "PLAIN"
+        }
+      ],
+      "canonicalHint": "AMBIGUOUS",
+      "tag": "TRUE_DUPLICATE"
+    }
+  ]
+>>>>>>> origin/master
 }
