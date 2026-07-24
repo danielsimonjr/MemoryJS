@@ -50,9 +50,12 @@ For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
 | Two-tier deletion (exact match → semantic fallback) | `ctx.semanticForget` |
 | Hierarchical nesting + traversal | `ctx.hierarchyManager` (ancestors / descendants / subtrees) |
 | Stable named references that survive entity renames | `ctx.refIndex.register()` / `resolve()` |
+| Stable entity ids + atomic rename (relations / hierarchy / version-chain rewritten) | `Entity.id` (UUID) + `entityManager.renameEntity(oldName, newName)` |
+| Bulk enumeration with TypeIndex fast path | `entityManager.listEntities({ entityType? })` |
+| Event reification — actions as first-class event hubs (who did what, to whom, where, when) | `ctx.eventManager.recordEvent()` / `queryEvents()` / `whoDidWhat()` |
 | Multi-format import / export | `ctx.ioManager.exportGraph(format)` — JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid |
 | W3C Linked Data export | `ctx.ioManager.exportGraph('turtle' \| 'rdf-xml' \| 'json-ld')` |
-| Conversation ingestion (format-agnostic) | `ctx.ioManager.ingest(input, options)` |
+| Conversation ingestion (format-agnostic) with source-chunk provenance + cost/quality modes | `ctx.ioManager.ingest(input, { mode: 'accurate' \| 'balanced' \| 'lightweight', keepSourceText })` |
 
 ### Search & retrieval
 
@@ -63,7 +66,10 @@ For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
 | Boolean (AND / OR / NOT) with AST parser | `ctx.searchManager.booleanSearch()` |
 | Fuzzy matching (Levenshtein, N-gram pre-filtered) | `ctx.searchManager.fuzzySearch()` |
 | Semantic search with pluggable embedding provider | `ctx.semanticSearch` (set `MEMORY_EMBEDDING_PROVIDER`) |
-| Hybrid (semantic + lexical + symbolic) | `new HybridSearchManager(ctx.storage, …).search(query)` |
+| Hybrid (semantic + lexical + symbolic + opt-in graph connectivity) | `ctx.hybridSearchManager.search(graph, query, options)` |
+| Graph-connectivity ranking signal (cached normalized PageRank) | `ctx.graphRankPrior` + `MEMORY_HYBRID_GRAPH_WEIGHT` / `MEMORY_RANKED_GRAPH_BOOST` |
+| Traceable evidence paths — *why* each result matched | `ctx.hybridSearchManager.search(graph, query, { explain: true })` → `evidencePaths` |
+| NL-guided neighbor retrieval (free-text "look for") | `ctx.graphTraversal.getNeighborsWithRelations(name, { lookFor })` |
 | Temporal range queries with natural-language parsing | `ctx.searchManager.searchByTime("last hour")` |
 | LLM-planned natural-language queries | `ctx.queryNaturalLanguage(query, llmProvider?)` |
 | Query diagnostics (`explainPlan`, index health) | `ctx.diagnostics` |
@@ -89,6 +95,7 @@ For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
 | Collaborative synthesis with conflict resolution | `CollaborativeSynthesis.synthesize()` / `resolveConflicts()` |
 | Failure-driven distillation, cognitive load analysis | `FailureDistillation`, `CognitiveLoadAnalyzer` |
 | Procedural memory (executable procedures with feedback refinement) | `ctx.procedureManager.addProcedure()` / `matchProcedure()` / `refineProcedure()` |
+| Relation consolidation — spelling-variant merge, semantic dedup, LLM validation with corrective feedback | `RelationConsolidator.analyze()` / `consolidate()` (+ pipeline stage) |
 | Active retrieval (iterative query rewriting) | `ctx.activeRetrieval.adaptiveRetrieve()` |
 | Causal reasoning — causes / effects / counterfactuals / cycle detection | `ctx.causalReasoner.findCauses()` / `findEffects()` / `counterfactual()` |
 | World-state orchestrator | `ctx.worldModelManager.getCurrentState()` / `predictOutcome()` |
@@ -124,7 +131,9 @@ For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
 | Capability | Entry point |
 |---|---|
 | Policy enforcement + transactional rollback | `ctx.governanceManager.withTransaction()` / `GovernancePolicy` |
-| Immutable JSONL audit trail | `ctx.auditLog` |
+| Enforced governance — every EntityManager mutation policy-checked + audited | `MEMORY_GOVERNANCE_ENABLED=true` (`GovernanceError` on denial) |
+| Tamper-evident audit trail (SHA-256 hash chain, `verifyChain()`) + query CLI | `ctx.auditLog` / `memory audit log\|history\|verify\|stats` |
+| REST API-key auth (Bearer / X-Api-Key, scopes, timing-safe) | `ApiKeyAuthMiddleware` + `RestRouter` `auth` option |
 | Strict-mode attribution enforcer | `CollaborationAuditEnforcer` (requires `agentId` on every mutation) |
 | RBAC — role / permission / matrix / middleware | `ctx.rbacMiddleware.checkPermission()` / `ctx.roleAssignmentStore` |
 | ABAC + row-level security + API-key scoping | `src/security/abac.ts`, `rls.ts`, `apiKeys.ts` |
@@ -140,6 +149,8 @@ For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
 | Command-line interface | `npx -p @danielsimonjr/memoryjs memory --help` |
 | End-to-end smoke test against a fresh temp graph (~30 ops) | `memory smoke --keep --verbose` |
 | Diagnostic snapshot + graph health checks | `memory diag` / `memory health` |
+| Environment preflight (Node/ABI/workers/env-flag lint/provider reachability) | `memory doctor [--json]` |
+| Audit-trail query + chain verification | `memory audit log\|history\|verify\|stats` |
 | Orphan + missing-parent + cycle detection with optional repair | `memory check [--apply]` |
 | Rebuild ranked + spell indexes | `memory reindex [--ranked\|--spell]` |
 | Inspect a single entity verbosely | `memory show <name>` |
@@ -153,6 +164,11 @@ For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
 ```bash
 npm install @danielsimonjr/memoryjs
 ```
+
+Subpath imports are available for smaller load footprints — e.g.
+`@danielsimonjr/memoryjs/search`, `/agent`, `/types`, `/sqlite` — with
+`sideEffects: false` for bundler tree-shaking. The root import remains the
+full-featured entry point.
 
 ### Requirements
 
@@ -213,8 +229,8 @@ const nodes = await ctx.searchManager.searchNodes('JavaScript');
 // Boolean (AND / OR / NOT) with an AST parser
 const both = await ctx.searchManager.booleanSearch('TypeScript AND runtime');
 
-// Fuzzy (typo-tolerant; N-gram pre-filtered)
-const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', { threshold: 0.7 });
+// Fuzzy (typo-tolerant; N-gram pre-filtered) — threshold is positional
+const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', 0.7);
 
 // Ranked TF-IDF / BM25
 const ranked = await ctx.rankedSearch.searchNodesRanked('runtime environment',
@@ -319,7 +335,8 @@ and `observations`; the rest are optional and unlock specific features:
 
 ```typescript
 interface Entity {
-  name: string;              // Unique identifier
+  name: string;              // Unique identifier (public key)
+  id?: string;               // Stable opaque UUID — assigned at creation, survives renames
   entityType: string;        // Classification (person, project, concept, …)
   observations: string[];    // Atomic facts about the entity
   parentId?: string;         // Parent entity for hierarchical nesting

@@ -246,6 +246,8 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 ### SQLite read pool & index coalescing
 | Variable | Values | Default | Description |
 |----------|--------|---------|-------------|
+| `MEMORY_SQLITE_SYNCHRONOUS` | `FULL`, `NORMAL`, `OFF` | `NORMAL` | SQLite `synchronous` pragma. `NORMAL` is the canonical WAL pairing (~2–10× commit throughput; app-crash safe, power loss can lose the last commit). Set `FULL` for maximum durability. |
+| `MEMORY_MAX_DECOMPRESSED_BYTES` | Integer > 0 | `268435456` (256 MB) | Decompression output cap (brotli/zlib) across `compressionUtil` and compression adapters — guards against decompression bombs. Exceeding throws a distinct error naming the limit. |
 | `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4` | Read connection pool size for `SQLiteStorage` (`fullTextSearch` / `simpleSearch`). Set to `0` or `1` to route reads through the writer connection. |
 | `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50` | TF-IDF event-sync coalescing window. Multiple writes to the same entity within the window collapse into a single index update. Set to `0` to disable coalescing (apply immediately). |
 | `MEMORY_SQLITE_AUTO_INDEX` | `true`, `false` | `false` | Enables `PartialIndexAdvisor` — tracks `entityType` / `projectId` filter frequency and creates `idx_advisor_*` partial SQLite indexes for hot patterns. Infrastructure-only as of Phase 2; wiring into `SQLiteStorage` is a follow-up. |
