@@ -10,12 +10,59 @@
 import type { SearchResult, KnowledgeGraph } from '../types/index.js';
 
 /**
+ * Graph mutation generation counters (S6 — search-cache invalidation
+ * granularity).
+ *
+ * Storages bump these monotonic counters on every logical mutation instead
+ * of eagerly clearing every search cache:
+ * - `bumpEntityGeneration()` — any write that changes entity data
+ *   (create/update/delete, including entity timestamp bumps)
+ * - `bumpRelationGeneration()` — any write that changes relation data
+ *
+ * `SearchCache` instances that declare `generationDeps` record the counter
+ * values at insert time and lazily treat an entry as stale on `get()` when
+ * a depended-on counter has moved. This lets e.g. relation-only writes
+ * leave entity-text-only caches (ranked search) intact.
+ *
+ * Counters are module-global (like the `searchCaches` singletons they
+ * guard), so multiple storage instances in one process over-invalidate
+ * across each other — exactly the same behavior the previous global
+ * `clearAllSearchCaches()` calls had.
+ *
+ * `clearAllSearchCaches()` is retained for explicit full clears
+ * (full-graph saves, CLI cache clear, tests).
+ */
+export type GraphGenerationDependency = 'entity' | 'relation';
+
+let entityGeneration = 0;
+let relationGeneration = 0;
+
+/** Bump the entity-data mutation generation (call on any entity write). */
+export function bumpEntityGeneration(): void {
+  entityGeneration++;
+}
+
+/** Bump the relation-data mutation generation (call on any relation write). */
+export function bumpRelationGeneration(): void {
+  relationGeneration++;
+}
+
+/** Current generation counter values (diagnostics / tests). */
+export function getGraphGenerations(): { entity: number; relation: number } {
+  return { entity: entityGeneration, relation: relationGeneration };
+}
+
+/**
  * Cache entry with expiration.
  */
 interface CacheEntry<T> {
   value: T;
   timestamp: number;
   expiresAt: number;
+  /** Entity generation at insert (only set when the cache depends on it). */
+  entityGen?: number;
+  /** Relation generation at insert (only set when the cache depends on it). */
+  relationGen?: number;
 }
 
 /**
@@ -46,10 +93,33 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
   private hits = 0;
   private misses = 0;
 
+  /**
+   * Which graph mutation generations this cache's entries depend on.
+   * Empty (the default) means pure TTL semantics — identical to the
+   * pre-S6 behavior for privately constructed caches. The global
+   * `searchCaches` declare their dependencies explicitly.
+   */
+  private readonly generationDeps: ReadonlyArray<GraphGenerationDependency>;
+
   constructor(
     private maxSize: number = 500,
-    private ttlMs: number = 5 * 60 * 1000 // 5 minutes default
-  ) {}
+    private ttlMs: number = 5 * 60 * 1000, // 5 minutes default
+    options?: { generationDeps?: GraphGenerationDependency[] }
+  ) {
+    this.generationDeps = options?.generationDeps ?? [];
+  }
+
+  /**
+   * True when a depended-on graph generation has moved since the entry
+   * was inserted (lazy invalidation — checked on read).
+   */
+  private isGenerationStale(entry: CacheEntry<T>): boolean {
+    for (const dep of this.generationDeps) {
+      if (dep === 'entity' && entry.entityGen !== entityGeneration) return true;
+      if (dep === 'relation' && entry.relationGen !== relationGeneration) return true;
+    }
+    return false;
+  }
 
   /**
    * Generate cache key from query parameters.
@@ -85,6 +155,13 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
       return undefined;
     }
 
+    // Check graph-generation staleness (S6 lazy invalidation)
+    if (this.isGenerationStale(entry)) {
+      this.cache.delete(key);
+      this.misses++;
+      return undefined;
+    }
+
     // Update access order (move to end = most recently used).
     this.cache.delete(key);
     this.cache.set(key, entry);
@@ -115,12 +192,18 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
       }
     }
 
-    // Add new entry
-    this.cache.set(key, {
+    // Add new entry (recording the current graph generations when this
+    // cache declares generation dependencies)
+    const entry: CacheEntry<T> = {
       value,
       timestamp: Date.now(),
       expiresAt: Date.now() + this.ttlMs,
-    });
+    };
+    for (const dep of this.generationDeps) {
+      if (dep === 'entity') entry.entityGen = entityGeneration;
+      if (dep === 'relation') entry.relationGen = relationGeneration;
+    }
+    this.cache.set(key, entry);
   }
 
   /**
@@ -193,18 +276,30 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
       return false;
     }
 
+    // Check graph-generation staleness (S6 lazy invalidation)
+    if (this.isGenerationStale(entry)) {
+      this.cache.delete(key);
+      return false;
+    }
+
     return true;
   }
 }
 
 /**
  * Global search caches for different search types.
+ *
+ * Generation dependencies (S6):
+ * - `basic` / `boolean` / `fuzzy` return `KnowledgeGraph` slices that embed
+ *   both entities and relations → invalidated by either generation moving.
+ * - `ranked` returns `SearchResult[]` scored purely from entity text
+ *   (TF-IDF/BM25) → relation-only writes leave it valid.
  */
 export const searchCaches = {
-  basic: new SearchCache<KnowledgeGraph>(),
-  ranked: new SearchCache<SearchResult[]>(),
-  boolean: new SearchCache<KnowledgeGraph>(),
-  fuzzy: new SearchCache<KnowledgeGraph>(),
+  basic: new SearchCache<KnowledgeGraph>(500, 5 * 60 * 1000, { generationDeps: ['entity', 'relation'] }),
+  ranked: new SearchCache<SearchResult[]>(500, 5 * 60 * 1000, { generationDeps: ['entity'] }),
+  boolean: new SearchCache<KnowledgeGraph>(500, 5 * 60 * 1000, { generationDeps: ['entity', 'relation'] }),
+  fuzzy: new SearchCache<KnowledgeGraph>(500, 5 * 60 * 1000, { generationDeps: ['entity', 'relation'] }),
 };
 
 /**

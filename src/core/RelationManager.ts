@@ -18,6 +18,46 @@ import { GRAPH_LIMITS } from '../utils/constants.js';
 export class RelationManager {
   constructor(private storage: GraphStorage) {}
 
+  // ==================== S2 delta-primitive compat shims ====================
+  //
+  // Both first-party backends implement the batch delta primitives;
+  // third-party / test IGraphStorage implementations may predate them.
+
+  /** Append a batch of relations, preferring the storage's batch primitive. */
+  private async appendRelationsCompat(relations: Relation[]): Promise<void> {
+    if (typeof (this.storage as Partial<GraphStorage>).appendRelations === 'function') {
+      await this.storage.appendRelations(relations);
+      return;
+    }
+    for (const relation of relations) {
+      await this.storage.appendRelation(relation);
+    }
+  }
+
+  /** Delete relations by key, preferring the storage's delta primitive. */
+  private async deleteRelationsCompat(
+    relations: Array<Pick<Relation, 'from' | 'to' | 'relationType'>>,
+    options: { touchEntities: string[]; timestamp: string },
+  ): Promise<void> {
+    if (typeof (this.storage as Partial<GraphStorage>).deleteRelations === 'function') {
+      await this.storage.deleteRelations(relations, options);
+      return;
+    }
+    // Legacy fallback: full-graph rewrite.
+    const graph = await this.storage.getGraphForMutation();
+    const affected = new Set(options.touchEntities);
+    const keySet = new Set(relations.map(r => `${r.from}\u0000${r.to}\u0000${r.relationType}`));
+    graph.relations = graph.relations.filter(
+      r => !keySet.has(`${r.from}\u0000${r.to}\u0000${r.relationType}`)
+    );
+    graph.entities.forEach(entity => {
+      if (affected.has(entity.name)) {
+        entity.lastModified = options.timestamp;
+      }
+    });
+    await this.storage.saveGraph(graph);
+  }
+
   /**
    * Create multiple relations in a single batch operation.
    *
@@ -70,8 +110,9 @@ export class RelationManager {
     // Acquire mutex to prevent TOCTOU race between validation and mutation
     const release = await this.storage.graphMutex.acquire();
     try {
-      // Use mutable graph for both validation and mutation (eliminates TOCTOU gap)
-      const graph = await this.storage.getGraphForMutation();
+      // Read-only snapshot for validation; persistence happens via the
+      // delta primitive `appendRelations` (S2) — O(changed), not O(graph).
+      const graph = await this.storage.loadGraph();
       const timestamp = new Date().toISOString();
 
       // Build set of existing entity names for O(1) lookup
@@ -120,8 +161,9 @@ export class RelationManager {
         }));
 
       if (newRelations.length > 0) {
-        graph.relations.push(...newRelations);
-        await this.storage.saveGraph(graph);
+        // Single delta write (one fsync / one SQLite transaction; emits
+        // relation:created per relation)
+        await this.appendRelationsCompat(newRelations);
       }
 
       return newRelations;
@@ -178,35 +220,24 @@ export class RelationManager {
 
     const release = await this.storage.graphMutex.acquire();
     try {
-      const graph = await this.storage.getGraphForMutation();
       const timestamp = new Date().toISOString();
 
-      // Track affected entities
+      // Track affected entities (every entity named in the request gets a
+      // lastModified bump, whether or not a matching relation existed —
+      // historical semantics preserved by the storage primitive)
       const affectedEntityNames = new Set<string>();
       relations.forEach(rel => {
         affectedEntityNames.add(rel.from);
         affectedEntityNames.add(rel.to);
       });
 
-      // OPTIMIZED: Use Set<string> for O(1) lookup instead of O(n) array.some()
-      // Create composite keys for relations to delete
-      const relationsToDeleteSet = new Set(
-        relations.map(r => `${r.from}\0${r.to}\0${r.relationType}`)
-      );
-
-      // Remove relations with O(1) Set lookup per relation instead of O(m) array scan
-      graph.relations = graph.relations.filter(r =>
-        !relationsToDeleteSet.has(`${r.from}\0${r.to}\0${r.relationType}`)
-      );
-
-      // Update lastModified for affected entities
-      graph.entities.forEach(entity => {
-        if (affectedEntityNames.has(entity.name)) {
-          entity.lastModified = timestamp;
-        }
+      // S2: targeted storage-level delete. Removes matching relations,
+      // bumps lastModified on the affected entities in the same atomic
+      // write, and emits relation:deleted / entity:updated per item.
+      await this.deleteRelationsCompat(relations, {
+        touchEntities: [...affectedEntityNames],
+        timestamp,
       });
-
-      await this.storage.saveGraph(graph);
     } finally {
       release();
     }
@@ -283,7 +314,7 @@ export class RelationManager {
   ): Promise<void> {
     const release = await this.storage.graphMutex.acquire();
     try {
-      const graph = await this.storage.getGraphForMutation();
+      const graph = await this.storage.loadGraph();
       const match = graph.relations.find(
         r =>
           r.from === from &&
@@ -294,12 +325,19 @@ export class RelationManager {
       if (!match) {
         throw new RelationNotFoundError(from, to, relationType);
       }
-      if (!match.properties) {
-        match.properties = {};
-      }
-      match.properties.validUntil = ended ?? new Date().toISOString();
-      match.lastModified = new Date().toISOString();
-      await this.storage.saveGraph(graph);
+      // S2: delta write via appendRelation's upsert semantics (same
+      // composite key replaces the stored relation, mirroring SQLite's
+      // INSERT OR REPLACE and JSONL's dedup-on-reload). Emits
+      // relation:created for the replaced relation.
+      const updated: Relation = {
+        ...match,
+        properties: {
+          ...(match.properties ?? {}),
+          validUntil: ended ?? new Date().toISOString(),
+        },
+        lastModified: new Date().toISOString(),
+      };
+      await this.storage.appendRelation(updated);
     } finally {
       release();
     }

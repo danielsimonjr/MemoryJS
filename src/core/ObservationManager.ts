@@ -64,6 +64,26 @@ export class ObservationManager {
   private columnStoreUnsubscribe: (() => void) | null = null;
 
   /**
+   * S2 compat shim: update a batch of entities, preferring the storage's
+   * batch delta primitive. Third-party / test IGraphStorage
+   * implementations may predate `updateEntities`; fall back to the
+   * universally available single-entity primitive.
+   */
+  private async updateEntitiesCompat(
+    batch: Array<{ name: string; updates: Partial<Entity> }>,
+    options?: { timestamp?: string },
+  ): Promise<void> {
+    if (typeof (this.storage as Partial<GraphStorage>).updateEntities === 'function') {
+      await this.storage.updateEntities(batch, options);
+      return;
+    }
+    for (const { name, updates } of batch) {
+      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entities validated by the calling locked section
+      await this.storage.updateEntity(name, updates);
+    }
+  }
+
+  /**
    * Attach an `IColumnStore` for shadow-mirroring observation writes.
    * Pass `null` to detach. Called by `ManagerContext` when
    * `MEMORY_OBSERVATIONS_COLUMNAR=true`.
@@ -379,18 +399,30 @@ export class ObservationManager {
   ): Promise<{ entityName: string; addedObservations: string[]; superseded?: boolean; autoLinkResults?: AutoLinkResult[] }[]> {
     const resolvedDedup = this.resolveDedup(dedup);
 
-    // Get mutable graph for atomic update
-    const graph = await this.storage.getGraphForMutation();
+    // S2 delta persistence: instead of deep-copying the whole graph, take
+    // a read-only snapshot and clone only the entities this call touches.
+    // The clones absorb the in-place mutations the dedup/supersede logic
+    // performs; persistence happens through a single updateEntities delta
+    // write at the end (per-entity entity:updated events, no graph:saved).
+    await this.storage.ensureLoaded();
     const entityMap = new Map<string, Entity>();
-    for (const e of graph.entities) {
-      entityMap.set(e.name, e);
-    }
+    const changedNames = new Set<string>();
+    const getClone = (name: string): Entity | undefined => {
+      let clone = entityMap.get(name);
+      if (clone === undefined) {
+        const live = this.storage.getEntityByName(name);
+        if (!live) return undefined;
+        clone = { ...live, observations: [...live.observations] };
+        entityMap.set(name, clone);
+      }
+      return clone;
+    };
     const timestamp = new Date().toISOString();
     const results: { entityName: string; addedObservations: string[]; superseded?: boolean }[] = [];
     let hasChanges = false;
 
     for (const o of observations) {
-      const entity = entityMap.get(o.entityName);
+      const entity = getClone(o.entityName);
       if (!entity) {
         throw new EntityNotFoundError(o.entityName);
       }
@@ -493,6 +525,7 @@ export class ObservationManager {
 
           if (addedObservations.length > 0) {
             hasChanges = true;
+            changedNames.add(o.entityName);
             entity.lastModified = timestamp;
           }
 
@@ -502,6 +535,7 @@ export class ObservationManager {
           entity.observations.push(...nonExactDuplicates);
           entity.lastModified = timestamp;
           hasChanges = true;
+          changedNames.add(o.entityName);
 
           results.push({ entityName: o.entityName, addedObservations: nonExactDuplicates });
         }
@@ -510,9 +544,14 @@ export class ObservationManager {
       }
     }
 
-    // Save all changes in a single atomic operation
+    // Save all changes in a single atomic delta write (S2): one fsync /
+    // one SQLite transaction covering exactly the touched entities.
     if (hasChanges) {
-      await this.storage.saveGraph(graph);
+      const batch = [...changedNames].map(name => {
+        const clone = entityMap.get(name)!;
+        return { name, updates: { observations: clone.observations } };
+      });
+      await this.updateEntitiesCompat(batch, { timestamp });
       // Phase 8 task 67: shadow-write the column store with the post-
       // save inline state. Best-effort — failures log but don't reject
       // the caller's add (inline state is already durable).
@@ -658,19 +697,22 @@ export class ObservationManager {
   private async deleteObservationsLocked(
     deletions: { entityName: string; observations: string[] }[]
   ): Promise<void> {
-    // Get mutable graph for atomic update
-    const graph = await this.storage.getGraphForMutation();
+    // S2 delta persistence: clone only touched entities from the live
+    // read-only state; persist via a single updateEntities delta write.
+    await this.storage.ensureLoaded();
     const entityMap = new Map<string, Entity>();
-    for (const e of graph.entities) {
-      entityMap.set(e.name, e);
-    }
     const timestamp = new Date().toISOString();
     let hasChanges = false;
     const touchedNames: string[] = [];
 
     deletions.forEach(d => {
-      const entity = entityMap.get(d.entityName);
-      if (entity) {
+      const live = entityMap.get(d.entityName) ?? this.storage.getEntityByName(d.entityName);
+      if (live) {
+        let entity = entityMap.get(d.entityName);
+        if (!entity) {
+          entity = { ...live, observations: [...live.observations] };
+          entityMap.set(d.entityName, entity);
+        }
         const originalLength = entity.observations.length;
         entity.observations = entity.observations.filter(o => !d.observations.includes(o));
 
@@ -678,14 +720,20 @@ export class ObservationManager {
         if (entity.observations.length < originalLength) {
           entity.lastModified = timestamp;
           hasChanges = true;
-          touchedNames.push(entity.name);
+          if (!touchedNames.includes(entity.name)) {
+            touchedNames.push(entity.name);
+          }
         }
       }
     });
 
-    // Save all changes in a single atomic operation
+    // Save all changes in a single atomic delta write
     if (hasChanges) {
-      await this.storage.saveGraph(graph);
+      const batch = touchedNames.map(name => {
+        const clone = entityMap.get(name)!;
+        return { name, updates: { observations: clone.observations } };
+      });
+      await this.updateEntitiesCompat(batch, { timestamp });
       // Phase 8 task 67: shadow-update the column store for each
       // touched entity. Empty-after-delete entries still get put()'d
       // (not delete()'d) so callers see `[]` rather than fall through
@@ -723,8 +771,8 @@ export class ObservationManager {
   ): Promise<void> {
     const release = await this.storage.graphMutex.acquire();
     try {
-      const graph = await this.storage.getGraphForMutation();
-      const entity = graph.entities.find(e => e.name === entityName);
+      await this.storage.ensureLoaded();
+      const entity = this.storage.getEntityByName(entityName);
       if (!entity) throw new EntityNotFoundError(entityName);
       if (!entity.observations.includes(content)) {
         throw new ValidationError(
@@ -733,15 +781,18 @@ export class ObservationManager {
         );
       }
       const ts = ended ?? new Date().toISOString();
-      if (!entity.observationMeta) entity.observationMeta = [];
-      const existing = entity.observationMeta.find(m => m.content === content);
+      // Build a new meta array (never mutate the live cache object)
+      const newMeta = (entity.observationMeta ?? []).map(m => ({ ...m }));
+      const existing = newMeta.find(m => m.content === content);
       if (existing) {
         existing.validUntil = ts;
       } else {
-        entity.observationMeta.push({ content, validUntil: ts });
+        newMeta.push({ content, validUntil: ts });
       }
-      entity.lastModified = new Date().toISOString();
-      await this.storage.saveGraph(graph);
+      // S2: delta write (storage primitive bumps lastModified and emits
+      // entity:updated)
+      // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry under graphMutex
+      await this.storage.updateEntity(entityName, { observationMeta: newMeta });
     } finally {
       release();
     }

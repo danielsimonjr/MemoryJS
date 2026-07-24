@@ -83,13 +83,17 @@ export class CollaborationAuditEnforcer {
     options?: { expectedVersion?: number },
   ): Promise<Entity> {
     this.requireAttribution(agentId, 'updateEntity');
-    const before = await this.entityManager.getEntity(name);
+    // Snapshot eagerly: getEntity returns the live cache object, and the
+    // S2 delta write path updates that object in place — a lazy spread
+    // after updateEntity would capture post-update state as `before`.
+    const liveBefore = await this.entityManager.getEntity(name);
+    const before = liveBefore ? { ...liveBefore } : undefined;
     const after = await this.entityManager.updateEntity(name, updates, options);
     await this.auditLog.append({
       operation: 'update',
       entityName: name,
       agentId,
-      before: before ? { ...before } : undefined,
+      before,
       after: { ...after },
       status: 'committed',
     });
