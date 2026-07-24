@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_(nothing yet)_
+
+## [3.0.0] - 2026-07-24
+
+**Major release: knowledge-graph-as-core convergence.** The graph is now the
+computational core, not just the storage core — connectivity signals in
+ranking/salience/decay, stable entity ids + atomic rename, blob decomposition,
+an 18-item speed/security optimization program (delta persistence: SQLite
+writes 84×; ranked search ~170× at 4k entities), enforced governance, and the
+brainapi2-inspired feature set (event reification, evidence paths, relation
+consolidation, queryable provenance, ingest modes, audit/doctor CLI).
+
+**Breaking changes** (see MIGRATION_GUIDE for details):
+- `UpdateEntitySchema` strips unknown keys via an explicit allow-list
+  (previously `.passthrough()`); `updateEntity` applies validated data
+  (tags now lowercased on update, matching create).
+- Batch mutations emit per-item events (`entity:created` etc.) instead of
+  only `graph:saved`; `graph:saved` fires only for true full-graph writes.
+- Duplicate-symbol renames (back-compat aliases where noted): agent
+  `ReflectionManager` → `AgentReflectionManager` (alias
+  `ReflectionMemoryManager` retained), textSimilarity `tokenize` →
+  `tokenizeStripped`, `RuleEvaluator` `Rule` → `EvaluatorRule`,
+  APIKeyStore `ValidationResult` → `KeyValidationResult`, MemoryValidator
+  `Contradiction` → `MemoryContradiction`, reconstruction
+  `DistillationResult` → `ConversationDistillationResult`, CLI
+  `mergeConfig` → `mergeCliConfig`.
+- Direct-constructor users of `ProcedureManager` / `SessionCheckpointManager`
+  now pass a `RelationManager` (`ctx` facade users unaffected).
+- `AccessTracker.getAccessStats` / `flush` are synchronous (v2.0 change
+  carried forward in this line).
+
 ### Fixed
 
 - **Lazy `better-sqlite3` load (S9 completion)**: the native addon is now
