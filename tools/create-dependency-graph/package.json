@@ -1,7 +1,7 @@
 {
   "name": "create-dependency-graph",
   "version": "1.0.0",
-  "description": "Generate dependency graph documentation for TypeScript projects",
+  "description": "Generate dependency graph documentation for TypeScript projects: reachability/dormant-file model, runtime vs type-only cycles, unused-export analysis, duplicate-symbol gate, file census. Runs on plain Node >= 22.18 (type stripping).",
   "scripts": {
     "build": "npm run build:ts && npm run build:exe",
     "build:ts": "tsc",

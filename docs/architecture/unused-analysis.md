@@ -4,915 +4,164 @@
 
 ## Summary
 
-- **Potentially unused files**: 2
-- **Potentially unused exports**: 469
+- **Potentially unused files**: 0
+- **Dormant files** (runtime code on disk, unreachable from any entry/build root): 1
+  - **Orphaned (reachable from nothing — delete/wire candidates)**: 1
+  - **Test-only (exercised by a test, ships nothing)**: 0
+- **Potentially unused exports**: 39
+  - **Unreferenced anywhere (deletion candidates)**: 1
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 38
+
+Seeded reachability roots (3):
+
+- `src/cli/index.ts`
+- `src/index.ts`
+- `src/workers/levenshteinWorker.ts`
+
+## Dormant Files — Orphaned (delete/wire candidates)
+
+Runtime source files reachable from NO root and NO test. Each is either dead code
+to delete, or a root the tool cannot see (a new build/worker entry, a
+`new URL()`-loaded script, or a side-effect-only module) — in which case wire it
+or seed it. Verify before deleting.
+
+- `src/workers/index.ts`
+
+## Dormant Files — Test-only (ships nothing, but exercised)
+
+Not reachable from any package entry point, but imported by a test — deliberately
+kept, standalone-tested code or a helper a test drives directly. Not dead; not
+shipped. No action needed.
+
+_None._
 
 ## Potentially Unused Files
 
 These files are not imported by any other file in the codebase:
 
-- `src/cli/index.ts`
-- `src/cli/interactive.ts`
+_None._
 
-## Potentially Unused Exports
+## Unreferenced Anywhere (deletion candidates)
 
-These exports are not imported by any other file in the codebase:
-
-### `src/adapters/LangChainMemoryAdapter.ts`
-
-- `ChatMessage` (interface)
-- `MemoryInputs` (interface)
-- `MemoryVariables` (interface)
-- `LangChainMemoryAdapterOptions` (interface)
-
-### `src/adapters/RateLimiter.ts`
-
-- `RateLimiterConfig` (interface)
-- `RateLimitVerdict` (interface)
-
-### `src/adapters/RestRouter.ts`
-
-- `RestRequest` (interface)
-- `RestResponse` (interface)
-- `RouteDefinition` (interface)
-- `RestMethod` (type)
-- `RestHandler` (type)
-
-### `src/adapters/pagination.ts`
-
-- `PaginationParams` (interface)
-- `ParsePaginationOptions` (interface)
-- `PaginatedResult` (interface)
-
-### `src/agent/AccessTracker.ts`
-
-- `AccessStats` (interface)
-- `AccessTrackerConfig` (interface)
-
-### `src/agent/AgentMemoryManager.ts`
-
-- `CreateMemoryOptions` (interface)
-- `RetrieveContextOptions` (interface)
-
-### `src/agent/CognitiveLoadAnalyzer.ts`
-
-- `CognitiveLoadConfig` (interface)
-
-### `src/agent/CollaborativeSynthesis.ts`
-
-- `ConflictView` (interface)
-- `SynthesisResult` (interface)
-- `ConflictResolutionPolicy` (type)
-
-### `src/agent/ConsolidationPipeline.ts`
-
-- `ReflectionStageConfig` (interface)
-- `HeuristicExtractionStageConfig` (interface)
-- `ObservationDedupReportStageConfig` (interface)
-
-### `src/agent/ConsolidationScheduler.ts`
-
-- `ConsolidationSchedulerConfig` (interface)
-- `ConsolidationCycleResult` (interface)
-
-### `src/agent/ContextWindowManager.ts`
-
-- `ContextCompressionResult` (interface)
-- `WakeUpOptions` (interface)
-- `WakeUpResult` (interface)
-- `SpilloverResult` (interface)
-- `CompressionLevel` (type)
-
-### `src/agent/DecayEngine.ts`
-
-- `DecayOperationOptions` (interface)
-- `ReinforcementOptions` (interface)
-
-### `src/agent/DecisionManager.ts`
-
-- `DecisionInput` (interface)
-- `DecisionEntityOptions` (interface)
-- `ListDecisionsOptions` (interface)
-- `AcceptDecisionResult` (type)
-- `RejectDecisionResult` (type)
-- `SupersedeDecisionResult` (type)
-
-### `src/agent/DistillationPipeline.ts`
-
-- `DistillationStats` (interface)
-- `DistillationResult` (interface)
-
-### `src/agent/DreamEngine.ts`
-
-- `DreamPhaseConfig` (interface)
-- `DreamEngineCallbacks` (interface)
-- `DreamPhaseResult` (interface)
-
-### `src/agent/ExclusionManager.ts`
-
-- `AddExclusionRuleInput` (interface)
-- `ExclusionCheckResult` (interface)
-
-### `src/agent/ExperienceExtractor.ts`
-
-- `Action` (interface)
-- `Rule` (interface)
-- `HeuristicGuideline` (interface)
-- `DecisionRule` (interface)
-- `Experience` (interface)
-- `ExperienceExtractorConfig` (interface)
-- `Outcome` (type)
-- `ClusterMethod` (type)
-- `ExperienceType` (type)
-
-### `src/agent/FailureDistillation.ts`
-
-- `FailureDistillationConfig` (interface)
-- `FailureDistillationResult` (interface)
-
-### `src/agent/FailureManager.ts`
-
-- `FailureManagerConfig` (interface)
-- `FailureEntityOptions` (interface)
-- `LookupOptions` (interface)
-- `GetAllOptions` (interface)
-- `FailureInput` (type)
-
-### `src/agent/HeuristicManager.ts`
-
-- `AddHeuristicOptions` (interface)
-- `HeuristicMatch` (interface)
-- `HeuristicConflict` (interface)
-- `HeuristicUpdateResult` (type)
-
-### `src/agent/ImportanceScorer.ts`
-
-- `ImportanceScorerConfig` (interface)
-- `ScoreOptions` (interface)
-
-### `src/agent/MemoryEngine.ts`
-
-- `MemoryEngineConfig` (interface)
-- `AddTurnOptions` (interface)
-- `AddTurnResult` (interface)
-- `DuplicateCheckResult` (interface)
-- `DedupTier` (type)
-- `MemoryEngineEventName` (type)
-
-### `src/agent/MemoryValidator.ts`
-
-- `Contradiction` (interface)
-- `MemoryValidatorConfig` (interface)
-
-### `src/agent/ObservationDedupManager.ts`
-
-- `DuplicateObservationOccurrence` (interface)
-- `DuplicateObservationGroup` (interface)
-- `ObservationDedupManagerConfig` (interface)
-
-### `src/agent/ObserverPipeline.ts`
-
-- `ObservationScore` (interface)
-- `ObserverPipelineStats` (interface)
-
-### `src/agent/PlanManager.ts`
-
-- `PlanManagerConfig` (interface)
-- `CreatePlanOptions` (interface)
-- `PushSubGoalOptions` (interface)
-- `ListPlansOptions` (interface)
-
-### `src/agent/ProfileManager.ts`
-
-- `ProfileResponse` (interface)
-- `ProfileOptions` (interface)
-
-### `src/agent/ProjectContextManager.ts`
-
-- `ProjectContextUpsertInput` (interface)
-- `ProjectContextManagerConfig` (interface)
-- `ForContextOptions` (interface)
-
-### `src/agent/ProspectiveMemoryManager.ts`
-
-- `ProspectiveMemoryConfig` (interface)
-- `ScheduleOptions` (interface)
-
-### `src/agent/ReflectionManager.ts`
-
-- `ReflectionManagerConfig` (interface)
-- `ReflectionInput` (interface)
-- `ReflectionEntityOptions` (interface)
-- `ListReflectionsOptions` (interface)
-- `RelevanceOptions` (interface)
-- `ArchiveReflectionResult` (type)
-
-### `src/agent/RoleProfiles.ts`
-
-- `RoleProfile` (interface)
-- `AgentRole` (type)
-
-### `src/agent/RuleEvaluator.ts`
-
-- `Rule` (interface)
-
-### `src/agent/SQLiteBackend.ts`
-
-- `SQLiteBackendOptions` (interface)
-
-### `src/agent/SessionManager.ts`
-
-- `SessionHistoryOptions` (interface)
-
-### `src/agent/SessionQueryBuilder.ts`
-
-- `SessionSearchOptions` (interface)
-- `EntityWithContext` (interface)
-- `SearchFunction` (type)
-
-### `src/agent/SummarizationService.ts`
-
-- `GroupingResult` (interface)
-
-### `src/agent/ToolAffordanceManager.ts`
-
-- `ToolAffordanceManagerConfig` (interface)
-- `RecordOutcomeInput` (interface)
-- `ToolAffordanceStats` (interface)
-- `SuggestToolOptions` (interface)
-- `ToolSuggestion` (interface)
-
-### `src/agent/ToolCallObserver.ts`
-
-- `ToolCallEvent` (type)
-
-### `src/agent/TrajectoryCompressor.ts`
-
-- `DistillOptions` (interface)
-- `CompressedMemory` (interface)
-- `RedundancyGroup` (interface)
-- `TrajectoryCompressorConfig` (interface)
-- `Granularity` (type)
-- `TrajectoryMergeStrategy` (type)
-
-### `src/agent/WorkThreadManager.ts`
-
-- `WorkThread` (interface)
-- `WorkThreadFilter` (interface)
-- `CreateWorkThreadOptions` (interface)
-- `WorkThreadStatus` (type)
-
-### `src/agent/WorkingMemoryManager.ts`
-
-- `SessionMemoryFilter` (interface)
-- `PromotionMarkOptions` (interface)
-- `PromotionCriteria` (interface)
-
-### `src/agent/causal/CausalReasoner.ts`
-
-- `CausalCycle` (interface)
-- `CausalReasonerConfig` (interface)
-- `CausalRelationType` (type)
-
-### `src/agent/collaboration/CollaborationAuditEnforcer.ts`
-
-- `CollaborationAuditEnforcerOptions` (interface)
-- `AttributionMode` (type)
-
-### `src/agent/procedural/ProcedureManager.ts`
-
-- `ProcedureManagerConfig` (interface)
-- `InvocationResult` (type)
-
-### `src/agent/rbac/PermissionMatrix.ts`
-
-- `PermissionMatrixRow` (type)
-
-### `src/agent/rbac/RbacMiddleware.ts`
-
-- `RbacMiddlewareOptions` (interface)
-
-### `src/agent/rbac/RoleAssignmentStore.ts`
-
-- `RoleAssignmentStoreOptions` (interface)
-
-### `src/agent/reconstruction/MemoryToolkit.ts`
-
-- `EventKeywords` (interface)
-
-### `src/agent/reconstruction/ReconstructiveMemory.ts`
-
-- `ReconstructiveMemoryConfig` (interface)
-
-### `src/agent/retrieval/ActiveRetrievalController.ts`
-
-- `RetrievalContext` (interface)
-- `RetrievalDecision` (interface)
-- `RetrievalRound` (interface)
-- `AdaptiveResult` (interface)
-- `ActiveRetrievalConfig` (interface)
-
-### `src/agent/retrieval/QueryRewriter.ts`
-
-- `RewriteResult` (interface)
-
-### `src/agent/world/WorldModelManager.ts`
-
-- `WorldModelManagerOptions` (interface)
+Not imported by any other file AND not referenced within their own module — the true dead-code candidates. Verify each isn't consumed by a mechanism the
+parser can't see (dynamic access, docs examples, published-API contract) before deleting.
 
 ### `src/cli/commands/helpers.ts`
 
 - `withErrorHandling` (function)
 
+## Referenced In-Module (type contracts / helpers backing live exports)
+
+Not imported cross-file, but referenced within their own module — they type or
+support exports that ARE used, so they cannot be deleted in isolation.
+
+### `src/adapters/LangChainMemoryAdapter.ts`
+
+- `ChatMessage` (interface) — 6 in-file refs
+- `MemoryInputs` (interface) — 1 in-file ref
+- `MemoryVariables` (interface) — 1 in-file ref
+- `LangChainMemoryAdapterOptions` (interface) — 1 in-file ref
+
+### `src/agent/CollaborativeSynthesis.ts`
+
+- `ConflictView` (interface) — 6 in-file refs
+- `ConflictResolutionPolicy` (type) — 1 in-file ref
+
+### `src/agent/ContextWindowManager.ts`
+
+- `ContextCompressionResult` (interface) — 2 in-file refs
+- `CompressionLevel` (type) — 4 in-file refs
+
 ### `src/cli/formatters.ts`
 
-- `OutputFormat` (type)
-
-### `src/cli/options.ts`
-
-- `defaultOptions` (constant)
+- `OutputFormat` (type) — 8 in-file refs
 
 ### `src/core/EntityManager.ts`
 
-- `EntityManagerOptions` (interface)
-- `GetEntityOptions` (interface)
-
-### `src/core/EntityStateMachine.ts`
-
-- `effectiveStatus` (function)
-- `canTransition` (function)
-- `IllegalStatusTransitionError` (class)
+- `GetEntityOptions` (interface) — 1 in-file ref
 
 ### `src/core/GraphTraversal.ts`
 
-- `TraversalOptionsWithTracking` (interface)
-
-### `src/core/ManagerContext.ts`
-
-- `ManagerContextOptions` (interface)
+- `TraversalOptionsWithTracking` (interface) — 3 in-file refs
 
 ### `src/core/ObservationStore.ts`
 
-- `ObservationStoreStats` (interface)
-
-### `src/core/RefIndex.ts`
-
-- `RefIndexStats` (interface)
-
-### `src/core/TransactionManager.ts`
-
-- `TransactionResult` (interface)
-- `TransactionOperation` (type)
-
-### `src/core/TransitionLedger.ts`
-
-- `TransitionEvent` (interface)
-- `TransitionFilter` (interface)
-
-### `src/core/columns/IColumnStore.ts`
-
-- `InMemoryColumnStore` (class)
+- `ObservationStoreStats` (interface) — 1 in-file ref
 
 ### `src/core/mmap/FsReadMmapBackend.ts`
 
-- `FsReadMmapBackendOptions` (interface)
-
-### `src/core/segments/ISegmentStorage.ts`
-
-- `fnv1a32` (function)
-- `InMemorySegmentStorage` (class)
-
-### `src/features/ArchiveManager.ts`
-
-- `ArchiveCriteria` (interface)
-- `ArchiveOptions` (interface)
-- `ArchiveResult` (interface)
-
-### `src/features/AuditLog.ts`
-
-- `AuditFilter` (interface)
-- `AuditStats` (interface)
-- `AuditOperation` (type)
+- `FsReadMmapBackendOptions` (interface) — 1 in-file ref
 
 ### `src/features/BackupManager.ts`
 
-- `BackupMetadata` (interface)
-- `BackupInfo` (interface)
-
-### `src/features/FactExtractor.ts`
-
-- `ExtractedFact` (interface)
-- `FactExtractionOptions` (interface)
-- `FactExtractionResult` (interface)
-
-### `src/features/FreshnessManager.ts`
-
-- `FreshnessReport` (interface)
-- `FreshnessManagerConfig` (interface)
-
-### `src/features/GovernanceManager.ts`
-
-- `GovernancePolicy` (interface)
-- `GovernanceOperationOptions` (interface)
-
-### `src/features/IOManager.ts`
-
-- `IngestInput` (interface)
-- `IngestOptions` (interface)
-- `IngestResult` (interface)
-- `BackupMetadata` (interface)
-- `BackupInfo` (interface)
-- `SplitOptions` (interface)
-- `SplitResult` (interface)
-- `VisualizeOptions` (interface)
-- `VisualizeOptions` (interface)
-- `ExportFormat` (type)
-- `ImportFormat` (type)
-- `MergeStrategy` (type)
-
-### `src/features/KeywordExtractor.ts`
-
-- `ScoredKeyword` (interface)
-
-### `src/features/ObservableDataModelAdapter.ts`
-
-- `ObservableDataModelShape` (interface)
-- `ObservableDataModelAdapterOptions` (interface)
-- `JSONValue` (type)
-- `GraphProjection` (type)
-
-### `src/features/ObservationNormalizer.ts`
-
-- `NormalizationOptions` (interface)
-- `NormalizationResult` (interface)
-
-### `src/features/SemanticForget.ts`
-
-- `SemanticForgetResult` (interface)
-- `SemanticForgetOptions` (interface)
-
-### `src/search/BM25Search.ts`
-
-- `BM25DocumentEntry` (interface)
-- `BM25Index` (interface)
-- `BM25Config` (interface)
-
-### `src/search/BloomFilter.ts`
-
-- `bloomParams` (function)
+- `BackupMetadata` (interface) — 3 in-file refs
+- `BackupInfo` (interface) — 2 in-file refs
 
 ### `src/search/BloomPreScreener.ts`
 
-- `BloomPreScreenerOptions` (interface)
-
-### `src/search/EarlyTerminationManager.ts`
-
-- `AdequacyCheck` (interface)
-- `EarlyTerminationOptions` (interface)
-- `EarlyTerminationResult` (interface)
-
-### `src/search/EmbeddingCache.ts`
-
-- `EmbeddingCacheStats` (interface)
-- `EmbeddingCacheOptions` (interface)
-
-### `src/search/FuzzySearch.ts`
-
-- `FuzzySearchOptions` (interface)
-- `DEFAULT_FUZZY_THRESHOLD` (constant)
-
-### `src/search/GraphRankPrior.ts`
-
-- `GraphRankPriorOptions` (interface)
-
-### `src/search/HybridScorer.ts`
-
-- `SemanticLayerResult` (interface)
-- `LexicalSearchResult` (interface)
-- `SymbolicSearchResult` (interface)
-- `ScoredResult` (interface)
-- `HybridWeights` (interface)
-- `HybridScorerOptions` (interface)
-- `GraphLayerResult` (type)
-
-### `src/search/HybridSearchManager.ts`
-
-- `GraphHybridSearchResult` (interface)
-- `NeighborExpansionOptions` (interface)
-- `GraphHybridOptions` (interface)
-- `HybridSearchLayer` (type)
-
-### `src/search/IncrementalIndexer.ts`
-
-- `IndexOperation` (interface)
-- `IncrementalIndexerOptions` (interface)
-- `FlushResult` (interface)
-- `IndexOperationType` (type)
-
-### `src/search/LLMSearchExecutor.ts`
-
-- `LLMSearchExecutorOptions` (interface)
+- `BloomPreScreenerOptions` (interface) — 1 in-file ref
 
 ### `src/search/MaterializedViews.ts`
 
-- `ViewDefinition` (interface)
-- `ViewSnapshot` (interface)
-
-### `src/search/NGramIndex.ts`
-
-- `NGramIndexStats` (interface)
-
-### `src/search/OptimizedInvertedIndex.ts`
-
-- `IndexMemoryUsage` (interface)
-- `PostingListResult` (interface)
-
-### `src/search/ParallelSearchExecutor.ts`
-
-- `LayerTiming` (interface)
-- `ParallelSearchResult` (interface)
-- `ParallelSearchOptions` (interface)
+- `ViewDefinition` (interface) — 3 in-file refs
+- `ViewSnapshot` (interface) — 1 in-file ref
 
 ### `src/search/PartialIndexAdvisor.ts`
 
-- `IndexRecommendation` (interface)
-- `PartialIndexAdvisorOptions` (interface)
-
-### `src/search/ProximitySearch.ts`
-
-- `ProximityMatch` (interface)
-- `ProximityMatchLocation` (interface)
-
-### `src/search/QuantizedVectorStore.ts`
-
-- `QuantizationParams` (interface)
-- `QuantizedVectorStoreStats` (interface)
-- `QuantizedSearchResult` (interface)
-- `QuantizedVectorStoreOptions` (interface)
-
-### `src/search/QueryCostEstimator.ts`
-
-- `ExtendedQueryCostEstimate` (interface)
-- `LayerRecommendationOptions` (interface)
-- `TokenEstimationOptions` (interface)
-- `AdaptiveDepthConfig` (interface)
-
-### `src/search/QueryLogger.ts`
-
-- `QueryLoggerConfig` (interface)
-
-### `src/search/QueryPlanCache.ts`
-
-- `CachedQueryEntry` (interface)
-- `QueryPlanCacheStats` (interface)
-- `QueryPlanCacheOptions` (interface)
-
-### `src/search/ReflectionManager.ts`
-
-- `ReflectionOptions` (interface)
-- `RefinementHistoryEntry` (interface)
-- `ReflectionResult` (interface)
+- `IndexRecommendation` (interface) — 2 in-file refs
+- `PartialIndexAdvisorOptions` (interface) — 1 in-file ref
 
 ### `src/search/SearchManager.ts`
 
-- `SearchOptionsWithTracking` (interface)
+- `SearchOptionsWithTracking` (interface) — 12 in-file refs
 
 ### `src/search/SearchSuggestions.ts`
 
-- `CorrectedQuery` (interface)
-- `CorrectQueryOptions` (interface)
-
-### `src/search/SpellChecker.ts`
-
-- `SpellCheckerConfig` (interface)
-- `SuggestOptions` (interface)
-- `SpellSuggestion` (interface)
-
-### `src/search/SymbolicSearch.ts`
-
-- `SymbolicResult` (interface)
-
-### `src/search/TemporalSearch.ts`
-
-- `TemporalFilterField` (type)
-
-### `src/search/VectorStore.ts`
-
-- `SQLiteStorageWithEmbeddings` (interface)
+- `CorrectedQuery` (interface) — 2 in-file refs
+- `CorrectQueryOptions` (interface) — 1 in-file ref
 
 ### `src/search/tiered/BrotliColdTier.ts`
 
-- `BrotliColdTierOptions` (interface)
+- `BrotliColdTierOptions` (interface) — 1 in-file ref
 
 ### `src/search/tiered/DiskWarmTier.ts`
 
-- `DiskWarmTierOptions` (interface)
-
-### `src/search/tiered/ITieredIndex.ts`
-
-- `InMemoryTier` (class)
-- `HotOnlyIndex` (class)
+- `DiskWarmTierOptions` (interface) — 1 in-file ref
 
 ### `src/search/tiered/LRUHotTier.ts`
 
-- `LRUHotTierOptions` (interface)
+- `LRUHotTierOptions` (interface) — 1 in-file ref
 
 ### `src/search/tiered/TieredIndex.ts`
 
-- `TieredIndexOptions` (interface)
-- `TieredIndexBuildOptions` (interface)
-
-### `src/security/ABACPolicy.ts`
-
-- `ABACPolicyError` (class)
-- `ABACContext` (interface)
-- `ABACCondition` (interface)
-- `ABACRule` (interface)
-- `ABACDecision` (type)
-- `ABACEffect` (type)
-- `ABACOp` (type)
-
-### `src/security/APIKeyStore.ts`
-
-- `ValidationResult` (interface)
-- `KeyRecord` (interface)
-- `IssueOptions` (interface)
-- `IssueResult` (interface)
-
-### `src/security/PiiRedactor.ts`
-
-- `PiiPattern` (interface)
-- `PiiRedactorOptions` (interface)
-- `RedactionStats` (interface)
-- `RedactionResult` (interface)
-
-### `src/security/RowLevelFilter.ts`
-
-- `RowPredicate` (type)
+- `TieredIndexOptions` (interface) — 1 in-file ref
+- `TieredIndexBuildOptions` (interface) — 1 in-file ref
 
 ### `src/types/agent-memory.ts`
 
-- `ObservationSource` (interface)
-- `MemorySource` (interface)
-- `AgentObservation` (interface)
-- `ProfileEntity` (interface)
-- `SalienceWeights` (interface)
-- `DecayOptions` (interface)
-- `GoalEvent` (interface)
-- `GroupMembership` (interface)
-- `MemoryAcquisitionMethod` (type)
-- `TrustLevel` (type)
-- `PositiveInt` (type)
-- `AtLeastOne` (type)
-- `WorkingMemoryEntity` (type)
-- `EpisodicMemoryEntity` (type)
-- `SemanticMemoryEntity` (type)
-- `ProceduralMemoryEntity` (type)
-- `ConsolidationAction` (type)
-- `TRUST_LEVEL_ORDER` (constant)
-- `DEFAULT_TRUST_THRESHOLDS` (constant)
-
-### `src/types/progress.ts`
-
-- `ProgressInfo` (interface)
-- `ProgressOptions` (interface)
-- `ProgressInfoCallback` (type)
-
-### `src/types/result.ts`
-
-- `Result` (type)
-
-### `src/types/search.ts`
-
-- `QueryTrace` (interface)
-- `QueryStage` (interface)
-- `SearchExplanation` (interface)
-- `ScoringSignal` (interface)
-- `MatchedTerm` (interface)
-- `ScoreBoost` (interface)
-- `ExplainedSearchResult` (interface)
-- `TermNode` (interface)
-- `PhraseNode` (interface)
-- `WildcardNode` (interface)
-- `FieldNode` (interface)
-
-### `src/types/types.ts`
-
-- `FuzzyCacheKey` (interface)
-- `BooleanCacheEntry` (interface)
-- `PaginatedCacheEntry` (interface)
-- `TokenizedEntity` (interface)
-- `SavedSearch` (interface)
-- `DocumentVector` (interface)
-- `TFIDFIndex` (interface)
-- `GraphStats` (interface)
-- `ValidationIssue` (interface)
-- `ValidationWarning` (interface)
-- `ExportFilter` (interface)
-- `ImportResult` (interface)
-- `GraphCompressionResult` (interface)
-- `BackupOptions` (interface)
-- `BackupResult` (interface)
-- `RestoreResult` (interface)
-- `BackupMetadataExtended` (interface)
-- `BackupInfoExtended` (interface)
-- `ExportOptions` (interface)
-- `ExportResult` (interface)
-- `ArchiveResultExtended` (interface)
-- `CacheCompressionStats` (interface)
-- `TagAlias` (interface)
-- `LowercaseData` (interface)
-- `StorageConfig` (interface)
-- `TraversalOptions` (interface)
-- `TraversalResult` (interface)
-- `EmbeddingService` (interface)
-- `SemanticSearchResult` (interface)
-- `IVectorStore` (interface)
-- `VectorSearchResult` (interface)
-- `EmbeddingConfig` (interface)
-- `SemanticIndexOptions` (interface)
-- `BatchResult` (interface)
-- `OperationResult` (interface)
-- `BatchOptions` (interface)
-- `GraphEventBase` (interface)
-- `EntityRenamedEvent` (interface)
-- `RelationCreatedEvent` (interface)
-- `RelationDeletedEvent` (interface)
-- `ObservationDeletedEvent` (interface)
-- `GraphLoadedEvent` (interface)
-- `GraphEventMap` (interface)
-- `QueryCostEstimate` (interface)
-- `AutoSearchResult` (interface)
-- `QueryCostEstimatorOptions` (interface)
-- `PreparedEntity` (interface)
-- `SymbolicFilters` (interface)
-- `HybridSearchOptions` (interface)
-- `ExtractedEntity` (interface)
-- `TemporalRange` (interface)
-- `QueryAnalysis` (interface)
-- `SubQuery` (interface)
-- `QueryPlan` (interface)
-- `BooleanQueryNode` (type)
-- `EmbeddingMode` (type)
-- `BatchOperationType` (type)
-- `BatchOperation` (type)
-- `GraphEventType` (type)
-- `GraphEvent` (type)
-- `GraphEventListener` (type)
-- `SearchMethod` (type)
-
-### `src/utils/AsyncMutex.ts`
-
-- `AsyncMutexOptions` (interface)
-
-### `src/utils/BatchProcessor.ts`
-
-- `BatchProgress` (interface)
-- `BatchItemResult` (interface)
-- `BatchProcessResult` (interface)
-- `BatchProcessorOptions` (interface)
-- `BatchProgressCallback` (type)
+- `GoalEvent` (interface) — 1 in-file ref
+- `PositiveInt` (type) — 5 in-file refs
+- `AtLeastOne` (type) — 1 in-file ref
+- `DEFAULT_TRUST_THRESHOLDS` (constant) — 4 in-file refs
 
 ### `src/utils/CachePressureCoordinator.ts`
 
-- `PressureAwareCache` (interface)
-- `CachePressureSnapshot` (interface)
+- `CachePressureSnapshot` (interface) — 2 in-file refs
 
 ### `src/utils/Diagnostics.ts`
 
-- `EntityCounts` (interface)
-- `TieredIndexStatsSnapshot` (interface)
-
-### `src/utils/EntityValidator.ts`
-
-- `EntityValidatorConfig` (interface)
+- `EntityCounts` (interface) — 2 in-file refs
+- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
 
 ### `src/utils/IndexHealthMonitor.ts`
 
-- `IndexHealthSources` (interface)
-
-### `src/utils/MemoryMonitor.ts`
-
-- `ComponentMemoryUsage` (interface)
-- `MemoryUsageStats` (interface)
-- `MemoryThresholds` (interface)
-- `MemoryAlert` (interface)
-- `MemoryChangeCallback` (type)
-
-### `src/utils/SchemaValidator.ts`
-
-- `JsonSchema` (interface)
-
-### `src/utils/WorkerPoolManager.ts`
-
-- `ExtendedPoolStats` (interface)
-- `PoolEventCallback` (type)
-
-### `src/utils/WorkerTaskManager.ts`
-
-- `_resetWorkerTaskManagerForTests` (function)
-- `TaskSubmitOptions` (interface)
-- `TaskHandle` (interface)
-- `WorkerTaskManagerStats` (interface)
-
-### `src/utils/compressedCache.ts`
-
-- `CompressedCacheOptions` (interface)
-- `CompressedCacheStats` (interface)
+- `IndexHealthSources` (interface) — 1 in-file ref
 
 ### `src/utils/compression/CompressedMap.ts`
 
-- `CompressedMapOptions` (interface)
-
-### `src/utils/compression/ICompressionAdapter.ts`
-
-- `IdentityCompressionAdapter` (class)
-
-### `src/utils/compressionUtil.ts`
-
-- `CompressionOptions` (interface)
-- `CompressionResult` (interface)
-- `CompressionMetadata` (interface)
+- `CompressedMapOptions` (interface) — 1 in-file ref
 
 ### `src/utils/constants.ts`
 
-- `CompressionQuality` (type)
-- `EMBEDDING_ENV_VARS` (constant)
-
-### `src/utils/entityUtils.ts`
-
-- `fnv1aHash` (function)
-- `findEntityByName` (function)
-- `findEntityByName` (function)
-- `findEntityByName` (function)
-- `findEntityByName` (function)
-- `normalizeTag` (function)
-- `isWithinDateRange` (function)
-- `isWithinImportanceRange` (function)
-- `sanitizeObject` (function)
-- `CommonSearchFilters` (interface)
-
-### `src/utils/errors.ts`
-
-- `ErrorOptions` (interface)
-
-### `src/utils/formatters.ts`
-
-- `formatToolResponse` (function)
-- `validatePagination` (function)
-- `ValidatedPagination` (interface)
-- `ToolResponse` (type)
-
-### `src/utils/operationUtils.ts`
-
-- `PhaseDefinition` (interface)
-
-### `src/utils/relationValidation.ts`
-
-- `RelationValidationError` (interface)
-- `RelationValidationWarning` (interface)
-- `RelationValidationResult` (interface)
-
-### `src/utils/schemas.ts`
-
-- `formatZodErrors` (function)
-- `validateEntity` (function)
-- `ValidationResult` (interface)
-- `EntityInput` (type)
-- `CreateEntityInput` (type)
-- `UpdateEntityInput` (type)
-- `RelationInput` (type)
-- `CreateRelationInput` (type)
-- `SearchQuery` (type)
-- `DateRange` (type)
-- `TagAliasInput` (type)
-- `AddObservationInput` (type)
-- `DeleteObservationInput` (type)
-- `ArchiveCriteriaInput` (type)
-- `SavedSearchInput` (type)
-- `SavedSearchUpdateInput` (type)
-- `ImportFormatInput` (type)
-- `ExtendedExportFormatInput` (type)
-- `MergeStrategyInput` (type)
-- `ExportFilterInput` (type)
-- `AddObservationInputSchema` (constant)
-- `ArchiveCriteriaSchema` (constant)
-- `SavedSearchInputSchema` (constant)
-- `ImportFormatSchema` (constant)
-- `OptionalTagsSchema` (constant)
-
-### `src/utils/searchCache.ts`
-
-- `CacheStats` (interface)
-
-### `src/utils/taskScheduler.ts`
-
-- `batchProcess` (function)
-- `debounce` (function)
-- `TaskBatchOptions` (interface)
-
-### `src/workers/levenshteinWorker.ts`
-
-- `WorkerInput` (interface)
-- `MatchResult` (interface)
+- `EMBEDDING_ENV_VARS` (constant) — 4 in-file refs
 

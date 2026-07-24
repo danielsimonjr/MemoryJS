@@ -1,6 +1,6 @@
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 2.8.1 | **Last Updated**: 2026-07-24
+**Version**: 2.9.0 | **Last Updated**: 2026-07-24
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -9,24 +9,26 @@ This document provides a comprehensive dependency graph of all files, components
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Adapters Dependencies](#adapters-dependencies)
-3. [Agent Dependencies](#agent-dependencies)
-4. [Cli Dependencies](#cli-dependencies)
-5. [Core Dependencies](#core-dependencies)
-6. [Features Dependencies](#features-dependencies)
-7. [Entry Dependencies](#entry-dependencies)
-8. [Search Dependencies](#search-dependencies)
-9. [Security Dependencies](#security-dependencies)
-10. [Types Dependencies](#types-dependencies)
-11. [Utils Dependencies](#utils-dependencies)
-12. [Workers Dependencies](#workers-dependencies)
-13. [Dependency Matrix](#dependency-matrix)
-14. [Circular Dependency Analysis](#circular-dependency-analysis)
-15. [Visual Dependency Graph](#visual-dependency-graph)
-16. [Summary Statistics](#summary-statistics)
+2. [Entry Points & Reachability](#entry-points--reachability)
+3. [Adapters Dependencies](#adapters-dependencies)
+4. [Agent Dependencies](#agent-dependencies)
+5. [Cli Dependencies](#cli-dependencies)
+6. [Core Dependencies](#core-dependencies)
+7. [Features Dependencies](#features-dependencies)
+8. [Entry Dependencies](#entry-dependencies)
+9. [Search Dependencies](#search-dependencies)
+10. [Security Dependencies](#security-dependencies)
+11. [Types Dependencies](#types-dependencies)
+12. [Utils Dependencies](#utils-dependencies)
+13. [Workers Dependencies](#workers-dependencies)
+14. [Dependency Matrix](#dependency-matrix)
+15. [Circular Dependency Analysis](#circular-dependency-analysis)
+16. [Visual Dependency Graph](#visual-dependency-graph)
+17. [Summary Statistics](#summary-statistics)
 
 ---
 
+<a id="overview"></a>
 ## Overview
 
 The codebase is organized into the following modules:
@@ -44,6 +46,21 @@ The codebase is organized into the following modules:
 - **workers**: 2 files
 
 ---
+
+<a id="entry-points--reachability"></a>
+## Entry Points & Reachability
+
+Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script entries):
+
+- `src/cli/index.ts`
+- `src/index.ts`
+- `src/workers/levenshteinWorker.ts`
+
+Reachable from a root: **255** of 256 files. Dormant: **1** (1 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+
+---
+
+<a id="adapters-dependencies"></a>
 
 ## Adapters Dependencies
 
@@ -89,7 +106,6 @@ The codebase is organized into the following modules:
 | Module | Import |
 |--------|--------|
 | `http` | `IncomingMessage, ServerResponse` |
-| `http` | `createServer` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -101,6 +117,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `RestRouter`
 - Interfaces: `RestRequest`, `RestResponse`, `RouteDefinition`
+- Types: `RestMethod`, `RestHandler`
 
 ---
 
@@ -109,14 +126,14 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./RestRouter.js` | `RestRouter, type RestMethod, type RestRequest, type RestResponse, type RestHandler, type RouteDefinition` | Re-export |
-| `./RateLimiter.js` | `RateLimiter, type RateLimiterConfig, type RateLimitVerdict` | Re-export |
-| `./pagination.js` | `paginate, parsePaginationParams, type PaginationParams, type ParsePaginationOptions, type PaginatedResult` | Re-export |
+| `./RestRouter.js` | `RestRouter, RestMethod, RestRequest, RestResponse, RestHandler, RouteDefinition` | Re-export |
+| `./RateLimiter.js` | `RateLimiter, RateLimiterConfig, RateLimitVerdict` | Re-export |
+| `./pagination.js` | `paginate, parsePaginationParams, PaginationParams, ParsePaginationOptions, PaginatedResult` | Re-export |
 | `./MCPToolObserverAdapter.js` | `MCPToolObserverAdapter, extractToolName` | Re-export |
 | `./LangChainMemoryAdapter.js` | `LangChainMemoryAdapter` | Re-export |
 
 **Exports:**
-- Re-exports: `RestRouter`, `type RestMethod`, `type RestRequest`, `type RestResponse`, `type RestHandler`, `type RouteDefinition`, `RateLimiter`, `type RateLimiterConfig`, `type RateLimitVerdict`, `paginate`, `parsePaginationParams`, `type PaginationParams`, `type ParsePaginationOptions`, `type PaginatedResult`, `MCPToolObserverAdapter`, `extractToolName`, `LangChainMemoryAdapter`
+- Re-exports: `RestRouter`, `RestMethod`, `RestRequest`, `RestResponse`, `RestHandler`, `RouteDefinition`, `RateLimiter`, `RateLimiterConfig`, `RateLimitVerdict`, `paginate`, `parsePaginationParams`, `PaginationParams`, `ParsePaginationOptions`, `PaginatedResult`, `MCPToolObserverAdapter`, `extractToolName`, `LangChainMemoryAdapter`
 
 ---
 
@@ -128,6 +145,8 @@ The codebase is organized into the following modules:
 
 ---
 
+<a id="agent-dependencies"></a>
+
 ## Agent Dependencies
 
 ### `src/agent/AccessTracker.ts` - Access Tracker
@@ -137,10 +156,12 @@ The codebase is organized into the following modules:
 |------|---------|------|
 | `../types/types.js` | `IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, AccessContext, AccessPattern` | Import (type-only) |
+| `../types/agent-memory.js` | `AccessContext` | Re-export (type-only) |
 
 **Exports:**
 - Classes: `AccessTracker`
 - Interfaces: `AccessStats`, `AccessTrackerConfig`
+- Re-exports: `AccessContext`
 
 ---
 
@@ -266,6 +287,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `CollaborativeSynthesis`
 - Interfaces: `CollaborativeSynthesisConfig`, `ConflictView`, `SynthesisResult`
+- Types: `ConflictResolutionPolicy`
 
 ---
 
@@ -352,6 +374,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `ContextProfileManager`
 - Interfaces: `ProfileConfig`
+- Types: `ContextProfile`
 
 ---
 
@@ -368,10 +391,16 @@ The codebase is organized into the following modules:
 | `./SalienceEngine.js` | `SalienceEngine` | Import |
 | `./DistillationPolicy.js` | `IDistillationPolicy` | Import (type-only) |
 | `./ContextProfileManager.js` | `ContextProfileManager, ProfileConfig` | Import |
+| `./ProjectContextManager.js` | `ProjectContextManager` | Dynamic import |
+| `../core/EntityManager.js` | `EntityManager` | Dynamic import |
+| `./ProfileManager.js` | `ProfileManager` | Dynamic import |
+| `../core/ObservationManager.js` | `ObservationManager` | Dynamic import |
+| `./ProspectiveMemoryManager.js` | `ProspectiveMemoryManager` | Dynamic import |
 
 **Exports:**
 - Classes: `ContextWindowManager`
 - Interfaces: `ContextWindowManagerConfig`, `ContextCompressionResult`, `WakeUpOptions`, `WakeUpResult`, `SpilloverResult`
+- Types: `CompressionLevel`
 
 ---
 
@@ -387,10 +416,12 @@ The codebase is organized into the following modules:
 | `../features/FreshnessManager.js` | `FreshnessManager` | Import |
 | `../utils/textSimilarity.js` | `tokenizeToSet` | Import |
 | `./connectivity.js` | `computeDegreeMap, normalizedDegree, DegreeMap` | Import |
+| `../types/agent-memory.js` | `DecayResult, ForgetOptions, ForgetResult` | Re-export (type-only) |
 
 **Exports:**
 - Classes: `DecayEngine`
 - Interfaces: `DecayEngineConfig`, `DecayOperationOptions`, `ReinforcementOptions`
+- Re-exports: `DecayResult`, `ForgetOptions`, `ForgetResult`
 
 ---
 
@@ -402,10 +433,12 @@ The codebase is organized into the following modules:
 | `../types/agent-memory.js` | `DecayResult, ForgetResult, ForgetOptions` | Import (type-only) |
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
 | `../utils/logger.js` | `logger` | Import |
+| `../types/agent-memory.js` | `DecayResult, ForgetResult` | Re-export (type-only) |
 
 **Exports:**
 - Classes: `DecayScheduler`
 - Interfaces: `DecaySchedulerConfig`, `DecayCycleResult`
+- Re-exports: `DecayResult`, `ForgetResult`
 
 ---
 
@@ -429,6 +462,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `DecisionManager`
 - Interfaces: `DecisionInput`, `DecisionEntityOptions`, `ListDecisionsOptions`
+- Types: `AcceptDecisionResult`, `RejectDecisionResult`, `SupersedeDecisionResult`
 
 ---
 
@@ -563,6 +597,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `ExperienceExtractor`
 - Interfaces: `Action`, `Trajectory`, `Rule`, `HeuristicGuideline`, `DecisionRule`, `TrajectoryCluster`, `Experience`, `ExperienceExtractorConfig`
+- Types: `Outcome`, `ClusterMethod`, `ExperienceType`
 
 ---
 
@@ -607,6 +642,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `FailureManager`
 - Interfaces: `FailureManagerConfig`, `FailureEntityOptions`, `LookupOptions`, `GetAllOptions`
+- Types: `FailureInput`
 
 ---
 
@@ -629,6 +665,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `HeuristicManager`
 - Interfaces: `AddHeuristicOptions`, `HeuristicMatch`, `HeuristicConflict`
+- Types: `HeuristicUpdateResult`
 
 ---
 
@@ -656,6 +693,9 @@ The codebase is organized into the following modules:
 
 ### `src/agent/MemoryBackend.ts` - Memory Backend Interface (`IMemoryBackend`)
 
+**Exports:**
+- Interfaces: `MemoryTurn`, `WeightedTurn`, `GetWeightedOptions`, `IMemoryBackend`
+
 ---
 
 ### `src/agent/MemoryEngine.ts` - Optional `ExclusionManager` (Phase 3 `do_not_remember`). When
@@ -682,6 +722,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `MemoryEngine`
 - Interfaces: `MemoryEngineConfig`, `AddTurnOptions`, `AddTurnResult`, `DuplicateCheckResult`
+- Types: `DedupTier`, `MemoryEngineEventName`
 
 ---
 
@@ -856,6 +897,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `ProspectiveMemoryManager`
 - Interfaces: `ProspectiveMemoryConfig`, `ScheduleOptions`
+- Types: `ProcedureInvoker`
 
 ---
 
@@ -879,6 +921,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `ReflectionManager`
 - Interfaces: `ReflectionManagerConfig`, `ReflectionInput`, `ReflectionEntityOptions`, `ListReflectionsOptions`, `RelevanceOptions`
+- Types: `ArchiveReflectionResult`
 
 ---
 
@@ -893,6 +936,7 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Interfaces: `RoleProfile`
+- Types: `AgentRole`
 - Functions: `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`
 
 ---
@@ -1005,6 +1049,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `SessionQueryBuilder`
 - Interfaces: `SessionSearchOptions`, `EntityWithContext`
+- Types: `SearchFunction`
 
 ---
 
@@ -1053,6 +1098,7 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Classes: `ToolCallObserver`
+- Types: `ToolCallEvent`
 
 ---
 
@@ -1068,6 +1114,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `TrajectoryCompressor`
 - Interfaces: `DistillOptions`, `CompressedMemory`, `RedundancyGroup`, `TrajectoryCompressorConfig`
+- Types: `Granularity`, `TrajectoryMergeStrategy`
 
 ---
 
@@ -1098,6 +1145,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `WorkThreadManager`
 - Interfaces: `WorkThread`, `WorkThreadFilter`, `CreateWorkThreadOptions`
+- Types: `WorkThreadStatus`
 - Functions: `migrateLegacyWorkThreads`, `decodeLegacyWorkThread`
 - Constants: `CHILD_OF_RELATION`, `BLOCKED_BY_RELATION`, `WORK_THREAD_ENTITY_TYPE`
 
@@ -1132,6 +1180,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `CausalReasoner`
 - Interfaces: `CausalChain`, `CausalCycle`, `CausalReasonerConfig`
+- Types: `CausalRelationType`
 - Constants: `DEFAULT_CAUSAL_RELATION_TYPES`
 
 ---
@@ -1141,10 +1190,10 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./CausalReasoner.js` | `CausalReasoner, DEFAULT_CAUSAL_RELATION_TYPES, type CausalRelationType, type CausalChain, type CausalCycle, type CausalReasonerConfig` | Re-export |
+| `./CausalReasoner.js` | `CausalReasoner, DEFAULT_CAUSAL_RELATION_TYPES, CausalRelationType, CausalChain, CausalCycle, CausalReasonerConfig` | Re-export |
 
 **Exports:**
-- Re-exports: `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `type CausalRelationType`, `type CausalChain`, `type CausalCycle`, `type CausalReasonerConfig`
+- Re-exports: `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `CausalRelationType`, `CausalChain`, `CausalCycle`, `CausalReasonerConfig`
 
 ---
 
@@ -1161,6 +1210,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `CollaborationAuditEnforcer`
 - Interfaces: `CollaborationAuditEnforcerOptions`
+- Types: `AttributionMode`
 
 ---
 
@@ -1182,77 +1232,70 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./AccessTracker.js` | `AccessTracker, type AccessStats, type AccessTrackerConfig, type AccessContext` | Re-export |
-| `./DecayEngine.js` | `DecayEngine, type DecayEngineConfig, type DecayOperationOptions, type ReinforcementOptions, type DecayResult, type ForgetOptions, type ForgetResult` | Re-export |
-| `./DecayScheduler.js` | `DecayScheduler, type DecaySchedulerConfig, type DecayCycleResult` | Re-export |
-| `./WorkingMemoryManager.js` | `WorkingMemoryManager, type WorkingMemoryConfig, type SessionMemoryFilter, type PromotionMarkOptions, type PromotionCriteria, type PromotionResult, type ConfirmationResult` | Re-export |
-| `./SessionManager.js` | `SessionManager, type SessionConfig, type StartSessionOptions, type SessionHistoryOptions, type EndSessionResult` | Re-export |
-| `./SessionQueryBuilder.js` | `SessionQueryBuilder, type SessionSearchOptions, type EntityWithContext, type SearchFunction` | Re-export |
-| `./EpisodicMemoryManager.js` | `EpisodicMemoryManager, EpisodicRelations, type EpisodicMemoryConfig, type CreateEpisodeOptions, type TimelineOptions` | Re-export |
-| `./ProspectiveMemoryManager.js` | `ProspectiveMemoryManager, type ProspectiveMemoryConfig, type ProcedureInvoker, type ScheduleOptions` | Re-export |
-| `./FailureManager.js` | `FailureManager, type FailureManagerConfig, type FailureInput, type FailureEntityOptions, type LookupOptions, type GetAllOptions` | Re-export |
-| `./PlanManager.js` | `PlanManager, type PlanManagerConfig, type CreatePlanOptions, type PushSubGoalOptions, type ListPlansOptions` | Re-export |
-| `./ReflectionManager.js` | `// Aliased to avoid name collision with `src/search/ReflectionManager`
-  // (progressive search refinement, predates this module). The class
-  // itself is named `ReflectionManager` inside `src/agent/`; this
-  // barrel re-exports it under the more specific public name.
-  ReflectionManager, type ArchiveReflectionResult, type ReflectionManagerConfig, type ReflectionInput, type ReflectionEntityOptions, type ListReflectionsOptions, type RelevanceOptions` | Re-export |
-| `./ConsolidationPipeline.js` | `ConsolidationPipeline, ProspectivePromotionStage, ReflectionStage, type ConsolidationPipelineConfig, type PipelineStage, type ReflectionStageConfig, type StageResult` | Re-export |
-| `./SummarizationService.js` | `SummarizationService, type ISummarizationProvider, type SummarizationConfig, type GroupingResult` | Re-export |
+| `./AccessTracker.js` | `AccessTracker, AccessStats, AccessTrackerConfig, AccessContext` | Re-export |
+| `./DecayEngine.js` | `DecayEngine, DecayEngineConfig, DecayOperationOptions, ReinforcementOptions, DecayResult, ForgetOptions, ForgetResult` | Re-export |
+| `./DecayScheduler.js` | `DecayScheduler, DecaySchedulerConfig, DecayCycleResult` | Re-export |
+| `./WorkingMemoryManager.js` | `WorkingMemoryManager, WorkingMemoryConfig, SessionMemoryFilter, PromotionMarkOptions, PromotionCriteria, PromotionResult, ConfirmationResult` | Re-export |
+| `./SessionManager.js` | `SessionManager, SessionConfig, StartSessionOptions, SessionHistoryOptions, EndSessionResult` | Re-export |
+| `./SessionQueryBuilder.js` | `SessionQueryBuilder, SessionSearchOptions, EntityWithContext, SearchFunction` | Re-export |
+| `./EpisodicMemoryManager.js` | `EpisodicMemoryManager, EpisodicRelations, EpisodicMemoryConfig, CreateEpisodeOptions, TimelineOptions` | Re-export |
+| `./ProspectiveMemoryManager.js` | `ProspectiveMemoryManager, ProspectiveMemoryConfig, ProcedureInvoker, ScheduleOptions` | Re-export |
+| `./FailureManager.js` | `FailureManager, FailureManagerConfig, FailureInput, FailureEntityOptions, LookupOptions, GetAllOptions` | Re-export |
+| `./PlanManager.js` | `PlanManager, PlanManagerConfig, CreatePlanOptions, PushSubGoalOptions, ListPlansOptions` | Re-export |
+| `./ReflectionManager.js` | `ReflectionManager, ArchiveReflectionResult, ReflectionManagerConfig, ReflectionInput, ReflectionEntityOptions, ListReflectionsOptions, RelevanceOptions` | Re-export |
+| `./ConsolidationPipeline.js` | `ConsolidationPipeline, ProspectivePromotionStage, ReflectionStage, ConsolidationPipelineConfig, PipelineStage, ReflectionStageConfig, StageResult` | Re-export |
+| `./SummarizationService.js` | `SummarizationService, ISummarizationProvider, SummarizationConfig, GroupingResult` | Re-export |
 | `./PatternDetector.js` | `PatternDetector` | Re-export |
 | `./RuleEvaluator.js` | `RuleEvaluator` | Re-export |
-| `./SalienceEngine.js` | `SalienceEngine, type SalienceEngineConfig` | Re-export |
-| `./ContextWindowManager.js` | `ContextWindowManager, type ContextWindowManagerConfig, type SpilloverResult, type WakeUpOptions, type WakeUpResult` | Re-export |
-| `./MemoryFormatter.js` | `MemoryFormatter, type MemoryFormatterConfig` | Re-export |
-| `./MultiAgentMemoryManager.js` | `MultiAgentMemoryManager, type MultiAgentConfig` | Re-export |
-| `./ConflictResolver.js` | `ConflictResolver, type ConflictResolverConfig, type ResolutionResult` | Re-export |
-| `./SessionCheckpoint.js` | `SessionCheckpointManager, type SessionCheckpointData, SESSION_CHECKPOINT_ENTITY_TYPE, HAS_CHECKPOINT_RELATION, SNAPSHOTS_RELATION, migrateLegacySessionCheckpoints, decodeLegacyCheckpoint` | Re-export |
-| `./AgentMemoryManager.js` | `AgentMemoryManager, type CreateMemoryOptions, type RetrieveContextOptions` | Re-export |
-| `./CollaborativeSynthesis.js` | `CollaborativeSynthesis, type CollaborativeSynthesisConfig, type SynthesisResult` | Re-export |
-| `./AgentMemoryConfig.js` | `type AgentMemoryConfig, loadConfigFromEnv, mergeConfig, validateConfig` | Re-export |
+| `./SalienceEngine.js` | `SalienceEngine, SalienceEngineConfig` | Re-export |
+| `./ContextWindowManager.js` | `ContextWindowManager, ContextWindowManagerConfig, SpilloverResult, WakeUpOptions, WakeUpResult` | Re-export |
+| `./MemoryFormatter.js` | `MemoryFormatter, MemoryFormatterConfig` | Re-export |
+| `./MultiAgentMemoryManager.js` | `MultiAgentMemoryManager, MultiAgentConfig` | Re-export |
+| `./ConflictResolver.js` | `ConflictResolver, ConflictResolverConfig, ResolutionResult` | Re-export |
+| `./SessionCheckpoint.js` | `SessionCheckpointManager, SessionCheckpointData, SESSION_CHECKPOINT_ENTITY_TYPE, HAS_CHECKPOINT_RELATION, SNAPSHOTS_RELATION, migrateLegacySessionCheckpoints, decodeLegacyCheckpoint` | Re-export |
+| `./AgentMemoryManager.js` | `AgentMemoryManager, CreateMemoryOptions, RetrieveContextOptions` | Re-export |
+| `./CollaborativeSynthesis.js` | `CollaborativeSynthesis, CollaborativeSynthesisConfig, SynthesisResult` | Re-export |
+| `./AgentMemoryConfig.js` | `AgentMemoryConfig, loadConfigFromEnv, mergeConfig, validateConfig` | Re-export |
 | `./ArtifactManager.js` | `ArtifactManager` | Re-export |
-| `./DistillationPolicy.js` | `type IDistillationPolicy, type DistilledMemory, type DistillationConfig, NoOpDistillationPolicy, DefaultDistillationPolicy, CompositeDistillationPolicy` | Re-export |
-| `./DistillationPipeline.js` | `DistillationPipeline, type DistillationStats, type DistillationResult` | Re-export |
-| `./RoleProfiles.js` | `type AgentRole, type RoleProfile, getRoleProfile, listRoleProfiles, resolveRoleProfile, createCustomProfile` | Re-export |
-| `./EntropyFilter.js` | `EntropyFilterStage, computeEntropy, passesEntropyFilter, type EntropyFilterConfig, LowEntropyContentError` | Re-export |
-| `./FailureDistillation.js` | `FailureDistillation, type FailureDistillationResult, type FailureDistillationConfig` | Re-export |
-| `./CognitiveLoadAnalyzer.js` | `CognitiveLoadAnalyzer, type CognitiveLoadConfig` | Re-export |
+| `./DistillationPolicy.js` | `IDistillationPolicy, DistilledMemory, DistillationConfig, NoOpDistillationPolicy, DefaultDistillationPolicy, CompositeDistillationPolicy` | Re-export |
+| `./DistillationPipeline.js` | `DistillationPipeline, DistillationStats, DistillationResult` | Re-export |
+| `./RoleProfiles.js` | `AgentRole, RoleProfile, getRoleProfile, listRoleProfiles, resolveRoleProfile, createCustomProfile` | Re-export |
+| `./EntropyFilter.js` | `EntropyFilterStage, computeEntropy, passesEntropyFilter, EntropyFilterConfig, LowEntropyContentError` | Re-export |
+| `./FailureDistillation.js` | `FailureDistillation, FailureDistillationResult, FailureDistillationConfig` | Re-export |
+| `./CognitiveLoadAnalyzer.js` | `CognitiveLoadAnalyzer, CognitiveLoadConfig` | Re-export |
 | `./VisibilityResolver.js` | `VisibilityResolver` | Re-export |
-| `./ConsolidationScheduler.js` | `ConsolidationScheduler, type ConsolidationSchedulerConfig, type ConsolidationCycleResult` | Re-export |
-| `./DreamEngine.js` | `DreamEngine, type DreamEngineConfig, type DreamPhaseConfig, type DreamEngineCallbacks, type DreamPhaseResult, type DreamCycleResult` | Re-export |
-| `./ProfileManager.js` | `ProfileManager, type ProfileResponse, type ProfileManagerConfig, type ProfileOptions` | Re-export |
-| `./ObserverPipeline.js` | `ObserverPipeline, type ObservationScore, type ObserverPipelineOptions, type ObserverPipelineStats` | Re-export |
-| `./WorkThreadManager.js` | `WorkThreadManager, migrateLegacyWorkThreads, decodeLegacyWorkThread, WORK_THREAD_ENTITY_TYPE, CHILD_OF_RELATION, BLOCKED_BY_RELATION, type WorkThread, type WorkThreadStatus, type WorkThreadFilter, type CreateWorkThreadOptions` | Re-export |
-| `./ContextProfileManager.js` | `ContextProfileManager, type ContextProfile, type ProfileConfig` | Re-export |
-| `./MemoryEngine.js` | `MemoryEngine, type MemoryEngineConfig, type AddTurnOptions, type AddTurnResult, type DedupTier, type DuplicateCheckResult, type MemoryEngineEventName` | Re-export |
-| `./ImportanceScorer.js` | `ImportanceScorer, type ImportanceScorerConfig, type ScoreOptions` | Re-export |
+| `./ConsolidationScheduler.js` | `ConsolidationScheduler, ConsolidationSchedulerConfig, ConsolidationCycleResult` | Re-export |
+| `./DreamEngine.js` | `DreamEngine, DreamEngineConfig, DreamPhaseConfig, DreamEngineCallbacks, DreamPhaseResult, DreamCycleResult` | Re-export |
+| `./ProfileManager.js` | `ProfileManager, ProfileResponse, ProfileManagerConfig, ProfileOptions` | Re-export |
+| `./ObserverPipeline.js` | `ObserverPipeline, ObservationScore, ObserverPipelineOptions, ObserverPipelineStats` | Re-export |
+| `./WorkThreadManager.js` | `WorkThreadManager, migrateLegacyWorkThreads, decodeLegacyWorkThread, WORK_THREAD_ENTITY_TYPE, CHILD_OF_RELATION, BLOCKED_BY_RELATION, WorkThread, WorkThreadStatus, WorkThreadFilter, CreateWorkThreadOptions` | Re-export |
+| `./ContextProfileManager.js` | `ContextProfileManager, ContextProfile, ProfileConfig` | Re-export |
+| `./MemoryEngine.js` | `MemoryEngine, MemoryEngineConfig, AddTurnOptions, AddTurnResult, DedupTier, DuplicateCheckResult, MemoryEngineEventName` | Re-export |
+| `./ImportanceScorer.js` | `ImportanceScorer, ImportanceScorerConfig, ScoreOptions` | Re-export |
 | `./InMemoryBackend.js` | `InMemoryBackend` | Re-export |
-| `./SQLiteBackend.js` | `SQLiteBackend, type SQLiteBackendOptions` | Re-export |
-| `./MemoryValidator.js` | `MemoryValidator, type MemoryValidatorConfig, type MemoryValidationResult, type MemoryValidationIssue, type Contradiction` | Re-export |
-| `./TrajectoryCompressor.js` | `TrajectoryCompressor, type TrajectoryCompressorConfig, type DistillOptions, type CompressedMemory, type Granularity, type RedundancyGroup, type TrajectoryMergeStrategy` | Re-export |
-| `./ExperienceExtractor.js` | `ExperienceExtractor, type ExperienceExtractorConfig, type Trajectory, type Action, type Outcome, type Rule, type HeuristicGuideline, type DecisionRule, type ClusterMethod, type TrajectoryCluster, type ExperienceType, type Experience` | Re-export |
-| `./collaboration/CollaborationAuditEnforcer.js` | `CollaborationAuditEnforcer, type AttributionMode, type CollaborationAuditEnforcerOptions` | Re-export |
-| `./retrieval/index.js` | `QueryRewriter, ActiveRetrievalController, type RewriteResult, type RetrievalContext, type RetrievalDecision, type RetrievalRound, type AdaptiveResult, type ActiveRetrievalConfig` | Re-export |
-| `./world/index.js` | `WorldStateSnapshot, WorldModelManager, type WorldStateEntity, type WorldStateChange, type WorldModelManagerOptions` | Re-export |
-| `./procedural/index.js` | `ProcedureManager, ProcedureStore, StepSequencer, decodeProcedure, PROCEDURE_ENTITY_TYPE, type ProcedureManagerConfig` | Re-export |
-| `./causal/index.js` | `CausalReasoner, DEFAULT_CAUSAL_RELATION_TYPES, type CausalRelationType, type CausalChain, type CausalCycle, type CausalReasonerConfig` | Re-export |
-| `./HeuristicManager.js` | `HeuristicManager, type AddHeuristicOptions, type HeuristicMatch, type HeuristicConflict, type HeuristicUpdateResult` | Re-export |
-| `./ExclusionManager.js` | `ExclusionManager, type AddExclusionRuleInput, type ExclusionCheckResult` | Re-export |
-| `./DecisionManager.js` | `DecisionManager, type DecisionInput, type DecisionEntityOptions, type AcceptDecisionResult, type RejectDecisionResult, type SupersedeDecisionResult, type ListDecisionsOptions` | Re-export |
-| `./ProjectContextManager.js` | `ProjectContextManager, type ProjectContextManagerConfig, type ProjectContextUpsertInput, type ForContextOptions` | Re-export |
-| `./ObservationDedupManager.js` | `ObservationDedupManager, type DuplicateObservationOccurrence, type DuplicateObservationGroup, type ObservationDedupFilter, type ObservationDedupManagerConfig` | Re-export |
-| `./ToolAffordanceManager.js` | `ToolAffordanceManager, type ToolAffordanceManagerConfig, type RecordOutcomeInput, type ToolAffordanceStats, type SuggestToolOptions, type ToolSuggestion` | Re-export |
-| `./ToolCallObserver.js` | `ToolCallObserver, type ToolCallEvent` | Re-export |
-| `./ConsolidationPipeline.js` | `ObservationDedupReportStage, HeuristicExtractionStage, type ObservationDedupReportStageConfig, type HeuristicExtractionStageConfig` | Re-export |
-| `./rbac/index.js` | `DEFAULT_PERMISSION_MATRIX, permissionsForRole, RoleAssignmentStore, RbacMiddleware, type Role, type Permission, type ResourceType, type RoleAssignment, type RbacPolicy, type PermissionMatrix, type PermissionMatrixRow, type ResourcePermissionOverrides, type RoleAssignmentStoreOptions, type RbacMiddlewareOptions` | Re-export |
-| `./reconstruction/index.js` | `CueTagContentGraph, normalizeKey, MemoryToolkit, type EventKeywords, MemoryDistiller, extractJson, MemoryReconstructor, ReconstructiveMemory, type ReconstructiveMemoryConfig, MemoryGraphBridge, TOPIC_SUMMARIZES, type ReconstructiveBacking, type BridgePersistResult` | Re-export |
+| `./SQLiteBackend.js` | `SQLiteBackend, SQLiteBackendOptions` | Re-export |
+| `./MemoryValidator.js` | `MemoryValidator, MemoryValidatorConfig, MemoryValidationResult, MemoryValidationIssue, Contradiction` | Re-export |
+| `./TrajectoryCompressor.js` | `TrajectoryCompressor, TrajectoryCompressorConfig, DistillOptions, CompressedMemory, Granularity, RedundancyGroup, TrajectoryMergeStrategy` | Re-export |
+| `./ExperienceExtractor.js` | `ExperienceExtractor, ExperienceExtractorConfig, Trajectory, Action, Outcome, Rule, HeuristicGuideline, DecisionRule, ClusterMethod, TrajectoryCluster, ExperienceType, Experience` | Re-export |
+| `./collaboration/CollaborationAuditEnforcer.js` | `CollaborationAuditEnforcer, AttributionMode, CollaborationAuditEnforcerOptions` | Re-export |
+| `./retrieval/index.js` | `QueryRewriter, ActiveRetrievalController, RewriteResult, RetrievalContext, RetrievalDecision, RetrievalRound, AdaptiveResult, ActiveRetrievalConfig` | Re-export |
+| `./world/index.js` | `WorldStateSnapshot, WorldModelManager, WorldStateEntity, WorldStateChange, WorldModelManagerOptions` | Re-export |
+| `./procedural/index.js` | `ProcedureManager, ProcedureStore, StepSequencer, decodeProcedure, PROCEDURE_ENTITY_TYPE, ProcedureManagerConfig` | Re-export |
+| `./causal/index.js` | `CausalReasoner, DEFAULT_CAUSAL_RELATION_TYPES, CausalRelationType, CausalChain, CausalCycle, CausalReasonerConfig` | Re-export |
+| `./HeuristicManager.js` | `HeuristicManager, AddHeuristicOptions, HeuristicMatch, HeuristicConflict, HeuristicUpdateResult` | Re-export |
+| `./ExclusionManager.js` | `ExclusionManager, AddExclusionRuleInput, ExclusionCheckResult` | Re-export |
+| `./DecisionManager.js` | `DecisionManager, DecisionInput, DecisionEntityOptions, AcceptDecisionResult, RejectDecisionResult, SupersedeDecisionResult, ListDecisionsOptions` | Re-export |
+| `./ProjectContextManager.js` | `ProjectContextManager, ProjectContextManagerConfig, ProjectContextUpsertInput, ForContextOptions` | Re-export |
+| `./ObservationDedupManager.js` | `ObservationDedupManager, DuplicateObservationOccurrence, DuplicateObservationGroup, ObservationDedupFilter, ObservationDedupManagerConfig` | Re-export |
+| `./ToolAffordanceManager.js` | `ToolAffordanceManager, ToolAffordanceManagerConfig, RecordOutcomeInput, ToolAffordanceStats, SuggestToolOptions, ToolSuggestion` | Re-export |
+| `./ToolCallObserver.js` | `ToolCallObserver, ToolCallEvent` | Re-export |
+| `./ConsolidationPipeline.js` | `ObservationDedupReportStage, HeuristicExtractionStage, ObservationDedupReportStageConfig, HeuristicExtractionStageConfig` | Re-export |
+| `./rbac/index.js` | `DEFAULT_PERMISSION_MATRIX, permissionsForRole, RoleAssignmentStore, RbacMiddleware, Role, Permission, ResourceType, RoleAssignment, RbacPolicy, PermissionMatrix, PermissionMatrixRow, ResourcePermissionOverrides, RoleAssignmentStoreOptions, RbacMiddlewareOptions` | Re-export |
+| `./reconstruction/index.js` | `CueTagContentGraph, normalizeKey, MemoryToolkit, EventKeywords, MemoryDistiller, extractJson, MemoryReconstructor, ReconstructiveMemory, ReconstructiveMemoryConfig, MemoryGraphBridge, TOPIC_SUMMARIZES, ReconstructiveBacking, BridgePersistResult` | Re-export |
+| `./MemoryBackend.js` | `IMemoryBackend, MemoryTurn, WeightedTurn, GetWeightedOptions` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `AccessTracker`, `type AccessStats`, `type AccessTrackerConfig`, `type AccessContext`, `DecayEngine`, `type DecayEngineConfig`, `type DecayOperationOptions`, `type ReinforcementOptions`, `type DecayResult`, `type ForgetOptions`, `type ForgetResult`, `DecayScheduler`, `type DecaySchedulerConfig`, `type DecayCycleResult`, `WorkingMemoryManager`, `type WorkingMemoryConfig`, `type SessionMemoryFilter`, `type PromotionMarkOptions`, `type PromotionCriteria`, `type PromotionResult`, `type ConfirmationResult`, `SessionManager`, `type SessionConfig`, `type StartSessionOptions`, `type SessionHistoryOptions`, `type EndSessionResult`, `SessionQueryBuilder`, `type SessionSearchOptions`, `type EntityWithContext`, `type SearchFunction`, `EpisodicMemoryManager`, `EpisodicRelations`, `type EpisodicMemoryConfig`, `type CreateEpisodeOptions`, `type TimelineOptions`, `ProspectiveMemoryManager`, `type ProspectiveMemoryConfig`, `type ProcedureInvoker`, `type ScheduleOptions`, `FailureManager`, `type FailureManagerConfig`, `type FailureInput`, `type FailureEntityOptions`, `type LookupOptions`, `type GetAllOptions`, `PlanManager`, `type PlanManagerConfig`, `type CreatePlanOptions`, `type PushSubGoalOptions`, `type ListPlansOptions`, `// Aliased to avoid name collision with `src/search/ReflectionManager`
-  // (progressive search refinement`, `predates this module). The class
-  // itself is named `ReflectionManager` inside `src/agent/`; this
-  // barrel re-exports it under the more specific public name.
-  ReflectionManager`, `type ArchiveReflectionResult`, `type ReflectionManagerConfig`, `type ReflectionInput`, `type ReflectionEntityOptions`, `type ListReflectionsOptions`, `type RelevanceOptions`, `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `type ConsolidationPipelineConfig`, `type PipelineStage`, `type ReflectionStageConfig`, `type StageResult`, `SummarizationService`, `type ISummarizationProvider`, `type SummarizationConfig`, `type GroupingResult`, `PatternDetector`, `RuleEvaluator`, `SalienceEngine`, `type SalienceEngineConfig`, `ContextWindowManager`, `type ContextWindowManagerConfig`, `type SpilloverResult`, `type WakeUpOptions`, `type WakeUpResult`, `MemoryFormatter`, `type MemoryFormatterConfig`, `MultiAgentMemoryManager`, `type MultiAgentConfig`, `ConflictResolver`, `type ConflictResolverConfig`, `type ResolutionResult`, `SessionCheckpointManager`, `type SessionCheckpointData`, `SESSION_CHECKPOINT_ENTITY_TYPE`, `HAS_CHECKPOINT_RELATION`, `SNAPSHOTS_RELATION`, `migrateLegacySessionCheckpoints`, `decodeLegacyCheckpoint`, `AgentMemoryManager`, `type CreateMemoryOptions`, `type RetrieveContextOptions`, `CollaborativeSynthesis`, `type CollaborativeSynthesisConfig`, `type SynthesisResult`, `type AgentMemoryConfig`, `loadConfigFromEnv`, `mergeConfig`, `validateConfig`, `ArtifactManager`, `type IDistillationPolicy`, `type DistilledMemory`, `type DistillationConfig`, `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`, `DistillationPipeline`, `type DistillationStats`, `type DistillationResult`, `type AgentRole`, `type RoleProfile`, `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`, `EntropyFilterStage`, `computeEntropy`, `passesEntropyFilter`, `type EntropyFilterConfig`, `LowEntropyContentError`, `FailureDistillation`, `type FailureDistillationResult`, `type FailureDistillationConfig`, `CognitiveLoadAnalyzer`, `type CognitiveLoadConfig`, `VisibilityResolver`, `ConsolidationScheduler`, `type ConsolidationSchedulerConfig`, `type ConsolidationCycleResult`, `DreamEngine`, `type DreamEngineConfig`, `type DreamPhaseConfig`, `type DreamEngineCallbacks`, `type DreamPhaseResult`, `type DreamCycleResult`, `ProfileManager`, `type ProfileResponse`, `type ProfileManagerConfig`, `type ProfileOptions`, `ObserverPipeline`, `type ObservationScore`, `type ObserverPipelineOptions`, `type ObserverPipelineStats`, `WorkThreadManager`, `migrateLegacyWorkThreads`, `decodeLegacyWorkThread`, `WORK_THREAD_ENTITY_TYPE`, `CHILD_OF_RELATION`, `BLOCKED_BY_RELATION`, `type WorkThread`, `type WorkThreadStatus`, `type WorkThreadFilter`, `type CreateWorkThreadOptions`, `ContextProfileManager`, `type ContextProfile`, `type ProfileConfig`, `MemoryEngine`, `type MemoryEngineConfig`, `type AddTurnOptions`, `type AddTurnResult`, `type DedupTier`, `type DuplicateCheckResult`, `type MemoryEngineEventName`, `ImportanceScorer`, `type ImportanceScorerConfig`, `type ScoreOptions`, `InMemoryBackend`, `SQLiteBackend`, `type SQLiteBackendOptions`, `MemoryValidator`, `type MemoryValidatorConfig`, `type MemoryValidationResult`, `type MemoryValidationIssue`, `type Contradiction`, `TrajectoryCompressor`, `type TrajectoryCompressorConfig`, `type DistillOptions`, `type CompressedMemory`, `type Granularity`, `type RedundancyGroup`, `type TrajectoryMergeStrategy`, `ExperienceExtractor`, `type ExperienceExtractorConfig`, `type Trajectory`, `type Action`, `type Outcome`, `type Rule`, `type HeuristicGuideline`, `type DecisionRule`, `type ClusterMethod`, `type TrajectoryCluster`, `type ExperienceType`, `type Experience`, `CollaborationAuditEnforcer`, `type AttributionMode`, `type CollaborationAuditEnforcerOptions`, `QueryRewriter`, `ActiveRetrievalController`, `type RewriteResult`, `type RetrievalContext`, `type RetrievalDecision`, `type RetrievalRound`, `type AdaptiveResult`, `type ActiveRetrievalConfig`, `WorldStateSnapshot`, `WorldModelManager`, `type WorldStateEntity`, `type WorldStateChange`, `type WorldModelManagerOptions`, `ProcedureManager`, `ProcedureStore`, `StepSequencer`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `type ProcedureManagerConfig`, `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `type CausalRelationType`, `type CausalChain`, `type CausalCycle`, `type CausalReasonerConfig`, `HeuristicManager`, `type AddHeuristicOptions`, `type HeuristicMatch`, `type HeuristicConflict`, `type HeuristicUpdateResult`, `ExclusionManager`, `type AddExclusionRuleInput`, `type ExclusionCheckResult`, `DecisionManager`, `type DecisionInput`, `type DecisionEntityOptions`, `type AcceptDecisionResult`, `type RejectDecisionResult`, `type SupersedeDecisionResult`, `type ListDecisionsOptions`, `ProjectContextManager`, `type ProjectContextManagerConfig`, `type ProjectContextUpsertInput`, `type ForContextOptions`, `ObservationDedupManager`, `type DuplicateObservationOccurrence`, `type DuplicateObservationGroup`, `type ObservationDedupFilter`, `type ObservationDedupManagerConfig`, `ToolAffordanceManager`, `type ToolAffordanceManagerConfig`, `type RecordOutcomeInput`, `type ToolAffordanceStats`, `type SuggestToolOptions`, `type ToolSuggestion`, `ToolCallObserver`, `type ToolCallEvent`, `ObservationDedupReportStage`, `HeuristicExtractionStage`, `type ObservationDedupReportStageConfig`, `type HeuristicExtractionStageConfig`, `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `RoleAssignmentStore`, `RbacMiddleware`, `type Role`, `type Permission`, `type ResourceType`, `type RoleAssignment`, `type RbacPolicy`, `type PermissionMatrix`, `type PermissionMatrixRow`, `type ResourcePermissionOverrides`, `type RoleAssignmentStoreOptions`, `type RbacMiddlewareOptions`, `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `type EventKeywords`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `type ReconstructiveMemoryConfig`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`, `type ReconstructiveBacking`, `type BridgePersistResult`
+- Re-exports: `AccessTracker`, `AccessStats`, `AccessTrackerConfig`, `AccessContext`, `DecayEngine`, `DecayEngineConfig`, `DecayOperationOptions`, `ReinforcementOptions`, `DecayResult`, `ForgetOptions`, `ForgetResult`, `DecayScheduler`, `DecaySchedulerConfig`, `DecayCycleResult`, `WorkingMemoryManager`, `WorkingMemoryConfig`, `SessionMemoryFilter`, `PromotionMarkOptions`, `PromotionCriteria`, `PromotionResult`, `ConfirmationResult`, `SessionManager`, `SessionConfig`, `StartSessionOptions`, `SessionHistoryOptions`, `EndSessionResult`, `SessionQueryBuilder`, `SessionSearchOptions`, `EntityWithContext`, `SearchFunction`, `EpisodicMemoryManager`, `EpisodicRelations`, `EpisodicMemoryConfig`, `CreateEpisodeOptions`, `TimelineOptions`, `ProspectiveMemoryManager`, `ProspectiveMemoryConfig`, `ProcedureInvoker`, `ScheduleOptions`, `FailureManager`, `FailureManagerConfig`, `FailureInput`, `FailureEntityOptions`, `LookupOptions`, `GetAllOptions`, `PlanManager`, `PlanManagerConfig`, `CreatePlanOptions`, `PushSubGoalOptions`, `ListPlansOptions`, `ReflectionManager`, `ArchiveReflectionResult`, `ReflectionManagerConfig`, `ReflectionInput`, `ReflectionEntityOptions`, `ListReflectionsOptions`, `RelevanceOptions`, `ConsolidationPipeline`, `ProspectivePromotionStage`, `ReflectionStage`, `ConsolidationPipelineConfig`, `PipelineStage`, `ReflectionStageConfig`, `StageResult`, `SummarizationService`, `ISummarizationProvider`, `SummarizationConfig`, `GroupingResult`, `PatternDetector`, `RuleEvaluator`, `SalienceEngine`, `SalienceEngineConfig`, `ContextWindowManager`, `ContextWindowManagerConfig`, `SpilloverResult`, `WakeUpOptions`, `WakeUpResult`, `MemoryFormatter`, `MemoryFormatterConfig`, `MultiAgentMemoryManager`, `MultiAgentConfig`, `ConflictResolver`, `ConflictResolverConfig`, `ResolutionResult`, `SessionCheckpointManager`, `SessionCheckpointData`, `SESSION_CHECKPOINT_ENTITY_TYPE`, `HAS_CHECKPOINT_RELATION`, `SNAPSHOTS_RELATION`, `migrateLegacySessionCheckpoints`, `decodeLegacyCheckpoint`, `AgentMemoryManager`, `CreateMemoryOptions`, `RetrieveContextOptions`, `CollaborativeSynthesis`, `CollaborativeSynthesisConfig`, `SynthesisResult`, `AgentMemoryConfig`, `loadConfigFromEnv`, `mergeConfig`, `validateConfig`, `ArtifactManager`, `IDistillationPolicy`, `DistilledMemory`, `DistillationConfig`, `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`, `DistillationPipeline`, `DistillationStats`, `DistillationResult`, `AgentRole`, `RoleProfile`, `getRoleProfile`, `listRoleProfiles`, `resolveRoleProfile`, `createCustomProfile`, `EntropyFilterStage`, `computeEntropy`, `passesEntropyFilter`, `EntropyFilterConfig`, `LowEntropyContentError`, `FailureDistillation`, `FailureDistillationResult`, `FailureDistillationConfig`, `CognitiveLoadAnalyzer`, `CognitiveLoadConfig`, `VisibilityResolver`, `ConsolidationScheduler`, `ConsolidationSchedulerConfig`, `ConsolidationCycleResult`, `DreamEngine`, `DreamEngineConfig`, `DreamPhaseConfig`, `DreamEngineCallbacks`, `DreamPhaseResult`, `DreamCycleResult`, `ProfileManager`, `ProfileResponse`, `ProfileManagerConfig`, `ProfileOptions`, `ObserverPipeline`, `ObservationScore`, `ObserverPipelineOptions`, `ObserverPipelineStats`, `WorkThreadManager`, `migrateLegacyWorkThreads`, `decodeLegacyWorkThread`, `WORK_THREAD_ENTITY_TYPE`, `CHILD_OF_RELATION`, `BLOCKED_BY_RELATION`, `WorkThread`, `WorkThreadStatus`, `WorkThreadFilter`, `CreateWorkThreadOptions`, `ContextProfileManager`, `ContextProfile`, `ProfileConfig`, `MemoryEngine`, `MemoryEngineConfig`, `AddTurnOptions`, `AddTurnResult`, `DedupTier`, `DuplicateCheckResult`, `MemoryEngineEventName`, `ImportanceScorer`, `ImportanceScorerConfig`, `ScoreOptions`, `InMemoryBackend`, `SQLiteBackend`, `SQLiteBackendOptions`, `MemoryValidator`, `MemoryValidatorConfig`, `MemoryValidationResult`, `MemoryValidationIssue`, `Contradiction`, `TrajectoryCompressor`, `TrajectoryCompressorConfig`, `DistillOptions`, `CompressedMemory`, `Granularity`, `RedundancyGroup`, `TrajectoryMergeStrategy`, `ExperienceExtractor`, `ExperienceExtractorConfig`, `Trajectory`, `Action`, `Outcome`, `Rule`, `HeuristicGuideline`, `DecisionRule`, `ClusterMethod`, `TrajectoryCluster`, `ExperienceType`, `Experience`, `CollaborationAuditEnforcer`, `AttributionMode`, `CollaborationAuditEnforcerOptions`, `QueryRewriter`, `ActiveRetrievalController`, `RewriteResult`, `RetrievalContext`, `RetrievalDecision`, `RetrievalRound`, `AdaptiveResult`, `ActiveRetrievalConfig`, `WorldStateSnapshot`, `WorldModelManager`, `WorldStateEntity`, `WorldStateChange`, `WorldModelManagerOptions`, `ProcedureManager`, `ProcedureStore`, `StepSequencer`, `decodeProcedure`, `PROCEDURE_ENTITY_TYPE`, `ProcedureManagerConfig`, `CausalReasoner`, `DEFAULT_CAUSAL_RELATION_TYPES`, `CausalRelationType`, `CausalChain`, `CausalCycle`, `CausalReasonerConfig`, `HeuristicManager`, `AddHeuristicOptions`, `HeuristicMatch`, `HeuristicConflict`, `HeuristicUpdateResult`, `ExclusionManager`, `AddExclusionRuleInput`, `ExclusionCheckResult`, `DecisionManager`, `DecisionInput`, `DecisionEntityOptions`, `AcceptDecisionResult`, `RejectDecisionResult`, `SupersedeDecisionResult`, `ListDecisionsOptions`, `ProjectContextManager`, `ProjectContextManagerConfig`, `ProjectContextUpsertInput`, `ForContextOptions`, `ObservationDedupManager`, `DuplicateObservationOccurrence`, `DuplicateObservationGroup`, `ObservationDedupFilter`, `ObservationDedupManagerConfig`, `ToolAffordanceManager`, `ToolAffordanceManagerConfig`, `RecordOutcomeInput`, `ToolAffordanceStats`, `SuggestToolOptions`, `ToolSuggestion`, `ToolCallObserver`, `ToolCallEvent`, `ObservationDedupReportStage`, `HeuristicExtractionStage`, `ObservationDedupReportStageConfig`, `HeuristicExtractionStageConfig`, `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `RoleAssignmentStore`, `RbacMiddleware`, `Role`, `Permission`, `ResourceType`, `RoleAssignment`, `RbacPolicy`, `PermissionMatrix`, `PermissionMatrixRow`, `ResourcePermissionOverrides`, `RoleAssignmentStoreOptions`, `RbacMiddlewareOptions`, `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `EventKeywords`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `ReconstructiveMemoryConfig`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`, `ReconstructiveBacking`, `BridgePersistResult`, `IMemoryBackend`, `MemoryTurn`, `WeightedTurn`, `GetWeightedOptions`
 
 ---
 
@@ -1276,6 +1319,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `ProcedureManager`
 - Interfaces: `ProcedureManagerConfig`
+- Types: `InvocationResult`
 
 ---
 
@@ -1313,12 +1357,12 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./ProcedureManager.js` | `ProcedureManager, type ProcedureManagerConfig, type InvocationResult` | Re-export |
+| `./ProcedureManager.js` | `ProcedureManager, ProcedureManagerConfig, InvocationResult` | Re-export |
 | `./ProcedureStore.js` | `ProcedureStore, decodeProcedure, migrateLegacyProcedures, stepEntityName, fallbackEntityName, PROCEDURE_ENTITY_TYPE, PROCEDURE_STEP_ENTITY_TYPE, HAS_STEP_RELATION, PRECEDES_RELATION, HAS_FALLBACK_RELATION` | Re-export |
 | `./StepSequencer.js` | `StepSequencer` | Re-export |
 
 **Exports:**
-- Re-exports: `ProcedureManager`, `type ProcedureManagerConfig`, `type InvocationResult`, `ProcedureStore`, `decodeProcedure`, `migrateLegacyProcedures`, `stepEntityName`, `fallbackEntityName`, `PROCEDURE_ENTITY_TYPE`, `PROCEDURE_STEP_ENTITY_TYPE`, `HAS_STEP_RELATION`, `PRECEDES_RELATION`, `HAS_FALLBACK_RELATION`, `StepSequencer`
+- Re-exports: `ProcedureManager`, `ProcedureManagerConfig`, `InvocationResult`, `ProcedureStore`, `decodeProcedure`, `migrateLegacyProcedures`, `stepEntityName`, `fallbackEntityName`, `PROCEDURE_ENTITY_TYPE`, `PROCEDURE_STEP_ENTITY_TYPE`, `HAS_STEP_RELATION`, `PRECEDES_RELATION`, `HAS_FALLBACK_RELATION`, `StepSequencer`
 
 ---
 
@@ -1330,6 +1374,7 @@ The codebase is organized into the following modules:
 | `./RbacTypes.js` | `Permission, ResourceType, Role` | Import (type-only) |
 
 **Exports:**
+- Types: `PermissionMatrixRow`, `PermissionMatrix`, `ResourcePermissionOverrides`
 - Functions: `permissionsForRole`
 - Constants: `DEFAULT_PERMISSION_MATRIX`
 
@@ -1351,6 +1396,10 @@ The codebase is organized into the following modules:
 ---
 
 ### `src/agent/rbac/RbacTypes.ts` - RBAC Types (η.6.1)
+
+**Exports:**
+- Interfaces: `RoleAssignment`, `RbacPolicy`
+- Types: `Role`, `Permission`, `ResourceType`
 
 ---
 
@@ -1377,12 +1426,13 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./PermissionMatrix.js` | `DEFAULT_PERMISSION_MATRIX, permissionsForRole, type PermissionMatrix, type PermissionMatrixRow, type ResourcePermissionOverrides` | Re-export |
-| `./RoleAssignmentStore.js` | `RoleAssignmentStore, type RoleAssignmentStoreOptions` | Re-export |
-| `./RbacMiddleware.js` | `RbacMiddleware, type RbacMiddlewareOptions` | Re-export |
+| `./PermissionMatrix.js` | `DEFAULT_PERMISSION_MATRIX, permissionsForRole, PermissionMatrix, PermissionMatrixRow, ResourcePermissionOverrides` | Re-export |
+| `./RoleAssignmentStore.js` | `RoleAssignmentStore, RoleAssignmentStoreOptions` | Re-export |
+| `./RbacMiddleware.js` | `RbacMiddleware, RbacMiddlewareOptions` | Re-export |
+| `./RbacTypes.js` | `Role, Permission, ResourceType, RoleAssignment, RbacPolicy` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `type PermissionMatrix`, `type PermissionMatrixRow`, `type ResourcePermissionOverrides`, `RoleAssignmentStore`, `type RoleAssignmentStoreOptions`, `RbacMiddleware`, `type RbacMiddlewareOptions`
+- Re-exports: `DEFAULT_PERMISSION_MATRIX`, `permissionsForRole`, `PermissionMatrix`, `PermissionMatrixRow`, `ResourcePermissionOverrides`, `RoleAssignmentStore`, `RoleAssignmentStoreOptions`, `RbacMiddleware`, `RbacMiddlewareOptions`, `Role`, `Permission`, `ResourceType`, `RoleAssignment`, `RbacPolicy`
 
 ---
 
@@ -1494,9 +1544,12 @@ The codebase is organized into the following modules:
 | `./MemoryReconstructor.js` | `MemoryReconstructor` | Re-export |
 | `./ReconstructiveMemory.js` | `ReconstructiveMemory` | Re-export |
 | `./MemoryGraphBridge.js` | `MemoryGraphBridge, TOPIC_SUMMARIZES` | Re-export |
+| `./MemoryToolkit.js` | `EventKeywords` | Re-export (type-only) |
+| `./ReconstructiveMemory.js` | `ReconstructiveMemoryConfig` | Re-export (type-only) |
+| `./MemoryGraphBridge.js` | `ReconstructiveBacking, BridgePersistResult` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`
+- Re-exports: `CueTagContentGraph`, `normalizeKey`, `MemoryToolkit`, `MemoryDistiller`, `extractJson`, `MemoryReconstructor`, `ReconstructiveMemory`, `MemoryGraphBridge`, `TOPIC_SUMMARIZES`, `EventKeywords`, `ReconstructiveMemoryConfig`, `ReconstructiveBacking`, `BridgePersistResult`
 
 ---
 
@@ -1533,11 +1586,11 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./QueryRewriter.js` | `QueryRewriter, type RewriteResult` | Re-export |
-| `./ActiveRetrievalController.js` | `ActiveRetrievalController, type RetrievalContext, type RetrievalDecision, type RetrievalRound, type AdaptiveResult, type ActiveRetrievalConfig` | Re-export |
+| `./QueryRewriter.js` | `QueryRewriter, RewriteResult` | Re-export |
+| `./ActiveRetrievalController.js` | `ActiveRetrievalController, RetrievalContext, RetrievalDecision, RetrievalRound, AdaptiveResult, ActiveRetrievalConfig` | Re-export |
 
 **Exports:**
-- Re-exports: `QueryRewriter`, `type RewriteResult`, `ActiveRetrievalController`, `type RetrievalContext`, `type RetrievalDecision`, `type RetrievalRound`, `type AdaptiveResult`, `type ActiveRetrievalConfig`
+- Re-exports: `QueryRewriter`, `RewriteResult`, `ActiveRetrievalController`, `RetrievalContext`, `RetrievalDecision`, `RetrievalRound`, `AdaptiveResult`, `ActiveRetrievalConfig`
 
 ---
 
@@ -1571,13 +1624,15 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./WorldStateSnapshot.js` | `WorldStateSnapshot, type WorldStateEntity, type WorldStateChange` | Re-export |
-| `./WorldModelManager.js` | `WorldModelManager, type WorldModelManagerOptions` | Re-export |
+| `./WorldStateSnapshot.js` | `WorldStateSnapshot, WorldStateEntity, WorldStateChange` | Re-export |
+| `./WorldModelManager.js` | `WorldModelManager, WorldModelManagerOptions` | Re-export |
 
 **Exports:**
-- Re-exports: `WorldStateSnapshot`, `type WorldStateEntity`, `type WorldStateChange`, `WorldModelManager`, `type WorldModelManagerOptions`
+- Re-exports: `WorldStateSnapshot`, `WorldStateEntity`, `WorldStateChange`, `WorldModelManager`, `WorldModelManagerOptions`
 
 ---
+
+<a id="cli-dependencies"></a>
 
 ## Cli Dependencies
 
@@ -1882,6 +1937,7 @@ The codebase is organized into the following modules:
 |------|---------|------|
 | `./helpers.js` | `getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatValidation, formatSuccess, formatError` | Import |
+| `../interactive.js` | `startInteractiveMode` | Dynamic import |
 
 **Exports:**
 - Functions: `registerMaintenanceCommands`
@@ -2117,6 +2173,7 @@ The codebase is organized into the following modules:
 | `../types/types.js` | `Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport` | Import (type-only) |
 
 **Exports:**
+- Types: `OutputFormat`
 - Functions: `formatEntities`, `formatRelations`, `formatSearchResults`, `formatEntityDetail`, `formatSuccess`, `formatError`, `formatPath`, `formatCentrality`, `formatComponents`, `formatValidation`, `escapeCSV`
 
 ---
@@ -2161,6 +2218,9 @@ The codebase is organized into the following modules:
 |------|---------|------|
 | `../core/ManagerContext.js` | `ManagerContext` | Import |
 | `./options.js` | `GlobalOptions` | Import (type-only) |
+| `./commands/inspect.js` | `snapshotEntity, buildTree, renderTreeAscii, neighbors, buildSizeReport` | Dynamic import |
+| `./commands/check.js` | `detectIssues, applyFixes` | Dynamic import |
+| `../utils/searchCache.js` | `getAllCacheStats, clearAllSearchCaches` | Dynamic import |
 
 **Exports:**
 - Functions: `startInteractiveMode`
@@ -2175,6 +2235,8 @@ The codebase is organized into the following modules:
 - Constants: `defaultOptions`
 
 ---
+
+<a id="core-dependencies"></a>
 
 ## Core Dependencies
 
@@ -2543,6 +2605,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `TransactionManager`, `BatchTransaction`
 - Interfaces: `TransactionResult`
+- Types: `TransactionOperation`
 - Enums: `OperationType`
 
 ---
@@ -2573,6 +2636,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `InMemoryColumnStore`
 - Interfaces: `IColumnStore`
+- Types: `ObservationColumn`
 
 ---
 
@@ -2609,14 +2673,17 @@ The codebase is organized into the following modules:
 | `./ManagerContext.js` | `ManagerContext` | Re-export |
 | `./GraphTraversal.js` | `GraphTraversal` | Re-export |
 | `./ManagerContext.js` | `ManagerContext` | Re-export |
-| `./TransactionManager.js` | `TransactionManager, OperationType, BatchTransaction, type TransactionOperation, type TransactionResult` | Re-export |
+| `./TransactionManager.js` | `TransactionManager, OperationType, BatchTransaction, TransactionOperation, TransactionResult` | Re-export |
 | `./StorageFactory.js` | `createStorage, createStorageFromPath` | Re-export |
 | `./GraphEventEmitter.js` | `GraphEventEmitter` | Re-export |
-| `./RefIndex.js` | `RefIndex, type RefEntry, type RefIndexStats` | Re-export |
+| `./RefIndex.js` | `RefIndex, RefEntry, RefIndexStats` | Re-export |
 | `./TransitionLedger.js` | `TransitionLedger` | Re-export |
+| `./EntityManager.js` | `EntityManagerOptions` | Re-export (type-only) |
+| `./ManagerContext.js` | `ManagerContextOptions` | Re-export (type-only) |
+| `./TransitionLedger.js` | `TransitionEvent, TransitionFilter` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `GraphStorage`, `SQLiteStorage`, `EntityManager`, `RelationManager`, `ObservationManager`, `HierarchyManager`, `ManagerContext`, `GraphTraversal`, `TransactionManager`, `OperationType`, `BatchTransaction`, `type TransactionOperation`, `type TransactionResult`, `createStorage`, `createStorageFromPath`, `GraphEventEmitter`, `RefIndex`, `type RefEntry`, `type RefIndexStats`, `TransitionLedger`
+- Re-exports: `GraphStorage`, `SQLiteStorage`, `EntityManager`, `RelationManager`, `ObservationManager`, `HierarchyManager`, `ManagerContext`, `GraphTraversal`, `TransactionManager`, `OperationType`, `BatchTransaction`, `TransactionOperation`, `TransactionResult`, `createStorage`, `createStorageFromPath`, `GraphEventEmitter`, `RefIndex`, `RefEntry`, `RefIndexStats`, `TransitionLedger`, `EntityManagerOptions`, `ManagerContextOptions`, `TransitionEvent`, `TransitionFilter`
 
 ---
 
@@ -2641,6 +2708,9 @@ The codebase is organized into the following modules:
 ---
 
 ### `src/core/mmap/IMmapBackend.ts` - IMmapBackend — Range-Read Interface
+
+**Exports:**
+- Interfaces: `MmapHandle`, `IMmapBackend`
 
 ---
 
@@ -2676,9 +2746,12 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `FnvSegmentRouter`, `InMemorySegmentStorage`
 - Interfaces: `SegmentRouter`, `Segment`, `ISegmentStorage`
+- Types: `SegmentId`
 - Functions: `fnv1a32`, `splitGraphIntoSegments`, `mergeSegmentsIntoGraph`
 
 ---
+
+<a id="features-dependencies"></a>
 
 ## Features Dependencies
 
@@ -2727,6 +2800,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `AuditLog`
 - Interfaces: `AuditEntry`, `AuditFilter`, `AuditStats`
+- Types: `AuditOperation`
 
 ---
 
@@ -2860,10 +2934,12 @@ The codebase is organized into the following modules:
 | `./StreamingExporter.js` | `StreamingExporter, StreamResult` | Import |
 | `./BackupManager.js` | `BackupManager` | Import |
 | `../utils/schemas.js` | `EntitySchema, RelationSchema` | Import |
+| `../core/EntityManager.js` | `EntityManager` | Dynamic import |
 
 **Exports:**
 - Classes: `IOManager`
 - Interfaces: `IngestInput`, `IngestOptions`, `IngestResult`, `BackupMetadata`, `BackupInfo`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `VisualizeOptions`
+- Types: `ExportFormat`, `ImportFormat`, `MergeStrategy`
 
 ---
 
@@ -2877,11 +2953,6 @@ The codebase is organized into the following modules:
 
 ### `src/features/ObservableDataModelAdapter.ts` - ObservableDataModel Adapter
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `@danielsimonjr/memoryjs` | `ManagerContext, createObservableDataModelFromGraph` |
-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
@@ -2892,6 +2963,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `ReadOnlyMemoryGraphDataError`
 - Interfaces: `ObservableDataModelShape`, `ObservableDataModelAdapterOptions`
+- Types: `JSONValue`, `GraphProjection`
 - Functions: `createObservableDataModelFromGraph`
 
 ---
@@ -2969,26 +3041,30 @@ The codebase is organized into the following modules:
 | File | Imports | Type |
 |------|---------|------|
 | `./TagManager.js` | `TagManager` | Re-export |
-| `./IOManager.js` | `IOManager, type ExportFormat, type ImportFormat, type MergeStrategy, type BackupMetadata, type BackupInfo, type IngestInput, type IngestOptions, type IngestResult, type SplitOptions, type SplitResult, type VisualizeOptions` | Re-export |
+| `./IOManager.js` | `IOManager, ExportFormat, ImportFormat, MergeStrategy, BackupMetadata, BackupInfo, IngestInput, IngestOptions, IngestResult, SplitOptions, SplitResult, VisualizeOptions` | Re-export |
 | `./AnalyticsManager.js` | `AnalyticsManager` | Re-export |
 | `./CompressionManager.js` | `CompressionManager` | Re-export |
-| `./ArchiveManager.js` | `ArchiveManager, type ArchiveCriteria, type ArchiveOptions, type ArchiveResult` | Re-export |
-| `./StreamingExporter.js` | `StreamingExporter, type StreamResult` | Re-export |
-| `./AutoLinker.js` | `AutoLinker, type AutoLinkOptions, type AutoLinkResult` | Re-export |
-| `./FactExtractor.js` | `FactExtractor, type ExtractedFact, type FactExtractionOptions, type FactExtractionResult` | Re-export |
-| `./ObservationNormalizer.js` | `ObservationNormalizer, type NormalizationOptions, type NormalizationResult` | Re-export |
-| `./KeywordExtractor.js` | `KeywordExtractor, type ScoredKeyword` | Re-export |
-| `./AuditLog.js` | `AuditLog, type AuditEntry, type AuditOperation, type AuditFilter, type AuditStats` | Re-export |
-| `./GovernanceManager.js` | `GovernanceManager, GovernanceTransaction, type GovernancePolicy, type GovernanceOperationOptions` | Re-export |
-| `./FreshnessManager.js` | `FreshnessManager, type FreshnessManagerConfig, type FreshnessReport` | Re-export |
+| `./ArchiveManager.js` | `ArchiveManager, ArchiveCriteria, ArchiveOptions, ArchiveResult` | Re-export |
+| `./StreamingExporter.js` | `StreamingExporter, StreamResult` | Re-export |
+| `./AutoLinker.js` | `AutoLinker, AutoLinkOptions, AutoLinkResult` | Re-export |
+| `./FactExtractor.js` | `FactExtractor, ExtractedFact, FactExtractionOptions, FactExtractionResult` | Re-export |
+| `./ObservationNormalizer.js` | `ObservationNormalizer, NormalizationOptions, NormalizationResult` | Re-export |
+| `./KeywordExtractor.js` | `KeywordExtractor, ScoredKeyword` | Re-export |
+| `./AuditLog.js` | `AuditLog, AuditEntry, AuditOperation, AuditFilter, AuditStats` | Re-export |
+| `./GovernanceManager.js` | `GovernanceManager, GovernanceTransaction, GovernancePolicy, GovernanceOperationOptions` | Re-export |
+| `./FreshnessManager.js` | `FreshnessManager, FreshnessManagerConfig, FreshnessReport` | Re-export |
 | `./ContradictionDetector.js` | `ContradictionDetector` | Re-export |
 | `./SemanticForget.js` | `SemanticForget` | Re-export |
-| `./ObservableDataModelAdapter.js` | `createObservableDataModelFromGraph, ReadOnlyMemoryGraphDataError, type ObservableDataModelShape, type ObservableDataModelAdapterOptions, type GraphProjection, type JSONValue` | Re-export |
+| `./ObservableDataModelAdapter.js` | `createObservableDataModelFromGraph, ReadOnlyMemoryGraphDataError, ObservableDataModelShape, ObservableDataModelAdapterOptions, GraphProjection, JSONValue` | Re-export |
+| `./ContradictionDetector.js` | `Contradiction` | Re-export (type-only) |
+| `./SemanticForget.js` | `SemanticForgetResult, SemanticForgetOptions` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `TagManager`, `IOManager`, `type ExportFormat`, `type ImportFormat`, `type MergeStrategy`, `type BackupMetadata`, `type BackupInfo`, `type IngestInput`, `type IngestOptions`, `type IngestResult`, `type SplitOptions`, `type SplitResult`, `type VisualizeOptions`, `AnalyticsManager`, `CompressionManager`, `ArchiveManager`, `type ArchiveCriteria`, `type ArchiveOptions`, `type ArchiveResult`, `StreamingExporter`, `type StreamResult`, `AutoLinker`, `type AutoLinkOptions`, `type AutoLinkResult`, `FactExtractor`, `type ExtractedFact`, `type FactExtractionOptions`, `type FactExtractionResult`, `ObservationNormalizer`, `type NormalizationOptions`, `type NormalizationResult`, `KeywordExtractor`, `type ScoredKeyword`, `AuditLog`, `type AuditEntry`, `type AuditOperation`, `type AuditFilter`, `type AuditStats`, `GovernanceManager`, `GovernanceTransaction`, `type GovernancePolicy`, `type GovernanceOperationOptions`, `FreshnessManager`, `type FreshnessManagerConfig`, `type FreshnessReport`, `ContradictionDetector`, `SemanticForget`, `createObservableDataModelFromGraph`, `ReadOnlyMemoryGraphDataError`, `type ObservableDataModelShape`, `type ObservableDataModelAdapterOptions`, `type GraphProjection`, `type JSONValue`
+- Re-exports: `TagManager`, `IOManager`, `ExportFormat`, `ImportFormat`, `MergeStrategy`, `BackupMetadata`, `BackupInfo`, `IngestInput`, `IngestOptions`, `IngestResult`, `SplitOptions`, `SplitResult`, `VisualizeOptions`, `AnalyticsManager`, `CompressionManager`, `ArchiveManager`, `ArchiveCriteria`, `ArchiveOptions`, `ArchiveResult`, `StreamingExporter`, `StreamResult`, `AutoLinker`, `AutoLinkOptions`, `AutoLinkResult`, `FactExtractor`, `ExtractedFact`, `FactExtractionOptions`, `FactExtractionResult`, `ObservationNormalizer`, `NormalizationOptions`, `NormalizationResult`, `KeywordExtractor`, `ScoredKeyword`, `AuditLog`, `AuditEntry`, `AuditOperation`, `AuditFilter`, `AuditStats`, `GovernanceManager`, `GovernanceTransaction`, `GovernancePolicy`, `GovernanceOperationOptions`, `FreshnessManager`, `FreshnessManagerConfig`, `FreshnessReport`, `ContradictionDetector`, `SemanticForget`, `createObservableDataModelFromGraph`, `ReadOnlyMemoryGraphDataError`, `ObservableDataModelShape`, `ObservableDataModelAdapterOptions`, `GraphProjection`, `JSONValue`, `Contradiction`, `SemanticForgetResult`, `SemanticForgetOptions`
 
 ---
+
+<a id="entry-dependencies"></a>
 
 ## Entry Dependencies
 
@@ -3010,6 +3086,8 @@ The codebase is organized into the following modules:
 - Re-exports: `* from ./types/index.js`, `* from ./utils/index.js`, `* from ./core/index.js`, `* from ./features/index.js`, `* from ./search/index.js`, `* from ./agent/index.js`, `* from ./security/index.js`, `* from ./adapters/index.js`
 
 ---
+
+<a id="search-dependencies"></a>
 
 ## Search Dependencies
 
@@ -3123,6 +3201,7 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Classes: `OpenAIEmbeddingService`, `LocalEmbeddingService`, `MockEmbeddingService`
+- Types: `EmbeddingProgressCallback`
 - Functions: `l2Normalize`, `createEmbeddingService`
 - Constants: `QUERY_PREFIX`, `DOCUMENT_PREFIX`
 
@@ -3187,6 +3266,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `HybridScorer`
 - Interfaces: `SemanticLayerResult`, `LexicalSearchResult`, `SymbolicSearchResult`, `ScoredResult`, `HybridWeights`, `HybridScorerOptions`
+- Types: `GraphLayerResult`
 - Constants: `DEFAULT_SCORER_WEIGHTS`
 
 ---
@@ -3206,6 +3286,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `HybridSearchManager`
 - Interfaces: `GraphHybridSearchResult`, `NeighborExpansionOptions`, `GraphHybridOptions`
+- Types: `HybridSearchLayer`
 - Constants: `DEFAULT_HYBRID_WEIGHTS`, `DEFAULT_NEIGHBOR_TOP_K`, `DEFAULT_NEIGHBOR_DAMPING`
 
 ---
@@ -3222,6 +3303,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `IncrementalIndexer`
 - Interfaces: `IndexOperation`, `IncrementalIndexerOptions`, `FlushResult`
+- Types: `IndexOperationType`
 - Constants: `DEFAULT_INDEXER_OPTIONS`
 
 ---
@@ -3360,6 +3442,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `QueryCostEstimator`
 - Interfaces: `ExtendedQueryCostEstimate`, `LayerRecommendationOptions`, `TokenEstimationOptions`, `AdaptiveDepthConfig`
+- Types: `SearchLayer`
 
 ---
 
@@ -3647,6 +3730,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `TemporalSearch`
 - Interfaces: `TemporalSearchOptions`
+- Types: `TemporalFilterField`
 
 ---
 
@@ -3672,44 +3756,44 @@ The codebase is organized into the following modules:
 | `./BasicSearch.js` | `BasicSearch` | Re-export |
 | `./RankedSearch.js` | `RankedSearch` | Re-export |
 | `./BooleanSearch.js` | `BooleanSearch` | Re-export |
-| `./FuzzySearch.js` | `FuzzySearch, type FuzzySearchOptions` | Re-export |
+| `./FuzzySearch.js` | `FuzzySearch, FuzzySearchOptions` | Re-export |
 | `./SearchSuggestions.js` | `SearchSuggestions` | Re-export |
 | `./SavedSearchManager.js` | `SavedSearchManager` | Re-export |
 | `./SearchManager.js` | `SearchManager` | Re-export |
-| `./SearchFilterChain.js` | `SearchFilterChain, type SearchFilters, type ValidatedPagination` | Re-export |
-| `./EmbeddingService.js` | `OpenAIEmbeddingService, LocalEmbeddingService, MockEmbeddingService, createEmbeddingService, l2Normalize, QUERY_PREFIX, DOCUMENT_PREFIX, type EmbeddingProgressCallback` | Re-export |
-| `./EmbeddingCache.js` | `EmbeddingCache, DEFAULT_EMBEDDING_CACHE_OPTIONS, type EmbeddingCacheStats, type EmbeddingCacheOptions` | Re-export |
-| `./IncrementalIndexer.js` | `IncrementalIndexer, DEFAULT_INDEXER_OPTIONS, type IndexOperationType, type IndexOperation, type IncrementalIndexerOptions, type FlushResult` | Re-export |
-| `./VectorStore.js` | `InMemoryVectorStore, SQLiteVectorStore, createVectorStore, cosineSimilarity, type SQLiteStorageWithEmbeddings` | Re-export |
+| `./SearchFilterChain.js` | `SearchFilterChain, SearchFilters, ValidatedPagination` | Re-export |
+| `./EmbeddingService.js` | `OpenAIEmbeddingService, LocalEmbeddingService, MockEmbeddingService, createEmbeddingService, l2Normalize, QUERY_PREFIX, DOCUMENT_PREFIX, EmbeddingProgressCallback` | Re-export |
+| `./EmbeddingCache.js` | `EmbeddingCache, DEFAULT_EMBEDDING_CACHE_OPTIONS, EmbeddingCacheStats, EmbeddingCacheOptions` | Re-export |
+| `./IncrementalIndexer.js` | `IncrementalIndexer, DEFAULT_INDEXER_OPTIONS, IndexOperationType, IndexOperation, IncrementalIndexerOptions, FlushResult` | Re-export |
+| `./VectorStore.js` | `InMemoryVectorStore, SQLiteVectorStore, createVectorStore, cosineSimilarity, SQLiteStorageWithEmbeddings` | Re-export |
 | `./SemanticSearch.js` | `SemanticSearch, entityToText` | Re-export |
 | `./TFIDFIndexManager.js` | `TFIDFIndexManager` | Re-export |
 | `./TFIDFEventSync.js` | `TFIDFEventSync` | Re-export |
-| `./QueryCostEstimator.js` | `QueryCostEstimator, type SearchLayer, type ExtendedQueryCostEstimate, type LayerRecommendationOptions, type TokenEstimationOptions, type AdaptiveDepthConfig` | Re-export |
-| `./SymbolicSearch.js` | `SymbolicSearch, type SymbolicResult` | Re-export |
-| `./HybridSearchManager.js` | `HybridSearchManager, DEFAULT_HYBRID_WEIGHTS, DEFAULT_NEIGHBOR_TOP_K, DEFAULT_NEIGHBOR_DAMPING, type HybridSearchLayer, type GraphHybridOptions, type GraphHybridSearchResult, type NeighborExpansionOptions` | Re-export |
-| `./GraphRankPrior.js` | `GraphRankPrior, DEFAULT_MAX_PAGERANK_ENTITIES, type GraphRankPriorOptions` | Re-export |
+| `./QueryCostEstimator.js` | `QueryCostEstimator, SearchLayer, ExtendedQueryCostEstimate, LayerRecommendationOptions, TokenEstimationOptions, AdaptiveDepthConfig` | Re-export |
+| `./SymbolicSearch.js` | `SymbolicSearch, SymbolicResult` | Re-export |
+| `./HybridSearchManager.js` | `HybridSearchManager, DEFAULT_HYBRID_WEIGHTS, DEFAULT_NEIGHBOR_TOP_K, DEFAULT_NEIGHBOR_DAMPING, HybridSearchLayer, GraphHybridOptions, GraphHybridSearchResult, NeighborExpansionOptions` | Re-export |
+| `./GraphRankPrior.js` | `GraphRankPrior, DEFAULT_MAX_PAGERANK_ENTITIES, GraphRankPriorOptions` | Re-export |
 | `./QueryAnalyzer.js` | `QueryAnalyzer` | Re-export |
 | `./QueryPlanner.js` | `QueryPlanner` | Re-export |
-| `./ReflectionManager.js` | `ReflectionManager, type ReflectionOptions, type ReflectionResult, type RefinementHistoryEntry` | Re-export |
-| `./BM25Search.js` | `BM25Search, STOPWORDS, DEFAULT_BM25_CONFIG, type BM25DocumentEntry, type BM25Index, type BM25Config` | Re-export |
-| `./OptimizedInvertedIndex.js` | `OptimizedInvertedIndex, type IndexMemoryUsage, type PostingListResult` | Re-export |
-| `./HybridScorer.js` | `HybridScorer, DEFAULT_SCORER_WEIGHTS, type SemanticLayerResult, type LexicalSearchResult, type SymbolicSearchResult, type GraphLayerResult, type ScoredResult, type HybridWeights, type HybridScorerOptions` | Re-export |
-| `./ParallelSearchExecutor.js` | `ParallelSearchExecutor, type LayerTiming, type ParallelSearchResult, type ParallelSearchOptions` | Re-export |
-| `./EarlyTerminationManager.js` | `EarlyTerminationManager, type AdequacyCheck, type EarlyTerminationOptions, type EarlyTerminationResult` | Re-export |
-| `./QueryPlanCache.js` | `QueryPlanCache, type CachedQueryEntry, type QueryPlanCacheStats, type QueryPlanCacheOptions` | Re-export |
-| `./QuantizedVectorStore.js` | `QuantizedVectorStore, type QuantizationParams, type QuantizedVectorStoreStats, type QuantizedSearchResult, type QuantizedVectorStoreOptions` | Re-export |
-| `./QueryLogger.js` | `QueryLogger, type QueryLoggerConfig` | Re-export |
+| `./ReflectionManager.js` | `ReflectionManager, ReflectionOptions, ReflectionResult, RefinementHistoryEntry` | Re-export |
+| `./BM25Search.js` | `BM25Search, STOPWORDS, DEFAULT_BM25_CONFIG, BM25DocumentEntry, BM25Index, BM25Config` | Re-export |
+| `./OptimizedInvertedIndex.js` | `OptimizedInvertedIndex, IndexMemoryUsage, PostingListResult` | Re-export |
+| `./HybridScorer.js` | `HybridScorer, DEFAULT_SCORER_WEIGHTS, SemanticLayerResult, LexicalSearchResult, SymbolicSearchResult, GraphLayerResult, ScoredResult, HybridWeights, HybridScorerOptions` | Re-export |
+| `./ParallelSearchExecutor.js` | `ParallelSearchExecutor, LayerTiming, ParallelSearchResult, ParallelSearchOptions` | Re-export |
+| `./EarlyTerminationManager.js` | `EarlyTerminationManager, AdequacyCheck, EarlyTerminationOptions, EarlyTerminationResult` | Re-export |
+| `./QueryPlanCache.js` | `QueryPlanCache, CachedQueryEntry, QueryPlanCacheStats, QueryPlanCacheOptions` | Re-export |
+| `./QuantizedVectorStore.js` | `QuantizedVectorStore, QuantizationParams, QuantizedVectorStoreStats, QuantizedSearchResult, QuantizedVectorStoreOptions` | Re-export |
+| `./QueryLogger.js` | `QueryLogger, QueryLoggerConfig` | Re-export |
 | `./QueryParser.js` | `QueryParser, matchesPhrase, isPrefixPattern, matchesPrefix` | Re-export |
-| `./ProximitySearch.js` | `ProximitySearch, type ProximityMatch, type ProximityMatchLocation` | Re-export |
-| `./TemporalQueryParser.js` | `TemporalQueryParser, type ParsedTemporalRange` | Re-export |
-| `./TemporalSearch.js` | `TemporalSearch, type TemporalFilterField, type TemporalSearchOptions` | Re-export |
-| `./NGramIndex.js` | `NGramIndex, type NGramIndexStats` | Re-export |
-| `./LLMQueryPlanner.js` | `LLMQueryPlanner, type LLMProvider, type StructuredQuery, type LLMQueryPlannerConfig` | Re-export |
-| `./LLMSearchExecutor.js` | `LLMSearchExecutor, type LLMSearchExecutorOptions` | Re-export |
-| `./SpellChecker.js` | `SpellChecker, type SpellCheckerConfig, type SuggestOptions, type SpellSuggestion` | Re-export |
+| `./ProximitySearch.js` | `ProximitySearch, ProximityMatch, ProximityMatchLocation` | Re-export |
+| `./TemporalQueryParser.js` | `TemporalQueryParser, ParsedTemporalRange` | Re-export |
+| `./TemporalSearch.js` | `TemporalSearch, TemporalFilterField, TemporalSearchOptions` | Re-export |
+| `./NGramIndex.js` | `NGramIndex, NGramIndexStats` | Re-export |
+| `./LLMQueryPlanner.js` | `LLMQueryPlanner, LLMProvider, StructuredQuery, LLMQueryPlannerConfig` | Re-export |
+| `./LLMSearchExecutor.js` | `LLMSearchExecutor, LLMSearchExecutorOptions` | Re-export |
+| `./SpellChecker.js` | `SpellChecker, SpellCheckerConfig, SuggestOptions, SpellSuggestion` | Re-export |
 
 **Exports:**
-- Re-exports: `BasicSearch`, `RankedSearch`, `BooleanSearch`, `FuzzySearch`, `type FuzzySearchOptions`, `SearchSuggestions`, `SavedSearchManager`, `SearchManager`, `SearchFilterChain`, `type SearchFilters`, `type ValidatedPagination`, `OpenAIEmbeddingService`, `LocalEmbeddingService`, `MockEmbeddingService`, `createEmbeddingService`, `l2Normalize`, `QUERY_PREFIX`, `DOCUMENT_PREFIX`, `type EmbeddingProgressCallback`, `EmbeddingCache`, `DEFAULT_EMBEDDING_CACHE_OPTIONS`, `type EmbeddingCacheStats`, `type EmbeddingCacheOptions`, `IncrementalIndexer`, `DEFAULT_INDEXER_OPTIONS`, `type IndexOperationType`, `type IndexOperation`, `type IncrementalIndexerOptions`, `type FlushResult`, `InMemoryVectorStore`, `SQLiteVectorStore`, `createVectorStore`, `cosineSimilarity`, `type SQLiteStorageWithEmbeddings`, `SemanticSearch`, `entityToText`, `TFIDFIndexManager`, `TFIDFEventSync`, `QueryCostEstimator`, `type SearchLayer`, `type ExtendedQueryCostEstimate`, `type LayerRecommendationOptions`, `type TokenEstimationOptions`, `type AdaptiveDepthConfig`, `SymbolicSearch`, `type SymbolicResult`, `HybridSearchManager`, `DEFAULT_HYBRID_WEIGHTS`, `DEFAULT_NEIGHBOR_TOP_K`, `DEFAULT_NEIGHBOR_DAMPING`, `type HybridSearchLayer`, `type GraphHybridOptions`, `type GraphHybridSearchResult`, `type NeighborExpansionOptions`, `GraphRankPrior`, `DEFAULT_MAX_PAGERANK_ENTITIES`, `type GraphRankPriorOptions`, `QueryAnalyzer`, `QueryPlanner`, `ReflectionManager`, `type ReflectionOptions`, `type ReflectionResult`, `type RefinementHistoryEntry`, `BM25Search`, `STOPWORDS`, `DEFAULT_BM25_CONFIG`, `type BM25DocumentEntry`, `type BM25Index`, `type BM25Config`, `OptimizedInvertedIndex`, `type IndexMemoryUsage`, `type PostingListResult`, `HybridScorer`, `DEFAULT_SCORER_WEIGHTS`, `type SemanticLayerResult`, `type LexicalSearchResult`, `type SymbolicSearchResult`, `type GraphLayerResult`, `type ScoredResult`, `type HybridWeights`, `type HybridScorerOptions`, `ParallelSearchExecutor`, `type LayerTiming`, `type ParallelSearchResult`, `type ParallelSearchOptions`, `EarlyTerminationManager`, `type AdequacyCheck`, `type EarlyTerminationOptions`, `type EarlyTerminationResult`, `QueryPlanCache`, `type CachedQueryEntry`, `type QueryPlanCacheStats`, `type QueryPlanCacheOptions`, `QuantizedVectorStore`, `type QuantizationParams`, `type QuantizedVectorStoreStats`, `type QuantizedSearchResult`, `type QuantizedVectorStoreOptions`, `QueryLogger`, `type QueryLoggerConfig`, `QueryParser`, `matchesPhrase`, `isPrefixPattern`, `matchesPrefix`, `ProximitySearch`, `type ProximityMatch`, `type ProximityMatchLocation`, `TemporalQueryParser`, `type ParsedTemporalRange`, `TemporalSearch`, `type TemporalFilterField`, `type TemporalSearchOptions`, `NGramIndex`, `type NGramIndexStats`, `LLMQueryPlanner`, `type LLMProvider`, `type StructuredQuery`, `type LLMQueryPlannerConfig`, `LLMSearchExecutor`, `type LLMSearchExecutorOptions`, `SpellChecker`, `type SpellCheckerConfig`, `type SuggestOptions`, `type SpellSuggestion`
+- Re-exports: `BasicSearch`, `RankedSearch`, `BooleanSearch`, `FuzzySearch`, `FuzzySearchOptions`, `SearchSuggestions`, `SavedSearchManager`, `SearchManager`, `SearchFilterChain`, `SearchFilters`, `ValidatedPagination`, `OpenAIEmbeddingService`, `LocalEmbeddingService`, `MockEmbeddingService`, `createEmbeddingService`, `l2Normalize`, `QUERY_PREFIX`, `DOCUMENT_PREFIX`, `EmbeddingProgressCallback`, `EmbeddingCache`, `DEFAULT_EMBEDDING_CACHE_OPTIONS`, `EmbeddingCacheStats`, `EmbeddingCacheOptions`, `IncrementalIndexer`, `DEFAULT_INDEXER_OPTIONS`, `IndexOperationType`, `IndexOperation`, `IncrementalIndexerOptions`, `FlushResult`, `InMemoryVectorStore`, `SQLiteVectorStore`, `createVectorStore`, `cosineSimilarity`, `SQLiteStorageWithEmbeddings`, `SemanticSearch`, `entityToText`, `TFIDFIndexManager`, `TFIDFEventSync`, `QueryCostEstimator`, `SearchLayer`, `ExtendedQueryCostEstimate`, `LayerRecommendationOptions`, `TokenEstimationOptions`, `AdaptiveDepthConfig`, `SymbolicSearch`, `SymbolicResult`, `HybridSearchManager`, `DEFAULT_HYBRID_WEIGHTS`, `DEFAULT_NEIGHBOR_TOP_K`, `DEFAULT_NEIGHBOR_DAMPING`, `HybridSearchLayer`, `GraphHybridOptions`, `GraphHybridSearchResult`, `NeighborExpansionOptions`, `GraphRankPrior`, `DEFAULT_MAX_PAGERANK_ENTITIES`, `GraphRankPriorOptions`, `QueryAnalyzer`, `QueryPlanner`, `ReflectionManager`, `ReflectionOptions`, `ReflectionResult`, `RefinementHistoryEntry`, `BM25Search`, `STOPWORDS`, `DEFAULT_BM25_CONFIG`, `BM25DocumentEntry`, `BM25Index`, `BM25Config`, `OptimizedInvertedIndex`, `IndexMemoryUsage`, `PostingListResult`, `HybridScorer`, `DEFAULT_SCORER_WEIGHTS`, `SemanticLayerResult`, `LexicalSearchResult`, `SymbolicSearchResult`, `GraphLayerResult`, `ScoredResult`, `HybridWeights`, `HybridScorerOptions`, `ParallelSearchExecutor`, `LayerTiming`, `ParallelSearchResult`, `ParallelSearchOptions`, `EarlyTerminationManager`, `AdequacyCheck`, `EarlyTerminationOptions`, `EarlyTerminationResult`, `QueryPlanCache`, `CachedQueryEntry`, `QueryPlanCacheStats`, `QueryPlanCacheOptions`, `QuantizedVectorStore`, `QuantizationParams`, `QuantizedVectorStoreStats`, `QuantizedSearchResult`, `QuantizedVectorStoreOptions`, `QueryLogger`, `QueryLoggerConfig`, `QueryParser`, `matchesPhrase`, `isPrefixPattern`, `matchesPrefix`, `ProximitySearch`, `ProximityMatch`, `ProximityMatchLocation`, `TemporalQueryParser`, `ParsedTemporalRange`, `TemporalSearch`, `TemporalFilterField`, `TemporalSearchOptions`, `NGramIndex`, `NGramIndexStats`, `LLMQueryPlanner`, `LLMProvider`, `StructuredQuery`, `LLMQueryPlannerConfig`, `LLMSearchExecutor`, `LLMSearchExecutorOptions`, `SpellChecker`, `SpellCheckerConfig`, `SuggestOptions`, `SpellSuggestion`
 
 ---
 
@@ -3791,6 +3875,8 @@ The codebase is organized into the following modules:
 
 ---
 
+<a id="security-dependencies"></a>
+
 ## Security Dependencies
 
 ### `src/security/ABACPolicy.ts` - ABAC Policy
@@ -3798,6 +3884,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `ABACPolicyError`, `ABACPolicy`
 - Interfaces: `ABACContext`, `ABACCondition`, `ABACRule`
+- Types: `ABACDecision`, `ABACEffect`, `ABACOp`
 
 ---
 
@@ -3832,6 +3919,7 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Classes: `RowLevelFilter`
+- Types: `RowPredicate`
 
 ---
 
@@ -3840,15 +3928,17 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./PiiRedactor.js` | `PiiRedactor, DEFAULT_PII_PATTERNS, type PiiPattern, type PiiRedactorOptions, type RedactionStats, type RedactionResult` | Re-export |
-| `./ABACPolicy.js` | `ABACPolicy, type ABACContext, type ABACCondition, type ABACDecision, type ABACEffect, type ABACOp, type ABACRule` | Re-export |
-| `./RowLevelFilter.js` | `RowLevelFilter, type RowPredicate` | Re-export |
-| `./APIKeyStore.js` | `APIKeyStore, type IssueOptions, type IssueResult, type KeyRecord, type ValidationResult` | Re-export |
+| `./PiiRedactor.js` | `PiiRedactor, DEFAULT_PII_PATTERNS, PiiPattern, PiiRedactorOptions, RedactionStats, RedactionResult` | Re-export |
+| `./ABACPolicy.js` | `ABACPolicy, ABACContext, ABACCondition, ABACDecision, ABACEffect, ABACOp, ABACRule` | Re-export |
+| `./RowLevelFilter.js` | `RowLevelFilter, RowPredicate` | Re-export |
+| `./APIKeyStore.js` | `APIKeyStore, IssueOptions, IssueResult, KeyRecord, ValidationResult` | Re-export |
 
 **Exports:**
-- Re-exports: `PiiRedactor`, `DEFAULT_PII_PATTERNS`, `type PiiPattern`, `type PiiRedactorOptions`, `type RedactionStats`, `type RedactionResult`, `ABACPolicy`, `type ABACContext`, `type ABACCondition`, `type ABACDecision`, `type ABACEffect`, `type ABACOp`, `type ABACRule`, `RowLevelFilter`, `type RowPredicate`, `APIKeyStore`, `type IssueOptions`, `type IssueResult`, `type KeyRecord`, `type ValidationResult`
+- Re-exports: `PiiRedactor`, `DEFAULT_PII_PATTERNS`, `PiiPattern`, `PiiRedactorOptions`, `RedactionStats`, `RedactionResult`, `ABACPolicy`, `ABACContext`, `ABACCondition`, `ABACDecision`, `ABACEffect`, `ABACOp`, `ABACRule`, `RowLevelFilter`, `RowPredicate`, `APIKeyStore`, `IssueOptions`, `IssueResult`, `KeyRecord`, `ValidationResult`
 
 ---
+
+<a id="types-dependencies"></a>
 
 ## Types Dependencies
 
@@ -3859,10 +3949,12 @@ The codebase is organized into the following modules:
 |------|---------|------|
 | `./types.js` | `Entity` | Import (type-only) |
 | `../agent/ContextProfileManager.js` | `ContextProfile` | Import (type-only) |
+| `../agent/RoleProfiles.js` | `` | Dynamic import |
 
 **Exports:**
 - Classes: `AccessContextBuilder`
 - Interfaces: `ConflictInfo`, `ObservationSource`, `MemorySource`, `AgentEntity`, `AgentObservation`, `SessionEntity`, `ProfileEntity`, `AccessContext`, `SalienceContext`, `SalienceWeights`, `SalienceComponents`, `ScoredEntity`, `WorkingMemoryOptions`, `DecayOptions`, `ForgetOptions`, `DecayResult`, `ForgetResult`, `ProspectiveEntity`, `FiredEvent`, `ObservationContext`, `FailureRecord`, `FailureEntity`, `GoalNode`, `GoalEvent`, `PlanRecord`, `PlanEntity`, `ReflectionRecord`, `ReflectionEntity`, `Heuristic`, `HeuristicEntity`, `ExclusionRule`, `ExclusionEntity`, `DecisionRecord`, `DecisionEntity`, `ProjectContextCommand`, `ProjectContextGlossaryTerm`, `ProjectContextRecord`, `ProjectContextEntity`, `ToolCallOutcome`, `ToolAffordanceRecord`, `ToolAffordanceEntity`, `ConsolidateOptions`, `ConsolidationResult`, `SummarizationResult`, `PatternResult`, `MergeResult`, `DuplicatePair`, `DistilledLesson`, `CognitiveLoadMetrics`, `AdaptiveReductionResult`, `RuleConditions`, `ConsolidationRule`, `RuleEvaluationResult`, `ContextRetrievalOptions`, `TokenBreakdown`, `ContextPackage`, `ExcludedEntity`, `GroupMembership`, `AgentMetadata`
+- Types: `MemoryType`, `AccessPattern`, `MemoryVisibility`, `MemoryAcquisitionMethod`, `TrustLevel`, `SessionStatus`, `SessionOutcome`, `TemporalFocus`, `ConflictStrategy`, `IsoDateTime`, `PositiveInt`, `AtLeastOne`, `TriggerCondition`, `ProspectiveTrigger`, `ProspectiveAction`, `ProspectiveLifecycle`, `CancelResult`, `FailureLifecycle`, `MarkResolvedResult`, `PlanId`, `GoalNodeId`, `GoalNodeLifecycle`, `PlanLifecycle`, `GoalNodeTransition`, `ReflectionId`, `ReflectionScope`, `HeuristicId`, `ExclusionMode`, `ExclusionScope`, `DecisionId`, `DecisionLifecycle`, `DecisionStatus`, `ToolAffordanceId`, `WorkingMemoryEntity`, `EpisodicMemoryEntity`, `SemanticMemoryEntity`, `ProceduralMemoryEntity`, `MemoryMergeStrategy`, `ConsolidationTrigger`, `ConsolidationAction`, `AgentType`
 - Functions: `compareTrustLevel`, `inferTrustLevel`, `isProfileEntity`, `isAgentEntity`, `isSessionEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `toIsoDateTime`, `toPositiveInt`, `isProspectiveMemory`, `isFailureMemory`, `isPlanMemory`, `isReflectionMemory`, `isHeuristicMemory`, `isExclusionMemory`, `isDecisionMemory`, `isProjectContextMemory`, `isToolAffordanceMemory`
 - Constants: `MEMORY_TYPES`, `TRUST_LEVEL_ORDER`, `DEFAULT_TRUST_THRESHOLDS`
 
@@ -3877,6 +3969,7 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Interfaces: `CreateArtifactOptions`, `ArtifactEntity`, `ArtifactFilter`
+- Types: `ArtifactType`
 - Functions: `isArtifactEntity`
 
 ---
@@ -3886,20 +3979,29 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./types/index.js` | `Entity, Relation, KnowledgeGraph, SearchResult` | Import |
 | `./search.js` | `QueryTraceBuilder` | Re-export |
 | `./types.js` | `ENTITY_STATUS_TRANSITIONS` | Re-export |
 | `./agent-memory.js` | `MEMORY_TYPES, isAgentEntity, isSessionEntity, isProfileEntity, isWorkingMemory, isEpisodicMemory, isSemanticMemory, isProceduralMemory, AccessContextBuilder` | Re-export |
 | `./artifact.js` | `isArtifactEntity` | Re-export |
 | `./progress.js` | `createProgressInfo, createThrottledProgress, createDetailedProgressReporter` | Re-export |
 | `./result.js` | `ok, err, isOk, isErr, unwrap, unwrapOr, mapOk` | Re-export |
+| `./search.js` | `LogLevel, QueryLogEntry, QueryTrace, QueryStage, SearchExplanation, ScoringSignal, MatchedTerm, ScoreBoost, ExplainedSearchResult, QueryNode, TermNode, PhraseNode, WildcardNode, ProximityNode, FieldNode, BooleanOpNode` | Re-export (type-only) |
+| `./types.js` | `Entity, Relation, KnowledgeGraph, ReadonlyKnowledgeGraph, SearchResult, SavedSearch, BooleanQueryNode, DocumentVector, TFIDFIndex, FuzzyCacheKey, BooleanCacheEntry, PaginatedCacheEntry, TokenizedEntity, GraphStats, ValidationReport, ValidationIssue, ValidationWarning, CacheCompressionStats, ArchiveResultExtended, ExportFilter, ExportOptions, ExportResult, ImportResult, GraphCompressionResult, BackupOptions, BackupResult, RestoreResult, BackupMetadataExtended, BackupInfoExtended, TagAlias, IGraphStorage, StorageConfig, LowercaseData, RelationProperties, TemporalRelation, BidirectionalRelation, TraversalOptions, TraversalResult, PathResult, ConnectedComponentsResult, CentralityResult, WeightedRelation, EmbeddingMode, EmbeddingService, SemanticSearchResult, IVectorStore, VectorSearchResult, EmbeddingConfig, SemanticIndexOptions, LongRunningOperationOptions, BatchOperationType, BatchOperation, BatchResult, OperationResult, BatchOptions, GraphEventType, GraphEventBase, EntityCreatedEvent, EntityUpdatedEvent, EntityDeletedEvent, EntityRenamedEvent, RelationCreatedEvent, RelationDeletedEvent, ObservationAddedEvent, ObservationDeletedEvent, GraphSavedEvent, GraphLoadedEvent, GraphEvent, GraphEventListener, GraphEventMap, SearchMethod, QueryCostEstimate, AutoSearchResult, QueryCostEstimatorOptions, PreparedEntity, SymbolicFilters, HybridSearchOptions, HybridSearchResult, ExtractedEntity, TemporalRange, QueryAnalysis, SubQuery, QueryPlan, DeduplicationOptions, EntityStatus` | Re-export (type-only) |
+| `./agent-memory.js` | `MemoryType, AccessPattern, MemoryVisibility, MemoryAcquisitionMethod, SessionStatus, SessionOutcome, TemporalFocus, ObservationSource, MemorySource, AgentEntity, AgentObservation, SessionEntity, ProfileEntity, AccessContext, SalienceContext, SalienceWeights, SalienceComponents, ScoredEntity, WorkingMemoryOptions, DecayOptions, ForgetOptions, DecayResult, ForgetResult, WorkingMemoryEntity, EpisodicMemoryEntity, SemanticMemoryEntity, ProceduralMemoryEntity, ConsolidateOptions, ConsolidationResult, SummarizationResult, PatternResult, MemoryMergeStrategy, MergeResult, DuplicatePair, ConsolidationTrigger, ConsolidationAction, RuleConditions, ConsolidationRule, RuleEvaluationResult, ContextRetrievalOptions, TokenBreakdown, ContextPackage, ExcludedEntity, DistilledLesson, CognitiveLoadMetrics, AdaptiveReductionResult, GroupMembership, ConflictInfo, ConflictStrategy` | Re-export (type-only) |
+| `./artifact.js` | `ArtifactType, CreateArtifactOptions, ArtifactEntity, ArtifactFilter` | Re-export (type-only) |
+| `./progress.js` | `ProgressInfo, ProgressInfoCallback, ProgressOptions` | Re-export (type-only) |
+| `./reconstruction.js` | `ContentLayer, CueNode, TagNode, ContentNode, CTCTriple, CTCGraphSnapshot, DistilledSentence, PersonalFact, DistillationResult, DialogueTurn, TraversalActionType, TraversalStep, ReconstructionResult, ReconstructionOptions` | Re-export (type-only) |
+| `./result.js` | `Result` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `QueryTraceBuilder`, `ENTITY_STATUS_TRANSITIONS`, `MEMORY_TYPES`, `isAgentEntity`, `isSessionEntity`, `isProfileEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `AccessContextBuilder`, `isArtifactEntity`, `createProgressInfo`, `createThrottledProgress`, `createDetailedProgressReporter`, `ok`, `err`, `isOk`, `isErr`, `unwrap`, `unwrapOr`, `mapOk`
+- Re-exports: `QueryTraceBuilder`, `ENTITY_STATUS_TRANSITIONS`, `MEMORY_TYPES`, `isAgentEntity`, `isSessionEntity`, `isProfileEntity`, `isWorkingMemory`, `isEpisodicMemory`, `isSemanticMemory`, `isProceduralMemory`, `AccessContextBuilder`, `isArtifactEntity`, `createProgressInfo`, `createThrottledProgress`, `createDetailedProgressReporter`, `ok`, `err`, `isOk`, `isErr`, `unwrap`, `unwrapOr`, `mapOk`, `LogLevel`, `QueryLogEntry`, `QueryTrace`, `QueryStage`, `SearchExplanation`, `ScoringSignal`, `MatchedTerm`, `ScoreBoost`, `ExplainedSearchResult`, `QueryNode`, `TermNode`, `PhraseNode`, `WildcardNode`, `ProximityNode`, `FieldNode`, `BooleanOpNode`, `Entity`, `Relation`, `KnowledgeGraph`, `ReadonlyKnowledgeGraph`, `SearchResult`, `SavedSearch`, `BooleanQueryNode`, `DocumentVector`, `TFIDFIndex`, `FuzzyCacheKey`, `BooleanCacheEntry`, `PaginatedCacheEntry`, `TokenizedEntity`, `GraphStats`, `ValidationReport`, `ValidationIssue`, `ValidationWarning`, `CacheCompressionStats`, `ArchiveResultExtended`, `ExportFilter`, `ExportOptions`, `ExportResult`, `ImportResult`, `GraphCompressionResult`, `BackupOptions`, `BackupResult`, `RestoreResult`, `BackupMetadataExtended`, `BackupInfoExtended`, `TagAlias`, `IGraphStorage`, `StorageConfig`, `LowercaseData`, `RelationProperties`, `TemporalRelation`, `BidirectionalRelation`, `TraversalOptions`, `TraversalResult`, `PathResult`, `ConnectedComponentsResult`, `CentralityResult`, `WeightedRelation`, `EmbeddingMode`, `EmbeddingService`, `SemanticSearchResult`, `IVectorStore`, `VectorSearchResult`, `EmbeddingConfig`, `SemanticIndexOptions`, `LongRunningOperationOptions`, `BatchOperationType`, `BatchOperation`, `BatchResult`, `OperationResult`, `BatchOptions`, `GraphEventType`, `GraphEventBase`, `EntityCreatedEvent`, `EntityUpdatedEvent`, `EntityDeletedEvent`, `EntityRenamedEvent`, `RelationCreatedEvent`, `RelationDeletedEvent`, `ObservationAddedEvent`, `ObservationDeletedEvent`, `GraphSavedEvent`, `GraphLoadedEvent`, `GraphEvent`, `GraphEventListener`, `GraphEventMap`, `SearchMethod`, `QueryCostEstimate`, `AutoSearchResult`, `QueryCostEstimatorOptions`, `PreparedEntity`, `SymbolicFilters`, `HybridSearchOptions`, `HybridSearchResult`, `ExtractedEntity`, `TemporalRange`, `QueryAnalysis`, `SubQuery`, `QueryPlan`, `DeduplicationOptions`, `EntityStatus`, `MemoryType`, `AccessPattern`, `MemoryVisibility`, `MemoryAcquisitionMethod`, `SessionStatus`, `SessionOutcome`, `TemporalFocus`, `ObservationSource`, `MemorySource`, `AgentEntity`, `AgentObservation`, `SessionEntity`, `ProfileEntity`, `AccessContext`, `SalienceContext`, `SalienceWeights`, `SalienceComponents`, `ScoredEntity`, `WorkingMemoryOptions`, `DecayOptions`, `ForgetOptions`, `DecayResult`, `ForgetResult`, `WorkingMemoryEntity`, `EpisodicMemoryEntity`, `SemanticMemoryEntity`, `ProceduralMemoryEntity`, `ConsolidateOptions`, `ConsolidationResult`, `SummarizationResult`, `PatternResult`, `MemoryMergeStrategy`, `MergeResult`, `DuplicatePair`, `ConsolidationTrigger`, `ConsolidationAction`, `RuleConditions`, `ConsolidationRule`, `RuleEvaluationResult`, `ContextRetrievalOptions`, `TokenBreakdown`, `ContextPackage`, `ExcludedEntity`, `DistilledLesson`, `CognitiveLoadMetrics`, `AdaptiveReductionResult`, `GroupMembership`, `ConflictInfo`, `ConflictStrategy`, `ArtifactType`, `CreateArtifactOptions`, `ArtifactEntity`, `ArtifactFilter`, `ProgressInfo`, `ProgressInfoCallback`, `ProgressOptions`, `ContentLayer`, `CueNode`, `TagNode`, `ContentNode`, `CTCTriple`, `CTCGraphSnapshot`, `DistilledSentence`, `PersonalFact`, `DistillationResult`, `DialogueTurn`, `TraversalActionType`, `TraversalStep`, `ReconstructionResult`, `ReconstructionOptions`, `Result`
 
 ---
 
 ### `src/types/procedure.ts` - Procedural Memory Types (3B.4)
+
+**Exports:**
+- Interfaces: `ProcedureStep`, `Procedure`, `ProcedureMatch`, `ProcedureFeedback`
 
 ---
 
@@ -3907,17 +4009,23 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Interfaces: `ProgressInfo`, `ProgressOptions`
+- Types: `ProgressInfoCallback`
 - Functions: `createProgressInfo`, `createThrottledProgress`, `createDetailedProgressReporter`
 
 ---
 
 ### `src/types/reconstruction.ts` - Types for the Cue–Tag–Content associative memory graph and active memory
 
+**Exports:**
+- Interfaces: `CueNode`, `TagNode`, `ContentNode`, `CTCTriple`, `CTCGraphSnapshot`, `DistilledSentence`, `PersonalFact`, `DistillationResult`, `DialogueTurn`, `TraversalStep`, `ReconstructionResult`, `ReconstructionOptions`
+- Types: `ContentLayer`, `TraversalActionType`
+
 ---
 
 ### `src/types/result.ts` - Result<T, E> — discriminated-union return type for operations with
 
 **Exports:**
+- Types: `Result`
 - Functions: `ok`, `err`, `isOk`, `isErr`, `unwrap`, `unwrapOr`, `mapOk`
 
 ---
@@ -3927,6 +4035,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `QueryTraceBuilder`
 - Interfaces: `QueryLogEntry`, `QueryTrace`, `QueryStage`, `SearchExplanation`, `ScoringSignal`, `MatchedTerm`, `ScoreBoost`, `ExplainedSearchResult`, `TermNode`, `PhraseNode`, `WildcardNode`, `ProximityNode`, `FieldNode`, `BooleanOpNode`
+- Types: `LogLevel`, `QueryNode`
 
 ---
 
@@ -3936,12 +4045,16 @@ The codebase is organized into the following modules:
 | File | Imports | Type |
 |------|---------|------|
 | `../utils/taskScheduler.js` | `ProgressCallback, TaskPriority` | Import (type-only) |
+| `../core/GraphEventEmitter.js` | `` | Dynamic import |
 
 **Exports:**
 - Interfaces: `Entity`, `DeduplicationOptions`, `RelationProperties`, `Relation`, `KnowledgeGraph`, `FuzzyCacheKey`, `BooleanCacheEntry`, `PaginatedCacheEntry`, `TokenizedEntity`, `SearchResult`, `SavedSearch`, `DocumentVector`, `TFIDFIndex`, `GraphStats`, `ValidationReport`, `ValidationIssue`, `ValidationWarning`, `ExportFilter`, `ImportResult`, `GraphCompressionResult`, `BackupOptions`, `BackupResult`, `RestoreResult`, `BackupMetadataExtended`, `BackupInfoExtended`, `ExportOptions`, `ExportResult`, `ArchiveResultExtended`, `CacheCompressionStats`, `TagAlias`, `LowercaseData`, `StorageConfig`, `IGraphStorage`, `TraversalOptions`, `TraversalResult`, `PathResult`, `ConnectedComponentsResult`, `CentralityResult`, `WeightedRelation`, `TemporalRelation`, `BidirectionalRelation`, `EmbeddingService`, `SemanticSearchResult`, `IVectorStore`, `VectorSearchResult`, `EmbeddingConfig`, `SemanticIndexOptions`, `LongRunningOperationOptions`, `BatchResult`, `OperationResult`, `BatchOptions`, `GraphEventBase`, `EntityCreatedEvent`, `EntityUpdatedEvent`, `EntityDeletedEvent`, `EntityRenamedEvent`, `RelationCreatedEvent`, `RelationDeletedEvent`, `ObservationAddedEvent`, `ObservationDeletedEvent`, `GraphSavedEvent`, `GraphLoadedEvent`, `GraphEventMap`, `QueryCostEstimate`, `AutoSearchResult`, `QueryCostEstimatorOptions`, `PreparedEntity`, `SymbolicFilters`, `HybridSearchOptions`, `HybridSearchResult`, `ExtractedEntity`, `TemporalRange`, `QueryAnalysis`, `SubQuery`, `QueryPlan`
+- Types: `EntityStatus`, `ReadonlyKnowledgeGraph`, `BooleanQueryNode`, `EmbeddingMode`, `BatchOperationType`, `BatchOperation`, `GraphEventType`, `GraphEvent`, `GraphEventListener`, `SearchMethod`
 - Constants: `ENTITY_STATUS_TRANSITIONS`
 
 ---
+
+<a id="utils-dependencies"></a>
 
 ## Utils Dependencies
 
@@ -3958,6 +4071,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `BatchProcessor`
 - Interfaces: `BatchProgress`, `BatchItemResult`, `BatchProcessResult`, `BatchProcessorOptions`
+- Types: `BatchProgressCallback`
 - Functions: `processBatch`, `processWithRetry`, `chunkArray`, `parallelLimit`, `mapParallel`, `filterParallel`
 
 ---
@@ -3989,7 +4103,6 @@ The codebase is organized into the following modules:
 | File | Imports | Type |
 |------|---------|------|
 | `../types/types.js` | `Entity` | Import (type-only) |
-| `./EntityValidator.js` | `EntityValidator, required, minLength, pattern` | Import |
 
 **Exports:**
 - Classes: `EntityValidator`
@@ -3998,6 +4111,9 @@ The codebase is organized into the following modules:
 ---
 
 ### `src/utils/IIndexHealth.ts` - Index Health interface.
+
+**Exports:**
+- Interfaces: `IndexHealthSnapshot`, `IIndexHealth`
 
 ---
 
@@ -4019,6 +4135,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `MemoryMonitor`
 - Interfaces: `ComponentMemoryUsage`, `MemoryUsageStats`, `MemoryThresholds`, `MemoryAlert`
+- Types: `MemoryChangeCallback`
 - Constants: `globalMemoryMonitor`
 
 ---
@@ -4054,6 +4171,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `WorkerPoolManager`
 - Interfaces: `WorkerPoolConfig`, `ExtendedPoolStats`
+- Types: `PoolEventCallback`
 - Functions: `getWorkerPoolManager`
 
 ---
@@ -4142,6 +4260,7 @@ The codebase is organized into the following modules:
 ### `src/utils/constants.ts` - Application Constants
 
 **Exports:**
+- Types: `CompressionQuality`
 - Functions: `getEmbeddingConfig`
 - Constants: `FILE_EXTENSIONS`, `FILE_SUFFIXES`, `DEFAULT_FILE_NAMES`, `ENV_VARS`, `DEFAULT_BASE_DIR`, `LOG_PREFIXES`, `SIMILARITY_WEIGHTS`, `DEFAULT_DUPLICATE_THRESHOLD`, `SEARCH_LIMITS`, `IMPORTANCE_RANGE`, `GRAPH_LIMITS`, `QUERY_LIMITS`, `COMPRESSION_CONFIG`, `EMBEDDING_ENV_VARS`, `EMBEDDING_DEFAULTS`, `SEMANTIC_SEARCH_LIMITS`, `OPENAI_API_CONFIG`, `STREAMING_CONFIG`
 
@@ -4213,6 +4332,7 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Interfaces: `ValidatedPagination`
+- Types: `ToolResponse`
 - Functions: `formatToolResponse`, `formatTextResponse`, `formatRawResponse`, `formatErrorResponse`, `validatePagination`, `applyPagination`, `paginateArray`, `getPaginationMeta`
 
 ---
@@ -4222,81 +4342,35 @@ The codebase is organized into the following modules:
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./errors.js` | `ErrorCode, KnowledgeGraphError, EntityNotFoundError, RelationNotFoundError, DuplicateEntityError, ValidationError, CycleDetectedError, InvalidImportanceError, FileOperationError, ImportError, ExportError, InsufficientEntitiesError, OperationCancelledError, RefConflictError, RefNotFoundError, type ErrorOptions` | Re-export |
+| `./errors.js` | `ErrorCode, KnowledgeGraphError, EntityNotFoundError, RelationNotFoundError, DuplicateEntityError, ValidationError, CycleDetectedError, InvalidImportanceError, FileOperationError, ImportError, ExportError, InsufficientEntitiesError, OperationCancelledError, RefConflictError, RefNotFoundError, ErrorOptions` | Re-export |
 | `./errorSuggestions.js` | `generateSuggestions, getQuickHint` | Re-export |
-| `./constants.js` | `FILE_EXTENSIONS, FILE_SUFFIXES, DEFAULT_FILE_NAMES, ENV_VARS, DEFAULT_BASE_DIR, LOG_PREFIXES, SIMILARITY_WEIGHTS, DEFAULT_DUPLICATE_THRESHOLD, SEARCH_LIMITS, IMPORTANCE_RANGE, GRAPH_LIMITS, QUERY_LIMITS, COMPRESSION_CONFIG, STREAMING_CONFIG, type CompressionQuality` | Re-export |
-| `./compressionUtil.js` | `compress, decompress, compressFile, decompressFile, compressToBase64, decompressFromBase64, hasBrotliExtension, getCompressionRatio, createMetadata, createUncompressedMetadata, type CompressionOptions, type CompressionResult, type CompressionMetadata` | Re-export |
-| `./compressedCache.js` | `CompressedCache, type CompressedCacheOptions, type CompressedCacheStats` | Re-export |
+| `./constants.js` | `FILE_EXTENSIONS, FILE_SUFFIXES, DEFAULT_FILE_NAMES, ENV_VARS, DEFAULT_BASE_DIR, LOG_PREFIXES, SIMILARITY_WEIGHTS, DEFAULT_DUPLICATE_THRESHOLD, SEARCH_LIMITS, IMPORTANCE_RANGE, GRAPH_LIMITS, QUERY_LIMITS, COMPRESSION_CONFIG, STREAMING_CONFIG, CompressionQuality` | Re-export |
+| `./compressionUtil.js` | `compress, decompress, compressFile, decompressFile, compressToBase64, decompressFromBase64, hasBrotliExtension, getCompressionRatio, createMetadata, createUncompressedMetadata, CompressionOptions, CompressionResult, CompressionMetadata` | Re-export |
+| `./compressedCache.js` | `CompressedCache, CompressedCacheOptions, CompressedCacheStats` | Re-export |
 | `./logger.js` | `logger` | Re-export |
 | `./searchAlgorithms.js` | `levenshteinDistance, calculateTF, calculateTFFromTokens, calculateIDF, calculateIDFFromTokenSets, calculateTFIDF, tokenize` | Re-export |
 | `./indexes.js` | `NameIndex, TypeIndex, LowercaseCache, RelationIndex` | Re-export |
-| `./searchCache.js` | `SearchCache, searchCaches, clearAllSearchCaches, getAllCacheStats, cleanupAllCaches, type CacheStats` | Re-export |
-| `./schemas.js` | `// Zod schemas - Entity/Relation
-  EntitySchema, CreateEntitySchema, UpdateEntitySchema, RelationSchema, CreateRelationSchema, SearchQuerySchema, DateRangeSchema, TagAliasSchema, ExportFormatSchema, BatchCreateEntitiesSchema, BatchCreateRelationsSchema, EntityNamesSchema, DeleteRelationsSchema, // Zod schemas - Observations
-  AddObservationInputSchema, AddObservationsInputSchema, DeleteObservationInputSchema, DeleteObservationsInputSchema, // Zod schemas - Archive
-  ArchiveCriteriaSchema, // Zod schemas - Saved Search
-  SavedSearchInputSchema, SavedSearchUpdateSchema, // Zod schemas - Import/Export
-  ImportFormatSchema, ExtendedExportFormatSchema, MergeStrategySchema, ExportFilterSchema, // Zod schemas - Search
-  OptionalTagsSchema, OptionalEntityNamesSchema, // Schema types
-  type EntityInput, type CreateEntityInput, type UpdateEntityInput, type RelationInput, type CreateRelationInput, type SearchQuery, type DateRange, type TagAliasInput, type AddObservationInput, type DeleteObservationInput, type ArchiveCriteriaInput, type SavedSearchInput, type SavedSearchUpdateInput, type ImportFormatInput, type ExtendedExportFormatInput, type MergeStrategyInput, type ExportFilterInput, // Validation result type
-  type ValidationResult, // Zod helpers
-  formatZodErrors, validateWithSchema, validateSafe, validateArrayWithSchema, // Manual validation functions
-  validateEntity, validateRelation, validateImportance, validateTags, validateNonEmpty, validateNonEmptyArray` | Re-export |
-| `./formatters.js` | `// Response formatting
-  formatToolResponse, formatTextResponse, formatRawResponse, formatErrorResponse, type ToolResponse, // Pagination utilities
-  validatePagination, applyPagination, paginateArray, getPaginationMeta, type ValidatedPagination` | Re-export |
-| `./entityUtils.js` | `// Hash functions (Phase 12 Sprint 1)
-  fnv1aHash, // Entity lookup
-  findEntityByName, findEntitiesByNames, entityExists, getEntityIndex, removeEntityByName, getEntityNameSet, groupEntitiesByType, touchEntity, // Tag utilities
-  normalizeTag, normalizeTags, hasMatchingTag, hasAllTags, filterByTags, addUniqueTags, removeTags, // Date utilities
-  isWithinDateRange, parseDateRange, isValidISODate, getCurrentTimestamp, // Filter utilities
-  isWithinImportanceRange, filterByImportance, filterByCreatedDate, filterByModifiedDate, filterByEntityType, entityPassesFilters, type CommonSearchFilters, // Path utilities
-  validateFilePath, defaultMemoryPath, ensureMemoryFilePath, // Security utilities
-  sanitizeObject, escapeCsvFormula` | Re-export |
+| `./searchCache.js` | `SearchCache, searchCaches, clearAllSearchCaches, getAllCacheStats, cleanupAllCaches, CacheStats` | Re-export |
+| `./schemas.js` | `EntitySchema, CreateEntitySchema, UpdateEntitySchema, RelationSchema, CreateRelationSchema, SearchQuerySchema, DateRangeSchema, TagAliasSchema, ExportFormatSchema, BatchCreateEntitiesSchema, BatchCreateRelationsSchema, EntityNamesSchema, DeleteRelationsSchema, AddObservationInputSchema, AddObservationsInputSchema, DeleteObservationInputSchema, DeleteObservationsInputSchema, ArchiveCriteriaSchema, SavedSearchInputSchema, SavedSearchUpdateSchema, ImportFormatSchema, ExtendedExportFormatSchema, MergeStrategySchema, ExportFilterSchema, OptionalTagsSchema, OptionalEntityNamesSchema, EntityInput, CreateEntityInput, UpdateEntityInput, RelationInput, CreateRelationInput, SearchQuery, DateRange, TagAliasInput, AddObservationInput, DeleteObservationInput, ArchiveCriteriaInput, SavedSearchInput, SavedSearchUpdateInput, ImportFormatInput, ExtendedExportFormatInput, MergeStrategyInput, ExportFilterInput, ValidationResult, formatZodErrors, validateWithSchema, validateSafe, validateArrayWithSchema, validateEntity, validateRelation, validateImportance, validateTags, validateNonEmpty, validateNonEmptyArray` | Re-export |
+| `./formatters.js` | `formatToolResponse, formatTextResponse, formatRawResponse, formatErrorResponse, ToolResponse, validatePagination, applyPagination, paginateArray, getPaginationMeta, ValidatedPagination` | Re-export |
+| `./entityUtils.js` | `fnv1aHash, findEntityByName, findEntitiesByNames, entityExists, getEntityIndex, removeEntityByName, getEntityNameSet, groupEntitiesByType, touchEntity, normalizeTag, normalizeTags, hasMatchingTag, hasAllTags, filterByTags, addUniqueTags, removeTags, isWithinDateRange, parseDateRange, isValidISODate, getCurrentTimestamp, isWithinImportanceRange, filterByImportance, filterByCreatedDate, filterByModifiedDate, filterByEntityType, entityPassesFilters, CommonSearchFilters, validateFilePath, defaultMemoryPath, ensureMemoryFilePath, sanitizeObject, escapeCsvFormula` | Re-export |
 | `./parallelUtils.js` | `parallelMap, parallelFilter, getPoolStats, shutdownParallelUtils` | Re-export |
-| `./taskScheduler.js` | `// Types and Enums
-  TaskPriority, TaskStatus, type Task, type TaskResult, type ProgressCallback, type TaskBatchOptions, type QueueStats, // Task Queue
-  TaskQueue, // Batch Processing
-  batchProcess, rateLimitedProcess, withRetry, // Rate Limiting
-  debounce, throttle` | Re-export |
-| `./operationUtils.js` | `checkCancellation, createProgressReporter, createProgress, executeWithPhases, processBatchesWithProgress, type PhaseDefinition` | Re-export |
-| `./WorkerPoolManager.js` | `WorkerPoolManager, getWorkerPoolManager, type WorkerPoolConfig, type ExtendedPoolStats, type PoolEventCallback` | Re-export |
-| `./WorkerTaskManager.js` | `WorkerTaskManager, getWorkerTaskManager, batchProcessViaWorkers, type TaskSubmitOptions, type TaskHandle, type WorkerTaskManagerStats` | Re-export |
-| `./BatchProcessor.js` | `BatchProcessor, processBatch, processWithRetry, chunkArray, parallelLimit, mapParallel, filterParallel, type BatchProgress, type BatchProgressCallback, type BatchItemResult, type BatchProcessResult, type BatchProcessorOptions` | Re-export |
-| `./MemoryMonitor.js` | `MemoryMonitor, globalMemoryMonitor, type ComponentMemoryUsage, type MemoryUsageStats, type MemoryThresholds, type MemoryAlert, type MemoryChangeCallback` | Re-export |
+| `./taskScheduler.js` | `TaskPriority, TaskStatus, Task, TaskResult, ProgressCallback, TaskBatchOptions, QueueStats, TaskQueue, batchProcess, rateLimitedProcess, withRetry, debounce, throttle` | Re-export |
+| `./operationUtils.js` | `checkCancellation, createProgressReporter, createProgress, executeWithPhases, processBatchesWithProgress, PhaseDefinition` | Re-export |
+| `./WorkerPoolManager.js` | `WorkerPoolManager, getWorkerPoolManager, WorkerPoolConfig, ExtendedPoolStats, PoolEventCallback` | Re-export |
+| `./WorkerTaskManager.js` | `WorkerTaskManager, getWorkerTaskManager, batchProcessViaWorkers, TaskSubmitOptions, TaskHandle, WorkerTaskManagerStats` | Re-export |
+| `./BatchProcessor.js` | `BatchProcessor, processBatch, processWithRetry, chunkArray, parallelLimit, mapParallel, filterParallel, BatchProgress, BatchProgressCallback, BatchItemResult, BatchProcessResult, BatchProcessorOptions` | Re-export |
+| `./MemoryMonitor.js` | `MemoryMonitor, globalMemoryMonitor, ComponentMemoryUsage, MemoryUsageStats, MemoryThresholds, MemoryAlert, MemoryChangeCallback` | Re-export |
 | `./relationHelpers.js` | `isWeightedRelation, isTemporalRelation, isBidirectionalRelation, hasConfidence, isCurrentlyValid, RelationBuilder` | Re-export |
-| `./relationValidation.js` | `validateRelationMetadata, validateRelationsMetadata, allRelationsValidMetadata, type RelationValidationResult, type RelationValidationError, type RelationValidationWarning` | Re-export |
-| `./EntityValidator.js` | `EntityValidator, type EntityValidatorConfig, type EntityValidationRule, type EntityRuleResult, type EntityValidationIssue, type EntityValidationResult` | Re-export |
+| `./relationValidation.js` | `validateRelationMetadata, validateRelationsMetadata, allRelationsValidMetadata, RelationValidationResult, RelationValidationError, RelationValidationWarning` | Re-export |
+| `./EntityValidator.js` | `EntityValidator, EntityValidatorConfig, EntityValidationRule, EntityRuleResult, EntityValidationIssue, EntityValidationResult` | Re-export |
 | `./validators.js` | `required, minLength, maxLength, pattern, range, min, max, oneOf, minItems, maxItems, email, url, isoDate, typeOf, custom, customSync, asWarning, all, when` | Re-export |
-| `./SchemaValidator.js` | `SchemaValidator, type JsonSchema` | Re-export |
-| `./AsyncMutex.js` | `AsyncMutex, type AsyncMutexOptions` | Re-export |
+| `./SchemaValidator.js` | `SchemaValidator, JsonSchema` | Re-export |
+| `./AsyncMutex.js` | `AsyncMutex, AsyncMutexOptions` | Re-export |
 | `./textSimilarity.js` | `tokenize, buildTFVector, cosineSimilarity, calculateTextSimilarity` | Re-export |
 
 **Exports:**
-- Re-exports: `ErrorCode`, `KnowledgeGraphError`, `EntityNotFoundError`, `RelationNotFoundError`, `DuplicateEntityError`, `ValidationError`, `CycleDetectedError`, `InvalidImportanceError`, `FileOperationError`, `ImportError`, `ExportError`, `InsufficientEntitiesError`, `OperationCancelledError`, `RefConflictError`, `RefNotFoundError`, `type ErrorOptions`, `generateSuggestions`, `getQuickHint`, `FILE_EXTENSIONS`, `FILE_SUFFIXES`, `DEFAULT_FILE_NAMES`, `ENV_VARS`, `DEFAULT_BASE_DIR`, `LOG_PREFIXES`, `SIMILARITY_WEIGHTS`, `DEFAULT_DUPLICATE_THRESHOLD`, `SEARCH_LIMITS`, `IMPORTANCE_RANGE`, `GRAPH_LIMITS`, `QUERY_LIMITS`, `COMPRESSION_CONFIG`, `STREAMING_CONFIG`, `type CompressionQuality`, `compress`, `decompress`, `compressFile`, `decompressFile`, `compressToBase64`, `decompressFromBase64`, `hasBrotliExtension`, `getCompressionRatio`, `createMetadata`, `createUncompressedMetadata`, `type CompressionOptions`, `type CompressionResult`, `type CompressionMetadata`, `CompressedCache`, `type CompressedCacheOptions`, `type CompressedCacheStats`, `logger`, `levenshteinDistance`, `calculateTF`, `calculateTFFromTokens`, `calculateIDF`, `calculateIDFFromTokenSets`, `calculateTFIDF`, `tokenize`, `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `SearchCache`, `searchCaches`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `type CacheStats`, `// Zod schemas - Entity/Relation
-  EntitySchema`, `CreateEntitySchema`, `UpdateEntitySchema`, `RelationSchema`, `CreateRelationSchema`, `SearchQuerySchema`, `DateRangeSchema`, `TagAliasSchema`, `ExportFormatSchema`, `BatchCreateEntitiesSchema`, `BatchCreateRelationsSchema`, `EntityNamesSchema`, `DeleteRelationsSchema`, `// Zod schemas - Observations
-  AddObservationInputSchema`, `AddObservationsInputSchema`, `DeleteObservationInputSchema`, `DeleteObservationsInputSchema`, `// Zod schemas - Archive
-  ArchiveCriteriaSchema`, `// Zod schemas - Saved Search
-  SavedSearchInputSchema`, `SavedSearchUpdateSchema`, `// Zod schemas - Import/Export
-  ImportFormatSchema`, `ExtendedExportFormatSchema`, `MergeStrategySchema`, `ExportFilterSchema`, `// Zod schemas - Search
-  OptionalTagsSchema`, `OptionalEntityNamesSchema`, `// Schema types
-  type EntityInput`, `type CreateEntityInput`, `type UpdateEntityInput`, `type RelationInput`, `type CreateRelationInput`, `type SearchQuery`, `type DateRange`, `type TagAliasInput`, `type AddObservationInput`, `type DeleteObservationInput`, `type ArchiveCriteriaInput`, `type SavedSearchInput`, `type SavedSearchUpdateInput`, `type ImportFormatInput`, `type ExtendedExportFormatInput`, `type MergeStrategyInput`, `type ExportFilterInput`, `// Validation result type
-  type ValidationResult`, `// Zod helpers
-  formatZodErrors`, `validateWithSchema`, `validateSafe`, `validateArrayWithSchema`, `// Manual validation functions
-  validateEntity`, `validateRelation`, `validateImportance`, `validateTags`, `validateNonEmpty`, `validateNonEmptyArray`, `// Response formatting
-  formatToolResponse`, `formatTextResponse`, `formatRawResponse`, `formatErrorResponse`, `type ToolResponse`, `// Pagination utilities
-  validatePagination`, `applyPagination`, `paginateArray`, `getPaginationMeta`, `type ValidatedPagination`, `// Hash functions (Phase 12 Sprint 1)
-  fnv1aHash`, `// Entity lookup
-  findEntityByName`, `findEntitiesByNames`, `entityExists`, `getEntityIndex`, `removeEntityByName`, `getEntityNameSet`, `groupEntitiesByType`, `touchEntity`, `// Tag utilities
-  normalizeTag`, `normalizeTags`, `hasMatchingTag`, `hasAllTags`, `filterByTags`, `addUniqueTags`, `removeTags`, `// Date utilities
-  isWithinDateRange`, `parseDateRange`, `isValidISODate`, `getCurrentTimestamp`, `// Filter utilities
-  isWithinImportanceRange`, `filterByImportance`, `filterByCreatedDate`, `filterByModifiedDate`, `filterByEntityType`, `entityPassesFilters`, `type CommonSearchFilters`, `// Path utilities
-  validateFilePath`, `defaultMemoryPath`, `ensureMemoryFilePath`, `// Security utilities
-  sanitizeObject`, `escapeCsvFormula`, `parallelMap`, `parallelFilter`, `getPoolStats`, `shutdownParallelUtils`, `// Types and Enums
-  TaskPriority`, `TaskStatus`, `type Task`, `type TaskResult`, `type ProgressCallback`, `type TaskBatchOptions`, `type QueueStats`, `// Task Queue
-  TaskQueue`, `// Batch Processing
-  batchProcess`, `rateLimitedProcess`, `withRetry`, `// Rate Limiting
-  debounce`, `throttle`, `checkCancellation`, `createProgressReporter`, `createProgress`, `executeWithPhases`, `processBatchesWithProgress`, `type PhaseDefinition`, `WorkerPoolManager`, `getWorkerPoolManager`, `type WorkerPoolConfig`, `type ExtendedPoolStats`, `type PoolEventCallback`, `WorkerTaskManager`, `getWorkerTaskManager`, `batchProcessViaWorkers`, `type TaskSubmitOptions`, `type TaskHandle`, `type WorkerTaskManagerStats`, `BatchProcessor`, `processBatch`, `processWithRetry`, `chunkArray`, `parallelLimit`, `mapParallel`, `filterParallel`, `type BatchProgress`, `type BatchProgressCallback`, `type BatchItemResult`, `type BatchProcessResult`, `type BatchProcessorOptions`, `MemoryMonitor`, `globalMemoryMonitor`, `type ComponentMemoryUsage`, `type MemoryUsageStats`, `type MemoryThresholds`, `type MemoryAlert`, `type MemoryChangeCallback`, `isWeightedRelation`, `isTemporalRelation`, `isBidirectionalRelation`, `hasConfidence`, `isCurrentlyValid`, `RelationBuilder`, `validateRelationMetadata`, `validateRelationsMetadata`, `allRelationsValidMetadata`, `type RelationValidationResult`, `type RelationValidationError`, `type RelationValidationWarning`, `EntityValidator`, `type EntityValidatorConfig`, `type EntityValidationRule`, `type EntityRuleResult`, `type EntityValidationIssue`, `type EntityValidationResult`, `required`, `minLength`, `maxLength`, `pattern`, `range`, `min`, `max`, `oneOf`, `minItems`, `maxItems`, `email`, `url`, `isoDate`, `typeOf`, `custom`, `customSync`, `asWarning`, `all`, `when`, `SchemaValidator`, `type JsonSchema`, `AsyncMutex`, `type AsyncMutexOptions`, `buildTFVector`, `cosineSimilarity`, `calculateTextSimilarity`
+- Re-exports: `ErrorCode`, `KnowledgeGraphError`, `EntityNotFoundError`, `RelationNotFoundError`, `DuplicateEntityError`, `ValidationError`, `CycleDetectedError`, `InvalidImportanceError`, `FileOperationError`, `ImportError`, `ExportError`, `InsufficientEntitiesError`, `OperationCancelledError`, `RefConflictError`, `RefNotFoundError`, `ErrorOptions`, `generateSuggestions`, `getQuickHint`, `FILE_EXTENSIONS`, `FILE_SUFFIXES`, `DEFAULT_FILE_NAMES`, `ENV_VARS`, `DEFAULT_BASE_DIR`, `LOG_PREFIXES`, `SIMILARITY_WEIGHTS`, `DEFAULT_DUPLICATE_THRESHOLD`, `SEARCH_LIMITS`, `IMPORTANCE_RANGE`, `GRAPH_LIMITS`, `QUERY_LIMITS`, `COMPRESSION_CONFIG`, `STREAMING_CONFIG`, `CompressionQuality`, `compress`, `decompress`, `compressFile`, `decompressFile`, `compressToBase64`, `decompressFromBase64`, `hasBrotliExtension`, `getCompressionRatio`, `createMetadata`, `createUncompressedMetadata`, `CompressionOptions`, `CompressionResult`, `CompressionMetadata`, `CompressedCache`, `CompressedCacheOptions`, `CompressedCacheStats`, `logger`, `levenshteinDistance`, `calculateTF`, `calculateTFFromTokens`, `calculateIDF`, `calculateIDFFromTokenSets`, `calculateTFIDF`, `tokenize`, `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `SearchCache`, `searchCaches`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `CacheStats`, `EntitySchema`, `CreateEntitySchema`, `UpdateEntitySchema`, `RelationSchema`, `CreateRelationSchema`, `SearchQuerySchema`, `DateRangeSchema`, `TagAliasSchema`, `ExportFormatSchema`, `BatchCreateEntitiesSchema`, `BatchCreateRelationsSchema`, `EntityNamesSchema`, `DeleteRelationsSchema`, `AddObservationInputSchema`, `AddObservationsInputSchema`, `DeleteObservationInputSchema`, `DeleteObservationsInputSchema`, `ArchiveCriteriaSchema`, `SavedSearchInputSchema`, `SavedSearchUpdateSchema`, `ImportFormatSchema`, `ExtendedExportFormatSchema`, `MergeStrategySchema`, `ExportFilterSchema`, `OptionalTagsSchema`, `OptionalEntityNamesSchema`, `EntityInput`, `CreateEntityInput`, `UpdateEntityInput`, `RelationInput`, `CreateRelationInput`, `SearchQuery`, `DateRange`, `TagAliasInput`, `AddObservationInput`, `DeleteObservationInput`, `ArchiveCriteriaInput`, `SavedSearchInput`, `SavedSearchUpdateInput`, `ImportFormatInput`, `ExtendedExportFormatInput`, `MergeStrategyInput`, `ExportFilterInput`, `ValidationResult`, `formatZodErrors`, `validateWithSchema`, `validateSafe`, `validateArrayWithSchema`, `validateEntity`, `validateRelation`, `validateImportance`, `validateTags`, `validateNonEmpty`, `validateNonEmptyArray`, `formatToolResponse`, `formatTextResponse`, `formatRawResponse`, `formatErrorResponse`, `ToolResponse`, `validatePagination`, `applyPagination`, `paginateArray`, `getPaginationMeta`, `ValidatedPagination`, `fnv1aHash`, `findEntityByName`, `findEntitiesByNames`, `entityExists`, `getEntityIndex`, `removeEntityByName`, `getEntityNameSet`, `groupEntitiesByType`, `touchEntity`, `normalizeTag`, `normalizeTags`, `hasMatchingTag`, `hasAllTags`, `filterByTags`, `addUniqueTags`, `removeTags`, `isWithinDateRange`, `parseDateRange`, `isValidISODate`, `getCurrentTimestamp`, `isWithinImportanceRange`, `filterByImportance`, `filterByCreatedDate`, `filterByModifiedDate`, `filterByEntityType`, `entityPassesFilters`, `CommonSearchFilters`, `validateFilePath`, `defaultMemoryPath`, `ensureMemoryFilePath`, `sanitizeObject`, `escapeCsvFormula`, `parallelMap`, `parallelFilter`, `getPoolStats`, `shutdownParallelUtils`, `TaskPriority`, `TaskStatus`, `Task`, `TaskResult`, `ProgressCallback`, `TaskBatchOptions`, `QueueStats`, `TaskQueue`, `batchProcess`, `rateLimitedProcess`, `withRetry`, `debounce`, `throttle`, `checkCancellation`, `createProgressReporter`, `createProgress`, `executeWithPhases`, `processBatchesWithProgress`, `PhaseDefinition`, `WorkerPoolManager`, `getWorkerPoolManager`, `WorkerPoolConfig`, `ExtendedPoolStats`, `PoolEventCallback`, `WorkerTaskManager`, `getWorkerTaskManager`, `batchProcessViaWorkers`, `TaskSubmitOptions`, `TaskHandle`, `WorkerTaskManagerStats`, `BatchProcessor`, `processBatch`, `processWithRetry`, `chunkArray`, `parallelLimit`, `mapParallel`, `filterParallel`, `BatchProgress`, `BatchProgressCallback`, `BatchItemResult`, `BatchProcessResult`, `BatchProcessorOptions`, `MemoryMonitor`, `globalMemoryMonitor`, `ComponentMemoryUsage`, `MemoryUsageStats`, `MemoryThresholds`, `MemoryAlert`, `MemoryChangeCallback`, `isWeightedRelation`, `isTemporalRelation`, `isBidirectionalRelation`, `hasConfidence`, `isCurrentlyValid`, `RelationBuilder`, `validateRelationMetadata`, `validateRelationsMetadata`, `allRelationsValidMetadata`, `RelationValidationResult`, `RelationValidationError`, `RelationValidationWarning`, `EntityValidator`, `EntityValidatorConfig`, `EntityValidationRule`, `EntityRuleResult`, `EntityValidationIssue`, `EntityValidationResult`, `required`, `minLength`, `maxLength`, `pattern`, `range`, `min`, `max`, `oneOf`, `minItems`, `maxItems`, `email`, `url`, `isoDate`, `typeOf`, `custom`, `customSync`, `asWarning`, `all`, `when`, `SchemaValidator`, `JsonSchema`, `AsyncMutex`, `AsyncMutexOptions`, `buildTFVector`, `cosineSimilarity`, `calculateTextSimilarity`
 
 ---
 
@@ -4386,6 +4460,7 @@ The codebase is organized into the following modules:
 
 **Exports:**
 - Interfaces: `ValidationResult`
+- Types: `EntityInput`, `CreateEntityInput`, `UpdateEntityInput`, `RelationInput`, `CreateRelationInput`, `SearchQuery`, `DateRange`, `TagAliasInput`, `AddObservationInput`, `DeleteObservationInput`, `ArchiveCriteriaInput`, `SavedSearchInput`, `SavedSearchUpdateInput`, `ImportFormatInput`, `ExtendedExportFormatInput`, `MergeStrategyInput`, `ExportFilterInput`
 - Functions: `formatZodErrors`, `validateWithSchema`, `validateSafe`, `validateArrayWithSchema`, `validateEntity`, `validateRelation`, `validateImportance`, `validateTags`, `validateNonEmpty`, `validateNonEmptyArray`
 - Constants: `EntitySchema`, `CreateEntitySchema`, `UpdateEntitySchema`, `RelationSchema`, `CreateRelationSchema`, `SearchQuerySchema`, `DateRangeSchema`, `TagAliasSchema`, `ExportFormatSchema`, `BatchCreateEntitiesSchema`, `BatchCreateRelationsSchema`, `EntityNamesSchema`, `DeleteRelationsSchema`, `AddObservationInputSchema`, `AddObservationsInputSchema`, `DeleteObservationInputSchema`, `DeleteObservationsInputSchema`, `ArchiveCriteriaSchema`, `SavedSearchInputSchema`, `SavedSearchUpdateSchema`, `ImportFormatSchema`, `ExtendedExportFormatSchema`, `MergeStrategySchema`, `ExportFilterSchema`, `OptionalTagsSchema`, `OptionalEntityNamesSchema`
 
@@ -4428,6 +4503,7 @@ The codebase is organized into the following modules:
 **Exports:**
 - Classes: `TaskQueue`
 - Interfaces: `Task`, `TaskResult`, `TaskBatchOptions`, `QueueStats`
+- Types: `ProgressCallback`
 - Enums: `TaskPriority`, `TaskStatus`
 - Functions: `batchProcess`, `rateLimitedProcess`, `withRetry`, `debounce`, `throttle`
 
@@ -4453,6 +4529,8 @@ The codebase is organized into the following modules:
 
 ---
 
+<a id="workers-dependencies"></a>
+
 ## Workers Dependencies
 
 ### `src/workers/index.ts` - Workers Module
@@ -4461,9 +4539,11 @@ The codebase is organized into the following modules:
 | File | Imports | Type |
 |------|---------|------|
 | `./levenshteinWorker.js` | `levenshteinDistance, similarity, searchEntities` | Re-export |
+| `@danielsimonjr/workerpool` | `Pool, PoolStats` | Re-export (type-only) |
+| `./levenshteinWorker.js` | `WorkerInput, MatchResult` | Re-export (type-only) |
 
 **Exports:**
-- Re-exports: `levenshteinDistance`, `similarity`, `searchEntities`
+- Re-exports: `levenshteinDistance`, `similarity`, `searchEntities`, `Pool`, `PoolStats`, `WorkerInput`, `MatchResult`
 
 ---
 
@@ -4480,68 +4560,83 @@ The codebase is organized into the following modules:
 
 ---
 
+<a id="dependency-matrix"></a>
 ## Dependency Matrix
 
-### File Import/Export Matrix
+### File Import/Export Matrix (top 40 by connectivity)
 
 | File | Imports From | Exports To |
 |------|--------------|------------|
-| `LangChainMemoryAdapter` | 3 files | 1 files |
-| `MCPToolObserverAdapter` | 1 files | 1 files |
-| `RateLimiter` | 0 files | 1 files |
-| `RestRouter` | 3 files | 1 files |
-| `index` | 5 files | 1 files |
-| `pagination` | 0 files | 2 files |
-| `AccessTracker` | 2 files | 8 files |
-| `AgentMemoryConfig` | 15 files | 3 files |
-| `AgentMemoryManager` | 29 files | 2 files |
-| `ArtifactManager` | 5 files | 2 files |
-| `CognitiveLoadAnalyzer` | 1 files | 1 files |
-| `CollaborativeSynthesis` | 4 files | 2 files |
-| `ConflictResolver` | 1 files | 5 files |
-| `ConsolidationPipeline` | 13 files | 6 files |
-| `ConsolidationScheduler` | 4 files | 2 files |
-| `ContextProfileManager` | 1 files | 3 files |
-| `ContextWindowManager` | 7 files | 6 files |
-| `DecayEngine` | 6 files | 10 files |
-| `DecayScheduler` | 3 files | 4 files |
-| `DecisionManager` | 5 files | 3 files |
-| `DistillationPipeline` | 2 files | 1 files |
-| `DistillationPolicy` | 2 files | 4 files |
-| `DreamEngine` | 8 files | 3 files |
-| `EntropyFilter` | 3 files | 3 files |
-| `EpisodicMemoryManager` | 2 files | 7 files |
-| `ExclusionManager` | 3 files | 4 files |
-| `ExperienceExtractor` | 3 files | 3 files |
-| `FailureDistillation` | 3 files | 1 files |
-| `FailureManager` | 5 files | 2 files |
-| `HeuristicManager` | 4 files | 3 files |
+| `src/core/ManagerContext` | 83 files | 9 files |
+| `src/types/index` | 7 files | 59 files |
+| `src/types/types` | 2 files | 62 files |
+| `src/agent/index` | 60 files | 1 file |
+| `src/utils/index` | 26 files | 27 files |
+| `src/types/agent-memory` | 3 files | 43 files |
+| `src/core/GraphStorage` | 12 files | 32 files |
+| `src/search/index` | 38 files | 2 files |
+| `src/core/EntityManager` | 8 files | 25 files |
+| `src/agent/AgentMemoryManager` | 29 files | 2 files |
+| `src/utils/errors` | 0 files | 28 files |
+| `src/utils/logger` | 0 files | 27 files |
+| `src/cli/commands/helpers` | 4 files | 21 files |
+| `src/cli/formatters` | 1 file | 23 files |
+| `src/cli/commands/index` | 22 files | 1 file |
+| `src/agent/ConsolidationPipeline` | 13 files | 6 files |
+| `src/agent/AgentMemoryConfig` | 15 files | 3 files |
+| `src/agent/ContextWindowManager` | 12 files | 6 files |
+| `src/features/index` | 16 files | 1 file |
+| `src/search/SearchManager` | 14 files | 3 files |
+| `src/utils/constants` | 0 files | 17 files |
+| `src/agent/DecayEngine` | 6 files | 10 files |
+| `src/core/ObservationManager` | 10 files | 6 files |
+| `src/agent/SalienceEngine` | 7 files | 8 files |
+| `src/search/RankedSearch` | 8 files | 7 files |
+| `src/core/index` | 13 files | 1 file |
+| `src/agent/MemoryEngine` | 9 files | 4 files |
+| `src/core/RelationManager` | 5 files | 8 files |
+| `src/agent/WorkingMemoryManager` | 5 files | 7 files |
+| `src/core/GraphEventEmitter` | 2 files | 10 files |
+| `src/agent/DreamEngine` | 8 files | 3 files |
+| `src/features/IOManager` | 8 files | 3 files |
+| `src/agent/AccessTracker` | 2 files | 8 files |
+| `src/agent/ProfileManager` | 6 files | 4 files |
+| `src/core/GraphTraversal` | 4 files | 6 files |
+| `src/core/SQLiteStorage` | 8 files | 2 files |
+| `src/features/CompressionManager` | 6 files | 4 files |
+| `src/search/FuzzySearch` | 8 files | 2 files |
+| `src/search/HybridSearchManager` | 6 files | 4 files |
+| `src/search/SemanticSearch` | 4 files | 6 files |
 
 ---
 
+<a id="circular-dependency-analysis"></a>
 ## Circular Dependency Analysis
 
-**4 circular dependencies detected:**
+**36 circular dependencies detected:**
 
-- **Runtime cycles**: 1 (require attention)
-- **Type-only cycles**: 3 (safe, no runtime impact)
-
-### Runtime Circular Dependencies
-
-These cycles involve runtime imports and may cause issues:
-
-- src/utils/EntityValidator.ts -> src/utils/EntityValidator.ts
+- **Runtime cycles**: 0 (require attention)
+- **Type-only cycles**: 36 (safe, no runtime impact)
 
 ### Type-Only Circular Dependencies
 
 These cycles only involve type imports and are safe (erased at runtime):
 
+- src/types/index.ts -> src/types/types.ts -> src/core/GraphEventEmitter.ts -> src/types/index.ts
 - src/types/agent-memory.ts -> src/agent/ContextProfileManager.ts -> src/types/agent-memory.ts
-- src/core/TransactionManager.ts -> src/core/GraphStorage.ts -> src/core/TransactionManager.ts
-- src/agent/ConsolidationPipeline.ts -> src/agent/WorkingMemoryManager.ts -> src/agent/EntropyFilter.ts -> src/agent/ConsolidationPipeline.ts
+- src/types/agent-memory.ts -> src/agent/RoleProfiles.ts -> src/agent/SalienceEngine.ts -> src/types/agent-memory.ts
+- src/types/agent-memory.ts -> src/agent/RoleProfiles.ts -> src/agent/SalienceEngine.ts -> src/agent/AccessTracker.ts -> src/types/agent-memory.ts
+- src/types/agent-memory.ts -> src/agent/RoleProfiles.ts -> src/agent/SalienceEngine.ts -> src/agent/DecayEngine.ts -> src/types/agent-memory.ts
+- src/types/index.ts -> src/types/agent-memory.ts -> src/agent/RoleProfiles.ts -> src/agent/ContextWindowManager.ts -> src/core/GraphStorage.ts -> src/types/index.ts
+- src/types/index.ts -> src/types/agent-memory.ts -> src/agent/RoleProfiles.ts -> src/agent/ContextWindowManager.ts -> src/core/GraphStorage.ts -> src/utils/searchCache.ts -> src/types/index.ts
+- src/types/index.ts -> src/types/agent-memory.ts -> src/agent/RoleProfiles.ts -> src/agent/ContextWindowManager.ts -> src/core/GraphStorage.ts -> src/utils/indexes.ts -> src/types/index.ts
+- src/types/index.ts -> src/types/agent-memory.ts -> src/agent/RoleProfiles.ts -> src/agent/ContextWindowManager.ts -> src/core/GraphStorage.ts -> src/utils/index.ts -> src/utils/compressedCache.ts -> src/types/index.ts
+- src/types/index.ts -> src/types/agent-memory.ts -> src/agent/RoleProfiles.ts -> src/agent/ContextWindowManager.ts -> src/core/GraphStorage.ts -> src/utils/index.ts -> src/utils/entityUtils.ts -> src/types/index.ts
+- ... and 26 more
 
 ---
 
+<a id="visual-dependency-graph"></a>
 ## Visual Dependency Graph
 
 ```mermaid
@@ -4552,7 +4647,7 @@ graph TD
         N2[RateLimiter]
         N3[RestRouter]
         N4[index]
-        N5[...1 more]
+        N5[pagination]
     end
 
     subgraph Agent
@@ -4561,114 +4656,193 @@ graph TD
         N8[AgentMemoryManager]
         N9[ArtifactManager]
         N10[CognitiveLoadAnalyzer]
-        N11[...75 more]
+        N11[CollaborativeSynthesis]
+        N12[ConflictResolver]
+        N13[ConsolidationPipeline]
+        N14[ConsolidationScheduler]
+        N15[ContextProfileManager]
+        N16[...70 more]
     end
 
     subgraph Cli
-        N12[cache]
-        N13[check]
-        N14[decision]
-        N15[diag]
-        N16[entity]
-        N17[...24 more]
+        N17[cache]
+        N18[check]
+        N19[decision]
+        N20[diag]
+        N21[entity]
+        N22[exclusion]
+        N23[graph]
+        N24[helpers]
+        N25[heuristic]
+        N26[hierarchy]
+        N27[...19 more]
     end
 
     subgraph Core
-        N18[EntityManager]
-        N19[EntityStateMachine]
-        N20[GraphEventEmitter]
-        N21[GraphStorage]
-        N22[GraphTraversal]
-        N23[...18 more]
+        N28[EntityManager]
+        N29[EntityStateMachine]
+        N30[GraphEventEmitter]
+        N31[GraphStorage]
+        N32[GraphTraversal]
+        N33[HierarchyManager]
+        N34[ManagerContext]
+        N35[ObservationManager]
+        N36[ObservationStore]
+        N37[PostgreSQLStorage]
+        N38[...13 more]
     end
 
     subgraph Features
-        N24[AnalyticsManager]
-        N25[ArchiveManager]
-        N26[AuditLog]
-        N27[AutoLinker]
-        N28[BackupManager]
-        N29[...13 more]
+        N39[AnalyticsManager]
+        N40[ArchiveManager]
+        N41[AuditLog]
+        N42[AutoLinker]
+        N43[BackupManager]
+        N44[CompressionManager]
+        N45[ContradictionDetector]
+        N46[FactExtractor]
+        N47[FreshnessManager]
+        N48[GovernanceManager]
+        N49[...8 more]
     end
 
     subgraph Entry
-        N30[index]
+        N50[index]
     end
 
     subgraph Search
-        N31[BM25Search]
-        N32[BasicSearch]
-        N33[BloomFilter]
-        N34[BloomPreScreener]
-        N35[BooleanSearch]
-        N36[...44 more]
+        N51[BM25Search]
+        N52[BasicSearch]
+        N53[BloomFilter]
+        N54[BloomPreScreener]
+        N55[BooleanSearch]
+        N56[EarlyTerminationManager]
+        N57[EmbeddingCache]
+        N58[EmbeddingService]
+        N59[FuzzySearch]
+        N60[GraphRankPrior]
+        N61[...39 more]
     end
 
     subgraph Security
-        N37[ABACPolicy]
-        N38[APIKeyStore]
-        N39[PiiRedactor]
-        N40[RowLevelFilter]
-        N41[index]
+        N62[ABACPolicy]
+        N63[APIKeyStore]
+        N64[PiiRedactor]
+        N65[RowLevelFilter]
+        N66[index]
     end
 
     subgraph Types
-        N42[agent-memory]
-        N43[artifact]
-        N44[index]
-        N45[procedure]
-        N46[progress]
-        N47[...4 more]
+        N67[agent-memory]
+        N68[artifact]
+        N69[index]
+        N70[procedure]
+        N71[progress]
+        N72[reconstruction]
+        N73[result]
+        N74[search]
+        N75[types]
     end
 
     subgraph Utils
-        N48[AsyncMutex]
-        N49[BatchProcessor]
-        N50[CachePressureCoordinator]
-        N51[Diagnostics]
-        N52[EntityValidator]
-        N53[...29 more]
+        N76[AsyncMutex]
+        N77[BatchProcessor]
+        N78[CachePressureCoordinator]
+        N79[Diagnostics]
+        N80[EntityValidator]
+        N81[IIndexHealth]
+        N82[IndexHealthMonitor]
+        N83[MemoryMonitor]
+        N84[SchemaValidator]
+        N85[WorkerPoolManager]
+        N86[...24 more]
     end
 
     subgraph Workers
-        N54[index]
-        N55[levenshteinWorker]
+        N87[index]
+        N88[levenshteinWorker]
     end
 
-    N0 --> N42
+    N0 --> N34
+    N0 --> N67
+    N3 --> N34
+    N3 --> N5
     N4 --> N3
     N4 --> N2
+    N4 --> N5
     N4 --> N1
     N4 --> N0
-    N6 --> N42
-    N7 --> N22
-    N8 --> N21
-    N8 --> N18
-    N8 --> N42
+    N6 --> N75
+    N6 --> N67
+    N7 --> N13
+    N7 --> N12
+    N7 --> N11
+    N7 --> N32
+    N8 --> N75
+    N8 --> N31
+    N8 --> N28
+    N8 --> N35
+    N8 --> N67
     N8 --> N6
+    N8 --> N13
+    N8 --> N12
     N8 --> N7
-    N9 --> N18
-    N9 --> N43
-    N10 --> N42
-    N18 --> N44
-    N18 --> N21
-    N18 --> N6
-    N18 --> N19
-    N20 --> N44
-    N21 --> N44
-    N21 --> N20
-    N22 --> N44
-    N22 --> N21
-    N22 --> N6
-    N24 --> N21
-    N24 --> N44
-    N25 --> N44
-    N25 --> N21
-    N27 --> N44
+    N9 --> N75
+    N9 --> N28
+    N9 --> N68
+    N10 --> N67
+    N11 --> N75
+    N11 --> N67
+    N11 --> N32
+    N12 --> N67
+    N13 --> N75
+    N13 --> N67
+    N14 --> N13
+    N14 --> N44
+    N14 --> N67
+    N15 --> N67
+    N17 --> N24
+    N18 --> N34
+    N18 --> N24
+    N19 --> N24
+    N20 --> N34
+    N20 --> N75
+    N20 --> N24
+    N21 --> N24
+    N22 --> N24
+    N23 --> N24
+    N24 --> N34
+    N25 --> N24
+    N26 --> N24
+    N28 --> N69
+    N28 --> N31
+    N28 --> N6
+    N28 --> N29
+    N29 --> N75
+    N30 --> N69
+    N31 --> N69
+    N31 --> N30
+    N32 --> N69
+    N32 --> N31
+    N32 --> N6
+    N33 --> N69
+    N33 --> N31
+    N34 --> N82
+    N34 --> N79
+    N34 --> N69
+    N34 --> N78
+    N34 --> N36
+    N34 --> N31
+    N34 --> N28
+    N34 --> N35
+    N34 --> N33
+    N34 --> N32
+    N34 --> N60
 ```
 
 ---
 
+<a id="summary-statistics"></a>
 ## Summary Statistics
 
 | Category | Count |
@@ -4676,18 +4850,21 @@ graph TD
 | Total TypeScript Files | 256 |
 | Total Modules | 11 |
 | Total Lines of Code | 85702 |
-| Total Exports | 1421 |
-| Total Re-exports | 866 |
+| Total Exports | 1631 |
+| Total Re-exports | 1067 |
 | Total Classes | 215 |
 | Total Interfaces | 532 |
 | Total Functions | 256 |
 | Total Type Guards | 28 |
 | Total Enums | 4 |
-| Type-only Imports | 363 |
-| Runtime Circular Deps | 1 |
-| Type-only Circular Deps | 3 |
+| Type-only Imports | 397 |
+| Runtime Circular Deps | 0 |
+| Type-only Circular Deps | 36 |
+| Entry/Build Roots | 3 |
+| Reachable Files | 255 |
+| Dormant Files (orphaned / test-only) | 1 (1 / 0) |
 
 ---
 
 *Last Updated*: 2026-07-24
-*Version*: 2.8.1
+*Version*: 2.9.0
