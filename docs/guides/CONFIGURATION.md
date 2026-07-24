@@ -158,9 +158,26 @@ const storage = new SQLiteStorage('./data/memory.db');
 | Setting | Value | Description |
 |---------|-------|-------------|
 | Journal mode | WAL | Write-ahead logging |
-| Synchronous | NORMAL | Balance of safety/speed |
+| Synchronous | NORMAL (override: `MEMORY_SQLITE_SYNCHRONOUS`) | Balance of safety/speed — see below (Unreleased, S3) |
+| Busy timeout | 5000ms | Wait on a locked DB instead of failing `SQLITE_BUSY` immediately |
+| Cache size | 64 MB | `-64000` pragma (negative = KiB) |
+| Temp store | MEMORY | Temp tables/indices kept in RAM |
 | FTS5 | Enabled | Full-text search |
 | BM25 | Default ranking | Relevance scoring |
+
+**`MEMORY_SQLITE_SYNCHRONOUS` durability tradeoff (Unreleased, S3):** `NORMAL` is the
+canonical pairing with WAL mode — it fsyncs at checkpoint time rather than on
+every commit (~2–10× commit throughput vs. the old default `FULL`). The
+database can never be corrupted by this setting (WAL commits stay
+crash-consistent); the exposure is that the most recent commit(s) since the
+last checkpoint may be lost on **power loss / OS crash** (not on application
+crash). Set `MEMORY_SQLITE_SYNCHRONOUS=FULL` to fsync every commit, or `OFF`
+to trade all durability for speed (testing/ephemeral data only). Invalid
+values fall back to `NORMAL`.
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_SQLITE_SYNCHRONOUS` | `FULL`, `NORMAL`, `OFF` | `NORMAL` |
 
 ### Storage Factory Configuration
 
@@ -709,6 +726,22 @@ await compressFile('./large-export.json', './large-export.json.br');
 await decompressFile('./large-export.json.br', './large-export.json');
 ```
 
+**Decompression-bomb cap (Unreleased, Sec8):** `decompress()`/`decompressFile()`
+and the Brotli/zlib adapters now pass a `maxOutputLength` so a crafted small
+`.br` payload cannot expand to exhaust memory. Precedence: explicit
+`{ maxOutputLength }` option > `MEMORY_MAX_DECOMPRESSED_BYTES` env var (bytes,
+positive integer) > 256 MB default. Exceeding the cap throws rather than
+silently truncating.
+
+```typescript
+// Raise the cap for a known-large, trusted payload
+const original = await decompress(compressed, { maxOutputLength: 512 * 1024 * 1024 });
+```
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `MEMORY_MAX_DECOMPRESSED_BYTES` | Positive integer (bytes) | `268435456` (256 MB) |
+
 ### Backup Compression
 
 ```typescript
@@ -869,6 +902,7 @@ opt-in / require explicit configuration.
 | `MEMORY_STORAGE_TYPE` | `jsonl`, `sqlite` | `jsonl` |
 | `MEMORY_FILE_PATH` | path | (per `ManagerContext` ctor) |
 | `MEMORY_BACKEND` | `sqlite`, `in-memory` | `sqlite` |
+| `MEMORY_SQLITE_SYNCHRONOUS` | `FULL`, `NORMAL`, `OFF` | `NORMAL` (Unreleased, S3 — see [SQLite Storage](#sqlite-storage)) |
 
 ### Embedding / semantic search
 
@@ -925,14 +959,39 @@ opt-in / require explicit configuration.
 | `MEMORY_QUERY_LOG_FILE` | — |
 | `MEMORY_QUERY_LOG_LEVEL` | `info` |
 
-### Governance + freshness (v1.6)
+### Governance + freshness (v1.6; enforcement wiring Unreleased, Sec1)
 
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_GOVERNANCE_ENABLED` | `true`, `false` | `false` |
-| `MEMORY_AUDIT_LOG_FILE` | path | — |
+| `MEMORY_GOVERNANCE_ENABLED` | `'true'` (strict literal — `'1'`/`'yes'`/`'TRUE'` are silently ignored) | unset = not enforced |
+| `MEMORY_AUDIT_LOG_FILE` | path | `<basename>-audit.jsonl` sidecar |
 | `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | number | `168` |
 | `MEMORY_LLM_QUERY_PLANNER_PROVIDER` | provider name | — |
+| `MEMORY_MAX_DECOMPRESSED_BYTES` | Positive integer (bytes) | `268435456` (256 MB) — decompression-bomb cap (Unreleased, Sec8) |
+
+**`MEMORY_GOVERNANCE_ENABLED` now actually enforces (Unreleased, Sec1).**
+Before this release the env var was read nowhere in `src/` — setting it did
+nothing, and `ctx.governanceManager` had no getter, so an operator who set
+this var and a policy believed writes were being checked when they weren't.
+Now, when the flag is the strict literal `'true'` (read once, at first
+`ctx.entityManager` access), `ManagerContext` wires `ctx.governanceManager`'s
+policy + audit log into every `EntityManager` mutation (`createEntities`,
+`updateEntity`, `batchUpdate`, `deleteEntities`, `renameEntity`): a denied
+policy check throws `GovernanceError`, and every allowed mutation appends a
+committed entry to the (now hash-chained, see
+[SECURITY_GUIDE.md](./SECURITY_GUIDE.md)) audit log. With the flag unset,
+`ctx.governanceManager` is still constructible and usable manually
+(`withTransaction`/`rollback`), but plain `EntityManager` writes bypass it —
+zero overhead, matching pre-Unreleased behavior.
+
+```typescript
+process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
+const ctx = new ManagerContext('./memory.jsonl');
+ctx.governanceManager.setPolicy({
+  canDelete: (entity) => entity.importance === undefined || entity.importance < 8,
+});
+await ctx.entityManager.deleteEntities(['critical-record']); // throws GovernanceError
+```
 
 ### Role profiles + advanced agent (v1.7)
 
@@ -989,10 +1048,28 @@ rationale.
 
 ### RBAC (η.6.1)
 
-| Variable | Values | Default |
-|----------|--------|---------|
-| `MEMORY_RBAC_ENABLED` | `true`, `false` | `false` |
-| `MEMORY_RBAC_DEFAULT_ROLE` | `reader`, `writer`, `admin` | `reader` |
+**Correction:** there is no `MEMORY_RBAC_ENABLED` or `MEMORY_RBAC_DEFAULT_ROLE`
+env var — neither is read anywhere in `src/` (an earlier revision of this
+table documented them in error). `RbacMiddleware` is constructed manually and
+is not wired into any `ManagerContext` chokepoint by default; `checkPermission`
+has zero call sites in the library itself. Configure the default role via the
+constructor option instead:
+
+```typescript
+import { RbacMiddleware } from '@danielsimonjr/memoryjs/agent';
+
+// Key-presence semantics (Unreleased, Sec2 fix): omitting `defaultRole`
+// entirely still defaults unregistered agents to 'reader'. Passing
+// `defaultRole: undefined` explicitly now denies them instead — the two
+// were previously indistinguishable, which silently granted read access
+// to unregistered agents whenever an options object was passed.
+const readerDefault = new RbacMiddleware(store, { matrix });                          // 'reader' (key omitted)
+const denyByDefault = new RbacMiddleware(store, { matrix, defaultRole: undefined });   // deny unregistered
+```
+
+`RoleAssignmentStore`'s sidecar file is now written with `{ mode: 0o600 }`
+(was world-readable) and a corrupted grant line is surfaced as a count
+rather than silently dropped (Unreleased, Sec2 sidecar fix).
 
 ### Misc
 

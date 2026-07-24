@@ -49,11 +49,12 @@ Guide for migrating between versions, storage backends, and from other knowledge
 2. [Storage Backend Migration](#storage-backend-migration)
 3. [Data Format Migration](#data-format-migration)
 4. [Storage-Shape & Constructor Changes (v1.14.0 → v2.9.0)](#storage-shape--constructor-changes-v1140--unreleased)
-5. [Migrating from Other Solutions](#migrating-from-other-solutions)
-6. [Breaking Changes Reference](#breaking-changes-reference)
-7. [Migration Scripts](#migration-scripts)
-8. [Rollback Procedures](#rollback-procedures)
-9. [Testing Migrations](#testing-migrations)
+5. [Behavioral Changes (Unreleased — post-v2.9.0)](#behavioral-changes-unreleased--post-v290)
+6. [Migrating from Other Solutions](#migrating-from-other-solutions)
+7. [Breaking Changes Reference](#breaking-changes-reference)
+8. [Migration Scripts](#migration-scripts)
+9. [Rollback Procedures](#rollback-procedures)
+10. [Testing Migrations](#testing-migrations)
 
 ---
 
@@ -446,6 +447,92 @@ const checkpoints = new SessionCheckpointManager(
 
 `WorkThreadManager`'s constructor is unchanged (`new WorkThreadManager(storage)`)
 — only its internal storage shape changed.
+
+---
+
+## Behavioral Changes (Unreleased — post-v2.9.0)
+
+Two changes from the delta-persistence + security optimization pass are
+**behavioral**, not purely additive — check them if your integration relies
+on the old shape.
+
+### `UpdateEntitySchema` now strips unknown keys (Sec7)
+
+`EntityManager.updateEntity(name, updates)` validates `updates` against
+`UpdateEntitySchema` before applying it. Previously that schema ended in
+`.passthrough()`, so any extra top-level key you passed — typos, fields from
+a future schema version, internal-looking names like `isLatest` or
+`supersededBy` — flowed straight through `sanitizeObject` (which only strips
+`__proto__`/`constructor`/`prototype`) into the live entity via
+`Object.assign`. The schema now ends in `.strip()`: known fields validate as
+before, but **any key not in the explicit allow-list is silently dropped
+before the update is applied** — it never reaches the entity, and
+`GovernancePolicy.canUpdate` (which checks the pre-merge entity) can no
+longer be bypassed by smuggling a field through an unknown key.
+
+```typescript
+// Before: 'randomField' and the (unintentional) 'isLatest: false' would
+// both have been written onto the entity.
+// After: only 'observations' is applied; the other two keys are dropped.
+await ctx.entityManager.updateEntity('Alice', {
+  observations: ['Promoted to Staff Engineer'],
+  randomField: 'oops',   // dropped — not in the schema
+  isLatest: false,       // dropped unless you intend to touch versioning fields directly
+});
+```
+
+**If your integration relied on passthrough** (e.g. storing ad-hoc metadata
+via `updateEntity` with a key not in `UpdateEntitySchema`), that data is now
+silently dropped instead of silently persisted. Two callers of this
+distinction were already unaffected before/after: subclass-manager record
+fields (`heuristicRecord`, `procedureRecord`-style `z.unknown()` fields) are
+in the allow-list, so structured subclass state still round-trips. If you
+need a genuinely new field accepted, add it to `UpdateEntitySchema` in
+`src/utils/schemas.ts` rather than relying on passthrough.
+
+### Batch mutations now fire per-item events, not just `graph:saved` (S2)
+
+Delta persistence changed *what storage does internally* for
+`createEntities` / `deleteEntities` / relation batch operations — they now
+append/remove via targeted storage primitives (`appendEntities`,
+`appendRelations`, etc.) instead of deep-copying and rewriting the whole
+graph via `saveGraph`. The visible consequence: **event listeners that only
+subscribed to `graph:saved` and derived per-entity state from a full-graph
+diff will now also see (or need to also see) per-item events** —
+`entity:created` fires once per entity in a batch create,
+`entity:deleted` once per entity in a batch delete, `relation:created` /
+`relation:deleted` similarly for relation batches. `graph:saved` still
+fires, but now **only** for genuinely full-graph writes (import/restore),
+not for ordinary CRUD.
+
+```typescript
+// Before (pre-Unreleased): a batch createEntities([...10 entities]) emitted
+// ONE graph:saved and nothing else — listeners had to diff the whole graph
+// to find out what changed.
+// After: it emits TEN entity:created events (one per entity) and no
+// graph:saved at all.
+
+ctx.storage.events.on('entity:created', (event) => {
+  // Now fires once per entity in a batch create — was previously silent
+  // (only graph:saved fired) unless you were also listening there.
+  tfidfIndex.addDocument(event.entity);
+});
+
+ctx.storage.events.on('graph:saved', () => {
+  // Now fires ONLY for true full-graph writes (import, restore) — no
+  // longer a catch-all for every mutation. If your handler assumed it
+  // fired on every write, it will now miss ordinary CRUD entirely.
+  rebuildEverythingFromScratch();
+});
+```
+
+**Action required only if** a listener (i) subscribed solely to
+`graph:saved` to catch *all* mutations (switch it to also listen for the
+per-item events, or to both), or (ii) assumed batch operations fired exactly
+one event regardless of batch size (per-item event counts now scale with
+the batch). Built-in consumers (`TFIDFEventSync`, `GraphRankPrior`,
+columnar observation store) were updated as part of this same change and
+require no action.
 
 ---
 

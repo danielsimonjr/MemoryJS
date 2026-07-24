@@ -9,8 +9,25 @@
 > PII Redactor, conflict view, audit enforcer, OCC, bitemporal versioning,
 > RDF export) see the per-manager API tables in [README.md](../../README.md)
 > and the architecture map in [docs/architecture/API.md](../architecture/API.md).
+> For the post-v2.9.0 additions (event reification, evidence paths, relation
+> consolidation, ingest provenance, NL-guided traversal) see
+> [Unreleased — added API surface](#unreleased--added-api-surface) at the
+> bottom of this document.
 
 Complete API documentation for all public classes, methods, and types.
+
+> **Subpath exports (Unreleased):** the package ships `sideEffects: false`
+> plus subpath exports so bundlers can tree-shake unused managers:
+> `@danielsimonjr/memoryjs` (root), `/core`, `/search`, `/agent`, `/features`,
+> `/utils`, `/types`, `/adapters`, `/security`, and `/sqlite` (isolates the
+> `better-sqlite3` native addon so JSONL-only consumers never load it). Each
+> subpath re-exports the same module barrel as before — only the import path
+> changes:
+> ```typescript
+> import { EntityManager } from '@danielsimonjr/memoryjs/core';
+> import { HybridSearchManager } from '@danielsimonjr/memoryjs/search';
+> import { SQLiteStorage } from '@danielsimonjr/memoryjs/sqlite';
+> ```
 
 ---
 
@@ -35,6 +52,7 @@ Complete API documentation for all public classes, methods, and types.
 17. [Utility Functions](#utility-functions)
 18. [Types & Interfaces](#types--interfaces)
 19. [Error Classes](#error-classes)
+20. [Unreleased — added API surface](#unreleased--added-api-surface) — EventManager, RelationConsolidator, evidence paths, ingest provenance
 
 ---
 
@@ -72,6 +90,7 @@ new ManagerContext(storagePath: string)
 | `semanticSearch` | `SemanticSearch` | Vector search (lazy, requires config) |
 | `graphRankPrior` | `GraphRankPrior` | Cached graph-connectivity ranking signal (lazy, `@experimental`, v2.9.0) |
 | `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) search (lazy, v2.9.0) |
+| `eventManager` | `EventManager` | Event reification — actions as first-class hub entities (lazy, `@experimental`, Unreleased) |
 
 ### Example
 
@@ -862,6 +881,55 @@ Breadth-first / depth-first traversal. Both are **synchronous** (no `Promise`) a
 
 ---
 
+#### findPathWithin *(Unreleased — R2 evidence-path support)*
+
+```typescript
+async findPathWithin(
+  source: string,
+  target: string,
+  maxDepth?: number,     // default 3
+  options?: TraversalOptionsWithTracking
+): Promise<PathResult | null>
+```
+
+Depth-bounded shortest path — identical semantics to `findShortestPath` but stops exploring beyond `maxDepth` hops, so worst-case cost is bounded on large graphs. Returns `null` when no path exists within the cap (a longer path may still exist beyond it).
+
+```typescript
+const short = await ctx.graphTraversal.findPathWithin('Alice', 'Bob', 3);
+```
+
+---
+
+#### getNeighborsWithRelations — `lookFor` (NL-guided ranking) *(Unreleased — R7)*
+
+```typescript
+getNeighborsWithRelations(
+  entityName: string,
+  options?: TraversalOptions
+): Array<{ neighbor: string; relation: Relation }>;
+
+getNeighborsWithRelations(
+  entityName: string,
+  options: TraversalOptions & {
+    lookFor: string;              // free-text description of the desired connection
+    semanticSearch?: SimilarityProvider;  // optional; falls back to lexical Jaccard
+  }
+): Promise<Array<{ neighbor: string; relation: Relation; lookForScore?: number }>>;
+```
+
+Overloaded: without `options.lookFor` the method is unchanged (synchronous, unranked). With `lookFor` set, the same neighbor set is ranked by similarity between the free-text query and each neighbor's descriptor (`name + relationType + first 200 observation chars`) and the call returns a `Promise` of neighbors ordered best-first, each carrying `lookForScore` (0–1). `options.semanticSearch` (any object exposing `calculateSimilarity(a, b)`, e.g. `ctx.semanticSearch`) upgrades ranking from lexical Jaccard to semantic similarity.
+
+```typescript
+const ranked = await ctx.graphTraversal.getNeighborsWithRelations('project-x', {
+  lookFor: 'who is blocking this release',
+  semanticSearch: ctx.semanticSearch,
+});
+```
+
+`HybridSearchManager`'s one-hop `expandNeighbors` also accepts a top-level `lookFor` option that ranks expansion neighbors the same way — see [HybridSearchManager](#hybridsearchmanager).
+
+---
+
 ## IOManager
 
 Import, export, and backup operations.
@@ -1392,8 +1460,12 @@ async search(
   options?: Partial<HybridSearchOptions> & {
     graphWeight?: number;  // graph channel weight, default 0 (off)
     expandNeighbors?: { hops: 1; topK?: number; damping?: number };
+    // Unreleased (R2/R7) — see below
+    explain?: boolean;
+    explainOptions?: { maxDepth?: number; maxPathsPerResult?: number };
+    lookFor?: string;
   }
-): Promise<HybridSearchResult[]>
+): Promise<ExplainedHybridSearchResult[]>
 ```
 
 Executes hybrid search combining all layers and returns results sorted by `scores.combined`, descending. Note the parameter order: `graph` first, then `query` (opposite of most other search methods in this library).
@@ -1409,6 +1481,64 @@ const results = await ctx.hybridSearchManager.search(graph, 'machine learning', 
   limit: 20,
 });
 ```
+
+##### `explain: true` — evidence paths *(Unreleased, R2)*
+
+When `explain: true`, every result gains an `evidencePaths` array — the graph
+paths connecting the query's direct anchor matches (entities that matched a
+text layer directly) to the result — plus `evidenceTruncated` (true when a
+depth/count cap changed the outcome). Off by default; `explain` omitted or
+`false` is byte-identical to pre-R2 behavior (nothing is computed).
+
+```typescript
+interface ExplainedHybridSearchResult extends HybridSearchResult {
+  evidencePaths?: EvidencePath[];   // anchor → result shortest paths (BFS, undirected)
+  evidenceTruncated?: boolean;      // a maxDepth/maxPathsPerResult cap bit
+  lookForScore?: number;            // present on expandNeighbors results when lookFor is set
+}
+
+interface EvidencePath {
+  nodes: string[];
+  relations: Array<{ from: string; to: string; relationType: string }>;
+  anchor: string;             // the query-matching entity this path starts from
+  viaLayer: 'semantic' | 'lexical' | 'symbolic';
+}
+```
+
+```typescript
+const explained = await ctx.hybridSearchManager.search(graph, 'deployment failure', {
+  explain: true,
+  explainOptions: { maxDepth: 3, maxPathsPerResult: 3 },  // both are the defaults
+});
+for (const r of explained) {
+  console.log(r.entity.name, r.evidencePaths?.map(p => p.nodes.join(' -> ')));
+}
+```
+
+`LLMSearchExecutor.execute(query, { explain: true })` supports the same
+option and wraps each entity as `{ entity, evidencePaths, evidenceTruncated }`.
+
+Evidence paths are also computable standalone via `EvidencePathBuilder`
+(`src/search/EvidencePathBuilder.ts`, `@experimental`) — bounded BFS over the
+undirected projection of a `ReadonlyKnowledgeGraph`, capped by `maxDepth`
+(default 3) and `maxPathsPerResult` (default 3):
+
+```typescript
+import { EvidencePathBuilder } from '@danielsimonjr/memoryjs/search';
+
+const builder = new EvidencePathBuilder(graph, { maxDepth: 3, maxPathsPerResult: 3 });
+const { paths, truncated } = builder.buildForResult('result-entity', [
+  { name: 'anchor-entity', viaLayer: 'lexical', score: 0.8 },
+]);
+```
+
+##### `lookFor` — NL-guided neighbor expansion *(Unreleased, R7)*
+
+When `expandNeighbors` is active, pass `lookFor` (free text) to rank the
+expansion neighbors by similarity to that text instead of expansion order;
+matches carry `lookForScore`. See
+[`GraphTraversal.getNeighborsWithRelations`](#graphtraversal) for the
+underlying primitive.
 
 #### searchWithEntities
 
@@ -1777,13 +1907,65 @@ type ExportFormat =
 class IOManager {
   exportGraph(graph: ReadonlyKnowledgeGraph, format: ExportFormat): string;
 
-  // v1.9 conversation ingest pipeline
+  // v1.9 conversation ingest pipeline (see "ingest provenance" below for
+  // the Unreleased manifest/mode/tokenUsage additions)
   ingest(input: IngestInput, options?: IngestOptions): Promise<IngestResult>;
   splitSessions(content: string, options?: SplitOptions): Promise<SplitResult>;
 
   // v1.9.1 visualization
   visualizeGraph(options?: VisualizeOptions): Promise<string>;
 }
+```
+
+#### `ingest` — provenance + cost/quality dial *(Unreleased, R4b/R5)*
+
+Every `ingest()` run now writes a per-run **manifest entity**
+(`entityType: 'ingest-manifest'`, name `ingest-<id>`) with one
+`[chunk]: <JSON {id, source, offset, length, hash}>` observation line per
+source chunk (raw chunk text is NOT stored by default — pass
+`keepSourceText: true` to include it, capped at 4000 chars/chunk). Every
+entity created by the run is linked back to the manifest with a
+`derived_from` relation, and observations gain
+`observationMeta[].sourceRef` (`<ingestId>-chunk-<n>`) — this is what lets
+evidence paths extend `answer → relation → observation → source chunk`.
+
+```typescript
+interface IngestOptions {
+  // ...existing fields (projectId, entityType, tags, chunkBy, maxChunkSize,
+  // deduplicateThreshold, dryRun) unchanged...
+
+  /** Cost/quality dial. Default 'balanced' (= pre-R5 behavior). */
+  mode?: 'accurate' | 'balanced' | 'lightweight';
+  /** Store raw chunk text in the manifest (capped 4000 chars/chunk). Default false. */
+  keepSourceText?: boolean;
+  /** Enables LLM-based distillation enrichment (mode !== 'lightweight'). */
+  llmProvider?: LLMProvider;
+  /** 'accurate'-mode validation hook, invoked after entities/manifest/relations are written. */
+  validate?: (produced: IngestProduced) => Promise<{ valid: boolean; issues?: string[] }>;
+}
+
+interface IngestResult {
+  // ...existing fields (entitiesCreated, observationsAdded, skippedDuplicates,
+  // entityNames) unchanged...
+  ingestId: string;             // 8 hex chars
+  manifestEntity: string;       // `ingest-<ingestId>` (unless dryRun or zero chunks)
+  chunkCount: number;           // total source chunks produced (incl. skipped duplicates)
+  tokenUsage?: { input: number; output: number; approximate: boolean };  // present only when the LLM ran
+  validation?: { valid: boolean; issues?: string[] };  // present only in 'accurate' mode with a validator
+}
+```
+
+**`mode` dial:**
+- `'lightweight'` — heuristic extraction only; the LLM provider is **never** called even if configured.
+- `'balanced'` (default) — LLM extraction when a provider is present, heuristic fallback otherwise (identical to pre-R5 behavior).
+- `'accurate'` — LLM extraction when available, plus the `validate` hook is invoked after the write (the structural seam `RelationConsolidator` plugs into). Without a `validate` callback, `'accurate'` degrades to `'balanced'` with stricter heuristic thresholds.
+
+```typescript
+const result = await ctx.ioManager.ingest(
+  { messages: conversationMessages, source: 'support-thread-42' },
+  { mode: 'accurate', llmProvider: myProvider, validate: async (produced) => ({ valid: true }) }
+);
+console.log(result.manifestEntity, result.chunkCount, result.tokenUsage);
 ```
 
 ### MemoryEngine (v1.11)
@@ -2122,4 +2304,144 @@ ctx.procedureManager / causalReasoner / worldModelManager
 
 // Auth
 ctx.roleAssignmentStore / rbacMiddleware / accessTracker
+
+// Unreleased (brainapi2-inspired features)
+ctx.eventManager   // event reification (R1), @experimental
 ```
+
+---
+
+## Unreleased — added API surface
+
+Post-v2.9.0 additions. `explain`/`lookFor` on `HybridSearchManager.search`,
+`GraphTraversal.findPathWithin`/`getNeighborsWithRelations(lookFor)`, and the
+`ingest()` provenance/mode additions are documented inline in their
+respective sections above (§[GraphTraversal](#graphtraversal),
+§[HybridSearchManager](#hybridsearchmanager), §[IOManager](#iomanager)).
+This section covers the two new standalone classes: `EventManager` and
+`RelationConsolidator`.
+
+### EventManager (R1 — event reification) `@experimental`
+
+Wired via `ctx.eventManager` (lazy getter over `ctx.entityManager` /
+`ctx.relationManager`). Reifies actions as first-class `entityType: 'event'`
+hub entities — "who did what, to whom, where, when" as one queryable unit —
+instead of flat triples. Pure convention layer; no schema changes.
+
+```typescript
+class EventManager {
+  constructor(
+    entityManager: EntityManager,
+    relationManager: RelationManager,
+    config?: { autoCreateEndpoints?: boolean }  // default true
+  );
+
+  recordEvent(input: {
+    action: string;             // required
+    actor: string;              // required
+    target?: string;
+    context?: string;
+    participants?: string[];
+    occurredAt?: string | Date;
+    flowKey?: string;           // groups events under tag `flow:<key>`
+    detail?: string | string[];
+    importance?: number;
+  }): Promise<EventRecord>;
+
+  getEvent(name: string): Promise<EventRecord | null>;
+  queryEvents(filter?: {
+    actor?: string; target?: string; action?: string; flowKey?: string;
+    timeRange?: { start?: string | Date; end?: string | Date };
+    limit?: number;
+  }): Promise<EventRecord[]>;
+  getFlow(flowKey: string): Promise<EventRecord[]>;         // chronological events sharing a flow key
+  whoDidWhat(filter?: {
+    target?: string; context?: string;
+    timeRange?: { start?: string | Date; end?: string | Date };
+    limit?: number;
+  }): Promise<Array<{ actor: string; action: string; event: EventRecord; occurredAt?: string }>>;
+}
+```
+
+Each event hub entity is named `event-<action>-<shortId>` and linked to its
+participants with role-typed relations: `actor —actor_of→ event`,
+`event —targeted→ target`, `event —occurred_in→ context`,
+`participant —participant_in→ event`. Missing endpoint entities are
+auto-created as lightweight `entityType: 'concept'` stubs by default
+(`autoCreateEndpoints: false` throws before writing anything instead).
+Reads use the `TypeIndex`/`RelationIndex` — never a full-graph scan.
+
+```typescript
+await ctx.eventManager.recordEvent({
+  action: 'deployed',
+  actor: 'alice',
+  target: 'api-service',
+  context: 'production',
+  occurredAt: '2026-07-24T12:00:00Z',
+  flowKey: 'release-42',
+});
+const flow = await ctx.eventManager.getFlow('release-42');
+const who = await ctx.eventManager.whoDidWhat({ target: 'api-service' });
+```
+
+### RelationConsolidator (R3 — relation "Janitor" pass) `@experimental`
+
+Not wired to `ManagerContext` — construct directly with `ctx.relationManager`
+(and optionally `ctx.entityManager`, an embedding provider, and an
+`LLMProvider`). A three-tier dedup/validation pass for relations
+(`ConsolidationPipeline` had historically been entity/observation-only):
+
+```typescript
+class RelationConsolidator {
+  constructor(
+    relationOps: { getRelations, createRelations, deleteRelations },  // RelationManager-compatible
+    entityOps?: { listEntities },                                     // enables tier 1/2 graph scan
+    options?: {
+      embedding?: { embed, embedBatch? };  // enables tier 2 (semantic dedup)
+      llm?: LLMProvider;                    // enables tier 3 (neighborhood validation)
+      thresholds?: { semantic?: number };    // default 0.90
+      maxGroups?: number;                    // default 100
+      maxLlmBatch?: number;                  // default 50
+      maxNeighborhoodRelations?: number;      // default 200
+    }
+  );
+
+  analyze(options?: { newRelations?: Relation[] }): Promise<RelationConsolidationReport>;
+  consolidate(options?: {
+    newRelations?: Relation[];
+    apply?: boolean;   // default false = dry-run, alias for analyze()
+  }): Promise<RelationConsolidationResult>;
+}
+```
+
+- **Tier 1 (exact/near-exact)** — same-`(from, to)` relations whose
+  `relationType`s are trivial spelling variants (`works_at` vs `works-at` vs
+  `WorksAt`) merge onto the canonical (most-used, tie → oldest) spelling.
+  Also flags `properties.bidirectional`-marked inverse-direction duplicates.
+- **Tier 2 (semantic, embedding-gated)** — same-pair relations whose
+  descriptors have cosine similarity ≥ threshold (default 0.90) are flagged
+  as semantic duplicates. Skipped silently without an embedding provider.
+- **Tier 3 (neighborhood validation, LLM-gated)** — a caller-supplied batch
+  of new relations (e.g. freshly ingested) is validated against a 2-hop
+  neighborhood snapshot; returns `'ok' | 'suspect' | 'wrong'` verdicts as
+  `ConsolidationFeedback`. **Never mutates** — the caller decides what to do.
+  Skipped silently without an `LLMProvider`.
+
+`consolidate({ apply: true })` applies tier 1+2 merges via
+`deleteRelations` + `createRelations` (tier 3 always stays report-only).
+
+```typescript
+const janitor = new RelationConsolidator(ctx.relationManager, ctx.entityManager, {
+  embedding: ctx.semanticSearch.getEmbeddingService(),
+  llm: myLlmProvider,
+});
+const report = await janitor.analyze({ newRelations: freshlyIngested });
+const result = await janitor.consolidate({ apply: true });
+console.log(result.relationsDeleted, result.relationsCreated);
+```
+
+A `RelationConsolidationStage implements PipelineStage` wrapper exists for
+`ConsolidationPipeline` (not auto-registered — construct and
+`pipeline.registerStage(new RelationConsolidationStage(janitor))`
+explicitly); report-only by default, emits `[info]`-prefixed findings on
+`StageResult.errors`.

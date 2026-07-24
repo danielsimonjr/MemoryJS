@@ -23,8 +23,11 @@
 >   (`private`/`team`/`org`/`shared`/`public`); η.5.5.b extension adds
 >   `allowedRoles[]` predicate + `visibleFrom`/`visibleUntil` time-window
 >   gate.
-> - **RBAC** (η.6.1) — `RbacMiddleware.checkPermission()` plugged into
->   `GovernancePolicy` when `MEMORY_RBAC_ENABLED=true`.
+> - **RBAC** (η.6.1) — `RbacMiddleware.checkPermission()`; construct it and
+>   plug it into `GovernancePolicy` yourself (there is no
+>   `MEMORY_RBAC_ENABLED` env var — see
+>   [Governance is now enforced](#governance-is-now-enforced-unreleased-sec1)
+>   below for the real wiring).
 > - **Audit attribution enforcer** (η.5.5.d) — `CollaborationAuditEnforcer`
 >   strict mode requires `agentId` on every mutation; throws
 >   `AttributionRequiredError` otherwise.
@@ -33,10 +36,20 @@
 >   writes (HTTP 409 mapping when behind REST API).
 > - **PII redactor** (η.6.3) — `PiiRedactor` with bundled patterns (email
 >   / SSN / CC / phone / IP) for export-time scrubbing; `redactWithStats`
->   returns counts for compliance audit trails.
+>   returns counts for compliance audit trails. **Now actually wired**
+>   (Unreleased, Sec6) — see below.
 >
 > Encryption-at-rest (SQLCipher) and full input-validation (Zod schema)
 > are **gated** pending dep approval — see η.6.3 plan.
+>
+> **Security hardening pass (Unreleased):** governance enforcement is now a
+> real chokepoint (was documentation-only), the audit log is hash-chained
+> and tamper-evident, PII redaction is wired into exports/backups and audit
+> snapshots, `UpdateEntitySchema` closed a mass-assignment gap, the REST
+> adapter gained an auth middleware, and Brotli/zlib decompression is
+> capped against decompression bombs. See
+> [Governance is now enforced](#governance-is-now-enforced-unreleased-sec1)
+> for the full rundown.
 
 Production security hardening and best practices for MemoryJS deployments.
 
@@ -54,8 +67,9 @@ Production security hardening and best practices for MemoryJS deployments.
 8. [File System Security](#file-system-security)
 9. [Network Security](#network-security)
 10. [Audit Logging](#audit-logging)
-11. [Security Checklist](#security-checklist)
-12. [Vulnerability Reporting](#vulnerability-reporting)
+11. [Security Hardening Pass (Unreleased)](#security-hardening-pass-unreleased)
+12. [Security Checklist](#security-checklist)
+13. [Vulnerability Reporting](#vulnerability-reporting)
 
 ---
 
@@ -805,6 +819,218 @@ class AuditedMemory {
   }
 }
 ```
+
+---
+
+## Security Hardening Pass (Unreleased)
+
+Findings and fixes from a defensive review of the library itself
+(`docs/development/OPTIMIZATION_OPPORTUNITIES.md`, "Security" section).
+Every item below is verified against source, not aspirational.
+
+### Governance is now enforced (Unreleased, Sec1)
+
+**Before this pass:** `MEMORY_GOVERNANCE_ENABLED` was documented in
+CLAUDE.md but read nowhere in `src/`. There was no `ctx.governanceManager`
+enforcement wiring — policy checks lived only inside
+`GovernanceTransaction`, reachable only if a caller manually built a
+`GovernanceManager` and routed writes through `withTransaction`. Every real
+mutation path (`EntityManager`, including `renameEntity`, and the
+reconstructive-memory backing) wrote with zero policy or audit. An operator
+who set the env var and a policy, believing deletes were blocked/audited,
+got nothing.
+
+**Now:** setting `MEMORY_GOVERNANCE_ENABLED='true'` (strict literal match —
+`'1'`/`'yes'`/`'TRUE'` are silently ignored) wires `ctx.governanceManager`'s
+policy + audit log into every `EntityManager` mutation:
+
+```typescript
+process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
+const ctx = new ManagerContext('./memory.jsonl');
+
+ctx.governanceManager.setPolicy({
+  canCreate: (entity) => true,
+  canUpdate: (entity, updates) => updates.entityType === undefined, // block type changes
+  canDelete: (entity) => (entity.importance ?? 0) < 8,               // protect high-importance
+});
+
+// createEntities / updateEntity / batchUpdate / deleteEntities / renameEntity
+// are now all policy-checked (throw GovernanceError on denial) and audited
+// (fire-and-forget append — an audit failure never fails the write).
+await ctx.entityManager.deleteEntities(['low-value-note']);  // OK
+await ctx.entityManager.deleteEntities(['critical-decision']); // throws GovernanceError
+```
+
+With the flag unset, `ctx.governanceManager` is still constructible and
+usable manually (`withTransaction`/`rollback`), but ordinary
+`EntityManager` writes bypass it entirely — zero overhead, unchanged from
+pre-Unreleased behavior. A related bug is also fixed: `rollback()` used to
+spread the raw audit snapshot **before** the field whitelist, so any field
+present in the (writable) audit file could land back on a restored entity;
+it now builds exclusively from the whitelisted fields.
+
+### Audit log tamper-evidence: hash chaining + `verifyChain()` (Unreleased, Sec5)
+
+**Before:** `AuditLog.append()` was a plain `fs.appendFile` with no file
+mode, no hash chain, no sequence numbers — any writer with file access
+could rewrite, truncate, or reorder entries undetectably, and malformed
+lines were skipped silently on read.
+
+**Now:** every entry carries a monotonic `seq` and a SHA-256 `prevHash`
+chaining it to the previous line's exact serialized text; the file is
+written with `{ mode: 0o600 }`. `AuditLog.verifyChain()` replays the file
+and reports the first break:
+
+```typescript
+import { AuditLog } from '@danielsimonjr/memoryjs';
+
+const log = new AuditLog('./memory-audit.jsonl');
+const result = await log.verifyChain();
+// { valid: boolean, brokenAt?: number, totalChecked: number,
+//   legacyLines: number, malformedLines: number }
+if (!result.valid) {
+  console.error(`Audit chain broken at line ${result.brokenAt} — investigate immediately`);
+}
+```
+
+```bash
+# Same check from the CLI — exits 1 when the chain is broken (scriptable)
+memory audit verify
+memory audit log --entity Alice --since 24h   # queryable provenance
+memory audit stats                            # counts by operation, oldest/newest
+```
+
+Leading entries written before this change (no `seq`/`prevHash`) are
+"legacy" — reported separately, not treated as a break. This makes the
+audit log **tamper-evident** (you can detect rewrites), not
+**tamper-proof** (an attacker with write access can still truncate the
+whole file or start a new fork from any point) — ship it to write-once
+storage or a separate host if you need the stronger guarantee.
+
+### PII redaction wired into exports, backups, and audit snapshots (Unreleased, Sec6)
+
+**Before:** `PiiRedactor` self-described as "applied on export only" but had
+zero call sites — `IOManager` export/backup and `GovernanceManager` audit
+snapshots all emitted raw observation text.
+
+**Now:** both are opt-in:
+
+```typescript
+// Export/backup: redact PII in observation strings
+const json = await ctx.ioManager.exportGraph('json', { redactPii: true });
+const backup = await ctx.ioManager.createBackup({ redactPii: true, compress: true });
+
+// Audit snapshots (before/after entity state written to the audit log)
+const gov = new GovernanceManager(storage, auditLog, {
+  redactAuditSnapshots: true,       // default false — opt in explicitly
+  redactor: new PiiRedactor({ additionalPatterns: [...] }), // optional custom bank
+});
+```
+
+Both default to `false`/off — existing behavior (raw text) is unchanged
+unless you opt in. `MemoryEngine.addTurn`'s write-side `ExclusionManager`
+filter is unrelated and unaffected — it was already wired before this pass.
+
+### Mass assignment closed: `UpdateEntitySchema` strips unknown keys (Unreleased, Sec7)
+
+**Before:** `UpdateEntitySchema` ended in `.passthrough()`, so
+`updateEntity(name, updates)` admitted arbitrary extra keys past the known
+fields. Combined with `sanitizeObject` (which only strips
+`__proto__`/`constructor`/`prototype`), a caller could inject or spoof
+internal-looking fields (`isLatest`, `supersededBy`, `version`) that
+`GovernancePolicy.canUpdate` — which checks the *pre-merge* entity — could
+not veto.
+
+**Now:** the schema ends in `.strip()` — an explicit allow-list. Unknown
+keys are silently dropped before validation succeeds; only fields in the
+schema ever reach `Object.assign`. See
+[MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md#behavioral-changes-unreleased--post-v290)
+if your integration relied on the old passthrough behavior. A parity fix
+also wraps `GovernanceManager.updateEntity`/`createEntity` with
+`sanitizeObject` — previously the "hardened" governance path skipped the
+same prototype-pollution guard every other write path uses.
+
+### REST API-key auth middleware (Unreleased, Sec9)
+
+**Before:** `src/adapters/RestRouter.ts` had zero auth wiring. Mounting
+`RestRouter.withDefaults(ctx)` exposed an unauthenticated read/write HTTP
+surface to anyone who could reach the listener, despite `APIKeyStore`
+already existing (and being cryptographically sound — SHA-256 of a
+192-bit key, `crypto.timingSafeEqual` comparison).
+
+**Now:** `ApiKeyAuthMiddleware` wires `APIKeyStore.validate()` into the
+router:
+
+```typescript
+import { APIKeyStore } from '@danielsimonjr/memoryjs/security';
+import { ApiKeyAuthMiddleware, RestRouter } from '@danielsimonjr/memoryjs/adapters';
+
+const store = new APIKeyStore();
+const { plaintext } = store.issue({ scopes: ['entities:write'] }); // show plaintext to the caller once
+// persist store.serialize() somewhere durable — issue()/revoke() do not auto-persist
+
+const auth = new ApiKeyAuthMiddleware({ store });
+const router = RestRouter.withDefaults(ctx, { auth });
+// GET routes: any valid key. Mutating routes (POST/PUT/PATCH/DELETE):
+// require the 'entities:write' scope by default (customize via requiredScopes).
+```
+
+Requests authenticate via `Authorization: Bearer <key>` (preferred) or
+`X-Api-Key`. Failures are `401 { error: 'unauthorized' }` (missing/
+unknown/revoked/expired — the specific reason is deliberately NOT sent to
+the client, only to your `onReject` callback for server-side logging) or
+`403 { error: 'forbidden', requiredScopes }` for a valid key lacking scope.
+**Still your responsibility:** persist `store.serialize()` after
+`issue()`/`revoke()` — a crash between the call and your persistence step
+can resurrect a revoked key on the next `load()`.
+
+### Decompression-bomb caps (Unreleased, Sec8)
+
+**Before:** `decompress()`/`decompressFile()` (Brotli) and the zlib
+adapter called into Node's decompression with no output-size cap — a
+crafted small `.jsonl.br` payload could expand to exhaust memory.
+
+**Now:** every decompression path enforces `maxOutputLength` — explicit
+option, else `MEMORY_MAX_DECOMPRESSED_BYTES` env var, else 256MB default.
+Exceeding the cap throws instead of silently truncating. See
+[CONFIGURATION.md](./CONFIGURATION.md) for the env var and
+[PERFORMANCE_TUNING.md](./PERFORMANCE_TUNING.md) if you need to raise it
+for known-large trusted payloads (e.g. bulk restore of an intentionally
+large backup).
+
+### RBAC fixes: default-role semantics + sidecar file mode (Unreleased, Sec2)
+
+**Before:** `RbacMiddleware`'s `defaultRole` ternary flipped on an
+unrelated condition — passing `{ matrix }` without `defaultRole` and
+passing `{ defaultRole: undefined }` explicitly were indistinguishable, so
+omission silently granted unregistered agents the documented `'reader'`
+default in both cases (no way to actually deny-by-default via the
+documented pattern). `RoleAssignmentStore` also wrote its sidecar file
+world-readable (no explicit `mode`) and silently dropped corrupt lines —
+meaning a corrupted **revoke** line failed open.
+
+**Now:** the constructor checks `'defaultRole' in options` — key presence,
+not value — so `{ defaultRole: undefined }` reliably denies unregistered
+agents while omitting the key keeps the `'reader'` default. The sidecar
+file is written with `{ mode: 0o600 }`, and corrupt lines are surfaced as a
+count instead of disappearing. There is still no `MEMORY_RBAC_ENABLED` /
+`MEMORY_RBAC_DEFAULT_ROLE` env var — configure `RbacMiddleware` in code and
+route it through `GovernancePolicy` yourself (see
+[Governance is now enforced](#governance-is-now-enforced-unreleased-sec1)
+above, and the RBAC section of [CONFIGURATION.md](./CONFIGURATION.md) for
+the corrected reference).
+
+### `memory env` now masks secrets (Unreleased, Sec3)
+
+**Before:** the `memory env` diagnostic command printed
+`MEMORY_OPENAI_API_KEY` in plaintext — exactly the output users paste into
+support tickets/issues.
+
+**Now:** secret-classified vars are masked (`***set***` / `null`) instead
+of printed verbatim. Elsewhere, secrets hygiene was already clean:
+`EmbeddingService` only ever places the key in the `Authorization` header,
+never in error paths; the key is never persisted into the graph, so
+exports can't leak it.
 
 ---
 

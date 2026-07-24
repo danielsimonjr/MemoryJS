@@ -302,6 +302,56 @@ async function deleteOrphanedRelations(ctx: ManagerContext): Promise<number> {
 }
 ```
 
+### Event Timeline Reconstruction (Unreleased, `@experimental`)
+
+Flat `actor -> action -> target` relations lose the "who/what/when/where"
+shape once several actions touch the same entities. `ctx.eventManager`
+reifies each action as its own hub entity, so a flow (e.g. one release, one
+incident) can be replayed chronologically and queried by any participant.
+
+```typescript
+async function recordDeploymentFlow(ctx: ManagerContext, flowKey: string) {
+  await ctx.eventManager.recordEvent({
+    action: 'approved',
+    actor: 'agent-alice',
+    target: 'deployment-42',
+    context: 'production',
+    flowKey,
+  });
+  await ctx.eventManager.recordEvent({
+    action: 'deployed',
+    actor: 'agent-bob',
+    target: 'deployment-42',
+    context: 'production',
+    flowKey,
+  });
+  await ctx.eventManager.recordEvent({
+    action: 'rolled-back',
+    actor: 'agent-bob',
+    target: 'deployment-42',
+    context: 'production',
+    flowKey,
+    detail: ['error rate exceeded 5% within 10 minutes'],
+  });
+}
+
+async function summarizeFlow(ctx: ManagerContext, flowKey: string): Promise<string> {
+  const timeline = await ctx.eventManager.getFlow(flowKey); // chronological
+  return timeline
+    .map(e => `${e.occurredAt ?? e.createdAt ?? '?'}: ${e.actor} ${e.action} ${e.target ?? ''}`.trim())
+    .join('\n');
+}
+
+// "Who touched deployment-42, and in what order?"
+const who = await ctx.eventManager.whoDidWhat({ target: 'deployment-42' });
+```
+
+Endpoint entities (`agent-alice`, `deployment-42`, `production`) that don't
+already exist are auto-created as lightweight `entityType: 'concept'`
+stubs, so this composes with entities you already have — no upfront schema
+migration needed. Reads use the `TypeIndex`/`RelationIndex`, not a
+full-graph scan, so `getFlow`/`whoDidWhat` stay cheap as the graph grows.
+
 ---
 
 ## Search Recipes
@@ -557,6 +607,53 @@ async function graphAwareSearch(ctx: ManagerContext, query: string) {
 Both are cheap to leave off (the `GraphRankPrior` isn't even constructed
 until a non-zero weight/boost requests it) and cheap to try — no schema
 or storage changes involved.
+
+### Explainable RAG Retrieval (Unreleased)
+
+RAG-style retrieval that answers "why was this returned?" alongside "what
+was returned?" — pass `explain: true` and turn each result's evidence
+paths into a citation string for the LLM prompt.
+
+```typescript
+interface CitedResult {
+  entity: Entity;
+  citation: string;
+  truncated: boolean;
+}
+
+async function explainableSearch(
+  ctx: ManagerContext,
+  query: string,
+  limit: number = 5
+): Promise<CitedResult[]> {
+  const graph = await ctx.storage.loadGraph();
+  const results = await ctx.hybridSearchManager.search(graph, query, {
+    limit,
+    explain: true,
+    explainOptions: { maxDepth: 3, maxPathsPerResult: 2 },
+  });
+
+  return results.map(r => {
+    const paths = r.evidencePaths ?? [];
+    const citation = paths.length > 0
+      ? paths.map(p => `via ${p.viaLayer}: ${p.nodes.join(' -> ')}`).join(' | ')
+      : '(direct match — no connecting path)';
+    return { entity: r.entity, citation, truncated: r.evidenceTruncated ?? false };
+  });
+}
+
+// Build a prompt that lets the LLM (and a human reviewer) see the
+// justification, not just the retrieved text:
+const cited = await explainableSearch(ctx, 'why did the deployment fail?');
+const prompt = cited
+  .map(c => `### ${c.entity.name}\n${c.entity.observations.join('\n')}\nEvidence: ${c.citation}`)
+  .join('\n\n');
+```
+
+`explain` is off by default and additive — omit it and this is identical
+to a plain `hybridSearchManager.search()` call. `evidenceTruncated: true`
+means a depth/count cap bit — treat the citation as partial rather than
+exhaustive, not as "no path exists."
 
 ---
 
