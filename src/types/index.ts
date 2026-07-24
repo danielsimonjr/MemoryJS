@@ -280,6 +280,18 @@ export type {
   ReconstructionOptions,
 } from './reconstruction.js';
 
+// R1 Event Reification — n-ary "triangle" event model types (hub entity +
+// role-typed relations; see agent/events/EventManager).
+export type {
+  EventTimeInput,
+  EventTimeRange,
+  RecordEventInput,
+  EventRecord,
+  EventQueryFilter,
+  WhoDidWhatFilter,
+  WhoDidWhatEntry,
+} from './event.js';
+
 // Result<T, E> — discriminated-union return type for expected domain
 // failures (see CONTRIBUTING.md > Error Handling).
 export type { Result } from './result.js';

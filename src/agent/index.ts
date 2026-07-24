@@ -497,3 +497,41 @@ export {
   type ReconstructiveBacking,
   type BridgePersistResult,
 } from './reconstruction/index.js';
+
+// R3 — Relation-level consolidation with corrective feedback (Janitor pattern)
+export {
+  RelationConsolidator,
+  RelationConsolidationStage,
+  normalizeRelationType,
+  relationKey,
+  type RelationConsolidatorRelationOps,
+  type RelationConsolidatorEntityOps,
+  type RelationEmbeddingProvider,
+  type RelationConsolidatorThresholds,
+  type RelationConsolidatorOptions,
+  type RelationAnalyzeOptions,
+  type RelationConsolidateOptions,
+  type ExactDuplicateGroup,
+  type InverseDuplicatePair,
+  type SemanticDuplicateGroup,
+  type RelationVerdict,
+  type ConsolidationFeedback,
+  type RelationConsolidationReport,
+  type RelationConsolidationResult,
+  type RelationConsolidationStageConfig,
+} from './RelationConsolidator.js';
+
+// R1 Event Reification — n-ary "triangle" model with first-class event hubs
+export {
+  EventManager,
+  eventEntityName,
+  EVENT_ENTITY_TYPE,
+  EVENT_STUB_ENTITY_TYPE,
+  EVENT_TAG,
+  FLOW_TAG_PREFIX,
+  ACTOR_OF_RELATION,
+  TARGETED_RELATION,
+  OCCURRED_IN_RELATION,
+  PARTICIPANT_IN_RELATION,
+  type EventManagerConfig,
+} from './events/index.js';
