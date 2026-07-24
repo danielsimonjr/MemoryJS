@@ -31,16 +31,14 @@ function validateFunction(fn: unknown, paramName: string): void {
 
 // ==================== Types ====================
 
-/**
- * Task priority levels.
- * Higher priority tasks are executed first.
- */
-export enum TaskPriority {
-  LOW = 0,
-  NORMAL = 1,
-  HIGH = 2,
-  CRITICAL = 3,
-}
+// S10: TaskPriority and ProgressCallback moved to src/types/task-scheduler.ts
+// (they are also referenced by types/types.ts, and the types layer must stay a
+// leaf). Re-exported here for backwards compatibility.
+import { TaskPriority } from '../types/task-scheduler.js';
+import type { ProgressCallback } from '../types/task-scheduler.js';
+
+export { TaskPriority };
+export type { ProgressCallback };
 
 /**
  * Task status in the queue.
@@ -91,15 +89,7 @@ export interface TaskResult<R = unknown> {
   completedAt: number;
 }
 
-/**
- * Progress callback for batch operations.
- */
-export type ProgressCallback = (progress: {
-  completed: number;
-  total: number;
-  percentage: number;
-  currentTaskId?: string;
-}) => void;
+// (ProgressCallback moved to src/types/task-scheduler.ts — re-exported above.)
 
 /**
  * Batch processing options.

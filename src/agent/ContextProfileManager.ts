@@ -8,20 +8,14 @@
  * @module agent/ContextProfileManager
  */
 
-import type { SalienceContext, TemporalFocus } from '../types/agent-memory.js';
+import type { SalienceContext, TemporalFocus, ContextProfile } from '../types/agent-memory.js';
 
 // ==================== Types ====================
 
-/**
- * Built-in context profile names.
- * - default: Balanced weights for general use
- * - planning: Emphasizes importance and context for architectural decisions
- * - incident: Prioritizes recency and importance for urgent situations
- * - handoff: Optimizes for session continuity and context
- * - review: Balanced with high context weight for retrospectives
- * - auto: Automatically inferred from query text
- */
-export type ContextProfile = 'default' | 'planning' | 'incident' | 'handoff' | 'review' | 'auto';
+// S10: `ContextProfile` moved to src/types/agent-memory.ts (the types layer
+// must stay a leaf — types/agent-memory.ts also references it). Re-exported
+// here for backwards compatibility.
+export type { ContextProfile };
 
 /**
  * Configuration for a context profile.

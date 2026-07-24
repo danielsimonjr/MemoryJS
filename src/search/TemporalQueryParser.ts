@@ -7,7 +7,63 @@
  * @module search/TemporalQueryParser
  */
 
-import * as chrono from 'chrono-node';
+import { createRequire } from 'node:module';
+
+/**
+ * Namespace type of chrono-node. Type-only — erased at runtime, so this
+ * declaration does NOT trigger a module load.
+ */
+type ChronoModule = typeof import('chrono-node');
+
+/**
+ * Memoized chrono-node module. chrono-node is the heaviest external
+ * dependency on the default import path (~hundreds of ms cold), so it is
+ * loaded lazily on first use instead of at module scope (S8).
+ */
+let chronoModule: ChronoModule | undefined;
+let chronoLoadPromise: Promise<ChronoModule> | undefined;
+
+/**
+ * Normalize ESM/CJS interop shapes: `import('chrono-node')` may surface the
+ * API either as named exports on the namespace or under `default`.
+ */
+function resolveChronoNamespace(mod: unknown): ChronoModule {
+  const candidate = mod as { parse?: unknown; default?: { parse?: unknown } };
+  if (typeof candidate.parse === 'function') return mod as ChronoModule;
+  if (candidate.default && typeof candidate.default.parse === 'function') {
+    return candidate.default as ChronoModule;
+  }
+  throw new Error('chrono-node module loaded but no parse() export was found');
+}
+
+/**
+ * Asynchronously load chrono-node (memoized). Preferred loading path —
+ * bundler-friendly (code-splittable) and non-blocking.
+ */
+function loadChrono(): Promise<ChronoModule> {
+  if (chronoModule) return Promise.resolve(chronoModule);
+  if (!chronoLoadPromise) {
+    chronoLoadPromise = import('chrono-node').then((mod) => {
+      chronoModule = resolveChronoNamespace(mod);
+      return chronoModule;
+    });
+  }
+  return chronoLoadPromise;
+}
+
+/**
+ * Synchronously load chrono-node (memoized). Fallback for the public sync
+ * `parseTemporalExpression()` API — uses `createRequire`, which works in
+ * both the ESM and CJS builds under Node. Callers that can go async should
+ * prefer `parseTemporalExpressionAsync()`, which uses dynamic `import()`.
+ */
+function requireChronoSync(): ChronoModule {
+  if (!chronoModule) {
+    const requireModule = createRequire(import.meta.url);
+    chronoModule = resolveChronoNamespace(requireModule('chrono-node'));
+  }
+  return chronoModule;
+}
 
 /**
  * A resolved temporal range with concrete Date boundaries.
@@ -79,11 +135,45 @@ export class TemporalQueryParser {
     const ref = referenceDate ?? new Date();
     const trimmed = text.trim();
 
-    // Try custom pattern matching first for commonly-used relative ranges
+    // Try custom pattern matching first for commonly-used relative ranges.
+    // These never need chrono-node, so the common relative-range case stays
+    // dependency-free.
     const custom = this.parseCustomPattern(trimmed, ref);
     if (custom) return custom;
 
-    // Fall back to chrono-node for everything else
+    // Fall back to chrono-node for everything else (lazy sync load)
+    return this.parseWithChrono(trimmed, ref);
+  }
+
+  /**
+   * Async variant of {@link parseTemporalExpression}.
+   *
+   * Ensures chrono-node is loaded via dynamic `import()` before parsing,
+   * so the load never blocks the event loop with a synchronous `require`.
+   * Prefer this from async call sites (e.g. `TemporalSearch.searchByTimeQuery`).
+   *
+   * @param text - Natural language temporal expression
+   * @param referenceDate - Reference date for relative calculations (default: now)
+   * @returns Resolved date range or undefined if text cannot be parsed
+   */
+  async parseTemporalExpressionAsync(
+    text: string,
+    referenceDate?: Date
+  ): Promise<ParsedTemporalRange | undefined> {
+    if (!text || text.trim().length === 0) return undefined;
+
+    const ref = referenceDate ?? new Date();
+    const trimmed = text.trim();
+
+    // The "since X" custom pattern consults chrono-node; every other custom
+    // pattern is chrono-free. Preload via dynamic import() so the sync
+    // fallback inside parseCustomPattern hits the memoized module.
+    if (/^since\s/i.test(trimmed)) await loadChrono();
+
+    const custom = this.parseCustomPattern(trimmed, ref);
+    if (custom) return custom;
+
+    await loadChrono();
     return this.parseWithChrono(trimmed, ref);
   }
 
@@ -190,7 +280,7 @@ export class TemporalQueryParser {
     // "since X" → parse X as start, use ref as end
     const sinceMatch = lower.match(/^since\s+(.+)$/);
     if (sinceMatch) {
-      const parsed = chrono.parseDate(sinceMatch[1], ref, { forwardDate: false });
+      const parsed = requireChronoSync().parseDate(sinceMatch[1], ref, { forwardDate: false });
       if (parsed) {
         return { start: parsed, end: new Date(ref), originalExpression: text };
       }
@@ -217,6 +307,7 @@ export class TemporalQueryParser {
    * @internal
    */
   private parseWithChrono(text: string, ref: Date): ParsedTemporalRange | undefined {
+    const chrono = requireChronoSync();
     // Try to parse as a range (e.g. "between Monday and Wednesday", "Jan 1 to Jan 7")
     const results = chrono.parse(text, ref, { forwardDate: false });
 

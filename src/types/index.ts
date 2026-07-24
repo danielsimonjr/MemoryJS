@@ -118,6 +118,8 @@ export type {
   GraphEvent,
   GraphEventListener,
   GraphEventMap,
+  // S10: structural event-emitter contract (types-layer leaf)
+  IGraphEventEmitter,
   // Phase 10 Sprint 4: Query cost estimation types
   SearchMethod,
   QueryCostEstimate,
@@ -208,7 +210,20 @@ export type {
   GroupMembership,
   ConflictInfo,
   ConflictStrategy,
+  // S10 relocations: context profiles + role profiles (canonical home is the
+  // types layer; agent/{ContextProfileManager,SalienceEngine,
+  // ContextWindowManager,RoleProfiles}.ts re-export them for compat)
+  ContextProfile,
+  SalienceEngineConfig,
+  ContextWindowManagerConfig,
+  AgentRole,
+  RoleProfile,
 } from './agent-memory.js';
+
+// S10 relocation: task-scheduler shared types (canonical home is the types
+// layer; utils/taskScheduler.ts re-exports them for compat)
+export { TaskPriority } from './task-scheduler.js';
+export type { ProgressCallback } from './task-scheduler.js';
 
 // Agent Memory Type Guards and Classes
 export {

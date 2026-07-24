@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 2.9.0
   lastUpdated: "2026-07-24"
-  totalFiles: 255
-  totalModules: 11
-  totalExports: 1627
+  totalFiles: 259
+  totalModules: 12
+  totalExports: 1663
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -12,11 +12,40 @@ entryPoints:
   - file: src/index.ts
     type: main
     description: MemoryJS - Knowledge Graph Storage Library
+  - file: src/sqlite.ts
+    type: build-entry
+    description: SQLite subpath entry (`@danielsimonjr/memoryjs/sqlite`).
   - file: src/workers/levenshteinWorker.ts
     type: build-entry
     description: Levenshtein Worker
 modules:
   adapters:
+    src/adapters/ApiKeyAuthMiddleware.ts:
+      description: API-Key Auth Middleware (Sec9)
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../security/APIKeyStore.js
+          imports:
+            - APIKeyStore
+            - KeyValidationResult
+          typeOnly: true
+        - file: ./RestRouter.js
+          imports:
+            - RestMethod
+            - RestRequest
+            - RestResponse
+          typeOnly: true
+      exports:
+        - DEFAULT_WRITE_SCOPE
+        - ApiKeyAuthMiddleware
+      classes:
+        - ApiKeyAuthMiddleware
+      interfaces:
+        - AuthContext
+        - ApiKeyAuthOptions
+      constants:
+        - DEFAULT_WRITE_SCOPE
     src/adapters/LangChainMemoryAdapter.ts:
       description: LangChain Memory Adapter
       externalDependencies: []
@@ -91,6 +120,11 @@ modules:
           imports:
             - paginate
             - parsePaginationParams
+        - file: ./ApiKeyAuthMiddleware.js
+          imports:
+            - ApiKeyAuthMiddleware
+            - AuthContext
+          typeOnly: true
       exports:
         - RestRouter
       classes:
@@ -99,6 +133,7 @@ modules:
         - RestRequest
         - RestResponse
         - RouteDefinition
+        - RestRouterOptions
     src/adapters/index.ts:
       description: Adapters Module — Barrel Export
       externalDependencies: []
@@ -112,6 +147,15 @@ modules:
             - RestResponse
             - RestHandler
             - RouteDefinition
+            - RestRouterOptions
+          reExport: true
+        - file: ./ApiKeyAuthMiddleware.js
+          imports:
+            - ApiKeyAuthMiddleware
+            - DEFAULT_WRITE_SCOPE
+            - ApiKeyAuthOptions
+            - AuthContext
+            - AuthOutcome
           reExport: true
         - file: ./RateLimiter.js
           imports:
@@ -143,6 +187,12 @@ modules:
         - RestResponse
         - RestHandler
         - RouteDefinition
+        - RestRouterOptions
+        - ApiKeyAuthMiddleware
+        - DEFAULT_WRITE_SCOPE
+        - ApiKeyAuthOptions
+        - AuthContext
+        - AuthOutcome
         - RateLimiter
         - RateLimiterConfig
         - RateLimitVerdict
@@ -161,6 +211,12 @@ modules:
         - RestResponse
         - RestHandler
         - RouteDefinition
+        - RestRouterOptions
+        - ApiKeyAuthMiddleware
+        - DEFAULT_WRITE_SCOPE
+        - ApiKeyAuthOptions
+        - AuthContext
+        - AuthOutcome
         - RateLimiter
         - RateLimiterConfig
         - RateLimitVerdict
@@ -731,6 +787,7 @@ modules:
           imports:
             - SalienceContext
             - TemporalFocus
+            - ContextProfile
           typeOnly: true
       exports:
         - ContextProfileManager
@@ -782,6 +839,10 @@ modules:
           imports:
             - ContextProfileManager
             - ProfileConfig
+        - file: ../types/agent-memory.js
+          imports:
+            - ContextWindowManagerConfig
+          typeOnly: true
         - file: ./ProjectContextManager.js
           imports:
             - ProjectContextManager
@@ -812,7 +873,6 @@ modules:
       classes:
         - ContextWindowManager
       interfaces:
-        - ContextWindowManagerConfig
         - ContextCompressionResult
         - WakeUpOptions
         - WakeUpResult
@@ -1714,25 +1774,19 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
-        - file: ./SalienceEngine.js
-          imports:
-            - SalienceEngineConfig
-          typeOnly: true
-        - file: ./ContextWindowManager.js
-          imports:
-            - ContextWindowManagerConfig
-          typeOnly: true
         - file: ../types/agent-memory.js
           imports:
             - AgentType
+            - AgentRole
+            - RoleProfile
+            - SalienceEngineConfig
+            - ContextWindowManagerConfig
           typeOnly: true
       exports:
         - getRoleProfile
         - listRoleProfiles
         - resolveRoleProfile
         - createCustomProfile
-      interfaces:
-        - RoleProfile
       functions:
         - getRoleProfile
         - listRoleProfiles
@@ -1824,12 +1878,14 @@ modules:
             - computeDegreeMap
             - normalizedDegree
             - DegreeMap
+        - file: ../types/agent-memory.js
+          imports:
+            - SalienceEngineConfig
+          typeOnly: true
       exports:
         - SalienceEngine
       classes:
         - SalienceEngine
-      interfaces:
-        - SalienceEngineConfig
     src/agent/SessionCheckpoint.ts:
       description: Session Checkpoint Manager
       externalDependencies: []
@@ -4875,6 +4931,13 @@ modules:
         - file: ./EntityStateMachine.js
           imports:
             - EntityStateMachine
+        - file: ../features/GovernanceManager.js
+          imports:
+            - GovernanceError
+            - GovernancePolicy
+        - file: ../utils/logger.js
+          imports:
+            - logger
         - file: ../utils/index.js
           imports:
             - BatchCreateEntitiesSchema
@@ -4883,7 +4946,6 @@ modules:
             - checkCancellation
             - createProgressReporter
             - createProgress
-            - sanitizeObject
         - file: ../utils/constants.js
           imports:
             - GRAPH_LIMITS
@@ -4893,6 +4955,8 @@ modules:
         - EntityManager
       interfaces:
         - EntityManagerOptions
+        - GovernanceAuditEvent
+        - GovernanceHooks
         - GetEntityOptions
     src/core/EntityStateMachine.ts:
       description: Entity State Machine
@@ -4928,6 +4992,7 @@ modules:
             - GraphEvent
             - GraphEventListener
             - GraphEventMap
+            - IGraphEventEmitter
             - Entity
             - Relation
             - EntityCreatedEvent
@@ -4977,6 +5042,8 @@ modules:
         - file: ../utils/searchCache.js
           imports:
             - clearAllSearchCaches
+            - bumpEntityGeneration
+            - bumpRelationGeneration
         - file: ../utils/indexes.js
           imports:
             - NameIndex
@@ -5181,10 +5248,14 @@ modules:
           imports:
             - LLMQueryPlannerConfig
           typeOnly: true
-        - file: ../search/index.js
+        - file: ../search/SemanticSearch.js
           imports:
             - SemanticSearch
+        - file: ../search/EmbeddingService.js
+          imports:
             - createEmbeddingService
+        - file: ../search/VectorStore.js
+          imports:
             - createVectorStore
         - file: ../features/IOManager.js
           imports:
@@ -5352,6 +5423,14 @@ modules:
             - ReconstructiveMemory
             - ReconstructiveMemoryConfig
             - ReconstructiveBacking
+        - file: ../features/GovernanceManager.js
+          imports:
+            - GovernanceManager
+        - file: ../features/AuditLog.js
+          imports:
+            - AuditLog
+        - file: ./sqlite-register.js
+          imports: []
       exports:
         - ManagerContext
       classes:
@@ -5510,6 +5589,7 @@ modules:
         - package: better-sqlite3
           imports:
             - Database
+            - Statement
         - package: async-mutex
           imports:
             - Mutex
@@ -5530,6 +5610,8 @@ modules:
         - file: ../utils/searchCache.js
           imports:
             - clearAllSearchCaches
+            - bumpEntityGeneration
+            - bumpRelationGeneration
         - file: ../utils/indexes.js
           imports:
             - NameIndex
@@ -5565,9 +5647,6 @@ modules:
         - file: ./GraphStorage.js
           imports:
             - GraphStorage
-        - file: ./SQLiteStorage.js
-          imports:
-            - SQLiteStorage
         - file: ./PostgreSQLStorage.js
           imports:
             - PostgreSQLStorage
@@ -5576,10 +5655,18 @@ modules:
             - IGraphStorage
             - StorageConfig
           typeOnly: true
+        - file: ./SQLiteStorage.js
+          imports: []
+          typeOnly: true
+          dynamic: true
       exports:
+        - registerSQLiteStorage
+        - preloadSQLiteStorage
         - createStorage
         - createStorageFromPath
       functions:
+        - registerSQLiteStorage
+        - preloadSQLiteStorage
         - createStorage
         - createStorageFromPath
     src/core/TransactionManager.ts:
@@ -5702,7 +5789,7 @@ modules:
           imports:
             - GraphStorage
           reExport: true
-        - file: ./SQLiteStorage.js
+        - file: ./sqlite-register.js
           imports:
             - SQLiteStorage
           reExport: true
@@ -5746,6 +5833,8 @@ modules:
           imports:
             - createStorage
             - createStorageFromPath
+            - preloadSQLiteStorage
+            - registerSQLiteStorage
           reExport: true
         - file: ./GraphEventEmitter.js
           imports:
@@ -5794,6 +5883,8 @@ modules:
         - TransactionResult
         - createStorage
         - createStorageFromPath
+        - preloadSQLiteStorage
+        - registerSQLiteStorage
         - GraphEventEmitter
         - RefIndex
         - RefEntry
@@ -5819,6 +5910,8 @@ modules:
         - TransactionResult
         - createStorage
         - createStorageFromPath
+        - preloadSQLiteStorage
+        - registerSQLiteStorage
         - GraphEventEmitter
         - RefIndex
         - RefEntry
@@ -5928,6 +6021,23 @@ modules:
         - fnv1a32
         - splitGraphIntoSegments
         - mergeSegmentsIntoGraph
+    src/core/sqlite-register.ts:
+      description: SQLiteStorage registration shim (S9).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./SQLiteStorage.js
+          imports:
+            - SQLiteStorage
+        - file: ./StorageFactory.js
+          imports:
+            - registerSQLiteStorage
+        - file: ../types/index.js
+          imports:
+            - IGraphStorage
+          typeOnly: true
+      exports:
+        - SQLiteStorage
   features:
     src/features/AnalyticsManager.ts:
       description: Analytics Manager
@@ -5996,8 +6106,10 @@ modules:
         - module: crypto
           imports:
             - randomUUID
+            - createHash
       internalDependencies: []
       exports:
+        - AUDIT_GENESIS_HASH
         - AuditLog
       classes:
         - AuditLog
@@ -6005,6 +6117,9 @@ modules:
         - AuditEntry
         - AuditFilter
         - AuditStats
+        - ChainVerificationResult
+      constants:
+        - AUDIT_GENESIS_HASH
     src/features/AutoLinker.ts:
       description: Auto-Linker
       externalDependencies: []
@@ -6055,6 +6170,9 @@ modules:
         - file: ../utils/entityUtils.js
           imports:
             - validateFilePath
+        - file: ../security/PiiRedactor.js
+          imports:
+            - PiiRedactor
         - file: ../types/index.js
           imports:
             - BackupOptions
@@ -6065,6 +6183,7 @@ modules:
           imports:
             - BackupMetadata
             - BackupInfo
+            - PiiRedactionOption
           typeOnly: true
         - file: ./IOManager.js
           imports:
@@ -6200,20 +6319,30 @@ modules:
           imports:
             - AuditLog
             - AuditEntry
+            - AuditOperation
         - file: ../utils/errors.js
           imports:
             - KnowledgeGraphError
+        - file: ../utils/entityUtils.js
+          imports:
+            - sanitizeObject
+        - file: ../security/PiiRedactor.js
+          imports:
+            - PiiRedactor
       exports:
+        - GovernanceError
         - GovernanceTransaction
         - GovernanceManager
       classes:
+        - GovernanceError
         - GovernanceTransaction
         - GovernanceManager
       interfaces:
         - GovernancePolicy
         - GovernanceOperationOptions
+        - GovernanceManagerOptions
     src/features/IOManager.ts:
-      description: Backup lifecycle is delegated to `BackupManager` (extracted in
+      description: Sec6 — opt-in PII redaction for export/backup surfaces.
       externalDependencies: []
       nodeDependencies:
         - module: fs
@@ -6267,6 +6396,9 @@ modules:
           imports:
             - EntitySchema
             - RelationSchema
+        - file: ../security/PiiRedactor.js
+          imports:
+            - PiiRedactor
         - file: ../core/EntityManager.js
           imports:
             - EntityManager
@@ -6277,6 +6409,7 @@ modules:
       classes:
         - IOManager
       interfaces:
+        - PiiRedactionOption
         - IngestInput
         - IngestOptions
         - IngestResult
@@ -6396,6 +6529,9 @@ modules:
             - createProgressReporter
             - createProgress
             - validateFilePath
+        - file: ../security/PiiRedactor.js
+          imports:
+            - PiiRedactor
       exports:
         - StreamingExporter
       classes:
@@ -6441,6 +6577,7 @@ modules:
             - SplitOptions
             - SplitResult
             - VisualizeOptions
+            - PiiRedactionOption
           reExport: true
         - file: ./AnalyticsManager.js
           imports:
@@ -6461,6 +6598,7 @@ modules:
           imports:
             - StreamingExporter
             - StreamResult
+            - StreamingExportOptions
           reExport: true
         - file: ./AutoLinker.js
           imports:
@@ -6498,6 +6636,8 @@ modules:
           imports:
             - GovernanceManager
             - GovernanceTransaction
+            - GovernanceError
+            - GovernanceManagerOptions
             - GovernancePolicy
             - GovernanceOperationOptions
           reExport: true
@@ -6549,6 +6689,7 @@ modules:
         - SplitOptions
         - SplitResult
         - VisualizeOptions
+        - PiiRedactionOption
         - AnalyticsManager
         - CompressionManager
         - ArchiveManager
@@ -6557,6 +6698,7 @@ modules:
         - ArchiveResult
         - StreamingExporter
         - StreamResult
+        - StreamingExportOptions
         - AutoLinker
         - AutoLinkOptions
         - AutoLinkResult
@@ -6576,6 +6718,8 @@ modules:
         - AuditStats
         - GovernanceManager
         - GovernanceTransaction
+        - GovernanceError
+        - GovernanceManagerOptions
         - GovernancePolicy
         - GovernanceOperationOptions
         - FreshnessManager
@@ -6606,6 +6750,7 @@ modules:
         - SplitOptions
         - SplitResult
         - VisualizeOptions
+        - PiiRedactionOption
         - AnalyticsManager
         - CompressionManager
         - ArchiveManager
@@ -6614,6 +6759,7 @@ modules:
         - ArchiveResult
         - StreamingExporter
         - StreamResult
+        - StreamingExportOptions
         - AutoLinker
         - AutoLinkOptions
         - AutoLinkResult
@@ -6633,6 +6779,8 @@ modules:
         - AuditStats
         - GovernanceManager
         - GovernanceTransaction
+        - GovernanceError
+        - GovernanceManagerOptions
         - GovernancePolicy
         - GovernanceOperationOptions
         - FreshnessManager
@@ -6973,6 +7121,10 @@ modules:
         - file: ../core/GraphEventEmitter.js
           imports:
             - GraphEventEmitter
+          typeOnly: true
+        - file: ../types/types.js
+          imports:
+            - EntityUpdatedEvent
           typeOnly: true
       exports:
         - DEFAULT_MAX_PAGERANK_ENTITIES
@@ -7396,10 +7548,15 @@ modules:
             - SearchResult
             - TFIDFIndex
             - TokenizedEntity
+            - GraphEventType
           typeOnly: true
         - file: ../core/GraphStorage.js
           imports:
             - GraphStorage
+          typeOnly: true
+        - file: ../core/GraphEventEmitter.js
+          imports:
+            - GraphEventEmitter
           typeOnly: true
         - file: ../utils/index.js
           imports:
@@ -7724,11 +7881,11 @@ modules:
         - TFIDFIndexManager
     src/search/TemporalQueryParser.ts:
       description: Temporal Query Parser
-      externalDependencies:
-        - package: chrono-node
+      externalDependencies: []
+      nodeDependencies:
+        - module: module
           imports:
-            - "* as chrono"
-      nodeDependencies: []
+            - createRequire
       internalDependencies: []
       exports:
         - TemporalQueryParser
@@ -8430,6 +8587,7 @@ modules:
         - KeyRecord
         - IssueOptions
         - IssueResult
+        - APIKeyStoreOptions
     src/security/PiiRedactor.ts:
       description: PII Redactor (η.6.3)
       externalDependencies: []
@@ -8493,6 +8651,7 @@ modules:
         - file: ./APIKeyStore.js
           imports:
             - APIKeyStore
+            - APIKeyStoreOptions
             - IssueOptions
             - IssueResult
             - KeyRecord
@@ -8515,6 +8674,7 @@ modules:
         - RowLevelFilter
         - RowPredicate
         - APIKeyStore
+        - APIKeyStoreOptions
         - IssueOptions
         - IssueResult
         - KeyRecord
@@ -8537,10 +8697,34 @@ modules:
         - RowLevelFilter
         - RowPredicate
         - APIKeyStore
+        - APIKeyStoreOptions
         - IssueOptions
         - IssueResult
         - KeyRecord
         - KeyValidationResult
+  root:
+    src/sqlite.ts:
+      description: SQLite subpath entry (`@danielsimonjr/memoryjs/sqlite`).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./core/sqlite-register.js
+          imports:
+            - SQLiteStorage
+          reExport: true
+        - file: ./core/StorageFactory.js
+          imports:
+            - preloadSQLiteStorage
+            - registerSQLiteStorage
+          reExport: true
+      exports:
+        - SQLiteStorage
+        - preloadSQLiteStorage
+        - registerSQLiteStorage
+      reExported:
+        - SQLiteStorage
+        - preloadSQLiteStorage
+        - registerSQLiteStorage
   types:
     src/types/agent-memory.ts:
       description: Agent Memory Type Definitions
@@ -8551,14 +8735,6 @@ modules:
           imports:
             - Entity
           typeOnly: true
-        - file: ../agent/ContextProfileManager.js
-          imports:
-            - ContextProfile
-          typeOnly: true
-        - file: ../agent/RoleProfiles.js
-          imports: []
-          typeOnly: true
-          dynamic: true
       exports:
         - MEMORY_TYPES
         - TRUST_LEVEL_ORDER
@@ -8587,6 +8763,9 @@ modules:
       classes:
         - AccessContextBuilder
       interfaces:
+        - SalienceEngineConfig
+        - ContextWindowManagerConfig
+        - RoleProfile
         - ConflictInfo
         - ObservationSource
         - MemorySource
@@ -8700,6 +8879,10 @@ modules:
         - file: ./types.js
           imports:
             - ENTITY_STATUS_TRANSITIONS
+          reExport: true
+        - file: ./task-scheduler.js
+          imports:
+            - TaskPriority
           reExport: true
         - file: ./agent-memory.js
           imports:
@@ -8825,6 +9008,7 @@ modules:
             - GraphEvent
             - GraphEventListener
             - GraphEventMap
+            - IGraphEventEmitter
             - SearchMethod
             - QueryCostEstimate
             - AutoSearchResult
@@ -8893,6 +9077,16 @@ modules:
             - GroupMembership
             - ConflictInfo
             - ConflictStrategy
+            - ContextProfile
+            - SalienceEngineConfig
+            - ContextWindowManagerConfig
+            - AgentRole
+            - RoleProfile
+          reExport: true
+          typeOnly: true
+        - file: ./task-scheduler.js
+          imports:
+            - ProgressCallback
           reExport: true
           typeOnly: true
         - file: ./artifact.js
@@ -8937,6 +9131,7 @@ modules:
       exports:
         - QueryTraceBuilder
         - ENTITY_STATUS_TRANSITIONS
+        - TaskPriority
         - MEMORY_TYPES
         - isAgentEntity
         - isSessionEntity
@@ -9043,6 +9238,7 @@ modules:
         - GraphEvent
         - GraphEventListener
         - GraphEventMap
+        - IGraphEventEmitter
         - SearchMethod
         - QueryCostEstimate
         - AutoSearchResult
@@ -9107,6 +9303,12 @@ modules:
         - GroupMembership
         - ConflictInfo
         - ConflictStrategy
+        - ContextProfile
+        - SalienceEngineConfig
+        - ContextWindowManagerConfig
+        - AgentRole
+        - RoleProfile
+        - ProgressCallback
         - ArtifactType
         - CreateArtifactOptions
         - ArtifactEntity
@@ -9132,6 +9334,7 @@ modules:
       reExported:
         - QueryTraceBuilder
         - ENTITY_STATUS_TRANSITIONS
+        - TaskPriority
         - MEMORY_TYPES
         - isAgentEntity
         - isSessionEntity
@@ -9238,6 +9441,7 @@ modules:
         - GraphEvent
         - GraphEventListener
         - GraphEventMap
+        - IGraphEventEmitter
         - SearchMethod
         - QueryCostEstimate
         - AutoSearchResult
@@ -9302,6 +9506,12 @@ modules:
         - GroupMembership
         - ConflictInfo
         - ConflictStrategy
+        - ContextProfile
+        - SalienceEngineConfig
+        - ContextWindowManagerConfig
+        - AgentRole
+        - RoleProfile
+        - ProgressCallback
         - ArtifactType
         - CreateArtifactOptions
         - ArtifactEntity
@@ -9415,20 +9625,25 @@ modules:
         - ProximityNode
         - FieldNode
         - BooleanOpNode
+    src/types/task-scheduler.ts:
+      description: Task Scheduler shared types (S10 — types-layer leaf).
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - TaskPriority
+      enums:
+        - TaskPriority
     src/types/types.ts:
       description: Type Definitions
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
-        - file: ../utils/taskScheduler.js
+        - file: ./task-scheduler.js
           imports:
             - ProgressCallback
             - TaskPriority
           typeOnly: true
-        - file: ../core/GraphEventEmitter.js
-          imports: []
-          typeOnly: true
-          dynamic: true
       exports:
         - ENTITY_STATUS_TRANSITIONS
       interfaces:
@@ -9495,6 +9710,7 @@ modules:
         - GraphSavedEvent
         - GraphLoadedEvent
         - GraphEventMap
+        - IGraphEventEmitter
         - QueryCostEstimate
         - AutoSearchResult
         - QueryCostEstimatorOptions
@@ -9798,6 +10014,7 @@ modules:
           imports:
             - COMPRESSION_CONFIG
       exports:
+        - DEFAULT_MAX_DECOMPRESSED_BYTES
         - hasBrotliExtension
         - compress
         - decompress
@@ -9809,6 +10026,7 @@ modules:
         - compressToBase64
         - decompressFromBase64
       interfaces:
+        - DecompressionOptions
         - CompressionOptions
         - CompressionResult
         - CompressionMetadata
@@ -9823,6 +10041,8 @@ modules:
         - createUncompressedMetadata
         - compressToBase64
         - decompressFromBase64
+      constants:
+        - DEFAULT_MAX_DECOMPRESSED_BYTES
     src/utils/constants.ts:
       description: Application Constants
       externalDependencies: []
@@ -11192,6 +11412,9 @@ modules:
           typeOnly: true
       exports:
         - searchCaches
+        - bumpEntityGeneration
+        - bumpRelationGeneration
+        - getGraphGenerations
         - clearAllSearchCaches
         - getAllCacheStats
         - cleanupAllCaches
@@ -11201,6 +11424,9 @@ modules:
       interfaces:
         - CacheStats
       functions:
+        - bumpEntityGeneration
+        - bumpRelationGeneration
+        - getGraphGenerations
         - clearAllSearchCaches
         - getAllCacheStats
         - cleanupAllCaches
@@ -11217,14 +11443,21 @@ modules:
         - file: ./logger.js
           imports:
             - logger
+        - file: ../types/task-scheduler.js
+          imports:
+            - TaskPriority
+        - file: ../types/task-scheduler.js
+          imports:
+            - ProgressCallback
+          typeOnly: true
       exports:
+        - TaskPriority
         - batchProcess
         - rateLimitedProcess
         - withRetry
         - debounce
         - throttle
         - TaskQueue
-        - TaskPriority
         - TaskStatus
       classes:
         - TaskQueue
@@ -11240,7 +11473,6 @@ modules:
         - debounce
         - throttle
       enums:
-        - TaskPriority
         - TaskStatus
     src/utils/textSimilarity.ts:
       description: Text Similarity Utilities
@@ -11341,266 +11573,26 @@ dependencyGraph:
   circularDependencies:
     runtime: []
     typeOnly:
-      - - src/types/index.ts
-        - src/types/types.ts
-        - src/core/GraphEventEmitter.ts
-        - src/types/index.ts
-      - - src/types/agent-memory.ts
-        - src/agent/ContextProfileManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/SalienceEngine.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/SalienceEngine.ts
-        - src/agent/AccessTracker.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/SalienceEngine.ts
-        - src/agent/DecayEngine.ts
-        - src/types/agent-memory.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/core/GraphStorage.ts
-        - src/types/index.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/core/GraphStorage.ts
-        - src/utils/searchCache.ts
-        - src/types/index.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/core/GraphStorage.ts
-        - src/utils/indexes.ts
-        - src/types/index.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/core/GraphStorage.ts
-        - src/utils/index.ts
-        - src/utils/compressedCache.ts
-        - src/types/index.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/core/GraphStorage.ts
-        - src/utils/index.ts
-        - src/utils/entityUtils.ts
-        - src/types/index.ts
       - - src/core/TransactionManager.ts
-        - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
         - src/core/GraphStorage.ts
         - src/core/TransactionManager.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProjectContextManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProjectContextManager.ts
-        - src/core/EntityManager.ts
-        - src/types/index.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/core/ObservationManager.ts
-        - src/features/AutoLinker.ts
-        - src/types/index.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/core/ObservationManager.ts
-        - src/features/AutoLinker.ts
-        - src/core/RelationManager.ts
-        - src/types/index.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/core/ObservationManager.ts
-        - src/features/ContradictionDetector.ts
-        - src/search/SemanticSearch.ts
-        - src/types/index.ts
-      - - src/types/index.ts
-        - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/core/ObservationManager.ts
-        - src/features/ContradictionDetector.ts
-        - src/search/SemanticSearch.ts
-        - src/search/VectorStore.ts
-        - src/types/index.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/core/ObservationManager.ts
-        - src/agent/MemoryValidator.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/core/ObservationManager.ts
-        - src/agent/MemoryValidator.ts
-        - src/agent/ConflictResolver.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
-        - src/types/agent-memory.ts
-      - - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
-        - src/agent/WorkingMemoryManager.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
-        - src/agent/PatternDetector.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
-        - src/agent/RuleEvaluator.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
-        - src/agent/AgentReflectionManager.ts
-        - src/types/agent-memory.ts
-      - - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
-        - src/agent/TrajectoryCompressor.ts
-        - src/agent/ContextWindowManager.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
-        - src/agent/ExperienceExtractor.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/EntropyFilter.ts
-        - src/agent/ConsolidationPipeline.ts
-        - src/agent/HeuristicManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/WorkingMemoryManager.ts
-        - src/agent/ExclusionManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/agent/SessionManager.ts
-        - src/agent/EpisodicMemoryManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProfileManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/agent/ContextWindowManager.ts
-        - src/agent/ProspectiveMemoryManager.ts
-        - src/types/agent-memory.ts
-      - - src/types/agent-memory.ts
-        - src/agent/RoleProfiles.ts
-        - src/types/agent-memory.ts
       - - src/features/IOManager.ts
         - src/features/BackupManager.ts
         - src/features/IOManager.ts
-    total: 37
+      - - src/agent/ConsolidationPipeline.ts
+        - src/agent/WorkingMemoryManager.ts
+        - src/agent/EntropyFilter.ts
+        - src/agent/ConsolidationPipeline.ts
+      - - src/adapters/ApiKeyAuthMiddleware.ts
+        - src/adapters/RestRouter.ts
+        - src/adapters/ApiKeyAuthMiddleware.ts
+    total: 4
     runtimeCount: 0
-    typeOnlyCount: 37
+    typeOnlyCount: 4
   layers:
     - name: Adapters
       files:
+        - src/adapters/ApiKeyAuthMiddleware.ts
         - src/adapters/LangChainMemoryAdapter.ts
         - src/adapters/MCPToolObserverAdapter.ts
         - src/adapters/RateLimiter.ts
@@ -11745,6 +11737,7 @@ dependencyGraph:
         - src/core/mmap/IMmapBackend.ts
         - src/core/segments/FileSegmentStorage.ts
         - src/core/segments/ISegmentStorage.ts
+        - src/core/sqlite-register.ts
     - name: Features
       files:
         - src/features/AnalyticsManager.ts
@@ -11826,6 +11819,9 @@ dependencyGraph:
         - src/security/PiiRedactor.ts
         - src/security/RowLevelFilter.ts
         - src/security/index.ts
+    - name: Root
+      files:
+        - src/sqlite.ts
     - name: Types
       files:
         - src/types/agent-memory.ts
@@ -11836,6 +11832,7 @@ dependencyGraph:
         - src/types/reconstruction.ts
         - src/types/result.ts
         - src/types/search.ts
+        - src/types/task-scheduler.ts
         - src/types/types.ts
     - name: Utils
       files:
@@ -11880,30 +11877,31 @@ reachability:
   roots:
     - src/cli/index.ts
     - src/index.ts
+    - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 255
+  reachableCount: 259
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 255
-  totalModules: 11
-  totalLinesOfCode: 85645
-  totalExports: 1627
-  totalClasses: 215
-  totalInterfaces: 530
-  totalFunctions: 254
+  totalTypeScriptFiles: 259
+  totalModules: 12
+  totalLinesOfCode: 89064
+  totalExports: 1663
+  totalClasses: 217
+  totalInterfaces: 541
+  totalFunctions: 259
   totalTypeGuards: 28
   totalEnums: 4
-  totalConstants: 82
-  totalReExports: 1065
-  totalTypeOnlyImports: 397
+  totalConstants: 85
+  totalReExports: 1089
+  totalTypeOnlyImports: 403
   runtimeCircularDeps: 0
-  typeOnlyCircularDeps: 37
-  entryRoots: 3
-  reachableFiles: 255
+  typeOnlyCircularDeps: 4
+  entryRoots: 4
+  reachableFiles: 259
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 36
+  unusedExportsCount: 41

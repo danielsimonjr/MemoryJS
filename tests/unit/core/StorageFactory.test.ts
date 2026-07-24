@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createStorage, createStorageFromPath } from '../../../src/core/StorageFactory.js';
+import {
+  createStorage,
+  createStorageFromPath,
+  registerSQLiteStorage,
+} from '../../../src/core/StorageFactory.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
+import type { IGraphStorage } from '../../../src/types/index.js';
 
 // Mock the storage classes with proper class syntax
 vi.mock('../../../src/core/GraphStorage.js', () => ({
@@ -24,6 +29,10 @@ describe('StorageFactory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     delete process.env.MEMORY_STORAGE_TYPE;
+    // S9: StorageFactory no longer static-imports SQLiteStorage; the
+    // constructor is delivered via registration (normally a side effect of
+    // src/core/sqlite-register.ts). Register the mocked constructor here.
+    registerSQLiteStorage(SQLiteStorage as unknown as new (path: string) => IGraphStorage);
   });
 
   afterEach(() => {

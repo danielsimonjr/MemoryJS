@@ -1281,11 +1281,11 @@ export interface IGraphStorage {
    * (`GraphStorage`, `SQLiteStorage`) expose one; derived views no-op
    * gracefully when it is absent.
    *
-   * Typed via an inline type-only import: `types.ts` is the root of the
-   * module layering (zero imports), so a top-level import from core would
-   * invert it; `import()` in type position is erased at compile time.
+   * Typed via the structural `IGraphEventEmitter` contract (declared later
+   * in this module) so the types layer stays a leaf (S10). The concrete
+   * `core/GraphEventEmitter.ts` class declares `implements IGraphEventEmitter`.
    */
-  readonly events?: import('../core/GraphEventEmitter.js').GraphEventEmitter;
+  readonly events?: IGraphEventEmitter;
 
   /**
    * Compact the storage by removing duplicates.
@@ -1684,7 +1684,9 @@ export interface SemanticIndexOptions {
 
 // ==================== Long-Running Operation Types (Phase 9B) ====================
 
-import type { ProgressCallback, TaskPriority } from '../utils/taskScheduler.js';
+// S10: imported from the types-layer home (not utils/) so src/types stays a
+// leaf — utils/taskScheduler.js re-exports these same symbols for compat.
+import type { ProgressCallback, TaskPriority } from './task-scheduler.js';
 
 /**
  * Phase 9B: Options for long-running operations supporting progress and cancellation.
@@ -2104,6 +2106,56 @@ export interface GraphEventMap {
   'observation:deleted': ObservationDeletedEvent;
   'graph:saved': GraphSavedEvent;
   'graph:loaded': GraphLoadedEvent;
+}
+
+/**
+ * Structural contract of the graph event emitter (S10 — types-layer leaf).
+ *
+ * Mirrors the public API of `core/GraphEventEmitter.ts` (which declares
+ * `implements IGraphEventEmitter`), so the storage interface can type its
+ * `events` member without the types layer importing implementation code.
+ * All parameter/return types already live in this module.
+ */
+export interface IGraphEventEmitter {
+  /** Subscribe to a specific event type. Returns an unsubscribe function. */
+  on<K extends GraphEventType>(
+    eventType: K,
+    listener: GraphEventListener<GraphEventMap[K]>
+  ): () => void;
+  /** Unsubscribe from a specific event type. */
+  off<K extends GraphEventType>(
+    eventType: K,
+    listener: GraphEventListener<GraphEventMap[K]>
+  ): void;
+  /** Subscribe to all event types. Returns an unsubscribe function. */
+  onAny(listener: GraphEventListener<GraphEvent>): () => void;
+  /** Unsubscribe a wildcard listener. */
+  offAny(listener: GraphEventListener<GraphEvent>): void;
+  /** Subscribe to the first occurrence of an event type. */
+  once<K extends GraphEventType>(
+    eventType: K,
+    listener: GraphEventListener<GraphEventMap[K]>
+  ): () => void;
+  /** Remove all listeners for all event types. */
+  removeAllListeners(): void;
+  /** Count listeners (for one event type, or all when omitted). */
+  listenerCount(eventType?: GraphEventType): number;
+  /** Emit an event to all registered listeners. */
+  emit(event: GraphEvent): void;
+  emitEntityCreated(entity: Entity): void;
+  emitEntityUpdated(
+    entityName: string,
+    changes: Partial<Entity>,
+    previousValues?: Partial<Entity>
+  ): void;
+  emitEntityDeleted(entityName: string, entity?: Entity): void;
+  emitEntityRenamed(oldName: string, newName: string, entity: Entity): void;
+  emitRelationCreated(relation: Relation): void;
+  emitRelationDeleted(from: string, to: string, relationType: string): void;
+  emitObservationAdded(entityName: string, observations: string[]): void;
+  emitObservationDeleted(entityName: string, observations: string[]): void;
+  emitGraphSaved(entityCount: number, relationCount: number): void;
+  emitGraphLoaded(entityCount: number, relationCount: number): void;
 }
 
 // ==================== Query Cost Estimation Types (Phase 10 Sprint 4) ====================

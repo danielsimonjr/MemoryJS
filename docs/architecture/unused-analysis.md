@@ -8,14 +8,15 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 36
+- **Potentially unused exports**: 41
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 36
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 41
 
-Seeded reachability roots (3):
+Seeded reachability roots (4):
 
 - `src/cli/index.ts`
 - `src/index.ts`
+- `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
 ## Dormant Files — Orphaned (delete/wire candidates)
@@ -76,6 +77,8 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/core/EntityManager.ts`
 
+- `GovernanceAuditEvent` (interface) — 2 in-file refs
+- `GovernanceHooks` (interface) — 3 in-file refs
 - `GetEntityOptions` (interface) — 1 in-file ref
 
 ### `src/core/GraphTraversal.ts`
@@ -89,6 +92,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/core/mmap/FsReadMmapBackend.ts`
 
 - `FsReadMmapBackendOptions` (interface) — 1 in-file ref
+
+### `src/features/AuditLog.ts`
+
+- `ChainVerificationResult` (interface) — 1 in-file ref
 
 ### `src/search/BloomPreScreener.ts`
 
@@ -154,7 +161,15 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CompressedMapOptions` (interface) — 1 in-file ref
 
+### `src/utils/compressionUtil.ts`
+
+- `DecompressionOptions` (interface) — 3 in-file refs
+
 ### `src/utils/constants.ts`
 
 - `EMBEDDING_ENV_VARS` (constant) — 4 in-file refs
+
+### `src/utils/searchCache.ts`
+
+- `GraphGenerationDependency` (type) — 2 in-file refs
 

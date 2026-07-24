@@ -58,6 +58,53 @@ export default [
       'memoryjs/no-unused-updateentity-return': 'error',
     },
   },
+  // S10: the types layer must stay a leaf — it may not import from
+  // implementation directories (type-only imports included: they still create
+  // tsc/IDE recompile fan-out and dependency-graph cycles). Shared types get
+  // moved INTO src/types and re-exported from the implementation module.
+  {
+    files: ['src/types/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/agent/**',
+                '**/core/**',
+                '**/utils/**',
+                '**/search/**',
+                '**/features/**',
+                '**/adapters/**',
+                '**/security/**',
+                '**/cli/**',
+                '**/workers/**',
+              ],
+              message:
+                'src/types must remain a leaf layer. Move the shared type into src/types ' +
+                'and re-export it from the implementation module instead (see S10 in ' +
+                'docs/development/OPTIMIZATION_OPPORTUNITIES.md).',
+            },
+          ],
+        },
+      ],
+      // no-restricted-imports does not see inline `import('...')` type
+      // annotations — the historical escape hatch that created all 37+
+      // type-only cycles. Catch those too.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "TSImportType Literal[value=/\\.\\.\\u002F(agent|core|utils|search|features|adapters|security|cli|workers)\\u002F/]",
+          message:
+            'src/types must remain a leaf layer: inline import() types from implementation ' +
+            'directories are forbidden. Move the shared type into src/types and re-export ' +
+            'it from the implementation module instead (S10).',
+        },
+      ],
+    },
+  },
   // Logger implementations and the CLI legitimately use console.* directly.
   {
     files: [

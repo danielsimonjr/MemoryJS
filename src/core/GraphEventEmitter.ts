@@ -13,6 +13,7 @@ import type {
   GraphEvent,
   GraphEventListener,
   GraphEventMap,
+  IGraphEventEmitter,
   Entity,
   Relation,
   EntityCreatedEvent,
@@ -83,7 +84,7 @@ import { logger } from '../utils/logger.js';
  * unsubscribe();
  * ```
  */
-export class GraphEventEmitter {
+export class GraphEventEmitter implements IGraphEventEmitter {
   /**
    * Map of event types to their registered listeners. The Set stores
    * listeners typed for different specific event subtypes (one Set per
