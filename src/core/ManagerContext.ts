@@ -94,6 +94,7 @@ import { ToolAffordanceManager } from '../agent/ToolAffordanceManager.js';
 import { ToolCallObserver } from '../agent/ToolCallObserver.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
+import { EventManager } from '../agent/events/EventManager.js';
 import {
   ProspectiveMemoryManager,
   type ProcedureInvoker,
@@ -202,6 +203,7 @@ export class ManagerContext {
   private _toolCallObserver?: ToolCallObserver;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
+  private _eventManager?: EventManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
   private _failureManager?: FailureManager;
   private _plan?: PlanManager;
@@ -1052,6 +1054,21 @@ export class ManagerContext {
       this._procedureManager = new ProcedureManager(this.entityManager, this.relationManager);
     }
     return this._procedureManager;
+  }
+
+  /**
+   * `EventManager` (R1) — n-ary event reification: actions become
+   * first-class `entityType: 'event'` hub entities with role-typed
+   * relations (`actor_of` / `targeted` / `occurred_in` /
+   * `participant_in`) and optional `flow:<key>` grouping tags. Lazy.
+   * Composes `EntityManager` + `RelationManager`; missing endpoints
+   * auto-create as `'concept'` stubs by default.
+   */
+  get eventManager(): EventManager {
+    if (!this._eventManager) {
+      this._eventManager = new EventManager(this.entityManager, this.relationManager);
+    }
+    return this._eventManager;
   }
 
   /**
