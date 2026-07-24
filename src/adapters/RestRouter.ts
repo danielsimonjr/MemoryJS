@@ -22,6 +22,7 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import type { ManagerContext } from '../core/ManagerContext.js';
 import { logger } from '../utils/logger.js';
 import { paginate, parsePaginationParams } from './pagination.js';
+import type { ApiKeyAuthMiddleware, AuthContext } from './ApiKeyAuthMiddleware.js';
 
 /** HTTP methods this router handles. */
 export type RestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -38,6 +39,12 @@ export interface RestRequest {
   body: unknown;
   /** Subset of incoming headers, lowercase keys. */
   headers: Record<string, string>;
+  /**
+   * Authenticated principal, attached by the router when an
+   * {@link ApiKeyAuthMiddleware} is configured (Sec9). Absent on
+   * unauthenticated routers.
+   */
+  auth?: AuthContext;
 }
 
 /** Framework-agnostic response envelope. */
@@ -82,10 +89,25 @@ export interface RouteDefinition {
  * fastify.all('/api/*', async (req, reply) => reply.code(...).send(await router.dispatch(...)));
  * ```
  */
+/** Optional router configuration. */
+export interface RestRouterOptions {
+  /**
+   * Sec9: authentication middleware. When set, EVERY dispatched request
+   * is authenticated (401 on missing/invalid key, 403 on insufficient
+   * scope) before route matching, and the validated `{ keyId, scopes }`
+   * is attached as `req.auth` for handlers. When omitted the router is
+   * UNAUTHENTICATED — see the {@link RestRouter.withDefaults} warning.
+   */
+  auth?: ApiKeyAuthMiddleware;
+}
+
 export class RestRouter {
   private readonly routes: RouteDefinition[] = [];
+  private readonly auth?: ApiKeyAuthMiddleware;
 
-  constructor(private ctx: ManagerContext) {}
+  constructor(private ctx: ManagerContext, options?: RestRouterOptions) {
+    this.auth = options?.auth;
+  }
 
   /** Register a `GET` route. */
   get(pattern: string, handler: RestHandler): this {
@@ -132,8 +154,18 @@ export class RestRouter {
    * Dispatch a request through the registered routes. Returns a 404
    * response when no route matches, a 500 (or the thrown error's
    * `.status`) when the matched handler throws.
+   *
+   * When an auth middleware is configured (see {@link RestRouterOptions}),
+   * authentication + scope checks run FIRST — before route matching — so
+   * unauthenticated probes cannot distinguish existing from missing
+   * routes, and `req.auth` is populated for the matched handler.
    */
   async dispatch(req: RestRequest): Promise<RestResponse> {
+    if (this.auth) {
+      const outcome = this.auth.authenticate(req);
+      if (!outcome.ok) return outcome.response;
+      req = { ...req, auth: outcome.auth };
+    }
     for (const route of this.routes) {
       if (route.method !== req.method) continue;
       const params = matchPath(route.pattern, req.path);
@@ -159,9 +191,27 @@ export class RestRouter {
    * Mounts `GET /entities`, `GET /entities/:name`, `POST /entities`,
    * `DELETE /entities/:name`, `GET /search?q=...`. Callers can
    * extend with `router.get(...)` etc.
+   *
+   * ## ⚠️ SECURITY WARNING — unauthenticated by default
+   *
+   * Without `options.auth`, mounting these routes exposes an
+   * **unauthenticated read/WRITE HTTP surface**: anyone who can reach
+   * the listener can enumerate every entity (`GET /entities`), create
+   * entities (`POST /entities`), and delete them
+   * (`DELETE /entities/:name`). Only mount the default routes without
+   * auth on a loopback/trusted-network listener. For anything else,
+   * pass an {@link ApiKeyAuthMiddleware}:
+   *
+   * ```typescript
+   * const auth = new ApiKeyAuthMiddleware({ store: apiKeyStore });
+   * const router = RestRouter.withDefaults(ctx, { auth });
+   * ```
+   *
+   * With auth configured, mutations additionally require the
+   * `entities:write` scope (default scope mapping).
    */
-  static withDefaults(ctx: ManagerContext): RestRouter {
-    const router = new RestRouter(ctx);
+  static withDefaults(ctx: ManagerContext, options?: RestRouterOptions): RestRouter {
+    const router = new RestRouter(ctx, options);
     router
       .get('/entities', async (req, c) => {
         const graph = await c.storage.loadGraph();

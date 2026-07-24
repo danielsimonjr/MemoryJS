@@ -30,6 +30,7 @@ export {
 
 export {
   APIKeyStore,
+  type APIKeyStoreOptions,
   type IssueOptions,
   type IssueResult,
   type KeyRecord,

@@ -79,7 +79,7 @@ ctx.archiveManager      // Entity archival to compressed storage
 ctx.semanticSearch      // Vector similarity (requires embedding provider)
 ctx.temporalSearch      // Natural language time-range search (chrono-node)
 ctx.freshnessManager    // TTL/confidence freshness reporting
-ctx.governanceManager   // Governance policies + audit transaction support
+ctx.governanceManager   // Governance policies + audit transactions; lazy getter always available. When MEMORY_GOVERNANCE_ENABLED='true' (strict literal, read at first entityManager access), ManagerContext also wires governance hooks into EntityManager so createEntities/updateEntity/batchUpdate/deleteEntities/renameEntity are policy-checked (GovernanceError on denial) + audited (fire-and-forget append; audit failure never fails the write). Audit log path: MEMORY_AUDIT_LOG_FILE, else <basename>-audit.jsonl sidecar.
 ctx.refIndex            // Named reference index for O(1) entity lookup
 ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
 ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider)
@@ -284,8 +284,8 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 ### Governance & Freshness (v1.6.0)
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_GOVERNANCE_ENABLED` | `true`, `false` | `false` |
-| `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | - |
+| `MEMORY_GOVERNANCE_ENABLED` | `'true'` (strict literal match) | unset = manual-only | When `'true'`, `ManagerContext` wires `ctx.governanceManager`'s policy + audit log into `EntityManager` mutations (Sec1 enforcement chokepoint): denied ops throw `GovernanceError`, allowed ops append committed audit entries. Unset = `ctx.governanceManager` still usable manually via `withTransaction`, but plain `EntityManager` writes bypass governance (zero overhead). Read once at first `entityManager` access. |
+| `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | `<basename>-audit.jsonl` sidecar next to the storage file |
 | `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168` |
 | `MEMORY_LLM_QUERY_PLANNER_PROVIDER` | Provider name string | - |
 

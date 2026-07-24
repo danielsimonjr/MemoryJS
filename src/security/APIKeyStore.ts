@@ -85,13 +85,39 @@ export interface IssueResult {
  * if (v.valid) console.log('hello', v.ownerId);
  * ```
  */
+/** Constructor options for {@link APIKeyStore}. */
+export interface APIKeyStoreOptions {
+  /**
+   * Called synchronously after every state mutation (`issue`, `revoke`,
+   * `load`) with the mutation kind. Enables auto-persist wiring — e.g.
+   * `onMutate: () => fs.writeFileSync(path, JSON.stringify(store.serialize()))`
+   * — so the durability requirement documented on {@link APIKeyStore.issue}
+   * / {@link APIKeyStore.revoke} is met without every call site
+   * remembering to persist.
+   */
+  onMutate?: (kind: 'issue' | 'revoke' | 'load') => void;
+}
+
 export class APIKeyStore {
   /** keyId -> record. */
   private records: Map<string, KeyRecord> = new Map();
   /** hash -> keyId (constant-time fast path for validate). */
   private byHash: Map<string, string> = new Map();
+  private readonly onMutate?: (kind: 'issue' | 'revoke' | 'load') => void;
 
-  /** Issue a new key. The plaintext is returned exactly once. */
+  constructor(options: APIKeyStoreOptions = {}) {
+    this.onMutate = options.onMutate;
+  }
+
+  /**
+   * Issue a new key. The plaintext is returned exactly once.
+   *
+   * **Persistence requirement:** this store is in-memory. The new record
+   * exists only in this process until the caller persists `serialize()`.
+   * A crash between `issue()` and persistence loses the key (the issued
+   * plaintext will validate as `unknown` after a restart + `load()`).
+   * Wire {@link APIKeyStoreOptions.onMutate} for auto-persist.
+   */
   issue(options: IssueOptions = {}): IssueResult {
     const plaintext = `mjs_${randomBytes(24).toString('base64url')}`;
     const hash = sha256(plaintext);
@@ -112,6 +138,7 @@ export class APIKeyStore {
     };
     this.records.set(keyId, record);
     this.byHash.set(hash, keyId);
+    this.onMutate?.('issue');
     return { plaintext, record };
   }
 
@@ -167,12 +194,23 @@ export class APIKeyStore {
     };
   }
 
-  /** Mark a key revoked. Idempotent. */
+  /**
+   * Mark a key revoked. Idempotent.
+   *
+   * **Persistence requirement (security-critical):** revocation only
+   * takes effect in this process until the caller persists
+   * `serialize()`. A crash between `revoke()` and persistence
+   * RESURRECTS the key on the next `load()` — the pre-revocation record
+   * (no `revokedAt`) is what's on disk, so the supposedly-revoked
+   * plaintext validates again. Persist immediately after revoking, or
+   * wire {@link APIKeyStoreOptions.onMutate} for auto-persist.
+   */
   revoke(keyId: string): boolean {
     const record = this.records.get(keyId);
     if (!record) return false;
     if (record.revokedAt) return true;
     record.revokedAt = new Date().toISOString();
+    this.onMutate?.('revoke');
     return true;
   }
 
@@ -202,6 +240,7 @@ export class APIKeyStore {
       this.records.set(r.keyId, r);
       this.byHash.set(r.hash, r.keyId);
     }
+    this.onMutate?.('load');
   }
 
   /** Total registered keys (including revoked). */

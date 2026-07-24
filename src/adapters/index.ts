@@ -14,7 +14,17 @@ export {
   type RestResponse,
   type RestHandler,
   type RouteDefinition,
+  type RestRouterOptions,
 } from './RestRouter.js';
+
+// Sec9 — reference API-key auth middleware for the REST router
+export {
+  ApiKeyAuthMiddleware,
+  DEFAULT_WRITE_SCOPE,
+  type ApiKeyAuthOptions,
+  type AuthContext,
+  type AuthOutcome,
+} from './ApiKeyAuthMiddleware.js';
 
 // v2.1.0 — Rate limiter + pagination helpers for REST handlers
 export {

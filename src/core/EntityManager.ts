@@ -19,6 +19,8 @@ import {
 } from '../utils/errors.js';
 import type { RefIndex, RefEntry } from './RefIndex.js';
 import { EntityStateMachine } from './EntityStateMachine.js';
+import { GovernanceError, type GovernancePolicy } from '../features/GovernanceManager.js';
+import { logger } from '../utils/logger.js';
 
 // Stateless validator — hoisted to a singleton so updateEntity doesn't
 // allocate one per call.
@@ -30,6 +32,40 @@ const ENTITY_STATE_MACHINE = new EntityStateMachine();
 export interface EntityManagerOptions {
   /** Default projectId to stamp on new entities without an explicit projectId. */
   defaultProjectId?: string;
+}
+
+/**
+ * Audit event emitted by governance hooks after a successful mutation.
+ * Mirrors the `AuditLog.append` shape minus id/timestamp/status.
+ */
+export interface GovernanceAuditEvent {
+  operation: 'create' | 'update' | 'delete';
+  entityName: string;
+  /** Entity snapshot before the mutation (absent for creates). */
+  before?: object;
+  /** Entity snapshot after the mutation (absent for deletes). */
+  after?: object;
+}
+
+/**
+ * Governance enforcement hooks (Sec1 chokepoint).
+ *
+ * Reuses the {@link GovernancePolicy} shape for the `canCreate` /
+ * `canUpdate` / `canDelete` checks — do NOT define a parallel policy
+ * type. `ManagerContext` wires these from its `GovernanceManager` when
+ * `MEMORY_GOVERNANCE_ENABLED=true` (strict literal); manual callers can
+ * inject their own via {@link EntityManager.setGovernanceHooks}.
+ *
+ * **Audit contract:** `audit` is invoked fire-and-forget after each
+ * successful mutation. Failures are swallowed and logged as warnings —
+ * an audit-sink outage must never fail (or roll back) a write that
+ * already succeeded. Callers needing hard audit guarantees should route
+ * writes through `GovernanceManager.withTransaction` instead, which
+ * awaits its audit appends.
+ */
+export interface GovernanceHooks extends GovernancePolicy {
+  /** Fire-and-forget audit sink. See the interface JSDoc for the contract. */
+  audit?: (event: GovernanceAuditEvent) => void | Promise<unknown>;
 }
 
 /**
@@ -72,6 +108,7 @@ export class EntityManager {
   private accessTracker?: AccessTracker;
   private refIndex?: RefIndex;
   private defaultProjectId?: string;
+  private governanceHooks?: GovernanceHooks;
 
   constructor(
     private storage: GraphStorage,
@@ -157,6 +194,49 @@ export class EntityManager {
    */
   setRefIndex(index: RefIndex): void {
     this.refIndex = index;
+  }
+
+  /**
+   * Inject governance enforcement hooks (Sec1 chokepoint).
+   *
+   * When set, every mutation on this manager consults the corresponding
+   * policy check first (`createEntities` → `canCreate` per entity,
+   * `updateEntity` / `batchUpdate` → `canUpdate(existing, updates)`,
+   * `deleteEntities` → `canDelete`, `renameEntity` → `canUpdate`) and
+   * throws {@link GovernanceError} naming the denied entity when a check
+   * returns false. After each successful mutation the `audit` hook is
+   * invoked fire-and-forget (failures swallowed + warned — see
+   * {@link GovernanceHooks}).
+   *
+   * Default (never called / called with `undefined`): zero behavioral
+   * change and zero overhead — no hook object means no checks and no
+   * audit calls on any path.
+   *
+   * @param hooks - Hooks to install, or `undefined` to remove
+   */
+  setGovernanceHooks(hooks: GovernanceHooks | undefined): void {
+    this.governanceHooks = hooks;
+  }
+
+  /**
+   * Invoke the audit hook fire-and-forget. Synchronous throws and async
+   * rejections are both swallowed (warn-logged) so audit failures never
+   * fail the write that already succeeded.
+   */
+  private fireAudit(event: GovernanceAuditEvent): void {
+    const audit = this.governanceHooks?.audit;
+    if (!audit) return;
+    const warn = (err: unknown): void => {
+      logger.warn(
+        `[EntityManager] governance audit hook failed for ${event.operation} "${event.entityName}" ` +
+          `(the write itself succeeded): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    };
+    try {
+      void Promise.resolve(audit(event)).catch(warn);
+    } catch (err) {
+      warn(err);
+    }
   }
 
   /**
@@ -369,10 +449,28 @@ export class EntityManager {
         reportProgress?.(createProgress(processed, entitiesToAdd.length, 'createEntities'));
       }
 
+      // Governance (Sec1): consult canCreate for every entity BEFORE the
+      // batch write so a single denial blocks the whole batch atomically
+      // (all-or-nothing, matching the delta write's semantics).
+      if (this.governanceHooks?.canCreate) {
+        for (const entity of newEntities) {
+          if (!this.governanceHooks.canCreate(entity)) {
+            throw new GovernanceError(
+              'create',
+              entity.name,
+              `Governance policy blocked creation of entity "${entity.name}"`,
+            );
+          }
+        }
+      }
+
       // Save all new entities in a single delta write (one fsync /
       // one SQLite transaction; emits entity:created per entity)
       if (newEntities.length > 0) {
         await this.appendEntitiesCompat(newEntities);
+        for (const entity of newEntities) {
+          this.fireAudit({ operation: 'create', entityName: entity.name, after: { ...entity } });
+        }
       }
 
       // Report completion
@@ -419,12 +517,44 @@ export class EntityManager {
 
     const release = await this.storage.graphMutex.acquire();
     try {
+      // Governance (Sec1): consult canDelete for every existing entity
+      // BEFORE the batch delete — one denial blocks the whole batch.
+      // Non-existent names keep their historical "silently ignored"
+      // semantics (no policy check, no audit). Snapshots are captured
+      // pre-delete so the audit hook receives the `before` state.
+      let deletedSnapshots: Entity[] | undefined;
+      if (this.governanceHooks) {
+        await this.storage.ensureLoaded();
+        deletedSnapshots = [];
+        const seen = new Set<string>();
+        for (const name of entityNames) {
+          if (seen.has(name)) continue;
+          seen.add(name);
+          const existing = this.storage.getEntityByName(name);
+          if (!existing) continue;
+          if (this.governanceHooks.canDelete && !this.governanceHooks.canDelete(existing)) {
+            throw new GovernanceError(
+              'delete',
+              name,
+              `Governance policy blocked deletion of entity "${name}"`,
+            );
+          }
+          deletedSnapshots.push({ ...existing });
+        }
+      }
+
       // S2: targeted storage-level delete (cascades relations, maintains
       // indexes incrementally, emits entity:deleted / relation:deleted
       // per item). On JSONL this internally rewrites the file once per
       // call (append-only format); on SQLite it is real targeted row
       // deletes.
       await this.deleteEntitiesCompat(entityNames);
+
+      if (deletedSnapshots) {
+        for (const snapshot of deletedSnapshots) {
+          this.fireAudit({ operation: 'delete', entityName: snapshot.name, before: snapshot });
+        }
+      }
 
       // Purge all aliases for deleted entities from the ref index
       if (this.refIndex) {
@@ -663,12 +793,16 @@ export class EntityManager {
     updates: Partial<Entity>,
     options?: { expectedVersion?: number },
   ): Promise<Entity> {
-    // Validate input
+    // Validate input. Sec7: from here on the PARSED data is used, not the
+    // raw input — UpdateEntitySchema is `.strip()`, so unknown keys
+    // (mass-assignment junk like `isAdmin`) are dropped before they can
+    // reach the storage layer.
     const validation = UpdateEntitySchema.safeParse(updates);
     if (!validation.success) {
       const errors = validation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
       throw new ValidationError('Invalid update data', errors);
     }
+    const sanitizedUpdates = validation.data as Partial<Entity>;
 
     const release = await this.storage.graphMutex.acquire();
     try {
@@ -677,6 +811,15 @@ export class EntityManager {
 
       if (!entity) {
         throw new EntityNotFoundError(name);
+      }
+
+      // Governance (Sec1): consult canUpdate with (existing, updates) so
+      // policies can veto on the proposed patch, not just current state.
+      if (
+        this.governanceHooks?.canUpdate &&
+        !this.governanceHooks.canUpdate(entity, sanitizedUpdates)
+      ) {
+        throw new GovernanceError('update', name);
       }
 
       // η.5.5.c: optimistic concurrency check. Treat absent `version` as
@@ -692,18 +835,26 @@ export class EntityManager {
       // Validate the lifecycle-status transition before assignment.
       // Throws IllegalStatusTransitionError if illegal.
       if (
-        updates.lifecycleStatus !== undefined &&
-        updates.lifecycleStatus !== entity.lifecycleStatus
+        sanitizedUpdates.lifecycleStatus !== undefined &&
+        sanitizedUpdates.lifecycleStatus !== entity.lifecycleStatus
       ) {
-        ENTITY_STATE_MACHINE.transition(entity.lifecycleStatus, updates.lifecycleStatus, name);
+        ENTITY_STATE_MACHINE.transition(
+          entity.lifecycleStatus,
+          sanitizedUpdates.lifecycleStatus,
+          name,
+        );
       }
 
       // OCC writes auto-increment version so subsequent OCC writes can detect
       // their predecessor. Non-OCC writes leave version untouched (legacy).
       const effectiveUpdates: Partial<Entity> =
         options?.expectedVersion !== undefined
-          ? { ...updates, version: (entity.version ?? 1) + 1 }
-          : updates;
+          ? { ...sanitizedUpdates, version: (entity.version ?? 1) + 1 }
+          : sanitizedUpdates;
+
+      // Snapshot the pre-mutation state for the audit hook (the storage
+      // primitive mutates the live entity object in place).
+      const before = this.governanceHooks?.audit ? { ...entity } : undefined;
 
       // S2: delta write via the storage primitive (sanitizes updates,
       // bumps lastModified, emits entity:updated) — O(changed) instead of
@@ -714,7 +865,11 @@ export class EntityManager {
         // a defensive guard for third-party storage implementations.
         throw new EntityNotFoundError(name);
       }
-      return this.storage.getEntityByName(name)!;
+      const updated = this.storage.getEntityByName(name)!;
+      if (before) {
+        this.fireAudit({ operation: 'update', entityName: name, before, after: { ...updated } });
+      }
+      return updated;
     } finally {
       release();
     }
@@ -798,9 +953,28 @@ export class EntityManager {
       );
     }
 
+    // Governance (Sec1): a rename is an update of the entity's identity —
+    // consult canUpdate with the proposed name patch so policies can veto.
+    if (
+      this.governanceHooks?.canUpdate &&
+      !this.governanceHooks.canUpdate(existing, { name: newName } as Partial<Entity>)
+    ) {
+      throw new GovernanceError('update', oldName);
+    }
+    const beforeRename = this.governanceHooks?.audit ? { ...existing } : undefined;
+
     // Storage primitive re-validates existence/uniqueness under its own
     // mutex (closes the TOCTOU gap) and performs the atomic rewrite.
     const renamed = await this.storage.renameEntity(oldName, newName);
+
+    if (beforeRename) {
+      this.fireAudit({
+        operation: 'update',
+        entityName: oldName,
+        before: beforeRename,
+        after: { ...renamed },
+      });
+    }
 
     // Remap stable aliases so refs survive the rename.
     if (this.refIndex) {
@@ -855,17 +1029,42 @@ export class EntityManager {
   async batchUpdate(
     updates: Array<{ name: string; updates: Partial<Entity> }>
   ): Promise<Entity[]> {
-    // Validate all updates first
-    for (const { updates: updateData } of updates) {
+    // Validate all updates first. Sec7: the PARSED (stripped) data is
+    // what gets applied — unknown keys are dropped, not passed through.
+    const sanitizedBatch: Array<{ name: string; updates: Partial<Entity> }> = [];
+    for (const { name, updates: updateData } of updates) {
       const validation = UpdateEntitySchema.safeParse(updateData);
       if (!validation.success) {
         const errors = validation.error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
         throw new ValidationError('Invalid update data', errors);
       }
+      sanitizedBatch.push({ name, updates: validation.data as Partial<Entity> });
     }
 
     const release = await this.storage.graphMutex.acquire();
     try {
+      // Governance (Sec1): consult canUpdate(existing, updates) for every
+      // item BEFORE the batch write — one denial blocks the whole batch
+      // (matching the delta write's all-or-nothing semantics). Missing
+      // entities are left for the storage primitive to reject with
+      // EntityNotFoundError, preserving pre-hook error behavior.
+      let befores: Map<string, Entity> | undefined;
+      if (this.governanceHooks) {
+        await this.storage.ensureLoaded();
+        befores = new Map();
+        for (const { name, updates: entityUpdates } of sanitizedBatch) {
+          const existing = this.storage.getEntityByName(name);
+          if (!existing) continue;
+          if (
+            this.governanceHooks.canUpdate &&
+            !this.governanceHooks.canUpdate(existing, entityUpdates)
+          ) {
+            throw new GovernanceError('update', name);
+          }
+          if (!befores.has(name)) befores.set(name, { ...existing });
+        }
+      }
+
       // S2: single delta write (one fsync / one SQLite transaction).
       // The storage primitive validates all names first (throws
       // EntityNotFoundError before mutating anything — same all-or-
@@ -873,7 +1072,20 @@ export class EntityManager {
       // each update, stamps the shared timestamp, and emits
       // entity:updated per entity.
       const timestamp = new Date().toISOString();
-      return await this.updateEntitiesCompat(updates, { timestamp });
+      const results = await this.updateEntitiesCompat(sanitizedBatch, { timestamp });
+
+      if (befores) {
+        for (const updated of results) {
+          this.fireAudit({
+            operation: 'update',
+            entityName: updated.name,
+            before: befores.get(updated.name),
+            after: { ...updated },
+          });
+        }
+      }
+
+      return results;
     } finally {
       release();
     }

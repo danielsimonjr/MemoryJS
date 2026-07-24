@@ -31,6 +31,23 @@ import {
 import { StreamingExporter, type StreamResult } from './StreamingExporter.js';
 import { BackupManager } from './BackupManager.js';
 import { EntitySchema, RelationSchema } from '../utils/schemas.js';
+import { PiiRedactor } from '../security/PiiRedactor.js';
+
+/**
+ * Sec6 — opt-in PII redaction for export/backup surfaces.
+ *
+ * When `redactPii: true`, observation strings are passed through
+ * {@link PiiRedactor} on a DEEP-COPIED text path of the exported data —
+ * the live graph is never mutated. Default `false` keeps output
+ * byte-identical to previous releases.
+ */
+export interface PiiRedactionOption {
+  /** Redact PII (email/phone/SSN/CC/IP) from exported observation text. */
+  redactPii?: boolean;
+}
+
+/** Shared default redactor — stateless, safe to reuse across calls. */
+const DEFAULT_EXPORT_REDACTOR = new PiiRedactor();
 
 export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid' | 'turtle' | 'rdf-xml' | 'json-ld';
 export type ImportFormat = 'json' | 'csv' | 'graphml';
@@ -155,8 +172,22 @@ export class IOManager {
   // EXPORT OPERATIONS
   // ---
 
-  /** Export graph to specified format. */
-  exportGraph(graph: ReadonlyKnowledgeGraph, format: ExportFormat): string {
+  /**
+   * Export graph to specified format.
+   *
+   * @param options - `redactPii: true` masks PII in observation strings
+   *   on the exported copy only (the input graph is never mutated).
+   */
+  exportGraph(
+    graph: ReadonlyKnowledgeGraph,
+    format: ExportFormat,
+    options?: PiiRedactionOption,
+  ): string {
+    if (options?.redactPii) {
+      // redactGraph returns a clone with redacted observation copies —
+      // the live graph object is untouched.
+      graph = DEFAULT_EXPORT_REDACTOR.redactGraph(graph);
+    }
     switch (format) {
       case 'json':
         return this.exportAsJson(graph);
@@ -371,22 +402,26 @@ export class IOManager {
     return JSON.stringify(doc, null, 2);
   }
 
-  /** Export graph with optional brotli compression. */
+  /** Export graph with optional brotli compression (and opt-in PII redaction). */
   async exportGraphWithCompression(
     graph: ReadonlyKnowledgeGraph,
     format: ExportFormat,
-    options?: ExportOptions
+    options?: ExportOptions & PiiRedactionOption
   ): Promise<ExportResult> {
     // Check if streaming should be used
     const shouldStream = options?.streaming ||
       (options?.outputPath && graph.entities.length >= STREAMING_CONFIG.STREAMING_THRESHOLD);
 
     if (shouldStream && options?.outputPath) {
-      return this.streamExport(format, graph, options as ExportOptions & { outputPath: string });
+      return this.streamExport(
+        format,
+        graph,
+        options as ExportOptions & PiiRedactionOption & { outputPath: string },
+      );
     }
 
     // Generate export content using existing method
-    const content = this.exportGraph(graph, format);
+    const content = this.exportGraph(graph, format, { redactPii: options?.redactPii });
     const originalSize = Buffer.byteLength(content, 'utf-8');
 
     // Determine if compression should be applied
@@ -435,25 +470,26 @@ export class IOManager {
   private async streamExport(
     format: ExportFormat,
     graph: ReadonlyKnowledgeGraph,
-    options: ExportOptions & { outputPath: string }
+    options: ExportOptions & PiiRedactionOption & { outputPath: string }
   ): Promise<ExportResult> {
     // Export output is user-supplied and may legitimately target outside
     // cwd; ".." defense-in-depth check inside validateFilePath still runs.
     const validatedOutputPath = validateFilePath(options.outputPath, undefined, false);
     const exporter = new StreamingExporter(validatedOutputPath);
+    const redactPii = options.redactPii;
     let result: StreamResult;
 
     switch (format) {
       case 'json':
         // Use JSONL format for streaming (line-delimited JSON)
-        result = await exporter.streamJSONL(graph);
+        result = await exporter.streamJSONL(graph, { redactPii });
         break;
       case 'csv':
-        result = await exporter.streamCSV(graph);
+        result = await exporter.streamCSV(graph, { redactPii });
         break;
       default:
         // Fallback to in-memory export for unsupported streaming formats
-        const content = this.exportGraph(graph, format);
+        const content = this.exportGraph(graph, format, { redactPii });
         await fs.writeFile(validatedOutputPath, content);
         result = {
           bytesWritten: Buffer.byteLength(content, 'utf-8'),
@@ -1276,8 +1312,18 @@ export class IOManager {
   // pre-extraction public API so existing callers keep working
   // unchanged.
 
-  /** Create a backup of the current knowledge graph. */
-  async createBackup(options?: BackupOptions | string): Promise<BackupResult> {
+  /**
+   * Create a backup of the current knowledge graph.
+   *
+   * Sec6: pass `redactPii: true` to mask PII in observation strings of
+   * the backup content. The backup is then synthesized from the parsed
+   * graph (redacted copies) rather than a raw file copy — the live graph
+   * and storage file are never touched. Redacted backups are for
+   * compliance/export use; they are not byte-identical snapshots.
+   */
+  async createBackup(
+    options?: (BackupOptions & PiiRedactionOption) | string
+  ): Promise<BackupResult> {
     return this.backups.create(options);
   }
 

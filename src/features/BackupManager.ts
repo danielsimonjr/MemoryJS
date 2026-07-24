@@ -26,12 +26,13 @@ import {
   COMPRESSION_CONFIG,
 } from '../utils/index.js';
 import { validateFilePath } from '../utils/entityUtils.js';
+import { PiiRedactor } from '../security/PiiRedactor.js';
 import type {
   BackupOptions,
   BackupResult,
   RestoreResult,
 } from '../types/index.js';
-import type { BackupMetadata, BackupInfo } from './IOManager.js';
+import type { BackupMetadata, BackupInfo, PiiRedactionOption } from './IOManager.js';
 
 // Canonical `BackupMetadata` / `BackupInfo` live in IOManager.ts (the optional
 // compression fields honestly describe pre-compression backup metas read from
@@ -63,13 +64,20 @@ export class BackupManager {
     return this.backupDir;
   }
 
-  /** Create a backup of the current knowledge graph. */
-  async create(options?: BackupOptions | string): Promise<BackupResult> {
+  /**
+   * Create a backup of the current knowledge graph.
+   *
+   * Sec6: `redactPii: true` synthesizes the backup from the parsed graph
+   * with PII-redacted observation COPIES (never a raw file copy, and the
+   * live graph is untouched). Default `false` = byte-identical raw-file
+   * backup, exactly as before.
+   */
+  async create(options?: (BackupOptions & PiiRedactionOption) | string): Promise<BackupResult> {
     await this.ensureDir();
 
     // Legacy string-arg compatibility — pre-Phase-2 callers passed
     // just a description.
-    const opts: BackupOptions = typeof options === 'string'
+    const opts: BackupOptions & PiiRedactionOption = typeof options === 'string'
       ? { description: options, compress: COMPRESSION_CONFIG.AUTO_COMPRESS_BACKUP }
       : { compress: COMPRESSION_CONFIG.AUTO_COMPRESS_BACKUP, ...options };
 
@@ -83,14 +91,27 @@ export class BackupManager {
       const originalPath = this.storage.getFilePath();
       let fileContent: string;
 
-      try {
-        fileContent = await fs.readFile(originalPath, 'utf-8');
-      } catch {
+      if (opts.redactPii) {
+        // Sec6: build the backup from the graph with redacted observation
+        // copies. A raw-file copy would require text-mangling the storage
+        // file (unsafe for the SQLite binary format); synthesizing from
+        // the parsed graph redacts structurally and backend-agnostically.
+        const redacted = new PiiRedactor().redactGraph(graph);
         const lines = [
-          ...graph.entities.map((e) => JSON.stringify({ type: 'entity', ...e })),
-          ...graph.relations.map((r) => JSON.stringify({ type: 'relation', ...r })),
+          ...redacted.entities.map((e) => JSON.stringify({ type: 'entity', ...e })),
+          ...redacted.relations.map((r) => JSON.stringify({ type: 'relation', ...r })),
         ];
         fileContent = lines.join('\n');
+      } else {
+        try {
+          fileContent = await fs.readFile(originalPath, 'utf-8');
+        } catch {
+          const lines = [
+            ...graph.entities.map((e) => JSON.stringify({ type: 'entity', ...e })),
+            ...graph.relations.map((r) => JSON.stringify({ type: 'relation', ...r })),
+          ];
+          fileContent = lines.join('\n');
+        }
       }
 
       const originalSize = Buffer.byteLength(fileContent, 'utf-8');

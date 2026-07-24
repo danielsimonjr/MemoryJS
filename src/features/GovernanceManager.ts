@@ -14,9 +14,37 @@
 
 import type { Entity } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
-import { AuditLog, type AuditEntry } from './AuditLog.js';
+import { AuditLog, type AuditEntry, type AuditOperation } from './AuditLog.js';
 import { KnowledgeGraphError } from '../utils/errors.js';
 import { sanitizeObject } from '../utils/entityUtils.js';
+import { PiiRedactor } from '../security/PiiRedactor.js';
+
+// ==================== Errors ====================
+
+/**
+ * Thrown when a {@link GovernancePolicy} blocks an operation.
+ *
+ * Raised both by {@link GovernanceTransaction} operations and by
+ * `EntityManager` mutations when governance hooks are wired (Sec1
+ * enforcement chokepoint — `MEMORY_GOVERNANCE_ENABLED=true`).
+ * Always carries code `'POLICY_VIOLATION'` and names the denied entity.
+ */
+export class GovernanceError extends KnowledgeGraphError {
+  constructor(
+    /** Which operation was denied. */
+    public readonly operation: 'create' | 'update' | 'delete',
+    /** The entity the policy denied. */
+    public readonly entityName: string,
+    message?: string,
+  ) {
+    super(
+      message ??
+        `Governance policy blocked ${operation} of entity "${entityName}"`,
+      'POLICY_VIOLATION',
+    );
+    this.name = 'GovernanceError';
+  }
+}
 
 // ==================== Policy ====================
 
@@ -37,8 +65,16 @@ import { sanitizeObject } from '../utils/entityUtils.js';
 export interface GovernancePolicy {
   /** Return false to block creation of this entity */
   canCreate?: (entity: Omit<Entity, 'createdAt' | 'lastModified'>) => boolean;
-  /** Return false to block update of this entity */
-  canUpdate?: (entity: Entity) => boolean;
+  /**
+   * Return false to block update of this entity.
+   *
+   * Receives the **pre-merge** entity plus (when the caller provides it)
+   * the proposed `updates` patch, so policies can veto on the fields
+   * being written — not just on the current state. Policies written
+   * against the original single-parameter signature keep working
+   * unchanged (extra arguments are ignored by shorter functions).
+   */
+  canUpdate?: (entity: Entity, updates?: Partial<Entity>) => boolean;
   /** Return false to block deletion of this entity */
   canDelete?: (entity: Entity) => boolean;
 }
@@ -66,8 +102,21 @@ export class GovernanceTransaction {
     private readonly storage: GraphStorage,
     private readonly auditLog: AuditLog,
     private readonly policy: GovernancePolicy,
-    private readonly defaultAgentId?: string
+    private readonly defaultAgentId?: string,
+    /**
+     * When set, before/after snapshots are PII-redacted before being
+     * appended to the audit log (Sec6 — opt-in via the
+     * `redactAuditSnapshots` GovernanceManager option). The live graph
+     * is never touched; only the audit copies are redacted.
+     */
+    private readonly snapshotRedactor?: PiiRedactor,
   ) {}
+
+  /** Apply snapshot redaction when configured; identity otherwise. */
+  private redactSnapshot(snapshot: object | undefined): object | undefined {
+    if (!snapshot || !this.snapshotRedactor) return snapshot;
+    return redactObjectStrings(snapshot, this.snapshotRedactor);
+  }
 
   /**
    * Get all audit entries recorded in this transaction.
@@ -91,9 +140,10 @@ export class GovernanceTransaction {
   ): Promise<Entity> {
     // Policy check
     if (this.policy.canCreate && !this.policy.canCreate(entity)) {
-      throw new KnowledgeGraphError(
+      throw new GovernanceError(
+        'create',
+        entity.name,
         `Governance policy blocked creation of entity "${entity.name}"`,
-        'POLICY_VIOLATION'
       );
     }
 
@@ -119,7 +169,7 @@ export class GovernanceTransaction {
       entityName: entity.name,
       agentId: options?.agentId ?? this.defaultAgentId,
       before: undefined,
-      after: created as unknown as object,
+      after: this.redactSnapshot(created as unknown as object),
       status: 'committed',
     });
     this.auditEntries.push(entry);
@@ -146,12 +196,10 @@ export class GovernanceTransaction {
       throw new KnowledgeGraphError(`Entity "${name}" not found`, 'ENTITY_NOT_FOUND');
     }
 
-    // Policy check against current state
-    if (this.policy.canUpdate && !this.policy.canUpdate(existing)) {
-      throw new KnowledgeGraphError(
-        `Governance policy blocked update of entity "${name}"`,
-        'POLICY_VIOLATION'
-      );
+    // Policy check against current state (and the proposed patch, so
+    // policies can veto on injected fields — see GovernancePolicy.canUpdate)
+    if (this.policy.canUpdate && !this.policy.canUpdate(existing, updates)) {
+      throw new GovernanceError('update', name);
     }
 
     const before = { ...existing } as unknown as object;
@@ -167,8 +215,8 @@ export class GovernanceTransaction {
       operation: 'update',
       entityName: name,
       agentId: options?.agentId ?? this.defaultAgentId,
-      before,
-      after: existing as unknown as object,
+      before: this.redactSnapshot(before),
+      after: this.redactSnapshot(existing as unknown as object),
       status: 'committed',
     });
     this.auditEntries.push(entry);
@@ -194,9 +242,10 @@ export class GovernanceTransaction {
 
     // Policy check
     if (this.policy.canDelete && !this.policy.canDelete(existing)) {
-      throw new KnowledgeGraphError(
+      throw new GovernanceError(
+        'delete',
+        name,
         `Governance policy blocked deletion of entity "${name}"`,
-        'POLICY_VIOLATION'
       );
     }
 
@@ -210,7 +259,7 @@ export class GovernanceTransaction {
       operation: 'delete',
       entityName: name,
       agentId: options?.agentId ?? this.defaultAgentId,
-      before,
+      before: this.redactSnapshot(before),
       after: undefined,
       status: 'committed',
     });
@@ -238,8 +287,8 @@ export class GovernanceTransaction {
       operation: 'merge',
       entityName,
       agentId: options?.agentId ?? this.defaultAgentId,
-      before,
-      after,
+      before: this.redactSnapshot(before),
+      after: this.redactSnapshot(after),
       status: 'committed',
     });
     this.auditEntries.push(entry);
@@ -262,7 +311,7 @@ export class GovernanceTransaction {
       operation: 'archive',
       entityName,
       agentId: options?.agentId ?? this.defaultAgentId,
-      before,
+      before: this.redactSnapshot(before),
       after: undefined,
       status: 'committed',
     });
@@ -318,13 +367,71 @@ export class GovernanceTransaction {
  * await governance.rollback(auditEntryId);
  * ```
  */
+export interface GovernanceManagerOptions {
+  /**
+   * Sec6 (opt-in): apply {@link PiiRedactor} to before/after entity
+   * snapshots before they are written to the audit log. The live graph
+   * is never mutated — only the audit copies are redacted. Default: false
+   * (byte-identical audit behavior to previous releases).
+   */
+  redactAuditSnapshots?: boolean;
+  /**
+   * Custom redactor for `redactAuditSnapshots`. Defaults to a
+   * `new PiiRedactor()` with the standard pattern bank.
+   */
+  redactor?: PiiRedactor;
+}
+
 export class GovernanceManager {
   private policy: GovernancePolicy = {};
+  private readonly snapshotRedactor?: PiiRedactor;
 
   constructor(
     private readonly storage: GraphStorage,
-    private readonly auditLog: AuditLog
-  ) {}
+    /**
+     * The audit log this manager appends to. Public so integration
+     * layers (e.g. `ManagerContext`'s Sec1 enforcement wiring and
+     * `verifyChain` health checks) can reach the same log — but prefer
+     * {@link appendAudit} for writes so snapshot redaction is applied.
+     */
+    public readonly auditLog: AuditLog,
+    options?: GovernanceManagerOptions,
+  ) {
+    if (options?.redactAuditSnapshots) {
+      this.snapshotRedactor = options.redactor ?? new PiiRedactor();
+    }
+  }
+
+  /**
+   * Append an audit entry through this manager's redaction policy.
+   *
+   * Applies `redactAuditSnapshots` (when enabled) to the `before` /
+   * `after` snapshots, then appends to {@link auditLog}. This is the
+   * write path `ManagerContext` wires into `EntityManager`'s governance
+   * hooks so hook-driven audits honor the same redaction as
+   * transaction-driven ones.
+   */
+  async appendAudit(entry: {
+    operation: AuditOperation;
+    entityName: string;
+    agentId?: string;
+    before?: object;
+    after?: object;
+    status?: 'committed' | 'rolled_back';
+  }): Promise<AuditEntry> {
+    const redact = (snapshot: object | undefined): object | undefined =>
+      snapshot && this.snapshotRedactor
+        ? redactObjectStrings(snapshot, this.snapshotRedactor)
+        : snapshot;
+    return this.auditLog.append({
+      operation: entry.operation,
+      entityName: entry.entityName,
+      agentId: entry.agentId,
+      before: redact(entry.before),
+      after: redact(entry.after),
+      status: entry.status ?? 'committed',
+    });
+  }
 
   /**
    * Set the active governance policy.
@@ -367,7 +474,13 @@ export class GovernanceManager {
     fn: (tx: GovernanceTransaction) => Promise<T>,
     agentId?: string
   ): Promise<T> {
-    const tx = new GovernanceTransaction(this.storage, this.auditLog, this.policy, agentId);
+    const tx = new GovernanceTransaction(
+      this.storage,
+      this.auditLog,
+      this.policy,
+      agentId,
+      this.snapshotRedactor,
+    );
 
     try {
       const result = await fn(tx);
@@ -478,6 +591,37 @@ export class GovernanceManager {
 }
 
 // ==================== Helpers ====================
+
+/**
+ * Structurally redact every string value in an object tree (Sec6).
+ *
+ * Deep-clones the input, applying {@link PiiRedactor.redact} to each
+ * string leaf (array elements included). Object keys are left untouched.
+ * Structural (rather than JSON-roundtrip) redaction guarantees custom
+ * pattern replacements can never corrupt the serialized shape.
+ * Non-plain values (functions, class instances) are passed through by
+ * reference — audit snapshots are plain `{ ...entity }` spreads, so in
+ * practice everything is JSON-shaped.
+ */
+function redactObjectStrings<T>(value: T, redactor: PiiRedactor): T {
+  if (typeof value === 'string') {
+    return redactor.redact(value) as unknown as T;
+  }
+  if (Array.isArray(value)) {
+    return value.map(v => redactObjectStrings(v, redactor)) as unknown as T;
+  }
+  if (value !== null && typeof value === 'object') {
+    const proto = Object.getPrototypeOf(value);
+    if (proto === Object.prototype || proto === null) {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+        out[k] = redactObjectStrings(v, redactor);
+      }
+      return out as unknown as T;
+    }
+  }
+  return value;
+}
 
 /**
  * Build a restorable {@link Entity} from an unvalidated audit snapshot.
