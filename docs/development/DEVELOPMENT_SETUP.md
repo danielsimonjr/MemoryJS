@@ -355,17 +355,17 @@ SELECT * FROM entities_fts WHERE entities_fts MATCH 'alice';
 No setup required. Returns deterministic fake embeddings.
 
 ```bash
-EMBEDDING_PROVIDER=none npm test
+MEMORY_EMBEDDING_PROVIDER=none npm test
 ```
 
 ### OpenAI Provider
 
 ```bash
 # Set API key
-export OPENAI_API_KEY=sk-your-key-here
+export MEMORY_OPENAI_API_KEY=sk-your-key-here
 
 # Enable OpenAI embeddings
-export EMBEDDING_PROVIDER=openai
+export MEMORY_EMBEDDING_PROVIDER=openai
 
 # Run tests (will use real API)
 npm test
@@ -378,7 +378,7 @@ npm test
 Uses locally computed embeddings (lower quality, no API needed).
 
 ```bash
-export EMBEDDING_PROVIDER=local
+export MEMORY_EMBEDDING_PROVIDER=local
 npm test
 ```
 
@@ -395,8 +395,8 @@ Create a `.env.development` file (not committed):
 MEMORY_STORAGE_TYPE=jsonl
 
 # Embeddings (for semantic search testing)
-EMBEDDING_PROVIDER=none
-# OPENAI_API_KEY=sk-your-key-here
+MEMORY_EMBEDDING_PROVIDER=none
+# MEMORY_OPENAI_API_KEY=sk-your-key-here
 
 # Debugging
 DEBUG=memoryjs:*
