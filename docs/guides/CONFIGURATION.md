@@ -1,6 +1,6 @@
 # MemoryJS Configuration Reference
 
-**Version**: 1.14.0 + Unreleased
+**Version**: 2.9.0
 **Last Updated**: 2026-07-24
 
 Complete reference for all configuration options, environment variables, and customization settings.
@@ -12,7 +12,7 @@ Complete reference for all configuration options, environment variables, and cus
 > governance, freshness, role profiles, entropy filter, consolidation
 > scheduler, cognitive load, default visibility, Memory Engine knobs,
 > PRD decay extensions, Memory Backend selector, RBAC defaults, audit
-> attribution, validation-on-store, and (Unreleased) graph-connectivity
+> attribution, validation-on-store, and (v2.9.0) graph-connectivity
 > signals for hybrid search/salience/decay. See CLAUDE.md for the ~50
 > full set.
 
@@ -856,7 +856,7 @@ const ctx = new ManagerContext(config.storagePath);
 
 ---
 
-## Complete Environment Variable Reference (v1.6 → Unreleased)
+## Complete Environment Variable Reference (v1.6 → v2.9.0)
 
 The original sections above cover the v1.1-era variables. Below is the
 complete current set. Defaults shown in parens; **bold** values are
@@ -946,7 +946,7 @@ opt-in / require explicit configuration.
 | `MEMORY_COGNITIVE_LOAD_MAX` | number 0–1 | `0.8` |
 | `MEMORY_DEFAULT_VISIBILITY` | `private`, `team`, `org`, `shared`, `public` | `private` |
 
-### Graph-connectivity signals (Unreleased — knowledge-graph-as-core convergence)
+### Graph-connectivity signals (v2.9.0 — knowledge-graph-as-core convergence)
 
 All default to `0` = off with behavior identical to before they existed
 (scores are bit-identical to prior behavior until enabled). See

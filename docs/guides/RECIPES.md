@@ -1,6 +1,6 @@
 # MemoryJS Recipes
 
-**Last refreshed**: 2026-04-25 (v1.14.0 + Unreleased)
+**Last refreshed**: 2026-07-24 (v2.9.0)
 
 > Ready-to-use code patterns and solutions for common tasks. Recipes
 > below cover the v1.1-era surface; for examples covering Memory Engine,
@@ -526,7 +526,7 @@ function calculateRelevance(text: string, query: string): number {
 }
 ```
 
-### Graph-Connectivity-Aware Ranking (Unreleased, opt-in)
+### Graph-Connectivity-Aware Ranking (v2.9.0, opt-in)
 
 Well-connected entities (hubs) often deserve a ranking boost. Two
 env-gated, default-off ways to fold graph connectivity into scoring —

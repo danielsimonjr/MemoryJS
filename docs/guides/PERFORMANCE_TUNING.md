@@ -1,7 +1,7 @@
 # MemoryJS Performance Tuning Guide
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 
 > **Performance-relevant additions since v1.1:**
 >
@@ -858,4 +858,4 @@ const eventSync = new TFIDFEventSync(indexManager, ctx.storage, eventEmitter);
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-07-24

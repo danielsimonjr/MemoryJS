@@ -1,7 +1,7 @@
 # MemoryJS Use Cases & Examples
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 
 > **Note:** examples below cover the v1.1-era surface. The library has
 > grown significantly — for examples covering Memory Engine, Memory
@@ -1904,11 +1904,11 @@ Each implementation can be adapted and combined based on your specific requireme
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-04-25
+**Last Updated**: 2026-07-24
 
 ---
 
-## v1.7 → Unreleased — additional use cases
+## v1.7 → v2.9.0 — additional use cases
 
 ### 11. Multi-Agent Collaborative Knowledge Base
 
@@ -2212,7 +2212,7 @@ for (const r of results) {
 channel + `expandNeighbors`, `RankedSearch.setGraphPrior` (a simpler
 single-channel alternative via `MEMORY_RANKED_GRAPH_BOOST`).
 
-### Summary table — new use cases (v1.7 → Unreleased)
+### Summary table — new use cases (v1.7 → v2.9.0)
 
 | Use Case | Key Features Used |
 |----------|------------------|

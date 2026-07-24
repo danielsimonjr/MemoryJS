@@ -1,7 +1,7 @@
 # MemoryJS Developer Implementation Guide
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 **Based on**: Dependency Graph Analysis & Codebase Exploration
 
 > The dependency graph + module list have been refreshed for v1.14.0+.
@@ -478,7 +478,7 @@ hybrid.forEach(r => {
 });
 ```
 
-#### Graph-connectivity channel (Unreleased, @experimental, opt-in)
+#### Graph-connectivity channel (v2.9.0, @experimental, opt-in)
 
 `HybridSearchManager` has a fourth, optional `graph` channel — a
 normalized-PageRank ranking signal via `GraphRankPrior` — plus one-hop
@@ -1681,5 +1681,5 @@ await ctx.rankedSearch.searchNodesRanked(query, undefined, undefined, undefined,
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-07-24
 **Generated From**: Dependency Graph Analysis & Codebase Exploration

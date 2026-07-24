@@ -1,7 +1,7 @@
 # MemoryJS Migration Guide
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 
 > **Recent migrations** — all backwards-compatible (additive):
 >
@@ -20,12 +20,12 @@
 >   default `sqlite` preserves existing behavior. `IMemoryBackend` is opt-in.
 > - **v1.13.0 → v1.14.0** — `MEMORY_VALIDATE_ON_STORE=true` opt-in pre-storage
 >   hook; default off so legacy callers see no behavior change.
-> - **v1.14.0 → Unreleased** — New optional `Entity` fields (`validFrom`,
+> - **v1.14.0 → v2.9.0** — New optional `Entity` fields (`validFrom`,
 >   `validUntil`, `observationMeta[]`) for bitemporal queries; absent ⇒
 >   unbounded validity (matches pre-v1.14 behavior). New optional
 >   `AgentEntity` fields (`allowedRoles`, `visibleFrom`, `visibleUntil`)
 >   for visibility expansion; absent ⇒ no extra gating.
-> - **v1.14.0 → Unreleased (knowledge-graph-as-core convergence)** — New
+> - **v1.14.0 → v2.9.0 (knowledge-graph-as-core convergence)** — New
 >   optional `Entity.id` (stable UUID, backfilled automatically); new
 >   `EntityManager.renameEntity()` / `listEntities()`; `GraphEventEmitter`
 >   parity on `SQLiteStorage`; graph-connectivity signals in search/salience/decay
@@ -34,7 +34,7 @@
 >   See [Storage-Shape & Constructor Changes](#storage-shape--constructor-changes-v1140--unreleased)
 >   below for details.
 >
-> No breaking changes have been introduced through Unreleased. SQLite
+> No breaking changes have been introduced through v2.9.0. SQLite
 > migrations are idempotent — running an older `dist/` against a newer
 > schema is safe; running newer code against an older `.db` triggers
 > automatic schema additions.
@@ -48,7 +48,7 @@ Guide for migrating between versions, storage backends, and from other knowledge
 1. [Version Migration](#version-migration)
 2. [Storage Backend Migration](#storage-backend-migration)
 3. [Data Format Migration](#data-format-migration)
-4. [Storage-Shape & Constructor Changes (v1.14.0 → Unreleased)](#storage-shape--constructor-changes-v1140--unreleased)
+4. [Storage-Shape & Constructor Changes (v1.14.0 → v2.9.0)](#storage-shape--constructor-changes-v1140--unreleased)
 5. [Migrating from Other Solutions](#migrating-from-other-solutions)
 6. [Breaking Changes Reference](#breaking-changes-reference)
 7. [Migration Scripts](#migration-scripts)
@@ -336,7 +336,7 @@ async function deduplicateObservations(storagePath: string) {
 
 ---
 
-## Storage-Shape & Constructor Changes (v1.14.0 → Unreleased)
+## Storage-Shape & Constructor Changes (v1.14.0 → v2.9.0)
 
 The "knowledge-graph-as-core convergence" batch decomposes several
 agent-memory managers from opaque JSON-blob observations into real
@@ -1039,4 +1039,4 @@ After any migration, verify:
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2026-01-12
+**Last Updated**: 2026-07-24

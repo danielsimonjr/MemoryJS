@@ -1,6 +1,6 @@
 # Agent Memory System Design
 
-**Last reviewed**: 2026-07-24 (v2.0.x + Phase 2 memory-types expansion Sprints 4–6 + 8 + Phase 3B.8 Heuristic Guidelines Manager + Unreleased knowledge-graph-as-core convergence)
+**Last reviewed**: 2026-07-24 (v2.0.x + Phase 2 memory-types expansion Sprints 4–6 + 8 + Phase 3B.8 Heuristic Guidelines Manager + v2.9.0 knowledge-graph-as-core convergence)
 
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
 
@@ -23,14 +23,14 @@ This document specifies the architectural design for transforming MemoryJS into 
 > - **v1.13.0 (Phase δ)** — `MemoryValidator` (consistency / contradictions /
 >   reliability), `TrajectoryCompressor`, `ExperienceExtractor`. All
 >   wrap-and-extend per ADR-011.
-> - **Unreleased (η.4.4)** — Bitemporal validity for entities + observations
+> - **v2.9.0 (η.4.4)** — Bitemporal validity for entities + observations
 >   (`validFrom` / `validUntil` / `observationMeta[]`).
-> - **Unreleased (η.5.5)** — Multi-agent conflict view, visibility expansion
+> - **v2.9.0 (η.5.5)** — Multi-agent conflict view, visibility expansion
 >   (role + time-window gates), optimistic concurrency control, audit
 >   attribution enforcer.
-> - **Unreleased (η.6.1 / η.6.3)** — RBAC (Role / Permission / Matrix /
+> - **v2.9.0 (η.6.1 / η.6.3)** — RBAC (Role / Permission / Matrix /
 >   Middleware), `PiiRedactor` for export-time PII scrubbing.
-> - **Unreleased (3B.4–3B.7)** — Procedural memory (`ProcedureManager` +
+> - **v2.9.0 (3B.4–3B.7)** — Procedural memory (`ProcedureManager` +
 >   `StepSequencer`), active retrieval (`ActiveRetrievalController` with
 >   iterative query rewriting), causal reasoning (`CausalReasoner`),
 >   world-model orchestrator (`WorldModelManager` + `WorldStateSnapshot`).
@@ -91,7 +91,7 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   idempotency (3B.8b). Mutating writes use `EntityManager` OCC and surface
 >   `'conflict'` via a new `HeuristicUpdateResult`, matching the #55 pattern.
 >   Both constructors are breaking; the class was `@experimental`.
-> - **Unreleased (knowledge-graph-as-core convergence)** — Stable
+> - **v2.9.0 (knowledge-graph-as-core convergence)** — Stable
 >   `Entity.id` (opaque UUID assigned at creation, preserved across
 >   updates/renames/persistence on both backends) + new
 >   `EntityManager.renameEntity(oldName, newName)` primitive (atomically
@@ -463,7 +463,7 @@ interface DecayResult {
 ```
 
 > **Shipped `DecayEngineConfig` also has** (see the Decay Formula section
-> below): `connectivityProtection` (Unreleased, default 0) — well-connected
+> below): `connectivityProtection` (v2.9.0, default 0) — well-connected
 > entities decay slower in this legacy path; and the PRD-scale sibling
 > fields (`decayRate`/`freshnessCoefficient`/`relevanceWeight`/
 > `minImportanceThreshold`, v1.12) that back the separate
@@ -599,13 +599,13 @@ interface ScoredEntity {
     frequencyBoost: number;
     contextRelevance: number;
     noveltyBoost: number;
-    connectivityBoost: number; // Unreleased: normalized entity degree, only computed when connectivityWeight > 0
+    connectivityBoost: number; // v2.9.0: normalized entity degree, only computed when connectivityWeight > 0
   };
 }
 ```
 
 > **Shipped `SalienceEngineConfig` also has** `connectivityWeight`
-> (Unreleased, default 0 = disabled) — weight applied to
+> (v2.9.0, default 0 = disabled) — weight applied to
 > `components.connectivityBoost` above. With the default weight the
 > signal is never computed, so scores are bit-identical to prior
 > behavior. `rankEntitiesBySalience` caches the degree map once per
@@ -825,7 +825,7 @@ type ConflictStrategy =
   - Extracted from repeated observations
   - Rule-based patterns
   - Action sequences executable via `invoke()`
-  - **Storage (Unreleased)**: `ProcedureStore` persists steps as
+  - **Storage (v2.9.0)**: `ProcedureStore` persists steps as
     first-class `procedure-step` entities (name
     `${procId}::step-${order}`, `parentId` = procedure) carrying
     `[order]`/`[action]`/`[timeout]`/`[param]` observation lines, linked
@@ -1177,7 +1177,7 @@ where:
     where importance_boost = base_importance / 10
 ```
 
-**Connectivity protection (Unreleased, off by default):** when
+**Connectivity protection (v2.9.0, off by default):** when
 `DecayEngine`'s `connectivityProtection` config is > 0, `decay_factor`
 above is replaced by an `effective_decay_factor` that is lifted toward 1
 for well-connected entities:

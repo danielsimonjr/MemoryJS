@@ -1,10 +1,10 @@
 # MemoryJS Quick Reference
 
-**Last refreshed**: 2026-04-25 (v1.14.0 + Unreleased)
+**Last refreshed**: 2026-07-24 (v2.9.0)
 
 A concise cheat sheet for common MemoryJS operations.
 
-> **Cheat sheet for features shipped through Unreleased:**
+> **Cheat sheet for features shipped through v2.9.0:**
 >
 > - **Bitemporal**: `entityManager.invalidateEntity(name, ended?)` / `entityAsOf(name, asOf)` / `entityTimeline(name)`; `observationManager.invalidateObservation(entity, content, ended?)` / `observationsAsOf(entity, asOf)` (η.4.4)
 > - **OCC**: `updateEntity(name, updates, { expectedVersion })` — throws `VersionConflictError` (η.5.5.c)
@@ -18,9 +18,9 @@ A concise cheat sheet for common MemoryJS operations.
 > - **Conflict resolution**: `synth.resolveConflicts(result, { strategy: 'highest_confidence' })` (η.5.5.a)
 > - **Audit attribution**: `new CollaborationAuditEnforcer(em, log).updateEntity(name, updates, agentId)` (η.5.5.d)
 > - **Visibility**: `AgentEntity.allowedRoles` + `visibleFrom` / `visibleUntil` (η.5.5.b)
-> - **Rename**: `entityManager.renameEntity(oldName, newName)` — rewrites relations/parentId/version-chain, emits `entity:renamed` (Unreleased)
-> - **List entities**: `entityManager.listEntities({ entityType? })` (Unreleased)
-> - **Graph-ranked search**: `ctx.hybridSearchManager.search(graph, query, { graphWeight })` / `ctx.graphRankPrior.getScores(names)` / `rankedSearch.setGraphPrior(prior, boost)` (Unreleased, `@experimental`)
+> - **Rename**: `entityManager.renameEntity(oldName, newName)` — rewrites relations/parentId/version-chain, emits `entity:renamed` (v2.9.0)
+> - **List entities**: `entityManager.listEntities({ entityType? })` (v2.9.0)
+> - **Graph-ranked search**: `ctx.hybridSearchManager.search(graph, query, { graphWeight })` / `ctx.graphRankPrior.getScores(names)` / `rankedSearch.setGraphPrior(prior, boost)` (v2.9.0, `@experimental`)
 
 ---
 
@@ -63,11 +63,11 @@ await ctx.entityManager.removeTags('Alice', ['active']);
 // Importance (0-10)
 await ctx.entityManager.setImportance('Alice', 8);
 
-// List (Unreleased) — filter uses an O(k) TypeIndex fast path
+// List (v2.9.0) — filter uses an O(k) TypeIndex fast path
 const all = await ctx.entityManager.listEntities();
 const people = await ctx.entityManager.listEntities({ entityType: 'person' });
 
-// Rename (Unreleased) — rewrites relations, parentId, version-chain fields;
+// Rename (v2.9.0) — rewrites relations, parentId, version-chain fields;
 // emits entity:renamed then entity:deleted/entity:created
 await ctx.entityManager.renameEntity('Alice', 'Alice Smith');
 ```
@@ -172,7 +172,7 @@ const hybrid = await ctx.hybridSearchManager.search(graph, 'query', {
   symbolic: { tags: ['ai'], importance: { min: 3 } }
 });
 
-// Graph-connectivity boost (Unreleased, @experimental, all default off)
+// Graph-connectivity boost (v2.9.0, @experimental, all default off)
 const ranked2 = await ctx.searchManager.searchNodesRanked('query'); // ctx.rankedSearch auto-boosts when MEMORY_RANKED_GRAPH_BOOST > 0
 const scores = await ctx.graphRankPrior.getScores(['Alice', 'Bob']);
 ```
@@ -346,7 +346,7 @@ interface Entity {
   importance?: number;       // Priority (0-10)
   createdAt?: string;        // ISO timestamp
   lastModified?: string;     // ISO timestamp
-  id?: string;               // Stable opaque UUID (Unreleased) — assigned at creation,
+  id?: string;               // Stable opaque UUID (v2.9.0) — assigned at creation,
                               // preserved across renames/updates; name stays the public key
   // ...plus freshness/versioning/bitemporal fields — see docs/architecture/API.md#entity
 }

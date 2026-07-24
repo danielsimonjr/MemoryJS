@@ -1,6 +1,6 @@
 # Debugging Guide
 
-**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased). Note: CLAUDE.md has a
+**Last reviewed**: 2026-07-24 (v2.9.0). Note: CLAUDE.md has a
 "Gotchas" section that documents Windows + Dropbox + git issues, FTS5
 sanitization rules, atomic-write fallbacks, and other platform-specific
 debugging patterns shipped through v1.14.

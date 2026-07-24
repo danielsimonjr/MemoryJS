@@ -1,6 +1,6 @@
 # AI Agent Integration Guide
 
-**Version**: 1.14.0 + Unreleased
+**Version**: 2.9.0
 **Last Updated**: 2026-07-24
 
 > **Updated agent-memory surface (v1.7+):**
@@ -20,12 +20,12 @@
 > - **Multi-agent collaboration** (η.5.5) — visibility expansion (role +
 >   time-window gates), OCC, audit attribution enforcer, conflict view.
 > - **RBAC** (η.6.1) — `ctx.rbacMiddleware.checkPermission()`.
-> - **Graph connectivity signals** (Unreleased) — opt-in, default 0 = off:
+> - **Graph connectivity signals** (v2.9.0) — opt-in, default 0 = off:
 >   `ctx.graphRankPrior` (cached PageRank) feeds a `graph` channel in
 >   `ctx.hybridSearchManager` / `RankedSearch.setGraphPrior()`;
 >   `SalienceEngine.connectivityWeight` and `DecayEngine.connectivityProtection`
 >   add the same normalized-degree signal to salience scoring and decay.
-> - **Stable entity ids + rename** (Unreleased) — `Entity.id` (UUID,
+> - **Stable entity ids + rename** (v2.9.0) — `Entity.id` (UUID,
 >   forward-compat) and `EntityManager.renameEntity()` for atomic renames
 >   that keep relations, hierarchy, and refs consistent.
 >
@@ -1157,7 +1157,7 @@ console.log(context);
 
 ---
 
-## v1.7 → Unreleased — agent-memory features added since this guide was first written
+## v1.7 → v2.9.0 — agent-memory features added since this guide was first written
 
 Sections above cover the v1.1 surface; the additions below give working
 patterns for everything shipped since.
@@ -1472,7 +1472,7 @@ const jsonld = ctx.ioManager.exportGraph(graph, 'json-ld');    // JSON-LD 1.1
 //   a graph edge they can traverse
 ```
 
-### Graph connectivity — ranking, salience, and decay signal (Unreleased)
+### Graph connectivity — ranking, salience, and decay signal (v2.9.0)
 
 Part of the "knowledge-graph-as-core convergence" work: an entity's
 relation degree (normalized against the graph's max degree) becomes an
@@ -1514,7 +1514,7 @@ Env vars: `MEMORY_HYBRID_GRAPH_WEIGHT`, `MEMORY_RANKED_GRAPH_BOOST`,
 `MEMORY_DECAY_CONNECTIVITY_PROTECTION` (+ `AGENT_MEMORY_DECAY_CONNECTIVITY_PROTECTION`).
 See [CONFIGURATION.md](./CONFIGURATION.md) for the full table.
 
-### Stable entity ids + atomic rename (Unreleased)
+### Stable entity ids + atomic rename (v2.9.0)
 
 ```typescript
 const [alice] = await ctx.entityManager.createEntities([
@@ -1547,5 +1547,5 @@ const renamed = await ctx.entityManager.renameEntity('Alice', 'Alice Chen');
 | `ctx.activeRetrieval` | 3B.5 | Iterative query rewriting |
 | `ctx.roleAssignmentStore` | η.6.1 | Role grants registry |
 | `ctx.rbacMiddleware` | η.6.1 | RbacPolicy.checkPermission |
-| `ctx.graphRankPrior` | Unreleased | Cached normalized PageRank (`@experimental`) |
-| `ctx.hybridSearchManager` | Unreleased | Semantic + lexical + symbolic + graph layered search |
+| `ctx.graphRankPrior` | v2.9.0 | Cached normalized PageRank (`@experimental`) |
+| `ctx.hybridSearchManager` | v2.9.0 | Semantic + lexical + symbolic + graph layered search |

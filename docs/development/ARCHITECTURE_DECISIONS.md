@@ -1,6 +1,6 @@
 # Architecture Decision Records (ADRs)
 
-**Last reviewed**: 2026-04-25 (v1.14.0 + Unreleased)
+**Last reviewed**: 2026-07-24 (v2.9.0)
 
 This document captures key architectural decisions made during MemoryJS development, including context, alternatives considered, and rationale.
 

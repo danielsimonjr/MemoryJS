@@ -36,7 +36,7 @@ surface only.
 24. [RbacMiddleware + RoleAssignmentStore](#rbacmiddleware--roleassignmentstore) *(η.6.1)*
 25. [ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController](#proceduremanager--causalreasoner--worldmodelmanager--activeretrievalcontroller) *(3B.4–3B.7)*
 26. [IMemoryBackend](#imemorybackend) *(v1.12.0)*
-27. [GraphRankPrior + HybridSearchManager](#graphrankprior--hybridsearchmanager) *(Unreleased)*
+27. [GraphRankPrior + HybridSearchManager](#graphrankprior--hybridsearchmanager) *(v2.9.0)*
 
 ---
 
@@ -102,8 +102,8 @@ const ctx = new ManagerContext('./memory.db');
 | `memoryBackend` | `IMemoryBackend` | Pluggable backend selector via `MEMORY_BACKEND` (v1.12.0) |
 | `compressedEntityCache` | `CompressedMap<string, Entity>` | In-memory compressed entity cache (v1.15.0 Phase 10) |
 | `diagnostics` | `Diagnostics` | Query `explainPlan` + index health surface (v1.15.0 Phase 0/1) |
-| `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (Unreleased, `@experimental`) |
-| `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search (Unreleased) |
+| `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (v2.9.0, `@experimental`) |
+| `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search (v2.9.0) |
 
 ### Methods
 
@@ -541,7 +541,7 @@ Merge two tags into a target tag.
 async mergeTags(tag1: string, tag2: string, targetTag: string): Promise<number>
 ```
 
-### listEntities (Unreleased)
+### listEntities (v2.9.0)
 
 Public bulk enumeration, replacing the old `entityManager['storage']` private-access pattern.
 
@@ -551,7 +551,7 @@ async listEntities(filter?: { entityType?: string }): Promise<Entity[]>
 
 When `filter.entityType` is supplied, takes an O(k) `TypeIndex` fast path (`storage.getEntitiesByType`) instead of a full-graph scan.
 
-### renameEntity (Unreleased)
+### renameEntity (v2.9.0)
 
 Atomically rename an entity, rewriting every stored reference to the old name.
 
@@ -1497,7 +1497,7 @@ createStorageFromPath(path: string): IGraphStorage
 
 (Free functions, not static class methods — `MEMORY_STORAGE_TYPE` overrides `config.type` when set.)
 
-`IGraphStorage` gained two optional members (Unreleased) so existing third-party/test implementations remain valid without changes: `renameEntity?(oldName, newName): Promise<Entity>` (storage-level rename primitive; both `GraphStorage` and `SQLiteStorage` implement it) and `readonly events?: GraphEventEmitter` (also now implemented by `SQLiteStorage`, giving it full event parity with `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created` — so event-driven derived views like `TFIDFEventSync` and `GraphRankPrior` work on the SQLite backend too). `SQLiteStorage` also gained the `graphMutex` member already present on `GraphStorage` (fixes a crash in batch manager mutations against the raw SQLite backend).
+`IGraphStorage` gained two optional members (v2.9.0) so existing third-party/test implementations remain valid without changes: `renameEntity?(oldName, newName): Promise<Entity>` (storage-level rename primitive; both `GraphStorage` and `SQLiteStorage` implement it) and `readonly events?: GraphEventEmitter` (also now implemented by `SQLiteStorage`, giving it full event parity with `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created` — so event-driven derived views like `TFIDFEventSync` and `GraphRankPrior` work on the SQLite backend too). `SQLiteStorage` also gained the `graphMutex` member already present on `GraphStorage` (fixes a crash in batch manager mutations against the raw SQLite backend).
 
 ---
 
@@ -1517,7 +1517,7 @@ interface Entity {
   createdAt?: string;
   lastModified?: string;
 
-  // Unreleased — stable identity
+  // v2.9.0 — stable identity
   id?: string;                    // Opaque UUID, assigned at creation (crypto.randomUUID),
                                    // preserved across updates/renames/persistence on both
                                    // backends. `name` remains the public key; `id` is
@@ -1880,7 +1880,7 @@ interface IMemoryBackend {
 
 ## GraphRankPrior + HybridSearchManager
 
-(Unreleased — knowledge-graph-as-core convergence) Graph-connectivity as a first-class ranking signal. All new weights/options default to `0`/off with behavior identical to before they existed. See `docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`.
+(v2.9.0 — knowledge-graph-as-core convergence) Graph-connectivity as a first-class ranking signal. All new weights/options default to `0`/off with behavior identical to before they existed. See `docs/architecture/KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`.
 
 ### GraphRankPrior
 
@@ -1929,7 +1929,7 @@ async search(
 
 `HybridSearchResult.matchedLayers` can now include `'graph'`; `scores.graph` carries the normalized graph-connectivity contribution when the channel is active. `HybridSearchLayer` (`= HybridSearchResult['matchedLayers'][number]`) is a `@deprecated` alias kept for back-compat.
 
-### RankedSearch.setGraphPrior (Unreleased)
+### RankedSearch.setGraphPrior (v2.9.0)
 
 Opt-in post-scoring boost for TF-IDF/BM25 ranked search.
 

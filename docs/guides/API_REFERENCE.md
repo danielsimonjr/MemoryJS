@@ -1,7 +1,7 @@
 # MemoryJS API Reference
 
-**Version**: 1.14.0 + Unreleased
-**Last Updated**: 2026-04-25
+**Version**: 2.9.0
+**Last Updated**: 2026-07-24
 
 > **Note:** sections below cover the v1.1-era surface. For the v1.6+ additions
 > (Memory Engine, Memory Validator, Trajectory Compressor, Experience Extractor,
@@ -29,7 +29,7 @@ Complete API documentation for all public classes, methods, and types.
 11. [AnalyticsManager](#analyticsmanager)
 12. [ArchiveManager](#archivemanager)
 13. [SemanticSearch](#semanticsearch)
-14. [GraphRankPrior](#graphrankprior) *(Unreleased)*
+14. [GraphRankPrior](#graphrankprior) *(v2.9.0)*
 15. [HybridSearchManager](#hybridsearchmanager)
 16. [Storage Classes](#storage-classes)
 17. [Utility Functions](#utility-functions)
@@ -70,8 +70,8 @@ new ManagerContext(storagePath: string)
 | `archiveManager` | `ArchiveManager` | Archival (lazy) |
 | `rankedSearch` | `RankedSearch` | TF-IDF search (lazy) |
 | `semanticSearch` | `SemanticSearch` | Vector search (lazy, requires config) |
-| `graphRankPrior` | `GraphRankPrior` | Cached graph-connectivity ranking signal (lazy, `@experimental`, Unreleased) |
-| `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) search (lazy, Unreleased) |
+| `graphRankPrior` | `GraphRankPrior` | Cached graph-connectivity ranking signal (lazy, `@experimental`, v2.9.0) |
+| `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) search (lazy, v2.9.0) |
 
 ### Example
 
@@ -1322,7 +1322,7 @@ const similar = await semantic.findSimilar(graph, 'TypeScript', 5);
 
 ## GraphRankPrior
 
-(Unreleased, `@experimental`) Cached graph-connectivity ranking signal — normalized PageRank over `GraphTraversal`, with a degree-only fallback once the graph exceeds `maxPageRankEntities`. Event-invalidated (entity/relation events + `graph:saved`, so manager-level batch mutations don't leave it stale). Wired via `ctx.graphRankPrior` (lazy getter).
+(v2.9.0, `@experimental`) Cached graph-connectivity ranking signal — normalized PageRank over `GraphTraversal`, with a degree-only fallback once the graph exceeds `maxPageRankEntities`. Event-invalidated (entity/relation events + `graph:saved`, so manager-level batch mutations don't leave it stale). Wired via `ctx.graphRankPrior` (lazy getter).
 
 ### Constructor
 
@@ -1457,7 +1457,7 @@ new SQLiteStorage(dbPath: string)
 | `searchFTS(query)` | FTS5 full-text search |
 | `close()` | Close database connection |
 
-Since Unreleased, `SQLiteStorage` also implements `renameEntity(oldName, newName)` (the storage-level primitive backing `EntityManager.renameEntity`), `events` (a `GraphEventEmitter` with full parity to `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created`), and `graphMutex` (fixes a crash in batch manager mutations against the raw SQLite backend). `IGraphStorage.renameEntity` and `.events` are both optional interface members so third-party/test implementations remain valid without changes.
+Since v2.9.0, `SQLiteStorage` also implements `renameEntity(oldName, newName)` (the storage-level primitive backing `EntityManager.renameEntity`), `events` (a `GraphEventEmitter` with full parity to `GraphStorage` — `graph:loaded`/`saved`, `entity:created`/`updated`/`deleted`, `relation:created`), and `graphMutex` (fixes a crash in batch manager mutations against the raw SQLite backend). `IGraphStorage.renameEntity` and `.events` are both optional interface members so third-party/test implementations remain valid without changes.
 
 ### Factory Functions
 
@@ -1554,7 +1554,7 @@ interface Entity {
   importance?: number;
   createdAt?: string;
   lastModified?: string;
-  id?: string;  // Unreleased — stable opaque UUID assigned at creation, preserved across
+  id?: string;  // v2.9.0 — stable opaque UUID assigned at creation, preserved across
                 // updates/renames/persistence; `name` remains the public key
 }
 ```
@@ -1605,7 +1605,7 @@ interface HybridSearchResult {
     lexical: number;
     symbolic: number;
     combined: number;
-    graph?: number;  // present when the graph channel is active (Unreleased)
+    graph?: number;  // present when the graph channel is active (v2.9.0)
   };
   matchedLayers: ('semantic' | 'lexical' | 'symbolic' | 'graph')[];
 }
@@ -1697,11 +1697,11 @@ try {
 ---
 
 **Document Version**: 2.0
-**Last Updated**: 2026-04-25
+**Last Updated**: 2026-07-24
 
 ---
 
-## v1.6 → Unreleased — added API surface
+## v1.6 → v2.9.0 — added API surface
 
 Sections above cover the original v1.1-era API. Below are the new
 public surfaces shipped since.
@@ -1726,7 +1726,7 @@ class EntityManager {
   getVersionChain(entityName: string): Promise<Entity[]>;
   getLatestVersion(entityName: string): Promise<Entity | null>;
 
-  // Unreleased — knowledge-graph-as-core convergence
+  // v2.9.0 — knowledge-graph-as-core convergence
   /** Public bulk enumeration; O(k) TypeIndex fast path when filtered. */
   listEntities(filter?: { entityType?: string }): Promise<Entity[]>;
   /**
@@ -2109,7 +2109,7 @@ ctx.semanticForget / governanceManager / freshnessManager
 // Search extensions
 ctx.semanticSearch / temporalSearch / activeRetrieval
 ctx.llmQueryPlanner() / queryNaturalLanguage()
-ctx.graphRankPrior / hybridSearchManager   // Unreleased — knowledge-graph-as-core convergence
+ctx.graphRankPrior / hybridSearchManager   // v2.9.0 — knowledge-graph-as-core convergence
 
 // Memory + agent
 ctx.memoryEngine / memoryBackend / contextWindowManager / agentMemory()
