@@ -22,6 +22,18 @@ A concise cheat sheet for common MemoryJS operations.
 > - **List entities**: `entityManager.listEntities({ entityType? })` (v2.9.0)
 > - **Graph-ranked search**: `ctx.hybridSearchManager.search(graph, query, { graphWeight })` / `ctx.graphRankPrior.getScores(names)` / `rankedSearch.setGraphPrior(prior, boost)` (v2.9.0, `@experimental`)
 
+> **Cheat sheet for Unreleased (post-v2.9.0) additions:**
+>
+> - **Subpath imports**: `@danielsimonjr/memoryjs/{core,search,agent,features,utils,types,adapters,security,sqlite}` — tree-shakeable, `sideEffects: false`
+> - **Event reification**: `ctx.eventManager.recordEvent({ action, actor, target?, occurredAt?, flowKey? })` / `queryEvents(filter)` / `getFlow(key)` / `whoDidWhat(filter)` (R1, `@experimental`)
+> - **Evidence paths**: `ctx.hybridSearchManager.search(graph, query, { explain: true })` → results gain `evidencePaths` / `evidenceTruncated` (R2)
+> - **NL-guided traversal**: `ctx.graphTraversal.getNeighborsWithRelations(name, { lookFor: 'text', semanticSearch? })` / `findPathWithin(a, b, maxDepth)` (R7)
+> - **Relation consolidation**: `new RelationConsolidator(ctx.relationManager, ctx.entityManager, { embedding?, llm? }).consolidate({ apply: true })` (R3, `@experimental`)
+> - **Ingest provenance**: `ctx.ioManager.ingest(input, { mode: 'accurate' | 'balanced' | 'lightweight' })` → `result.manifestEntity` / `result.tokenUsage` (R4b/R5)
+> - **CLI provenance/preflight**: `memory audit log|history|verify|stats` / `memory doctor [--json]`
+> - **Governance now enforced**: `MEMORY_GOVERNANCE_ENABLED=true` wires policy + audit into every `EntityManager` mutation (`GovernanceError` on denial) — previously a no-op
+> - **Audit tamper-evidence**: `new AuditLog(path).verifyChain()` — hash-chained (`seq`/`prevHash`), exit 1 from `memory audit verify` on a broken chain
+
 ---
 
 ## Setup
@@ -34,6 +46,11 @@ const ctx = new ManagerContext('./memory.jsonl');
 
 // SQLite storage (for larger graphs)
 const ctx = new ManagerContext('./memory.db');
+
+// Subpath imports (Unreleased) — tree-shakeable, avoids loading unused
+// managers (e.g. `/core` skips chrono-node and the SQLite native addon)
+import { EntityManager } from '@danielsimonjr/memoryjs/core';
+import { SQLiteStorage } from '@danielsimonjr/memoryjs/sqlite';
 ```
 
 ---
@@ -175,6 +192,13 @@ const hybrid = await ctx.hybridSearchManager.search(graph, 'query', {
 // Graph-connectivity boost (v2.9.0, @experimental, all default off)
 const ranked2 = await ctx.searchManager.searchNodesRanked('query'); // ctx.rankedSearch auto-boosts when MEMORY_RANKED_GRAPH_BOOST > 0
 const scores = await ctx.graphRankPrior.getScores(['Alice', 'Bob']);
+
+// Evidence paths (Unreleased, R2) — off by default, zero cost unless requested
+const explained = await ctx.hybridSearchManager.search(graph, 'deployment failure', {
+  explain: true,
+});
+explained[0]?.evidencePaths;      // anchor -> result shortest paths
+explained[0]?.evidenceTruncated;  // true if a depth/count cap bit
 ```
 
 ---
@@ -228,6 +252,14 @@ const backup = await ctx.ioManager.createBackup({ compress: true });
 await ctx.ioManager.restoreFromBackup(backup.path);
 const backups = await ctx.ioManager.listBackups();
 await ctx.ioManager.deleteBackup(backup.path);
+
+// Ingest with provenance (Unreleased, R4b/R5) — mode dial + manifest entity
+const ingested = await ctx.ioManager.ingest(
+  { messages: conversationMessages, source: 'support-thread-42' },
+  { mode: 'lightweight' }  // 'lightweight' | 'balanced' (default) | 'accurate'
+);
+ingested.manifestEntity;  // `ingest-<id>` — [chunk] observations, one per source chunk
+ingested.tokenUsage;      // present only when the LLM ran (mode !== 'lightweight')
 ```
 
 ---
@@ -260,6 +292,24 @@ const stats = await ctx.analyticsManager.getGraphStats();
 // Validation
 const validation = await ctx.analyticsManager.validateGraph();
 // { issues: [], warnings: [] }
+```
+
+---
+
+## Event Reification (Unreleased, `@experimental`)
+
+```typescript
+// Actions as first-class 'event' hub entities instead of flat triples
+await ctx.eventManager.recordEvent({
+  action: 'deployed',
+  actor: 'alice',
+  target: 'api-service',
+  context: 'production',
+  flowKey: 'release-42',       // groups events under tag `flow:release-42`
+});
+
+const flow = await ctx.eventManager.getFlow('release-42');           // chronological
+const who = await ctx.eventManager.whoDidWhat({ target: 'api-service' });
 ```
 
 ---
@@ -399,4 +449,21 @@ npm run test:coverage
 
 # Type check
 npm run typecheck
+```
+
+---
+
+## CLI (Unreleased additions)
+
+```bash
+# Queryable audit trail (provenance) — R4a
+memory audit log --entity Alice --since 2h        # filtered listing (--json to pipe)
+memory audit history Alice                         # full chronological history for one entity
+memory audit verify                                # hash-chain verification; exit 1 if broken
+memory audit stats                                 # entry counts by operation + oldest/newest
+
+# Preflight checks for the documented gotchas — R9
+memory doctor [--json]                             # node version, better-sqlite3 ABI, workers
+                                                     # built, storage-file sanity, env lint,
+                                                     # embedding provider reachability
 ```

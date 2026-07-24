@@ -218,6 +218,60 @@ export interface BooleanOpNode {
   operands: QueryNode[];
 }
 
+// ==================== Evidence Path Types (R2: explain) ====================
+
+/**
+ * Search layer through which an evidence-path anchor matched the query.
+ */
+export type EvidenceLayer = 'semantic' | 'lexical' | 'symbolic' | 'graph';
+
+/**
+ * A single relation hop inside an evidence path.
+ *
+ * Relations retain their stored direction; consecutive path nodes are
+ * connected by the relation in either direction (traversal is undirected).
+ */
+export interface EvidencePathRelation {
+  /** Source entity name (as stored on the relation) */
+  from: string;
+  /** Target entity name (as stored on the relation) */
+  to: string;
+  /** Relation type */
+  relationType: string;
+}
+
+/**
+ * A traceable graph path from a query-matched anchor entity to a result
+ * entity — the "why" behind a search hit (R2).
+ *
+ * Invariants:
+ * - `nodes[0] === anchor` and `nodes[nodes.length - 1]` is the result entity
+ * - `relations.length === nodes.length - 1`; `relations[i]` connects
+ *   `nodes[i]` and `nodes[i + 1]` (in either stored direction)
+ * - A result that is itself an anchor yields a trivial single-node path
+ *   with an empty `relations` array
+ */
+export interface EvidencePath {
+  /** Entity names along the path, anchor first, result last */
+  nodes: string[];
+  /** Relation hops connecting consecutive nodes */
+  relations: EvidencePathRelation[];
+  /** The anchor entity (direct query match) this path starts from */
+  anchor: string;
+  /** Search layer through which the anchor matched the query */
+  viaLayer: EvidenceLayer;
+}
+
+/**
+ * Caps for evidence-path construction.
+ */
+export interface EvidencePathOptions {
+  /** Maximum path length in hops (default: 3) */
+  maxDepth?: number;
+  /** Maximum number of evidence paths per result (default: 3) */
+  maxPathsPerResult?: number;
+}
+
 // ==================== Builder Classes ====================
 
 /**

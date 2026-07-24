@@ -11,6 +11,24 @@
 import { createWriteStream } from 'fs';
 import type { Entity, ReadonlyKnowledgeGraph, LongRunningOperationOptions } from '../types/types.js';
 import { checkCancellation, createProgressReporter, createProgress, validateFilePath } from '../utils/index.js';
+import { PiiRedactor } from '../security/PiiRedactor.js';
+
+/**
+ * Per-call options for streaming exports.
+ *
+ * Sec6: `redactPii: true` masks PII (email/phone/SSN/CC/IP) in
+ * observation strings as they are written. Redaction happens on a
+ * per-entity COPY built for the output line — the graph passed in is
+ * never mutated. Default `false` keeps output byte-identical to
+ * previous releases.
+ */
+export type StreamingExportOptions = LongRunningOperationOptions & {
+  /** Redact PII from exported observation text (default: false). */
+  redactPii?: boolean;
+};
+
+/** Shared stateless redactor for opt-in streaming redaction. */
+const STREAM_REDACTOR = new PiiRedactor();
 
 /**
  * Result summary from a streaming export operation.
@@ -105,7 +123,7 @@ export class StreamingExporter {
    */
   async streamJSONL(
     graph: ReadonlyKnowledgeGraph,
-    options?: LongRunningOperationOptions
+    options?: StreamingExportOptions
   ): Promise<StreamResult> {
     // Check for early cancellation
     checkCancellation(options?.signal, 'streamJSONL');
@@ -132,7 +150,11 @@ export class StreamingExporter {
       if (writeError) throw writeError;
       checkCancellation(options?.signal, 'streamJSONL');
 
-      const line = JSON.stringify(entity) + '\n';
+      // Sec6: redact on a per-line copy; `entity` itself is never mutated.
+      const outEntity = options?.redactPii
+        ? { ...entity, observations: entity.observations.map((o) => STREAM_REDACTOR.redact(o)) }
+        : entity;
+      const line = JSON.stringify(outEntity) + '\n';
       writeStream.write(line);
       bytesWritten += Buffer.byteLength(line, 'utf-8');
       entitiesWritten++;
@@ -202,7 +224,7 @@ export class StreamingExporter {
    */
   async streamCSV(
     graph: ReadonlyKnowledgeGraph,
-    options?: LongRunningOperationOptions
+    options?: StreamingExportOptions
   ): Promise<StreamResult> {
     // Check for early cancellation
     checkCancellation(options?.signal, 'streamCSV');
@@ -234,7 +256,11 @@ export class StreamingExporter {
       if (writeError) throw writeError;
       checkCancellation(options?.signal, 'streamCSV');
 
-      const row = this.entityToCSVRow(entity) + '\n';
+      // Sec6: redact on a per-row copy; `entity` itself is never mutated.
+      const outEntity = options?.redactPii
+        ? { ...entity, observations: entity.observations.map((o) => STREAM_REDACTOR.redact(o)) }
+        : entity;
+      const row = this.entityToCSVRow(outEntity) + '\n';
       writeStream.write(row);
       bytesWritten += Buffer.byteLength(row, 'utf-8');
       entitiesWritten++;

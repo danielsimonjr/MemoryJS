@@ -161,6 +161,14 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 
 ### Competitive research — brainapi2-inspired additions (2026-07-24)
 
+> **Status update (same day):** R1–R5, R7, R9 ✅ shipped on this branch — `EventManager`
+> (`ctx.eventManager`), `explain: true` evidence paths (`EvidencePathBuilder`),
+> `RelationConsolidator` + pipeline stage, `memory audit` CLI + ingest manifests with
+> `observationMeta.sourceRef` provenance, `mode: accurate|balanced|lightweight` + token
+> accounting, `lookFor` neighbor ranking + `findPathWithin`, `memory doctor`.
+> Still open: **R6** (polarity synergies — awaiting demand validation) and **R8**
+> (MCP meta-tool — belongs to the `memory-mcp` package, not this repo).
+
 > Source: exploration of [Lumen-Labs/brainapi2](https://github.com/Lumen-Labs/brainapi2) (Python/FastAPI
 > knowledge-graph memory server, LLM agent-swarm ingestion). Ideas below are the *deltas* — features
 > where brainapi2 does something MemoryJS genuinely lacks. Rejected as duplicative or off-mission:

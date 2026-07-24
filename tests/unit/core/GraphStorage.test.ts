@@ -282,7 +282,7 @@ describe('GraphStorage', () => {
         expect(graph.entities[0].name).toBe('Alice');
       });
 
-      it('should accumulate entities in cache (deduplication happens on reload)', async () => {
+      it('should upsert duplicate names in cache (matches on-disk dedup semantics)', async () => {
         // First append
         const entity1 = {
           name: 'Alice',
@@ -303,11 +303,14 @@ describe('GraphStorage', () => {
         };
         await storage.appendEntity(entity2);
 
-        // Cache has both entries (no deduplication)
+        // S2: the cache upserts in place — one live entry with the
+        // latest content (the file still accumulates both lines until
+        // compaction; reload deduplicates identically)
         const graph = await storage.loadGraph();
-        expect(graph.entities).toHaveLength(2);
+        expect(graph.entities).toHaveLength(1);
+        expect(graph.entities[0].observations).toEqual(['v2']);
 
-        // But fresh load from disk deduplicates
+        // Fresh load from disk agrees with the cache
         storage.clearCache();
         const reloaded = await storage.loadGraph();
         expect(reloaded.entities).toHaveLength(1);
@@ -416,7 +419,7 @@ describe('GraphStorage', () => {
   });
 
   describe('Compaction', () => {
-    it('should write cache to file on compact (no in-memory dedup)', async () => {
+    it('should write deduplicated cache to file on compact', async () => {
       // Append same entity multiple times
       for (let i = 0; i < 3; i++) {
         await storage.appendEntity({
@@ -428,20 +431,20 @@ describe('GraphStorage', () => {
         });
       }
 
-      // File should have 3 lines
+      // File accumulates all 3 appended lines (append-only format)
       const beforeContent = await fs.readFile(testFilePath, 'utf-8');
       const beforeLines = beforeContent.split('\n').filter(l => l.trim());
       expect(beforeLines.length).toBe(3);
 
-      // compact() saves cache which has 3 entries
+      // S2: the cache upserts duplicates in place, so compact() writes
+      // the single live entry
       await storage.compact();
 
-      // File still has 3 lines (cache has duplicates)
       const afterContent = await fs.readFile(testFilePath, 'utf-8');
       const afterLines = afterContent.split('\n').filter(l => l.trim());
-      expect(afterLines.length).toBe(3);
+      expect(afterLines.length).toBe(1);
 
-      // Deduplication happens on reload
+      // Reload agrees: latest version wins
       storage.clearCache();
       const graph = await storage.loadGraph();
       expect(graph.entities).toHaveLength(1);
@@ -481,11 +484,12 @@ describe('GraphStorage', () => {
         lastModified: new Date().toISOString(),
       });
 
-      // Cache has 2 entries (both versions)
+      // S2: cache upserts in place — one live entry with latest content
       const graphBeforeReload = await storage.loadGraph();
-      expect(graphBeforeReload.entities).toHaveLength(2);
+      expect(graphBeforeReload.entities).toHaveLength(1);
+      expect(graphBeforeReload.entities[0].observations).toEqual(['new']);
 
-      // Clear cache and reload - Map deduplication kicks in
+      // Clear cache and reload - Map deduplication agrees
       storage.clearCache();
       const graph = await storage.loadGraph();
       expect(graph.entities).toHaveLength(1);

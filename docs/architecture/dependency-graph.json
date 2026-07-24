@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "2.9.0",
     "lastUpdated": "2026-07-24",
-    "totalFiles": 255,
-    "totalModules": 11,
-    "totalExports": 1627
+    "totalFiles": 266,
+    "totalModules": 12,
+    "totalExports": 1765
   },
   "entryPoints": [
     {
@@ -19,6 +19,11 @@
       "description": "MemoryJS - Knowledge Graph Storage Library"
     },
     {
+      "file": "src/sqlite.ts",
+      "type": "build-entry",
+      "description": "SQLite subpath entry (`@danielsimonjr/memoryjs/sqlite`)."
+    },
+    {
       "file": "src/workers/levenshteinWorker.ts",
       "type": "build-entry",
       "description": "Levenshtein Worker"
@@ -26,6 +31,44 @@
   ],
   "modules": {
     "adapters": {
+      "src/adapters/ApiKeyAuthMiddleware.ts": {
+        "description": "API-Key Auth Middleware (Sec9)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../security/APIKeyStore.js",
+            "imports": [
+              "APIKeyStore",
+              "KeyValidationResult"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./RestRouter.js",
+            "imports": [
+              "RestMethod",
+              "RestRequest",
+              "RestResponse"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_WRITE_SCOPE",
+          "ApiKeyAuthMiddleware"
+        ],
+        "classes": [
+          "ApiKeyAuthMiddleware"
+        ],
+        "interfaces": [
+          "AuthContext",
+          "ApiKeyAuthOptions"
+        ],
+        "constants": [
+          "DEFAULT_WRITE_SCOPE"
+        ]
+      },
       "src/adapters/LangChainMemoryAdapter.ts": {
         "description": "LangChain Memory Adapter",
         "externalDependencies": [],
@@ -138,6 +181,14 @@
               "paginate",
               "parsePaginationParams"
             ]
+          },
+          {
+            "file": "./ApiKeyAuthMiddleware.js",
+            "imports": [
+              "ApiKeyAuthMiddleware",
+              "AuthContext"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -149,7 +200,8 @@
         "interfaces": [
           "RestRequest",
           "RestResponse",
-          "RouteDefinition"
+          "RouteDefinition",
+          "RestRouterOptions"
         ]
       },
       "src/adapters/index.ts": {
@@ -165,7 +217,19 @@
               "RestRequest",
               "RestResponse",
               "RestHandler",
-              "RouteDefinition"
+              "RouteDefinition",
+              "RestRouterOptions"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./ApiKeyAuthMiddleware.js",
+            "imports": [
+              "ApiKeyAuthMiddleware",
+              "DEFAULT_WRITE_SCOPE",
+              "ApiKeyAuthOptions",
+              "AuthContext",
+              "AuthOutcome"
             ],
             "reExport": true
           },
@@ -212,6 +276,12 @@
           "RestResponse",
           "RestHandler",
           "RouteDefinition",
+          "RestRouterOptions",
+          "ApiKeyAuthMiddleware",
+          "DEFAULT_WRITE_SCOPE",
+          "ApiKeyAuthOptions",
+          "AuthContext",
+          "AuthOutcome",
           "RateLimiter",
           "RateLimiterConfig",
           "RateLimitVerdict",
@@ -231,6 +301,12 @@
           "RestResponse",
           "RestHandler",
           "RouteDefinition",
+          "RestRouterOptions",
+          "ApiKeyAuthMiddleware",
+          "DEFAULT_WRITE_SCOPE",
+          "ApiKeyAuthOptions",
+          "AuthContext",
+          "AuthOutcome",
           "RateLimiter",
           "RateLimiterConfig",
           "RateLimitVerdict",
@@ -1143,7 +1219,8 @@
             "file": "../types/agent-memory.js",
             "imports": [
               "SalienceContext",
-              "TemporalFocus"
+              "TemporalFocus",
+              "ContextProfile"
             ],
             "typeOnly": true
           }
@@ -1227,6 +1304,13 @@
             ]
           },
           {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "ContextWindowManagerConfig"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "./ProjectContextManager.js",
             "imports": [
               "ProjectContextManager"
@@ -1274,7 +1358,6 @@
           "ContextWindowManager"
         ],
         "interfaces": [
-          "ContextWindowManagerConfig",
           "ContextCompressionResult",
           "WakeUpOptions",
           "WakeUpResult",
@@ -2683,29 +2766,95 @@
           "ScheduleOptions"
         ]
       },
-      "src/agent/RoleProfiles.ts": {
-        "description": "Role Profiles",
+      "src/agent/RelationConsolidator.ts": {
+        "description": "Relation Consolidator — R3 (brainapi2 \"Janitor\" pattern for relations)",
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
           {
-            "file": "./SalienceEngine.js",
+            "file": "../types/types.js",
             "imports": [
-              "SalienceEngineConfig"
+              "Entity",
+              "Relation",
+              "RelationProperties"
             ],
             "typeOnly": true
           },
           {
-            "file": "./ContextWindowManager.js",
+            "file": "../search/LLMQueryPlanner.js",
             "imports": [
-              "ContextWindowManagerConfig"
+              "LLMProvider"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./reconstruction/MemoryDistiller.js",
+            "imports": [
+              "extractJson"
+            ]
+          },
+          {
+            "file": "./ConsolidationPipeline.js",
+            "imports": [
+              "PipelineStage",
+              "StageResult"
             ],
             "typeOnly": true
           },
           {
             "file": "../types/agent-memory.js",
             "imports": [
-              "AgentType"
+              "AgentEntity",
+              "ConsolidateOptions"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "normalizeRelationType",
+          "relationKey",
+          "RelationConsolidator",
+          "RelationConsolidationStage"
+        ],
+        "classes": [
+          "RelationConsolidator",
+          "RelationConsolidationStage"
+        ],
+        "interfaces": [
+          "RelationConsolidatorRelationOps",
+          "RelationConsolidatorEntityOps",
+          "RelationEmbeddingProvider",
+          "RelationConsolidatorThresholds",
+          "RelationConsolidatorOptions",
+          "RelationAnalyzeOptions",
+          "RelationConsolidateOptions",
+          "ExactDuplicateGroup",
+          "InverseDuplicatePair",
+          "SemanticDuplicateGroup",
+          "RelationVerdict",
+          "ConsolidationFeedback",
+          "RelationConsolidationReport",
+          "RelationConsolidationResult",
+          "RelationConsolidationStageConfig"
+        ],
+        "functions": [
+          "normalizeRelationType",
+          "relationKey"
+        ]
+      },
+      "src/agent/RoleProfiles.ts": {
+        "description": "Role Profiles",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentType",
+              "AgentRole",
+              "RoleProfile",
+              "SalienceEngineConfig",
+              "ContextWindowManagerConfig"
             ],
             "typeOnly": true
           }
@@ -2715,9 +2864,6 @@
           "listRoleProfiles",
           "resolveRoleProfile",
           "createCustomProfile"
-        ],
-        "interfaces": [
-          "RoleProfile"
         ],
         "functions": [
           "getRoleProfile",
@@ -2863,6 +3009,13 @@
               "normalizedDegree",
               "DegreeMap"
             ]
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "SalienceEngineConfig"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -2870,9 +3023,6 @@
         ],
         "classes": [
           "SalienceEngine"
-        ],
-        "interfaces": [
-          "SalienceEngineConfig"
         ]
       },
       "src/agent/SessionCheckpoint.ts": {
@@ -3505,6 +3655,136 @@
         "functions": [
           "computeDegreeMap",
           "normalizedDegree"
+        ]
+      },
+      "src/agent/events/EventManager.ts": {
+        "description": "Event Manager (R1 — event reification)",
+        "externalDependencies": [],
+        "nodeDependencies": [
+          {
+            "module": "crypto",
+            "imports": [
+              "randomBytes"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "../../types/index.js",
+            "imports": [
+              "Entity",
+              "Relation"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../core/EntityManager.js",
+            "imports": [
+              "EntityManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../core/RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../../types/event.js",
+            "imports": [
+              "EventQueryFilter",
+              "EventRecord",
+              "EventTimeInput",
+              "EventTimeRange",
+              "RecordEventInput",
+              "WhoDidWhatEntry",
+              "WhoDidWhatFilter"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "EVENT_ENTITY_TYPE",
+          "EVENT_STUB_ENTITY_TYPE",
+          "ACTOR_OF_RELATION",
+          "TARGETED_RELATION",
+          "OCCURRED_IN_RELATION",
+          "PARTICIPANT_IN_RELATION",
+          "EVENT_TAG",
+          "FLOW_TAG_PREFIX",
+          "eventEntityName",
+          "EventManager"
+        ],
+        "classes": [
+          "EventManager"
+        ],
+        "interfaces": [
+          "EventManagerConfig"
+        ],
+        "functions": [
+          "eventEntityName"
+        ],
+        "constants": [
+          "EVENT_ENTITY_TYPE",
+          "EVENT_STUB_ENTITY_TYPE",
+          "ACTOR_OF_RELATION",
+          "TARGETED_RELATION",
+          "OCCURRED_IN_RELATION",
+          "PARTICIPANT_IN_RELATION",
+          "EVENT_TAG",
+          "FLOW_TAG_PREFIX"
+        ]
+      },
+      "src/agent/events/index.ts": {
+        "description": "Event Reification Module — Barrel Export (R1)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./EventManager.js",
+            "imports": [
+              "EventManager",
+              "eventEntityName",
+              "EVENT_ENTITY_TYPE",
+              "EVENT_STUB_ENTITY_TYPE",
+              "EVENT_TAG",
+              "FLOW_TAG_PREFIX",
+              "ACTOR_OF_RELATION",
+              "TARGETED_RELATION",
+              "OCCURRED_IN_RELATION",
+              "PARTICIPANT_IN_RELATION",
+              "EventManagerConfig"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "EventManager",
+          "eventEntityName",
+          "EVENT_ENTITY_TYPE",
+          "EVENT_STUB_ENTITY_TYPE",
+          "EVENT_TAG",
+          "FLOW_TAG_PREFIX",
+          "ACTOR_OF_RELATION",
+          "TARGETED_RELATION",
+          "OCCURRED_IN_RELATION",
+          "PARTICIPANT_IN_RELATION",
+          "EventManagerConfig"
+        ],
+        "reExported": [
+          "EventManager",
+          "eventEntityName",
+          "EVENT_ENTITY_TYPE",
+          "EVENT_STUB_ENTITY_TYPE",
+          "EVENT_TAG",
+          "FLOW_TAG_PREFIX",
+          "ACTOR_OF_RELATION",
+          "TARGETED_RELATION",
+          "OCCURRED_IN_RELATION",
+          "PARTICIPANT_IN_RELATION",
+          "EventManagerConfig"
         ]
       },
       "src/agent/index.ts": {
@@ -4162,6 +4442,48 @@
             "reExport": true
           },
           {
+            "file": "./RelationConsolidator.js",
+            "imports": [
+              "RelationConsolidator",
+              "RelationConsolidationStage",
+              "normalizeRelationType",
+              "relationKey",
+              "RelationConsolidatorRelationOps",
+              "RelationConsolidatorEntityOps",
+              "RelationEmbeddingProvider",
+              "RelationConsolidatorThresholds",
+              "RelationConsolidatorOptions",
+              "RelationAnalyzeOptions",
+              "RelationConsolidateOptions",
+              "ExactDuplicateGroup",
+              "InverseDuplicatePair",
+              "SemanticDuplicateGroup",
+              "RelationVerdict",
+              "ConsolidationFeedback",
+              "RelationConsolidationReport",
+              "RelationConsolidationResult",
+              "RelationConsolidationStageConfig"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./events/index.js",
+            "imports": [
+              "EventManager",
+              "eventEntityName",
+              "EVENT_ENTITY_TYPE",
+              "EVENT_STUB_ENTITY_TYPE",
+              "EVENT_TAG",
+              "FLOW_TAG_PREFIX",
+              "ACTOR_OF_RELATION",
+              "TARGETED_RELATION",
+              "OCCURRED_IN_RELATION",
+              "PARTICIPANT_IN_RELATION",
+              "EventManagerConfig"
+            ],
+            "reExport": true
+          },
+          {
             "file": "./MemoryBackend.js",
             "imports": [
               "IMemoryBackend",
@@ -4463,6 +4785,36 @@
           "TOPIC_SUMMARIZES",
           "ReconstructiveBacking",
           "BridgePersistResult",
+          "RelationConsolidator",
+          "RelationConsolidationStage",
+          "normalizeRelationType",
+          "relationKey",
+          "RelationConsolidatorRelationOps",
+          "RelationConsolidatorEntityOps",
+          "RelationEmbeddingProvider",
+          "RelationConsolidatorThresholds",
+          "RelationConsolidatorOptions",
+          "RelationAnalyzeOptions",
+          "RelationConsolidateOptions",
+          "ExactDuplicateGroup",
+          "InverseDuplicatePair",
+          "SemanticDuplicateGroup",
+          "RelationVerdict",
+          "ConsolidationFeedback",
+          "RelationConsolidationReport",
+          "RelationConsolidationResult",
+          "RelationConsolidationStageConfig",
+          "EventManager",
+          "eventEntityName",
+          "EVENT_ENTITY_TYPE",
+          "EVENT_STUB_ENTITY_TYPE",
+          "EVENT_TAG",
+          "FLOW_TAG_PREFIX",
+          "ACTOR_OF_RELATION",
+          "TARGETED_RELATION",
+          "OCCURRED_IN_RELATION",
+          "PARTICIPANT_IN_RELATION",
+          "EventManagerConfig",
           "LookupOptions",
           "GetAllOptions",
           "ReflectionManagerConfig",
@@ -4759,6 +5111,36 @@
           "TOPIC_SUMMARIZES",
           "ReconstructiveBacking",
           "BridgePersistResult",
+          "RelationConsolidator",
+          "RelationConsolidationStage",
+          "normalizeRelationType",
+          "relationKey",
+          "RelationConsolidatorRelationOps",
+          "RelationConsolidatorEntityOps",
+          "RelationEmbeddingProvider",
+          "RelationConsolidatorThresholds",
+          "RelationConsolidatorOptions",
+          "RelationAnalyzeOptions",
+          "RelationConsolidateOptions",
+          "ExactDuplicateGroup",
+          "InverseDuplicatePair",
+          "SemanticDuplicateGroup",
+          "RelationVerdict",
+          "ConsolidationFeedback",
+          "RelationConsolidationReport",
+          "RelationConsolidationResult",
+          "RelationConsolidationStageConfig",
+          "EventManager",
+          "eventEntityName",
+          "EVENT_ENTITY_TYPE",
+          "EVENT_STUB_ENTITY_TYPE",
+          "EVENT_TAG",
+          "FLOW_TAG_PREFIX",
+          "ACTOR_OF_RELATION",
+          "TARGETED_RELATION",
+          "OCCURRED_IN_RELATION",
+          "PARTICIPANT_IN_RELATION",
+          "EventManagerConfig",
           "IMemoryBackend",
           "MemoryTurn",
           "WeightedTurn",
@@ -5246,6 +5628,11 @@
         ],
         "classes": [
           "MemoryDistiller"
+        ],
+        "interfaces": [
+          "MemoryDistillerConfig",
+          "DistillerTokenUsage",
+          "UsageReportingLLMProvider"
         ],
         "functions": [
           "extractJson"
@@ -5786,6 +6173,79 @@
       }
     },
     "cli": {
+      "src/cli/commands/audit.ts": {
+        "description": "Audit CLI Commands — `memory audit` (R4a queryable provenance).",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command",
+              "Option"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "path",
+            "imports": [
+              "resolve",
+              "dirname",
+              "basename",
+              "extname",
+              "join"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatError"
+            ]
+          },
+          {
+            "file": "../../utils/entityUtils.js",
+            "imports": [
+              "validateFilePath"
+            ]
+          },
+          {
+            "file": "../../features/AuditLog.js",
+            "imports": [
+              "AuditLog",
+              "AuditEntry",
+              "AuditFilter",
+              "AuditOperation",
+              "ChainVerificationResult"
+            ]
+          }
+        ],
+        "exports": [
+          "AUDIT_OPERATIONS",
+          "resolveAuditFilePath",
+          "parseTimeSpec",
+          "formatAuditEntryLine",
+          "formatVerifyVerdict",
+          "registerAuditCommands"
+        ],
+        "functions": [
+          "resolveAuditFilePath",
+          "parseTimeSpec",
+          "formatAuditEntryLine",
+          "formatVerifyVerdict",
+          "registerAuditCommands"
+        ],
+        "constants": [
+          "AUDIT_OPERATIONS"
+        ]
+      },
       "src/cli/commands/cache.ts": {
         "description": "Cache CLI commands — `memory cache`.",
         "externalDependencies": [
@@ -5991,10 +6451,117 @@
           }
         ],
         "exports": [
+          "ENV_VAR_CATALOG",
           "registerDiagCommand"
         ],
         "functions": [
           "registerDiagCommand"
+        ],
+        "constants": [
+          "ENV_VAR_CATALOG"
+        ]
+      },
+      "src/cli/commands/doctor.ts": {
+        "description": "Preflight CLI command — `memory doctor` (R9).",
+        "externalDependencies": [
+          {
+            "package": "commander",
+            "imports": [
+              "Command"
+            ]
+          }
+        ],
+        "nodeDependencies": [
+          {
+            "module": "fs",
+            "imports": [
+              "existsSync",
+              "constants"
+            ]
+          },
+          {
+            "module": "fs",
+            "imports": [
+              "promises"
+            ]
+          },
+          {
+            "module": "module",
+            "imports": [
+              "createRequire"
+            ]
+          },
+          {
+            "module": "url",
+            "imports": [
+              "fileURLToPath"
+            ]
+          },
+          {
+            "module": "path",
+            "imports": [
+              "dirname",
+              "join",
+              "resolve"
+            ]
+          }
+        ],
+        "internalDependencies": [
+          {
+            "file": "./helpers.js",
+            "imports": [
+              "getOptions",
+              "createLogger"
+            ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatError"
+            ]
+          },
+          {
+            "file": "./diag.js",
+            "imports": [
+              "ENV_VAR_CATALOG"
+            ]
+          }
+        ],
+        "exports": [
+          "MIN_NODE_MAJOR",
+          "STRICT_TRUE_VARS",
+          "EXTRA_NUMERIC_VARS",
+          "checkNodeVersion",
+          "checkBetterSqlite3",
+          "defaultWorkerDirs",
+          "checkWorkersBuilt",
+          "checkStorageFile",
+          "numericEnvVarNames",
+          "checkEnvVarLint",
+          "checkEmbeddingProvider",
+          "runDoctorChecks",
+          "registerDoctorCommand"
+        ],
+        "interfaces": [
+          "DoctorCheckResult",
+          "DoctorReport"
+        ],
+        "functions": [
+          "checkNodeVersion",
+          "checkBetterSqlite3",
+          "defaultWorkerDirs",
+          "checkWorkersBuilt",
+          "checkStorageFile",
+          "numericEnvVarNames",
+          "checkEnvVarLint",
+          "checkEmbeddingProvider",
+          "runDoctorChecks",
+          "registerDoctorCommand"
+        ],
+        "constants": [
+          "MIN_NODE_MAJOR",
+          "STRICT_TRUE_VARS",
+          "EXTRA_NUMERIC_VARS"
         ]
       },
       "src/cli/commands/entity.ts": {
@@ -6364,6 +6931,18 @@
             "file": "./reindex.js",
             "imports": [
               "registerReindexCommand"
+            ]
+          },
+          {
+            "file": "./audit.js",
+            "imports": [
+              "registerAuditCommands"
+            ]
+          },
+          {
+            "file": "./doctor.js",
+            "imports": [
+              "registerDoctorCommand"
             ]
           }
         ],
@@ -7241,6 +7820,19 @@
             ]
           },
           {
+            "file": "../features/GovernanceManager.js",
+            "imports": [
+              "GovernanceError",
+              "GovernancePolicy"
+            ]
+          },
+          {
+            "file": "../utils/logger.js",
+            "imports": [
+              "logger"
+            ]
+          },
+          {
             "file": "../utils/index.js",
             "imports": [
               "BatchCreateEntitiesSchema",
@@ -7248,8 +7840,7 @@
               "EntityNamesSchema",
               "checkCancellation",
               "createProgressReporter",
-              "createProgress",
-              "sanitizeObject"
+              "createProgress"
             ]
           },
           {
@@ -7267,6 +7858,8 @@
         ],
         "interfaces": [
           "EntityManagerOptions",
+          "GovernanceAuditEvent",
+          "GovernanceHooks",
           "GetEntityOptions"
         ]
       },
@@ -7314,6 +7907,7 @@
               "GraphEvent",
               "GraphEventListener",
               "GraphEventMap",
+              "IGraphEventEmitter",
               "Entity",
               "Relation",
               "EntityCreatedEvent",
@@ -7389,7 +7983,9 @@
           {
             "file": "../utils/searchCache.js",
             "imports": [
-              "clearAllSearchCaches"
+              "clearAllSearchCaches",
+              "bumpEntityGeneration",
+              "bumpRelationGeneration"
             ]
           },
           {
@@ -7499,6 +8095,13 @@
             "imports": [
               "checkCancellation"
             ]
+          },
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard",
+              "tokenizeToSet"
+            ]
           }
         ],
         "exports": [
@@ -7508,6 +8111,9 @@
           "GraphTraversal"
         ],
         "interfaces": [
+          "SimilarityProvider",
+          "LookForOptions",
+          "RankedNeighborWithRelation",
           "TraversalOptionsWithTracking"
         ]
       },
@@ -7755,10 +8361,20 @@
             "typeOnly": true
           },
           {
-            "file": "../search/index.js",
+            "file": "../search/SemanticSearch.js",
             "imports": [
-              "SemanticSearch",
-              "createEmbeddingService",
+              "SemanticSearch"
+            ]
+          },
+          {
+            "file": "../search/EmbeddingService.js",
+            "imports": [
+              "createEmbeddingService"
+            ]
+          },
+          {
+            "file": "../search/VectorStore.js",
+            "imports": [
               "createVectorStore"
             ]
           },
@@ -8025,6 +8641,12 @@
             ]
           },
           {
+            "file": "../agent/events/EventManager.js",
+            "imports": [
+              "EventManager"
+            ]
+          },
+          {
             "file": "../agent/ProspectiveMemoryManager.js",
             "imports": [
               "ProspectiveMemoryManager",
@@ -8086,6 +8708,22 @@
               "ReconstructiveMemoryConfig",
               "ReconstructiveBacking"
             ]
+          },
+          {
+            "file": "../features/GovernanceManager.js",
+            "imports": [
+              "GovernanceManager"
+            ]
+          },
+          {
+            "file": "../features/AuditLog.js",
+            "imports": [
+              "AuditLog"
+            ]
+          },
+          {
+            "file": "./sqlite-register.js",
+            "imports": []
           }
         ],
         "exports": [
@@ -8343,7 +8981,8 @@
           {
             "package": "better-sqlite3",
             "imports": [
-              "Database"
+              "Database",
+              "Statement"
             ]
           },
           {
@@ -8377,7 +9016,9 @@
           {
             "file": "../utils/searchCache.js",
             "imports": [
-              "clearAllSearchCaches"
+              "clearAllSearchCaches",
+              "bumpEntityGeneration",
+              "bumpRelationGeneration"
             ]
           },
           {
@@ -8441,12 +9082,6 @@
             ]
           },
           {
-            "file": "./SQLiteStorage.js",
-            "imports": [
-              "SQLiteStorage"
-            ]
-          },
-          {
             "file": "./PostgreSQLStorage.js",
             "imports": [
               "PostgreSQLStorage"
@@ -8459,13 +9094,23 @@
               "StorageConfig"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./SQLiteStorage.js",
+            "imports": [],
+            "typeOnly": true,
+            "dynamic": true
           }
         ],
         "exports": [
+          "registerSQLiteStorage",
+          "preloadSQLiteStorage",
           "createStorage",
           "createStorageFromPath"
         ],
         "functions": [
+          "registerSQLiteStorage",
+          "preloadSQLiteStorage",
           "createStorage",
           "createStorageFromPath"
         ]
@@ -8657,7 +9302,7 @@
             "reExport": true
           },
           {
-            "file": "./SQLiteStorage.js",
+            "file": "./sqlite-register.js",
             "imports": [
               "SQLiteStorage"
             ],
@@ -8727,7 +9372,9 @@
             "file": "./StorageFactory.js",
             "imports": [
               "createStorage",
-              "createStorageFromPath"
+              "createStorageFromPath",
+              "preloadSQLiteStorage",
+              "registerSQLiteStorage"
             ],
             "reExport": true
           },
@@ -8797,6 +9444,8 @@
           "TransactionResult",
           "createStorage",
           "createStorageFromPath",
+          "preloadSQLiteStorage",
+          "registerSQLiteStorage",
           "GraphEventEmitter",
           "RefIndex",
           "RefEntry",
@@ -8823,6 +9472,8 @@
           "TransactionResult",
           "createStorage",
           "createStorageFromPath",
+          "preloadSQLiteStorage",
+          "registerSQLiteStorage",
           "GraphEventEmitter",
           "RefIndex",
           "RefEntry",
@@ -8988,6 +9639,35 @@
           "splitGraphIntoSegments",
           "mergeSegmentsIntoGraph"
         ]
+      },
+      "src/core/sqlite-register.ts": {
+        "description": "SQLiteStorage registration shim (S9).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./SQLiteStorage.js",
+            "imports": [
+              "SQLiteStorage"
+            ]
+          },
+          {
+            "file": "./StorageFactory.js",
+            "imports": [
+              "registerSQLiteStorage"
+            ]
+          },
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "SQLiteStorage"
+        ]
       }
     },
     "features": {
@@ -9092,12 +9772,14 @@
           {
             "module": "crypto",
             "imports": [
-              "randomUUID"
+              "randomUUID",
+              "createHash"
             ]
           }
         ],
         "internalDependencies": [],
         "exports": [
+          "AUDIT_GENESIS_HASH",
           "AuditLog"
         ],
         "classes": [
@@ -9106,7 +9788,11 @@
         "interfaces": [
           "AuditEntry",
           "AuditFilter",
-          "AuditStats"
+          "AuditStats",
+          "ChainVerificationResult"
+        ],
+        "constants": [
+          "AUDIT_GENESIS_HASH"
         ]
       },
       "src/features/AutoLinker.ts": {
@@ -9190,6 +9876,12 @@
             ]
           },
           {
+            "file": "../security/PiiRedactor.js",
+            "imports": [
+              "PiiRedactor"
+            ]
+          },
+          {
             "file": "../types/index.js",
             "imports": [
               "BackupOptions",
@@ -9202,7 +9894,8 @@
             "file": "./IOManager.js",
             "imports": [
               "BackupMetadata",
-              "BackupInfo"
+              "BackupInfo",
+              "PiiRedactionOption"
             ],
             "typeOnly": true
           },
@@ -9409,7 +10102,8 @@
             "file": "./AuditLog.js",
             "imports": [
               "AuditLog",
-              "AuditEntry"
+              "AuditEntry",
+              "AuditOperation"
             ]
           },
           {
@@ -9417,23 +10111,38 @@
             "imports": [
               "KnowledgeGraphError"
             ]
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "sanitizeObject"
+            ]
+          },
+          {
+            "file": "../security/PiiRedactor.js",
+            "imports": [
+              "PiiRedactor"
+            ]
           }
         ],
         "exports": [
+          "GovernanceError",
           "GovernanceTransaction",
           "GovernanceManager"
         ],
         "classes": [
+          "GovernanceError",
           "GovernanceTransaction",
           "GovernanceManager"
         ],
         "interfaces": [
           "GovernancePolicy",
-          "GovernanceOperationOptions"
+          "GovernanceOperationOptions",
+          "GovernanceManagerOptions"
         ]
       },
       "src/features/IOManager.ts": {
-        "description": "Backup lifecycle is delegated to `BackupManager` (extracted in",
+        "description": "Sec6 — opt-in PII redaction for export/backup surfaces.",
         "externalDependencies": [],
         "nodeDependencies": [
           {
@@ -9516,22 +10225,57 @@
             ]
           },
           {
+            "file": "../security/PiiRedactor.js",
+            "imports": [
+              "PiiRedactor"
+            ]
+          },
+          {
+            "file": "../agent/reconstruction/MemoryDistiller.js",
+            "imports": [
+              "MemoryDistiller"
+            ],
+            "typeOnly": true,
+            "dynamic": true
+          },
+          {
             "file": "../core/EntityManager.js",
             "imports": [
               "EntityManager"
             ],
             "typeOnly": true,
             "dynamic": true
+          },
+          {
+            "file": "../core/RelationManager.js",
+            "imports": [
+              "RelationManager"
+            ],
+            "typeOnly": true,
+            "dynamic": true
+          },
+          {
+            "file": "../search/LLMQueryPlanner.js",
+            "imports": [],
+            "typeOnly": true,
+            "dynamic": true
           }
         ],
         "exports": [
+          "INGEST_DERIVED_FROM_RELATION",
+          "INGEST_MANIFEST_ENTITY_TYPE",
+          "INGEST_CHUNK_PREFIX",
           "IOManager"
         ],
         "classes": [
           "IOManager"
         ],
         "interfaces": [
+          "PiiRedactionOption",
           "IngestInput",
+          "IngestTokenUsage",
+          "IngestProduced",
+          "IngestValidationFeedback",
           "IngestOptions",
           "IngestResult",
           "BackupMetadata",
@@ -9540,6 +10284,11 @@
           "SplitResult",
           "VisualizeOptions",
           "VisualizeOptions"
+        ],
+        "constants": [
+          "INGEST_DERIVED_FROM_RELATION",
+          "INGEST_MANIFEST_ENTITY_TYPE",
+          "INGEST_CHUNK_PREFIX"
         ]
       },
       "src/features/KeywordExtractor.ts": {
@@ -9711,6 +10460,12 @@
               "createProgress",
               "validateFilePath"
             ]
+          },
+          {
+            "file": "../security/PiiRedactor.js",
+            "imports": [
+              "PiiRedactor"
+            ]
           }
         ],
         "exports": [
@@ -9776,7 +10531,8 @@
               "IngestResult",
               "SplitOptions",
               "SplitResult",
-              "VisualizeOptions"
+              "VisualizeOptions",
+              "PiiRedactionOption"
             ],
             "reExport": true
           },
@@ -9808,7 +10564,8 @@
             "file": "./StreamingExporter.js",
             "imports": [
               "StreamingExporter",
-              "StreamResult"
+              "StreamResult",
+              "StreamingExportOptions"
             ],
             "reExport": true
           },
@@ -9864,6 +10621,8 @@
             "imports": [
               "GovernanceManager",
               "GovernanceTransaction",
+              "GovernanceError",
+              "GovernanceManagerOptions",
               "GovernancePolicy",
               "GovernanceOperationOptions"
             ],
@@ -9936,6 +10695,7 @@
           "SplitOptions",
           "SplitResult",
           "VisualizeOptions",
+          "PiiRedactionOption",
           "AnalyticsManager",
           "CompressionManager",
           "ArchiveManager",
@@ -9944,6 +10704,7 @@
           "ArchiveResult",
           "StreamingExporter",
           "StreamResult",
+          "StreamingExportOptions",
           "AutoLinker",
           "AutoLinkOptions",
           "AutoLinkResult",
@@ -9963,6 +10724,8 @@
           "AuditStats",
           "GovernanceManager",
           "GovernanceTransaction",
+          "GovernanceError",
+          "GovernanceManagerOptions",
           "GovernancePolicy",
           "GovernanceOperationOptions",
           "FreshnessManager",
@@ -9994,6 +10757,7 @@
           "SplitOptions",
           "SplitResult",
           "VisualizeOptions",
+          "PiiRedactionOption",
           "AnalyticsManager",
           "CompressionManager",
           "ArchiveManager",
@@ -10002,6 +10766,7 @@
           "ArchiveResult",
           "StreamingExporter",
           "StreamResult",
+          "StreamingExportOptions",
           "AutoLinker",
           "AutoLinkOptions",
           "AutoLinkResult",
@@ -10021,6 +10786,8 @@
           "AuditStats",
           "GovernanceManager",
           "GovernanceTransaction",
+          "GovernanceError",
+          "GovernanceManagerOptions",
           "GovernancePolicy",
           "GovernanceOperationOptions",
           "FreshnessManager",
@@ -10424,6 +11191,46 @@
           "DOCUMENT_PREFIX"
         ]
       },
+      "src/search/EvidencePathBuilder.ts": {
+        "description": "Evidence Path Builder",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/index.js",
+            "imports": [
+              "ReadonlyKnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/search.js",
+            "imports": [
+              "EvidenceLayer",
+              "EvidencePath",
+              "EvidencePathOptions",
+              "EvidencePathRelation"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "DEFAULT_EVIDENCE_MAX_DEPTH",
+          "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT",
+          "EvidencePathBuilder"
+        ],
+        "classes": [
+          "EvidencePathBuilder"
+        ],
+        "interfaces": [
+          "EvidenceAnchor",
+          "EvidencePathSet"
+        ],
+        "constants": [
+          "DEFAULT_EVIDENCE_MAX_DEPTH",
+          "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT"
+        ]
+      },
       "src/search/FuzzySearch.ts": {
         "description": "Fuzzy Search",
         "externalDependencies": [
@@ -10551,6 +11358,13 @@
               "GraphEventEmitter"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "EntityUpdatedEvent"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -10647,6 +11461,28 @@
             "imports": [
               "SEMANTIC_SEARCH_LIMITS"
             ]
+          },
+          {
+            "file": "../types/search.js",
+            "imports": [
+              "EvidencePath",
+              "EvidencePathOptions"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "./EvidencePathBuilder.js",
+            "imports": [
+              "EvidencePathBuilder",
+              "EvidenceAnchor"
+            ]
+          },
+          {
+            "file": "../utils/textSimilarity.js",
+            "imports": [
+              "jaccard",
+              "tokenizeToSet"
+            ]
           }
         ],
         "exports": [
@@ -10661,6 +11497,8 @@
         "interfaces": [
           "GraphHybridSearchResult",
           "NeighborExpansionOptions",
+          "ExplainHybridOptions",
+          "ExplainedHybridSearchResult",
           "GraphHybridOptions"
         ],
         "constants": [
@@ -10738,7 +11576,16 @@
           {
             "file": "../types/index.js",
             "imports": [
-              "Entity"
+              "Entity",
+              "ReadonlyKnowledgeGraph"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/search.js",
+            "imports": [
+              "EvidencePath",
+              "EvidencePathOptions"
             ],
             "typeOnly": true
           },
@@ -10755,6 +11602,13 @@
               "StructuredQuery"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./EvidencePathBuilder.js",
+            "imports": [
+              "EvidencePathBuilder",
+              "EvidenceAnchor"
+            ]
           }
         ],
         "exports": [
@@ -10764,7 +11618,10 @@
           "LLMSearchExecutor"
         ],
         "interfaces": [
-          "LLMSearchExecutorOptions"
+          "ExecutorGraphSource",
+          "LLMSearchExecutorOptions",
+          "LLMExecuteOptions",
+          "ExplainedEntityResult"
         ]
       },
       "src/search/MaterializedViews.ts": {
@@ -11179,7 +12036,8 @@
               "Entity",
               "SearchResult",
               "TFIDFIndex",
-              "TokenizedEntity"
+              "TokenizedEntity",
+              "GraphEventType"
             ],
             "typeOnly": true
           },
@@ -11187,6 +12045,13 @@
             "file": "../core/GraphStorage.js",
             "imports": [
               "GraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../core/GraphEventEmitter.js",
+            "imports": [
+              "GraphEventEmitter"
             ],
             "typeOnly": true
           },
@@ -11716,15 +12581,15 @@
       },
       "src/search/TemporalQueryParser.ts": {
         "description": "Temporal Query Parser",
-        "externalDependencies": [
+        "externalDependencies": [],
+        "nodeDependencies": [
           {
-            "package": "chrono-node",
+            "module": "module",
             "imports": [
-              "* as chrono"
+              "createRequire"
             ]
           }
         ],
-        "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
           "TemporalQueryParser"
@@ -12169,7 +13034,10 @@
             "file": "./LLMSearchExecutor.js",
             "imports": [
               "LLMSearchExecutor",
-              "LLMSearchExecutorOptions"
+              "LLMSearchExecutorOptions",
+              "LLMExecuteOptions",
+              "ExplainedEntityResult",
+              "ExecutorGraphSource"
             ],
             "reExport": true
           },
@@ -12182,6 +13050,37 @@
               "SpellSuggestion"
             ],
             "reExport": true
+          },
+          {
+            "file": "./EvidencePathBuilder.js",
+            "imports": [
+              "EvidencePathBuilder",
+              "DEFAULT_EVIDENCE_MAX_DEPTH",
+              "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT",
+              "EvidenceAnchor",
+              "EvidencePathSet"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "../types/search.js",
+            "imports": [
+              "EvidenceLayer",
+              "EvidencePath",
+              "EvidencePathOptions",
+              "EvidencePathRelation"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./HybridSearchManager.js",
+            "imports": [
+              "ExplainHybridOptions",
+              "ExplainedHybridSearchResult"
+            ],
+            "reExport": true,
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -12305,10 +13204,24 @@
           "LLMQueryPlannerConfig",
           "LLMSearchExecutor",
           "LLMSearchExecutorOptions",
+          "LLMExecuteOptions",
+          "ExplainedEntityResult",
+          "ExecutorGraphSource",
           "SpellChecker",
           "SpellCheckerConfig",
           "SuggestOptions",
-          "SpellSuggestion"
+          "SpellSuggestion",
+          "EvidencePathBuilder",
+          "DEFAULT_EVIDENCE_MAX_DEPTH",
+          "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT",
+          "EvidenceAnchor",
+          "EvidencePathSet",
+          "EvidenceLayer",
+          "EvidencePath",
+          "EvidencePathOptions",
+          "EvidencePathRelation",
+          "ExplainHybridOptions",
+          "ExplainedHybridSearchResult"
         ],
         "reExported": [
           "BasicSearch",
@@ -12431,10 +13344,24 @@
           "LLMQueryPlannerConfig",
           "LLMSearchExecutor",
           "LLMSearchExecutorOptions",
+          "LLMExecuteOptions",
+          "ExplainedEntityResult",
+          "ExecutorGraphSource",
           "SpellChecker",
           "SpellCheckerConfig",
           "SuggestOptions",
-          "SpellSuggestion"
+          "SpellSuggestion",
+          "EvidencePathBuilder",
+          "DEFAULT_EVIDENCE_MAX_DEPTH",
+          "DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT",
+          "EvidenceAnchor",
+          "EvidencePathSet",
+          "EvidenceLayer",
+          "EvidencePath",
+          "EvidencePathOptions",
+          "EvidencePathRelation",
+          "ExplainHybridOptions",
+          "ExplainedHybridSearchResult"
         ]
       },
       "src/search/tiered/BrotliColdTier.ts": {
@@ -12655,7 +13582,8 @@
           "KeyValidationResult",
           "KeyRecord",
           "IssueOptions",
-          "IssueResult"
+          "IssueResult",
+          "APIKeyStoreOptions"
         ]
       },
       "src/security/PiiRedactor.ts": {
@@ -12743,6 +13671,7 @@
             "file": "./APIKeyStore.js",
             "imports": [
               "APIKeyStore",
+              "APIKeyStoreOptions",
               "IssueOptions",
               "IssueResult",
               "KeyRecord",
@@ -12768,6 +13697,7 @@
           "RowLevelFilter",
           "RowPredicate",
           "APIKeyStore",
+          "APIKeyStoreOptions",
           "IssueOptions",
           "IssueResult",
           "KeyRecord",
@@ -12791,10 +13721,45 @@
           "RowLevelFilter",
           "RowPredicate",
           "APIKeyStore",
+          "APIKeyStoreOptions",
           "IssueOptions",
           "IssueResult",
           "KeyRecord",
           "KeyValidationResult"
+        ]
+      }
+    },
+    "root": {
+      "src/sqlite.ts": {
+        "description": "SQLite subpath entry (`@danielsimonjr/memoryjs/sqlite`).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./core/sqlite-register.js",
+            "imports": [
+              "SQLiteStorage"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./core/StorageFactory.js",
+            "imports": [
+              "preloadSQLiteStorage",
+              "registerSQLiteStorage"
+            ],
+            "reExport": true
+          }
+        ],
+        "exports": [
+          "SQLiteStorage",
+          "preloadSQLiteStorage",
+          "registerSQLiteStorage"
+        ],
+        "reExported": [
+          "SQLiteStorage",
+          "preloadSQLiteStorage",
+          "registerSQLiteStorage"
         ]
       }
     },
@@ -12810,19 +13775,6 @@
               "Entity"
             ],
             "typeOnly": true
-          },
-          {
-            "file": "../agent/ContextProfileManager.js",
-            "imports": [
-              "ContextProfile"
-            ],
-            "typeOnly": true
-          },
-          {
-            "file": "../agent/RoleProfiles.js",
-            "imports": [],
-            "typeOnly": true,
-            "dynamic": true
           }
         ],
         "exports": [
@@ -12855,6 +13807,9 @@
           "AccessContextBuilder"
         ],
         "interfaces": [
+          "SalienceEngineConfig",
+          "ContextWindowManagerConfig",
+          "RoleProfile",
           "ConflictInfo",
           "ObservationSource",
           "MemorySource",
@@ -12968,6 +13923,21 @@
           "isArtifactEntity"
         ]
       },
+      "src/types/event.ts": {
+        "description": "Event Reification Types (R1)",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [],
+        "interfaces": [
+          "EventTimeRange",
+          "RecordEventInput",
+          "EventRecord",
+          "EventQueryFilter",
+          "WhoDidWhatFilter",
+          "WhoDidWhatEntry"
+        ]
+      },
       "src/types/index.ts": {
         "description": "Types Module - Barrel Export",
         "externalDependencies": [],
@@ -12984,6 +13954,13 @@
             "file": "./types.js",
             "imports": [
               "ENTITY_STATUS_TRANSITIONS"
+            ],
+            "reExport": true
+          },
+          {
+            "file": "./task-scheduler.js",
+            "imports": [
+              "TaskPriority"
             ],
             "reExport": true
           },
@@ -13127,6 +14104,7 @@
               "GraphEvent",
               "GraphEventListener",
               "GraphEventMap",
+              "IGraphEventEmitter",
               "SearchMethod",
               "QueryCostEstimate",
               "AutoSearchResult",
@@ -13197,7 +14175,20 @@
               "AdaptiveReductionResult",
               "GroupMembership",
               "ConflictInfo",
-              "ConflictStrategy"
+              "ConflictStrategy",
+              "ContextProfile",
+              "SalienceEngineConfig",
+              "ContextWindowManagerConfig",
+              "AgentRole",
+              "RoleProfile"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
+            "file": "./task-scheduler.js",
+            "imports": [
+              "ProgressCallback"
             ],
             "reExport": true,
             "typeOnly": true
@@ -13246,6 +14237,20 @@
             "typeOnly": true
           },
           {
+            "file": "./event.js",
+            "imports": [
+              "EventTimeInput",
+              "EventTimeRange",
+              "RecordEventInput",
+              "EventRecord",
+              "EventQueryFilter",
+              "WhoDidWhatFilter",
+              "WhoDidWhatEntry"
+            ],
+            "reExport": true,
+            "typeOnly": true
+          },
+          {
             "file": "./result.js",
             "imports": [
               "Result"
@@ -13257,6 +14262,7 @@
         "exports": [
           "QueryTraceBuilder",
           "ENTITY_STATUS_TRANSITIONS",
+          "TaskPriority",
           "MEMORY_TYPES",
           "isAgentEntity",
           "isSessionEntity",
@@ -13363,6 +14369,7 @@
           "GraphEvent",
           "GraphEventListener",
           "GraphEventMap",
+          "IGraphEventEmitter",
           "SearchMethod",
           "QueryCostEstimate",
           "AutoSearchResult",
@@ -13427,6 +14434,12 @@
           "GroupMembership",
           "ConflictInfo",
           "ConflictStrategy",
+          "ContextProfile",
+          "SalienceEngineConfig",
+          "ContextWindowManagerConfig",
+          "AgentRole",
+          "RoleProfile",
+          "ProgressCallback",
           "ArtifactType",
           "CreateArtifactOptions",
           "ArtifactEntity",
@@ -13448,11 +14461,19 @@
           "TraversalStep",
           "ReconstructionResult",
           "ReconstructionOptions",
+          "EventTimeInput",
+          "EventTimeRange",
+          "RecordEventInput",
+          "EventRecord",
+          "EventQueryFilter",
+          "WhoDidWhatFilter",
+          "WhoDidWhatEntry",
           "Result"
         ],
         "reExported": [
           "QueryTraceBuilder",
           "ENTITY_STATUS_TRANSITIONS",
+          "TaskPriority",
           "MEMORY_TYPES",
           "isAgentEntity",
           "isSessionEntity",
@@ -13559,6 +14580,7 @@
           "GraphEvent",
           "GraphEventListener",
           "GraphEventMap",
+          "IGraphEventEmitter",
           "SearchMethod",
           "QueryCostEstimate",
           "AutoSearchResult",
@@ -13623,6 +14645,12 @@
           "GroupMembership",
           "ConflictInfo",
           "ConflictStrategy",
+          "ContextProfile",
+          "SalienceEngineConfig",
+          "ContextWindowManagerConfig",
+          "AgentRole",
+          "RoleProfile",
+          "ProgressCallback",
           "ArtifactType",
           "CreateArtifactOptions",
           "ArtifactEntity",
@@ -13644,6 +14672,13 @@
           "TraversalStep",
           "ReconstructionResult",
           "ReconstructionOptions",
+          "EventTimeInput",
+          "EventTimeRange",
+          "RecordEventInput",
+          "EventRecord",
+          "EventQueryFilter",
+          "WhoDidWhatFilter",
+          "WhoDidWhatEntry",
           "Result"
         ]
       },
@@ -13750,7 +14785,22 @@
           "WildcardNode",
           "ProximityNode",
           "FieldNode",
-          "BooleanOpNode"
+          "BooleanOpNode",
+          "EvidencePathRelation",
+          "EvidencePath",
+          "EvidencePathOptions"
+        ]
+      },
+      "src/types/task-scheduler.ts": {
+        "description": "Task Scheduler shared types (S10 — types-layer leaf).",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "TaskPriority"
+        ],
+        "enums": [
+          "TaskPriority"
         ]
       },
       "src/types/types.ts": {
@@ -13759,18 +14809,12 @@
         "nodeDependencies": [],
         "internalDependencies": [
           {
-            "file": "../utils/taskScheduler.js",
+            "file": "./task-scheduler.js",
             "imports": [
               "ProgressCallback",
               "TaskPriority"
             ],
             "typeOnly": true
-          },
-          {
-            "file": "../core/GraphEventEmitter.js",
-            "imports": [],
-            "typeOnly": true,
-            "dynamic": true
           }
         ],
         "exports": [
@@ -13840,6 +14884,7 @@
           "GraphSavedEvent",
           "GraphLoadedEvent",
           "GraphEventMap",
+          "IGraphEventEmitter",
           "QueryCostEstimate",
           "AutoSearchResult",
           "QueryCostEstimatorOptions",
@@ -14281,6 +15326,7 @@
           }
         ],
         "exports": [
+          "DEFAULT_MAX_DECOMPRESSED_BYTES",
           "hasBrotliExtension",
           "compress",
           "decompress",
@@ -14293,6 +15339,7 @@
           "decompressFromBase64"
         ],
         "interfaces": [
+          "DecompressionOptions",
           "CompressionOptions",
           "CompressionResult",
           "CompressionMetadata"
@@ -14308,6 +15355,9 @@
           "createUncompressedMetadata",
           "compressToBase64",
           "decompressFromBase64"
+        ],
+        "constants": [
+          "DEFAULT_MAX_DECOMPRESSED_BYTES"
         ]
       },
       "src/utils/constants.ts": {
@@ -15887,6 +16937,9 @@
         ],
         "exports": [
           "searchCaches",
+          "bumpEntityGeneration",
+          "bumpRelationGeneration",
+          "getGraphGenerations",
           "clearAllSearchCaches",
           "getAllCacheStats",
           "cleanupAllCaches",
@@ -15899,6 +16952,9 @@
           "CacheStats"
         ],
         "functions": [
+          "bumpEntityGeneration",
+          "bumpRelationGeneration",
+          "getGraphGenerations",
           "clearAllSearchCaches",
           "getAllCacheStats",
           "cleanupAllCaches"
@@ -15924,16 +16980,29 @@
             "imports": [
               "logger"
             ]
+          },
+          {
+            "file": "../types/task-scheduler.js",
+            "imports": [
+              "TaskPriority"
+            ]
+          },
+          {
+            "file": "../types/task-scheduler.js",
+            "imports": [
+              "ProgressCallback"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
+          "TaskPriority",
           "batchProcess",
           "rateLimitedProcess",
           "withRetry",
           "debounce",
           "throttle",
           "TaskQueue",
-          "TaskPriority",
           "TaskStatus"
         ],
         "classes": [
@@ -15953,7 +17022,6 @@
           "throttle"
         ],
         "enums": [
-          "TaskPriority",
           "TaskStatus"
         ]
       },
@@ -16081,342 +17149,36 @@
       "runtime": [],
       "typeOnly": [
         [
-          "src/types/index.ts",
-          "src/types/types.ts",
-          "src/core/GraphEventEmitter.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/ContextProfileManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/SalienceEngine.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/SalienceEngine.ts",
-          "src/agent/AccessTracker.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/SalienceEngine.ts",
-          "src/agent/DecayEngine.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/core/GraphStorage.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/core/GraphStorage.ts",
-          "src/utils/searchCache.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/core/GraphStorage.ts",
-          "src/utils/indexes.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/core/GraphStorage.ts",
-          "src/utils/index.ts",
-          "src/utils/compressedCache.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/core/GraphStorage.ts",
-          "src/utils/index.ts",
-          "src/utils/entityUtils.ts",
-          "src/types/index.ts"
-        ],
-        [
           "src/core/TransactionManager.ts",
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
           "src/core/GraphStorage.ts",
           "src/core/TransactionManager.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProjectContextManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProjectContextManager.ts",
-          "src/core/EntityManager.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/core/ObservationManager.ts",
-          "src/features/AutoLinker.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/core/ObservationManager.ts",
-          "src/features/AutoLinker.ts",
-          "src/core/RelationManager.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/core/ObservationManager.ts",
-          "src/features/ContradictionDetector.ts",
-          "src/search/SemanticSearch.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/index.ts",
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/core/ObservationManager.ts",
-          "src/features/ContradictionDetector.ts",
-          "src/search/SemanticSearch.ts",
-          "src/search/VectorStore.ts",
-          "src/types/index.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/core/ObservationManager.ts",
-          "src/agent/MemoryValidator.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/core/ObservationManager.ts",
-          "src/agent/MemoryValidator.ts",
-          "src/agent/ConflictResolver.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts",
-          "src/agent/WorkingMemoryManager.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts",
-          "src/agent/PatternDetector.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts",
-          "src/agent/RuleEvaluator.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts",
-          "src/agent/AgentReflectionManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts",
-          "src/agent/TrajectoryCompressor.ts",
-          "src/agent/ContextWindowManager.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts",
-          "src/agent/ExperienceExtractor.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/EntropyFilter.ts",
-          "src/agent/ConsolidationPipeline.ts",
-          "src/agent/HeuristicManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/WorkingMemoryManager.ts",
-          "src/agent/ExclusionManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/agent/SessionManager.ts",
-          "src/agent/EpisodicMemoryManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProfileManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/agent/ContextWindowManager.ts",
-          "src/agent/ProspectiveMemoryManager.ts",
-          "src/types/agent-memory.ts"
-        ],
-        [
-          "src/types/agent-memory.ts",
-          "src/agent/RoleProfiles.ts",
-          "src/types/agent-memory.ts"
         ],
         [
           "src/features/IOManager.ts",
           "src/features/BackupManager.ts",
           "src/features/IOManager.ts"
+        ],
+        [
+          "src/agent/ConsolidationPipeline.ts",
+          "src/agent/WorkingMemoryManager.ts",
+          "src/agent/EntropyFilter.ts",
+          "src/agent/ConsolidationPipeline.ts"
+        ],
+        [
+          "src/adapters/ApiKeyAuthMiddleware.ts",
+          "src/adapters/RestRouter.ts",
+          "src/adapters/ApiKeyAuthMiddleware.ts"
         ]
       ],
-      "total": 37,
+      "total": 4,
       "runtimeCount": 0,
-      "typeOnlyCount": 37
+      "typeOnlyCount": 4
     },
     "layers": [
       {
         "name": "Adapters",
         "files": [
+          "src/adapters/ApiKeyAuthMiddleware.ts",
           "src/adapters/LangChainMemoryAdapter.ts",
           "src/adapters/MCPToolObserverAdapter.ts",
           "src/adapters/RateLimiter.ts",
@@ -16467,6 +17229,7 @@
           "src/agent/ProfileManager.ts",
           "src/agent/ProjectContextManager.ts",
           "src/agent/ProspectiveMemoryManager.ts",
+          "src/agent/RelationConsolidator.ts",
           "src/agent/RoleProfiles.ts",
           "src/agent/RuleEvaluator.ts",
           "src/agent/SQLiteBackend.ts",
@@ -16485,6 +17248,8 @@
           "src/agent/causal/index.ts",
           "src/agent/collaboration/CollaborationAuditEnforcer.ts",
           "src/agent/connectivity.ts",
+          "src/agent/events/EventManager.ts",
+          "src/agent/events/index.ts",
           "src/agent/index.ts",
           "src/agent/procedural/ProcedureManager.ts",
           "src/agent/procedural/ProcedureStore.ts",
@@ -16513,10 +17278,12 @@
       {
         "name": "Cli",
         "files": [
+          "src/cli/commands/audit.ts",
           "src/cli/commands/cache.ts",
           "src/cli/commands/check.ts",
           "src/cli/commands/decision.ts",
           "src/cli/commands/diag.ts",
+          "src/cli/commands/doctor.ts",
           "src/cli/commands/entity.ts",
           "src/cli/commands/exclusion.ts",
           "src/cli/commands/graph.ts",
@@ -16569,7 +17336,8 @@
           "src/core/mmap/FsReadMmapBackend.ts",
           "src/core/mmap/IMmapBackend.ts",
           "src/core/segments/FileSegmentStorage.ts",
-          "src/core/segments/ISegmentStorage.ts"
+          "src/core/segments/ISegmentStorage.ts",
+          "src/core/sqlite-register.ts"
         ]
       },
       {
@@ -16612,6 +17380,7 @@
           "src/search/EarlyTerminationManager.ts",
           "src/search/EmbeddingCache.ts",
           "src/search/EmbeddingService.ts",
+          "src/search/EvidencePathBuilder.ts",
           "src/search/FuzzySearch.ts",
           "src/search/GraphRankPrior.ts",
           "src/search/HybridScorer.ts",
@@ -16666,16 +17435,24 @@
         ]
       },
       {
+        "name": "Root",
+        "files": [
+          "src/sqlite.ts"
+        ]
+      },
+      {
         "name": "Types",
         "files": [
           "src/types/agent-memory.ts",
           "src/types/artifact.ts",
+          "src/types/event.ts",
           "src/types/index.ts",
           "src/types/procedure.ts",
           "src/types/progress.ts",
           "src/types/reconstruction.ts",
           "src/types/result.ts",
           "src/types/search.ts",
+          "src/types/task-scheduler.ts",
           "src/types/types.ts"
         ]
       },
@@ -16730,34 +17507,35 @@
     "roots": [
       "src/cli/index.ts",
       "src/index.ts",
+      "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 255,
+    "reachableCount": 266,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 255,
-    "totalModules": 11,
-    "totalLinesOfCode": 85645,
-    "totalExports": 1627,
-    "totalClasses": 215,
-    "totalInterfaces": 530,
-    "totalFunctions": 254,
+    "totalTypeScriptFiles": 266,
+    "totalModules": 12,
+    "totalLinesOfCode": 92541,
+    "totalExports": 1765,
+    "totalClasses": 221,
+    "totalInterfaces": 584,
+    "totalFunctions": 277,
     "totalTypeGuards": 28,
     "totalEnums": 4,
-    "totalConstants": 82,
-    "totalReExports": 1065,
-    "totalTypeOnlyImports": 397,
+    "totalConstants": 103,
+    "totalReExports": 1151,
+    "totalTypeOnlyImports": 421,
     "runtimeCircularDeps": 0,
-    "typeOnlyCircularDeps": 37,
-    "entryRoots": 3,
-    "reachableFiles": 255,
+    "typeOnlyCircularDeps": 4,
+    "entryRoots": 4,
+    "reachableFiles": 266,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 36
+    "unusedExportsCount": 56
   }
 }

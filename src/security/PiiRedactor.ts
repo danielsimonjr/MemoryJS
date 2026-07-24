@@ -2,10 +2,14 @@
  * PII Redactor (η.6.3)
  *
  * Pluggable regex-based redactor for personally identifiable
- * information. Applied on export only — no storage mutation. Default
- * pattern bank covers the common five (email, phone, SSN, credit card,
- * IP address); callers can replace or extend the pattern list via
- * constructor options.
+ * information. Never mutates stored data — redaction is applied to
+ * copies on the way OUT of the system, and only where a caller opts in:
+ * `IOManager.exportGraph` / `exportGraphWithCompression` / `createBackup`
+ * and `StreamingExporter.streamJSONL` / `streamCSV` via
+ * `redactPii: true`, and `GovernanceManager` audit snapshots via the
+ * `redactAuditSnapshots` constructor option. Default pattern bank covers
+ * the common five (email, phone, SSN, credit card, IP address); callers
+ * can replace or extend the pattern list via constructor options.
  *
  * Design rule: redactors REPLACE, never delete. Replacement preserves
  * length-class so downstream tooling (length checks, char counts) still

@@ -2212,6 +2212,65 @@ for (const r of results) {
 channel + `expandNeighbors`, `RankedSearch.setGraphPrior` (a simpler
 single-channel alternative via `MEMORY_RANKED_GRAPH_BOOST`).
 
+### 19. Governed & Audited Agent Deployment (Unreleased)
+
+Before this release, `MEMORY_GOVERNANCE_ENABLED` was a documented no-op —
+no mutation path actually consulted a policy or produced a tamper-evident
+audit trail. This use case is now real: a multi-tenant agent deployment
+where every write is policy-checked, every allowed write is hash-chained
+into an auditable log, and a compliance reviewer can verify the chain and
+query provenance without touching application code.
+
+```typescript
+import { ManagerContext, GovernanceError } from '@danielsimonjr/memoryjs';
+import { RoleAssignmentStore, RbacMiddleware } from '@danielsimonjr/memoryjs/agent';
+
+process.env.MEMORY_GOVERNANCE_ENABLED = 'true'; // strict literal 'true'
+const ctx = new ManagerContext('./tenant-acme.jsonl');
+
+// Route policy decisions through RBAC instead of hand-rolled checks.
+const roles = new RoleAssignmentStore({ persistencePath: './tenant-acme-roles.jsonl' });
+await roles.hydrate();
+const rbac = new RbacMiddleware(roles); // 'reader' default for unregistered agents
+await roles.assign({ agentId: 'agent-alice', role: 'writer' });
+
+ctx.governanceManager.setPolicy({
+  canCreate: () => true,
+  canUpdate: (entity) => rbac.checkPermission('agent-alice', 'write', 'entity', entity.name),
+  canDelete: (entity) =>
+    rbac.checkPermission('agent-alice', 'delete', 'entity', entity.name) &&
+    (entity.importance ?? 0) < 8, // even admins can't delete high-importance memories
+});
+
+// Every EntityManager mutation is now policy-checked + audited.
+await ctx.entityManager.createEntities([
+  { name: 'customer-ticket-9821', entityType: 'ticket', observations: ['Refund requested'] },
+]);
+try {
+  await ctx.entityManager.deleteEntities(['customer-ticket-9821']);
+} catch (e) {
+  if (e instanceof GovernanceError) {
+    // policy denied it — nothing was written, nothing audited as committed
+  }
+}
+```
+
+```bash
+# A compliance reviewer verifies the trail from the CLI, without any
+# application code — the audit log is hash-chained (seq + SHA-256 prevHash).
+memory audit verify --file ./tenant-acme-audit.jsonl        # exit 1 if tampered
+memory audit log --entity customer-ticket-9821 --json       # full provenance
+memory audit stats                                          # entry counts by operation
+```
+
+**Key features:** Sec1 (governance enforcement chokepoint — `GovernanceError`
+on denial, fire-and-forget committed audit), Sec5 (hash-chained
+`AuditLog.verifyChain()`), Sec2 (RBAC default-role key-presence fix + 0600
+sidecar), `memory audit` CLI (R4a). Optional: `redactAuditSnapshots` on
+`GovernanceManager` to PII-scrub audit snapshots (Sec6), and
+`MEMORY_AUDIT_LOG_FILE` to route the trail to write-once/shipped storage
+for a stronger tamper-evidence guarantee than a local sidecar file.
+
 ### Summary table — new use cases (v1.7 → v2.9.0)
 
 | Use Case | Key Features Used |
@@ -2225,3 +2284,4 @@ single-channel alternative via `MEMORY_RANKED_GRAPH_BOOST`).
 | Compliant PII-Aware Export | η.6.3 (PiiRedactor) |
 | RBAC-Gated Multi-Tenant KB | η.6.1 (RbacMiddleware + RoleAssignmentStore) |
 | Graph-Connectivity-Aware Retrieval | GraphRankPrior + HybridSearchManager graph channel |
+| Governed & Audited Agent Deployment | Sec1 (governance enforcement) + Sec5 (hash-chained audit) + `memory audit` CLI |

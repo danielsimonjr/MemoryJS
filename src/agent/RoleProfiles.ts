@@ -8,43 +8,27 @@
  * @module agent/RoleProfiles
  */
 
-import type { SalienceEngineConfig } from './SalienceEngine.js';
-import type { ContextWindowManagerConfig } from './ContextWindowManager.js';
-import type { AgentType } from '../types/agent-memory.js';
+import type {
+  AgentType,
+  AgentRole,
+  RoleProfile,
+  SalienceEngineConfig,
+  ContextWindowManagerConfig,
+} from '../types/agent-memory.js';
 
 // ==================== Core Types ====================
 
-/**
- * Role identifier for built-in agent profiles.
- */
-export type AgentRole =
-  | 'planner'
-  | 'executor'
-  | 'researcher'
-  | 'reviewer'
-  | 'default';
-
-/**
- * A role profile encapsulates salience weight overrides and context window
- * budget percentages optimised for a specific agent role.
- *
- * @example
- * ```typescript
- * const profile = getRoleProfile('researcher');
- * const engine = new SalienceEngine(storage, accessTracker, decayEngine, profile.salienceConfig);
- * const cwm = new ContextWindowManager(storage, engine, profile.contextConfig);
- * ```
- */
-export interface RoleProfile {
-  /** Unique role identifier */
-  role: AgentRole;
-  /** Human-readable label */
-  label: string;
-  /** Salience engine weight overrides for this role */
-  salienceConfig: SalienceEngineConfig;
-  /** Context window budget overrides for this role */
-  contextConfig: ContextWindowManagerConfig;
-}
+// S10: `AgentRole` and `RoleProfile` moved to src/types/agent-memory.ts
+// (`AgentMetadata.roleProfile` references them and the types layer must stay
+// a leaf). Re-exported here for backwards compatibility.
+//
+// Usage example:
+// ```typescript
+// const profile = getRoleProfile('researcher');
+// const engine = new SalienceEngine(storage, accessTracker, decayEngine, profile.salienceConfig);
+// const cwm = new ContextWindowManager(storage, engine, profile.contextConfig);
+// ```
+export type { AgentRole, RoleProfile };
 
 // ==================== Built-in Profile Definitions ====================
 

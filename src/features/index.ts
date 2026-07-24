@@ -18,6 +18,7 @@ export {
   type SplitOptions,
   type SplitResult,
   type VisualizeOptions,
+  type PiiRedactionOption,
 } from './IOManager.js';
 export { AnalyticsManager } from './AnalyticsManager.js';
 export { CompressionManager } from './CompressionManager.js';
@@ -27,7 +28,11 @@ export {
   type ArchiveOptions,
   type ArchiveResult,
 } from './ArchiveManager.js';
-export { StreamingExporter, type StreamResult } from './StreamingExporter.js';
+export {
+  StreamingExporter,
+  type StreamResult,
+  type StreamingExportOptions,
+} from './StreamingExporter.js';
 
 // Phase 2C: Auto-Linking
 export {
@@ -66,6 +71,8 @@ export {
 export {
   GovernanceManager,
   GovernanceTransaction,
+  GovernanceError,
+  type GovernanceManagerOptions,
   type GovernancePolicy,
   type GovernanceOperationOptions,
 } from './GovernanceManager.js';

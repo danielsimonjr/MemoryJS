@@ -13,6 +13,7 @@ import type {
   GraphEvent,
   GraphEventListener,
   GraphEventMap,
+  IGraphEventEmitter,
   Entity,
   Relation,
   EntityCreatedEvent,
@@ -33,6 +34,33 @@ import { logger } from '../utils/logger.js';
  *
  * Provides a type-safe event system for subscribing to and emitting
  * graph change events. Supports wildcard listeners for all events.
+ *
+ * ## Event contract (S2 delta persistence)
+ *
+ * Since manager mutations became delta operations, per-item events fire
+ * **exactly once per logical change** for every mutation path — including
+ * batch mutations that previously only emitted `graph:saved`:
+ *
+ * - `entity:created`   — per entity, from `appendEntity`/`appendEntities`
+ *   (also fired for an INSERT-OR-REPLACE style upsert of an existing name)
+ * - `entity:updated`   — per entity, from `updateEntity`/`updateEntities`
+ *   and from relation deletes that bump an affected entity's
+ *   `lastModified` (changes = `{ lastModified }`)
+ * - `entity:deleted`   — per entity, from storage `deleteEntities`
+ * - `relation:created` — per relation, from
+ *   `appendRelation`/`appendRelations` (including upserts, e.g.
+ *   `RelationManager.invalidateRelation`)
+ * - `relation:deleted` — per relation, from storage `deleteRelations` and
+ *   per cascaded relation from `deleteEntities`
+ * - `entity:renamed` → `entity:deleted` → `entity:created` — emitted by
+ *   `EntityManager.renameEntity` (manager level, both backends)
+ *
+ * `graph:saved` fires **only** for true full-graph writes: explicit
+ * `saveGraph` callers (import/restore, transactions, legacy bulk paths)
+ * and the JSONL backend's internal compaction / rename rewrites. Derived
+ * views (TF-IDF sync, rank priors, columnar stores) should treat
+ * `graph:saved` as a "resync everything" signal and the per-item events
+ * as targeted invalidations.
  *
  * @example
  * ```typescript
@@ -56,7 +84,7 @@ import { logger } from '../utils/logger.js';
  * unsubscribe();
  * ```
  */
-export class GraphEventEmitter {
+export class GraphEventEmitter implements IGraphEventEmitter {
   /**
    * Map of event types to their registered listeners. The Set stores
    * listeners typed for different specific event subtypes (one Set per

@@ -37,6 +37,10 @@ surface only.
 25. [ProcedureManager + CausalReasoner + WorldModelManager + ActiveRetrievalController](#proceduremanager--causalreasoner--worldmodelmanager--activeretrievalcontroller) *(3B.4–3B.7)*
 26. [IMemoryBackend](#imemorybackend) *(v1.12.0)*
 27. [GraphRankPrior + HybridSearchManager](#graphrankprior--hybridsearchmanager) *(v2.9.0)*
+28. [EventManager](#eventmanager) *(Unreleased, R1, `@experimental`)*
+29. [EvidencePathBuilder](#evidencepathbuilder) *(Unreleased, R2, `@experimental`)*
+30. [RelationConsolidator](#relationconsolidator) *(Unreleased, R3, `@experimental`)*
+31. [ApiKeyAuthMiddleware](#apikeyauthmiddleware) *(Unreleased, Sec9)*
 
 ---
 
@@ -1209,7 +1213,7 @@ async deleteBackup(backupId: string): Promise<void>
 
 > All five backup methods (`createBackup` / `listBackups` / `restoreFromBackup` / `deleteBackup` / `cleanOldBackups`) are thin facades over [`BackupManager`](#backupmanager) since v1.15.0 Phase 5. Existing callers see no API change.
 
-### ingest (v1.9.0 — Conversation Ingestion)
+### ingest (v1.9.0 — Conversation Ingestion; Unreleased — provenance + mode dial, R4b/R5)
 
 Format-agnostic conversation ingestion pipeline.
 
@@ -1218,9 +1222,33 @@ async ingest(
   input: string | { messages: ChatMessage[] } | ChatMessage[],
   options?: IngestOptions
 ): Promise<IngestResult>
+
+type IngestMode = 'accurate' | 'balanced' | 'lightweight';  // R5, default 'balanced'
+
+interface IngestOptions {
+  mode?: IngestMode;
+  llmProvider?: LLMProvider;       // enables distillation enrichment; omitted = raw-observation behaviour
+  validate?: (produced: IngestProduced) => Promise<{ valid: boolean; issues?: string[] }>;  // 'accurate'-mode-only
+  keepSourceText?: boolean;        // include raw chunk text (capped 4000 chars) in the manifest
+  // ...entityType, chunkBy, dryRun, tags, projectId, maxChunkSize, deduplicateThreshold
+}
+
+interface IngestResult {
+  entitiesCreated: number; observationsAdded: number; skippedDuplicates: number;
+  entityNames: string[];
+  ingestId: string;                // 8 hex chars
+  manifestEntity: string;          // `ingest-<ingestId>`
+  chunkCount: number;
+  tokenUsage?: { input: number; output: number; approximate: boolean };
+  validation?: { valid: boolean; issues?: string[] };
+}
 ```
 
 `input` accepts raw transcript text (auto-split via `splitTranscript`), a `{ messages: [...] }` object, or an array of `ChatMessage`. v1.15.0 hardens transcript splitting with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10 000) guards against ReDoS.
+
+**R4b — provenance manifest**: every non-dry-run ingest writes an `ingest-<id>` manifest entity (`entityType: 'ingest-manifest'`) with one `[chunk]: <JSON>` observation line per source chunk (`{ id, source, offset, length, hash }`); each created entity links to the manifest via a `derived_from` relation and records per-observation `sourceRef` provenance through `observationMeta` — evidence paths can extend answer → relation → observation → source chunk.
+
+**R5 — cost/quality dial**: `mode` maps onto the `MemoryDistiller` construction dial — `'lightweight'` → heuristic-only (LLM never called), `'balanced'` (default, = pre-R5 behaviour) → auto, `'accurate'` → llm-preferred plus the optional `validate` hook (the `RelationConsolidator` seam). Distillation enrichment and `tokenUsage` accounting only activate when `llmProvider` is supplied.
 
 ### splitTranscript (v1.9.0)
 
@@ -1765,35 +1793,52 @@ Integer [0, 10] scoring via `length × keyword × recent-turn-overlap` signals. 
 
 ## GovernanceManager
 
-(v1.6.0) Policy enforcement and transactional safety for memory mutations. Wired via `ctx.governanceManager` when `MEMORY_GOVERNANCE_ENABLED=true`.
+(v1.6.0; **Unreleased** — enforcement chokepoint, Sec1) Policy enforcement and transactional safety for memory mutations. Wired via `ctx.governanceManager`.
 
 ### withTransaction
 
 Wraps a function in a snapshot-based transaction. On exception, the storage is restored to the pre-call snapshot.
 
 ```typescript
-async withTransaction<T>(fn: () => Promise<T>): Promise<T>
+async withTransaction<T>(fn: (tx: GovernanceTransaction) => Promise<T>): Promise<T>
 ```
 
 ### rollback
 
-Explicit rollback (rare — `withTransaction` rolls back automatically on throw).
+Explicit rollback of a previously committed operation by its audit entry id (rare — `withTransaction` rolls back automatically on throw).
 
 ```typescript
-async rollback(): Promise<void>
+async rollback(auditEntryId: string): Promise<void>
 ```
 
-### GovernancePolicy (interface)
+### setPolicy / GovernancePolicy (interface)
 
 ```typescript
+setPolicy(policy: GovernancePolicy): void
+
 interface GovernancePolicy {
-  canCreate(entity: Partial<Entity>): boolean | Promise<boolean>;
-  canUpdate(entity: Entity, patch: Partial<Entity>): boolean | Promise<boolean>;
-  canDelete(entityName: string): boolean | Promise<boolean>;
+  canCreate?(entity: Omit<Entity, 'createdAt' | 'lastModified'>): boolean;
+  canUpdate?(entity: Entity, updates?: Partial<Entity>): boolean;
+  canDelete?(entity: Entity): boolean;
 }
 ```
 
-Passed to the constructor; consulted before every mutation. Returning `false` (or a rejected Promise) throws and rolls back the transaction.
+Consulted before every mutation the manager handles; a hook returning `false` throws and rolls back the transaction. All three hooks are optional — an absent hook allows the operation.
+
+### Constructor options — `redactAuditSnapshots` (Sec6)
+
+```typescript
+new GovernanceManager(storage: GraphStorage, auditLog: AuditLog, options?: {
+  redactAuditSnapshots?: boolean;  // default false — PII-redact before/after snapshots before they hit the audit log
+  redactor?: PiiRedactor;          // custom redactor; defaults to new PiiRedactor()
+})
+```
+
+The live graph is never mutated — only the audit-log copies are redacted.
+
+### Unreleased — enforcement chokepoint (Sec1)
+
+`MEMORY_GOVERNANCE_ENABLED` was previously read nowhere in `src/`, so setting it did nothing and no mutation path was governed. Now, when it is the strict literal `'true'` (checked once at first `ctx.entityManager` access), `ManagerContext` wires this manager's live policy + audit log directly into `EntityManager` via `EntityManager.setGovernanceHooks()` — so `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` are policy-checked (`GovernanceError` on denial) and audited (fire-and-forget; an audit-sink failure never fails the underlying write) without requiring the caller to route writes through `withTransaction`. Policy is read live via `getPolicy()`, so a `setPolicy()` call after construction takes effect on the next mutation. Unset env var = zero checks, zero audit calls on `EntityManager` (pre-Sec1 behavior); `ctx.governanceManager` remains usable manually via `withTransaction` either way.
 
 ---
 
@@ -1942,6 +1987,139 @@ Multiplies each result's score by `score × (1 + boost × normalizedPageRank)` a
 ### Related env vars
 
 `MEMORY_HYBRID_GRAPH_WEIGHT`, `MEMORY_RANKED_GRAPH_BOOST`, `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT`, `MEMORY_DECAY_CONNECTIVITY_PROTECTION` (see [CLAUDE.md](../../CLAUDE.md) for the full table).
+
+---
+
+## EventManager
+
+(Unreleased — R1, `@experimental`) Reifies actions as first-class `entityType: 'event'` hub entities with role-typed relations. Wired via `ctx.eventManager`.
+
+### recordEvent
+
+```typescript
+async recordEvent(input: RecordEventInput): Promise<EventRecord>
+
+interface RecordEventInput {
+  action: string;
+  actor: string;
+  target?: string;
+  context?: string;
+  participants?: string[];
+  detail?: string | string[];
+  occurredAt?: string | Date;   // normalized to ISO 8601
+  flowKey?: string;             // grouping key, case-insensitive
+  importance?: number;
+}
+```
+
+Creates an `event-<action>-<shortId>`-named hub entity plus role-typed relations: `<actor> —actor_of→ <event>`, `<event> —targeted→ <target>`, `<event> —occurred_in→ <context>`, `<participant> —participant_in→ <event>` for each participant. Missing endpoints auto-create as `entityType: 'concept'` stubs by default (`autoCreateEndpoints: false` in the constructor config throws instead, before any write). Throws on empty `action`/`actor`, an unparseable `occurredAt`, or shortId exhaustion (10 collision retries).
+
+### getEvent / queryEvents / getFlow / whoDidWhat
+
+```typescript
+async getEvent(name: string): Promise<EventRecord | null>
+async queryEvents(filter?: EventQueryFilter): Promise<EventRecord[]>
+async getFlow(flowKey: string): Promise<EventRecord[]>            // chronological, by flow tag
+async whoDidWhat(filter?: WhoDidWhatFilter): Promise<WhoDidWhatEntry[]>
+```
+
+Queries use the storage `TypeIndex`/`RelationIndex` — O(k)/O(1), no full-graph scans.
+
+**Example:**
+```typescript
+await ctx.eventManager.recordEvent({
+  action: 'deployed', actor: 'alice', target: 'api-service',
+  context: 'production', flowKey: 'release-42',
+});
+const flow = await ctx.eventManager.getFlow('release-42');
+const who = await ctx.eventManager.whoDidWhat({ target: 'api-service' });
+```
+
+---
+
+## EvidencePathBuilder
+
+(Unreleased — R2, `@experimental`) Builds traceable graph paths from search-query anchors to a result entity — the "why" behind a hit. Constructed per search call when `explain: true` is requested; not exposed as a `ManagerContext` getter.
+
+```typescript
+new EvidencePathBuilder(graph: ReadonlyKnowledgeGraph, options?: {
+  maxDepth?: number;            // default 3 hops
+  maxPathsPerResult?: number;   // default 3
+})
+
+buildForResult(resultName: string, anchors: readonly EvidenceAnchor[]): EvidencePathSet
+
+interface EvidenceAnchor {
+  name: string;
+  viaLayer: EvidenceLayer;  // which search layer produced this anchor
+  score?: number;           // anchors are tried in descending score order
+}
+
+interface EvidencePathSet {
+  paths: EvidencePath[];    // shortest paths (bounded BFS), at most maxPathsPerResult
+  truncated: boolean;       // true if a cap changed the outcome
+}
+```
+
+Wired automatically into `HybridSearchManager.search({ explain: true })` and `LLMSearchExecutor.execute` — results gain an `evidencePaths` field. `explain` defaults to `false`; omitting it is byte-identical to pre-R2 output.
+
+---
+
+## RelationConsolidator
+
+(Unreleased — R3, `@experimental`) Three-tier "Janitor" pass for relation-level deduplication and neighborhood validation. Not wired into `ManagerContext` — construct directly.
+
+```typescript
+new RelationConsolidator(
+  relationOps: { getRelations, createRelations, deleteRelations },  // RelationManager or a structural fake
+  entityOps?: { listEntities },                                     // needed for tier 1/2 corpus scans
+  options?: {
+    embedding?: RelationEmbeddingProvider;   // enables tier 2 (embed/embedBatch)
+    llm?: LLMProvider;                       // enables tier 3
+    thresholds?: { semantic?: number };      // default 0.90
+    maxGroups?: number;                      // default 100
+    maxLlmBatch?: number;                    // default 50
+    maxNeighborhoodRelations?: number;       // default 200
+  }
+)
+
+async analyze(options?: { newRelations?: Relation[] }): Promise<RelationConsolidationReport>
+async consolidate(options?: { newRelations?: Relation[]; apply?: boolean }): Promise<RelationConsolidationReport>
+```
+
+- **Tier 1 (exact/near-exact)**: same `(from, to)` pair, spelling-variant `relationType`s (case/underscore/hyphen/camelCase) merge onto the canonical spelling.
+- **Tier 2 (semantic, embedding-gated)**: same-pair relations with descriptor cosine similarity ≥ threshold flagged/merged. Skipped without an `embedding` provider.
+- **Tier 3 (neighborhood validation, LLM-gated)**: validates caller-supplied `newRelations` against a 2-hop neighborhood; returns `'ok' | 'suspect' | 'wrong'` verdicts. **Never mutates.** Skipped without an `llm` provider.
+
+`consolidate({ apply: true })` applies tier 1+2 merges only (`deleteRelations` + `createRelations`); tier 3 is always report-only. Companion `RelationConsolidationStage` is a report-only `PipelineStage` for `ConsolidationPipeline`.
+
+---
+
+## ApiKeyAuthMiddleware
+
+(Unreleased — Sec9) Reference authentication layer wiring `APIKeyStore.validate()` into `RestRouter`.
+
+```typescript
+new ApiKeyAuthMiddleware(options: {
+  store: APIKeyStore;
+  requiredScopes?: (method: RestMethod, path: string) => readonly string[];  // default: GET → [], others → ['entities:write']
+  onReject?: (info: { reason: string; method: RestMethod; path: string }) => void;
+})
+
+extractKey(req: RestRequest): string | null       // Authorization: Bearer <key>, falls back to X-Api-Key
+authenticate(req: RestRequest): { ok: true; auth: AuthContext } | { ok: false; response: RestResponse }
+
+interface AuthContext { keyId: string; scopes: readonly string[]; ownerId?: string }
+```
+
+`401 { error: 'unauthorized' }` for a missing/unknown/revoked/expired key — the specific rejection reason is intentionally not serialized to the client (available server-side via `onReject` for logging). `403 { error: 'forbidden', requiredScopes }` for a valid key lacking a required scope.
+
+**Example:**
+```typescript
+const store = new APIKeyStore();
+const auth = new ApiKeyAuthMiddleware({ store });
+const router = RestRouter.withDefaults(ctx, { auth });
+```
 
 ---
 

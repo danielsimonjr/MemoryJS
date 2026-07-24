@@ -8,14 +8,15 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 36
+- **Potentially unused exports**: 56
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 36
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 56
 
-Seeded reachability roots (3):
+Seeded reachability roots (4):
 
 - `src/cli/index.ts`
 - `src/index.ts`
+- `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
 ## Dormant Files — Orphaned (delete/wire candidates)
@@ -70,17 +71,40 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `ContextCompressionResult` (interface) — 2 in-file refs
 - `CompressionLevel` (type) — 4 in-file refs
 
+### `src/agent/reconstruction/MemoryDistiller.ts`
+
+- `MemoryDistillerConfig` (interface) — 1 in-file ref
+- `DistillerTokenUsage` (interface) — 1 in-file ref
+- `UsageReportingLLMProvider` (interface) — 1 in-file ref
+- `DistillerMode` (type) — 2 in-file refs
+
+### `src/cli/commands/audit.ts`
+
+- `AUDIT_OPERATIONS` (constant) — 2 in-file refs
+
+### `src/cli/commands/doctor.ts`
+
+- `defaultWorkerDirs` (function) — 1 in-file ref
+- `DoctorCheckResult` (interface) — 8 in-file refs
+- `DoctorStatus` (type) — 1 in-file ref
+- `EXTRA_NUMERIC_VARS` (constant) — 2 in-file refs
+
 ### `src/cli/formatters.ts`
 
 - `OutputFormat` (type) — 8 in-file refs
 
 ### `src/core/EntityManager.ts`
 
+- `GovernanceAuditEvent` (interface) — 2 in-file refs
+- `GovernanceHooks` (interface) — 3 in-file refs
 - `GetEntityOptions` (interface) — 1 in-file ref
 
 ### `src/core/GraphTraversal.ts`
 
-- `TraversalOptionsWithTracking` (interface) — 3 in-file refs
+- `SimilarityProvider` (interface) — 2 in-file refs
+- `LookForOptions` (interface) — 2 in-file refs
+- `RankedNeighborWithRelation` (interface) — 3 in-file refs
+- `TraversalOptionsWithTracking` (interface) — 4 in-file refs
 
 ### `src/core/ObservationStore.ts`
 
@@ -89,6 +113,13 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/core/mmap/FsReadMmapBackend.ts`
 
 - `FsReadMmapBackendOptions` (interface) — 1 in-file ref
+
+### `src/features/IOManager.ts`
+
+- `IngestTokenUsage` (interface) — 2 in-file refs
+- `IngestProduced` (interface) — 1 in-file ref
+- `IngestValidationFeedback` (interface) — 2 in-file refs
+- `IngestMode` (type) — 3 in-file refs
 
 ### `src/search/BloomPreScreener.ts`
 
@@ -154,7 +185,15 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CompressedMapOptions` (interface) — 1 in-file ref
 
+### `src/utils/compressionUtil.ts`
+
+- `DecompressionOptions` (interface) — 3 in-file refs
+
 ### `src/utils/constants.ts`
 
 - `EMBEDDING_ENV_VARS` (constant) — 4 in-file refs
+
+### `src/utils/searchCache.ts`
+
+- `GraphGenerationDependency` (type) — 2 in-file refs
 

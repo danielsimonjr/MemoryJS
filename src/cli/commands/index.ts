@@ -29,6 +29,8 @@ import { registerSpellCommands } from './spell.js';
 import { registerCheckCommand } from './check.js';
 import { registerCacheCommands } from './cache.js';
 import { registerReindexCommand } from './reindex.js';
+import { registerAuditCommands } from './audit.js';
+import { registerDoctorCommand } from './doctor.js';
 
 export function registerCommands(program: Command): void {
   registerEntityCommands(program);
@@ -53,4 +55,6 @@ export function registerCommands(program: Command): void {
   registerCheckCommand(program);
   registerCacheCommands(program);
   registerReindexCommand(program);
+  registerAuditCommands(program);
+  registerDoctorCommand(program);
 }

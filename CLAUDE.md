@@ -79,7 +79,7 @@ ctx.archiveManager      // Entity archival to compressed storage
 ctx.semanticSearch      // Vector similarity (requires embedding provider)
 ctx.temporalSearch      // Natural language time-range search (chrono-node)
 ctx.freshnessManager    // TTL/confidence freshness reporting
-ctx.governanceManager   // Governance policies + audit transaction support
+ctx.governanceManager   // Governance policies + audit transactions; lazy getter always available. When MEMORY_GOVERNANCE_ENABLED='true' (strict literal, read at first entityManager access), ManagerContext also wires governance hooks into EntityManager so createEntities/updateEntity/batchUpdate/deleteEntities/renameEntity are policy-checked (GovernanceError on denial) + audited (fire-and-forget append; audit failure never fails the write). Audit log path: MEMORY_AUDIT_LOG_FILE, else <basename>-audit.jsonl sidecar.
 ctx.refIndex            // Named reference index for O(1) entity lookup
 ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
 ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider)
@@ -93,6 +93,7 @@ ctx.rbacMiddleware      // η.6.1 RBAC policy (checkPermission)
 ctx.worldModelManager   // 3B.7 World Model orchestrator (snapshots + diff)
 ctx.activeRetrieval     // 3B.5 Active Retrieval (iterative query rewriting)
 ctx.reconstructiveMemory() // MRAgent Cue–Tag–Content associative memory + active multi-step reconstruction
+ctx.eventManager        // R1 event reification: actions as event hub entities (actor_of/targeted/occurred_in), flow grouping, whoDidWhat()
 ```
 
 **v1.9.0 Additions:**
@@ -245,6 +246,8 @@ Vitest with 30s timeout. Coverage excludes `index.ts` barrel files. Custom `per-
 ### SQLite read pool & index coalescing
 | Variable | Values | Default | Description |
 |----------|--------|---------|-------------|
+| `MEMORY_SQLITE_SYNCHRONOUS` | `FULL`, `NORMAL`, `OFF` | `NORMAL` | SQLite `synchronous` pragma. `NORMAL` is the canonical WAL pairing (~2–10× commit throughput; app-crash safe, power loss can lose the last commit). Set `FULL` for maximum durability. |
+| `MEMORY_MAX_DECOMPRESSED_BYTES` | Integer > 0 | `268435456` (256 MB) | Decompression output cap (brotli/zlib) across `compressionUtil` and compression adapters — guards against decompression bombs. Exceeding throws a distinct error naming the limit. |
 | `MEMORY_SQLITE_READ_POOL_SIZE` | Integer ≥ 1 | `4` | Read connection pool size for `SQLiteStorage` (`fullTextSearch` / `simpleSearch`). Set to `0` or `1` to route reads through the writer connection. |
 | `MEMORY_INDEX_COALESCE_MS` | Integer ≥ 0 | `50` | TF-IDF event-sync coalescing window. Multiple writes to the same entity within the window collapse into a single index update. Set to `0` to disable coalescing (apply immediately). |
 | `MEMORY_SQLITE_AUTO_INDEX` | `true`, `false` | `false` | Enables `PartialIndexAdvisor` — tracks `entityType` / `projectId` filter frequency and creates `idx_advisor_*` partial SQLite indexes for hot patterns. Infrastructure-only as of Phase 2; wiring into `SQLiteStorage` is a follow-up. |
@@ -284,8 +287,8 @@ Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_
 ### Governance & Freshness (v1.6.0)
 | Variable | Values | Default |
 |----------|--------|---------|
-| `MEMORY_GOVERNANCE_ENABLED` | `true`, `false` | `false` |
-| `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | - |
+| `MEMORY_GOVERNANCE_ENABLED` | `'true'` (strict literal match) | unset = manual-only | When `'true'`, `ManagerContext` wires `ctx.governanceManager`'s policy + audit log into `EntityManager` mutations (Sec1 enforcement chokepoint): denied ops throw `GovernanceError`, allowed ops append committed audit entries. Unset = `ctx.governanceManager` still usable manually via `withTransaction`, but plain `EntityManager` writes bypass governance (zero overhead). Read once at first `entityManager` access. |
+| `MEMORY_AUDIT_LOG_FILE` | Path for audit JSONL | `<basename>-audit.jsonl` sidecar next to the storage file |
 | `MEMORY_FRESHNESS_TTL_DEFAULT_HOURS` | Number | `168` |
 | `MEMORY_LLM_QUERY_PLANNER_PROVIDER` | Provider name string | - |
 

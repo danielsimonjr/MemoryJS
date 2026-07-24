@@ -20,6 +20,12 @@ import { SpellChecker } from '../search/SpellChecker.js';
 import { ObservationStore } from './ObservationStore.js';
 import { GraphStorage } from './GraphStorage.js';
 import { createStorageFromPath } from './StorageFactory.js';
+// S9: side-effect import registers the SQLiteStorage constructor with
+// StorageFactory (which no longer static-imports the SQLiteStorage module),
+// keeping MEMORY_STORAGE_TYPE=sqlite working for direct ManagerContext
+// consumers. Tree-shaking bundlers (sideEffects: false) may drop this;
+// such consumers use preloadSQLiteStorage() instead.
+import './sqlite-register.js';
 import { EntityManager } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
@@ -40,7 +46,11 @@ import { HybridSearchManager } from '../search/HybridSearchManager.js';
 import { LLMQueryPlanner } from '../search/LLMQueryPlanner.js';
 import { LLMSearchExecutor } from '../search/LLMSearchExecutor.js';
 import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
-import { SemanticSearch, createEmbeddingService, createVectorStore } from '../search/index.js';
+// S10: concrete-file imports instead of the search barrel — the barrel pulls
+// ~70 modules (incl. workerpool-backed FuzzySearch) onto the default path.
+import { SemanticSearch } from '../search/SemanticSearch.js';
+import { createEmbeddingService } from '../search/EmbeddingService.js';
+import { createVectorStore } from '../search/VectorStore.js';
 import { IOManager } from '../features/IOManager.js';
 import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
@@ -84,6 +94,7 @@ import { ToolAffordanceManager } from '../agent/ToolAffordanceManager.js';
 import { ToolCallObserver } from '../agent/ToolCallObserver.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
+import { EventManager } from '../agent/events/EventManager.js';
 import {
   ProspectiveMemoryManager,
   type ProcedureInvoker,
@@ -101,6 +112,9 @@ import {
   type ReconstructiveMemoryConfig,
   type ReconstructiveBacking,
 } from '../agent/reconstruction/index.js';
+// Sec1 — governance enforcement chokepoint (kept as separate import lines).
+import { GovernanceManager } from '../features/GovernanceManager.js';
+import { AuditLog } from '../features/AuditLog.js';
 
 /**
  * Options for constructing a ManagerContext.
@@ -189,6 +203,7 @@ export class ManagerContext {
   private _toolCallObserver?: ToolCallObserver;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
+  private _eventManager?: EventManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
   private _failureManager?: FailureManager;
   private _plan?: PlanManager;
@@ -213,6 +228,7 @@ export class ManagerContext {
   private _llmQueryPlanner?: LLMQueryPlanner;
   private _llmSearchExecutor?: LLMSearchExecutor;
   private _semanticForget?: SemanticForget;
+  private _governanceManager?: GovernanceManager;
 
   constructor(pathOrOptions: string | ManagerContextOptions) {
     const opts: ManagerContextOptions =
@@ -295,8 +311,64 @@ export class ManagerContext {
       // (EntityManager.renameEntity remaps them) and are purged on
       // deletes. RefIndex is lazy — no disk I/O until first use.
       this._entityManager.setRefIndex(this.refIndex);
+
+      // Sec1 — governance enforcement chokepoint. Strict literal match
+      // ('true' only), matching the repo's env-gate convention. When
+      // enabled, every EntityManager mutation consults the live
+      // GovernanceManager policy (read at call time, so setPolicy()
+      // after construction takes effect) and appends a committed audit
+      // entry through appendAudit (which honors snapshot redaction).
+      // When the flag is unset there is NO hook object — zero checks,
+      // zero audit calls, zero overhead (pre-Sec1 behavior).
+      if (process.env.MEMORY_GOVERNANCE_ENABLED === 'true') {
+        const gov = this.governanceManager;
+        this._entityManager.setGovernanceHooks({
+          canCreate: entity => gov.getPolicy().canCreate?.(entity) ?? true,
+          canUpdate: (entity, updates) => gov.getPolicy().canUpdate?.(entity, updates) ?? true,
+          canDelete: entity => gov.getPolicy().canDelete?.(entity) ?? true,
+          audit: event =>
+            gov.appendAudit({
+              operation: event.operation,
+              entityName: event.entityName,
+              before: event.before,
+              after: event.after,
+              status: 'committed',
+            }),
+        });
+      }
     }
     return this._entityManager;
+  }
+
+  /**
+   * GovernanceManager — policy enforcement, audit logging, and rollback
+   * (v1.6.0 Dynamic Memory Governance).
+   *
+   * The getter always exists for manual use (`withTransaction`,
+   * `rollback`, `setPolicy`). **Enforcement wiring is separate**: when
+   * `MEMORY_GOVERNANCE_ENABLED=true` (strict literal), `ManagerContext`
+   * additionally injects governance hooks into `entityManager`, so
+   * `createEntities` / `updateEntity` / `batchUpdate` / `deleteEntities`
+   * / `renameEntity` are policy-checked (throwing `GovernanceError` on
+   * denial) and audited. With the flag unset, this getter still works but
+   * ordinary EntityManager mutations bypass governance (manual opt-in).
+   *
+   * The audit log lives at `MEMORY_AUDIT_LOG_FILE` when set, otherwise
+   * at the `<basename>-audit.jsonl` sidecar next to the storage file
+   * (same convention as `-saved-searches` / `-ref-index`).
+   */
+  get governanceManager(): GovernanceManager {
+    if (!this._governanceManager) {
+      let auditPath = process.env.MEMORY_AUDIT_LOG_FILE;
+      if (!auditPath) {
+        const filePath = this.storage.getFilePath();
+        const dir = path.dirname(filePath);
+        const basename = path.basename(filePath, path.extname(filePath));
+        auditPath = path.join(dir, `${basename}-audit.jsonl`);
+      }
+      this._governanceManager = new GovernanceManager(this.storage, new AuditLog(auditPath));
+    }
+    return this._governanceManager;
   }
 
   /** RelationManager - Relation CRUD */
@@ -982,6 +1054,21 @@ export class ManagerContext {
       this._procedureManager = new ProcedureManager(this.entityManager, this.relationManager);
     }
     return this._procedureManager;
+  }
+
+  /**
+   * `EventManager` (R1) — n-ary event reification: actions become
+   * first-class `entityType: 'event'` hub entities with role-typed
+   * relations (`actor_of` / `targeted` / `occurred_in` /
+   * `participant_in`) and optional `flow:<key>` grouping tags. Lazy.
+   * Composes `EntityManager` + `RelationManager`; missing endpoints
+   * auto-create as `'concept'` stubs by default.
+   */
+  get eventManager(): EventManager {
+    if (!this._eventManager) {
+      this._eventManager = new EventManager(this.entityManager, this.relationManager);
+    }
+    return this._eventManager;
   }
 
   /**

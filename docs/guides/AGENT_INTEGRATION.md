@@ -1389,8 +1389,23 @@ const allowed = ctx.rbacMiddleware.checkPermission(
 // reader → ['read']; writer → ['read', 'write']; admin → +'delete'; owner → +'manage'
 ```
 
-When `MEMORY_RBAC_ENABLED=true` is set, the middleware wires automatically
-into `GovernancePolicy.canCreate/canUpdate/canDelete`.
+**Correction:** there is no `MEMORY_RBAC_ENABLED` env var, and
+`RbacMiddleware` does **not** wire automatically into anything —
+`checkPermission` has zero call sites inside the library. Route it through
+`GovernancePolicy.canCreate/canUpdate/canDelete` yourself:
+
+```typescript
+ctx.governanceManager.setPolicy({
+  canCreate: () => true,
+  canUpdate: (entity) => ctx.rbacMiddleware.checkPermission(currentAgentId, 'write', 'entity', entity.name),
+  canDelete: (entity) => ctx.rbacMiddleware.checkPermission(currentAgentId, 'delete', 'entity', entity.name),
+});
+process.env.MEMORY_GOVERNANCE_ENABLED = 'true'; // now RBAC is actually enforced — see below
+```
+
+See [Governance is now enforced](#governance-is-now-enforced-sec1) below —
+that's the chokepoint everything (RBAC, PII redaction, plain policy checks)
+routes through.
 
 ### PII Redaction on export (η.6.3)
 
@@ -1549,3 +1564,96 @@ const renamed = await ctx.entityManager.renameEntity('Alice', 'Alice Chen');
 | `ctx.rbacMiddleware` | η.6.1 | RbacPolicy.checkPermission |
 | `ctx.graphRankPrior` | v2.9.0 | Cached normalized PageRank (`@experimental`) |
 | `ctx.hybridSearchManager` | v2.9.0 | Semantic + lexical + symbolic + graph layered search |
+| `ctx.eventManager` | Unreleased | Event reification — actions as first-class hub entities (`@experimental`) |
+
+## Unreleased — agent-memory features added since v2.9.0
+
+### Governance is now enforced (Sec1)
+
+Before this release, `MEMORY_GOVERNANCE_ENABLED` was documented but read
+nowhere in `src/` — setting it, and even setting a policy on
+`ctx.governanceManager`, changed nothing. Every real mutation path
+(`EntityManager`, including `renameEntity`) wrote with zero policy checks
+and zero audit trail. That gap is now closed: when
+`MEMORY_GOVERNANCE_ENABLED='true'` (strict literal — read once, at first
+`ctx.entityManager` access), `ManagerContext` wires `ctx.governanceManager`'s
+policy into `createEntities` / `updateEntity` / `batchUpdate` /
+`deleteEntities` / `renameEntity`. A denied policy check throws
+`GovernanceError` before anything is written; every allowed mutation appends
+a committed, hash-chained audit entry (fire-and-forget — an audit-append
+failure never fails the write itself).
+
+```typescript
+process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
+const ctx = new ManagerContext('./memory.jsonl');
+
+ctx.governanceManager.setPolicy({
+  canDelete: (entity) => (entity.importance ?? 0) < 8, // protect high-importance memories
+  canUpdate: (entity, updates) => updates.entityType === undefined, // block type changes
+});
+
+try {
+  await ctx.entityManager.deleteEntities(['critical-decision']);
+} catch (e) {
+  if (e instanceof GovernanceError) {
+    // policy denied the delete; nothing was written, nothing was audited as committed
+  }
+}
+
+// Inspect what governance actually did, from the CLI:
+//   memory audit log --entity critical-decision
+//   memory audit verify   (hash-chain tamper-evidence)
+```
+
+With the flag unset, `ctx.governanceManager` still works for manual
+`withTransaction`/`rollback` use, but ordinary `EntityManager` writes bypass
+it entirely — zero overhead, unchanged from pre-Unreleased behavior. Full
+details in [SECURITY_GUIDE.md](./SECURITY_GUIDE.md).
+
+### Event reification + evidence-path-driven retrieval (R1 + R2)
+
+A worked pattern for agents that need to answer "why did you retrieve this?"
+as well as "who did what": reify actions with `ctx.eventManager`, then use
+`explain: true` on hybrid search so every retrieved memory carries the graph
+path that justifies it.
+
+```typescript
+// 1. Reify actions as they happen, instead of flat observation strings.
+await ctx.eventManager.recordEvent({
+  action: 'approved',
+  actor: 'agent-alice',
+  target: 'deployment-42',
+  context: 'production',
+  flowKey: 'release-42',
+  occurredAt: new Date().toISOString(),
+});
+await ctx.eventManager.recordEvent({
+  action: 'deployed',
+  actor: 'agent-bob',
+  target: 'deployment-42',
+  context: 'production',
+  flowKey: 'release-42',
+});
+
+// 2. Reconstruct a flow chronologically, or answer "who did what".
+const flow = await ctx.eventManager.getFlow('release-42');
+const who = await ctx.eventManager.whoDidWhat({ target: 'deployment-42' });
+
+// 3. Retrieve with evidence: every result explains itself via the graph
+// paths connecting it back to the query's direct matches — useful for
+// agent-facing citations ("I found this because X approved Y which..." )
+const graph = await ctx.storage.loadGraph();
+const results = await ctx.hybridSearchManager.search(graph, 'deployment-42 approval', {
+  explain: true,
+  explainOptions: { maxDepth: 3, maxPathsPerResult: 2 },
+});
+for (const r of results) {
+  const citation = r.evidencePaths
+    ?.map(p => p.nodes.join(' -> '))
+    .join(' | ');
+  console.log(`${r.entity.name}: ${citation ?? '(direct match, no path)'}`);
+}
+```
+
+`explain`/`eventManager` are both additive and default-off/unused — nothing
+about this pattern changes retrieval behavior for agents that don't opt in.

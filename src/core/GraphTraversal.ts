@@ -20,6 +20,52 @@ import type {
 import type { GraphStorage } from './GraphStorage.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
 import { checkCancellation } from '../utils/index.js';
+import { jaccard, tokenizeToSet } from '../utils/textSimilarity.js';
+
+/**
+ * Structural similarity surface for NL-guided neighbor ranking (R7).
+ *
+ * Matches `SemanticSearch.calculateSimilarity(a, b)` structurally (no class
+ * import — avoids a core → search layering dependency). Any object exposing
+ * the same method works, including synchronous test fakes.
+ */
+export interface SimilarityProvider {
+  /** Similarity between two strings in [0, 1]; may be sync or async. */
+  calculateSimilarity(a: string, b: string): number | Promise<number>;
+}
+
+/**
+ * R7: NL-guided neighbor retrieval options for
+ * {@link GraphTraversal.getNeighborsWithRelations}.
+ */
+export interface LookForOptions {
+  /**
+   * Free-text description of the desired connection. When set, neighbors
+   * are ranked by similarity between this text and a neighbor descriptor
+   * (`name + relationType + leading observation characters`) and the call
+   * returns a Promise.
+   */
+  lookFor?: string;
+  /**
+   * Optional semantic similarity source (structurally matches
+   * `SemanticSearch`). When absent, ranking falls back to lexical
+   * token-overlap (Jaccard) scoring.
+   */
+  semanticSearch?: SimilarityProvider;
+}
+
+/** Maximum observation characters included in a lookFor neighbor descriptor. */
+const LOOKFOR_DESCRIPTOR_OBSERVATION_CHARS = 200;
+
+/**
+ * A neighbor entry optionally annotated with its lookFor ranking score.
+ */
+export interface RankedNeighborWithRelation {
+  neighbor: string;
+  relation: Relation;
+  /** Similarity of this neighbor's descriptor to `lookFor` (0-1). */
+  lookForScore?: number;
+}
 
 /**
  * Extended traversal options with access tracking support.
@@ -91,11 +137,45 @@ export class GraphTraversal {
   /**
    * Get neighbors of a node based on traversal direction and filters.
    *
+   * R7: when `options.lookFor` is set, the same neighbor set is ranked by
+   * similarity between `lookFor` and each neighbor's descriptor
+   * (`name + relationType + first observation characters`) and the method
+   * returns a Promise of neighbors ordered best-first, each annotated with
+   * `lookForScore`. Ranking uses `options.semanticSearch` when provided
+   * (structural `calculateSimilarity(a, b)` surface, sync or async);
+   * otherwise it falls back to lexical token-overlap (Jaccard) scoring.
+   * Without `lookFor` the method stays fully synchronous and unchanged.
+   *
    * @param entityName - Entity to get neighbors for
-   * @param options - Traversal options
+   * @param options - Traversal options (plus optional lookFor ranking)
    * @returns Array of neighbor entity names with their relations
+   *   (a Promise of the ranked array when `lookFor` is set)
    */
   getNeighborsWithRelations(
+    entityName: string,
+    options?: TraversalOptions
+  ): Array<{ neighbor: string; relation: Relation }>;
+  getNeighborsWithRelations(
+    entityName: string,
+    options: TraversalOptions & LookForOptions & { lookFor: string }
+  ): Promise<RankedNeighborWithRelation[]>;
+  getNeighborsWithRelations(
+    entityName: string,
+    options: TraversalOptions & LookForOptions = {}
+  ):
+    | Array<{ neighbor: string; relation: Relation }>
+    | Promise<RankedNeighborWithRelation[]> {
+    const neighbors = this.collectNeighborsWithRelations(entityName, options);
+    if (options.lookFor === undefined) {
+      return neighbors;
+    }
+    return this.rankNeighborsByLookFor(neighbors, options.lookFor, options.semanticSearch);
+  }
+
+  /**
+   * Synchronous neighbor collection (shared by the plain and lookFor paths).
+   */
+  private collectNeighborsWithRelations(
     entityName: string,
     options: TraversalOptions = {}
   ): Array<{ neighbor: string; relation: Relation }> {
@@ -140,6 +220,43 @@ export class GraphTraversal {
     }
 
     return neighbors;
+  }
+
+  /**
+   * R7: rank neighbors by similarity between `lookFor` and each neighbor's
+   * descriptor. Uses the provided similarity source when available (sync or
+   * async results are both awaited); otherwise falls back to lexical
+   * token-overlap (Jaccard). Sort is stable: ties keep collection order.
+   */
+  private async rankNeighborsByLookFor(
+    neighbors: Array<{ neighbor: string; relation: Relation }>,
+    lookFor: string,
+    similaritySource?: SimilarityProvider
+  ): Promise<RankedNeighborWithRelation[]> {
+    const scored = await Promise.all(
+      neighbors.map(async ({ neighbor, relation }) => {
+        const descriptor = this.buildLookForDescriptor(neighbor, relation);
+        const lookForScore = similaritySource
+          ? await similaritySource.calculateSimilarity(lookFor, descriptor)
+          : jaccard(tokenizeToSet(lookFor), tokenizeToSet(descriptor));
+        return { neighbor, relation, lookForScore };
+      })
+    );
+
+    // Stable sort (Node's Array#sort): ties keep collection order.
+    return scored.sort((a, b) => b.lookForScore - a.lookForScore);
+  }
+
+  /**
+   * Build the descriptor string a neighbor is ranked by:
+   * `name + relationType + first observation characters`.
+   */
+  private buildLookForDescriptor(neighborName: string, relation: Relation): string {
+    const entity = this.storage.getEntityByName(neighborName);
+    const observations = entity
+      ? entity.observations.join(' ').slice(0, LOOKFOR_DESCRIPTOR_OBSERVATION_CHARS)
+      : '';
+    return `${neighborName} ${relation.relationType} ${observations}`.trim();
   }
 
   /**
@@ -337,6 +454,74 @@ export class GraphTraversal {
       length: path.length - 1,
       relations,
     };
+  }
+
+  /**
+   * Find the shortest path between two entities within a bounded number of
+   * hops (R2 evidence-path support).
+   *
+   * Depth-bounded BFS: identical semantics to {@link findShortestPath} but
+   * stops exploring beyond `maxDepth` hops, so worst-case cost is bounded on
+   * large graphs. Returns null when no path exists within the cap (a longer
+   * path may still exist).
+   *
+   * @param source - Source entity name
+   * @param target - Target entity name
+   * @param maxDepth - Maximum path length in hops (default: 3)
+   * @param options - Traversal options (including optional access tracking)
+   * @returns PathResult if a path exists within maxDepth hops, null otherwise
+   */
+  async findPathWithin(
+    source: string,
+    target: string,
+    maxDepth: number = 3,
+    options: TraversalOptionsWithTracking = {}
+  ): Promise<PathResult | null> {
+    // Ensure graph is loaded to populate indexes
+    await this.storage.loadGraph();
+
+    if (!this.storage.hasEntity(source) || !this.storage.hasEntity(target)) {
+      return null;
+    }
+
+    if (source === target) {
+      const result = { path: [source], length: 0, relations: [] };
+      if (options.trackAccess && this.accessTracker) {
+        await this.trackTraversalAccess(result.path, options);
+      }
+      return result;
+    }
+
+    if (maxDepth < 1) return null;
+
+    const opts = { ...DEFAULT_OPTIONS, ...options };
+    const parents = new Map<string, { parent: string; relation: Relation } | null>();
+    parents.set(source, null);
+    let frontier: string[] = [source];
+    let depth = 0;
+
+    while (frontier.length > 0 && depth < maxDepth) {
+      const next: string[] = [];
+      for (const current of frontier) {
+        const neighbors = this.collectNeighborsWithRelations(current, opts);
+        for (const { neighbor, relation } of neighbors) {
+          if (parents.has(neighbor)) continue;
+          parents.set(neighbor, { parent: current, relation });
+          if (neighbor === target) {
+            const result = this.reconstructPath(source, target, parents);
+            if (options.trackAccess && this.accessTracker) {
+              await this.trackTraversalAccess(result.path, options);
+            }
+            return result;
+          }
+          next.push(neighbor);
+        }
+      }
+      frontier = next;
+      depth++;
+    }
+
+    return null;
   }
 
   /**

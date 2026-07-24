@@ -1,10 +1,14 @@
 # Testing Guide
 
-**Last reviewed**: 2026-07-24. Current totals: **7507 passing / 1 failing
-(pre-existing flaky timing benchmark — `compression-benchmarks.test.ts`,
-see CLAUDE.md "Performance benchmark flakiness" gotcha) / 9 skipped**
-across **301 test files** (7517 tests total). Test patterns below remain
-accurate; new test layouts (per-module under `tests/unit/agent/<sub-module>/`)
+**Last reviewed**: 2026-07-24 (post brainapi2-inspired feature batch — R1–R5,
+R7, R9, plus S1–S10/Sec1–Sec10 optimization program). Current totals, with
+`SKIP_BENCHMARKS=true`: **7894 passing / 13 skipped, 0 failing** across
+**319 test files** (316 passed, 3 skipped; 7907 tests total). The previously
+tracked flaky `compression-benchmarks.test.ts` timing failure did not
+reproduce on this run. Test patterns below remain accurate; new test layouts
+(per-module under `tests/unit/agent/<sub-module>/`, plus new suites for
+`EventManager`, `EvidencePathBuilder`, `RelationConsolidator`,
+`ApiKeyAuthMiddleware`, and the `memory audit`/`memory doctor` CLI commands)
 follow the same Vitest conventions.
 
 Comprehensive guide to testing in MemoryJS.

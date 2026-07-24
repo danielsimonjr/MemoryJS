@@ -1,6 +1,6 @@
 # MemoryJS - Component Reference
 
-**Version**: 2.0.0 (Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, graph-connectivity signals)
+**Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1/R2/R3/R4/R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, graph-connectivity signals)
 **Last Updated**: 2026-07-24
 
 ---
@@ -12,9 +12,10 @@
 3. [Core Components](#core-components)
 4. [Search Components](#search-components)
 5. [Feature Components](#feature-components)
-6. [Utility Components](#utility-components)
-7. [Type Definitions](#type-definitions)
-8. [Component Dependencies](#component-dependencies)
+6. [Adapter Components](#adapter-components)
+7. [Utility Components](#utility-components)
+8. [Type Definitions](#type-definitions)
+9. [Component Dependencies](#component-dependencies)
 
 ---
 
@@ -24,32 +25,32 @@ MemoryJS follows a layered architecture with specialized components:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  adapters/         │  External-system adapters (4 files)    │
+│  adapters/         │  External-system adapters (7 files)    │
 ├─────────────────────────────────────────────────────────────┤
-│  agent/            │  Agent memory system (66 files)        │
+│  agent/            │  Agent memory system (83 files)        │
 ├─────────────────────────────────────────────────────────────┤
-│  core/             │  Central managers + storage (25 files) │
+│  core/             │  Central managers + storage (24 files) │
 ├─────────────────────────────────────────────────────────────┤
-│  search/           │  Search implementations (55 files)     │
+│  search/           │  Search implementations (50 files)     │
 ├─────────────────────────────────────────────────────────────┤
-│  features/         │  Advanced capabilities (20 files)      │
+│  features/         │  Advanced capabilities (18 files)      │
 ├─────────────────────────────────────────────────────────────┤
 │  utils/            │  Shared utilities (34 files)           │
 ├─────────────────────────────────────────────────────────────┤
-│  types/            │  TypeScript definitions (8 files)      │
+│  types/            │  TypeScript definitions (11 files)     │
 ├─────────────────────────────────────────────────────────────┤
 │  security/         │  PII / ABAC / RLS / API keys (5 files) │
 ├─────────────────────────────────────────────────────────────┤
-│  cli/              │  CLI binary commands (16 files)        │
+│  cli/              │  CLI binary commands (31 files)        │
 ├─────────────────────────────────────────────────────────────┤
 │  entry/            │  Library entry point (1 file)          │
 ├─────────────────────────────────────────────────────────────┤
-│  workers/          │  Web workers (2 files)                 │
+│  workers/          │  Web workers (1 file)                  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 236 TypeScript files | 79,841 LOC | 1,262 exports | 214 classes | 501 interfaces
-(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-05-14; see `TEST_COVERAGE.md` for test counts)
+**Total:** 266 TypeScript files | 92,541 LOC | 1,765 exports | 221 classes | 584 interfaces
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-07-24 as part of the brainapi2-inspired feature batch + optimization program; see `TEST_COVERAGE.md` for test counts). Runtime circular dependencies are now 0 (was 1); type-only circular dependencies are down to 4 (from 39 pre-optimization) via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
 
 ### New since v1.13: dedicated sub-modules under `agent/`
 
@@ -59,6 +60,7 @@ MemoryJS follows a layered architecture with specialized components:
 - `agent/world/` — `WorldModelManager` + `WorldStateSnapshot` (3B.7)
 - `agent/rbac/` — `RbacMiddleware` + `RoleAssignmentStore` + `PermissionMatrix` (η.6.1)
 - `agent/collaboration/` — `CollaborationAuditEnforcer` (η.5.5.d)
+- `agent/events/` — `EventManager` (R1 event reification, `@experimental`)
 
 ### Dedicated sub-modules under `core/` and `utils/`
 
@@ -760,6 +762,60 @@ Backfill from existing `MemorySource` shape (`method` + `reliability`) via `infe
 
 ---
 
+### EventManager (`agent/events/EventManager.ts`) — Unreleased, `@experimental` (R1)
+
+**Purpose**: Reifies actions as first-class `entityType: 'event'` hub entities — the brainapi2-style n-ary "triangle" model — so "who did what, to whom, where, when" is one queryable unit instead of flat triples
+
+```typescript
+export class EventManager {
+  constructor(entityManager: EntityManager, relationManager: RelationManager, config?: EventManagerConfig)
+  //   config.autoCreateEndpoints: boolean (default true)
+
+  async recordEvent(input: RecordEventInput): Promise<EventRecord>
+  async getEvent(name: string): Promise<EventRecord | null>
+  async queryEvents(filter?: EventQueryFilter): Promise<EventRecord[]>
+  async getFlow(flowKey: string): Promise<EventRecord[]>          // chronological
+  async whoDidWhat(filter?: WhoDidWhatFilter): Promise<WhoDidWhatEntry[]>
+}
+```
+
+**Conventions**:
+- Event hub entity named `event-<action>-<shortId>` (ArtifactManager-style sanitized-name + random hex shortId, minus the date segment — `createdAt`/`[occurred-at]:` carry the temporal dimension).
+- Role-typed relations: `<actor> —actor_of→ <event>`, `<event> —targeted→ <target>`, `<event> —occurred_in→ <context>`, `<participant> —participant_in→ <event>`.
+- Tags: `event`, plus optional `flow:<key>` grouping tag for `getFlow()`.
+- With `autoCreateEndpoints: true` (default), missing endpoint entities are auto-created as lightweight `entityType: 'concept'` stubs; with `false`, `recordEvent` throws before writing anything if any endpoint is missing.
+
+Pure convention layer over existing storage (no schema change). Queries use the storage `TypeIndex` (`listEntities({ entityType: 'event' })`, O(k)) and `RelationIndex` (O(1) lookup) — no full-graph scans. Wired via `ctx.eventManager` lazy getter.
+
+---
+
+### RelationConsolidator (`agent/RelationConsolidator.ts`) — Unreleased, `@experimental` (R3)
+
+**Purpose**: Three-tier "Janitor" pass for relation-level deduplication and neighborhood validation — closes a gap where consolidation was previously entity/observation-centric only
+
+```typescript
+export class RelationConsolidator {
+  constructor(
+    relationOps: RelationConsolidatorRelationOps,   // getRelations/createRelations/deleteRelations
+    entityOps?: RelationConsolidatorEntityOps,       // listEntities — optional, needed for tiers 1/2 scans
+    options?: RelationConsolidatorOptions            // embedding?, llm?, thresholds?, maxGroups?, maxLlmBatch?
+  )
+
+  async analyze(options?: RelationAnalyzeOptions): Promise<RelationConsolidationReport>
+  async consolidate(options?: RelationConsolidateOptions): Promise<RelationConsolidationReport>
+  //   consolidate({ apply: true }) applies tier 1+2 merges: deleteRelations(group) + createRelations([merged])
+}
+```
+
+**Three tiers**:
+1. **Exact/near-exact** — same `(from, to)` pair, `relationType`s that are trivial spelling variants (case/underscore/hyphen/camelCase) merge onto the canonical (most-used, tie → oldest) spelling; also flags `properties.bidirectional` inverse duplicates.
+2. **Semantic (embedding-gated)** — when an `EmbeddingService`-compatible provider is injected, same-pair relations whose descriptors have cosine similarity ≥ threshold (default 0.90) are flagged/merged (higher-confidence relation kept, `confirmationCount` summed). No provider = tier skipped.
+3. **Neighborhood validation (LLM-gated)** — when an `LLMProvider` is injected, a caller-supplied batch of new relations is validated against a 2-hop neighborhood snapshot; returns structured `'ok' | 'suspect' | 'wrong'` verdicts as `ConsolidationFeedback`. **Never mutates** — the caller decides what to do with the feedback.
+
+Merged relations carry the earliest `createdAt`, max `weight`/`confidence`, and the survivor's `properties` with `confirmationCount` summed; free-form `Relation.metadata` is not carried over (rejected by the relation-creation schema). Companion `RelationConsolidationStage` is a report-only `PipelineStage` for wiring into `ConsolidationPipeline`. Not wired into `ManagerContext` — constructed directly by the caller (mirrors `RelationConsolidationStage`'s standalone-stage pattern).
+
+---
+
 ## Core Components
 
 ### EntityManager (`core/EntityManager.ts`) — stable identity + rename
@@ -783,6 +839,30 @@ export class EntityManager {
 
 `renameEntity(oldName, newName)` validates the new name like `createEntities`, then delegates to the storage-level `renameEntity` primitive (optional member on `IGraphStorage`; implemented by both `GraphStorage` and `SQLiteStorage`) which atomically rewrites `Relation.from`/`Relation.to`, other entities' `parentId`, and version-chain fields (`parentEntityName`, `rootEntityName`, `supersededBy`). Registered `RefIndex` aliases are remapped. Throws `EntityNotFoundError` / `DuplicateEntityError`. Segment-mode JSONL storage (`MEMORY_STORAGE_SEGMENT_COUNT`) is routing-aware — a rename that changes an entity's shard is handled correctly. Emits `entity:renamed`, then `entity:deleted` (old name), then `entity:created` (renamed entity) so create/delete-only derived views (TF-IDF sync, `GraphRankPrior`) stay consistent without learning the new event type.
 
+**Unreleased — delta persistence (S2) + governance enforcement chokepoint (Sec1):**
+
+`createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` no longer read-modify-write the whole graph. Each now calls a batch storage primitive (`appendEntitiesCompat`, `updateEntity`, `deleteEntitiesCompat`, etc.) that persists only the changed rows — one fsync / one SQLite transaction per call — and emits per-item events (`entity:created`/`entity:updated`/`entity:deleted`) instead of relying on `graph:saved`. Validation still reads a snapshot via `storage.loadGraph()` under `storage.graphMutex` to prevent TOCTOU races between the read and the delta write.
+
+```typescript
+interface GovernanceAuditEvent {
+  operation: 'create' | 'update' | 'delete';
+  entityName: string;
+  before?: object;  // absent for creates
+  after?: object;   // absent for deletes
+}
+
+export interface GovernanceHooks extends GovernancePolicy {
+  /** Fire-and-forget audit sink; failures are logged, never fail the write. */
+  audit?: (event: GovernanceAuditEvent) => void | Promise<unknown>;
+}
+
+class EntityManager {
+  setGovernanceHooks(hooks: GovernanceHooks | undefined): void
+}
+```
+
+`ManagerContext` calls `setGovernanceHooks()` automatically when `MEMORY_GOVERNANCE_ENABLED === 'true'` (strict literal match, read once at first `entityManager` access), wiring `ctx.governanceManager`'s policy + `AuditLog` into every mutation path: `canCreate`/`canUpdate`/`canDelete` are consulted **before** the batch write (a single denial throws `GovernanceError` and blocks the whole batch atomically — matching the delta write's all-or-nothing semantics), and every committed operation fires the audit hook with `before`/`after` entity snapshots. Unset env var = `EntityManager` mutations run with zero governance overhead (hooks are `undefined`, checks skipped entirely); `ctx.governanceManager` remains usable manually via `withTransaction` either way.
+
 ---
 
 ### GraphEventEmitter (`core/GraphEventEmitter.ts`)
@@ -803,6 +883,50 @@ type GraphEvent = 'entity:created' | 'entity:updated' | 'entity:deleted' | 'enti
 ```
 
 **Event parity across backends**: `SQLiteStorage` now exposes its own `GraphEventEmitter` (`storage.events`) with the same event surface as `GraphStorage` (JSONL) — `graph:loaded`/`graph:saved`, `entity:created`/`updated`, `relation:created`, and the rename sequence (emitted once at the `EntityManager` level, not duplicated per-backend). `IGraphStorage.events?` is an optional interface member so third-party/test storage implementations without an emitter remain valid; derived views degrade gracefully when it's absent. This means event-driven derived views — `TFIDFEventSync`, `GraphRankPrior`, the columnar observation store (`MEMORY_OBSERVATIONS_COLUMNAR`) — now work identically on both the JSONL and SQLite backends, where previously they only worked on JSONL.
+
+**Unreleased — batch-mutation event contract (S2 delta persistence)**: since manager mutations became delta operations (see the EntityManager update above), per-item events fire **exactly once per logical change** for every mutation path, including batch calls that previously only emitted `graph:saved`:
+
+- `entity:created` / `entity:updated` / `entity:deleted` — per entity, from the delta primitives (`appendEntity`/`appendEntities`, `updateEntity`/`updateEntities`, storage `deleteEntities`); `entity:updated` also fires when a relation delete bumps an affected entity's `lastModified` (`changes = { lastModified }`)
+- `relation:created` / `relation:deleted` — per relation, from `appendRelation`/`appendRelations` (including upserts, e.g. `RelationManager.invalidateRelation`) and storage `deleteRelations` / cascaded deletes from `deleteEntities`
+- `entity:renamed` → `entity:deleted` → `entity:created` — unchanged, still the `EntityManager.renameEntity` sequence
+
+`graph:saved` now fires **only** for true full-graph writes: explicit `saveGraph` callers (import/restore, transactions, legacy bulk paths) and JSONL compaction/rename rewrites. Derived views should treat `graph:saved` as a "resync everything" signal and the per-item events as targeted invalidations — see the full contract in the `GraphEventEmitter` module JSDoc (`src/core/GraphEventEmitter.ts`).
+
+---
+
+### SQLiteStorage (`core/SQLiteStorage.ts`) — Unreleased: write-side tuning (S3)
+
+**Purpose**: FTS5-backed storage with tuned pragmas and cached prepared statements for write-heavy workloads
+
+`initialize()` now sets, in addition to the existing `foreign_keys=ON` + `journal_mode=WAL`:
+
+```typescript
+this.db.pragma(`synchronous = ${SQLiteStorage.resolveSynchronousMode()}`); // default NORMAL
+this.db.pragma('busy_timeout = 5000');    // wait up to 5s on a locked DB instead of throwing
+this.db.pragma('cache_size = -64000');    // 64 MB page cache (negative = KiB)
+this.db.pragma('temp_store = MEMORY');    // keep temp tables/indices in memory
+```
+
+`resolveSynchronousMode()` reads `MEMORY_SQLITE_SYNCHRONOUS` (default `NORMAL` — the canonical WAL pairing; `FULL` fsyncs every commit and is available for callers who need the older durability guarantee at the cost of throughput). Frequently-called statements (`appendEntity`, `appendRelation`, `updateEntity`, `getRelationsFrom`/`getRelationsTo`) are now hoisted into lazily-initialized prepared-statement fields instead of being re-`prepare()`d on every call (better-sqlite3 does not auto-cache statements). Append paths maintain `NameIndex`/relation-key membership checks in O(1) instead of `Array.findIndex` O(N) scans.
+
+---
+
+### StorageFactory + sqlite-register (`core/StorageFactory.ts`, `core/sqlite-register.ts`) — Unreleased: lazy SQLite loading (S9)
+
+**Purpose**: Keep JSONL-only consumers from paying for (or being broken by) the `better-sqlite3` native addon
+
+`StorageFactory` no longer statically imports `SQLiteStorage`. Instead it holds a small module-level registry:
+
+```typescript
+// core/StorageFactory.ts
+export function registerSQLiteStorage(ctor: SQLiteStorageConstructor): void
+export async function preloadSQLiteStorage(): Promise<void>  // explicit dynamic import() + register
+
+// core/sqlite-register.ts — a module side effect: importing it registers SQLiteStorage
+import './sqlite-register.js';
+```
+
+The core barrel (`core/index.ts`) imports `sqlite-register.ts` for its side effect, so ordinary consumers of `createStorage({ type: 'sqlite', ... })` still work with no extra step. Requesting `type: 'sqlite'` before the registration has run throws a descriptive error pointing at `preloadSQLiteStorage()` or an explicit `SQLiteStorage` import. JSONL-only consumers who import from the `./core` or `./sqlite`-excluding subpaths never evaluate the `SQLiteStorage` module, so the native addon is never loaded and an ABI/prebuild mismatch on that platform can't break them. **Known gap**: the root package barrel (`src/index.ts`) still re-exports `SQLiteStorage` via `core/index.ts`, so it is eagerly loaded for anyone importing from the package root — full removal from the default import graph is a documented v3 follow-up (`docs/development/OPTIMIZATION_OPPORTUNITIES.md`, item S9). `SQLiteStorage` also gained a `graphMutex` field mirroring `GraphStorage`'s `AsyncMutex`, fixing a crash in batch manager mutations run against a raw SQLite backend.
 
 ---
 
@@ -1032,6 +1156,36 @@ interface HybridSearchOptions {
 - **Graph** (opt-in, default weight: 0): normalized PageRank via `GraphRankPrior`; `HybridSearchResult.matchedLayers` includes `'graph'` when it contributed. `expandNeighbors` additionally pulls in one-hop neighbors of top results at damping 0.3 × the parent's combined score.
 
 Wired as the `ctx.hybridSearchManager` lazy getter, which reads `MEMORY_HYBRID_GRAPH_WEIGHT` once at first access — when 0/unset (the default), `GraphRankPrior` is never attached and behavior is identical to before the graph channel existed.
+
+**Unreleased — evidence paths (`explain: true`, R2)**: `search()` accepts `explain?: boolean` (default `false`, byte-identical output when omitted); each result gains `evidencePaths` built by `EvidencePathBuilder`. `LLMSearchExecutor.execute` accepts the same option.
+
+---
+
+### EvidencePathBuilder (`search/EvidencePathBuilder.ts`) — Unreleased, `@experimental` (R2)
+
+**Purpose**: Given a result entity and the anchor entities that directly matched the query (per search layer), produces the graph paths connecting each anchor to the result — traceable "why" evidence instead of an opaque similarity score
+
+```typescript
+export class EvidencePathBuilder {
+  constructor(graph: ReadonlyKnowledgeGraph, options?: EvidencePathOptions)
+  //   options.maxDepth (default 3), options.maxPathsPerResult (default 3)
+
+  buildForResult(resultName: string, anchors: readonly EvidenceAnchor[]): EvidencePathSet
+}
+
+interface EvidenceAnchor {
+  name: string;
+  viaLayer: EvidenceLayer;   // which search layer produced this anchor
+  score?: number;            // anchors tried in descending score order
+}
+
+interface EvidencePathSet {
+  paths: EvidencePath[];     // shortest paths, at most maxPathsPerResult
+  truncated: boolean;        // true if a cap changed the outcome
+}
+```
+
+Algorithm: bounded breadth-first search over the undirected projection of the graph (relation direction preserved in output, ignored for traversal), capped at `maxDepth` hops — BFS guarantees each returned path is a shortest path from its anchor. Construction cost is one pass over `graph.relations` to build an adjacency index; instances are cheap and intended to be created per search call when `explain: true` is requested. Anchors are deduplicated by name (first occurrence wins) and a result that is itself an anchor yields a trivial single-node path. Wired into `HybridSearchManager.search` and `LLMSearchExecutor.execute` — not exposed as a standalone `ManagerContext` getter.
 
 ---
 
@@ -1302,6 +1456,34 @@ export class IOManager {
 
 Supported formats: `json`, `csv`, `graphml`, `gexf`, `dot`, `markdown`, `mermaid`, and (η.5.4) `turtle`, `rdf-xml`, `json-ld`. v1.15.0 hardens `splitTranscript()` with `MAX_SPLIT_LENGTH` (10 MB) and `MAX_PARTS` (10,000) guards against ReDoS.
 
+**Unreleased — ingest provenance + cost/quality mode dial (R4b/R5)**:
+
+```typescript
+type IngestMode = 'accurate' | 'balanced' | 'lightweight';
+
+interface IngestOptions {
+  mode?: IngestMode;              // R5 dial, default 'balanced' (= pre-R5 behaviour)
+  llmProvider?: LLMProvider;      // enables distillation enrichment; omitted = raw-observation behaviour regardless of mode
+  validate?: (produced: IngestProduced) => Promise<IngestValidationFeedback>;  // 'accurate'-mode-only hook
+  keepSourceText?: boolean;       // R4b: include raw chunk text (capped 4000 chars) in the manifest
+  // ...entityType, chunkBy, dryRun, tags, projectId, maxChunkSize, deduplicateThreshold
+}
+
+interface IngestResult {
+  entitiesCreated: number;
+  observationsAdded: number;
+  skippedDuplicates: number;
+  entityNames: string[];
+  ingestId: string;               // R4b: 8 hex chars
+  manifestEntity: string;         // R4b: `ingest-<ingestId>`
+  chunkCount: number;
+  tokenUsage?: { input: number; output: number; approximate: boolean };  // R5: present only when the LLM was invoked
+  validation?: { valid: boolean; issues?: string[] };  // R5: present only in 'accurate' mode with a validate hook
+}
+```
+
+Every non-dry-run ingest writes an `ingest-<id>` manifest entity (`entityType: 'ingest-manifest'`) with one `[chunk]: <JSON>` observation line per source chunk (`{ id, source, offset, length, hash }`; raw text only when `keepSourceText: true`). Each created entity is linked to the manifest via a `derived_from` relation and records per-observation `sourceRef` provenance through `observationMeta` — so evidence paths can extend answer → relation → observation → source chunk. `mode` maps onto the `MemoryDistiller` construction dial: `'lightweight'` → heuristic-only (LLM provider never called), `'balanced'` (default) → auto, `'accurate'` → llm-preferred, with `heuristicStrictness: 'strict'` when no `validate` hook is supplied (accurate mode always tightens something, even without an external validator). Distillation-based enrichment (extra `[distilled] …` observations + `tokenUsage` accounting) only activates when `llmProvider` is supplied — every mode preserves the pre-R5 raw-observation behaviour otherwise. (`redactPii` is a separate option on `exportGraph`/backup — not part of `IngestOptions`; see the `GovernanceManager` section below for the related `redactAuditSnapshots` option, Sec6.)
+
 ---
 
 ### TagManager (`features/TagManager.ts`)
@@ -1415,48 +1597,77 @@ Combines `Entity.ttl` (absolute time-to-live) and `Entity.confidence` (belief st
 
 ---
 
-### AuditLog (`features/AuditLog.ts`)
+### AuditLog (`features/AuditLog.ts`) — Unreleased: tamper-evident hash chain (Sec5)
 
-**Purpose**: Immutable JSONL audit trail for all mutations (v1.6.0)
+**Purpose**: Persistent JSONL audit trail for create/update/delete/merge/archive operations, now hash-chained for tamper-evidence
 
 ```typescript
 export class AuditLog {
   constructor(logFilePath: string)
 
-  async append(entry: AuditEntry): Promise<void>
-  async query(filter: AuditQueryFilter): Promise<AuditEntry[]>
-  async getEntityHistory(entityName: string): Promise<AuditEntry[]>
+  async append(entry: Omit<AuditEntry, 'id' | 'timestamp' | 'seq' | 'prevHash'>): Promise<AuditEntry>
+  async query(filter: AuditFilter): Promise<AuditEntry[]>
+  async getHistory(entityName: string): Promise<AuditEntry[]>
+  async stats(): Promise<AuditStats>
+  async verifyChain(): Promise<ChainVerificationResult>
+  async loadAll(): Promise<AuditEntry[]>
 }
 
 export interface AuditEntry {
+  id: string;
   timestamp: string;
-  operation: 'create' | 'update' | 'delete' | 'rollback' | 'archive';
-  entityName?: string;
-  actor?: string;
-  metadata?: Record<string, unknown>;
+  operation: 'create' | 'update' | 'delete' | 'merge' | 'archive';
+  entityName: string;
+  agentId?: string;
+  before?: object;        // absent for creates
+  after?: object;         // absent for deletes
+  status: 'committed' | 'rolled_back';
+  seq?: number;            // monotonic within the file; absent on legacy pre-chain entries
+  prevHash?: string;       // SHA-256 of the previous line's exact serialized text
+}
+
+export interface ChainVerificationResult {
+  valid: boolean;
+  brokenAt?: number;       // index of the first entry that failed verification
+  totalChecked: number;
+  legacyLines: number;     // leading pre-chain entries (no seq/prevHash) — not verifiable, not provably broken
+  malformedLines: number;
+  firstMalformedIndex?: number;
 }
 ```
+
+Each entry carries a monotonic `seq` and a `prevHash` SHA-256 chain over the previous line's exact serialized text (`AUDIT_GENESIS_HASH` — 64 zero chars — for the first entry of a fresh file). `verifyChain()` replays the file and detects tampering, reordering, or truncation of any line except the very last one. The file is created with mode `0600`; malformed lines are reported (`malformedLines`/`firstMalformedIndex`) rather than silently skipped. **Trust boundary, stated honestly**: this is tamper-*evident*, not tamper-*proof* — a writer with file access can still rewrite the whole chain from genesis or truncate the tail after the last intact entry and produce a self-consistent file. True immutability requires shipping entries (or periodic chain-head anchors) to an external append-only sink outside the writer's control. `memory audit verify` (CLI) surfaces `verifyChain()`'s verdict; `memory audit log|history|stats` cover `query`/`getHistory`/`stats`.
 
 ---
 
-### GovernanceManager (`features/GovernanceManager.ts`)
+### GovernanceManager (`features/GovernanceManager.ts`) — Unreleased: enforcement chokepoint (Sec1) + PII redaction (Sec6)
 
-**Purpose**: Policy enforcement and transactional safety for memory mutations
+**Purpose**: Policy enforcement and transactional safety for memory mutations; now the source of the hooks `EntityManager` consults directly (see the EntityManager section above)
 
 ```typescript
 export interface GovernancePolicy {
-  canCreate(entity: Partial<Entity>): boolean | Promise<boolean>
-  canUpdate(entity: Entity, patch: Partial<Entity>): boolean | Promise<boolean>
-  canDelete(entityName: string): boolean | Promise<boolean>
+  canCreate?(entity: Omit<Entity, 'createdAt' | 'lastModified'>): boolean;
+  canUpdate?(entity: Entity, updates?: Partial<Entity>): boolean;
+  canDelete?(entity: Entity): boolean;
+}
+
+export interface GovernanceManagerOptions {
+  /** Sec6: redact PII from before/after audit snapshots (live graph untouched). Default false. */
+  redactAuditSnapshots?: boolean;
+  /** Custom redactor for redactAuditSnapshots; defaults to `new PiiRedactor()`. */
+  redactor?: PiiRedactor;
 }
 
 export class GovernanceManager {
-  constructor(storage: IGraphStorage, policy?: GovernancePolicy, auditLog?: AuditLog)
+  constructor(storage: GraphStorage, auditLog: AuditLog, options?: GovernanceManagerOptions)
 
-  async withTransaction<T>(fn: () => Promise<T>): Promise<T>
-  async rollback(): Promise<void>
+  setPolicy(policy: GovernancePolicy): void
+  async withTransaction<T>(fn: (tx: GovernanceTransaction) => Promise<T>): Promise<T>
+  async rollback(auditEntryId: string): Promise<void>
 }
 ```
+
+**Unreleased — enforcement chokepoint (Sec1)**: previously `GovernanceManager` was only reachable if a caller manually built one and routed writes through `withTransaction` — `MEMORY_GOVERNANCE_ENABLED` was a no-op read nowhere in `src/`. Now, when the env var is the strict literal `'true'` (checked once at first `ctx.entityManager` access), `ManagerContext` builds a `GovernanceManager`, converts its `GovernancePolicy` + `AuditLog` into `EntityManager.GovernanceHooks`, and calls `entityManager.setGovernanceHooks(hooks)` — so `createEntities`/`updateEntity`/`batchUpdate`/`deleteEntities`/`renameEntity` are policy-checked and audited directly, with no `withTransaction` wrapper required. `ctx.governanceManager` remains available for manual `withTransaction` usage either way (unset env var = zero overhead on `EntityManager`, but the manager itself still works).
 
 Wraps `EntityManager` mutations with policy checks. `withTransaction` snapshots current state for rollback. Emits to `AuditLog` on every committed operation.
 
@@ -1487,6 +1698,35 @@ All file-touching paths run through `validateFilePath(path, this.backupDir, true
 **Purpose**: Semantic-similarity-based contradiction detection with entity versioning support
 
 Compares observations across the same `rootEntityName` chain to find statements that contradict each other within a configurable threshold. Output feeds `EntityManager.invalidateEntity()` to create a successor entity.
+
+---
+
+## Adapter Components
+
+### ApiKeyAuthMiddleware (`adapters/ApiKeyAuthMiddleware.ts`) — Unreleased (Sec9)
+
+**Purpose**: Reference authentication layer wiring `APIKeyStore.validate()` into the framework-agnostic `RestRouter`
+
+```typescript
+export class ApiKeyAuthMiddleware {
+  constructor(options: {
+    store: APIKeyStore;
+    requiredScopes?: (method: RestMethod, path: string) => readonly string[];
+    onReject?: (info: { reason: string; method: RestMethod; path: string }) => void;
+  })
+
+  extractKey(req: RestRequest): string | null
+  authenticate(req: RestRequest): { ok: true; auth: AuthContext } | { ok: false; response: RestResponse }
+}
+
+interface AuthContext {
+  keyId: string;
+  scopes: readonly string[];
+  ownerId?: string;
+}
+```
+
+Reads `Authorization: Bearer <key>` (preferred) with an `X-Api-Key` fallback. Default scope policy: `GET` requires no scopes; `POST`/`PUT`/`PATCH`/`DELETE` require `entities:write`. Failure responses are `401 { error: 'unauthorized' }` (missing/unknown/revoked/expired key — the specific reason is deliberately kept off the wire, available server-side via `onReject`) or `403 { error: 'forbidden', requiredScopes }` (valid key, insufficient scope). Composes with `RestRouter.withDefaults(ctx, { auth })` or any adapter building `RestRequest`/`RestResponse` envelopes. Previously `APIKeyStore` existed with sound crypto (SHA-256 of a 192-bit random key, timing-safe comparison) but had zero call sites wiring it into the REST surface — this middleware closes that gap.
 
 ---
 
@@ -1767,19 +2007,26 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 │    │                               │   DecayEngine — all     │
 │    │                               │   opt-in, default off)  │
 │    │                               │                         │
-│    ├── IOManager ──────────────────┤                         │
-│    │                               │                         │
+│    ├── IOManager ──────────────────┤  (ingest ──► derived_from│
+│    │                               │   relations, R4b)        │
 │    ├── TagManager ─────────────────► tag-aliases.jsonl       │
 │    │                               │                         │
 │    ├── FreshnessManager ───────────┤                         │
 │    │                               │                         │
-│    ├── GovernanceManager ──────────┤  ──► AuditLog (JSONL)   │
-│    │                               │                         │
+│    ├── GovernanceManager ──────────┤  ──► AuditLog (JSONL,   │
+│    │                               │      hash-chained, Sec5)│
+│    │                               │      ──► EntityManager  │
+│    │                               │          .setGovernance-│
+│    │                               │          Hooks (Sec1)   │
+│    ├── EventManager ───────────────┤  (R1, exp. — hub entities│
+│    │                               │   + role-typed relations)│
 │    ├── RefIndex ───────────────────► refs.jsonl              │
 │    │                               │                         │
 │    └── GraphTraversal ─────────────┘                         │
 └──────────────────────────────────────────────────────────────┘
 ```
+
+`RelationConsolidator` (R3, `@experimental`) and `ApiKeyAuthMiddleware` (Sec9) are constructed directly by callers rather than exposed as `ManagerContext` getters — omitted from the diagram above for that reason; see their component sections for wiring examples.
 
 **Shared Dependencies**:
 - All managers receive `IGraphStorage` via dependency injection
@@ -1791,6 +2038,6 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 
 ---
 
-**Document Version**: 2.0
+**Document Version**: Unreleased (post v2.9.0)
 **Last Updated**: 2026-07-24
 **Maintained By**: Daniel Simon Jr.

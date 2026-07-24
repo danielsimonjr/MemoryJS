@@ -137,6 +137,8 @@ export const CreateEntitySchema = z.object({
     validFrom: z.string().optional(),
     validUntil: z.string().optional(),
     recordedAt: z.string().optional(),
+    // R4b: ingest source-chunk provenance (`<ingestId>-chunk-<n>`)
+    sourceRef: z.string().optional(),
   })).optional(),
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
 }).strict();
@@ -144,7 +146,29 @@ export const CreateEntitySchema = z.object({
 /**
  * Entity update input schema.
  * All fields are optional for partial updates.
- * Name cannot be updated (it's the unique identifier).
+ * Name cannot be updated (it's the unique identifier) — a `name` key in
+ * the patch is silently dropped, as is the stable opaque `id`.
+ *
+ * ## Sec7 — mass-assignment hardening (allow-list contract)
+ *
+ * This schema is `.strip()`: unknown keys are DROPPED, not passed through
+ * (the pre-Sec7 `.passthrough()` admitted arbitrary keys such as `isAdmin`
+ * straight into storage). Every field that legitimately flows through
+ * `EntityManager.updateEntity` / `batchUpdate` must therefore be listed
+ * explicitly below.
+ *
+ * **Maintenance contract:** when adding a new persisted Entity /
+ * AgentEntity / SessionEntity / ArtifactEntity / subclass-record field,
+ * add it BOTH to `OPTIONAL_PERSISTED_ENTITY_FIELDS` in
+ * `src/core/GraphStorage.ts` (persistence allow-list) AND here (update
+ * allow-list) — otherwise updates carrying the new field are silently
+ * stripped before they reach storage. The two lists intentionally mirror
+ * each other; this one additionally admits `createdAt` / `lastModified`
+ * (always-serialized timestamps that subclass managers set explicitly).
+ *
+ * Loose types (`z.unknown()`, plain `z.string()`) are deliberate for
+ * subclass-owned fields: their shapes are validated by the owning
+ * managers; this schema only gates WHICH keys may pass.
  */
 export const UpdateEntitySchema = z.object({
   entityType: entityTypeSchema.optional(),
@@ -152,6 +176,18 @@ export const UpdateEntitySchema = z.object({
   tags: z.array(tagSchema).optional(),
   importance: importanceSchema.optional(),
   parentId: entityNameSchema.optional(),
+  // Timestamps (subclass managers pass lastModified explicitly; loose
+  // z.string() rather than .datetime() to avoid failing formats that the
+  // pre-Sec7 passthrough admitted unvalidated)
+  createdAt: z.string().optional(),
+  lastModified: z.string().optional(),
+  // v1.6.0: Freshness / temporal governance
+  ttl: z.number().optional(),
+  confidence: z.number().optional(),
+  freshnessScore: z.number().optional(),
+  expiresAt: z.string().optional(),
+  // v1.8.0: Project scoping
+  projectId: z.string().optional(),
   // v1.8.0: Memory versioning fields
   isLatest: z.boolean().optional(),
   supersededBy: z.string().optional(),
@@ -168,13 +204,59 @@ export const UpdateEntitySchema = z.object({
     validFrom: z.string().optional(),
     validUntil: z.string().optional(),
     recordedAt: z.string().optional(),
+    // R4b: ingest source-chunk provenance (`<ingestId>-chunk-<n>`)
+    sourceRef: z.string().optional(),
   })).optional(),
   lifecycleStatus: z.enum(['draft', 'published', 'archived']).optional(),
-  // v2.1.1: subclass managers (DecisionManager, HeuristicManager, ProjectContextManager,
-  // ToolAffordanceManager, ExclusionManager, ObservationDedupManager) attach domain-specific
-  // record fields (decisionRecord, projectContext, heuristic, etc.) and a lastModified
-  // timestamp via updateEntity(). .passthrough() admits those without per-field enumeration.
-}).passthrough();
+  // AgentEntity extension (src/types/agent-memory.ts)
+  memoryType: z.string().optional(),
+  sessionId: z.string().optional(),
+  conversationId: z.string().optional(),
+  taskId: z.string().optional(),
+  isWorkingMemory: z.boolean().optional(),
+  promotedAt: z.string().optional(),
+  promotedFrom: z.string().optional(),
+  markedForPromotion: z.boolean().optional(),
+  accessCount: z.number().optional(),
+  lastAccessedAt: z.string().optional(),
+  accessPattern: z.string().optional(),
+  confirmationCount: z.number().optional(),
+  decayRate: z.number().optional(),
+  agentId: z.string().optional(),
+  visibility: z.string().optional(),
+  source: z.unknown().optional(),
+  // η.5.5.b: visibility hierarchy expansion
+  allowedRoles: z.array(z.string()).optional(),
+  visibleFrom: z.string().optional(),
+  visibleUntil: z.string().optional(),
+  // SessionEntity extension (src/types/agent-memory.ts)
+  startedAt: z.string().optional(),
+  endedAt: z.string().optional(),
+  status: z.string().optional(),
+  goalDescription: z.string().optional(),
+  taskType: z.string().optional(),
+  userIntent: z.string().optional(),
+  memoryCount: z.number().optional(),
+  consolidatedCount: z.number().optional(),
+  previousSessionId: z.string().optional(),
+  relatedSessionIds: z.array(z.string()).optional(),
+  outcome: z.unknown().optional(),
+  failureCauses: z.array(z.string()).optional(),
+  // ArtifactEntity extension (src/types/artifact.ts)
+  artifactType: z.string().optional(),
+  toolName: z.string().optional(),
+  shortId: z.string().optional(),
+  // v2.1.x subclass-manager record fields (shapes owned by the managers)
+  heuristicRecord: z.unknown().optional(),
+  decisionRecord: z.unknown().optional(),
+  exclusionRule: z.unknown().optional(),
+  projectContextRecord: z.unknown().optional(),
+  toolAffordanceRecord: z.unknown().optional(),
+  prospectiveRecord: z.unknown().optional(),
+  failureRecord: z.unknown().optional(),
+  planRecord: z.unknown().optional(),
+  reflectionRecord: z.unknown().optional(),
+}).strip();
 
 // ==================== Relation Schemas ====================
 

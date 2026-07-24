@@ -11,7 +11,11 @@ import { promises as fs } from 'fs';
 import { durableWriteFile as durableWriteFileShared } from '../utils/durableWriteFile.js';
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
-import { clearAllSearchCaches } from '../utils/searchCache.js';
+import {
+  clearAllSearchCaches,
+  bumpEntityGeneration,
+  bumpRelationGeneration,
+} from '../utils/searchCache.js';
 import { NameIndex, TypeIndex, LowercaseCache, RelationIndex, ObservationIndex } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
@@ -118,6 +122,52 @@ function copyOptionalPersistedFields(
 }
 
 /**
+ * Composite key uniquely identifying a relation (`from`/`to`/`relationType`
+ * triple). `\u0000` separator matches `RelationManager.deleteRelations` and
+ * cannot collide with entity-name content in practice.
+ */
+function relationKeyOf(r: Pick<Relation, 'from' | 'to' | 'relationType'>): string {
+  return `${r.from}\u0000${r.to}\u0000${r.relationType}`;
+}
+
+/**
+ * Serialize an entity to its JSONL line (shared by append / update /
+ * full-save paths so the on-disk shape stays identical everywhere).
+ */
+function serializeEntityLine(e: Entity): string {
+  const entityData: Record<string, unknown> = {
+    type: 'entity',
+    name: e.name,
+    entityType: e.entityType,
+    observations: e.observations,
+    createdAt: e.createdAt,
+    lastModified: e.lastModified,
+  };
+  copyOptionalPersistedFields(e as unknown as Record<string, unknown>, entityData);
+  return JSON.stringify(entityData);
+}
+
+/**
+ * Serialize a relation to its JSONL line (shared by append / full-save
+ * paths).
+ */
+function serializeRelationLine(r: Relation): string {
+  const relationData: Record<string, unknown> = {
+    type: 'relation',
+    from: r.from,
+    to: r.to,
+    relationType: r.relationType,
+    createdAt: r.createdAt,
+    lastModified: r.lastModified,
+  };
+  if (r.weight !== undefined) relationData.weight = r.weight;
+  if (r.confidence !== undefined) relationData.confidence = r.confidence;
+  if (r.properties) relationData.properties = r.properties;
+  if (r.metadata) relationData.metadata = r.metadata;
+  return JSON.stringify(relationData);
+}
+
+/**
  * GraphStorage manages persistence of the knowledge graph to disk.
  *
  * Uses JSONL (JSON Lines) format where each line is a separate JSON object
@@ -209,6 +259,14 @@ export class GraphStorage implements IGraphStorage {
    * Maps words in observations to entity names.
    */
   private observationIndex: ObservationIndex = new ObservationIndex();
+
+  /**
+   * O(1) relation lookup by composite key (`from\u0000to\u0000relationType`).
+   * Maps to the live relation object held in `cache.relations`, enabling
+   * O(1) upsert-in-place on duplicate appends (S3-style cache maintenance)
+   * and O(1) targeted deletes.
+   */
+  private relationKeyMap: Map<string, Relation> = new Map();
 
   /**
    * Phase 10 Sprint 2: Event emitter for graph change notifications.
@@ -316,6 +374,28 @@ export class GraphStorage implements IGraphStorage {
       await fd.sync();
     } finally {
       await fd.close();
+    }
+  }
+
+  /**
+   * Append one or more JSONL lines with a single fsync. Creates the file
+   * when it does not exist yet (ENOENT fallback mirrors the historical
+   * per-line append behavior).
+   *
+   * @param lines - Serialized JSONL lines (no trailing newline)
+   */
+  private async appendLines(lines: string[]): Promise<void> {
+    const content = lines.join('\n');
+    try {
+      const stat = await fs.stat(this.memoryFilePath);
+      await this.durableAppendFile(content, stat.size > 0);
+    } catch (error) {
+      // File doesn't exist - create it
+      if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+        await this.durableWriteFile(content);
+      } else {
+        throw error;
+      }
     }
   }
 
@@ -634,10 +714,14 @@ export class GraphStorage implements IGraphStorage {
   }
 
   /**
-   * Build relation index from relation array.
+   * Build relation index (and relation key map) from relation array.
    */
   private buildRelationIndex(relations: Relation[]): void {
     this.relationIndex.build(relations);
+    this.relationKeyMap.clear();
+    for (const relation of relations) {
+      this.relationKeyMap.set(relationKeyOf(relation), relation);
+    }
   }
 
   /**
@@ -649,6 +733,78 @@ export class GraphStorage implements IGraphStorage {
     this.lowercaseCache.clear();
     this.relationIndex.clear();
     this.observationIndex.clear();
+    this.relationKeyMap.clear();
+  }
+
+  /**
+   * Upsert an entity into the in-memory cache + indexes.
+   *
+   * When an entity with the same name already exists, its live object is
+   * mutated **in place** (stale fields removed, new fields assigned) so
+   * every structure holding a reference to it — `cache.entities`,
+   * `NameIndex` — stays consistent in O(1) without array scans. This
+   * mirrors the on-disk JSONL semantics where a later line for the same
+   * name replaces the earlier one on reload.
+   *
+   * @returns The live cache object for the entity (the existing object on
+   *   replace, the given object on insert)
+   */
+  private upsertEntityInCache(entity: Entity): Entity {
+    const existing = this.nameIndex.get(entity.name);
+    if (existing !== undefined && existing !== entity) {
+      const oldType = existing.entityType;
+      const target = existing as unknown as Record<string, unknown>;
+      const source = entity as unknown as Record<string, unknown>;
+      for (const key of Object.keys(target)) {
+        if (!(key in source)) delete target[key];
+      }
+      Object.assign(target, source);
+      if (oldType !== existing.entityType) {
+        this.typeIndex.updateType(existing.name, oldType, existing.entityType);
+      }
+      this.lowercaseCache.set(existing);
+      this.observationIndex.remove(existing.name);
+      this.observationIndex.add(existing.name, existing.observations);
+      return existing;
+    }
+    if (existing === undefined) {
+      this.cache!.entities.push(entity);
+    }
+    this.nameIndex.add(entity);
+    this.typeIndex.add(entity);
+    this.lowercaseCache.set(entity);
+    this.observationIndex.remove(entity.name);
+    this.observationIndex.add(entity.name, entity.observations);
+    return entity;
+  }
+
+  /**
+   * Upsert a relation into the in-memory cache + indexes. Same in-place
+   * replace strategy as `upsertEntityInCache` — a duplicate
+   * `from`/`to`/`relationType` key mutates the live object (matching the
+   * on-disk dedup-on-reload semantics and SQLite's INSERT OR REPLACE)
+   * instead of pushing a duplicate row into the cache array.
+   *
+   * @returns The live cache object for the relation
+   */
+  private upsertRelationInCache(relation: Relation): Relation {
+    const key = relationKeyOf(relation);
+    const existing = this.relationKeyMap.get(key);
+    if (existing !== undefined && existing !== relation) {
+      const target = existing as unknown as Record<string, unknown>;
+      const source = relation as unknown as Record<string, unknown>;
+      for (const k of Object.keys(target)) {
+        if (!(k in source)) delete target[k];
+      }
+      Object.assign(target, source);
+      return existing;
+    }
+    if (existing === undefined) {
+      this.cache!.relations.push(relation);
+      this.relationIndex.add(relation);
+      this.relationKeyMap.set(key, relation);
+    }
+    return relation;
   }
 
   /**
@@ -691,64 +847,89 @@ export class GraphStorage implements IGraphStorage {
         // from scratch, so `pendingAppends` (the single-file
         // compaction counter) resets to 0.
         await this.appendViaSegmentSave(() => {
-          this.cache!.entities.push(entity);
-          this.nameIndex.add(entity);
-          this.typeIndex.add(entity);
-          this.lowercaseCache.set(entity);
-          this.observationIndex.add(entity.name, entity.observations);
+          this.upsertEntityInCache(entity);
         });
         this.pendingAppends = 0;
-        clearAllSearchCaches();
+        bumpEntityGeneration();
         this.eventEmitter.emitEntityCreated(entity);
         return;
       }
 
-      const entityData: Record<string, unknown> = {
-        type: 'entity',
-        name: entity.name,
-        entityType: entity.entityType,
-        observations: entity.observations,
-        createdAt: entity.createdAt,
-        lastModified: entity.lastModified,
-      };
-
-      // Only include optional fields if they exist (centralized — see
-      // OPTIONAL_PERSISTED_ENTITY_FIELDS at the top of the file).
-      copyOptionalPersistedFields(entity as unknown as Record<string, unknown>, entityData);
-
-      const line = JSON.stringify(entityData);
+      const line = serializeEntityLine(entity);
 
       // Append to file with fsync for durability (write FIRST, then update cache)
-      try {
-        const stat = await fs.stat(this.memoryFilePath);
-        await this.durableAppendFile(line, stat.size > 0);
-      } catch (error) {
-        // File doesn't exist - create it
-        if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-          await this.durableWriteFile(line);
-        } else {
-          throw error;
-        }
-      }
+      await this.appendLines([line]);
 
-      // Update cache in-place (after successful file write)
-      this.cache!.entities.push(entity);
-
-      // Update indexes
-      this.nameIndex.add(entity);
-      this.typeIndex.add(entity);
-      this.lowercaseCache.set(entity);
-      this.observationIndex.add(entity.name, entity.observations);
+      // Update cache + indexes in-place (after successful file write).
+      // Duplicate names replace the live cache object (matches on-disk
+      // dedup-on-reload semantics and SQLite's INSERT OR REPLACE).
+      this.upsertEntityInCache(entity);
 
       this.pendingAppends++;
 
-      // Clear search caches
-      clearAllSearchCaches();
+      // S6: lazily invalidate entity-dependent search caches
+      bumpEntityGeneration();
 
       // Phase 10 Sprint 2: Emit entity:created event
       this.eventEmitter.emitEntityCreated(entity);
 
       // Trigger compaction if threshold reached
+      if (this.pendingAppends >= this.compactionThreshold) {
+        await this.compactInternal();
+      }
+    });
+  }
+
+  /**
+   * Append multiple entities in a single write (S2 delta persistence).
+   *
+   * One serialized block, one fsync — O(changed) instead of the previous
+   * manager-level full-graph rewrite. Cache/index maintenance and event
+   * emission are per-entity (`entity:created` fires exactly once per
+   * entity; no `graph:saved` — that event is reserved for true full-graph
+   * writes).
+   *
+   * Duplicate names follow the same upsert semantics as `appendEntity`.
+   *
+   * Segment mode (`MEMORY_STORAGE_SEGMENT_COUNT >= 2`) falls back to a
+   * single full `saveAll` for the whole batch (documented segment-mode
+   * limitation; single-file mode stays O(changed)).
+   *
+   * @param entities - Entities to append (no-op when empty)
+   */
+  async appendEntities(entities: Entity[]): Promise<void> {
+    if (entities.length === 0) return;
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (this.segmentStorage !== null) {
+        await this.appendViaSegmentSave(() => {
+          for (const entity of entities) {
+            this.upsertEntityInCache(entity);
+          }
+        });
+        this.pendingAppends = 0;
+        bumpEntityGeneration();
+        for (const entity of entities) {
+          this.eventEmitter.emitEntityCreated(entity);
+        }
+        return;
+      }
+
+      const lines = entities.map(serializeEntityLine);
+      await this.appendLines(lines);
+
+      for (const entity of entities) {
+        this.upsertEntityInCache(entity);
+      }
+
+      this.pendingAppends += entities.length;
+      bumpEntityGeneration();
+
+      for (const entity of entities) {
+        this.eventEmitter.emitEntityCreated(entity);
+      }
+
       if (this.pendingAppends >= this.compactionThreshold) {
         await this.compactInternal();
       }
@@ -772,59 +953,83 @@ export class GraphStorage implements IGraphStorage {
       if (this.segmentStorage !== null) {
         // Segment mode: full-save fallback (same rationale as appendEntity).
         await this.appendViaSegmentSave(() => {
-          this.cache!.relations.push(relation);
-          this.relationIndex.add(relation);
+          this.upsertRelationInCache(relation);
         });
         this.pendingAppends = 0;
-        clearAllSearchCaches();
+        bumpRelationGeneration();
         this.eventEmitter.emitRelationCreated(relation);
         return;
       }
 
-      // Serialize relation with all fields (Phase 1 Sprint 5: Metadata support)
-      const serialized: Record<string, unknown> = {
-        type: 'relation',
-        from: relation.from,
-        to: relation.to,
-        relationType: relation.relationType,
-        createdAt: relation.createdAt,
-        lastModified: relation.lastModified,
-      };
-      // Only include optional metadata fields if present
-      if (relation.weight !== undefined) serialized.weight = relation.weight;
-      if (relation.confidence !== undefined) serialized.confidence = relation.confidence;
-      if (relation.properties) serialized.properties = relation.properties;
-      if (relation.metadata) serialized.metadata = relation.metadata;
-      const line = JSON.stringify(serialized);
+      const line = serializeRelationLine(relation);
 
       // Append to file with fsync for durability (write FIRST, then update cache)
-      try {
-        const stat = await fs.stat(this.memoryFilePath);
-        await this.durableAppendFile(line, stat.size > 0);
-      } catch (error) {
-        // File doesn't exist - create it
-        if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-          await this.durableWriteFile(line);
-        } else {
-          throw error;
-        }
-      }
+      await this.appendLines([line]);
 
-      // Update cache in-place (after successful file write)
-      this.cache!.relations.push(relation);
-
-      // Update relation index
-      this.relationIndex.add(relation);
+      // Update cache + index in-place (after successful file write).
+      // Duplicate keys replace the live cache object (matches on-disk
+      // dedup-on-reload semantics and SQLite's INSERT OR REPLACE).
+      this.upsertRelationInCache(relation);
 
       this.pendingAppends++;
 
-      // Clear search caches
-      clearAllSearchCaches();
+      // S6: lazily invalidate relation-dependent search caches
+      bumpRelationGeneration();
 
       // Phase 10 Sprint 2: Emit relation:created event
       this.eventEmitter.emitRelationCreated(relation);
 
       // Trigger compaction if threshold reached
+      if (this.pendingAppends >= this.compactionThreshold) {
+        await this.compactInternal();
+      }
+    });
+  }
+
+  /**
+   * Append multiple relations in a single write (S2 delta persistence).
+   *
+   * One serialized block, one fsync. Emits `relation:created` exactly once
+   * per relation; no `graph:saved`. Duplicate keys follow the same upsert
+   * semantics as `appendRelation`.
+   *
+   * Segment mode falls back to a single full `saveAll` for the batch.
+   *
+   * @param relations - Relations to append (no-op when empty)
+   */
+  async appendRelations(relations: Relation[]): Promise<void> {
+    if (relations.length === 0) return;
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (this.segmentStorage !== null) {
+        await this.appendViaSegmentSave(() => {
+          for (const relation of relations) {
+            this.upsertRelationInCache(relation);
+          }
+        });
+        this.pendingAppends = 0;
+        bumpRelationGeneration();
+        for (const relation of relations) {
+          this.eventEmitter.emitRelationCreated(relation);
+        }
+        return;
+      }
+
+      const lines = relations.map(serializeRelationLine);
+      await this.appendLines(lines);
+
+      for (const relation of relations) {
+        this.upsertRelationInCache(relation);
+      }
+
+      this.pendingAppends += relations.length;
+      bumpRelationGeneration();
+
+      for (const relation of relations) {
+        this.eventEmitter.emitRelationCreated(relation);
+      }
+
       if (this.pendingAppends >= this.compactionThreshold) {
         await this.compactInternal();
       }
@@ -873,46 +1078,13 @@ export class GraphStorage implements IGraphStorage {
       this.cache = graph;
       this.buildEntityIndexes(graph.entities);
       this.buildRelationIndex(graph.relations);
+      clearAllSearchCaches();
+      bumpEntityGeneration();
+      bumpRelationGeneration();
       this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
       return;
     }
-    const lines = [
-      ...graph.entities.map(e => {
-        const entityData: Record<string, unknown> = {
-          type: 'entity',
-          name: e.name,
-          entityType: e.entityType,
-          observations: e.observations,
-          createdAt: e.createdAt,
-          lastModified: e.lastModified,
-        };
-
-        // Only include optional fields if they exist (centralized — see
-        // OPTIONAL_PERSISTED_ENTITY_FIELDS at the top of the file).
-        copyOptionalPersistedFields(e as unknown as Record<string, unknown>, entityData);
-
-        return JSON.stringify(entityData);
-      }),
-      // Serialize relations with metadata (Phase 1 Sprint 5)
-      ...graph.relations.map(r => {
-        const relationData: Record<string, unknown> = {
-          type: 'relation',
-          from: r.from,
-          to: r.to,
-          relationType: r.relationType,
-          createdAt: r.createdAt,
-          lastModified: r.lastModified,
-        };
-        // Only include optional metadata fields if they exist
-        if (r.weight !== undefined) relationData.weight = r.weight;
-        if (r.confidence !== undefined) relationData.confidence = r.confidence;
-        if (r.properties) relationData.properties = r.properties;
-        if (r.metadata) relationData.metadata = r.metadata;
-        return JSON.stringify(relationData);
-      }),
-    ];
-
-    await this.durableWriteFile(lines.join('\n'));
+    await this.writeGraphFile(graph);
 
     // Update cache directly with the saved graph (avoid re-reading from disk)
     this.cache = graph;
@@ -924,11 +1096,26 @@ export class GraphStorage implements IGraphStorage {
     // Reset pending appends since file is now clean
     this.pendingAppends = 0;
 
-    // Clear all search caches since graph data has changed
+    // Clear all search caches since graph data has changed (full clear is
+    // retained for true full-graph writes; delta ops use generation bumps)
     clearAllSearchCaches();
+    bumpEntityGeneration();
+    bumpRelationGeneration();
 
     // Phase 10 Sprint 2: Emit graph:saved event
     this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
+  }
+
+  /**
+   * Serialize a full graph and durably rewrite the JSONL file. Pure
+   * write helper — no cache/index/event side effects (callers own those).
+   */
+  private async writeGraphFile(graph: KnowledgeGraph): Promise<void> {
+    const lines = [
+      ...graph.entities.map(serializeEntityLine),
+      ...graph.relations.map(serializeRelationLine),
+    ];
+    await this.durableWriteFile(lines.join('\n'));
   }
 
   /**
@@ -957,12 +1144,13 @@ export class GraphStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      const entityIndex = this.cache!.entities.findIndex(e => e.name === entityName);
-      if (entityIndex === -1) {
+      // O(1) NameIndex lookup — the index maps to the same live object
+      // held in `cache.entities`, so in-place mutation stays consistent.
+      const entity = this.nameIndex.get(entityName);
+      if (entity === undefined) {
         return false;
       }
 
-      const entity = this.cache!.entities[entityIndex];
       const oldType = entity.entityType;
       const timestamp = new Date().toISOString();
 
@@ -993,7 +1181,7 @@ export class GraphStorage implements IGraphStorage {
           }
         });
         this.pendingAppends = 0;
-        clearAllSearchCaches();
+        bumpEntityGeneration();
         this.eventEmitter.emitEntityUpdated(entityName, updates, previous);
         return true;
       }
@@ -1017,32 +1205,10 @@ export class GraphStorage implements IGraphStorage {
         lastModified: timestamp,
       };
 
-      const entityData: Record<string, unknown> = {
-        type: 'entity',
-        name: updatedEntity.name,
-        entityType: updatedEntity.entityType,
-        observations: updatedEntity.observations,
-        createdAt: updatedEntity.createdAt,
-        lastModified: updatedEntity.lastModified,
-      };
-
-      // Centralized optional-field copy — see
-      // OPTIONAL_PERSISTED_ENTITY_FIELDS at the top of the file.
-      copyOptionalPersistedFields(updatedEntity as unknown as Record<string, unknown>, entityData);
-
-      const line = JSON.stringify(entityData);
+      const line = serializeEntityLine(updatedEntity);
 
       // Write to file FIRST with durability - if this fails, cache remains consistent
-      try {
-        const stat = await fs.stat(this.memoryFilePath);
-        await this.durableAppendFile(line, stat.size > 0);
-      } catch (error) {
-        if (error instanceof Error && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
-          await this.durableWriteFile(line);
-        } else {
-          throw error;
-        }
-      }
+      await this.appendLines([line]);
 
       // File write succeeded - NOW update cache in-place (sanitized to prevent prototype pollution)
       Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
@@ -1061,8 +1227,8 @@ export class GraphStorage implements IGraphStorage {
 
       this.pendingAppends++;
 
-      // Clear search caches
-      clearAllSearchCaches();
+      // S6: lazily invalidate entity-dependent search caches
+      bumpEntityGeneration();
 
       // Phase 10 Sprint 2: Emit entity:updated event
       this.eventEmitter.emitEntityUpdated(entityName, updates, previousValues);
@@ -1073,6 +1239,365 @@ export class GraphStorage implements IGraphStorage {
       }
 
       return true;
+    });
+  }
+
+  /**
+   * Update multiple entities in a single write (S2 delta persistence).
+   *
+   * Validates that every named entity exists **before** applying anything
+   * (all-or-nothing, preserving the atomic semantics of the previous
+   * full-graph-save path), then appends one updated JSONL line per entity
+   * with a single fsync. Emits `entity:updated` exactly once per entity
+   * (with `previousValues`); no `graph:saved`.
+   *
+   * Timestamp semantics: an explicit `updates.lastModified` wins;
+   * otherwise `options.timestamp` (letting callers stamp a whole batch
+   * uniformly); otherwise the current time.
+   *
+   * Segment mode falls back to a single full `saveAll` for the batch.
+   *
+   * @param batch - Per-entity partial updates
+   * @param options - Optional shared timestamp for the batch
+   * @returns The live updated entity objects (same order as `batch`)
+   * @throws {EntityNotFoundError} If any named entity does not exist
+   *   (checked before any mutation)
+   */
+  async updateEntities(
+    batch: Array<{ name: string; updates: Partial<Entity> }>,
+    options?: { timestamp?: string },
+  ): Promise<Entity[]> {
+    if (batch.length === 0) return [];
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      // Validate all names first — all-or-nothing.
+      for (const { name } of batch) {
+        if (!this.nameIndex.has(name)) {
+          throw new EntityNotFoundError(name);
+        }
+      }
+
+      const defaultTimestamp = options?.timestamp ?? new Date().toISOString();
+
+      // Pre-compute everything needed for the write + post-write cache
+      // application so a failed write leaves the cache untouched.
+      const prepared: Array<{
+        entity: Entity;
+        sanitized: Record<string, unknown>;
+        updates: Partial<Entity>;
+        previousValues: Partial<Entity>;
+        lastModified: string;
+        line: string;
+      }> = [];
+
+      for (const { name, updates } of batch) {
+        const entity = this.nameIndex.get(name)!;
+        const sanitized = sanitizeObject(updates as Record<string, unknown>);
+        const lastModified =
+          typeof sanitized.lastModified === 'string'
+            ? sanitized.lastModified
+            : defaultTimestamp;
+
+        const previousValues: Partial<Entity> = {};
+        for (const key of Object.keys(updates)) {
+          if (key in entity) {
+            (previousValues as Record<string, unknown>)[key] =
+              (entity as unknown as Record<string, unknown>)[key];
+          }
+        }
+
+        const updatedEntity = { ...entity, ...sanitized, lastModified } as Entity;
+        prepared.push({
+          entity,
+          sanitized,
+          updates,
+          previousValues,
+          lastModified,
+          line: serializeEntityLine(updatedEntity),
+        });
+      }
+
+      if (this.segmentStorage !== null) {
+        await this.appendViaSegmentSave(() => {
+          for (const p of prepared) {
+            this.applyPreparedEntityUpdate(p);
+          }
+        });
+        this.pendingAppends = 0;
+        bumpEntityGeneration();
+        for (const p of prepared) {
+          this.eventEmitter.emitEntityUpdated(p.entity.name, p.updates, p.previousValues);
+        }
+        return prepared.map(p => p.entity);
+      }
+
+      // Write FIRST (single fsync), then apply to cache.
+      await this.appendLines(prepared.map(p => p.line));
+
+      for (const p of prepared) {
+        this.applyPreparedEntityUpdate(p);
+      }
+
+      this.pendingAppends += prepared.length;
+      bumpEntityGeneration();
+
+      for (const p of prepared) {
+        this.eventEmitter.emitEntityUpdated(p.entity.name, p.updates, p.previousValues);
+      }
+
+      if (this.pendingAppends >= this.compactionThreshold) {
+        await this.compactInternal();
+      }
+
+      return prepared.map(p => p.entity);
+    });
+  }
+
+  /**
+   * Apply one prepared entity update to the live cache object + indexes.
+   * Shared by the single-file and segment-mode branches of
+   * `updateEntities`.
+   */
+  private applyPreparedEntityUpdate(p: {
+    entity: Entity;
+    sanitized: Record<string, unknown>;
+    updates: Partial<Entity>;
+    lastModified: string;
+  }): void {
+    const { entity, sanitized, updates, lastModified } = p;
+    const oldType = entity.entityType;
+    Object.assign(entity, sanitized);
+    entity.lastModified = lastModified;
+
+    this.nameIndex.add(entity);
+    if (updates.entityType && updates.entityType !== oldType) {
+      this.typeIndex.updateType(entity.name, oldType, updates.entityType);
+    }
+    this.lowercaseCache.set(entity);
+    if (updates.observations) {
+      this.observationIndex.remove(entity.name);
+      this.observationIndex.add(entity.name, entity.observations);
+    }
+  }
+
+  /**
+   * Delete entities (and cascade-delete every relation touching them) as a
+   * targeted storage operation (S2 delta persistence).
+   *
+   * **JSONL delete strategy (documented):** JSONL is append-only, so a
+   * delete cannot be expressed as an appended line — the file is rewritten
+   * **once per call** from the filtered in-memory state (O(graph) for
+   * deletes, while creates/updates stay O(changed)). Cache and index
+   * maintenance is incremental (O(deleted)); `pendingAppends` resets to 0
+   * because the rewrite doubles as a compaction.
+   *
+   * Emits `entity:deleted` once per deleted entity and `relation:deleted`
+   * once per cascaded relation; no `graph:saved` (reserved for true
+   * full-graph writes). Names that don't exist are silently ignored; a
+   * call that deletes nothing performs no write and emits nothing.
+   *
+   * Segment mode falls back to a full `saveAll` (same rationale as the
+   * append paths).
+   *
+   * @param names - Entity names to delete
+   * @returns The deleted entities and cascaded relations
+   */
+  async deleteEntities(
+    names: string[],
+  ): Promise<{ deletedEntities: Entity[]; deletedRelations: Relation[] }> {
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      const nameSet = new Set(names);
+      const deletedEntities = this.cache!.entities.filter(e => nameSet.has(e.name));
+      const deletedRelations = this.cache!.relations.filter(
+        r => nameSet.has(r.from) || nameSet.has(r.to),
+      );
+
+      if (deletedEntities.length === 0 && deletedRelations.length === 0) {
+        return { deletedEntities, deletedRelations };
+      }
+
+      const applyCacheDeletion = (): void => {
+        this.cache!.entities = this.cache!.entities.filter(e => !nameSet.has(e.name));
+        this.cache!.relations = this.cache!.relations.filter(
+          r => !nameSet.has(r.from) && !nameSet.has(r.to),
+        );
+        for (const e of deletedEntities) {
+          this.nameIndex.remove(e.name);
+          this.typeIndex.remove(e.name, e.entityType);
+          this.lowercaseCache.remove(e.name);
+          this.observationIndex.remove(e.name);
+        }
+        for (const r of deletedRelations) {
+          this.relationIndex.remove(r);
+          this.relationKeyMap.delete(relationKeyOf(r));
+        }
+      };
+
+      if (this.segmentStorage !== null) {
+        await this.appendViaSegmentSave(applyCacheDeletion);
+        this.pendingAppends = 0;
+      } else {
+        // Rewrite the file once from the filtered state (write FIRST so a
+        // failed write leaves cache + indexes untouched), then apply the
+        // same filtering to the cache incrementally.
+        await this.writeGraphFile({
+          entities: this.cache!.entities.filter(e => !nameSet.has(e.name)),
+          relations: this.cache!.relations.filter(
+            r => !nameSet.has(r.from) && !nameSet.has(r.to),
+          ),
+        });
+        applyCacheDeletion();
+        // The rewrite doubles as a compaction.
+        this.pendingAppends = 0;
+      }
+
+      if (deletedEntities.length > 0) bumpEntityGeneration();
+      if (deletedRelations.length > 0) bumpRelationGeneration();
+
+      for (const e of deletedEntities) {
+        this.eventEmitter.emitEntityDeleted(e.name, e);
+      }
+      for (const r of deletedRelations) {
+        this.eventEmitter.emitRelationDeleted(r.from, r.to, r.relationType);
+      }
+
+      return { deletedEntities, deletedRelations };
+    });
+  }
+
+  /**
+   * Delete relations by composite key as a targeted storage operation
+   * (S2 delta persistence).
+   *
+   * **JSONL delete strategy (documented):** as with `deleteEntities`, a
+   * relation delete rewrites the file once per call (O(graph)); cache and
+   * index maintenance is O(deleted). When only `touchEntities` timestamp
+   * bumps apply (no relation actually matched), the write degrades to a
+   * cheap O(touched) line append instead of a rewrite.
+   *
+   * `options.touchEntities` bumps `lastModified` on the named entities in
+   * the **same atomic write** — preserving `RelationManager`'s historical
+   * "affected entities get a timestamp bump" semantics. Non-existent
+   * entity names in `touchEntities` are ignored.
+   *
+   * Emits `relation:deleted` once per actually-deleted relation and
+   * `entity:updated` (changes = `{ lastModified }`) once per touched
+   * entity; no `graph:saved`. A call that deletes nothing and touches
+   * nothing performs no write and emits nothing.
+   *
+   * Segment mode falls back to a full `saveAll`.
+   *
+   * @param keys - Relation keys (`from`/`to`/`relationType`) to delete
+   * @param options - Optional entity-timestamp bump + shared timestamp
+   * @returns The actually-deleted relations
+   */
+  async deleteRelations(
+    keys: Array<Pick<Relation, 'from' | 'to' | 'relationType'>>,
+    options?: { touchEntities?: string[]; timestamp?: string },
+  ): Promise<Relation[]> {
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      const keySet = new Set(keys.map(relationKeyOf));
+      const deletedRelations = this.cache!.relations.filter(r =>
+        keySet.has(relationKeyOf(r)),
+      );
+
+      const timestamp = options?.timestamp ?? new Date().toISOString();
+      const touchedEntities: Entity[] = [];
+      const seenTouched = new Set<string>();
+      for (const name of options?.touchEntities ?? []) {
+        if (seenTouched.has(name)) continue;
+        seenTouched.add(name);
+        const entity = this.nameIndex.get(name);
+        if (entity) touchedEntities.push(entity);
+      }
+
+      if (deletedRelations.length === 0 && touchedEntities.length === 0) {
+        return deletedRelations;
+      }
+
+      const previousTimestamps = touchedEntities.map(e => e.lastModified);
+
+      const applyCacheMutation = (): void => {
+        if (deletedRelations.length > 0) {
+          this.cache!.relations = this.cache!.relations.filter(
+            r => !keySet.has(relationKeyOf(r)),
+          );
+          for (const r of deletedRelations) {
+            this.relationIndex.remove(r);
+            this.relationKeyMap.delete(relationKeyOf(r));
+          }
+        }
+        for (const entity of touchedEntities) {
+          entity.lastModified = timestamp;
+        }
+      };
+
+      if (this.segmentStorage !== null) {
+        await this.appendViaSegmentSave(applyCacheMutation);
+        this.pendingAppends = 0;
+      } else if (deletedRelations.length > 0) {
+        // Deletes require a rewrite: bump timestamps in-place so the
+        // rewrite carries them, restoring on write failure.
+        for (const entity of touchedEntities) {
+          entity.lastModified = timestamp;
+        }
+        try {
+          await this.writeGraphFile({
+            entities: this.cache!.entities,
+            relations: this.cache!.relations.filter(r => !keySet.has(relationKeyOf(r))),
+          });
+        } catch (error) {
+          touchedEntities.forEach((entity, i) => {
+            entity.lastModified = previousTimestamps[i];
+          });
+          throw error;
+        }
+        // Timestamps already applied; apply the relation filtering.
+        this.cache!.relations = this.cache!.relations.filter(
+          r => !keySet.has(relationKeyOf(r)),
+        );
+        for (const r of deletedRelations) {
+          this.relationIndex.remove(r);
+          this.relationKeyMap.delete(relationKeyOf(r));
+        }
+        this.pendingAppends = 0;
+      } else {
+        // Timestamp-only bump: append updated entity lines (O(touched)).
+        const lines = touchedEntities.map(entity =>
+          serializeEntityLine({ ...entity, lastModified: timestamp }),
+        );
+        await this.appendLines(lines);
+        for (const entity of touchedEntities) {
+          entity.lastModified = timestamp;
+        }
+        this.pendingAppends += touchedEntities.length;
+      }
+
+      if (deletedRelations.length > 0) bumpRelationGeneration();
+      if (touchedEntities.length > 0) bumpEntityGeneration();
+
+      for (const r of deletedRelations) {
+        this.eventEmitter.emitRelationDeleted(r.from, r.to, r.relationType);
+      }
+      touchedEntities.forEach((entity, i) => {
+        this.eventEmitter.emitEntityUpdated(
+          entity.name,
+          { lastModified: timestamp },
+          { lastModified: previousTimestamps[i] },
+        );
+      });
+
+      // The timestamp-only append path can cross the compaction threshold.
+      if (this.segmentStorage === null && this.pendingAppends >= this.compactionThreshold) {
+        await this.compactInternal();
+      }
+
+      return deletedRelations;
     });
   }
 

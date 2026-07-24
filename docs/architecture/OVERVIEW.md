@@ -27,8 +27,14 @@ and can be embedded directly into TypeScript / Node.js apps.
 | Graph algorithms | Shortest path, all paths, degree / betweenness / PageRank / HITS centrality, connected components, communities (Louvain), cliques, BFS / DFS |
 | Graph-connectivity signals | `GraphRankPrior` (`@experimental`) — cached normalized PageRank/degree, event-invalidated; opt-in (default off) boost for `RankedSearch`, `HybridScorer`'s `graph` channel, `SalienceEngine` connectivity weight, and `DecayEngine` connectivity protection |
 | Multi-format export | JSON, CSV, GraphML, GEXF, DOT, Markdown, Mermaid; W3C Linked Data: Turtle, RDF/XML, JSON-LD |
-| Access control | RBAC (Role / Permission / Matrix / Middleware), audit attribution enforcer, governance policies; ABAC + RLS + API keys |
-| Privacy | `PiiRedactor` (email / SSN / CC / phone / IP) with per-pattern statistics |
+| Access control | RBAC (Role / Permission / Matrix / Middleware), audit attribution enforcer, governance policies (enforced at the `EntityManager` mutation chokepoint when `MEMORY_GOVERNANCE_ENABLED='true'`); ABAC + RLS + API keys; `ApiKeyAuthMiddleware` (Bearer/`X-Api-Key`, scope checks) wires `APIKeyStore` into `RestRouter` |
+| Privacy | `PiiRedactor` (email / SSN / CC / phone / IP) with per-pattern statistics; opt-in `redactPii` on `IOManager` exports/backups and governance audit snapshots |
+| Tamper-evident audit | `AuditLog` hash-chains every entry (`seq` + SHA-256 `prevHash`), `verifyChain()` detects tampering/reordering, 0o600 file mode |
+| Delta persistence | Manager mutations (create/update/delete) append/update/delete per item on both backends instead of rewriting the whole graph; `graph:saved` is reserved for true full-graph writes — see `GraphEventEmitter` JSDoc |
+| Event reification | `ctx.eventManager` (`@experimental`) — actions as first-class `event` hub entities with role-typed relations (`actor_of`/`targeted`/`occurred_in`/`participant_in`), flow grouping, `whoDidWhat()` |
+| Evidence paths | `explain: true` on `HybridSearchManager.search`/`LLMSearchExecutor` returns `evidencePaths` — bounded-BFS shortest paths from query anchors to each result |
+| Relation consolidation | `RelationConsolidator` (`@experimental`) — spelling-variant merge, embedding-similarity dedup, LLM neighborhood validation (feedback-only, never auto-mutates) |
+| Queryable provenance | `memory audit log\|history\|verify\|stats` CLI over the hash-chained audit log; `IOManager.ingest` writes an `ingest-<id>` manifest entity + `derived_from` relations + per-observation `sourceRef` |
 | Memory-mapped I/O | `IMmapBackend` + `FsReadMmapBackend`; `GraphStorage.loadFromDisk` mmap branch gated by `MEMORY_USE_MMAP` + `MEMORY_MMAP_THRESHOLD_BYTES` |
 | Segment-sharded JSONL | `FileSegmentStorage` — FNV-routed N-way shards via `MEMORY_STORAGE_SEGMENT_COUNT` (1–1024) |
 | Columnar observation store | `IColumnStore<T>` + `JsonlColumnStore` — observation data physically separated from entity rows |
@@ -60,17 +66,19 @@ and can be embedded directly into TypeScript / Node.js apps.
 │           GraphRankPrior (opt-in graph signal) /       │
 │           LLMQueryPlanner / ActiveRetrievalController  │
 │  Memory:  MemoryEngine / MemoryBackend /               │
-│           ContextWindowManager / AgentMemory()         │
+│           ContextWindowManager / AgentMemory() /       │
+│           EventManager (event reification, exp.)       │
 │  Types:   ProspectiveMemoryManager / FailureManager /  │
 │           PlanManager / ReflectionManager /            │
 │           HeuristicManager / DecisionManager /         │
 │           ProjectContextManager / ToolAffordanceManager│
 │  Intel:   MemoryValidator / TrajectoryCompressor /     │
-│           ExperienceExtractor / PatternDetector        │
+│           ExperienceExtractor / PatternDetector /      │
+│           RelationConsolidator (Janitor pass, exp.)    │
 │  Theory:  ProcedureManager / CausalReasoner /          │
 │           WorldModelManager                            │
 │  Auth:    RbacMiddleware / RoleAssignmentStore /       │
-│           AccessTracker                                │
+│           AccessTracker / ApiKeyAuthMiddleware         │
 └───────────────────────┬────────────────────────────────┘
                         │
 ┌───────────────────────┴────────────────────────────────┐
@@ -240,7 +248,7 @@ Most-used:
 - `MEMORY_EMBEDDING_PROVIDER` — `openai`, `local` (default), or `none`
 - `MEMORY_OPENAI_API_KEY` — required when using OpenAI embeddings
 - `MEMORY_AGENT_ROLE` — built-in role profile (`researcher` / `planner` / `executor` / `reviewer` / `coordinator`)
-- `MEMORY_GOVERNANCE_ENABLED` — enable `GovernanceManager`
+- `MEMORY_GOVERNANCE_ENABLED` — `'true'` wires `ctx.governanceManager`'s policy checks + audit logging into `EntityManager` mutations (the enforcement chokepoint); unset = `GovernanceManager` is still usable manually via `withTransaction`, but plain writes bypass it
 - `MEMORY_AUDIT_LOG_FILE` — path for the audit JSONL trail
 - `MEMORY_VALIDATE_ON_STORE` — run `MemoryValidator` before observation writes
 - `MEMORY_AUDIT_ATTRIBUTION_REQUIRED` — `CollaborationAuditEnforcer` strict mode

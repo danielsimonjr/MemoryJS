@@ -206,6 +206,9 @@ export {
 export {
   LLMSearchExecutor,
   type LLMSearchExecutorOptions,
+  type LLMExecuteOptions,
+  type ExplainedEntityResult,
+  type ExecutorGraphSource,
 } from './LLMSearchExecutor.js';
 
 // v2.1.0 — Spell correction (NGramIndex + Levenshtein re-rank)
@@ -215,3 +218,24 @@ export {
   type SuggestOptions,
   type SpellSuggestion,
 } from './SpellChecker.js';
+
+// R2 — Traceable evidence paths (explain: true) (@experimental)
+export {
+  EvidencePathBuilder,
+  DEFAULT_EVIDENCE_MAX_DEPTH,
+  DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT,
+  type EvidenceAnchor,
+  type EvidencePathSet,
+} from './EvidencePathBuilder.js';
+export type {
+  EvidenceLayer,
+  EvidencePath,
+  EvidencePathOptions,
+  EvidencePathRelation,
+} from '../types/search.js';
+
+// R2/R7 — Hybrid explain + lookFor option/result extensions
+export type {
+  ExplainHybridOptions,
+  ExplainedHybridSearchResult,
+} from './HybridSearchManager.js';

@@ -21,44 +21,11 @@ import { SummarizationService } from './SummarizationService.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
 import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
 
-/**
- * Configuration for SalienceEngine.
- */
-export interface SalienceEngineConfig {
-  /** Weight for base importance (default: 0.25) */
-  importanceWeight?: number;
-  /** Weight for recency boost (default: 0.25) */
-  recencyWeight?: number;
-  /** Weight for frequency boost (default: 0.2) */
-  frequencyWeight?: number;
-  /** Weight for context relevance (default: 0.2) */
-  contextWeight?: number;
-  /** Weight for novelty bonus (default: 0.1) */
-  noveltyWeight?: number;
-  /** Recency decay hours (default: 24) */
-  recencyDecayHours?: number;
-  /** Boost factor for session match (default: 1.0) */
-  sessionBoostFactor?: number;
-  /** Boost factor for recent entities (default: 0.7) */
-  recentEntityBoostFactor?: number;
-  /** Enable TF-IDF similarity for task/query matching (default: true) */
-  useSemanticSimilarity?: boolean;
-  /** Threshold for observation uniqueness (default: 0.5) */
-  uniquenessThreshold?: number;
-  /**
-   * Weight given to freshness penalty when scoring salience (default: 0.15).
-   * A higher value makes stale/expired entities rank lower.
-   * The freshness factor is subtracted from the final score proportionally.
-   */
-  freshnessWeight?: number;
-  /**
-   * Weight for graph connectivity boost (default: 0 = disabled).
-   * The connectivity signal is an entity's relation degree normalized
-   * by the maximum degree in the graph, in [0, 1]. With the default
-   * weight of 0 the signal is never computed and scores are unchanged.
-   */
-  connectivityWeight?: number;
-}
+// S10: `SalienceEngineConfig` moved to src/types/agent-memory.ts (the types
+// layer references it via `RoleProfile` and must stay a leaf). Re-exported
+// here for backwards compatibility.
+import type { SalienceEngineConfig } from '../types/agent-memory.js';
+export type { SalienceEngineConfig };
 
 /**
  * Calculates multi-factor salience scores for memories.

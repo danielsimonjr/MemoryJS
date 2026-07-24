@@ -1,6 +1,6 @@
 # Agent Memory System Design
 
-**Last reviewed**: 2026-07-24 (v2.0.x + Phase 2 memory-types expansion Sprints 4–6 + 8 + Phase 3B.8 Heuristic Guidelines Manager + v2.9.0 knowledge-graph-as-core convergence)
+**Last reviewed**: 2026-07-24 (v2.0.x + Phase 2 memory-types expansion Sprints 4–6 + 8 + Phase 3B.8 Heuristic Guidelines Manager + v2.9.0 knowledge-graph-as-core convergence + Unreleased brainapi2-inspired features R1/R3/R4b/R5)
 
 This document specifies the architectural design for transforming MemoryJS into a comprehensive memory system for AI agents, supporting both short-term (working memory) and long-term (persistent knowledge) memory patterns.
 
@@ -14,8 +14,21 @@ This document specifies the architectural design for transforming MemoryJS into 
 > - **v1.8.0** — Memory versioning (supersession), project scoping,
 >   contradiction detector + semantic forget.
 > - **v1.9.0** — Temporal relations (`invalidateRelation`/`queryAsOf`/`timeline`),
->   `ContextWindowManager.wakeUp` 4-layer memory stack, conversation ingest,
->   per-agent diary, local-embeddings default.
+>   `ContextWindowManager.wakeUp` 4-layer memory stack, conversation ingest
+>   (`IOManager.ingest`), per-agent diary, local-embeddings default.
+>   **Unreleased addition (R4b/R5)**: `ingest` now writes an `ingest-<id>`
+>   provenance manifest (per-chunk hash/offset, `derived_from` relations,
+>   per-observation `sourceRef`) and accepts an `IngestOptions.mode:
+>   'accurate' | 'balanced' | 'lightweight'` cost/quality dial that maps onto
+>   the same `MemoryDistiller` (`src/agent/reconstruction/MemoryDistiller.ts`)
+>   used by `ReconstructiveMemory` construction (see the entry near the
+>   bottom of this banner) — `'lightweight'` never calls the configured
+>   `llmProvider`, `'balanced'` (default, = pre-R5 behaviour) lets the
+>   distiller auto-decide, `'accurate'` prefers the LLM path and tightens
+>   heuristic fallback strictness when no external `validate` hook is
+>   supplied. Distillation enrichment (extra `[distilled] …` observations)
+>   only activates when `llmProvider` is passed; omitted = ingest behaves
+>   exactly as before R5.
 > - **v1.11.0** — `MemoryEngine` turn-aware conversation memory with
 >   four-tier dedup (exact / prefix / Jaccard / semantic).
 > - **v1.12.0** — Pluggable `IMemoryBackend` (in-memory / sqlite),
@@ -189,6 +202,29 @@ This document specifies the architectural design for transforming MemoryJS into 
 >   (throws `MemoryWriteBlockedError`). v1 ships substring matching only;
 >   `regex` mode reserved on the `ExclusionMode` union as a future
 >   widening point. CLI: `memory exclude add|list|remove`.
+> - **Unreleased (brainapi2-inspired features, R1/R3)** — Two new agent
+>   managers, both `@experimental`, neither introducing a new `MemoryType`
+>   (they're a convention layer over existing entity/relation storage,
+>   not a new memory-type slot):
+>   - **`EventManager`** (`agent/events/EventManager.ts`, `ctx.eventManager`)
+>     — R1 event reification. Actions become first-class
+>     `entityType: 'event'` hub entities named `event-<action>-<shortId>`,
+>     linked to their actor/target/context/participants via role-typed
+>     relations (`actor_of`/`targeted`/`occurred_in`/`participant_in`) and
+>     grouped by an optional `flow:<key>` tag. `recordEvent` / `getEvent` /
+>     `queryEvents` / `getFlow` / `whoDidWhat`. Missing endpoint entities
+>     auto-create as lightweight `entityType: 'concept'` stubs by default.
+>     Pure convention layer — no schema change, no new memory type; reuses
+>     the storage `TypeIndex`/`RelationIndex` so queries stay O(k)/O(1).
+>   - **`RelationConsolidator`** (`agent/RelationConsolidator.ts`) — R3
+>     three-tier "Janitor" pass for *relations* (consolidation was
+>     previously entity/observation-centric only): tier 1 spelling-variant
+>     merge, tier 2 embedding-similarity dedup (≥ 0.90 cosine, gated on an
+>     injected embedding provider), tier 3 LLM neighborhood validation
+>     (gated on an injected `LLMProvider`; returns `ConsolidationFeedback`
+>     and **never auto-mutates**). Companion `RelationConsolidationStage`
+>     is a report-only `PipelineStage`. Not wired into `ManagerContext` —
+>     construct directly, mirroring other standalone consolidation stages.
 
 ## Overview
 

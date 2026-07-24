@@ -26,31 +26,11 @@ import { SalienceEngine } from './SalienceEngine.js';
 import type { IDistillationPolicy } from './DistillationPolicy.js';
 import { ContextProfileManager, type ProfileConfig } from './ContextProfileManager.js';
 
-/**
- * Configuration for ContextWindowManager.
- */
-export interface ContextWindowManagerConfig {
-  /** Default maximum tokens (default: 4000) */
-  defaultMaxTokens?: number;
-  /** Token estimation multiplier (default: 1.3, roughly words to tokens) */
-  tokenMultiplier?: number;
-  /** Reserve buffer for system/formatting (default: 100) */
-  reserveBuffer?: number;
-  /** Maximum entities to consider (default: 1000) */
-  maxEntitiesToConsider?: number;
-  /** Budget percentage for working memory (default: 0.3 = 30%) */
-  workingBudgetPct?: number;
-  /** Budget percentage for episodic memory (default: 0.3 = 30%) */
-  episodicBudgetPct?: number;
-  /** Budget percentage for semantic memory (default: 0.4 = 40%) */
-  semanticBudgetPct?: number;
-  /** Number of recent sessions to include for episodic (default: 3) */
-  recentSessionCount?: number;
-  /** Similarity threshold for diversity enforcement (default: 0.8) */
-  diversityThreshold?: number;
-  /** Enable diversity enforcement (default: true) */
-  enforceDiversity?: boolean;
-}
+// S10: `ContextWindowManagerConfig` moved to src/types/agent-memory.ts (the
+// types layer references it via `RoleProfile` and must stay a leaf).
+// Re-exported here for backwards compatibility.
+import type { ContextWindowManagerConfig } from '../types/agent-memory.js';
+export type { ContextWindowManagerConfig };
 
 /** Compression intensity level for compressForContext. */
 export type CompressionLevel = 'light' | 'medium' | 'aggressive';

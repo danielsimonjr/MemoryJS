@@ -63,21 +63,101 @@ function normalizeDate(text: string, reference?: string): string | undefined {
   return reference;
 }
 
+/**
+ * Extraction-mode dial (R5).
+ *
+ * - `'heuristic-only'` — never call the LLM provider, even when configured
+ *   (maps from ingest mode `'lightweight'`).
+ * - `'auto'` — current default behaviour: LLM when a provider is present,
+ *   deterministic heuristic fallback otherwise / on malformed output
+ *   (maps from ingest mode `'balanced'`).
+ * - `'llm-preferred'` — like `'auto'` today; a distinct value so callers in
+ *   `'accurate'` mode can signal intent and future validation passes can
+ *   diverge without an API change (maps from ingest mode `'accurate'`).
+ */
+export type DistillerMode = 'heuristic-only' | 'auto' | 'llm-preferred';
+
+/** Optional configuration for {@link MemoryDistiller}. */
+export interface MemoryDistillerConfig {
+  /** Extraction mode. Default `'auto'` — preserves pre-config behaviour. */
+  mode?: DistillerMode;
+  /**
+   * Heuristic-path strictness. `'strict'` raises thresholds: topics need
+   * ≥ 3 supporting episodes (vs 2) and personal facts must classify into a
+   * concrete aspect (the `'attribute'` catch-all is dropped). Used by ingest
+   * `'accurate'` mode when no external validator is supplied.
+   */
+  heuristicStrictness?: 'normal' | 'strict';
+}
+
+/** Token usage accumulated over one `distill()` run. */
+export interface DistillerTokenUsage {
+  input: number;
+  output: number;
+  /** True when any component was estimated via the chars/4 heuristic. */
+  approximate: boolean;
+}
+
+/**
+ * Structural extension of {@link LLMProvider} for providers that can report
+ * exact token usage for their most recent `complete()` call. The base
+ * interface returns only the completion string, so without this hook the
+ * distiller falls back to a chars/4 estimate marked `approximate: true`.
+ */
+export interface UsageReportingLLMProvider extends LLMProvider {
+  getLastUsage?(): { inputTokens: number; outputTokens: number } | undefined;
+}
+
 export class MemoryDistiller {
   private readonly keywords = new KeywordExtractor();
+  private readonly mode: DistillerMode;
+  private readonly strictness: 'normal' | 'strict';
+  /** Usage accumulator for the in-flight `distill()` run. */
+  private usage?: DistillerTokenUsage;
 
-  constructor(private readonly llm?: LLMProvider) {}
+  constructor(
+    private readonly llm?: LLMProvider,
+    config: MemoryDistillerConfig = {},
+  ) {
+    this.mode = config.mode ?? 'auto';
+    this.strictness = config.heuristicStrictness ?? 'normal';
+  }
 
   /** Run the full distillation pipeline over a dialogue. */
   async distill(turns: DialogueTurn[]): Promise<ConversationDistillationResult> {
-    if (this.llm) {
+    this.usage = undefined;
+    if (this.llm && this.mode !== 'heuristic-only') {
       try {
-        return await this.distillWithLLM(turns);
+        const result = await this.distillWithLLM(turns);
+        return { ...result, tokenUsage: this.usage };
       } catch {
         // Fall through to heuristics on malformed LLM output.
       }
     }
-    return this.distillHeuristic(turns);
+    const heuristic = this.distillHeuristic(turns);
+    // Surface usage spent on a failed LLM attempt (tokens were still consumed).
+    return this.usage ? { ...heuristic, tokenUsage: this.usage } : heuristic;
+  }
+
+  /** Tracked wrapper around `llm.complete` — accumulates token usage. */
+  private async completeTracked(prompt: string): Promise<string> {
+    const response = await this.llm!.complete(prompt);
+    const exact = (this.llm as UsageReportingLLMProvider).getLastUsage?.();
+    const prev = this.usage ?? { input: 0, output: 0, approximate: false };
+    if (exact) {
+      this.usage = {
+        input: prev.input + exact.inputTokens,
+        output: prev.output + exact.outputTokens,
+        approximate: prev.approximate,
+      };
+    } else {
+      this.usage = {
+        input: prev.input + Math.ceil(prompt.length / 4),
+        output: prev.output + Math.ceil(response.length / 4),
+        approximate: true,
+      };
+    }
+    return response;
   }
 
   /**
@@ -130,7 +210,7 @@ export class MemoryDistiller {
       .join('\n');
     const refDate = turns.find(t => t.timestamp)?.timestamp;
 
-    const dialogueRaw = await this.llm!.complete(
+    const dialogueRaw = await this.completeTracked(
       `${DIALOGUE_PROMPT}\n\nConversation time: ${refDate ?? 'unknown'}\nDialogue:\n${dialogueText}`,
     );
     const parsed = extractJson<{
@@ -164,7 +244,7 @@ export class MemoryDistiller {
     }));
 
     // Keyword/cue extraction pass.
-    const kwRaw = await this.llm!.complete(
+    const kwRaw = await this.completeTracked(
       `${KEYWORD_PROMPT}\n\nTEXT:\n${JSON.stringify(
         sentences.map(s => ({ id: s.id, text: s.text })),
       )}`,
@@ -226,14 +306,19 @@ export class MemoryDistiller {
         keywords[id] = cues.length ? cues : [tag];
 
         // Semantic fact heuristic: a declarative statement about a known person.
+        // Strict mode drops facts that only classify into the 'attribute'
+        // catch-all — a higher precision bar for accurate-mode ingestion.
         if (speaker && FACT_VERBS.test(raw)) {
-          personalFacts.push({
-            id: `p${personalFacts.length + 1}`,
-            text,
-            tag: classifyAspect(raw),
-            person: speaker,
-            origin: turn.id,
-          });
+          const aspect = classifyAspect(raw);
+          if (this.strictness !== 'strict' || aspect !== 'attribute') {
+            personalFacts.push({
+              id: `p${personalFacts.length + 1}`,
+              text,
+              tag: aspect,
+              person: speaker,
+              origin: turn.id,
+            });
+          }
         }
       });
     }
@@ -264,8 +349,10 @@ export class MemoryDistiller {
     }
     const descriptions: Record<string, string> = {};
     let ti = 1;
+    // Strict mode raises the topic-support threshold from 2 to 3 episodes.
+    const minEpisodes = this.strictness === 'strict' ? 3 : 2;
     for (const [cue, ids] of [...byCue.entries()].sort((a, b) => b[1].length - a[1].length)) {
-      if (ids.length < 2) continue; // a topic must summarise ≥ 2 episodes
+      if (ids.length < minEpisodes) continue; // a topic must summarise ≥ minEpisodes episodes
       const topicId = `t${ti++}`;
       descriptions[topicId] = `Topic: ${cue}`;
       for (const sid of ids) {

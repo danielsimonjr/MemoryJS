@@ -16,6 +16,9 @@ import type { RankedSearch } from './RankedSearch.js';
 import type { GraphRankPrior } from './GraphRankPrior.js';
 import { SymbolicSearch } from './SymbolicSearch.js';
 import { SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
+import type { EvidencePath, EvidencePathOptions } from '../types/search.js';
+import { EvidencePathBuilder, type EvidenceAnchor } from './EvidencePathBuilder.js';
+import { jaccard, tokenizeToSet } from '../utils/textSimilarity.js';
 
 export const DEFAULT_HYBRID_WEIGHTS = {
   semantic: 0.5,
@@ -62,6 +65,43 @@ export interface NeighborExpansionOptions {
   topK?: number;
   /** Damping factor applied to the parent's combined score (default: 0.3). */
   damping?: number;
+}
+
+/**
+ * R2/R7 additive options for hybrid search. All default off — when absent,
+ * search behavior and result shapes are byte-identical to before these
+ * options existed.
+ */
+export interface ExplainHybridOptions {
+  /**
+   * R2: when true, each result is annotated with `evidencePaths` — the
+   * graph paths connecting the query's direct anchor matches to the result
+   * — plus an `evidenceTruncated` flag. Default false = zero cost.
+   */
+  explain?: boolean;
+  /** Caps for evidence-path construction (maxDepth, maxPathsPerResult). */
+  explainOptions?: EvidencePathOptions;
+  /**
+   * R7: free-text description of the desired connection. When neighbor
+   * expansion (`expandNeighbors`) runs, expansion neighbors are ranked by
+   * similarity between this text and each neighbor's descriptor and carry
+   * a `lookForScore`; equal-scored neighbors are ordered best-match first.
+   */
+  lookFor?: string;
+}
+
+/**
+ * HybridSearchResult variant carrying the R2/R7 optional annotations.
+ * All fields are optional, so every ExplainedHybridSearchResult is a valid
+ * HybridSearchResult (same extension precedent as GraphHybridSearchResult).
+ */
+export interface ExplainedHybridSearchResult extends GraphHybridSearchResult {
+  /** R2: evidence paths from query anchors to this result (explain: true). */
+  evidencePaths?: EvidencePath[];
+  /** R2: true when evidence-path caps (maxDepth/maxPathsPerResult) bit. */
+  evidenceTruncated?: boolean;
+  /** R7: similarity of this expansion neighbor's descriptor to `lookFor`. */
+  lookForScore?: number;
 }
 
 /** Additive graph-channel options for hybrid search. All default off. */
@@ -115,8 +155,8 @@ export class HybridSearchManager {
   async search(
     graph: ReadonlyKnowledgeGraph,
     query: string,
-    options: Partial<HybridSearchOptions> & GraphHybridOptions = {}
-  ): Promise<HybridSearchResult[]> {
+    options: Partial<HybridSearchOptions> & GraphHybridOptions & ExplainHybridOptions = {}
+  ): Promise<ExplainedHybridSearchResult[]> {
     const {
       semanticWeight = DEFAULT_HYBRID_WEIGHTS.semantic,
       lexicalWeight = DEFAULT_HYBRID_WEIGHTS.lexical,
@@ -125,6 +165,9 @@ export class HybridSearchManager {
       lexical = {},
       symbolic = {},
       limit = SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT,
+      explain = false,
+      explainOptions,
+      lookFor,
     } = options;
     const graphWeight = options.graphWeight ?? this.defaults.graphWeight ?? 0;
     const expandNeighbors = options.expandNeighbors ?? this.defaults.expandNeighbors;
@@ -173,16 +216,92 @@ export class HybridSearchManager {
     );
 
     // Sort by combined score and limit
-    let ranked = merged
+    let ranked: ExplainedHybridSearchResult[] = merged
       .sort((a, b) => b.scores.combined - a.scores.combined)
       .slice(0, limit);
 
     // Optional one-hop neighbor expansion (off by default)
     if (expandNeighbors && this.graphPrior) {
-      ranked = this.expandOneHop(ranked, expandNeighbors, entityMap, limit);
+      ranked = await this.expandOneHop(ranked, expandNeighbors, entityMap, limit, lookFor);
+    }
+
+    // R2: annotate results with traceable evidence paths (off by default —
+    // nothing below runs and result objects are untouched unless requested).
+    if (explain === true) {
+      const anchors = this.collectAnchors(
+        entityMap,
+        semanticResults,
+        lexicalResults,
+        symbolicResults
+      );
+      const builder = new EvidencePathBuilder(graph, explainOptions);
+      for (const result of ranked) {
+        const { paths, truncated } = builder.buildForResult(result.entity.name, anchors);
+        result.evidencePaths = paths;
+        result.evidenceTruncated = truncated;
+      }
     }
 
     return ranked;
+  }
+
+  /**
+   * R2: collect anchor entities — entities that directly matched query terms
+   * in a text layer. When an entity matched several layers, viaLayer follows
+   * the priority semantic > lexical > symbolic; the anchor score is the
+   * matched layer's score (used to order anchors before caps apply).
+   * Graph-channel scores are connectivity priors, not query-term matches,
+   * so they never mint anchors.
+   */
+  private collectAnchors(
+    entityMap: Map<string, Entity>,
+    semanticScores: Map<string, number>,
+    lexicalScores: Map<string, number>,
+    symbolicScores: Map<string, number>
+  ): EvidenceAnchor[] {
+    const anchors: EvidenceAnchor[] = [];
+    const seen = new Set<string>();
+    const layers: Array<[EvidenceAnchor['viaLayer'], Map<string, number>]> = [
+      ['semantic', semanticScores],
+      ['lexical', lexicalScores],
+      ['symbolic', symbolicScores],
+    ];
+
+    for (const [viaLayer, scores] of layers) {
+      for (const [name, score] of scores) {
+        if (seen.has(name) || score <= 0 || !entityMap.has(name)) continue;
+        seen.add(name);
+        anchors.push({ name, viaLayer, score });
+      }
+    }
+
+    return anchors;
+  }
+
+  /**
+   * R7: score a candidate neighbor descriptor against `lookFor`. Prefers
+   * the semantic layer's `calculateSimilarity` when available; any failure
+   * (no provider, provider not ready) falls back to lexical token-overlap.
+   */
+  private async scoreLookFor(lookFor: string, descriptor: string): Promise<number> {
+    if (this.semanticSearch) {
+      try {
+        return await this.semanticSearch.calculateSimilarity(lookFor, descriptor);
+      } catch {
+        // Fall through to lexical scoring
+      }
+    }
+    return jaccard(tokenizeToSet(lookFor), tokenizeToSet(descriptor));
+  }
+
+  /**
+   * R7: descriptor string an expansion neighbor is ranked by. The relation
+   * type is unavailable from GraphRankPrior.neighbors(), so the descriptor
+   * is `name + entityType + leading observation characters`.
+   */
+  private buildNeighborDescriptor(entity: Entity): string {
+    const observations = entity.observations.join(' ').slice(0, 200);
+    return `${entity.name} ${entity.entityType} ${observations}`.trim();
   }
 
   /**
@@ -336,18 +455,25 @@ export class HybridSearchManager {
    * matchedLayers ['graph'], then re-sort and re-apply the limit.
    *
    * Neighbors already present in the result set are never duplicated.
+   *
+   * R7: when `lookFor` is set, every added neighbor is scored against it
+   * (semantic similarity when available, lexical fallback) and carries a
+   * `lookForScore`; the final re-sort breaks combined-score ties by
+   * lookForScore so same-parent neighbors surface best-match first.
+   * When `lookFor` is absent, behavior is byte-identical to before.
    */
-  private expandOneHop(
-    results: GraphHybridSearchResult[],
+  private async expandOneHop(
+    results: ExplainedHybridSearchResult[],
     options: NeighborExpansionOptions,
     entityMap: Map<string, Entity>,
-    limit: number
-  ): GraphHybridSearchResult[] {
+    limit: number,
+    lookFor?: string
+  ): Promise<ExplainedHybridSearchResult[]> {
     const topK = options.topK ?? DEFAULT_NEIGHBOR_TOP_K;
     const damping = options.damping ?? DEFAULT_NEIGHBOR_DAMPING;
 
     const seen = new Set(results.map(r => r.entity.name));
-    const added: GraphHybridSearchResult[] = [];
+    const added: ExplainedHybridSearchResult[] = [];
 
     for (const parent of results.slice(0, topK)) {
       for (const neighborName of this.graphPrior!.neighbors(parent.entity.name)) {
@@ -355,7 +481,7 @@ export class HybridSearchManager {
         const entity = entityMap.get(neighborName);
         if (!entity) continue;
         seen.add(neighborName);
-        added.push({
+        const neighborResult: ExplainedHybridSearchResult = {
           entity,
           scores: {
             semantic: 0,
@@ -364,7 +490,14 @@ export class HybridSearchManager {
             combined: damping * parent.scores.combined,
           },
           matchedLayers: ['graph'],
-        });
+        };
+        if (lookFor !== undefined) {
+          neighborResult.lookForScore = await this.scoreLookFor(
+            lookFor,
+            this.buildNeighborDescriptor(entity)
+          );
+        }
+        added.push(neighborResult);
       }
     }
 
@@ -372,9 +505,15 @@ export class HybridSearchManager {
       return results;
     }
 
-    return [...results, ...added]
-      .sort((a, b) => b.scores.combined - a.scores.combined)
-      .slice(0, limit);
+    const comparator =
+      lookFor !== undefined
+        ? (a: ExplainedHybridSearchResult, b: ExplainedHybridSearchResult) =>
+            b.scores.combined - a.scores.combined ||
+            (b.lookForScore ?? 0) - (a.lookForScore ?? 0)
+        : (a: ExplainedHybridSearchResult, b: ExplainedHybridSearchResult) =>
+            b.scores.combined - a.scores.combined;
+
+    return [...results, ...added].sort(comparator).slice(0, limit);
   }
 
   /**
@@ -384,8 +523,8 @@ export class HybridSearchManager {
   async searchWithEntities(
     graph: ReadonlyKnowledgeGraph,
     query: string,
-    options: Partial<HybridSearchOptions> & GraphHybridOptions = {}
-  ): Promise<HybridSearchResult[]> {
+    options: Partial<HybridSearchOptions> & GraphHybridOptions & ExplainHybridOptions = {}
+  ): Promise<ExplainedHybridSearchResult[]> {
     return this.search(graph, query, options);
   }
 

@@ -35,6 +35,14 @@
 >   `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` (salience), and
 >   `MEMORY_DECAY_CONNECTIVITY_PROTECTION` (decay) all default to `0`.
 
+> **Optimization pass (Unreleased) — headline measurements:** see
+> [Delta Persistence & Write Path](#delta-persistence--write-path-unreleased)
+> for detail. Ranked search ~3.3s → ~16ms at 4k entities (~170×); SQLite
+> sequential creates 23 → 1,972 ops/s (84×); JSONL sequential creates 6.1×
+> faster; warm root import ~220ms → ~150ms (chrono-node now fully lazy).
+> All changes preserve identical results/scores — pure speedups, no
+> behavior change to search rankings.
+
 Comprehensive guide for optimizing MemoryJS performance at different scales.
 
 ---
@@ -53,6 +61,7 @@ Comprehensive guide for optimizing MemoryJS performance at different scales.
 10. [Scale-Specific Tuning](#scale-specific-tuning)
 11. [Monitoring & Profiling](#monitoring--profiling)
 12. [Common Bottlenecks](#common-bottlenecks)
+13. [Delta Persistence & Write Path (Unreleased)](#delta-persistence--write-path-unreleased)
 
 ---
 
@@ -62,13 +71,24 @@ Comprehensive guide for optimizing MemoryJS performance at different scales.
 
 | Operation | JSONL | SQLite | Notes |
 |-----------|-------|--------|-------|
-| Load graph | O(n) | O(n) | Full scan |
-| Save graph | O(n) | O(n) | Full write |
-| Create entities | O(n) + O(m) | O(k) | n=graph, k=new |
+| Load graph | O(n) | O(n) | Full scan (cached after first load) |
+| Save graph (import/restore) | O(n) | O(n) | Full write — only for genuinely full-graph writes |
+| Create/update/delete entities (batch) | O(k) | O(k) | k=changed, since delta persistence (Unreleased, S2) — was O(n) full-graph rewrite on both backends |
 | Search basic | O(n) | O(log n) | FTS5 indexed |
-| Search ranked | O(n log n) | O(log n) | TF-IDF |
+| Search ranked | O(n · terms) | O(log n) | TF-IDF; was O(n² · terms) before the IDF hoist (Unreleased, S1) |
 | Fuzzy search | O(n × m) | O(n × m) | Levenshtein |
 | Find duplicates | O(n²/k) | O(n²/k) | Bucketed |
+
+**Delta persistence (Unreleased, S2):** `createEntities`/`updateEntity`/
+`batchUpdate`/`deleteEntities` and their relation equivalents now persist via
+targeted storage primitives (`appendEntity(ies)`, `updateEntity`, targeted
+deletes) instead of deep-copying and rewriting the entire graph. `saveGraph`
+(the O(n) full-rewrite path) is now reserved for genuinely full-graph writes
+— import, restore, and JSONL segment-mode batch saves (a documented
+limitation: segment storage still does one full `saveAll` per batch, single-file
+JSONL is O(changed)). See
+[Delta Persistence & Write Path](#delta-persistence--write-path-unreleased)
+for measured throughput.
 
 ### Performance Targets
 
@@ -585,6 +605,15 @@ CREATE INDEX idx_relations_to ON relations(to_entity);
 CREATE VIRTUAL TABLE entities_fts USING fts5(name, entity_type, observations);
 ```
 
+**Write-side pragmas (Unreleased, S3)** are also set automatically at
+`SQLiteStorage` init — `journal_mode=WAL`, `synchronous=NORMAL` (override via
+`MEMORY_SQLITE_SYNCHRONOUS=FULL|OFF`), `busy_timeout=5000`,
+`cache_size=-64000` (64MB), `temp_store=MEMORY`. No configuration needed for
+the common case; see
+[Delta Persistence & Write Path](#delta-persistence--write-path-unreleased)
+for the measured throughput impact and [CONFIGURATION.md](./CONFIGURATION.md)
+for the durability tradeoff.
+
 ---
 
 ## Scale-Specific Tuning
@@ -854,6 +883,96 @@ await indexManager.rebuildIndex();
 // Or ensure event sync is active
 const eventSync = new TFIDFEventSync(indexManager, ctx.storage, eventEmitter);
 ```
+
+---
+
+## Delta Persistence & Write Path (Unreleased)
+
+Source: `docs/development/OPTIMIZATION_OPPORTUNITIES.md` (S1–S10 status
+block) — every number below was measured on this branch, same day.
+
+### What changed
+
+- **S2 (delta persistence, the keystone change):** manager mutations
+  (`createEntities`, `updateEntity`, `batchUpdate`, `deleteEntities`, and
+  the `RelationManager` equivalents) no longer deep-copy and rewrite the
+  whole graph for a single-entity write. They persist via targeted storage
+  primitives instead (`storage.appendEntity(ies)`, `updateEntity`, targeted
+  deletes) — O(changed) instead of O(graph). This collapses the blast
+  radius of several other issues: per-write cache invalidation (S6),
+  `GraphRankPrior` recompute cost (S4), and TF-IDF staleness (S5) all
+  shrink because the write path itself got cheaper and more granular.
+- **S1 (ranked-search IDF hoist):** `RankedSearch`'s default (unindexed)
+  path used to recompute each query term's IDF **inside** the per-document
+  loop — an O(N² × terms) rescan of the whole corpus per query. IDF is a
+  per-term corpus constant, so it's now hoisted into a `Map<term, idf>`
+  computed once before the document loop. Scores are bit-identical; only
+  the complexity changed. The O(N) cache-validation key
+  (`entities.map(e => e.name).join('\0')`) was also replaced with a
+  monotonic generation counter bumped from storage events — this
+  incidentally fixes a staleness bug where observation-only updates didn't
+  invalidate the ranked-search cache.
+- **S3 (SQLite write-side tuning):** `synchronous=NORMAL` (was the
+  WAL-incompatible default `FULL`, which fsyncs every commit),
+  `busy_timeout=5000`, `cache_size=-64000` (64MB), `temp_store=MEMORY`, plus
+  prepared-statement caching and O(1) name-index lookups on append (were
+  O(N) `findIndex` scans). See
+  [CONFIGURATION.md](./CONFIGURATION.md#storage-configuration) for the
+  `MEMORY_SQLITE_SYNCHRONOUS` durability tradeoff.
+- **S4/S5/S6:** `GraphRankPrior` invalidation granularity, `TFIDFEventSync`
+  batch-flush correctness (was blind to batch mutations, silently omitting
+  results), and generation-counter search-cache invalidation (replacing a
+  blanket `clearAllSearchCaches()` on every write).
+- **S7–S10 (load time):** `"sideEffects": false` + 9 subpath exports
+  (`./core`, `./search`, `./agent`, `./features`, `./utils`, `./types`,
+  `./adapters`, `./security`, `./sqlite`) with ESM chunk splitting;
+  chrono-node (the heaviest external dependency, ~1.6s cold) is now lazily
+  `import()`-ed instead of loaded eagerly by the root import; `StorageFactory`
+  no longer statically imports `SQLiteStorage` (moved to the `./sqlite`
+  subpath so JSONL-only consumers never load the native addon); the types
+  layer is now a dependency leaf (type-only import cycles 39 → 4,
+  ESLint-enforced going forward).
+
+### Measured numbers
+
+| Metric | Before | After | Ratio |
+|---|---|---|---|
+| Ranked search (unindexed path, 4k entities) | ~3.3s | ~16ms | ~170× |
+| SQLite sequential entity creates | 23 ops/s | 1,972 ops/s | 84× |
+| JSONL sequential entity creates | — | — | 6.1× faster |
+| Warm root import (`@danielsimonjr/memoryjs`) | ~220ms | ~150ms | — |
+| `@danielsimonjr/memoryjs/search` subpath (cold) | — | ~40ms | — |
+| Type-only circular dependencies | 39 | 4 (0 runtime cost either way) | — |
+
+All of these are pure speedups — result sets, scores, and rankings are
+unchanged (asserted by regression tests comparing before/after output).
+
+### What this means for your tuning
+
+- **Batch-size guidance in this guide is now more conservative than
+  necessary for JSONL single-file mode** — a batch create is O(changed)
+  regardless of existing graph size, so the "Optimal Batch Sizes" table
+  above is a safety/observability margin (progress reporting, avoiding one
+  giant fsync) rather than a hard complexity cliff. JSONL **segment mode**
+  (`MEMORY_STORAGE_SEGMENT_COUNT >= 2`) still does one full `saveAll` per
+  batch — a documented limitation — so batch-size discipline still matters
+  there.
+- **Prefer subpath imports in bundled consumers.** If you only use core
+  CRUD + graph algorithms, `import { EntityManager } from
+  '@danielsimonjr/memoryjs/core'` avoids pulling in chrono-node, the
+  embedding stack, and (via `/core` vs `/sqlite`) the `better-sqlite3`
+  native addon. The root `@danielsimonjr/memoryjs` import still works
+  unchanged — subpaths are opt-in tree-shaking, not a breaking split.
+- **If you tuned around `MEMORY_HYBRID_GRAPH_WEIGHT`/`MEMORY_RANKED_GRAPH_BOOST`
+  write-amplification concerns** (frequent full PageRank recompute on every
+  write), re-measure: S2's per-item events mean `GraphRankPrior` invalidation
+  is now scoped to what actually changed rather than firing off the old
+  blanket `graph:saved`-per-write pattern for ordinary CRUD.
+- **SQLite operators who need every commit durable** (e.g. financial/audit
+  workloads where losing the last few WAL-uncommitted writes on power loss
+  is unacceptable) should set `MEMORY_SQLITE_SYNCHRONOUS=FULL` explicitly —
+  the new `NORMAL` default trades that guarantee for throughput. See
+  [CONFIGURATION.md](./CONFIGURATION.md) for the full tradeoff writeup.
 
 ---
 

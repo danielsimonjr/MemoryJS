@@ -21,10 +21,14 @@
  */
 
 import Database from 'better-sqlite3';
-import type { Database as DatabaseType } from 'better-sqlite3';
+import type { Database as DatabaseType, Statement } from 'better-sqlite3';
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
-import { clearAllSearchCaches } from '../utils/searchCache.js';
+import {
+  clearAllSearchCaches,
+  bumpEntityGeneration,
+  bumpRelationGeneration,
+} from '../utils/searchCache.js';
 import { NameIndex, TypeIndex } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
@@ -32,6 +36,14 @@ import { logger } from '../utils/logger.js';
 import { randomUUID } from 'node:crypto';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
+
+/**
+ * Composite key uniquely identifying a relation. NUL separator cannot
+ * appear inside validated entity names (mirrors `GraphStorage`).
+ */
+function relationKeyOf(r: Pick<Relation, 'from' | 'to' | 'relationType'>): string {
+  return `${r.from}\u0000${r.to}\u0000${r.relationType}`;
+}
 
 /**
  * SQLiteStorage manages persistence of the knowledge graph using native SQLite.
@@ -161,6 +173,41 @@ export class SQLiteStorage implements IGraphStorage {
   private eventEmitter: GraphEventEmitter = new GraphEventEmitter();
 
   /**
+   * O(1) relation lookup by composite key (`from to relationType`),
+   * mapping to the live relation object in `cache.relations`. Replaces
+   * the previous per-append `findIndex` scan (S3: O(1) cache
+   * maintenance) and powers targeted relation deletes.
+   */
+  private relationKeyMap: Map<string, Relation> = new Map();
+
+  /**
+   * Per-connection prepared-statement caches (S3: hoisted `prepare()`).
+   * better-sqlite3 does not auto-cache statements, so hot paths were
+   * paying a re-compile per call. Keyed weakly by connection so pooled
+   * readers get their own statements and everything is dropped
+   * automatically when a connection handle is discarded (e.g.
+   * `clearCache()` recreating the database).
+   */
+  private stmtCaches: WeakMap<DatabaseType, Map<string, Statement>> = new WeakMap();
+
+  /**
+   * Get (or lazily prepare) a cached statement for a connection.
+   */
+  private prepareCached(conn: DatabaseType, sql: string): Statement {
+    let cache = this.stmtCaches.get(conn);
+    if (!cache) {
+      cache = new Map();
+      this.stmtCaches.set(conn, cache);
+    }
+    let stmt = cache.get(sql);
+    if (!stmt) {
+      stmt = conn.prepare(sql);
+      cache.set(sql, stmt);
+    }
+    return stmt;
+  }
+
+  /**
    * Validated database file path (after path traversal checks).
    */
   private readonly validatedDbFilePath: string;
@@ -210,6 +257,25 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
+   * Resolve the `synchronous` pragma mode from `MEMORY_SQLITE_SYNCHRONOUS`.
+   *
+   * **Durability tradeoff (S3):** the default is `NORMAL` — the canonical
+   * pairing with WAL mode. In WAL, `NORMAL` only fsyncs at checkpoint
+   * time instead of on every commit (~2–10× commit throughput). The
+   * database can never be corrupted by this setting (WAL commits are
+   * still crash-consistent); the exposure is that the most recent
+   * commit(s) since the last checkpoint may be lost on **power loss /
+   * OS crash** (not on application crash). Operators who need every
+   * commit fsynced can set `MEMORY_SQLITE_SYNCHRONOUS=FULL`; `OFF`
+   * trades all durability for speed (testing / ephemeral data only).
+   * Invalid values fall back to `NORMAL`.
+   */
+  private static resolveSynchronousMode(): 'FULL' | 'NORMAL' | 'OFF' {
+    const raw = (process.env.MEMORY_SQLITE_SYNCHRONOUS ?? 'NORMAL').trim().toUpperCase();
+    return raw === 'FULL' || raw === 'OFF' ? raw : 'NORMAL';
+  }
+
+  /**
    * Initialize the database connection and schema.
    */
   private initialize(): void {
@@ -221,6 +287,18 @@ export class SQLiteStorage implements IGraphStorage {
     // Enable foreign keys and WAL mode for better performance
     this.db.pragma('foreign_keys = ON');
     this.db.pragma('journal_mode = WAL');
+
+    // S3 write-side tuning:
+    // - synchronous: see resolveSynchronousMode() for the durability
+    //   tradeoff (default NORMAL, override via MEMORY_SQLITE_SYNCHRONOUS)
+    // - busy_timeout: wait up to 5s on a locked database instead of
+    //   failing immediately with SQLITE_BUSY
+    // - cache_size: 64 MB page cache (negative value = KiB)
+    // - temp_store: keep temp tables/indices in memory
+    this.db.pragma(`synchronous = ${SQLiteStorage.resolveSynchronousMode()}`);
+    this.db.pragma('busy_timeout = 5000');
+    this.db.pragma('cache_size = -64000');
+    this.db.pragma('temp_store = MEMORY');
 
     // Spin up the read pool while the writer connection is still live so
     // file creation and pragmas have already happened.
@@ -523,9 +601,20 @@ export class SQLiteStorage implements IGraphStorage {
     // Build indexes for O(1) lookups
     this.nameIndex.build(entities);
     this.typeIndex.build(entities);
+    this.rebuildRelationKeyMap(relations);
 
     // Emit graph:loaded (parity with GraphStorage.loadFromDisk)
     this.eventEmitter.emitGraphLoaded(entities.length, relations.length);
+  }
+
+  /**
+   * Rebuild the relation composite-key map from a relation array.
+   */
+  private rebuildRelationKeyMap(relations: Relation[]): void {
+    this.relationKeyMap.clear();
+    for (const relation of relations) {
+      this.relationKeyMap.set(relationKeyOf(relation), relation);
+    }
   }
 
   /**
@@ -765,11 +854,15 @@ export class SQLiteStorage implements IGraphStorage {
       // Rebuild indexes
       this.nameIndex.build(graph.entities);
       this.typeIndex.build(graph.entities);
+      this.rebuildRelationKeyMap(graph.relations);
 
       this.pendingChanges = 0;
 
-      // Clear search caches
+      // Clear search caches (full clear is retained for true full-graph
+      // writes; delta ops use generation bumps)
       clearAllSearchCaches();
+      bumpEntityGeneration();
+      bumpRelationGeneration();
 
       // Phase 4 Sprint 1: Clear bidirectional relation cache on full save
       this.clearBidirectionalCache();
@@ -777,6 +870,73 @@ export class SQLiteStorage implements IGraphStorage {
       // Emit graph:saved (parity with GraphStorage.saveGraphInternal)
       this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
     });
+  }
+
+  /**
+   * SQL for the entity upsert used by `appendEntity`/`appendEntities`.
+   * Prepared once per connection via `prepareCached` (S3).
+   */
+  private static readonly UPSERT_ENTITY_SQL = `
+        INSERT OR REPLACE INTO entities (name, id, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+  /**
+   * Run the entity INSERT OR REPLACE row write (no cache side effects).
+   */
+  private runEntityUpsert(entity: Entity): void {
+    this.prepareCached(this.db!, SQLiteStorage.UPSERT_ENTITY_SQL).run(
+      entity.name,
+      entity.id ?? null,
+      entity.entityType,
+      JSON.stringify(entity.observations),
+      entity.tags ? JSON.stringify(entity.tags) : null,
+      entity.importance ?? null,
+      entity.parentId ?? null,
+      entity.createdAt || new Date().toISOString(),
+      entity.lastModified || new Date().toISOString(),
+      entity.projectId ?? null,
+      entity.version ?? 1,
+      entity.parentEntityName ?? null,
+      entity.rootEntityName ?? null,
+      entity.isLatest === false ? 0 : 1,
+      entity.supersededBy ?? null,
+      entity.contentHash ?? null,
+      this.serializeExtensionFields(entity),
+    );
+  }
+
+  /**
+   * Upsert an entity into the in-memory cache + indexes in O(1) (S3 —
+   * replaces the previous `findIndex` array scan). On a duplicate name
+   * the live cache object is mutated **in place** (stale fields removed,
+   * new fields assigned) so `cache.entities` and `NameIndex` stay
+   * consistent without any scan; the type index is updated when the
+   * entityType changed.
+   */
+  private upsertEntityInCache(entity: Entity): Entity {
+    const existing = this.nameIndex.get(entity.name);
+    if (existing !== undefined && existing !== entity) {
+      const oldType = existing.entityType;
+      const target = existing as unknown as Record<string, unknown>;
+      const source = entity as unknown as Record<string, unknown>;
+      for (const key of Object.keys(target)) {
+        if (!(key in source)) delete target[key];
+      }
+      Object.assign(target, source);
+      if (oldType !== existing.entityType) {
+        this.typeIndex.updateType(existing.name, oldType, existing.entityType);
+      }
+      this.updateLowercaseCache(existing);
+      return existing;
+    }
+    if (existing === undefined) {
+      this.cache!.entities.push(entity);
+    }
+    this.nameIndex.add(entity);
+    this.typeIndex.add(entity);
+    this.updateLowercaseCache(entity);
+    return entity;
   }
 
   /**
@@ -793,50 +953,53 @@ export class SQLiteStorage implements IGraphStorage {
     return this.mutex.runExclusive(async () => {
       if (!this.db) throw new Error('Database not initialized');
 
-      // Use INSERT OR REPLACE to handle updates
-      const stmt = this.db.prepare(`
-        INSERT OR REPLACE INTO entities (name, id, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      // Use INSERT OR REPLACE to handle updates (cached statement — S3)
+      this.runEntityUpsert(entity);
 
-      stmt.run(
-        entity.name,
-        entity.id ?? null,
-        entity.entityType,
-        JSON.stringify(entity.observations),
-        entity.tags ? JSON.stringify(entity.tags) : null,
-        entity.importance ?? null,
-        entity.parentId ?? null,
-        entity.createdAt || new Date().toISOString(),
-        entity.lastModified || new Date().toISOString(),
-        entity.projectId ?? null,
-        entity.version ?? 1,
-        entity.parentEntityName ?? null,
-        entity.rootEntityName ?? null,
-        entity.isLatest === false ? 0 : 1,
-        entity.supersededBy ?? null,
-        entity.contentHash ?? null,
-        this.serializeExtensionFields(entity),
-      );
-
-      // Update cache
-      const existingIndex = this.cache!.entities.findIndex(e => e.name === entity.name);
-      if (existingIndex >= 0) {
-        this.cache!.entities[existingIndex] = entity;
-      } else {
-        this.cache!.entities.push(entity);
-      }
-
-      // Update indexes
-      this.nameIndex.add(entity);
-      this.typeIndex.add(entity);
-      this.updateLowercaseCache(entity);
-      clearAllSearchCaches();
+      // Update cache + indexes in O(1)
+      this.upsertEntityInCache(entity);
+      bumpEntityGeneration();
 
       this.pendingChanges++;
 
       // Emit entity:created (parity with GraphStorage.appendEntity)
       this.eventEmitter.emitEntityCreated(entity);
+    });
+  }
+
+  /**
+   * Append multiple entities in a single transaction (S2 delta
+   * persistence). One transaction, one cached prepared statement —
+   * O(changed) instead of the previous manager-level DELETE-all +
+   * reinsert-all `saveGraph`. Emits `entity:created` exactly once per
+   * entity; no `graph:saved` (reserved for true full-graph writes).
+   *
+   * @param entities - Entities to append (no-op when empty)
+   */
+  async appendEntities(entities: Entity[]): Promise<void> {
+    if (entities.length === 0) return;
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (!this.db) throw new Error('Database not initialized');
+
+      const tx = this.db.transaction(() => {
+        for (const entity of entities) {
+          this.runEntityUpsert(entity);
+        }
+      });
+      tx();
+
+      for (const entity of entities) {
+        this.upsertEntityInCache(entity);
+      }
+      bumpEntityGeneration();
+
+      this.pendingChanges += entities.length;
+
+      for (const entity of entities) {
+        this.eventEmitter.emitEntityCreated(entity);
+      }
     });
   }
 
@@ -854,35 +1017,12 @@ export class SQLiteStorage implements IGraphStorage {
     return this.mutex.runExclusive(async () => {
       if (!this.db) throw new Error('Database not initialized');
 
-      // Use INSERT OR REPLACE to handle updates (Phase 1 Sprint 5: with metadata)
-      const stmt = this.db.prepare(`
-        INSERT OR REPLACE INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified, weight, confidence, properties, metadata)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
+      // Use INSERT OR REPLACE to handle updates (cached statement — S3)
+      this.runRelationUpsert(relation);
 
-      stmt.run(
-        relation.from,
-        relation.to,
-        relation.relationType,
-        relation.createdAt || new Date().toISOString(),
-        relation.lastModified || new Date().toISOString(),
-        relation.weight ?? null,
-        relation.confidence ?? null,
-        relation.properties ? JSON.stringify(relation.properties) : null,
-        relation.metadata ? JSON.stringify(relation.metadata) : null,
-      );
-
-      // Update cache
-      const existingIndex = this.cache!.relations.findIndex(
-        r => r.from === relation.from && r.to === relation.to && r.relationType === relation.relationType
-      );
-      if (existingIndex >= 0) {
-        this.cache!.relations[existingIndex] = relation;
-      } else {
-        this.cache!.relations.push(relation);
-      }
-
-      clearAllSearchCaches();
+      // Update cache in O(1) via the relation key map
+      this.upsertRelationInCache(relation);
+      bumpRelationGeneration();
 
       // Phase 4 Sprint 1: Invalidate bidirectional cache for both entities
       this.invalidateBidirectionalCache(relation.from);
@@ -892,6 +1032,91 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Emit relation:created (parity with GraphStorage.appendRelation)
       this.eventEmitter.emitRelationCreated(relation);
+    });
+  }
+
+  /**
+   * SQL for the relation upsert used by `appendRelation`/`appendRelations`.
+   */
+  private static readonly UPSERT_RELATION_SQL = `
+        INSERT OR REPLACE INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified, weight, confidence, properties, metadata)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+  /**
+   * Run the relation INSERT OR REPLACE row write (no cache side effects).
+   */
+  private runRelationUpsert(relation: Relation): void {
+    this.prepareCached(this.db!, SQLiteStorage.UPSERT_RELATION_SQL).run(
+      relation.from,
+      relation.to,
+      relation.relationType,
+      relation.createdAt || new Date().toISOString(),
+      relation.lastModified || new Date().toISOString(),
+      relation.weight ?? null,
+      relation.confidence ?? null,
+      relation.properties ? JSON.stringify(relation.properties) : null,
+      relation.metadata ? JSON.stringify(relation.metadata) : null,
+    );
+  }
+
+  /**
+   * Upsert a relation into the in-memory cache in O(1) via the composite
+   * key map (S3 — replaces the previous `findIndex` scan). Duplicate keys
+   * mutate the live object in place, mirroring INSERT OR REPLACE.
+   */
+  private upsertRelationInCache(relation: Relation): Relation {
+    const key = relationKeyOf(relation);
+    const existing = this.relationKeyMap.get(key);
+    if (existing !== undefined && existing !== relation) {
+      const target = existing as unknown as Record<string, unknown>;
+      const source = relation as unknown as Record<string, unknown>;
+      for (const k of Object.keys(target)) {
+        if (!(k in source)) delete target[k];
+      }
+      Object.assign(target, source);
+      return existing;
+    }
+    if (existing === undefined) {
+      this.cache!.relations.push(relation);
+      this.relationKeyMap.set(key, relation);
+    }
+    return relation;
+  }
+
+  /**
+   * Append multiple relations in a single transaction (S2 delta
+   * persistence). Emits `relation:created` exactly once per relation; no
+   * `graph:saved`.
+   *
+   * @param relations - Relations to append (no-op when empty)
+   */
+  async appendRelations(relations: Relation[]): Promise<void> {
+    if (relations.length === 0) return;
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (!this.db) throw new Error('Database not initialized');
+
+      const tx = this.db.transaction(() => {
+        for (const relation of relations) {
+          this.runRelationUpsert(relation);
+        }
+      });
+      tx();
+
+      for (const relation of relations) {
+        this.upsertRelationInCache(relation);
+        this.invalidateBidirectionalCache(relation.from);
+        this.invalidateBidirectionalCache(relation.to);
+      }
+      bumpRelationGeneration();
+
+      this.pendingChanges += relations.length;
+
+      for (const relation of relations) {
+        this.eventEmitter.emitRelationCreated(relation);
+      }
     });
   }
 
@@ -935,8 +1160,30 @@ export class SQLiteStorage implements IGraphStorage {
       Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
       entity.lastModified = new Date().toISOString();
 
-      // Update in database
-      const stmt = this.db.prepare(`
+      // Update in database (cached statement — S3)
+      this.runEntityUpdateRow(entity, entityName);
+
+      // Update indexes
+      this.nameIndex.add(entity); // Update reference
+      if (updates.entityType && updates.entityType !== oldType) {
+        this.typeIndex.updateType(entityName, oldType, updates.entityType);
+      }
+      this.updateLowercaseCache(entity);
+      bumpEntityGeneration();
+
+      this.pendingChanges++;
+
+      // Emit entity:updated (parity with GraphStorage.updateEntity)
+      this.eventEmitter.emitEntityUpdated(entityName, updates, previousValues);
+
+      return true;
+    });
+  }
+
+  /**
+   * SQL for the entity UPDATE used by `updateEntity`/`updateEntities`.
+   */
+  private static readonly UPDATE_ENTITY_SQL = `
         UPDATE entities SET
           id = ?,
           entityType = ?,
@@ -954,41 +1201,338 @@ export class SQLiteStorage implements IGraphStorage {
           contentHash = ?,
           agentMetadata = ?
         WHERE name = ?
-      `);
+      `;
 
-      stmt.run(
-        entity.id ?? null,
-        entity.entityType,
-        JSON.stringify(entity.observations),
-        entity.tags ? JSON.stringify(entity.tags) : null,
-        entity.importance ?? null,
-        entity.parentId ?? null,
-        entity.lastModified,
-        entity.projectId ?? null,
-        entity.version ?? 1,
-        entity.parentEntityName ?? null,
-        entity.rootEntityName ?? null,
-        entity.isLatest === false ? 0 : 1,
-        entity.supersededBy ?? null,
-        entity.contentHash ?? null,
-        this.serializeExtensionFields(entity),
-        entityName,
+  /**
+   * Run the entity UPDATE row write from the (already merged) entity
+   * state (no cache side effects).
+   */
+  private runEntityUpdateRow(entity: Entity, entityName: string): void {
+    this.prepareCached(this.db!, SQLiteStorage.UPDATE_ENTITY_SQL).run(
+      entity.id ?? null,
+      entity.entityType,
+      JSON.stringify(entity.observations),
+      entity.tags ? JSON.stringify(entity.tags) : null,
+      entity.importance ?? null,
+      entity.parentId ?? null,
+      entity.lastModified,
+      entity.projectId ?? null,
+      entity.version ?? 1,
+      entity.parentEntityName ?? null,
+      entity.rootEntityName ?? null,
+      entity.isLatest === false ? 0 : 1,
+      entity.supersededBy ?? null,
+      entity.contentHash ?? null,
+      this.serializeExtensionFields(entity),
+      entityName,
+    );
+  }
+
+  /**
+   * Update multiple entities in a single transaction (S2 delta
+   * persistence).
+   *
+   * Validates that every named entity exists **before** applying anything
+   * (all-or-nothing, matching the atomicity of the previous
+   * full-graph-save path). Emits `entity:updated` exactly once per entity
+   * (with `previousValues`); no `graph:saved`.
+   *
+   * Timestamp semantics: an explicit `updates.lastModified` wins;
+   * otherwise `options.timestamp`; otherwise the current time.
+   *
+   * @param batch - Per-entity partial updates
+   * @param options - Optional shared timestamp for the batch
+   * @returns The live updated entity objects (same order as `batch`)
+   * @throws {EntityNotFoundError} If any named entity does not exist
+   *   (checked before any mutation)
+   */
+  async updateEntities(
+    batch: Array<{ name: string; updates: Partial<Entity> }>,
+    options?: { timestamp?: string },
+  ): Promise<Entity[]> {
+    if (batch.length === 0) return [];
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (!this.db) throw new Error('Database not initialized');
+
+      for (const { name } of batch) {
+        if (!this.nameIndex.has(name)) {
+          throw new EntityNotFoundError(name);
+        }
+      }
+
+      const defaultTimestamp = options?.timestamp ?? new Date().toISOString();
+
+      const prepared: Array<{
+        entity: Entity;
+        sanitized: Record<string, unknown>;
+        updates: Partial<Entity>;
+        previousValues: Partial<Entity>;
+        lastModified: string;
+        oldType: string;
+      }> = [];
+
+      for (const { name, updates } of batch) {
+        const entity = this.nameIndex.get(name)!;
+        const sanitized = sanitizeObject(updates as Record<string, unknown>);
+        const lastModified =
+          typeof sanitized.lastModified === 'string'
+            ? sanitized.lastModified
+            : defaultTimestamp;
+
+        const previousValues: Partial<Entity> = {};
+        for (const key of Object.keys(updates)) {
+          if (key in entity) {
+            (previousValues as Record<string, unknown>)[key] =
+              (entity as unknown as Record<string, unknown>)[key];
+          }
+        }
+
+        prepared.push({ entity, sanitized, updates, previousValues, lastModified, oldType: entity.entityType });
+      }
+
+      // Apply to cache, then write all rows in one transaction. On
+      // transaction failure better-sqlite3 rolls the rows back; the cache
+      // is restored from previousValues via the merged state being
+      // recomputed on next load — in practice the transaction only fails
+      // on I/O errors, matching the pre-change saveGraph failure mode.
+      const tx = this.db.transaction(() => {
+        for (const p of prepared) {
+          Object.assign(p.entity, p.sanitized);
+          p.entity.lastModified = p.lastModified;
+          this.runEntityUpdateRow(p.entity, p.entity.name);
+        }
+      });
+      tx();
+
+      for (const p of prepared) {
+        this.nameIndex.add(p.entity);
+        if (p.updates.entityType && p.updates.entityType !== p.oldType) {
+          this.typeIndex.updateType(p.entity.name, p.oldType, p.updates.entityType);
+        }
+        this.updateLowercaseCache(p.entity);
+      }
+      bumpEntityGeneration();
+
+      this.pendingChanges += prepared.length;
+
+      for (const p of prepared) {
+        this.eventEmitter.emitEntityUpdated(p.entity.name, p.updates, p.previousValues);
+      }
+
+      return prepared.map(p => p.entity);
+    });
+  }
+
+  /**
+   * Delete entities with targeted row operations (S2 delta persistence).
+   *
+   * Runs one transaction that deletes the named entity rows, every
+   * relation touching them, and their embedding rows (when the embeddings
+   * table exists). Foreign keys are toggled OFF around the transaction to
+   * preserve the historical cascade semantics of the previous
+   * `saveGraph`-based delete path: children of a deleted parent keep
+   * their (dangling) `parentId`, exactly as the JSONL backend does —
+   * with FK ON, SQLite's `ON DELETE SET NULL` would silently null them
+   * out, a behavior change. Relations are therefore deleted explicitly
+   * rather than via the FK cascade. The FTS5 `entities_ad` trigger still
+   * fires per deleted row, keeping the full-text index clean.
+   *
+   * Emits `entity:deleted` once per deleted entity and `relation:deleted`
+   * once per cascaded relation; no `graph:saved`. Unknown names are
+   * silently ignored; a call that deletes nothing performs no writes and
+   * emits nothing.
+   *
+   * @param names - Entity names to delete
+   * @returns The deleted entities and cascaded relations
+   */
+  async deleteEntities(
+    names: string[],
+  ): Promise<{ deletedEntities: Entity[]; deletedRelations: Relation[] }> {
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (!this.db) throw new Error('Database not initialized');
+
+      const nameSet = new Set(names);
+      const deletedEntities = this.cache!.entities.filter(e => nameSet.has(e.name));
+      const deletedRelations = this.cache!.relations.filter(
+        r => nameSet.has(r.from) || nameSet.has(r.to),
       );
 
-      // Update indexes
-      this.nameIndex.add(entity); // Update reference
-      if (updates.entityType && updates.entityType !== oldType) {
-        this.typeIndex.updateType(entityName, oldType, updates.entityType);
+      if (deletedEntities.length === 0 && deletedRelations.length === 0) {
+        return { deletedEntities, deletedRelations };
       }
-      this.updateLowercaseCache(entity);
-      clearAllSearchCaches();
+
+      const hasEmbeddings = this.db
+        .prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name='embeddings'`)
+        .get() !== undefined;
+
+      // FK toggle must happen outside the transaction (PRAGMA is a no-op
+      // inside one) — same pattern as saveGraph/renameEntity.
+      this.db.pragma('foreign_keys = OFF');
+      try {
+        const deleteRelationsStmt = this.prepareCached(
+          this.db,
+          'DELETE FROM relations WHERE fromEntity = ? OR toEntity = ?',
+        );
+        const deleteEntityStmt = this.prepareCached(
+          this.db,
+          'DELETE FROM entities WHERE name = ?',
+        );
+        const tx = this.db.transaction(() => {
+          for (const name of nameSet) {
+            deleteRelationsStmt.run(name, name);
+            deleteEntityStmt.run(name);
+            if (hasEmbeddings) {
+              // FK cascade is disabled while foreign_keys = OFF, so clean
+              // embeddings explicitly.
+              this.prepareCached(
+                this.db!,
+                'DELETE FROM embeddings WHERE entityName = ?',
+              ).run(name);
+            }
+          }
+        });
+        tx();
+      } finally {
+        this.db.pragma('foreign_keys = ON');
+      }
+
+      // Apply to cache + indexes incrementally (O(deleted))
+      this.cache!.entities = this.cache!.entities.filter(e => !nameSet.has(e.name));
+      this.cache!.relations = this.cache!.relations.filter(
+        r => !nameSet.has(r.from) && !nameSet.has(r.to),
+      );
+      for (const e of deletedEntities) {
+        this.nameIndex.remove(e.name);
+        this.typeIndex.remove(e.name, e.entityType);
+        this.lowercaseCache.delete(e.name);
+      }
+      for (const r of deletedRelations) {
+        this.relationKeyMap.delete(relationKeyOf(r));
+        this.invalidateBidirectionalCache(r.from);
+        this.invalidateBidirectionalCache(r.to);
+      }
+      for (const name of nameSet) {
+        this.invalidateBidirectionalCache(name);
+      }
+
+      if (deletedEntities.length > 0) bumpEntityGeneration();
+      if (deletedRelations.length > 0) bumpRelationGeneration();
 
       this.pendingChanges++;
 
-      // Emit entity:updated (parity with GraphStorage.updateEntity)
-      this.eventEmitter.emitEntityUpdated(entityName, updates, previousValues);
+      for (const e of deletedEntities) {
+        this.eventEmitter.emitEntityDeleted(e.name, e);
+      }
+      for (const r of deletedRelations) {
+        this.eventEmitter.emitRelationDeleted(r.from, r.to, r.relationType);
+      }
 
-      return true;
+      return { deletedEntities, deletedRelations };
+    });
+  }
+
+  /**
+   * Delete relations by composite key with targeted row operations (S2
+   * delta persistence).
+   *
+   * `options.touchEntities` bumps `lastModified` on the named entities in
+   * the same transaction (preserving `RelationManager`'s historical
+   * "affected entities get a timestamp bump" semantics); unknown names
+   * are ignored.
+   *
+   * Emits `relation:deleted` once per actually-deleted relation and
+   * `entity:updated` (changes = `{ lastModified }`) once per touched
+   * entity; no `graph:saved`. A call that deletes nothing and touches
+   * nothing performs no writes and emits nothing.
+   *
+   * @param keys - Relation keys (`from`/`to`/`relationType`) to delete
+   * @param options - Optional entity-timestamp bump + shared timestamp
+   * @returns The actually-deleted relations
+   */
+  async deleteRelations(
+    keys: Array<Pick<Relation, 'from' | 'to' | 'relationType'>>,
+    options?: { touchEntities?: string[]; timestamp?: string },
+  ): Promise<Relation[]> {
+    await this.ensureLoaded();
+
+    return this.mutex.runExclusive(async () => {
+      if (!this.db) throw new Error('Database not initialized');
+
+      const keySet = new Set(keys.map(relationKeyOf));
+      const deletedRelations = this.cache!.relations.filter(r =>
+        keySet.has(relationKeyOf(r)),
+      );
+
+      const timestamp = options?.timestamp ?? new Date().toISOString();
+      const touchedEntities: Entity[] = [];
+      const seenTouched = new Set<string>();
+      for (const name of options?.touchEntities ?? []) {
+        if (seenTouched.has(name)) continue;
+        seenTouched.add(name);
+        const entity = this.nameIndex.get(name);
+        if (entity) touchedEntities.push(entity);
+      }
+
+      if (deletedRelations.length === 0 && touchedEntities.length === 0) {
+        return deletedRelations;
+      }
+
+      const deleteStmt = this.prepareCached(
+        this.db,
+        'DELETE FROM relations WHERE fromEntity = ? AND toEntity = ? AND relationType = ?',
+      );
+      const touchStmt = this.prepareCached(
+        this.db,
+        'UPDATE entities SET lastModified = ? WHERE name = ?',
+      );
+      const tx = this.db.transaction(() => {
+        for (const r of deletedRelations) {
+          deleteStmt.run(r.from, r.to, r.relationType);
+        }
+        for (const entity of touchedEntities) {
+          touchStmt.run(timestamp, entity.name);
+        }
+      });
+      tx();
+
+      const previousTimestamps = touchedEntities.map(e => e.lastModified);
+
+      // Apply to cache + indexes incrementally
+      if (deletedRelations.length > 0) {
+        this.cache!.relations = this.cache!.relations.filter(
+          r => !keySet.has(relationKeyOf(r)),
+        );
+        for (const r of deletedRelations) {
+          this.relationKeyMap.delete(relationKeyOf(r));
+          this.invalidateBidirectionalCache(r.from);
+          this.invalidateBidirectionalCache(r.to);
+        }
+      }
+      for (const entity of touchedEntities) {
+        entity.lastModified = timestamp;
+      }
+
+      if (deletedRelations.length > 0) bumpRelationGeneration();
+      if (touchedEntities.length > 0) bumpEntityGeneration();
+
+      this.pendingChanges++;
+
+      for (const r of deletedRelations) {
+        this.eventEmitter.emitRelationDeleted(r.from, r.to, r.relationType);
+      }
+      touchedEntities.forEach((entity, i) => {
+        this.eventEmitter.emitEntityUpdated(
+          entity.name,
+          { lastModified: timestamp },
+          { lastModified: previousTimestamps[i] },
+        );
+      });
+
+      return deletedRelations;
     });
   }
 
@@ -1094,10 +1638,13 @@ export class SQLiteStorage implements IGraphStorage {
       // Rebuild name/type indexes (key changed) and refresh caches.
       this.nameIndex.build(this.cache!.entities);
       this.typeIndex.build(this.cache!.entities);
+      this.rebuildRelationKeyMap(this.cache!.relations);
       this.lowercaseCache.delete(oldName);
       this.updateLowercaseCache(entity);
       this.clearBidirectionalCache();
       clearAllSearchCaches();
+      bumpEntityGeneration();
+      bumpRelationGeneration();
 
       this.pendingChanges++;
 
@@ -1136,6 +1683,7 @@ export class SQLiteStorage implements IGraphStorage {
     this.nameIndex.clear();
     this.typeIndex.clear();
     this.lowercaseCache.clear();
+    this.relationKeyMap.clear();
     // Phase 4 Sprint 1: Clear bidirectional relation cache
     this.bidirectionalRelationCache.clear();
     this.initialized = false;
@@ -1241,7 +1789,7 @@ export class SQLiteStorage implements IGraphStorage {
       // out a pooled connection so they can run concurrently with writes
       // at the SQLite level (WAL mode).
       const reader = this.pickReadConnection();
-      const stmt = reader.prepare(`
+      const stmt = this.prepareCached(reader, `
         SELECT name, bm25(entities_fts, 10, 5, 3, 1) as score
         FROM entities_fts
         WHERE entities_fts MATCH ?
@@ -1270,7 +1818,7 @@ export class SQLiteStorage implements IGraphStorage {
     const escaped = searchTerm.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
     const pattern = `%${escaped}%`;
     const reader = this.pickReadConnection();
-    const stmt = reader.prepare(`
+    const stmt = this.prepareCached(reader, `
       SELECT name FROM entities
       WHERE name LIKE ? ESCAPE '\\' COLLATE NOCASE
          OR entityType LIKE ? ESCAPE '\\' COLLATE NOCASE
@@ -1449,7 +1997,7 @@ export class SQLiteStorage implements IGraphStorage {
 
     // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
     if (!this.db || !this.initialized) return [];
-    const stmt = this.db.prepare('SELECT * FROM relations WHERE fromEntity = ?');
+    const stmt = this.prepareCached(this.db, 'SELECT * FROM relations WHERE fromEntity = ?');
     const rows = stmt.all(entityName) as RelationRow[];
     return rows.map(row => this.rowToRelation(row));
   }
@@ -1470,7 +2018,7 @@ export class SQLiteStorage implements IGraphStorage {
 
     // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
     if (!this.db || !this.initialized) return [];
-    const stmt = this.db.prepare('SELECT * FROM relations WHERE toEntity = ?');
+    const stmt = this.prepareCached(this.db, 'SELECT * FROM relations WHERE toEntity = ?');
     const rows = stmt.all(entityName) as RelationRow[];
     return rows.map(row => this.rowToRelation(row));
   }
@@ -1496,7 +2044,7 @@ export class SQLiteStorage implements IGraphStorage {
       relations = this.cache.relations.filter(r => r.from === entityName || r.to === entityName);
     } else if (this.db && this.initialized) {
       // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
-      const stmt = this.db.prepare('SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?');
+      const stmt = this.prepareCached(this.db, 'SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?');
       const rows = stmt.all(entityName, entityName) as RelationRow[];
       relations = rows.map(row => this.rowToRelation(row));
     } else {
@@ -1522,7 +2070,8 @@ export class SQLiteStorage implements IGraphStorage {
 
     // Fall back to database query
     if (!this.db || !this.initialized) return false;
-    const stmt = this.db.prepare(
+    const stmt = this.prepareCached(
+      this.db,
       'SELECT 1 FROM relations WHERE fromEntity = ? OR toEntity = ? LIMIT 1'
     );
     const row = stmt.get(entityName, entityName);

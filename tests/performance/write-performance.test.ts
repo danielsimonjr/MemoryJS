@@ -362,7 +362,7 @@ describe('Write Performance', () => {
       expect(graph.entities).toHaveLength(2);
     });
 
-    it('should create multiple entities using bulk save', async () => {
+    it('should create multiple entities using a single batch append', async () => {
       // Create multiple entities - should use bulk save
       await entityManager.createEntities([
         { name: 'Entity1', entityType: 'test', observations: [] },
@@ -370,28 +370,29 @@ describe('Write Performance', () => {
         { name: 'Entity3', entityType: 'test', observations: [] },
       ]);
 
-      // Bulk save resets pending appends
-      expect(storage.getPendingAppends()).toBe(0);
+      // S2 delta persistence: batch create appends one line per entity
+      expect(storage.getPendingAppends()).toBe(3);
 
       // Verify all entities exist
       const graph = await storage.loadGraph();
       expect(graph.entities).toHaveLength(3);
     });
 
-    it('should add observations atomically using saveGraph', async () => {
+    it('should add observations atomically using a delta write', async () => {
       // Use bulk create so pending appends starts at 0
       await entityManager.createEntities([
         { name: 'TestEntity', entityType: 'test', observations: ['Initial'] },
         { name: 'OtherEntity', entityType: 'test', observations: [] },
       ]);
-      expect(storage.getPendingAppends()).toBe(0);
+      expect(storage.getPendingAppends()).toBe(2);
 
       await observationManager.addObservations([
         { entityName: 'TestEntity', contents: ['New observation'] },
       ]);
 
-      // addObservations now uses atomic saveGraph which resets pending appends
-      expect(storage.getPendingAppends()).toBe(0);
+      // S2 delta persistence: addObservations appends one updated line
+      // per touched entity (2 creates + 1 update)
+      expect(storage.getPendingAppends()).toBe(3);
 
       // Verify observation added
       const entity = await entityManager.getEntity('TestEntity');
@@ -404,12 +405,12 @@ describe('Write Performance', () => {
         { name: 'TestEntity', entityType: 'test', observations: [] },
         { name: 'OtherEntity', entityType: 'test', observations: [] },
       ]);
-      expect(storage.getPendingAppends()).toBe(0);
+      expect(storage.getPendingAppends()).toBe(2);
 
       await entityManager.setImportance('TestEntity', 8);
 
-      // Should have incremented pending appends
-      expect(storage.getPendingAppends()).toBe(1);
+      // Should have incremented pending appends (2 creates + 1 update)
+      expect(storage.getPendingAppends()).toBe(3);
 
       // Verify importance set
       const entity = await entityManager.getEntity('TestEntity');
@@ -422,12 +423,12 @@ describe('Write Performance', () => {
         { name: 'TestEntity', entityType: 'test', observations: [] },
         { name: 'OtherEntity', entityType: 'test', observations: [] },
       ]);
-      expect(storage.getPendingAppends()).toBe(0);
+      expect(storage.getPendingAppends()).toBe(2);
 
       await entityManager.addTags('TestEntity', ['tag1', 'tag2']);
 
-      // Should have incremented pending appends
-      expect(storage.getPendingAppends()).toBe(1);
+      // Should have incremented pending appends (2 creates + 1 update)
+      expect(storage.getPendingAppends()).toBe(3);
 
       // Verify tags added
       const entity = await entityManager.getEntity('TestEntity');
@@ -437,20 +438,20 @@ describe('Write Performance', () => {
   });
 
   describe('ObservationManager.addObservations with atomic operations', () => {
-    it('should add observations atomically using saveGraph', async () => {
+    it('should add observations atomically using a delta write', async () => {
       // Use bulk create so pending appends starts at 0
       await entityManager.createEntities([
         { name: 'TestEntity', entityType: 'test', observations: ['Initial'] },
         { name: 'OtherEntity', entityType: 'test', observations: [] },
       ]);
-      expect(storage.getPendingAppends()).toBe(0);
+      expect(storage.getPendingAppends()).toBe(2);
 
       await observationManager.addObservations([
         { entityName: 'TestEntity', contents: ['Obs1', 'Obs2'] },
       ]);
 
-      // addObservations now uses atomic saveGraph which resets pending appends
-      expect(storage.getPendingAppends()).toBe(0);
+      // S2 delta persistence: one appended line per touched entity
+      expect(storage.getPendingAppends()).toBe(3);
 
       // Verify observations added
       const graph = await storage.loadGraph();

@@ -9,7 +9,121 @@
  */
 
 import type { Entity } from './types.js';
-import type { ContextProfile } from '../agent/ContextProfileManager.js';
+
+// ==================== Context Profiles ====================
+
+/**
+ * Named context profiles that tune retrieval strategy based on task type.
+ *
+ * S10: definition lives here (types layer) because both this module and
+ * `agent/ContextProfileManager.ts` reference it; the manager re-exports it
+ * from its original location for backwards compatibility.
+ *
+ * - default: Balanced weights for general use
+ * - planning: Optimizes for decisions, patterns, and semantic knowledge
+ * - incident: Optimizes for recency and errors/failures
+ * - handoff: Optimizes for session continuity and context
+ * - review: Balanced with high context weight for retrospectives
+ * - auto: Automatically inferred from query text
+ */
+export type ContextProfile = 'default' | 'planning' | 'incident' | 'handoff' | 'review' | 'auto';
+
+// ==================== Role Profiles (S10 — relocated from src/agent) ====================
+// Definitions live here because `AgentMetadata.roleProfile` (this module)
+// references them and the types layer must stay a leaf. The original agent
+// modules (`SalienceEngine.ts`, `ContextWindowManager.ts`, `RoleProfiles.ts`)
+// re-export them for backwards compatibility.
+
+/**
+ * Configuration options for SalienceEngine.
+ * All weights should sum to ~1.0 for normalized scores.
+ */
+export interface SalienceEngineConfig {
+  /** Weight for base importance (default: 0.25) */
+  importanceWeight?: number;
+  /** Weight for recency boost (default: 0.25) */
+  recencyWeight?: number;
+  /** Weight for frequency boost (default: 0.2) */
+  frequencyWeight?: number;
+  /** Weight for context relevance (default: 0.2) */
+  contextWeight?: number;
+  /** Weight for novelty bonus (default: 0.1) */
+  noveltyWeight?: number;
+  /** Recency decay hours (default: 24) */
+  recencyDecayHours?: number;
+  /** Boost factor for session match (default: 1.0) */
+  sessionBoostFactor?: number;
+  /** Boost factor for recent entities (default: 0.7) */
+  recentEntityBoostFactor?: number;
+  /** Enable TF-IDF similarity for task/query matching (default: true) */
+  useSemanticSimilarity?: boolean;
+  /** Threshold for observation uniqueness (default: 0.5) */
+  uniquenessThreshold?: number;
+  /**
+   * Weight given to freshness penalty when scoring salience (default: 0.15).
+   * A higher value makes stale/expired entities rank lower.
+   * The freshness factor is subtracted from the final score proportionally.
+   */
+  freshnessWeight?: number;
+  /**
+   * Weight for graph connectivity boost (default: 0 = disabled).
+   * The connectivity signal is an entity's relation degree normalized
+   * by the maximum degree in the graph, in [0, 1]. With the default
+   * weight of 0 the signal is never computed and scores are unchanged.
+   */
+  connectivityWeight?: number;
+}
+
+/**
+ * Configuration for the context window manager.
+ */
+export interface ContextWindowManagerConfig {
+  /** Default maximum tokens (default: 4000) */
+  defaultMaxTokens?: number;
+  /** Token estimation multiplier (default: 1.3, roughly words to tokens) */
+  tokenMultiplier?: number;
+  /** Reserve buffer for system/formatting (default: 100) */
+  reserveBuffer?: number;
+  /** Maximum entities to consider (default: 1000) */
+  maxEntitiesToConsider?: number;
+  /** Budget percentage for working memory (default: 0.3 = 30%) */
+  workingBudgetPct?: number;
+  /** Budget percentage for episodic memory (default: 0.3 = 30%) */
+  episodicBudgetPct?: number;
+  /** Budget percentage for semantic memory (default: 0.4 = 40%) */
+  semanticBudgetPct?: number;
+  /** Number of recent sessions to include for episodic (default: 3) */
+  recentSessionCount?: number;
+  /** Similarity threshold for diversity enforcement (default: 0.8) */
+  diversityThreshold?: number;
+  /** Enable diversity enforcement (default: true) */
+  enforceDiversity?: boolean;
+}
+
+/**
+ * Role identifier for built-in agent profiles.
+ */
+export type AgentRole =
+  | 'planner'
+  | 'executor'
+  | 'researcher'
+  | 'reviewer'
+  | 'default';
+
+/**
+ * A role profile encapsulates salience weight overrides and context window
+ * budget percentages optimised for a specific agent role.
+ */
+export interface RoleProfile {
+  /** Unique role identifier */
+  role: AgentRole;
+  /** Human-readable label */
+  label: string;
+  /** Salience engine weight overrides for this role */
+  salienceConfig: SalienceEngineConfig;
+  /** Context window budget overrides for this role */
+  contextConfig: ContextWindowManagerConfig;
+}
 
 // ==================== Memory Classification Types ====================
 
@@ -2240,7 +2354,7 @@ export interface AgentMetadata {
    * Provides salience weight overrides and context window budget
    * percentages tuned for the agent's functional role.
    */
-  roleProfile?: import('../agent/RoleProfiles.js').RoleProfile;
+  roleProfile?: RoleProfile;
   /**
    * Free-form role string used by `VisibilityResolver` for `allowedRoles`
    * predicate checks (η.5.5.b). Distinct from `roleProfile` (which is the

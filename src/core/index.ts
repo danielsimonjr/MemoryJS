@@ -4,7 +4,10 @@
  */
 
 export { GraphStorage } from './GraphStorage.js';
-export { SQLiteStorage } from './SQLiteStorage.js';
+// S9: re-export via the registration shim so that evaluating this barrel also
+// registers the SQLiteStorage constructor with StorageFactory (which no longer
+// static-imports the SQLiteStorage module itself).
+export { SQLiteStorage } from './sqlite-register.js';
 export { EntityManager } from './EntityManager.js';
 export type { EntityManagerOptions } from './EntityManager.js';
 export { RelationManager } from './RelationManager.js';
@@ -23,7 +26,12 @@ export {
   type TransactionOperation,
   type TransactionResult,
 } from './TransactionManager.js';
-export { createStorage, createStorageFromPath } from './StorageFactory.js';
+export {
+  createStorage,
+  createStorageFromPath,
+  preloadSQLiteStorage,
+  registerSQLiteStorage,
+} from './StorageFactory.js';
 // Phase 10 Sprint 2: Graph change events
 export { GraphEventEmitter } from './GraphEventEmitter.js';
 // Named reference index
