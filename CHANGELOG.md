@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (brainapi2-inspired features)
+
+- **Event reification (R1)**: `ctx.eventManager` — actions become
+  first-class `event` hub entities with role-typed relations
+  (`actor_of`/`targeted`/`occurred_in`/`participant_in`), `flow:<key>`
+  grouping, indexed `queryEvents`, chronological `getFlow`, and a
+  `whoDidWhat()` convenience join. `@experimental`.
+- **Evidence paths (R2)**: `explain: true` on `HybridSearchManager.search`
+  and `LLMSearchExecutor` — results gain `evidencePaths` (anchor→result
+  shortest relation chains per layer, depth/path caps, honest truncation
+  flag). Explain off is verified byte-identical.
+- **Relation consolidation (R3)**: `RelationConsolidator` — three-tier
+  Janitor pass (spelling-variant merge, embedding-similarity dedup ≥0.90,
+  LLM neighborhood validation returning corrective feedback that never
+  auto-mutates) + report-only `RelationConsolidationStage`. `@experimental`.
+- **Queryable provenance (R4)**: `memory audit log|history|verify|stats`
+  CLI over the hash-chained audit log; ingest runs write `ingest-<id>`
+  manifest entities (per-chunk hashes/offsets), link created entities via
+  `derived_from`, and stamp observations with `observationMeta.sourceRef`
+  — evidence paths extend answer → relation → observation → source chunk.
+- **Ingest cost/quality dial (R5)**: `IngestOptions.mode:
+  accurate|balanced|lightweight` (default balanced = prior behavior;
+  lightweight never calls the LLM; accurate invokes a structural validate
+  hook — the RelationConsolidator seam) + `tokenUsage` accounting (exact
+  when the provider reports usage, chars/4 approximate otherwise).
+- **NL-guided traversal (R7)**: `lookFor` free-text neighbor ranking on
+  `GraphTraversal.getNeighborsWithRelations` and hybrid neighbor
+  expansion; new depth-bounded `findPathWithin`.
+- **`memory doctor` (R9)**: CLI preflight for the documented gotchas —
+  Node version, better-sqlite3 ABI, workers built, storage-file sanity,
+  strict-literal env-flag lint, embedding-provider reachability.
+
 ### Performance
 
 - **Delta persistence (S2)**: manager mutations no longer deep-copy and

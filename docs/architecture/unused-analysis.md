@@ -8,9 +8,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 41
+- **Potentially unused exports**: 56
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 41
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 56
 
 Seeded reachability roots (4):
 
@@ -71,6 +71,24 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `ContextCompressionResult` (interface) — 2 in-file refs
 - `CompressionLevel` (type) — 4 in-file refs
 
+### `src/agent/reconstruction/MemoryDistiller.ts`
+
+- `MemoryDistillerConfig` (interface) — 1 in-file ref
+- `DistillerTokenUsage` (interface) — 1 in-file ref
+- `UsageReportingLLMProvider` (interface) — 1 in-file ref
+- `DistillerMode` (type) — 2 in-file refs
+
+### `src/cli/commands/audit.ts`
+
+- `AUDIT_OPERATIONS` (constant) — 2 in-file refs
+
+### `src/cli/commands/doctor.ts`
+
+- `defaultWorkerDirs` (function) — 1 in-file ref
+- `DoctorCheckResult` (interface) — 8 in-file refs
+- `DoctorStatus` (type) — 1 in-file ref
+- `EXTRA_NUMERIC_VARS` (constant) — 2 in-file refs
+
 ### `src/cli/formatters.ts`
 
 - `OutputFormat` (type) — 8 in-file refs
@@ -83,7 +101,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/core/GraphTraversal.ts`
 
-- `TraversalOptionsWithTracking` (interface) — 3 in-file refs
+- `SimilarityProvider` (interface) — 2 in-file refs
+- `LookForOptions` (interface) — 2 in-file refs
+- `RankedNeighborWithRelation` (interface) — 3 in-file refs
+- `TraversalOptionsWithTracking` (interface) — 4 in-file refs
 
 ### `src/core/ObservationStore.ts`
 
@@ -93,9 +114,12 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `FsReadMmapBackendOptions` (interface) — 1 in-file ref
 
-### `src/features/AuditLog.ts`
+### `src/features/IOManager.ts`
 
-- `ChainVerificationResult` (interface) — 1 in-file ref
+- `IngestTokenUsage` (interface) — 2 in-file refs
+- `IngestProduced` (interface) — 1 in-file ref
+- `IngestValidationFeedback` (interface) — 2 in-file refs
+- `IngestMode` (type) — 3 in-file refs
 
 ### `src/search/BloomPreScreener.ts`
 

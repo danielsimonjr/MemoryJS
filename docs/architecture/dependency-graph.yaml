@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 2.9.0
   lastUpdated: "2026-07-24"
-  totalFiles: 259
+  totalFiles: 266
   totalModules: 12
-  totalExports: 1663
+  totalExports: 1765
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -1769,6 +1769,61 @@ modules:
       interfaces:
         - ProspectiveMemoryConfig
         - ScheduleOptions
+    src/agent/RelationConsolidator.ts:
+      description: Relation Consolidator — R3 (brainapi2 "Janitor" pattern for relations)
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/types.js
+          imports:
+            - Entity
+            - Relation
+            - RelationProperties
+          typeOnly: true
+        - file: ../search/LLMQueryPlanner.js
+          imports:
+            - LLMProvider
+          typeOnly: true
+        - file: ./reconstruction/MemoryDistiller.js
+          imports:
+            - extractJson
+        - file: ./ConsolidationPipeline.js
+          imports:
+            - PipelineStage
+            - StageResult
+          typeOnly: true
+        - file: ../types/agent-memory.js
+          imports:
+            - AgentEntity
+            - ConsolidateOptions
+          typeOnly: true
+      exports:
+        - normalizeRelationType
+        - relationKey
+        - RelationConsolidator
+        - RelationConsolidationStage
+      classes:
+        - RelationConsolidator
+        - RelationConsolidationStage
+      interfaces:
+        - RelationConsolidatorRelationOps
+        - RelationConsolidatorEntityOps
+        - RelationEmbeddingProvider
+        - RelationConsolidatorThresholds
+        - RelationConsolidatorOptions
+        - RelationAnalyzeOptions
+        - RelationConsolidateOptions
+        - ExactDuplicateGroup
+        - InverseDuplicatePair
+        - SemanticDuplicateGroup
+        - RelationVerdict
+        - ConsolidationFeedback
+        - RelationConsolidationReport
+        - RelationConsolidationResult
+        - RelationConsolidationStageConfig
+      functions:
+        - normalizeRelationType
+        - relationKey
     src/agent/RoleProfiles.ts:
       description: Role Profiles
       externalDependencies: []
@@ -2299,6 +2354,106 @@ modules:
       functions:
         - computeDegreeMap
         - normalizedDegree
+    src/agent/events/EventManager.ts:
+      description: Event Manager (R1 — event reification)
+      externalDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - randomBytes
+      internalDependencies:
+        - file: ../../types/index.js
+          imports:
+            - Entity
+            - Relation
+          typeOnly: true
+        - file: ../../core/EntityManager.js
+          imports:
+            - EntityManager
+          typeOnly: true
+        - file: ../../core/RelationManager.js
+          imports:
+            - RelationManager
+          typeOnly: true
+        - file: ../../types/event.js
+          imports:
+            - EventQueryFilter
+            - EventRecord
+            - EventTimeInput
+            - EventTimeRange
+            - RecordEventInput
+            - WhoDidWhatEntry
+            - WhoDidWhatFilter
+          typeOnly: true
+      exports:
+        - EVENT_ENTITY_TYPE
+        - EVENT_STUB_ENTITY_TYPE
+        - ACTOR_OF_RELATION
+        - TARGETED_RELATION
+        - OCCURRED_IN_RELATION
+        - PARTICIPANT_IN_RELATION
+        - EVENT_TAG
+        - FLOW_TAG_PREFIX
+        - eventEntityName
+        - EventManager
+      classes:
+        - EventManager
+      interfaces:
+        - EventManagerConfig
+      functions:
+        - eventEntityName
+      constants:
+        - EVENT_ENTITY_TYPE
+        - EVENT_STUB_ENTITY_TYPE
+        - ACTOR_OF_RELATION
+        - TARGETED_RELATION
+        - OCCURRED_IN_RELATION
+        - PARTICIPANT_IN_RELATION
+        - EVENT_TAG
+        - FLOW_TAG_PREFIX
+    src/agent/events/index.ts:
+      description: Event Reification Module — Barrel Export (R1)
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ./EventManager.js
+          imports:
+            - EventManager
+            - eventEntityName
+            - EVENT_ENTITY_TYPE
+            - EVENT_STUB_ENTITY_TYPE
+            - EVENT_TAG
+            - FLOW_TAG_PREFIX
+            - ACTOR_OF_RELATION
+            - TARGETED_RELATION
+            - OCCURRED_IN_RELATION
+            - PARTICIPANT_IN_RELATION
+            - EventManagerConfig
+          reExport: true
+      exports:
+        - EventManager
+        - eventEntityName
+        - EVENT_ENTITY_TYPE
+        - EVENT_STUB_ENTITY_TYPE
+        - EVENT_TAG
+        - FLOW_TAG_PREFIX
+        - ACTOR_OF_RELATION
+        - TARGETED_RELATION
+        - OCCURRED_IN_RELATION
+        - PARTICIPANT_IN_RELATION
+        - EventManagerConfig
+      reExported:
+        - EventManager
+        - eventEntityName
+        - EVENT_ENTITY_TYPE
+        - EVENT_STUB_ENTITY_TYPE
+        - EVENT_TAG
+        - FLOW_TAG_PREFIX
+        - ACTOR_OF_RELATION
+        - TARGETED_RELATION
+        - OCCURRED_IN_RELATION
+        - PARTICIPANT_IN_RELATION
+        - EventManagerConfig
     src/agent/index.ts:
       description: Agent Module - Barrel Export
       externalDependencies: []
@@ -2773,6 +2928,42 @@ modules:
             - ReconstructiveBacking
             - BridgePersistResult
           reExport: true
+        - file: ./RelationConsolidator.js
+          imports:
+            - RelationConsolidator
+            - RelationConsolidationStage
+            - normalizeRelationType
+            - relationKey
+            - RelationConsolidatorRelationOps
+            - RelationConsolidatorEntityOps
+            - RelationEmbeddingProvider
+            - RelationConsolidatorThresholds
+            - RelationConsolidatorOptions
+            - RelationAnalyzeOptions
+            - RelationConsolidateOptions
+            - ExactDuplicateGroup
+            - InverseDuplicatePair
+            - SemanticDuplicateGroup
+            - RelationVerdict
+            - ConsolidationFeedback
+            - RelationConsolidationReport
+            - RelationConsolidationResult
+            - RelationConsolidationStageConfig
+          reExport: true
+        - file: ./events/index.js
+          imports:
+            - EventManager
+            - eventEntityName
+            - EVENT_ENTITY_TYPE
+            - EVENT_STUB_ENTITY_TYPE
+            - EVENT_TAG
+            - FLOW_TAG_PREFIX
+            - ACTOR_OF_RELATION
+            - TARGETED_RELATION
+            - OCCURRED_IN_RELATION
+            - PARTICIPANT_IN_RELATION
+            - EventManagerConfig
+          reExport: true
         - file: ./MemoryBackend.js
           imports:
             - IMemoryBackend
@@ -3071,6 +3262,36 @@ modules:
         - TOPIC_SUMMARIZES
         - ReconstructiveBacking
         - BridgePersistResult
+        - RelationConsolidator
+        - RelationConsolidationStage
+        - normalizeRelationType
+        - relationKey
+        - RelationConsolidatorRelationOps
+        - RelationConsolidatorEntityOps
+        - RelationEmbeddingProvider
+        - RelationConsolidatorThresholds
+        - RelationConsolidatorOptions
+        - RelationAnalyzeOptions
+        - RelationConsolidateOptions
+        - ExactDuplicateGroup
+        - InverseDuplicatePair
+        - SemanticDuplicateGroup
+        - RelationVerdict
+        - ConsolidationFeedback
+        - RelationConsolidationReport
+        - RelationConsolidationResult
+        - RelationConsolidationStageConfig
+        - EventManager
+        - eventEntityName
+        - EVENT_ENTITY_TYPE
+        - EVENT_STUB_ENTITY_TYPE
+        - EVENT_TAG
+        - FLOW_TAG_PREFIX
+        - ACTOR_OF_RELATION
+        - TARGETED_RELATION
+        - OCCURRED_IN_RELATION
+        - PARTICIPANT_IN_RELATION
+        - EventManagerConfig
         - LookupOptions
         - GetAllOptions
         - ReflectionManagerConfig
@@ -3366,6 +3587,36 @@ modules:
         - TOPIC_SUMMARIZES
         - ReconstructiveBacking
         - BridgePersistResult
+        - RelationConsolidator
+        - RelationConsolidationStage
+        - normalizeRelationType
+        - relationKey
+        - RelationConsolidatorRelationOps
+        - RelationConsolidatorEntityOps
+        - RelationEmbeddingProvider
+        - RelationConsolidatorThresholds
+        - RelationConsolidatorOptions
+        - RelationAnalyzeOptions
+        - RelationConsolidateOptions
+        - ExactDuplicateGroup
+        - InverseDuplicatePair
+        - SemanticDuplicateGroup
+        - RelationVerdict
+        - ConsolidationFeedback
+        - RelationConsolidationReport
+        - RelationConsolidationResult
+        - RelationConsolidationStageConfig
+        - EventManager
+        - eventEntityName
+        - EVENT_ENTITY_TYPE
+        - EVENT_STUB_ENTITY_TYPE
+        - EVENT_TAG
+        - FLOW_TAG_PREFIX
+        - ACTOR_OF_RELATION
+        - TARGETED_RELATION
+        - OCCURRED_IN_RELATION
+        - PARTICIPANT_IN_RELATION
+        - EventManagerConfig
         - IMemoryBackend
         - MemoryTurn
         - WeightedTurn
@@ -3712,6 +3963,10 @@ modules:
         - MemoryDistiller
       classes:
         - MemoryDistiller
+      interfaces:
+        - MemoryDistillerConfig
+        - DistillerTokenUsage
+        - UsageReportingLLMProvider
       functions:
         - extractJson
     src/agent/reconstruction/MemoryGraphBridge.ts:
@@ -4071,6 +4326,54 @@ modules:
         - WorldModelManager
         - WorldModelManagerOptions
   cli:
+    src/cli/commands/audit.ts:
+      description: Audit CLI Commands — `memory audit` (R4a queryable provenance).
+      externalDependencies:
+        - package: commander
+          imports:
+            - Command
+            - Option
+      nodeDependencies:
+        - module: path
+          imports:
+            - resolve
+            - dirname
+            - basename
+            - extname
+            - join
+      internalDependencies:
+        - file: ./helpers.js
+          imports:
+            - getOptions
+            - createLogger
+        - file: ../formatters.js
+          imports:
+            - formatError
+        - file: ../../utils/entityUtils.js
+          imports:
+            - validateFilePath
+        - file: ../../features/AuditLog.js
+          imports:
+            - AuditLog
+            - AuditEntry
+            - AuditFilter
+            - AuditOperation
+            - ChainVerificationResult
+      exports:
+        - AUDIT_OPERATIONS
+        - resolveAuditFilePath
+        - parseTimeSpec
+        - formatAuditEntryLine
+        - formatVerifyVerdict
+        - registerAuditCommands
+      functions:
+        - resolveAuditFilePath
+        - parseTimeSpec
+        - formatAuditEntryLine
+        - formatVerifyVerdict
+        - registerAuditCommands
+      constants:
+        - AUDIT_OPERATIONS
     src/cli/commands/cache.ts:
       description: Cache CLI commands — `memory cache`.
       externalDependencies:
@@ -4188,9 +4491,80 @@ modules:
           imports:
             - formatError
       exports:
+        - ENV_VAR_CATALOG
         - registerDiagCommand
       functions:
         - registerDiagCommand
+      constants:
+        - ENV_VAR_CATALOG
+    src/cli/commands/doctor.ts:
+      description: Preflight CLI command — `memory doctor` (R9).
+      externalDependencies:
+        - package: commander
+          imports:
+            - Command
+      nodeDependencies:
+        - module: fs
+          imports:
+            - existsSync
+            - constants
+        - module: fs
+          imports:
+            - promises
+        - module: module
+          imports:
+            - createRequire
+        - module: url
+          imports:
+            - fileURLToPath
+        - module: path
+          imports:
+            - dirname
+            - join
+            - resolve
+      internalDependencies:
+        - file: ./helpers.js
+          imports:
+            - getOptions
+            - createLogger
+        - file: ../formatters.js
+          imports:
+            - formatError
+        - file: ./diag.js
+          imports:
+            - ENV_VAR_CATALOG
+      exports:
+        - MIN_NODE_MAJOR
+        - STRICT_TRUE_VARS
+        - EXTRA_NUMERIC_VARS
+        - checkNodeVersion
+        - checkBetterSqlite3
+        - defaultWorkerDirs
+        - checkWorkersBuilt
+        - checkStorageFile
+        - numericEnvVarNames
+        - checkEnvVarLint
+        - checkEmbeddingProvider
+        - runDoctorChecks
+        - registerDoctorCommand
+      interfaces:
+        - DoctorCheckResult
+        - DoctorReport
+      functions:
+        - checkNodeVersion
+        - checkBetterSqlite3
+        - defaultWorkerDirs
+        - checkWorkersBuilt
+        - checkStorageFile
+        - numericEnvVarNames
+        - checkEnvVarLint
+        - checkEmbeddingProvider
+        - runDoctorChecks
+        - registerDoctorCommand
+      constants:
+        - MIN_NODE_MAJOR
+        - STRICT_TRUE_VARS
+        - EXTRA_NUMERIC_VARS
     src/cli/commands/entity.ts:
       description: Entity CLI Commands
       externalDependencies:
@@ -4403,6 +4777,12 @@ modules:
         - file: ./reindex.js
           imports:
             - registerReindexCommand
+        - file: ./audit.js
+          imports:
+            - registerAuditCommands
+        - file: ./doctor.js
+          imports:
+            - registerDoctorCommand
       exports:
         - registerCommands
       functions:
@@ -5109,11 +5489,18 @@ modules:
         - file: ../utils/index.js
           imports:
             - checkCancellation
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
+            - tokenizeToSet
       exports:
         - GraphTraversal
       classes:
         - GraphTraversal
       interfaces:
+        - SimilarityProvider
+        - LookForOptions
+        - RankedNeighborWithRelation
         - TraversalOptionsWithTracking
     src/core/HierarchyManager.ts:
       description: Hierarchy Manager
@@ -5390,6 +5777,9 @@ modules:
         - file: ../agent/procedural/ProcedureManager.js
           imports:
             - ProcedureManager
+        - file: ../agent/events/EventManager.js
+          imports:
+            - EventManager
         - file: ../agent/ProspectiveMemoryManager.js
           imports:
             - ProspectiveMemoryManager
@@ -6399,18 +6789,38 @@ modules:
         - file: ../security/PiiRedactor.js
           imports:
             - PiiRedactor
+        - file: ../agent/reconstruction/MemoryDistiller.js
+          imports:
+            - MemoryDistiller
+          typeOnly: true
+          dynamic: true
         - file: ../core/EntityManager.js
           imports:
             - EntityManager
           typeOnly: true
           dynamic: true
+        - file: ../core/RelationManager.js
+          imports:
+            - RelationManager
+          typeOnly: true
+          dynamic: true
+        - file: ../search/LLMQueryPlanner.js
+          imports: []
+          typeOnly: true
+          dynamic: true
       exports:
+        - INGEST_DERIVED_FROM_RELATION
+        - INGEST_MANIFEST_ENTITY_TYPE
+        - INGEST_CHUNK_PREFIX
         - IOManager
       classes:
         - IOManager
       interfaces:
         - PiiRedactionOption
         - IngestInput
+        - IngestTokenUsage
+        - IngestProduced
+        - IngestValidationFeedback
         - IngestOptions
         - IngestResult
         - BackupMetadata
@@ -6419,6 +6829,10 @@ modules:
         - SplitResult
         - VisualizeOptions
         - VisualizeOptions
+      constants:
+        - INGEST_DERIVED_FROM_RELATION
+        - INGEST_MANIFEST_ENTITY_TYPE
+        - INGEST_CHUNK_PREFIX
     src/features/KeywordExtractor.ts:
       description: Keyword Extractor
       externalDependencies: []
@@ -7047,6 +7461,34 @@ modules:
       constants:
         - QUERY_PREFIX
         - DOCUMENT_PREFIX
+    src/search/EvidencePathBuilder.ts:
+      description: Evidence Path Builder
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies:
+        - file: ../types/index.js
+          imports:
+            - ReadonlyKnowledgeGraph
+          typeOnly: true
+        - file: ../types/search.js
+          imports:
+            - EvidenceLayer
+            - EvidencePath
+            - EvidencePathOptions
+            - EvidencePathRelation
+          typeOnly: true
+      exports:
+        - DEFAULT_EVIDENCE_MAX_DEPTH
+        - DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT
+        - EvidencePathBuilder
+      classes:
+        - EvidencePathBuilder
+      interfaces:
+        - EvidenceAnchor
+        - EvidencePathSet
+      constants:
+        - DEFAULT_EVIDENCE_MAX_DEPTH
+        - DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT
     src/search/FuzzySearch.ts:
       description: Fuzzy Search
       externalDependencies:
@@ -7189,6 +7631,19 @@ modules:
         - file: ../utils/constants.js
           imports:
             - SEMANTIC_SEARCH_LIMITS
+        - file: ../types/search.js
+          imports:
+            - EvidencePath
+            - EvidencePathOptions
+          typeOnly: true
+        - file: ./EvidencePathBuilder.js
+          imports:
+            - EvidencePathBuilder
+            - EvidenceAnchor
+        - file: ../utils/textSimilarity.js
+          imports:
+            - jaccard
+            - tokenizeToSet
       exports:
         - DEFAULT_HYBRID_WEIGHTS
         - DEFAULT_NEIGHBOR_TOP_K
@@ -7199,6 +7654,8 @@ modules:
       interfaces:
         - GraphHybridSearchResult
         - NeighborExpansionOptions
+        - ExplainHybridOptions
+        - ExplainedHybridSearchResult
         - GraphHybridOptions
       constants:
         - DEFAULT_HYBRID_WEIGHTS
@@ -7254,6 +7711,12 @@ modules:
         - file: ../types/index.js
           imports:
             - Entity
+            - ReadonlyKnowledgeGraph
+          typeOnly: true
+        - file: ../types/search.js
+          imports:
+            - EvidencePath
+            - EvidencePathOptions
           typeOnly: true
         - file: ./SearchManager.js
           imports:
@@ -7263,12 +7726,19 @@ modules:
           imports:
             - StructuredQuery
           typeOnly: true
+        - file: ./EvidencePathBuilder.js
+          imports:
+            - EvidencePathBuilder
+            - EvidenceAnchor
       exports:
         - LLMSearchExecutor
       classes:
         - LLMSearchExecutor
       interfaces:
+        - ExecutorGraphSource
         - LLMSearchExecutorOptions
+        - LLMExecuteOptions
+        - ExplainedEntityResult
     src/search/MaterializedViews.ts:
       description: Materialized Search Views
       externalDependencies: []
@@ -8185,6 +8655,9 @@ modules:
           imports:
             - LLMSearchExecutor
             - LLMSearchExecutorOptions
+            - LLMExecuteOptions
+            - ExplainedEntityResult
+            - ExecutorGraphSource
           reExport: true
         - file: ./SpellChecker.js
           imports:
@@ -8193,6 +8666,28 @@ modules:
             - SuggestOptions
             - SpellSuggestion
           reExport: true
+        - file: ./EvidencePathBuilder.js
+          imports:
+            - EvidencePathBuilder
+            - DEFAULT_EVIDENCE_MAX_DEPTH
+            - DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT
+            - EvidenceAnchor
+            - EvidencePathSet
+          reExport: true
+        - file: ../types/search.js
+          imports:
+            - EvidenceLayer
+            - EvidencePath
+            - EvidencePathOptions
+            - EvidencePathRelation
+          reExport: true
+          typeOnly: true
+        - file: ./HybridSearchManager.js
+          imports:
+            - ExplainHybridOptions
+            - ExplainedHybridSearchResult
+          reExport: true
+          typeOnly: true
       exports:
         - BasicSearch
         - RankedSearch
@@ -8314,10 +8809,24 @@ modules:
         - LLMQueryPlannerConfig
         - LLMSearchExecutor
         - LLMSearchExecutorOptions
+        - LLMExecuteOptions
+        - ExplainedEntityResult
+        - ExecutorGraphSource
         - SpellChecker
         - SpellCheckerConfig
         - SuggestOptions
         - SpellSuggestion
+        - EvidencePathBuilder
+        - DEFAULT_EVIDENCE_MAX_DEPTH
+        - DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT
+        - EvidenceAnchor
+        - EvidencePathSet
+        - EvidenceLayer
+        - EvidencePath
+        - EvidencePathOptions
+        - EvidencePathRelation
+        - ExplainHybridOptions
+        - ExplainedHybridSearchResult
       reExported:
         - BasicSearch
         - RankedSearch
@@ -8439,10 +8948,24 @@ modules:
         - LLMQueryPlannerConfig
         - LLMSearchExecutor
         - LLMSearchExecutorOptions
+        - LLMExecuteOptions
+        - ExplainedEntityResult
+        - ExecutorGraphSource
         - SpellChecker
         - SpellCheckerConfig
         - SuggestOptions
         - SpellSuggestion
+        - EvidencePathBuilder
+        - DEFAULT_EVIDENCE_MAX_DEPTH
+        - DEFAULT_EVIDENCE_MAX_PATHS_PER_RESULT
+        - EvidenceAnchor
+        - EvidencePathSet
+        - EvidenceLayer
+        - EvidencePath
+        - EvidencePathOptions
+        - EvidencePathRelation
+        - ExplainHybridOptions
+        - ExplainedHybridSearchResult
     src/search/tiered/BrotliColdTier.ts:
       description: BrotliColdTier — Brotli-compressed JSONL shard `IIndexTier<string, V>`
       externalDependencies: []
@@ -8867,6 +9390,19 @@ modules:
         - ArtifactFilter
       functions:
         - isArtifactEntity
+    src/types/event.ts:
+      description: Event Reification Types (R1)
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports: []
+      interfaces:
+        - EventTimeRange
+        - RecordEventInput
+        - EventRecord
+        - EventQueryFilter
+        - WhoDidWhatFilter
+        - WhoDidWhatEntry
     src/types/index.ts:
       description: Types Module - Barrel Export
       externalDependencies: []
@@ -9123,6 +9659,17 @@ modules:
             - ReconstructionOptions
           reExport: true
           typeOnly: true
+        - file: ./event.js
+          imports:
+            - EventTimeInput
+            - EventTimeRange
+            - RecordEventInput
+            - EventRecord
+            - EventQueryFilter
+            - WhoDidWhatFilter
+            - WhoDidWhatEntry
+          reExport: true
+          typeOnly: true
         - file: ./result.js
           imports:
             - Result
@@ -9330,6 +9877,13 @@ modules:
         - TraversalStep
         - ReconstructionResult
         - ReconstructionOptions
+        - EventTimeInput
+        - EventTimeRange
+        - RecordEventInput
+        - EventRecord
+        - EventQueryFilter
+        - WhoDidWhatFilter
+        - WhoDidWhatEntry
         - Result
       reExported:
         - QueryTraceBuilder
@@ -9533,6 +10087,13 @@ modules:
         - TraversalStep
         - ReconstructionResult
         - ReconstructionOptions
+        - EventTimeInput
+        - EventTimeRange
+        - RecordEventInput
+        - EventRecord
+        - EventQueryFilter
+        - WhoDidWhatFilter
+        - WhoDidWhatEntry
         - Result
     src/types/procedure.ts:
       description: Procedural Memory Types (3B.4)
@@ -9625,6 +10186,9 @@ modules:
         - ProximityNode
         - FieldNode
         - BooleanOpNode
+        - EvidencePathRelation
+        - EvidencePath
+        - EvidencePathOptions
     src/types/task-scheduler.ts:
       description: Task Scheduler shared types (S10 — types-layer leaf).
       externalDependencies: []
@@ -11640,6 +12204,7 @@ dependencyGraph:
         - src/agent/ProfileManager.ts
         - src/agent/ProjectContextManager.ts
         - src/agent/ProspectiveMemoryManager.ts
+        - src/agent/RelationConsolidator.ts
         - src/agent/RoleProfiles.ts
         - src/agent/RuleEvaluator.ts
         - src/agent/SQLiteBackend.ts
@@ -11658,6 +12223,8 @@ dependencyGraph:
         - src/agent/causal/index.ts
         - src/agent/collaboration/CollaborationAuditEnforcer.ts
         - src/agent/connectivity.ts
+        - src/agent/events/EventManager.ts
+        - src/agent/events/index.ts
         - src/agent/index.ts
         - src/agent/procedural/ProcedureManager.ts
         - src/agent/procedural/ProcedureStore.ts
@@ -11683,10 +12250,12 @@ dependencyGraph:
         - src/agent/world/index.ts
     - name: Cli
       files:
+        - src/cli/commands/audit.ts
         - src/cli/commands/cache.ts
         - src/cli/commands/check.ts
         - src/cli/commands/decision.ts
         - src/cli/commands/diag.ts
+        - src/cli/commands/doctor.ts
         - src/cli/commands/entity.ts
         - src/cli/commands/exclusion.ts
         - src/cli/commands/graph.ts
@@ -11771,6 +12340,7 @@ dependencyGraph:
         - src/search/EarlyTerminationManager.ts
         - src/search/EmbeddingCache.ts
         - src/search/EmbeddingService.ts
+        - src/search/EvidencePathBuilder.ts
         - src/search/FuzzySearch.ts
         - src/search/GraphRankPrior.ts
         - src/search/HybridScorer.ts
@@ -11826,6 +12396,7 @@ dependencyGraph:
       files:
         - src/types/agent-memory.ts
         - src/types/artifact.ts
+        - src/types/event.ts
         - src/types/index.ts
         - src/types/procedure.ts
         - src/types/progress.ts
@@ -11879,29 +12450,29 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 259
+  reachableCount: 266
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 259
+  totalTypeScriptFiles: 266
   totalModules: 12
-  totalLinesOfCode: 89064
-  totalExports: 1663
-  totalClasses: 217
-  totalInterfaces: 541
-  totalFunctions: 259
+  totalLinesOfCode: 92541
+  totalExports: 1765
+  totalClasses: 221
+  totalInterfaces: 584
+  totalFunctions: 277
   totalTypeGuards: 28
   totalEnums: 4
-  totalConstants: 85
-  totalReExports: 1089
-  totalTypeOnlyImports: 403
+  totalConstants: 103
+  totalReExports: 1151
+  totalTypeOnlyImports: 421
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 4
   entryRoots: 4
-  reachableFiles: 259
+  reachableFiles: 266
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 41
+  unusedExportsCount: 56

@@ -93,6 +93,7 @@ ctx.rbacMiddleware      // η.6.1 RBAC policy (checkPermission)
 ctx.worldModelManager   // 3B.7 World Model orchestrator (snapshots + diff)
 ctx.activeRetrieval     // 3B.5 Active Retrieval (iterative query rewriting)
 ctx.reconstructiveMemory() // MRAgent Cue–Tag–Content associative memory + active multi-step reconstruction
+ctx.eventManager        // R1 event reification: actions as event hub entities (actor_of/targeted/occurred_in), flow grouping, whoDidWhat()
 ```
 
 **v1.9.0 Additions:**
