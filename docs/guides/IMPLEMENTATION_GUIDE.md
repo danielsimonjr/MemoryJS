@@ -172,7 +172,7 @@ await ctx.relationManager.createRelations([
 ]);
 
 // Search
-const results = await ctx.searchManager.search('TypeScript');
+const results = await ctx.searchManager.searchNodes('TypeScript');
 console.log(results.entities); // Returns matching entities
 console.log(results.relations); // Returns related relations
 ```
@@ -405,29 +405,35 @@ Orchestrates all search types:
 
 ```typescript
 // Basic substring search
-const results = await ctx.searchManager.search('TypeScript', {
+const results = await ctx.searchManager.searchNodes('TypeScript', {
   tags: ['programming'],
   minImportance: 5
 });
 
-// TF-IDF ranked search
-const ranked = await ctx.searchManager.searchRanked('TypeScript programming', {
-  limit: 10,
-  minScore: 0.5
-});
+// TF-IDF ranked search (canonical home: ctx.rankedSearch)
+const ranked = await ctx.rankedSearch.searchNodesRanked(
+  'TypeScript programming',
+  undefined, // tags
+  undefined, // minImportance
+  undefined, // maxImportance
+  10         // limit
+);
+ranked.forEach(r => console.log(`${r.entity.name} (score: ${r.score})`));
 
 // Boolean search with operators
 const boolean = await ctx.searchManager.booleanSearch(
   'name:TypeScript AND (type:language OR observation:Microsoft)'
 );
 
-// Fuzzy search (typo-tolerant)
-const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', {
-  threshold: 0.7  // 0.0-1.0, higher = stricter
-});
+// Fuzzy search (typo-tolerant) - threshold is a positional number, not an
+// options-object field: fuzzySearch(query, threshold, tags?, minImportance?, maxImportance?)
+const fuzzy = await ctx.searchManager.fuzzySearch('Typscript', 0.7); // 0.0-1.0, higher = stricter
 
-// Smart search with query analysis
-const smart = await ctx.searchManager.smartSearch('What languages compile to JavaScript?');
+// Automatic search - analyzes the query and selects the best strategy
+// (basic/ranked/boolean/fuzzy); returns { results, selectedMethod, selectionReason }
+const auto = await ctx.searchManager.autoSearch('What languages compile to JavaScript?');
+console.log(auto.selectedMethod, auto.selectionReason);
+auto.results.forEach(r => console.log(r.entity.name, r.score));
 ```
 
 #### Search Strategies Comparison
@@ -447,27 +453,28 @@ const smart = await ctx.searchManager.smartSearch('What languages compile to Jav
 Three-layer hybrid search combining multiple signals:
 
 ```typescript
-const hybrid = await ctx.searchManager.hybridSearch('machine learning concepts', {
-  weights: {
-    semantic: 0.4,  // Vector similarity
-    lexical: 0.4,   // TF-IDF text matching
-    symbolic: 0.2   // Metadata filtering
-  },
-  filters: {
+// hybridSearchManager.search() takes the loaded graph, the query, and a
+// weights/filters options object; it returns HybridSearchResult[] directly
+// (not wrapped in a `.results` property).
+const graph = await ctx.storage.loadGraph();
+const hybrid = await ctx.hybridSearchManager.search(graph, 'machine learning concepts', {
+  semanticWeight: 0.4,  // Vector similarity
+  lexicalWeight: 0.4,   // TF-IDF text matching
+  symbolicWeight: 0.2,  // Metadata filtering
+  symbolic: {
     tags: ['ai', 'ml'],
-    minImportance: 3,
+    importance: { min: 3 },
     entityTypes: ['concept', 'technology']
   },
-  limit: 20,
-  minScore: 0.3
+  limit: 20
 });
 
-// Results include layer breakdown
-hybrid.results.forEach(r => {
-  console.log(`${r.entity.name}: ${r.score}`);
-  console.log(`  Semantic: ${r.layerScores.semantic}`);
-  console.log(`  Lexical: ${r.layerScores.lexical}`);
-  console.log(`  Symbolic: ${r.layerScores.symbolic}`);
+// Results include per-layer score breakdown
+hybrid.forEach(r => {
+  console.log(`${r.entity.name}: ${r.scores.combined}`);
+  console.log(`  Semantic: ${r.scores.semantic}`);
+  console.log(`  Lexical: ${r.scores.lexical}`);
+  console.log(`  Symbolic: ${r.scores.symbolic}`);
 });
 ```
 
@@ -1074,9 +1081,9 @@ const ctx = new ManagerContext('./memory.db');
 Query
   │
   ▼
-┌─────────────────────────────────────────┐
-│ 1. SearchManager.search(query, options) │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│ 1. SearchManager.searchNodes(query, options) │
+└─────────────────────────────────────────────┘
   │
   ▼
 ┌─────────────────────────────────────────┐
@@ -1197,18 +1204,17 @@ for (const entity of entities) {
 
 ```typescript
 // Graph is cached after first load
-const results1 = await ctx.searchManager.search('query1'); // Loads from disk
-const results2 = await ctx.searchManager.search('query2'); // Uses cache
+const results1 = await ctx.searchManager.searchNodes('query1'); // Loads from disk
+const results2 = await ctx.searchManager.searchNodes('query2'); // Uses cache
 ```
 
 #### 3. Filter Early
 
 ```typescript
 // Apply filters to reduce processing
-await ctx.searchManager.search('query', {
+await ctx.searchManager.searchNodes('query', {
   tags: ['important'],
-  minImportance: 5,
-  entityType: 'project'
+  minImportance: 5
 });
 ```
 
@@ -1520,12 +1526,12 @@ try {
 
 | Need | Strategy |
 |------|----------|
-| Simple text match | `search()` |
-| Relevance ranking | `searchRanked()` |
-| Complex logic | `booleanSearch()` |
-| Typo tolerance | `fuzzySearch()` |
-| Semantic meaning | `semanticSearch()` (requires embeddings) |
-| Combined signals | `hybridSearch()` |
+| Simple text match | `searchManager.searchNodes()` |
+| Relevance ranking | `rankedSearch.searchNodesRanked()` |
+| Complex logic | `searchManager.booleanSearch()` |
+| Typo tolerance | `searchManager.fuzzySearch()` |
+| Semantic meaning | `semanticSearch.search()` (requires embeddings) |
+| Combined signals | `hybridSearchManager.search()` |
 
 ### 4. Index for Semantic Search
 
@@ -1562,7 +1568,7 @@ const ctx = new ManagerContext('./memory.db');
 
 ```typescript
 console.time('search');
-const results = await ctx.searchManager.search(query);
+const results = await ctx.searchManager.searchNodes(query);
 console.timeEnd('search');
 
 // Use memory monitor for large operations
@@ -1641,13 +1647,13 @@ await exporter.exportToFile('./export.json', {
 const ctx = new ManagerContext('./memory.db');
 
 // 2. Add filters to reduce result set
-await ctx.searchManager.search(query, {
+await ctx.searchManager.searchNodes(query, {
   tags: ['relevant'],
   minImportance: 5
 });
 
-// 3. Use limit parameter
-await ctx.searchManager.searchRanked(query, { limit: 10 });
+// 3. Use limit parameter (limit is positional on searchNodesRanked)
+await ctx.rankedSearch.searchNodesRanked(query, undefined, undefined, undefined, 10);
 ```
 
 ---
