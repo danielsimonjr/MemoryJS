@@ -25,6 +25,14 @@
 >   unbounded validity (matches pre-v1.14 behavior). New optional
 >   `AgentEntity` fields (`allowedRoles`, `visibleFrom`, `visibleUntil`)
 >   for visibility expansion; absent ⇒ no extra gating.
+> - **v1.14.0 → Unreleased (knowledge-graph-as-core convergence)** — New
+>   optional `Entity.id` (stable UUID, backfilled automatically); new
+>   `EntityManager.renameEntity()` / `listEntities()`; `GraphEventEmitter`
+>   parity on `SQLiteStorage`; graph-connectivity signals in search/salience/decay
+>   (all default-off); agent-memory blob-to-graph decomposition for
+>   procedures/work-threads/session-checkpoints (auto-migrates on read).
+>   See [Storage-Shape & Constructor Changes](#storage-shape--constructor-changes-v1140--unreleased)
+>   below for details.
 >
 > No breaking changes have been introduced through Unreleased. SQLite
 > migrations are idempotent — running an older `dist/` against a newer
@@ -40,11 +48,12 @@ Guide for migrating between versions, storage backends, and from other knowledge
 1. [Version Migration](#version-migration)
 2. [Storage Backend Migration](#storage-backend-migration)
 3. [Data Format Migration](#data-format-migration)
-4. [Migrating from Other Solutions](#migrating-from-other-solutions)
-5. [Breaking Changes Reference](#breaking-changes-reference)
-6. [Migration Scripts](#migration-scripts)
-7. [Rollback Procedures](#rollback-procedures)
-8. [Testing Migrations](#testing-migrations)
+4. [Storage-Shape & Constructor Changes (v1.14.0 → Unreleased)](#storage-shape--constructor-changes-v1140--unreleased)
+5. [Migrating from Other Solutions](#migrating-from-other-solutions)
+6. [Breaking Changes Reference](#breaking-changes-reference)
+7. [Migration Scripts](#migration-scripts)
+8. [Rollback Procedures](#rollback-procedures)
+9. [Testing Migrations](#testing-migrations)
 
 ---
 
@@ -324,6 +333,119 @@ async function deduplicateObservations(storagePath: string) {
   console.log(`Removed ${deduped} duplicate observations`);
 }
 ```
+
+---
+
+## Storage-Shape & Constructor Changes (v1.14.0 → Unreleased)
+
+The "knowledge-graph-as-core convergence" batch decomposes several
+agent-memory managers from opaque JSON-blob observations into real
+graph structure (entities + relations), and adds stable entity identity.
+**All of this is backwards-compatible and mostly automatic** — no
+migration script is required for normal usage. This section documents
+what changed under the hood and the one case (direct construction of
+`ProcedureManager` / `SessionCheckpointManager` outside `ManagerContext`)
+that needs a one-line update.
+
+### Legacy blob auto-migration (lazy, on read)
+
+Three agent-memory managers used to store their state as a single JSON
+blob inside an observation string. They now persist it as first-class
+entities linked by relations, which makes the content queryable and
+traversable (searchable by `SearchManager`, walkable by `GraphTraversal`,
+etc.):
+
+| Manager | Old shape | New shape |
+|---|---|---|
+| `ProcedureStore` / `ProcedureManager` | `[procedure-steps]:` / `[procedure-meta]:` JSON observations | `procedure-step` entities (`${procId}::step-${order}`) linked via `has_step` / `precedes` / `has_fallback` |
+| `WorkThreadManager` | Entire thread as one `JSON.stringify` observation | Scalar `[title]` / `[status]` / `[owner]` / `[priority]` / `[created-at]` / `[updated-at]` lines + `[meta]:` key=value lines; `parentId`/`blockedBy` rehydrated from `child_of` / `blocked_by` relations |
+| `SessionCheckpointManager` | `[CHECKPOINT] {json}` observations | `session-checkpoint` entities (`parentId` = session) with `[session-id]` / `[label]` / `[created-at]` scalar lines + per-item `[working-memory]` / `[decay]` / `[meta]` lines, linked via `has_checkpoint` + `snapshots` |
+
+You do not need to do anything: legacy blob entities are detected and
+migrated **automatically the first time they're read** (`ProcedureStore.load()`,
+`WorkThreadManager.load()`, checkpoint reads). The old `decodeProcedure` /
+`decodeLegacyWorkThread` / `decodeLegacyCheckpoint` decoders remain
+exported (`@deprecated`) for anything that still needs to read the raw
+legacy encoding directly.
+
+If you'd rather migrate everything up front (e.g. before a bulk export,
+or to avoid the one-time per-entity migration cost on first read), each
+manager exports a bulk migrator:
+
+```typescript
+import {
+  migrateLegacyProcedures,
+  migrateLegacyWorkThreads,
+  migrateLegacySessionCheckpoints,
+} from '@danielsimonjr/memoryjs';
+
+const ctx = new ManagerContext('./agent-memory.jsonl');
+
+const proceduresMigrated = await migrateLegacyProcedures(
+  ctx.entityManager,
+  ctx.relationManager,
+);
+const threadsMigrated = await migrateLegacyWorkThreads(ctx.storage);
+const checkpointsMigrated = await migrateLegacySessionCheckpoints(
+  ctx.entityManager,
+  ctx.relationManager,
+);
+
+console.log({ proceduresMigrated, threadsMigrated, checkpointsMigrated });
+```
+
+Each returns the count of legacy records it converted. Running them
+again is a no-op (nothing left to migrate).
+
+### SQLite `id` column auto-migration
+
+`Entity.id` (a stable, opaque UUID assigned at creation and preserved
+across updates/renames) is new in this batch. Existing SQLite databases
+gain the `id` column automatically at `SQLiteStorage` construction —
+existing rows backfill with `NULL` and new rows get a `crypto.randomUUID()`
+value going forward. JSONL entities pick up `id` the next time they're
+created or rewritten. No action required; `name` remains the public key
+that all existing code should keep using.
+
+### `ProcedureManager` / `SessionCheckpointManager` direct-construction changes
+
+**If you use `ManagerContext` (`ctx.procedureManager`, `ctx.agentMemory()`),
+nothing changes** — the facade was updated to pass the new constructor
+arguments for you.
+
+If you construct either manager directly (bypassing `ManagerContext`),
+update the call site:
+
+```typescript
+// ProcedureManager — now takes EntityManager + RelationManager instead of
+// a storage handle, since procedures persist as graph structure.
+// Before:
+// const procedures = new ProcedureManager(storage);
+// After:
+import { ProcedureManager } from '@danielsimonjr/memoryjs';
+const procedures = new ProcedureManager(
+  ctx.entityManager,
+  ctx.relationManager,
+  { successRateAlpha: 0.2 }, // optional config, unchanged defaults
+);
+
+// SessionCheckpointManager — gained EntityManager + RelationManager
+// parameters (checkpoints persist as `session-checkpoint` entities).
+// Before:
+// const checkpoints = new SessionCheckpointManager(storage, workingMemoryManager, decayEngine);
+// After:
+import { SessionCheckpointManager } from '@danielsimonjr/memoryjs';
+const checkpoints = new SessionCheckpointManager(
+  ctx.storage,
+  workingMemoryManager,
+  decayEngine,
+  ctx.entityManager,
+  ctx.relationManager,
+);
+```
+
+`WorkThreadManager`'s constructor is unchanged (`new WorkThreadManager(storage)`)
+— only its internal storage shape changed.
 
 ---
 

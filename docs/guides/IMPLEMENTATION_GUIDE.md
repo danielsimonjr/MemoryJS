@@ -270,6 +270,16 @@ await ctx.entityManager.setImportance('Alice', 8);
 
 // Delete entities (cascades to relations)
 await ctx.entityManager.deleteEntities(['Alice']);
+
+// Rename an entity in place — atomically rewrites relation endpoints,
+// children's parentId, and version-chain fields; remaps RefIndex aliases.
+// Replaces the old delete-then-recreate-then-relink workaround.
+const renamed = await ctx.entityManager.renameEntity('Alice', 'Alice Chen');
+
+// Bulk enumeration (public API — avoids reaching into private storage).
+// `entityType` filter takes the TypeIndex fast path.
+const allEntities = await ctx.entityManager.listEntities();
+const people = await ctx.entityManager.listEntities({ entityType: 'person' });
 ```
 
 **Key Features**:
@@ -279,6 +289,8 @@ await ctx.entityManager.deleteEntities(['Alice']);
 - Batch operations (single I/O cycle)
 - Zod schema validation
 - Event emission for TF-IDF sync
+- `renameEntity()` / `listEntities()` — atomic rename with reference
+  rewriting, and public bulk enumeration (both backends)
 
 #### RelationManager (`src/core/RelationManager.ts`)
 
@@ -364,6 +376,11 @@ await ctx.graphTraversal.bfs('Alice', (node, depth) => {
 - WAL mode for better concurrency
 - ACID transactions
 - 3-10x faster than JSONL for large graphs
+- Full `GraphEventEmitter` parity with `GraphStorage` (`storage.events`) —
+  derived views like `TFIDFEventSync` and `GraphRankPrior` stay in sync on
+  either backend, not just JSONL
+- `id` column auto-added (with NULL backfill) on existing databases at
+  construction time — no manual migration needed
 
 ```typescript
 // Storage selection via file extension
@@ -452,6 +469,34 @@ hybrid.results.forEach(r => {
   console.log(`  Lexical: ${r.layerScores.lexical}`);
   console.log(`  Symbolic: ${r.layerScores.symbolic}`);
 });
+```
+
+#### Graph-connectivity channel (Unreleased, @experimental, opt-in)
+
+`HybridSearchManager` has a fourth, optional `graph` channel — a
+normalized-PageRank ranking signal via `GraphRankPrior` — plus one-hop
+neighbor expansion. Both are entirely additive and default to off:
+
+```typescript
+// Zero code changes needed: set MEMORY_HYBRID_GRAPH_WEIGHT=0.15 and
+// ctx.hybridSearchManager attaches the GraphRankPrior automatically.
+const graph = await ctx.storage.loadGraph();
+const results = await ctx.hybridSearchManager.search(graph, 'machine learning frameworks', {
+  semanticWeight: 0.4,
+  lexicalWeight: 0.4,
+  symbolicWeight: 0.2,
+  graphWeight: 0.15,               // per-call override; env-configured by default
+  expandNeighbors: { hops: 1, topK: 10 }, // append well-connected one-hop neighbors
+});
+
+results.forEach(r => {
+  console.log(r.entity.name, r.scores.combined, r.matchedLayers);
+  // matchedLayers may include 'graph'; r.scores.graph carries the raw signal
+});
+
+// RankedSearch also supports a standalone PageRank boost
+// (MEMORY_RANKED_GRAPH_BOOST, or ctx.rankedSearch.setGraphPrior(prior, boost)):
+// score × (1 + boost × normalizedPageRank), no HybridSearchManager required.
 ```
 
 #### SemanticSearch (`src/search/SemanticSearch.ts`)
@@ -891,6 +936,9 @@ interface Entity {
   name: string;              // Unique identifier (1-500 chars)
   entityType: string;        // Category (e.g., "person", "project")
   observations: string[];    // Free-form text descriptions
+  id?: string;                // Stable opaque UUID, assigned at creation
+                              // (preserved across updates/renames on both
+                              // backends). `name` remains the public key.
   parentId?: string;         // Hierarchical parent (optional)
   tags?: string[];           // Categories (lowercase, max 50)
   importance?: number;       // Priority 0-10 (optional)
@@ -898,6 +946,11 @@ interface Entity {
   lastModified?: string;     // ISO 8601 timestamp (auto-updated)
 }
 ```
+
+> `Entity` has grown several more optional fields over time (`ttl`,
+> `confidence`, `projectId`, versioning fields, `contentHash`, bitemporal
+> `validFrom`/`validUntil`) — see `src/types/types.ts` for the full,
+> current interface. All are additive and default to `undefined`.
 
 ### Relation (Graph Edge)
 
@@ -1008,6 +1061,7 @@ const ctx = new ManagerContext('./memory.db');
 | Write Speed | Full rewrite | Incremental |
 | Concurrent Access | Limited | WAL mode |
 | Full-Text Search | In-memory | FTS5 BM25 |
+| `GraphEventEmitter` events | Yes | Yes (full parity) |
 | Best For | <2K entities | >2K entities |
 
 ---

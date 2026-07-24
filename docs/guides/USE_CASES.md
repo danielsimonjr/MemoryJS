@@ -2179,6 +2179,39 @@ const json = ctx.ioManager.exportGraph(cleanGraph, 'json');
 
 **Key features:** η.6.3 — `PiiRedactor` (export-only; never mutates storage).
 
+### 18. Graph-Connectivity-Aware Retrieval
+
+Bias search results toward well-connected ("hub") entities and pull in
+their close neighbors, without abandoning text relevance — useful when
+the most-cited or most-linked-to entities are usually the ones worth
+surfacing first (e.g. a "canonical docs page" vs. a passing mention).
+
+```typescript
+const ctx = new ManagerContext({ storagePath: './kb.jsonl' });
+
+// Off by default; enable with MEMORY_HYBRID_GRAPH_WEIGHT, or per-call below.
+const graph = await ctx.storage.loadGraph();
+const results = await ctx.hybridSearchManager.search(graph, 'authentication flow', {
+  semanticWeight: 0.4,
+  lexicalWeight: 0.4,
+  symbolicWeight: 0.2,
+  graphWeight: 0.15,                       // normalized-PageRank channel
+  expandNeighbors: { hops: 1, topK: 10 },  // pull in top results' neighbors
+});
+
+for (const r of results) {
+  console.log(r.entity.name, r.scores.combined.toFixed(3), r.matchedLayers);
+}
+
+// GraphRankPrior invalidates itself on entity/relation/rename events and
+// on graph:saved — no manual cache-busting needed as the graph changes.
+```
+
+**Key features:** knowledge-graph-as-core convergence — `GraphRankPrior`
+(cached, event-invalidated PageRank), `HybridSearchManager`'s `graph`
+channel + `expandNeighbors`, `RankedSearch.setGraphPrior` (a simpler
+single-channel alternative via `MEMORY_RANKED_GRAPH_BOOST`).
+
 ### Summary table — new use cases (v1.7 → Unreleased)
 
 | Use Case | Key Features Used |
@@ -2191,3 +2224,4 @@ const json = ctx.ioManager.exportGraph(cleanGraph, 'json');
 | Active Retrieval | 3B.5 (ActiveRetrievalController) |
 | Compliant PII-Aware Export | η.6.3 (PiiRedactor) |
 | RBAC-Gated Multi-Tenant KB | η.6.1 (RbacMiddleware + RoleAssignmentStore) |
+| Graph-Connectivity-Aware Retrieval | GraphRankPrior + HybridSearchManager graph channel |
