@@ -64,11 +64,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # NOTE: deliberately NO `registry-url:` here. setup-node's registry-url
+      # writes an .npmrc containing `_authToken=${NODE_AUTH_TOKEN}`; with no
+      # token set, npm takes the TOKEN auth path with an empty value, fails
+      # with E404, and never attempts the OIDC exchange. registry.npmjs.org is
+      # already the default registry, so dropping this loses nothing.
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          registry-url: "https://registry.npmjs.org"
 
       # Install with the NODE-BUNDLED npm (10.x) — deliberately BEFORE the npm
       # upgrade below. npm 11 blocks dependency install scripts by default
@@ -84,6 +88,16 @@ jobs:
       # Upgraded AFTER install for the reason above.
       - name: Upgrade npm for trusted publishing (requires >= 11.5.1)
         run: npm install -g npm@latest
+
+      # Fail loudly if the upgrade did not take effect in this shell, and show
+      # any auth config that could shadow OIDC. Cheap insurance: a silent npm
+      # 10.x here means trusted publishing is never even attempted.
+      - name: Verify publish preconditions
+        run: |
+          echo "npm version: $(npm --version)"
+          node -e "const v=process.env.npm_config_user_agent||'';const m=require('child_process').execSync('npm --version').toString().trim();const [maj,min]=m.split('.').map(Number);if(maj<11||(maj===11&&min<5)){console.error('npm '+m+' is below the 11.5.1 required for trusted publishing');process.exit(1)}console.log('npm '+m+' OK for trusted publishing')"
+          echo "--- npm auth config (should show NO _authToken) ---"
+          npm config list | grep -iE "registry|_auth|userconfig" || true
 
       # Publishes via npm TRUSTED PUBLISHING (OIDC) — no NPM_TOKEN needed.
       # GitHub mints a short-lived, workflow-scoped credential using the
