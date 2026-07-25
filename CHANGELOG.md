@@ -40,6 +40,39 @@ consolidation, queryable provenance, ingest modes, audit/doctor CLI).
 
 ### Fixed
 
+- **`ManagerContext.close()` — the facade had no way to release the storage
+  handle.** `SQLiteStorage.close()` existed, but nothing on `ManagerContext`
+  called or exposed it, so a consumer using the SQLite backend through the
+  facade could never release `mem.db` / `-wal` / `-shm`. POSIX permits
+  unlinking an open file, so this was invisible on Linux/macOS; **on Windows
+  it made the database undeletable/unmovable (`EBUSY`)** and leaked a handle
+  per context in long-running processes. `close()` delegates to the backend
+  when it supports it (duck-typed) and is a safe, idempotent no-op for the
+  JSONL backend.
+- **Windows-only test failures across three separate cross-platform bugs**
+  (all green on Linux CI, all failing on Windows — these paths had never been
+  exercised on Windows):
+  - `governance-enforcement` teardown removed the temp dir without closing the
+    context → `EBUSY: unlink mem.db`. Now closes every tracked context first
+    (uses the new `ManagerContext.close()`).
+  - `sqlite-lazy-load` shelled out via `execFileSync('npx', …)`; `execFileSync`
+    spawns no shell and Windows `npx` is `npx.cmd`, resolvable only through
+    PATHEXT → `spawnSync npx ENOENT`. Now invokes the locally-installed `tsx`
+    CLI through `process.execPath`, which is also deterministic (pinned
+    devDependency, never a network fetch) and skips npx's resolution overhead.
+  - the same test's probe `import()`ed a bare absolute path; the ESM loader
+    requires a `file://` URL on Windows → `ERR_UNSUPPORTED_ESM_URL_SCHEME`.
+    Now uses `pathToFileURL()`.
+- **Flaky `ObservationColumnStore` sidecar assertion**: the column store
+  mirrors writes from a `GraphEventEmitter` subscription (fire-and-forget), so
+  awaiting `addObservations` does not guarantee the sidecar has flushed. The
+  test read it immediately and intermittently saw an empty file under parallel
+  I/O load. Now polls, matching the existing `waitForAudit` pattern.
+- **`tsx` promoted to an explicit devDependency**: the test suite already
+  required it, but only implicitly via `npx`, i.e. a network fetch at test time.
+- **Security: `brace-expansion` 5.0.7 → 5.0.8** (GHSA-mh99-v99m-4gvg, high —
+  DoS via unbounded expansion). Transitive through `eslint → minimatch`, so
+  dev-only and never shipped to consumers, but it hard-failed the CI audit gate.
 - **Lazy `better-sqlite3` load (S9 completion)**: the native addon is now
   loaded via `createRequire` on first `SQLiteStorage` instantiation rather
   than at module evaluation, so importing the root/core package entry no

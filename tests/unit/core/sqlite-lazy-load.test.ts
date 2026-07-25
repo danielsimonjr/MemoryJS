@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 /**
  * Regression test for the lazy better-sqlite3 load (S9 follow-up).
@@ -25,8 +26,15 @@ describe('SQLiteStorage lazy native-addon load', () => {
         return Object.keys(require.cache).some((k) => k.includes('better-sqlite3'));
       }
       (async () => {
-        // Import the source module via tsx's loader.
-        const mod = await import(process.cwd() + '/src/core/SQLiteStorage.ts');
+        // Import the source module via tsx's loader. Absolute paths must be
+        // file:// URLs for the ESM loader — a bare Windows path ('C:\\...')
+        // fails with ERR_UNSUPPORTED_ESM_URL_SCHEME ("Received protocol 'c:'"),
+        // while a POSIX '/abs/path' happens to work. pathToFileURL is correct
+        // on both.
+        const { pathToFileURL } = require('node:url');
+        const mod = await import(
+          pathToFileURL(process.cwd() + '/src/core/SQLiteStorage.ts').href
+        );
         const afterImport = loaded();
         // Instantiate against a temp file and force initialize via a write path.
         const os = require('os');
@@ -38,9 +46,17 @@ describe('SQLiteStorage lazy native-addon load', () => {
         process.stdout.write(JSON.stringify({ afterImport, afterUse }));
       })().catch((e) => { process.stderr.write(String(e)); process.exit(1); });
     `;
+    // Invoke the locally-installed tsx CLI through `process.execPath` rather
+    // than `npx tsx`. `execFileSync` does not spawn a shell, and on Windows
+    // `npx` is `npx.cmd` — resolvable only via PATHEXT — so the npx form died
+    // with `spawnSync npx ENOENT` on Windows while passing on POSIX. Running
+    // the CLI directly is also deterministic (uses the pinned devDependency,
+    // never a network fetch) and skips npx's resolution overhead.
+    const require = createRequire(import.meta.url);
+    const tsxCli = require.resolve('tsx/cli');
     const out = execFileSync(
-      'npx',
-      ['tsx', '-e', script],
+      process.execPath,
+      [tsxCli, '-e', script],
       { cwd: process.cwd(), encoding: 'utf8', timeout: 60000 },
     );
     const result = JSON.parse(out.trim().split('\n').pop() as string);

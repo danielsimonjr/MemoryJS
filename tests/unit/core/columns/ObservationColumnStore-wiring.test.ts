@@ -12,6 +12,38 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+
+/**
+ * Poll `path` until its contents include `needle`.
+ *
+ * The column store mirrors observation writes from a `GraphEventEmitter`
+ * subscription (fire-and-forget), so the sidecar file is written slightly
+ * after the awaited primary write returns. Mirrors the `waitForAudit` helper
+ * used for the equally fire-and-forget audit log.
+ */
+async function waitForFileContaining(
+  path: string,
+  needle: string,
+  timeoutMs = 2000,
+): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  let content = '';
+  for (;;) {
+    try {
+      content = await fs.readFile(path, 'utf-8');
+    } catch {
+      content = ''; // file may not exist yet
+    }
+    if (content.includes(needle)) return content;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `waitForFileContaining timed out after ${timeoutMs}ms waiting for ` +
+          `"${needle}" in ${path}; have ${content.length} bytes`,
+      );
+    }
+    await new Promise((r) => setTimeout(r, 20));
+  }
+}
 import { ManagerContext } from '../../../../src/core/ManagerContext.js';
 import { ObservationManager } from '../../../../src/core/ObservationManager.js';
 import { GraphStorage } from '../../../../src/core/GraphStorage.js';
@@ -213,9 +245,15 @@ describe('ManagerContext.observationColumnStore env-gating', () => {
       { entityName: 'alice', contents: ['o1', 'o2'] },
     ]);
 
-    const sidecarContent = await fs.readFile(
+    // The column store mirrors writes via a GraphEventEmitter subscription —
+    // a fire-and-forget side effect. `await addObservations` only guarantees
+    // the PRIMARY write; the sidecar may not have flushed yet. Reading it
+    // immediately raced under parallel-suite I/O load and intermittently saw
+    // an empty file ("expected '' to contain 'alice'"). Poll instead, matching
+    // the waitForAudit pattern used for the audit log.
+    const sidecarContent = await waitForFileContaining(
       join(dir, 'memory-observations.jsonl'),
-      'utf-8',
+      'alice',
     );
     expect(sidecarContent).toContain('alice');
     expect(sidecarContent).toContain('o1');

@@ -1578,6 +1578,35 @@ export class ManagerContext {
     return this._llmSearchExecutor.execute(structured);
   }
 
+  // ==================== Lifecycle ====================
+
+  /**
+   * Release the underlying storage handle.
+   *
+   * The SQLite backend keeps `mem.db`, `mem.db-wal` and `mem.db-shm` open for
+   * the lifetime of the connection. POSIX lets you unlink an open file, so on
+   * Linux/macOS a caller can delete or move the database without closing it —
+   * but **Windows refuses with `EBUSY`**. Without this method a consumer of the
+   * facade had no way to release the handle at all (only the raw
+   * `SQLiteStorage` exposed `close()`), which also leaked a handle per context
+   * in long-running processes.
+   *
+   * Backends are duck-typed: the JSONL `GraphStorage` holds no persistent
+   * handle and exposes no `close()`, so this is a safe no-op there.
+   *
+   * Idempotent — calling it twice is harmless.
+   *
+   * @example
+   * const ctx = new ManagerContext('./memory.db');
+   * try { ... } finally { ctx.close(); }
+   */
+  close(): void {
+    const storage = this.storage as unknown as { close?: () => void };
+    if (typeof storage?.close === 'function') {
+      storage.close();
+    }
+  }
+
   // ==================== Environment Variable Helpers ====================
 
   /**

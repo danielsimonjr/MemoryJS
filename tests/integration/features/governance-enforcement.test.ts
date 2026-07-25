@@ -48,6 +48,11 @@ describe.each(BACKENDS)('governance enforcement — $label', ({ storageType, ext
   let storagePath: string;
   let auditPath: string;
   const savedEnv: Record<string, string | undefined> = {};
+  // Every context created by a test, so afterEach can release the storage
+  // handle before removing the temp dir. The SQLite backend holds mem.db /
+  // -wal / -shm open; Windows refuses to unlink an open file (EBUSY) where
+  // POSIX allows it, so without this the SQLite leg fails only on Windows.
+  const contexts: ManagerContext[] = [];
 
   beforeEach(async () => {
     for (const key of ['MEMORY_GOVERNANCE_ENABLED', 'MEMORY_AUDIT_LOG_FILE', 'MEMORY_STORAGE_TYPE']) {
@@ -66,6 +71,14 @@ describe.each(BACKENDS)('governance enforcement — $label', ({ storageType, ext
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
     }
+    // Release storage handles BEFORE removing the dir — see `contexts` above.
+    for (const ctx of contexts.splice(0)) {
+      try {
+        ctx.close();
+      } catch {
+        /* a context may already be closed; teardown must not mask test failures */
+      }
+    }
     // Let any fire-and-forget audit appends settle before removing the
     // dir (an in-flight append can otherwise recreate audit.jsonl while
     // rm is walking the tree — ENOTEMPTY).
@@ -73,10 +86,16 @@ describe.each(BACKENDS)('governance enforcement — $label', ({ storageType, ext
     await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
   });
 
+  /** Track a context so afterEach closes it. */
+  function track(ctx: ManagerContext): ManagerContext {
+    contexts.push(ctx);
+    return ctx;
+  }
+
   function enabledCtx(): ManagerContext {
     process.env.MEMORY_GOVERNANCE_ENABLED = 'true';
     process.env.MEMORY_AUDIT_LOG_FILE = auditPath;
-    return new ManagerContext(storagePath);
+    return track(new ManagerContext(storagePath));
   }
 
   it('policy denies a high-importance delete through ctx.entityManager', async () => {
@@ -195,7 +214,7 @@ describe.each(BACKENDS)('governance enforcement — $label', ({ storageType, ext
   it('flag unset: policy is never consulted and nothing is audited', async () => {
     // No MEMORY_GOVERNANCE_ENABLED in env.
     process.env.MEMORY_AUDIT_LOG_FILE = auditPath;
-    const ctx = new ManagerContext(storagePath);
+    const ctx = track(new ManagerContext(storagePath));
 
     const canDelete = vi.fn().mockReturnValue(false);
     // Even a manually-set policy is not enforced on plain EntityManager
@@ -213,7 +232,7 @@ describe.each(BACKENDS)('governance enforcement — $label', ({ storageType, ext
   });
 
   it('flag unset: no hook object is installed (zero-overhead path)', async () => {
-    const ctx = new ManagerContext(storagePath);
+    const ctx = track(new ManagerContext(storagePath));
     const em = ctx.entityManager;
     expect((em as unknown as { governanceHooks?: unknown }).governanceHooks).toBeUndefined();
   });
