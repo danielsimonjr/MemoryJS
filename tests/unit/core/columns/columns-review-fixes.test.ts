@@ -14,6 +14,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+
 import { JsonlColumnStore } from '../../../../src/core/columns/JsonlColumnStore.js';
 import {
   InMemoryColumnStore,
@@ -21,6 +22,55 @@ import {
 } from '../../../../src/core/columns/IColumnStore.js';
 import { ManagerContext } from '../../../../src/core/ManagerContext.js';
 import { injectFlushFailure as sharedInjectFlushFailure } from '../../../test-utils/inject-flush-failure.js';
+
+/**
+ * Poll until `read()` satisfies `predicate`.
+ *
+ * The column store mirrors observation writes from a `GraphEventEmitter`
+ * subscription — the listener fires synchronously but does its work async, so
+ * an awaited entity write does NOT guarantee the mirror has landed. A fixed
+ * `setTimeout` race loses under parallel-suite I/O load (these tests used a
+ * flat 50ms and intermittently read a not-yet-written sidecar: `ENOENT` /
+ * stale value). Polling is deterministic and usually far faster.
+ */
+async function waitUntil<T>(
+  read: () => Promise<T>,
+  predicate: (value: T) => boolean,
+  what: string,
+  timeoutMs = 3000,
+): Promise<T> {
+  const deadline = Date.now() + timeoutMs;
+  let last: T | undefined;
+  let lastErr: unknown;
+  for (;;) {
+    try {
+      last = await read();
+      if (predicate(last)) return last;
+    } catch (err) {
+      // Not ready yet (e.g. sidecar file absent) — keep polling, but remember
+      // the error so a timeout reports WHY rather than just "undefined".
+      lastErr = err;
+    }
+    if (Date.now() > deadline) {
+      throw new Error(
+        `waitUntil timed out after ${timeoutMs}ms waiting for ${what}; ` +
+          `last value: ${JSON.stringify(last)}` +
+          (lastErr ? `; last error: ${String(lastErr)}` : ''),
+      );
+    }
+    await new Promise((r) => setTimeout(r, 20));
+  }
+}
+
+/** Poll until `path` exists (same fire-and-forget mirror caveat as above). */
+async function waitForFile(path: string, timeoutMs = 3000): Promise<void> {
+  await waitUntil(
+    async () => fs.access(path).then(() => true).catch(() => false),
+    (ok) => ok,
+    `file to exist: ${path}`,
+    timeoutMs,
+  );
+}
 
 async function makeDir(): Promise<string> {
   const dir = join(tmpdir(), `cols-review-${Date.now()}-${Math.random()}`);
@@ -185,9 +235,20 @@ describe('Review #3 + #12: bypass paths shadow-mirror via events', () => {
     await ctx.entityManager.createEntities([
       { name: 'alice', entityType: 'person', observations: ['inline-1', 'inline-2'] },
     ]);
-    // Allow microtask queue to flush (event listeners are sync-fire-async-work).
-    await new Promise((r) => setTimeout(r, 50));
-    expect(await ctx.observationColumnStore!.get('alice')).toEqual(['inline-1', 'inline-2']);
+    // Listeners fire sync but work async — poll rather than sleep a fixed 50ms.
+    expect(
+      await waitUntil(
+        async () => {
+          // JsonlColumnStore caches and never auto-reloads (see Review #4
+          // tests) — a poll that only calls get() caches an empty map on its
+          // first pass and then never sees the write. Reload each pass.
+          await ctx.observationColumnStore!.reload();
+          return ctx.observationColumnStore!.get('alice');
+        },
+        (v) => JSON.stringify(v) === JSON.stringify(['inline-1', 'inline-2']),
+        "column store to mirror alice's created observations",
+      ),
+    ).toEqual(['inline-1', 'inline-2']);
   });
 
   it('EntityManager.updateEntity with `observations` patch updates the column store', async () => {
@@ -196,12 +257,30 @@ describe('Review #3 + #12: bypass paths shadow-mirror via events', () => {
     await ctx.entityManager.createEntities([
       { name: 'alice', entityType: 'person', observations: ['original'] },
     ]);
-    await new Promise((r) => setTimeout(r, 50));
+    await waitUntil(
+      async () => {
+        await ctx.observationColumnStore!.reload();
+        return ctx.observationColumnStore!.get('alice');
+      },
+      (v) => JSON.stringify(v) === JSON.stringify(['original']),
+      'column store to mirror the initial observations',
+    );
     // Update observations through the entity update path (not
     // ObservationManager.addObservations).
     await ctx.entityManager.updateEntity('alice', { observations: ['updated'] });
-    await new Promise((r) => setTimeout(r, 50));
-    expect(await ctx.observationColumnStore!.get('alice')).toEqual(['updated']);
+    expect(
+      await waitUntil(
+        async () => {
+          // JsonlColumnStore caches and never auto-reloads (see Review #4
+          // tests) — a poll that only calls get() caches an empty map on its
+          // first pass and then never sees the write. Reload each pass.
+          await ctx.observationColumnStore!.reload();
+          return ctx.observationColumnStore!.get('alice');
+        },
+        (v) => JSON.stringify(v) === JSON.stringify(['updated']),
+        'column store to mirror the updated observations',
+      ),
+    ).toEqual(['updated']);
   });
 
   it('updateEntity without `observations` in the patch does NOT touch the column store', async () => {
@@ -210,8 +289,17 @@ describe('Review #3 + #12: bypass paths shadow-mirror via events', () => {
     await ctx.entityManager.createEntities([
       { name: 'alice', entityType: 'person', observations: ['only-via-create'] },
     ]);
-    await new Promise((r) => setTimeout(r, 50));
+    await waitUntil(
+      async () => {
+        await ctx.observationColumnStore!.reload();
+        return ctx.observationColumnStore!.get('alice');
+      },
+      (v) => JSON.stringify(v) === JSON.stringify(['only-via-create']),
+      'column store to mirror the created observations',
+    );
     await ctx.entityManager.updateEntity('alice', { entityType: 'agent' });
+    // NEGATIVE assertion — we must prove the value does NOT change, so a short
+    // settle is legitimate here (there is no event to wait for).
     await new Promise((r) => setTimeout(r, 50));
     // Column store still has the original observations.
     expect(await ctx.observationColumnStore!.get('alice')).toEqual(['only-via-create']);
@@ -237,7 +325,9 @@ describe('Review #14: sidecar path uses hyphen-delimited convention', () => {
     await ctx.entityManager.createEntities([
       { name: 'alice', entityType: 'person', observations: ['hello'] },
     ]);
-    await new Promise((r) => setTimeout(r, 50));
+    // Poll for the sidecar instead of a fixed 50ms sleep — this is the exact
+    // assertion that intermittently failed with ENOENT under load.
+    await waitForFile(join(dir, 'memory-observations.jsonl'));
 
     // The hyphen-delimited path exists.
     await expect(fs.access(join(dir, 'memory-observations.jsonl'))).resolves.toBeUndefined();

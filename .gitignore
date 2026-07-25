@@ -49,3 +49,6 @@ tmpclaude-*-cwd
 
 # Per-developer MCP server registrations (machine-specific paths)
 .mcp.json
+
+# npm auth (references ${NPM_TOKEN}; never commit)
+.npmrc
