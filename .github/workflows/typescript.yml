@@ -70,13 +70,20 @@ jobs:
           cache: npm
           registry-url: "https://registry.npmjs.org"
 
-      # Trusted publishing (OIDC) needs npm >= 11.5.1; Node 22 ships npm 10.x.
-      # Upgrading explicitly keeps this independent of the bundled npm version.
-      - name: Upgrade npm (trusted publishing requires >= 11.5.1)
-        run: npm install -g npm@latest
-
+      # Install with the NODE-BUNDLED npm (10.x) — deliberately BEFORE the npm
+      # upgrade below. npm 11 blocks dependency install scripts by default
+      # ("install scripts blocked because they are not covered by allowScripts"),
+      # which silently skips better-sqlite3's prebuild-install step and leaves
+      # no native addon — every SQLite test then dies with "Could not locate the
+      # bindings file". Installing first keeps the addon; the newer npm is only
+      # needed for the publish command itself.
       - name: Install dependencies
         run: npm ci
+
+      # Trusted publishing (OIDC) needs npm >= 11.5.1; Node 22 ships npm 10.x.
+      # Upgraded AFTER install for the reason above.
+      - name: Upgrade npm for trusted publishing (requires >= 11.5.1)
+        run: npm install -g npm@latest
 
       # Publishes via npm TRUSTED PUBLISHING (OIDC) — no NPM_TOKEN needed.
       # GitHub mints a short-lived, workflow-scoped credential using the
