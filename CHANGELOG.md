@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_(nothing yet)_
+### Removed
+
+- **CI: the `npm publish` job.** Packages are now published from a workstation
+  rather than from GitHub Actions. The job was configured for npm trusted
+  publishing (OIDC), which never matched the trusted-publisher config on
+  npmjs.com, so it would have failed on every future GitHub release. The
+  `release: [published]` trigger went with it — it existed only to fire that
+  job, and without it a release would just re-run CI redundantly.
+
+  The `ci` job (typecheck, lint, test, build, audit, duplicate-symbol check on
+  push and PR) is unchanged and remains the gate. Publishing is now
+  `npm publish` locally with an `NPM_TOKEN`. Trade-off accepted: local
+  publishes ship without a provenance attestation, which requires a CI OIDC
+  context (`--provenance` fails locally with `EUSAGE … provider: null`).
 
 ## [3.0.0] - 2026-07-24
 
