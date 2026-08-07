@@ -138,7 +138,8 @@
     "tools:check-duplicates": "node tools/create-dependency-graph/check-duplicates.mjs",
     "benchmark": "tsx benchmarks/synthetic-bench.ts",
     "audit:plans": "tsx tools/plan-doc-audit/audit.ts",
-    "bench": "vitest run tests/performance"
+    "bench": "vitest run tests/performance",
+    "test:perf": "node -e \"process.env.RUN_PERF='true';require('child_process').execSync('vitest run tests/performance --no-file-parallelism',{stdio:'inherit',env:process.env})\""
   },
   "keywords": [
     "knowledge-graph",
@@ -166,7 +167,7 @@
   "dependencies": {
     "@danielsimonjr/workerpool": "^10.2.0",
     "async-mutex": "^0.5.0",
-    "better-sqlite3": "^11.7.0",
+    "better-sqlite3": "^12.11.1",
     "chalk": "^5.3.0",
     "chrono-node": "^2.9.1",
     "cli-table3": "^0.6.5",

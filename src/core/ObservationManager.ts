@@ -60,6 +60,31 @@ export class ObservationManager {
 
   constructor(private storage: GraphStorage) {}
 
+  /**
+   * Tail of a SERIAL chain of shadow column-store writes.
+   *
+   * A set of concurrent promises would make them drainable but still unordered, and
+   * order is the whole point for a mirror: deleting an entity emits both
+   * `entity:deleted` (drop the column) and `graph:saved` (resync from storage). Run
+   * concurrently, whichever finished last decided the outcome — and a resync holding
+   * a graph snapshot taken before the delete persisted would resurrect the entity as
+   * a ghost observation. Chaining executes handlers in EMISSION order, so the resync
+   * always reads storage as it stands after the delete.
+   */
+  private shadowWriteChain: Promise<void> = Promise.resolve();
+
+  /** Outstanding links in that chain, so `drainShadowWrites` knows when it is idle. */
+  private pendingShadowWrites = 0;
+
+  /**
+   * True while a `graph:saved` resync is queued but has not yet started.
+   *
+   * A resync reads whatever storage holds when it RUNS, so N queued resyncs all do
+   * the identical full-graph mirror -- N-1 of them are pure waste, and each is O(N)
+   * in entities. Coalescing keeps a burst of saves to one resync.
+   */
+  private resyncQueued = false;
+
   /** Unsubscribe handle from `setColumnStore` event subscription. Null when no store attached. */
   private columnStoreUnsubscribe: (() => void) | null = null;
 
@@ -112,7 +137,10 @@ export class ObservationManager {
       emitter.on('entity:created', (event: EntityCreatedEvent) => {
         // Async-but-not-awaited: the EventEmitter listener signature
         // is sync. Errors inside shadowWriteColumn already log + swallow.
-        void this.shadowWriteColumn(event.entity.name, event.entity.observations);
+        // Tracked so drainShadowWrites (and therefore shutdown) can await it.
+        this.trackShadowWrite(() =>
+          this.shadowWriteColumn(event.entity.name, event.entity.observations),
+        );
       }),
       emitter.on('entity:updated', (event: EntityUpdatedEvent) => {
         // Only react when the change touches observations.
@@ -121,18 +149,25 @@ export class ObservationManager {
         // layer just persisted it. Pull fresh via getEntityByName.
         const entity = this.storage.getEntityByName(event.entityName);
         if (entity) {
-          void this.shadowWriteColumn(entity.name, entity.observations);
+          this.trackShadowWrite(() =>
+            this.shadowWriteColumn(entity.name, entity.observations),
+          );
         }
       }),
       emitter.on('entity:deleted', (event: EntityDeletedEvent) => {
         // Drop the column entry so getObservationsFor stops returning
         // ghost observations for the deleted entity (review #2).
         if (this.columnStore !== null) {
-          void this.columnStore.delete(event.entityName).catch((err) => {
-            logger.warn(
-              `[ObservationManager] Column-store shadow delete failed for "${event.entityName}": ${(err as Error).message}.`,
-            );
-          });
+          this.trackShadowWrite(() =>
+            this.columnStore!.delete(event.entityName).then(
+              () => undefined,
+              (err: unknown) => {
+                logger.warn(
+                  `[ObservationManager] Column-store shadow delete failed for "${event.entityName}": ${(err as Error).message}.`,
+                );
+              },
+            ),
+          );
         }
       }),
       // Bulk-save paths (`createEntities`, `IOManager.importJSON`,
@@ -145,7 +180,17 @@ export class ObservationManager {
       // but bulk saves are infrequent (interactive paths use
       // `appendEntity` which emits per-entity events).
       emitter.on('graph:saved', (_event: GraphSavedEvent) => {
-        void this.resyncFromStorage();
+        // Tracked too: bulk paths (createEntities, importJSON) come through here and
+        // NOT through entity:created, so a drain covering only per-entity events
+        // would report "settled" while a whole bulk load was still in flight.
+        // Coalesce: if a resync is already waiting its turn, it will read storage as
+        // it stands when it runs, so it already covers this save too.
+        if (this.resyncQueued) return;
+        this.resyncQueued = true;
+        this.trackShadowWrite(() => {
+          this.resyncQueued = false;
+          return this.resyncFromStorage();
+        });
       }),
     ];
     this.columnStoreUnsubscribe = () => {
@@ -173,6 +218,12 @@ export class ObservationManager {
    */
   async getObservationsFor(name: string): Promise<string[]> {
     if (this.columnStore !== null) {
+      // Settle the mirror first. The column store is written asynchronously from
+      // event listeners, so reading it without draining can return state from before
+      // a just-completed delete or update — a ghost observation for an entity the
+      // caller already removed. Callers must not have to know the mirror exists to
+      // get a consistent read back from an awaited public API.
+      await this.drainShadowWrites();
       const col = await this.columnStore.get(name);
       if (col !== undefined) return [...col];
     }
@@ -197,9 +248,17 @@ export class ObservationManager {
     if (this.columnStore === null) return;
     try {
       const graph = await this.storage.loadGraph();
-      for (const entity of graph.entities) {
-        await this.shadowWriteColumn(entity.name, entity.observations);
-      }
+      // ONE batchPut, not N puts. `JsonlColumnStore.flush` rewrites the entire
+      // sidecar on every mutation, so a per-entity loop costs N whole-file writes
+      // per resync -- and a resync fires on every save, making 2000 sequential
+      // creates O(N^2) file rewrites. Measured: that loop took a 2000-entity
+      // benchmark from seconds to over a minute. batchPut flushes once.
+      await this.columnStore.batchPut(
+        graph.entities.map((entity) => ({
+          name: entity.name,
+          value: [...entity.observations] as ObservationColumn,
+        })),
+      );
     } catch (err) {
       logger.warn(
         `[ObservationManager] Column-store resync from storage failed: ${(err as Error).message}.`,
@@ -225,6 +284,54 @@ export class ObservationManager {
       logger.warn(
         `[ObservationManager] Column-store shadow write failed for "${name}": ${(err as Error).message}. Inline observations are authoritative.`,
       );
+    }
+  }
+
+  /**
+   * Track an in-flight shadow write so `drainShadowWrites` can await it.
+   *
+   * The mirror is driven by SYNCHRONOUS EventEmitter listeners, so the promises they
+   * start cannot be returned to the caller. Keeping the handles here is the only way
+   * anything downstream can know the mirror has settled.
+   */
+  private trackShadowWrite(start: () => Promise<void>): void {
+    this.pendingShadowWrites++;
+    // Chain, do not fan out. `start` is a thunk so the work does not begin until its
+    // turn — passing an already-started promise would defeat the ordering entirely.
+    this.shadowWriteChain = this.shadowWriteChain
+      .then(start, start)
+      .catch(() => undefined)
+      .finally(() => {
+        this.pendingShadowWrites--;
+      });
+  }
+
+  /**
+   * Resolve once every shadow column-store write started so far has settled.
+   *
+   * Exists because the mirror is fire-and-forget: `void this.shadowWriteColumn(...)`
+   * inside a sync event listener discards the promise, so previously NOTHING could
+   * observe completion. Two consequences, one visible and one not:
+   *
+   *   - `ManagerContext.close()` could not wait for in-flight mirror writes, so a
+   *     process that recorded an observation and exited promptly could lose the
+   *     sidecar update with nothing reported. That is a durability bug, not a test
+   *     concern.
+   *   - tests had to poll for the sidecar with a timeout, which failed intermittently
+   *     under full-suite load. Raising the timeout would have hidden the bug above.
+   *
+   * Never rejects: shadow writes already log and swallow their own errors, and a
+   * single bad mirror write must not take down an otherwise healthy shutdown. Drains
+   * writes queued by BOTH paths — per-entity `entity:created` and the bulk
+   * `graph:saved` resync — because a drain that covered only one would lie for bulk
+   * loads, which is worse than not having it.
+   */
+  async drainShadowWrites(): Promise<void> {
+    // Loop rather than a single await: settling one link can enqueue another (a
+    // resync walks every entity), and returning after the first would report
+    // "drained" while work was still outstanding.
+    while (this.pendingShadowWrites > 0) {
+      await this.shadowWriteChain;
     }
   }
 

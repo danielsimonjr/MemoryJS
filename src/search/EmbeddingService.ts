@@ -301,6 +301,149 @@ interface OpenAIEmbeddingResponse {
 }
 
 /**
+ * llama.cpp Embedding Service
+ *
+ * Talks to a local `llama-server` over its OpenAI-compatible `/v1/embeddings`
+ * endpoint, so any GGUF the server was started with can produce embeddings —
+ * including large dedicated embedding models such as qwen3-embedding (4096-dim),
+ * which the `local` transformers.js provider cannot serve.
+ *
+ * Start a server with, for example:
+ *   llama-server -m qwen3-embedding.gguf --embedding --pooling mean --port 8080
+ *
+ * DIMENSIONS ARE DISCOVERED, NEVER ASSUMED — the load-bearing difference from the
+ * other two providers. OpenAI and local are each pinned to one model, so a hardcoded
+ * `dimensions` constant is safe there. A llama.cpp server serves whatever GGUF it was
+ * launched with, so a constant would be a guess — and a vector store built on the
+ * wrong dimension does not error, it returns confident nonsense. The dimension is
+ * probed on first use and then ENFORCED: if the server is later restarted with a
+ * different model, subsequent calls throw rather than quietly writing incomparable
+ * vectors alongside the existing ones.
+ *
+ * @example
+ * ```typescript
+ * const service = new LlamaCppEmbeddingService({ baseUrl: 'http://127.0.0.1:8080' });
+ * if (await service.isReady()) {
+ *   const embedding = await service.embed('Hello world');
+ * }
+ * ```
+ */
+export class LlamaCppEmbeddingService implements EmbeddingService {
+  readonly provider = 'llamacpp';
+  readonly model: string;
+  readonly baseUrl: string;
+
+  /** 0 until the server has been probed. Deliberately not a plausible default. */
+  private _dimensions = 0;
+  private probed = false;
+
+  constructor(options?: { baseUrl?: string; model?: string }) {
+    this.baseUrl = (options?.baseUrl ?? 'http://127.0.0.1:8080').replace(/\/+$/, '');
+    // llama-server serves exactly one model, so the name is informational: it is
+    // recorded on stored vectors so "which model produced this?" stays answerable.
+    this.model = options?.model ?? 'llamacpp-local';
+  }
+
+  get dimensions(): number {
+    return this._dimensions;
+  }
+
+  /**
+   * Probe the server once and learn the true embedding width.
+   *
+   * Returns false rather than throwing when the server is down, so a caller can fall
+   * back to another provider instead of failing the whole process.
+   */
+  async isReady(): Promise<boolean> {
+    if (this.probed) return this._dimensions > 0;
+    try {
+      const vectors = await this.request(['dimension probe']);
+      this._dimensions = vectors[0]?.length ?? 0;
+      this.probed = true;
+      return this._dimensions > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  async embed(text: string, mode: EmbeddingMode = 'document'): Promise<number[]> {
+    if (!text || !text.trim()) {
+      throw new Error('Cannot embed empty text: a zero vector is not a valid document');
+    }
+    const [vector] = await this.embedBatch([text], mode);
+    return vector;
+  }
+
+  async embedBatch(texts: string[], _mode: EmbeddingMode = 'document'): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const vectors = await this.request(texts);
+
+    if (vectors.length !== texts.length) {
+      // Padding or truncating would attach a document's vector to a DIFFERENT
+      // document, which nothing downstream can detect.
+      throw new Error(
+        `llama.cpp returned ${vectors.length} embeddings, expected ${texts.length}`
+      );
+    }
+
+    if (this.probed && this._dimensions > 0) {
+      for (const v of vectors) {
+        if (v.length !== this._dimensions) {
+          throw new Error(
+            `llama.cpp embedding dimension changed: expected ${this._dimensions}, got ` +
+              `${v.length}. The server was restarted with a different model, and vectors ` +
+              `already stored are incomparable with these.`
+          );
+        }
+      }
+    } else if (vectors[0]) {
+      this._dimensions = vectors[0].length;
+      this.probed = true;
+    }
+
+    return vectors.map(l2Normalize);
+  }
+
+  /**
+   * One request to /v1/embeddings, returning vectors in INPUT order.
+   *
+   * The response carries an explicit `index` per item; trusting array position would
+   * silently mis-align documents to vectors under any server that reorders or
+   * parallelises — undetectable downstream, and the same cross-contamination class
+   * that has bitten this corpus before.
+   */
+  private async request(input: string[]): Promise<number[][]> {
+    const response = await fetch(`${this.baseUrl}/v1/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input, model: this.model }),
+    });
+
+    if (!response.ok) {
+      const detail = typeof response.text === 'function' ? await response.text() : '';
+      throw new Error(
+        `llama.cpp embeddings request failed: ${response.status} ${detail}`.trim()
+      );
+    }
+
+    const body = (await response.json()) as {
+      data?: Array<{ embedding: number[]; index?: number }>;
+    };
+    const data = body?.data;
+    if (!Array.isArray(data)) {
+      throw new Error('llama.cpp returned no embedding data');
+    }
+
+    const out: number[][] = new Array(data.length);
+    data.forEach((item, position) => {
+      const at = typeof item.index === 'number' ? item.index : position;
+      out[at] = item.embedding;
+    });
+    return out;
+  }
+}
+
+/**
  * Local Embedding Service
  *
  * Uses @xenova/transformers for local embedding generation.
@@ -641,6 +784,16 @@ export function createEmbeddingService(config?: Partial<EmbeddingConfig>): Embed
 
     case 'local':
       return new LocalEmbeddingService(mergedConfig.model);
+
+    case 'llamacpp':
+      // No API key and no model download: the server is already running locally,
+      // which is the point — it keeps a sensitive corpus (medical, financial and
+      // employment records) off any network while still allowing an embedding model
+      // far larger than the bundled 384-dim MiniLM.
+      return new LlamaCppEmbeddingService({
+        baseUrl: (mergedConfig as { baseUrl?: string }).baseUrl,
+        model: mergedConfig.model,
+      });
 
     case 'none':
     default:
