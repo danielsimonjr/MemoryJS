@@ -138,7 +138,8 @@
     "tools:check-duplicates": "node tools/create-dependency-graph/check-duplicates.mjs",
     "benchmark": "tsx benchmarks/synthetic-bench.ts",
     "audit:plans": "tsx tools/plan-doc-audit/audit.ts",
-    "bench": "vitest run tests/performance"
+    "bench": "vitest run tests/performance",
+    "test:perf": "node -e \"process.env.RUN_PERF='true';require('child_process').execSync('vitest run tests/performance --no-file-parallelism',{stdio:'inherit',env:process.env})\""
   },
   "keywords": [
     "knowledge-graph",

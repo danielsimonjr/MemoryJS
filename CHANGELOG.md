@@ -47,11 +47,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`JsonlColumnStore` silently lost writes under concurrency.** `ensureLoaded`
+  checked `cache !== null` and then `await`ed `loadFromDisk()` — so two concurrent
+  callers each received their **own** `Map`, and since `flush` rewrites the entire
+  sidecar from that map, the later flush erased the earlier entity outright.
+  Measured: creating three entities in one bulk save left exactly **one** in the
+  sidecar, with nothing reported. Fixed by memoising the in-flight load promise and
+  serialising every read-modify-write through `async-mutex` — the same pattern
+  `RefIndex` already uses for its JSONL file, and `batchPut` is now serialised too.
+  `reload()` carries a generation counter so a load already in flight cannot resolve
+  afterwards and reinstate the very snapshot the caller asked to discard.
+
+  The class documented the opposite: *"in-process callers are fine because every
+  mutation is awaited end-to-end."* That was false for this codebase's own primary
+  caller — `ObservationManager` mirrors from synchronous event listeners that fire
+  `void shadowWriteColumn(...)`, so the writes overlap by construction.
+
+- **Shadow column-store writes are now ordered and drainable
+  (`ObservationManager.drainShadowWrites()`).** The mirror ran from sync event
+  listeners that discarded their promises, so nothing could observe completion. Two
+  consequences: `close()` could not wait for in-flight mirror writes, meaning a
+  process that recorded an observation and exited promptly could lose the sidecar
+  update; and deleting an entity emitted both `entity:deleted` and `graph:saved`,
+  whose handlers raced — a resync holding a pre-delete snapshot could resurrect the
+  entity as a ghost observation. Writes now run as a serial chain in emission order,
+  and `getObservationsFor` drains before reading so an awaited public API returns
+  consistent state without callers knowing the mirror exists.
+
+- **`resyncFromStorage` was O(N²) in file writes.** It looped `put()` per entity, and
+  each `put` rewrites the whole sidecar — so one resync cost N full-file writes, and a
+  resync fires on every save. Now a single `batchPut` (one flush), with redundant
+  queued resyncs coalesced since each reads storage as it stands when it runs.
+  Measured on the 2000-entity write-path benchmark: 69.7× → 30.6× sequential/batch
+  ratio.
+
 - **`better-sqlite3` bumped `^11.7.0` → `^12.11.1`; the package was uninstallable on
   Node 24.** v11 predates Node 24 and ships no prebuilt binary for it, so `npm install`
   fell back to `node-gyp` and failed for want of an MSVC toolchain — a fresh clone could
   not be installed at all on a current Node. v12 has prebuilds. Verified the native
   module loads and that FTS5, BM25 and porter stemming all work (SQLite 3.53.2).
+
+### Changed
+
+- **`tests/performance/**` no longer runs in the default parallel suite; use
+  `npm run test:perf`.** Those tests assert wall-clock budgets, which are meaningless
+  while ~300 test files compete for the same cores. `write-path-benchmarks` completes
+  in 2.7s alone and 35–58s in-suite, and its verdict flipped on machine load rather
+  than on code: the `batch` term alone moved 37ms → 1129ms between runs, swinging the
+  measured ratio from **71× (which passed)** to **30× (which failed)**, because the
+  10-second slack term dominates at small absolute times. An assertion decided by the
+  scheduler cannot detect a regression, and leaving it in the default gate only trains
+  readers to ignore a red suite.
+
+  `test:ci` already excluded this directory for exactly this reason; the default run
+  now matches, and `test:perf` runs the whole directory with `--no-file-parallelism`
+  so the numbers mean something. Previously a genuine perf regression was invisible in
+  CI (excluded) and unattributable locally (flaky) — nothing could have caught one.
+
+  This also resolves the long-standing suite flakiness: **7,720 tests pass on three
+  consecutive full runs**, where before a *different* test failed each time
+  (`AgentMemoryManager > createRoleAwareSalienceEngine`, then
+  `columns-review-fixes > sidecar lives at <basename>-observations.jsonl`).
 
 ### Removed
 
