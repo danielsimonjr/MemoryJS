@@ -1658,14 +1658,20 @@ export interface VectorSearchResult {
  * Phase 4 Sprint 10: Configuration for embedding services.
  */
 export interface EmbeddingConfig {
-  /** Embedding provider: 'openai', 'local', or 'none' */
-  provider: 'openai' | 'local' | 'none';
+  /** Embedding provider: 'openai', 'local', 'llamacpp', or 'none' */
+  provider: 'openai' | 'local' | 'llamacpp' | 'none';
 
   /** API key for OpenAI (required when provider is 'openai') */
   apiKey?: string;
 
   /** Optional model override */
   model?: string;
+
+  /**
+   * Base URL of a local llama-server (used when provider is 'llamacpp').
+   * Defaults to http://127.0.0.1:8080, llama.cpp's conventional port.
+   */
+  baseUrl?: string;
 
   /** Whether to auto-index entities on creation */
   autoIndex?: boolean;

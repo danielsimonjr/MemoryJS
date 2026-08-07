@@ -199,6 +199,8 @@ export const EMBEDDING_ENV_VARS = {
   OPENAI_API_KEY: 'MEMORY_OPENAI_API_KEY',
   /** Optional model override for the embedding service */
   MODEL: 'MEMORY_EMBEDDING_MODEL',
+  /** Base URL of a local llama-server (used when provider is 'llamacpp') */
+  BASE_URL: 'MEMORY_EMBEDDING_BASE_URL',
   /** Auto-index entities on creation: 'true' or 'false' (default: 'false') */
   AUTO_INDEX: 'MEMORY_AUTO_INDEX_EMBEDDINGS',
 } as const;
@@ -265,17 +267,20 @@ export const OPENAI_API_CONFIG: {
  * @returns EmbeddingConfig object with values from environment or defaults
  */
 export function getEmbeddingConfig(): {
-  provider: 'openai' | 'local' | 'none';
+  provider: 'openai' | 'local' | 'llamacpp' | 'none';
   apiKey?: string;
   model?: string;
+  baseUrl?: string;
   autoIndex: boolean;
 } {
-  const provider = (process.env[EMBEDDING_ENV_VARS.PROVIDER] || EMBEDDING_DEFAULTS.PROVIDER) as 'openai' | 'local' | 'none';
+  const provider = (process.env[EMBEDDING_ENV_VARS.PROVIDER] || EMBEDDING_DEFAULTS.PROVIDER) as
+    'openai' | 'local' | 'llamacpp' | 'none';
   const apiKey = process.env[EMBEDDING_ENV_VARS.OPENAI_API_KEY];
   const model = process.env[EMBEDDING_ENV_VARS.MODEL];
+  const baseUrl = process.env[EMBEDDING_ENV_VARS.BASE_URL];
   const autoIndex = process.env[EMBEDDING_ENV_VARS.AUTO_INDEX] === 'true';
 
-  return { provider, apiKey, model, autoIndex };
+  return { provider, apiKey, model, baseUrl, autoIndex };
 }
 
 // ==================== Streaming Export Configuration (Phase 7 Sprint 1) ====================

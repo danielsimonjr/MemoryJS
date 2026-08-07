@@ -21,6 +21,7 @@ export { SearchFilterChain, type SearchFilters, type ValidatedPagination } from 
 export {
   OpenAIEmbeddingService,
   LocalEmbeddingService,
+  LlamaCppEmbeddingService,
   MockEmbeddingService,
   createEmbeddingService,
   l2Normalize,
