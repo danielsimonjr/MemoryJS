@@ -1,12 +1,16 @@
+<!-- repo-map:no-verification -->
+<!-- GENERATED FILE -- do not edit by hand.
+     Regenerate with `npm run tools:deps:full`. -->
+
 # Complete File Inventory
 
-**Generated**: 2026-07-24 (by tools/create-dependency-graph)
+**Generated**: 2026-08-07 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 599
+**Total files**: 601
 
 ## Disposition counts
 
@@ -16,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 318 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 320 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 3 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **599** | |
+| **Total** | **601** | |
 
 ## Per-area counts
 
@@ -30,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 3 |
 | `config` | 2 |
 | `src` | 266 |
-| `tests` | 318 |
+| `tests` | 320 |
 | `tools` | 10 |
 
 ## All files
@@ -170,7 +174,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/GraphTraversal.ts` | src | reachable | 1369 |
 | `src/core/HierarchyManager.ts` | src | reachable | 301 |
 | `src/core/index.ts` | src | reachable | 42 |
-| `src/core/ManagerContext.ts` | src | reachable | 1604 |
+| `src/core/ManagerContext.ts` | src | reachable | 1633 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
 | `src/core/ObservationManager.ts` | src | reachable | 829 |
@@ -181,7 +185,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 435 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 266 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2292 |
+| `src/core/SQLiteStorage.ts` | src | reachable | 2316 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 693 |
 | `src/core/TransitionLedger.ts` | src | reachable | 450 |
@@ -213,7 +217,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/EmbeddingCache.ts` | src | reachable | 352 |
 | `src/search/EmbeddingService.ts` | src | reachable | 650 |
 | `src/search/EvidencePathBuilder.ts` | src | reachable | 234 |
-| `src/search/FuzzySearch.ts` | src | reachable | 545 |
+| `src/search/FuzzySearch.ts` | src | reachable | 584 |
 | `src/search/GraphRankPrior.ts` | src | reachable | 393 |
 | `src/search/HybridScorer.ts` | src | reachable | 337 |
 | `src/search/HybridSearchManager.ts` | src | reachable | 538 |
@@ -315,7 +319,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/integration/core/manager-context-semantic-forget.test.ts` | tests | test | 38 |
 | `tests/integration/core/observation-manager-contradiction.test.ts` | tests | test | 44 |
 | `tests/integration/features/contradiction-detector-supersede.test.ts` | tests | test | 68 |
-| `tests/integration/features/governance-enforcement.test.ts` | tests | test | 221 |
+| `tests/integration/features/governance-enforcement.test.ts` | tests | test | 240 |
 | `tests/integration/hybrid-search.test.ts` | tests | test | 332 |
 | `tests/integration/MemoryEngineStorage.test.ts` | tests | test | 154 |
 | `tests/integration/operation-progress.test.ts` | tests | test | 270 |
@@ -443,10 +447,10 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/options.test.ts` | tests | test | 313 |
 | `tests/unit/cli/smoke.test.ts` | tests | test | 69 |
 | `tests/unit/core/BatchTransaction.test.ts` | tests | test | 431 |
-| `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 248 |
+| `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
 | `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 253 |
-| `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 228 |
+| `tests/unit/core/columns/ObservationColumnStore-wiring.test.ts` | tests | test | 266 |
 | `tests/unit/core/ConcurrencyControl.test.ts` | tests | test | 459 |
 | `tests/unit/core/entity-id.test.ts` | tests | test | 197 |
 | `tests/unit/core/entity-manager-list-projects.test.ts` | tests | test | 36 |
@@ -486,6 +490,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/segments/segments-review-fixes.test.ts` | tests | test | 319 |
 | `tests/unit/core/sqlite-content-hash-migration.test.ts` | tests | test | 57 |
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
+| `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 67 |
 | `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1239 |
 | `tests/unit/core/StorageFactory.test.ts` | tests | test | 204 |
 | `tests/unit/core/temporal-versioning.test.ts` | tests | test | 267 |
@@ -529,6 +534,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/EmbeddingService.test.ts` | tests | test | 816 |
 | `tests/unit/search/EvidencePathBuilder.test.ts` | tests | test | 225 |
 | `tests/unit/search/FuzzySearch.test.ts` | tests | test | 1136 |
+| `tests/unit/search/FuzzySearchWorkerPath.test.ts` | tests | test | 97 |
 | `tests/unit/search/GraphRankPrior.test.ts` | tests | test | 461 |
 | `tests/unit/search/HybridScorer.test.ts` | tests | test | 328 |
 | `tests/unit/search/HybridScorerGraphChannel.test.ts` | tests | test | 168 |
@@ -629,7 +635,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/workers/WorkerPool.test.ts` | tests | test | 75 |
 | `tools/chunking-for-files/chunking-for-files.ts` | tools | tool | 1255 |
 | `tools/compress-for-context/compress-for-context.ts` | tools | tool | 1461 |
-| `tools/create-dependency-graph/create-dependency-graph.ts` | tools | tool | 3821 |
+| `tools/create-dependency-graph/create-dependency-graph.ts` | tools | tool | 3847 |
 | `tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts` | tools | tool | 725 |
 | `tools/observations-to-columns/observations-to-columns.ts` | tools | tool | 560 |
 | `tools/plan-doc-audit/audit.ts` | tools | tool | 401 |

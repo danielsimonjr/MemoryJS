@@ -1770,3 +1770,14 @@ search(query, { explain: true })
 | decay_cycle | 1 | 1 | 2 |
 
 **Agent Memory Optimization**: Decay cycles run on configurable intervals to batch importance updates.
+
+## Verification
+
+Generated 2026-08-07 by `repo_map.py map`.
+Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+
+| Claim | Value | Source |
+|---|---|---|
+| totalTypeScriptFiles | 607 | dependency-graph.json |
+| totalModules | 5 | dependency-graph.json |
+| runtimeCircularDeps | 0 | dependency-graph.json |

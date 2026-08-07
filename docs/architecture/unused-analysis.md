@@ -1,6 +1,10 @@
+<!-- repo-map:no-verification -->
+<!-- GENERATED FILE -- do not edit by hand.
+     Regenerate with `npm run tools:deps:full`. -->
+
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-07-24
+**Generated**: 2026-08-07
 
 ## Summary
 
@@ -106,13 +110,13 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `RankedNeighborWithRelation` (interface) — 3 in-file refs
 - `TraversalOptionsWithTracking` (interface) — 4 in-file refs
 
-### `src/core/ObservationStore.ts`
-
-- `ObservationStoreStats` (interface) — 1 in-file ref
-
 ### `src/core/mmap/FsReadMmapBackend.ts`
 
 - `FsReadMmapBackendOptions` (interface) — 1 in-file ref
+
+### `src/core/ObservationStore.ts`
+
+- `ObservationStoreStats` (interface) — 1 in-file ref
 
 ### `src/features/IOManager.ts`
 
@@ -172,15 +176,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CachePressureSnapshot` (interface) — 2 in-file refs
 
-### `src/utils/Diagnostics.ts`
-
-- `EntityCounts` (interface) — 2 in-file refs
-- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
-
-### `src/utils/IndexHealthMonitor.ts`
-
-- `IndexHealthSources` (interface) — 1 in-file ref
-
 ### `src/utils/compression/CompressedMap.ts`
 
 - `CompressedMapOptions` (interface) — 1 in-file ref
@@ -192,6 +187,15 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/utils/constants.ts`
 
 - `EMBEDDING_ENV_VARS` (constant) — 4 in-file refs
+
+### `src/utils/Diagnostics.ts`
+
+- `EntityCounts` (interface) — 2 in-file refs
+- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
+
+### `src/utils/IndexHealthMonitor.ts`
+
+- `IndexHealthSources` (interface) — 1 in-file ref
 
 ### `src/utils/searchCache.ts`
 

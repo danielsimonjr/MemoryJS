@@ -48,6 +48,32 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import yaml from 'js-yaml';
 import { basename, dirname, join, relative } from 'path';
 
+/**
+ * Banner prepended to every generated Markdown report in docs/architecture/.
+ *
+ * `docs/architecture/` is also checked by repo_map's drift gate, which fails a
+ * doc carrying no `## Verification` section rather than skipping it silently.
+ * These reports are generated here, on a different methodology, so that gate
+ * cannot meaningfully verify their numbers -- their freshness is governed by
+ * re-running `npm run tools:deps:full` (the plain
+ * `tools:deps` omits TEST_COVERAGE.md, which needs --include-tests).
+ *
+ * The marker MUST be emitted here rather than added by hand: a hand-added
+ * marker survives exactly until the next regeneration, and then the gate fails
+ * a full cycle later looking like a new bug. Never hand-edit a generated file.
+ */
+const GENERATED_REPORT_BANNER = `<!-- repo-map:no-verification -->
+<!-- GENERATED FILE -- do not edit by hand.
+     Regenerate with \`npm run tools:deps:full\`. -->
+
+`;
+
+/** Write a generated Markdown report with the do-not-edit banner. */
+function writeGeneratedMarkdown(path: string, body: string): void {
+  writeFileSync(path, GENERATED_REPORT_BANNER + body);
+}
+
+
 // Types
 interface Dependency {
   file: string;
@@ -3591,7 +3617,7 @@ async function main(): Promise<void> {
   writeFileSync(join(OUTPUT_DIR, 'dependency-graph.yaml'), yamlOutput);
   console.log('Written: docs/architecture/dependency-graph.yaml');
 
-  writeFileSync(join(OUTPUT_DIR, 'DEPENDENCY_GRAPH.md'), markdown);
+  writeGeneratedMarkdown(join(OUTPUT_DIR, 'DEPENDENCY_GRAPH.md'), markdown);
   console.log('Written: docs/architecture/DEPENDENCY_GRAPH.md');
 
   // Write compact summary for LLM consumption (CTON-style, ~10KB)
@@ -3622,7 +3648,7 @@ async function main(): Promise<void> {
     join(OUTPUT_DIR, 'duplicate-symbols.json'),
     JSON.stringify(duplicateReport, null, 2)
   );
-  writeFileSync(
+  writeGeneratedMarkdown(
     join(OUTPUT_DIR, 'duplicate-symbols.md'),
     generateDuplicateSymbolsMarkdown(duplicateReport)
   );
@@ -3644,7 +3670,7 @@ async function main(): Promise<void> {
     const testCoverageMarkdown = generateTestCoverageMarkdown(testCoverage);
     const testCoverageJson = generateTestCoverageJson(testCoverage);
 
-    writeFileSync(join(OUTPUT_DIR, 'TEST_COVERAGE.md'), testCoverageMarkdown);
+    writeGeneratedMarkdown(join(OUTPUT_DIR, 'TEST_COVERAGE.md'), testCoverageMarkdown);
     console.log('Written: docs/architecture/TEST_COVERAGE.md');
 
     writeFileSync(
@@ -3781,13 +3807,13 @@ async function main(): Promise<void> {
     (e) => ` — ${e.inFileRefs} in-file ref${e.inFileRefs === 1 ? '' : 's'}`
   );
 
-  writeFileSync(unusedReportPath, unusedReport);
+  writeGeneratedMarkdown(unusedReportPath, unusedReport);
   console.log(`\nWritten: ${unusedReportPath}`);
 
   // Complete file census + self-check.
   const inventory = buildFileInventory(ROOT_DIR, rootsSet, reachableSet, testReachable);
   writeFileSync(join(OUTPUT_DIR, 'file-inventory.json'), JSON.stringify(inventory, null, 2));
-  writeFileSync(join(OUTPUT_DIR, 'FILE_INVENTORY.md'), generateFileInventoryMarkdown(inventory));
+  writeGeneratedMarkdown(join(OUTPUT_DIR, 'FILE_INVENTORY.md'), generateFileInventoryMarkdown(inventory));
   console.log(
     `Written: docs/architecture/FILE_INVENTORY.md (${inventory.totalFiles} files: ` +
       Object.entries(inventory.byDisposition)

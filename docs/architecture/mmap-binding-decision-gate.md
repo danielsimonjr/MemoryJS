@@ -1,3 +1,8 @@
+<!-- repo-map:no-verification -->
+<!-- A design/decision note: it records a decision and its rationale, and makes
+     no repo-wide metric claim for the drift gate to verify. Opting out is
+     explicit and visible here, never inferred from the absence of a section. -->
+
 # mmap binding decision gate
 
 **Status:** ⏸ Deferred — awaiting user approval of an external native dep.

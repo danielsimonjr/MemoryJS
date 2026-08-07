@@ -1490,3 +1490,13 @@ Debug and inspection tools:
 - Decay visualization
 - Access pattern graphs
 - Consolidation audit trail
+
+## Verification
+
+Generated 2026-08-07 by `repo_map.py map`.
+Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+
+| Claim | Value | Source |
+|---|---|---|
+| totalTypeScriptFiles | 607 | dependency-graph.json |
+| totalModules | 5 | dependency-graph.json |
