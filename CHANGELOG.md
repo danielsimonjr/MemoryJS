@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`LlamaCppEmbeddingService` — embeddings from a local `llama-server`.** Talks to
+  llama.cpp's OpenAI-compatible `/v1/embeddings`, so any GGUF the server was started
+  with can produce embeddings. Motivated by a librarian application indexing ~62,000
+  documents from a personal Dropbox: that corpus holds medical, financial and
+  employment records, so cloud embedding is not permitted, while the existing `local`
+  provider is pinned to transformers.js all-MiniLM-L6-v2 at 384 dimensions. Selected
+  with `MEMORY_EMBEDDING_PROVIDER=llamacpp`, pointed with `MEMORY_EMBEDDING_BASE_URL`
+  (default `http://127.0.0.1:8080`).
+
+  **Dimensions are discovered, never assumed** — the load-bearing difference from the
+  other two providers, which are each pinned to one model and can safely hardcode a
+  constant. A llama.cpp server serves whatever GGUF it was launched with, so a constant
+  would be a guess, and a vector store built on the wrong dimension does not error: it
+  returns confident nonsense. `dimensions` reads 0 until probed (deliberately not a
+  plausible default) and is then *enforced* — restart the server with a different model
+  and later calls throw rather than quietly writing incomparable vectors beside the
+  existing ones.
+
+  Two further alignment guards, both protecting against failures nothing downstream can
+  detect: batch results are reordered by the response's explicit `index` rather than by
+  array position, since a server that parallelises would otherwise attach each
+  document's vector to a *different* document; and a short response throws instead of
+  padding.
+
+  Verified end-to-end against a real `llama-server`, not mocks:
+
+  | model | dims | cos(related) | cos(unrelated) | separation | throughput |
+  |---|---|---|---|---|---|
+  | `qwen3-vl:4b` | 2560 | 0.9495 | 0.8382 | 0.111 | 18.6/s |
+  | `qwen3-embedding:8b` | 4096 | 0.8253 | 0.5583 | **0.267** | 10.3/s |
+
+  Both discovered dimensions match `ollama show` independently. The dedicated embedding
+  model gives 2.4× the semantic separation at half the throughput — the right trade for
+  retrieval, since a vision-language model is not trained to embed. L2 magnitude
+  1.000000 in both cases, so cosine equals dot product.
+
+### Fixed
+
+- **`better-sqlite3` bumped `^11.7.0` → `^12.11.1`; the package was uninstallable on
+  Node 24.** v11 predates Node 24 and ships no prebuilt binary for it, so `npm install`
+  fell back to `node-gyp` and failed for want of an MSVC toolchain — a fresh clone could
+  not be installed at all on a current Node. v12 has prebuilds. Verified the native
+  module loads and that FTS5, BM25 and porter stemming all work (SQLite 3.53.2).
+
 ### Removed
 
 - **CI: the `npm publish` job.** Packages are now published from a workstation
