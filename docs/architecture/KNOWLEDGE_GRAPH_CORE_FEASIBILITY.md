@@ -1,3 +1,8 @@
+<!-- repo-map:no-verification -->
+<!-- A design/decision note: it records a decision and its rationale, and makes
+     no repo-wide metric claim for the drift gate to verify. Opting out is
+     explicit and visible here, never inferred from the absence of a section. -->
+
 # Feasibility: Making the Knowledge Graph the Core of MemoryJS
 
 **Status:** Assessment (2026-07-23) — **convergence phase 1 implemented** (same date, this branch)

@@ -869,3 +869,15 @@ The MemoryJS architecture prioritizes:
 - **Flexibility**: Multiple storage backends, search strategies
 - **AI Agent Support**: Comprehensive memory lifecycle for LLM-powered agents
 
+## Verification
+
+Generated 2026-08-07 by `repo_map.py map`.
+Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+
+| Claim | Value | Source |
+|---|---|---|
+| totalTypeScriptFiles | 609 | dependency-graph.json |
+| totalModules | 5 | dependency-graph.json |
+| entryRoots | 11 | dependency-graph.json |
+| runtimeCircularDeps | 0 | dependency-graph.json |
+| typeOnlyCircularDeps | 6 | dependency-graph.json |

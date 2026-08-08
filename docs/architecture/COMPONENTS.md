@@ -2041,3 +2041,14 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 **Document Version**: Unreleased (post v2.9.0)
 **Last Updated**: 2026-07-24
 **Maintained By**: Daniel Simon Jr.
+
+## Verification
+
+Generated 2026-08-07 by `repo_map.py map`.
+Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+
+| Claim | Value | Source |
+|---|---|---|
+| totalTypeScriptFiles | 609 | dependency-graph.json |
+| totalExports | 2538 | dependency-graph.json |
+| reachableFiles | 264 | dependency-graph.json |

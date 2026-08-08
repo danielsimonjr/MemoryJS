@@ -1,12 +1,12 @@
 {
-  "generated": "2026-07-24",
-  "totalFiles": 599,
+  "generated": "2026-08-07",
+  "totalFiles": 601,
   "byDisposition": {
     "reachable": 262,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 318,
+    "test": 320,
     "tool": 10,
     "config": 2,
     "bench": 3,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 3,
     "src": 266,
-    "tests": 318,
+    "tests": 320,
     "tools": 10,
     "config": 2
   },
@@ -956,7 +956,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1604
+      "loc": 1633
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -1033,7 +1033,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2292
+      "loc": 2316
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -1257,7 +1257,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 545
+      "loc": 584
     },
     {
       "file": "src/search/GraphRankPrior.ts",
@@ -1971,7 +1971,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 221
+      "loc": 240
     },
     {
       "file": "tests/integration/hybrid-search.test.ts",
@@ -2867,7 +2867,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 248
+      "loc": 338
     },
     {
       "file": "tests/unit/core/columns/IColumnStore.test.ts",
@@ -2888,7 +2888,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 228
+      "loc": 266
     },
     {
       "file": "tests/unit/core/ConcurrencyControl.test.ts",
@@ -3162,6 +3162,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 470
+    },
+    {
+      "file": "tests/unit/core/sqlite-lazy-load.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 67
     },
     {
       "file": "tests/unit/core/SQLiteStorage.test.ts",
@@ -3463,6 +3470,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 1136
+    },
+    {
+      "file": "tests/unit/search/FuzzySearchWorkerPath.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 97
     },
     {
       "file": "tests/unit/search/GraphRankPrior.test.ts",
@@ -4169,7 +4183,7 @@
       "package": "(root)",
       "area": "tools",
       "disposition": "tool",
-      "loc": 3821
+      "loc": 3847
     },
     {
       "file": "tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts",

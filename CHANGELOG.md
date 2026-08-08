@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Cleared both high-severity advisories that had been failing CI's `npm audit` gate since
+  2026-08-07: `brace-expansion` 5.0.8 -> 5.0.9 (via eslint -> minimatch) and `nanoid`
+  3.3.16 -> 3.3.18 (via tsup -> postcss, which also moved 8.5.23 -> 8.5.26). Lock-only —
+  both were reachable inside their existing ranges, so `npm update` fixed them and no
+  `overrides` entry was needed. An override pinned to an exact version becomes the blocker
+  the moment that version is itself flagged, so not adding one is the point.
+- Typecheck, lint, test and build all green.
+
+
 ### Added
 
 - **`LlamaCppEmbeddingService` — embeddings from a local `llama-server`.** Talks to
@@ -108,6 +119,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   consecutive full runs**, where before a *different* test failed each time
   (`AgentMemoryManager > createRoleAwareSalienceEngine`, then
   `columns-review-fixes > sidecar lives at <basename>-observations.jsonl`).
+
+- **Architecture docs are now drift-gated.** Every authored document under `docs/architecture/`
+  carries a `## Verification` block naming the metrics it depends on, so
+  `repo_map.py check` fails when the code moves underneath them. Previously nothing verified
+  these documents at all — they could go stale silently, which is how a doc claim survives for
+  months after it stops being true.
+
+  The three design/decision notes (`KNOWLEDGE_GRAPH_CORE_FEASIBILITY.md`,
+  `mmap-binding-decision-gate.md`, `Toctou_and_Batch_Transaction_Design.md`) carry an explicit
+  `<!-- repo-map:no-verification -->` opt-out instead: they record a decision and its rationale
+  and make no repo-wide metric claim. The opt-out is deliberately explicit and visible in the
+  source — never inferred from a missing section, because "no section" and "checked, matched"
+  must not look identical to a gate.
+
+- **`npm run tools:deps:full`** — regenerates every report the dependency tool produces,
+  including `TEST_COVERAGE.md`, which needs `--include-tests`. Plain `tools:deps` silently omits
+  it, so that file could only be refreshed by a manual invocation nobody would guess: a
+  staleness trap in itself.
+
+### Changed
+
+- **`create-dependency-graph` now emits a do-not-edit banner** at the top of all five generated
+  Markdown reports (`DEPENDENCY_GRAPH.md`, `FILE_INVENTORY.md`, `TEST_COVERAGE.md`,
+  `duplicate-symbols.md`, `unused-analysis.md`), carrying the drift gate's
+  `<!-- repo-map:no-verification -->` marker and naming the command that regenerates them.
+
+  The marker is emitted **by the generator** rather than added by hand for a specific reason: a
+  hand-added marker survives exactly until the next regeneration, and then the gate fails a full
+  cycle later looking like a brand-new bug. Any annotation a generated artifact needs must come
+  from its generator.
+
 
 ### Removed
 

@@ -2123,3 +2123,12 @@ const router = RestRouter.withDefaults(ctx, { auth });
 
 ---
 
+## Verification
+
+Generated 2026-08-07 by `repo_map.py map`.
+Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+
+| Claim | Value | Source |
+|---|---|---|
+| totalExports | 2538 | dependency-graph.json |
+| totalTypeScriptFiles | 609 | dependency-graph.json |
