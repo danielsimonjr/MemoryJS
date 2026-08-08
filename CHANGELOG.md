@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- Cleared both high-severity advisories that had been failing CI's `npm audit` gate since
+  2026-08-07: `brace-expansion` 5.0.8 -> 5.0.9 (via eslint -> minimatch) and `nanoid`
+  3.3.16 -> 3.3.18 (via tsup -> postcss, which also moved 8.5.23 -> 8.5.26). Lock-only —
+  both were reachable inside their existing ranges, so `npm update` fixed them and no
+  `overrides` entry was needed. An override pinned to an exact version becomes the blocker
+  the moment that version is itself flagged, so not adding one is the point.
+- Typecheck, lint, test and build all green.
+
+
 ### Added
 
 - **`LlamaCppEmbeddingService` — embeddings from a local `llama-server`.** Talks to
