@@ -47,7 +47,7 @@ src/features/SemanticForget.ts         — pass agentId: 'system:semantic-forget
 
 **No-new-deps subset (5.5.b/c/d):** zero new deps.
 
-**Decision gate — 5.5.e (CRDT):** `yjs` (~50 KB gz) + `y-protocols` (~15 KB gz) as optional peer deps. **Needs Daniel's go-ahead.**
+**Decision gate — 5.5.e (CRDT):** `yjs` (~50 KB gz) + `y-protocols` (~15 KB gz) as optional peer deps. **Needs the user's go-ahead.**
 
 ## Sub-plans
 
@@ -124,7 +124,7 @@ Automerge 2.x requires WASM (~200 KB gz); Yjs is leaner (~50 KB gz + y-protocols
 
 - **5.5.b / 5.5.c / 5.5.d:** no new deps, additive-only, backward-compatible. Promote when capacity available.
 - **5.5.a:** additive only. Promote after 5.5.d so attribution exists to differentiate candidates.
-- **5.5.e full CRDT wiring:** blocked on Daniel's go-ahead + `yjs` peer dep approval. Stub can land unconditionally.
+- **5.5.e full CRDT wiring:** blocked on the user's go-ahead + `yjs` peer dep approval. Stub can land unconditionally.
 
 ## Risks
 

@@ -33,7 +33,7 @@ src/api/
 
 ## Runtime deps
 
-**Decision gate:** Fastify 5 (peer dep) + Pino for logging. ~150KB gzip. **Needs Daniel's call** — recommend Fastify over Express for built-in schema validation and TS-first ergonomics.
+**Decision gate:** Fastify 5 (peer dep) + Pino for logging. ~150KB gzip. **Needs the user's call** — recommend Fastify over Express for built-in schema validation and TS-first ergonomics.
 
 ## Tasks (when promoted)
 

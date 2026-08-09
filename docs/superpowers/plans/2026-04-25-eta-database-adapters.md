@@ -73,10 +73,10 @@ All four adapters require new runtime deps. **None installed until Daniel approv
 
 | Adapter | Package | Approx size (gzip) | Decision gate |
 |---|---|---|---|
-| PostgreSQL | `pg` + `@types/pg` | ~120 KB | **Needs Daniel's approval** |
-| MongoDB | `mongodb` | ~280 KB | **Needs Daniel's approval** |
-| MySQL | `mysql2` | ~180 KB | **Needs Daniel's approval** |
-| Redis | `ioredis` | ~90 KB | **Needs Daniel's approval** |
+| PostgreSQL | `pg` + `@types/pg` | ~120 KB | **Needs user approval** |
+| MongoDB | `mongodb` | ~280 KB | **Needs user approval** |
+| MySQL | `mysql2` | ~180 KB | **Needs user approval** |
+| Redis | `ioredis` | ~90 KB | **Needs user approval** |
 
 All four go under `peerDependencies` with `peerDependenciesMeta: { ... { optional: true } }` so they don't install for consumers who don't need them. The Phase γ comment in `MemoryBackend.ts` ("Phase γ adds postgres and vector choices") is superseded by this plan.
 
@@ -165,10 +165,10 @@ T0 unblocked. T1–T4 independent — can proceed in parallel once their deps ar
 
 Four separate gates — one per adapter dep. T0 has no gate.
 
-1. **PostgreSQL (`pg`)** — Needs Daniel's approval.
-2. **MongoDB (`mongodb`)** — Needs Daniel's approval.
-3. **MySQL (`mysql2`)** — Needs Daniel's approval.
-4. **Redis (`ioredis`)** — Needs Daniel's approval.
+1. **PostgreSQL (`pg`)** — Needs user approval.
+2. **MongoDB (`mongodb`)** — Needs user approval.
+3. **MySQL (`mysql2`)** — Needs user approval.
+4. **Redis (`ioredis`)** — Needs user approval.
 
 Approval for one does not imply approval for others.
 

@@ -73,7 +73,7 @@ src/distributed/
 
 ### Runtime deps (multiple gates)
 
-- **Gate A:** `ioredis` (~60 KB) — required for `SharedStateAdapter`/`LeaderElection`. **Needs Daniel's call.** Recommend `ioredis` over `redis` for TS typings quality.
+- **Gate A:** `ioredis` (~60 KB) — required for `SharedStateAdapter`/`LeaderElection`. **Needs the user's call.** Recommend `ioredis` over `redis` for TS typings quality.
 - **Gate B:** Field-level CRDTs would require `yjs` or `automerge` (~200KB). Defer; LWW covers 90% of cases.
 
 ### New env vars
@@ -225,7 +225,7 @@ Recommended promotion order: η.6.3 → η.6.1 → η.6.4 → η.6.2 → η.6.5.
 | A | Redis client: `ioredis` vs `@redis/client`? | `ioredis` for TS quality |
 | B | Field-level CRDTs: `yjs` vs `automerge`? | Defer; LWW first |
 | C | Is `zod` already in `package.json`? | Check before adding |
-| D | SQLCipher native addon acceptable? | Needs Daniel's call |
+| D | SQLCipher native addon acceptable? | Needs the user's call |
 | E | GPU acceleration: real workload? | Don't promote until >1M-entity benchmark |
 
 ## Risks
