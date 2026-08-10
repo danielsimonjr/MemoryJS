@@ -177,12 +177,18 @@ describe('Review #8: strict env-var parsing + 1024-segment cap', () => {
     await expect(fs.access(join(dir, 'segments'))).rejects.toThrow();
   });
 
+  // 1024 segments is the cap, so this is the single most I/O-heavy test in the
+  // suite: it creates 1024 files while the other 305 test files run in parallel.
+  // At the default 30s it passes on a 32-core box and times out on a 12-core one
+  // — a green run there is not evidence it passes here. The assertion is
+  // unchanged; only the runtime budget is, and the budget is what was
+  // machine-dependent.
   it('MEMORY_STORAGE_SEGMENT_COUNT="1024" (at the cap) IS accepted', async () => {
     process.env.MEMORY_STORAGE_SEGMENT_COUNT = '1024';
     const storage = new GraphStorage(join(dir, 'memory.jsonl'));
     await storage.saveGraph({ entities: [ent('alice')], relations: [] });
     await expect(fs.access(join(dir, 'segments'))).resolves.toBeUndefined();
-  });
+  }, 120_000);
 });
 
 describe('Review #1: appendViaSegmentSave reload-failure path', () => {
