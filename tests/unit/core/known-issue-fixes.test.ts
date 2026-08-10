@@ -178,7 +178,12 @@ describe('Phase 8 #9: ObservationManager.addObservations serializes concurrent w
     for (const e of expected) {
       expect(finalObservations.has(e), `lost write: ${e}`).toBe(true);
     }
-  });
+    // 120s, not the 30s default. This is the SLOWEST single test in the suite: 9.3s on a
+    // 32-core box while 305 other files compete for I/O. The 1024-segment test measured
+    // 9.2s here and 30.6s on a 12-core machine — 3.3x — so this one projects past the
+    // default budget on narrower hardware. A wall-clock budget is a statement about the
+    // machine, not about the code; the assertions above are untouched.
+  }, 120_000);
 });
 
 describe('column-store + addObservations concurrency: shadow stays in sync', () => {

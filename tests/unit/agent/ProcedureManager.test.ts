@@ -239,7 +239,9 @@ describe('3B.4 Procedural Memory', () => {
         refined = await manager.refineProcedure(proc.id, { succeeded: true });
       }
       expect(refined.successRate).toBeGreaterThan(0.95);
-    });
+      // 120s, not the 30s default — 8.9s here, and the measured 32-core -> 12-core ratio
+      // (3.3x) puts that within a second of the default budget. Assertion unchanged.
+    }, 120_000);
 
     it('successive failures converge toward 0.0', async () => {
       const proc = await manager.addProcedure({
@@ -251,7 +253,8 @@ describe('3B.4 Procedural Memory', () => {
         refined = await manager.refineProcedure(proc.id, { succeeded: false });
       }
       expect(refined.successRate).toBeLessThan(0.05);
-    });
+      // Same shape as the sibling test above: 7.3s here, ~24s projected on 12 cores.
+    }, 120_000);
 
     it('throws when procedure does not exist', async () => {
       await expect(

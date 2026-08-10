@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.1.0] - 2026-08-09
+### Fixed — budget the two remaining tests that would time out on a narrow machine
+
+Follow-up to `0740654`, which raised the 1024-segment test's budget after it failed on a
+12-core box at 30,614 ms against the 30,000 ms default. That fix was correct and
+incomplete: it addressed the test that happened to fail, not the class.
+
+Measured the whole suite per **test** (the budget is per test, not per file) with
+`--reporter=verbose` on a 32-core machine, and compared against the one known 12-core data
+point — 9,169 ms here, 30,614 ms there, a **3.3x** ratio under full-suite I/O contention:
+
+| test | here | projected on 12 cores | budget |
+|---|---|---|---|
+| `known-issue-fixes` › 100 concurrent addObservations | **9,278 ms** | ~31,000 ms | *default 30 s* |
+| `ProcedureManager` › successive successes converge | 8,892 ms | ~29,700 ms | *default 30 s* |
+| `ProcedureManager` › successive failures converge | 7,254 ms | ~24,200 ms | *default 30 s* |
+
+The first is the **slowest single test in the suite** — slower than the one that actually
+failed — and it carried no explicit budget at all. All three now have 120 s, matching
+`0740654`. **No assertion was touched:** a wall-clock budget is a statement about the
+machine, not about the code, and widening one to hide a real slowdown would be the
+[flaky-test anti-pattern](https://github.com/danielsimonjr/memoryjs) this project rejects.
+These are legitimately slow concurrency and convergence tests, not regressions.
+
+Gate after the change: typecheck, lint, and `test:ci` — 306 files / 7,720 tests — green.
 
 > **Why this release exists.** The `better-sqlite3` bump below has been on `master` since
 > it was written, but npm still served 3.0.0 with the old `^11.7.0` range — so every
