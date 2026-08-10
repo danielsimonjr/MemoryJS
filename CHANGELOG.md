@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-08-09
+
+> **Why this release exists.** The `better-sqlite3` bump below has been on `master` since
+> it was written, but npm still served 3.0.0 with the old `^11.7.0` range — so every
+> consumer installing from the registry still hit the Node 24 failure the fix had already
+> solved. Pushed is not published. Surfaced by `librarian-mcp`, which could not take a
+> dependency on this package at all: `^11.7.0` resolves to 11.10.0, which ships no Node 24
+> prebuild, so the install fell through to a source build and died on a machine with no
+> MSVC C++ toolset.
+
 ### Security
 
 - Cleared both high-severity advisories that had been failing CI's `npm audit` gate since
