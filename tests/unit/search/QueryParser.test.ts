@@ -166,6 +166,21 @@ describe('QueryParser', () => {
       expect((result as { regex: RegExp }).regex.test('test.foobar')).toBe(true);
       expect((result as { regex: RegExp }).regex.test('testXfoo')).toBe(false);
     });
+
+    it('matches leading, trailing, and interior wildcards without regex backtracking', () => {
+      const prefix = parser.parse('foo*') as { regex: RegExp };
+      const suffix = parser.parse('*bar') as { regex: RegExp };
+      const interior = parser.parse('foo*bar') as { regex: RegExp };
+
+      expect(prefix.regex.test('foobar')).toBe(true);
+      expect(suffix.regex.test('foobar')).toBe(true);
+      expect(interior.regex.test('foo-anything-bar')).toBe(true);
+      expect(interior.regex.test('foo-anything-baz')).toBe(false);
+    });
+
+    it('caps wildcard count', () => {
+      expect(() => parser.parse('?'.repeat(33))).toThrow(/too many wildcards/i);
+    });
   });
 
   describe('Field-Specific Operators', () => {

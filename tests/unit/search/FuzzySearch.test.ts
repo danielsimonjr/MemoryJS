@@ -2,7 +2,7 @@
  * FuzzySearch Unit Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FuzzySearch, DEFAULT_FUZZY_THRESHOLD } from '../../../src/search/FuzzySearch.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { RelationManager } from '../../../src/core/RelationManager.js';
@@ -10,6 +10,7 @@ import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import type { Entity } from '../../../src/types/index.js';
 
 describe('FuzzySearch', () => {
   let storage: GraphStorage;
@@ -323,6 +324,16 @@ describe('FuzzySearch', () => {
       expect(result.entities.length).toBeGreaterThanOrEqual(2);
       // Alice and Alicia should be matched
       expect(result.relations.length).toBeGreaterThanOrEqual(0);
+    });
+
+    it('packages relations through adjacency indexes without a full scan', async () => {
+      const graph = await storage.loadGraph();
+      const fullRelationScan = vi.spyOn(graph.relations, 'filter');
+
+      const result = await fuzzySearch.fuzzySearch('Ali', 0.5);
+
+      expect(result.entities.length).toBeGreaterThan(0);
+      expect(fullRelationScan).not.toHaveBeenCalled();
     });
 
     it('should exclude relations to non-matched entities', async () => {
@@ -1062,7 +1073,7 @@ describe('FuzzySearch - Sprint 14 Extended Tests', () => {
       expect(result.entities.map(e => e.name)).toContain('EntityWithLongObs');
     }, 10000);
 
-    it('should handle long search queries gracefully', async () => {
+    it('should reject search queries over the safety limit', async () => {
       const entityManager = new EntityManager(storage);
       await entityManager.createEntities([
         {
@@ -1074,12 +1085,36 @@ describe('FuzzySearch - Sprint 14 Extended Tests', () => {
       ]);
 
       const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
-      const longQuery = 'Target' + 'x'.repeat(1000);
+      const longQuery = 'x'.repeat(257);
 
-      // Should not timeout and should handle gracefully
-      const result = await fuzzy.fuzzySearch(longQuery, 0.1);
-      expect(result.entities).toBeDefined();
+      await expect(fuzzy.fuzzySearch(longQuery, 0.1)).rejects.toThrow(/maximum length/i);
     }, 10000);
+  });
+
+  describe('worker failure handling', () => {
+    it('returns partial or empty results without repeating the scan synchronously', async () => {
+      const fuzzy = new FuzzySearch(storage, { useWorkerPool: false });
+      const entities = Array.from({ length: 500 }, (_, index): Entity => ({
+        name: `Entity-${index}`,
+        entityType: 'test',
+        observations: ['observation'],
+      }));
+      const timeout = vi.fn().mockRejectedValue(new Error('worker timeout'));
+      const exec = vi.fn(() => ({ timeout }));
+      const performFuzzyMatch = vi.fn(() => entities);
+      const internals = fuzzy as unknown as {
+        workerPool: { exec: typeof exec } | null;
+        performFuzzyMatch: typeof performFuzzyMatch;
+        searchWithWorkers(query: string, threshold: number, input: Entity[]): Promise<Entity[]>;
+      };
+      internals.workerPool = { exec };
+      internals.performFuzzyMatch = performFuzzyMatch;
+
+      const result = await internals.searchWithWorkers('missing', 0.5, entities);
+
+      expect(result).toEqual([]);
+      expect(performFuzzyMatch).not.toHaveBeenCalled();
+    });
   });
 
   describe('Bloom pre-screener integration', () => {

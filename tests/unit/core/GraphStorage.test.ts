@@ -67,6 +67,30 @@ describe('GraphStorage', () => {
       expect(graph.relations[0].from).toBe('Alice');
     });
 
+    it('keeps distinct relations whose colon-delimited keys would collide', async () => {
+      const relations = [
+        {
+          type: 'relation',
+          from: 'a:b',
+          to: 'c',
+          relationType: 'd',
+        },
+        {
+          type: 'relation',
+          from: 'a',
+          to: 'b:c',
+          relationType: 'd',
+        },
+      ];
+      await fs.writeFile(testFilePath, relations.map(JSON.stringify).join('\n'));
+
+      const graph = await storage.loadGraph();
+
+      expect(graph.relations).toHaveLength(2);
+      expect(graph.relations.map(relation => [relation.from, relation.to]))
+        .toEqual(expect.arrayContaining([['a:b', 'c'], ['a', 'b:c']]));
+    });
+
     it('should add missing timestamps for backward compatibility', async () => {
       const testData = JSON.stringify({
         type: 'entity',

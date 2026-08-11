@@ -1164,6 +1164,49 @@ describe('KnowledgeGraphManager (ManagerContext)', () => {
         else process.env.MEMORY_CACHE_BUDGET_ENTRIES = original;
       }
     });
+
+    it('registers lazily-created production search caches', () => {
+      const original = process.env.MEMORY_CACHE_BUDGET_ENTRIES;
+      process.env.MEMORY_CACHE_BUDGET_ENTRIES = '1000';
+      try {
+        const ctx = new KnowledgeGraphManager(join(testDir, 'cp-search.jsonl'));
+        void ctx.searchManager;
+        const names = ctx.cachePressure.snapshot().caches.map((cache) => cache.name);
+        expect(names).toContain('search-results-basic');
+        expect(names).toContain('search-boolean');
+        expect(names).toContain('search-fuzzy');
+        expect(names).toContain('search-manager-ranked-tokens');
+        expect(names).toContain('queryPlan');
+      } finally {
+        if (original === undefined) delete process.env.MEMORY_CACHE_BUDGET_ENTRIES;
+        else process.env.MEMORY_CACHE_BUDGET_ENTRIES = original;
+      }
+    });
+
+    it('evicts compressed entity cache entries immediately after insertion', () => {
+      const originalBudget = process.env.MEMORY_CACHE_BUDGET_ENTRIES;
+      const originalCompress = process.env.MEMORY_CACHE_COMPRESS;
+      process.env.MEMORY_CACHE_BUDGET_ENTRIES = '2';
+      process.env.MEMORY_CACHE_COMPRESS = 'true';
+      try {
+        const ctx = new KnowledgeGraphManager(join(testDir, 'cp-compressed.jsonl'));
+        const cache = ctx.compressedEntityCache!;
+        for (let i = 0; i < 3; i++) {
+          cache.set(`entity-${i}`, {
+            name: `entity-${i}`,
+            entityType: 'note',
+            observations: [],
+          });
+        }
+        expect(cache.size).toBe(2);
+        expect(ctx.cachePressure.totalEntries()).toBe(2);
+      } finally {
+        if (originalBudget === undefined) delete process.env.MEMORY_CACHE_BUDGET_ENTRIES;
+        else process.env.MEMORY_CACHE_BUDGET_ENTRIES = originalBudget;
+        if (originalCompress === undefined) delete process.env.MEMORY_CACHE_COMPRESS;
+        else process.env.MEMORY_CACHE_COMPRESS = originalCompress;
+      }
+    });
   });
 
   describe('observationStore lazy getter', () => {

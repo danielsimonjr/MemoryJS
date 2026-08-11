@@ -1,6 +1,5 @@
 /** Unified manager for import, export, and backup operations. */
 
-import { promises as fs } from 'fs';
 import { dirname, join } from 'path';
 import type {
   Entity,
@@ -16,6 +15,13 @@ import type {
   LongRunningOperationOptions,
 } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import {
+  EntityManager,
+  fireGovernanceAudits,
+  preflightGovernedGraphMutation,
+  type GovernanceHooks,
+} from '../core/EntityManager.js';
+import { RelationManager } from '../core/RelationManager.js';
 import { FileOperationError } from '../utils/errors.js';
 import {
   compress,
@@ -27,11 +33,13 @@ import {
   validateFilePath,
   sanitizeObject,
   escapeCsvFormula,
+  formatZodErrors,
 } from '../utils/index.js';
 import { StreamingExporter, type StreamResult } from './StreamingExporter.js';
 import { BackupManager } from './BackupManager.js';
 import { EntitySchema, RelationSchema } from '../utils/schemas.js';
 import { PiiRedactor } from '../security/PiiRedactor.js';
+import { durableWriteFile } from '../utils/durableWriteFile.js';
 
 /**
  * Sec6 — opt-in PII redaction for export/backup surfaces.
@@ -48,6 +56,38 @@ export interface PiiRedactionOption {
 
 /** Shared default redactor — stateless, safe to reuse across calls. */
 const DEFAULT_EXPORT_REDACTOR = new PiiRedactor();
+
+/** Decode the five XML entities emitted by MemoryJS exporters. */
+function decodeXmlEntities(value: string): string {
+  // `&amp;` must be decoded last so double-encoded values such as
+  // `&amp;lt;` remain the literal text `&lt;`, rather than becoming `<`.
+  return value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&');
+}
+
+/** Escape untrusted text before inserting it into HTML text contexts. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Serialize data safely for an inline JavaScript expression. */
+function stringifyForInlineScript(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
 
 export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid' | 'turtle' | 'rdf-xml' | 'json-ld';
 export type ImportFormat = 'json' | 'csv' | 'graphml';
@@ -230,8 +270,20 @@ export interface VisualizeOptions {
   title?: string;
 }
 
+export interface IOManagerOptions {
+  /** Context-owned EntityManager (governed when the env gate is enabled). */
+  entityManager?: EntityManager;
+  /** Context-owned RelationManager, sharing the same governance hooks. */
+  relationManager?: RelationManager;
+  /** Bulk import/restore hooks for full-graph mutation preflight + audit. */
+  governanceHooks?: GovernanceHooks;
+}
+
 export class IOManager {
   private readonly backupDir: string;
+  private readonly entityManager?: EntityManager;
+  private readonly relationManager?: RelationManager;
+  private readonly governanceHooks?: GovernanceHooks;
 
   /**
    * Backup lifecycle is delegated to `BackupManager` (extracted in
@@ -240,11 +292,17 @@ export class IOManager {
    */
   private readonly backups: BackupManager;
 
-  constructor(private storage: GraphStorage) {
+  constructor(
+    private storage: GraphStorage,
+    options: IOManagerOptions = {},
+  ) {
     const filePath = this.storage.getFilePath();
     const dir = dirname(filePath);
     this.backupDir = join(dir, '.backups');
-    this.backups = new BackupManager(storage, this.backupDir);
+    this.entityManager = options.entityManager;
+    this.relationManager = options.relationManager;
+    this.governanceHooks = options.governanceHooks;
+    this.backups = new BackupManager(storage, this.backupDir, options.governanceHooks);
   }
 
   /**
@@ -578,7 +636,7 @@ export class IOManager {
       default:
         // Fallback to in-memory export for unsupported streaming formats
         const content = this.exportGraph(graph, format, { redactPii });
-        await fs.writeFile(validatedOutputPath, content);
+        await durableWriteFile(validatedOutputPath, content);
         result = {
           bytesWritten: Buffer.byteLength(content, 'utf-8'),
           entitiesWritten: graph.entities.length,
@@ -999,6 +1057,34 @@ export class IOManager {
     return { entities, relations };
   }
 
+  private validateImportedEntity(
+    raw: Record<string, unknown>,
+    format: 'CSV' | 'GraphML',
+    index: number,
+  ): Entity {
+    const result = EntitySchema.safeParse(sanitizeObject(raw));
+    if (!result.success) {
+      throw new Error(
+        `Invalid ${format} entity ${index}: ${formatZodErrors(result.error).join('; ')}`,
+      );
+    }
+    return result.data as Entity;
+  }
+
+  private validateImportedRelation(
+    raw: Record<string, unknown>,
+    format: 'CSV' | 'GraphML',
+    index: number,
+  ): Relation {
+    const result = RelationSchema.safeParse(sanitizeObject(raw));
+    if (!result.success) {
+      throw new Error(
+        `Invalid ${format} relation ${index}: ${formatZodErrors(result.error).join('; ')}`,
+      );
+    }
+    return result.data as Relation;
+  }
+
   private parseCsvImport(data: string): KnowledgeGraph {
     // Security: Limit input size to prevent DoS (10MB max)
     const MAX_IMPORT_SIZE = 10 * 1024 * 1024;
@@ -1077,7 +1163,8 @@ export class IOManager {
               'csv-import'
             );
           }
-          const entity: Entity = {
+          const rawImportance = fields[6]?.trim();
+          const entity = this.validateImportedEntity({
             name: fields[0],
             entityType: fields[1],
             observations: fields[2]
@@ -1094,8 +1181,8 @@ export class IOManager {
                   .map(s => s.trim())
                   .filter(s => s)
               : undefined,
-            importance: fields[6] && !isNaN(parseFloat(fields[6])) ? parseFloat(fields[6]) : undefined,
-          };
+            importance: rawImportance ? Number(rawImportance) : undefined,
+          }, 'CSV', entities.length + 1);
           entities.push(entity);
         }
       } else if (section === 'relations') {
@@ -1113,13 +1200,13 @@ export class IOManager {
               'csv-import'
             );
           }
-          const relation: Relation = {
+          const relation = this.validateImportedRelation({
             from: fields[0],
             to: fields[1],
             relationType: fields[2],
             createdAt: fields[3] || undefined,
             lastModified: fields[4] || undefined,
-          };
+          }, 'CSV', relations.length + 1);
           relations.push(relation);
         }
       }
@@ -1170,32 +1257,24 @@ export class IOManager {
         return match ? match[1] : undefined;
       };
 
-      // Decode XML entities without stripping characters (preserves "AT&T", "O'Brien").
-      // Order is load-bearing: `&amp;` MUST run last so that double-encoded
-      // entities like `&amp;lt;` decode to `&lt;` (literal) rather than `<`.
-      const decodeXmlEntities = (v: string): string =>
-        v.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
-
-      const entity: Entity = {
+      const rawImportance = decodeXmlEntities(
+        getDataValue('d5') || getDataValue('importance') || '',
+      ).trim();
+      const entity = this.validateImportedEntity({
         name: decodeXmlEntities(nodeId),
         entityType: decodeXmlEntities(getDataValue('d0') || getDataValue('entityType') || 'unknown'),
         observations: decodeXmlEntities(getDataValue('d1') || getDataValue('observations') || '')
           .split(';')
           .map(s => s.trim())
           .filter(s => s),
-        createdAt: decodeXmlEntities(getDataValue('d2') || getDataValue('createdAt') || ''),
-        lastModified: decodeXmlEntities(getDataValue('d3') || getDataValue('lastModified') || ''),
+        createdAt: decodeXmlEntities(getDataValue('d2') || getDataValue('createdAt') || '') || undefined,
+        lastModified: decodeXmlEntities(getDataValue('d3') || getDataValue('lastModified') || '') || undefined,
         tags: decodeXmlEntities(getDataValue('d4') || getDataValue('tags') || '')
           .split(';')
           .map(s => s.trim())
           .filter(s => s),
-        importance: (() => {
-          const raw = getDataValue('d5') || getDataValue('importance');
-          if (!raw) return undefined;
-          const val = parseFloat(raw);
-          return isNaN(val) ? undefined : val;
-        })(),
-      };
+        importance: rawImportance ? Number(rawImportance) : undefined,
+      }, 'GraphML', entities.length + 1);
 
       entities.push(entity);
     }
@@ -1229,16 +1308,13 @@ export class IOManager {
         return match ? match[1] : undefined;
       };
 
-      const decodeXmlEnt = (v: string): string =>
-        v.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
-
-      const relation: Relation = {
-        from: decodeXmlEnt(source),
-        to: decodeXmlEnt(target),
-        relationType: decodeXmlEnt(getDataValue('e0') || getDataValue('relationType') || 'related_to'),
-        createdAt: decodeXmlEnt(getDataValue('e1') || getDataValue('createdAt') || ''),
-        lastModified: decodeXmlEnt(getDataValue('e2') || getDataValue('lastModified') || ''),
-      };
+      const relation = this.validateImportedRelation({
+        from: decodeXmlEntities(source),
+        to: decodeXmlEntities(target),
+        relationType: decodeXmlEntities(getDataValue('e0') || getDataValue('relationType') || 'related_to'),
+        createdAt: decodeXmlEntities(getDataValue('e1') || getDataValue('createdAt') || '') || undefined,
+        lastModified: decodeXmlEntities(getDataValue('e2') || getDataValue('lastModified') || '') || undefined,
+      }, 'GraphML', relations.length + 1);
 
       relations.push(relation);
     }
@@ -1258,6 +1334,7 @@ export class IOManager {
     // Setup progress reporter (we're at 20% from parsing, need to go to 100%)
     const reportProgress = createProgressReporter(options?.onProgress);
 
+    const beforeGraph = await this.storage.loadGraph();
     const existingGraph = await this.storage.getGraphForMutation();
     const result: ImportResult = {
       entitiesAdded: 0,
@@ -1385,7 +1462,13 @@ export class IOManager {
     reportProgress?.(createProgress(95, 100, 'saving graph'));
 
     if (!dryRun && (mergeStrategy !== 'fail' || result.errors.length === 0)) {
+      const auditEvents = preflightGovernedGraphMutation(
+        this.governanceHooks,
+        beforeGraph,
+        existingGraph,
+      );
       await this.storage.saveGraph(existingGraph);
+      fireGovernanceAudits(this.governanceHooks, auditEvents, 'IOManager');
     }
 
     // Report completion
@@ -1507,9 +1590,9 @@ export class IOManager {
       if (e.contentHash) existingObsSet.add(e.contentHash);
     }
 
-    // Create managers once, reuse across all chunks
-    const { EntityManager } = await import('../core/EntityManager.js');
-    const em = new EntityManager(this.storage);
+    // Reuse the context-owned manager so ingestion cannot bypass governance.
+    // Standalone IOManager callers retain the historical fallback.
+    const em = this.entityManager ?? new EntityManager(this.storage);
 
     const manifestLines: string[] = [];
     const createdEntities: Entity[] = [];
@@ -1630,8 +1713,7 @@ export class IOManager {
         );
       }
       if (createdEntities.length > 0) {
-        const { RelationManager } = await import('../core/RelationManager.js');
-        const rm = new RelationManager(this.storage);
+        const rm = this.relationManager ?? new RelationManager(this.storage);
         const relations = createdEntities.map(e => ({
           from: e.name,
           to: manifestEntity,
@@ -1780,6 +1862,7 @@ export class IOManager {
   async visualizeGraph(options?: VisualizeOptions): Promise<string> {
     const maxEntities = options?.maxEntities ?? 100;
     const title = options?.title ?? 'Knowledge Graph';
+    const escapedTitle = escapeHtml(title);
 
     // Load graph data
     const graph = await this.storage.loadGraph();
@@ -1825,14 +1908,14 @@ export class IOManager {
         type: r.relationType,
       }));
 
-    const nodesJson = JSON.stringify(nodes);
-    const linksJson = JSON.stringify(links);
+    const nodesJson = stringifyForInlineScript(nodes);
+    const linksJson = stringifyForInlineScript(links);
     const html = [
       '<!DOCTYPE html>',
       '<html>',
       '<head>',
       '  <meta charset="utf-8">',
-      `  <title>${title}</title>`,
+      `  <title>${escapedTitle}</title>`,
       '  <script src="https://d3js.org/d3.v7.min.js"><\/script>',
       '  <style>',
       '    body { margin: 0; font-family: sans-serif; background: #1a1a2e; }',
@@ -1851,7 +1934,7 @@ export class IOManager {
       '  </style>',
       '</head>',
       '<body>',
-      `  <h1>${title}</h1>`,
+      `  <h1>${escapedTitle}</h1>`,
       '  <svg></svg>',
       '  <div class="tooltip" id="tooltip"></div>',
       '  <script>',
@@ -1985,7 +2068,7 @@ export class IOManager {
     ].join('\n');
 
     if (options?.outputPath) {
-      await fs.writeFile(options.outputPath, html, 'utf-8');
+      await durableWriteFile(options.outputPath, html);
     }
 
     return html;

@@ -323,6 +323,45 @@ describe('MemoryEngine — addTurn', () => {
     } finally { cleanup(); }
   });
 
+  it('rejects a new write when the session turn limit is reached', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+        undefined, undefined, { maxTurnsPerSession: 1 },
+      );
+      await engine.addTurn('alpha red', { sessionId: 'limited', role: 'user' });
+
+      await expect(
+        engine.addTurn('zulu blue', { sessionId: 'limited', role: 'assistant' }),
+      ).rejects.toThrow(/maximum of 1 turns/i);
+      expect(await engine.getSessionTurns('limited')).toHaveLength(1);
+    } finally { cleanup(); }
+  });
+
+  it('serializes concurrent writes so they cannot exceed the session limit', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const agent = ctx.agentMemory();
+      const engine = new MemoryEngine(
+        ctx.storage, ctx.entityManager, agent.episodicMemory,
+        agent.workingMemory, new ImportanceScorer(),
+        undefined, undefined, { maxTurnsPerSession: 1 },
+      );
+
+      const results = await Promise.allSettled([
+        engine.addTurn('alpha red', { sessionId: 'limited', role: 'user' }),
+        engine.addTurn('zulu blue', { sessionId: 'limited', role: 'assistant' }),
+      ]);
+
+      expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+      expect(results.filter(result => result.status === 'rejected')).toHaveLength(1);
+      expect(await engine.getSessionTurns('limited')).toHaveLength(1);
+    } finally { cleanup(); }
+  });
+
   it('fires memoryEngine:turnAdded event', async () => {
     const { ctx, cleanup } = mkCtx();
     try {

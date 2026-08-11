@@ -10,8 +10,15 @@
 
 import { createWriteStream } from 'fs';
 import type { Entity, ReadonlyKnowledgeGraph, LongRunningOperationOptions } from '../types/types.js';
-import { checkCancellation, createProgressReporter, createProgress, validateFilePath } from '../utils/index.js';
+import {
+  checkCancellation,
+  createProgressReporter,
+  createProgress,
+  escapeCsvFormula,
+  validateFilePath,
+} from '../utils/index.js';
 import { PiiRedactor } from '../security/PiiRedactor.js';
+import { restrictSensitiveFilePermissions } from '../utils/durableWriteFile.js';
 
 /**
  * Per-call options for streaming exports.
@@ -29,6 +36,15 @@ export type StreamingExportOptions = LongRunningOperationOptions & {
 
 /** Shared stateless redactor for opt-in streaming redaction. */
 const STREAM_REDACTOR = new PiiRedactor();
+
+/** Restrict an existing export before truncation; ignore a new path. */
+async function secureExistingOutput(filePath: string): Promise<void> {
+  try {
+    await restrictSensitiveFilePermissions(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  }
+}
 
 /**
  * Result summary from a streaming export operation.
@@ -139,7 +155,8 @@ export class StreamingExporter {
     let entitiesWritten = 0;
     let relationsWritten = 0;
 
-    const writeStream = createWriteStream(this.filePath);
+    await secureExistingOutput(this.filePath);
+    const writeStream = createWriteStream(this.filePath, { mode: 0o600 });
 
     // Register error handler before any writes
     let writeError: Error | null = null;
@@ -185,6 +202,7 @@ export class StreamingExporter {
       });
       writeStream.on('error', reject);
     });
+    await restrictSensitiveFilePermissions(this.filePath);
 
     // Report completion
     reportProgress?.(createProgress(total, total, 'streamJSONL'));
@@ -240,7 +258,8 @@ export class StreamingExporter {
     let entitiesWritten = 0;
     const relationsWritten = 0; // CSV format doesn't export relations
 
-    const writeStream = createWriteStream(this.filePath);
+    await secureExistingOutput(this.filePath);
+    const writeStream = createWriteStream(this.filePath, { mode: 0o600 });
 
     // Register error handler before any writes
     let writeError: Error | null = null;
@@ -278,6 +297,7 @@ export class StreamingExporter {
       });
       writeStream.on('error', reject);
     });
+    await restrictSensitiveFilePermissions(this.filePath);
 
     // Report completion
     reportProgress?.(createProgress(total, total, 'streamCSV'));
@@ -302,16 +322,17 @@ export class StreamingExporter {
    * @private
    */
   private entityToCSVRow(entity: Entity): string {
-    const escape = (s: string) => `"${s.replace(/"/g, '""')}"`;
+    const escape = (s: string) =>
+      `"${escapeCsvFormula(s).replace(/"/g, '""')}"`;
 
     return [
       escape(entity.name),
       escape(entity.entityType),
       escape(entity.observations.join('; ')),
       escape((entity.tags ?? []).join('; ')),
-      entity.importance?.toString() ?? '',
-      entity.createdAt ?? '',
-      entity.lastModified ?? '',
+      escape(entity.importance?.toString() ?? ''),
+      escape(entity.createdAt ?? ''),
+      escape(entity.lastModified ?? ''),
     ].join(',');
   }
 

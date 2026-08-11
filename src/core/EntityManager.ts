@@ -8,7 +8,13 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import type { Entity, LongRunningOperationOptions, AccessContext } from '../types/index.js';
+import { isDeepStrictEqual } from 'node:util';
+import type {
+  Entity,
+  LongRunningOperationOptions,
+  AccessContext,
+  ReadonlyKnowledgeGraph,
+} from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
 import {
@@ -66,6 +72,156 @@ export interface GovernanceAuditEvent {
 export interface GovernanceHooks extends GovernancePolicy {
   /** Fire-and-forget audit sink. See the interface JSDoc for the contract. */
   audit?: (event: GovernanceAuditEvent) => void | Promise<unknown>;
+}
+
+/** Clone an entity before handing it to policy/audit code. */
+function cloneGovernedEntity(entity: Entity): Entity {
+  return structuredClone(entity);
+}
+
+/**
+ * Policy-check an entity update and prepare its post-commit audit event.
+ *
+ * Feature managers that cannot route through `EntityManager` use this helper
+ * before their storage write. Keeping the check here ensures they have the
+ * same error and audit semantics as ordinary entity mutations.
+ */
+export function preflightGovernanceUpdate(
+  hooks: GovernanceHooks | undefined,
+  before: Entity,
+  after: Entity,
+  updates: Partial<Entity>,
+): GovernanceAuditEvent | undefined {
+  if (!hooks) return undefined;
+  if (hooks.canUpdate && !hooks.canUpdate(before, updates)) {
+    throw new GovernanceError('update', before.name);
+  }
+  return {
+    operation: 'update',
+    entityName: before.name,
+    before: cloneGovernedEntity(before),
+    after: cloneGovernedEntity(after),
+  };
+}
+
+/**
+ * Policy-check every entity change represented by a full-graph replacement.
+ * All checks complete before the caller writes, so one denial blocks the
+ * entire bulk mutation.
+ */
+export function preflightGovernedGraphMutation(
+  hooks: GovernanceHooks | undefined,
+  beforeGraph: ReadonlyKnowledgeGraph,
+  afterGraph: ReadonlyKnowledgeGraph,
+): GovernanceAuditEvent[] {
+  if (!hooks) return [];
+
+  const events: GovernanceAuditEvent[] = [];
+  const entityEvents = new Set<string>();
+  const beforeByName = new Map(beforeGraph.entities.map(entity => [entity.name, entity]));
+  const afterByName = new Map(afterGraph.entities.map(entity => [entity.name, entity]));
+
+  for (const after of afterGraph.entities) {
+    const before = beforeByName.get(after.name);
+    if (!before) {
+      if (hooks.canCreate && !hooks.canCreate(after)) {
+        throw new GovernanceError('create', after.name);
+      }
+      events.push({
+        operation: 'create',
+        entityName: after.name,
+        after: cloneGovernedEntity(after),
+      });
+      entityEvents.add(after.name);
+      continue;
+    }
+
+    if (!isDeepStrictEqual(before, after)) {
+      const event = preflightGovernanceUpdate(hooks, before, after, after);
+      if (event) {
+        events.push(event);
+        entityEvents.add(after.name);
+      }
+    }
+  }
+
+  for (const before of beforeGraph.entities) {
+    if (afterByName.has(before.name)) continue;
+    if (hooks.canDelete && !hooks.canDelete(before)) {
+      throw new GovernanceError('delete', before.name);
+    }
+    events.push({
+      operation: 'delete',
+      entityName: before.name,
+      before: cloneGovernedEntity(before),
+    });
+    entityEvents.add(before.name);
+  }
+
+  // A full-graph replacement can change only edges while leaving endpoint
+  // entity records byte-identical. Treat changed neighbourhoods as endpoint
+  // updates so relation-only import/restore paths cannot bypass canUpdate.
+  const relationKey = (relation: ReadonlyKnowledgeGraph['relations'][number]): string =>
+    `${relation.from}\u0000${relation.to}\u0000${relation.relationType}`;
+  const beforeRelations = new Map(
+    beforeGraph.relations.map(relation => [relationKey(relation), relation]),
+  );
+  const afterRelations = new Map(
+    afterGraph.relations.map(relation => [relationKey(relation), relation]),
+  );
+  const touchedEndpoints = new Set<string>();
+
+  for (const relation of afterGraph.relations) {
+    const before = beforeRelations.get(relationKey(relation));
+    if (!before || !isDeepStrictEqual(before, relation)) {
+      touchedEndpoints.add(relation.from);
+      touchedEndpoints.add(relation.to);
+    }
+  }
+  for (const relation of beforeGraph.relations) {
+    if (!afterRelations.has(relationKey(relation))) {
+      touchedEndpoints.add(relation.from);
+      touchedEndpoints.add(relation.to);
+    }
+  }
+
+  for (const name of touchedEndpoints) {
+    if (entityEvents.has(name)) continue;
+    const before = beforeByName.get(name);
+    const after = afterByName.get(name);
+    if (!before || !after) continue;
+    const event = preflightGovernanceUpdate(hooks, before, after, {});
+    if (event) events.push(event);
+  }
+
+  return events;
+}
+
+/**
+ * Dispatch post-commit governance audits without allowing an audit sink
+ * failure to fail a write that already succeeded.
+ */
+export function fireGovernanceAudits(
+  hooks: GovernanceHooks | undefined,
+  events: readonly GovernanceAuditEvent[],
+  source = 'EntityManager',
+): void {
+  const audit = hooks?.audit;
+  if (!audit) return;
+
+  for (const event of events) {
+    const warn = (err: unknown): void => {
+      logger.warn(
+        `[${source}] governance audit hook failed for ${event.operation} "${event.entityName}" ` +
+          `(the write itself succeeded): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    };
+    try {
+      void Promise.resolve(audit(event)).catch(warn);
+    } catch (err) {
+      warn(err);
+    }
+  }
 }
 
 /**
@@ -224,19 +380,7 @@ export class EntityManager {
    * fail the write that already succeeded.
    */
   private fireAudit(event: GovernanceAuditEvent): void {
-    const audit = this.governanceHooks?.audit;
-    if (!audit) return;
-    const warn = (err: unknown): void => {
-      logger.warn(
-        `[EntityManager] governance audit hook failed for ${event.operation} "${event.entityName}" ` +
-          `(the write itself succeeded): ${err instanceof Error ? err.message : String(err)}`,
-      );
-    };
-    try {
-      void Promise.resolve(audit(event)).catch(warn);
-    } catch (err) {
-      warn(err);
-    }
+    fireGovernanceAudits(this.governanceHooks, [event]);
   }
 
   /**

@@ -125,6 +125,7 @@ interface Deps {
 
 export class MemoryEngine {
   public readonly events = new EventEmitter();
+  private readonly sessionWriteQueues = new Map<string, Promise<void>>();
 
   /** Dependencies bundle — populated in constructor, consumed in T5–T10. */
   protected readonly deps: Deps;
@@ -146,6 +147,12 @@ export class MemoryEngine {
       throw new TypeError(
         'MemoryEngine: semanticDedupEnabled=true requires a SemanticSearch instance',
       );
+    }
+    if (
+      config.maxTurnsPerSession !== undefined
+      && (!Number.isSafeInteger(config.maxTurnsPerSession) || config.maxTurnsPerSession < 1)
+    ) {
+      throw new RangeError('MemoryEngine: maxTurnsPerSession must be a positive integer');
     }
     this.deps = {
       storage,
@@ -169,6 +176,29 @@ export class MemoryEngine {
   }
 
   async addTurn(content: string, options: AddTurnOptions): Promise<AddTurnResult> {
+    const previous = this.sessionWriteQueues.get(options.sessionId) ?? Promise.resolve();
+    let release!: () => void;
+    const gate = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const tail = previous.then(() => gate);
+    this.sessionWriteQueues.set(options.sessionId, tail);
+
+    await previous;
+    try {
+      return await this.addTurnForSession(content, options);
+    } finally {
+      release();
+      if (this.sessionWriteQueues.get(options.sessionId) === tail) {
+        this.sessionWriteQueues.delete(options.sessionId);
+      }
+    }
+  }
+
+  private async addTurnForSession(
+    content: string,
+    options: AddTurnOptions,
+  ): Promise<AddTurnResult> {
     // Exclusion check runs BEFORE dedup: don't waste cycles on content
     // the user said never to write. Skips entirely when no
     // ExclusionManager is wired (preserves v2.0.x behavior).
@@ -207,6 +237,14 @@ export class MemoryEngine {
         duplicateTier: dup.tier,
         importanceScore: dup.match.importance ?? 0,
       };
+    }
+
+    const sessionTurnCount = await this.countSessionTurns(options.sessionId);
+    if (sessionTurnCount >= this.cfg.maxTurnsPerSession) {
+      throw new Error(
+        `MemoryEngine: session "${options.sessionId}" reached the maximum of ` +
+        `${this.cfg.maxTurnsPerSession} turns`
+      );
     }
 
     let importance: number;
@@ -268,9 +306,59 @@ export class MemoryEngine {
     sessionId: string,
     options: { limit?: number; role?: 'user' | 'assistant' | 'system' } = {},
   ): Promise<AgentEntity[]> {
+    const storageLimitCompatible = options.limit === undefined
+      || (
+        Number.isSafeInteger(options.limit)
+        && options.limit >= 0
+      );
+    if (this.deps.storage.getSessionEntities && storageLimitCompatible) {
+      await this.deps.storage.ensureLoaded();
+      return await this.deps.storage.getSessionEntities(sessionId, {
+        limit: options.limit,
+        role: options.role,
+        order: 'asc',
+      }) as AgentEntity[];
+    }
+
     const graph = await this.deps.storage.loadGraph();
+    const rolePrefix = options.role ? `[role=${options.role}]` : undefined;
+    const matchesSession = (entity: AgentEntity): boolean =>
+      entity.sessionId === sessionId
+      && (
+        rolePrefix === undefined
+        || (entity.observations[0] ?? '').startsWith(rolePrefix)
+      );
+
+    if (
+      typeof options.limit === 'number'
+      && Number.isSafeInteger(options.limit)
+      && options.limit >= 0
+    ) {
+      if (options.limit === 0) return [];
+      const oldest: Array<{ entity: AgentEntity; timestamp: number }> = [];
+      for (const candidate of graph.entities) {
+        const entity = candidate as AgentEntity;
+        if (!matchesSession(entity)) continue;
+        const rawTimestamp = entity.createdAt ? new Date(entity.createdAt).getTime() : 0;
+        const timestamp = Number.isFinite(rawTimestamp) ? rawTimestamp : 0;
+        let low = 0;
+        let high = oldest.length;
+        while (low < high) {
+          const mid = (low + high) >>> 1;
+          // Insert after ties to preserve graph order, matching stable sort.
+          if (oldest[mid]!.timestamp <= timestamp) low = mid + 1;
+          else high = mid;
+        }
+        if (low < options.limit) {
+          oldest.splice(low, 0, { entity, timestamp });
+          if (oldest.length > options.limit) oldest.pop();
+        }
+      }
+      return oldest.map(entry => entry.entity);
+    }
+
     let turns = graph.entities.filter(
-      (e) => (e as AgentEntity).sessionId === sessionId,
+      entity => matchesSession(entity as AgentEntity),
     ) as AgentEntity[];
 
     // Chronological order (oldest first) — natural transcript order, and
@@ -281,11 +369,6 @@ export class MemoryEngine {
       return aT - bT;
     });
 
-    if (options.role) {
-      const prefix = `[role=${options.role}]`;
-      turns = turns.filter((e) => (e.observations[0] ?? '').startsWith(prefix));
-    }
-
     if (typeof options.limit === 'number') {
       turns = turns.slice(0, options.limit);
     }
@@ -293,10 +376,27 @@ export class MemoryEngine {
     return turns;
   }
 
-  async checkDuplicate(content: string, sessionId: string): Promise<DuplicateCheckResult> {
-    // Load the graph snapshot once and share it across every tier check.
+  private async countSessionTurns(sessionId: string): Promise<number> {
+    if (this.deps.storage.countSessionEntities) {
+      await this.deps.storage.ensureLoaded();
+      return await this.deps.storage.countSessionEntities(sessionId);
+    }
+    // The cap is all the caller needs to distinguish. Avoid materializing or
+    // sorting session history on non-indexed backends.
     const graph = await this.deps.storage.loadGraph();
+    let count = 0;
+    for (const entity of graph.entities) {
+      if ((entity as AgentEntity).sessionId !== sessionId) continue;
+      count++;
+      if (count >= this.cfg.maxTurnsPerSession) break;
+    }
+    return count;
+  }
+
+  async checkDuplicate(content: string, sessionId: string): Promise<DuplicateCheckResult> {
+    let graph: ReadonlyKnowledgeGraph | undefined;
     if (this.cfg.semanticDedupEnabled && this.deps.semanticSearch) {
+      graph = await this.deps.storage.loadGraph();
       const ts = await this.checkTierSemantic(content, sessionId, graph);
       if (ts.isDuplicate) return ts;
     }
@@ -338,6 +438,16 @@ export class MemoryEngine {
     graph?: ReadonlyKnowledgeGraph,
   ): Promise<DuplicateCheckResult> {
     const hash = this.computeContentHash(content);
+    if (this.deps.storage.getEntitiesByContentHash) {
+      await this.deps.storage.ensureLoaded();
+      const candidates = await this.deps.storage.getEntitiesByContentHash(hash);
+      const match = (candidates as AgentEntity[]).find(
+        entity => entity.sessionId === sessionId,
+      );
+      if (match) return { isDuplicate: true, match, tier: 'exact' };
+      return { isDuplicate: false };
+    }
+
     graph ??= await this.deps.storage.loadGraph();
     const candidates = graph.entities.filter(
       (e) => (e as AgentEntity).contentHash === hash,
@@ -352,16 +462,39 @@ export class MemoryEngine {
     windowSize: number,
     graph?: ReadonlyKnowledgeGraph,
   ): Promise<AgentEntity[]> {
+    if (windowSize <= 0) return [];
+    if (this.deps.storage.getSessionEntities) {
+      await this.deps.storage.ensureLoaded();
+      return await this.deps.storage.getSessionEntities(sessionId, {
+        limit: windowSize,
+        order: 'desc',
+      }) as AgentEntity[];
+    }
+
     graph ??= await this.deps.storage.loadGraph();
-    const sessionEntities = graph.entities.filter(
-      (e) => (e as AgentEntity).sessionId === sessionId,
-    ) as AgentEntity[];
-    sessionEntities.sort((a, b) => {
-      const aT = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bT = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bT - aT;
-    });
-    return sessionEntities.slice(0, windowSize);
+    // Keep a bounded, timestamp-ordered selection while scanning. This
+    // avoids sorting an entire long session when dedup needs only a small
+    // recent window.
+    const recent: Array<{ entity: AgentEntity; timestamp: number }> = [];
+    for (const candidate of graph.entities) {
+      const entity = candidate as AgentEntity;
+      if (entity.sessionId !== sessionId) continue;
+      const rawTimestamp = entity.createdAt ? new Date(entity.createdAt).getTime() : 0;
+      const timestamp = Number.isFinite(rawTimestamp) ? rawTimestamp : 0;
+      let low = 0;
+      let high = recent.length;
+      while (low < high) {
+        const mid = (low + high) >>> 1;
+        // Insert after ties to preserve graph order, matching stable sort.
+        if (recent[mid]!.timestamp >= timestamp) low = mid + 1;
+        else high = mid;
+      }
+      if (low < windowSize) {
+        recent.splice(low, 0, { entity, timestamp });
+        if (recent.length > windowSize) recent.pop();
+      }
+    }
+    return recent.map(entry => entry.entity);
   }
 
   private checkTierPrefix(content: string, candidates: AgentEntity[]): DuplicateCheckResult {

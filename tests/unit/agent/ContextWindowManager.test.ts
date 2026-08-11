@@ -355,6 +355,34 @@ describe('ContextWindowManager', () => {
 
       expect(result.memories.some((m) => m.name === 'required')).toBe(true);
     });
+
+    it('cheap-caps large candidate sets before the only full salience pass', async () => {
+      const entities = Array.from({ length: 50 }, (_, i) =>
+        createTestEntity({
+          name: `candidate-${i}`,
+          importance: i,
+          createdAt: new Date(1_700_000_000_000 + i).toISOString(),
+        }),
+      );
+      storage = createMockStorage(entities);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      const rankSpy = vi.spyOn(salienceEngine, 'rankEntitiesBySalience');
+      contextManager = new ContextWindowManager(storage, salienceEngine, {
+        maxEntitiesToConsider: 10,
+      });
+
+      const result = await contextManager.retrieveForContext({
+        maxTokens: 10_000,
+        mustInclude: ['candidate-0'],
+      });
+
+      expect(rankSpy).toHaveBeenCalledTimes(1);
+      expect(rankSpy.mock.calls[0][0]).toHaveLength(10);
+      expect(result.memories.some((entity) => entity.name === 'candidate-0')).toBe(true);
+      expect(result.memories.some((entity) => entity.name === 'candidate-49')).toBe(true);
+    });
   });
 
   describe('configuration', () => {

@@ -5,7 +5,7 @@
  * variable identification, and pattern matching.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PatternDetector } from '../../../src/agent/PatternDetector.js';
 
 describe('PatternDetector', () => {
@@ -137,6 +137,28 @@ describe('PatternDetector', () => {
       if (patterns.length >= 2) {
         expect(patterns[0].occurrences).toBeGreaterThanOrEqual(patterns[1].occurrences);
       }
+    });
+
+    it('caps template comparisons for highly repetitive corpora', () => {
+      const limited = new PatternDetector({ maxComparisons: 3 });
+      const extractSpy = vi.spyOn(
+        limited as unknown as {
+          extractTemplate: (
+            a: string,
+            b: string,
+          ) => { pattern: string; variables: string[] } | null;
+        },
+        'extractTemplate',
+      );
+      const observations = Array.from(
+        { length: 100 },
+        (_, i) => `User prefers option${i} today`,
+      );
+
+      const patterns = limited.detectPatterns(observations, 2);
+
+      expect(extractSpy).toHaveBeenCalledTimes(3);
+      expect(patterns.some((p) => p.pattern === 'User prefers {X} today')).toBe(true);
     });
   });
 

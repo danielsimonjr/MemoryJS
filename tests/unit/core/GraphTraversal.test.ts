@@ -214,6 +214,31 @@ describe('GraphTraversal', () => {
       const path = results.find(r => r.path.includes('E'));
       expect(path).toBeDefined();
     });
+
+    it('should stop at configured path and expansion caps', async () => {
+      await storage.saveGraph({
+        entities: ['S', 'A', 'B', 'T'].map(name => ({
+          name,
+          entityType: 'node',
+          observations: [],
+        })),
+        relations: [
+          { from: 'S', to: 'A', relationType: 'connects' },
+          { from: 'S', to: 'B', relationType: 'connects' },
+          { from: 'A', to: 'T', relationType: 'connects' },
+          { from: 'B', to: 'T', relationType: 'connects' },
+        ],
+      });
+
+      expect(await traversal.findAllPaths('S', 'T', 3, {
+        direction: 'outgoing',
+        maxPaths: 1,
+      })).toHaveLength(1);
+      expect(await traversal.findAllPaths('S', 'T', 3, {
+        direction: 'outgoing',
+        maxExpansions: 1,
+      })).toHaveLength(0);
+    });
   });
 
   describe('Connected Components', () => {

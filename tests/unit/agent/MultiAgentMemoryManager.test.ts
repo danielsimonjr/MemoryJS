@@ -247,10 +247,21 @@ describe('MultiAgentMemoryManager', () => {
       await manager.createAgentMemory('agent_1', { name: 'm2' });
       await manager.createAgentMemory('default', { name: 'm3' });
 
-      const memories = await manager.getAgentMemories('agent_1');
+      const memories = await manager.getAgentMemories('agent_1', 'agent_1');
 
       expect(memories.length).toBe(2);
       expect(memories.every((m) => m.agentId === 'agent_1')).toBe(true);
+    });
+
+    it('filters private owner memories for a different requester', async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.registerAgent('agent_2', {});
+      await manager.createAgentMemory('agent_1', { name: 'private_dump', visibility: 'private' });
+      await manager.createAgentMemory('agent_1', { name: 'shared_dump', visibility: 'shared' });
+
+      const memories = await manager.getAgentMemories('agent_1', 'agent_2');
+      expect(memories.map((memory) => memory.name)).toEqual(['shared_dump']);
+      expect(await manager.getAgentMemoriesPrivileged('agent_1')).toHaveLength(2);
     });
   });
 
@@ -853,6 +864,29 @@ describe('MultiAgentMemoryManager', () => {
     });
   });
 
+  describe('resolveConflict visibility', () => {
+    it('refuses to read a conflict memory hidden from the requester', async () => {
+      await manager.registerAgent('agent_1', {});
+      await manager.createAgentMemory('agent_1', {
+        name: 'hidden_conflict',
+        observations: ['secret'],
+        visibility: 'private',
+      });
+      await manager.createAgentMemory('default', {
+        name: 'visible_conflict',
+        observations: ['public side'],
+      });
+
+      await expect(manager.resolveConflict({
+        primaryMemory: 'hidden_conflict',
+        conflictingMemories: ['visible_conflict'],
+        detectionMethod: 'manual',
+        suggestedStrategy: 'merge_all',
+        detectedAt: new Date().toISOString(),
+      }, 'default')).rejects.toThrow(/not visible/);
+    });
+  });
+
   describe('mergeCrossAgent', () => {
     beforeEach(async () => {
       await manager.registerAgent('agent_1', { trustLevel: 0.9 });
@@ -936,6 +970,23 @@ describe('MultiAgentMemoryManager', () => {
 
       const merged = await manager.mergeCrossAgent(['single_mem'], 'default');
 
+      expect(merged).toBeUndefined();
+    });
+
+    it('refuses to merge a private memory hidden from the target agent', async () => {
+      await manager.createAgentMemory('agent_1', {
+        name: 'hidden_merge_source',
+        visibility: 'private',
+      });
+      await manager.createAgentMemory('agent_2', {
+        name: 'visible_merge_source',
+        visibility: 'shared',
+      });
+
+      const merged = await manager.mergeCrossAgent(
+        ['hidden_merge_source', 'visible_merge_source'],
+        'default',
+      );
       expect(merged).toBeUndefined();
     });
 

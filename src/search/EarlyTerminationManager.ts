@@ -207,36 +207,13 @@ export class EarlyTerminationManager {
     layer: SearchLayer,
     limit: number
   ): Promise<HybridSearchResult[]> {
-    // Configure weights to emphasize the current layer
-    const weights = this.getLayerWeights(layer);
-
     try {
-      return await this.hybridSearch.search(graph, query, {
-        ...weights,
+      return await this.hybridSearch.searchLayer(graph, query, layer, {
         limit: limit * 2, // Over-fetch for better merging
       });
     } catch {
       // Layer failed, return empty results
       return [];
-    }
-  }
-
-  /**
-   * Get weight configuration for a specific layer.
-   * @private
-   */
-  private getLayerWeights(layer: SearchLayer): {
-    semanticWeight: number;
-    lexicalWeight: number;
-    symbolicWeight: number;
-  } {
-    switch (layer) {
-      case 'semantic':
-        return { semanticWeight: 1.0, lexicalWeight: 0.0, symbolicWeight: 0.0 };
-      case 'lexical':
-        return { semanticWeight: 0.0, lexicalWeight: 1.0, symbolicWeight: 0.0 };
-      case 'symbolic':
-        return { semanticWeight: 0.0, lexicalWeight: 0.0, symbolicWeight: 1.0 };
     }
   }
 

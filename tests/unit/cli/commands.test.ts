@@ -45,6 +45,14 @@ const mockIoManager = {
   exportGraph: vi.fn(),
 };
 
+const mockArchiveManager = {
+  archiveEntities: vi.fn(),
+};
+
+const mockCompressionManager = {
+  compressGraph: vi.fn(),
+};
+
 const mockStorage = {
   loadGraph: vi.fn(),
 };
@@ -57,6 +65,8 @@ vi.mock('../../../src/core/ManagerContext.js', () => {
       searchManager = mockSearchManager;
       analyticsManager = mockAnalyticsManager;
       ioManager = mockIoManager;
+      archiveManager = mockArchiveManager;
+      compressionManager = mockCompressionManager;
       storage = mockStorage;
       constructor() {}
     },
@@ -137,6 +147,17 @@ describe('CLI Commands', () => {
     });
 
     mockIoManager.exportGraph.mockReturnValue('{"entities":[],"relations":[]}');
+    mockArchiveManager.archiveEntities.mockResolvedValue({
+      archived: 0,
+      entityNames: [],
+    });
+    mockCompressionManager.compressGraph.mockResolvedValue({
+      duplicatesFound: 0,
+      entitiesMerged: 0,
+      observationsCompressed: 0,
+      relationsConsolidated: 0,
+      mergedEntities: [],
+    });
   });
 
   afterEach(() => {
@@ -206,6 +227,34 @@ describe('CLI Commands', () => {
       expect(subcommands).toContain('create');
       expect(subcommands).toContain('list');
       expect(subcommands).toContain('delete');
+    });
+  });
+
+  describe('Maintenance Commands', () => {
+    it('rejects non-finite and out-of-range compression thresholds before mutation', async () => {
+      registerCommands(program);
+
+      await expect(
+        program.parseAsync(['node', 'test', 'compress', '--threshold', 'NaN'])
+      ).rejects.toThrow();
+      expect(mockCompressionManager.compressGraph).not.toHaveBeenCalled();
+    });
+
+    it('rejects out-of-range archive importance before mutation', async () => {
+      registerCommands(program);
+
+      await expect(
+        program.parseAsync(['node', 'test', 'archive', '--importance-lt', '11'])
+      ).rejects.toThrow();
+      expect(mockArchiveManager.archiveEntities).not.toHaveBeenCalled();
+    });
+
+    it('passes validated numeric options to maintenance managers', async () => {
+      registerCommands(program);
+
+      await program.parseAsync(['node', 'test', 'compress', '--threshold', '0.75', '--dry-run']);
+
+      expect(mockCompressionManager.compressGraph).toHaveBeenCalledWith(0.75, true);
     });
   });
 

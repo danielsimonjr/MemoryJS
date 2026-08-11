@@ -79,6 +79,9 @@ describe('StreamingExporter', () => {
       const fileContent = await fs.readFile(outputPath, 'utf-8');
       const lines = fileContent.trim().split('\n');
       expect(lines.length).toBe(19); // 10 entities + 9 relations
+      if (process.platform !== 'win32') {
+        expect((await fs.stat(outputPath)).mode & 0o777).toBe(0o600);
+      }
 
       // Verify first line is an entity
       const firstEntity = JSON.parse(lines[0]);
@@ -193,6 +196,29 @@ describe('StreamingExporter', () => {
       expect(lines[1]).toContain('Type, with comma');
       expect(lines[1]).toContain('tag""1');
       expect(lines[1]).toContain('tag,2');
+    });
+
+    it('should neutralize spreadsheet formulas before CSV quoting', async () => {
+      const graph: KnowledgeGraph = {
+        entities: [{
+          name: '=2+2',
+          entityType: '+SUM(A1:A2)',
+          observations: ['@malicious'],
+          tags: ['-dangerous'],
+          importance: 5,
+        }],
+        relations: [],
+      };
+      const outputPath = join(testDir, 'formula-injection.csv');
+      const exporter = new StreamingExporter(outputPath);
+
+      await exporter.streamCSV(graph);
+
+      const fileContent = await fs.readFile(outputPath, 'utf-8');
+      expect(fileContent).toContain(`"'=2+2"`);
+      expect(fileContent).toContain(`"'+SUM(A1:A2)"`);
+      expect(fileContent).toContain(`"'@malicious"`);
+      expect(fileContent).toContain(`"'-dangerous"`);
     });
 
     it('should handle entities without optional fields', async () => {

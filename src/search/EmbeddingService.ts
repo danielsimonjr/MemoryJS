@@ -328,17 +328,72 @@ interface OpenAIEmbeddingResponse {
  * }
  * ```
  */
+export interface LlamaCppEmbeddingOptions {
+  baseUrl?: string;
+  model?: string;
+  /** Additional non-loopback hostnames that may receive embedding requests. */
+  allowedHosts?: string[];
+  /** Request timeout in milliseconds (default 10 seconds, maximum 2 minutes). */
+  requestTimeoutMs?: number;
+}
+
+const LLAMACPP_DEFAULT_TIMEOUT_MS = 10_000;
+const LLAMACPP_MAX_TIMEOUT_MS = 120_000;
+const LLAMACPP_MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
+const LLAMACPP_MAX_DIMENSIONS = 65_536;
+const LLAMACPP_LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+
+function normalizeLlamaHost(host: string): string {
+  return host.trim().toLowerCase().replace(/^\[(.*)\]$/, '$1').replace(/\.$/, '');
+}
+
 export class LlamaCppEmbeddingService implements EmbeddingService {
   readonly provider = 'llamacpp';
   readonly model: string;
   readonly baseUrl: string;
+  readonly requestTimeoutMs: number;
 
   /** 0 until the server has been probed. Deliberately not a plausible default. */
   private _dimensions = 0;
   private probed = false;
 
-  constructor(options?: { baseUrl?: string; model?: string }) {
-    this.baseUrl = (options?.baseUrl ?? 'http://127.0.0.1:8080').replace(/\/+$/, '');
+  constructor(options?: LlamaCppEmbeddingOptions) {
+    const rawBaseUrl = options?.baseUrl ?? 'http://127.0.0.1:8080';
+    let parsed: URL;
+    try {
+      parsed = new URL(rawBaseUrl);
+    } catch {
+      throw new Error('Invalid llama.cpp base URL');
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('llama.cpp base URL must use http or https');
+    }
+    if (parsed.username || parsed.password || parsed.search || parsed.hash) {
+      throw new Error('llama.cpp base URL must not contain credentials, a query, or a fragment');
+    }
+
+    const allowedHosts = new Set(LLAMACPP_LOOPBACK_HOSTS);
+    for (const host of options?.allowedHosts ?? []) {
+      const normalized = normalizeLlamaHost(host);
+      if (normalized) allowedHosts.add(normalized);
+    }
+    const hostname = normalizeLlamaHost(parsed.hostname);
+    if (!allowedHosts.has(hostname)) {
+      throw new Error(
+        `llama.cpp host is not allowed; add "${hostname}" to allowedHosts to opt in`
+      );
+    }
+
+    const timeout = options?.requestTimeoutMs ?? LLAMACPP_DEFAULT_TIMEOUT_MS;
+    if (!Number.isFinite(timeout) || timeout <= 0 || timeout > LLAMACPP_MAX_TIMEOUT_MS) {
+      throw new RangeError(
+        `llama.cpp timeout must be between 1 and ${LLAMACPP_MAX_TIMEOUT_MS} milliseconds`
+      );
+    }
+
+    const basePath = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/+$/, '');
+    this.baseUrl = `${parsed.origin}${basePath}`;
+    this.requestTimeoutMs = timeout;
     // llama-server serves exactly one model, so the name is informational: it is
     // recorded on stored vectors so "which model produced this?" stays answerable.
     this.model = options?.model ?? 'llamacpp-local';
@@ -413,33 +468,113 @@ export class LlamaCppEmbeddingService implements EmbeddingService {
    * that has bitten this corpus before.
    */
   private async request(input: string[]): Promise<number[][]> {
-    const response = await fetch(`${this.baseUrl}/v1/embeddings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input, model: this.model }),
-    });
-
-    if (!response.ok) {
-      const detail = typeof response.text === 'function' ? await response.text() : '';
-      throw new Error(
-        `llama.cpp embeddings request failed: ${response.status} ${detail}`.trim()
-      );
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/v1/embeddings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input, model: this.model }),
+        redirect: 'error',
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
+      });
+    } catch (error) {
+      const name = error instanceof Error ? error.name : '';
+      if (name === 'AbortError' || name === 'TimeoutError') {
+        throw new Error(`llama.cpp embeddings request timed out after ${this.requestTimeoutMs}ms`);
+      }
+      throw new Error('llama.cpp embeddings request failed');
     }
 
-    const body = (await response.json()) as {
-      data?: Array<{ embedding: number[]; index?: number }>;
-    };
-    const data = body?.data;
+    if (!response.ok) {
+      throw new Error(`llama.cpp embeddings request failed with status ${response.status}`);
+    }
+
+    const body = await this.readJsonResponse(response);
+    const data = typeof body === 'object' && body !== null
+      ? (body as { data?: unknown }).data
+      : undefined;
     if (!Array.isArray(data)) {
       throw new Error('llama.cpp returned no embedding data');
     }
+    if (data.length > input.length) {
+      throw new Error('llama.cpp returned more embeddings than requested');
+    }
 
     const out: number[][] = new Array(data.length);
-    data.forEach((item, position) => {
-      const at = typeof item.index === 'number' ? item.index : position;
-      out[at] = item.embedding;
+    data.forEach((rawItem, position) => {
+      if (typeof rawItem !== 'object' || rawItem === null) {
+        throw new Error('llama.cpp returned malformed embedding data');
+      }
+      const item = rawItem as { embedding?: unknown; index?: unknown };
+      if (
+        !Array.isArray(item.embedding)
+        || item.embedding.length === 0
+        || item.embedding.length > LLAMACPP_MAX_DIMENSIONS
+        || !item.embedding.every(value => typeof value === 'number' && Number.isFinite(value))
+      ) {
+        throw new Error('llama.cpp returned an invalid embedding vector');
+      }
+      const at = item.index === undefined ? position : item.index;
+      if (!Number.isInteger(at) || (at as number) < 0 || (at as number) >= data.length) {
+        throw new Error('llama.cpp returned an invalid embedding index');
+      }
+      if (out[at as number] !== undefined) {
+        throw new Error('llama.cpp returned duplicate embedding indexes');
+      }
+      out[at as number] = item.embedding as number[];
     });
+    for (let index = 0; index < out.length; index++) {
+      if (out[index] === undefined) {
+        throw new Error('llama.cpp returned incomplete embedding indexes');
+      }
+    }
     return out;
+  }
+
+  private async readJsonResponse(response: Response): Promise<unknown> {
+    const declaredLength = response.headers?.get('content-length');
+    if (
+      declaredLength !== null
+      && declaredLength !== undefined
+      && Number(declaredLength) > LLAMACPP_MAX_RESPONSE_BYTES
+    ) {
+      throw new Error('llama.cpp embedding response exceeded the size limit');
+    }
+
+    let text: string;
+    const reader = response.body?.getReader();
+    if (reader) {
+      const chunks: Uint8Array[] = [];
+      let totalBytes = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > LLAMACPP_MAX_RESPONSE_BYTES) {
+          await reader.cancel();
+          throw new Error('llama.cpp embedding response exceeded the size limit');
+        }
+        chunks.push(value);
+      }
+      const bytes = new Uint8Array(totalBytes);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      text = new TextDecoder().decode(bytes);
+    } else {
+      text = await response.text();
+      if (new TextEncoder().encode(text).byteLength > LLAMACPP_MAX_RESPONSE_BYTES) {
+        throw new Error('llama.cpp embedding response exceeded the size limit');
+      }
+    }
+
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      throw new Error('llama.cpp returned invalid JSON');
+    }
   }
 }
 
@@ -791,8 +926,10 @@ export function createEmbeddingService(config?: Partial<EmbeddingConfig>): Embed
       // employment records) off any network while still allowing an embedding model
       // far larger than the bundled 384-dim MiniLM.
       return new LlamaCppEmbeddingService({
-        baseUrl: (mergedConfig as { baseUrl?: string }).baseUrl,
+        baseUrl: mergedConfig.baseUrl,
         model: mergedConfig.model,
+        allowedHosts: mergedConfig.allowedHosts,
+        requestTimeoutMs: mergedConfig.requestTimeoutMs,
       });
 
     case 'none':

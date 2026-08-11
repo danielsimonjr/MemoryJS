@@ -168,6 +168,20 @@ describe('GraphStorage mmap wiring (task 84)', () => {
       });
     });
 
+    it('keeps relations distinct when their old colon-delimited keys collide', async () => {
+      const storage = new GraphStorage(filePath);
+      const relations: Relation[] = [
+        { from: 'a:b', to: 'c', relationType: 'd' },
+        { from: 'a', to: 'b:c', relationType: 'd' },
+      ];
+      await storage.saveGraph({ entities: [], relations });
+      storage.clearCache();
+
+      const back = await storage.loadGraph();
+
+      expect(back.relations).toHaveLength(2);
+    });
+
     it('handles a multi-line file via streamLines correctly', async () => {
       const storage = new GraphStorage(filePath);
       const entities: Entity[] = Array.from({ length: 200 }, (_, i) =>

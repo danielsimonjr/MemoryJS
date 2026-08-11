@@ -9,8 +9,7 @@
  * @module search/BM25Search
  */
 
-import type { Entity, SearchResult } from '../types/index.js';
-import type { GraphStorage } from '../core/GraphStorage.js';
+import type { Entity, IGraphStorage, SearchResult } from '../types/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 
 /**
@@ -102,7 +101,7 @@ export class BM25Search {
   private config: BM25Config;
 
   constructor(
-    private storage: GraphStorage,
+    private storage: IGraphStorage,
     config: Partial<BM25Config> = {}
   ) {
     this.config = { ...DEFAULT_BM25_CONFIG, ...config };
@@ -224,6 +223,8 @@ export class BM25Search {
     if (queryTerms.length === 0) {
       return [];
     }
+    const candidateNames = await this.getFtsCandidateNames(query, graph.entities.length);
+    if (candidateNames?.size === 0) return [];
 
     const { k1, b } = this.config;
     const { documents, documentFrequency, avgDocLength, totalDocs } = this.index;
@@ -231,6 +232,7 @@ export class BM25Search {
 
     // Calculate BM25 score for each document
     for (const [entityName, docEntry] of documents) {
+      if (candidateNames !== null && !candidateNames.has(entityName)) continue;
       const entity = entityMap.get(entityName);
       if (!entity) continue;
 
@@ -280,6 +282,23 @@ export class BM25Search {
     return results
       .sort((a, b) => b.score - a.score)
       .slice(0, effectiveLimit);
+  }
+
+  /**
+   * Prefer storage-native FTS for candidate retrieval when available.
+   * The in-memory BM25 index remains the scorer, preserving BM25 config and
+   * matched-field behavior while avoiding a full document loop.
+   */
+  private async getFtsCandidateNames(
+    query: string,
+    corpusSize: number,
+  ): Promise<Set<string> | null> {
+    if (!this.storage.fullTextSearch) return null;
+    await this.storage.ensureLoaded();
+    const matches = await this.storage.fullTextSearch(query, {
+      limit: Math.max(corpusSize, 1),
+    });
+    return new Set(matches.map(match => match.name));
   }
 
   /**

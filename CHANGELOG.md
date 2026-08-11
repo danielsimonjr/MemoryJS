@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security — harden storage, search, governance, and agent boundaries
+
+Closes the findings from a full security + performance review of 3.1.0:
+
+- **XSS:** `visualizeGraph()` escapes JSON for HTML script context and HTML-escapes the title.
+- **Path confinement:** backup restore/delete use the validated path; segment recovery manifests only accept confined relative filenames under `segmentsDir`.
+- **Governance:** import/ingest/archive/compress and observation/relation mutations honor EntityManager governance hooks when enabled.
+- **Visibility / RBAC:** multi-agent privileged dumps are explicit; transfer/merge/conflict check ownership and visibility; corrupt RBAC revoke lines fail closed; unassigned agents deny by default; scope matching is delimiter-aware.
+- **DoS:** linear wildcard matching (no `.*` ReDoS); fuzzy query/field caps + two-row Levenshtein; worker timeout no longer falls back to a full sync rescan; `maxTurnsPerSession` enforced.
+- **Import/export:** CSV/GraphML validated like JSON; streaming/CLI CSV formula escaping; shared GraphML entity decoder (`&amp;` last).
+- **Files:** sensitive writes use `0600`; atomic-write fallback only on known Windows rename errors; SQLite `foreign_keys` restored in `finally`.
+- **Embeddings:** llama.cpp `baseUrl` restricted to loopback by default, with timeouts and sanitized errors.
+- **LLM prompts:** untrusted content fenced as data-only in planner/distiller/reconstructor.
+- **Integrity:** JSONL relation dedup uses collision-safe keys; CLI destructive numeric options require finite in-range values.
+
+### Performance — adjacency, FTS, hybrid, and agent hot paths
+
+- SQLite warm-cache relation lookups use O(1) adjacency maps (indexes were previously bypassed).
+- Ranked/BM25/hybrid lexical search can use SQLite FTS5 candidates; hybrid skips zero-weight channels and runs per-layer early termination without re-running full hybrid.
+- Graph BFS uses head-pointer queues; `findAllPaths` has path/expansion caps.
+- MemoryEngine prefer indexed `contentHash` / session queries for dedup.
+- Vector search uses bounded top-K; induced subgraph packaging uses adjacency indexes.
+- Pattern/duplicate detection uses candidate budgets; context window metadata-prefilters before salience; TF-IDF maintains incremental DF; cache-pressure registration is wired; single-segment writes when only one segment changes.
+
 ### Fixed — budget the two remaining tests that would time out on a narrow machine
 
 Follow-up to `0740654`, which raised the 1024-segment test's budget after it failed on a

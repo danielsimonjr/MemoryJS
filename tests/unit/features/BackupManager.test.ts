@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { tmpdir } from 'os';
 import { BackupManager } from '../../../src/features/BackupManager.js';
 import { IOManager } from '../../../src/features/IOManager.js';
@@ -74,6 +74,11 @@ describe('BackupManager', () => {
       expect(meta.description).toBe('phase-29-test');
       expect(meta.compressed).toBe(true);
       expect(meta.compressionFormat).toBe('brotli');
+      if (process.platform !== 'win32') {
+        expect((await fs.stat(result.path)).mode & 0o777).toBe(0o600);
+        expect((await fs.stat(metaPath)).mode & 0o777).toBe(0o600);
+        expect((await fs.stat(backups.getDir())).mode & 0o777).toBe(0o700);
+      }
     });
 
     it('respects compress=false', async () => {
@@ -126,12 +131,30 @@ describe('BackupManager', () => {
       await fs.writeFile(outside, '');
       await expect(backups.restore(outside)).rejects.toThrow();
     });
+
+    it('uses the validated path when restoring a relative backup name', async () => {
+      const result = await backups.create({ compress: false });
+      await storage.saveGraph({ entities: [], relations: [] });
+      storage.clearCache();
+
+      const restored = await backups.restore(basename(result.path));
+
+      expect(restored.restoredFrom).toBe(result.path);
+      expect(restored.entityCount).toBe(2);
+    });
   });
 
   describe('delete', () => {
     it('removes the backup file and its metadata sidecar', async () => {
       const result = await backups.create();
       await backups.delete(result.path);
+      await expect(fs.access(result.path)).rejects.toThrow();
+      await expect(fs.access(`${result.path}.meta.json`)).rejects.toThrow();
+    });
+
+    it('uses the validated path when deleting a relative backup name', async () => {
+      const result = await backups.create();
+      await backups.delete(basename(result.path));
       await expect(fs.access(result.path)).rejects.toThrow();
       await expect(fs.access(`${result.path}.meta.json`)).rejects.toThrow();
     });

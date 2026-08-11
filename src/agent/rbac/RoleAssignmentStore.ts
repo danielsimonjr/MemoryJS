@@ -16,6 +16,53 @@ type StoreRecord =
   | { op: 'assign'; assignment: RoleAssignment; ts: string }
   | { op: 'revoke'; agentId: string; role: Role; resourceType?: ResourceType; ts: string };
 
+const RESOURCE_TYPES = new Set<ResourceType>([
+  'entity',
+  'relation',
+  'observation',
+  'session',
+  'artifact',
+]);
+
+function isOptionalString(value: unknown): boolean {
+  return value === undefined || typeof value === 'string';
+}
+
+function isTimestamp(value: unknown): value is string {
+  return typeof value === 'string' && Number.isFinite(Date.parse(value));
+}
+
+function isOptionalTimestamp(value: unknown): boolean {
+  return value === undefined || isTimestamp(value);
+}
+
+function isResourceType(value: unknown): value is ResourceType {
+  return typeof value === 'string' && RESOURCE_TYPES.has(value as ResourceType);
+}
+
+function isRoleAssignment(value: unknown): value is RoleAssignment {
+  if (typeof value !== 'object' || value === null) return false;
+  const assignment = value as Record<string, unknown>;
+  return typeof assignment.agentId === 'string' && assignment.agentId.length > 0
+    && typeof assignment.role === 'string' && assignment.role.length > 0
+    && (assignment.resourceType === undefined || isResourceType(assignment.resourceType))
+    && isOptionalString(assignment.scope)
+    && isOptionalTimestamp(assignment.validFrom)
+    && isOptionalTimestamp(assignment.validUntil)
+    && isOptionalString(assignment.notes);
+}
+
+function isStoreRecord(value: unknown): value is StoreRecord {
+  if (typeof value !== 'object' || value === null) return false;
+  const record = value as Record<string, unknown>;
+  if (!isTimestamp(record.ts)) return false;
+  if (record.op === 'assign') return isRoleAssignment(record.assignment);
+  if (record.op !== 'revoke') return false;
+  return typeof record.agentId === 'string' && record.agentId.length > 0
+    && typeof record.role === 'string' && record.role.length > 0
+    && (record.resourceType === undefined || isResourceType(record.resourceType));
+}
+
 export interface RoleAssignmentStoreOptions {
   /** Path to a JSONL sidecar; absent ⇒ in-memory only. */
   persistencePath?: string;
@@ -25,25 +72,23 @@ export class RoleAssignmentStore {
   private readonly assignments = new Map<string, RoleAssignment[]>();
   private readonly persistencePath?: string;
   private corruptLines = 0;
+  private hydrationIntegrityValid = true;
 
   constructor(options?: RoleAssignmentStoreOptions) {
     this.persistencePath = options?.persistencePath;
   }
 
   /**
-   * Number of unparseable lines skipped during the most recent
+   * Number of corrupt lines detected during the most recent
    * {@link hydrate} call (`0` before any hydrate, or when the file is clean).
-   *
-   * **Fail-open implication:** skipped lines can include `revoke` records.
-   * A corrupted revoke line means the corresponding grant is silently
-   * re-activated on hydrate — i.e. corruption fails *open*, not closed.
-   * Callers relying on RBAC for enforcement should treat
-   * `corruptLineCount > 0` as an integrity alarm and refuse to proceed
-   * (or rebuild the sidecar from a trusted source) rather than serving
-   * permissions from a partially-replayed file.
    */
   get corruptLineCount(): number {
     return this.corruptLines;
+  }
+
+  /** Whether persisted assignments were fully and successfully replayed. */
+  get integrityValid(): boolean {
+    return this.hydrationIntegrityValid;
   }
 
   /**
@@ -51,39 +96,42 @@ export class RoleAssignmentStore {
    * map. Idempotent — safe to call multiple times. No-op when no path
    * is set or the file does not exist.
    *
-   * Unparseable lines are skipped but **counted** — inspect
-   * {@link corruptLineCount} after hydrating. See that accessor's JSDoc
-   * for why a non-zero count must not be ignored (corrupt revokes fail open).
+   * Corrupt or malformed lines abort hydration, clear all replayed grants,
+   * and leave {@link integrityValid} false so authorization fails closed.
    */
   async hydrate(): Promise<void> {
     if (!this.persistencePath) return;
+    this.hydrationIntegrityValid = false;
     let content: string;
     try {
       content = await fs.readFile(this.persistencePath, 'utf-8');
     } catch (e) {
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return;
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+        this.hydrationIntegrityValid = true;
+        return;
+      }
       throw e;
     }
     this.assignments.clear();
     this.corruptLines = 0;
-    for (const line of content.split('\n')) {
+    const lines = content.split('\n');
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
       if (!line.trim()) continue;
+      let value: unknown;
       try {
-        const rec = JSON.parse(line) as StoreRecord;
-        if (rec.op === 'assign') {
-          this.applyAssign(rec.assignment);
-        } else if (rec.op === 'revoke') {
-          this.applyRevoke(rec.agentId, rec.role, rec.resourceType);
-        } else {
-          // Parseable JSON but not a known record shape — still corrupt.
-          this.corruptLines++;
-        }
+        value = JSON.parse(line);
       } catch {
-        // Tolerate corrupt lines (surfaced via corruptLineCount) —
-        // logging the raw line via console.warn would leak grant data.
-        this.corruptLines++;
+        this.failHydration(index + 1);
+      }
+      if (!isStoreRecord(value)) this.failHydration(index + 1);
+      if (value.op === 'assign') {
+        this.applyAssign(value.assignment);
+      } else {
+        this.applyRevoke(value.agentId, value.role, value.resourceType);
       }
     }
+    this.hydrationIntegrityValid = true;
   }
 
   /**
@@ -129,6 +177,12 @@ export class RoleAssignmentStore {
   }
 
   // -------- Internal --------
+
+  private failHydration(lineNumber: number): never {
+    this.corruptLines++;
+    this.assignments.clear();
+    throw new Error(`RBAC persistence integrity check failed at line ${lineNumber}`);
+  }
 
   private applyAssign(assignment: RoleAssignment): void {
     const list = this.assignments.get(assignment.agentId) ?? [];

@@ -281,12 +281,27 @@ export class MultiAgentMemoryManager extends EventEmitter {
   }
 
   /**
-   * Get all memories owned by an agent.
+   * Get memories owned by one agent that are visible to a requester.
    *
-   * @param agentId - Agent identifier
-   * @returns Agent's memories
+   * @param ownerAgentId - Agent whose memories are being queried
+   * @param requestingAgentId - Agent requesting access
+   * @returns Owner memories visible to the requester
    */
-  async getAgentMemories(agentId: string): Promise<AgentEntity[]> {
+  async getAgentMemories(
+    ownerAgentId: string,
+    requestingAgentId: string,
+  ): Promise<AgentEntity[]> {
+    const owned = await this.getAgentMemoriesPrivileged(ownerAgentId);
+    return this.filterByVisibility(owned, requestingAgentId);
+  }
+
+  /**
+   * Privileged administrative dump of every memory owned by an agent.
+   *
+   * This method intentionally performs no visibility filtering. Callers must
+   * enforce an administrator authorization boundary before invoking it.
+   */
+  async getAgentMemoriesPrivileged(agentId: string): Promise<AgentEntity[]> {
     const graph = await this.storage.loadGraph();
     const memories: AgentEntity[] = [];
 
@@ -353,30 +368,30 @@ export class MultiAgentMemoryManager extends EventEmitter {
 
     const memory = entity as AgentEntity;
 
-    // Verify ownership
+    // Verify the claimed caller against the memory's actual stored owner.
     if (memory.agentId !== fromAgentId) {
       return undefined;
     }
 
-    // Update ownership
-    memory.agentId = toAgentId;
-    memory.lastModified = new Date().toISOString();
-    // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- best-effort lastModified write; a vanish is caught by the entityIndex check below before the authoritative saveGraph
-    await this.storage.updateEntity(memoryName, {
-      lastModified: memory.lastModified,
-    } as Partial<Entity>);
-    // Update in-memory via saveGraph for agent-specific fields
+    // Re-check the authoritative mutation snapshot to close the gap between
+    // the initial lookup and the ownership write. Never mutate the live cache
+    // object returned by getEntityByName before this check.
     const graph = await this.storage.getGraphForMutation();
     const entityIndex = graph.entities.findIndex((e) => e.name === memoryName);
-    if (entityIndex !== -1) {
-      (graph.entities[entityIndex] as AgentEntity).agentId = toAgentId;
-      await this.storage.saveGraph(graph);
+    if (entityIndex === -1 || !isAgentEntity(graph.entities[entityIndex])) {
+      return undefined;
     }
+    const storedMemory = graph.entities[entityIndex] as AgentEntity;
+    if (storedMemory.agentId !== fromAgentId) return undefined;
+
+    storedMemory.agentId = toAgentId;
+    storedMemory.lastModified = new Date().toISOString();
+    await this.storage.saveGraph(graph);
 
     // Emit transfer event
     this.emit('memory:transferred', memoryName, fromAgentId, toAgentId);
 
-    return memory;
+    return { ...storedMemory };
   }
 
   /**
@@ -865,7 +880,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
     publicMemoryCount: number;
     accessibleFromOthers: number;
   }> {
-    const ownMemories = await this.getAgentMemories(agentId);
+    const ownMemories = await this.getAgentMemories(agentId, agentId);
 
     const sharedCount = ownMemories.filter((m) => m.visibility === 'shared')
       .length;
@@ -929,11 +944,13 @@ export class MultiAgentMemoryManager extends EventEmitter {
    * Resolve a conflict using the specified strategy.
    *
    * @param conflict - Conflict information
+   * @param requestingAgentId - Agent requesting access to conflict memories
    * @param strategy - Resolution strategy (uses suggested if not specified)
    * @returns Resolution result
    */
   async resolveConflict(
     conflict: ConflictInfo,
+    requestingAgentId: string,
     strategy?: ConflictStrategy
   ): Promise<ResolutionResult> {
     const resolver = this.getConflictResolver();
@@ -943,6 +960,9 @@ export class MultiAgentMemoryManager extends EventEmitter {
     const memories: AgentEntity[] = [];
 
     for (const name of allNames) {
+      if (!this.isMemoryVisible(name, requestingAgentId)) {
+        throw new Error('One or more conflict memories are not visible to the requesting agent');
+      }
       const entity = this.storage.getEntityByName(name);
       if (entity && isAgentEntity(entity)) {
         memories.push(entity as AgentEntity);
@@ -978,6 +998,9 @@ export class MultiAgentMemoryManager extends EventEmitter {
     // Gather memories
     const memories: AgentEntity[] = [];
     for (const name of memoryNames) {
+      if (!this.isMemoryVisible(name, targetAgentId)) {
+        return undefined;
+      }
       const entity = this.storage.getEntityByName(name);
       if (entity && isAgentEntity(entity)) {
         memories.push(entity as AgentEntity);

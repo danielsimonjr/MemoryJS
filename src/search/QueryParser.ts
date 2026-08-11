@@ -10,6 +10,61 @@
 
 import type { QueryNode, BooleanOpNode } from '../types/search.js';
 
+const MAX_WILDCARD_PATTERN_LENGTH = 200;
+const MAX_WILDCARDS = 32;
+
+/**
+ * RegExp-compatible wildcard matcher whose test/exec paths use the standard
+ * linear-time greedy glob algorithm instead of a backtracking `.*` regex.
+ */
+class LinearWildcardRegExp extends RegExp {
+  private readonly wildcardPattern: string;
+
+  constructor(pattern: string) {
+    // The real matching is implemented below. Keep this a RegExp subclass to
+    // preserve the public WildcardNode shape for existing callers.
+    super('(?:)', 'i');
+    this.wildcardPattern = pattern.toLowerCase();
+  }
+
+  override test(text: string): boolean {
+    const value = text.toLowerCase();
+    let valueIndex = 0;
+    let patternIndex = 0;
+    let starIndex = -1;
+    let retryValueIndex = -1;
+
+    while (valueIndex < value.length) {
+      const patternChar = this.wildcardPattern[patternIndex];
+      if (patternChar === '?' || patternChar === value[valueIndex]) {
+        patternIndex++;
+        valueIndex++;
+      } else if (patternChar === '*') {
+        starIndex = patternIndex++;
+        retryValueIndex = valueIndex;
+      } else if (starIndex !== -1) {
+        patternIndex = starIndex + 1;
+        valueIndex = ++retryValueIndex;
+      } else {
+        return false;
+      }
+    }
+
+    while (this.wildcardPattern[patternIndex] === '*') {
+      patternIndex++;
+    }
+    return patternIndex === this.wildcardPattern.length;
+  }
+
+  override exec(text: string): RegExpExecArray | null {
+    if (!this.test(text)) return null;
+    const result = [text] as RegExpExecArray;
+    result.index = 0;
+    result.input = text;
+    return result;
+  }
+}
+
 /**
  * Query parser for advanced search syntax.
  *
@@ -268,19 +323,20 @@ export class QueryParser {
   }
 
   /**
-   * Convert wildcard pattern to regex.
+   * Convert a wildcard pattern to a RegExp-compatible linear-time matcher.
    */
   private wildcardToRegex(pattern: string): RegExp {
-    // Reject oversized patterns to prevent ReDoS from pathological inputs
-    if (pattern.length > 200) {
-      throw new Error(`Wildcard pattern too long (max 200 characters, got ${pattern.length})`);
+    if (pattern.length > MAX_WILDCARD_PATTERN_LENGTH) {
+      throw new Error(
+        `Wildcard pattern too long (max ${MAX_WILDCARD_PATTERN_LENGTH} characters, got ${pattern.length})`
+      );
     }
-    const escaped = pattern
-      .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*{2,}/g, '*')   // Collapse consecutive wildcards to prevent nested quantifiers
-      .replace(/\*/g, '.*')
-      .replace(/\?/g, '.');
-    return new RegExp(`^${escaped}$`, 'i');
+    const normalized = pattern.replace(/\*{2,}/g, '*');
+    const wildcardCount = normalized.split('').filter(char => char === '*' || char === '?').length;
+    if (wildcardCount > MAX_WILDCARDS) {
+      throw new Error(`Too many wildcards (max ${MAX_WILDCARDS}, got ${wildcardCount})`);
+    }
+    return new LinearWildcardRegExp(normalized);
   }
 }
 

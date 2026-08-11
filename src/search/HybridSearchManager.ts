@@ -40,6 +40,8 @@ export const DEFAULT_NEIGHBOR_DAMPING = 0.3;
  * for back-compat (exported from the search barrel).
  */
 export type HybridSearchLayer = HybridSearchResult['matchedLayers'][number];
+/** Text layers that can be executed independently. */
+export type HybridExecutableLayer = Exclude<HybridSearchLayer, 'graph'>;
 
 /**
  * HybridSearchResult variant whose scores may carry the normalized
@@ -172,11 +174,19 @@ export class HybridSearchManager {
     const graphWeight = options.graphWeight ?? this.defaults.graphWeight ?? 0;
     const expandNeighbors = options.expandNeighbors ?? this.defaults.expandNeighbors;
 
-    // Execute searches in parallel
+    // Execute only positively weighted channels. In particular, this keeps
+    // semantic embedding calls off the hot path when semanticWeight is zero.
+    const emptyScores = (): Map<string, number> => new Map<string, number>();
     const [semanticResults, lexicalResults, symbolicResults] = await Promise.all([
-      this.executeSemanticSearch(graph, query, semantic, limit * 2),
-      this.executeLexicalSearch(query, lexical, limit * 2),
-      this.executeSymbolicSearch(graph.entities, symbolic),
+      semanticWeight > 0
+        ? this.executeSemanticSearch(graph, query, semantic, limit * 2)
+        : Promise.resolve(emptyScores()),
+      lexicalWeight > 0
+        ? this.executeLexicalSearch(query, lexical, limit * 2)
+        : Promise.resolve(emptyScores()),
+      symbolicWeight > 0
+        ? Promise.resolve(this.executeSymbolicSearch(graph.entities, symbolic))
+        : Promise.resolve(emptyScores()),
     ]);
 
     // Graph-connectivity layer: normalized PageRank over the candidate union.
@@ -194,6 +204,7 @@ export class HybridSearchManager {
     // Normalize weights (graph participates only when active)
     const totalWeight =
       semanticWeight + lexicalWeight + symbolicWeight + (graphActive ? graphWeight : 0);
+    if (totalWeight <= 0) return [];
     const weights = {
       semantic: semanticWeight / totalWeight,
       lexical: lexicalWeight / totalWeight,
@@ -243,6 +254,66 @@ export class HybridSearchManager {
     }
 
     return ranked;
+  }
+
+  /**
+   * Execute exactly one text layer and shape its scores as hybrid results.
+   * Used by EarlyTerminationManager so each cost-ordered layer runs once,
+   * without repeatedly invoking the full hybrid orchestration.
+   */
+  async searchLayer(
+    graph: ReadonlyKnowledgeGraph,
+    query: string,
+    layer: HybridExecutableLayer,
+    options: Partial<HybridSearchOptions> = {},
+  ): Promise<HybridSearchResult[]> {
+    const limit = options.limit ?? SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT;
+    const empty = new Map<string, number>();
+    let semanticResults = empty;
+    let lexicalResults = empty;
+    let symbolicResults = empty;
+
+    switch (layer) {
+      case 'semantic':
+        semanticResults = await this.executeSemanticSearch(
+          graph,
+          query,
+          options.semantic ?? {},
+          limit * 2,
+        );
+        break;
+      case 'lexical':
+        lexicalResults = await this.executeLexicalSearch(
+          query,
+          options.lexical ?? {},
+          limit * 2,
+        );
+        break;
+      case 'symbolic':
+        symbolicResults = this.executeSymbolicSearch(
+          graph.entities,
+          options.symbolic ?? {},
+        );
+        break;
+    }
+
+    const entityMap = new Map(graph.entities.map(entity => [entity.name, entity]));
+    return this.mergeResults(
+      entityMap,
+      semanticResults,
+      lexicalResults,
+      symbolicResults,
+      new Map(),
+      {
+        semantic: layer === 'semantic' ? 1 : 0,
+        lexical: layer === 'lexical' ? 1 : 0,
+        symbolic: layer === 'symbolic' ? 1 : 0,
+        graph: 0,
+      },
+      false,
+    )
+      .sort((a, b) => b.scores.combined - a.scores.combined)
+      .slice(0, limit);
   }
 
   /**

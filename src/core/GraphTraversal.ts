@@ -79,6 +79,21 @@ export interface TraversalOptionsWithTracking extends TraversalOptions {
   taskId?: string;
 }
 
+/** Resource caps and cancellation controls for all-path enumeration. */
+export interface FindAllPathsOptions extends TraversalOptionsWithTracking {
+  signal?: AbortSignal;
+  /** Maximum paths returned before traversal stops (default: 1,000). */
+  maxPaths?: number;
+  /** Maximum nodes whose adjacency is expanded (default: 100,000). */
+  maxExpansions?: number;
+  /** Yield to the event loop after this many expansions (default: 1,000). */
+  yieldEvery?: number;
+}
+
+export const DEFAULT_ALL_PATHS_MAX_PATHS = 1_000;
+export const DEFAULT_ALL_PATHS_MAX_EXPANSIONS = 100_000;
+const DEFAULT_ALL_PATHS_YIELD_EVERY = 1_000;
+
 /**
  * Phase 4 Sprint 6: Default traversal options.
  */
@@ -283,8 +298,9 @@ export class GraphTraversal {
     visited.add(startEntity);
     parents.set(startEntity, null);
 
-    while (queue.length > 0) {
-      const { node, depth } = queue.shift()!;
+    let queueHead = 0;
+    while (queueHead < queue.length) {
+      const { node, depth } = queue[queueHead++]!;
 
       // Respect maxDepth limit
       if (depth > opts.maxDepth) continue;
@@ -398,8 +414,9 @@ export class GraphTraversal {
     visited.add(source);
     parents.set(source, null);
 
-    while (queue.length > 0) {
-      const current = queue.shift()!;
+    let queueHead = 0;
+    while (queueHead < queue.length) {
+      const current = queue[queueHead++]!;
 
       // Found target, reconstruct path
       if (current === target) {
@@ -532,7 +549,7 @@ export class GraphTraversal {
    * @param source - Source entity name
    * @param target - Target entity name
    * @param maxDepth - Maximum path length (default: 5)
-   * @param options - Traversal options (includes signal for cancellation and access tracking)
+   * @param options - Traversal options, resource caps, cancellation, and access tracking
    * @returns Array of PathResult objects for all found paths
    * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
    */
@@ -540,10 +557,32 @@ export class GraphTraversal {
     source: string,
     target: string,
     maxDepth: number = 5,
-    options: TraversalOptionsWithTracking & { signal?: AbortSignal } = {}
+    options: FindAllPathsOptions = {}
   ): Promise<PathResult[]> {
     // Check for early cancellation
-    const { signal, ...traversalOptions } = options;
+    const {
+      signal,
+      maxPaths: requestedMaxPaths,
+      maxExpansions: requestedMaxExpansions,
+      yieldEvery: requestedYieldEvery,
+      ...traversalOptions
+    } = options;
+    const maxPaths = typeof requestedMaxPaths === 'number'
+      && Number.isSafeInteger(requestedMaxPaths)
+      && requestedMaxPaths >= 0
+      ? requestedMaxPaths
+      : DEFAULT_ALL_PATHS_MAX_PATHS;
+    const maxExpansions =
+      typeof requestedMaxExpansions === 'number'
+      && Number.isSafeInteger(requestedMaxExpansions)
+      && requestedMaxExpansions >= 0
+        ? requestedMaxExpansions
+        : DEFAULT_ALL_PATHS_MAX_EXPANSIONS;
+    const yieldEvery = typeof requestedYieldEvery === 'number'
+      && Number.isSafeInteger(requestedYieldEvery)
+      && requestedYieldEvery > 0
+      ? requestedYieldEvery
+      : DEFAULT_ALL_PATHS_YIELD_EVERY;
     checkCancellation(signal, 'findAllPaths');
 
     // Ensure graph is loaded to populate indexes
@@ -563,14 +602,16 @@ export class GraphTraversal {
     const currentRelations: Relation[] = [];
     const visited = new Set<string>([source]);
 
-    // Track iterations for periodic cancellation checks
-    let iterationCount = 0;
+    if (maxPaths === 0 || maxExpansions === 0) return [];
+
+    // Track expansions for hard caps, cancellation checks, and cooperative
+    // event-loop yielding on dense graphs.
+    let expansionCount = 0;
     const CANCELLATION_CHECK_INTERVAL = 100;
 
-    const dfsAllPaths = (current: string, depth: number) => {
+    const dfsAllPaths = async (current: string, depth: number): Promise<void> => {
       // Periodic cancellation check
-      iterationCount++;
-      if (iterationCount % CANCELLATION_CHECK_INTERVAL === 0) {
+      if (expansionCount % CANCELLATION_CHECK_INTERVAL === 0) {
         checkCancellation(signal, 'findAllPaths');
       }
 
@@ -582,17 +623,26 @@ export class GraphTraversal {
           length: currentPath.length - 1,
           relations: [...currentRelations],
         });
+        if (allPaths.length >= maxPaths) return;
         return;
+      }
+
+      if (expansionCount >= maxExpansions || allPaths.length >= maxPaths) return;
+      expansionCount++;
+      if (expansionCount % yieldEvery === 0) {
+        await new Promise<void>(resolve => setImmediate(resolve));
+        checkCancellation(signal, 'findAllPaths');
       }
 
       const neighbors = this.getNeighborsWithRelations(current, opts);
       for (const { neighbor, relation } of neighbors) {
+        if (expansionCount >= maxExpansions || allPaths.length >= maxPaths) break;
         if (!visited.has(neighbor)) {
           visited.add(neighbor);
           currentPath.push(neighbor);
           currentRelations.push(relation);
 
-          dfsAllPaths(neighbor, depth + 1);
+          await dfsAllPaths(neighbor, depth + 1);
 
           currentPath.pop();
           currentRelations.pop();
@@ -601,7 +651,7 @@ export class GraphTraversal {
       }
     };
 
-    dfsAllPaths(source, 0);
+    await dfsAllPaths(source, 0);
 
     // Track access if enabled - collect unique nodes from all paths
     if (options.trackAccess && this.accessTracker && allPaths.length > 0) {
@@ -638,8 +688,9 @@ export class GraphTraversal {
         const queue: string[] = [entity.name];
         visited.add(entity.name);
 
-        while (queue.length > 0) {
-          const current = queue.shift()!;
+        let queueHead = 0;
+        while (queueHead < queue.length) {
+          const current = queue[queueHead++]!;
           component.push(current);
 
           // Get all neighbors (both directions for weakly connected)
@@ -773,8 +824,9 @@ export class GraphTraversal {
 
       // BFS
       const queue: string[] = [source.name];
-      while (queue.length > 0) {
-        const v = queue.shift()!;
+      let queueHead = 0;
+      while (queueHead < queue.length) {
+        const v = queue[queueHead++]!;
         stack.push(v);
 
         const neighbors = this.getNeighborsWithRelations(v, { direction: 'both' });

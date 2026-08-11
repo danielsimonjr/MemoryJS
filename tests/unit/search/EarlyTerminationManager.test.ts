@@ -12,6 +12,7 @@ import type { Entity, HybridSearchResult, ReadonlyKnowledgeGraph } from '../../.
 describe('EarlyTerminationManager', () => {
   const mockHybridSearch = {
     search: vi.fn(),
+    searchLayer: vi.fn(),
     searchWithEntities: vi.fn(),
   };
 
@@ -65,12 +66,12 @@ describe('EarlyTerminationManager', () => {
     };
 
     // Default mock behavior
-    mockHybridSearch.search.mockResolvedValue([]);
+    mockHybridSearch.searchLayer.mockResolvedValue([]);
   });
 
   describe('searchWithEarlyTermination', () => {
     it('should execute search and return results', async () => {
-      mockHybridSearch.search.mockResolvedValue([
+      mockHybridSearch.searchLayer.mockResolvedValue([
         createResult(testGraph.entities[0], 0.8, ['lexical']),
         createResult(testGraph.entities[1], 0.6, ['lexical']),
         createResult(testGraph.entities[2], 0.7, ['lexical']),
@@ -86,7 +87,7 @@ describe('EarlyTerminationManager', () => {
 
     it('should terminate early when results are adequate', async () => {
       // Return enough high-quality results from first layer
-      mockHybridSearch.search
+      mockHybridSearch.searchLayer
         .mockResolvedValueOnce([
           createResult(testGraph.entities[0], 0.9, ['symbolic']),
           createResult(testGraph.entities[1], 0.85, ['symbolic']),
@@ -105,7 +106,7 @@ describe('EarlyTerminationManager', () => {
 
     it('should continue all layers when results are inadequate', async () => {
       // Return few low-quality results from each layer
-      mockHybridSearch.search
+      mockHybridSearch.searchLayer
         .mockResolvedValueOnce([
           createResult(testGraph.entities[0], 0.3, ['symbolic']),
         ])
@@ -126,7 +127,7 @@ describe('EarlyTerminationManager', () => {
     });
 
     it('should merge results from multiple layers', async () => {
-      mockHybridSearch.search
+      mockHybridSearch.searchLayer
         .mockResolvedValueOnce([
           createResult(testGraph.entities[0], 0.8, ['symbolic']),
         ])
@@ -147,7 +148,7 @@ describe('EarlyTerminationManager', () => {
     });
 
     it('should sort results by combined score', async () => {
-      mockHybridSearch.search.mockResolvedValue([
+      mockHybridSearch.searchLayer.mockResolvedValue([
         createResult(testGraph.entities[0], 0.5, ['lexical']),
         createResult(testGraph.entities[1], 0.9, ['lexical']),
         createResult(testGraph.entities[2], 0.7, ['lexical']),
@@ -164,7 +165,7 @@ describe('EarlyTerminationManager', () => {
     });
 
     it('should respect maxResults option', async () => {
-      mockHybridSearch.search.mockResolvedValue(
+      mockHybridSearch.searchLayer.mockResolvedValue(
         testGraph.entities.map((e, i) => createResult(e, 0.9 - i * 0.1, ['lexical']))
       );
 
@@ -176,7 +177,7 @@ describe('EarlyTerminationManager', () => {
     });
 
     it('should handle layer search failures gracefully', async () => {
-      mockHybridSearch.search
+      mockHybridSearch.searchLayer
         .mockResolvedValueOnce([
           createResult(testGraph.entities[0], 0.8, ['symbolic']),
         ])
@@ -192,7 +193,7 @@ describe('EarlyTerminationManager', () => {
     });
 
     it('should track executed layers', async () => {
-      mockHybridSearch.search.mockResolvedValue([]);
+      mockHybridSearch.searchLayer.mockResolvedValue([]);
 
       const result = await manager.searchWithEarlyTermination(testGraph, 'test');
 
@@ -202,7 +203,7 @@ describe('EarlyTerminationManager', () => {
     });
 
     it('should exclude semantic when not available', async () => {
-      mockHybridSearch.search.mockResolvedValue([]);
+      mockHybridSearch.searchLayer.mockResolvedValue([]);
 
       const result = await manager.searchWithEarlyTermination(testGraph, 'test', {
         semanticAvailable: false,
@@ -336,10 +337,8 @@ describe('EarlyTerminationManager', () => {
     it('should execute layers in cost order (fastest first)', async () => {
       const executionOrder: string[] = [];
 
-      mockHybridSearch.search.mockImplementation(async (_graph, _query, options) => {
-        if (options?.symbolicWeight === 1.0) executionOrder.push('symbolic');
-        if (options?.lexicalWeight === 1.0) executionOrder.push('lexical');
-        if (options?.semanticWeight === 1.0) executionOrder.push('semantic');
+      mockHybridSearch.searchLayer.mockImplementation(async (_graph, _query, layer) => {
+        executionOrder.push(layer);
         return [];
       });
 

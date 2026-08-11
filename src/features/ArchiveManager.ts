@@ -20,6 +20,12 @@ import {
   createProgressReporter,
   createProgress,
 } from '../utils/index.js';
+import { durableWriteFile } from '../utils/durableWriteFile.js';
+import {
+  fireGovernanceAudits,
+  preflightGovernedGraphMutation,
+  type GovernanceHooks,
+} from '../core/EntityManager.js';
 
 /**
  * Criteria for archiving entities.
@@ -72,7 +78,10 @@ export interface ArchiveResult {
 export class ArchiveManager {
   private readonly archiveDir: string;
 
-  constructor(private storage: GraphStorage) {
+  constructor(
+    private storage: GraphStorage,
+    private readonly governanceHooks?: GovernanceHooks,
+  ) {
     const filePath = this.storage.getFilePath();
     const dir = dirname(filePath);
     this.archiveDir = join(dir, '.archives');
@@ -208,6 +217,21 @@ export class ArchiveManager {
     // Check for cancellation before archiving
     checkCancellation(opts.signal, 'archiveEntities');
 
+    const archiveNames = new Set(toArchive.map(e => e.name));
+    const postArchiveGraph = {
+      entities: readGraph.entities.filter(e => !archiveNames.has(e.name)),
+      relations: readGraph.relations.filter(
+        r => !archiveNames.has(r.from) && !archiveNames.has(r.to),
+      ),
+    };
+    // Policy-check before writing even the archive sidecar. A denied archive
+    // must not leak a copy of protected entities to a new file.
+    const auditEvents = preflightGovernedGraphMutation(
+      this.governanceHooks,
+      readGraph,
+      postArchiveGraph,
+    );
+
     // Phase 2: Save to compressed archive file (40-80% progress)
     let archivePath: string | undefined;
     let originalSize: number | undefined;
@@ -236,12 +260,12 @@ export class ArchiveManager {
     const graph = await this.storage.getGraphForMutation();
 
     // Remove archived entities from main graph
-    const archiveNames = new Set(toArchive.map(e => e.name));
     graph.entities = graph.entities.filter(e => !archiveNames.has(e.name));
     graph.relations = graph.relations.filter(
       r => !archiveNames.has(r.from) && !archiveNames.has(r.to)
     );
     await this.storage.saveGraph(graph);
+    fireGovernanceAudits(this.governanceHooks, auditEvents, 'ArchiveManager');
 
     // Report completion
     reportProgress?.(createProgress(100, 100, 'archiveEntities'));
@@ -272,7 +296,8 @@ export class ArchiveManager {
     compressionRatio: number;
   }> {
     // Ensure archive directory exists
-    await fs.mkdir(this.archiveDir, { recursive: true });
+    await fs.mkdir(this.archiveDir, { recursive: true, mode: 0o700 });
+    await fs.chmod(this.archiveDir, 0o700);
 
     // Generate timestamp-based filename
     const timestamp = new Date().toISOString()
@@ -292,7 +317,7 @@ export class ArchiveManager {
     });
 
     // Write compressed archive
-    await fs.writeFile(archivePath, compressionResult.compressed);
+    await durableWriteFile(archivePath, compressionResult.compressed);
 
     // Write metadata file
     const metadataPath = `${archivePath}.meta.json`;
@@ -306,7 +331,7 @@ export class ArchiveManager {
       compressedSize: compressionResult.compressedSize,
       compressionRatio: compressionResult.ratio,
     };
-    await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+    await durableWriteFile(metadataPath, JSON.stringify(metadata, null, 2));
 
     return {
       archivePath,

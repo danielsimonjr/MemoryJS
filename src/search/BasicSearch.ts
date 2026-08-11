@@ -8,15 +8,24 @@
 
 import type { KnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { isWithinDateRange, SEARCH_LIMITS, searchCaches } from '../utils/index.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
+import { collectInducedRelations } from './inducedSubgraph.js';
 
 /** Performs basic text search with optional filters and caching. */
 export class BasicSearch {
   constructor(
     private storage: GraphStorage,
-    private enableCache: boolean = true
-  ) {}
+    private enableCache: boolean = true,
+    private cachePressure?: CachePressureCoordinator,
+  ) {
+    this.cachePressure?.register({
+      name: 'search-results-basic',
+      currentEntries: () => searchCaches.basic.currentEntries(),
+      evictTo: (target) => searchCaches.basic.evictTo(target),
+    });
+  }
 
   /** Search nodes by text query with optional filters and pagination. */
   async searchNodes(
@@ -68,9 +77,7 @@ export class BasicSearch {
     const paginatedEntities = SearchFilterChain.paginate(filteredEntities, pagination);
 
     const filteredEntityNames = new Set(paginatedEntities.map(e => e.name));
-    const filteredRelations = graph.relations.filter(
-      r => filteredEntityNames.has(r.from) && filteredEntityNames.has(r.to)
-    );
+    const filteredRelations = collectInducedRelations(this.storage, filteredEntityNames);
 
     const result = { entities: paginatedEntities, relations: filteredRelations };
 
@@ -78,6 +85,7 @@ export class BasicSearch {
     if (this.enableCache) {
       const cacheKey = { query, tags, minImportance, maxImportance, offset, limit, projectId };
       searchCaches.basic.set(cacheKey, result);
+      this.cachePressure?.evictIfOverBudget();
     }
 
     return result;
@@ -87,11 +95,10 @@ export class BasicSearch {
   async openNodes(names: string[]): Promise<KnowledgeGraph> {
     const graph = await this.storage.loadGraph();
 
-    const filteredEntities = graph.entities.filter(e => names.includes(e.name));
+    const requestedNames = new Set(names);
+    const filteredEntities = graph.entities.filter(e => requestedNames.has(e.name));
     const filteredEntityNames = new Set(filteredEntities.map(e => e.name));
-    const filteredRelations = graph.relations.filter(
-      r => filteredEntityNames.has(r.from) && filteredEntityNames.has(r.to)
-    );
+    const filteredRelations = collectInducedRelations(this.storage, filteredEntityNames);
 
     return { entities: filteredEntities, relations: filteredRelations };
   }
@@ -134,13 +141,9 @@ export class BasicSearch {
     const paginatedEntities = SearchFilterChain.paginate(filteredEntities, pagination);
 
     const filteredEntityNames = new Set(paginatedEntities.map(e => e.name));
-    const filteredRelations = graph.relations.filter(r => {
+    const filteredRelations = collectInducedRelations(this.storage, filteredEntityNames, (r) => {
       const dateToCheck = r.createdAt || r.lastModified;
-      const inDateRange = !dateToCheck || isWithinDateRange(dateToCheck, startDate, endDate);
-      const involvesFilteredEntities =
-        filteredEntityNames.has(r.from) && filteredEntityNames.has(r.to);
-
-      return inDateRange && involvesFilteredEntities;
+      return !dateToCheck || isWithinDateRange(dateToCheck, startDate, endDate);
     });
 
     const result = { entities: paginatedEntities, relations: filteredRelations };
@@ -149,6 +152,7 @@ export class BasicSearch {
     if (this.enableCache) {
       const cacheKey = { method: 'dateRange', startDate, endDate, entityType, tags, offset, limit };
       searchCaches.basic.set(cacheKey, result);
+      this.cachePressure?.evictIfOverBudget();
     }
 
     return result;

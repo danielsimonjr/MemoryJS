@@ -8,9 +8,11 @@
 
 import type { BooleanQueryNode, Entity, KnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { SEARCH_LIMITS, QUERY_LIMITS } from '../utils/constants.js';
 import { ValidationError } from '../utils/errors.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
+import { collectInducedRelations } from './inducedSubgraph.js';
 
 /**
  * Phase 4 Sprint 4: Cache entry for Boolean search AST and results.
@@ -45,6 +47,8 @@ const BOOLEAN_CACHE_TTL_MS = 5 * 60 * 1000;
  * Performs boolean search with query parsing and AST evaluation.
  */
 export class BooleanSearch {
+  readonly name = 'search-boolean';
+
   /**
    * Phase 4 Sprint 4: AST cache to avoid re-parsing queries.
    * Maps query string -> parsed AST.
@@ -57,7 +61,12 @@ export class BooleanSearch {
    */
   private resultCache: Map<string, BooleanCacheEntry> = new Map();
 
-  constructor(private storage: GraphStorage) {}
+  constructor(
+    private storage: GraphStorage,
+    private cachePressure?: CachePressureCoordinator,
+  ) {
+    this.cachePressure?.register(this);
+  }
 
   /**
    * Phase 4 Sprint 4: Generate cache key for boolean search.
@@ -88,6 +97,29 @@ export class BooleanSearch {
   clearCache(): void {
     this.astCache.clear();
     this.resultCache.clear();
+  }
+
+  /** Combined AST + result entry count for cache-pressure coordination. */
+  currentEntries(): number {
+    return this.astCache.size + this.resultCache.size;
+  }
+
+  /** Drop oldest result entries, then oldest parsed ASTs, to reach a target. */
+  evictTo(targetEntries: number): void {
+    const target = Math.max(0, Math.floor(targetEntries));
+    if (this.currentEntries() <= target) return;
+
+    const resultsByAge = [...this.resultCache.entries()]
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    for (const [key] of resultsByAge) {
+      if (this.currentEntries() <= target) return;
+      this.resultCache.delete(key);
+    }
+    while (this.currentEntries() > target) {
+      const oldestAst = this.astCache.keys().next().value;
+      if (oldestAst === undefined) break;
+      this.astCache.delete(oldestAst);
+    }
   }
 
   /**
@@ -138,6 +170,7 @@ export class BooleanSearch {
     }
 
     this.astCache.set(query, ast);
+    this.cachePressure?.evictIfOverBudget();
     return ast;
   }
 
@@ -189,9 +222,7 @@ export class BooleanSearch {
         // Return cached results
         const cachedNameSet = new Set(cached.entityNames);
         const cachedEntities = graph.entities.filter(e => cachedNameSet.has(e.name));
-        const cachedRelations = graph.relations.filter(
-          r => cachedNameSet.has(r.from) && cachedNameSet.has(r.to)
-        );
+        const cachedRelations = collectInducedRelations(this.storage, cachedNameSet);
         return { entities: cachedEntities as Entity[], relations: cachedRelations };
       }
     }
@@ -229,6 +260,7 @@ export class BooleanSearch {
       entityCount: graph.entities.length,
       timestamp: Date.now(),
     });
+    this.cachePressure?.evictIfOverBudget();
 
     // Cleanup old cache entries periodically
     if (this.resultCache.size > RESULT_CACHE_MAX_SIZE / 2) {
@@ -236,9 +268,7 @@ export class BooleanSearch {
     }
 
     const filteredEntityNames = new Set(paginatedEntities.map(e => e.name));
-    const filteredRelations = graph.relations.filter(
-      r => filteredEntityNames.has(r.from) && filteredEntityNames.has(r.to)
-    );
+    const filteredRelations = collectInducedRelations(this.storage, filteredEntityNames);
 
     return { entities: paginatedEntities, relations: filteredRelations };
   }

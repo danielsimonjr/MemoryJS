@@ -2,7 +2,7 @@
  * BasicSearch Unit Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { BasicSearch } from '../../../src/search/BasicSearch.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { RelationManager } from '../../../src/core/RelationManager.js';
@@ -195,6 +195,16 @@ describe('BasicSearch', () => {
       expect(result.entities).toHaveLength(3);
       expect(result.relations.length).toBeGreaterThan(0);
       expect(result.relations.some(r => r.from === 'Alice' && r.to === 'Bob')).toBe(true);
+    });
+
+    it('packages the induced subgraph through adjacency indexes', async () => {
+      const graph = await storage.loadGraph();
+      const fullRelationScan = vi.spyOn(graph.relations, 'filter');
+
+      const result = await basicSearch.searchNodes('person');
+
+      expect(result.relations.some(r => r.from === 'Alice' && r.to === 'Bob')).toBe(true);
+      expect(fullRelationScan).not.toHaveBeenCalled();
     });
 
     it('should exclude relations to non-matched entities', async () => {

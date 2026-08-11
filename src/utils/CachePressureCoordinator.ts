@@ -72,8 +72,8 @@ export class CachePressureCoordinator {
       this.budgetEntries = 0;
       return;
     }
-    const parsed = Number.parseInt(raw, 10);
-    if (!Number.isFinite(parsed) || parsed <= 0) {
+    const parsed = /^(?:[1-9][0-9]*)$/.test(raw) ? Number(raw) : Number.NaN;
+    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
       this.enabled = false;
       this.budgetEntries = 0;
       return;
@@ -119,17 +119,39 @@ export class CachePressureCoordinator {
     const total = this.totalEntries();
     if (total <= this.budgetEntries) return 0;
 
+    const populated = [...this.caches.values()]
+      .map((cache) => ({ cache, entries: cache.currentEntries() }))
+      .filter(({ entries }) => entries > 0);
+    const floor = Math.min(
+      this.minRetentionEntries,
+      Math.floor(this.budgetEntries / populated.length),
+    );
+    const targets = populated.map(({ entries }) =>
+      Math.min(entries, Math.max(floor, Math.floor(this.budgetEntries * entries / total))),
+    );
+
+    // Applying a floor can make the independently rounded targets exceed
+    // the global budget. Take the excess back from caches that remain above
+    // the floor, largest target first, so eviction always actually resolves
+    // pressure instead of leaving the coordinator permanently over budget.
+    let excess = targets.reduce((sum, target) => sum + target, 0) - this.budgetEntries;
+    if (excess > 0) {
+      const order = targets
+        .map((target, index) => ({ target, index }))
+        .sort((a, b) => b.target - a.target);
+      for (const item of order) {
+        if (excess <= 0) break;
+        const reducible = Math.max(0, targets[item.index] - floor);
+        const reduction = Math.min(reducible, excess);
+        targets[item.index] -= reduction;
+        excess -= reduction;
+      }
+    }
+
     let evicted = 0;
-    for (const cache of this.caches.values()) {
-      const cur = cache.currentEntries();
-      if (cur === 0) continue;
-      const share = cur / total;
-      // Floor applied to prevent a small-share cache being starved to
-      // zero when many caches contend for the budget.
-      const target = Math.max(
-        this.minRetentionEntries,
-        Math.floor(this.budgetEntries * share),
-      );
+    for (let i = 0; i < populated.length; i++) {
+      const { cache, entries: cur } = populated[i];
+      const target = targets[i];
       // No work if this cache is already under its target.
       if (cur <= target) continue;
       cache.evictTo(target);

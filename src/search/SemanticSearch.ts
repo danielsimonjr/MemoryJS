@@ -14,8 +14,10 @@ import type {
   SemanticSearchResult,
   SemanticIndexOptions,
   ReadonlyKnowledgeGraph,
+  EmbeddingMode,
 } from '../types/index.js';
 import { InMemoryVectorStore, cosineSimilarity } from './VectorStore.js';
+import { EmbeddingCache } from './EmbeddingCache.js';
 import { EMBEDDING_DEFAULTS, SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
 import { checkCancellation } from '../utils/index.js';
 
@@ -48,6 +50,13 @@ export function entityToText(entity: Entity): string {
   return parts.join('\n');
 }
 
+export interface SemanticSearchOptions {
+  /** Optional text-to-vector cache, normally wired by ManagerContext. */
+  embeddingCache?: EmbeddingCache;
+  /** Called after one or more embeddings are inserted into the cache. */
+  onCacheInsert?: () => void;
+}
+
 /**
  * Semantic Search Manager
  *
@@ -74,6 +83,8 @@ export class SemanticSearch {
 
   /** Number of entities currently indexed */
   private indexedCount = 0;
+  private embeddingCache?: EmbeddingCache;
+  private onCacheInsert?: () => void;
 
   /**
    * Create a semantic search manager.
@@ -81,9 +92,72 @@ export class SemanticSearch {
    * @param embeddingService - Service for generating embeddings
    * @param vectorStore - Store for vector storage and search
    */
-  constructor(embeddingService: EmbeddingService, vectorStore?: IVectorStore) {
+  constructor(
+    embeddingService: EmbeddingService,
+    vectorStore?: IVectorStore,
+    options: SemanticSearchOptions = {},
+  ) {
     this.embeddingService = embeddingService;
     this.vectorStore = vectorStore || new InMemoryVectorStore();
+    this.embeddingCache = options.embeddingCache;
+    this.onCacheInsert = options.onCacheInsert;
+  }
+
+  private async embedCached(
+    key: string,
+    text: string,
+    mode: EmbeddingMode = 'document',
+  ): Promise<number[]> {
+    const cached = this.embeddingCache?.get(key, text);
+    if (cached) return cached;
+    const embedding = await this.embeddingService.embed(text, mode);
+    if (this.embeddingCache) {
+      this.embeddingCache.set(key, text, embedding);
+      this.onCacheInsert?.();
+    }
+    return embedding;
+  }
+
+  private async embedEntityBatch(entities: Entity[]): Promise<number[][]> {
+    const texts = entities.map(entityToText);
+    if (!this.embeddingCache) {
+      return this.embeddingService.embedBatch(texts);
+    }
+
+    const vectors: Array<number[] | undefined> = new Array(entities.length);
+    const missingIndexes: number[] = [];
+    const missingTexts: string[] = [];
+    for (let i = 0; i < entities.length; i++) {
+      const cached = this.embeddingCache.get(`document:${entities[i].name}`, texts[i]);
+      if (cached) {
+        vectors[i] = cached;
+      } else {
+        missingIndexes.push(i);
+        missingTexts.push(texts[i]);
+      }
+    }
+
+    if (missingIndexes.length > 0) {
+      const embedded = await this.embeddingService.embedBatch(missingTexts);
+      if (embedded.length !== missingIndexes.length) {
+        throw new Error(
+          `Embedding service returned ${embedded.length} vectors for ${missingIndexes.length} texts`,
+        );
+      }
+      for (let i = 0; i < missingIndexes.length; i++) {
+        const batchIndex = missingIndexes[i];
+        const vector = embedded[i];
+        vectors[batchIndex] = vector;
+        this.embeddingCache.set(
+          `document:${entities[batchIndex].name}`,
+          texts[batchIndex],
+          vector,
+        );
+      }
+      this.onCacheInsert?.();
+    }
+
+    return vectors as number[][];
   }
 
   /**
@@ -136,10 +210,8 @@ export class SemanticSearch {
       checkCancellation(signal, 'indexAll');
 
       const batch = toIndex.slice(i, i + batchSize);
-      const texts = batch.map(entityToText);
-
       try {
-        const embeddings = await this.embeddingService.embedBatch(texts);
+        const embeddings = await this.embedEntityBatch(batch);
 
         for (let j = 0; j < batch.length; j++) {
           this.vectorStore.add(batch[j].name, embeddings[j]);
@@ -153,7 +225,10 @@ export class SemanticSearch {
 
           try {
             const text = entityToText(entity);
-            const embedding = await this.embeddingService.embed(text);
+            const embedding = await this.embedCached(
+              `document:${entity.name}`,
+              text,
+            );
             this.vectorStore.add(entity.name, embedding);
             indexed++;
           } catch {
@@ -183,7 +258,7 @@ export class SemanticSearch {
   async indexEntity(entity: Entity): Promise<boolean> {
     try {
       const text = entityToText(entity);
-      const embedding = await this.embeddingService.embed(text);
+      const embedding = await this.embedCached(`document:${entity.name}`, text);
       this.vectorStore.add(entity.name, embedding);
       this.indexedCount = this.vectorStore.size();
       return true;
@@ -243,7 +318,7 @@ export class SemanticSearch {
     const effectiveLimit = Math.min(limit, SEMANTIC_SEARCH_LIMITS.MAX_LIMIT);
 
     // Generate embedding for query
-    const queryEmbedding = await this.embeddingService.embed(query);
+    const queryEmbedding = await this.embedCached(`query:${query}`, query, 'query');
 
     // Search vector store
     const vectorResults = this.vectorStore.search(queryEmbedding, effectiveLimit * 2); // Get extra for filtering
@@ -386,8 +461,8 @@ export class SemanticSearch {
   async calculateSimilarity(a: string, b: string): Promise<number> {
     if (a === b) return 1.0;
     const [embA, embB] = await Promise.all([
-      this.embeddingService.embed(a),
-      this.embeddingService.embed(b),
+      this.embedCached(`similarity:${a}`, a),
+      this.embedCached(`similarity:${b}`, b),
     ]);
     return cosineSimilarity(embA, embB);
   }

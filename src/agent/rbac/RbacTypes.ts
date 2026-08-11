@@ -42,9 +42,9 @@ export interface RoleAssignment {
    */
   resourceType?: ResourceType;
   /**
-   * Optional scope. When set, the grant only applies if the resource's
-   * name starts with this prefix (e.g. `'project-x:'` or just an exact
-   * entity name). Empty / omitted ⇒ no scope restriction.
+   * Optional scope. When set, the grant applies to the exact resource name
+   * or slash-delimited descendants (for example, `project-x/member-a`).
+   * Empty / omitted ⇒ no scope restriction.
    */
   scope?: string;
   /** ISO 8601 — when the assignment becomes active. Absent ⇒ active now. */

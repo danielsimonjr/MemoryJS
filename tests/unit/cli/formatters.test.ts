@@ -181,6 +181,22 @@ describe('CLI Formatters', () => {
         const result = formatEntities(sampleEntities, 'csv');
         expect(result).toContain('Observation 1; Observation 2');
       });
+
+      it('should neutralize spreadsheet formulas before quoting', () => {
+        const entities: Entity[] = [{
+          name: '=2+2',
+          entityType: '+formula',
+          observations: ['@command'],
+          tags: ['-dangerous'],
+        }];
+
+        const result = formatEntities(entities, 'csv');
+
+        expect(result).toContain(`'=2+2`);
+        expect(result).toContain(`'+formula`);
+        expect(result).toContain(`'@command`);
+        expect(result).toContain(`'-dangerous`);
+      });
     });
   });
 

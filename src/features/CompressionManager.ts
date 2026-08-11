@@ -19,12 +19,20 @@ import {
 import { EntityNotFoundError, InsufficientEntitiesError, ValidationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 import { SIMILARITY_WEIGHTS, DEFAULT_DUPLICATE_THRESHOLD } from '../utils/constants.js';
+import {
+  fireGovernanceAudits,
+  preflightGovernedGraphMutation,
+  type GovernanceHooks,
+} from '../core/EntityManager.js';
 
 /**
  * Manages compression operations for the knowledge graph.
  */
 export class CompressionManager {
-  constructor(private storage: GraphStorage) {}
+  constructor(
+    private storage: GraphStorage,
+    private readonly governanceHooks?: GovernanceHooks,
+  ) {}
 
   /**
    * Prepare an entity for efficient similarity comparisons.
@@ -334,6 +342,12 @@ export class CompressionManager {
       throw new InsufficientEntitiesError('merging', 2, entityNames.length);
     }
 
+    // Preserve the pre-mutation graph for governance checks and audit
+    // snapshots when this call owns the save.
+    const beforeGraph = !options.graph && !options.skipSave
+      ? this.storage.cachedGraph ?? await this.storage.loadGraph()
+      : undefined;
+
     // Use provided graph or load fresh
     const graph = options.graph ?? await this.storage.getGraphForMutation();
 
@@ -439,7 +453,13 @@ export class CompressionManager {
 
     // Save unless caller said to skip
     if (!options.skipSave) {
+      const auditEvents = preflightGovernedGraphMutation(
+        this.governanceHooks,
+        beforeGraph ?? await this.storage.loadGraph(),
+        graph,
+      );
       await this.storage.saveGraph(graph);
+      fireGovernanceAudits(this.governanceHooks, auditEvents, 'CompressionManager');
     }
     return keepEntity;
   }
@@ -565,7 +585,9 @@ export class CompressionManager {
     checkCancellation(options?.signal, 'compressGraph');
     reportProgress?.(createProgress(50, 100, 'compressGraph'));
 
-    // OPTIMIZATION: Load graph once for all operations
+    // OPTIMIZATION: Load graph once for all operations. Keep the immutable
+    // cache snapshot for the final all-or-nothing governance preflight.
+    const beforeGraph = this.storage.cachedGraph ?? await this.storage.loadGraph();
     const graph = await this.storage.getGraphForMutation();
     const initialSize = JSON.stringify(graph).length;
     const result: GraphCompressionResult = {
@@ -644,7 +666,13 @@ export class CompressionManager {
     checkCancellation(options?.signal, 'compressGraph');
 
     // OPTIMIZATION: Save once after all merges complete
+    const auditEvents = preflightGovernedGraphMutation(
+      this.governanceHooks,
+      beforeGraph,
+      graph,
+    );
     await this.storage.saveGraph(graph);
+    fireGovernanceAudits(this.governanceHooks, auditEvents, 'CompressionManager');
 
     const finalSize = JSON.stringify(graph).length;
     result.spaceFreed = initialSize - finalSize;

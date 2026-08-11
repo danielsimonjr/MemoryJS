@@ -34,7 +34,15 @@
 
 import { promises as fs } from 'fs';
 import { randomBytes } from 'crypto';
-import { join } from 'path';
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from 'path';
 import type { Entity, KnowledgeGraph, Relation } from '../../types/types.js';
 import { logger } from '../../utils/logger.js';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
@@ -101,13 +109,17 @@ export class FileSegmentStorage implements ISegmentStorage {
     const manifestPath = this.manifestPath();
     let manifestContent: string;
     try {
+      const manifestStat = await fs.lstat(manifestPath);
+      if (manifestStat.isSymbolicLink() || !manifestStat.isFile()) {
+        throw new Error('Segment recovery manifest must be a regular file');
+      }
       manifestContent = await fs.readFile(manifestPath, 'utf-8');
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return;
       throw err;
     }
 
-    let manifest: { version: number; moves: Array<{ tmp: string; target: string }> };
+    let manifest: { version?: unknown; moves?: unknown };
     try {
       manifest = JSON.parse(manifestContent);
     } catch {
@@ -123,16 +135,37 @@ export class FileSegmentStorage implements ISegmentStorage {
       return;
     }
 
-    for (const move of manifest.moves) {
+    let moves: Array<{ tmp: string; target: string }>;
+    try {
+      moves = validateManifestMoves(
+        manifest.moves,
+        this.segmentsDir,
+        this.segmentCount,
+      );
+    } catch (err) {
+      await fs.unlink(manifestPath).catch(() => undefined);
+      throw err;
+    }
+
+    for (const move of moves) {
+      let tmpStat;
       try {
         // If the tmp is still around, we crashed before renaming it.
         // Complete the move. If the tmp is gone, the rename had
         // already happened — skip silently.
-        await fs.access(move.tmp);
-        await renameWithFallback(move.tmp, move.target);
-      } catch {
-        // tmp missing → already moved; ignore.
+        tmpStat = await fs.lstat(move.tmp);
+      } catch (err) {
+        if (isENOENT(err)) continue;
+        throw err;
       }
+      if (tmpStat.isSymbolicLink() || !tmpStat.isFile()) {
+        throw new Error(`Segment recovery temp must be a regular file: ${move.tmp}`);
+      }
+
+      await assertExistingPathIsRegularFile(move.target, 'recovery target');
+      await assertRealPathIsDirectChild(move.tmp, this.segmentsDir);
+      await assertRealPathIsDirectChildIfPresent(move.target, this.segmentsDir);
+      await renameWithFallback(move.tmp, move.target);
     }
     await fs.unlink(manifestPath).catch(() => undefined);
   }
@@ -225,7 +258,12 @@ export class FileSegmentStorage implements ISegmentStorage {
     try {
       const manifestContent = JSON.stringify({
         version: 1,
-        moves: staged,
+        // Store filenames, not absolute paths. Recovery reconstructs them
+        // beneath `segmentsDir` and validates both names before any rename.
+        moves: staged.map(({ tmp, target }) => ({
+          tmp: basename(tmp),
+          target: basename(target),
+        })),
       });
       const manifestTmp = await writeTmpFile(manifestPath, manifestContent);
       await renameWithFallback(manifestTmp, manifestPath);
@@ -335,6 +373,160 @@ export class FileSegmentStorage implements ISegmentStorage {
 
 // ==================== Internal helpers ====================
 
+function validateManifestMoves(
+  rawMoves: unknown[],
+  segmentsDir: string,
+  segmentCount: number,
+): Array<{ tmp: string; target: string }> {
+  if (rawMoves.length > segmentCount) {
+    throw new Error(
+      `Invalid segment recovery manifest: expected at most ${segmentCount} moves`,
+    );
+  }
+
+  const targetIds = new Set<number>();
+  const tmpPaths = new Set<string>();
+
+  return rawMoves.map((rawMove, index) => {
+    if (
+      rawMove === null ||
+      typeof rawMove !== 'object' ||
+      Array.isArray(rawMove)
+    ) {
+      throw new Error(`Invalid segment recovery manifest move ${index + 1}`);
+    }
+
+    const move = rawMove as Record<string, unknown>;
+    const target = resolveManifestPath(
+      move.target,
+      segmentsDir,
+      /^(0|[1-9]\d*)\.jsonl$/,
+      'target',
+      index,
+    );
+    const tmp = resolveManifestPath(
+      move.tmp,
+      segmentsDir,
+      /^(0|[1-9]\d*)\.jsonl\.tmp\.\d+\.[0-9a-f]{12}$/,
+      'temp',
+      index,
+    );
+
+    if (target.segmentId !== tmp.segmentId) {
+      throw new Error(
+        `Invalid segment recovery manifest move ${index + 1}: temp and target segment ids differ`,
+      );
+    }
+    if (target.segmentId >= segmentCount) {
+      throw new Error(
+        `Invalid segment recovery manifest move ${index + 1}: segment id ${target.segmentId} is out of range`,
+      );
+    }
+    if (targetIds.has(target.segmentId)) {
+      throw new Error(
+        `Invalid segment recovery manifest move ${index + 1}: duplicate target segment`,
+      );
+    }
+    if (tmpPaths.has(tmp.path)) {
+      throw new Error(
+        `Invalid segment recovery manifest move ${index + 1}: duplicate temp file`,
+      );
+    }
+
+    targetIds.add(target.segmentId);
+    tmpPaths.add(tmp.path);
+    return { tmp: tmp.path, target: target.path };
+  });
+}
+
+function resolveManifestPath(
+  rawPath: unknown,
+  segmentsDir: string,
+  expectedName: RegExp,
+  kind: 'temp' | 'target',
+  moveIndex: number,
+): { path: string; segmentId: number } {
+  if (typeof rawPath !== 'string' || rawPath.length === 0) {
+    throw new Error(
+      `Invalid segment recovery manifest move ${moveIndex + 1}: ${kind} path must be a string`,
+    );
+  }
+  if (rawPath.split(/[/\\]/).includes('..')) {
+    throw new Error(
+      `Invalid segment recovery manifest move ${moveIndex + 1}: ${kind} path traversal is not allowed`,
+    );
+  }
+  if (!isAbsolute(rawPath) && basename(rawPath) !== rawPath) {
+    throw new Error(
+      `Invalid segment recovery manifest move ${moveIndex + 1}: ${kind} must be a filename`,
+    );
+  }
+
+  const resolvedDir = resolve(segmentsDir);
+  const resolvedPath = resolve(resolvedDir, rawPath);
+  const relativePath = relative(resolvedDir, resolvedPath);
+  if (
+    relativePath === '' ||
+    relativePath === '..' ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath) ||
+    dirname(resolvedPath) !== resolvedDir
+  ) {
+    throw new Error(
+      `Invalid segment recovery manifest move ${moveIndex + 1}: ${kind} path is outside segments directory`,
+    );
+  }
+
+  const match = expectedName.exec(relativePath);
+  if (!match) {
+    throw new Error(
+      `Invalid segment recovery manifest move ${moveIndex + 1}: unexpected ${kind} filename`,
+    );
+  }
+
+  return { path: resolvedPath, segmentId: Number(match[1]) };
+}
+
+async function assertExistingPathIsRegularFile(
+  path: string,
+  description: string,
+): Promise<void> {
+  try {
+    const stat = await fs.lstat(path);
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      throw new Error(`Segment ${description} must be a regular file: ${path}`);
+    }
+  } catch (err) {
+    if (isENOENT(err)) return;
+    throw err;
+  }
+}
+
+async function assertRealPathIsDirectChild(
+  path: string,
+  segmentsDir: string,
+): Promise<void> {
+  const [realFile, realDir] = await Promise.all([
+    fs.realpath(path),
+    fs.realpath(segmentsDir),
+  ]);
+  if (dirname(realFile) !== realDir) {
+    throw new Error(`Segment recovery path escapes segments directory: ${path}`);
+  }
+}
+
+async function assertRealPathIsDirectChildIfPresent(
+  path: string,
+  segmentsDir: string,
+): Promise<void> {
+  try {
+    await assertRealPathIsDirectChild(path, segmentsDir);
+  } catch (err) {
+    if (isENOENT(err)) return;
+    throw err;
+  }
+}
+
 function serializeSegment(seg: Segment): string {
   const lines: string[] = [];
   for (const e of seg.entities) {
@@ -417,6 +609,7 @@ async function renameWithFallback(tmp: string, target: string): Promise<void> {
   try {
     await fs.rename(tmp, target);
   } catch {
+    await assertExistingPathIsRegularFile(target, 'rename target');
     const fallback = await fs.open(target, 'w');
     try {
       const content = await fs.readFile(tmp, 'utf-8');

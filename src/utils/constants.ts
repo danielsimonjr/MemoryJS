@@ -97,6 +97,18 @@ export const SEARCH_LIMITS = {
 } as const;
 
 /**
+ * Input limits for Levenshtein-based fuzzy search.
+ */
+export const FUZZY_SEARCH_LIMITS = {
+  /** Maximum accepted query length */
+  MAX_QUERY_LENGTH: 256,
+  /** Maximum entity name/type length compared by Levenshtein */
+  MAX_NAME_LENGTH: 512,
+  /** Maximum observation length compared by Levenshtein */
+  MAX_OBSERVATION_LENGTH: 2048,
+} as const;
+
+/**
  * Entity importance range validation constants.
  * Importance is used to prioritize entities (0 = lowest, 10 = highest).
  */
@@ -201,6 +213,10 @@ export const EMBEDDING_ENV_VARS = {
   MODEL: 'MEMORY_EMBEDDING_MODEL',
   /** Base URL of a local llama-server (used when provider is 'llamacpp') */
   BASE_URL: 'MEMORY_EMBEDDING_BASE_URL',
+  /** Comma-separated non-loopback hosts allowed for llama.cpp */
+  LLAMACPP_ALLOWED_HOSTS: 'MEMORY_LLAMACPP_ALLOWED_HOSTS',
+  /** llama.cpp request timeout in milliseconds */
+  LLAMACPP_TIMEOUT_MS: 'MEMORY_LLAMACPP_TIMEOUT_MS',
   /** Auto-index entities on creation: 'true' or 'false' (default: 'false') */
   AUTO_INDEX: 'MEMORY_AUTO_INDEX_EMBEDDINGS',
 } as const;
@@ -271,6 +287,8 @@ export function getEmbeddingConfig(): {
   apiKey?: string;
   model?: string;
   baseUrl?: string;
+  allowedHosts?: string[];
+  requestTimeoutMs?: number;
   autoIndex: boolean;
 } {
   const provider = (process.env[EMBEDDING_ENV_VARS.PROVIDER] || EMBEDDING_DEFAULTS.PROVIDER) as
@@ -278,9 +296,27 @@ export function getEmbeddingConfig(): {
   const apiKey = process.env[EMBEDDING_ENV_VARS.OPENAI_API_KEY];
   const model = process.env[EMBEDDING_ENV_VARS.MODEL];
   const baseUrl = process.env[EMBEDDING_ENV_VARS.BASE_URL];
+  const allowedHostsValue = process.env[EMBEDDING_ENV_VARS.LLAMACPP_ALLOWED_HOSTS];
+  const allowedHosts = allowedHostsValue
+    ?.split(',')
+    .map(host => host.trim())
+    .filter(Boolean);
+  const timeoutValue = process.env[EMBEDDING_ENV_VARS.LLAMACPP_TIMEOUT_MS];
+  const parsedTimeout = timeoutValue === undefined ? NaN : Number(timeoutValue);
+  const requestTimeoutMs = Number.isFinite(parsedTimeout) && parsedTimeout > 0
+    ? parsedTimeout
+    : undefined;
   const autoIndex = process.env[EMBEDDING_ENV_VARS.AUTO_INDEX] === 'true';
 
-  return { provider, apiKey, model, baseUrl, autoIndex };
+  return {
+    provider,
+    apiKey,
+    model,
+    baseUrl,
+    allowedHosts,
+    requestTimeoutMs,
+    autoIndex,
+  };
 }
 
 // ==================== Streaming Export Configuration (Phase 7 Sprint 1) ====================

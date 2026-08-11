@@ -147,7 +147,7 @@ describe('η.6.1 RBAC', () => {
       expect(stat.mode & 0o777).toBe(0o600);
     });
 
-    it('counts corrupt lines during hydrate instead of dropping them silently', async () => {
+    it('fails closed and clears grants when hydrate encounters corruption', async () => {
       const path = join(testDir, 'corrupt.jsonl');
       await fs.writeFile(path, [
         JSON.stringify({ op: 'assign', assignment: { agentId: 'alice', role: 'writer' }, ts: '2024-01-01T00:00:00Z' }),
@@ -156,17 +156,18 @@ describe('η.6.1 RBAC', () => {
       ].join('\n') + '\n');
 
       const store = new RoleAssignmentStore({ persistencePath: path });
-      await store.hydrate();
+      await expect(store.hydrate()).rejects.toThrow(/integrity check failed/i);
       expect(store.corruptLineCount).toBe(1);
-      expect(store.list('alice')).toHaveLength(1);
-      expect(store.list('bob')).toHaveLength(1);
+      expect(store.integrityValid).toBe(false);
+      expect(store.list('alice')).toEqual([]);
+      expect(store.list('bob')).toEqual([]);
     });
 
     it('corruptLineCount resets on re-hydrate of a clean file', async () => {
       const path = join(testDir, 'clean-after.jsonl');
       await fs.writeFile(path, 'garbage\n');
       const store = new RoleAssignmentStore({ persistencePath: path });
-      await store.hydrate();
+      await expect(store.hydrate()).rejects.toThrow(/integrity check failed/i);
       expect(store.corruptLineCount).toBe(1);
 
       await fs.writeFile(path, JSON.stringify({
@@ -174,9 +175,10 @@ describe('η.6.1 RBAC', () => {
       }) + '\n');
       await store.hydrate();
       expect(store.corruptLineCount).toBe(0);
+      expect(store.integrityValid).toBe(true);
     });
 
-    it('a corrupted revoke line fails open but is detectable via corruptLineCount', async () => {
+    it('a corrupted revoke line cannot revive a grant', async () => {
       const path = join(testDir, 'corrupt-revoke.jsonl');
       const store = new RoleAssignmentStore({ persistencePath: path });
       await store.assign({ agentId: 'alice', role: 'admin' });
@@ -189,18 +191,18 @@ describe('η.6.1 RBAC', () => {
       await fs.writeFile(path, lines.join('\n') + '\n');
 
       const rehydrated = new RoleAssignmentStore({ persistencePath: path });
-      await rehydrated.hydrate();
-      // Fail-open: the revoked grant is back…
-      expect(rehydrated.list('alice')).toHaveLength(1);
-      // …but the integrity alarm fires so callers can refuse to trust the store.
+      await expect(rehydrated.hydrate()).rejects.toThrow(/integrity check failed/i);
+      expect(rehydrated.list('alice')).toEqual([]);
       expect(rehydrated.corruptLineCount).toBe(1);
+      const mw = new RbacMiddleware(rehydrated, { defaultRole: 'owner' });
+      expect(mw.checkPermission('alice', 'manage', 'entity')).toBe(false);
     });
 
     it('parseable JSON with an unknown op shape counts as corrupt', async () => {
       const path = join(testDir, 'unknown-op.jsonl');
       await fs.writeFile(path, JSON.stringify({ op: 'grant-everything', agentId: 'eve' }) + '\n');
       const store = new RoleAssignmentStore({ persistencePath: path });
-      await store.hydrate();
+      await expect(store.hydrate()).rejects.toThrow(/integrity check failed/i);
       expect(store.corruptLineCount).toBe(1);
       expect(store.list('eve')).toEqual([]);
     });
@@ -239,22 +241,23 @@ describe('η.6.1 RBAC', () => {
       expect(mw.checkPermission('alice', 'delete', 'relation')).toBe(false);
     });
 
-    it('scope prefix gates the grant by resourceName', async () => {
+    it('scope gates grants to exact or slash-delimited descendants', async () => {
       const store = new RoleAssignmentStore();
       await store.assign({
-        agentId: 'alice', role: 'writer', resourceType: 'entity', scope: 'project-x:',
+        agentId: 'alice', role: 'writer', resourceType: 'entity', scope: 'project:abc',
       });
       const mw = new RbacMiddleware(store, { defaultRole: undefined });
-      expect(mw.checkPermission('alice', 'write', 'entity', 'project-x:Alice')).toBe(true);
-      expect(mw.checkPermission('alice', 'write', 'entity', 'project-y:Alice')).toBe(false);
+      expect(mw.checkPermission('alice', 'write', 'entity', 'project:abc')).toBe(true);
+      expect(mw.checkPermission('alice', 'write', 'entity', 'project:abc/Alice')).toBe(true);
+      expect(mw.checkPermission('alice', 'write', 'entity', 'project:abcd')).toBe(false);
       // Empty resource name when scope is set ⇒ deny
       expect(mw.checkPermission('alice', 'write', 'entity')).toBe(false);
     });
 
-    it('default-role fallback (reader) grants read but not write to unregistered agents', async () => {
+    it('denies unregistered agents by default', async () => {
       const store = new RoleAssignmentStore();
-      const mw = new RbacMiddleware(store); // defaultRole defaults to 'reader'
-      expect(mw.checkPermission('unknown-agent', 'read', 'entity')).toBe(true);
+      const mw = new RbacMiddleware(store);
+      expect(mw.checkPermission('unknown-agent', 'read', 'entity')).toBe(false);
       expect(mw.checkPermission('unknown-agent', 'write', 'entity')).toBe(false);
     });
 
@@ -264,19 +267,17 @@ describe('η.6.1 RBAC', () => {
       expect(mw.checkPermission('unknown-agent', 'read', 'entity')).toBe(false);
     });
 
-    it('options without a defaultRole key (e.g. only matrix) still default to reader (Sec2)', async () => {
+    it('options without a defaultRole key still deny unregistered agents', async () => {
       const store = new RoleAssignmentStore();
-      // Regression: the old ternary flipped to deny-unregistered whenever ANY
-      // options object was passed, even one that never mentioned defaultRole.
       const mw = new RbacMiddleware(store, { matrix: DEFAULT_PERMISSION_MATRIX });
-      expect(mw.checkPermission('unknown-agent', 'read', 'entity')).toBe(true);
+      expect(mw.checkPermission('unknown-agent', 'read', 'entity')).toBe(false);
       expect(mw.checkPermission('unknown-agent', 'write', 'entity')).toBe(false);
     });
 
-    it('empty options object also defaults to reader', async () => {
+    it('empty options object also denies unregistered agents', async () => {
       const store = new RoleAssignmentStore();
       const mw = new RbacMiddleware(store, {});
-      expect(mw.checkPermission('unknown-agent', 'read', 'entity')).toBe(true);
+      expect(mw.checkPermission('unknown-agent', 'read', 'entity')).toBe(false);
     });
 
     it('explicit defaultRole string is honored', async () => {
@@ -292,7 +293,7 @@ describe('η.6.1 RBAC', () => {
         agentId: 'alice', role: 'admin',
         validUntil: '2024-01-01T00:00:00Z',
       });
-      const mw = new RbacMiddleware(store); // default 'reader'
+      const mw = new RbacMiddleware(store, { defaultRole: 'reader' });
       // After expiry: admin is gone, defaultRole reader applies
       expect(mw.checkPermission('alice', 'read', 'entity', undefined, '2025-06-15T00:00:00Z')).toBe(true);
       expect(mw.checkPermission('alice', 'delete', 'entity', undefined, '2025-06-15T00:00:00Z')).toBe(false);
@@ -301,12 +302,12 @@ describe('η.6.1 RBAC', () => {
     it('multiple grants compose — any matching grant suffices', async () => {
       const store = new RoleAssignmentStore();
       await store.assign({ agentId: 'alice', role: 'reader', resourceType: 'entity' });
-      await store.assign({ agentId: 'alice', role: 'writer', resourceType: 'entity', scope: 'admin:' });
+      await store.assign({ agentId: 'alice', role: 'writer', resourceType: 'entity', scope: 'admin' });
       const mw = new RbacMiddleware(store, { defaultRole: undefined });
       // Reader grant gives read for any entity
       expect(mw.checkPermission('alice', 'read', 'entity', 'foo:bar')).toBe(true);
-      // Writer grant only fires on 'admin:' prefix
-      expect(mw.checkPermission('alice', 'write', 'entity', 'admin:bar')).toBe(true);
+      // Writer grant only fires on the slash-delimited admin scope
+      expect(mw.checkPermission('alice', 'write', 'entity', 'admin/bar')).toBe(true);
       expect(mw.checkPermission('alice', 'write', 'entity', 'foo:bar')).toBe(false);
     });
   });

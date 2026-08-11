@@ -26,12 +26,15 @@ import { LlamaCppEmbeddingService } from '../../../src/search/EmbeddingService.j
 const ORIGINAL_FETCH = globalThis.fetch;
 
 function mockEmbeddings(vectors: number[][], status = 200) {
+  const body = JSON.stringify({
+    data: vectors.map((embedding, index) => ({ embedding, index })),
+  });
   return vi.fn(async () => ({
     ok: status === 200,
     status,
     statusText: status === 200 ? 'OK' : 'Error',
-    json: async () => ({ data: vectors.map((embedding, index) => ({ embedding, index })) }),
-    text: async () => 'error body',
+    headers: new Headers(),
+    text: async () => status === 200 ? body : 'error body',
   })) as unknown as typeof fetch;
 }
 
@@ -79,7 +82,10 @@ describe('LlamaCppEmbeddingService', () => {
       globalThis.fetch = vi.fn(async () => ({
         ok: true,
         status: 200,
-        json: async () => ({ data: [{ embedding: new Array(dim).fill(0.01), index: 0 }] }),
+        headers: new Headers(),
+        text: async () => JSON.stringify({
+          data: [{ embedding: new Array(dim).fill(0.01), index: 0 }],
+        }),
       })) as unknown as typeof fetch;
 
       const svc = new LlamaCppEmbeddingService();
@@ -106,6 +112,9 @@ describe('LlamaCppEmbeddingService', () => {
       const out = await svc.embedBatch(['a', 'b']);
       expect(out).toHaveLength(2);
       expect((f as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+      const init = (f as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1] as RequestInit;
+      expect(init.signal).toBeInstanceOf(AbortSignal);
+      expect(init.redirect).toBe('error');
     });
 
     it('preserves batch ORDER even if the server returns results out of order', async () => {
@@ -115,7 +124,8 @@ describe('LlamaCppEmbeddingService', () => {
       globalThis.fetch = vi.fn(async () => ({
         ok: true,
         status: 200,
-        json: async () => ({
+        headers: new Headers(),
+        text: async () => JSON.stringify({
           data: [
             { embedding: [0, 1], index: 1 },
             { embedding: [1, 0], index: 0 },
@@ -155,7 +165,8 @@ describe('LlamaCppEmbeddingService', () => {
     it('surfaces a server error instead of returning a zero vector', async () => {
       globalThis.fetch = mockEmbeddings([], 500);
       const svc = new LlamaCppEmbeddingService();
-      await expect(svc.embed('text')).rejects.toThrow();
+      await expect(svc.embed('text')).rejects.toThrow(/status 500/i);
+      await expect(svc.embed('text')).rejects.not.toThrow(/error body/i);
     });
 
     it('fails when the server returns fewer vectors than inputs', async () => {
@@ -163,6 +174,34 @@ describe('LlamaCppEmbeddingService', () => {
       globalThis.fetch = mockEmbeddings([[1, 0]]);
       const svc = new LlamaCppEmbeddingService();
       await expect(svc.embedBatch(['a', 'b', 'c'])).rejects.toThrow(/expected 3/i);
+    });
+
+    it('rejects non-finite vector values', async () => {
+      globalThis.fetch = mockEmbeddings([[1, Number.NaN]]);
+      const svc = new LlamaCppEmbeddingService();
+      await expect(svc.embed('text')).rejects.toThrow(/invalid embedding vector/i);
+    });
+
+    it('rejects responses whose declared size exceeds the cap', async () => {
+      globalThis.fetch = vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-length': String(17 * 1024 * 1024) }),
+        text: async () => '{}',
+      })) as unknown as typeof fetch;
+      const svc = new LlamaCppEmbeddingService();
+      await expect(svc.embed('text')).rejects.toThrow(/size limit/i);
+    });
+
+    it('reports request timeouts without exposing network details', async () => {
+      globalThis.fetch = vi.fn(async () => {
+        const error = new Error('http://internal-host/private');
+        error.name = 'TimeoutError';
+        throw error;
+      }) as unknown as typeof fetch;
+      const svc = new LlamaCppEmbeddingService({ requestTimeoutMs: 25 });
+      await expect(svc.embed('text')).rejects.toThrow(/timed out after 25ms/i);
+      await expect(svc.embed('text')).rejects.not.toThrow(/internal-host/i);
     });
   });
 
@@ -174,6 +213,21 @@ describe('LlamaCppEmbeddingService', () => {
     it('accepts a custom base URL and strips a trailing slash', () => {
       const svc = new LlamaCppEmbeddingService({ baseUrl: 'http://127.0.0.1:9999/' });
       expect(svc.baseUrl).toBe('http://127.0.0.1:9999');
+    });
+
+    it('rejects non-HTTP protocols and non-loopback hosts by default', () => {
+      expect(() => new LlamaCppEmbeddingService({ baseUrl: 'file:///tmp/socket' }))
+        .toThrow(/http or https/i);
+      expect(() => new LlamaCppEmbeddingService({ baseUrl: 'http://169.254.169.254' }))
+        .toThrow(/not allowed/i);
+    });
+
+    it('allows an explicitly allowlisted remote host', () => {
+      const svc = new LlamaCppEmbeddingService({
+        baseUrl: 'https://embeddings.example.com/',
+        allowedHosts: ['embeddings.example.com'],
+      });
+      expect(svc.baseUrl).toBe('https://embeddings.example.com');
     });
 
     it('identifies its provider so a stored vector records what produced it', () => {

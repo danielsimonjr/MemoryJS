@@ -5,7 +5,7 @@
  * DiskWarmTier / BrotliColdTier / FileSegmentStorage all rely on.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -24,6 +24,7 @@ describe('durableWriteFile', () => {
     dir = await makeDir();
   });
   afterEach(async () => {
+    vi.restoreAllMocks();
     try { await fs.rm(dir, { recursive: true, force: true }); } catch { /* */ }
   });
 
@@ -39,6 +40,13 @@ describe('durableWriteFile', () => {
     await durableWriteFile(target, payload);
     const back = await fs.readFile(target);
     expect(back.equals(payload)).toBe(true);
+  });
+
+  it('creates sensitive files with owner-only permissions', async () => {
+    if (process.platform === 'win32') return;
+    const target = join(dir, 'private.txt');
+    await durableWriteFile(target, 'secret');
+    expect((await fs.stat(target)).mode & 0o777).toBe(0o600);
   });
 
   it('replaces an existing file atomically', async () => {
@@ -60,6 +68,17 @@ describe('durableWriteFile', () => {
     const entries = await fs.readdir(dir);
     const tmpFiles = entries.filter((f) => f.includes('.tmp.'));
     expect(tmpFiles).toEqual([]);
+  });
+
+  it('does not direct-write fallback on an unexpected rename error', async () => {
+    const target = join(dir, 'out.txt');
+    await fs.writeFile(target, 'old');
+    const error = Object.assign(new Error('cross-device rename'), { code: 'EXDEV' });
+    vi.spyOn(fs, 'rename').mockRejectedValueOnce(error);
+
+    await expect(durableWriteFile(target, 'new')).rejects.toBe(error);
+    expect(await fs.readFile(target, 'utf-8')).toBe('old');
+    expect((await fs.readdir(dir)).some((name) => name.includes('.tmp.'))).toBe(true);
   });
 
   it('handles empty content (string)', async () => {

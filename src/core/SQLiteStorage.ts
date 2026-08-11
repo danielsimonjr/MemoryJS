@@ -21,6 +21,7 @@
  */
 
 import { createRequire } from 'node:module';
+import { chmodSync, statSync } from 'node:fs';
 import type Database from 'better-sqlite3';
 import type { Database as DatabaseType, Statement } from 'better-sqlite3';
 
@@ -50,7 +51,7 @@ import {
   bumpEntityGeneration,
   bumpRelationGeneration,
 } from '../utils/searchCache.js';
-import { NameIndex, TypeIndex } from '../utils/indexes.js';
+import { NameIndex, RelationIndex, TypeIndex } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
@@ -179,10 +180,11 @@ export class SQLiteStorage implements IGraphStorage {
   private pendingChanges: number = 0;
 
   /**
-   * Phase 4 Sprint 1: Bidirectional relation cache for O(1) repeated lookups.
-   * Maps entity name -> all relations involving that entity (both incoming and outgoing).
+   * Warm-cache outgoing/incoming adjacency index. Kept in lockstep with
+   * `cache.relations`, matching GraphStorage's RelationIndex path, so
+   * relation reads never scan the full relation array.
    */
-  private bidirectionalRelationCache: Map<string, Relation[]> = new Map();
+  private relationIndex: RelationIndex = new RelationIndex();
 
   /**
    * Event emitter for graph change notifications. Mirrors
@@ -306,6 +308,21 @@ export class SQLiteStorage implements IGraphStorage {
     // loaded lazily here — see loadDatabaseCtor.
     const Database = loadDatabaseCtor();
     this.db = new Database(this.validatedDbFilePath);
+    try {
+      const currentMode = statSync(this.validatedDbFilePath).mode & 0o777;
+      const restrictedMode = currentMode & 0o600;
+      if (currentMode !== restrictedMode) {
+        chmodSync(this.validatedDbFilePath, restrictedMode);
+      }
+    } catch (error) {
+      // Permission hardening is best-effort on filesystems/platforms that do
+      // not implement POSIX chmod semantics; database initialization proceeds.
+      logger.warn(
+        `[SQLiteStorage] Could not restrict database permissions: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
 
     // Enable foreign keys and WAL mode for better performance
     this.db.pragma('foreign_keys = ON');
@@ -404,6 +421,16 @@ export class SQLiteStorage implements IGraphStorage {
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_lastmodified ON entities(lastModified)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_createdat ON entities(createdAt)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_relation_type ON relations(relationType)`);
+    this.db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_entities_session_created_at
+      ON entities(
+        CASE
+          WHEN json_valid(agentMetadata)
+          THEN json_extract(agentMetadata, '$.sessionId')
+        END,
+        createdAt
+      )
+    `);
 
     // Phase 1 Sprint 5: Indexes for relation metadata queries
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_relation_weight ON relations(weight)`);
@@ -624,16 +651,17 @@ export class SQLiteStorage implements IGraphStorage {
     // Build indexes for O(1) lookups
     this.nameIndex.build(entities);
     this.typeIndex.build(entities);
-    this.rebuildRelationKeyMap(relations);
+    this.rebuildRelationIndexes(relations);
 
     // Emit graph:loaded (parity with GraphStorage.loadFromDisk)
     this.eventEmitter.emitGraphLoaded(entities.length, relations.length);
   }
 
   /**
-   * Rebuild the relation composite-key map from a relation array.
+   * Rebuild the adjacency and composite-key indexes from a relation array.
    */
-  private rebuildRelationKeyMap(relations: Relation[]): void {
+  private rebuildRelationIndexes(relations: Relation[]): void {
+    this.relationIndex.build(relations);
     this.relationKeyMap.clear();
     for (const relation of relations) {
       this.relationKeyMap.set(relationKeyOf(relation), relation);
@@ -773,22 +801,6 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Phase 4 Sprint 1: Invalidate bidirectional relation cache for an entity.
-   *
-   * @param entityName - Entity name to invalidate cache for
-   */
-  private invalidateBidirectionalCache(entityName: string): void {
-    this.bidirectionalRelationCache.delete(entityName);
-  }
-
-  /**
-   * Phase 4 Sprint 1: Clear the entire bidirectional relation cache.
-   */
-  private clearBidirectionalCache(): void {
-    this.bidirectionalRelationCache.clear();
-  }
-
-  /**
    * Save the entire knowledge graph to storage.
    *
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
@@ -807,65 +819,68 @@ export class SQLiteStorage implements IGraphStorage {
       // and relations with dangling references (which matches the original JSONL behavior)
       this.db.pragma('foreign_keys = OFF');
 
-      // Use transaction for atomicity
-      const transaction = this.db.transaction(() => {
-        // Clear existing data
-        this.db!.exec('DELETE FROM relations');
-        this.db!.exec('DELETE FROM entities');
+      try {
+        // Use transaction for atomicity
+        const transaction = this.db.transaction(() => {
+          // Clear existing data
+          this.db!.exec('DELETE FROM relations');
+          this.db!.exec('DELETE FROM entities');
 
-        // Insert all entities
-        const entityStmt = this.db!.prepare(`
-          INSERT INTO entities (name, id, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
+          // Insert all entities
+          const entityStmt = this.db!.prepare(`
+            INSERT INTO entities (name, id, entityType, observations, tags, importance, parentId, createdAt, lastModified, projectId, version, parentEntityName, rootEntityName, isLatest, supersededBy, contentHash, agentMetadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
 
-        for (const entity of graph.entities) {
-          entityStmt.run(
-            entity.name,
-            entity.id ?? null,
-            entity.entityType,
-            JSON.stringify(entity.observations),
-            entity.tags ? JSON.stringify(entity.tags) : null,
-            entity.importance ?? null,
-            entity.parentId ?? null,
-            entity.createdAt || new Date().toISOString(),
-            entity.lastModified || new Date().toISOString(),
-            entity.projectId ?? null,
-            entity.version ?? 1,
-            entity.parentEntityName ?? null,
-            entity.rootEntityName ?? null,
-            entity.isLatest === false ? 0 : 1,
-            entity.supersededBy ?? null,
-            entity.contentHash ?? null,
-            this.serializeExtensionFields(entity),
-          );
-        }
+          for (const entity of graph.entities) {
+            entityStmt.run(
+              entity.name,
+              entity.id ?? null,
+              entity.entityType,
+              JSON.stringify(entity.observations),
+              entity.tags ? JSON.stringify(entity.tags) : null,
+              entity.importance ?? null,
+              entity.parentId ?? null,
+              entity.createdAt || new Date().toISOString(),
+              entity.lastModified || new Date().toISOString(),
+              entity.projectId ?? null,
+              entity.version ?? 1,
+              entity.parentEntityName ?? null,
+              entity.rootEntityName ?? null,
+              entity.isLatest === false ? 0 : 1,
+              entity.supersededBy ?? null,
+              entity.contentHash ?? null,
+              this.serializeExtensionFields(entity),
+            );
+          }
 
-        // Insert all relations (Phase 1 Sprint 5: with metadata)
-        const relationStmt = this.db!.prepare(`
-          INSERT INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified, weight, confidence, properties, metadata)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
+          // Insert all relations (Phase 1 Sprint 5: with metadata)
+          const relationStmt = this.db!.prepare(`
+            INSERT INTO relations (fromEntity, toEntity, relationType, createdAt, lastModified, weight, confidence, properties, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `);
 
-        for (const relation of graph.relations) {
-          relationStmt.run(
-            relation.from,
-            relation.to,
-            relation.relationType,
-            relation.createdAt || new Date().toISOString(),
-            relation.lastModified || new Date().toISOString(),
-            relation.weight ?? null,
-            relation.confidence ?? null,
-            relation.properties ? JSON.stringify(relation.properties) : null,
-            relation.metadata ? JSON.stringify(relation.metadata) : null,
-          );
-        }
-      });
+          for (const relation of graph.relations) {
+            relationStmt.run(
+              relation.from,
+              relation.to,
+              relation.relationType,
+              relation.createdAt || new Date().toISOString(),
+              relation.lastModified || new Date().toISOString(),
+              relation.weight ?? null,
+              relation.confidence ?? null,
+              relation.properties ? JSON.stringify(relation.properties) : null,
+              relation.metadata ? JSON.stringify(relation.metadata) : null,
+            );
+          }
+        });
 
-      transaction();
-
-      // Re-enable foreign keys for future operations
-      this.db.pragma('foreign_keys = ON');
+        transaction();
+      } finally {
+        // PRAGMA foreign_keys is connection-scoped, so always restore it even
+        // when statement preparation or the transaction fails.
+        this.db.pragma('foreign_keys = ON');
+      }
 
       // Update cache
       this.cache = graph;
@@ -877,7 +892,7 @@ export class SQLiteStorage implements IGraphStorage {
       // Rebuild indexes
       this.nameIndex.build(graph.entities);
       this.typeIndex.build(graph.entities);
-      this.rebuildRelationKeyMap(graph.relations);
+      this.rebuildRelationIndexes(graph.relations);
 
       this.pendingChanges = 0;
 
@@ -886,9 +901,6 @@ export class SQLiteStorage implements IGraphStorage {
       clearAllSearchCaches();
       bumpEntityGeneration();
       bumpRelationGeneration();
-
-      // Phase 4 Sprint 1: Clear bidirectional relation cache on full save
-      this.clearBidirectionalCache();
 
       // Emit graph:saved (parity with GraphStorage.saveGraphInternal)
       this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
@@ -1047,10 +1059,6 @@ export class SQLiteStorage implements IGraphStorage {
       this.upsertRelationInCache(relation);
       bumpRelationGeneration();
 
-      // Phase 4 Sprint 1: Invalidate bidirectional cache for both entities
-      this.invalidateBidirectionalCache(relation.from);
-      this.invalidateBidirectionalCache(relation.to);
-
       this.pendingChanges++;
 
       // Emit relation:created (parity with GraphStorage.appendRelation)
@@ -1102,6 +1110,7 @@ export class SQLiteStorage implements IGraphStorage {
     }
     if (existing === undefined) {
       this.cache!.relations.push(relation);
+      this.relationIndex.add(relation);
       this.relationKeyMap.set(key, relation);
     }
     return relation;
@@ -1130,8 +1139,6 @@ export class SQLiteStorage implements IGraphStorage {
 
       for (const relation of relations) {
         this.upsertRelationInCache(relation);
-        this.invalidateBidirectionalCache(relation.from);
-        this.invalidateBidirectionalCache(relation.to);
       }
       bumpRelationGeneration();
 
@@ -1434,12 +1441,8 @@ export class SQLiteStorage implements IGraphStorage {
         this.lowercaseCache.delete(e.name);
       }
       for (const r of deletedRelations) {
+        this.relationIndex.remove(r);
         this.relationKeyMap.delete(relationKeyOf(r));
-        this.invalidateBidirectionalCache(r.from);
-        this.invalidateBidirectionalCache(r.to);
-      }
-      for (const name of nameSet) {
-        this.invalidateBidirectionalCache(name);
       }
 
       if (deletedEntities.length > 0) bumpEntityGeneration();
@@ -1530,9 +1533,8 @@ export class SQLiteStorage implements IGraphStorage {
           r => !keySet.has(relationKeyOf(r)),
         );
         for (const r of deletedRelations) {
+          this.relationIndex.remove(r);
           this.relationKeyMap.delete(relationKeyOf(r));
-          this.invalidateBidirectionalCache(r.from);
-          this.invalidateBidirectionalCache(r.to);
         }
       }
       for (const entity of touchedEntities) {
@@ -1661,10 +1663,9 @@ export class SQLiteStorage implements IGraphStorage {
       // Rebuild name/type indexes (key changed) and refresh caches.
       this.nameIndex.build(this.cache!.entities);
       this.typeIndex.build(this.cache!.entities);
-      this.rebuildRelationKeyMap(this.cache!.relations);
+      this.rebuildRelationIndexes(this.cache!.relations);
       this.lowercaseCache.delete(oldName);
       this.updateLowercaseCache(entity);
-      this.clearBidirectionalCache();
       clearAllSearchCaches();
       bumpEntityGeneration();
       bumpRelationGeneration();
@@ -1706,9 +1707,8 @@ export class SQLiteStorage implements IGraphStorage {
     this.nameIndex.clear();
     this.typeIndex.clear();
     this.lowercaseCache.clear();
+    this.relationIndex.clear();
     this.relationKeyMap.clear();
-    // Phase 4 Sprint 1: Clear bidirectional relation cache
-    this.bidirectionalRelationCache.clear();
     this.initialized = false;
     // Close the read pool first so its connections can't outlive the
     // writer connection (reproducible test re-init was leaking handles).
@@ -1783,6 +1783,88 @@ export class SQLiteStorage implements IGraphStorage {
     return this.lowercaseCache.get(entityName);
   }
 
+  /**
+   * Use the native contentHash index for exact MemoryEngine dedup.
+   */
+  getEntitiesByContentHash(contentHash: string): Entity[] {
+    if (!this.db || !this.initialized) return [];
+    const reader = this.pickReadConnection();
+    const rows = this.prepareCached(
+      reader,
+      'SELECT * FROM entities WHERE contentHash = ?',
+    ).all(contentHash) as EntityRow[];
+    return rows.map(row => this.rowToEntity(row));
+  }
+
+  /**
+   * Query only the rows belonging to one agent-memory session. The
+   * expression matches idx_entities_session_created_at.
+   */
+  getSessionEntities(
+    sessionId: string,
+    options: {
+      limit?: number;
+      role?: 'user' | 'assistant' | 'system';
+      order?: 'asc' | 'desc';
+    } = {},
+  ): Entity[] {
+    if (!this.db || !this.initialized) return [];
+    if (options.limit === 0) return [];
+
+    const clauses = [`
+      CASE
+        WHEN json_valid(agentMetadata)
+        THEN json_extract(agentMetadata, '$.sessionId')
+      END = ?
+    `];
+    const params: Array<string | number> = [sessionId];
+    if (options.role) {
+      clauses.push(`
+        CASE
+          WHEN json_valid(observations)
+          THEN json_extract(observations, '$[0]')
+        END LIKE ?
+      `);
+      params.push(`[role=${options.role}] %`);
+    }
+
+    const order = options.order === 'desc' ? 'DESC' : 'ASC';
+    let sql = `
+      SELECT * FROM entities
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY createdAt ${order}, rowid ${order}
+    `;
+    if (
+      options.limit !== undefined
+      && Number.isSafeInteger(options.limit)
+      && options.limit > 0
+    ) {
+      sql += ' LIMIT ?';
+      params.push(options.limit);
+    }
+
+    const reader = this.pickReadConnection();
+    const rows = this.prepareCached(reader, sql).all(...params) as EntityRow[];
+    return rows.map(row => this.rowToEntity(row));
+  }
+
+  /**
+   * Count session turns without materializing or sorting them.
+   */
+  countSessionEntities(sessionId: string): number {
+    if (!this.db || !this.initialized) return 0;
+    const reader = this.pickReadConnection();
+    const row = this.prepareCached(reader, `
+      SELECT COUNT(*) AS count
+      FROM entities
+      WHERE CASE
+        WHEN json_valid(agentMetadata)
+        THEN json_extract(agentMetadata, '$.sessionId')
+      END = ?
+    `).get(sessionId) as { count: number };
+    return row.count;
+  }
+
   // ==================== FTS5 Full-Text Search ====================
 
   /**
@@ -1791,7 +1873,10 @@ export class SQLiteStorage implements IGraphStorage {
    * @param query - Search query (supports FTS5 query syntax)
    * @returns Array of matching entity names with relevance scores
    */
-  fullTextSearch(query: string): Array<{ name: string; score: number }> {
+  fullTextSearch(
+    query: string,
+    options: { limit?: number } = {},
+  ): Array<{ name: string; score: number }> {
     if (!this.db || !this.initialized) return [];
 
     try {
@@ -1807,6 +1892,19 @@ export class SQLiteStorage implements IGraphStorage {
         .trim();
 
       if (!sanitized) return [];
+      // FTS5's whitespace default is AND, while MemoryJS lexical search
+      // historically returns documents matching any query term. An explicit
+      // OR preserves that candidate-retrieval behavior.
+      const ftsQuery = sanitized
+        .split(' ')
+        .filter(Boolean)
+        .map(term => `"${term.replace(/"/g, '""')}"`)
+        .join(' OR ');
+      if (!ftsQuery) return [];
+      const requestedLimit = options.limit ?? 100;
+      const limit = Number.isSafeInteger(requestedLimit) && requestedLimit > 0
+        ? requestedLimit
+        : 100;
 
       // Use FTS5 MATCH for full-text search with BM25 ranking. Reads check
       // out a pooled connection so they can run concurrently with writes
@@ -1817,10 +1915,10 @@ export class SQLiteStorage implements IGraphStorage {
         FROM entities_fts
         WHERE entities_fts MATCH ?
         ORDER BY score
-        LIMIT 100
+        LIMIT ?
       `);
 
-      const results = stmt.all(sanitized) as Array<{ name: string; score: number }>;
+      const results = stmt.all(ftsQuery, limit) as Array<{ name: string; score: number }>;
       return results;
     } catch {
       // If FTS query fails (invalid syntax), fall back to empty results
@@ -2014,9 +2112,8 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of relations where entity is the source
    */
   getRelationsFrom(entityName: string): Relation[] {
-    // Check cache first
     if (this.cache) {
-      return this.cache.relations.filter(r => r.from === entityName);
+      return this.relationIndex.getRelationsFrom(entityName);
     }
 
     // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
@@ -2035,9 +2132,8 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of relations where entity is the target
    */
   getRelationsTo(entityName: string): Relation[] {
-    // Check cache first
     if (this.cache) {
-      return this.cache.relations.filter(r => r.to === entityName);
+      return this.relationIndex.getRelationsTo(entityName);
     }
 
     // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
@@ -2056,28 +2152,17 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of all relations involving the entity
    */
   getRelationsFor(entityName: string): Relation[] {
-    // Phase 4 Sprint 1: Check bidirectional cache first for O(1) repeated lookups
-    const cached = this.bidirectionalRelationCache.get(entityName);
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    // Check main cache and compute result
-    let relations: Relation[];
     if (this.cache) {
-      relations = this.cache.relations.filter(r => r.from === entityName || r.to === entityName);
-    } else if (this.db && this.initialized) {
-      // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
-      const stmt = this.prepareCached(this.db, 'SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?');
-      const rows = stmt.all(entityName, entityName) as RelationRow[];
-      relations = rows.map(row => this.rowToRelation(row));
-    } else {
-      return [];
+      return this.relationIndex.getRelationsFor(entityName);
     }
 
-    // Cache the result for O(1) subsequent lookups
-    this.bidirectionalRelationCache.set(entityName, relations);
-    return relations;
+    if (!this.db || !this.initialized) return [];
+    const stmt = this.prepareCached(
+      this.db,
+      'SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?',
+    );
+    const rows = stmt.all(entityName, entityName) as RelationRow[];
+    return rows.map(row => this.rowToRelation(row));
   }
 
   /**
@@ -2087,9 +2172,8 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns True if entity has any relations
    */
   hasRelations(entityName: string): boolean {
-    // Check cache first
     if (this.cache) {
-      return this.cache.relations.some(r => r.from === entityName || r.to === entityName);
+      return this.relationIndex.hasRelations(entityName);
     }
 
     // Fall back to database query
