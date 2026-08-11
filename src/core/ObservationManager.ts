@@ -14,7 +14,13 @@ import type { DeduplicationOptions, Entity } from '../types/types.js';
 import { EntityNotFoundError, ValidationError } from '../utils/errors.js';
 import type { ContradictionDetector } from '../features/ContradictionDetector.js';
 import type { MemoryValidator, MemoryValidationIssue } from '../agent/MemoryValidator.js';
-import type { EntityManager } from './EntityManager.js';
+import {
+  fireGovernanceAudits,
+  preflightGovernanceUpdate,
+  type EntityManager,
+  type GovernanceAuditEvent,
+  type GovernanceHooks,
+} from './EntityManager.js';
 import { calculateTextSimilarity } from '../utils/textSimilarity.js';
 import type { IColumnStore, ObservationColumn } from './columns/IColumnStore.js';
 import type {
@@ -58,7 +64,10 @@ export class ObservationManager {
    */
   private columnStore: IColumnStore<ObservationColumn> | null = null;
 
-  constructor(private storage: GraphStorage) {}
+  constructor(
+    private storage: GraphStorage,
+    private readonly governanceHooks?: GovernanceHooks,
+  ) {}
 
   /**
    * Tail of a SERIAL chain of shadow column-store writes.
@@ -654,11 +663,21 @@ export class ObservationManager {
     // Save all changes in a single atomic delta write (S2): one fsync /
     // one SQLite transaction covering exactly the touched entities.
     if (hasChanges) {
+      const auditEvents: GovernanceAuditEvent[] = [];
       const batch = [...changedNames].map(name => {
         const clone = entityMap.get(name)!;
+        const before = this.storage.getEntityByName(name)!;
+        const event = preflightGovernanceUpdate(
+          this.governanceHooks,
+          before,
+          clone,
+          { observations: clone.observations },
+        );
+        if (event) auditEvents.push(event);
         return { name, updates: { observations: clone.observations } };
       });
       await this.updateEntitiesCompat(batch, { timestamp });
+      fireGovernanceAudits(this.governanceHooks, auditEvents, 'ObservationManager');
       // Phase 8 task 67: shadow-write the column store with the post-
       // save inline state. Best-effort — failures log but don't reject
       // the caller's add (inline state is already durable).
@@ -836,11 +855,21 @@ export class ObservationManager {
 
     // Save all changes in a single atomic delta write
     if (hasChanges) {
+      const auditEvents: GovernanceAuditEvent[] = [];
       const batch = touchedNames.map(name => {
         const clone = entityMap.get(name)!;
+        const before = this.storage.getEntityByName(name)!;
+        const event = preflightGovernanceUpdate(
+          this.governanceHooks,
+          before,
+          clone,
+          { observations: clone.observations },
+        );
+        if (event) auditEvents.push(event);
         return { name, updates: { observations: clone.observations } };
       });
       await this.updateEntitiesCompat(batch, { timestamp });
+      fireGovernanceAudits(this.governanceHooks, auditEvents, 'ObservationManager');
       // Phase 8 task 67: shadow-update the column store for each
       // touched entity. Empty-after-delete entries still get put()'d
       // (not delete()'d) so callers see `[]` rather than fall through
@@ -896,10 +925,26 @@ export class ObservationManager {
       } else {
         newMeta.push({ content, validUntil: ts });
       }
+      const after = {
+        ...entity,
+        observationMeta: newMeta,
+        lastModified: new Date().toISOString(),
+      };
+      const auditEvent = preflightGovernanceUpdate(
+        this.governanceHooks,
+        entity,
+        after,
+        { observationMeta: newMeta },
+      );
       // S2: delta write (storage primitive bumps lastModified and emits
       // entity:updated)
       // eslint-disable-next-line memoryjs/no-unused-updateentity-return -- entity existence-checked at entry under graphMutex
       await this.storage.updateEntity(entityName, { observationMeta: newMeta });
+      fireGovernanceAudits(
+        this.governanceHooks,
+        auditEvent ? [auditEvent] : [],
+        'ObservationManager',
+      );
     } finally {
       release();
     }

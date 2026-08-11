@@ -28,6 +28,7 @@ export {
   QUERY_PREFIX,
   DOCUMENT_PREFIX,
   type EmbeddingProgressCallback,
+  type LlamaCppEmbeddingOptions,
 } from './EmbeddingService.js';
 
 // Phase 12 Sprint 5: Embedding Cache with LRU eviction

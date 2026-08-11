@@ -53,6 +53,10 @@ describe('levenshteinWorker', () => {
       expect(levenshteinDistance('abc', 'xyz')).toBe(3);
     });
 
+    it('stops after exceeding a distance cutoff', () => {
+      expect(levenshteinDistance('a'.repeat(1000), 'b'.repeat(1000), 2)).toBe(3);
+    });
+
     it('should be symmetric', () => {
       expect(levenshteinDistance('hello', 'hallo')).toBe(levenshteinDistance('hallo', 'hello'));
       expect(levenshteinDistance('abc', 'def')).toBe(levenshteinDistance('def', 'abc'));
@@ -331,6 +335,30 @@ describe('levenshteinWorker', () => {
 
       // Only exact matches should pass
       expect(results.every(r => r.score === 1.0)).toBe(true);
+    });
+
+    it('rejects oversized queries before scanning fields', () => {
+      const input: WorkerInput = {
+        query: 'x'.repeat(257),
+        entities: testEntities,
+        threshold: 0.8,
+      };
+
+      expect(() => searchEntities(input)).toThrow(/maximum length/i);
+    });
+
+    it('caps oversized indexed fields before comparison', () => {
+      const input: WorkerInput = {
+        query: 'alice',
+        entities: [{
+          name: 'Malformed',
+          nameLower: 'a'.repeat(10_000),
+          observations: ['b'.repeat(10_000)],
+        }],
+        threshold: 0.9,
+      };
+
+      expect(searchEntities(input)).toEqual([]);
     });
   });
 

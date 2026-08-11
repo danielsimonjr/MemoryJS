@@ -55,4 +55,28 @@ describe('IOManager.visualizeGraph', () => {
     expect(html).toContain('nodes = []');
     fs.rmSync(tmpDir2, { recursive: true, force: true });
   });
+
+  it('escapes graph data and title for their HTML contexts', async () => {
+    await ctx.entityManager.createEntities([{
+      name: '</script><script>alert(1)</script>',
+      entityType: 'person&admin',
+      observations: ['line\u2028separator & <tag>'],
+    }]);
+
+    const html = await ctx.ioManager.visualizeGraph({
+      title: `Graph </title><script>alert(2)</script> & 'x'`,
+    });
+
+    expect(html).not.toContain('<script>alert(1)</script>');
+    expect(html).not.toContain('<script>alert(2)</script>');
+    expect(html).toContain('\\u003c/script\\u003e');
+    expect(html).toContain('\\u0026');
+    expect(html).toContain('\\u2028');
+    expect(html).toContain(
+      '<title>Graph &lt;/title&gt;&lt;script&gt;alert(2)&lt;/script&gt; &amp; &#39;x&#39;</title>',
+    );
+    expect(html).toContain(
+      '<h1>Graph &lt;/title&gt;&lt;script&gt;alert(2)&lt;/script&gt; &amp; &#39;x&#39;</h1>',
+    );
+  });
 });

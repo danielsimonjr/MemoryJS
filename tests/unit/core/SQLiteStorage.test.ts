@@ -39,6 +39,12 @@ describe('SQLiteStorage', () => {
   });
 
   describe('loadGraph', () => {
+    it('creates the database with owner-only permissions', async () => {
+      if (process.platform === 'win32') return;
+      await storage.loadGraph();
+      expect((await fs.stat(testFilePath)).mode & 0o777).toBe(0o600);
+    });
+
     it('should return empty graph when database does not exist', async () => {
       const graph = await storage.loadGraph();
 
@@ -213,6 +219,26 @@ describe('SQLiteStorage', () => {
       // Verify file exists
       const stat = await fs.stat(testFilePath);
       expect(stat.size).toBeGreaterThan(0);
+    });
+
+    it('restores foreign key enforcement when a bulk save fails', async () => {
+      const duplicate = {
+        name: 'duplicate',
+        entityType: 'test',
+        observations: [],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        lastModified: '2024-01-01T00:00:00.000Z',
+      };
+
+      await expect(storage.saveGraph({
+        entities: [duplicate, { ...duplicate }],
+        relations: [],
+      })).rejects.toThrow();
+
+      const db = (storage as unknown as {
+        db: { pragma(source: string, options: { simple: boolean }): unknown };
+      }).db;
+      expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
     });
   });
 
@@ -866,6 +892,25 @@ describe('SQLiteStorage', () => {
 
         const relations = storage.getRelationsFor('Lonely');
         expect(relations).toHaveLength(0);
+      });
+
+      it('uses warm adjacency indexes without scanning cached relations', () => {
+        const cache = (storage as unknown as {
+          cache: { relations: Array<unknown> };
+        }).cache;
+        cache.relations = new Proxy(cache.relations, {
+          get(target, property, receiver) {
+            if (property === 'filter' || property === 'some') {
+              throw new Error('linear relation scan');
+            }
+            return Reflect.get(target, property, receiver);
+          },
+        });
+
+        expect(storage.getRelationsFrom('Alice')).toHaveLength(2);
+        expect(storage.getRelationsTo('Charlie')).toHaveLength(2);
+        expect(storage.getRelationsFor('Bob')).toHaveLength(2);
+        expect(storage.hasRelations('Alice')).toBe(true);
       });
     });
 

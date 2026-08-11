@@ -525,4 +525,39 @@ describe('TFIDFIndexManager', () => {
       expect(manager.isIdfBatchOpen()).toBe(false);
     });
   });
+
+  describe('incremental document frequencies', () => {
+    it('recalculates all IDF values without rescanning document vectors', async () => {
+      const index = await manager.buildIndex(sampleGraph);
+      const valuesSpy = vi.spyOn(index.documents, 'values').mockImplementation(() => {
+        throw new Error('document scan should not occur');
+      });
+
+      expect(() =>
+        manager.addDocument({
+          name: 'Delta',
+          entityType: 'note',
+          observations: ['novel shared token'],
+        }),
+      ).not.toThrow();
+      expect(valuesSpy).not.toHaveBeenCalled();
+      expect(manager.getIndex()!.idf.get('novel')).toBeCloseTo(Math.log(4), 10);
+    });
+
+    it('restores persisted frequencies for subsequent incremental changes', async () => {
+      await manager.buildIndex(sampleGraph);
+      await manager.saveIndex();
+      const loadedManager = new TFIDFIndexManager(testDir);
+      await loadedManager.loadIndex();
+
+      loadedManager.addDocument({
+        name: 'Delta',
+        entityType: 'note',
+        observations: ['persistedfrequencycheck'],
+      });
+
+      expect(loadedManager.getIndex()!.idf.get('persistedfrequencycheck'))
+        .toBeCloseTo(Math.log(4), 10);
+    });
+  });
 });

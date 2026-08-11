@@ -8,11 +8,12 @@
  * deployment knob, not a semantic change.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { GraphStorage } from '../../../../src/core/GraphStorage.js';
+import { FileSegmentStorage } from '../../../../src/core/segments/FileSegmentStorage.js';
 import type { Entity, Relation } from '../../../../src/types/index.js';
 
 async function makeDir(): Promise<string> {
@@ -45,6 +46,7 @@ describe('GraphStorage + segments wiring', () => {
   afterEach(async () => {
     if (savedEnv === undefined) delete process.env.MEMORY_STORAGE_SEGMENT_COUNT;
     else process.env.MEMORY_STORAGE_SEGMENT_COUNT = savedEnv;
+    vi.restoreAllMocks();
     try {
       await fs.rm(testDir, { recursive: true, force: true });
     } catch {
@@ -141,6 +143,24 @@ describe('GraphStorage + segments wiring', () => {
       const fresh = new GraphStorage(filePath);
       const back = await fresh.loadGraph();
       expect(back.entities.map((e) => e.name).sort()).toEqual(['alice', 'bob']);
+    });
+
+    it('rewrites only the owning segment for a single-segment append', async () => {
+      const storage = new GraphStorage(filePath);
+      await storage.loadGraph();
+      const segmentStorage = (storage as unknown as {
+        segmentStorage: FileSegmentStorage;
+      }).segmentStorage;
+      const saveSegment = vi.spyOn(segmentStorage, 'saveSegment');
+      const saveAll = vi.spyOn(segmentStorage, 'saveAll');
+
+      await storage.appendEntity(ent('alice'));
+
+      expect(saveSegment).toHaveBeenCalledTimes(1);
+      expect(saveSegment.mock.calls[0][0].id).toBe(
+        segmentStorage.router.route('alice'),
+      );
+      expect(saveAll).not.toHaveBeenCalled();
     });
 
     it('appendRelation persists and survives reload', async () => {

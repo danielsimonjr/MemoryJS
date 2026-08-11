@@ -58,8 +58,9 @@ describe('Review #4: manifest-based forward recovery', () => {
     // - leave the target segment file as old/missing
     const segmentsDir = join(dir, 'segments');
     await fs.mkdir(segmentsDir, { recursive: true });
-    const tmpPath = join(segmentsDir, '0.jsonl.tmp.recovery');
-    const targetPath = join(segmentsDir, '0.jsonl');
+    const target = '0.jsonl';
+    const tmp = `${target}.tmp.123.0123456789ab`;
+    const tmpPath = join(segmentsDir, tmp);
     await fs.writeFile(
       tmpPath,
       JSON.stringify({
@@ -71,7 +72,7 @@ describe('Review #4: manifest-based forward recovery', () => {
     );
     await fs.writeFile(
       join(segmentsDir, '_manifest.json'),
-      JSON.stringify({ version: 1, moves: [{ tmp: tmpPath, target: targetPath }] }),
+      JSON.stringify({ version: 1, moves: [{ tmp, target }] }),
     );
 
     const graph = await store.loadAll();
@@ -208,13 +209,14 @@ describe('Review #1: appendViaSegmentSave reload-failure path', () => {
     const storage = new GraphStorage(join(dir, 'memory.jsonl'));
     await storage.loadGraph(); // initialize cache
 
-    // Inject a saveAll failure. Access the private segmentStorage via cast.
+    // Inject a targeted segment-save failure. Access the private
+    // segmentStorage via cast.
     const segmentStorage = (storage as unknown as {
       segmentStorage: FileSegmentStorage;
     }).segmentStorage;
     expect(segmentStorage).not.toBeNull();
     const saveSpy = vi
-      .spyOn(segmentStorage, 'saveAll')
+      .spyOn(segmentStorage, 'saveSegment')
       .mockRejectedValueOnce(new Error('synthetic save failure'));
     const loadSpy = vi
       .spyOn(segmentStorage, 'loadAll')

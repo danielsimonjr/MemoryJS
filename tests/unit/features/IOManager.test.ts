@@ -994,6 +994,21 @@ from,to,relationType,createdAt,lastModified`;
         expect(result.entitiesAdded).toBe(0);
         expect(result.relationsAdded).toBe(0);
       });
+
+      it('should reject CSV entities that fail the import schema', async () => {
+        const csvData = `# ENTITIES
+name,entityType,observations,createdAt,lastModified,tags,importance
+${'x'.repeat(501)},person,observation,,,,Infinity
+
+# RELATIONS
+from,to,relationType,createdAt,lastModified`;
+
+        const result = await manager.importGraph('csv', csvData);
+
+        expect(result.entitiesAdded).toBe(0);
+        expect(result.errors[0]).toContain('Invalid CSV entity 1');
+        expect(result.errors[0]).toContain('500 characters');
+      });
     });
 
     describe('GraphML Import', () => {
@@ -1055,6 +1070,67 @@ from,to,relationType,createdAt,lastModified`;
 
         expect(graph.entities[0].observations).toContain('obs1');
         expect(graph.entities[0].tags).toContain('tag1');
+      });
+
+      it('should decode edge endpoints in the same order as node ids', async () => {
+        const graphmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <graph id="G" edgedefault="directed">
+    <node id="Alice&amp;lt;Admin">
+      <data key="d0">person</data>
+    </node>
+    <node id="Bob">
+      <data key="d0">person</data>
+    </node>
+    <edge id="e1" source="Alice&amp;lt;Admin" target="Bob">
+      <data key="e0">knows</data>
+    </edge>
+  </graph>
+</graphml>`;
+
+        const result = await manager.importGraph('graphml', graphmlData);
+        const graph = await storage.loadGraph();
+
+        expect(result.relationsAdded).toBe(1);
+        expect(graph.entities.map((entity) => entity.name)).toContain('Alice&lt;Admin');
+        expect(graph.relations[0].from).toBe('Alice&lt;Admin');
+      });
+
+      it('should reject GraphML entities with invalid timestamps', async () => {
+        const graphmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <graph id="G" edgedefault="directed">
+    <node id="Alice">
+      <data key="d0">person</data>
+      <data key="d2">not-a-timestamp</data>
+    </node>
+  </graph>
+</graphml>`;
+
+        const result = await manager.importGraph('graphml', graphmlData);
+
+        expect(result.entitiesAdded).toBe(0);
+        expect(result.errors[0]).toContain('Invalid GraphML entity 1');
+        expect(result.errors[0]).toContain('ISO 8601');
+      });
+
+      it('should reject GraphML relations that fail the import schema', async () => {
+        const graphmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <graph id="G" edgedefault="directed">
+    <node id="Alice"><data key="d0">person</data></node>
+    <node id="Bob"><data key="d0">person</data></node>
+    <edge id="e1" source="Alice" target="Bob">
+      <data key="e0">${'x'.repeat(101)}</data>
+    </edge>
+  </graph>
+</graphml>`;
+
+        const result = await manager.importGraph('graphml', graphmlData);
+
+        expect(result.relationsAdded).toBe(0);
+        expect(result.errors[0]).toContain('Invalid GraphML relation 1');
+        expect(result.errors[0]).toContain('100 characters');
       });
     });
 

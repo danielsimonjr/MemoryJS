@@ -26,7 +26,7 @@ import { createStorageFromPath } from './StorageFactory.js';
 // consumers. Tree-shaking bundlers (sideEffects: false) may drop this;
 // such consumers use preloadSQLiteStorage() instead.
 import './sqlite-register.js';
-import { EntityManager } from './EntityManager.js';
+import { EntityManager, type GovernanceHooks } from './EntityManager.js';
 import { RelationManager } from './RelationManager.js';
 import { ObservationManager } from './ObservationManager.js';
 import { JsonlColumnStore } from './columns/JsonlColumnStore.js';
@@ -50,6 +50,7 @@ import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
 // ~70 modules (incl. workerpool-backed FuzzySearch) onto the default path.
 import { SemanticSearch } from '../search/SemanticSearch.js';
 import { createEmbeddingService } from '../search/EmbeddingService.js';
+import { EmbeddingCache } from '../search/EmbeddingCache.js';
 import { createVectorStore } from '../search/VectorStore.js';
 import { IOManager } from '../features/IOManager.js';
 import { TagManager } from '../features/TagManager.js';
@@ -229,6 +230,8 @@ export class ManagerContext {
   private _llmSearchExecutor?: LLMSearchExecutor;
   private _semanticForget?: SemanticForget;
   private _governanceManager?: GovernanceManager;
+  /** Shared hooks passed to every context-wired mutation manager. */
+  private _governanceHooks?: GovernanceHooks;
 
   constructor(pathOrOptions: string | ManagerContextOptions) {
     const opts: ManagerContextOptions =
@@ -320,22 +323,7 @@ export class ManagerContext {
       // entry through appendAudit (which honors snapshot redaction).
       // When the flag is unset there is NO hook object — zero checks,
       // zero audit calls, zero overhead (pre-Sec1 behavior).
-      if (process.env.MEMORY_GOVERNANCE_ENABLED === 'true') {
-        const gov = this.governanceManager;
-        this._entityManager.setGovernanceHooks({
-          canCreate: entity => gov.getPolicy().canCreate?.(entity) ?? true,
-          canUpdate: (entity, updates) => gov.getPolicy().canUpdate?.(entity, updates) ?? true,
-          canDelete: entity => gov.getPolicy().canDelete?.(entity) ?? true,
-          audit: event =>
-            gov.appendAudit({
-              operation: event.operation,
-              entityName: event.entityName,
-              before: event.before,
-              after: event.after,
-              status: 'committed',
-            }),
-        });
-      }
+      this._entityManager.setGovernanceHooks(this.getGovernanceHooks());
     }
     return this._entityManager;
   }
@@ -347,11 +335,11 @@ export class ManagerContext {
    * The getter always exists for manual use (`withTransaction`,
    * `rollback`, `setPolicy`). **Enforcement wiring is separate**: when
    * `MEMORY_GOVERNANCE_ENABLED=true` (strict literal), `ManagerContext`
-   * additionally injects governance hooks into `entityManager`, so
-   * `createEntities` / `updateEntity` / `batchUpdate` / `deleteEntities`
-   * / `renameEntity` are policy-checked (throwing `GovernanceError` on
-   * denial) and audited. With the flag unset, this getter still works but
-   * ordinary EntityManager mutations bypass governance (manual opt-in).
+   * additionally injects shared governance hooks into the entity, relation,
+   * observation, import/restore, archive, and compression mutation paths.
+   * Policy denial throws `GovernanceError`; allowed entity changes are
+   * audited. With the flag unset, this getter still works but ordinary
+   * manager mutations bypass governance (manual opt-in).
    *
    * The audit log lives at `MEMORY_AUDIT_LOG_FILE` when set, otherwise
    * at the `<basename>-audit.jsonl` sidecar next to the storage file
@@ -371,15 +359,47 @@ export class ManagerContext {
     return this._governanceManager;
   }
 
+  /**
+   * Return the one live-policy hook object shared by every context-wired
+   * mutation manager. The env gate remains strict and is evaluated when each
+   * manager is first constructed, matching the existing lazy wiring model.
+   */
+  private getGovernanceHooks(): GovernanceHooks | undefined {
+    if (process.env.MEMORY_GOVERNANCE_ENABLED !== 'true') return undefined;
+    if (!this._governanceHooks) {
+      const gov = this.governanceManager;
+      this._governanceHooks = {
+        canCreate: entity => gov.getPolicy().canCreate?.(entity) ?? true,
+        canUpdate: (entity, updates) => gov.getPolicy().canUpdate?.(entity, updates) ?? true,
+        canDelete: entity => gov.getPolicy().canDelete?.(entity) ?? true,
+        audit: event =>
+          gov.appendAudit({
+            operation: event.operation,
+            entityName: event.entityName,
+            before: event.before,
+            after: event.after,
+            status: 'committed',
+          }),
+      };
+    }
+    return this._governanceHooks;
+  }
+
   /** RelationManager - Relation CRUD */
   get relationManager(): RelationManager {
-    return (this._relationManager ??= new RelationManager(this.storage));
+    return (this._relationManager ??= new RelationManager(
+      this.storage,
+      this.getGovernanceHooks(),
+    ));
   }
 
   /** ObservationManager - Observation CRUD */
   get observationManager(): ObservationManager {
     if (!this._observationManager) {
-      this._observationManager = new ObservationManager(this.storage);
+      this._observationManager = new ObservationManager(
+        this.storage,
+        this.getGovernanceHooks(),
+      );
       // Phase 8 tasks 66 + 67: wire the column store (env-gated). The
       // store is null when `MEMORY_OBSERVATIONS_COLUMNAR` is unset/false,
       // matching pre-Phase-8 behavior. When enabled, every
@@ -512,9 +532,17 @@ export class ManagerContext {
         this._compressedEntityCache = null;
         return null;
       }
-      this._compressedEntityCache = new CompressedMap<string, Entity>({
+      const pressure = this.cachePressure.enabled ? this.cachePressure : undefined;
+      const compressed = new CompressedMap<string, Entity>({
         hotThreshold: 1000,
         adapter: new ZlibCompressionAdapter(6),
+        onInsert: () => pressure?.evictIfOverBudget(),
+      });
+      this._compressedEntityCache = compressed;
+      pressure?.register({
+        name: 'compressed-entities',
+        currentEntries: () => compressed.currentEntries(),
+        evictTo: (target) => compressed.evictTo(target),
       });
     }
     return this._compressedEntityCache;
@@ -532,13 +560,22 @@ export class ManagerContext {
 
   /** SearchManager - All search operations */
   get searchManager(): SearchManager {
-    return (this._searchManager ??= new SearchManager(this.storage, this.savedSearchesFilePath));
+    return (this._searchManager ??= new SearchManager(
+      this.storage,
+      this.savedSearchesFilePath,
+      this.cachePressure.enabled ? this.cachePressure : undefined,
+    ));
   }
 
   /** RankedSearch - TF-IDF/BM25 ranked search */
   get rankedSearch(): RankedSearch {
     if (!this._rankedSearch) {
-      this._rankedSearch = new RankedSearch(this.storage);
+      this._rankedSearch = new RankedSearch(
+        this.storage,
+        undefined,
+        this.cachePressure.enabled ? this.cachePressure : undefined,
+        'context-ranked-tokens',
+      );
       // Optional graph-connectivity boost. When MEMORY_RANKED_GRAPH_BOOST is
       // 0/unset (the default), the prior is not even constructed — zero overhead.
       const graphBoost = this.getEnvNumber('MEMORY_RANKED_GRAPH_BOOST', 0);
@@ -718,7 +755,11 @@ export class ManagerContext {
 
   /** IOManager - Import/export/backup/restore */
   get ioManager(): IOManager {
-    return (this._ioManager ??= new IOManager(this.storage));
+    return (this._ioManager ??= new IOManager(this.storage, {
+      entityManager: this.entityManager,
+      relationManager: this.relationManager,
+      governanceHooks: this.getGovernanceHooks(),
+    }));
   }
 
   /** TagManager - Tag alias management */
@@ -733,12 +774,18 @@ export class ManagerContext {
 
   /** CompressionManager - Duplicate detection and entity merging */
   get compressionManager(): CompressionManager {
-    return (this._compressionManager ??= new CompressionManager(this.storage));
+    return (this._compressionManager ??= new CompressionManager(
+      this.storage,
+      this.getGovernanceHooks(),
+    ));
   }
 
   /** ArchiveManager - Entity archival to compressed storage */
   get archiveManager(): ArchiveManager {
-    return (this._archiveManager ??= new ArchiveManager(this.storage));
+    return (this._archiveManager ??= new ArchiveManager(
+      this.storage,
+      this.getGovernanceHooks(),
+    ));
   }
 
   /**
@@ -777,7 +824,15 @@ export class ManagerContext {
 
       if (embeddingService) {
         const vectorStore = createVectorStore('jsonl');
-        this._semanticSearch = new SemanticSearch(embeddingService, vectorStore);
+        const pressure = this.cachePressure.enabled ? this.cachePressure : undefined;
+        const embeddingCache = pressure
+          ? new EmbeddingCache({ dimensions: embeddingService.dimensions })
+          : undefined;
+        if (embeddingCache) pressure?.register(embeddingCache);
+        this._semanticSearch = new SemanticSearch(embeddingService, vectorStore, {
+          embeddingCache,
+          onCacheInsert: () => pressure?.evictIfOverBudget(),
+        });
       } else {
         this._semanticSearch = null;
       }

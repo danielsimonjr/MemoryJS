@@ -4,9 +4,25 @@
  * @module cli/commands/maintenance
  */
 
-import { Command } from 'commander';
+import { Command, InvalidArgumentError } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatValidation, formatSuccess, formatError } from '../formatters.js';
+import { IMPORTANCE_RANGE } from '../../utils/constants.js';
+
+function parseFiniteNumber(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    throw new InvalidArgumentError('Expected a finite number');
+  }
+  return parsed;
+}
+
+function validateRange(value: unknown, option: string, min: number, max: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+    throw new Error(`${option} must be a finite number between ${min} and ${max}`);
+  }
+  return value;
+}
 
 export function registerMaintenanceCommands(program: Command): void {
   // Stats
@@ -58,18 +74,28 @@ Tags Used:     ${allTags.size}
     .command('archive')
     .description('Archive old or low-importance entities')
     .option('--older-than <date>', 'Archive entities older than ISO date')
-    .option('--importance-lt <n>', 'Archive entities with importance below N', parseFloat)
+    .option(
+      '--importance-lt <n>',
+      `Archive entities with importance below N (${IMPORTANCE_RANGE.MIN}-${IMPORTANCE_RANGE.MAX})`,
+      parseFiniteNumber
+    )
     .option('--tags <tags...>', 'Archive entities with these tags')
     .option('--dry-run', 'Preview without applying changes')
     .action(async (opts: Record<string, unknown>) => {
       const options = getOptions(program);
       const logger = createLogger(options);
-      const ctx = createContext(options);
 
       try {
         const criteria: Record<string, unknown> = {};
         if (opts.olderThan) criteria.olderThan = opts.olderThan;
-        if (opts.importanceLt !== undefined) criteria.importanceLessThan = opts.importanceLt;
+        if (opts.importanceLt !== undefined) {
+          criteria.importanceLessThan = validateRange(
+            opts.importanceLt,
+            '--importance-lt',
+            IMPORTANCE_RANGE.MIN,
+            IMPORTANCE_RANGE.MAX
+          );
+        }
         if (opts.tags) criteria.tags = opts.tags;
 
         if (Object.keys(criteria).length === 0) {
@@ -77,6 +103,7 @@ Tags Used:     ${allTags.size}
           process.exit(1);
         }
 
+        const ctx = createContext(options);
         const dryRun = Boolean(opts.dryRun);
         const result = await ctx.archiveManager.archiveEntities(
           criteria as { olderThan?: string; importanceLessThan?: number; tags?: string[] },
@@ -104,16 +131,17 @@ Tags Used:     ${allTags.size}
   program
     .command('compress')
     .description('Find and merge duplicate entities')
-    .option('--threshold <n>', 'Similarity threshold (0-1)', parseFloat, 0.8)
+    .option('--threshold <n>', 'Similarity threshold (0-1)', parseFiniteNumber, 0.8)
     .option('--dry-run', 'Preview without applying changes')
     .action(async (opts: Record<string, unknown>) => {
       const options = getOptions(program);
       const logger = createLogger(options);
-      const ctx = createContext(options);
 
       try {
+        const threshold = validateRange(opts.threshold, '--threshold', 0, 1);
+        const ctx = createContext(options);
         const result = await ctx.compressionManager.compressGraph(
-          opts.threshold as number,
+          threshold,
           Boolean(opts.dryRun)
         );
 

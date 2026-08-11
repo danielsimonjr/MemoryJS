@@ -362,11 +362,9 @@ export class ContextWindowManager {
 
     // Limit candidates for performance
     if (candidates.length > this.config.maxEntitiesToConsider) {
-      // Pre-filter by salience to reduce candidates
-      const preScored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
-      candidates = preScored
-        .slice(0, this.config.maxEntitiesToConsider)
-        .map((s) => s.entity);
+      // Cheap metadata-only prefilter before the comparatively expensive
+      // context-aware salience pass. Must-includes bypass the cap.
+      candidates = this.prefilterCandidates(candidates, mustInclude);
     }
 
     // Prioritize within budget
@@ -401,6 +399,43 @@ export class ContextWindowManager {
       excluded: [...excluded, ...lowSalienceExcluded],
       suggestions,
     };
+  }
+
+  private prefilterCandidates(
+    candidates: AgentEntity[],
+    mustInclude: string[],
+  ): AgentEntity[] {
+    const requiredNames = new Set(mustInclude);
+    const required: AgentEntity[] = [];
+    const optional: Array<{ entity: AgentEntity; recency: number }> = [];
+
+    for (const entity of candidates) {
+      if (requiredNames.has(entity.name)) {
+        required.push(entity);
+        continue;
+      }
+      const timestamp =
+        entity.lastAccessedAt ?? entity.lastModified ?? entity.createdAt;
+      const recency = timestamp ? Date.parse(timestamp) : 0;
+      optional.push({
+        entity,
+        recency: Number.isFinite(recency) ? recency : 0,
+      });
+    }
+
+    optional.sort(
+      (a, b) =>
+        (b.entity.importance ?? 0) - (a.entity.importance ?? 0)
+        || b.recency - a.recency,
+    );
+    const optionalLimit = Math.max(
+      0,
+      this.config.maxEntitiesToConsider - required.length,
+    );
+    return [
+      ...required,
+      ...optional.slice(0, optionalLimit).map(({ entity }) => entity),
+    ];
   }
 
   // ==================== Type-Specific Retrieval ====================

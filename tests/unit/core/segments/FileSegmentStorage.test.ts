@@ -268,6 +268,81 @@ describe('FileSegmentStorage', () => {
     });
   });
 
+  describe('manifest recovery confinement', () => {
+    it('recovers a validated relative temp filename', async () => {
+      const store = makeStore(testDir, 4);
+      const segmentsDir = join(testDir, 'segments');
+      await fs.mkdir(segmentsDir, { recursive: true });
+
+      const name = 'recovered';
+      const id = store.router.route(name);
+      const target = `${id}.jsonl`;
+      const tmp = `${target}.tmp.123.0123456789ab`;
+      await fs.writeFile(
+        join(segmentsDir, tmp),
+        JSON.stringify({
+          type: 'entity',
+          name,
+          entityType: 'thing',
+          observations: [],
+        }),
+      );
+      await fs.writeFile(
+        join(segmentsDir, '_manifest.json'),
+        JSON.stringify({ version: 1, moves: [{ tmp, target }] }),
+      );
+
+      const graph = await store.loadAll();
+
+      expect(graph.entities.map((entity) => entity.name)).toContain(name);
+      await expect(
+        fs.access(join(segmentsDir, '_manifest.json')),
+      ).rejects.toThrow();
+    });
+
+    it('rejects manifest paths outside the segments directory', async () => {
+      const store = makeStore(testDir, 4);
+      const segmentsDir = join(testDir, 'segments');
+      await fs.mkdir(segmentsDir, { recursive: true });
+
+      const outsideTmp = join(testDir, '0.jsonl.tmp.123.0123456789ab');
+      const outsideTarget = join(testDir, '0.jsonl');
+      await fs.writeFile(outsideTmp, 'new content');
+      await fs.writeFile(outsideTarget, 'original content');
+      await fs.writeFile(
+        join(segmentsDir, '_manifest.json'),
+        JSON.stringify({
+          version: 1,
+          moves: [{ tmp: outsideTmp, target: outsideTarget }],
+        }),
+      );
+
+      await expect(store.loadAll()).rejects.toThrow(/outside segments directory/);
+      expect(await fs.readFile(outsideTmp, 'utf-8')).toBe('new content');
+      expect(await fs.readFile(outsideTarget, 'utf-8')).toBe('original content');
+    });
+
+    it('rejects symlink temp files during recovery', async () => {
+      const store = makeStore(testDir, 4);
+      const segmentsDir = join(testDir, 'segments');
+      await fs.mkdir(segmentsDir, { recursive: true });
+
+      const outside = join(testDir, 'outside.jsonl');
+      const target = '0.jsonl';
+      const tmp = `${target}.tmp.123.0123456789ab`;
+      await fs.writeFile(outside, 'outside content');
+      await fs.writeFile(join(segmentsDir, target), '');
+      await fs.symlink(outside, join(segmentsDir, tmp));
+      await fs.writeFile(
+        join(segmentsDir, '_manifest.json'),
+        JSON.stringify({ version: 1, moves: [{ tmp, target }] }),
+      );
+
+      await expect(store.loadAll()).rejects.toThrow(/regular file/);
+      expect(await fs.readFile(outside, 'utf-8')).toBe('outside content');
+    });
+  });
+
   describe('stress / property-based round-trip', () => {
     const counts = [4, 8, 16];
     for (const segmentCount of counts) {

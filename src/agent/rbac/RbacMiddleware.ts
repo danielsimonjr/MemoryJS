@@ -32,8 +32,8 @@ export interface RbacMiddlewareOptions {
   overrides?: ResourcePermissionOverrides;
   /**
    * Default role granted to agents with NO assignments. When the key is
-   * omitted entirely, defaults to `'reader'` (read-only). Pass an explicit
-   * `defaultRole: undefined` to deny unregistered agents entirely.
+   * omitted, unregistered agents are denied. Set an explicit role to opt in
+   * to fallback permissions.
    *
    * There is no env var for this — configure it here (a
    * `MEMORY_RBAC_DEFAULT_ROLE` env var was once referenced in docs but
@@ -53,14 +53,7 @@ export class RbacMiddleware implements RbacPolicy {
   ) {
     this.matrix = options?.matrix ?? DEFAULT_PERMISSION_MATRIX;
     this.overrides = options?.overrides;
-    // Key-presence semantics (Sec2): only an options object that explicitly
-    // carries the `defaultRole` key overrides the documented `'reader'`
-    // default. `new RbacMiddleware(store, { matrix })` therefore still
-    // defaults to 'reader', while `{ defaultRole: undefined }` means
-    // deny-unregistered.
-    this.defaultRole = options !== undefined && 'defaultRole' in options
-      ? options.defaultRole // explicit key (possibly `undefined` ⇒ deny)
-      : 'reader';
+    this.defaultRole = options?.defaultRole;
   }
 
   checkPermission(
@@ -70,6 +63,8 @@ export class RbacMiddleware implements RbacPolicy {
     resourceName?: string,
     now?: string,
   ): boolean {
+    if (!this.store.integrityValid) return false;
+
     const active = this.store.listActive(agentId, now);
 
     // Filter assignments to those matching this resourceType (exact match)
@@ -99,10 +94,16 @@ export class RbacMiddleware implements RbacPolicy {
     if (assignment.resourceType !== undefined && assignment.resourceType !== resourceType) {
       return false;
     }
-    // Scope match: prefix when set.
+    // Scope match: exact or a slash-delimited descendant. A raw startsWith
+    // check would let `project:abc` authorize `project:abcd`.
     if (assignment.scope) {
       if (!resourceName) return false;
-      if (!resourceName.startsWith(assignment.scope)) return false;
+      if (
+        resourceName !== assignment.scope
+        && !resourceName.startsWith(`${assignment.scope}/`)
+      ) {
+        return false;
+      }
     }
     return true;
   }

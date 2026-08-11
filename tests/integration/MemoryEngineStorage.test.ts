@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ManagerContext } from '../../src/core/ManagerContext.js';
+import type { SQLiteStorage } from '../../src/core/SQLiteStorage.js';
 import { rmSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -117,6 +118,28 @@ describe('MemoryEngine integration — SQLite roundtrip', () => {
     expect(second.duplicateDetected).toBe(true);
     expect(second.duplicateTier).toBe('exact');
     expect(second.duplicateOf).toBe(first.entity.name);
+  });
+
+  it('uses the contentHash index without loading the full graph on an exact hit', async () => {
+    const ctx = new ManagerContext(file);
+    await ctx.memoryEngine.addTurn('indexed exact hit', {
+      sessionId: 's-A',
+      role: 'user',
+    });
+
+    const sqlite = ctx.storage as unknown as SQLiteStorage;
+    const hashLookup = vi.spyOn(sqlite, 'getEntitiesByContentHash');
+    const sessionLookup = vi.spyOn(sqlite, 'getSessionEntities');
+    const graphLoad = vi.spyOn(sqlite, 'loadGraph');
+
+    const duplicate = await ctx.memoryEngine.checkDuplicate('indexed exact hit', 's-A');
+
+    expect(duplicate.tier).toBe('exact');
+    expect(hashLookup).toHaveBeenCalledTimes(1);
+    expect(await ctx.memoryEngine.getSessionTurns('s-A')).toHaveLength(1);
+    expect(sessionLookup).toHaveBeenCalledTimes(1);
+    expect(graphLoad).not.toHaveBeenCalled();
+    sqlite.close();
   });
 
   it('handles SQLite migration idempotently across multiple opens', async () => {

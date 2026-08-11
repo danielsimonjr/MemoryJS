@@ -168,6 +168,88 @@ describe.each(BACKENDS)('governance enforcement — $label', ({ storageType, ext
     expect(renamed.name).toBe('moved');
   });
 
+  it('context-wired feature and secondary managers cannot bypass policy', async () => {
+    const ctx = enabledCtx();
+    await ctx.entityManager.createEntities([
+      { name: 'frozen', entityType: 'doc', observations: ['original'] },
+      { name: 'peer', entityType: 'doc', observations: [] },
+      { name: 'critical', entityType: 'doc', observations: [], importance: 9 },
+      { name: 'merge-keep', entityType: 'doc', observations: ['same'] },
+      { name: 'merge-remove', entityType: 'doc', observations: ['same'] },
+    ]);
+
+    ctx.governanceManager.setPolicy({
+      canUpdate: entity => entity.name !== 'frozen',
+    });
+    await expect(
+      ctx.observationManager.addObservations([
+        { entityName: 'frozen', contents: ['blocked'] },
+      ]),
+    ).rejects.toThrow(GovernanceError);
+    await expect(
+      ctx.relationManager.createRelations([
+        { from: 'frozen', to: 'peer', relationType: 'blocked-edge' },
+      ]),
+    ).rejects.toThrow(GovernanceError);
+
+    ctx.governanceManager.setPolicy({
+      canDelete: entity => entity.name !== 'critical',
+    });
+    await expect(
+      ctx.archiveManager.archiveEntities(
+        { importanceLessThan: 10 },
+        { saveToFile: false },
+      ),
+    ).rejects.toThrow(GovernanceError);
+    expect(await ctx.entityManager.getEntity('critical')).not.toBeNull();
+
+    ctx.governanceManager.setPolicy({
+      canCreate: entity => entity.entityType !== 'restricted',
+    });
+    await expect(
+      ctx.ioManager.importGraph(
+        'json',
+        JSON.stringify({
+          entities: [{ name: 'denied-import', entityType: 'restricted', observations: [] }],
+          relations: [],
+        }),
+      ),
+    ).rejects.toThrow(GovernanceError);
+    await expect(
+      ctx.ioManager.ingest(
+        { messages: [{ role: 'user', content: 'do not store this' }] },
+        { entityType: 'restricted' },
+      ),
+    ).rejects.toThrow(/Governance policy blocked creation/);
+
+    ctx.governanceManager.setPolicy({
+      canDelete: entity => entity.name !== 'merge-remove',
+    });
+    await expect(
+      ctx.compressionManager.mergeEntities(['merge-keep', 'merge-remove']),
+    ).rejects.toThrow(GovernanceError);
+    expect(await ctx.entityManager.getEntity('merge-remove')).not.toBeNull();
+  });
+
+  it('restore preflights protected deletions before replacing the graph', async () => {
+    // BackupManager serializes portable JSONL; this assertion is backend
+    // independent because restore now goes through storage.saveGraph.
+    const ctx = enabledCtx();
+    await ctx.entityManager.createEntities([
+      { name: 'baseline', entityType: 'doc', observations: [] },
+    ]);
+    const backup = await ctx.ioManager.createBackup({ compress: false });
+    await ctx.entityManager.createEntities([
+      { name: 'protected-after-backup', entityType: 'doc', observations: [] },
+    ]);
+    ctx.governanceManager.setPolicy({
+      canDelete: entity => entity.name !== 'protected-after-backup',
+    });
+
+    await expect(ctx.ioManager.restoreFromBackup(backup.path)).rejects.toThrow(GovernanceError);
+    expect(await ctx.entityManager.getEntity('protected-after-backup')).not.toBeNull();
+  });
+
   it('allowed mutations audit to the log and the hash chain stays valid', async () => {
     const ctx = enabledCtx();
     ctx.governanceManager.setPolicy({}); // allow-all

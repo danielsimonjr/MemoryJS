@@ -261,6 +261,24 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     return this.cache.size;
   }
 
+  /** Entry count adapter for coordinated cache-pressure eviction. */
+  currentEntries(): number {
+    return this.cache.size;
+  }
+
+  /**
+   * Evict least-recently-used entries until `targetEntries` is reached.
+   * Map insertion order is already maintained as LRU order by {@link get}.
+   */
+  evictTo(targetEntries: number): void {
+    const target = Math.max(0, Math.floor(targetEntries));
+    while (this.cache.size > target) {
+      const lruKey = this.cache.keys().next().value;
+      if (lruKey === undefined) break;
+      this.cache.delete(lruKey);
+    }
+  }
+
   /**
    * Check if cache has entry for params.
    */

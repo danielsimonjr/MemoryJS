@@ -46,6 +46,8 @@ export interface CompressedMapOptions<V = unknown> {
   serialize?: (value: V) => string;
   /** Reverse of `serialize`. Default: JSON.parse. */
   deserialize?: (raw: string) => V;
+  /** Optional hook invoked after a successful insertion. */
+  onInsert?: () => void;
 }
 
 export class CompressedMap<K, V> {
@@ -55,6 +57,7 @@ export class CompressedMap<K, V> {
   private readonly adapter: ICompressionAdapter;
   private readonly serialize: (value: V) => string;
   private readonly deserialize: (raw: string) => V;
+  private readonly onInsert?: () => void;
 
   // Maintained incrementally to keep `stats()` O(1). Without this we'd
   // have to walk `cold` and sum buffer lengths on every diagnostic call.
@@ -73,6 +76,7 @@ export class CompressedMap<K, V> {
       options.serialize ?? ((v: V): string => JSON.stringify(v));
     this.deserialize =
       options.deserialize ?? ((raw: string): V => JSON.parse(raw) as V);
+    this.onInsert = options.onInsert;
   }
 
   get size(): number {
@@ -116,6 +120,7 @@ export class CompressedMap<K, V> {
     }
     this.hot.set(key, value);
     this.enforceHotBudget();
+    this.onInsert?.();
     return this;
   }
 
@@ -136,6 +141,32 @@ export class CompressedMap<K, V> {
     this.hot.clear();
     this.cold.clear();
     this.coldBytesTotal = 0;
+  }
+
+  /** Entry-count adapter for coordinated cache-pressure eviction. */
+  currentEntries(): number {
+    return this.size;
+  }
+
+  /**
+   * Drop cold (oldest-demoted) entries first, then oldest hot entries,
+   * without decompressing values.
+   */
+  evictTo(targetEntries: number): void {
+    const target = Math.max(0, Math.floor(targetEntries));
+    while (this.size > target && this.cold.size > 0) {
+      const oldest = this.cold.keys().next();
+      if (oldest.done) break;
+      const key = oldest.value;
+      const compressed = this.cold.get(key);
+      this.cold.delete(key);
+      if (compressed) this.coldBytesTotal -= compressed.length;
+    }
+    while (this.size > target && this.hot.size > 0) {
+      const oldest = this.hot.keys().next();
+      if (oldest.done) break;
+      this.hot.delete(oldest.value);
+    }
   }
 
   /** Diagnostic snapshot: counts of hot vs cold entries + approx-bytes savings. */

@@ -6,9 +6,16 @@
  * @module search/RankedSearch
  */
 
-import type { Entity, SearchResult, TFIDFIndex, TokenizedEntity, GraphEventType } from '../types/index.js';
-import type { GraphStorage } from '../core/GraphStorage.js';
+import type {
+  Entity,
+  GraphEventType,
+  IGraphStorage,
+  SearchResult,
+  TFIDFIndex,
+  TokenizedEntity,
+} from '../types/index.js';
 import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
+import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { calculateTFFromTokens, calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
 import { TFIDFIndexManager } from './TFIDFIndexManager.js';
@@ -36,6 +43,7 @@ const TOKEN_CACHE_INVALIDATING_EVENTS: readonly GraphEventType[] = [
  * Performs TF-IDF ranked search with optional pre-calculated indexes.
  */
 export class RankedSearch {
+  readonly name: string;
   private indexManager: TFIDFIndexManager | null = null;
 
   /**
@@ -74,9 +82,13 @@ export class RankedSearch {
   private eventUnsubscribers: Array<() => void> = [];
 
   constructor(
-    private storage: GraphStorage,
-    storageDir?: string
+    private storage: IGraphStorage,
+    storageDir?: string,
+    private cachePressure?: CachePressureCoordinator,
+    cacheName: string = 'search-ranked-tokens',
   ) {
+    this.name = cacheName;
+    this.cachePressure?.register(this);
     // Initialize index manager if storage directory is provided
     if (storageDir) {
       this.indexManager = new TFIDFIndexManager(storageDir);
@@ -138,6 +150,21 @@ export class RankedSearch {
   clearTokenCache(): void {
     this.fallbackTokenCache.clear();
     this.cachedEntityCount = 0;
+  }
+
+  /** Tokenized-document entry count for cache-pressure coordination. */
+  currentEntries(): number {
+    return this.fallbackTokenCache.size;
+  }
+
+  /** Evict oldest tokenized documents using Map insertion order. */
+  evictTo(targetEntries: number): void {
+    const target = Math.max(0, Math.floor(targetEntries));
+    while (this.fallbackTokenCache.size > target) {
+      const oldest = this.fallbackTokenCache.keys().next().value;
+      if (oldest === undefined) break;
+      this.fallbackTokenCache.delete(oldest);
+    }
   }
 
   /**
@@ -237,6 +264,11 @@ export class RankedSearch {
     // the projectId constraint as a post-score filter so rankings stay meaningful.
     const preFilters: SearchFilters = { tags, minImportance, maxImportance };
     const candidateEntities = SearchFilterChain.applyFilters(graph.entities, preFilters);
+    const ftsCandidateNames = await this.getFtsCandidateNames(query, graph.entities.length);
+    const scoringEntities = ftsCandidateNames === null
+      ? candidateEntities
+      : candidateEntities.filter(entity => ftsCandidateNames.has(entity.name));
+    if (scoringEntities.length === 0) return [];
 
     // Try to use pre-calculated index
     const index = await this.ensureIndexLoaded();
@@ -247,9 +279,14 @@ export class RankedSearch {
     const scoringLimit = projectId ? SEARCH_LIMITS.MAX : effectiveLimit;
     let scored: SearchResult[];
     if (index) {
-      scored = this.searchWithIndex(candidateEntities, queryTerms, index, scoringLimit);
+      scored = this.searchWithIndex(scoringEntities, queryTerms, index, scoringLimit);
     } else {
-      scored = this.searchWithoutIndex(candidateEntities, queryTerms, scoringLimit);
+      scored = this.searchWithoutIndex(
+        scoringEntities,
+        queryTerms,
+        scoringLimit,
+        candidateEntities,
+      );
     }
 
     // Apply projectId filter post-scoring to preserve IDF corpus integrity
@@ -261,6 +298,25 @@ export class RankedSearch {
     scored = await this.applyGraphBoost(scored);
 
     return scored.slice(0, effectiveLimit);
+  }
+
+  /**
+   * Retrieve lexical candidates from a storage-native FTS index when one is
+   * available. A null result means "capability unavailable"; an empty Set is
+   * a valid indexed no-match result and avoids an in-memory corpus scan.
+   */
+  private async getFtsCandidateNames(
+    query: string,
+    corpusSize: number,
+  ): Promise<Set<string> | null> {
+    if (!this.storage.fullTextSearch) return null;
+    await this.storage.ensureLoaded();
+    const matches = await this.storage.fullTextSearch(query, {
+      // Retrieve every FTS match so tag/importance post-filtering cannot
+      // hide a lower-ranked but eligible candidate.
+      limit: Math.max(corpusSize, 1),
+    });
+    return new Set(matches.map(match => match.name));
   }
 
   /**
@@ -358,7 +414,8 @@ export class RankedSearch {
   private searchWithoutIndex(
     entities: Entity[],
     queryTerms: string[],
-    limit: number
+    limit: number,
+    corpusEntities: Entity[] = entities,
   ): SearchResult[] {
     const results: SearchResult[] = [];
 
@@ -376,16 +433,19 @@ export class RankedSearch {
     } else {
       // Legacy fallback (storage without an event emitter): check both count
       // and entity name set to detect renames/replacements.
-      const namesKey = entities.map(e => e.name).join('\0');
-      if (entities.length !== this.cachedEntityCount || namesKey !== this.cachedEntityNames) {
+      const namesKey = corpusEntities.map(e => e.name).join('\0');
+      if (
+        corpusEntities.length !== this.cachedEntityCount
+        || namesKey !== this.cachedEntityNames
+      ) {
         this.clearTokenCache();
-        this.cachedEntityCount = entities.length;
+        this.cachedEntityCount = corpusEntities.length;
         this.cachedEntityNames = namesKey;
       }
     }
 
     // Phase 4 Sprint 2: Get or compute tokenized data for each entity
-    const documentData: TokenizedEntity[] = entities.map(e => {
+    const documentData: TokenizedEntity[] = corpusEntities.map(e => {
       // Check cache first
       const cached = this.fallbackTokenCache.get(e.name);
       if (cached) {
@@ -404,6 +464,13 @@ export class RankedSearch {
       this.fallbackTokenCache.set(e.name, tokenized);
       return tokenized;
     });
+    this.cachePressure?.evictIfOverBudget();
+    const candidateNames = entities === corpusEntities
+      ? null
+      : new Set(entities.map(entity => entity.name));
+    const scoringDocuments = candidateNames === null
+      ? documentData
+      : documentData.filter(doc => candidateNames.has(doc.entity.name));
 
     // Pre-compute token sets for IDF calculation
     const tokenSets = documentData.map(d => d.tokenSet);
@@ -421,7 +488,7 @@ export class RankedSearch {
       }
     }
 
-    for (const docData of documentData) {
+    for (const docData of scoringDocuments) {
       const { entity, tokens } = docData;
 
       // Calculate score for each query term

@@ -560,6 +560,10 @@ describe('ArchiveManager', () => {
       expect(result.originalSize).toBeGreaterThan(0);
       expect(result.compressedSize).toBeGreaterThan(0);
       expect(result.compressionRatio).toBeDefined();
+      if (process.platform !== 'win32') {
+        expect((await fs.stat(result.archivePath!)).mode & 0o777).toBe(0o600);
+        expect((await fs.stat(archiveManager.getArchiveDir())).mode & 0o777).toBe(0o700);
+      }
     });
 
     it('should achieve compression on typical entities', async () => {

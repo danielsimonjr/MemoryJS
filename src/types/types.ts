@@ -1346,6 +1346,39 @@ export interface IGraphStorage {
    */
   getLowercased(entityName: string): LowercaseData | undefined;
 
+  /**
+   * Optional storage-native lexical candidate retrieval. Indexed backends
+   * expose BM25/FTS-ranked entity names; in-memory backends may omit it.
+   */
+  fullTextSearch?(
+    query: string,
+    options?: { limit?: number },
+  ):
+    | Array<{ name: string; score: number }>
+    | Promise<Array<{ name: string; score: number }>>;
+
+  /**
+   * Optional indexed lookup for exact MemoryEngine content-hash dedup.
+   */
+  getEntitiesByContentHash?(contentHash: string): Entity[] | Promise<Entity[]>;
+
+  /**
+   * Optional targeted session-turn query for agent-memory backends.
+   */
+  getSessionEntities?(
+    sessionId: string,
+    options?: {
+      limit?: number;
+      role?: 'user' | 'assistant' | 'system';
+      order?: 'asc' | 'desc';
+    },
+  ): Entity[] | Promise<Entity[]>;
+
+  /**
+   * Optional targeted session cardinality query.
+   */
+  countSessionEntities?(sessionId: string): number | Promise<number>;
+
   // ==================== Relation Index Operations ====================
 
   /**
@@ -1672,6 +1705,15 @@ export interface EmbeddingConfig {
    * Defaults to http://127.0.0.1:8080, llama.cpp's conventional port.
    */
   baseUrl?: string;
+
+  /**
+   * Additional hostnames allowed for llama.cpp requests. Loopback hosts are
+   * always allowed; remote hosts require explicit opt-in.
+   */
+  allowedHosts?: string[];
+
+  /** llama.cpp request timeout in milliseconds. */
+  requestTimeoutMs?: number;
 
   /** Whether to auto-index entities on creation */
   autoIndex?: boolean;

@@ -8,6 +8,7 @@
  */
 
 import workerpool from '@danielsimonjr/workerpool';
+import { FUZZY_SEARCH_LIMITS } from '../utils/constants.js';
 
 /**
  * Input data structure for the worker.
@@ -40,44 +41,54 @@ export interface MatchResult {
 /**
  * Calculate Levenshtein distance between two strings.
  *
- * Uses dynamic programming matrix for efficient computation.
+ * Uses two dynamic-programming rows and optionally stops once the requested
+ * distance threshold can no longer be met.
  *
  * @param s1 - First string
  * @param s2 - Second string
+ * @param maxDistance - Optional cutoff; values above it return maxDistance + 1
  * @returns Levenshtein distance (number of edits)
  */
-export function levenshteinDistance(s1: string, s2: string): number {
-  const len1 = s1.length;
-  const len2 = s2.length;
-
-  if (len1 === 0) return len2;
-  if (len2 === 0) return len1;
-
-  const matrix: number[][] = [];
-
-  // Initialize first column
-  for (let i = 0; i <= len1; i++) {
-    matrix[i] = [i];
+export function levenshteinDistance(
+  s1: string,
+  s2: string,
+  maxDistance: number = Number.POSITIVE_INFINITY
+): number {
+  if (s1.length > s2.length) {
+    [s1, s2] = [s2, s1];
   }
 
-  // Initialize first row
-  for (let j = 0; j <= len2; j++) {
-    matrix[0][j] = j;
-  }
+  const shorterLength = s1.length;
+  const longerLength = s2.length;
+  const limit = Number.isFinite(maxDistance)
+    ? Math.max(0, Math.floor(maxDistance))
+    : Number.POSITIVE_INFINITY;
 
-  // Fill matrix
-  for (let i = 1; i <= len1; i++) {
-    for (let j = 1; j <= len2; j++) {
-      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1, // deletion
-        matrix[i][j - 1] + 1, // insertion
-        matrix[i - 1][j - 1] + cost // substitution
+  if (shorterLength === 0) return longerLength;
+  if (longerLength - shorterLength > limit) return limit + 1;
+
+  let previous = Array.from({ length: shorterLength + 1 }, (_, index) => index);
+  let current = new Array<number>(shorterLength + 1);
+
+  for (let longerIndex = 1; longerIndex <= longerLength; longerIndex++) {
+    current[0] = longerIndex;
+    let rowMinimum = current[0];
+    for (let shorterIndex = 1; shorterIndex <= shorterLength; shorterIndex++) {
+      const cost = s1[shorterIndex - 1] === s2[longerIndex - 1] ? 0 : 1;
+      current[shorterIndex] = Math.min(
+        previous[shorterIndex] + 1,
+        current[shorterIndex - 1] + 1,
+        previous[shorterIndex - 1] + cost
       );
+      rowMinimum = Math.min(rowMinimum, current[shorterIndex]);
     }
+    if (rowMinimum > limit) {
+      return limit + 1;
+    }
+    [previous, current] = [current, previous];
   }
 
-  return matrix[len1][len2];
+  return previous[shorterLength];
 }
 
 /**
@@ -85,9 +96,10 @@ export function levenshteinDistance(s1: string, s2: string): number {
  *
  * @param s1 - First string
  * @param s2 - Second string
+ * @param threshold - Optional minimum score used for early termination
  * @returns Similarity score (0.0 to 1.0, where 1.0 is identical)
  */
-export function similarity(s1: string, s2: string): number {
+export function similarity(s1: string, s2: string, threshold: number = 0): number {
   // Exact match
   if (s1 === s2) return 1.0;
 
@@ -95,8 +107,12 @@ export function similarity(s1: string, s2: string): number {
   if (s1.includes(s2) || s2.includes(s1)) return 1.0;
 
   // Calculate Levenshtein-based similarity
-  const distance = levenshteinDistance(s1, s2);
   const maxLength = Math.max(s1.length, s2.length);
+  const maxDistance = Math.floor((1 - threshold) * maxLength + Number.EPSILON * maxLength);
+  const distance = levenshteinDistance(s1, s2, maxDistance);
+  if (distance > maxDistance) {
+    return Math.max(0, threshold - Number.EPSILON);
+  }
   return 1 - distance / maxLength;
 }
 
@@ -108,12 +124,20 @@ export function similarity(s1: string, s2: string): number {
  */
 export function searchEntities(data: WorkerInput): MatchResult[] {
   const { query, entities, threshold } = data;
+  if (query.length > FUZZY_SEARCH_LIMITS.MAX_QUERY_LENGTH) {
+    throw new RangeError(
+      `Fuzzy search query exceeds maximum length of ${FUZZY_SEARCH_LIMITS.MAX_QUERY_LENGTH}`
+    );
+  }
   const queryLower = query.toLowerCase();
   const results: MatchResult[] = [];
 
   for (const entity of entities) {
     // Check name similarity
-    const nameScore = similarity(queryLower, entity.nameLower);
+    const nameLower = entity.nameLower
+      .slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH)
+      .toLowerCase();
+    const nameScore = similarity(queryLower, nameLower, threshold);
     if (nameScore >= threshold) {
       results.push({ name: entity.name, score: nameScore, matchedIn: 'name' });
       continue;
@@ -121,7 +145,10 @@ export function searchEntities(data: WorkerInput): MatchResult[] {
 
     // Check observations
     for (const obs of entity.observations) {
-      const obsScore = similarity(queryLower, obs);
+      const observation = obs
+        .slice(0, FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH)
+        .toLowerCase();
+      const obsScore = similarity(queryLower, observation, threshold);
       if (obsScore >= threshold) {
         results.push({ name: entity.name, score: obsScore, matchedIn: 'observation' });
         break;

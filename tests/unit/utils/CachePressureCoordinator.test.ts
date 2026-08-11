@@ -82,6 +82,14 @@ describe('CachePressureCoordinator', () => {
     c.evictIfOverBudget();
     // Tiny would round to 0 without the floor; should keep at least 10.
     expect(tiny.entries).toBeGreaterThanOrEqual(10);
+    expect(big.entries + tiny.entries).toBeLessThanOrEqual(100);
+  });
+
+  it('rejects partially parsed and unsafe budget values', () => {
+    process.env.MEMORY_CACHE_BUDGET_ENTRIES = '100oops';
+    expect(new CachePressureCoordinator().enabled).toBe(false);
+    process.env.MEMORY_CACHE_BUDGET_ENTRIES = '9007199254740992';
+    expect(new CachePressureCoordinator().enabled).toBe(false);
   });
 
   it('snapshot returns enabled flag, budget, and per-cache shares', () => {

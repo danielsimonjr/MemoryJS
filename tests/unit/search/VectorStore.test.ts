@@ -128,6 +128,44 @@ describe('InMemoryVectorStore', () => {
     expect(results).toHaveLength(5);
   });
 
+  it('returns the same top-k ordering as a full similarity sort', () => {
+    const query = [1, 0.25, 0.5];
+    const entries = Array.from({ length: 200 }, (_, i) => ({
+      name: `entity${i}`,
+      vector: [
+        ((i * 17) % 101) / 100,
+        ((i * 31) % 97) / 100,
+        ((i * 47) % 89) / 100,
+      ],
+      order: i,
+    }));
+    for (const entry of entries) store.add(entry.name, entry.vector);
+
+    const expected = entries
+      .map((entry) => ({
+        name: entry.name,
+        score: cosineSimilarity(query, entry.vector),
+        order: entry.order,
+      }))
+      .sort((a, b) => b.score - a.score || a.order - b.order)
+      .slice(0, 7)
+      .map(({ name }) => name);
+
+    expect(store.search(query, 7).map(({ name }) => name)).toEqual(expected);
+  });
+
+  it('preserves insertion order for equal-score ties and handles zero k', () => {
+    store.add('first', [1, 0]);
+    store.add('second', [1, 0]);
+    store.add('third', [1, 0]);
+
+    expect(store.search([1, 0], 2).map(({ name }) => name)).toEqual([
+      'first',
+      'second',
+    ]);
+    expect(store.search([1, 0], 0)).toEqual([]);
+  });
+
   it('should update existing vectors', () => {
     store.add('entity1', [1, 0, 0]);
     store.add('entity1', [0, 1, 0]);

@@ -9,12 +9,14 @@
 
 import type { Entity, KnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { levenshteinDistance } from '../utils/index.js';
 import { logger } from '../utils/logger.js';
-import { SEARCH_LIMITS } from '../utils/constants.js';
+import { FUZZY_SEARCH_LIMITS, SEARCH_LIMITS } from '../utils/constants.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import { NGramIndex } from './NGramIndex.js';
 import type { BloomPreScreener } from './BloomPreScreener.js';
+import { collectInducedRelations } from './inducedSubgraph.js';
 import workerpool, { type Pool } from '@danielsimonjr/workerpool';
 import { fileURLToPath } from 'url';
 import { dirname, join, normalize } from 'path';
@@ -96,12 +98,17 @@ export interface FuzzySearchOptions {
    * Default: 0.1
    */
   ngramThreshold?: number;
+
+  /** Optional global cache-pressure coordinator supplied by ManagerContext. */
+  cachePressure?: CachePressureCoordinator;
 }
 
 /**
  * Performs fuzzy search with configurable similarity threshold.
  */
 export class FuzzySearch {
+  readonly name = 'search-fuzzy';
+
   /**
    * Phase 4 Sprint 3: Result cache for fuzzy search.
    * Maps cache key -> cached entity names.
@@ -136,6 +143,7 @@ export class FuzzySearch {
    * Feature 6: Jaccard threshold for NGramIndex prefilter queries.
    */
   private ngramThreshold: number;
+  private cachePressure?: CachePressureCoordinator;
 
   /**
    * Optional Bloom pre-screener. When attached via
@@ -153,6 +161,8 @@ export class FuzzySearch {
     this.useWorkerPool = options.useWorkerPool ?? true;
     this.ngramIndex = options.ngramIndex ?? null;
     this.ngramThreshold = options.ngramThreshold ?? 0.1;
+    this.cachePressure = options.cachePressure;
+    this.cachePressure?.register(this);
     // Resolve the Levenshtein worker across every build layout. The worker
     // always ships at dist/workers/levenshteinWorker.{js,cjs}, but the file
     // that runs THIS code can live at several depths depending on the build:
@@ -270,6 +280,23 @@ export class FuzzySearch {
     this.fuzzyResultCache.clear();
   }
 
+  /** Result entry count for cache-pressure coordination. */
+  currentEntries(): number {
+    return this.fuzzyResultCache.size;
+  }
+
+  /** Drop oldest cached results until at or below `targetEntries`. */
+  evictTo(targetEntries: number): void {
+    const target = Math.max(0, Math.floor(targetEntries));
+    if (this.fuzzyResultCache.size <= target) return;
+    const entries = [...this.fuzzyResultCache.entries()]
+      .sort((a, b) => a[1].timestamp - b[1].timestamp);
+    const removeCount = this.fuzzyResultCache.size - target;
+    for (let i = 0; i < removeCount; i++) {
+      this.fuzzyResultCache.delete(entries[i]![0]);
+    }
+  }
+
   /**
    * Attach a `BloomPreScreener` for opt-in candidate pre-screening.
    * Pass `null` to detach. The screener narrows the candidate set
@@ -340,6 +367,12 @@ export class FuzzySearch {
     limit: number = SEARCH_LIMITS.DEFAULT,
     projectId?: string
   ): Promise<KnowledgeGraph> {
+    if (query.length > FUZZY_SEARCH_LIMITS.MAX_QUERY_LENGTH) {
+      throw new RangeError(
+        `Fuzzy search query exceeds maximum length of ${FUZZY_SEARCH_LIMITS.MAX_QUERY_LENGTH}`
+      );
+    }
+
     const graph = await this.storage.loadGraph();
     const queryLower = query.toLowerCase();
 
@@ -354,10 +387,7 @@ export class FuzzySearch {
         // Return cached results
         const cachedNameSet = new Set(cached.entityNames);
         const cachedEntities = graph.entities.filter(e => cachedNameSet.has(e.name));
-        const cachedEntityNames = new Set(cached.entityNames);
-        const cachedRelations = graph.relations.filter(
-          r => cachedEntityNames.has(r.from) && cachedEntityNames.has(r.to)
-        );
+        const cachedRelations = collectInducedRelations(this.storage, cachedNameSet);
         return { entities: cachedEntities, relations: cachedRelations };
       }
     }
@@ -421,6 +451,7 @@ export class FuzzySearch {
       entityCount: graph.entities.length,
       timestamp: Date.now(),
     });
+    this.cachePressure?.evictIfOverBudget();
 
     // Cleanup old cache entries periodically
     if (this.fuzzyResultCache.size > FUZZY_CACHE_MAX_SIZE / 2) {
@@ -428,9 +459,7 @@ export class FuzzySearch {
     }
 
     const filteredEntityNames = new Set(paginatedEntities.map(e => e.name));
-    const filteredRelations = graph.relations.filter(
-      r => filteredEntityNames.has(r.from) && filteredEntityNames.has(r.to)
-    );
+    const filteredRelations = collectInducedRelations(this.storage, filteredEntityNames);
 
     return {
       entities: paginatedEntities,
@@ -447,15 +476,27 @@ export class FuzzySearch {
       const lowercased = this.storage.getLowercased(e.name);
 
       // Check name match (use pre-computed lowercase)
-      const nameLower = lowercased?.name ?? e.name.toLowerCase();
+      const nameLower = this.truncateField(
+        lowercased?.name
+          ?? e.name.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(),
+        FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH
+      );
       if (this.isFuzzyMatchLower(nameLower, queryLower, threshold)) return true;
 
       // Check type match (use pre-computed lowercase)
-      const typeLower = lowercased?.entityType ?? e.entityType.toLowerCase();
+      const typeLower = this.truncateField(
+        lowercased?.entityType
+          ?? e.entityType.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(),
+        FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH
+      );
       if (this.isFuzzyMatchLower(typeLower, queryLower, threshold)) return true;
 
       // Check observations (use pre-computed lowercase array)
-      const obsLower = lowercased?.observations ?? e.observations.map(o => o.toLowerCase());
+      const obsLower = lowercased?.observations
+        ? lowercased.observations.map(o =>
+          this.truncateField(o, FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH))
+        : e.observations.map(o =>
+          o.slice(0, FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH).toLowerCase());
       return obsLower.some(
         o =>
           // For observations, split into words and check each word
@@ -466,6 +507,10 @@ export class FuzzySearch {
           this.isFuzzyMatchLower(o, queryLower, threshold)
       );
     }) as Entity[];
+  }
+
+  private truncateField(value: string, maxLength: number): string {
+    return value.length > maxLength ? value.slice(0, maxLength) : value;
   }
 
   /**
@@ -479,6 +524,8 @@ export class FuzzySearch {
    * @returns True if strings match fuzzily
    */
   private isFuzzyMatchLower(s1: string, s2: string, threshold: number = 0.7): boolean {
+    if (threshold <= 0) return true;
+
     // Exact match
     if (s1 === s2) return true;
 
@@ -486,8 +533,12 @@ export class FuzzySearch {
     if (s1.includes(s2) || s2.includes(s1)) return true;
 
     // Calculate similarity using Levenshtein distance
-    const distance = levenshteinDistance(s1, s2);
     const maxLength = Math.max(s1.length, s2.length);
+    const maxDistance = Math.floor(
+      (1 - threshold) * maxLength + Number.EPSILON * maxLength
+    );
+    if (Math.abs(s1.length - s2.length) > maxDistance) return false;
+    const distance = levenshteinDistance(s1, s2);
     const similarity = 1 - distance / maxLength;
 
     return similarity >= threshold;
@@ -497,7 +548,8 @@ export class FuzzySearch {
    * Phase 8: Perform fuzzy search using workerpool for parallel processing.
    *
    * Splits entities into chunks and processes them in parallel using worker threads.
-   * Falls back to single-threaded search if worker execution fails.
+   * Returns completed worker results when a worker fails or times out. It does
+   * not repeat the same unbounded workload synchronously.
    *
    * @param query - Search query
    * @param threshold - Similarity threshold
@@ -536,19 +588,40 @@ export class FuzzySearch {
         threshold,
         entities: chunk.map(e => ({
           name: e.name,
-          nameLower: e.name.toLowerCase(),
-          observations: e.observations.map(o => o.toLowerCase()),
+          nameLower: this.truncateField(
+            e.name.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(),
+            FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH
+          ),
+          observations: e.observations.map(o => this.truncateField(
+            o.slice(0, FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH).toLowerCase(),
+            FUZZY_SEARCH_LIMITS.MAX_OBSERVATION_LENGTH
+          )),
         })),
       }));
 
       // Execute all chunks in parallel using workerpool with timeout
       const WORKER_TIMEOUT_MS = 30000; // 30 seconds
-      const results = await Promise.all(
+      const settledResults = await Promise.allSettled(
         workerInputs.map(input =>
           this.workerPool!.exec('searchEntities', [input])
             .timeout(WORKER_TIMEOUT_MS) as Promise<MatchResult[]>
         )
       );
+      const results: MatchResult[][] = [];
+      let failedWorkers = 0;
+      for (const result of settledResults) {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          failedWorkers++;
+        }
+      }
+      if (failedWorkers > 0) {
+        logger.warn(
+          `${failedWorkers} of ${settledResults.length} fuzzy search workers failed or timed out; ` +
+          'returning partial results without a synchronous retry'
+        );
+      }
 
       // Flatten results and extract matched entity names
       const matchedNames = new Set(results.flat().map(r => r.name));
@@ -556,16 +629,14 @@ export class FuzzySearch {
       // Return entities that matched
       return entities.filter(e => matchedNames.has(e.name));
     } catch (error) {
-      // Worker execution failed - fall back to single-threaded mode
+      // Do not defeat worker timeouts by repeating the same workload on the
+      // main thread.
       logger.warn(
-        `Worker pool execution failed, falling back to single-threaded fuzzy search: ${
+        `Worker pool execution failed; returning no fuzzy matches: ${
           error instanceof Error ? error.message : String(error)
         }`
       );
-
-      // Use the existing single-threaded implementation
-      const queryLower = query.toLowerCase();
-      return this.performFuzzyMatch(entities, queryLower, threshold);
+      return [];
     }
   }
 

@@ -53,26 +53,40 @@ export class InMemoryVectorStore implements IVectorStore {
    * @returns Array of results with entity name and similarity score
    */
   search(queryVector: number[], k: number): VectorSearchResult[] {
-    if (this.vectors.size === 0) {
+    if (this.vectors.size === 0 || k <= 0 || Number.isNaN(k)) {
       return [];
     }
 
-    // Calculate similarity for all vectors
-    const results: VectorSearchResult[] = [];
+    const limit = Number.isFinite(k)
+      ? Math.min(this.vectors.size, Math.max(0, Math.floor(k)))
+      : this.vectors.size;
+    if (limit === 0) return [];
 
+    type HeapEntry = VectorSearchResult & { order: number };
+    const heap: HeapEntry[] = [];
+    let order = 0;
     for (const [name, vector] of this.vectors) {
       try {
         const score = cosineSimilarity(queryVector, vector);
-        results.push({ name, score });
+        const candidate: HeapEntry = { name, score, order: order++ };
+        if (heap.length < limit) {
+          heap.push(candidate);
+          siftUpWorst(heap, heap.length - 1);
+        } else if (isBetter(candidate, heap[0])) {
+          heap[0] = candidate;
+          siftDownWorst(heap, 0);
+        }
       } catch {
         // Skip vectors with dimension mismatch
         continue;
       }
     }
 
-    // Sort by score descending and take top k
-    results.sort((a, b) => b.score - a.score);
-    return results.slice(0, k);
+    // Sorting only the bounded heap keeps the common small-k path at
+    // O(N log k), while preserving score order and insertion-order ties.
+    return heap
+      .sort((a, b) => b.score - a.score || a.order - b.order)
+      .map(({ name, score }) => ({ name, score }));
   }
 
   /**
@@ -139,6 +153,37 @@ export class InMemoryVectorStore implements IVectorStore {
     for (const [name, vector] of entries) {
       this.vectors.set(name, vector);
     }
+  }
+}
+
+/** Heap root is the worst retained result: lowest score, latest tie. */
+function isWorse(a: { score: number; order: number }, b: { score: number; order: number }): boolean {
+  return a.score < b.score || (a.score === b.score && a.order > b.order);
+}
+
+function isBetter(a: { score: number; order: number }, b: { score: number; order: number }): boolean {
+  return a.score > b.score || (a.score === b.score && a.order < b.order);
+}
+
+function siftUpWorst<T extends { score: number; order: number }>(heap: T[], index: number): void {
+  while (index > 0) {
+    const parent = Math.floor((index - 1) / 2);
+    if (!isWorse(heap[index], heap[parent])) break;
+    [heap[index], heap[parent]] = [heap[parent], heap[index]];
+    index = parent;
+  }
+}
+
+function siftDownWorst<T extends { score: number; order: number }>(heap: T[], index: number): void {
+  while (true) {
+    const left = index * 2 + 1;
+    const right = left + 1;
+    let worst = index;
+    if (left < heap.length && isWorse(heap[left], heap[worst])) worst = left;
+    if (right < heap.length && isWorse(heap[right], heap[worst])) worst = right;
+    if (worst === index) return;
+    [heap[index], heap[worst]] = [heap[worst], heap[index]];
+    index = worst;
   }
 }
 

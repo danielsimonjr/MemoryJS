@@ -19,8 +19,10 @@ import { SavedSearchManager } from './SavedSearchManager.js';
 import { QueryCostEstimator } from './QueryCostEstimator.js';
 import { QueryAnalyzer } from './QueryAnalyzer.js';
 import { QueryPlanner } from './QueryPlanner.js';
+import { QueryPlanCache } from './QueryPlanCache.js';
 import { formatQueryPlanAscii, type ExplainPlanResult } from './QueryPlanFormatter.js';
 import type { AccessTracker } from '../agent/AccessTracker.js';
+import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 
 /**
  * Options for search methods with access tracking support.
@@ -58,21 +60,35 @@ export class SearchManager {
   // Private — only exposed via explainPlan().
   private readonly queryAnalyzer: QueryAnalyzer;
   private readonly queryPlanner: QueryPlanner;
+  private readonly queryPlanCache?: QueryPlanCache;
   private storage: GraphStorage;
   private accessTracker?: AccessTracker;
   private temporalSearch: TemporalSearch;
 
-  constructor(storage: GraphStorage, savedSearchesFilePath: string) {
+  constructor(
+    storage: GraphStorage,
+    savedSearchesFilePath: string,
+    private cachePressure?: CachePressureCoordinator,
+  ) {
     this.storage = storage;
-    this.basicSearch = new BasicSearch(storage);
-    this.rankedSearch = new RankedSearch(storage);
-    this.booleanSearcher = new BooleanSearch(storage);
-    this.fuzzySearcher = new FuzzySearch(storage);
+    this.basicSearch = new BasicSearch(storage, true, cachePressure);
+    this.rankedSearch = new RankedSearch(
+      storage,
+      undefined,
+      cachePressure,
+      'search-manager-ranked-tokens',
+    );
+    this.booleanSearcher = new BooleanSearch(storage, cachePressure);
+    this.fuzzySearcher = new FuzzySearch(storage, { cachePressure });
     this.searchSuggestions = new SearchSuggestions(storage);
     this.savedSearchManager = new SavedSearchManager(savedSearchesFilePath, this.basicSearch);
     this.queryEstimator = new QueryCostEstimator();
     this.queryAnalyzer = new QueryAnalyzer();
     this.queryPlanner = new QueryPlanner();
+    if (cachePressure) {
+      this.queryPlanCache = new QueryPlanCache();
+      cachePressure.register(this.queryPlanCache);
+    }
     this.temporalSearch = new TemporalSearch(storage);
   }
 
@@ -89,8 +105,14 @@ export class SearchManager {
    * @returns An object with an ASCII tree (`ascii`) and the underlying plan (`json`).
    */
   explainPlan(query: string): ExplainPlanResult {
+    const cached = this.queryPlanCache?.getEntry(query);
+    if (cached?.analysis && cached.plan) {
+      return { ascii: formatQueryPlanAscii(cached.plan), json: cached.plan };
+    }
     const analysis = this.queryAnalyzer.analyze(query);
     const plan = this.queryPlanner.createPlan(query, analysis);
+    this.queryPlanCache?.setPlan(query, analysis, plan);
+    this.cachePressure?.evictIfOverBudget();
     return { ascii: formatQueryPlanAscii(plan), json: plan };
   }
 

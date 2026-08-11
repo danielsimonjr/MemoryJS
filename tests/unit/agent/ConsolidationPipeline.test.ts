@@ -1392,6 +1392,34 @@ describe('ConsolidationPipeline', () => {
         )
       ).toBe(false);
     });
+
+    it('caps duplicate similarity comparisons after token candidate generation', async () => {
+      const now = new Date().toISOString();
+      const entities = Array.from({ length: 100 }, (_, i) => ({
+        name: `candidate-${i}`,
+        entityType: 'note',
+        observations: [`shared token content variant-${i}`],
+        memoryType: 'episodic' as const,
+        createdAt: now,
+        lastModified: now,
+        accessCount: 0,
+        confidence: 0.8,
+        confirmationCount: 1,
+        visibility: 'private' as const,
+      }));
+      storage = createMockStorage(entities as unknown as Entity[]);
+      pipeline = new ConsolidationPipeline(
+        storage,
+        workingMemory,
+        decayEngine,
+        { maxDuplicateComparisons: 5 },
+      );
+      const similaritySpy = vi.spyOn(pipeline, 'calculateSimilarity');
+
+      await pipeline.findDuplicates(0.1);
+
+      expect(similaritySpy).toHaveBeenCalledTimes(5);
+    });
   });
 
   describe('autoMergeDuplicates', () => {

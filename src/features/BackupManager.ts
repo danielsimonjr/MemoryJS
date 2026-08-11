@@ -18,6 +18,11 @@
 import { promises as fs } from 'fs';
 import { basename, join } from 'path';
 import type { GraphStorage } from '../core/GraphStorage.js';
+import {
+  fireGovernanceAudits,
+  preflightGovernedGraphMutation,
+  type GovernanceHooks,
+} from '../core/EntityManager.js';
 import { FileOperationError } from '../utils/errors.js';
 import {
   compress,
@@ -25,14 +30,19 @@ import {
   hasBrotliExtension,
   COMPRESSION_CONFIG,
 } from '../utils/index.js';
-import { validateFilePath } from '../utils/entityUtils.js';
+import { sanitizeObject, validateFilePath } from '../utils/entityUtils.js';
 import { PiiRedactor } from '../security/PiiRedactor.js';
 import type {
   BackupOptions,
   BackupResult,
+  Entity,
+  KnowledgeGraph,
+  Relation,
   RestoreResult,
 } from '../types/index.js';
 import type { BackupMetadata, BackupInfo, PiiRedactionOption } from './IOManager.js';
+import { durableWriteFile } from '../utils/durableWriteFile.js';
+import { GovernanceError } from './GovernanceManager.js';
 
 // Canonical `BackupMetadata` / `BackupInfo` live in IOManager.ts (the optional
 // compression fields honestly describe pre-compression backup metas read from
@@ -57,6 +67,7 @@ export class BackupManager {
   constructor(
     private readonly storage: GraphStorage,
     private readonly backupDir: string,
+    private readonly governanceHooks?: GovernanceHooks,
   ) {}
 
   /** Get the path to the backup directory. */
@@ -97,20 +108,18 @@ export class BackupManager {
         // file (unsafe for the SQLite binary format); synthesizing from
         // the parsed graph redacts structurally and backend-agnostically.
         const redacted = new PiiRedactor().redactGraph(graph);
-        const lines = [
-          ...redacted.entities.map((e) => JSON.stringify({ type: 'entity', ...e })),
-          ...redacted.relations.map((r) => JSON.stringify({ type: 'relation', ...r })),
-        ];
-        fileContent = lines.join('\n');
+        fileContent = this.serializeGraph(redacted);
       } else {
         try {
-          fileContent = await fs.readFile(originalPath, 'utf-8');
+          const raw = await fs.readFile(originalPath);
+          // SQLite backups must use the portable graph JSONL representation;
+          // interpreting the binary database as UTF-8 creates an unrestorable
+          // backup and cannot safely be written over an open connection.
+          fileContent = raw.subarray(0, 16).toString('utf8') === 'SQLite format 3\u0000'
+            ? this.serializeGraph(graph)
+            : raw.toString('utf8');
         } catch {
-          const lines = [
-            ...graph.entities.map((e) => JSON.stringify({ type: 'entity', ...e })),
-            ...graph.relations.map((r) => JSON.stringify({ type: 'relation', ...r })),
-          ];
-          fileContent = lines.join('\n');
+          fileContent = this.serializeGraph(graph);
         }
       }
 
@@ -123,11 +132,11 @@ export class BackupManager {
           quality: COMPRESSION_CONFIG.BROTLI_QUALITY_ARCHIVE,
           mode: 'text',
         });
-        await fs.writeFile(backupPath, compressionResult.compressed);
+        await durableWriteFile(backupPath, compressionResult.compressed);
         compressedSize = compressionResult.compressedSize;
         compressionRatio = compressionResult.ratio;
       } else {
-        await fs.writeFile(backupPath, fileContent);
+        await durableWriteFile(backupPath, fileContent);
       }
 
       const stats = await fs.stat(backupPath);
@@ -145,7 +154,7 @@ export class BackupManager {
       };
 
       const metadataPath = `${backupPath}.meta.json`;
-      await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+      await durableWriteFile(metadataPath, JSON.stringify(metadata, null, 2));
 
       return {
         path: backupPath,
@@ -227,14 +236,17 @@ export class BackupManager {
   /** Restore the knowledge graph from a backup file. */
   async restore(backupPath: string): Promise<RestoreResult> {
     try {
-      validateFilePath(backupPath, this.backupDir, true);
-      const stat = await fs.lstat(backupPath);
+      const validatedBackupPath = validateFilePath(backupPath, this.backupDir, true);
+      const stat = await fs.lstat(validatedBackupPath);
       if (stat.isSymbolicLink()) {
-        throw new FileOperationError('Symbolic links are not allowed for backup restore', backupPath);
+        throw new FileOperationError(
+          'Symbolic links are not allowed for backup restore',
+          validatedBackupPath,
+        );
       }
 
-      const isCompressed = hasBrotliExtension(backupPath);
-      const backupBuffer = await fs.readFile(backupPath);
+      const isCompressed = hasBrotliExtension(validatedBackupPath);
+      const backupBuffer = await fs.readFile(validatedBackupPath);
 
       let backupContent: string;
       if (isCompressed) {
@@ -244,20 +256,24 @@ export class BackupManager {
         backupContent = backupBuffer.toString('utf-8');
       }
 
-      const mainPath = this.storage.getFilePath();
-      await fs.writeFile(mainPath, backupContent);
-
-      this.storage.clearCache();
-
-      const graph = await this.storage.loadGraph();
+      const beforeGraph = await this.storage.loadGraph();
+      const graph = this.parseBackupGraph(backupContent);
+      const auditEvents = preflightGovernedGraphMutation(
+        this.governanceHooks,
+        beforeGraph,
+        graph,
+      );
+      await this.storage.saveGraph(graph);
+      fireGovernanceAudits(this.governanceHooks, auditEvents, 'BackupManager');
 
       return {
         entityCount: graph.entities.length,
         relationCount: graph.relations.length,
-        restoredFrom: backupPath,
+        restoredFrom: validatedBackupPath,
         wasCompressed: isCompressed,
       };
     } catch (error) {
+      if (error instanceof GovernanceError) throw error;
       throw new FileOperationError('restore from backup', backupPath, error as Error);
     }
   }
@@ -265,19 +281,22 @@ export class BackupManager {
   /** Delete a specific backup file (and its metadata sidecar). */
   async delete(backupPath: string): Promise<void> {
     try {
-      validateFilePath(backupPath, this.backupDir, true);
+      const validatedBackupPath = validateFilePath(backupPath, this.backupDir, true);
       // Prevent symlink-based attacks (consistent with restore()).
-      const stat = await fs.lstat(backupPath);
+      const stat = await fs.lstat(validatedBackupPath);
       if (stat.isSymbolicLink()) {
-        throw new FileOperationError('Symbolic links are not allowed for backup deletion', backupPath);
+        throw new FileOperationError(
+          'Symbolic links are not allowed for backup deletion',
+          validatedBackupPath,
+        );
       }
-      await fs.unlink(backupPath);
+      await fs.unlink(validatedBackupPath);
 
       try {
-        const baseName = basename(backupPath);
+        const baseName = basename(validatedBackupPath);
         const metaPath = join(this.backupDir, `${baseName}.meta.json`);
-        validateFilePath(metaPath, this.backupDir, true);
-        await fs.unlink(metaPath);
+        const validatedMetaPath = validateFilePath(metaPath, this.backupDir, true);
+        await fs.unlink(validatedMetaPath);
       } catch {
         // Metadata file doesn't exist or is outside backup dir — that's ok.
       }
@@ -309,7 +328,8 @@ export class BackupManager {
    */
   private async ensureDir(): Promise<void> {
     try {
-      await fs.mkdir(this.backupDir, { recursive: true });
+      await fs.mkdir(this.backupDir, { recursive: true, mode: 0o700 });
+      await fs.chmod(this.backupDir, 0o700);
     } catch (error) {
       throw new FileOperationError('create backup directory', this.backupDir, error as Error);
     }
@@ -325,5 +345,71 @@ export class BackupManager {
       .replace('Z', '');
     const extension = compressed ? '.jsonl.br' : '.jsonl';
     return `backup_${timestamp}${extension}`;
+  }
+
+  /**
+   * Parse the JSONL representation emitted by GraphStorage/backup creation.
+   * Invalid lines retain the historical best-effort restore behaviour.
+   */
+  private parseBackupGraph(content: string): KnowledgeGraph {
+    const entityMap = new Map<string, Entity>();
+    const relationMap = new Map<string, Relation>();
+
+    for (const line of content.split('\n')) {
+      if (!line.trim()) continue;
+      try {
+        const raw = sanitizeObject(JSON.parse(line) as Record<string, unknown>);
+        if (raw['type'] === 'entity') {
+          const candidate = { ...raw };
+          delete candidate['type'];
+          if (
+            typeof candidate['name'] === 'string' &&
+            candidate['name'].length > 0 &&
+            typeof candidate['entityType'] === 'string' &&
+            Array.isArray(candidate['observations']) &&
+            candidate['observations'].every(value => typeof value === 'string')
+          ) {
+            const entity = candidate as unknown as Entity;
+            entity.createdAt ??= new Date().toISOString();
+            entity.lastModified ??= entity.createdAt;
+            entityMap.set(entity.name, entity);
+          }
+        } else if (raw['type'] === 'relation') {
+          const candidate = { ...raw };
+          delete candidate['type'];
+          if (
+            typeof candidate['from'] === 'string' &&
+            typeof candidate['to'] === 'string' &&
+            typeof candidate['relationType'] === 'string'
+          ) {
+            const relation = candidate as unknown as Relation;
+            relation.createdAt ??= new Date().toISOString();
+            relation.lastModified ??= relation.createdAt;
+            relationMap.set(
+              `${relation.from}\u0000${relation.to}\u0000${relation.relationType}`,
+              relation,
+            );
+          }
+        }
+      } catch {
+        // Match GraphStorage's recovery-friendly malformed-line handling.
+      }
+    }
+
+    return {
+      entities: [...entityMap.values()],
+      relations: [...relationMap.values()],
+    };
+  }
+
+  /** Serialize a backend-independent JSONL backup. */
+  private serializeGraph(graph: {
+    entities: readonly Entity[];
+    relations: readonly Relation[];
+  }): string {
+    return [
+      ...graph.entities.map(entity => JSON.stringify({ type: 'entity', ...entity })),
+      ...graph.relations.map(relation => JSON.stringify({ type: 'relation', ...relation })),
+    ].join('\n');
   }
 }

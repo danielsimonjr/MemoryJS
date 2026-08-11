@@ -8,7 +8,10 @@
  */
 
 import { promises as fs } from 'fs';
-import { durableWriteFile as durableWriteFileShared } from '../utils/durableWriteFile.js';
+import {
+  durableWriteFile as durableWriteFileShared,
+  restrictSensitiveFilePermissions,
+} from '../utils/durableWriteFile.js';
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import {
@@ -367,7 +370,8 @@ export class GraphStorage implements IGraphStorage {
    * @param prependNewline - Whether to prepend a newline
    */
   private async durableAppendFile(content: string, prependNewline: boolean): Promise<void> {
-    const fd = await fs.open(this.memoryFilePath, 'a');
+    await restrictSensitiveFilePermissions(this.memoryFilePath);
+    const fd = await fs.open(this.memoryFilePath, 'a', 0o600);
     try {
       const dataToWrite = prependNewline ? '\n' + content : content;
       await fd.write(dataToWrite);
@@ -519,7 +523,7 @@ export class GraphStorage implements IGraphStorage {
           if (!item.lastModified) item.lastModified = item.createdAt;
 
           // Use composite key for relations
-          const key = `${item.from}:${item.to}:${item.relationType}`;
+          const key = relationKeyOf(item);
           relationMap.set(key, item);
         }
       }
@@ -568,9 +572,10 @@ export class GraphStorage implements IGraphStorage {
   }
 
   /**
-   * Append-path fallback when segment mode is active. Stages the
-   * in-memory mutation via `applyMutation`, then writes the whole
-   * graph through `segmentStorage.saveAll`. On save failure we
+   * Segment-mode mutation persistence. Stages the in-memory mutation via
+   * `applyMutation`, then rewrites one segment when the mutation is confined
+   * to a single owner; cross-segment mutations retain crash-atomic `saveAll`.
+   * On save failure we
    * reload from disk so the cache + indexes don't diverge from the
    * persisted state. Matches the write-first-cache-after contract
    * the single-file append paths use, just at a coarser granularity.
@@ -585,10 +590,29 @@ export class GraphStorage implements IGraphStorage {
    *   original save error and the reload error. The caller should
    *   treat the storage as desynced and reconstruct it.
    */
-  private async appendViaSegmentSave(applyMutation: () => void): Promise<void> {
+  private async appendViaSegmentSave(
+    applyMutation: () => void,
+    dirtySegmentIds?: ReadonlySet<number>,
+  ): Promise<void> {
     applyMutation();
     try {
-      await this.segmentStorage!.saveAll(this.cache!);
+      if (dirtySegmentIds?.size === 1) {
+        const id = dirtySegmentIds.values().next().value;
+        if (id === undefined) {
+          throw new Error('Segment mutation declared one dirty segment but supplied no id');
+        }
+        await this.segmentStorage!.saveSegment({
+          id,
+          entities: this.cache!.entities.filter(
+            entity => this.segmentStorage!.router.route(entity.name) === id,
+          ),
+          relations: this.cache!.relations.filter(
+            relation => this.segmentStorage!.router.route(relation.from) === id,
+          ),
+        });
+      } else {
+        await this.segmentStorage!.saveAll(this.cache!);
+      }
     } catch (saveErr) {
       try {
         this.cache = null;
@@ -680,8 +704,8 @@ export class GraphStorage implements IGraphStorage {
         } else if (rec.type === 'relation') {
           if (!rec.createdAt) rec.createdAt = new Date().toISOString();
           if (!rec.lastModified) rec.lastModified = rec.createdAt;
-          const key = `${rec.from}:${rec.to}:${rec.relationType}`;
-          relationMap.set(key, rec as unknown as Relation);
+          const relation = rec as unknown as Relation;
+          relationMap.set(relationKeyOf(relation), relation);
         }
       }
 
@@ -840,15 +864,15 @@ export class GraphStorage implements IGraphStorage {
 
     return this.mutex.runExclusive(async () => {
       if (this.segmentStorage !== null) {
-        // Segment mode: append-paths route through a full saveAll
-        // instead of a single-line append. Less efficient than the
-        // single-file branch but correct — per-segment append is a
-        // follow-up optimization. saveAll rewrites every segment
-        // from scratch, so `pendingAppends` (the single-file
-        // compaction counter) resets to 0.
-        await this.appendViaSegmentSave(() => {
-          this.upsertEntityInCache(entity);
-        });
+        // Segment mode rewrites only the owning segment for this entity.
+        // `pendingAppends` is a single-file compaction counter, so it
+        // remains reset in segment mode.
+        await this.appendViaSegmentSave(
+          () => {
+            this.upsertEntityInCache(entity);
+          },
+          new Set([this.segmentStorage.router.route(entity.name)]),
+        );
         this.pendingAppends = 0;
         bumpEntityGeneration();
         this.eventEmitter.emitEntityCreated(entity);
@@ -903,11 +927,17 @@ export class GraphStorage implements IGraphStorage {
 
     return this.mutex.runExclusive(async () => {
       if (this.segmentStorage !== null) {
-        await this.appendViaSegmentSave(() => {
-          for (const entity of entities) {
-            this.upsertEntityInCache(entity);
-          }
-        });
+        const dirtySegments = new Set(
+          entities.map(entity => this.segmentStorage!.router.route(entity.name)),
+        );
+        await this.appendViaSegmentSave(
+          () => {
+            for (const entity of entities) {
+              this.upsertEntityInCache(entity);
+            }
+          },
+          dirtySegments,
+        );
         this.pendingAppends = 0;
         bumpEntityGeneration();
         for (const entity of entities) {
@@ -951,10 +981,13 @@ export class GraphStorage implements IGraphStorage {
 
     return this.mutex.runExclusive(async () => {
       if (this.segmentStorage !== null) {
-        // Segment mode: full-save fallback (same rationale as appendEntity).
-        await this.appendViaSegmentSave(() => {
-          this.upsertRelationInCache(relation);
-        });
+        // Relations are owned by the segment of their `from` endpoint.
+        await this.appendViaSegmentSave(
+          () => {
+            this.upsertRelationInCache(relation);
+          },
+          new Set([this.segmentStorage.router.route(relation.from)]),
+        );
         this.pendingAppends = 0;
         bumpRelationGeneration();
         this.eventEmitter.emitRelationCreated(relation);
@@ -1003,11 +1036,17 @@ export class GraphStorage implements IGraphStorage {
 
     return this.mutex.runExclusive(async () => {
       if (this.segmentStorage !== null) {
-        await this.appendViaSegmentSave(() => {
-          for (const relation of relations) {
-            this.upsertRelationInCache(relation);
-          }
-        });
+        const dirtySegments = new Set(
+          relations.map(relation => this.segmentStorage!.router.route(relation.from)),
+        );
+        await this.appendViaSegmentSave(
+          () => {
+            for (const relation of relations) {
+              this.upsertRelationInCache(relation);
+            }
+          },
+          dirtySegments,
+        );
         this.pendingAppends = 0;
         bumpRelationGeneration();
         for (const relation of relations) {
@@ -1155,9 +1194,8 @@ export class GraphStorage implements IGraphStorage {
       const timestamp = new Date().toISOString();
 
       if (this.segmentStorage !== null) {
-        // Segment mode: route updateEntity through a full saveAll
-        // after applying the in-cache mutation (same write-after-
-        // cache pattern as appendEntity/Relation in segment mode).
+        // Segment mode rewrites the entity's owning segment after applying
+        // the in-cache mutation.
         // Capture pre-mutation state for the change event — deep-
         // clone array/object fields so the snapshot survives the
         // in-place `Object.assign` mutation that follows.
@@ -1167,19 +1205,22 @@ export class GraphStorage implements IGraphStorage {
           (previous as Record<string, unknown>)[key] =
             v && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v;
         }
-        await this.appendViaSegmentSave(() => {
-          Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
-          entity.lastModified = timestamp;
-          this.nameIndex.add(entity);
-          if (updates.entityType && updates.entityType !== oldType) {
-            this.typeIndex.updateType(entityName, oldType, updates.entityType);
-          }
-          this.lowercaseCache.set(entity);
-          if (updates.observations) {
-            this.observationIndex.remove(entityName);
-            this.observationIndex.add(entityName, entity.observations);
-          }
-        });
+        await this.appendViaSegmentSave(
+          () => {
+            Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
+            entity.lastModified = timestamp;
+            this.nameIndex.add(entity);
+            if (updates.entityType && updates.entityType !== oldType) {
+              this.typeIndex.updateType(entityName, oldType, updates.entityType);
+            }
+            this.lowercaseCache.set(entity);
+            if (updates.observations) {
+              this.observationIndex.remove(entityName);
+              this.observationIndex.add(entityName, entity.observations);
+            }
+          },
+          new Set([this.segmentStorage.router.route(entityName)]),
+        );
         this.pendingAppends = 0;
         bumpEntityGeneration();
         this.eventEmitter.emitEntityUpdated(entityName, updates, previous);
@@ -1319,11 +1360,17 @@ export class GraphStorage implements IGraphStorage {
       }
 
       if (this.segmentStorage !== null) {
-        await this.appendViaSegmentSave(() => {
-          for (const p of prepared) {
-            this.applyPreparedEntityUpdate(p);
-          }
-        });
+        const dirtySegments = new Set(
+          prepared.map(p => this.segmentStorage!.router.route(p.entity.name)),
+        );
+        await this.appendViaSegmentSave(
+          () => {
+            for (const p of prepared) {
+              this.applyPreparedEntityUpdate(p);
+            }
+          },
+          dirtySegments,
+        );
         this.pendingAppends = 0;
         bumpEntityGeneration();
         for (const p of prepared) {
@@ -1397,8 +1444,8 @@ export class GraphStorage implements IGraphStorage {
    * full-graph writes). Names that don't exist are silently ignored; a
    * call that deletes nothing performs no write and emits nothing.
    *
-   * Segment mode falls back to a full `saveAll` (same rationale as the
-   * append paths).
+   * Segment mode rewrites one segment when all deleted entities and
+   * cascaded relations share an owner; otherwise it uses `saveAll`.
    *
    * @param names - Entity names to delete
    * @returns The deleted entities and cascaded relations
@@ -1437,7 +1484,14 @@ export class GraphStorage implements IGraphStorage {
       };
 
       if (this.segmentStorage !== null) {
-        await this.appendViaSegmentSave(applyCacheDeletion);
+        const dirtySegments = new Set<number>();
+        for (const entity of deletedEntities) {
+          dirtySegments.add(this.segmentStorage.router.route(entity.name));
+        }
+        for (const relation of deletedRelations) {
+          dirtySegments.add(this.segmentStorage.router.route(relation.from));
+        }
+        await this.appendViaSegmentSave(applyCacheDeletion, dirtySegments);
         this.pendingAppends = 0;
       } else {
         // Rewrite the file once from the filtered state (write FIRST so a
@@ -1488,7 +1542,8 @@ export class GraphStorage implements IGraphStorage {
    * entity; no `graph:saved`. A call that deletes nothing and touches
    * nothing performs no write and emits nothing.
    *
-   * Segment mode falls back to a full `saveAll`.
+   * Segment mode rewrites one segment when the relation owners and touched
+   * entities share it; otherwise it uses `saveAll`.
    *
    * @param keys - Relation keys (`from`/`to`/`relationType`) to delete
    * @param options - Optional entity-timestamp bump + shared timestamp
@@ -1538,7 +1593,14 @@ export class GraphStorage implements IGraphStorage {
       };
 
       if (this.segmentStorage !== null) {
-        await this.appendViaSegmentSave(applyCacheMutation);
+        const dirtySegments = new Set<number>();
+        for (const relation of deletedRelations) {
+          dirtySegments.add(this.segmentStorage.router.route(relation.from));
+        }
+        for (const entity of touchedEntities) {
+          dirtySegments.add(this.segmentStorage.router.route(entity.name));
+        }
+        await this.appendViaSegmentSave(applyCacheMutation, dirtySegments);
         this.pendingAppends = 0;
       } else if (deletedRelations.length > 0) {
         // Deletes require a rewrite: bump timestamps in-place so the

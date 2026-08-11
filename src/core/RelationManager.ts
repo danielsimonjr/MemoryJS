@@ -6,17 +6,53 @@
  * @module core/RelationManager
  */
 
-import type { Relation } from '../types/index.js';
+import type { Entity, Relation, ReadonlyKnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
 import { ValidationError, RelationNotFoundError } from '../utils/errors.js';
 import { BatchCreateRelationsSchema, DeleteRelationsSchema } from '../utils/index.js';
 import { GRAPH_LIMITS } from '../utils/constants.js';
+import {
+  fireGovernanceAudits,
+  preflightGovernanceUpdate,
+  type GovernanceAuditEvent,
+  type GovernanceHooks,
+} from './EntityManager.js';
 
 /**
  * Manages relation operations with automatic timestamp handling.
  */
 export class RelationManager {
-  constructor(private storage: GraphStorage) {}
+  constructor(
+    private storage: GraphStorage,
+    private readonly governanceHooks?: GovernanceHooks,
+  ) {}
+
+  /**
+   * A relation mutation changes the graph neighbourhood of both endpoint
+   * entities. Apply entity update policy to those endpoints before writing.
+   */
+  private preflightEndpoints(
+    graph: ReadonlyKnowledgeGraph,
+    names: Iterable<string>,
+    updates: Partial<Entity>,
+  ): GovernanceAuditEvent[] {
+    if (!this.governanceHooks) return [];
+    const events: GovernanceAuditEvent[] = [];
+    const uniqueNames = new Set(names);
+    for (const name of uniqueNames) {
+      const before = graph.entities.find(entity => entity.name === name);
+      if (!before) continue;
+      const after = { ...before, ...updates };
+      const event = preflightGovernanceUpdate(
+        this.governanceHooks,
+        before,
+        after,
+        updates,
+      );
+      if (event) events.push(event);
+    }
+    return events;
+  }
 
   // ==================== S2 delta-primitive compat shims ====================
   //
@@ -161,9 +197,15 @@ export class RelationManager {
         }));
 
       if (newRelations.length > 0) {
+        const auditEvents = this.preflightEndpoints(
+          graph,
+          newRelations.flatMap(relation => [relation.from, relation.to]),
+          {},
+        );
         // Single delta write (one fsync / one SQLite transaction; emits
         // relation:created per relation)
         await this.appendRelationsCompat(newRelations);
+        fireGovernanceAudits(this.governanceHooks, auditEvents, 'RelationManager');
       }
 
       return newRelations;
@@ -221,6 +263,7 @@ export class RelationManager {
     const release = await this.storage.graphMutex.acquire();
     try {
       const timestamp = new Date().toISOString();
+      const graph = await this.storage.loadGraph();
 
       // Track affected entities (every entity named in the request gets a
       // lastModified bump, whether or not a matching relation existed —
@@ -230,6 +273,11 @@ export class RelationManager {
         affectedEntityNames.add(rel.from);
         affectedEntityNames.add(rel.to);
       });
+      const auditEvents = this.preflightEndpoints(
+        graph,
+        affectedEntityNames,
+        { lastModified: timestamp },
+      );
 
       // S2: targeted storage-level delete. Removes matching relations,
       // bumps lastModified on the affected entities in the same atomic
@@ -238,6 +286,7 @@ export class RelationManager {
         touchEntities: [...affectedEntityNames],
         timestamp,
       });
+      fireGovernanceAudits(this.governanceHooks, auditEvents, 'RelationManager');
     } finally {
       release();
     }
@@ -337,7 +386,9 @@ export class RelationManager {
         },
         lastModified: new Date().toISOString(),
       };
+      const auditEvents = this.preflightEndpoints(graph, [from, to], {});
       await this.storage.appendRelation(updated);
+      fireGovernanceAudits(this.governanceHooks, auditEvents, 'RelationManager');
     } finally {
       release();
     }

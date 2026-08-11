@@ -21,6 +21,13 @@ interface PatternCandidate {
   occurrences: number;
   /** Source texts that matched */
   sourceTexts: string[];
+  /** O(1) companion membership index for sourceTexts. */
+  sourceTextSet: Set<string>;
+}
+
+export interface PatternDetectorOptions {
+  /** Hard cap on template-extraction comparisons per invocation. Default 50,000. */
+  maxComparisons?: number;
 }
 
 /**
@@ -45,6 +52,16 @@ interface PatternCandidate {
  * ```
  */
 export class PatternDetector {
+  private readonly maxComparisons: number;
+
+  constructor(options: PatternDetectorOptions = {}) {
+    const maxComparisons = options.maxComparisons ?? 50_000;
+    if (!Number.isSafeInteger(maxComparisons) || maxComparisons < 1) {
+      throw new Error('PatternDetector maxComparisons must be a positive integer');
+    }
+    this.maxComparisons = maxComparisons;
+  }
+
   /**
    * Detect patterns in a list of observations.
    *
@@ -70,58 +87,71 @@ export class PatternDetector {
       return [];
     }
 
-    let textToEntities: Map<string, string[]> | undefined;
+    let textToEntities: Map<string, Set<string>> | undefined;
     if (entityNames !== undefined) {
       if (entityNames.length !== observations.length) {
         throw new Error(
           `PatternDetector.detectPatterns: entityNames length (${entityNames.length}) must match observations length (${observations.length})`
         );
       }
-      textToEntities = new Map<string, string[]>();
+      textToEntities = new Map<string, Set<string>>();
       for (let i = 0; i < observations.length; i++) {
-        const list = textToEntities.get(observations[i]) ?? [];
-        if (!list.includes(entityNames[i])) list.push(entityNames[i]);
-        textToEntities.set(observations[i], list);
+        const names = textToEntities.get(observations[i]) ?? new Set<string>();
+        names.add(entityNames[i]);
+        textToEntities.set(observations[i], names);
       }
     }
 
     const patterns = new Map<string, PatternCandidate>();
+    const tokenized = observations.map((observation) => this.tokenize(observation));
+    const observationsByTokenCount = new Map<number, number[]>();
+    for (let i = 0; i < tokenized.length; i++) {
+      const bucket = observationsByTokenCount.get(tokenized[i].length) ?? [];
+      bucket.push(i);
+      observationsByTokenCount.set(tokenized[i].length, bucket);
+    }
 
-    // Compare each pair of observations
-    for (let i = 0; i < observations.length; i++) {
-      for (let j = i + 1; j < observations.length; j++) {
-        const template = this.extractTemplate(observations[i], observations[j]);
-        if (template) {
-          const key = template.pattern;
-          if (!patterns.has(key)) {
-            patterns.set(key, {
-              pattern: template.pattern,
-              variables: [],
-              occurrences: 0,
-              sourceTexts: [],
-            });
-          }
-          const p = patterns.get(key)!;
-          p.occurrences++;
-          p.variables.push(...template.variables);
-          if (!p.sourceTexts.includes(observations[i])) {
-            p.sourceTexts.push(observations[i]);
-          }
-          if (!p.sourceTexts.includes(observations[j])) {
-            p.sourceTexts.push(observations[j]);
-          }
+    // A valid template must share at least one token in the same position.
+    // Generate only those pairs through an inverted positional-token index,
+    // and stop at a hard comparison budget for highly repetitive corpora.
+    for (const [i, j] of this.generateCandidatePairs(tokenized)) {
+      const template = this.extractTemplate(observations[i], observations[j]);
+      if (template) {
+        const key = template.pattern;
+        if (!patterns.has(key)) {
+          patterns.set(key, {
+            pattern: template.pattern,
+            variables: [],
+            occurrences: 0,
+            sourceTexts: [],
+            sourceTextSet: new Set(),
+          });
+        }
+        const p = patterns.get(key)!;
+        p.occurrences++;
+        p.variables.push(...template.variables);
+        if (!p.sourceTextSet.has(observations[i])) {
+          p.sourceTextSet.add(observations[i]);
+          p.sourceTexts.push(observations[i]);
+        }
+        if (!p.sourceTextSet.has(observations[j])) {
+          p.sourceTextSet.add(observations[j]);
+          p.sourceTexts.push(observations[j]);
         }
       }
     }
 
     // Check for additional matches against existing patterns
     for (const candidate of patterns.values()) {
-      for (const obs of observations) {
-        if (!candidate.sourceTexts.includes(obs)) {
+      const tokenCount = candidate.pattern.split(' ').length;
+      for (const observationIndex of observationsByTokenCount.get(tokenCount) ?? []) {
+        const obs = observations[observationIndex];
+        if (!candidate.sourceTextSet.has(obs)) {
           if (this.matchesPattern(obs, candidate.pattern)) {
             const extracted = this.extractVariables(obs, candidate.pattern);
             if (extracted) {
               candidate.variables.push(...extracted);
+              candidate.sourceTextSet.add(obs);
               candidate.sourceTexts.push(obs);
               candidate.occurrences++;
             }
@@ -141,12 +171,50 @@ export class PatternDetector {
         sourceEntities: textToEntities
           ? [
               ...new Set(
-                p.sourceTexts.flatMap((t) => textToEntities!.get(t) ?? [])
+                p.sourceTexts.flatMap((t) => [...(textToEntities!.get(t) ?? [])])
               ),
             ].sort()
           : [],
       }))
       .sort((a, b) => b.occurrences - a.occurrences);
+  }
+
+  private generateCandidatePairs(tokenized: string[][]): Array<[number, number]> {
+    const postings = new Map<string, number[]>();
+    const seenPairs = new Set<string>();
+    const pairs: Array<[number, number]> = [];
+
+    for (let current = 0; current < tokenized.length; current++) {
+      const tokens = tokenized[current];
+      if (tokens.length < 2) continue;
+      for (let position = 0; position < tokens.length; position++) {
+        const key = `${tokens.length}\0${position}\0${tokens[position].toLowerCase()}`;
+        const posting = postings.get(key) ?? [];
+        posting.push(current);
+        postings.set(key, posting);
+      }
+    }
+
+    // Visit selective positional tokens first. This prevents one ubiquitous
+    // prefix (for example "User ...") from consuming the whole budget before
+    // smaller, more informative pattern families are considered.
+    const candidatePostings = [...postings.values()]
+      .filter((posting) => posting.length >= 2)
+      .sort((a, b) => a.length - b.length);
+    for (const posting of candidatePostings) {
+      for (let i = 0; i < posting.length; i++) {
+        for (let j = i + 1; j < posting.length; j++) {
+          const previous = posting[i];
+          const current = posting[j];
+          const pairKey = `${previous}:${current}`;
+          if (seenPairs.has(pairKey)) continue;
+          seenPairs.add(pairKey);
+          pairs.push([previous, current]);
+          if (pairs.length >= this.maxComparisons) return pairs;
+        }
+      }
+    }
+    return pairs;
   }
 
   /**

@@ -65,6 +65,8 @@ export interface ConsolidationPipelineConfig {
   preserveOriginals?: boolean;
   /** Similarity threshold for observation grouping (default: 0.8) */
   similarityThreshold?: number;
+  /** Hard cap on entity duplicate comparisons per run (default: 100,000). */
+  maxDuplicateComparisons?: number;
 }
 
 /**
@@ -151,6 +153,11 @@ export class ConsolidationPipeline {
       minPromotionConfirmations: config.minPromotionConfirmations ?? 2,
       preserveOriginals: config.preserveOriginals ?? false,
       similarityThreshold: config.similarityThreshold ?? 0.8,
+      maxDuplicateComparisons:
+        Number.isSafeInteger(config.maxDuplicateComparisons)
+        && (config.maxDuplicateComparisons ?? 0) > 0
+          ? config.maxDuplicateComparisons!
+          : 100_000,
     };
     this.patternDetector = new PatternDetector();
     this.ruleEvaluator = new RuleEvaluator();
@@ -935,47 +942,81 @@ export class ConsolidationPipeline {
     const fingerprints: Set<string>[] = agentEntities.map(
       (e) => new Set(tokenizeStripped((e.observations ?? []).join(' ')))
     );
-    const sharesToken = (a: Set<string>, b: Set<string>): boolean => {
-      const [small, large] = a.size <= b.size ? [a, b] : [b, a];
-      for (const tok of small) {
-        if (large.has(tok)) return true;
+    const candidatePairs = this.generateDuplicateCandidatePairs(
+      agentEntities,
+      fingerprints,
+      threshold,
+    );
+
+    for (const [i, j] of candidatePairs) {
+      const e1 = agentEntities[i];
+      const e2 = agentEntities[j];
+
+      // Skip if different sessions for working memories
+      if (
+        e1.memoryType === 'working' &&
+        e2.memoryType === 'working' &&
+        e1.sessionId !== e2.sessionId
+      ) {
+        continue;
       }
-      return false;
-    };
 
-    for (let i = 0; i < agentEntities.length; i++) {
-      for (let j = i + 1; j < agentEntities.length; j++) {
-        const e1 = agentEntities[i];
-        const e2 = agentEntities[j];
+      // The inverted index already enforces these conditions for positive
+      // thresholds; retain the checks for defensive equivalence.
+      if (threshold > 0 && e1.entityType !== e2.entityType) continue;
 
-        // Skip if different sessions for working memories
-        if (
-          e1.memoryType === 'working' &&
-          e2.memoryType === 'working' &&
-          e1.sessionId !== e2.sessionId
-        ) {
-          continue;
-        }
-
-        // Cheap pre-filter: skip pairs that provably score 0 (different type
-        // or no shared observation token). Only safe when threshold > 0.
-        if (threshold > 0) {
-          if (e1.entityType !== e2.entityType) continue;
-          if (!sharesToken(fingerprints[i], fingerprints[j])) continue;
-        }
-
-        const similarity = this.calculateEntitySimilarity(e1, e2);
-        if (similarity >= threshold) {
-          duplicates.push({
-            entity1: e1.name,
-            entity2: e2.name,
-            similarity,
-          });
-        }
+      const similarity = this.calculateEntitySimilarity(e1, e2);
+      if (similarity >= threshold) {
+        duplicates.push({
+          entity1: e1.name,
+          entity2: e2.name,
+          similarity,
+        });
       }
     }
 
     return duplicates.sort((a, b) => b.similarity - a.similarity);
+  }
+
+  private generateDuplicateCandidatePairs(
+    entities: AgentEntity[],
+    fingerprints: Set<string>[],
+    threshold: number,
+  ): Array<[number, number]> {
+    const pairs: Array<[number, number]> = [];
+    const maxComparisons = this.config.maxDuplicateComparisons;
+
+    if (threshold <= 0) {
+      for (let i = 0; i < entities.length; i++) {
+        for (let j = i + 1; j < entities.length; j++) {
+          pairs.push([i, j]);
+          if (pairs.length >= maxComparisons) return pairs;
+        }
+      }
+      return pairs;
+    }
+
+    // Positive cosine similarity requires at least one shared token and an
+    // equal entity type. Token postings generate only those candidates,
+    // deduplicating pairs that share multiple tokens.
+    const postings = new Map<string, number[]>();
+    const seenPairs = new Set<string>();
+    for (let current = 0; current < entities.length; current++) {
+      for (const token of fingerprints[current]) {
+        const key = `${entities[current].entityType}\0${token}`;
+        const prior = postings.get(key) ?? [];
+        for (const previous of prior) {
+          const pairKey = `${previous}:${current}`;
+          if (seenPairs.has(pairKey)) continue;
+          seenPairs.add(pairKey);
+          pairs.push([previous, current]);
+          if (pairs.length >= maxComparisons) return pairs;
+        }
+        prior.push(current);
+        postings.set(key, prior);
+      }
+    }
+    return pairs;
   }
 
   /**

@@ -66,6 +66,24 @@ describe('HybridSearchManager', () => {
       expect(results.length).toBeGreaterThan(0);
     });
 
+    it('should not execute channels whose weight is zero', async () => {
+      mockRankedSearch.searchNodesRanked.mockResolvedValue([
+        { entity: testGraph.entities[0], score: 5 },
+      ]);
+      const symbolicSpy = vi.spyOn(hybridSearch.getSymbolicSearch(), 'search');
+
+      await hybridSearch.search(testGraph, 'engineer', {
+        semanticWeight: 0,
+        lexicalWeight: 1,
+        symbolicWeight: 0,
+        symbolic: { tags: ['tech'] },
+      });
+
+      expect(mockSemanticSearch.search).not.toHaveBeenCalled();
+      expect(mockRankedSearch.searchNodesRanked).toHaveBeenCalledTimes(1);
+      expect(symbolicSpy).not.toHaveBeenCalled();
+    });
+
     it('should normalize weights to sum to 1.0', async () => {
       mockSemanticSearch.search.mockResolvedValue([
         { entity: testGraph.entities[0], similarity: 1.0 },
