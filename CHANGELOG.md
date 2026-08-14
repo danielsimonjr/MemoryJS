@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+**Nothing consumer-facing.** Everything below is repository hygiene and CI: `src/` is
+byte-identical to `v3.2.0`, and the npm `files` field is `["dist","README.md","LICENSE"]`,
+so the published package would not change. **No release is warranted** — publishing a
+3.2.1 would ship an identical tarball under a new number and tell consumers something
+changed when nothing did.
+
+### Security — CI supply chain
+
+- `.github/workflows/claude.yml` restricted to trusted actors; `typescript.yml` hardened
+  (supply-chain checks). Neither ships in the package.
+
+### Removed — machine-local agent config
+
+- `.claude/settings.local.json` and its two `.bak-*` copies, plus
+  `.mcp.json.bak-deepthinking-removal`. These were one developer's machine state committed
+  to a shared repo; `.gitignore` now covers them.
+- `docs/analysis/AUDIT_IN_PROGRESS.md` — a branch marker that read *"This branch contains
+  focused security… fixes"*. It landed on `master` via #104, where "this branch" names
+  nothing and the audit it described is complete (shipped in 3.2.0). A file whose own text
+  is false on the branch it sits on is drift, not documentation; the substance is in the
+  `[3.2.0]` entry below.
+
 ## [3.2.0] - 2026-08-11
 
 
