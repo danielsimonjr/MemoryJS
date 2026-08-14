@@ -5,32 +5,39 @@ on:
     branches: [master, main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: CI (typecheck, lint, test, build)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           cache: npm
 
-      # package-lock.json is tracked, so `npm ci` pins the build to the
-      # reviewed lockfile. better-sqlite3 is a native dep but ships ubuntu
-      # prebuilds, so install resolves without a local toolchain.
       - name: Install dependencies
         run: npm ci
 
-      # Supply-chain gate: fail on known high/critical advisories in the
-      # resolved dependency tree.
       - name: Audit dependencies
         run: npm audit --audit-level=high
 
-      # Duplicate-symbol gate. --no-regen checks against the committed
-      # docs/architecture/duplicate-symbols.json instead of regenerating it
-      # (regeneration mutates that artifact and is slow).
+      # Tool packages have independent lockfiles and are not covered by the
+      # root audit. Audit each one without installing it into the root tree.
+      - name: Audit tool dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' lockfile; do
+            tool_dir="$(dirname "$lockfile")"
+            echo "Auditing $tool_dir"
+            npm audit --audit-level=high --package-lock-only --prefix "$tool_dir"
+          done < <(find tools -mindepth 2 -maxdepth 2 -name package-lock.json -print0)
+
       - name: Check duplicate symbols
         run: npm run tools:check-duplicates -- --no-regen
 
@@ -40,8 +47,6 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # SKIP_BENCHMARKS=true gates the perf-benchmark suites (honored per-test);
-      # test:ci additionally excludes tests/performance/**.
       - name: Test
         run: npm run test:ci
         env:

@@ -12,40 +12,58 @@ on:
 
 jobs:
   claude:
+    # This job can execute repository code through Bash and receives an API
+    # secret. Never let arbitrary public commenters trigger it.
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (
+        github.event_name == 'issue_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+      ) ||
+      (
+        github.event_name == 'pull_request_review_comment' &&
+        contains(github.event.comment.body, '@claude') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+      ) ||
+      (
+        github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@claude') &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)
+      ) ||
+      (
+        github.event_name == 'issues' &&
+        (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: read
       issues: read
-      id-token: write
       actions: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@beta
+        uses: anthropics/claude-code-action@dc33e8a15b19e2109ac3fa8329058842f63780dc # pinned v1 commit
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
-          # Allow Claude to read CI results on PRs
+          # Allow Claude to read CI results on PRs.
           additional_permissions: |
             actions: read
 
-          # Trigger when assigned to an issue
           assignee_trigger: "claude"
 
-          # Allow Claude to run bash
-          # This should be safe given the repo is already public
-          allowed_tools: "Bash"
+          # Restrict shell execution to the verification commands needed for
+          # repository review; public-repository status does not make arbitrary
+          # Bash execution safe when secrets are present.
+          claude_args: |
+            --allowedTools "Bash(npm ci),Bash(npm run build),Bash(npm run typecheck),Bash(npm run lint),Bash(npm run test:ci)"
 
           custom_instructions: |
             If posting a comment to GitHub, give a concise summary of the comment at the top and put all the details in a <details> block.

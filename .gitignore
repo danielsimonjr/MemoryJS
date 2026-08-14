@@ -47,8 +47,11 @@ tmpclaude-*-cwd
 # Pre-publish smoke-test scratch
 .smoketest/
 
-# Per-developer MCP server registrations (machine-specific paths)
+# Per-developer AI/MCP configuration (machine-specific paths and permissions)
 .mcp.json
+.mcp.json.bak*
+.claude/settings.local.json
+.claude/settings.local.json.bak*
 
 # npm auth (references ${NPM_TOKEN}; never commit)
 .npmrc

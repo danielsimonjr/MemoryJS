@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-08-11
+
+
 ### Security — harden storage, search, governance, and agent boundaries
 
 Closes the findings from a full security + performance review of 3.1.0:
