@@ -21,6 +21,7 @@
  */
 
 import { createRequire } from 'node:module';
+import { createNodeSqliteDatabaseCtor, isNodeSqliteAvailable } from './nodeSqliteAdapter.js';
 import { chmodSync, statSync } from 'node:fs';
 import type Database from 'better-sqlite3';
 import type { Database as DatabaseType, Statement } from 'better-sqlite3';
@@ -37,12 +38,52 @@ import type { Database as DatabaseType, Statement } from 'better-sqlite3';
  */
 type DatabaseCtor = typeof Database;
 let cachedDatabaseCtor: DatabaseCtor | undefined;
+
+/**
+ * Resolve a SQLite driver, preferring the native `better-sqlite3` addon and
+ * falling back to Node's built-in `node:sqlite`.
+ *
+ * The fallback is not a convenience. `better-sqlite3` obtains its binary from an
+ * `install` script, so any installer that does not run install scripts leaves the
+ * addon absent and every call fails with "Could not locate the bindings file".
+ * The Claude Code plugin installer is exactly such an installer, which made the
+ * deployed memory-mcp plugin completely unusable. `node:sqlite` needs no addon
+ * and reads the same on-disk format.
+ *
+ * `MEMORY_SQLITE_DRIVER=node` forces the fallback. That exists so the SQLite test
+ * suite can be run against BOTH drivers — a fallback nothing exercises is a
+ * fallback that only appears to work.
+ *
+ * If neither driver is available the ORIGINAL better-sqlite3 error is rethrown,
+ * because that error names the missing bindings and is what a reader needs.
+ */
 function loadDatabaseCtor(): DatabaseCtor {
-  if (cachedDatabaseCtor === undefined) {
-    const require = createRequire(import.meta.url);
+  if (cachedDatabaseCtor !== undefined) return cachedDatabaseCtor;
+
+  if (process.env.MEMORY_SQLITE_DRIVER === 'node') {
+    cachedDatabaseCtor = createNodeSqliteDatabaseCtor() as unknown as DatabaseCtor;
+    return cachedDatabaseCtor;
+  }
+
+  const require = createRequire(import.meta.url);
+  try {
     cachedDatabaseCtor = require('better-sqlite3') as DatabaseCtor;
+  } catch (nativeError) {
+    if (!isNodeSqliteAvailable()) throw nativeError;
+    logger.warn(
+      'better-sqlite3 native addon unavailable; falling back to node:sqlite. ' +
+        'This is expected in environments that do not run npm install scripts ' +
+        '(e.g. the Claude Code plugin installer).',
+      { error: nativeError instanceof Error ? nativeError.message : String(nativeError) }
+    );
+    cachedDatabaseCtor = createNodeSqliteDatabaseCtor() as unknown as DatabaseCtor;
   }
   return cachedDatabaseCtor;
+}
+
+/** Test seam: forget the resolved driver so a different one can be selected. */
+export function __resetDatabaseCtorForTests(): void {
+  cachedDatabaseCtor = undefined;
 }
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';

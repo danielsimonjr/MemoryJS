@@ -7,7 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-**Nothing consumer-facing.** Everything below is repository hygiene and CI: `src/` is
+## [3.3.0] - 2026-08-15
+
+### Added — `node:sqlite` fallback driver
+
+**The SQLite backend now works where the `better-sqlite3` native addon cannot be built.**
+
+`better-sqlite3` obtains its binary from an `install` script
+(`prebuild-install || node-gyp rebuild`), not from a prebuilt platform package. Any
+installer that skips install scripts therefore leaves a `better-sqlite3` directory with
+no `better_sqlite3.node` in it, and every call dies with *"Could not locate the bindings
+file"*.
+
+That is not hypothetical. The Claude Code plugin installer runs no install scripts, and
+the deployed **memory-mcp plugin was completely unusable** because of it — its `.mcp.json`
+pins `MEMORY_STORAGE_TYPE=sqlite`, so every tool call hit the missing addon. The contrast
+with other native deps in the same tree is the tell: `@rolldown/binding-win32-x64-msvc`
+and `lightningcss-win32-x64-msvc` ship their binary *inside* a platform-specific package,
+so they install fine without scripts.
+
+`loadDatabaseCtor` now prefers the native addon and falls back to Node's built-in
+`node:sqlite` (Node 22.5+), which needs no addon and reads the same on-disk format. If
+neither is available the **original** better-sqlite3 error is rethrown, because that error
+names the missing bindings and is what a reader needs.
+
+- New `src/core/nodeSqliteAdapter.ts` — a deliberately narrow `better-sqlite3`-shaped
+  facade covering only what `SQLiteStorage` uses: `exec` / `prepare` (+ `run`/`get`/`all`)
+  / `pragma` / `transaction` / `close`. It is a compatibility shim, not a
+  reimplementation, and should not grow into one.
+- `MEMORY_SQLITE_DRIVER=node` forces the fallback. That exists so the SQLite suite can run
+  against **both** drivers — a fallback nothing exercises is a fallback that only appears
+  to work.
+
+**Equivalence is demonstrated, not asserted:** all **133 tests across the 8 existing
+SQLite test files pass unmodified on both drivers**. The suite also caught a real gap in
+the first draft — `pragma(source, { simple: true })` must return the first column of the
+first row rather than the row array, which `SQLiteStorage` itself never uses but its tests
+do. Full suite: 7,790 tests pass.
+
+`sqlite-lazy-load.test.ts` now scrubs `MEMORY_SQLITE_DRIVER` from its child process env,
+so the native lazy-load contract stays under test in both driver modes rather than failing
+for a reason unrelated to the contract it protects.
+
+**Nothing consumer-facing below this line.** The rest is repository hygiene and CI: `src/` is
 byte-identical to `v3.2.0`, and the npm `files` field is `["dist","README.md","LICENSE"]`,
 so the published package would not change. **No release is warranted** — publishing a
 3.2.1 would ship an identical tarball under a new number and tell consumers something

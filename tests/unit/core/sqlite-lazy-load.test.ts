@@ -57,7 +57,23 @@ describe('SQLiteStorage lazy native-addon load', () => {
     const out = execFileSync(
       process.execPath,
       [tsxCli, '-e', script],
-      { cwd: process.cwd(), encoding: 'utf8', timeout: 60000 },
+      {
+        cwd: process.cwd(),
+        encoding: 'utf8',
+        timeout: 60000,
+        // This test pins the NATIVE driver's lazy-load contract, so the child
+        // must run on better-sqlite3 regardless of the ambient environment.
+        // Without this the test fails whenever the suite is run under
+        // MEMORY_SQLITE_DRIVER=node (the node:sqlite fallback) - correctly, but
+        // for a reason that has nothing to do with the contract it exists to
+        // protect. Scrub the selector rather than skip: the contract stays
+        // tested in BOTH driver modes.
+        env: (() => {
+          const e = { ...process.env };
+          delete e.MEMORY_SQLITE_DRIVER;
+          return e;
+        })(),
+      },
     );
     const result = JSON.parse(out.trim().split('\n').pop() as string);
     expect(result.afterImport).toBe(false);
