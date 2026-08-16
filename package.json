@@ -140,7 +140,9 @@
     "benchmark": "tsx benchmarks/synthetic-bench.ts",
     "audit:plans": "tsx tools/plan-doc-audit/audit.ts",
     "bench": "vitest run tests/performance",
-    "test:perf": "node -e \"process.env.RUN_PERF='true';require('child_process').execSync('vitest run tests/performance --no-file-parallelism',{stdio:'inherit',env:process.env})\""
+    "test:perf": "node -e \"process.env.RUN_PERF='true';require('child_process').execSync('vitest run tests/performance --no-file-parallelism',{stdio:'inherit',env:process.env})\"",
+    "postinstall": "node scripts/rebuild-native.mjs",
+    "rebuild:native": "node scripts/rebuild-native.mjs"
   },
   "keywords": [
     "knowledge-graph",

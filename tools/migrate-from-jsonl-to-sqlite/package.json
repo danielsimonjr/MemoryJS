@@ -6,7 +6,9 @@
     "build": "npm run build:ts && npm run build:exe",
     "build:ts": "tsc",
     "build:exe": "npx @yao-pkg/pkg . --target node22-win-x64 --output migrate-from-jsonl-to-sqlite.exe",
-    "start": "node dist/migrate-from-jsonl-to-sqlite.js"
+    "start": "node dist/migrate-from-jsonl-to-sqlite.js",
+    "postinstall": "node scripts/rebuild-native.mjs",
+    "rebuild:native": "node scripts/rebuild-native.mjs"
   },
   "bin": {
     "migrate-from-jsonl-to-sqlite": "./dist/migrate-from-jsonl-to-sqlite.js"
