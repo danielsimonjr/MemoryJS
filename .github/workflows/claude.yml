@@ -63,7 +63,7 @@ jobs:
           # repository review; public-repository status does not make arbitrary
           # Bash execution safe when secrets are present.
           claude_args: |
-            --allowedTools "Bash(npm ci),Bash(npm run build),Bash(npm run typecheck),Bash(npm run lint),Bash(npm run test:ci)"
+            --allowedTools "Bash(bun install --frozen-lockfile
 
           custom_instructions: |
             If posting a comment to GitHub, give a concise summary of the comment at the top and put all the details in a <details> block.
