@@ -27,7 +27,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        run: bun audit --audit-level=high
 
       # Tool packages have independent lockfiles and are not covered by the
       # root audit. Audit each one without installing it into the root tree.
