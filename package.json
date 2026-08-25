@@ -1,6 +1,6 @@
 {
   "name": "@danielsimonjr/memoryjs",
-  "version": "3.3.1",
+  "version": "3.3.2",
   "description": "Core knowledge graph library with search, storage, and graph algorithms",
   "type": "module",
   "main": "dist/index.cjs",
@@ -116,6 +116,7 @@
   },
   "files": [
     "dist",
+    "scripts",
     "README.md",
     "LICENSE"
   ],

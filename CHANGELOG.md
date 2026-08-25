@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.2] - 2026-08-25
+
+### Fixed — 3.3.1 broke installs for every consumer
+
+- **`postinstall` referenced a file the package did not ship.** 3.3.1 added
+  `postinstall: node scripts/rebuild-native.mjs`, but `files` listed only
+  `dist`, `README.md` and `LICENSE`. The script was therefore absent from the
+  published tarball, and every `npm install` of 3.3.1 as a dependency died with
+  `Cannot find module .../scripts/rebuild-native.mjs`. 3.3.0 was unaffected: it
+  had no `postinstall` at all.
+- `files` now includes `scripts`, verified with `npm pack --dry-run` against the
+  actual tarball rather than inferred from the field.
+- Found the way it should be found: by installing the published package into a
+  real consumer, not by re-reading the source that looked correct.
+
+**Upgrade from 3.3.1.** No `postinstall` hardening was added on purpose — wrapping
+it in shell operators is precisely the cmd.exe failure `rebuild-native.mjs` exists
+to fix.
+
 ## [3.3.1] - 2026-08-25
 
 ### Fixed
