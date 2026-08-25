@@ -273,15 +273,15 @@ Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_m
 
 | Claim | Value | Source |
 |---|---|---|
-| totalTypeScriptFiles | 609 | dependency-graph.json |
-| totalLinesOfCode | 216846 | dependency-graph.json |
-| totalExports | 2538 | dependency-graph.json |
+| totalTypeScriptFiles | 613 | dependency-graph.json |
+| totalLinesOfCode | 219648 | dependency-graph.json |
+| totalExports | 2556 | dependency-graph.json |
 | totalModules | 5 | dependency-graph.json |
 | entryRoots | 11 | dependency-graph.json |
-| reachableFiles | 264 | dependency-graph.json |
-| dormantFiles | 5 | dependency-graph.json |
-| orphanedFiles | 3 | dependency-graph.json |
+| reachableFiles | 266 | dependency-graph.json |
+| dormantFiles | 3 | dependency-graph.json |
+| orphanedFiles | 1 | dependency-graph.json |
 | testOnlyFiles | 2 | dependency-graph.json |
 | runtimeCircularDeps | 0 | dependency-graph.json |
-| typeOnlyCircularDeps | 6 | dependency-graph.json |
-| unusedExportsCount | 72 | dependency-graph.json |
+| typeOnlyCircularDeps | 14 | dependency-graph.json |
+| unusedExportsCount | 78 | dependency-graph.json |

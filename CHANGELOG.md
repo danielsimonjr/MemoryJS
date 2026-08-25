@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.1] - 2026-08-25
+
+### Fixed
+
+- **The native-addon rebuild on install is portable and now proves itself.** `postinstall`
+  runs `scripts/rebuild-native.mjs`; it previously assumed a layout that does not hold on
+  every installer, and it reported success without ever loading the addon it had just
+  built. It is now portable across install layouts and load-tests the result, so a rebuild
+  that silently produced nothing fails loudly instead of surfacing later as
+  *"Could not locate the bindings file"* at first query.
+- **CI runs on Bun end to end.** Scripts and installs use Bun, the npm cache directive the
+  migration invalidated is gone, and every job that runs Bun now installs it first — three
+  separate ways the pipeline could go green without actually exercising what it claimed.
+- **Architecture Verification claims refreshed.** 17 stale metrics across 6 documents; the
+  drift gate is green again. Worth noting from the refresh: `typeOnlyCircularDeps` has grown
+  6 -> 14, while orphaned files fell 3 -> 1 and dormant 5 -> 3.
+
 ## [3.3.0] - 2026-08-15
 
 ### Added — `node:sqlite` fallback driver
