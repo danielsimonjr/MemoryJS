@@ -1,0 +1,66 @@
+name: Dependabot Auto-Merge
+
+# Enables auto-merge on Dependabot PRs that are patch or minor. It does NOT
+# merge them: --auto queues the merge behind branch protection, so the required
+# matrix checks still have to pass first. A major update is never queued; it is
+# labelled and commented for a human, because a major is where a dependency
+# changes its contract.
+#
+# This repo has bun.lock at lockfileVersion 2 and Dependabot's npm ecosystem
+# edits package.json ONLY. CI runs `bun install --frozen-lockfile`, so such a PR
+# fails before a single test runs and auto-merge correctly never fires. That is
+# a real gap, not a bug in this file -- the lockfile has to be regenerated in the
+# PR branch. Tracked in ~/Github/TODO.md.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Least privilege: enough to queue a merge and comment, nothing more.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Auto-merge Dependabot PRs
+    runs-on: ubuntu-latest
+    # actor, not author: a PR opened by anyone else must never take this path.
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Queue auto-merge for patch and minor updates
+        if: |
+          steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+          steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Flag major updates for review
+        if: steps.metadata.outputs.update-type == 'version-update:semver-major'
+        run: |
+          gh pr edit "$PR_URL" --add-label "major-update" || true
+          gh pr comment "$PR_URL" --body "$BODY"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BODY: |
+            **Major version update — not auto-merged.**
+
+            `${{ steps.metadata.outputs.dependency-names }}`
+            `${{ steps.metadata.outputs.previous-version }}` → `${{ steps.metadata.outputs.new-version }}`
+
+            Check before merging:
+            - Does the new version's `engines` still satisfy this package's own
+              `engines` floor? A runtime dependency that raises its Node floor
+              above ours is a breaking change for consumers, and no typecheck
+              or test on a newer runner will catch it.
+            - Is this a runtime `dependency` or a `devDependency`? A dev-only
+              bump cannot break an installed consumer.
