@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Auto-merged Dependabot commits could land on the default branch with no CI run.** The
+  auto-merge workflow merges with `GITHUB_TOKEN`, and GitHub's recursion guard suppresses workflow
+  triggers for pushes made with that token, so `on: push` never fires for those commits. Measured
+  across this repo's recent history before changing anything. The merge gate itself holds — branch
+  protection requires the checks, and auto-merge cannot merge until they pass on the pull request —
+  so what is lost is post-merge telemetry: the default branch's own history goes dark for every
+  auto-merged bump. CI now also runs on a nightly `schedule` (07:00 UTC) and on `workflow_dispatch`,
+  so the branch is exercised regardless of who pushed it and a gap can be backfilled on the spot.
+  Chosen over granting the auto-merge workflow a PAT, which would restore the trigger but widens
+  that token's blast radius to close a telemetry hole rather than a gate hole. (45718fd)
+
 ### Added
 
 - **Dependabot auto-merge workflow.** Queues `--auto --squash` for patch and minor
