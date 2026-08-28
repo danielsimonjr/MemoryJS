@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dependabot auto-merge workflow.** Queues `--auto --squash` for patch and minor
+  updates, which merges only after branch protection is satisfied; a major update is
+  labelled and commented instead, never queued. The comment asks the two questions a
+  green build cannot answer: whether the new version raises its Node `engines` floor
+  above this package's own, and whether the bump is a runtime dependency or dev-only.
+
+### Changed
+
+- **CI now runs a matrix: ubuntu / windows / macOS x Node 22 / 24.** It previously ran
+  one leg, ubuntu on Node 22. This package builds a NATIVE module (better-sqlite3 via
+  `scripts/rebuild-native.mjs`), and a broken native binding on Windows or macOS is
+  invisible to a single-OS run. Sibling repos already gate this way.
+- The dependency audits run on one leg only. Six identical audits turn a registry
+  hiccup into six red jobs and prove nothing the first run did not.
+- Added `concurrency` with `cancel-in-progress`, so a re-push supersedes its own
+  in-flight run rather than queueing a second full matrix behind it.
+
+
+## [Unreleased]
+
 ## [3.3.2] - 2026-08-25
 
 ### Fixed — 3.3.1 broke installs for every consumer

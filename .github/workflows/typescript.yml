@@ -8,16 +8,31 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
-    name: CI (typecheck, lint, test, build)
-    runs-on: ubuntu-latest
+    # The matrix values appear in the job name, so these strings ARE the branch
+    # protection contexts. Changing the matrix renames the required checks and
+    # silently blocks every PR until protection is updated to match.
+    name: ci (${{ matrix.os }}, ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows and macOS are not decoration here: this package builds a NATIVE
+        # module (better-sqlite3 via scripts/rebuild-native.mjs), and native
+        # bindings are the failure that a single-OS run cannot see.
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: [22, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -27,11 +42,15 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Audit dependencies
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
         run: bun audit --audit-level=high
 
       # Tool packages have independent lockfiles and are not covered by the
       # root audit. Audit each one without installing it into the root tree.
+      # Audit once, on one leg. Running it on all six duplicates the same network
+      # work and turns a registry hiccup into six red jobs instead of one.
       - name: Audit tool dependencies
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
         shell: bash
         run: |
           set -euo pipefail
