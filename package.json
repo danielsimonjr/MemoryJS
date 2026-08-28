@@ -172,10 +172,10 @@
     "@danielsimonjr/workerpool": "^10.2.0",
     "async-mutex": "^0.5.0",
     "better-sqlite3": "^12.11.1",
-    "chalk": "^5.3.0",
+    "chalk": "^6.0.0",
     "chrono-node": "^2.9.1",
     "cli-table3": "^0.6.5",
-    "commander": "^14.0.3",
+    "commander": "^15.0.0",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
@@ -187,9 +187,9 @@
     }
   },
   "devDependencies": {
-    "@eslint/js": "^9.18.0",
+    "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^22.10.5",
+    "@types/node": "^26.3.0",
     "@vitest/coverage-v8": "^4.0.16",
     "eslint": "^10.7.0",
     "rimraf": "^6.0.1",
