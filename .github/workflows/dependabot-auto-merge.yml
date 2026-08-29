@@ -10,7 +10,7 @@ name: Dependabot Auto-Merge
 # edits package.json ONLY. CI runs `bun install --frozen-lockfile`, so such a PR
 # fails before a single test runs and auto-merge correctly never fires. That is
 # a real gap, not a bug in this file -- the lockfile has to be regenerated in the
-# PR branch. Tracked in ~/Github/TODO.md.
+# PR branch.
 
 on:
   pull_request:

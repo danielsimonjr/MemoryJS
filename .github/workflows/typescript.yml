@@ -26,7 +26,7 @@ jobs:
         # module (better-sqlite3 via scripts/rebuild-native.mjs), and native
         # bindings are the failure that a single-OS run cannot see.
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: [22, 24]
+        node: [18, 22, 24]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

@@ -27,8 +27,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in-flight run rather than queueing a second full matrix behind it.
 
 
-## [Unreleased]
-
 ## [3.3.2] - 2026-08-25
 
 ### Fixed — 3.3.1 broke installs for every consumer
