@@ -6,7 +6,9 @@ release where applicable.
 
 ## In progress
 
-- [ ] **Release v3.4.0** — cut the accumulated `[Unreleased]` work (adapter.write/onWrite seam,
+- [x] ✅ **Release v3.4.0** (2026-08-29) — tagged, GitHub release, `npm publish` verified via `npm view dist-tags` = 3.4.0.
+      Original item:
+- [x] **Release v3.4.0** — cut the accumulated `[Unreleased]` work (adapter.write/onWrite seam,
       Dependabot auto-merge, CI matrix, nightly CI, duplicate-heading fix). Minor bump: the section
       carries `Added` entries, and 0.x rules do not apply here (this package is past 1.0).
       Gate before tagging: typecheck + lint + `test:ci` + build. Then tag, GitHub release, and
