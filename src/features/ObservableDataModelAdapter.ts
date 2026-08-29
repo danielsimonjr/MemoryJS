@@ -44,6 +44,11 @@ export interface ObservableDataModelShape {
   get(path: string): JSONValue | undefined;
   set(path: string, value: JSONValue): void;
   delete(path: string): void;
+  /**
+   * Orchestrator write seam (Neural Computer LLM handler). React
+   * DataProvider never calls this; it uses `set()`, which still throws.
+   */
+  write?(path: string, value: JSONValue): void | Promise<void>;
   snapshot(): Readonly<Record<string, JSONValue>>;
   subscribe(callback: () => void): () => void;
 }
@@ -60,6 +65,7 @@ export class ReadOnlyMemoryGraphDataError extends Error {
     super(
       `Cannot ${operation}(${JSON.stringify(path)}) on the memoryjs ObservableDataModel adapter. ` +
         'Durable state is read-only at the DataProvider boundary; write through ' +
+        'adapter.write() (pass onWrite to createObservableDataModelFromGraph) or ' +
         'ctx.governanceManager.withTransaction() or ctx.entityManager / ctx.observationManager directly.',
     );
   }
@@ -108,6 +114,16 @@ export interface ObservableDataModelAdapterOptions {
    * errors into the host runtime's observability pipeline.
    */
   onError?: (err: Error) => void;
+  /**
+   * Orchestrator write seam. When provided, `adapter.write(path, value)`
+   * awaits this callback. `set()` and `delete()` still throw
+   * `ReadOnlyMemoryGraphDataError` so React DataProvider cannot mutate
+   * the graph. Neural Computer's LLM handler calls `write()`, not `set()`.
+   *
+   * This is not a graph mutation DSL — the host maps `{path, value}` onto
+   * `entityManager` / `withTransaction`.
+   */
+  onWrite?: (path: string, value: JSONValue) => void | Promise<void>;
 }
 
 /**
@@ -154,10 +170,14 @@ const EMPTY_SNAPSHOT: Readonly<Record<string, JSONValue>> = Object.freeze({});
  * reads come from `storage.cachedGraph` (a sync accessor) — the adapter
  * does not block on I/O after construction.
  *
- * **Read-only.** `set()` and `delete()` throw `ReadOnlyMemoryGraphDataError`
- * because durable state in the Neural Computer architecture is owned by
- * memoryjs transactions, not by the React layer. Route writes through
- * `ctx.governanceManager.withTransaction` or the managers directly.
+ * **Read-only at the React boundary.** `set()` and `delete()` throw
+ * `ReadOnlyMemoryGraphDataError` because durable state in the Neural
+ * Computer architecture is owned by memoryjs transactions, not by the
+ * React layer. Route React-originated writes away from DataProvider.
+ *
+ * **Orchestrator writes.** Pass `onWrite` and call `adapter.write(path,
+ * value)` from the intent handler. `write()` without `onWrite` throws
+ * the same read-only error.
  *
  * **Event-driven invalidation.** The adapter subscribes to the storage's
  * `GraphEventEmitter` via `onAny` and invalidates its cached snapshot on
@@ -211,6 +231,7 @@ export async function createObservableDataModelFromGraph(
     projection,
     onError = (err) =>
       logger.error('[memoryjs ObservableDataModel adapter]', err),
+    onWrite,
   } = options;
 
   // Warm the storage cache once so all subsequent reads can be synchronous
@@ -298,6 +319,13 @@ export async function createObservableDataModelFromGraph(
 
     delete(path: string): void {
       throw new ReadOnlyMemoryGraphDataError('delete', path);
+    },
+
+    async write(path: string, value: JSONValue): Promise<void> {
+      if (!onWrite) {
+        throw new ReadOnlyMemoryGraphDataError('set', path);
+      }
+      await onWrite(path, value);
     },
 
     snapshot(): Readonly<Record<string, JSONValue>> {
