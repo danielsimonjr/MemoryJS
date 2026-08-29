@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-08-29
+
 ### Fixed
 
 - **Removed a duplicate, empty `## [Unreleased]` heading.** Two existed: the live one at the top and

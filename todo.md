@@ -6,7 +6,12 @@ release where applicable.
 
 ## In progress
 
-_(nothing currently in flight)_
+- [ ] **Release v3.4.0** — cut the accumulated `[Unreleased]` work (adapter.write/onWrite seam,
+      Dependabot auto-merge, CI matrix, nightly CI, duplicate-heading fix). Minor bump: the section
+      carries `Added` entries, and 0.x rules do not apply here (this package is past 1.0).
+      Gate before tagging: typecheck + lint + `test:ci` + build. Then tag, GitHub release, and
+      `npm publish` — @danielsimonjr/memoryjs is already on npm at 3.3.2, and the ZBOOK is the only
+      machine holding the credential.
 
 ## Workerpool slow-build investigation
 
