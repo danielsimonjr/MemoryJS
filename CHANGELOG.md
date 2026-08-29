@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Removed a duplicate, empty `## [Unreleased]` heading.** Two existed: the live one at the top and
+  an empty one immediately above `## [3.3.2]`. An entry filed under the lower heading would sit
+  below a released version and read as part of history rather than as pending work — invisible in
+  exactly the place a reader looks for what is coming. Pre-existing, not introduced by a recent
+  edit (verified: two headings before and after `541d42d`). Surfaced by a Copilot-authored commit
+  on PR #113; extracted and applied directly, since that PR is stale and conflicted.
+
 - **Auto-merged Dependabot commits could land on the default branch with no CI run.** The
   auto-merge workflow merges with `GITHUB_TOKEN`, and GitHub's recursion guard suppresses workflow
   triggers for pushes made with that token, so `on: push` never fires for those commits. Measured
@@ -39,8 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `concurrency` with `cancel-in-progress`, so a re-push supersedes its own
   in-flight run rather than queueing a second full matrix behind it.
 
-
-## [Unreleased]
 
 ## [3.3.2] - 2026-08-25
 
