@@ -309,6 +309,30 @@ describe('adapter.set / adapter.delete — read-only enforcement', () => {
     );
     adapter.dispose();
   });
+
+  it('write without onWrite throws ReadOnlyMemoryGraphDataError', async () => {
+    const adapter = await createObservableDataModelFromGraph(storage, {
+      projection: SIMPLE_PROJECTION,
+    });
+    await expect(adapter.write!('note', 'x')).rejects.toBeInstanceOf(
+      ReadOnlyMemoryGraphDataError,
+    );
+    adapter.dispose();
+  });
+
+  it('write with onWrite forwards the path and value; set still throws', async () => {
+    const onWrite = vi.fn(async () => {});
+    const adapter = await createObservableDataModelFromGraph(storage, {
+      projection: SIMPLE_PROJECTION,
+      onWrite,
+    });
+    await adapter.write!('/note', 'hello');
+    expect(onWrite).toHaveBeenCalledWith('/note', 'hello');
+    expect(() => adapter.set('/note', 'nope')).toThrow(
+      ReadOnlyMemoryGraphDataError,
+    );
+    adapter.dispose();
+  });
 });
 
 // ==================== Error isolation ====================

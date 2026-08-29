@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`createObservableDataModelFromGraph({ onWrite })` / `adapter.write()`.**
+  React `DataProvider` still cannot mutate the graph (`set()` / `delete()`
+  throw `ReadOnlyMemoryGraphDataError`). Orchestrators (Neural Computer's
+  LLM handler) pass `onWrite` and call `adapter.write(path, value)`, which
+  is async so it can await `withTransaction`. This is a seam, not a graph
+  mutation DSL — the host maps `{path, value}` onto entity/relation APIs.
 - **Dependabot auto-merge workflow.** Queues `--auto --squash` for patch and minor
   updates, which merges only after branch protection is satisfied; a major update is
   labelled and commented instead, never queued. The comment asks the two questions a
