@@ -46,15 +46,23 @@ describe('BatchProcessor', () => {
     });
 
     it('should track processing duration', async () => {
-      const processor = new BatchProcessor<number, number>();
+      vi.useFakeTimers();
+      try {
+        const processor = new BatchProcessor<number, number>();
 
-      const result = await processor.process([1], async (item) => {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        return item;
-      });
+        const resultPromise = processor.process([1], async (item) => {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          return item;
+        });
 
-      expect(result.totalTimeMs).toBeGreaterThanOrEqual(50);
-      expect(result.results[0].durationMs).toBeGreaterThanOrEqual(50);
+        await vi.advanceTimersByTimeAsync(50);
+        const result = await resultPromise;
+
+        expect(result.totalTimeMs).toBeGreaterThanOrEqual(50);
+        expect(result.results[0].durationMs).toBeGreaterThanOrEqual(50);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should handle empty array', async () => {
