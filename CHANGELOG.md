@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — BREAKING
+
+- **`RestRouter.withDefaults(ctx)` now THROWS unless authentication is configured.** Mounting the
+  default routes without an `auth` handler previously succeeded silently, leaving the REST surface
+  unauthenticated by default. It now requires an explicit `allowUnauthenticated: true` opt-in.
+  Fail-closed rather than fail-open.
+  **Migration:** callers relying on the old behaviour must pass `allowUnauthenticated: true`
+  (local-only dev listeners) or supply `auth`. This is a breaking change for any consumer calling
+  `withDefaults` without auth, and should carry a major bump at release.
+
+### Security
+
+- **Prototype-pollution guard on JSONL ingestion.** `GraphStorage` and `FileSegmentStorage` now
+  reject parsed lines that are `null`, arrays, or non-objects, and route the rest through
+  `sanitizeObject` before use. A crafted JSONL line could previously reach object construction
+  unfiltered.
+- **Path validation before CLI writes.** `decision --out` now resolves and validates the target with
+  `validateFilePath` before `writeFileSync`, closing an arbitrary-write path.
+- **Dynamic `new Function()` serialization removed** from `taskScheduler`; the doc comment no longer
+  describes a mechanism the code has stopped using. Runtime validation still rejects non-function
+  task inputs.
+
 ## [3.4.0] - 2026-08-29
 
 ### Fixed
