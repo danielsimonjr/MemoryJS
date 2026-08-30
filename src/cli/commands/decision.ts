@@ -8,10 +8,12 @@
  */
 
 import { readFileSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
 import { Command } from 'commander';
 import { DecisionManager } from '../../agent/DecisionManager.js';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';
+import { validateFilePath } from '../../utils/entityUtils.js';
 
 export function registerDecisionCommands(program: Command): void {
   const decision = program
@@ -183,8 +185,9 @@ export function registerDecisionCommands(program: Command): void {
       try {
         const md = ctx.decisionManager.exportAsAdrMarkdown(id);
         if (opts.out) {
-          writeFileSync(opts.out, md, 'utf8');
-          logger.info(formatSuccess(`Wrote ${opts.out}`));
+          const outPath = validateFilePath(resolve(opts.out), undefined, false);
+          writeFileSync(outPath, md, 'utf8');
+          logger.info(formatSuccess(`Wrote ${outPath}`));
         } else {
           logger.info(md);
         }
@@ -203,16 +206,17 @@ export function registerDecisionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
-        const text = readFileSync(path, 'utf8');
+        const resolvedPath = validateFilePath(resolve(path), undefined, false);
+        const text = readFileSync(resolvedPath, 'utf8');
         const input = DecisionManager.parseAdrMarkdown(text);
         if (!input) {
           logger.error(formatError(
-            `${path}: required ## Context or ## Decision sections missing`,
+            `${resolvedPath}: required ## Context or ## Decision sections missing`,
           ));
           process.exit(1);
         }
         const rec = await ctx.decisionManager.propose(input);
-        logger.info(formatSuccess(`Imported ${path} → ${rec.id}`));
+        logger.info(formatSuccess(`Imported ${resolvedPath} → ${rec.id}`));
       } catch (error) {
         logger.error(formatError((error as Error).message));
         process.exit(1);

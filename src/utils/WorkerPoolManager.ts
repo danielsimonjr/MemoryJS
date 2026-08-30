@@ -1,8 +1,27 @@
 /** Unified worker pool management for parallelizable operations. */
 
 import workerpool from '@danielsimonjr/workerpool';
-import type { Pool, PoolStats } from '@danielsimonjr/workerpool';
+import type { Pool } from '@danielsimonjr/workerpool';
 import { logger } from './logger.js';
+
+/** Shape returned by workerpool `Pool.stats()` (not exported from the package types). */
+export interface WorkerPoolRuntimeStats {
+  totalWorkers: number;
+  busyWorkers: number;
+  idleWorkers: number;
+  pendingTasks: number;
+  activeTasks: number;
+  circuitState: string;
+  estimatedQueueMemory: number;
+}
+
+export interface ExtendedPoolStats extends WorkerPoolRuntimeStats {
+  poolId: string;
+  createdAt: number;
+  totalTasksExecuted: number;
+  totalExecutionTime: number;
+  averageExecutionTime: number;
+}
 
 export interface WorkerPoolConfig {
   maxWorkers?: number;
@@ -10,14 +29,6 @@ export interface WorkerPoolConfig {
   workerPath?: string;
   minParallelSize?: number;
   defaultTimeout?: number;
-}
-
-export interface ExtendedPoolStats extends PoolStats {
-  poolId: string;
-  createdAt: number;
-  totalTasksExecuted: number;
-  totalExecutionTime: number;
-  averageExecutionTime: number;
 }
 
 export type PoolEventCallback = (poolId: string, event: 'created' | 'shutdown' | 'error', data?: unknown) => void;

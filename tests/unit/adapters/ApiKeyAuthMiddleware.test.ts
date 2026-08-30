@@ -253,8 +253,12 @@ describe('RestRouter auth wiring', () => {
     expect(await ctx.entityManager.getEntity('New')).not.toBeNull();
   });
 
-  it('router without auth keeps current unauthenticated behavior', async () => {
-    const router = RestRouter.withDefaults(ctx);
+  it('withDefaults without auth requires allowUnauthenticated opt-in', () => {
+    expect(() => RestRouter.withDefaults(ctx)).toThrow(/allowUnauthenticated/);
+  });
+
+  it('router without auth keeps unauthenticated behavior when explicitly opted in', async () => {
+    const router = RestRouter.withDefaults(ctx, { allowUnauthenticated: true });
     const res = await router.dispatch(makeRequest({ method: 'GET', path: '/entities' }));
     expect(res.status).toBe(200);
   });
