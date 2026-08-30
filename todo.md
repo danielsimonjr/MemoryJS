@@ -47,6 +47,13 @@ Documenting findings for future cycles in this repo:
 - [ ] Wire `batchProcessViaWorkers` into a real agent-system consumer (entropy filter or pairwise similarity batch) to demonstrate the pattern end-to-end.
 - [ ] Optional Memory-mcp surface: `worker_stats` MCP tool exposing `WorkerTaskManager.getStats()` so MCP clients can observe queue + pool state. Marginal value; defer unless asked.
 - [ ] Real-database integration tests for PostgreSQLStorage under `MEMORYJS_TEST_PG_URL` (currently only unit-tested via the mocked `pg` module).
+- [ ] `tests/unit/core/segments/segments-review-fixes.test.ts` exceeds the 120s default `testTimeout`
+      under full-suite contention on a 12-core box (1 failure of 7843 on 2026-08-30), but passes
+      **13/13 in 19s when run in isolation** and is green on all six CI legs. So it is worker
+      contention while 320 other test files run, not a code defect -- the variance source is named,
+      which is the bar for touching the threshold. Decide between raising the timeout for this file
+      only, or marking it `sequential`. Do **not** widen the global timeout: that would mask real
+      hangs everywhere else. Untouched by #115/#116; last changed in #103.
 
 ## Recently completed
 
