@@ -24,6 +24,7 @@ export function registerProjectContextCommands(program: Command): void {
       const logger = createLogger(options);
       const ctx = createContext(options);
       try {
+        await ctx.storage.ensureLoaded();
         const prose = await ctx.projectContextManager.forContext(projectId);
         if (prose === '') {
           logger.info(`(no project-context record for '${projectId}')`);

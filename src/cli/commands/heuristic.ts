@@ -83,6 +83,7 @@ export function registerHeuristicCommands(program: Command): void {
       const logger = createLogger(options);
       const ctx = createContext(options);
       try {
+        await ctx.storage.ensureLoaded();
         const heuristic = ctx.heuristicManager.get(id);
         emitJson({ id, heuristic: heuristic ?? null });
       } catch (error) {
@@ -164,6 +165,7 @@ export function registerHeuristicCommands(program: Command): void {
       const logger = createLogger(options);
       const ctx = createContext(options);
       try {
+        await ctx.storage.ensureLoaded();
         const removed = await ctx.heuristicManager.remove(id);
         emitJson({ id, removed });
       } catch (error) {

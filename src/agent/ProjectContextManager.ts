@@ -74,6 +74,7 @@ export class ProjectContextManager {
     input: ProjectContextUpsertInput,
   ): Promise<ProjectContextRecord> {
     validateNonEmpty(projectId, 'projectId', 'ProjectContextManager');
+    await this.storage.ensureLoaded();
     const name = projectContextEntityName(projectId);
     const now = toIsoDateTime(new Date());
     const existing = this.storage.getEntityByName(name);
@@ -188,6 +189,7 @@ export class ProjectContextManager {
 
   /** Wipe the four arrays but keep the entity. */
   async clear(projectId: string): Promise<boolean> {
+    await this.storage.ensureLoaded();
     const name = projectContextEntityName(projectId);
     const entity = this.storage.getEntityByName(name);
     if (!isProjectContextMemory(entity)) return false;

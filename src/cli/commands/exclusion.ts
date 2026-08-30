@@ -100,6 +100,7 @@ export function registerExclusionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        await ctx.storage.ensureLoaded();
         const removed = await ctx.exclusionManager.remove(id);
         if (removed) {
           logger.info(formatSuccess(`Removed rule ${id}`));

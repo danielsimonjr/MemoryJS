@@ -3,6 +3,7 @@ import {
   createStorage,
   createStorageFromPath,
   registerSQLiteStorage,
+  preloadSQLiteStorage,
 } from '../../../src/core/StorageFactory.js';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
@@ -198,6 +199,21 @@ describe('StorageFactory', () => {
       createStorageFromPath('./path-with_special.chars/memory.jsonl');
 
       expect(GraphStorage).toHaveBeenCalledWith('./path-with_special.chars/memory.jsonl');
+    });
+  });
+
+  describe('preloadSQLiteStorage', () => {
+    it('loads SQLite backend when ctor is not registered', async () => {
+      registerSQLiteStorage(undefined as never);
+      await expect(preloadSQLiteStorage()).resolves.toBeUndefined();
+      const storage = createStorage({ type: 'sqlite', path: './after-preload.db' });
+      expect(SQLiteStorage).toHaveBeenCalledWith('./after-preload.db');
+      expect(storage).toBeTruthy();
+    });
+
+    it('throws when sqlite requested without registration or preload', () => {
+      registerSQLiteStorage(undefined as never);
+      expect(() => createStorage({ type: 'sqlite', path: './x.db' })).toThrow(/not loaded/);
     });
   });
 });

@@ -117,4 +117,86 @@ describe('RestRouter', () => {
     );
     expect(missing.status).toBe(404);
   });
+
+  it('withDefaults POST validates entity body shape', async () => {
+    const router = RestRouter.withDefaults(ctx, { allowUnauthenticated: true });
+    const bad = await router.dispatch(
+      makeRequest({
+        method: 'POST',
+        path: '/entities',
+        body: { name: 'X' },
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    expect(bad.status).toBe(400);
+
+    const good = await router.dispatch(
+      makeRequest({
+        method: 'POST',
+        path: '/entities',
+        body: { name: 'Carol', entityType: 'person', observations: ['new'] },
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    expect(good.status).toBe(201);
+  });
+
+  it('withDefaults DELETE removes entity', async () => {
+    const router = RestRouter.withDefaults(ctx, { allowUnauthenticated: true });
+    const res = await router.dispatch(
+      makeRequest({ method: 'DELETE', path: '/entities/Alice' }),
+    );
+    expect(res.status).toBe(204);
+    expect(await ctx.entityManager.getEntity('Alice')).toBeNull();
+  });
+
+  it('withDefaults search route paginates results', async () => {
+    const router = RestRouter.withDefaults(ctx, { allowUnauthenticated: true });
+    const res = await router.dispatch(
+      makeRequest({ method: 'GET', path: '/search', query: { q: 'developer' } }),
+    );
+    expect(res.status).toBe(200);
+    expect((res.body as { entities: unknown[] }).entities.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('serve() adapts Node http request/response', async () => {
+    const router = new RestRouter(ctx);
+    router.get('/health', () => ({ status: 200, body: { ok: true } }));
+
+    const chunks: Buffer[] = [];
+    const res = {
+      statusCode: 0,
+      headersSent: false,
+      setHeader: vi.fn(),
+      getHeader: vi.fn().mockReturnValue(undefined),
+      end: vi.fn((body?: string) => {
+        if (body) chunks.push(Buffer.from(body));
+      }),
+    };
+
+    const req = {
+      method: 'GET',
+      url: '/health',
+      headers: {},
+      on: (event: string, cb: () => void) => {
+        if (event === 'end') cb();
+      },
+    };
+
+    await router.serve(req as never, res as never);
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(Buffer.concat(chunks).toString())).toEqual({ ok: true });
+  });
+
+  it('PUT and PATCH routes register and dispatch', async () => {
+    const router = new RestRouter(ctx);
+    router.put('/x', () => ({ status: 200, body: 'put' }));
+    router.patch('/x', () => ({ status: 200, body: 'patch' }));
+    expect(await router.dispatch(makeRequest({ method: 'PUT', path: '/x' }))).toMatchObject({
+      body: 'put',
+    });
+    expect(await router.dispatch(makeRequest({ method: 'PATCH', path: '/x' }))).toMatchObject({
+      body: 'patch',
+    });
+  });
 });
