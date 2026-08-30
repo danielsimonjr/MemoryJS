@@ -11,8 +11,12 @@ export interface WorkerPoolRuntimeStats {
   idleWorkers: number;
   pendingTasks: number;
   activeTasks: number;
-  circuitState: string;
-  estimatedQueueMemory: number;
+  // NOTE: this interface mirrors what `Pool.stats()` actually returns. Do not add fields the
+  // library does not provide -- `circuitState` and `estimatedQueueMemory` were declared here and
+  // removed 2026-08-30 because neither exists anywhere in @danielsimonjr/workerpool and nothing
+  // computes them, so the `...baseStats` spread in getPoolStats could never satisfy the type
+  // (TS2739 on all six CI legs). If a circuit breaker is added later, compute the field in
+  // getPoolStats and declare it on ExtendedPoolStats, not on this mirror.
 }
 
 export interface ExtendedPoolStats extends WorkerPoolRuntimeStats {
