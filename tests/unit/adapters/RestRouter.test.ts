@@ -104,7 +104,7 @@ describe('RestRouter', () => {
   });
 
   it('withDefaults wires entity + search routes', async () => {
-    const router = RestRouter.withDefaults(ctx);
+    const router = RestRouter.withDefaults(ctx, { allowUnauthenticated: true });
     const list = await router.dispatch(makeRequest({ method: 'GET', path: '/entities' }));
     expect(list.status).toBe(200);
     expect(Array.isArray((list.body as { entities: unknown[] }).entities)).toBe(true);
