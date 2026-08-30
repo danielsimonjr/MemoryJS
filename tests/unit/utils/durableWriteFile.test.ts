@@ -50,6 +50,7 @@ describe('durableWriteFile', () => {
   });
 
   it('restrictSensitiveFilePermissions tightens mode', async () => {
+    if (process.platform === 'win32') return; // POSIX modes don't apply
     const target = join(dir, 'secret.txt');
     await durableWriteFile(target, 'secret');
     await fs.chmod(target, 0o644);
@@ -59,6 +60,7 @@ describe('durableWriteFile', () => {
   });
 
   it('restrictSensitiveFilePermissions preserves tighter mode', async () => {
+    if (process.platform === 'win32') return; // POSIX modes don't apply
     const target = join(dir, 'locked.txt');
     await durableWriteFile(target, 'x');
     await fs.chmod(target, 0o400);
