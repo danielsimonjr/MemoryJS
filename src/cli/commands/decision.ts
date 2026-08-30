@@ -38,6 +38,7 @@ export function registerDecisionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        await ctx.storage.ensureLoaded();
         const rec = await ctx.decisionManager.propose({
           context: opts.context,
           decision: opts.decision,
@@ -61,6 +62,7 @@ export function registerDecisionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        await ctx.storage.ensureLoaded();
         const result = await ctx.decisionManager.accept(id);
         if (result === 'accepted' || result === 'already-accepted') {
           logger.info(formatSuccess(`${id}: ${result}`));
@@ -84,6 +86,7 @@ export function registerDecisionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        await ctx.storage.ensureLoaded();
         const result = await ctx.decisionManager.reject(id, opts.reason);
         if (result === 'rejected' || result === 'already-rejected') {
           logger.info(formatSuccess(`${id}: ${result}`));
@@ -106,6 +109,7 @@ export function registerDecisionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        await ctx.storage.ensureLoaded();
         const result = await ctx.decisionManager.supersede(
           id,
           by as ReturnType<() => never>,
@@ -132,6 +136,7 @@ export function registerDecisionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        await ctx.storage.ensureLoaded();
         const recs = await ctx.decisionManager.list(
           opts.status ? { status: opts.status as 'proposed' } : {},
         );
@@ -157,6 +162,7 @@ export function registerDecisionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        await ctx.storage.ensureLoaded();
         const matches = await ctx.decisionManager.findByContext(query);
         if (matches.length === 0) {
           logger.info(`(no decisions matching "${query}")`);
@@ -181,6 +187,7 @@ export function registerDecisionCommands(program: Command): void {
       const ctx = createContext(options);
 
       try {
+        await ctx.storage.ensureLoaded();
         const md = ctx.decisionManager.exportAsAdrMarkdown(id);
         if (opts.out) {
           writeFileSync(opts.out, md, 'utf8');

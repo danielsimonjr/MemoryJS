@@ -47,6 +47,7 @@ export function registerToolAffordanceCommands(program: Command): void {
       const logger = createLogger(options);
       const ctx = createContext(options);
       try {
+        await ctx.storage.ensureLoaded();
         const rec = ctx.toolAffordanceManager.get(toolName);
         if (!rec) {
           logger.info(`(no affordance record for '${toolName}')`);
@@ -67,6 +68,7 @@ export function registerToolAffordanceCommands(program: Command): void {
       const logger = createLogger(options);
       const ctx = createContext(options);
       try {
+        await ctx.storage.ensureLoaded();
         const stats = ctx.toolAffordanceManager.rollingStats(toolName);
         if (!stats) {
           logger.info(`(no affordance record for '${toolName}')`);

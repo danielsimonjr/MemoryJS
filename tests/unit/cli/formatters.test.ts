@@ -524,4 +524,67 @@ describe('CLI Formatters', () => {
       expect(() => formatEntities(sampleEntities, 'table')).not.toThrow();
     });
   });
+
+  describe('formatPath / formatCentrality / formatComponents / formatValidation / escapeCSV', () => {
+    const pathResult = {
+      path: ['A', 'B', 'C'],
+      length: 2,
+      relations: [{ from: 'A', to: 'B', relationType: 'knows' }],
+    };
+    const centrality = {
+      algorithm: 'degree' as const,
+      topEntities: [{ name: 'A', score: 0.9 }],
+    };
+    const components = {
+      components: [['A', 'B'], ['C']],
+      count: 2,
+      largestComponentSize: 2,
+    };
+    const validation = {
+      isValid: false,
+      issues: [{ type: 'orphaned_relation' as const, message: 'dangling edge' }],
+      warnings: [],
+      summary: {
+        totalErrors: 1,
+        totalWarnings: 0,
+        orphanedRelationsCount: 1,
+        entitiesWithoutRelationsCount: 0,
+      },
+    };
+
+    it('formatPath json/csv/table', async () => {
+      const { formatPath } = await import('../../../src/cli/formatters.js');
+      expect(JSON.parse(formatPath(pathResult, 'json'))).toEqual(pathResult);
+      expect(formatPath(pathResult, 'csv')).toContain('step,entity');
+      expect(formatPath(pathResult, 'table')).toContain('A → B → C');
+    });
+
+    it('formatCentrality json/csv/table', async () => {
+      const { formatCentrality } = await import('../../../src/cli/formatters.js');
+      expect(formatCentrality(centrality, 'json')).toContain('degree');
+      expect(formatCentrality(centrality, 'csv')).toContain('rank,name,score');
+      expect(formatCentrality(centrality, 'table')).toContain('A');
+    });
+
+    it('formatComponents json/csv/table', async () => {
+      const { formatComponents } = await import('../../../src/cli/formatters.js');
+      expect(formatComponents(components, 'json')).toContain('components');
+      expect(formatComponents(components, 'csv')).toContain('component');
+      expect(formatComponents(components, 'table')).toContain('Connected Components');
+    });
+
+    it('formatValidation json/csv/table', async () => {
+      const { formatValidation } = await import('../../../src/cli/formatters.js');
+      expect(formatValidation(validation, 'json')).toContain('isValid');
+      expect(formatValidation(validation, 'csv')).toContain('type,message');
+      expect(formatValidation(validation, 'table')).toMatch(/dangling|Invalid/);
+    });
+
+    it('escapeCSV quotes special characters', async () => {
+      const { escapeCSV } = await import('../../../src/cli/formatters.js');
+      expect(escapeCSV('plain')).toBe('plain');
+      expect(escapeCSV('a,b')).toBe('"a,b"');
+      expect(escapeCSV('say "hi"')).toBe('"say ""hi"""');
+    });
+  });
 });

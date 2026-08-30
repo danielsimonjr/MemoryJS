@@ -35,6 +35,9 @@ function createMockStorage(): IGraphStorage & { _entities: Map<string, Entity> }
     getEntityByName(name: string): Entity | undefined {
       return entities.get(name);
     },
+    async ensureLoaded(): Promise<void> {
+      /* in-memory mock — entities map is always current */
+    },
     async loadGraph(): Promise<KnowledgeGraph> {
       return { entities: Array.from(entities.values()), relations: [] };
     },

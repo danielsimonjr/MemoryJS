@@ -73,4 +73,38 @@ describe('PartialIndexAdvisor', () => {
     expect(recs[0]!.indexName).toMatch(/^idx_advisor_type_[a-zA-Z0-9_]+$/);
     expect(recs[0]!.indexName.length).toBeLessThan(80);
   });
+
+  it('apply() creates and drops advisor indexes on sqlite', async () => {
+    const Database = (await import('better-sqlite3')).default;
+    const db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE entities (
+        name TEXT PRIMARY KEY,
+        entityType TEXT,
+        projectId TEXT
+      );
+    `);
+    const advisor = new PartialIndexAdvisor({ minSupport: 2 });
+    for (let i = 0; i < 3; i++) advisor.record({ entityType: 'hot' });
+    for (let i = 0; i < 3; i++) advisor.record({ projectId: 'proj-1' });
+
+    const first = advisor.apply(db);
+    expect(first.created).toBeGreaterThanOrEqual(1);
+    expect(advisor.snapshot().liveIndexes.length).toBeGreaterThanOrEqual(1);
+
+    advisor.record({ entityType: 'cold-only-once' });
+    const second = advisor.apply(db);
+    expect(second.dropped).toBeGreaterThanOrEqual(0);
+
+    advisor.dropAll(db);
+    expect(advisor.snapshot().liveIndexes).toHaveLength(0);
+    db.close();
+  });
+
+  it('apply() is a no-op when disabled', () => {
+    delete process.env.MEMORY_SQLITE_AUTO_INDEX;
+    const advisor = new PartialIndexAdvisor({ minSupport: 1 });
+    const result = advisor.apply({ exec: vi.fn() } as never);
+    expect(result).toEqual({ created: 0, dropped: 0 });
+  });
 });

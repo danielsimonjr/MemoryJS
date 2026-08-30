@@ -1250,6 +1250,7 @@ export class EntityManager {
    * @throws {EntityNotFoundError} If entity is not found
    */
   async addTags(entityName: string, tags: string[]): Promise<{ entityName: string; addedTags: string[] }> {
+    await this.storage.ensureLoaded();
     // OPTIMIZED: Use O(1) NameIndex lookup instead of loadGraph() + O(n) find()
     const entity = this.storage.getEntityByName(entityName);
     if (!entity) {
@@ -1281,6 +1282,7 @@ export class EntityManager {
    * @throws {EntityNotFoundError} If entity is not found
    */
   async removeTags(entityName: string, tags: string[]): Promise<{ entityName: string; removedTags: string[] }> {
+    await this.storage.ensureLoaded();
     // OPTIMIZED: Use O(1) NameIndex lookup instead of loadGraph() + O(n) find()
     const entity = this.storage.getEntityByName(entityName);
     if (!entity) {
