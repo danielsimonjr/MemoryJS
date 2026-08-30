@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Several read paths did not ensure storage was loaded first.** `EntityManager`,
+  `ProjectContextManager`, and the `decision` / `exclusion` / `heuristic` / `projectContext` /
+  `toolAffordance` CLI commands each queried storage without an `ensureLoaded()` guard, so on a cold
+  `ManagerContext` they could return empty or stale results rather than the persisted graph. Fourteen
+  call sites now await `ensureLoaded()` before reading.
+  Found by the coverage work in the same change — the tests are what exposed it.
+
 ## [3.4.0] - 2026-08-29
 
 ### Fixed
