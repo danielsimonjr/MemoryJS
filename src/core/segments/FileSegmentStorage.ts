@@ -45,6 +45,7 @@ import {
 } from 'path';
 import type { Entity, KnowledgeGraph, Relation } from '../../types/types.js';
 import { logger } from '../../utils/logger.js';
+import { sanitizeObject } from '../../utils/entityUtils.js';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import {
   type ISegmentStorage,
@@ -555,7 +556,12 @@ function parseSegmentFile(id: SegmentId, raw: string): Segment {
     // logged once at the end of the file for diagnostics.
     let item: SegmentLine;
     try {
-      item = JSON.parse(trimmed) as SegmentLine;
+      const parsed: unknown = JSON.parse(trimmed);
+      if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        malformedCount++;
+        continue;
+      }
+      item = sanitizeObject(parsed as Record<string, unknown>) as SegmentLine;
     } catch {
       malformedCount++;
       continue;

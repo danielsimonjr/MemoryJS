@@ -1,8 +1,31 @@
 /** Unified worker pool management for parallelizable operations. */
 
 import workerpool from '@danielsimonjr/workerpool';
-import type { Pool, PoolStats } from '@danielsimonjr/workerpool';
+import type { Pool } from '@danielsimonjr/workerpool';
 import { logger } from './logger.js';
+
+/** Shape returned by workerpool `Pool.stats()` (not exported from the package types). */
+export interface WorkerPoolRuntimeStats {
+  totalWorkers: number;
+  busyWorkers: number;
+  idleWorkers: number;
+  pendingTasks: number;
+  activeTasks: number;
+  // NOTE: this interface mirrors what `Pool.stats()` actually returns. Do not add fields the
+  // library does not provide -- `circuitState` and `estimatedQueueMemory` were declared here and
+  // removed 2026-08-30 because neither exists anywhere in @danielsimonjr/workerpool and nothing
+  // computes them, so the `...baseStats` spread in getPoolStats could never satisfy the type
+  // (TS2739 on all six CI legs). If a circuit breaker is added later, compute the field in
+  // getPoolStats and declare it on ExtendedPoolStats, not on this mirror.
+}
+
+export interface ExtendedPoolStats extends WorkerPoolRuntimeStats {
+  poolId: string;
+  createdAt: number;
+  totalTasksExecuted: number;
+  totalExecutionTime: number;
+  averageExecutionTime: number;
+}
 
 export interface WorkerPoolConfig {
   maxWorkers?: number;
@@ -10,14 +33,6 @@ export interface WorkerPoolConfig {
   workerPath?: string;
   minParallelSize?: number;
   defaultTimeout?: number;
-}
-
-export interface ExtendedPoolStats extends PoolStats {
-  poolId: string;
-  createdAt: number;
-  totalTasksExecuted: number;
-  totalExecutionTime: number;
-  averageExecutionTime: number;
 }
 
 export type PoolEventCallback = (poolId: string, event: 'created' | 'shutdown' | 'error', data?: unknown) => void;

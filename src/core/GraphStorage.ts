@@ -500,7 +500,11 @@ export class GraphStorage implements IGraphStorage {
       for (const line of lines) {
         let item: JsonlLine;
         try {
-          item = JSON.parse(line);
+          const parsed: unknown = JSON.parse(line);
+          if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            continue;
+          }
+          item = sanitizeObject(parsed as Record<string, unknown>) as unknown as JsonlLine;
         } catch {
           // Skip malformed JSON lines (e.g., from partial writes or corruption)
           continue;
@@ -696,7 +700,10 @@ export class GraphStorage implements IGraphStorage {
             `Failed to parse line ${lineNumber} of ${this.memoryFilePath}: ${cause} (preview: ${line.slice(0, 100)})`,
           );
         }
-        const rec = item as Record<string, unknown>;
+        if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+          continue;
+        }
+        const rec = sanitizeObject(item as Record<string, unknown>) as Record<string, unknown>;
         if (rec.type === 'entity') {
           if (!rec.createdAt) rec.createdAt = new Date().toISOString();
           if (!rec.lastModified) rec.lastModified = rec.createdAt;
@@ -1238,11 +1245,12 @@ export class GraphStorage implements IGraphStorage {
         }
       }
 
-      // Build the updated entity data for file write BEFORE modifying cache
-      // This ensures cache consistency if file write fails
+      // Build the updated entity data for file write BEFORE modifying cache.
+      // Sanitize before serializing so dangerous keys never reach disk.
+      const sanitizedUpdates = sanitizeObject(updates as Record<string, unknown>);
       const updatedEntity = {
         ...entity,
-        ...updates,
+        ...sanitizedUpdates,
         lastModified: timestamp,
       };
 
@@ -1252,7 +1260,7 @@ export class GraphStorage implements IGraphStorage {
       await this.appendLines([line]);
 
       // File write succeeded - NOW update cache in-place (sanitized to prevent prototype pollution)
-      Object.assign(entity, sanitizeObject(updates as Record<string, unknown>));
+      Object.assign(entity, sanitizedUpdates);
       entity.lastModified = timestamp;
 
       // Update indexes
