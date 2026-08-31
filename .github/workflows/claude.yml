@@ -49,7 +49,7 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        uses: anthropics/claude-code-action@dc33e8a15b19e2109ac3fa8329058842f63780dc # pinned v1 commit
+        uses: anthropics/claude-code-action@a874e9ecd7bb36efdad65429c6b35815f5a08f10 # pinned v1 commit
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
