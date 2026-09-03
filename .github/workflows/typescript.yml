@@ -83,6 +83,15 @@ jobs:
         env:
           SKIP_BENCHMARKS: "true"
 
+      - name: Build
+        run: bun run build
+
+      # MUST stay after Build. This step imports ./dist/index.cjs, which does not exist until
+      # `bun run build` has produced it -- placed before Build it failed on all six legs with
+      # "Cannot find module .../dist/index.cjs", which reads like a packaging defect rather than
+      # a step-ordering one. The check itself is right and worth keeping: the package declares
+      # main + exports.require -> ./dist/index.cjs, and the rest of CI runs under Bun, so without
+      # this nothing ever loads the shipped CJS artifact under Node.
       - name: Node runtime smoke (the shipped artifact must load under Node)
         run: |
           node --input-type=module -e '
@@ -91,5 +100,3 @@ jobs:
             import(entry).then(() => { clearTimeout(t); console.log("PASS: loaded cleanly under Node"); process.exit(0); })
               .catch((e) => { clearTimeout(t); console.error("FAIL: " + entry + " -> " + e.message); process.exit(1); });
           '
-      - name: Build
-        run: bun run build

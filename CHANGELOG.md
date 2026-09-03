@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`master` was red on all six CI legs: the Node runtime smoke ran BEFORE the build.** The step
+  added in d5c64da imports `./dist/index.cjs`, but it was placed above `Build`, so the artifact it
+  loads did not exist yet -- every leg failed with `Cannot find module .../dist/index.cjs`, which
+  reads like a packaging or exports defect rather than a step-ordering one. Moved below `Build`,
+  with a comment recording why the order is load-bearing.
+  The check itself is correct and worth keeping: `package.json` declares `main` and
+  `exports.require` as `./dist/index.cjs`, and the rest of CI runs under Bun, so without this step
+  nothing ever loads the shipped CJS artifact under Node. Verified by running the step's exact
+  command against a real local build: "PASS: loaded cleanly under Node".
+
+
 ## [4.0.0] - 2026-09-03
 
 ### Changed — BREAKING
