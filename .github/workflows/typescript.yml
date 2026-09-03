@@ -83,5 +83,13 @@ jobs:
         env:
           SKIP_BENCHMARKS: "true"
 
+      - name: Node runtime smoke (the shipped artifact must load under Node)
+        run: |
+          node --input-type=module -e '
+            const entry = "./dist/index.cjs";
+            const t = setTimeout(() => { console.log("PASS: self-started under Node"); process.exit(0); }, 5000);
+            import(entry).then(() => { clearTimeout(t); console.log("PASS: loaded cleanly under Node"); process.exit(0); })
+              .catch((e) => { clearTimeout(t); console.error("FAIL: " + entry + " -> " + e.message); process.exit(1); });
+          '
       - name: Build
         run: bun run build
