@@ -937,35 +937,39 @@ knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables).
 
 ### Prerequisites
 
-- Node.js 18+
-- npm 9+
+- Bun 1.4+ (package manager and script driver; `bun.lock` is authoritative)
+- Node.js 18+ (production runtime for the published package and native addons)
 - TypeScript 5.0+
+
+> **Bun installs; Node ships.** CI and local development use Bun to install
+> dependencies and run scripts. The published library still targets Node — do
+> not replace Node with Bun as the runtime for long-lived consumers.
 
 ### Common commands
 
 ```bash
-npm install            # Install dependencies
-npm run build          # Build TypeScript to dist/ (tsup; ESM + CJS dual output)
-npm run build:watch    # Watch mode
-npm test               # Run all tests
-npm run test:watch     # Watch mode
-npm run test:coverage  # Run with coverage report
-npm run test:ci        # Excludes tests/performance/** (used by prepublishOnly)
-npm run typecheck      # Type checking without emit
-npm run lint           # ESLint (flat config; @typescript-eslint)
-npm run benchmark      # Standalone synthetic benchmarks
-npm run bench          # Vitest performance suite
-SKIP_BENCHMARKS=true npm test  # Skip perf tests in the main suite
+bun install            # Install dependencies from bun.lock
+bun run build          # Build TypeScript to dist/ (tsup; ESM + CJS dual output)
+bun run build:watch    # Watch mode
+bun run test           # Run all tests
+bun run test:watch     # Watch mode
+bun run test:coverage  # Run with coverage report
+bun run test:ci        # Excludes tests/performance/** (used by prepublishOnly)
+bun run typecheck      # Type checking without emit
+bun run lint           # ESLint (flat config; @typescript-eslint)
+bun run benchmark      # Standalone synthetic benchmarks
+bun run bench          # Vitest performance suite
+SKIP_BENCHMARKS=true bun run test  # Skip perf tests in the main suite
 ```
 
 ### Tooling
 
 ```bash
-npm run audit:plans                                                    # Detect plan-doc rot
-npx tsx tools/create-dependency-graph/create-dependency-graph.ts       # Refresh DEPENDENCY_GRAPH.md
-npx tsx tools/chunking-for-files/chunking-for-files.ts split <file>    # Split a large file
-npx tsx tools/chunking-for-files/chunking-for-files.ts merge <manifest>  # Merge back
-npx tsx tools/migrate-from-jsonl-to-sqlite/...                         # JSONL → SQLite migration
+bun run audit:plans                                                    # Detect plan-doc rot
+node tools/create-dependency-graph/create-dependency-graph.ts          # Refresh DEPENDENCY_GRAPH.md
+node tools/chunking-for-files/chunking-for-files.ts split <file>       # Split a large file
+node tools/chunking-for-files/chunking-for-files.ts merge <manifest>   # Merge back
+node tools/migrate-from-jsonl-to-sqlite/...                            # JSONL → SQLite migration
 ```
 
 ### Architecture overview

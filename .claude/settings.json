@@ -12,15 +12,15 @@
   ],
   "buildRequirements": {
     "typescript": {
-      "buildCommand": "npm run build",
+      "buildCommand": "bun run build",
       "entryPoint": "dist/",
-      "typecheckCommand": "npm run typecheck"
+      "typecheckCommand": "bun run typecheck"
     }
   },
   "testing": {
     "framework": "vitest",
-    "command": "npm test",
-    "coverageCommand": "npm run test:coverage"
+    "command": "bun run test",
+    "coverageCommand": "bun run test:coverage"
   },
   "documentation": {
     "claudemd": "CLAUDE.md",

@@ -4,30 +4,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MemoryJS is a TypeScript knowledge graph library for managing entities, relations, and observations with advanced search capabilities. It supports multiple storage backends (JSONL, SQLite) and provides features like hierarchical organization, graph algorithms, and hybrid search. Requires Node.js >= 18.0.0.
+MemoryJS is a TypeScript knowledge graph library for managing entities, relations, and observations with advanced search capabilities. It supports multiple storage backends (JSONL, SQLite) and provides features like hierarchical organization, graph algorithms, and hybrid search. Requires Node.js >= 18.0.0 as the production runtime. Development uses Bun 1.4+ as the package manager (`bun.lock`).
 
 ## Common Commands
 
+Bun is the package manager and script driver (`bun.lock` is authoritative).
+Node remains the production runtime for the published package.
+
 ```bash
+# Install
+bun install             # Install from bun.lock (use --frozen-lockfile in CI)
+
 # Build
-npm run build           # Compile TypeScript to dist/
-npm run build:watch     # Watch mode compilation
-npm run clean           # Remove dist/ directory
+bun run build           # Compile TypeScript to dist/
+bun run build:watch     # Watch mode compilation
+bun run clean           # Remove dist/ directory
 
 # Test
-npm run test            # Run all tests once
-npm run test:watch      # Watch mode
-npm run test:coverage   # Run with coverage report
+bun run test            # Run all tests once
+bun run test:watch      # Watch mode
+bun run test:coverage   # Run with coverage report
 
 # Run a single test file
-npx vitest run tests/unit/core/EntityManager.test.ts
+bunx vitest run tests/unit/core/EntityManager.test.ts
 
 # Type checking
-npm run typecheck       # Check types without emitting
+bun run typecheck       # Check types without emitting
 
-# Tools (utilities in tools/ directory)
-npm run tools:install   # Install tool subdependencies
-npm run tools:build     # Build all tools
+# Tools (utilities in tools/ directory; tools/*/ still use npm lockfiles)
+bun run tools:install   # Install tool subdependencies
+bun run tools:build     # Build all tools
 
 # Run tools directly
 node tools/create-dependency-graph/create-dependency-graph.ts  # Generate dependency docs
@@ -35,7 +41,7 @@ node tools/chunking-for-files/chunking-for-files.ts split <file>  # Split large 
 node tools/chunking-for-files/chunking-for-files.ts merge <manifest.json>  # Merge back
 
 # Skip performance benchmarks
-SKIP_BENCHMARKS=true npm test
+SKIP_BENCHMARKS=true bun run test
 ```
 
 ## Architecture
@@ -212,8 +218,8 @@ ctx.eventManager        // R1 event reification: actions as event hub entities (
 - Worker files (`levenshteinWorker.ts`) built separately to `dist/workers/` for dynamic loading
 - CLI built separately to `dist/cli/` with `#!/usr/bin/env node` banner
 - `better-sqlite3` is externalized (native addon, not bundled)
-- `npm run lint` (ESLint 9 flat config in `eslint.config.mjs`) is the primary lint surface; `npm run typecheck` (bare `tsc --noEmit`) catches type-only issues lint doesn't see. Both should exit 0 before commit.
-- Publishable package: `npm run prepublishOnly` runs clean + build + test
+- `bun run lint` (ESLint 9 flat config in `eslint.config.mjs`) is the primary lint surface; `bun run typecheck` (bare `tsc --noEmit`) catches type-only issues lint doesn't see. Both should exit 0 before commit.
+- Publishable package: `bun run prepublishOnly` runs clean + build + test
 
 ## Testing
 
@@ -404,9 +410,9 @@ Located in `tools/` directory:
 - **Path confinement**: When validating derived paths (e.g., appending `.meta.json`), re-validate independently — the derived path may escape the confined directory.
 - **Windows atomic writes**: `fs.rename()` can fail with EPERM in temp directories due to Dropbox/antivirus file locking. `GraphStorage.durableWriteFile` has a fallback that writes directly if rename fails.
 - **Windows + Dropbox + git**: This repo is synced via Dropbox which can corrupt git objects (e.g., `fatal: bad object HEAD`). If git commands fail, try `git fsck` and `git reflog` to recover.
-- **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `npm install` fails on this, check node-gyp prerequisites. **Node version mismatch**: if SQLite tests fail with `NODE_MODULE_VERSION mismatch`, run `npm rebuild better-sqlite3` — Node was upgraded since `npm install` and the prebuilt binary's ABI no longer matches.
-- **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `npm run build` (tsup), workers are built. But `npm run build:tsc` (bare tsc) does NOT build workers - use tsup.
-- **`package-lock.json` is tracked** (committed to git): development uses `npm install` (not `npm ci`), so the lockfile can drift locally — **commit lockfile changes alongside `package.json`** (e.g. dependency bumps / `overrides`), since Dependabot reads the committed lockfile. (Earlier docs wrongly called it gitignored.)
+- **`better-sqlite3` native addon**: Requires a compatible prebuild or build tools (Python, C++ compiler) for the platform. If `bun install` fails on this, check node-gyp prerequisites. **Node version mismatch**: if SQLite tests fail with `NODE_MODULE_VERSION mismatch`, run `npm rebuild better-sqlite3` (or `bun run rebuild:native`) — Node was upgraded since install and the prebuilt binary's ABI no longer matches.
+- **Worker pool path resolution**: Workers are loaded dynamically from `dist/workers/`. If you only run `bun run build` (tsup), workers are built. But `bun run build:tsc` (bare tsc) does NOT build workers - use tsup.
+- **`bun.lock` is authoritative** (committed to git): development and CI use `bun install` / `bun install --frozen-lockfile`. There is no root `package-lock.json`. Dependabot still watches the npm ecosystem (it cannot parse Bun lockfileVersion 2) and only edits `package.json` ranges — regenerate `bun.lock` with `bun install` after Dependabot bumps. Tool packages under `tools/*/` keep their own `package-lock.json` files.
 - **Cache TTL boundary**: `SearchCache` uses `>=` for expiration checks. Using `>` causes TTL=0 entries to persist when accessed within the same millisecond (flaky on Windows due to timer resolution).
-- **Performance benchmark flakiness**: Overhead thresholds in `tests/performance/task-scheduler-benchmarks.test.ts` may need widening on Windows/Dropbox due to timing variance from file locking. The unskipped benchmarks in `tests/performance/embedding-benchmarks.test.ts` and `tests/performance/foundation-benchmarks.test.ts` (un-skipped 2026-04-25 after the "codebase split" event was confirmed complete) carry generous thresholds for the same reason. Benchmarks run via `npm run bench`; gated from default `npm test` by `SKIP_BENCHMARKS=true` env-var support inside individual tests.
+- **Performance benchmark flakiness**: Overhead thresholds in `tests/performance/task-scheduler-benchmarks.test.ts` may need widening on Windows/Dropbox due to timing variance from file locking. The unskipped benchmarks in `tests/performance/embedding-benchmarks.test.ts` and `tests/performance/foundation-benchmarks.test.ts` (un-skipped 2026-04-25 after the "codebase split" event was confirmed complete) carry generous thresholds for the same reason. Benchmarks run via `bun run bench`; gated from default `bun run test` by `SKIP_BENCHMARKS=true` env-var support inside individual tests.
 - **Search API return types**: `autoSearch()` returns `{ results: SearchResult[], selectedMethod, selectionReason }`. `booleanSearch()`/`fuzzySearch()` return `KnowledgeGraph` (not `SearchResult[]`) — callers must wrap with scores.
