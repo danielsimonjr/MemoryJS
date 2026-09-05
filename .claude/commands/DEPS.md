@@ -13,7 +13,7 @@ Generate a dependency graph for the memoryjs project and provide analysis.
 1. Run the dependency graph tool:
 
 ```bash
-npx tsx tools/create-dependency-graph/create-dependency-graph.ts
+bunx tsx tools/create-dependency-graph/create-dependency-graph.ts
 ```
 
 Or use the compiled executable if available:

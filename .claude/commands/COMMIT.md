@@ -34,7 +34,7 @@ Verify:
 ### Step 2: TypeScript Type Check
 
 ```bash
-npm run typecheck
+bun run typecheck
 ```
 
 **STOP if typecheck fails.** Fix type errors before continuing.
@@ -42,7 +42,7 @@ npm run typecheck
 ### Step 3: Run Tests
 
 ```bash
-npm test
+bun run test
 ```
 
 **STOP if tests fail.** Fix failing tests before continuing.

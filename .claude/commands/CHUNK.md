@@ -13,7 +13,7 @@ Run the `chunking-for-files` tool to split large files into editable chunks, the
 1. Run the chunking tool with the specified command:
 
 ```bash
-npx tsx tools/chunking-for-files/chunking-for-files.ts $ARGUMENTS
+bunx tsx tools/chunking-for-files/chunking-for-files.ts $ARGUMENTS
 ```
 
 2. For split operations, chunks are created in a `<filename>_chunks/` directory.

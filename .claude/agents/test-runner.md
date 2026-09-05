@@ -10,15 +10,15 @@ Map changed source files to their corresponding test directories:
 
 | Source Path | Test Command |
 |-------------|-------------|
-| `src/core/*` | `SKIP_BENCHMARKS=true npx vitest run tests/unit/core/` |
-| `src/search/*` | `SKIP_BENCHMARKS=true npx vitest run tests/unit/search/` |
-| `src/agent/*` | `SKIP_BENCHMARKS=true npx vitest run tests/unit/agent/` |
-| `src/features/*` | `SKIP_BENCHMARKS=true npx vitest run tests/unit/features/` |
-| `src/utils/*` | `SKIP_BENCHMARKS=true npx vitest run tests/unit/utils/` |
-| `src/cli/*` | `SKIP_BENCHMARKS=true npx vitest run tests/unit/cli/` |
-| `src/workers/*` | `SKIP_BENCHMARKS=true npx vitest run tests/unit/workers/` |
-| `src/types/*` | `SKIP_BENCHMARKS=true npx vitest run tests/unit/types/` |
-| Multiple modules | `SKIP_BENCHMARKS=true npx vitest run tests/integration/` |
+| `src/core/*` | `SKIP_BENCHMARKS=true bunx vitest run tests/unit/core/` |
+| `src/search/*` | `SKIP_BENCHMARKS=true bunx vitest run tests/unit/search/` |
+| `src/agent/*` | `SKIP_BENCHMARKS=true bunx vitest run tests/unit/agent/` |
+| `src/features/*` | `SKIP_BENCHMARKS=true bunx vitest run tests/unit/features/` |
+| `src/utils/*` | `SKIP_BENCHMARKS=true bunx vitest run tests/unit/utils/` |
+| `src/cli/*` | `SKIP_BENCHMARKS=true bunx vitest run tests/unit/cli/` |
+| `src/workers/*` | `SKIP_BENCHMARKS=true bunx vitest run tests/unit/workers/` |
+| `src/types/*` | `SKIP_BENCHMARKS=true bunx vitest run tests/unit/types/` |
+| Multiple modules | `SKIP_BENCHMARKS=true bunx vitest run tests/integration/` |
 
 ## Workflow
 
@@ -29,6 +29,6 @@ Map changed source files to their corresponding test directories:
 
 ## Rules
 
-- Never run `npm test` (runs everything including benchmarks)
+- Never run the full suite without SKIP_BENCHMARKS (it includes benchmarks)
 - Always prefix with `SKIP_BENCHMARKS=true`
 - If tests fail, report the failure details clearly - do not attempt to fix code

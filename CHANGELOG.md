@@ -18,6 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Docs and scripts finish the Bun toolchain migration.** CI already installed and
+  ran via Bun (`bun.lock` authoritative; Node remains the shipped runtime). Root
+  `package.json` now declares `packageManager: bun@1.4.0`, `prepublishOnly` uses
+  `bun run`, and contributor docs / Claude agent commands no longer tell people to
+  `npm install` a lockfile that does not exist.
+
+
 ### Fixed
 
 - **`master` was red on all six CI legs: the Node runtime smoke ran BEFORE the build.** The step
