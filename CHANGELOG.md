@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Bun pinned to 1.4.2** in `packageManager`, `engines.bun` and the CI workflow, and
+  `tsconfig.json` now declares `"types": ["node"]` explicitly.
+
+- **TypeScript stays at `^5.7.2`: TypeScript 7 is BLOCKED here by `tsup`.** TS 7.0
+  shipped without the stable programmatic Compiler API (due in 7.1), so
+  `rollup-plugin-dts` -- which tsup uses to emit declarations -- crashes with
+  `TypeError: Cannot read properties of undefined (reading 'useCaseSensitiveFileNames')`.
+  Upstream: tsup issues #1405 and #1408. Measured here from CLEAN installs, because a
+  polluted `node_modules` made the same build fail on TS 5 too and briefly looked like
+  a pre-existing breakage: clean install + TS 5.7.2 builds, clean install + TS 7.0.2
+  fails. Revisit when TS 7.1 lands.
+
 ### Noted
 
 - **AsyncMutex measured: linear, not degrading — but its two defaults contradict each other.**
