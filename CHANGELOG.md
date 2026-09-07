@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Noted
+
+- **Flaky windows/node-24 timeout filed, deliberately not "fixed".** The nightly run
+  34094099357 failed `ci (windows-latest, 24)` on two concurrency tests in
+  `known-issue-fixes.test.ts` — an `AsyncMutex acquire timeout (30000ms)` and a 30 s test
+  timeout — while the other five legs passed. The same commit `2a6fe6ea` had gone green twice
+  before on identical code, and the file passes 3/3 locally on Windows with node v24.19.0, so
+  it only fails inside the full 321-file suite. That points at contention, not logic. Filed in
+  `todo.md` with the reasoning that widening the 30 s budget would bury the real question —
+  whether 100 serialized acquisitions should approach 30 s at all, or whether the mutex
+  degrades non-linearly under load. Needs a measurement of acquisition time vs. queue depth.
+
 ## 2026-09-03 - CI now exercises the NODE runtime, not just Bun
 
 - Every CI step ran through `bun run` while `setup-node` was installed and never invoked, so

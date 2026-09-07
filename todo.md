@@ -6,6 +6,27 @@ release where applicable.
 
 ## In progress
 
+- [ ] **Flaky: `known-issue-fixes.test.ts` times out on windows/node-24 under full-suite load.**
+      Found by the 2026-09-07 02:18 patrol. Nightly run 34094099357, leg
+      `ci (windows-latest, 24)`; the other five legs passed. Two failures, both timeouts:
+      `100 concurrent addObservations on the same entity all land` — **`AsyncMutex acquire
+      timeout (30000ms)`** at `src/utils/AsyncMutex.ts:56` — and `shadow column store sees
+      every concurrent observation` — test timed out at 30000ms.
+
+      **Not a regression, and not dismissible as noise.** The SAME commit `2a6fe6ea` ran three
+      times: green 09-05 (push), green 09-06 (schedule), red 09-07 (schedule). Identical code.
+      Reproduced against: nothing — I ran that file 3/3 green locally on Windows with the
+      identical commit and node v24.19.0, so it does not fail in isolation. CI runs it inside
+      the full 321-file suite, so the variance source is **contention**: 100 serialized
+      mutex acquisitions, each doing file I/O, against a 30 s budget on a shared runner.
+
+      **Do not widen the 30 s timeout to close this.** That is the fix that hides the question
+      worth answering: whether 100 serialized acquisitions SHOULD take anywhere near 30 s, or
+      whether the mutex is degrading non-linearly under load. A budget tuned to a quiet runner
+      is the same defect class as a gate that measures the machine instead of the code. Decide
+      that with a measurement of acquisition time vs. queue depth first.
+
+
 - [x] ✅ **Release v3.4.0** (2026-08-29) — tagged, GitHub release, `npm publish` verified via `npm view dist-tags` = 3.4.0.
       Original item:
 - [x] **Release v3.4.0** — cut the accumulated `[Unreleased]` work (adapter.write/onWrite seam,
