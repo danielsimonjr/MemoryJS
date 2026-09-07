@@ -121,7 +121,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/emit-dts.mjs && node scripts/check-exports.mjs",
     "build:watch": "tsup --watch",
     "build:tsc": "tsc",
     "typecheck": "tsc --noEmit",

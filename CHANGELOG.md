@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Declaration files are now emitted by `tsc`, not by tsup.** `tsup.config.ts` sets
+  `dts: false`; `scripts/emit-dts.mjs` runs `tsc --emitDeclarationOnly` and produces
+  the `.d.cts` half; `scripts/check-exports.mjs` verifies every file named by the
+  `exports` map exists. Same published layout, no behaviour change -- verified by a
+  real consumer typechecking against the built package under BOTH `import` and
+  `require` resolution.
+
+  **Why: this removes the repo's TypeScript 7 build blocker.** tsup generates
+  declarations through `rollup-plugin-dts`, which needs TypeScript's programmatic
+  Compiler API -- TS 7.0 does not ship it (expected in 7.1), so `dts: true` crashes
+  with `useCaseSensitiveFileNames`. tsup's BUNDLING is esbuild and unaffected. The
+  new pipeline is TypeScript-version-agnostic and was verified on both 5.7.2 and
+  7.0.2.
+
+  **Three defects were found while building it, each by a check rather than by luck:**
+  - A plain `.d.ts` -> `.d.cts` copy is WRONG. The declarations reference siblings as
+    `from './core/index.js'`; inside a `.d.cts` TypeScript reads that as requiring an
+    ES module and rejects it with TS1479. The copies existed, passed a file-existence
+    check, and gave a CommonJS consumer zero types. Relative specifiers are rewritten
+    `.js` -> `.cjs`.
+  - The first rewrite missed bare side-effect imports (`import './x.js';` -- no
+    `from`, no parentheses), leaving exactly one file broken.
+  - The self-check originally reused the rewrite's own regex, so it was blind to
+    precisely what the rewriter could not see. It is now syntax-agnostic: any
+    relative `.js` specifier surviving into a `.d.cts` fails the build.
+
+  TypeScript stays at `^5.7.2` for now: the remaining TS 7 blocker here is `lint`.
+  `typescript-eslint` cannot run on TS 7, and this repo's ESLint config carries two
+  things oxlint 1.82 cannot yet take -- `no-restricted-syntax` (unimplemented) and
+  the project-local `memoryjs/no-unused-updateentity-return` (JS plugin paths are
+  rejected by its config parser). Those guards are load-bearing, so they are not
+  being dropped to make a version number move.
+
+### Changed
+
 - **Bun pinned to 1.4.2** in `packageManager`, `engines.bun` and the CI workflow, and
   `tsconfig.json` now declares `"types": ["node"]` explicitly.
 
