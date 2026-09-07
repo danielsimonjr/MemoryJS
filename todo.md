@@ -20,6 +20,35 @@ release where applicable.
       the full 321-file suite, so the variance source is **contention**: 100 serialized
       mutex acquisitions, each doing file I/O, against a 30 s budget on a shared runner.
 
+      **MEASURED 2026-09-07 — the question this item was blocked on is answered.**
+      Acquire-wait vs queue depth, on the real `addObservations` workload, this machine:
+
+      | depth | total | worst acquire | per-op |
+      |---|---|---|---|
+      | 10 | 55 ms | 55 ms | 5.5 ms |
+      | 50 | 262 ms | 262 ms | 5.2 ms |
+      | 100 | **506 ms** | 505 ms | 5.1 ms |
+      | 200 | 841 ms | 840 ms | 4.2 ms |
+
+      **The mutex does NOT degrade non-linearly — per-op is flat at ~5 ms and total is linear
+      in depth**, which is correct for a serializing lock. So the suspicion in the original
+      entry is disproved: 100 acquisitions should cost ~0.5 s, and CI hit 30 s, meaning that
+      runner was roughly **59x slower** than this box. That is contention, not a lock defect.
+
+      **But the measurement exposes a real design contradiction, which is the thing worth
+      fixing.** The timeout starts at ENQUEUE, not on reaching the head of the queue — so the
+      tail waiter's 30 s must cover the ENTIRE drain (confirmed: worst-acquire == total at
+      every depth). The effective per-operation budget is therefore `30 s / N`, and the class's
+      own defaults collide: with `maxQueueLength = 1000`, a full queue allows just **30 ms per
+      operation**. At the measured 5 ms that survives; under CI's ~59x slowdown it does not,
+      and 100 items is almost exactly where it breaks — which is why this test, at depth 100,
+      is the one that fails.
+
+      **Recommended fix (a semantics change, so it is Daniel's call, not a drive-by):** start
+      the deadline when the waiter reaches the HEAD of the queue, so the timeout bounds "how
+      long one critical section may take" rather than "how long every predecessor takes". A
+      queue-position-scaled deadline is the weaker alternative.
+
       **Do not widen the 30 s timeout to close this.** That is the fix that hides the question
       worth answering: whether 100 serialized acquisitions SHOULD take anywhere near 30 s, or
       whether the mutex is degrading non-linearly under load. A budget tuned to a quiet runner

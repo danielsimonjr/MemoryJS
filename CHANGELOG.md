@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Noted
 
+- **AsyncMutex measured: linear, not degrading — but its two defaults contradict each other.**
+  The windows/node-24 flake filed earlier was blocked on "does the mutex degrade non-linearly
+  under load?". Measured on the real `addObservations` workload: per-op is **flat at ~5 ms**
+  and total is **linear** in queue depth (10 -> 55 ms, 100 -> 506 ms, 200 -> 841 ms). So no
+  degradation, and the CI run that hit the 30 s ceiling at depth 100 was on a runner roughly
+  **59x slower** than this machine — contention, not a lock defect.
+
+  The measurement did surface a genuine design contradiction. The timeout starts at ENQUEUE
+  rather than on reaching the head of the queue, so the tail waiter's 30 s has to cover the
+  whole drain — confirmed, `worst-acquire == total` at every depth. The effective budget is
+  `30 s / N`, and with the class's own `maxQueueLength = 1000` a full queue permits just
+  **30 ms per operation**. At 5 ms that holds; under CI's slowdown it does not, and depth 100
+  is almost exactly the breaking point — which is why the depth-100 test is the one that fails.
+
+  Recommended: start the deadline when a waiter reaches the HEAD of the queue, so the timeout
+  bounds one critical section rather than every predecessor. That is a semantics change, so it
+  is filed for the owner rather than applied.
+
 - **Flaky windows/node-24 timeout filed, deliberately not "fixed".** The nightly run
   34094099357 failed `ci (windows-latest, 24)` on two concurrency tests in
   `known-issue-fixes.test.ts` — an `AsyncMutex acquire timeout (30000ms)` and a 30 s test
