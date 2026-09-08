@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **TypeScript raised to `^7.0.2`.** The build blocker was removed in the previous
+  entry; this removes the lint blocker. ESLint cannot run on TS 7, and two of this
+  repo's rules could not move to oxlint -- so they were REIMPLEMENTED rather than
+  dropped, because both guard documented failure classes.
+
+  - `scripts/lint-rules.mjs` implements the `src/types` leaf-layer rule (S10) and
+    `no-unused-updateentity-return` against a real AST. The leaf-layer rule covers
+    BOTH halves of the old config: static imports AND inline `import('...')` type
+    annotations -- the second being the escape hatch behind 37+ type-only cycles,
+    invisible to any import-only check because it sits in a type position.
+  - `oxlint --type-aware` carries the other three rules at their original severities,
+    including `no-floating-promises` (type-aware, via tsgolint) and `no-console` with
+    the CLI/logger exemptions intact.
+
+  **The rule tests came with them.** `tests/unit/eslint/` used ESLint's `RuleTester`
+  and would have died with the plugin, taking its 15 cases with it. They now live in
+  `tests/unit/lint-rules/` driving the new functions directly -- every original valid
+  and invalid case preserved, plus coverage for the inline-`import()` form.
+
+  **On the standing rule to prefer what TypeScript or Bun already provide:** neither
+  can do this, and it was measured rather than assumed.
+  `Bun.Transpiler.scanImports` sees a runtime import but returns `[]` for both
+  `import type` and `import('...')` type positions -- exactly the constructs rule 1
+  exists to catch -- and Bun exposes no AST, so rule 2's question ("is this call's
+  return value used?") is unanswerable there. TypeScript 7 does not ship its
+  programmatic Compiler API. `oxc-parser` is the same engine oxlint already runs here.
+
+### Changed
+
 - **Declaration files are now emitted by `tsc`, not by tsup.** `tsup.config.ts` sets
   `dts: false`; `scripts/emit-dts.mjs` runs `tsc --emitDeclarationOnly` and produces
   the `.d.cts` half; `scripts/check-exports.mjs` verifies every file named by the
