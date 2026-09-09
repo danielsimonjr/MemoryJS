@@ -1,99 +1,196 @@
 # Procedural Graph Feature Plan
 
-> **Status:** Proposed feature; planning only. No runtime implementation is included.
-> **Date:** 2026-09-09
-> **Repository baseline:** `danielsimonjr/MemoryJS`, `master` at `549ce11018e5ab2188173ae225c877705d50e453` (`@danielsimonjr/memoryjs` 4.0.0).
-> **Source:** Yuxing Lu, Yicheng Chen, Shanchan Wu, and Sercan Ö. Arık, *Procedural Graphs: Self-Evolving Execution Structures for LLM Agents*, supplied 36-page PDF, arXiv:2609.09153v1, 8 September 2026.
+> **Status:** Audited implementation plan; no runtime implementation is included.
+> **Audit date:** 2026-09-09
+> **Audited repository baseline:** `danielsimonjr/MemoryJS`, `master` at `d07b205662fce96ba699571562ea78ce87f8e923` (`@danielsimonjr/memoryjs` 4.0.0).
+> **Code baseline note:** `d07b205...` is the documentation merge that contains this plan; its parent `549ce11018e5ab2188173ae225c877705d50e453` is the unchanged source-code baseline used for the original code inspection.
+> **Source:** Yuxing Lu, Yicheng Chen, Shanchan Wu, and Sercan O. Arik, *Procedural Graphs: Self-Evolving Execution Structures for LLM Agents*, supplied 36-page PDF, arXiv:2609.09153v1, 8 September 2026.
 
-## 1. Feature objective and boundaries
+## 1. Feature objective and design boundary
 
-Add an explicit, editable **Procedural Graph (PG)** that answers what an agent should do next. Preserve the paper's two distinct phases:
+Add an explicit, editable **Procedural Graph (PG)** that answers what an agent should do next while preserving the paper's separation between:
 
-1. **Online inference:** localize the current procedure, retrieve its connected outgoing neighborhood, and generate situational guidance. Freeze the graph throughout an episode; the caller's solver still chooses and executes actions.
-2. **Offline self-evolution:** contrast scored training trajectories, propose graph edits, structurally validate a candidate, and retain it only when its measured held-out validation score does not decrease. Keep rejected proposals as negative evidence. [P1-P3]
+1. **Online inference:** localize the current procedure, retrieve a connected outgoing neighborhood, and generate situational guidance from that graph context plus the recent trajectory. The graph is frozen for the episode and guidance biases rather than dictates the solver's action.
+2. **Offline self-evolution:** run training trajectories against the retained graph, propose graph edits, structurally validate a detached candidate, evaluate valid candidates on a held-out validation split, and retain only candidates whose measured validation mean does not decrease. Rejected candidates become negative evidence for later refinement.
 
-This is an additive extension of MemoryJS's existing procedural memory, not a replacement. Today, `ProcedureManager` stores ordered procedures, `StepSequencer` advances through steps and fallbacks, and `refineProcedure()` updates an exponentially weighted success rate. Those mechanisms do not implement the paper's connected-neighborhood guidance or validation-gated topology evolution. `invoke()` deliberately resolves and prepares a procedure rather than executing it. Preserve that action-agnostic boundary. [C1-C3]
+This is an additive extension of MemoryJS's existing procedural memory. `ProcedureManager`, `ProcedureStore`, and `StepSequencer` remain supported and unchanged in semantics. A PG is not a new autonomous agent runtime, permission system, or replacement for the factual knowledge graph. MemoryJS remains action-agnostic: the host solver owns action selection and execution, and the host authorization layer remains authoritative.
 
-**Product value:** inspectable next-step advice, explicit transition conditions and pitfalls, reproducible graph revisions, and an auditable learning loop that does not update model weights.
+The plan distinguishes three categories throughout:
 
-**Not in scope:** a new autonomous agent runtime, hard state-machine enforcement, executing graph text as code, model fine-tuning, replacing factual knowledge-graph search, automatic mutation during a live episode, or silently converting existing procedures. A PG is not a permission system. The host must continue enforcing tool permissions, user authorization, and application constraints.
+- **Paper requirement (`[P#]`)** - behavior directly supported by the supplied paper.
+- **Repository fact (`[C#]`)** - behavior verified against the audited MemoryJS source tree.
+- **MemoryJS design** - a production hardening or integration choice introduced by this plan, not attributed to the paper.
 
-Throughout this plan, **paper behavior** is referenced as `[P#]`, **inspected repository behavior** as `[C#]`, and new implementation choices are explicitly described as **MemoryJS design**. Proposed APIs and files below do not exist yet.
+## 2. Paper fidelity requirements
 
-## 2. Paper-to-feature requirements
+The implementation must satisfy the following requirements before it can be called a paper-faithful PG implementation.
 
-| ID | Paper behavior to preserve | Implementation consequence and acceptance test |
+| ID | Requirement | Acceptance consequence |
 |---|---|---|
-| PG-01 | Directed attributed graph `G = (V, R, E, Phi)`; procedural triplets, not factual entity triplets. [P1] | Store distinct procedure nodes and directed transitions. Test multiple relation labels between the same endpoints without collapsing them. |
-| PG-02 | Edge attributes are `condition`, `guidance`, and `pitfalls`; an unconditional condition may be `null`. [P1, P3] | Typed, validated attributes. Newly added edges require guidance. Preserve nulls, Unicode, multiline text, and empty pitfalls through persistence. |
-| PG-03 | Start initialization; exact matching of the latest procedure; outgoing neighborhood with `h = 2`; full-graph fallback when matching fails. [P2] | No similarity search masquerading as localization. Test first step, known action, unknown action, directionality, and hop boundaries. |
-| PG-04 | Guidance uses the query and recent trajectory window, with `w = 3` in the experiments; solver integration is soft. [P2] | Return guidance to the caller. Never execute, block, or advance an action merely because an edge exists. |
-| PG-05 | Graph is frozen within every training, validation, and test episode. [P2, P3] | Sessions pin immutable revision snapshots. A concurrent accepted revision affects only newly opened sessions. |
-| PG-06 | Refiner returns `add_nodes`, `delete_nodes`, `add_edges`, and `delete_edges`. Attribute revisions delete and re-add an edge. [P3] | Parse a strict edit document; apply deletions before additions to a copy. Reject unsupported operations instead of guessing. |
-| PG-07 | `delete_edges: [{source, target}]` removes every relation between those endpoints. [P3] | Implement endpoint-pair deletion literally. Preserve selected parallel relations only when explicitly re-added. |
-| PG-08 | Structural checks precede evaluation. Every node must reach a zero-outdegree terminal, not necessarily the node named `End`. Cycles follow the configured policy. [P3] | Validate only PG transition edges. Test valid cyclic graphs with exits, closed cycles, dangling references, and terminals with names other than `End`. |
-| PG-09 | Initial validation score is cached. Accept candidate mean score `>=` retained mean, including ties. [P3] | Test lower, equal, and higher scores. Invalid candidates perform no validation rollout and leave both retained graph and score unchanged. |
-| PG-10 | The next round starts from the last retained graph. Rejections include diagnostic evidence. [P3] | Never seed the next round from a rejected candidate. Persist the reason and reproducible revision/edit references. |
-| PG-11 | Refiner context retains the final `Lmax` tokens of concatenated training trajectories, in original order. [P3] | Tail truncation, not prefix truncation. Supply an explicit tokenizer adapter for token-exact reproduction. |
-| PG-12 | Train, validation, and test are separate; return the last retained checkpoint rather than selecting by test performance. [P3-P5] | Validate split identities and record the experiment manifest. Test outcomes cannot enter the refiner or promotion decision. |
+| PG-01 | Represent procedural knowledge as a directed attributed graph `G = (V, R, E, Phi)`, where an edge is `(source, relation, target)`. Nodes may abstract tool functions, skills, reasoning steps, or task status. [P1] | Preserve node identity, direction, relation type, and edge attributes. Parallel edges with different relation labels must not collapse. |
+| PG-02 | The paper's implemented edge attribute schema is `condition`, `guidance`, and `pitfalls`. `condition` may be `null`; newly proposed edges must supply guidance and pitfalls. [P1, P3] | Strict edit validation. Preserve nulls, Unicode, multiline text, and all three fields through persistence/export. Do not silently invent missing fields. |
+| PG-03 | First-step localization uses `Start`; later localization exactly matches the most recent procedure/action. The default paper configuration extracts the outgoing `h = 2` neighborhood and falls back to the complete selected PG when matching fails. [P2] | Exact match only in paper-compatible mode. No similarity search may masquerade as localization. A matched terminal is not a localization miss. |
+| PG-04 | Guidance combines graph context, query/task context, and the recent trajectory; the paper experiments use `w = 3`. Guidance is appended to solver context and remains soft rather than execution-enforcing. [P2] | Return advisory output; never execute, advance, block, or authorize an action solely because the graph recommends it. |
+| PG-05 | The graph remains fixed within each training, validation, or test episode. [P2, P3] | Sessions pin an immutable revision. A newly accepted revision affects only subsequently opened sessions. |
+| PG-06 | Refinement uses four arrays: `add_nodes`, `delete_nodes`, `add_edges`, and `delete_edges`. Attribute changes are expressed by deleting and re-adding an edge. [P3] | Parse exact edit operations and apply them to a detached copy. Unsupported operations are rejected. |
+| PG-07 | A `delete_edges` item contains only `source` and `target` and removes all edges between those endpoints regardless of relation; selected transitions can be re-added afterward. Candidate preparation applies deletions before additions. [P3] | Endpoint-pair deletion tests must cover multiple relation types. Re-add order must be deterministic. |
+| PG-08 | Structural checks occur before validation rollout. Every edge endpoint must exist and every node must have a directed path to a zero-outdegree terminal; the terminal need not be named `End`. [P3] | Invalid candidates never call the validation evaluator. Reachability is computed over PG transition edges only. |
+| PG-09 | The paper's cycle policy is effectively **allow cycles** or **disallow cycles with cycle-closing-edge repair**. When cycles are allowed, repair and the acyclicity check are skipped. [P3] | Paper-compatible modes reproduce these two behaviors. A separate MemoryJS `reject` policy may exist but must be labeled as an extension. |
+| PG-10 | In the refiner prompt, every `ACTION` node must match an available action/tool name. In static refinement modes, existing node IDs must be preserved. [P3] | MemoryJS additionally enforces tool-catalog membership structurally before execution; static-mode renames are rejected. |
+| PG-11 | Refiner guidance should remain general and avoid overfitting/leaking trajectory-specific details. [P3] | Include the paper's generality/leak-prevention instruction in the refiner prompt and add regression fixtures for copied task-specific literals. |
+| PG-12 | The initial validation score is cached. A valid candidate is accepted when `candidateMean >= retainedMean`, including equality. [P3] | Test lower, equal, and higher scores. Paper-compatible mode cannot silently add epsilon, strict-improvement, or secondary tie-break rules. |
+| PG-13 | Each round starts from the last retained graph, never from a rejected candidate. Rejection history includes unsuccessful proposals and diagnostic evidence. [P3] | Persist retained/rejected identity separately. Restart after rejection must resume from the retained checkpoint and matching cached score. |
+| PG-14 | Refiner trajectory context retains the final `Lmax` tokens of concatenated training trajectories, dropping excess tokens from the beginning while preserving final-token order. [P3] | Use a supplied tokenizer for token-exact reproduction. Parallel rollout results must be concatenated in deterministic batch/task order, not completion order. |
+| PG-15 | Training, validation, and test data remain separate. Promotion depends on validation, and the final test must evaluate the last retained checkpoint rather than selecting the best observed test round. [P3, P5] | Test labels/outcomes cannot enter refinement or promotion. Record split fingerprints in the experiment manifest. |
+| PG-16 | Construction strategies differ materially: Modes 1/2/4 are fixed or one-time alternatives; Modes 3/5 perform incremental between-batch evolution with validation gating. Modes 2/4 directly commit their one-time update without a validation safeguard in the paper. [P4] | Do not mislabel one-time ungated modes as safe gated evolution. Production auto-promotion stays gated unless a research-only paper-reproduction mode is explicitly requested. |
 
-The paper's reported relation vocabulary is `LEADS_TO`, `TRIGGERS`, `PROVIDES_INPUT_FOR`, and `CONVERGES_TO`. Use this as the initial vocabulary; allow an explicitly declared extension vocabulary rather than accepting arbitrary model-invented relation types. [P3]
+The paper reports the initial relation vocabulary `LEADS_TO`, `TRIGGERS`, `PROVIDES_INPUT_FOR`, and `CONVERGES_TO`. Use those as the built-in vocabulary for paper-compatible graphs. An explicitly declared extension vocabulary is allowed, but model-invented relation labels are rejected unless present in that graph's declared vocabulary. [P3]
 
-## 3. Existing code and integration strategy
+The paper's `h = 2` and `w = 3` are experiment settings, not universal mathematical constraints. MemoryJS may expose bounded configuration, but `paperCompatible: true` fixes those defaults unless the caller deliberately overrides them and records the deviation.
 
-| Existing surface | Observed behavior | Planned integration |
-|---|---|---|
-| `src/types/procedure.ts` | Ordered `ProcedureStep` records with action names, string parameters, optional recursive fallback and timeout. [C1] | Leave unchanged. Add separate PG contracts in `src/types/proceduralGraph.ts`. |
-| `src/agent/procedural/ProcedureManager.ts` | Procedure storage, trigger/name matching, independent sequencers, feedback statistics, resolve-and-prepare invocation. [C2] | Keep all existing methods compatible. Offer an explicit one-way procedure-to-PG adapter. |
-| `src/agent/procedural/ProcedureStore.ts` | Native `procedure`/`procedure-step` entities; `has_step`, `precedes`, `has_fallback` relations; scalar observations; legacy-load migration. [C3] | Reuse the graph-first representation principle, not its multi-write replacement path for checkpoint publication. |
-| `src/agent/procedural/StepSequencer.ts` | In-memory cursor; fallback replaces the current step, then execution resumes at the next main step. [C3] | Preserve behavior. Import these semantics explicitly; do not infer arbitrary workflow branches. |
-| `src/types/types.ts` and `src/core/RelationManager.ts` | Relations already support metadata and are identified by `(from, to, relationType)`; relation creation validates endpoints and acquires `graphMutex`. [C4] | Put PG attributes in namespaced relation metadata and scope stored endpoints by graph/revision. No global `Relation` schema expansion is required. |
-| `src/search/LLMQueryPlanner.ts` | Existing `LLMProvider.complete(prompt): Promise<string>` abstraction. [C5] | Accept structurally compatible providers; do not assume model options, token usage, or cancellation are available. |
-| `src/core/ManagerContext.ts` | Lazy procedural manager composition. [C6] | Add an explicit `ctx.proceduralGraph(config)` factory; retain `ctx.procedureManager` unchanged. |
-| `src/core/StorageFactory.ts` | JSONL, SQLite, and PostgreSQL construction; environment can override configured storage type. [C7] | First release: explicit JSONL/SQLite PG backing with validated effective backend. PostgreSQL publication needs its own conformance work. |
-| `src/core/TransactionManager.ts` | Staged operations with backup-based rollback and a whole-graph save. [C7] | Do not assume it supplies compare-and-swap or isolation across manager calls. Implement and test a PG publication boundary. |
-| Existing barrels and package exports | Procedural module exported through agent; root/agent/types package surfaces have dual ESM/CJS declarations. [C8] | Extend existing barrels and verify built exports. Do not introduce a new package subpath in the first release. |
+## 3. Audit findings and corrections
 
-### Proposed module layout
+A second-pass audit found concrete implementation issues that the first plan did not fully account for. This revision corrects them before implementation begins.
 
-```text
-src/types/proceduralGraph.ts                    # Leaf contracts and result unions
-src/agent/procedural/graph/
-  ProceduralGraph.ts                            # Snapshot, indexes, localization, traversal
-  ProceduralGraphValidator.ts                   # Schema, topology, catalog checks
-  ProceduralGraphStore.ts                       # Native graph encoding and publication facade
-  backing/                                     # JSONL/SQLite atomic backing adapters
-  ProceduralGraphSession.ts                     # Pinned revision and ordered action/observation log
-  ProceduralGuidance.ts                         # Serialization and optional generation
-  ProceduralGraphRefiner.ts                     # Prompt, edit parsing, candidate preparation
-  ProceduralGraphEvolution.ts                   # Rollout, gate, rejection history, resume
-  ProceduralGraphManager.ts                     # Public orchestration facade
-  ProcedureGraphAdapter.ts                      # Explicit legacy procedure import
-  prompts.ts
-  index.ts
-```
+### A1 - Relation metadata is supported by the TypeScript type but rejected by current relation creation schemas
 
-Keep pure graph operations independent of storage and providers. Put completion, tokenizer, rollout, evaluation, and backing contracts in the leaf type module so `src/types/` never imports `agent`, `core`, or `search`, including type-only imports. Use `.js` import specifiers and the current lint/build tooling. Prefer existing utilities and native collections over adding a graph framework dependency. [C8]
+`Relation` supports arbitrary `metadata`, and SQLite persistence already serializes/deserializes it. However, `RelationManager.createRelations()` validates through `BatchCreateRelationsSchema`, whose strict `CreateRelationSchema` currently does **not** admit `metadata`; the strict `RelationSchema` also omits the newer relation metadata fields. Therefore the earlier statement that PG attributes could be written under `metadata.proceduralGraph` with "no schema expansion required" was incorrect. [C4]
 
-## 4. Representation and storage
-
-### 4.1 Proposed contracts
-
-The node-kind names beyond `ACTION`, revision identifiers, catalog hashes, and lifecycle fields are **MemoryJS design**, not a claim that the paper specifies these API names.
+**Correction:** Phase 2 must update and test the relevant runtime schemas before PG relations are written through `RelationManager`. The preferred stored shape is:
 
 ```typescript
-export type PGRelation =
-  | 'LEADS_TO' | 'TRIGGERS'
-  | 'PROVIDES_INPUT_FOR' | 'CONVERGES_TO';
+metadata: {
+  proceduralGraph: {
+    schemaVersion: 1,
+    condition: string | null,
+    guidance: string,
+    pitfalls: string,
+  },
+}
+```
+
+At minimum, `CreateRelationSchema`, the full `RelationSchema`, and any import/export relation schemas used by PG round-tripping must admit and preserve the namespaced metadata without weakening unrelated validation. Do not bypass `RelationManager` merely to evade schema validation, because doing so would also bypass endpoint checks and manager-level governance hooks.
+
+### A2 - `ManagerContextOptions.storageType` is not currently honored by the constructor
+
+The audited `ManagerContext` declares `storageType?: 'jsonl' | 'sqlite'`, but its constructor calls `createStorageFromPath()` and does not use `opts.storageType`. `StorageFactory` itself allows `MEMORY_STORAGE_TYPE` to override even an explicitly supplied backend type. [C6, C7]
+
+**Correction:** a separate PG backing must not inherit that ambiguity. Introduce an explicit PG backing constructor that either:
+
+- directly constructs the requested supported backend, or
+- uses a new storage-factory path where an explicit PG backend cannot be silently overridden by `MEMORY_STORAGE_TYPE`.
+
+Fail fast if the effective backend differs from the requested one. Do not copy the current ignored-`storageType` pattern into PG configuration.
+
+### A3 - JSONL segment mode invalidates a naive single-file publication assumption
+
+`GraphStorage` can switch into segmented storage via environment configuration. Its write path then uses segment routing and manifest-based publication rather than the ordinary single-file path. [C7]
+
+**Correction:** first-release PG JSONL publication is supported only in non-segmented mode unless a dedicated segmented PG compare-and-swap publication primitive is implemented and passes the same crash/restart tests. Detect segment mode at PG backing creation and fail with a clear unsupported-mode error rather than claiming single-file atomicity.
+
+### A4 - SQLite has two runtime drivers
+
+`SQLiteStorage` prefers `better-sqlite3` but can fall back to Node's built-in `node:sqlite`; `MEMORY_SQLITE_DRIVER=node` explicitly exercises the fallback. Batch entity and relation writes are transactional individually, and full `saveGraph()` is transactional, but separate manager calls are not one cross-call transaction. [C7]
+
+**Correction:** the PG SQLite publication contract must be tested against both drivers when the platform supports them. A retained revision, validation report, and head update must commit in one storage transaction; do not compose separate `EntityManager`/`RelationManager` calls and assume `graphMutex` turns them into an ACID transaction.
+
+### A5 - Raw concatenated identifiers can exceed core entity-name constraints
+
+Core entity validation caps entity names at 500 characters. Encoding unrestricted `graphId + revisionId + nodeId` directly into a storage entity name can violate that limit or create ambiguous escaping rules. [C4]
+
+**Correction:** use bounded deterministic storage keys, for example `pg:<kind>:<sha256(canonicalTuple)>`, and store the original graph/revision/node identifiers as validated scalar fields in the entity observations. Hash the unambiguous canonical tuple rather than a delimiter-joined raw string.
+
+### A6 - A separate backing requires explicit lifecycle ownership
+
+`ManagerContext.close()` owns and closes its primary storage. A separate PG backing will not be closed automatically unless it is registered with the context. [C6]
+
+**Correction:** prefer an explicit `ctx.createProceduralGraph(config)` factory over an ambiguous cached getter. Context-created PG managers/backings are registered for disposal and closed by `ManagerContext.close()`. Caller-supplied backing objects remain caller-owned. `ProceduralGraphManager` also exposes `dispose()`/`close()` for standalone use.
+
+### A7 - Separate backing means ordinary context governance is not automatically inherited
+
+MemoryJS's normal manager wiring injects governance hooks into context-owned mutation managers. A second storage instance is outside that wiring by default. [C6]
+
+**Correction:** PG writes use an explicit `ProceduralGraphPolicy`/audit hook contract. A context-created PG manager may adapt the context's governance/RBAC policy, but the implementation must not claim that merely using MemoryJS storage automatically authorizes or audits PG mutations.
+
+### A8 - Validation-result reuse must not silently change paper-compatible behavior
+
+The first plan allowed identical no-op candidates to reuse an evaluation result. That is a reasonable optimization but is not part of the paper algorithm.
+
+**Correction:** paper-compatible mode evaluates structurally valid candidates unless an explicit, manifest-recorded evaluation-cache optimization is enabled. Cache hits are visible in the round record and may only reuse a result when the complete evaluation fingerprint and graph digest match exactly.
+
+### A9 - The repo's `src/types` layer has a hard import boundary
+
+The custom lint rule rejects static and type-only imports from `src/types` into implementation directories such as `agent`, `core`, `search`, and `utils`. [C8]
+
+**Correction:** PG leaf contracts may live in `src/types/proceduralGraph.ts`, but implementation-specific Zod schemas, hashing, serialization, storage adapters, and provider wrappers belong outside `src/types`. Leaf types may import only allowed external/type-layer dependencies.
+
+## 4. Existing MemoryJS integration points
+
+| Existing surface | Audited behavior | PG integration |
+|---|---|---|
+| `src/types/procedure.ts` | Ordered `ProcedureStep` values: `order`, action string, string parameters, recursive fallback, optional timeout. [C1] | Leave unchanged; add separate PG contracts. |
+| `src/agent/procedural/ProcedureManager.ts` | Persists procedures, matches triggers/name, exposes fresh sequencers, updates EWMA feedback, and `invoke()` resolves/prepares rather than executing. [C2] | Preserve APIs and action-agnostic boundary. Add explicit one-way adapter only. |
+| `src/agent/procedural/ProcedureStore.ts` | Stores procedure/step entities plus `has_step`, `precedes`, `has_fallback` relations and migrates legacy JSON blobs. [C3] | Reuse decomposed-graph precedent but not its multi-call replacement sequence for retained checkpoint publication. |
+| `src/agent/procedural/StepSequencer.ts` | In-memory linear cursor with recursive fallback behavior and resume to next main step. [C3] | Adapter must preserve these semantics or return a conversion warning. |
+| `src/types/types.ts` | `Relation` already has weight/confidence/properties/metadata. [C4] | No TypeScript `Relation` field expansion is required for PG metadata. |
+| `src/utils/schemas.ts` | Strict relation schemas lag the richer `Relation` type and currently reject `metadata`. [C4] | Runtime schema work is mandatory before PG metadata uses `RelationManager`. |
+| `src/core/RelationManager.ts` | Validates endpoints and relation batches under `graphMutex`; duplicate identity is `(from,to,relationType)`. [C4] | Use it for ordinary relation operations after schema fix; retained publication uses a narrower atomic backing primitive. |
+| `src/search/LLMQueryPlanner.ts` | `LLMProvider.complete(prompt): Promise<string>`. [C5] | Accept a structural completion-provider contract; do not import search code into leaf types. |
+| `src/agent/reconstruction/MemoryDistiller.ts` | Existing optional usage-reporting provider convention (`getLastUsage?`). [C5] | Reuse the convention where practical; distinguish exact provider usage from estimates. |
+| `src/core/ManagerContext.ts` | Lazy agent-manager pattern, primary storage ownership, close lifecycle; declared `storageType` is currently ignored by constructor. [C6] | Add explicit factory and disposal registration; do not use the ignored option pattern. |
+| `src/core/StorageFactory.ts` | Supports JSONL/SQLite/PostgreSQL; env may override explicit type. [C7] | PG backing selection must be explicit and verified. PostgreSQL retained publication is deferred until conformance exists. |
+| `src/core/GraphStorage.ts` | Single-file JSONL plus optional segmented mode; internal mutex; append/delta paths and full-save path differ. [C7] | First-release PG JSONL requires non-segmented backing and PG-specific expected-head publication. |
+| `src/core/SQLiteStorage.ts` | Transactional batch/full saves; private DB handle; better-sqlite3/node:sqlite driver options. [C7] | Add a narrow storage-level PG publication capability or equivalent internal primitive; test both drivers. |
+| `scripts/lint-rules.mjs` | Enforces `src/types` as a leaf, including type-only imports. [C8] | Keep implementation logic outside leaf types. |
+| Package exports/build | Root plus agent/types/etc. dual ESM/CJS exports; build performs declaration and export checks. [C8] | Re-export through existing agent/root/type barrels; no new package subpath in first release. |
+
+## 5. Proposed module layout
+
+```text
+src/types/proceduralGraph.ts
+
+src/agent/procedural/graph/
+  ProceduralGraph.ts                 # immutable snapshot, indexes, exact localization, traversal
+  ProceduralGraphValidator.ts        # PG schema/topology/catalog validation
+  ProceduralGraphSchemas.ts          # Zod schemas; implementation layer, not src/types
+  ProceduralGraphSerializer.ts       # canonical JSON + prompt serialization
+  ProceduralGraphSession.ts          # frozen revision + ordered action/observation trace
+  ProceduralGuidance.ts              # localized/full graph guidance orchestration
+  ProceduralGraphRefiner.ts          # prompt + strict edit parsing
+  ProceduralGraphEvolution.ts        # retained checkpoint loop + rejection history
+  ProceduralGraphManager.ts          # public facade
+  ProcedureGraphAdapter.ts           # explicit Procedure -> PG conversion
+  prompts.ts
+  index.ts
+
+src/agent/procedural/graph/backing/
+  IProceduralGraphBacking.ts         # narrow persistence/publication contract
+  JsonlProceduralGraphBacking.ts
+  SqliteProceduralGraphBacking.ts
+```
+
+Do not add a third-party graph framework. Traversal, reverse reachability, cycle detection, and adjacency indexes are small deterministic utilities and should use native collections.
+
+## 6. Data contracts
+
+### 6.1 Core graph types
+
+```typescript
+export type PGBuiltInRelation =
+  | 'LEADS_TO'
+  | 'TRIGGERS'
+  | 'PROVIDES_INPUT_FOR'
+  | 'CONVERGES_TO';
 
 export type PGNode = { id: string; description: string } & (
   | { type: 'ACTION'; actionName: string }
-  | { type: 'SKILL' | 'REASONING' | 'STATE' }
+  | { type: 'SKILL'; skillName?: string }
+  | { type: 'REASONING' | 'STATE' }
 );
 
 export interface PGEdge {
   source: string;
-  relation: string; // Must belong to the graph's declared vocabulary.
+  relation: string;
   target: string;
   condition: string | null;
   guidance: string;
@@ -114,247 +211,520 @@ export interface PGSnapshot {
 }
 ```
 
-Use graph-local node IDs, not entity display names, as localization identities. Paper-shaped action nodes can normalize `actionName` to their exact tool-name ID. Imported procedures may need distinct node IDs for repeated uses of one action; `actionName` is an explicit compatibility extension.
+`reject` is a MemoryJS extension. `allow` and `repair` map to the paper's cycle-policy behavior. The product default should be `reject`; the paper-reproduction profile uses the configured paper behavior.
 
-Store immutable snapshots and return defensive copies or deeply frozen views. TypeScript `readonly` alone is insufficient because callers can still mutate nested values at runtime. Validate nonempty IDs, duplicate node/triplet keys, allowed types, attribute lengths, graph-size limits, and finite numeric configuration at ingress. Use unambiguous encoded tuples for keys rather than delimiter concatenation on unrestricted input.
+### 6.2 Runtime validation
 
-### 4.2 Native graph backing, isolated by default
+Validate at every external ingress:
 
-**MemoryJS design:** use an explicitly configured, separate procedural backing file/database built on the existing storage backends. This keeps candidate graphs, historic revisions, and failure logs out of ordinary factual search, summarization, decay, and consolidation. Do not automatically mirror them into the main memory graph.
+- non-empty bounded graph/revision/node IDs;
+- unique node IDs;
+- unique edge triplets `(source, relation, target)`;
+- allowed node types and declared relation vocabulary;
+- all endpoints present;
+- required `condition`/`guidance`/`pitfalls` fields on imported/refiner edges;
+- bounded attribute lengths and total serialized graph size;
+- finite numeric settings and positive budgets;
+- action bindings against the provided tool catalog;
+- static-mode node-ID preservation;
+- entry node existence and terminal reachability;
+- graph limits that permit at least the paper's largest reported main-experiment graph (131 nodes / 265 triplets) when using the reproduction profile. [P3]
 
-Represent graph headers, revisions, and nodes as native entities, for example `procedural-graph`, `procedural-graph-revision`, and `procedural-graph-node`. Store small scalar fields as round-trippable observation records, following the existing decomposed procedure precedent. Store actual transitions as native relations, with attributes under `metadata.proceduralGraph`. Do not flatten the entire procedural graph into one opaque observation. [C3-C4]
+Return structured diagnostics; do not throw away which edit/node/edge failed.
 
-Storage endpoint names must encode graph ID, revision ID, and local node ID. Keep bookkeeping links such as revision membership separate from the transition vocabulary. Terminal detection and neighborhood traversal must ignore bookkeeping links. Maintain an explicit retained-head record containing the revision, cached validation report reference, evaluation fingerprint, and monotonically increasing publication version.
+### 6.3 Canonical identity
 
-The separate backing is an isolation boundary, not authentication. Authorize graph access and writes through explicit host policy hooks. Copying a graph across projects requires explicit authorization. A retained-graph projection into the primary knowledge graph can be a later, opt-in feature; it must not expose rejected candidates as trusted memory.
+Use a deterministic canonical JSON representation with sorted object keys and deterministic node/edge ordering for hashing. Compute:
 
-### 4.3 Atomic publication and recovery
+- graph digest;
+- tool-catalog digest;
+- experiment/evaluation fingerprint;
+- bounded storage keys.
 
-Define a new narrow backing capability, conceptually:
+Do not hash unstable timestamps into the semantic graph digest. Revision IDs may contain creation metadata separately.
+
+## 7. Persistence and atomic publication
+
+### 7.1 Separate procedural backing
+
+Default to a separately configured PG file/database so retained graphs, rejected candidates, trajectory evidence, and refinement prompts do not pollute ordinary semantic search, decay, consolidation, or factual memory.
+
+Recommended entity classes in that backing:
+
+- `procedural-graph`
+- `procedural-graph-revision`
+- `procedural-graph-node`
+- `procedural-graph-evaluation`
+- `procedural-graph-rejection`
+- `procedural-graph-run`
+
+Transition relations store the PG edge attributes under `metadata.proceduralGraph` after the runtime relation-schema fix from A1. Bookkeeping relations use a private namespace such as `pg_contains_node`, `pg_revision_of`, or equivalent; traversal and terminal detection operate only on declared PG transition relations.
+
+Use digest-based bounded entity names. Persist original IDs and human-readable descriptions as scalar observations. Never rely on the storage entity name as the only copy of a user-facing PG node ID.
+
+### 7.2 Retained head
+
+Each graph has one retained-head record containing at least:
 
 ```text
-commitRetainedRevision(expectedHeadVersion, preparedRevision, validationReport)
-  -> committed(newHead) | conflict(currentHead)
+revisionId
+headVersion
+validationReportRef
+validationMean
+evaluationFingerprint
+graphDigest
+updatedAt
 ```
 
-This is **new work**, not an existing `IGraphStorage` guarantee. The durable boundary must publish a complete revision, its report, and the head together. Reject a stale head rather than overwriting another accepted revision. Provider calls and evaluation must happen outside storage locks.
+Historic revisions are immutable. Publishing does not rewrite an existing revision.
 
-For JSONL, implement a locked read/check/write using the backend's atomic file-publication mechanism. First-release JSONL is single-writer per backing file; do not claim an in-process mutex provides multi-process isolation. For SQLite, perform the expected-head check and revision/head writes in one database transaction; the backing adapter may require a focused core extension. Existing manager methods acquire locks independently, so calling them while holding the same non-reentrant lock is not a valid transaction strategy. [C4, C7]
+### 7.3 Required backing capability
 
-Require fault-injection tests for failure before publication, partial staging, head conflict, restart, and rollback. Incomplete staged revisions must never become readable as retained. An operational rollback selects a previously published immutable revision and invalidates or restores its matching evaluation cache; it does not rewrite a running session's snapshot. Unsupported backends must fail explicitly for durable evolution rather than falling back to unsafe writes.
+```typescript
+interface IProceduralGraphBacking {
+  loadHead(graphId: string): Promise<PGHead | undefined>;
+  loadRevision(graphId: string, revisionId: string): Promise<PGSnapshot | undefined>;
+  commitRetainedRevision(input: {
+    expectedHeadVersion: number;
+    revision: PGSnapshot;
+    validation: PGEvaluationReport;
+    round: PGRoundRecord;
+  }): Promise<
+    | { status: 'committed'; head: PGHead }
+    | { status: 'conflict'; currentHead: PGHead }
+  >;
+  appendRejection(record: PGRejectionRecord): Promise<void>;
+  close?(): void | Promise<void>;
+}
+```
 
-## 5. Online guidance lifecycle
+This is new behavior, not an existing `IGraphStorage` guarantee.
 
-### 5.1 Session contract
+### 7.4 JSONL publication
 
-`openSession()` binds graph ID, retained revision, task/query, tool-catalog fingerprint, provider configuration, and a new run ID. Record ordered, completed action/observation steps and outcome metadata. Private model chain-of-thought is not required. Externally reported reasoning/status steps can be recorded as explicit procedure events.
+For non-segmented JSONL backing, publication may use one PG-specific critical section that:
+
+1. reads/verifies the current head version;
+2. builds a complete next backing state containing the immutable revision/report/round plus new head;
+3. persists through the backend's atomic whole-file publication path;
+4. exposes the new head only after successful persistence.
+
+Single-process locking does not provide multi-process compare-and-swap. First release documents JSONL PG backing as single-writer per file. If true multi-process concurrency is required, use SQLite or add an OS/file-locking protocol with its own tests.
+
+Reject `MEMORY_STORAGE_SEGMENT_COUNT >= 2` for PG JSONL backing until segmented CAS semantics are deliberately implemented and tested.
+
+### 7.5 SQLite publication
+
+Use one database transaction that performs the expected-head predicate and inserts the revision, evaluation, round record, relations/nodes, and updated head atomically. No provider/refiner/evaluator call occurs while the storage transaction or graph lock is held.
+
+Do not implement this as `EntityManager.createEntities()` followed by `RelationManager.createRelations()` followed by `updateEntity(head)`: those are separately locked/committed operations and can expose partial publication.
+
+Run the backing contract suite using the default SQLite driver and `MEMORY_SQLITE_DRIVER=node` where available.
+
+### 7.6 Backup, recovery, rollback
+
+Define PG-level backup/export semantics rather than assuming the primary `IOManager` automatically covers the separate backing. A recovery test must demonstrate that, after injected failure or process restart, readers observe either the previous complete retained revision or the new complete retained revision, never a partial head.
+
+`rollback(graphId, revisionId, expectedHeadVersion)` is a new audited head-pointer publication referencing an existing immutable revision. It affects future sessions only. If the selected revision was evaluated under a different fingerprint, its prior score cannot be reused as the current baseline without explicit re-evaluation.
+
+## 8. Online guidance lifecycle
+
+### 8.1 Session creation
+
+`openSession()` pins:
+
+- graph ID and revision ID;
+- graph digest;
+- task/query and task description;
+- tool-catalog hash;
+- guidance configuration;
+- completion-provider identity when known;
+- a unique run/session ID.
+
+The session records only externally available trajectory data needed by PG: action/procedure identifiers, observations/tool results, explicit status/reasoning events if the host chooses to expose them, and outcome metadata. Private chain-of-thought is not required.
+
+### 8.2 Locate -> extract -> generate
 
 At each decision:
 
-1. **Locate.** Before the first action, use `entryNodeId` (`Start` for the paper skeleton). Thereafter match an explicit procedure ID exactly, or an exact tool action name with a unique binding. Ambiguous imported action bindings are unmatched; never silently choose one or call `matchProcedure()` to approximate the current node.
-2. **Extract.** Traverse outgoing edges for at most `h = 2` transitions, preserving connecting edges, attributes, and hop grouping. Deduplicate visited edges and bound traversal even when cycles are allowed. Do not include incoming edges simply because a generic graph traversal supports them.
-3. **Fallback.** If localization fails, the paper path uses the complete selected PG, not the complete MemoryJS knowledge graph. A matched sink is not a localization failure.
-4. **Generate.** Combine task description, query, graph context, and the last `w = 3` completed trajectory steps. Generate immediate next-step advice, pitfalls, and recovery guidance. Return text and diagnostics to the host for prompt insertion.
-5. **Observe.** The host solver independently chooses and executes its action; the host records the resulting observation. Repeat without editing the pinned graph. [P2]
+1. **Locate:** before the first action use `entryNodeId`; thereafter exact-match the most recently recorded procedure/action against the pinned graph. Repeated action names that map to multiple nodes require an explicit node/procedure ID or count as unmatched.
+2. **Extract:** traverse only outgoing PG transition edges for at most `hopLimit` steps (paper default 2). Preserve direction, hop grouping, relation label, condition, guidance, and pitfalls. Bound cycles with visited-edge accounting.
+3. **Fallback:** if localization fails, use the complete pinned PG if it fits the configured context budget. Do not substitute the entire MemoryJS factual graph.
+4. **Generate:** combine task/query, graph context, and the last `trajectoryWindow` completed action/observation steps (paper default 3). The completion model returns situational guidance.
+5. **Return:** return guidance plus diagnostics. The host solver independently selects and executes the next action, then records its real observation.
 
-The result should include `revisionId`, matched node or fallback reason, selected edge keys, hop count, guidance mode, and budget/latency diagnostics. Do not let a guide recommendation mutate the session's current procedure before the action actually occurs.
+A recommendation must never mutate the session's localized node until the corresponding action is actually recorded.
 
-### 5.2 Provider and budget behavior
+### 8.3 Guidance modes
 
-Support `generative`, `attributes-only`, and `disabled` guidance modes. Only `generative` implements the paper's guidance model. Without a provider, return clearly labeled serialized attributes, not a fabricated model-generated recommendation. Explicit provider errors may degrade to attributes-only when configured; surface the error and mode change.
+Support:
 
-Reuse the shape of `LLMProvider.complete(prompt)` without importing the search module into leaf types. Optional adapters may provide token usage, model identity, and abort support. The existing provider interface guarantees none of these. A timeout can discard late output but cannot necessarily stop an in-flight billable request. Do not report estimates as provider-measured token usage. [C5]
+- `generative` - paper-style guidance model;
+- `attributes-only` - deterministic serialized PG attributes, explicitly labeled as non-generative;
+- `disabled` - no PG prompt contribution.
 
-Apply limits to graph size, serialized context, observations, output, and calls per session. If a full graph or connected neighborhood does not fit, return an explicit `context-budget-exceeded` result with a configured disabled-guidance fallback; never label a silently truncated graph as full-graph retrieval. The paper does not prescribe these production limits. Record them in experiment manifests.
+Provider absence does not pretend to implement the generative method. Configured provider failure may degrade to `attributes-only` only when the caller opted into that fallback, and the result reports the error and actual mode.
 
-Serialize direction, hop grouping, and all relevant edge fields. **Intentional extension:** include relation labels in MemoryJS context; the paper's example local serializer omits them despite storing them. Keep a paper-compatible serializer option for controlled reproduction. [P3]
+### 8.4 Serialization and prompt safety
 
-Treat graph attributes, tool results, and trajectory text as untrusted data blocks. Guidance is subordinate to the host's instructions and authorization checks. Paths, commands, or tool arguments inside graph text are advice, never executable code.
+Default MemoryJS serialization includes relation labels because they carry semantic information. A `paper-compatible` serializer reproduces the paper's demonstrated local serializer behavior, which omits stored relation labels from the human-readable subgraph text. [P3]
 
-## 6. Offline self-evolution
+Treat graph text, observations, tool results, file paths, and prior model output as untrusted data sections. PG guidance remains subordinate to the host's system instructions, authorization checks, and tool schemas. Never execute command text embedded in `guidance` or `pitfalls`.
 
-### 6.1 Caller-owned execution and evaluation
+### 8.5 Budgets and usage accounting
 
-Require explicit `rollout`, `evaluate`, and `refiner` dependencies plus a round/cost budget. MemoryJS orchestrates callbacks; it does not supply a solver or autonomously invoke production tools. Training and validation callbacks must run in caller-provided resettable, sandboxed environments. Starting a session or recording feedback must never start evolution implicitly.
+Bound:
 
-A diagnostic rollout returns task ID, split ID, pinned graph revision, ordered steps, and a finite task score in `[0, 1]`. Keep high- and low-scoring evidence identifiable; binary scores naturally produce success/failure groups. When one group is absent, report that limitation instead of inventing a contrast. Prepare the refiner context from the ordered concatenation of training traces, retaining its token tail as specified by the paper. [P3]
+- graph nodes/edges;
+- serialized graph/context bytes or tokens;
+- per-step observation size;
+- guidance calls per session;
+- refiner calls/rounds;
+- provider output length;
+- wall-clock budget.
 
-Maintain a manifest with task/split fingerprints, evaluator/metric version, solver and guidance configuration, tool-catalog hash, prompt versions, decoding configuration, seeds, budget settings, and graph digest. Cache validation scores only for that complete evaluation identity. A changed evaluator, split, solver, or guidance configuration requires a fresh baseline.
+If a complete fallback graph does not fit, return a distinct `context-budget-exceeded` result; do not silently truncate and label it "full graph".
 
-### 6.2 Edit preparation and structural validation
+A plain `LLMProvider.complete()` exposes no exact usage, cancellation, model identity, or sampling controls. Optional adapters may expose those. Reuse the repository's optional usage-reporting convention where practical. A timeout can discard a late response but cannot guarantee that the external billable request was canceled.
 
-The refiner outputs the paper's four-array JSON document. Parse with existing Zod infrastructure and reject prose, malformed JSON, unknown fields, oversized edits, and invalid references. Apply edits to a detached copy in this order: delete endpoint-pair edges, delete nodes and incident edges, add nodes, add edges. Store the raw proposal separately from the normalized edit set and any repair operations. [P3]
+## 9. Offline self-evolution
 
-Preserve existing node identities unless an explicit deletion removes them; do not rename them heuristically. Detect conflicting additions and references to deleted nodes. Attribute changes use delete/re-add; endpoint-pair deletions can remove multiple relation types.
+### 9.1 Caller-owned dependencies
 
-Cycle behavior is explicit:
+MemoryJS orchestrates but does not provide a production solver. `evolve()` requires explicit dependencies:
 
-- `allow`: permit cycles but still require a path from every node to some zero-outdegree terminal.
-- `repair`: reproduce the paper's repair category by removing detected cycle-closing edges before structural validation. MemoryJS must define deterministic ordering and record each removed edge; the paper does not specify that ordering.
-- `reject`: recommended MemoryJS default; reject cyclic candidates rather than silently altering a proposed safety-relevant transition. This is a product extension, not the paper's repair behavior.
+```typescript
+interface PGEvolutionDependencies {
+  rollout(task: PGTask, graph: PGSnapshot, signal?: AbortSignal): Promise<PGTrajectory>;
+  evaluate(task: PGTask, graph: PGSnapshot, signal?: AbortSignal): Promise<number>;
+  refiner: PGCompletionProvider;
+  tokenizer: PGTokenizer;
+}
+```
 
-Require the entry node to exist. Compute terminal reachability by reverse traversal from PG sinks. Do not require every node to reach a specifically named `End`. Optional warnings may identify nodes unreachable from the entry, but must be distinguished from the paper's stated terminal check.
+Callers provide resettable, isolated training/validation environments. Starting a session or recording feedback never starts evolution implicitly.
 
-**Intentional hardening:** independently validate ACTION bindings against the caller's allowed tool catalog, and validate declared skill bindings. The paper requires ACTION membership in the refiner prompt but its generic structural validator does not enforce membership. Unknown actions must not reach validation execution in the product. [P3]
+### 9.2 Experiment manifest and score cache identity
 
-### 6.3 Retained-checkpoint algorithm
+Persist an immutable manifest covering at least:
+
+- task/split IDs and cryptographic fingerprints;
+- evaluator version and metric definition;
+- solver/model identity;
+- guidance model identity;
+- refiner model identity;
+- prompts/serializer versions;
+- tool catalog hash;
+- graph digest/revision;
+- sampling/decoding settings;
+- seed(s) when applicable;
+- `h`, `w`, `Lmax`, cycle policy;
+- budgets and provider configuration.
+
+The validation score cache key is the complete evaluation fingerprint plus graph digest. Any material change requires a new baseline evaluation.
+
+For paper reproduction, record that the paper uses the same underlying LLM for solver, guidance, and refiner and greedy decoding; construction experiments additionally specify deterministic settings in Appendix D. Production deployments may differ, but the deviation must be visible in the manifest. [P3, P4]
+
+### 9.3 Diagnostic rollout ordering
+
+Each training trajectory records task ID, graph revision, ordered actions/observations, and finite score in `[0,1]`. Preserve high- versus low-scoring groups. If all scores fall into one group, report the absence of a contrast rather than fabricating one.
+
+If tasks execute concurrently, sort completed trajectories back into deterministic batch order before concatenation and token-tail truncation. Tail truncation must preserve the final `Lmax` tokens exactly according to the configured tokenizer. [P3]
+
+### 9.4 Refiner input and strict parsing
+
+The refiner receives:
+
+- task description/context;
+- available tool actions;
+- current retained graph;
+- deterministic training trajectory block and scores;
+- serialized rejection memory;
+- refinement mode.
+
+Its output is one raw JSON object with exactly the four paper arrays. Parse with Zod in the implementation layer. Reject code fences, surrounding prose, duplicate/conflicting operations, unknown fields, invalid relation vocabulary, oversized edits, missing required edge attributes, and references to absent/deleted nodes.
+
+Store the raw model proposal separately from the normalized edit set and repair diagnostics.
+
+### 9.5 Candidate preparation order
+
+For a detached copy of the retained graph:
+
+1. delete every edge whose `(source,target)` matches a `delete_edges` operation;
+2. delete named nodes and all incident edges;
+3. add nodes;
+4. add edges;
+5. apply configured cycle policy;
+6. run endpoint, catalog, entry, and terminal-reachability validation.
+
+Static modes reject an attempt to rename an existing node rather than treating delete+add with a new ID as a harmless rename.
+
+### 9.6 Cycle policies
+
+- `allow`: permit cycles and require every node to reach some sink.
+- `repair`: paper-compatible disallow-cycles behavior; remove cycle-closing edges before validation. Because the paper does not define a deterministic ordering for multiple possible repairs, MemoryJS defines and records one stable ordering.
+- `reject`: MemoryJS production hardening; any detected directed cycle rejects the candidate. This is not the paper's repair algorithm.
+
+Every repair operation appears in diagnostics and the persisted round record.
+
+### 9.7 Retained-checkpoint algorithm
 
 ```text
-retained = load selected graph
-baseline = evaluate(retained, validationSet)  # once for this evaluation identity
+retained = load retained head
+baseline = cached valid report for the exact evaluation fingerprint
+if baseline is absent:
+    baseline = evaluate(retained, validationSet)
+
 rejections = load this evolution run's rejection history
 
-for each training batch, up to the explicit round/cost budget:
-    traces = rollout(retained, trainingBatch)  # pinned within each episode
+for batch in trainingBatches until round/cost budget is exhausted:
+    traces = rollout(retained, batch)            # retained revision pinned per episode
+    traces = restoreDeterministicBatchOrder(traces)
     context = tokenTail(concatenate(traces), Lmax)
-    edits = refine(retained, context, traceScores, serialize(rejections))
-    candidate, diagnostics = prepareCopy(retained, edits, cyclePolicy)
+    proposal = refine(retained, context, scores(traces), serialize(rejections))
+    candidate, diagnostics = prepareCandidate(retained, proposal, cyclePolicy)
 
-    if preparation failed:
-        record rejection(edits, traces, diagnostics, candidate when available)
-        continue  # no validation call; retained and baseline are unchanged
+    if diagnostics.hasFatalError:
+        appendRejection(proposal, traces, diagnostics)
+        continue                                # no validation call
 
-    report = evaluate(candidate, validationSet)
+    report = evaluateCompleteValidationSet(candidate)
     if report is incomplete or invalid:
-        record evaluation error; retain the old graph and score
-    else if report.meanScore >= baseline.meanScore:
-        atomically publish(candidate, report, expectedHeadVersion)
-        retained, baseline = candidate, report  # only after successful publication
+        recordRoundError(report.error)
+        continue                                # retained + baseline unchanged
+
+    if report.meanScore >= baseline.meanScore:
+        publication = commitRetainedRevision(expectedHeadVersion, candidate, report)
+        if publication is committed:
+            retained = candidate
+            baseline = report
+        else:
+            recordConflict(publication.currentHead)
+            stopOrStartExplicitRebaseRound()
     else:
-        record rejection(candidate, edits, traces, report)
+        appendRejection(candidate, proposal, traces, report)
 
 return retained
 ```
 
-Equality is acceptance, not rejection. Do not quietly add a strict-improvement threshold, a secondary tie-breaker, or an epsilon rule to the paper-compatible gate. Optional stricter production gates must have separate names and reported configuration. No-op identical candidates may reuse an identical evaluation result, but their history must remain distinguishable from a newly evaluated improvement. [P3]
+Validation aggregation uses the declared full validation set. Evaluator error, timeout, cancellation, `NaN`, infinity, out-of-range score, or missing task result cannot silently disappear from the denominator. The run either applies the caller's explicit task-failure policy or marks evaluation incomplete and refuses promotion.
 
-Never average only the successful validation callbacks. Missing scores, invalid values, evaluator exceptions, and timeouts must produce a documented evaluation error or an explicit task failure under the evaluator contract. They cannot silently change the denominator. No promotion occurs on incomplete evaluation, failed publication, stale-head conflict, or canceled work. After conflict, reload and rebase/revalidate in a new round; do not attach a stale candidate to the new head.
+Equality is acceptance in paper-compatible mode. A stricter production gate may be added only as a separately named policy whose manifest clearly shows the deviation.
 
-### 6.4 Rejection memory and construction modes
+### 9.8 Rejection memory
 
-Persist candidate revision/digest when available, proposed edits, training-trace references, structural/parse diagnostics or complete validation outcome, retained reference score, and manifest identity. Feed rejected graphs and their failure evidence into subsequent refinement. Structural failures belong in rejection history even though no candidate validation score exists. Bound the refiner's rejection-context window and disclose omissions; data-retention/redaction policies are explicit MemoryJS additions. [P3]
+Persist, subject to redaction policy:
 
-Ship these modes first: fixed expert graph (paper Mode 1), expert-seeded gated incremental evolution (`static_incremental`, Mode 3), and skeleton-seeded gated incremental evolution (`scratch_incremental`, Mode 5). The scratch skeleton is `Start -> End` with no intermediate procedures. [P4]
+- raw proposal digest and normalized edits;
+- candidate digest/revision if preparation reached that point;
+- training trace references and scores;
+- structural/parse diagnostics or full validation result;
+- retained reference score and revision;
+- manifest/fingerprint identity;
+- rejection reason and timestamp.
 
-Paper Modes 2 and 4 (`static_onetime`, `scratch_onetime`) directly commit a one-time update **without a validation gate**. Do not describe them as safe gated evolution. First release may expose one-time candidate preparation for research, but automatic production promotion still requires validation. That is an intentional deviation from those two experimental modes.
+Structural failures enter rejection memory even though they have no candidate validation score. Bound how much rejection history is supplied to the refiner; record omitted/truncated history so runs remain explainable.
 
-Appendix D's term "online evolution" means updates **between training batches**, not within an episode. Algorithm 1 is the implementation authority for retained state. Appendix E.2's Round 5 discussion carries forward a prior candidate's reported metrics; do not copy that reporting convention into the cached retained-score state machine. [P3-P5]
+### 9.9 Construction modes
 
-## 7. Public API and compatibility
+First production-facing release:
 
-**Proposed surface:** `ctx.proceduralGraph(config)` explicitly constructs a manager with a separate backing and optional host policy hooks. It does not replace a previously returned manager when a new configuration is supplied. Define ownership/disposal of context-created backings; caller-supplied backings remain caller-owned.
+- `fixed_expert` - paper Mode 1, no mutation;
+- `static_incremental` - expert-seeded Mode 3 behavior, validation-gated between batches;
+- `scratch_incremental` - `Start -> End` skeleton, Mode 5 behavior, validation-gated between batches.
 
-| Proposed method | Contract |
+Research-only reproduction may expose:
+
+- `static_onetime` - Mode 2, one global update, no paper validation gate;
+- `scratch_onetime` - Mode 4, one global update from skeleton, no paper validation gate.
+
+Automatic production promotion for the one-time modes should still be gated unless the caller explicitly enables paper-reproduction semantics.
+
+## 10. Public API and compatibility
+
+Prefer a factory with explicit ownership semantics:
+
+```typescript
+const pg = ctx.createProceduralGraph({
+  backing: { type: 'sqlite', path: './procedures.db' },
+  policy,
+  guidanceProvider,
+});
+```
+
+This avoids implying singleton/reconfiguration semantics from a getter-like `ctx.proceduralGraph(config)` call.
+
+Proposed facade:
+
+| Method | Contract |
 |---|---|
-| `createGraph(input)` | Import an explicitly approved expert graph or minimal skeleton; validate before persistence. No model calls. |
-| `getGraph(graphId, revisionId?)` | Read retained or explicitly requested immutable revision. |
-| `openSession(graphId, options)` | Pin a revision and create an isolated trajectory recorder. |
-| `session.getGuidance()` | Locate/extract/generate or return a labeled degradation result. |
-| `session.recordStep(step)` | Append a completed host action/observation in order; no graph mutation. |
-| `prepareCandidate(graphId, edits)` | Pure candidate preparation plus diagnostics; no publication. |
-| `evolve(graphId, options)` | Explicit bounded offline evolution with caller callbacks and manifest. |
-| `listRevisions()` / `listRejections()` | Authorized, paginated inspection; no raw sensitive trace bodies by default. |
-| `rollback(graphId, revisionId, expectedHeadVersion)` | Audited pointer change for future sessions; existing sessions remain pinned. |
-| `exportGraph()` / `importGraph()` | Versioned canonical JSON with validated metadata and integrity checks. |
+| `createGraph(input)` | Validate and persist an expert graph or minimal skeleton. No model call. |
+| `getGraph(graphId, revisionId?)` | Return retained or specifically requested immutable revision. |
+| `openSession(graphId, options)` | Pin one revision and return isolated trajectory/guidance session. |
+| `prepareCandidate(graphId, edits, options?)` | Pure detached candidate preparation plus diagnostics; no publication. |
+| `evolve(graphId, options)` | Explicit bounded offline evolution using caller callbacks and manifest. |
+| `listRevisions(graphId, page)` | Authorized paginated revision metadata. |
+| `listRejections(graphId, page)` | Authorized paginated rejection metadata; raw trace bodies excluded by default. |
+| `rollback(graphId, revisionId, expectedHeadVersion)` | Audited retained-head move for future sessions. |
+| `exportGraph(graphId, revisionId?)` | Canonical versioned PG JSON. |
+| `importGraph(document, options)` | Validate schema/integrity/catalog before persistence. |
+| `dispose()` | Close context-owned backing/provider resources that this manager owns. |
 
-The first integration example should show a host-owned solver loop that requests guidance, injects it as advisory context, executes exactly the solver-selected action through the host's permission layer, and records the observation. It must not imply that `StepSequencer` is the new graph solver.
+A standalone `new ProceduralGraphManager(...)` remains possible for callers that do not use `ManagerContext`.
 
-The `ProcedureGraphAdapter` is explicit and one-way initially. Convert each original step into a distinct node, preserve parameters/timeouts as non-executable compatibility metadata, connect sequential success transitions, and represent failure/fallback transitions with textual conditions. Match `StepSequencer`'s nested fallback and resume behavior. Repeated action names must not collapse nodes; ambiguous localization requires an explicit step/procedure ID or the full-graph fallback. Return conversion warnings where the ordered executor's semantics cannot be represented faithfully. Never call an approximate reverse conversion lossless. [C1-C3]
+### Procedure adapter
 
-No automatic rewrite of existing `procedure` or `procedure-step` entities. Existing `addProcedure`, `invoke`, `matchProcedure`, `refineProcedure`, and `openSequencer` continue to behave as before. Native backup/restore and canonical PG JSON export must preserve attributes, head/report linkage, and schema version. Unsupported export formats should reject or explicitly warn about lost procedural metadata rather than silently stripping it.
+`ProcedureGraphAdapter` is one-way initially:
 
-## 8. Delivery phases and acceptance gates
+- each original step becomes a distinct PG node;
+- repeated action names never collapse distinct steps;
+- parameters and timeout remain non-executable compatibility metadata;
+- main sequence becomes explicit transitions;
+- fallback semantics are represented with explicit failure-conditioned transitions and a resume path matching `StepSequencer`;
+- if nested fallback/resume cannot be represented without extra synthetic nodes, create them deterministically and return conversion notes;
+- approximate reverse conversion is never labeled lossless.
 
-All work is proposed. Implement in dependency order, with separate reviewable changes rather than one large feature commit. Phase numbers are delivery stages, not promised calendar estimates.
+No existing `procedure` or `procedure-step` entity is silently migrated. `addProcedure`, `invoke`, `matchProcedure`, `refineProcedure`, and `openSequencer` retain current behavior. [C1-C3]
 
-### Phase 1 - Contracts and deterministic graph core
+## 11. Delivery phases
 
-**Files:** new leaf types, `ProceduralGraph.ts`, `ProceduralGraphValidator.ts`; unit tests under `tests/unit/agent/proceduralGraph/`.
+### Phase 1 - Pure contracts and graph core
 
-- [ ] Define snapshot/edit/result schemas, explicit vocabulary and cycle policies.
-- [ ] Implement exact localization, immutable snapshots, outgoing bounded traversal, deterministic serialization and candidate preparation.
-- [ ] Add paper-example fixtures plus synthetic parallel-edge and cyclic cases.
+**Files:** `src/types/proceduralGraph.ts`, `ProceduralGraph.ts`, `ProceduralGraphSchemas.ts`, `ProceduralGraphValidator.ts`, serializer; unit tests.
 
-**Exit:** PG-01 through PG-03 and PG-06 through PG-08 pass without any provider or storage. Mutation attempts do not alter snapshots. Unknown tools and malformed edits fail closed. Every repair is reproducible and inspectable.
+- [ ] Define types, Zod schemas, canonical ordering/digest, result unions, limits.
+- [ ] Implement exact localization, outgoing bounded traversal, full-graph selection, immutable snapshots.
+- [ ] Implement edit preparation, endpoint-pair deletion, terminal reachability, catalog validation, static-ID preservation, cycle policies.
+- [ ] Add paper-derived and synthetic fixtures for parallel edges, sinks, cycles, duplicate IDs, malformed edits, repeated action bindings.
 
-### Phase 2 - Persistence, publication, and compatibility
+**Exit:** PG-01 through PG-11 structural/inference prerequisites pass without storage or a model provider. `src/types` leaf lint passes.
 
-**Files:** `ProceduralGraphStore.ts`, backing adapters, `ProcedureGraphAdapter.ts`; narrowly scoped storage changes only where needed; integration tests.
+### Phase 2 - Runtime relation schema and backing publication
 
-- [ ] Implement native entity/relation encoding, separate backing, schema-version handling and canonical JSON round-trip.
-- [ ] Implement atomic expected-head publication and revision/report recovery.
-- [ ] Add explicit procedure conversion and preserve existing procedural tests.
-- [ ] Verify effective backend selection; prevent an environment override from silently selecting an unsupported PG writer.
+**Files:** relation schemas/tests; backing interfaces/adapters; narrowly scoped storage internals; persistence contract tests.
 
-**Exit:** JSONL and SQLite pass the same storage contract suite. Concurrent stale publication is rejected. Injected failures expose either the prior complete revision or the new complete revision, never a partial one. Existing `tests/unit/agent/ProcedureStore.test.ts` and the surrounding procedural suite remain unchanged in behavior. PostgreSQL support is explicitly unsupported for publication until equivalent tests pass. [C7-C8]
+- [ ] Extend strict relation runtime schemas to preserve namespaced PG metadata without weakening unrelated fields.
+- [ ] Add bounded digest storage keys and native graph encoding.
+- [ ] Implement explicit backend selection independent of silent env override.
+- [ ] Implement JSONL non-segmented expected-head publication.
+- [ ] Implement SQLite transactional expected-head publication.
+- [ ] Reject unsupported PostgreSQL and segmented-JSONL publication modes clearly.
+- [ ] Run SQLite backing tests against both drivers where available.
+
+**Exit:** JSONL and SQLite pass the same retained-head/revision/report/rejection round-trip and crash/conflict contract. No partial retained publication is observable.
 
 ### Phase 3 - Frozen sessions and guidance
 
-**Files:** `ProceduralGraphSession.ts`, `ProceduralGuidance.ts`, `prompts.ts`; provider-fake unit and integration tests.
+- [ ] Implement session pinning and ordered trace recorder.
+- [ ] Implement paper-compatible local/full graph serializers and default richer serializer.
+- [ ] Add completion-provider adapter, usage reporting, timeout/error/degradation results.
+- [ ] Implement h/w/context/call/output budgets and prompt data isolation.
+- [ ] Add unknown/ambiguous action, sink, provider failure, injection, and concurrent-publication fixtures.
 
-- [ ] Implement session pinning, recent completed-step window, localized/full-graph context, and advisory outputs.
-- [ ] Add compatible completion-provider adapters and explicit no-provider/error modes.
-- [ ] Implement context, latency, call-count, and output limits; mark measured versus estimated tokens.
-- [ ] Add prompt-injection and unknown/ambiguous-action fixtures.
+**Exit:** PG-03 through PG-05 pass end-to-end. A session is unaffected by a concurrently published head.
 
-**Exit:** PG-04 and PG-05 pass. Publishing a new graph during a session cannot change that session's guidance input. Provider absence requires no network access. Terminal handling does not execute or prematurely stop the host. Budget degradation is explicit.
+### Phase 4 - Refiner and self-evolution
 
-### Phase 4 - Refiner and offline evolution
+- [ ] Implement paper prompt semantics including tool membership, generality, static node-ID compatibility, and rejection memory.
+- [ ] Implement deterministic trajectory concatenation and exact tail tokenization.
+- [ ] Implement complete-validation aggregation, cached baseline identity, equality acceptance, cancellation/error handling.
+- [ ] Implement retained state, rejection records, resume, stale-head conflict behavior, and explicit rebase policy.
+- [ ] Add fixed expert, static incremental, and scratch incremental modes; keep one-time ungated modes research-only by default.
 
-**Files:** `ProceduralGraphRefiner.ts`, `ProceduralGraphEvolution.ts`; rejection storage and fake-runner integration tests.
+**Exit:** PG-06 through PG-16 pass. Invalid candidates never evaluate; rejected candidates never become the next retained graph; test data cannot influence promotion.
 
-- [ ] Implement strict four-array edit parsing and tokenizer-tail context preparation.
-- [ ] Implement manifest-bound baseline evaluation, sequential retained checkpoints, rejection memory, and resumable round records.
-- [ ] Add fixed, expert-incremental, and scratch-incremental modes.
-- [ ] Add cancellation, evaluator failure, publication conflict, and budget-exhaustion paths.
+### Phase 5 - Facade, lifecycle, security, exports, compatibility
 
-**Exit:** PG-09 through PG-12 pass. An equal-score candidate is accepted; a lower-score candidate is rejected; a structurally invalid candidate never calls validation. Restart after a rejection resumes the retained graph and matching baseline. Test-split labels and outcomes cannot be consumed by refinement.
+- [ ] Add `createProceduralGraph()` factory and standalone manager.
+- [ ] Register/dispose context-owned backings; preserve caller ownership for injected backings.
+- [ ] Add explicit PG authorization/audit hooks and safe inspection defaults.
+- [ ] Add `ProcedureGraphAdapter` with fallback/resume tests.
+- [ ] Update procedural/agent/root/type barrels, README/API docs, and built export tests.
+- [ ] Define PG-specific export/backup/rollback/recovery guide.
 
-### Phase 5 - Facade, packaging, security, and documentation
+**Exit:** built ESM/CJS runtime and type imports pass; existing procedure APIs/tests remain compatible; unused PG adds no model calls or background work.
 
-**Files:** `ProceduralGraphManager.ts`, `src/core/ManagerContext.ts`, procedural/agent/root/type barrels, README and a new usage guide; package-export tests.
+### Phase 6 - Controlled evaluation and experimental release
 
-- [ ] Add the explicit factory and lifecycle management without altering existing procedure APIs.
-- [ ] Enforce host policy hooks, safe import limits, redaction and authorized inspection.
-- [ ] Keep full trajectory/candidate bodies out of default diagnostics and the main memory search store.
-- [ ] Add an end-to-end host-solver example, migration boundaries, reproduction notes and operational rollback guide.
+- [ ] Run no-PG, raw-full-graph, generative-full-graph, and localized-generative comparisons on fixed tasks/graph/solver.
+- [ ] Separately compare fixed expert, expert incremental, and scratch incremental construction so inference and construction are not confounded.
+- [ ] Record complete manifests, graph hashes, all candidate decisions, quality/cost metrics, and failures.
+- [ ] Evaluate only the last retained graph on the untouched final test split.
+- [ ] Release opt-in/experimental and document workload-specific overhead/benefit rather than claiming universal gains.
 
-**Exit:** Root and agent runtime imports plus type imports work in built ESM and CJS consumers. Disabled/unconstructed PG adds no model calls or scheduler work. Existing tests and security policy behavior remain compatible.
+**Exit:** no paper metric is presented as a MemoryJS result unless actually reproduced under a declared configuration.
 
-### Phase 6 - Evaluation and experimental release
+## 12. Test and evaluation matrix
 
-**Files:** new opt-in PG benchmark runner/fixtures, performance tests, evaluation report documentation.
+### 12.1 Deterministic tests
 
-- [ ] Run the controlled comparisons in Section 9 on declared splits and budgets.
-- [ ] Publish complete quality/cost metrics, failed cases, graph hashes and acceptance history.
-- [ ] Select the last retained graph before final test evaluation; never choose a checkpoint using test results.
-- [ ] Release as opt-in/experimental; review workload-specific benefit and overhead before considering default use.
+Cover at least:
 
-**Exit:** Correctness, isolation, recovery, and compatibility gates pass. The report makes no claim that the paper's numerical gains have been reproduced unless the experiment actually supports it. Rollback and disable paths are exercised.
+- empty/missing entry node;
+- duplicate IDs and duplicate triplets;
+- null condition and required guidance/pitfalls;
+- Unicode/multiline attributes;
+- canonical digest determinism;
+- relation metadata schema acceptance + rejection of unknown unrelated keys;
+- bounded digest storage keys;
+- endpoint-pair deletion across multiple relation types;
+- deleted-node incident-edge cleanup;
+- cycle allow/repair/reject behavior;
+- every-node-to-terminal reachability;
+- terminal name other than `End`;
+- action catalog mismatch and static-mode rename;
+- exact localization, repeated action ambiguity, localization miss, sink match;
+- h=2 boundary and bounded cyclic traversal;
+- full-graph fallback budget failure;
+- session revision pinning;
+- provider error/timeout/late response;
+- exact token-tail preservation and deterministic parallel rollout ordering;
+- structural rejection with zero validation calls;
+- equal/lower/higher validation scores;
+- evaluator exceptions, missing result, NaN/infinity/out-of-range values;
+- cancellation and round/cost budget exhaustion;
+- stale-head competing publishers;
+- restart after accepted/rejected/structurally invalid rounds;
+- evaluation fingerprint invalidation;
+- JSONL segment-mode rejection;
+- SQLite both-driver publication conformance;
+- context-owned versus caller-owned disposal;
+- old `ProcedureManager`/`StepSequencer` regression suites.
 
-## 9. Test and evaluation matrix
+Evolution tests assert both retained graph **and cached retained score** after every round. A structural rejection has no new validation score and must not inherit a rejected candidate's result.
 
-### Deterministic correctness and robustness
+### 12.2 Paper-inspired behavioral fixtures
 
-Cover empty/missing entry nodes; duplicate IDs/triplets; null conditions; multiline attributes; relation-preserving round-trips; endpoint-pair deletion across several relation types; deleted-node incident edges; bounded loops; terminal reachability; deterministic cycle repair; catalog mismatch; repeated action bindings; session revision pinning; Unicode and malformed imports; provider timeouts and late responses; and token-tail preservation.
+Use Appendix F examples only as fixtures, not universal guarantees:
 
-Evolution fixtures must assert both the returned graph **and the cached score** after each round. Include score equality, a worsening candidate following an improvement, structural rejection after a scored rejection, evaluator exceptions, NaN/out-of-range scores, cancellation, restart, competing writers, and evaluation-fingerprint changes. A structural rejection has no new validation result; it must not inherit a rejected candidate's score.
+- quote-only task guidance should discourage continuing into booking/payment;
+- a dialogue task should preserve the user's response objective instead of answering an evaluator/meta question.
 
-Use paper-inspired behavioral fixtures without treating the paper's examples as general guarantees: a quote-only request must not turn into a booking, and retained dialogue constraints must guide answering the user's request rather than answering an evaluator's meta-question. These cases come from Appendix F, page 36. [P5]
+### 12.3 Controlled model evaluation
 
-### Controlled agent comparison
+For the four inference variants, hold the graph, solver, task set, tools, prompt template, and decoding settings constant. Report:
 
-Replicate the paper's four-way guidance comparison on the same graph, solver, tasks, tools, prompts, and decoding settings: no PG; raw full-graph injection; full-graph generative guidance; localized generative guidance. Compare fixed expert, expert-incremental, and scratch-incremental construction separately so initialization and inference method are not confounded. [P4, P6]
+- task success / mean rubric score;
+- invalid tool/action calls;
+- repeated unproductive actions;
+- solver steps;
+- solver, guidance, and refiner input/output tokens separately;
+- exact vs estimated token accounting;
+- end-to-end latency;
+- model call counts;
+- localization misses and full-graph fallback rate;
+- budget-degradation rate;
+- graph nodes/edges and serialized context size;
+- structural rejection, validation rejection, acceptance, and conflict rates;
+- total evolution cost.
 
-Report task success/mean rubric score, invalid tool calls, repeated unproductive actions, solver steps, guidance/refiner/solver tokens separately, end-to-end latency, call counts, localization misses, fallback/degradation rate, graph size, structural rejection rate, acceptance rate, and total evolution cost. Include per-task outcomes and paired uncertainty estimates for model-based studies. Set workload-specific latency/token ceilings before running the experiment, not after seeing results.
+The paper's experiments show that localized guidance can reduce graph-context cost relative to full-graph generative guidance while still increasing total tokens relative to no graph. Do not promise lower total cost merely because trajectories or tool calls become shorter. [P6]
 
-The default evolution gate guarantees only nondecreasing **measured validation mean** under the chosen evaluator. It does not prove generalization, statistical significance, or production safety. Small validation sets, nondeterministic APIs, and repeated validation selection can mislead. Keep a final untouched test set and record every candidate considered. [P5]
+The default paper gate guarantees only a nondecreasing **measured validation mean** under the chosen evaluator. It does not prove production safety, statistical significance, or generalization. Keep an untouched final test set and record every candidate considered. [P5]
 
-The paper explicitly observes extra token cost even when solver trajectories shorten. Do not promise lower total cost merely because localization reduces graph context or tool calls. [P6]
+## 13. Repository verification
 
-### Repository verification commands
-
-Use the scripts in the inspected `package.json`, not older documentation that still mentions ESLint:
+Implementation PRs should run the active scripts from `package.json`:
 
 ```bash
 bun install --frozen-lockfile
@@ -365,50 +735,66 @@ bun run test:ci
 bun run test:coverage
 ```
 
-Run targeted new PG unit/integration suites during each phase. Run existing opt-in performance commands separately from deterministic CI; real-model evaluations must also be explicitly enabled and budgeted. `bun run build` includes declaration generation and export checks. These are implementation acceptance commands, **not a claim that they were run for this planning-only change**. [C8]
+Also run targeted new PG unit/integration/storage contract suites in each phase. Real-model evaluation remains explicitly opt-in and budgeted.
 
-## 10. Decisions, risks, and release checklist
+`bun run audit:plans` currently scans plan files under `docs/superpowers/plans` and `docs/roadmap`; this root-level plan is **not** covered by that tool. Do not cite `audit:plans` as validation of this document unless the tool scope is deliberately expanded. [C8]
 
-**Recommended decisions:** additive module; explicit factory; separate native-graph backing; JSONL/SQLite first; no new graph dependency; provider-neutral callbacks; exact localization with `h=2`, `w=3`; explicit cycle policy with product default `reject`; immutable run revisions; validation-gated automatic promotion; experimental opt-in release.
+## 14. Security, privacy, and operations
 
-Before implementation approval, the storage maintainer must confirm the narrow atomic backing extension and supported writer concurrency. The agent integration owner must supply a resettable runner, evaluator, split manifest, tool bindings, and workload budgets. The security owner must approve trace retention, redaction, and external-provider data handling. The paper does not supply MemoryJS-specific answers to those questions.
+The PG is advisory knowledge, not executable policy. Required safeguards:
 
-Primary risks are incomplete atomic publication, accidental exposure of rejected instructions, model-generated unknown tools, prompt injection through observations, ambiguous action localization, token/cost inflation, and validation overfitting. The required mitigations are explicit backing isolation, catalog checks, untrusted-data treatment, immutable sessions, bounded execution, and independent evaluation. None replaces the host's authorization layer.
+- validate all imported/refiner-generated nodes, relations, attributes, and tool bindings;
+- authorize graph read/write/evolution separately from factual-memory authorization;
+- keep rejected candidates and raw traces out of ordinary memory search by default;
+- redact or reference sensitive trajectory bodies according to host retention policy;
+- isolate external-provider payload construction and document what trace data leaves the process;
+- make full graph fallback, rejection memory, and diagnostic exports subject to the same authorization policy;
+- enforce bounded graph/edit/context sizes before model calls;
+- never interpret graph text as shell, SQL, file, or tool commands without the normal host execution layer;
+- log publication/rejection/rollback identity without dumping secret trace bodies into default diagnostics.
 
-### Definition of done
+Operationally, expose head version, revision digest, graph size, last validation fingerprint, rejection count, and degradation/conflict counters. Do not expose raw prompt/trace content in health diagnostics.
 
-- [ ] All twelve paper-derived requirements have passing tests and traceable implementation coverage.
-- [ ] Existing procedural APIs, stored procedures, and caller-owned execution semantics remain compatible.
-- [ ] Durable graph publication and recovery pass JSONL/SQLite fault-injection and conflict tests.
-- [ ] Generative, attributes-only, disabled, and budget-degraded modes are distinguishable to callers.
-- [ ] Training, validation, and test data are isolated; rejection and acceptance history is reproducible.
-- [ ] Public exports, documentation, examples, permissions, lifecycle cleanup, and rollback are verified.
-- [ ] An evaluation report states actual quality/cost outcomes and limitations; no paper result is presented as a MemoryJS measurement.
+## 15. Definition of done
 
-## 11. Sources and traceability
+- [ ] All sixteen paper-fidelity requirements have traceable implementation and passing tests.
+- [ ] Relation runtime schemas preserve PG metadata through `RelationManager` and storage round-trip.
+- [ ] Explicit backing selection cannot be silently changed by `MEMORY_STORAGE_TYPE`.
+- [ ] Unsupported segmented JSONL/PostgreSQL publication fails closed.
+- [ ] JSONL and SQLite publication/recovery pass injected-failure and stale-writer tests; SQLite is tested with both supported drivers where available.
+- [ ] No retained publication can expose a head whose revision/report is incomplete.
+- [ ] Existing procedural APIs, entities, and sequencer behavior remain backward compatible.
+- [ ] Frozen sessions stay pinned across concurrent head updates.
+- [ ] Generative, attributes-only, disabled, provider-error, and context-budget outcomes are distinguishable.
+- [ ] Train/validation/test isolation and evaluation fingerprinting are enforced.
+- [ ] Rejection memory, equality acceptance, terminal checks, cycle behavior, exact localization, and tail-token semantics match the selected paper-compatible profile.
+- [ ] Context-created backings are disposed; caller-owned backings are not unexpectedly closed.
+- [ ] PG authorization/audit hooks and default trace redaction are reviewed.
+- [ ] Built root/agent/types ESM and CJS imports plus declaration exports pass.
+- [ ] Evaluation report states actual MemoryJS quality/cost results and limitations; paper numbers are never presented as reproduced measurements without evidence.
+
+## 16. Sources and traceability
 
 ### Supplied paper
 
-All page numbers below refer to the supplied PDF. The paper was used as the requested design source; this plan is not an independent verification of its benchmark claims.
+All page references refer to the supplied PDF. The paper is the design source; its benchmark claims are not independently re-verified by this plan.
 
-- **P1:** Section 3.1, pp. 3-4: formal graph representation and edge attributes.
-- **P2:** Section 3.2 and Figure 2, pp. 4-5; configuration in Section 4, p. 6: exact localization, directed neighborhood, full-graph fallback, recent trajectory window and soft guidance.
-- **P3:** Section 3.3, pp. 5-6; Appendices B.4-B.6, pp. 21-24: relation vocabulary, prompts, edit semantics, rejection memory, Algorithm 1 and structural checks.
-- **P4:** Section 5.3, p. 9; Appendix D.2, pp. 30-31: five graph-construction modes and the meaning of between-batch evolution.
-- **P5:** Section 5.4, pp. 9-10; Appendix E.2, p. 33; Appendix F, p. 36: retained-versus-test-selected checkpoints, screening caveats, and behavioral examples.
-- **P6:** Section 5.5 and Table 3, p. 10; conclusion, p. 11: localized versus full-graph guidance and quality/cost tradeoffs.
+- **P1:** Section 3.1, pp. 3-4 - graph formalization, node abstractions, and condition/guidance/pitfalls attributes.
+- **P2:** Section 3.2 and Figure 2, pp. 4-5; Section 4, p. 6 - exact localization, directed 2-hop neighborhood, full-PG fallback, recent trajectory window, and soft solver integration.
+- **P3:** Section 3.3, pp. 5-6; Appendices B.4-B.6, pp. 21-24 - relation vocabulary, prompts, edit JSON, endpoint-pair deletion, rejection memory, retained checkpoint algorithm, cycle handling, terminal reachability, tool-catalog prompt rule, static node-ID compatibility, and generality requirement.
+- **P4:** Section 5.3, p. 9; Appendix D.2, pp. 30-31 - five construction strategies and between-batch meaning of "online evolution".
+- **P5:** Section 5.4, pp. 9-10; Appendix E.2, p. 33; Appendix F, p. 36 - retained-vs-intermediate test selection caveat, candidate screening, and behavioral cases.
+- **P6:** Section 5.5/Table 3, p. 10; Conclusion, p. 11 - localized vs full-graph guidance and token/step tradeoffs.
 
-### Inspected repository sources
+### Audited repository sources
 
-Links resolve to the source files accompanying this plan's baseline; the exact inspected commit is recorded at the top.
+- **C1:** [`src/types/procedure.ts`](../src/types/procedure.ts)
+- **C2:** [`src/agent/procedural/ProcedureManager.ts`](../src/agent/procedural/ProcedureManager.ts)
+- **C3:** [`src/agent/procedural/ProcedureStore.ts`](../src/agent/procedural/ProcedureStore.ts), [`src/agent/procedural/StepSequencer.ts`](../src/agent/procedural/StepSequencer.ts)
+- **C4:** [`src/types/types.ts`](../src/types/types.ts), [`src/utils/schemas.ts`](../src/utils/schemas.ts), [`src/core/RelationManager.ts`](../src/core/RelationManager.ts)
+- **C5:** [`src/search/LLMQueryPlanner.ts`](../src/search/LLMQueryPlanner.ts), [`src/agent/reconstruction/MemoryDistiller.ts`](../src/agent/reconstruction/MemoryDistiller.ts)
+- **C6:** [`src/core/ManagerContext.ts`](../src/core/ManagerContext.ts)
+- **C7:** [`src/core/StorageFactory.ts`](../src/core/StorageFactory.ts), [`src/core/GraphStorage.ts`](../src/core/GraphStorage.ts), [`src/core/SQLiteStorage.ts`](../src/core/SQLiteStorage.ts), [`src/core/TransactionManager.ts`](../src/core/TransactionManager.ts)
+- **C8:** [`package.json`](../package.json), [`scripts/lint-rules.mjs`](../scripts/lint-rules.mjs), [`tools/plan-doc-audit/audit.ts`](../tools/plan-doc-audit/audit.ts), [`src/agent/procedural/index.ts`](../src/agent/procedural/index.ts), [`src/agent/index.ts`](../src/agent/index.ts), and existing procedural tests.
 
-- **C1:** [Procedure types](../src/types/procedure.ts).
-- **C2:** [ProcedureManager](../src/agent/procedural/ProcedureManager.ts).
-- **C3:** [ProcedureStore](../src/agent/procedural/ProcedureStore.ts) and [StepSequencer](../src/agent/procedural/StepSequencer.ts).
-- **C4:** [Entity/relation/storage types](../src/types/types.ts) and [RelationManager](../src/core/RelationManager.ts).
-- **C5:** [LLMQueryPlanner and LLMProvider](../src/search/LLMQueryPlanner.ts).
-- **C6:** [ManagerContext](../src/core/ManagerContext.ts).
-- **C7:** [StorageFactory](../src/core/StorageFactory.ts) and [TransactionManager](../src/core/TransactionManager.ts).
-- **C8:** [Package scripts and exports](../package.json), [procedural barrel](../src/agent/procedural/index.ts), [agent barrel](../src/agent/index.ts), [existing procedure storage tests](../tests/unit/agent/ProcedureStore.test.ts), and [latest baseline tooling change](https://github.com/danielsimonjr/MemoryJS/commit/549ce11018e5ab2188173ae225c877705d50e453).
-
-Documentation conventions were also checked against [the existing opt-in feature plan](superpowers/plans/2026-04-25-eta-ml-features.md). Where prose documentation and active scripts differ, this plan follows the inspected implementation and `package.json`.
+Where documentation prose and active code differ, implementation decisions in this plan follow the audited source and `package.json`. Any future source change that materially alters the cited behavior should trigger a plan re-audit before implementation.
