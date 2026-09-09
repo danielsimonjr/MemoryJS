@@ -46,7 +46,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: '1.4.0'
+          bun-version: '1.4.2'
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -85,3 +85,18 @@ jobs:
 
       - name: Build
         run: bun run build
+
+      # MUST stay after Build. This step imports ./dist/index.cjs, which does not exist until
+      # `bun run build` has produced it -- placed before Build it failed on all six legs with
+      # "Cannot find module .../dist/index.cjs", which reads like a packaging defect rather than
+      # a step-ordering one. The check itself is right and worth keeping: the package declares
+      # main + exports.require -> ./dist/index.cjs, and the rest of CI runs under Bun, so without
+      # this nothing ever loads the shipped CJS artifact under Node.
+      - name: Node runtime smoke (the shipped artifact must load under Node)
+        run: |
+          node --input-type=module -e '
+            const entry = "./dist/index.cjs";
+            const t = setTimeout(() => { console.log("PASS: self-started under Node"); process.exit(0); }, 5000);
+            import(entry).then(() => { clearTimeout(t); console.log("PASS: loaded cleanly under Node"); process.exit(0); })
+              .catch((e) => { clearTimeout(t); console.error("FAIL: " + entry + " -> " + e.message); process.exit(1); });
+          '

@@ -17,7 +17,7 @@ The library is exposed to two classes of attacker-controlled input:
 
 Out of scope:
 
-- **Sandboxing untrusted task functions.** `TaskQueue` (`src/utils/taskScheduler.ts`) and `parallelUtils` use `new Function(...)` to deserialise functions across worker boundaries; `validateFunction` rejects strings, but a caller that supplies a malicious **function object** can execute arbitrary code in the worker. The library is **not** a sandbox — callers are responsible for the trust boundary on functions they enqueue.
+- **`TaskQueue` / `parallelUtils`** — dynamic `new Function(...)` serialization was removed; task functions must be real function objects from trusted code. The library is **not** a sandbox — callers are responsible for the trust boundary on functions they enqueue.
 - **Process isolation across consumer applications.** A consumer running MemoryJS in-process inherits the process's privileges. The library does not enforce capabilities or namespaces.
 - **Side-channel resistance.** Timing attacks against entity-existence checks, embedding similarity, or query latency are not mitigated.
 

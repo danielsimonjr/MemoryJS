@@ -1,0 +1,16 @@
+{
+  "plugins": ["typescript"],
+  "env": { "node": true, "es2022": true },
+  "ignorePatterns": ["dist/", "node_modules/", "coverage/", "tools/", "tests/", "benchmarks/", "docs/"],
+  "rules": {
+    "typescript/no-explicit-any": "error",
+    "no-console": "error",
+    "typescript/no-floating-promises": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/cli/**/*.ts", "src/utils/logger.ts", "src/search/QueryLogger.ts"],
+      "rules": { "no-console": "off" }
+    }
+  ]
+}

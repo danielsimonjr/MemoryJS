@@ -4,9 +4,9 @@
  * Advanced task scheduling utilities using workerpool.
  * Phase 8 Sprint 4: Priority queues, concurrency control, progress tracking.
  *
- * **SECURITY WARNING:** TaskQueue uses `new Function()` internally for worker serialization.
- * Task functions MUST be real function objects, never user-provided strings.
- * Runtime validation ensures only function objects are accepted.
+ * **SECURITY:** Task functions MUST be real function objects supplied by
+ * trusted code — never user-provided strings. Runtime validation rejects
+ * non-function inputs. Dynamic `new Function()` serialization was removed.
  *
  * @module utils/taskScheduler
  */

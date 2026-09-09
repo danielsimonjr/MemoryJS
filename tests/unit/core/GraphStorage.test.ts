@@ -440,6 +440,52 @@ describe('GraphStorage', () => {
       const graph = await storage.loadGraph();
       expect(graph.entities[0].lastModified).not.toBe('2024-01-01T00:00:00.000Z');
     });
+
+    it('does not persist prototype-pollution keys to disk on updateEntity', async () => {
+      await storage.appendEntity({
+        name: 'Alice',
+        entityType: 'person',
+        observations: [],
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+      });
+
+      const malicious = JSON.parse(
+        '{"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}},"importance":9}',
+      ) as Record<string, unknown>;
+
+      await storage.updateEntity('Alice', malicious as Partial<import('../../../src/types/types.js').Entity>);
+
+      const fileContent = await fs.readFile(testFilePath, 'utf-8');
+      expect(fileContent).not.toContain('__proto__');
+      expect(fileContent).not.toContain('"constructor"');
+      expect(fileContent).toContain('"importance":9');
+
+      const graph = await storage.loadGraph();
+      expect(graph.entities[0].importance).toBe(9);
+      expect(Object.prototype).not.toHaveProperty('polluted');
+    });
+  });
+
+  describe('loadGraph hardening', () => {
+    it('strips prototype-pollution keys when loading from disk', async () => {
+      const maliciousLine = JSON.stringify({
+        type: 'entity',
+        name: 'Alice',
+        entityType: 'person',
+        observations: ['ok'],
+        createdAt: '2024-01-01T00:00:00.000Z',
+        lastModified: '2024-01-01T00:00:00.000Z',
+        __proto__: { polluted: true },
+      });
+      await fs.writeFile(testFilePath, `${maliciousLine}\n`, 'utf-8');
+
+      const graph = await storage.loadGraph();
+      expect(graph.entities).toHaveLength(1);
+      expect(graph.entities[0].name).toBe('Alice');
+      expect(Object.keys(graph.entities[0])).not.toContain('__proto__');
+      expect(Object.prototype).not.toHaveProperty('polluted');
+    });
   });
 
   describe('Compaction', () => {

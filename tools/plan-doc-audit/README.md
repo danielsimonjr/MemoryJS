@@ -25,18 +25,18 @@ Only **backtick-quoted** code spans count as candidate symbols. PascalCase ident
 
 ```bash
 # Default: dry-run; reports what would be flipped without writing
-npm run audit:plans
+bun run audit:plans
 
 # Apply: rewrites plan files, flipping `- [ ]` to `- [x]` for tasks
 # whose every named symbol is shipped (no stubs, no absent symbols).
-npm run audit:plans -- --apply
+bun run audit:plans -- --apply
 ```
 
 Direct invocation also works:
 
 ```bash
-npx tsx tools/plan-doc-audit/audit.ts          # dry-run
-npx tsx tools/plan-doc-audit/audit.ts --apply  # apply flips
+bunx tsx tools/plan-doc-audit/audit.ts          # dry-run
+bunx tsx tools/plan-doc-audit/audit.ts --apply  # apply flips
 ```
 
 ## Exit codes

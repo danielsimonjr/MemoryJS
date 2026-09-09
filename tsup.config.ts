@@ -35,7 +35,9 @@ export default defineConfig([
   {
     entry: libraryEntry,
     format: ['esm'],
-    dts: true,
+    // dts is emitted by tsc, not tsup: rollup-plugin-dts needs TypeScript's
+    // programmatic Compiler API, which TS 7.0 does not ship. See scripts/emit-dts.mjs.
+    dts: false,
     splitting: true,
     clean: true,
     ...libraryShared,
@@ -47,7 +49,9 @@ export default defineConfig([
   {
     entry: libraryEntry,
     format: ['cjs'],
-    dts: true,
+    // dts is emitted by tsc, not tsup: rollup-plugin-dts needs TypeScript's
+    // programmatic Compiler API, which TS 7.0 does not ship. See scripts/emit-dts.mjs.
+    dts: false,
     splitting: false,
     clean: false,
     ...libraryShared,

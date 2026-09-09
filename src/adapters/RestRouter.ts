@@ -99,6 +99,12 @@ export interface RestRouterOptions {
    * UNAUTHENTICATED — see the {@link RestRouter.withDefaults} warning.
    */
   auth?: ApiKeyAuthMiddleware;
+  /**
+   * Explicit opt-in to mount {@link RestRouter.withDefaults} routes without
+   * authentication. Ignored when `auth` is set. Required when `auth` is
+   * omitted — otherwise `withDefaults` throws.
+   */
+  allowUnauthenticated?: boolean;
 }
 
 export class RestRouter {
@@ -205,12 +211,20 @@ export class RestRouter {
    * ```typescript
    * const auth = new ApiKeyAuthMiddleware({ store: apiKeyStore });
    * const router = RestRouter.withDefaults(ctx, { auth });
+   * // Local-only dev listener — explicit opt-in required:
+   * const devRouter = RestRouter.withDefaults(ctx, { allowUnauthenticated: true });
    * ```
    *
    * With auth configured, mutations additionally require the
    * `entities:write` scope (default scope mapping).
    */
   static withDefaults(ctx: ManagerContext, options?: RestRouterOptions): RestRouter {
+    if (!options?.auth && !options?.allowUnauthenticated) {
+      throw new Error(
+        'RestRouter.withDefaults requires either options.auth or options.allowUnauthenticated=true. ' +
+          'Mounting unauthenticated entity CRUD on a network listener is unsafe.',
+      );
+    }
     const router = new RestRouter(ctx, options);
     router
       .get('/entities', async (req, c) => {

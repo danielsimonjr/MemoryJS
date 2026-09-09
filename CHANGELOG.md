@@ -7,14 +7,181 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **TypeScript raised to `^7.0.2`.** The build blocker was removed in the previous
+  entry; this removes the lint blocker. ESLint cannot run on TS 7, and two of this
+  repo's rules could not move to oxlint -- so they were REIMPLEMENTED rather than
+  dropped, because both guard documented failure classes.
+
+  - `scripts/lint-rules.mjs` implements the `src/types` leaf-layer rule (S10) and
+    `no-unused-updateentity-return` against a real AST. The leaf-layer rule covers
+    BOTH halves of the old config: static imports AND inline `import('...')` type
+    annotations -- the second being the escape hatch behind 37+ type-only cycles,
+    invisible to any import-only check because it sits in a type position.
+  - `oxlint --type-aware` carries the other three rules at their original severities,
+    including `no-floating-promises` (type-aware, via tsgolint) and `no-console` with
+    the CLI/logger exemptions intact.
+
+  **The rule tests came with them.** `tests/unit/eslint/` used ESLint's `RuleTester`
+  and would have died with the plugin, taking its 15 cases with it. They now live in
+  `tests/unit/lint-rules/` driving the new functions directly -- every original valid
+  and invalid case preserved, plus coverage for the inline-`import()` form.
+
+  **On the standing rule to prefer what TypeScript or Bun already provide:** neither
+  can do this, and it was measured rather than assumed.
+  `Bun.Transpiler.scanImports` sees a runtime import but returns `[]` for both
+  `import type` and `import('...')` type positions -- exactly the constructs rule 1
+  exists to catch -- and Bun exposes no AST, so rule 2's question ("is this call's
+  return value used?") is unanswerable there. TypeScript 7 does not ship its
+  programmatic Compiler API. `oxc-parser` is the same engine oxlint already runs here.
+
+### Changed
+
+- **Declaration files are now emitted by `tsc`, not by tsup.** `tsup.config.ts` sets
+  `dts: false`; `scripts/emit-dts.mjs` runs `tsc --emitDeclarationOnly` and produces
+  the `.d.cts` half; `scripts/check-exports.mjs` verifies every file named by the
+  `exports` map exists. Same published layout, no behaviour change -- verified by a
+  real consumer typechecking against the built package under BOTH `import` and
+  `require` resolution.
+
+  **Why: this removes the repo's TypeScript 7 build blocker.** tsup generates
+  declarations through `rollup-plugin-dts`, which needs TypeScript's programmatic
+  Compiler API -- TS 7.0 does not ship it (expected in 7.1), so `dts: true` crashes
+  with `useCaseSensitiveFileNames`. tsup's BUNDLING is esbuild and unaffected. The
+  new pipeline is TypeScript-version-agnostic and was verified on both 5.7.2 and
+  7.0.2.
+
+  **Three defects were found while building it, each by a check rather than by luck:**
+  - A plain `.d.ts` -> `.d.cts` copy is WRONG. The declarations reference siblings as
+    `from './core/index.js'`; inside a `.d.cts` TypeScript reads that as requiring an
+    ES module and rejects it with TS1479. The copies existed, passed a file-existence
+    check, and gave a CommonJS consumer zero types. Relative specifiers are rewritten
+    `.js` -> `.cjs`.
+  - The first rewrite missed bare side-effect imports (`import './x.js';` -- no
+    `from`, no parentheses), leaving exactly one file broken.
+  - The self-check originally reused the rewrite's own regex, so it was blind to
+    precisely what the rewriter could not see. It is now syntax-agnostic: any
+    relative `.js` specifier surviving into a `.d.cts` fails the build.
+
+  TypeScript stays at `^5.7.2` for now: the remaining TS 7 blocker here is `lint`.
+  `typescript-eslint` cannot run on TS 7, and this repo's ESLint config carries two
+  things oxlint 1.82 cannot yet take -- `no-restricted-syntax` (unimplemented) and
+  the project-local `memoryjs/no-unused-updateentity-return` (JS plugin paths are
+  rejected by its config parser). Those guards are load-bearing, so they are not
+  being dropped to make a version number move.
+
+### Changed
+
+- **Bun pinned to 1.4.2** in `packageManager`, `engines.bun` and the CI workflow, and
+  `tsconfig.json` now declares `"types": ["node"]` explicitly.
+
+- **TypeScript stays at `^5.7.2`: TypeScript 7 is BLOCKED here by `tsup`.** TS 7.0
+  shipped without the stable programmatic Compiler API (due in 7.1), so
+  `rollup-plugin-dts` -- which tsup uses to emit declarations -- crashes with
+  `TypeError: Cannot read properties of undefined (reading 'useCaseSensitiveFileNames')`.
+  Upstream: tsup issues #1405 and #1408. Measured here from CLEAN installs, because a
+  polluted `node_modules` made the same build fail on TS 5 too and briefly looked like
+  a pre-existing breakage: clean install + TS 5.7.2 builds, clean install + TS 7.0.2
+  fails. Revisit when TS 7.1 lands.
+
 ### Fixed
 
-- **Several read paths did not ensure storage was loaded first.** `EntityManager`,
-  `ProjectContextManager`, and the `decision` / `exclusion` / `heuristic` / `projectContext` /
-  `toolAffordance` CLI commands each queried storage without an `ensureLoaded()` guard, so on a cold
-  `ManagerContext` they could return empty or stale results rather than the persisted graph. Fourteen
-  call sites now await `ensureLoaded()` before reading.
+- **Several storage-backed manager and CLI paths did not ensure storage was loaded first.**
+  `EntityManager`, `ProjectContextManager`, and the `decision` / `exclusion` / `heuristic` /
+  `projectContext` / `toolAffordance` CLI commands now await `ensureLoaded()` before querying
+  storage or performing storage-backed decision mutations, preventing empty or stale behavior on
+  a cold `ManagerContext`.
   Found by the coverage work in the same change — the tests are what exposed it.
+
+### Noted
+
+- **AsyncMutex measured: linear, not degrading — but its two defaults contradict each other.**
+  The windows/node-24 flake filed earlier was blocked on "does the mutex degrade non-linearly
+  under load?". Measured on the real `addObservations` workload: per-op is **flat at ~5 ms**
+  and total is **linear** in queue depth (10 -> 55 ms, 100 -> 506 ms, 200 -> 841 ms). So no
+  degradation, and the CI run that hit the 30 s ceiling at depth 100 was on a runner roughly
+  **59x slower** than this machine — contention, not a lock defect.
+
+  The measurement did surface a genuine design contradiction. The timeout starts at ENQUEUE
+  rather than on reaching the head of the queue, so the tail waiter's 30 s has to cover the
+  whole drain — confirmed, `worst-acquire == total` at every depth. The effective budget is
+  `30 s / N`, and with the class's own `maxQueueLength = 1000` a full queue permits just
+  **30 ms per operation**. At 5 ms that holds; under CI's slowdown it does not, and depth 100
+  is almost exactly the breaking point — which is why the depth-100 test is the one that fails.
+
+  Recommended: start the deadline when a waiter reaches the HEAD of the queue, so the timeout
+  bounds one critical section rather than every predecessor. That is a semantics change, so it
+  is filed for the owner rather than applied.
+
+- **Flaky windows/node-24 timeout filed, deliberately not "fixed".** The nightly run
+  34094099357 failed `ci (windows-latest, 24)` on two concurrency tests in
+  `known-issue-fixes.test.ts` — an `AsyncMutex acquire timeout (30000ms)` and a 30 s test
+  timeout — while the other five legs passed. The same commit `2a6fe6ea` had gone green twice
+  before on identical code, and the file passes 3/3 locally on Windows with node v24.19.0, so
+  it only fails inside the full 321-file suite. That points at contention, not logic. Filed in
+  `todo.md` with the reasoning that widening the 30 s budget would bury the real question —
+  whether 100 serialized acquisitions should approach 30 s at all, or whether the mutex
+  degrades non-linearly under load. Needs a measurement of acquisition time vs. queue depth.
+
+## 2026-09-03 - CI now exercises the NODE runtime, not just Bun
+
+- Every CI step ran through `bun run` while `setup-node` was installed and never invoked, so
+  the production runtime was never exercised. Bun is the dev toolchain; Node is what ships.
+- Added a Node smoke step importing the shipped entry (`./dist/index.cjs`) under Node; fails on a throw, a
+  syntax error, or an unresolvable import. A server that self-starts on import passes after 5s.
+- **Proven failure-capable before adoption** (on librarian-mcp): corrupt artifact -> exit 1,
+  missing dependency -> exit 1, good artifact -> exit 0. The missing-dependency case is the
+  class that forced six repos to revert during the Bun migration.
+- Smoke run locally against this repo's own artifact before the step was added.
+
+## [Unreleased]
+
+### Changed
+
+- **Docs and scripts finish the Bun toolchain migration.** CI already installed and
+  ran via Bun (`bun.lock` authoritative; Node remains the shipped runtime). Root
+  `package.json` now declares `packageManager: bun@1.4.0`, `prepublishOnly` uses
+  `bun run`, and contributor docs / Claude agent commands no longer tell people to
+  `npm install` a lockfile that does not exist.
+
+
+### Fixed
+
+- **`master` was red on all six CI legs: the Node runtime smoke ran BEFORE the build.** The step
+  added in d5c64da imports `./dist/index.cjs`, but it was placed above `Build`, so the artifact it
+  loads did not exist yet -- every leg failed with `Cannot find module .../dist/index.cjs`, which
+  reads like a packaging or exports defect rather than a step-ordering one. Moved below `Build`,
+  with a comment recording why the order is load-bearing.
+  The check itself is correct and worth keeping: `package.json` declares `main` and
+  `exports.require` as `./dist/index.cjs`, and the rest of CI runs under Bun, so without this step
+  nothing ever loads the shipped CJS artifact under Node. Verified by running the step's exact
+  command against a real local build: "PASS: loaded cleanly under Node".
+
+
+## [4.0.0] - 2026-09-03
+
+### Changed — BREAKING
+
+- **`RestRouter.withDefaults(ctx)` now THROWS unless authentication is configured.** Mounting the
+  default routes without an `auth` handler previously succeeded silently, leaving the REST surface
+  unauthenticated by default. It now requires an explicit `allowUnauthenticated: true` opt-in.
+  Fail-closed rather than fail-open.
+  **Migration:** callers relying on the old behaviour must pass `allowUnauthenticated: true`
+  (local-only dev listeners) or supply `auth`. This is a breaking change for any consumer calling
+  `withDefaults` without auth, and should carry a major bump at release.
+
+### Security
+
+- **Prototype-pollution guard on JSONL ingestion.** `GraphStorage` and `FileSegmentStorage` now
+  reject parsed lines that are `null`, arrays, or non-objects, and route the rest through
+  `sanitizeObject` before use. A crafted JSONL line could previously reach object construction
+  unfiltered.
+- **Path validation before CLI writes.** `decision --out` now resolves and validates the target with
+  `validateFilePath` before `writeFileSync`, closing an arbitrary-write path.
+- **Dynamic `new Function()` serialization removed** from `taskScheduler`; the doc comment no longer
+  describes a mechanism the code has stopped using. Runtime validation still rejects non-function
+  task inputs.
 
 ## [3.4.0] - 2026-08-29
 

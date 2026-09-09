@@ -37,8 +37,8 @@ Thank you for your interest in contributing to MemoryJS! This document provides 
 
 ### Prerequisites
 
-- Node.js 18.x or higher
-- npm 9.x or higher
+- Node.js 18.x or higher (production runtime)
+- Bun 1.4.x or higher (package manager / script driver)
 - Git
 - A code editor (VS Code recommended)
 
@@ -49,14 +49,14 @@ Thank you for your interest in contributing to MemoryJS! This document provides 
 git clone https://github.com/YOUR_USERNAME/MemoryJS.git
 cd MemoryJS
 
-# Install dependencies
-npm install
+# Install dependencies (bun.lock is authoritative)
+bun install
 
 # Build the project
-npm run build
+bun run build
 
 # Run tests to verify setup
-npm test
+bun run test
 ```
 
 ### Project Structure
@@ -114,16 +114,16 @@ git checkout -b fix/issue-description
 
 ```bash
 # Make your changes, then build
-npm run build
+bun run build
 
 # Run type checking
-npm run typecheck
+bun run typecheck
 
 # Run tests
-npm test
+bun run test
 
 # Run specific test file
-npx vitest run tests/unit/core/EntityManager.test.ts
+bunx vitest run tests/unit/core/EntityManager.test.ts
 ```
 
 ### 3. Commit Changes
@@ -163,9 +163,9 @@ Then create a Pull Request on GitHub.
 
 ### Before Submitting
 
-1. **Build passes**: `npm run build` succeeds
-2. **Tests pass**: `npm test` passes
-3. **Type check passes**: `npm run typecheck` passes
+1. **Build passes**: `bun run build` succeeds
+2. **Tests pass**: `bun run test` passes
+3. **Type check passes**: `bun run typecheck` passes
 4. **Documentation updated**: If adding features, update docs
 5. **Changelog updated**: Add entry to CHANGELOG.md if significant
 
@@ -403,19 +403,19 @@ describe('EntityManager', () => {
 
 ```bash
 # All tests
-npm test
+bun run test
 
 # With coverage
-npm run test:coverage
+bun run test:coverage
 
 # Specific file
-npx vitest run tests/unit/core/EntityManager.test.ts
+bunx vitest run tests/unit/core/EntityManager.test.ts
 
 # Watch mode
-npm run test:watch
+bun run test:watch
 
 # Pattern matching
-npx vitest run --grep "EntityManager"
+bunx vitest run --grep "EntityManager"
 ```
 
 ---

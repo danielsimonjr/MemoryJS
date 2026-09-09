@@ -1,8 +1,9 @@
 # Development Setup Guide
 
-**Last reviewed**: 2026-07-24 (v2.9.0). Build commands now
-use `tsup` (ESM + CJS dual output); see [README.md § Development](../../README.md#development)
-for the full command list including `npm run audit:plans` and the
+**Last reviewed**: 2026-09-05. Bun is the package manager and script driver
+(`bun.lock`); Node remains the production runtime. Build commands still use
+`tsup` (ESM + CJS dual output); see [README.md § Development](../../README.md#development)
+for the full command list including `bun run audit:plans` and the
 dependency-graph generator.
 
 Complete guide to setting up a MemoryJS development environment.
@@ -26,8 +27,8 @@ Complete guide to setting up a MemoryJS development environment.
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | 18.x+ | JavaScript runtime |
-| npm | 9.x+ | Package management |
+| Bun | 1.4.x+ | Package manager and script driver (`bun.lock`) |
+| Node.js | 18.x+ | Production runtime for the published package / native addons |
 | Git | 2.x+ | Version control |
 
 ### Optional
@@ -41,8 +42,8 @@ Complete guide to setting up a MemoryJS development environment.
 ### Verify Installation
 
 ```bash
+bun --version    # Should be 1.4.x or higher
 node --version   # Should be 18.x or higher
-npm --version    # Should be 9.x or higher
 git --version    # Should be 2.x or higher
 ```
 
@@ -64,7 +65,7 @@ git remote add upstream https://github.com/danielsimonjr/MemoryJS.git
 ### 2. Install Dependencies
 
 ```bash
-npm install
+bun install
 ```
 
 This installs:
@@ -74,7 +75,7 @@ This installs:
 ### 3. Build Project
 
 ```bash
-npm run build
+bun run build
 ```
 
 This compiles TypeScript to JavaScript in `dist/`.
@@ -83,13 +84,13 @@ This compiles TypeScript to JavaScript in `dist/`.
 
 ```bash
 # Run tests
-npm test
+bun run test
 
 # Type check
-npm run typecheck
+bun run typecheck
 
 # Run single test to verify
-npx vitest run tests/unit/core/EntityManager.test.ts
+bunx vitest run tests/unit/core/EntityManager.test.ts
 ```
 
 ---
@@ -127,7 +128,7 @@ npx vitest run tests/unit/core/EntityManager.test.ts
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "vitest.enable": true,
-  "vitest.commandLine": "npx vitest"
+  "vitest.commandLine": "bunx vitest"
 }
 ```
 
@@ -160,7 +161,7 @@ npx vitest run tests/unit/core/EntityManager.test.ts
       "name": "Run Script",
       "type": "node",
       "request": "launch",
-      "runtimeExecutable": "npx",
+      "runtimeExecutable": "bunx",
       "runtimeArgs": ["tsx", "${file}"],
       "console": "integratedTerminal",
       "cwd": "${workspaceFolder}"
@@ -188,13 +189,13 @@ npx vitest run tests/unit/core/EntityManager.test.ts
 
 ```bash
 # Build TypeScript to dist/
-npm run build
+bun run build
 
 # Watch mode - rebuild on changes
-npm run build:watch
+bun run build:watch
 
 # Type check without emitting
-npm run typecheck
+bun run typecheck
 
 # Clean build artifacts
 rm -rf dist/
@@ -262,28 +263,28 @@ export default defineConfig({
 
 ```bash
 # All tests
-npm test
+bun run test
 
 # With coverage report
-npm run test:coverage
+bun run test:coverage
 
 # Watch mode
-npm run test:watch
+bun run test:watch
 
 # Specific file
-npx vitest run tests/unit/core/EntityManager.test.ts
+bunx vitest run tests/unit/core/EntityManager.test.ts
 
 # Pattern matching
-npx vitest run --grep "EntityManager"
+bunx vitest run --grep "EntityManager"
 
 # Only unit tests
-npx vitest run tests/unit
+bunx vitest run tests/unit
 
 # Only integration tests
-npx vitest run tests/integration
+bunx vitest run tests/integration
 
 # Only performance tests
-npx vitest run tests/performance
+bunx vitest run tests/performance
 ```
 
 ### Test Data Location
@@ -317,7 +318,7 @@ No additional setup required. Files stored as line-delimited JSON.
 
 ```bash
 # Test with JSONL
-MEMORY_STORAGE_TYPE=jsonl npm test
+MEMORY_STORAGE_TYPE=jsonl bun run test
 ```
 
 ### SQLite Storage
@@ -326,7 +327,7 @@ Requires `better-sqlite3` (installed automatically).
 
 ```bash
 # Test with SQLite
-MEMORY_STORAGE_TYPE=sqlite npm test
+MEMORY_STORAGE_TYPE=sqlite bun run test
 ```
 
 #### Debugging SQLite
@@ -355,7 +356,7 @@ SELECT * FROM entities_fts WHERE entities_fts MATCH 'alice';
 No setup required. Returns deterministic fake embeddings.
 
 ```bash
-MEMORY_EMBEDDING_PROVIDER=none npm test
+MEMORY_EMBEDDING_PROVIDER=none bun run test
 ```
 
 ### OpenAI Provider
@@ -368,7 +369,7 @@ export MEMORY_OPENAI_API_KEY=sk-your-key-here
 export MEMORY_EMBEDDING_PROVIDER=openai
 
 # Run tests (will use real API)
-npm test
+bun run test
 ```
 
 **Warning**: Using OpenAI in tests incurs API costs.
@@ -379,7 +380,7 @@ Uses locally computed embeddings (lower quality, no API needed).
 
 ```bash
 export MEMORY_EMBEDDING_PROVIDER=local
-npm test
+bun run test
 ```
 
 ---
@@ -407,7 +408,7 @@ NODE_ENV=development
 
 ```bash
 # Load and run
-source .env.development && npm test
+source .env.development && bun run test
 ```
 
 Or use `dotenv`:
@@ -478,13 +479,13 @@ import 'dotenv/config';
 
 ```bash
 # Run with verbose output
-npx vitest run tests/unit/core/EntityManager.test.ts --reporter=verbose
+bunx vitest run tests/unit/core/EntityManager.test.ts --reporter=verbose
 
 # Run with debugger
 node --inspect-brk node_modules/vitest/vitest.mjs run tests/unit/core/EntityManager.test.ts
 
 # Run specific test
-npx vitest run -t "should create entity"
+bunx vitest run -t "should create entity"
 ```
 
 ---
@@ -498,15 +499,15 @@ npx vitest run -t "should create entity"
 ```bash
 # Rebuild
 rm -rf dist/ node_modules/
-npm install
-npm run build
+bun install
+bun run build
 ```
 
 #### Type errors
 
 ```bash
 # Check types
-npm run typecheck
+bun run typecheck
 
 # Clear TypeScript cache
 rm -rf node_modules/.cache
@@ -518,14 +519,14 @@ rm -rf node_modules/.cache
 
 ```bash
 # Increase timeout
-npx vitest run --testTimeout=60000
+bunx vitest run --testTimeout=60000
 ```
 
 #### SQLite errors
 
 ```bash
 # Rebuild native modules
-npm rebuild better-sqlite3
+bun run rebuild:native  # or: npm rebuild better-sqlite3
 ```
 
 #### Permission errors
@@ -544,7 +545,7 @@ rm -rf /tmp/memoryjs-test-*
 
 ```bash
 # Rebuild for ARM
-npm rebuild
+bun run rebuild:native
 ```
 
 #### Linux
@@ -552,7 +553,7 @@ npm rebuild
 ```bash
 # Install build essentials
 sudo apt install build-essential python3
-npm rebuild
+bun run rebuild:native
 ```
 
 ---

@@ -1,6 +1,6 @@
 {
   "name": "@danielsimonjr/memoryjs",
-  "version": "3.4.0",
+  "version": "4.0.0",
   "description": "Core knowledge graph library with search, storage, and graph algorithms",
   "type": "module",
   "main": "dist/index.cjs",
@@ -121,18 +121,18 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/emit-dts.mjs && node scripts/check-exports.mjs",
     "build:watch": "tsup --watch",
     "build:tsc": "tsc",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src",
+    "lint": "oxlint --type-aware src && node scripts/check-lint-rules.mjs",
     "lint:fix": "eslint src --fix",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ci": "node -e \"process.env.IGNORE_UNHANDLED_REJECTIONS='true';require('child_process').execSync('vitest run --exclude=tests/performance/**',{stdio:'inherit',env:process.env})\"",
     "clean": "rimraf dist",
-    "prepublishOnly": "npm run clean && npm run build && npm run test:ci",
+    "prepublishOnly": "bun run clean && bun run build && bun run test:ci",
     "tools:install": "cd tools/chunking-for-files && npm install && cd ../compress-for-context && npm install && cd ../create-dependency-graph && npm install && cd ../migrate-from-jsonl-to-sqlite && npm install",
     "tools:build": "cd tools/chunking-for-files && npm run build && cd ../compress-for-context && npm run build && cd ../create-dependency-graph && npm run build && cd ../migrate-from-jsonl-to-sqlite && npm run build",
     "tools:deps": "node tools/create-dependency-graph/create-dependency-graph.ts",
@@ -166,12 +166,14 @@
   },
   "homepage": "https://github.com/danielsimonjr/memoryjs#readme",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "bun": ">=1.4.2"
   },
+  "packageManager": "bun@1.4.2",
   "dependencies": {
     "@danielsimonjr/workerpool": "^10.2.0",
     "async-mutex": "^0.5.0",
-    "better-sqlite3": "^12.11.1",
+    "better-sqlite3": "^13.0.3",
     "chalk": "^6.0.0",
     "chrono-node": "^2.9.1",
     "cli-table3": "^0.6.5",
@@ -187,17 +189,17 @@
     }
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.3.0",
-    "@vitest/coverage-v8": "^4.0.16",
-    "eslint": "^10.7.0",
+    "@vitest/coverage-v8": "^5.0.0",
+    "oxc-parser": "^0.149.0",
+    "oxlint": "^1.82.0",
+    "oxlint-tsgolint": "^7.0.2001",
     "rimraf": "^6.0.1",
     "tsup": "^8.3.5",
     "tsx": "^4.23.1",
-    "typescript": "^5.7.2",
-    "typescript-eslint": "^8.20.0",
-    "vitest": "^4.1.7"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
   },
   "overrides": {
     "esbuild": "^0.28.1"

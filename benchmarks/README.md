@@ -7,15 +7,15 @@ Measures recall accuracy (R@5, R@10) and search latency across different search 
 ### Run
 
 ```bash
-npx tsx benchmarks/synthetic-bench.ts        # 100 questions (default)
-npx tsx benchmarks/synthetic-bench.ts 500    # 500 questions
+bunx tsx benchmarks/synthetic-bench.ts        # 100 questions (default)
+bunx tsx benchmarks/synthetic-bench.ts 500    # 500 questions
 ```
 
 Or via npm:
 
 ```bash
-npm run benchmark
-npm run benchmark -- 500
+bun run benchmark
+bun run benchmark -- 500
 ```
 
 ### Modes
