@@ -3,7 +3,7 @@
 > **Status:** Proposed feature; planning only. No runtime implementation is included.
 > **Date:** 2026-09-09
 > **Repository baseline:** `danielsimonjr/MemoryJS`, `master` at `549ce11018e5ab2188173ae225c877705d50e453` (`@danielsimonjr/memoryjs` 4.0.0).
-> **Source:** Yuxing Lu, Yicheng Chen, Shanchan Wu, and Sercan O. Arik, *Procedural Graphs: Self-Evolving Execution Structures for LLM Agents*, supplied 36-page PDF, arXiv:2609.09153v1, 8 September 2026.
+> **Source:** Yuxing Lu, Yicheng Chen, Shanchan Wu, and Sercan Ö. Arık, *Procedural Graphs: Self-Evolving Execution Structures for LLM Agents*, supplied 36-page PDF, arXiv:2609.09153v1, 8 September 2026.
 
 ## 1. Feature objective and boundaries
 
@@ -409,6 +409,6 @@ Links resolve to the source files accompanying this plan's baseline; the exact i
 - **C5:** [LLMQueryPlanner and LLMProvider](../src/search/LLMQueryPlanner.ts).
 - **C6:** [ManagerContext](../src/core/ManagerContext.ts).
 - **C7:** [StorageFactory](../src/core/StorageFactory.ts) and [TransactionManager](../src/core/TransactionManager.ts).
-- **C8:** [Package scripts and exports](../package.json), [procedural barrel](../src/agent/procedural/index.ts), [agent barrel](../src/agent/index.ts), [existing procedure storage tests](../tests/unit/agent/ProcedureStore.test.ts), and [latest baseline tooling change](../commit/549ce11018e5ab2188173ae225c877705d50e453).
+- **C8:** [Package scripts and exports](../package.json), [procedural barrel](../src/agent/procedural/index.ts), [agent barrel](../src/agent/index.ts), [existing procedure storage tests](../tests/unit/agent/ProcedureStore.test.ts), and [latest baseline tooling change](https://github.com/danielsimonjr/MemoryJS/commit/549ce11018e5ab2188173ae225c877705d50e453).
 
 Documentation conventions were also checked against [the existing opt-in feature plan](superpowers/plans/2026-04-25-eta-ml-features.md). Where prose documentation and active scripts differ, this plan follows the inspected implementation and `package.json`.
