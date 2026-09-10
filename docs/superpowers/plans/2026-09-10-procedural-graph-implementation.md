@@ -326,16 +326,16 @@ export function procedureToGraphInput(procedure: Procedure): { nodes: PGNode[]; 
 
 ### 5.1 Agent A / Wave 1 — types, schemas, canonical, graph core, validator, serializer
 
-**Status:** 🟢 READY · **Commit prefix:** `feat(pg-core)` · **Feature-plan sections to read:** 2, 5, 6, 8.2, 8.4, 9.5, 9.6
+**Status:** ✅ SHIPPED · **Commit prefix:** `feat(pg-core)` · **Feature-plan sections to read:** 2, 5, 6, 8.2, 8.4, 9.5, 9.6
 
-- [ ] Create `src/types/proceduralGraph.ts` exactly per Section 4.1 and append its exports to `src/types/index.ts`. Commit immediately (`feat(pg-core): add procedural graph leaf types`).
-- [ ] Create `src/agent/procedural/graph/canonical.ts` (`canonicalJson`, `sha256Hex`, `graphDigest`, `toolCatalogHash`, `storageKey`, `evaluationFingerprint`).
-- [ ] Create `src/agent/procedural/graph/ProceduralGraphSchemas.ts` (`PG_LIMITS`, `parseSnapshot`, `parseEditSet`).
-- [ ] Create `src/agent/procedural/graph/ProceduralGraph.ts` (`ProceduralGraph` with `locate`, `neighborhood`, `reachesTerminal`, `findCycleClosingEdges`, `withEdits`).
-- [ ] Create `src/agent/procedural/graph/ProceduralGraphValidator.ts` (`validateSnapshot`, `applyCyclePolicy`, `prepareCandidate`).
-- [ ] Create `src/agent/procedural/graph/ProceduralGraphSerializer.ts` (`serializeLocalContext`, `serializeFullGraph`, `serializeGraphJson`).
-- [ ] Create fixtures `tests/unit/agent/procedural/graph/fixtures/hotpotqa-mode2.ts` (the 4-node excerpt from feature plan 8.4: `First_Hop_Retrieve → Scan_Index → Bridge_Extract`, plus `Start`, `End`; attributes copied from the excerpt) and `fixtures/cfo-generation-d.ts` (paper Appendix E.3 Generation D: `Start → Month_Start → recall_notes → check_cash_in_bank → cash_flow_forecast_calculation → save_note → check_market_data → Decide_Capital → {fund_raising_request → End, book_closing → End}`; guidance/pitfalls text is synthetic and must say so in a comment).
-- [ ] Tests (`tests/unit/agent/procedural/graph/`): `canonical.test.ts`, `ProceduralGraphSchemas.test.ts`, `ProceduralGraph.test.ts`, `ProceduralGraphValidator.test.ts`, `ProceduralGraphSerializer.test.ts`.
+- [x] Create `src/types/proceduralGraph.ts` exactly per Section 4.1 and append its exports to `src/types/index.ts`. Commit immediately (`feat(pg-core): add procedural graph leaf types`).
+- [x] Create `src/agent/procedural/graph/canonical.ts` (`canonicalJson`, `sha256Hex`, `graphDigest`, `toolCatalogHash`, `storageKey`, `evaluationFingerprint`).
+- [x] Create `src/agent/procedural/graph/ProceduralGraphSchemas.ts` (`PG_LIMITS`, `parseSnapshot`, `parseEditSet`).
+- [x] Create `src/agent/procedural/graph/ProceduralGraph.ts` (`ProceduralGraph` with `locate`, `neighborhood`, `reachesTerminal`, `findCycleClosingEdges`, `withEdits`).
+- [x] Create `src/agent/procedural/graph/ProceduralGraphValidator.ts` (`validateSnapshot`, `applyCyclePolicy`, `prepareCandidate`).
+- [x] Create `src/agent/procedural/graph/ProceduralGraphSerializer.ts` (`serializeLocalContext`, `serializeFullGraph`, `serializeGraphJson`).
+- [x] Create fixtures `tests/unit/agent/procedural/graph/fixtures/hotpotqa-mode2.ts` (the 4-node excerpt from feature plan 8.4: `First_Hop_Retrieve → Scan_Index → Bridge_Extract`, plus `Start`, `End`; attributes copied from the excerpt) and `fixtures/cfo-generation-d.ts` (paper Appendix E.3 Generation D: `Start → Month_Start → recall_notes → check_cash_in_bank → cash_flow_forecast_calculation → save_note → check_market_data → Decide_Capital → {fund_raising_request → End, book_closing → End}`; guidance/pitfalls text is synthetic and must say so in a comment).
+- [x] Tests (`tests/unit/agent/procedural/graph/`): `canonical.test.ts`, `ProceduralGraphSchemas.test.ts`, `ProceduralGraph.test.ts`, `ProceduralGraphValidator.test.ts`, `ProceduralGraphSerializer.test.ts`.
 
 **Required test cases (names are the `it(...)` strings):**
 
@@ -390,13 +390,13 @@ You are Agent A ("pg-core"). Your task is Section 5.1 of docs/superpowers/plans/
 
 ### 5.2 Agent B / Wave 1 — relation schema fix + driver-resolver export
 
-**Status:** 🟢 READY · **Commit prefix:** `feat(pg-store)` · **Feature-plan sections:** 3 (A1, A12, A13), 4, 7
+**Status:** ✅ SHIPPED · **Commit prefix:** `feat(pg-store)` · **Feature-plan sections:** 3 (A1, A12, A13), 4, 7
 
-- [ ] In `src/utils/schemas.ts`: add `metadata: z.record(z.string(), z.unknown()).optional()` to `CreateRelationSchema`; add `weight`, `confidence`, `properties`, and `metadata` (all optional, same sub-schemas as `CreateRelationSchema`) to `RelationSchema`. Keep both `.strict()`. `DeleteRelationsSchema` inherits automatically; verify with a test. Do **not** touch entity schemas.
-- [ ] In `src/core/SQLiteStorage.ts`: add `export function resolveSQLiteDatabaseCtor(): DatabaseCtor { return loadDatabaseCtor(); }` directly below `__resetDatabaseCtorForTests`, with a JSDoc noting it exists for the procedural-graph backing (A12). Export the `DatabaseCtor` type if it is not already exported (`export type { DatabaseCtor }`). Change nothing else in that file.
-- [ ] Tests: extend `tests/unit/utils/schemas.test.ts` with a new `describe('relation metadata (procedural graph)')` block: "CreateRelationSchema accepts metadata.proceduralGraph", "CreateRelationSchema still rejects unknown top-level keys", "RelationSchema accepts weight/confidence/properties/metadata", "DeleteRelationsSchema accepts relations carrying metadata". Add `tests/unit/core/RelationManager-metadata.test.ts`: create two entities via `EntityManager`, `createRelations([{ from, to, relationType:'LEADS_TO', metadata:{ proceduralGraph:{ schemaVersion:1, condition:null, guidance:'g', pitfalls:'p' } } }])` on a `GraphStorage` temp file, reload, assert metadata round-trips. Repeat on `SQLiteStorage` (skip with `it.skipIf` when neither driver is available — copy the availability check pattern from `tests/unit/core/sqlite-lazy-load.test.ts`).
-- [ ] Add `tests/unit/core/sqlite-driver-resolver.test.ts`: "resolveSQLiteDatabaseCtor returns a constructor" and "honors MEMORY_SQLITE_DRIVER=node after __resetDatabaseCtorForTests" (skip if `isNodeSqliteAvailable()` is false).
-- [ ] Run `bunx vitest run tests/unit/utils tests/unit/core tests/unit/features` and confirm no regression (IOManager import tests exercise `RelationSchema`).
+- [x] In `src/utils/schemas.ts`: add `metadata: z.record(z.string(), z.unknown()).optional()` to `CreateRelationSchema`; add `weight`, `confidence`, `properties`, and `metadata` (all optional, same sub-schemas as `CreateRelationSchema`) to `RelationSchema`. Keep both `.strict()`. `DeleteRelationsSchema` inherits automatically; verify with a test. Do **not** touch entity schemas.
+- [x] In `src/core/SQLiteStorage.ts`: add `export function resolveSQLiteDatabaseCtor(): DatabaseCtor { return loadDatabaseCtor(); }` directly below `__resetDatabaseCtorForTests`, with a JSDoc noting it exists for the procedural-graph backing (A12). Export the `DatabaseCtor` type if it is not already exported (`export type { DatabaseCtor }`). Change nothing else in that file.
+- [x] Tests: extend `tests/unit/utils/schemas.test.ts` with a new `describe('relation metadata (procedural graph)')` block: "CreateRelationSchema accepts metadata.proceduralGraph", "CreateRelationSchema still rejects unknown top-level keys", "RelationSchema accepts weight/confidence/properties/metadata", "DeleteRelationsSchema accepts relations carrying metadata". Add `tests/unit/core/RelationManager-metadata.test.ts`: create two entities via `EntityManager`, `createRelations([{ from, to, relationType:'LEADS_TO', metadata:{ proceduralGraph:{ schemaVersion:1, condition:null, guidance:'g', pitfalls:'p' } } }])` on a `GraphStorage` temp file, reload, assert metadata round-trips. Repeat on `SQLiteStorage` (skip with `it.skipIf` when neither driver is available — copy the availability check pattern from `tests/unit/core/sqlite-lazy-load.test.ts`).
+- [x] Add `tests/unit/core/sqlite-driver-resolver.test.ts`: "resolveSQLiteDatabaseCtor returns a constructor" and "honors MEMORY_SQLITE_DRIVER=node after __resetDatabaseCtorForTests" (skip if `isNodeSqliteAvailable()` is false).
+- [x] Run `bunx vitest run tests/unit/utils tests/unit/core tests/unit/features` and confirm no regression (IOManager import tests exercise `RelationSchema`).
 
 **Prompt:**
 ```text
@@ -406,12 +406,12 @@ You are Agent B ("pg-store"). Your Wave 1 task is Section 5.2 of docs/superpower
 
 ### 5.3 Agent C / Wave 1 — prompts, provider adapter, token tail
 
-**Status:** 🟢 READY · **Commit prefix:** `feat(pg-guide)` · **Feature-plan sections:** 8.3, 8.5, 8.6, 9.3, PG-14
+**Status:** ✅ SHIPPED · **Commit prefix:** `feat(pg-guide)` · **Feature-plan sections:** 8.3, 8.5, 8.6, 9.3, PG-14
 
-- [ ] Create `src/agent/procedural/graph/prompts.ts`: the two templates copied **character-for-character** from feature plan 8.5 (including the `•` bullets and the `→` arrow), the four binding constants, and `renderTemplate`.
-- [ ] Create `src/agent/procedural/graph/CompletionProvider.ts` per 4.8 (`PGCompletionProvider`, `adaptLLMProvider`, `completeWithBudget`). Import `LLMProvider` as a type from `../../../search/LLMQueryPlanner.js`.
-- [ ] Create `src/agent/procedural/graph/tokenTail.ts` per 4.8 (`PGTokenizer`, `tokenTail`, `concatTrajectories`).
-- [ ] Tests in `tests/unit/agent/procedural/graph/`: `prompts.test.ts` ("guidance template contains the exact sentence 'You must include any specific command patterns, file paths, tools, or arguments defined in the graph context if they are relevant to the next steps.'", "refiner template contains rule 6 verbatim", "renderTemplate throws on unbound placeholder", "renderTemplate leaves JSON braces inside the refiner template intact" — note the refiner template contains literal `{` `}` in its output-format block; `renderTemplate` must replace only `{identifier}` tokens matching `/\{([a-z_]+)\}/g` whose name is in `bindings`, and the template's literal JSON braces contain `"add_nodes":` etc. so they never match that regex), `CompletionProvider.test.ts` ("timeout discards a late response and reports ok:false", "usage is approximate when getLastUsage is absent", "usage is exact when getLastUsage is present", "maxOutputChars truncation is reported"), `tokenTail.test.ts` ("keeps the final N tokens in order", "leaves shorter input unchanged", "concatTrajectories preserves input order and is deterministic"). Use a whitespace tokenizer defined inside the test file.
+- [x] Create `src/agent/procedural/graph/prompts.ts`: the two templates copied **character-for-character** from feature plan 8.5 (including the `•` bullets and the `→` arrow), the four binding constants, and `renderTemplate`.
+- [x] Create `src/agent/procedural/graph/CompletionProvider.ts` per 4.8 (`PGCompletionProvider`, `adaptLLMProvider`, `completeWithBudget`). Import `LLMProvider` as a type from `../../../search/LLMQueryPlanner.js`.
+- [x] Create `src/agent/procedural/graph/tokenTail.ts` per 4.8 (`PGTokenizer`, `tokenTail`, `concatTrajectories`).
+- [x] Tests in `tests/unit/agent/procedural/graph/`: `prompts.test.ts` ("guidance template contains the exact sentence 'You must include any specific command patterns, file paths, tools, or arguments defined in the graph context if they are relevant to the next steps.'", "refiner template contains rule 6 verbatim", "renderTemplate throws on unbound placeholder", "renderTemplate leaves JSON braces inside the refiner template intact" — note the refiner template contains literal `{` `}` in its output-format block; `renderTemplate` must replace only `{identifier}` tokens matching `/\{([a-z_]+)\}/g` whose name is in `bindings`, and the template's literal JSON braces contain `"add_nodes":` etc. so they never match that regex), `CompletionProvider.test.ts` ("timeout discards a late response and reports ok:false", "usage is approximate when getLastUsage is absent", "usage is exact when getLastUsage is present", "maxOutputChars truncation is reported"), `tokenTail.test.ts` ("keeps the final N tokens in order", "leaves shorter input unchanged", "concatTrajectories preserves input order and is deterministic"). Use a whitespace tokenizer defined inside the test file.
 
 **Prompt:**
 ```text
@@ -421,10 +421,10 @@ You are Agent C ("pg-guide"). Your Wave 1 task is Section 5.3 of docs/superpower
 
 ### 5.4 Agent D / Wave 1 — refiner (pure) and rejection serialization
 
-**Status:** 🟢 READY · **Commit prefix:** `feat(pg-evolve)` · **Feature-plan sections:** 9.4, 9.8, PG-06, PG-10, PG-11
+**Status:** ✅ SHIPPED · **Commit prefix:** `feat(pg-evolve)` · **Feature-plan sections:** 9.4, 9.8, PG-06, PG-10, PG-11
 
-- [ ] Create `src/agent/procedural/graph/ProceduralGraphRefiner.ts` per 4.9 (`buildRefinerPrompt`, `serializeRejections`, `proposeEdits`). `proposeEdits` calls `completeWithBudget` (Agent C) and `parseEditSet` (Agent A); until those land, code against the signatures in Section 4 and mark the imports — they will resolve at the Wave 1 gate.
-- [ ] Tests `tests/unit/agent/procedural/graph/ProceduralGraphRefiner.test.ts` with a fake `PGCompletionProvider`: "buildRefinerPrompt binds all six placeholders and contains the mode string", "proposeEdits returns ok for a raw JSON object", "proposeEdits returns parse diagnostics for fenced JSON", "serializeRejections lists newest first and reports omitted count when over maxRecords", "serializeRejections output is bounded by maxChars", "an add_edges proposal that copies a task-specific literal from attemptsBlock is flagged with warning 'possible-trajectory-leak'" (PG-11: implement as a warning-only heuristic — any 12+ character substring of guidance/pitfalls that appears verbatim in `attemptsBlock`; never fatal).
+- [x] Create `src/agent/procedural/graph/ProceduralGraphRefiner.ts` per 4.9 (`buildRefinerPrompt`, `serializeRejections`, `proposeEdits`). `proposeEdits` calls `completeWithBudget` (Agent C) and `parseEditSet` (Agent A); until those land, code against the signatures in Section 4 and mark the imports — they will resolve at the Wave 1 gate.
+- [x] Tests `tests/unit/agent/procedural/graph/ProceduralGraphRefiner.test.ts` with a fake `PGCompletionProvider`: "buildRefinerPrompt binds all six placeholders and contains the mode string", "proposeEdits returns ok for a raw JSON object", "proposeEdits returns parse diagnostics for fenced JSON", "serializeRejections lists newest first and reports omitted count when over maxRecords", "serializeRejections output is bounded by maxChars", "an add_edges proposal that copies a task-specific literal from attemptsBlock is flagged with warning 'possible-trajectory-leak'" (PG-11: implement as a warning-only heuristic — any 12+ character substring of guidance/pitfalls that appears verbatim in `attemptsBlock`; never fatal).
 
 **Prompt:**
 ```text
