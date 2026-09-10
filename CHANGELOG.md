@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **README documents the Bun toolchain.** Consumer install is `bun add`, the
-  CLI one-liner is `bunx --package @danielsimonjr/memoryjs memory --help`, and
-  repo tools run as `bun tools/…`. npm registry badges and URLs stay; Node
-  remains the published production runtime (`engines.node` >= 18). TypeScript
-  badge/requirements now say 7.0+ to match `typescript: ^7.0.2`.
+- **README documents the Bun toolchain.** Consumer install is `bun add` and
+  the CLI one-liner is `bunx --package @danielsimonjr/memoryjs memory --help`.
+  Repo tool wrappers are `bun run tools:deps` / `bun run audit:plans`; direct
+  tool entrypoints remain `node tools/…` (Node shebang + Usage). npm registry
+  badges and URLs stay; Node remains the published production runtime
+  (`engines.node` >= 18). TypeScript badge/requirements now say 7.0+ to match
+  `typescript: ^7.0.2`.
 
 - **TypeScript raised to `^7.0.2`.** The build blocker was removed in the previous
   entry; this removes the lint blocker. ESLint cannot run on TS 7, and two of this

@@ -997,18 +997,23 @@ SKIP_BENCHMARKS=true bun run test  # Skip perf tests in the main suite
 
 ### Tooling
 
-`tools/*/` still ship their own npm lockfiles. `bun run tools:install` and
-`bun run tools:build` wrap those npm installs/builds; they are not bun-native
-subpackages. Once installed, run the TypeScript tools with Bun:
+`tools/*/` still ship their own npm lockfiles and Node shebangs (`Usage: node
+…`). Prefer the Bun-wrapped root scripts; those call the Node entrypoints:
 
 ```bash
-bun run tools:install                                                  # npm install inside tools/*/
-bun run tools:build                                                    # npm run build inside tools/*/
-bun run audit:plans                                                    # Detect plan-doc rot
-bun tools/create-dependency-graph/create-dependency-graph.ts          # Refresh DEPENDENCY_GRAPH.md
-bun tools/chunking-for-files/chunking-for-files.ts split <file>       # Split a large file
-bun tools/chunking-for-files/chunking-for-files.ts merge <manifest>   # Merge back
-bun tools/migrate-from-jsonl-to-sqlite/...                            # JSONL → SQLite migration
+bun run tools:install     # npm install inside tools/*/
+bun run tools:build       # npm run build inside tools/*/
+bun run tools:deps        # Refresh DEPENDENCY_GRAPH.md
+bun run tools:deps:full   # Same, including test files
+bun run audit:plans       # Detect plan-doc rot (tsx via bun run)
+```
+
+Tools without a root wrapper are still invoked as Node entrypoints:
+
+```bash
+node tools/chunking-for-files/chunking-for-files.ts split <file>
+node tools/chunking-for-files/chunking-for-files.ts merge <manifest>
+node tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts
 ```
 
 ### Architecture overview
