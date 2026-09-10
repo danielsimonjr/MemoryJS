@@ -85,6 +85,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a pre-existing breakage: clean install + TS 5.7.2 builds, clean install + TS 7.0.2
   fails. Revisit when TS 7.1 lands.
 
+### Fixed
+
+- **Several storage-backed manager and CLI paths did not ensure storage was loaded first.**
+  `EntityManager`, `ProjectContextManager`, and the `decision` / `exclusion` / `heuristic` /
+  `projectContext` / `toolAffordance` CLI commands now await `ensureLoaded()` before querying
+  storage or performing storage-backed decision mutations, preventing empty or stale behavior on
+  a cold `ManagerContext`.
+  Found by the coverage work in the same change — the tests are what exposed it.
+
 ### Noted
 
 - **AsyncMutex measured: linear, not degrading — but its two defaults contradict each other.**
@@ -173,15 +182,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dynamic `new Function()` serialization removed** from `taskScheduler`; the doc comment no longer
   describes a mechanism the code has stopped using. Runtime validation still rejects non-function
   task inputs.
-
-### Fixed
-
-- **Several read paths did not ensure storage was loaded first.** `EntityManager`,
-  `ProjectContextManager`, and the `decision` / `exclusion` / `heuristic` / `projectContext` /
-  `toolAffordance` CLI commands each queried storage without an `ensureLoaded()` guard, so on a cold
-  `ManagerContext` they could return empty or stale results rather than the persisted graph. Fourteen
-  call sites now await `ensureLoaded()` before reading.
-  Found by the coverage work in the same change — the tests are what exposed it.
 
 ## [3.4.0] - 2026-08-29
 

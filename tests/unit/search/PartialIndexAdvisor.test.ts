@@ -104,7 +104,7 @@ describe('PartialIndexAdvisor', () => {
   it('apply() is a no-op when disabled', () => {
     delete process.env.MEMORY_SQLITE_AUTO_INDEX;
     const advisor = new PartialIndexAdvisor({ minSupport: 1 });
-    const result = advisor.apply({ exec: vi.fn() } as never);
+    const result = advisor.apply({ exec: () => undefined } as never);
     expect(result).toEqual({ created: 0, dropped: 0 });
   });
 });
