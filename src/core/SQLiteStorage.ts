@@ -36,7 +36,7 @@ import type { Database as DatabaseType, Statement } from 'better-sqlite3';
  * ABI-mismatch failure mode (`NODE_MODULE_VERSION`). `createRequire` resolves
  * in both the ESM and CJS builds (tsup shims `import.meta.url` for CJS).
  */
-type DatabaseCtor = typeof Database;
+export type DatabaseCtor = typeof Database;
 let cachedDatabaseCtor: DatabaseCtor | undefined;
 
 /**
@@ -84,6 +84,18 @@ function loadDatabaseCtor(): DatabaseCtor {
 /** Test seam: forget the resolved driver so a different one can be selected. */
 export function __resetDatabaseCtorForTests(): void {
   cachedDatabaseCtor = undefined;
+}
+
+/**
+ * Resolve the same SQLite driver constructor used by `SQLiteStorage`
+ * (`better-sqlite3`, then `node:sqlite`; `MEMORY_SQLITE_DRIVER=node` forces
+ * the fallback).
+ *
+ * Exported so a separate procedural-graph backing can honor the same driver
+ * selection without duplicating fallback logic (A12).
+ */
+export function resolveSQLiteDatabaseCtor(): DatabaseCtor {
+  return loadDatabaseCtor();
 }
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
