@@ -997,8 +997,9 @@ SKIP_BENCHMARKS=true bun run test  # Skip perf tests in the main suite
 
 ### Tooling
 
-`tools/*/` still ship their own npm lockfiles and Node shebangs (`Usage: node
-…`). Prefer the Bun-wrapped root scripts; those call the Node entrypoints:
+`tools/*/` still ship their own npm lockfiles and Node shebangs
+(documented as `Usage: node …`). Prefer the Bun-wrapped root scripts;
+those call the Node entrypoints:
 
 ```bash
 bun run tools:install     # npm install inside tools/*/
