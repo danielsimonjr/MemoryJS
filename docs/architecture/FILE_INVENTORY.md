@@ -705,7 +705,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/workers/WorkerPool.test.ts` | tests | test | 75 |
 | `tools/chunking-for-files/chunking-for-files.ts` | tools | tool | 1255 |
 | `tools/compress-for-context/compress-for-context.ts` | tools | tool | 1461 |
-| `tools/create-dependency-graph/create-dependency-graph.ts` | tools | tool | 3847 |
+| `tools/create-dependency-graph/create-dependency-graph.ts` | tools | tool | 3854 |
 | `tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts` | tools | tool | 725 |
 | `tools/observations-to-columns/observations-to-columns.ts` | tools | tool | 560 |
 | `tools/plan-doc-audit/audit.ts` | tools | tool | 401 |

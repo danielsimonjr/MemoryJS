@@ -2389,6 +2389,14 @@ function generateCompactSummary(
   return JSON.stringify(summary);
 }
 
+/** Mirror `src/a/b/Foo.ts` → `tests/unit/a/b/Foo.test.ts` (keep nested dirs). */
+function expectedUnitTestPath(sourceFile: string): string {
+  const withoutSrc = sourceFile.replace(/^src\//, '');
+  const dir = dirname(withoutSrc);
+  const name = basename(withoutSrc, '.ts');
+  return dir === '.' ? `tests/unit/${name}.test.ts` : `tests/unit/${dir}/${name}.test.ts`;
+}
+
 /**
  * Generate test coverage analysis markdown
  */
@@ -2468,8 +2476,7 @@ function generateTestCoverageMarkdown(coverage: TestCoverageAnalysis): string {
       lines.push(`### ${module}/`);
       lines.push('');
       for (const file of files.sort()) {
-        const fileName = basename(file, '.ts');
-        lines.push(`- \`${file}\` → Expected test: \`tests/unit/${module}/${fileName}.test.ts\``);
+        lines.push(`- \`${file}\` → Expected test: \`${expectedUnitTestPath(file)}\``);
       }
       lines.push('');
     }

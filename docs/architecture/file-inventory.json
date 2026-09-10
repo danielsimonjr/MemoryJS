@@ -4673,7 +4673,7 @@
       "package": "(root)",
       "area": "tools",
       "disposition": "tool",
-      "loc": 3847
+      "loc": 3854
     },
     {
       "file": "tools/migrate-from-jsonl-to-sqlite/migrate-from-jsonl-to-sqlite.ts",

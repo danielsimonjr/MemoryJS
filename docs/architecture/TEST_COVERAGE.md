@@ -23,15 +23,15 @@ The following 11 source files are not directly imported by any test file:
 
 ### agent/
 
-- `src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts` → Expected test: `tests/unit/agent/LockedProceduralGraphBacking.test.ts`
-- `src/agent/procedural/graph/backing/ProceduralGraphState.ts` → Expected test: `tests/unit/agent/ProceduralGraphState.test.ts`
+- `src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts` → Expected test: `tests/unit/agent/procedural/graph/backing/LockedProceduralGraphBacking.test.ts`
+- `src/agent/procedural/graph/backing/ProceduralGraphState.ts` → Expected test: `tests/unit/agent/procedural/graph/backing/ProceduralGraphState.test.ts`
 
 ### cli/
 
-- `src/cli/commands/entity.ts` → Expected test: `tests/unit/cli/entity.test.ts`
-- `src/cli/commands/helpers.ts` → Expected test: `tests/unit/cli/helpers.test.ts`
-- `src/cli/commands/io.ts` → Expected test: `tests/unit/cli/io.test.ts`
-- `src/cli/commands/relation.ts` → Expected test: `tests/unit/cli/relation.test.ts`
+- `src/cli/commands/entity.ts` → Expected test: `tests/unit/cli/commands/entity.test.ts`
+- `src/cli/commands/helpers.ts` → Expected test: `tests/unit/cli/commands/helpers.test.ts`
+- `src/cli/commands/io.ts` → Expected test: `tests/unit/cli/commands/io.test.ts`
+- `src/cli/commands/relation.ts` → Expected test: `tests/unit/cli/commands/relation.test.ts`
 
 ### search/
 
@@ -39,7 +39,7 @@ The following 11 source files are not directly imported by any test file:
 
 ### root/
 
-- `src/sqlite.ts` → Expected test: `tests/unit/root/sqlite.test.ts`
+- `src/sqlite.ts` → Expected test: `tests/unit/sqlite.test.ts`
 
 ### utils/
 
