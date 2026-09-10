@@ -440,20 +440,20 @@ Starts after Wave 1 gate. All agents `git pull` first.
 
 ### 6.1 Agent A / Wave 2 — hardening pass on the core
 
-- [ ] Add property-style tests: 200 random small graphs (seeded PRNG in-test) checking `graphDigest` order independence, `withEdits` idempotence of re-adding an identical edge, and `applyCyclePolicy('repair')` output being acyclic and deterministic across two runs.
-- [ ] Add "static-mode rename" test: delete `Scan_Index` and add `scan_index_v2` with the same description → `prepareCandidate(..., { staticMode: true, baselineNodeIds })` returns error `'static-node-id-removed'` (PG-10).
-- [ ] Add "equality of digests for semantically identical graphs with different graphId/revisionId" (feature plan 6.3).
-- [ ] Review Agents B/C/D usages of your API (read their files; do not edit). Report mismatches.
+- [x] Add property-style tests: 200 random small graphs (seeded PRNG in-test) checking `graphDigest` order independence, `withEdits` idempotence of re-adding an identical edge, and `applyCyclePolicy('repair')` output being acyclic and deterministic across two runs.
+- [x] Add "static-mode rename" test: delete `Scan_Index` and add `scan_index_v2` with the same description → `prepareCandidate(..., { staticMode: true, baselineNodeIds })` returns error `'static-node-id-removed'` (PG-10).
+- [x] Add "equality of digests for semantically identical graphs with different graphId/revisionId" (feature plan 6.3).
+- [x] Review Agents B/C/D usages of your API (read their files; do not edit). Report mismatches.
 
 ### 6.2 Agent B / Wave 2 — backings + contract suite
 
 **Feature-plan sections:** 7.1–7.6, A2–A6
 
-- [ ] Create `src/agent/procedural/graph/backing/IProceduralGraphBacking.ts` (interface + `createProceduralGraphBacking`).
-- [ ] Create `backing/InMemoryProceduralGraphBacking.ts`.
-- [ ] Create `backing/JsonlProceduralGraphBacking.ts` (per 4.7; uses `durableWriteFile`, `AsyncMutex`; segment-mode refusal).
-- [ ] Create `backing/SqliteProceduralGraphBacking.ts` (per 4.7; obtains the ctor via `resolveSQLiteDatabaseCtor()`; uses only the `AdaptedDatabase` subset).
-- [ ] Create the shared contract suite `tests/unit/agent/procedural/graph/backing/backingContract.ts` exporting `runBackingContract(name, open: () => Promise<IProceduralGraphBacking>)` and three runner files: `memory.test.ts`, `jsonl.test.ts`, `sqlite.test.ts` (sqlite runner executes the suite twice: default driver and, when `isNodeSqliteAvailable()`, with `process.env.MEMORY_SQLITE_DRIVER='node'` after `__resetDatabaseCtorForTests()`; restore env in `afterAll`).
+- [x] Create `src/agent/procedural/graph/backing/IProceduralGraphBacking.ts` (interface + `createProceduralGraphBacking`).
+- [x] Create `backing/InMemoryProceduralGraphBacking.ts`.
+- [x] Create `backing/JsonlProceduralGraphBacking.ts` (per 4.7; uses `durableWriteFile`, `AsyncMutex`; segment-mode refusal).
+- [x] Create `backing/SqliteProceduralGraphBacking.ts` (per 4.7; obtains the ctor via `resolveSQLiteDatabaseCtor()`; uses only the `AdaptedDatabase` subset).
+- [x] Create the shared contract suite `tests/unit/agent/procedural/graph/backing/backingContract.ts` exporting `runBackingContract(name, open: () => Promise<IProceduralGraphBacking>)` and three runner files: `memory.test.ts`, `jsonl.test.ts`, `sqlite.test.ts` (sqlite runner executes the suite twice: default driver and, when `isNodeSqliteAvailable()`, with `process.env.MEMORY_SQLITE_DRIVER='node'` after `__resetDatabaseCtorForTests()`; restore env in `afterAll`).
 
 **Contract suite cases:**
 - "createGraph returns headVersion 1 with null validationMean; second createGraph with same id rejects"
@@ -474,9 +474,9 @@ Starts after Wave 1 gate. All agents `git pull` first.
 
 **Feature-plan sections:** 8.1–8.6, PG-03, PG-04, PG-05
 
-- [ ] Create `src/agent/procedural/graph/ProceduralGraphSession.ts` per 4.8.
-- [ ] Create `src/agent/procedural/graph/ProceduralGuidance.ts`: `export async function generateGuidance(args: { graph: ProceduralGraph; lastAction: string | undefined; query: string; recentSteps: readonly PGTraceStep[]; options: Required<Pick<PGSessionOptions,'taskDescription'|'hopLimit'|'trajectoryWindow'|'guidanceMode'|'serializerStyle'|'maxContextBytes'|'timeoutMs'|'maxOutputChars'>> & { paperCompatible: boolean; provider?: PGCompletionProvider; degradeToAttributesOnError: boolean } }): Promise<PGGuidanceResult>` — the session delegates to it.
-- [ ] Tests `tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts` (fake provider records prompts):
+- [x] Create `src/agent/procedural/graph/ProceduralGraphSession.ts` per 4.8.
+- [x] Create `src/agent/procedural/graph/ProceduralGuidance.ts`: `export async function generateGuidance(args: { graph: ProceduralGraph; lastAction: string | undefined; query: string; recentSteps: readonly PGTraceStep[]; options: Required<Pick<PGSessionOptions,'taskDescription'|'hopLimit'|'trajectoryWindow'|'guidanceMode'|'serializerStyle'|'maxContextBytes'|'timeoutMs'|'maxOutputChars'>> & { paperCompatible: boolean; provider?: PGCompletionProvider; degradeToAttributesOnError: boolean } }): Promise<PGGuidanceResult>` — the session delegates to it.
+- [x] Tests `tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts` (fake provider records prompts):
   - "first guidance call localizes at the entry node and the prompt contains 'Active Cognitive Node: [Start]'"
   - "after recordStep({action:'First_Hop_Retrieve'}) the prompt contains the hop-1 and hop-2 transitions from the fixture"
   - "unmatched action falls back to the full graph and the prompt uses the paper's full-graph context description"
@@ -489,15 +489,15 @@ Starts after Wave 1 gate. All agents `git pull` first.
   - "maxGuidanceCalls exhaustion returns provider-error with a budget message"
   - "session graph is unchanged when the same PGSnapshot object is mutated afterwards (deep-frozen)" (PG-05)
   - "guidance text containing 'run rm -rf' is returned verbatim and nothing is executed" (documented negative test; assert no child_process import exists in the module via reading the source file)
-- [ ] Integration test `tests/integration/procedural-graph-guidance.test.ts`: open a session on the CFO fixture, walk `Month_Start → recall_notes → check_cash_in_bank`, assert each localization `nodeId` and that hop-2 from `check_cash_in_bank` includes `save_note`.
+- [x] Integration test `tests/integration/procedural-graph-guidance.test.ts`: open a session on the CFO fixture, walk `Month_Start → recall_notes → check_cash_in_bank`, assert each localization `nodeId` and that hop-2 from `check_cash_in_bank` includes `save_note`.
 
 ### 6.4 Agent D / Wave 2 — evolution loop
 
 **Feature-plan sections:** 9.1–9.9, PG-12–PG-16
 
-- [ ] Create `src/agent/procedural/graph/ProceduralGraphEvolution.ts` per 4.9. Implement feature plan 9.7 line by line. Rollouts: `Promise.all` with `concurrency` chunks, then **re-sort by input index** before `concatTrajectories` (PG-14). Baseline: `backing.loadEvaluation(graphId, head.revisionId, fingerprint)`; when absent, evaluate the retained graph on the full validation set, persist with `backing.saveEvaluation(...)`, and record a `PGRoundRecord` with `round: 0`, `outcome: 'accepted'`, `candidateRevisionId` = retained. A cached report is reused only on an exact fingerprint match (A8). Evaluation aggregation: `completed < taskCount` ⇒ `incomplete: true` ⇒ no promotion (`taskFailurePolicy:'fail-round'`), or score 0 substituted and flagged in `scores[].error` (`'score-zero'`). Non-finite / out-of-`[0,1]` evaluator returns are errors, never averaged.
-- [ ] Manifest: `{ runId, graphId, mode, paperCompatible, enforceToolCatalog, cyclePolicy, hopLimit, trajectoryWindow, maxTokens, batchSize, successThreshold, taskFailurePolicy, toolCatalogHash, trainingFingerprint: sha256 of sorted task ids, validationFingerprint, refinerIdentity, guidanceIdentity, promptsVersion: 'paper-B.5-v1', serializerStyle, startedAt, ...manifestExtras }`. `evaluationFingerprint` = sha256 of the manifest minus `runId`/`startedAt`.
-- [ ] Tests `tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts` with scripted fakes (rollout returns fixed trajectories; evaluate returns per-revision scores from a map keyed by `graphDigest`; refiner returns queued JSON strings):
+- [x] Create `src/agent/procedural/graph/ProceduralGraphEvolution.ts` per 4.9. Implement feature plan 9.7 line by line. Rollouts: `Promise.all` with `concurrency` chunks, then **re-sort by input index** before `concatTrajectories` (PG-14). Baseline: `backing.loadEvaluation(graphId, head.revisionId, fingerprint)`; when absent, evaluate the retained graph on the full validation set, persist with `backing.saveEvaluation(...)`, and record a `PGRoundRecord` with `round: 0`, `outcome: 'accepted'`, `candidateRevisionId` = retained. A cached report is reused only on an exact fingerprint match (A8). Evaluation aggregation: `completed < taskCount` ⇒ `incomplete: true` ⇒ no promotion (`taskFailurePolicy:'fail-round'`), or score 0 substituted and flagged in `scores[].error` (`'score-zero'`). Non-finite / out-of-`[0,1]` evaluator returns are errors, never averaged.
+- [x] Manifest: `{ runId, graphId, mode, paperCompatible, enforceToolCatalog, cyclePolicy, hopLimit, trajectoryWindow, maxTokens, batchSize, successThreshold, taskFailurePolicy, toolCatalogHash, trainingFingerprint: sha256 of sorted task ids, validationFingerprint, refinerIdentity, guidanceIdentity, promptsVersion: 'paper-B.5-v1', serializerStyle, startedAt, ...manifestExtras }`. `evaluationFingerprint` = sha256 of the manifest minus `runId`/`startedAt`.
+- [x] Tests `tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts` with scripted fakes (rollout returns fixed trajectories; evaluate returns per-revision scores from a map keyed by `graphDigest`; refiner returns queued JSON strings):
   - "baseline is evaluated once and reused across rounds with the same fingerprint" (evaluate call count)
   - "structurally invalid proposal appends a rejection and makes zero evaluate calls" (PG-08/13)
   - "candidateMean equal to baseline is accepted" / "lower is rejected and the retained revision and cached score are unchanged" / "higher is accepted and becomes the new baseline" (PG-12)
