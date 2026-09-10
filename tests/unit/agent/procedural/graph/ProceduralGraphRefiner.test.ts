@@ -2,11 +2,17 @@
  * ProceduralGraphRefiner unit tests (Wave 1 / Agent D).
  *
  * Sibling modules (`prompts`, `CompletionProvider`, `ProceduralGraphSchemas`)
- * are owned by other agents and are not present in this worktree. Stubs
- * live only here via `vi.mock`, matching Section 4 signatures.
+ * are owned by other agents and may be absent in this worktree. Behavior
+ * stubs live only here via `vi.mock`, matching Section 4 signatures.
+ *
+ * Vitest 5's native loader calls `nextResolve` before applying `vi.mock`,
+ * so a missing sibling file throws before the factory can run. If the
+ * files are not already on disk (Agents A/C), this file writes throwaway
+ * resolve stubs and deletes only the files it created.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { afterAll, describe, it, expect, vi } from 'vitest';
+import { unlinkSync } from 'node:fs';
 import type {
   PGDiagnostic,
   PGEditSet,
@@ -18,6 +24,37 @@ import {
   serializeRejections,
   type PGRefinerInput,
 } from '../../../../../src/agent/procedural/graph/ProceduralGraphRefiner.js';
+
+const createdSiblingStubs = vi.hoisted(() => {
+  const fs = process.getBuiltinModule('fs');
+  const path = process.getBuiltinModule('path');
+  const dir = path.join(process.cwd(), 'src/agent/procedural/graph');
+  fs.mkdirSync(dir, { recursive: true });
+  const stubs: Array<[string, string]> = [
+    ['CompletionProvider.ts', 'export async function completeWithBudget() { throw new Error("unmocked completeWithBudget"); }\n'],
+    ['ProceduralGraphSchemas.ts', 'export function parseEditSet() { throw new Error("unmocked parseEditSet"); }\n'],
+    ['prompts.ts', 'export const REFINER_PROMPT_TEMPLATE = "";\nexport function renderTemplate() { return ""; }\n'],
+  ];
+  const created: string[] = [];
+  for (const [name, source] of stubs) {
+    const file = path.join(dir, name);
+    if (!fs.existsSync(file)) {
+      fs.writeFileSync(file, source);
+      created.push(file);
+    }
+  }
+  return created;
+});
+
+afterAll(() => {
+  for (const file of createdSiblingStubs) {
+    try {
+      unlinkSync(file);
+    } catch {
+      // already removed or replaced by the owning agent
+    }
+  }
+});
 
 vi.mock('../../../../../src/agent/procedural/graph/prompts.js', () => ({
   REFINER_PROMPT_TEMPLATE: [
