@@ -818,7 +818,7 @@ Merged relations carry the earliest `createdAt`, max `weight`/`confidence`, and 
 
 ### ProceduralGraphManager (`agent/procedural/graph/ProceduralGraphManager.ts`) — `@experimental`
 
-**Purpose**: Public facade for self-evolving Procedural Graphs (Lu et al., arXiv:2609.09153). Factory: `ctx.createProceduralGraph(config)`. Policy checks run before every operation; audit fires after every successful mutation. Backings: `jsonl` (default sidecar `<basename>-procedural-graph.jsonl`), `sqlite`, `memory`.
+**Purpose**: Public facade for self-evolving Procedural Graphs (Lu et al., arXiv:2609.09153). Factory: `await ctx.createProceduralGraph(config)` (`Promise<ProceduralGraphManager>`). Policy checks run before every operation; audit fires after every successful mutation. Backings: `jsonl` (default sidecar `<basename>-procedural-graph.jsonl`), `sqlite`, `memory`.
 
 ```typescript
 export class ProceduralGraphManager {
@@ -828,7 +828,7 @@ export class ProceduralGraphManager {
   async createSkeleton(input): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }>
   async openSession(graphId, options): Promise<ProceduralGraphSession | undefined>
   async prepareCandidate(graphId, edits, options?): ReturnType<typeof prepareCandidate>
-  async evolve(options, deps): Promise<PGEvolutionResult>  // caller supplies rollout / evaluate / refiner
+  async evolve(options, deps): Promise<PGEvolutionResult>  // caller supplies rollout / evaluate / refiner / tokenizer
   async importGraph(document, options?): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }>
   async exportGraph(graphId, revisionId?): Promise<string | undefined>
   async rollback(graphId, revisionId, expectedHeadVersion): Promise<PGCommitResult | { status: 'not-found' }>
@@ -837,7 +837,7 @@ export class ProceduralGraphManager {
 ```
 
 **Conventions**:
-- Wired via `ctx.createProceduralGraph({ backing: { type: 'jsonl' | 'sqlite' | 'memory'; path? }, policy? })`. An injected backing is not owned; a constructed one is disposed by `ManagerContext.close()`.
+- Wired via `await ctx.createProceduralGraph({ backing: { type: 'jsonl' | 'sqlite' | 'memory'; path? }, policy? })`. An injected backing is not owned; a constructed one is disposed by `ManagerContext.close()`.
 - `openSession` pins a frozen revision for guidance; `evolve` is offline (library never executes guidance text); `prepareCandidate` applies detached edits without committing.
 - Expected validation and policy denials return result unions and never throw. Companion `ProcedureManager` + `StepSequencer` remain the 3B.4 linear-procedure path.
 

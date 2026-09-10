@@ -9,15 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Procedural Graph** — `ctx.createProceduralGraph(config)` factory plus `ProceduralGraphManager` for validated create/import, frozen-revision sessions with guidance, offline `evolve` with caller-supplied rollout/evaluate/refiner callbacks, and a one-way `procedureToGraphInput` adapter. JSONL / SQLite / in-memory backings; default sidecar `<basename>-procedural-graph.jsonl`. `@experimental`.
+- **Procedural Graph** — `ctx.createProceduralGraph(config)` factory plus `ProceduralGraphManager` for validated create/import, frozen-revision sessions with guidance, offline `evolve` with caller-supplied rollout/evaluate/refiner/tokenizer callbacks, and a one-way `procedureToGraphInput` adapter. JSONL / SQLite / in-memory backings; default sidecar `<basename>-procedural-graph.jsonl`. `@experimental`.
 
 ### Changed
 
 - **Hand-written architecture docs aligned to the 2026-09-10 census.**
   `OVERVIEW.md`, `ARCHITECTURE.md`, `COMPONENTS.md`, `DATAFLOW.md`, and
   `API.md` now use 291 source files / 100,890 LOC / 1,960 exports, document
-  Procedural Graph (`createProceduralGraph`), and cite `bun run tools:deps`
-  instead of `npx tsx` / `repo_map.py`.
+  Procedural Graph (`await ctx.createProceduralGraph`, evolve deps include
+  `tokenizer`), and cite `bun run tools:deps` instead of `npx tsx` / `repo_map.py`.
 
 - **Regenerated `docs/architecture/` dependency reports** via
   `create-dependency-graph.ts --include-tests` after Procedural Graph landed
