@@ -20,7 +20,6 @@ import type {
   PGDiagnostic,
   PGEditSet,
   PGEvaluationReport,
-  PGGuidanceMode,
   PGHead,
   PGRefinementMode,
   PGRejectionRecord,
@@ -44,6 +43,7 @@ import { prepareCandidate } from './ProceduralGraphValidator.js';
 import { serializeGraphJson } from './ProceduralGraphSerializer.js';
 import type { PGSerializerStyle } from './ProceduralGraphSerializer.js';
 import { proposeEdits, serializeRejections } from './ProceduralGraphRefiner.js';
+import type { PGSessionOptions } from './ProceduralGraphSession.js';
 
 const PROMPTS_VERSION = 'paper-B.5-v1';
 const DEFAULT_SUCCESS_THRESHOLD = 1.0;
@@ -105,26 +105,6 @@ interface IProceduralGraphBacking {
   ): Promise<{ items: PGRejectionRecord[]; total: number }>;
   appendRound(graphId: string, round: PGRoundRecord): Promise<void>;
   close(): Promise<void>;
-}
-
-/**
- * Session knobs consumed by the evolution manifest (Section 4.8).
- * Agent C owns the runtime {@link ProceduralGraphSession} class.
- */
-export interface PGSessionOptions {
-  taskDescription: string;
-  toolCatalog: readonly string[];
-  hopLimit?: number;
-  trajectoryWindow?: number;
-  guidanceMode?: PGGuidanceMode;
-  serializerStyle?: PGSerializerStyle;
-  paperCompatible?: boolean;
-  provider?: PGCompletionProvider;
-  degradeToAttributesOnError?: boolean;
-  maxContextBytes?: number;
-  maxGuidanceCalls?: number;
-  timeoutMs?: number;
-  maxOutputChars?: number;
 }
 
 export interface PGEvolutionDependencies {
