@@ -1,7 +1,7 @@
 # MemoryJS - System Architecture
 
-**Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1/R2/R3/R4/R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, opt-in graph-connectivity signals)
-**Last Updated**: 2026-07-24
+**Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1/R2/R3/R4/R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; security follow-up via PRs #38 + #39; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, opt-in graph-connectivity signals; Procedural Graph + 2026-09-10 dependency-graph report regen)
+**Last Updated**: 2026-09-10
 
 ---
 
@@ -39,41 +39,45 @@ MemoryJS is a TypeScript knowledge graph library providing:
 ### Key Statistics (Unreleased)
 
 Numbers below are extracted from the authoritative `dependency-summary.compact.json`
-produced by `tools/create-dependency-graph`, regenerated 2026-07-24 as part of the
-brainapi2-inspired feature batch + S1–S10/Sec1–Sec10 optimization program. To
-regenerate run `npx tsx tools/create-dependency-graph/create-dependency-graph.ts`
-(or the `node --experimental-strip-types` variant on newer Node versions).
+produced by `tools/create-dependency-graph`, regenerated 2026-09-10 after the
+Procedural Graph landing (v4.0.0 census; prior regen 2026-07-24 covered the
+brainapi2-inspired feature batch + S1–S10/Sec1–Sec10 optimization program). To
+regenerate run `bun run tools:deps` / `bun run tools:deps:full`.
 
 | Metric | Value |
 |--------|-------|
-| Source files | 266 TypeScript files |
-| Lines of code | 92,541 |
-| Total exports | 1,765 |
-| Re-exports (barrel) | 1,151 |
-| Classes | 221 |
-| Interfaces | 584 |
-| Functions | 277 |
-| Type guards | 28 |
+| Source files | 291 TypeScript files (all reachable, 0 dormant) |
+| Lines of code | 100,890 |
+| Total exports | 1,960 |
+| Re-exports (barrel) | 1,287 |
+| Classes | 231 |
+| Interfaces | 617 |
+| Functions | 312 |
+| Type guards | 29 |
 | Enums | 4 |
-| Type-only imports | 421 |
+| Constants | 118 |
+| Type-only imports | 473 |
 | Runtime circular dependencies | 0 |
-| Type-only circular dependencies | 4 (down from 39 pre-optimization — S10, see [Build & Packaging](#build--packaging)) |
+| Type-only circular dependencies | 8 (was documented as 4; down from 39 pre-optimization — S10, see [Build & Packaging](#build--packaging)) |
 | Modules | 12 |
+| Entry roots | `src/cli/index.ts`, `src/index.ts`, `src/sqlite.ts`, `src/workers/levenshteinWorker.ts` |
+| Tests | 361 files; 280/291 source files covered (96.2% direct-import) |
 
 ### Module Distribution
 
 | Module | Files | Key Exports |
 |--------|-------|-------------|
 | `adapters/` | 7 | `LangChainMemoryAdapter`, `RestRouter`, `RateLimiter`, `pagination` helpers, `MCPToolObserverAdapter`, **`ApiKeyAuthMiddleware`** (Sec9) |
-| `agent/` | 83 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (Phase 1 prospective), **FailureManager** (Sprint 4), **PlanManager** (Sprint 5), **ReflectionManager** (Sprint 8, aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages, **`EventManager`** (`agent/events/`, R1, `@experimental`), **`RelationConsolidator`** (R3, `@experimental`) |
-| `core/` | 24 | ManagerContext, EntityManager (with optimistic concurrency + temporal validity + state machine + **`GovernanceHooks`**, Sec1), RelationManager (with temporal invalidation), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage (with optional mmap branch), SQLiteStorage (with read-pool + `PartialIndexAdvisor` + **tuned pragmas + cached prepared statements**, S3), GraphTraversal (HITS / clique / Louvain), TransactionManager, RefIndex, `FileSegmentStorage`, `JsonlColumnStore`, `TieredIndex` (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), `IMmapBackend` / `FsReadMmapBackend`, **`sqlite-register`** (S9 lazy-loading side effect) |
-| `search/` | 50 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, `PartialIndexAdvisor`, `SpellChecker`, **`EvidencePathBuilder`** (R2, `@experimental`) |
+| `agent/` | 105 | AgentMemoryManager, SessionManager, DecayEngine, WorkingMemoryManager, ArtifactManager, DistillationPipeline, RoleProfiles, EntropyFilter, ConsolidationScheduler, MemoryFormatter, CollaborativeSynthesis (with ConflictView), FailureDistillation, CognitiveLoadAnalyzer, VisibilityResolver (with role + time-window gates), ContextWindowManager, **MemoryEngine**, **MemoryBackend** + **InMemoryBackend** + **SQLiteBackend**, **MemoryValidator**, **TrajectoryCompressor**, **ExperienceExtractor**, **PatternDetector**, **CausalReasoner**, **ProcedureManager**, **WorldModelManager**, **ActiveRetrievalController**, **CollaborationAuditEnforcer**, **RbacMiddleware**, **ProspectiveMemoryManager** (Phase 1 prospective), **FailureManager** (Sprint 4), **PlanManager** (Sprint 5), **ReflectionManager** (Sprint 8, aliased as `ReflectionMemoryManager`), **ReflectionStage** + **ProspectivePromotionStage** pipeline stages, **`EventManager`** (`agent/events/`, R1, `@experimental`), **`RelationConsolidator`** (R3, `@experimental`), **ProceduralGraph**, **ProceduralGraphManager**, **ProceduralGraphSession**, **ProceduralGraphEvolution**, **InMemory** / **Jsonl** / **Sqlite** Procedural Graph backings |
+| `core/` | 25 | ManagerContext, EntityManager (with optimistic concurrency + temporal validity + state machine + **`GovernanceHooks`**, Sec1), RelationManager (with temporal invalidation), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage (with optional mmap branch), SQLiteStorage (with read-pool + `PartialIndexAdvisor` + **tuned pragmas + cached prepared statements**, S3), **PostgreSQLStorage**, GraphTraversal (HITS / clique / Louvain), TransactionManager, RefIndex, `FileSegmentStorage`, `JsonlColumnStore`, `TieredIndex` (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), `IMmapBackend` / `FsReadMmapBackend`, **`sqlite-register`** (S9 lazy-loading side effect) |
+| `search/` | 51 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, `PartialIndexAdvisor`, `SpellChecker`, **`EvidencePathBuilder`** (R2, `@experimental`) |
 | `features/` | 18 | IOManager (with RDF / Turtle / JSON-LD export + **ingest provenance/mode dial**, R4b/R5), `BackupManager`, TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog (**hash-chained**, Sec5), GovernanceManager (**enforcement chokepoint**, Sec1), ContradictionDetector, SemanticForget, AutoLinker |
 | `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
-| `types/` | 11 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`), **`Result<T, E>`** (v2.0.0 — `ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk` in `result.ts`), **`event.ts`** (R1 — `EventRecord`/`EventQueryFilter`/`WhoDidWhatEntry`) — leaf layer, ESLint-enforced (S10) |
+| `types/` | 12 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **`proceduralGraph.ts`** (Procedural Graph leaf contracts), **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`), **`Result<T, E>`** (v2.0.0 — `ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk` in `result.ts`), **`event.ts`** (R1 — `EventRecord`/`EventQueryFilter`/`WhoDidWhatEntry`) — leaf layer, ESLint-enforced (S10) |
 | `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** (Phase 5) |
 | `cli/` | 31 | `memory` / `memoryjs` binary commands (with pipe support, Phase 0), **`memory audit log\|history\|verify\|stats`** (R4a) + **`memory doctor`** (R9) |
 | `entry/` | 1 | `src/index.ts` |
+| `root/` | 1 | `src/sqlite.ts` (`SQLiteStorage` preload/register) |
 | `workers/` | 1 | Levenshtein distance calculations (the orphan `workers/index.ts` barrel was deleted as dead code) |
 
 ---
@@ -730,7 +734,7 @@ Prior to this pass, `package.json` `exports` had only a `"."` entry and no `side
 - `no-restricted-imports` blocks any import matching `**/agent/**`, `**/core/**`, `**/utils/**`, `**/search/**`, `**/features/**`, `**/adapters/**`, `**/security/**`, `**/cli/**`, `**/workers/**`.
 - `no-restricted-syntax` additionally catches inline `import('...')` type annotations (a `TSImportType` AST node) targeting the same directories — the historical escape hatch `no-restricted-imports` alone can't see, and the one that created the pre-existing cycles.
 
-Where a type genuinely needs to be shared, the shared type moves *into* `src/types` and the implementation module re-exports it (not the other way around). Result: type-only circular dependencies dropped from 39 to 4; runtime circular dependencies are 0. Separately, `ManagerContext`'s import of the search barrel for three symbols (`SemanticSearch`, `createEmbeddingService`, `createVectorStore`, previously pulling in ~70 files including chrono-node and workerpool transitively) was narrowed to their concrete source files.
+Where a type genuinely needs to be shared, the shared type moves *into* `src/types` and the implementation module re-exports it (not the other way around). Result: type-only circular dependencies dropped from 39 to 4 at S10; the 2026-09-10 census records 8 type-only cycles (runtime circular dependencies remain 0). Separately, `ManagerContext`'s import of the search barrel for three symbols (`SemanticSearch`, `createEmbeddingService`, `createVectorStore`, previously pulling in ~70 files including chrono-node and workerpool transitively) was narrowed to their concrete source files.
 
 ---
 
@@ -849,6 +853,10 @@ Where a type genuinely needs to be shared, the shared type moves *into* `src/typ
 | `tests/performance/` | Benchmarks |
 | `tests/edge-cases/` | Boundary conditions |
 
+### Coverage (2026-09-10)
+
+Per [`TEST_COVERAGE.md`](TEST_COVERAGE.md): 280 of 291 source files have a direct test import (**96.2%**). 11 files have no dedicated test. This is not 100% coverage.
+
 ### Running Tests
 
 ```bash
@@ -871,13 +879,13 @@ The MemoryJS architecture prioritizes:
 
 ## Verification
 
-Generated 2026-08-07 by `repo_map.py map`.
-Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+Generated 2026-09-10 from `dependency-summary.compact.json`.
+Regenerate: `bun run tools:deps` · Test coverage: `bun run tools:deps:full`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalTypeScriptFiles | 613 | dependency-graph.json |
-| totalModules | 5 | dependency-graph.json |
-| entryRoots | 11 | dependency-graph.json |
-| runtimeCircularDeps | 0 | dependency-graph.json |
-| typeOnlyCircularDeps | 14 | dependency-graph.json |
+| sourceFiles | 291 (all reachable, 0 dormant) | dependency-summary.compact.json |
+| totalModules | 12 | dependency-summary.compact.json |
+| entryRoots | 4 (`src/cli/index.ts`, `src/index.ts`, `src/sqlite.ts`, `src/workers/levenshteinWorker.ts`) | DEPENDENCY_GRAPH.md |
+| runtimeCircularDeps | 0 | dependency-summary.compact.json |
+| typeOnlyCircularDeps | 8 | dependency-summary.compact.json |

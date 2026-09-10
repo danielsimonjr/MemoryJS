@@ -1,7 +1,7 @@
 # MemoryJS - Component Reference
 
 **Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1/R2/R3/R4/R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence — stable `Entity.id` + `renameEntity`, SQLite event parity, graph-connectivity signals)
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-09-10
 
 ---
 
@@ -27,17 +27,17 @@ MemoryJS follows a layered architecture with specialized components:
 ┌─────────────────────────────────────────────────────────────┐
 │  adapters/         │  External-system adapters (7 files)    │
 ├─────────────────────────────────────────────────────────────┤
-│  agent/            │  Agent memory system (83 files)        │
+│  agent/            │  Agent memory system (105 files)       │
 ├─────────────────────────────────────────────────────────────┤
-│  core/             │  Central managers + storage (24 files) │
+│  core/             │  Central managers + storage (25 files) │
 ├─────────────────────────────────────────────────────────────┤
-│  search/           │  Search implementations (50 files)     │
+│  search/           │  Search implementations (51 files)     │
 ├─────────────────────────────────────────────────────────────┤
 │  features/         │  Advanced capabilities (18 files)      │
 ├─────────────────────────────────────────────────────────────┤
 │  utils/            │  Shared utilities (34 files)           │
 ├─────────────────────────────────────────────────────────────┤
-│  types/            │  TypeScript definitions (11 files)     │
+│  types/            │  TypeScript definitions (12 files)     │
 ├─────────────────────────────────────────────────────────────┤
 │  security/         │  PII / ABAC / RLS / API keys (5 files) │
 ├─────────────────────────────────────────────────────────────┤
@@ -49,13 +49,13 @@ MemoryJS follows a layered architecture with specialized components:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 266 TypeScript files | 92,541 LOC | 1,765 exports | 221 classes | 584 interfaces
-(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-07-24 as part of the brainapi2-inspired feature batch + optimization program; see `TEST_COVERAGE.md` for test counts). Runtime circular dependencies are now 0 (was 1); type-only circular dependencies are down to 4 (from 39 pre-optimization) via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
+**Total:** 291 TypeScript files | 100,890 LOC | 1,960 exports | 231 classes | 617 interfaces
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-09-10; see `TEST_COVERAGE.md` for test counts — 361 tests, 280/291 source files with tests, 96.2%). Runtime circular dependencies remain 0; type-only circular dependencies are 8 (from 39 pre-optimization) via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
 
 ### New since v1.13: dedicated sub-modules under `agent/`
 
 - `agent/causal/` — `CausalReasoner` (3B.6)
-- `agent/procedural/` — `ProcedureManager` + `StepSequencer` (3B.4)
+- `agent/procedural/` — `ProcedureManager` + `StepSequencer` (3B.4); `graph/` (Procedural Graph: Manager, Session, Evolution, Validator, Schemas, backings)
 - `agent/retrieval/` — `ActiveRetrievalController` + `QueryRewriter` (3B.5)
 - `agent/world/` — `WorldModelManager` + `WorldStateSnapshot` (3B.7)
 - `agent/rbac/` — `RbacMiddleware` + `RoleAssignmentStore` + `PermissionMatrix` (η.6.1)
@@ -813,6 +813,33 @@ export class RelationConsolidator {
 3. **Neighborhood validation (LLM-gated)** — when an `LLMProvider` is injected, a caller-supplied batch of new relations is validated against a 2-hop neighborhood snapshot; returns structured `'ok' | 'suspect' | 'wrong'` verdicts as `ConsolidationFeedback`. **Never mutates** — the caller decides what to do with the feedback.
 
 Merged relations carry the earliest `createdAt`, max `weight`/`confidence`, and the survivor's `properties` with `confirmationCount` summed; free-form `Relation.metadata` is not carried over (rejected by the relation-creation schema). Companion `RelationConsolidationStage` is a report-only `PipelineStage` for wiring into `ConsolidationPipeline`. Not wired into `ManagerContext` — constructed directly by the caller (mirrors `RelationConsolidationStage`'s standalone-stage pattern).
+
+---
+
+### ProceduralGraphManager (`agent/procedural/graph/ProceduralGraphManager.ts`) — `@experimental`
+
+**Purpose**: Public facade for self-evolving Procedural Graphs (Lu et al., arXiv:2609.09153). Factory: `ctx.createProceduralGraph(config)`. Policy checks run before every operation; audit fires after every successful mutation. Backings: `jsonl` (default sidecar `<basename>-procedural-graph.jsonl`), `sqlite`, `memory`.
+
+```typescript
+export class ProceduralGraphManager {
+  constructor(config: ProceduralGraphManagerConfig)  // backing, ownsBacking, policy?, guidanceProvider?, paperCompatible?
+
+  async createGraph(input): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }>
+  async createSkeleton(input): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }>
+  async openSession(graphId, options): Promise<ProceduralGraphSession | undefined>
+  async prepareCandidate(graphId, edits, options?): ReturnType<typeof prepareCandidate>
+  async evolve(options, deps): Promise<PGEvolutionResult>  // caller supplies rollout / evaluate / refiner
+  async importGraph(document, options?): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }>
+  async exportGraph(graphId, revisionId?): Promise<string | undefined>
+  async rollback(graphId, revisionId, expectedHeadVersion): Promise<PGCommitResult | { status: 'not-found' }>
+  async listRejections(graphId, page?): Promise<{ items; total }>
+}
+```
+
+**Conventions**:
+- Wired via `ctx.createProceduralGraph({ backing: { type: 'jsonl' | 'sqlite' | 'memory'; path? }, policy? })`. An injected backing is not owned; a constructed one is disposed by `ManagerContext.close()`.
+- `openSession` pins a frozen revision for guidance; `evolve` is offline (library never executes guidance text); `prepareCandidate` applies detached edits without committing.
+- Expected validation and policy denials return result unions and never throw. Companion `ProcedureManager` + `StepSequencer` remain the 3B.4 linear-procedure path.
 
 ---
 
@@ -2039,16 +2066,23 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 ---
 
 **Document Version**: Unreleased (post v2.9.0)
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-09-10
 **Maintained By**: Daniel Simon Jr.
 
 ## Verification
 
-Generated 2026-08-07 by `repo_map.py map`.
-Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+Generated 2026-09-10 from `docs/architecture/dependency-summary.compact.json` (companion reports: `dependency-graph.json`, `TEST_COVERAGE.md`).
+Regenerate: `bun run tools:deps:full`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalTypeScriptFiles | 613 | dependency-graph.json |
-| totalExports | 2556 | dependency-graph.json |
-| reachableFiles | 266 | dependency-graph.json |
+| totalTypeScriptFiles | 291 | dependency-summary.compact.json / dependency-graph.json |
+| totalLOC | 100890 | dependency-summary.compact.json |
+| totalExports | 1960 | dependency-summary.compact.json / dependency-graph.json |
+| totalClasses | 231 | dependency-summary.compact.json |
+| totalInterfaces | 617 | dependency-summary.compact.json |
+| runtimeCycles | 0 | dependency-summary.compact.json |
+| typeOnlyCycles | 8 | dependency-summary.compact.json |
+| reachableFiles | 291 | dependency-summary.compact.json (`rf`) |
+| testFiles | 361 | TEST_COVERAGE.md |
+| sourceFilesWithTests | 280/291 (96.2%) | TEST_COVERAGE.md |

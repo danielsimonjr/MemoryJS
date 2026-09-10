@@ -1,7 +1,7 @@
 # MemoryJS - Data Flow Documentation
 
 **Version**: Unreleased (post v2.9.0 — brainapi2-inspired features R1–R5/R7/R9 + S1–S10/Sec1–Sec10 speed & security optimization program; Phases 0–11 performance & scale track via PR #34; Phase 2 memory-types expansion Sprints 4–6 + 8; v2.0.0 seven-theme function/API-call consistency & efficiency audit; knowledge-graph-as-core convergence)
-**Last Updated**: 2026-07-24
+**Last Updated**: 2026-09-10
 
 > **Unreleased — the single biggest data-flow change since the last review**:
 > manager mutations no longer read-modify-write the whole graph. The
@@ -14,6 +14,9 @@
 > [Governance-Enforced Mutation Flow](#governance-enforced-mutation-flow-sec1),
 > [Ingest-with-Provenance Flow](#ingest-with-provenance-flow-r4br5), and
 > [Explain Evidence-Path Flow](#explain-evidence-path-flow-r2).
+> Procedural Graph (Wave 1–3, 2026-09) added create/session/evolve/commit
+> flows via `IProceduralGraphBacking` — see
+> [Procedural Graph Flow](#procedural-graph-flow).
 
 > Most data-flow patterns documented here remain accurate. New flows added
 > in v1.9–v1.15: temporal-validity invalidation cascade (η.4.4),
@@ -87,14 +90,15 @@
 7. [Compression Operations](#compression-operations)
 8. [Import/Export Operations](#importexport-operations)
 9. [Agent Memory Operations](#agent-memory-operations)
-10. [Graph-Connectivity Signal Flow](#graph-connectivity-signal-flow)
-11. [Caching Strategy](#caching-strategy)
-12. [Index Architecture](#index-architecture)
-13. [Error Handling Flow](#error-handling-flow)
-14. [Batch Mutation Delta Flow (S2)](#batch-mutation-delta-flow-s2)
-15. [Governance-Enforced Mutation Flow (Sec1)](#governance-enforced-mutation-flow-sec1)
-16. [Ingest-with-Provenance Flow (R4b/R5)](#ingest-with-provenance-flow-r4br5)
-17. [Explain Evidence-Path Flow (R2)](#explain-evidence-path-flow-r2)
+10. [Procedural Graph Flow](#procedural-graph-flow)
+11. [Graph-Connectivity Signal Flow](#graph-connectivity-signal-flow)
+12. [Caching Strategy](#caching-strategy)
+13. [Index Architecture](#index-architecture)
+14. [Error Handling Flow](#error-handling-flow)
+15. [Batch Mutation Delta Flow (S2)](#batch-mutation-delta-flow-s2)
+16. [Governance-Enforced Mutation Flow (Sec1)](#governance-enforced-mutation-flow-sec1)
+17. [Ingest-with-Provenance Flow (R4b/R5)](#ingest-with-provenance-flow-r4br5)
+18. [Explain Evidence-Path Flow (R2)](#explain-evidence-path-flow-r2)
 
 ---
 
@@ -1269,6 +1273,62 @@ createAgentMemory(agentId, entityData)
 
 ---
 
+## Procedural Graph Flow
+
+`ctx.createProceduralGraph({ backing })` returns a `ProceduralGraphManager`. A config object (`{ type, path? }`) is constructed via `createProceduralGraphBacking` and owned by the manager; an injected `IProceduralGraphBacking` is not.
+
+```
+createGraph / createSkeleton
+      │
+      ▼
+canWrite(graphId) ──deny──► { ok: false, diagnostics }
+      │
+      ▼
+buildSnapshot → applyCyclePolicy → validateSnapshot
+      │
+      ├── errors ──► { ok: false, diagnostics }
+      └── backing.createGraph(snapshot) → audit → { ok: true, head }
+
+openSession(graphId, options)
+      │
+      ▼
+canRead → loadRevision (options.revisionId ?? head) → pin ProceduralGraphSession
+      │
+      ▼
+session.guidance(query) → generateGuidance(...)
+
+evolve(options, deps)
+      │
+      ▼
+canEvolve ──deny──► stoppedBecause: 'aborted'
+      │
+      ▼
+backing.loadHead
+      │
+      ▼
+[optional] baseline evaluate  (skipped when paperCompatible + onetime)
+      │
+      ▼
+for each training batch:
+  rollout → proposeEdits → prepareCandidate
+      │
+      ├── parse / structural fail → appendRejection
+      ├── paperCompatible onetime → backing.commitRetainedRevision
+      │     (no validation gate)
+      ├── candidate mean ≥ baseline → backing.commitRetainedRevision
+      └── else → rejection (rejected-validation)
+      │
+      ▼
+audit({ op: 'evolve', graphId, revisionId })
+```
+
+- Persistence is a JSONL sidecar `<basename>-procedural-graph.jsonl` or a sqlite `<basename>-procedural-graph.db`. `createProceduralGraphBacking` never reads `MEMORY_STORAGE_TYPE` (A2).
+- Policy `canRead` / `canWrite` / `canEvolve` runs before the matching op; `audit` fires after successful mutations.
+- `createSkeleton` is `createGraph` with Start/End `STATE` nodes and a `LEADS_TO` edge.
+- `paperCompatible` onetime (`static_onetime` / `scratch_onetime`) may skip the validation gate and commit the prepared candidate directly.
+
+---
+
 ## Graph-Connectivity Signal Flow
 
 All four consumers below share a single cached `GraphRankPrior` instance per `ManagerContext` (`ctx.graphRankPrior`) rather than each recomputing PageRank independently. Every knob defaults to `0`/off — when unset, `GraphRankPrior` is never constructed and behavior is byte-for-byte identical to before the feature existed.
@@ -1773,11 +1833,14 @@ search(query, { explain: true })
 
 ## Verification
 
-Generated 2026-08-07 by `repo_map.py map`.
-Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+Generated 2026-09-10 by `tools/create-dependency-graph`.
+Regenerate: `bun run tools:deps:full`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalTypeScriptFiles | 613 | dependency-graph.json |
-| totalModules | 5 | dependency-graph.json |
+| totalTypeScriptFiles | 291 | dependency-graph.json |
+| reachableFiles | 291 | dependency-graph.json |
+| dormantFiles | 0 | dependency-graph.json |
 | runtimeCircularDeps | 0 | dependency-graph.json |
+| typeOnlyCircularDeps | 8 | dependency-graph.json |
+| totalTestFiles | 361 | test-coverage.json |

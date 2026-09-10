@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Hand-written architecture docs aligned to the 2026-09-10 census.**
+  `OVERVIEW.md`, `ARCHITECTURE.md`, `COMPONENTS.md`, `DATAFLOW.md`, and
+  `API.md` now use 291 source files / 100,890 LOC / 1,960 exports, document
+  Procedural Graph (`createProceduralGraph`), and cite `bun run tools:deps`
+  instead of `npx tsx` / `repo_map.py`.
+
 - **Regenerated `docs/architecture/` dependency reports** via
   `create-dependency-graph.ts --include-tests` after Procedural Graph landed
   (291 source files, 361 tests, 96.2% direct-import coverage, 0 dormant files).
