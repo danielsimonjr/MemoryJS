@@ -879,13 +879,13 @@ The MemoryJS architecture prioritizes:
 
 ## Verification
 
-Generated 2026-08-07 by `repo_map.py map`.
-Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+Generated 2026-09-10 from `dependency-summary.compact.json`.
+Regenerate: `bun run tools:deps` · Test coverage: `bun run tools:deps:full`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalTypeScriptFiles | 613 | dependency-graph.json |
-| totalModules | 5 | dependency-graph.json |
-| entryRoots | 11 | dependency-graph.json |
-| runtimeCircularDeps | 0 | dependency-graph.json |
-| typeOnlyCircularDeps | 14 | dependency-graph.json |
+| sourceFiles | 291 (all reachable, 0 dormant) | dependency-summary.compact.json |
+| totalModules | 12 | dependency-summary.compact.json |
+| entryRoots | 4 (`src/cli/index.ts`, `src/index.ts`, `src/sqlite.ts`, `src/workers/levenshteinWorker.ts`) | DEPENDENCY_GRAPH.md |
+| runtimeCircularDeps | 0 | dependency-summary.compact.json |
+| typeOnlyCircularDeps | 8 | dependency-summary.compact.json |

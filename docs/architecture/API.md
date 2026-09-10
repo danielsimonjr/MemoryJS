@@ -2248,10 +2248,10 @@ const router = RestRouter.withDefaults(ctx, { auth });
 
 ## Verification
 
-Generated 2026-08-07 by `repo_map.py map`.
-Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+Generated 2026-09-10 from `dependency-summary.compact.json`.
+Regenerate: `bun run tools:deps` · Test coverage: `bun run tools:deps:full`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 2556 | dependency-graph.json |
-| totalTypeScriptFiles | 613 | dependency-graph.json |
+| totalExports | 1960 (1287 re-exports) | dependency-summary.compact.json |
+| totalTypeScriptFiles | 291 | dependency-summary.compact.json |
