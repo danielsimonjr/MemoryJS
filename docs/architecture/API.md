@@ -41,6 +41,7 @@ surface only.
 29. [EvidencePathBuilder](#evidencepathbuilder) *(Unreleased, R2, `@experimental`)*
 30. [RelationConsolidator](#relationconsolidator) *(Unreleased, R3, `@experimental`)*
 31. [ApiKeyAuthMiddleware](#apikeyauthmiddleware) *(Unreleased, Sec9)*
+32. [ProceduralGraphManager](#proceduralgraphmanager) (`ctx.createProceduralGraph`, `@experimental`)
 
 ---
 
@@ -108,6 +109,20 @@ const ctx = new ManagerContext('./memory.db');
 | `diagnostics` | `Diagnostics` | Query `explainPlan` + index health surface (v1.15.0 Phase 0/1) |
 | `graphRankPrior` | `GraphRankPrior` | Cached normalized-PageRank ranking signal, event-invalidated (v2.9.0, `@experimental`) |
 | `hybridSearchManager` | `HybridSearchManager` | Semantic + lexical + symbolic (+ optional graph) layered search (v2.9.0) |
+| `createProceduralGraph(config)` | `Promise<ProceduralGraphManager>` | **Factory, not a lazy getter** (`@experimental`). See note below. |
+
+Procedural Graph is created via `createProceduralGraph(config)`, not a `ctx.proceduralGraph` getter:
+
+```typescript
+createProceduralGraph(config: {
+  backing: { type: 'jsonl' | 'sqlite' | 'memory'; path?: string } | IProceduralGraphBacking;
+  policy?: PGPolicy;
+  guidanceProvider?: PGCompletionProvider;
+  paperCompatible?: boolean;
+}): Promise<ProceduralGraphManager>
+```
+
+Default sidecar path is `<basename>-procedural-graph.jsonl` (`.db` for sqlite). A config-created backing is owned and disposed on `ctx.close()`; an injected `IProceduralGraphBacking` is not.
 
 ### Methods
 
@@ -1695,6 +1710,15 @@ programmer errors (bad arguments, invariant violations); return `Result<T, E>`
 for expected domain failures the caller is meant to branch on; never swallow a
 failure silently; the absent-value sentinel is `T | undefined`, never `T | null`.
 
+### Procedural Graph types (`src/types/proceduralGraph.ts`)
+
+Leaf contracts for the Procedural Graph feature (`@experimental`). This file
+imports only sibling `src/types` modules (no Zod, hashing, or storage). Types
+are re-exported from `src/types/index.ts`, `src/agent/procedural/graph/index.ts`,
+and the agent barrel. See the file for `PGNode`, `PGEdge`, `PGSnapshot`,
+`PGEditSet`, `PGCyclePolicy`, `PGHead`, `PGRejectionRecord`, and related
+unions — do not treat this section as a copy of that module.
+
 ---
 
 ## BackupManager
@@ -1902,6 +1926,105 @@ ctx.worldModelManager.getCurrentState(): Promise<WorldStateSnapshot>
 ctx.worldModelManager.validateFact(fact: FactCandidate): Promise<ValidationResult>
 ctx.worldModelManager.predictOutcome(scenario: ScenarioSpec): Promise<OutcomePrediction>
 ctx.worldModelManager.detectStateChange(): Promise<StateChangeEvent[]>
+```
+
+---
+
+## ProceduralGraphManager
+
+(`@experimental`) Self-evolving execution graphs. Not a lazy getter — obtain via `ctx.createProceduralGraph(config)` (see [ManagerContext](#managercontext)). Public facade in `src/agent/procedural/graph/ProceduralGraphManager.ts` (2026-09-10 dependency graph). Leaf types live in `src/types/proceduralGraph.ts` and are re-exported.
+
+`cyclePolicy` defaults to `reject`, or `repair` when `paperCompatible` is true. `createSkeleton` delegates to `createGraph` and therefore audits as `createGraph`. `canEvolve === false` returns `stoppedBecause: 'aborted'`. `listRejections` strips `trajectoryRefs`. The caller supplies `rollout`, `evaluate`, `refiner`, and `tokenizer` to `evolve`; the library never executes guidance text.
+
+```typescript
+async createGraph(input: {
+  graphId: string;
+  nodes: PGNode[];
+  edges: PGEdge[];
+  entryNodeId?: string;
+  relationVocabulary?: string[];
+  cyclePolicy?: PGCyclePolicy;
+  toolCatalog?: string[];
+}): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }>
+
+async createSkeleton(input: {
+  graphId: string;
+  toolCatalog?: string[];
+  cyclePolicy?: PGCyclePolicy;
+}): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }>
+
+async getGraph(graphId: string, revisionId?: string): Promise<ProceduralGraph | undefined>
+async openSession(
+  graphId: string,
+  options: PGSessionOptions & { revisionId?: string },
+): Promise<ProceduralGraphSession | undefined>
+async prepareCandidate(
+  graphId: string,
+  edits: PGEditSet,
+  options?: {
+    cyclePolicy?: PGCyclePolicy;
+    enforceToolCatalog?: boolean;
+    toolCatalog?: string[];
+    staticMode?: boolean;
+  },
+): Promise<
+  | { ok: true; candidate: ProceduralGraph; repairs: PGEdge[]; diagnostics: PGDiagnostic[] }
+  | { ok: false; diagnostics: PGDiagnostic[]; repairs: PGEdge[] }
+>
+
+async evolve(options: PGEvolutionOptions, deps: PGEvolutionDependencies): Promise<PGEvolutionResult>
+// deps: { rollout, evaluate, refiner, tokenizer }
+
+listRevisions(
+  graphId: string,
+  page?: { offset?: number; limit?: number },
+): Promise<{
+  items: Array<{ revisionId: string; parentRevisionId?: string; graphDigest: string; createdAt: string }>;
+  total: number;
+}>
+async listRejections(
+  graphId: string,
+  page?: { offset?: number; limit?: number },
+): Promise<{
+  items: Array<Omit<PGRejectionRecord, 'trajectoryRefs'> & { trajectoryRefs?: undefined }>;
+  total: number;
+}>
+
+async rollback(
+  graphId: string,
+  revisionId: string,
+  expectedHeadVersion: number,
+): Promise<PGCommitResult | { status: 'not-found' }>
+async exportGraph(graphId: string, revisionId?: string): Promise<string | undefined>
+async importGraph(
+  document: string,
+  options?: { graphId?: string; toolCatalog?: string[]; enforceToolCatalog?: boolean },
+): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }>
+async dispose(): Promise<void>
+```
+
+**Example:**
+```typescript
+const pg = await ctx.createProceduralGraph({
+  backing: { type: 'jsonl' }, // sidecar <basename>-procedural-graph.jsonl
+});
+await pg.createGraph({ graphId: 'checkout', nodes, edges });
+
+const session = await pg.openSession('checkout', {
+  taskDescription: 'Complete checkout',
+  toolCatalog: ['pay'],
+});
+const tip = await session?.guidance('what next?');
+
+const evolved = await pg.evolve({
+  graphId: 'checkout',
+  mode: 'static_incremental',
+  trainingTasks, validationTasks,
+  batchSize: 4, maxRounds: 3, maxTokens: 2000,
+  cyclePolicy: 'reject', paperCompatible: false,
+  toolCatalog: ['pay'], taskDescription: 'Complete checkout',
+  taskFailurePolicy: 'fail-round',
+}, { rollout, evaluate, refiner, tokenizer });
 ```
 
 ---
