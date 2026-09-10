@@ -1275,7 +1275,7 @@ createAgentMemory(agentId, entityData)
 
 ## Procedural Graph Flow
 
-`ctx.createProceduralGraph({ backing })` returns a `ProceduralGraphManager`. A config object (`{ type, path? }`) is constructed via `createProceduralGraphBacking` and owned by the manager; an injected `IProceduralGraphBacking` is not.
+`await ctx.createProceduralGraph({ backing })` returns a `ProceduralGraphManager` (`Promise<ProceduralGraphManager>`). A config object (`{ type, path? }`) is constructed via `createProceduralGraphBacking` and owned by the manager; an injected `IProceduralGraphBacking` is not.
 
 ```
 createGraph / createSkeleton
@@ -1323,7 +1323,7 @@ audit({ op: 'evolve', graphId, revisionId })
 ```
 
 - Persistence is a JSONL sidecar `<basename>-procedural-graph.jsonl` or a sqlite `<basename>-procedural-graph.db`. `createProceduralGraphBacking` never reads `MEMORY_STORAGE_TYPE` (A2).
-- Policy `canRead` / `canWrite` / `canEvolve` runs before the matching op; `audit` fires after successful mutations.
+- Policy `canRead` / `canWrite` / `canEvolve` runs before the matching op; `audit` fires after successful mutations. `evolve` requires caller-supplied `rollout`, `evaluate`, `refiner`, and `tokenizer`.
 - `createSkeleton` is `createGraph` with Start/End `STATE` nodes and a `LEADS_TO` edge.
 - `paperCompatible` onetime (`static_onetime` / `scratch_onetime`) may skip the validation gate and commit the prepared candidate directly.
 
