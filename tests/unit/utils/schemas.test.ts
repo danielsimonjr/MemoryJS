@@ -19,6 +19,10 @@ import {
   validateRelation,
   validateImportance,
   validateTags,
+  // Relation schemas (procedural-graph metadata)
+  CreateRelationSchema,
+  RelationSchema,
+  DeleteRelationsSchema,
 } from '../../../src/utils/index.js';
 
 // =============================================================================
@@ -816,5 +820,74 @@ describe('schemas', () => {
         expect(result.valid).toBe(true);
       });
     });
+  });
+});
+
+describe('relation metadata (procedural graph)', () => {
+  const proceduralGraphMetadata = {
+    proceduralGraph: {
+      schemaVersion: 1,
+      condition: null,
+      guidance: 'g',
+      pitfalls: 'p',
+    },
+  };
+
+  it('CreateRelationSchema accepts metadata.proceduralGraph', () => {
+    const result = CreateRelationSchema.safeParse({
+      from: 'Start',
+      to: 'End',
+      relationType: 'LEADS_TO',
+      metadata: proceduralGraphMetadata,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.metadata).toEqual(proceduralGraphMetadata);
+    }
+  });
+
+  it('CreateRelationSchema still rejects unknown top-level keys', () => {
+    const result = CreateRelationSchema.safeParse({
+      from: 'Start',
+      to: 'End',
+      relationType: 'LEADS_TO',
+      unknownKey: true,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('RelationSchema accepts weight/confidence/properties/metadata', () => {
+    const result = RelationSchema.safeParse({
+      from: 'Start',
+      to: 'End',
+      relationType: 'LEADS_TO',
+      weight: 0.5,
+      confidence: 0.8,
+      properties: { bidirectional: true, provenance: 'pg' },
+      metadata: proceduralGraphMetadata,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.weight).toBe(0.5);
+      expect(result.data.confidence).toBe(0.8);
+      expect(result.data.properties).toEqual({ bidirectional: true, provenance: 'pg' });
+      expect(result.data.metadata).toEqual(proceduralGraphMetadata);
+    }
+  });
+
+  it('DeleteRelationsSchema accepts relations carrying metadata', () => {
+    const result = DeleteRelationsSchema.safeParse([
+      {
+        from: 'Start',
+        to: 'End',
+        relationType: 'LEADS_TO',
+        metadata: proceduralGraphMetadata,
+      },
+    ]);
+
+    expect(result.success).toBe(true);
   });
 });

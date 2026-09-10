@@ -270,6 +270,15 @@ export const RelationSchema = z.object({
   relationType: relationTypeSchema,
   createdAt: isoDateSchema.optional(),
   lastModified: isoDateSchema.optional(),
+  weight: z.number().min(0).max(1).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+  properties: z.object({
+    bidirectional: z.boolean().optional(),
+    validFrom: z.string().optional(),
+    validUntil: z.string().optional(),
+    provenance: z.string().optional(),
+  }).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 
 /**
@@ -291,6 +300,7 @@ export const CreateRelationSchema = z.object({
     validUntil: z.string().optional(),
     provenance: z.string().optional(),
   }).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 }).strict();
 
 // ==================== Search Schemas ====================
