@@ -4,42 +4,38 @@
 
 # Test Coverage Analysis
 
-**Generated**: 2026-08-07
+**Generated**: 2026-09-10
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Total Source Files | 266 |
-| Total Test Files | 321 |
-| Source Files with Tests | 245 |
-| Source Files without Tests | 21 |
-| Coverage (raw, direct-import) | **92.1%** |
+| Total Source Files | 291 |
+| Total Test Files | 361 |
+| Source Files with Tests | 280 |
+| Source Files without Tests | 11 |
+| Coverage (raw, direct-import) | **96.2%** |
 ---
 
 ## Source Files Without Test Coverage
 
-The following 21 source files are not directly imported by any test file:
+The following 11 source files are not directly imported by any test file:
+
+### agent/
+
+- `src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts` → Expected test: `tests/unit/agent/LockedProceduralGraphBacking.test.ts`
+- `src/agent/procedural/graph/backing/ProceduralGraphState.ts` → Expected test: `tests/unit/agent/ProceduralGraphState.test.ts`
 
 ### cli/
 
-- `src/cli/commands/decision.ts` → Expected test: `tests/unit/cli/decision.test.ts`
 - `src/cli/commands/entity.ts` → Expected test: `tests/unit/cli/entity.test.ts`
-- `src/cli/commands/exclusion.ts` → Expected test: `tests/unit/cli/exclusion.test.ts`
-- `src/cli/commands/graph.ts` → Expected test: `tests/unit/cli/graph.test.ts`
 - `src/cli/commands/helpers.ts` → Expected test: `tests/unit/cli/helpers.test.ts`
-- `src/cli/commands/heuristic.ts` → Expected test: `tests/unit/cli/heuristic.test.ts`
-- `src/cli/commands/hierarchy.ts` → Expected test: `tests/unit/cli/hierarchy.test.ts`
 - `src/cli/commands/io.ts` → Expected test: `tests/unit/cli/io.test.ts`
-- `src/cli/commands/maintenance.ts` → Expected test: `tests/unit/cli/maintenance.test.ts`
-- `src/cli/commands/observation.ts` → Expected test: `tests/unit/cli/observation.test.ts`
-- `src/cli/commands/observationDedup.ts` → Expected test: `tests/unit/cli/observationDedup.test.ts`
-- `src/cli/commands/projectContext.ts` → Expected test: `tests/unit/cli/projectContext.test.ts`
 - `src/cli/commands/relation.ts` → Expected test: `tests/unit/cli/relation.test.ts`
-- `src/cli/commands/search.ts` → Expected test: `tests/unit/cli/search.test.ts`
-- `src/cli/commands/spell.ts` → Expected test: `tests/unit/cli/spell.test.ts`
-- `src/cli/commands/tag.ts` → Expected test: `tests/unit/cli/tag.test.ts`
-- `src/cli/commands/toolAffordance.ts` → Expected test: `tests/unit/cli/toolAffordance.test.ts`
+
+### search/
+
+- `src/search/inducedSubgraph.ts` → Expected test: `tests/unit/search/inducedSubgraph.test.ts`
 
 ### root/
 
@@ -85,7 +81,7 @@ The following 21 source files are not directly imported by any test file:
 | `agent/EntropyFilter.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `EntropyFilter.test.ts` |
 | `agent/EpisodicMemoryManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `EpisodicMemoryManager.test.ts`, `SessionManager.test.ts` |
 | `agent/ExclusionManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ExclusionManager.test.ts` |
-| `agent/ExperienceExtractor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `delta-services-wiring.test.ts`, `ExperienceExtractor.test.ts`, `ReflectionStage.test.ts` |
+| `agent/ExperienceExtractor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ExperienceExtractor.test.ts`, `ReflectionStage.test.ts`, `delta-services-wiring.test.ts` |
 | `agent/FailureDistillation.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `FailureDistillation.test.ts` |
 | `agent/FailureManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `FailureManager.test.ts` |
 | `agent/HeuristicManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `HeuristicExtractionStage.test.ts`, `HeuristicManager.test.ts` |
@@ -94,7 +90,7 @@ The following 21 source files are not directly imported by any test file:
 | `agent/MemoryBackend.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `IMemoryBackend.contract.test.ts` |
 | `agent/MemoryEngine.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `MemoryEngine.test.ts` |
 | `agent/MemoryFormatter.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `MemoryFormatter.test.ts`, `MemoryFormatterSalience.test.ts`, `ManagerContext.test.ts` |
-| `agent/MemoryValidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `delta-services-wiring.test.ts`, `MemoryValidator.test.ts` |
+| `agent/MemoryValidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `MemoryValidator.test.ts`, `delta-services-wiring.test.ts` |
 | `agent/MultiAgentMemoryManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `MultiAgentMemoryManager.test.ts` |
 | `agent/ObservationDedupManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ObservationDedupManager.test.ts`, `ObservationDedupReportStage.test.ts` |
 | `agent/ObserverPipeline.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ObserverPipeline.test.ts` |
@@ -106,15 +102,15 @@ The following 21 source files are not directly imported by any test file:
 | `agent/RelationConsolidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `RelationConsolidator.test.ts` |
 | `agent/RoleProfiles.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `RoleProfiles.test.ts` |
 | `agent/RuleEvaluator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `RuleEvaluator.test.ts` |
-| `agent/SQLiteBackend.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `memoryBackend-wiring.test.ts`, `SQLiteBackend.test.ts` |
-| `agent/SalienceEngine.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `CollaborativeSynthesis.test.ts`, `ConnectivitySignals.test.ts`, `ContextProfileManager.test.ts`, `ContextWindowManager.test.ts`, `profile-manager-extraction.test.ts`, `SalienceEngine.test.ts`, `ManagerContext.test.ts` |
+| `agent/SQLiteBackend.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `SQLiteBackend.test.ts`, `memoryBackend-wiring.test.ts` |
+| `agent/SalienceEngine.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `CollaborativeSynthesis.test.ts`, `ConnectivitySignals.test.ts`, `ContextProfileManager.test.ts`, `ContextWindowManager.test.ts`, `SalienceEngine.test.ts`, `profile-manager-extraction.test.ts`, `ManagerContext.test.ts` |
 | `agent/SessionCheckpoint.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `SessionCheckpoint.test.ts` |
-| `agent/SessionManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `profile-manager-extraction.test.ts`, `SessionManager.test.ts`, `SessionQueryBuilder.test.ts` |
+| `agent/SessionManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `SessionManager.test.ts`, `SessionQueryBuilder.test.ts`, `profile-manager-extraction.test.ts` |
 | `agent/SessionQueryBuilder.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `SessionQueryBuilder.test.ts` |
 | `agent/SummarizationService.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `SummarizationService.test.ts` |
 | `agent/ToolAffordanceManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `MCPToolObserverAdapter.test.ts`, `AgentMemoryManager.test.ts`, `ToolAffordanceManager.test.ts`, `ToolCallObserver.test.ts` |
 | `agent/ToolCallObserver.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `MCPToolObserverAdapter.test.ts`, `AgentMemoryManager.test.ts`, `ToolCallObserver.test.ts` |
-| `agent/TrajectoryCompressor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `delta-services-wiring.test.ts`, `ReflectionStage.test.ts`, `TrajectoryCompressor.test.ts` |
+| `agent/TrajectoryCompressor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ReflectionStage.test.ts`, `TrajectoryCompressor.test.ts`, `delta-services-wiring.test.ts` |
 | `agent/VisibilityResolver.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `VisibilityResolver.test.ts` |
 | `agent/WorkThreadManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `WorkThreadManager.test.ts` |
 | `agent/WorkingMemoryManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ConsolidationPipeline.test.ts`, `EntropyFilter.test.ts`, `RelationConsolidator.test.ts`, `SessionCheckpoint.test.ts`, `SessionManager.test.ts`, `SessionQueryBuilder.test.ts`, `WorkingMemoryManager.test.ts` |
@@ -127,7 +123,27 @@ The following 21 source files are not directly imported by any test file:
 | `agent/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts` |
 | `procedural/ProcedureManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `manager-context-new-managers.test.ts` |
 | `procedural/ProcedureStore.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts` |
-| `procedural/StepSequencer.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts` |
+| `procedural/StepSequencer.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProcedureGraphAdapter.test.ts` |
+| `graph/CompletionProvider.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `CompletionProvider.test.ts`, `ProceduralGraphEvolution.test.ts`, `ProceduralGraphSession.test.ts` |
+| `graph/ProceduralGraph.ts` | `file-path.test.ts`, `procedural-graph-guidance.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraph.test.ts`, `ProceduralGraphEvolution.test.ts`, `ProceduralGraphSerializer.test.ts`, `ProceduralGraphSession.test.ts`, `ProceduralGraphValidator.test.ts`, `appendixF.test.ts` |
+| `graph/ProceduralGraphEvolution.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphEvolution.test.ts` |
+| `graph/ProceduralGraphManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphManager.test.ts` |
+| `graph/ProceduralGraphRefiner.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphRefiner.test.ts` |
+| `graph/ProceduralGraphSchemas.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphSchemas.test.ts` |
+| `graph/ProceduralGraphSerializer.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphEvolution.test.ts`, `ProceduralGraphSerializer.test.ts` |
+| `graph/ProceduralGraphSession.ts` | `file-path.test.ts`, `procedural-graph-guidance.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphSession.test.ts`, `appendixF.test.ts` |
+| `graph/ProceduralGraphValidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphEvolution.test.ts`, `ProceduralGraphValidator.test.ts` |
+| `graph/ProceduralGuidance.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts` |
+| `graph/ProcedureGraphAdapter.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProcedureGraphAdapter.test.ts` |
+| `backing/IProceduralGraphBacking.ts` | `file-path.test.ts`, `procedural-graph-recovery.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `memory.test.ts` |
+| `backing/InMemoryProceduralGraphBacking.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphManager.test.ts`, `memory.test.ts`, `ManagerContext-proceduralGraph.test.ts` |
+| `backing/JsonlProceduralGraphBacking.ts` | `file-path.test.ts`, `procedural-graph-recovery.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `jsonl.test.ts` |
+| `backing/SqliteProceduralGraphBacking.ts` | `file-path.test.ts`, `procedural-graph-recovery.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `sqlite.test.ts` |
+| `backing/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts` |
+| `graph/canonical.ts` | `file-path.test.ts`, `procedural-graph-recovery.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraph.test.ts`, `ProceduralGraphEvolution.test.ts`, `ProceduralGraphManager.test.ts`, `ProceduralGraphSchemas.test.ts`, `ProceduralGraphSerializer.test.ts`, `ProceduralGraphValidator.test.ts`, `canonical.test.ts` |
+| `graph/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts` |
+| `graph/prompts.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphSession.test.ts`, `prompts.test.ts` |
+| `graph/tokenTail.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraphEvolution.test.ts`, `tokenTail.test.ts` |
 | `procedural/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts` |
 | `rbac/PermissionMatrix.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `rbac.test.ts` |
 | `rbac/RbacMiddleware.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `AgentMemoryManager.test.ts`, `rbac.test.ts`, `manager-context-new-managers.test.ts` |
@@ -150,39 +166,53 @@ The following 21 source files are not directly imported by any test file:
 | `commands/audit.ts` | `audit.test.ts` |
 | `commands/cache.ts` | `cache-reindex.test.ts` |
 | `commands/check.ts` | `check.test.ts` |
+| `commands/decision.ts` | `decision.test.ts` |
 | `commands/diag.ts` | `diag.test.ts` |
 | `commands/doctor.ts` | `doctor.test.ts` |
+| `commands/exclusion.ts` | `exclusion.test.ts` |
+| `commands/graph.ts` | `graph.test.ts` |
+| `commands/heuristic.ts` | `heuristic.test.ts` |
+| `commands/hierarchy.ts` | `hierarchy.test.ts` |
 | `commands/index.ts` | `commands.test.ts`, `index.test.ts` |
 | `commands/inspect.ts` | `inspect.test.ts` |
+| `commands/maintenance.ts` | `maintenance-cli.test.ts` |
+| `commands/observation.ts` | `observation.test.ts` |
+| `commands/observationDedup.ts` | `observationDedup.test.ts` |
+| `commands/projectContext.ts` | `projectContext.test.ts` |
 | `commands/reindex.ts` | `cache-reindex.test.ts` |
+| `commands/search.ts` | `search-extended.test.ts` |
 | `commands/smoke.ts` | `smoke.test.ts` |
+| `commands/spell.ts` | `spell.test.ts` |
+| `commands/tag.ts` | `tag.test.ts` |
+| `commands/toolAffordance.ts` | `toolAffordance.test.ts` |
 | `cli/config.ts` | `config.test.ts` |
 | `cli/formatters.ts` | `formatters.test.ts` |
 | `cli/index.ts` | `index.test.ts` |
 | `cli/interactive.ts` | `interactive.test.ts` |
 | `cli/options.ts` | `options.test.ts` |
-| `core/EntityManager.ts` | `file-path.test.ts`, `operation-progress.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `optimization-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `task-scheduler-benchmarks.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `MCPToolObserverAdapter.test.ts`, `AgentReflectionManager.test.ts`, `ArtifactManager.test.ts`, `CollaborationAuditEnforcer.test.ts`, `DecisionManager.test.ts`, `EventManager.test.ts`, `ExclusionManager.test.ts`, `FailureManager.test.ts`, `HeuristicExtractionStage.test.ts`, `HeuristicManager.test.ts`, `ObserverPipeline.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProjectContextManager.test.ts`, `ReflectionStage.test.ts`, `RelationConsolidator.test.ts`, `SessionCheckpoint.test.ts`, `ToolAffordanceManager.test.ts`, `ToolCallObserver.test.ts`, `WorkThreadManager.test.ts`, `WorldModel.test.ts`, `ConcurrencyControl.test.ts`, `entity-id.test.ts`, `EntityManager.test.ts`, `ManagerContext.test.ts`, `optimistic-concurrency.test.ts`, `RefIndex.test.ts`, `RelationManager.test.ts`, `rename-entity.test.ts`, `sqlite-events.test.ts`, `temporal-versioning.test.ts`, `write-path-delta.test.ts`, `AutoLinker.test.ts`, `CompressionManager.test.ts`, `FactExtractor.test.ts`, `BasicSearch.test.ts`, `BM25Search.test.ts`, `BooleanSearch.test.ts`, `FuzzySearch.test.ts`, `NGramFuzzyIntegration.test.ts`, `RankedSearch.test.ts`, `RankedSearchGraphBoost.test.ts`, `update-entity-schema-strip.test.ts` |
+| `core/EntityManager.ts` | `file-path.test.ts`, `operation-progress.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `optimization-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `task-scheduler-benchmarks.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `MCPToolObserverAdapter.test.ts`, `AgentReflectionManager.test.ts`, `ArtifactManager.test.ts`, `CollaborationAuditEnforcer.test.ts`, `DecisionManager.test.ts`, `EventManager.test.ts`, `ExclusionManager.test.ts`, `FailureManager.test.ts`, `HeuristicExtractionStage.test.ts`, `HeuristicManager.test.ts`, `ObserverPipeline.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProjectContextManager.test.ts`, `ReflectionStage.test.ts`, `RelationConsolidator.test.ts`, `SessionCheckpoint.test.ts`, `ToolAffordanceManager.test.ts`, `ToolCallObserver.test.ts`, `WorkThreadManager.test.ts`, `WorldModel.test.ts`, `ConcurrencyControl.test.ts`, `EntityManager.test.ts`, `ManagerContext.test.ts`, `RefIndex.test.ts`, `RelationManager-metadata.test.ts`, `RelationManager.test.ts`, `entity-id.test.ts`, `optimistic-concurrency.test.ts`, `rename-entity.test.ts`, `sqlite-events.test.ts`, `temporal-versioning.test.ts`, `write-path-delta.test.ts`, `AutoLinker.test.ts`, `CompressionManager.test.ts`, `FactExtractor.test.ts`, `BM25Search.test.ts`, `BasicSearch.test.ts`, `BooleanSearch.test.ts`, `FuzzySearch.test.ts`, `NGramFuzzyIntegration.test.ts`, `RankedSearch.test.ts`, `RankedSearchGraphBoost.test.ts`, `update-entity-schema-strip.test.ts` |
 | `core/EntityStateMachine.ts` | `EntityStateMachine.test.ts` |
-| `core/GraphEventEmitter.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ObserverPipeline.test.ts`, `GraphEventEmitter.test.ts`, `GraphEvents.test.ts`, `ManagerContext.test.ts`, `sqlite-events.test.ts`, `TransitionLedger.test.ts`, `GraphRankPrior.test.ts`, `TFIDFEventSync.test.ts` |
-| `core/GraphStorage.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `compression-optimization.test.ts`, `hybrid-search.test.ts`, `operation-progress.test.ts`, `smart-search.test.ts`, `graph-storage-new-fields.test.ts`, `streaming-export.test.ts`, `worker-pool-integration.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `optimization-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `task-scheduler-benchmarks.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `AgentMemoryManager.test.ts`, `ArtifactManager.test.ts`, `CollaborationAuditEnforcer.test.ts`, `EventManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `RelationConsolidator.test.ts`, `SessionCheckpoint.test.ts`, `WorkThreadManager.test.ts`, `WorldModel.test.ts`, `BatchTransaction.test.ts`, `ObservationColumnStore-wiring.test.ts`, `ConcurrencyControl.test.ts`, `entity-id.test.ts`, `EntityManager.test.ts`, `GraphEventEmitter.test.ts`, `GraphEvents.test.ts`, `GraphStorage.test.ts`, `GraphTraversal.test.ts`, `GraphTraversalLookFor.test.ts`, `HierarchyManager.test.ts`, `known-issue-fixes.test.ts`, `ManagerContext.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `mmap-review-fixes.test.ts`, `ObservationManager.dedup.test.ts`, `ObservationManager.test.ts`, `optimistic-concurrency.test.ts`, `RefIndex.test.ts`, `RelationManager.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `sqlite-events.test.ts`, `StorageFactory.test.ts`, `temporal-versioning.test.ts`, `TransactionBatching.test.ts`, `TransactionManager.test.ts`, `write-path-delta.test.ts`, `AnalyticsManager.test.ts`, `ArchiveManager.test.ts`, `AutoLinker.test.ts`, `BackupManager.test.ts`, `CompressionManager.test.ts`, `FreshnessManager.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservableDataModelAdapter.test.ts`, `pii-redaction-export.test.ts`, `BasicSearch.test.ts`, `BloomFilter.test.ts`, `BM25Search.test.ts`, `BooleanSearch.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `IncrementalTFIDF.test.ts`, `MaterializedViews.test.ts`, `NGramFuzzyIntegration.test.ts`, `RankedSearch.test.ts`, `RankedSearchGraphBoost.test.ts`, `SavedSearchManager.test.ts`, `SearchManager.test.ts`, `SearchSuggestions.test.ts`, `TFIDFEventSync.test.ts`, `update-entity-schema-strip.test.ts` |
+| `core/GraphEventEmitter.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ObserverPipeline.test.ts`, `GraphEventEmitter.test.ts`, `GraphEvents.test.ts`, `ManagerContext.test.ts`, `TransitionLedger.test.ts`, `sqlite-events.test.ts`, `GraphRankPrior.test.ts`, `TFIDFEventSync.test.ts` |
+| `core/GraphStorage.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `compression-optimization.test.ts`, `hybrid-search.test.ts`, `operation-progress.test.ts`, `smart-search.test.ts`, `graph-storage-new-fields.test.ts`, `streaming-export.test.ts`, `worker-pool-integration.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `optimization-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `task-scheduler-benchmarks.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `AgentMemoryManager.test.ts`, `ArtifactManager.test.ts`, `CollaborationAuditEnforcer.test.ts`, `EventManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `RelationConsolidator.test.ts`, `SessionCheckpoint.test.ts`, `WorkThreadManager.test.ts`, `WorldModel.test.ts`, `BatchTransaction.test.ts`, `ConcurrencyControl.test.ts`, `EntityManager.test.ts`, `GraphEventEmitter.test.ts`, `GraphEvents.test.ts`, `GraphStorage.test.ts`, `GraphTraversal.test.ts`, `GraphTraversalLookFor.test.ts`, `HierarchyManager.test.ts`, `ManagerContext.test.ts`, `ObservationManager.dedup.test.ts`, `ObservationManager.test.ts`, `RefIndex.test.ts`, `RelationManager-metadata.test.ts`, `RelationManager.test.ts`, `StorageFactory.test.ts`, `TransactionBatching.test.ts`, `TransactionManager.test.ts`, `ObservationColumnStore-wiring.test.ts`, `entity-id.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `mmap-review-fixes.test.ts`, `optimistic-concurrency.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `sqlite-events.test.ts`, `temporal-versioning.test.ts`, `write-path-delta.test.ts`, `AnalyticsManager.test.ts`, `ArchiveManager.test.ts`, `AutoLinker.test.ts`, `BackupManager.test.ts`, `CompressionManager.test.ts`, `FreshnessManager.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservableDataModelAdapter.test.ts`, `pii-redaction-export.test.ts`, `BM25Search.test.ts`, `BasicSearch.test.ts`, `BloomFilter.test.ts`, `BooleanSearch.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `IncrementalTFIDF.test.ts`, `MaterializedViews.test.ts`, `NGramFuzzyIntegration.test.ts`, `RankedSearch.test.ts`, `RankedSearchGraphBoost.test.ts`, `SavedSearchManager.test.ts`, `SearchManager.test.ts`, `SearchSuggestions.test.ts`, `TFIDFEventSync.test.ts`, `update-entity-schema-strip.test.ts` |
 | `core/GraphTraversal.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `CausalReasoner.test.ts`, `CollaborativeSynthesis.test.ts`, `GraphTraversal.test.ts`, `GraphTraversalLookFor.test.ts`, `ManagerContext.test.ts`, `GraphRankPrior.test.ts`, `RankedSearchGraphBoost.test.ts` |
 | `core/HierarchyManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `EntityManager.test.ts`, `HierarchyManager.test.ts`, `ManagerContext.test.ts` |
-| `core/ManagerContext.ts` | `edge-cases.test.ts`, `file-path.test.ts`, `access-tracking.test.ts`, `agent-memory-manager-profile.test.ts`, `manager-context-semantic-forget.test.ts`, `observation-manager-contradiction.test.ts`, `contradiction-detector-supersede.test.ts`, `governance-enforcement.test.ts`, `MemoryEngineStorage.test.ts`, `project-scope-isolation.test.ts`, `knowledge-graph.test.ts`, `memory-engine-perf.test.ts`, `ApiKeyAuthMiddleware.test.ts`, `LangChainMemoryAdapter.test.ts`, `RestRouter.test.ts`, `agent-memory-manager-diary.test.ts`, `ArtifactManager.test.ts`, `ConnectivitySignals.test.ts`, `context-window-manager-compress.test.ts`, `context-window-manager-wakeup.test.ts`, `delta-services-wiring.test.ts`, `memoryBackend-wiring.test.ts`, `MemoryEngine.test.ts`, `profile-manager-basics.test.ts`, `profile-manager-extraction.test.ts`, `MemoryGraphBridge.test.ts`, `SQLiteBackend.test.ts`, `cache-reindex.test.ts`, `check.test.ts`, `diag.test.ts`, `inspect.test.ts`, `columns-review-fixes.test.ts`, `ObservationColumnStore-wiring.test.ts`, `entity-manager-list-projects.test.ts`, `entity-manager-profile-namespace.test.ts`, `entity-manager-project-stamping.test.ts`, `entity-manager-version-chain.test.ts`, `known-issue-fixes.test.ts`, `manager-context-new-managers.test.ts`, `manager-context-project.test.ts`, `ManagerContext.test.ts`, `observation-validate-hook.test.ts`, `relation-manager-temporal.test.ts`, `sqlite-events.test.ts`, `compression-manager-priority-dedup.test.ts`, `compression-manager-versioning-guard.test.ts`, `GovernanceManager.test.ts`, `ingest-provenance-modes.test.ts`, `io-manager-ingest.test.ts`, `io-manager-split.test.ts`, `io-manager-visualize.test.ts`, `semantic-forget-exact.test.ts`, `semantic-forget-semantic.test.ts`, `TieredIndex-wiring.test.ts`, `compressedEntityCache-wiring.test.ts` |
-| `core/ObservationManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `write-performance.test.ts`, `ObservationColumnStore-wiring.test.ts`, `ConcurrencyControl.test.ts`, `ManagerContext.test.ts`, `ObservationManager.dedup.test.ts`, `ObservationManager.test.ts`, `sqlite-events.test.ts`, `temporal-versioning.test.ts`, `write-path-delta.test.ts` |
+| `core/ManagerContext.ts` | `edge-cases.test.ts`, `file-path.test.ts`, `MemoryEngineStorage.test.ts`, `access-tracking.test.ts`, `agent-memory-manager-profile.test.ts`, `manager-context-semantic-forget.test.ts`, `observation-manager-contradiction.test.ts`, `contradiction-detector-supersede.test.ts`, `governance-enforcement.test.ts`, `procedural-graph-iomanager-roundtrip.test.ts`, `project-scope-isolation.test.ts`, `knowledge-graph.test.ts`, `memory-engine-perf.test.ts`, `ApiKeyAuthMiddleware.test.ts`, `LangChainMemoryAdapter.test.ts`, `RestRouter.test.ts`, `ArtifactManager.test.ts`, `ConnectivitySignals.test.ts`, `MemoryEngine.test.ts`, `SQLiteBackend.test.ts`, `agent-memory-manager-diary.test.ts`, `context-window-manager-compress.test.ts`, `context-window-manager-wakeup.test.ts`, `delta-services-wiring.test.ts`, `memoryBackend-wiring.test.ts`, `profile-manager-basics.test.ts`, `profile-manager-extraction.test.ts`, `MemoryGraphBridge.test.ts`, `cache-reindex.test.ts`, `check.test.ts`, `diag.test.ts`, `exclusion.test.ts`, `graph.test.ts`, `hierarchy.test.ts`, `inspect.test.ts`, `maintenance-cli.test.ts`, `observation.test.ts`, `observationDedup.test.ts`, `search-extended.test.ts`, `spell.test.ts`, `tag.test.ts`, `toolAffordance.test.ts`, `ManagerContext-proceduralGraph.test.ts`, `ManagerContext.test.ts`, `ObservationColumnStore-wiring.test.ts`, `columns-review-fixes.test.ts`, `shadow-write-drain.test.ts`, `entity-manager-list-projects.test.ts`, `entity-manager-profile-namespace.test.ts`, `entity-manager-project-stamping.test.ts`, `entity-manager-version-chain.test.ts`, `known-issue-fixes.test.ts`, `manager-context-new-managers.test.ts`, `manager-context-project.test.ts`, `observation-validate-hook.test.ts`, `relation-manager-temporal.test.ts`, `sqlite-events.test.ts`, `GovernanceManager.test.ts`, `compression-manager-priority-dedup.test.ts`, `compression-manager-versioning-guard.test.ts`, `ingest-provenance-modes.test.ts`, `io-manager-ingest.test.ts`, `io-manager-split.test.ts`, `io-manager-visualize.test.ts`, `semantic-forget-exact.test.ts`, `semantic-forget-semantic.test.ts`, `TieredIndex-wiring.test.ts`, `compressedEntityCache-wiring.test.ts` |
+| `core/ObservationManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `write-performance.test.ts`, `ConcurrencyControl.test.ts`, `ManagerContext.test.ts`, `ObservationManager.dedup.test.ts`, `ObservationManager.test.ts`, `ObservationColumnStore-wiring.test.ts`, `sqlite-events.test.ts`, `temporal-versioning.test.ts`, `write-path-delta.test.ts` |
 | `core/ObservationStore.ts` | `ObservationStore.test.ts` |
 | `core/PostgreSQLStorage.ts` | `PostgreSQLStorage.test.ts` |
 | `core/RefIndex.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ArtifactManager.test.ts`, `ManagerContext.test.ts`, `RefIndex.test.ts`, `rename-entity.test.ts` |
-| `core/RelationManager.ts` | `file-path.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `EventManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `RelationConsolidator.test.ts`, `SessionCheckpoint.test.ts`, `WorkThreadManager.test.ts`, `ManagerContext.test.ts`, `RelationManager.test.ts`, `rename-entity.test.ts`, `sqlite-events.test.ts`, `write-path-delta.test.ts`, `AutoLinker.test.ts`, `CompressionManager.test.ts`, `FactExtractor.test.ts`, `BasicSearch.test.ts`, `BooleanSearch.test.ts`, `FuzzySearch.test.ts`, `NGramFuzzyIntegration.test.ts`, `RankedSearchGraphBoost.test.ts` |
-| `core/SQLiteStorage.ts` | `sqlite-storage-new-fields.test.ts`, `write-path-benchmarks.test.ts`, `EventManager.test.ts`, `ConcurrencyControl.test.ts`, `entity-id.test.ts`, `EntityManager.test.ts`, `rename-entity.test.ts`, `sqlite-content-hash-migration.test.ts`, `sqlite-events.test.ts`, `SQLiteStorage.test.ts`, `StorageFactory.test.ts`, `write-path-delta.test.ts` |
+| `core/RelationManager.ts` | `file-path.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `EventManager.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `RelationConsolidator.test.ts`, `SessionCheckpoint.test.ts`, `WorkThreadManager.test.ts`, `ManagerContext.test.ts`, `RelationManager-metadata.test.ts`, `RelationManager.test.ts`, `rename-entity.test.ts`, `sqlite-events.test.ts`, `write-path-delta.test.ts`, `AutoLinker.test.ts`, `CompressionManager.test.ts`, `FactExtractor.test.ts`, `BasicSearch.test.ts`, `BooleanSearch.test.ts`, `FuzzySearch.test.ts`, `NGramFuzzyIntegration.test.ts`, `RankedSearchGraphBoost.test.ts` |
+| `core/SQLiteStorage.ts` | `MemoryEngineStorage.test.ts`, `procedural-graph-recovery.test.ts`, `sqlite-storage-new-fields.test.ts`, `write-path-benchmarks.test.ts`, `EventManager.test.ts`, `sqlite.test.ts`, `ConcurrencyControl.test.ts`, `EntityManager.test.ts`, `RelationManager-metadata.test.ts`, `SQLiteStorage.test.ts`, `StorageFactory.test.ts`, `entity-id.test.ts`, `rename-entity.test.ts`, `sqlite-content-hash-migration.test.ts`, `sqlite-driver-resolver.test.ts`, `sqlite-events.test.ts`, `write-path-delta.test.ts`, `SQLiteFtsSearchIntegration.test.ts` |
 | `core/StorageFactory.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ManagerContext.test.ts`, `StorageFactory.test.ts` |
 | `core/TransactionManager.ts` | `file-path.test.ts`, `operation-progress.test.ts`, `knowledge-graph.test.ts`, `BatchTransaction.test.ts`, `ManagerContext.test.ts`, `TransactionBatching.test.ts`, `TransactionManager.test.ts` |
 | `core/TransitionLedger.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ManagerContext.test.ts`, `TransitionLedger.test.ts` |
-| `columns/IColumnStore.ts` | `columns-review-fixes.test.ts`, `IColumnStore.test.ts`, `JsonlColumnStore.test.ts`, `ObservationColumnStore-wiring.test.ts`, `sqlite-events.test.ts` |
-| `columns/JsonlColumnStore.ts` | `columns-review-fixes.test.ts`, `JsonlColumnStore.test.ts` |
+| `columns/IColumnStore.ts` | `IColumnStore.test.ts`, `JsonlColumnStore.test.ts`, `ObservationColumnStore-wiring.test.ts`, `columns-review-fixes.test.ts`, `sqlite-events.test.ts` |
+| `columns/JsonlColumnStore.ts` | `JsonlColumnStore.test.ts`, `columns-review-fixes.test.ts` |
 | `core/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ManagerContext.test.ts` |
 | `mmap/FsReadMmapBackend.ts` | `FsReadMmapBackend.test.ts`, `mmap-review-fixes.test.ts` |
 | `mmap/IMmapBackend.ts` | `FsReadMmapBackend.test.ts`, `IMmapBackend.test.ts`, `mmap-review-fixes.test.ts` |
-| `segments/FileSegmentStorage.ts` | `FileSegmentStorage.test.ts`, `segments-review-fixes.test.ts` |
+| `core/nodeSqliteAdapter.ts` | `procedural-graph-recovery.test.ts`, `sqlite.test.ts`, `RelationManager-metadata.test.ts`, `nodeSqliteAdapter.test.ts`, `sqlite-driver-resolver.test.ts` |
+| `segments/FileSegmentStorage.ts` | `FileSegmentStorage.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts` |
 | `segments/ISegmentStorage.ts` | `FileSegmentStorage.test.ts`, `ISegmentStorage.test.ts`, `segments-review-fixes.test.ts`, `segment-jsonl.test.ts` |
 | `core/sqlite-register.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ManagerContext.test.ts` |
 | `features/AnalyticsManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ManagerContext.test.ts`, `AnalyticsManager.test.ts` |
@@ -195,30 +225,30 @@ The following 21 source files are not directly imported by any test file:
 | `features/FactExtractor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `FactExtractor.test.ts` |
 | `features/FreshnessManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `FreshnessManager.test.ts` |
 | `features/GovernanceManager.ts` | `file-path.test.ts`, `governance-enforcement.test.ts`, `knowledge-graph.test.ts`, `GovernanceManager.test.ts`, `pii-redaction-export.test.ts` |
-| `features/IOManager.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `operation-progress.test.ts`, `streaming-export.test.ts`, `knowledge-graph.test.ts`, `task-scheduler-benchmarks.test.ts`, `ManagerContext.test.ts`, `BackupManager.test.ts`, `ingest-provenance-modes.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `pii-redaction-export.test.ts` |
+| `features/IOManager.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `operation-progress.test.ts`, `streaming-export.test.ts`, `knowledge-graph.test.ts`, `task-scheduler-benchmarks.test.ts`, `ManagerContext.test.ts`, `BackupManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ingest-provenance-modes.test.ts`, `pii-redaction-export.test.ts` |
 | `features/KeywordExtractor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ObservationNormalizer.test.ts` |
 | `features/ObservableDataModelAdapter.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ObservableDataModelAdapter.test.ts` |
 | `features/ObservationNormalizer.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ObservationNormalizer.test.ts` |
 | `features/SemanticForget.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `semantic-forget-exact.test.ts`, `semantic-forget-semantic.test.ts` |
-| `features/StreamingExporter.ts` | `file-path.test.ts`, `operation-progress.test.ts`, `knowledge-graph.test.ts`, `task-scheduler-benchmarks.test.ts`, `pii-redaction-export.test.ts`, `StreamingExporter.test.ts` |
+| `features/StreamingExporter.ts` | `file-path.test.ts`, `operation-progress.test.ts`, `knowledge-graph.test.ts`, `task-scheduler-benchmarks.test.ts`, `StreamingExporter.test.ts`, `pii-redaction-export.test.ts` |
 | `features/TagManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ManagerContext.test.ts`, `TagManager.test.ts` |
 | `features/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts` |
 | `src/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts` |
-| `search/BM25Search.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `BM25Search.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
+| `search/BM25Search.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `BM25Search.test.ts`, `SQLiteFtsSearchIntegration.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/BasicSearch.ts` | `file-path.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `BasicSearch.test.ts`, `SavedSearchManager.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/BloomFilter.ts` | `BloomFilter.test.ts` |
 | `search/BloomPreScreener.ts` | `BloomFilter.test.ts`, `FuzzySearch.test.ts` |
 | `search/BooleanSearch.ts` | `file-path.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `BooleanSearch.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/EarlyTerminationManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `query-execution-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `EarlyTerminationManager.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/EmbeddingCache.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `embedding-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `EmbeddingCache.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
-| `search/EmbeddingService.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `embedding-benchmarks.test.ts`, `EmbeddingService.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
+| `search/EmbeddingService.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `embedding-benchmarks.test.ts`, `EmbeddingService.test.ts`, `LlamaCppEmbeddingService.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/EvidencePathBuilder.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `EvidencePathBuilder.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/FuzzySearch.ts` | `file-path.test.ts`, `worker-pool-integration.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `FuzzySearch.test.ts`, `FuzzySearchWorkerPath.test.ts`, `NGramFuzzyIntegration.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/GraphRankPrior.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `sqlite-events.test.ts`, `GraphRankPrior.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManagerGraph.test.ts`, `RankedSearchGraphBoost.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/HybridScorer.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
-| `search/HybridSearchManager.ts` | `file-path.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `knowledge-graph.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
+| `search/HybridSearchManager.ts` | `file-path.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `knowledge-graph.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `SQLiteFtsSearchIntegration.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/IncrementalIndexer.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `embedding-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `IncrementalIndexer.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
-| `search/LLMQueryPlanner.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `MemoryDistiller.test.ts`, `ReconstructiveMemory.test.ts`, `RelationConsolidator.test.ts`, `ingest-provenance-modes.test.ts`, `LLMQueryPlanner.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
+| `search/LLMQueryPlanner.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RelationConsolidator.test.ts`, `CompletionProvider.test.ts`, `MemoryDistiller.test.ts`, `ReconstructiveMemory.test.ts`, `ingest-provenance-modes.test.ts`, `LLMQueryPlanner.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/LLMSearchExecutor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/MaterializedViews.ts` | `MaterializedViews.test.ts` |
 | `search/NGramIndex.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `NGramFuzzyIntegration.test.ts`, `NGramIndex.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
@@ -234,63 +264,64 @@ The following 21 source files are not directly imported by any test file:
 | `search/QueryPlanCache.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `query-execution-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `QueryPlanCache.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/QueryPlanFormatter.ts` | `QueryPlanFormatter.test.ts` |
 | `search/QueryPlanner.ts` | `file-path.test.ts`, `smart-search.test.ts`, `knowledge-graph.test.ts`, `QueryPlanner.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
-| `search/RankedSearch.ts` | `file-path.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `ActiveRetrieval.test.ts`, `RankedSearch.test.ts`, `RankedSearchGraphBoost.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
+| `search/RankedSearch.ts` | `file-path.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `workflows.test.ts`, `knowledge-graph.test.ts`, `benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `ActiveRetrieval.test.ts`, `RankedSearch.test.ts`, `RankedSearchGraphBoost.test.ts`, `SQLiteFtsSearchIntegration.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/ReflectionManager.ts` | `file-path.test.ts`, `smart-search.test.ts`, `knowledge-graph.test.ts`, `query-execution-benchmarks.test.ts`, `ReflectionManager.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/SavedSearchManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `SavedSearchManager.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
-| `search/SearchFilterChain.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `search-filter-chain-project.test.ts`, `search-filter-chain-versioning.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
+| `search/SearchFilterChain.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `search-filter-chain-project.test.ts`, `search-filter-chain-versioning.test.ts` |
 | `search/SearchManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `v10-benchmarks.test.ts`, `ManagerContext.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `SearchManager.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/SearchSuggestions.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `SearchSuggestions.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/SemanticSearch.ts` | `file-path.test.ts`, `contradiction-detector-supersede.test.ts`, `knowledge-graph.test.ts`, `MemoryEngine.test.ts`, `MemoryValidator.test.ts`, `contradiction-detector-detect.test.ts`, `semantic-forget-semantic.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/SpellChecker.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `SemanticSearch.test.ts`, `SpellChecker.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/SymbolicSearch.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `HybridSearchManager.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
-| `search/TFIDFEventSync.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `rename-entity.test.ts`, `sqlite-events.test.ts`, `IncrementalTFIDF.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `TFIDFEventSync.test.ts` |
-| `search/TFIDFIndexManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `rename-entity.test.ts`, `sqlite-events.test.ts`, `IncrementalTFIDF.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts` |
+| `search/TFIDFEventSync.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `rename-entity.test.ts`, `sqlite-events.test.ts`, `IncrementalTFIDF.test.ts`, `SemanticSearch.test.ts`, `TFIDFEventSync.test.ts`, `TemporalQueryParser.lazy.test.ts` |
+| `search/TFIDFIndexManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `rename-entity.test.ts`, `sqlite-events.test.ts`, `IncrementalTFIDF.test.ts`, `SemanticSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `search/TemporalQueryParser.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `TemporalQueryParser.test.ts`, `TemporalSearch.test.ts` |
 | `search/TemporalSearch.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `TemporalSearch.test.ts` |
 | `search/VectorStore.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `embedding-benchmarks.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `VectorStore.test.ts` |
 | `search/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts` |
 | `tiered/BrotliColdTier.ts` | `BrotliColdTier.test.ts` |
 | `tiered/DiskWarmTier.ts` | `DiskWarmTier.test.ts`, `tiered-review-fixes.test.ts` |
-| `tiered/ITieredIndex.ts` | `ITieredIndex.test.ts`, `tiered-review-fixes.test.ts`, `TieredIndex.test.ts` |
-| `tiered/LRUHotTier.ts` | `LRUHotTier.test.ts`, `tiered-review-fixes.test.ts`, `TieredIndex.test.ts` |
-| `tiered/TieredIndex.ts` | `tiered-review-fixes.test.ts`, `TieredIndex.test.ts` |
+| `tiered/ITieredIndex.ts` | `ITieredIndex.test.ts`, `TieredIndex.test.ts`, `tiered-review-fixes.test.ts` |
+| `tiered/LRUHotTier.ts` | `LRUHotTier.test.ts`, `TieredIndex.test.ts`, `tiered-review-fixes.test.ts` |
+| `tiered/TieredIndex.ts` | `TieredIndex.test.ts`, `tiered-review-fixes.test.ts` |
 | `security/ABACPolicy.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ABACPolicy.test.ts`, `PiiRedactor.test.ts` |
 | `security/APIKeyStore.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `ApiKeyAuthMiddleware.test.ts`, `APIKeyStore.test.ts`, `PiiRedactor.test.ts` |
 | `security/PiiRedactor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `PiiRedactor.test.ts` |
 | `security/RowLevelFilter.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `PiiRedactor.test.ts`, `RowLevelFilter.test.ts` |
 | `security/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `PiiRedactor.test.ts` |
-| `types/agent-memory.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `AccessTracker.test.ts`, `ActiveRetrieval.test.ts`, `AgentMemoryManager.test.ts`, `AgentReflectionManager.test.ts`, `CausalReasoner.test.ts`, `CognitiveLoadAnalyzer.test.ts`, `CollaborativeSynthesis.test.ts`, `ConflictResolver.test.ts`, `ConnectivitySignals.test.ts`, `ConsolidationPipeline.test.ts`, `ConsolidationScheduler.test.ts`, `ContextProfileManager.test.ts`, `ContextWindowManager.test.ts`, `DecayEngine.test.ts`, `DecayScheduler.test.ts`, `DecisionManager.test.ts`, `EntropyFilter.test.ts`, `EpisodicMemoryManager.test.ts`, `FailureDistillation.test.ts`, `FailureManager.test.ts`, `HeuristicExtractionStage.test.ts`, `InMemoryBackend.test.ts`, `MemoryFormatter.test.ts`, `MemoryFormatterSalience.test.ts`, `MemoryValidator.test.ts`, `MultiAgentMemoryManager.test.ts`, `ObservationDedupReportStage.test.ts`, `PlanManager.test.ts`, `ProspectiveMemoryManager.test.ts`, `ReflectionStage.test.ts`, `RelationConsolidator.test.ts`, `RoleProfiles.test.ts`, `RuleEvaluator.test.ts`, `SalienceEngine.test.ts`, `SessionCheckpoint.test.ts`, `SessionManager.test.ts`, `SessionQueryBuilder.test.ts`, `VisibilityResolver.test.ts`, `WorkingMemoryManager.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `ManagerContext.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `profile-entity.test.ts`, `trust-level.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/artifact.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `ArtifactManager.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/event.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/index.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/procedure.ts` | `ProcedureManager.test.ts`, `ProcedureStore.test.ts` |
-| `types/progress.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `progress.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/reconstruction.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `MemoryDistiller.test.ts`, `MemoryGraphBridge.test.ts`, `ReconstructiveMemory.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/result.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `result.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/search.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `ProximitySearch.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `search.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/task-scheduler.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `StorageFactory.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
-| `types/types.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `operation-progress.test.ts`, `smart-search.test.ts`, `graph-storage-new-fields.test.ts`, `sqlite-storage-new-fields.test.ts`, `streaming-export.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `task-scheduler-benchmarks.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `MCPToolObserverAdapter.test.ts`, `AccessTracker.test.ts`, `ActiveRetrieval.test.ts`, `AgentReflectionManager.test.ts`, `ArtifactManager.test.ts`, `CausalReasoner.test.ts`, `CollaborativeSynthesis.test.ts`, `ConnectivitySignals.test.ts`, `ConsolidationPipeline.test.ts`, `ContextProfileManager.test.ts`, `ContextWindowManager.test.ts`, `DecayEngine.test.ts`, `DecisionManager.test.ts`, `DistillationPipeline.test.ts`, `DistillationPolicy.test.ts`, `DreamEngine.test.ts`, `EpisodicMemoryManager.test.ts`, `ExclusionManager.test.ts`, `FailureDistillation.test.ts`, `FailureManager.test.ts`, `HeuristicExtractionStage.test.ts`, `HeuristicManager.test.ts`, `InMemoryBackend.test.ts`, `MemoryEngine.test.ts`, `MemoryValidator.test.ts`, `MultiAgentMemoryManager.test.ts`, `ObservationDedupManager.test.ts`, `ObservationDedupReportStage.test.ts`, `PlanManager.test.ts`, `ProjectContextManager.test.ts`, `ProspectiveMemoryManager.test.ts`, `MemoryGraphBridge.test.ts`, `ReflectionStage.test.ts`, `RelationConsolidator.test.ts`, `SalienceEngine.test.ts`, `SessionCheckpoint.test.ts`, `SessionManager.test.ts`, `SessionQueryBuilder.test.ts`, `ToolAffordanceManager.test.ts`, `ToolCallObserver.test.ts`, `TrajectoryCompressor.test.ts`, `WorkingMemoryManager.test.ts`, `WorkThreadManager.test.ts`, `formatters.test.ts`, `BatchTransaction.test.ts`, `GraphEventEmitter.test.ts`, `GraphEvents.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `ObservationManager.dedup.test.ts`, `PostgreSQLStorage.test.ts`, `rename-entity.test.ts`, `FileSegmentStorage.test.ts`, `GraphStorage-segments.test.ts`, `ISegmentStorage.test.ts`, `segments-review-fixes.test.ts`, `sqlite-events.test.ts`, `StorageFactory.test.ts`, `write-path-delta.test.ts`, `AutoLinker.test.ts`, `contradiction-detector-detect.test.ts`, `FreshnessManager.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservableDataModelAdapter.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `StreamingExporter.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `IncrementalTFIDF.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `ProximitySearch.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `search-filter-chain-project.test.ts`, `search-filter-chain-versioning.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SpellChecker.test.ts`, `SymbolicSearch.test.ts`, `TemporalSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `RowLevelFilter.test.ts`, `observations-to-columns.test.ts`, `segment-jsonl.test.ts`, `agent-memory.test.ts`, `entity-new-fields.test.ts`, `profile-entity.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `EntityValidator.test.ts`, `indexes.test.ts`, `relationHelpers.test.ts`, `relationValidation.test.ts`, `SchemaValidator.test.ts`, `update-entity-schema-strip.test.ts`, `validators.test.ts` |
+| `types/agent-memory.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `AccessTracker.test.ts`, `ActiveRetrieval.test.ts`, `AgentMemoryManager.test.ts`, `AgentReflectionManager.test.ts`, `CausalReasoner.test.ts`, `CognitiveLoadAnalyzer.test.ts`, `CollaborativeSynthesis.test.ts`, `ConflictResolver.test.ts`, `ConnectivitySignals.test.ts`, `ConsolidationPipeline.test.ts`, `ConsolidationScheduler.test.ts`, `ContextProfileManager.test.ts`, `ContextWindowManager.test.ts`, `DecayEngine.test.ts`, `DecayScheduler.test.ts`, `DecisionManager.test.ts`, `EntropyFilter.test.ts`, `EpisodicMemoryManager.test.ts`, `FailureDistillation.test.ts`, `FailureManager.test.ts`, `HeuristicExtractionStage.test.ts`, `InMemoryBackend.test.ts`, `MemoryFormatter.test.ts`, `MemoryFormatterSalience.test.ts`, `MemoryValidator.test.ts`, `MultiAgentMemoryManager.test.ts`, `ObservationDedupReportStage.test.ts`, `PlanManager.test.ts`, `ProspectiveMemoryManager.test.ts`, `ReflectionStage.test.ts`, `RelationConsolidator.test.ts`, `RoleProfiles.test.ts`, `RuleEvaluator.test.ts`, `SalienceEngine.test.ts`, `SessionCheckpoint.test.ts`, `SessionManager.test.ts`, `SessionQueryBuilder.test.ts`, `VisibilityResolver.test.ts`, `WorkingMemoryManager.test.ts`, `GraphEvents.test.ts`, `ManagerContext.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `profile-entity.test.ts`, `trust-level.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/artifact.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `ArtifactManager.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/event.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/index.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/proceduralGraph.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `procedural-graph-recovery.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `AgentMemoryManager.test.ts`, `CausalReasoner.test.ts`, `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProceduralGraph.test.ts`, `ProceduralGraphEvolution.test.ts`, `ProceduralGraphManager.test.ts`, `ProceduralGraphRefiner.test.ts`, `ProceduralGraphSchemas.test.ts`, `ProceduralGraphSerializer.test.ts`, `ProceduralGraphSession.test.ts`, `ProceduralGraphValidator.test.ts`, `appendixF.test.ts`, `canonical.test.ts`, `tokenTail.test.ts`, `GraphEvents.test.ts`, `ManagerContext-proceduralGraph.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/procedure.ts` | `ProcedureManager.test.ts`, `ProcedureStore.test.ts`, `ProcedureGraphAdapter.test.ts` |
+| `types/progress.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `progress.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/reconstruction.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `MemoryDistiller.test.ts`, `MemoryGraphBridge.test.ts`, `ReconstructiveMemory.test.ts`, `GraphEvents.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/result.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `result.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/search.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `ProximitySearch.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalQueryParser.lazy.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `search.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/task-scheduler.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `smart-search.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `ActiveRetrieval.test.ts`, `CausalReasoner.test.ts`, `GraphEvents.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `GraphStorage-segments.test.ts`, `segments-review-fixes.test.ts`, `AutoLinker.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservationNormalizer.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `agent-memory.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `update-entity-schema-strip.test.ts` |
+| `types/types.ts` | `file-path.test.ts`, `backup-compression.test.ts`, `hybrid-search.test.ts`, `operation-progress.test.ts`, `smart-search.test.ts`, `graph-storage-new-fields.test.ts`, `sqlite-storage-new-fields.test.ts`, `streaming-export.test.ts`, `worker-pool-integration.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `foundation-benchmarks.test.ts`, `merge-perf.test.ts`, `mmap-load-benchmark.test.ts`, `parallel-benchmarks.test.ts`, `query-execution-benchmarks.test.ts`, `ranked-search-benchmarks.test.ts`, `search-algorithm-benchmarks.test.ts`, `task-scheduler-benchmarks.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `write-path-benchmarks.test.ts`, `write-performance.test.ts`, `MCPToolObserverAdapter.test.ts`, `AccessTracker.test.ts`, `ActiveRetrieval.test.ts`, `AgentReflectionManager.test.ts`, `ArtifactManager.test.ts`, `CausalReasoner.test.ts`, `CollaborativeSynthesis.test.ts`, `ConnectivitySignals.test.ts`, `ConsolidationPipeline.test.ts`, `ContextProfileManager.test.ts`, `ContextWindowManager.test.ts`, `DecayEngine.test.ts`, `DecisionManager.test.ts`, `DistillationPipeline.test.ts`, `DistillationPolicy.test.ts`, `DreamEngine.test.ts`, `EpisodicMemoryManager.test.ts`, `ExclusionManager.test.ts`, `FailureDistillation.test.ts`, `FailureManager.test.ts`, `HeuristicExtractionStage.test.ts`, `HeuristicManager.test.ts`, `InMemoryBackend.test.ts`, `MemoryEngine.test.ts`, `MemoryValidator.test.ts`, `MultiAgentMemoryManager.test.ts`, `ObservationDedupManager.test.ts`, `ObservationDedupReportStage.test.ts`, `PlanManager.test.ts`, `ProjectContextManager.test.ts`, `ProspectiveMemoryManager.test.ts`, `ReflectionStage.test.ts`, `RelationConsolidator.test.ts`, `SalienceEngine.test.ts`, `SessionCheckpoint.test.ts`, `SessionManager.test.ts`, `SessionQueryBuilder.test.ts`, `ToolAffordanceManager.test.ts`, `ToolCallObserver.test.ts`, `TrajectoryCompressor.test.ts`, `WorkThreadManager.test.ts`, `WorkingMemoryManager.test.ts`, `MemoryGraphBridge.test.ts`, `formatters.test.ts`, `BatchTransaction.test.ts`, `GraphEventEmitter.test.ts`, `GraphEvents.test.ts`, `GraphStorage.test.ts`, `ObservationManager.dedup.test.ts`, `PostgreSQLStorage.test.ts`, `StorageFactory.test.ts`, `known-issue-fixes.test.ts`, `GraphStorage-mmap-wiring.test.ts`, `rename-entity.test.ts`, `FileSegmentStorage.test.ts`, `GraphStorage-segments.test.ts`, `ISegmentStorage.test.ts`, `segments-review-fixes.test.ts`, `sqlite-events.test.ts`, `write-path-delta.test.ts`, `AutoLinker.test.ts`, `FreshnessManager.test.ts`, `GovernanceManager.test.ts`, `IOManager.rdf-export.test.ts`, `IOManager.test.ts`, `ObservableDataModelAdapter.test.ts`, `ObservationNormalizer.test.ts`, `StreamingExporter.test.ts`, `contradiction-detector-detect.test.ts`, `pii-redaction-export.test.ts`, `EarlyTerminationManager.test.ts`, `EvidencePathBuilder.test.ts`, `FuzzySearch.test.ts`, `GraphRankPrior.test.ts`, `HybridScorer.test.ts`, `HybridScorerGraphChannel.test.ts`, `HybridSearchExplain.test.ts`, `HybridSearchManager.test.ts`, `HybridSearchManagerGraph.test.ts`, `IncrementalIndexer.test.ts`, `IncrementalTFIDF.test.ts`, `LLMQueryPlanner.test.ts`, `LLMSearchExecutor.test.ts`, `LLMSearchExecutorExplain.test.ts`, `ParallelSearchExecutor.test.ts`, `ProximitySearch.test.ts`, `QueryCostEstimator.test.ts`, `QueryPlanCache.test.ts`, `QueryPlanFormatter.test.ts`, `QueryPlanner.test.ts`, `RankedSearch.test.ts`, `ReflectionManager.test.ts`, `SearchFilterChain.test.ts`, `SemanticSearch.test.ts`, `SpellChecker.test.ts`, `SymbolicSearch.test.ts`, `TFIDFEventSync.test.ts`, `TFIDFIndexManager.test.ts`, `TemporalSearch.test.ts`, `search-filter-chain-project.test.ts`, `search-filter-chain-versioning.test.ts`, `RowLevelFilter.test.ts`, `observations-to-columns.test.ts`, `segment-jsonl.test.ts`, `agent-memory.test.ts`, `entity-new-fields.test.ts`, `profile-entity.test.ts`, `EntityValidator.test.ts`, `SchemaValidator.test.ts`, `compressedCache.test.ts`, `compressedEntityCache-wiring.test.ts`, `entityUtils.test.ts`, `indexes.test.ts`, `relationHelpers.test.ts`, `relationValidation.test.ts`, `update-entity-schema-strip.test.ts`, `validators.test.ts` |
 | `utils/AsyncMutex.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `AsyncMutex.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/BatchProcessor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `parallel-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `RankedSearch.test.ts`, `BatchProcessor.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/CachePressureCoordinator.ts` | `CachePressureCoordinator.test.ts` |
-| `utils/EntityValidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `EntityValidator.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
-| `utils/MemoryMonitor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `v10-benchmarks.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `MemoryMonitor.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
-| `utils/SchemaValidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `SchemaValidator.test.ts`, `searchAlgorithms.test.ts` |
-| `utils/WorkerPoolManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `parallel-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `WorkerPoolManager.test.ts`, `WorkerTaskManager.test.ts` |
-| `utils/WorkerTaskManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `WorkerTaskManager.test.ts` |
+| `utils/EntityValidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `EntityValidator.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
+| `utils/MemoryMonitor.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `v10-benchmarks.test.ts`, `RankedSearch.test.ts`, `MemoryMonitor.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
+| `utils/SchemaValidator.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `SchemaValidator.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
+| `utils/WorkerPoolManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `parallel-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `RankedSearch.test.ts`, `WorkerPoolManager.test.ts`, `WorkerTaskManager.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
+| `utils/WorkerTaskManager.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `WorkerTaskManager.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/compressedCache.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `v10-benchmarks.test.ts`, `RankedSearch.test.ts`, `compressedCache.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `compression/CompressedMap.ts` | `CompressedMap.test.ts` |
 | `compression/ICompressionAdapter.ts` | `CompressedMap.test.ts`, `ICompressionAdapter.test.ts` |
 | `utils/compressionUtil.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `IOManager.test.ts`, `RankedSearch.test.ts`, `BrotliColdTier.test.ts`, `compressionUtil.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/constants.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `compression-benchmarks.test.ts`, `manager-context-default-embedding.test.ts`, `IOManager.test.ts`, `EmbeddingService.test.ts`, `RankedSearch.test.ts`, `compressionUtil.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
-| `utils/durableWriteFile.ts` | `durableWriteFile.test.ts` |
+| `utils/durableWriteFile.ts` | `procedural-graph-recovery.test.ts`, `durableWriteFile.test.ts` |
 | `utils/entityUtils.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `foundation-benchmarks.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/errorSuggestions.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `errorSuggestions.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
-| `utils/errors.ts` | `file-path.test.ts`, `operation-progress.test.ts`, `knowledge-graph.test.ts`, `MCPToolObserverAdapter.test.ts`, `AgentMemoryManager.test.ts`, `AgentReflectionManager.test.ts`, `CollaborationAuditEnforcer.test.ts`, `DecisionManager.test.ts`, `EntropyFilter.test.ts`, `FailureManager.test.ts`, `HeuristicExtractionStage.test.ts`, `HeuristicManager.test.ts`, `ProjectContextManager.test.ts`, `ReflectionStage.test.ts`, `ToolAffordanceManager.test.ts`, `ToolCallObserver.test.ts`, `WorkingMemoryManager.test.ts`, `entity-manager-profile-namespace.test.ts`, `EntityManager.test.ts`, `HierarchyManager.test.ts`, `ObservationManager.test.ts`, `optimistic-concurrency.test.ts`, `RefIndex.test.ts`, `RelationManager.test.ts`, `rename-entity.test.ts`, `temporal-versioning.test.ts`, `TransactionManager.test.ts`, `write-path-delta.test.ts`, `CompressionManager.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `errors.test.ts`, `errorSuggestions.test.ts`, `formatters.test.ts`, `operationUtils.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
+| `utils/errors.ts` | `file-path.test.ts`, `operation-progress.test.ts`, `knowledge-graph.test.ts`, `MCPToolObserverAdapter.test.ts`, `AgentMemoryManager.test.ts`, `AgentReflectionManager.test.ts`, `CollaborationAuditEnforcer.test.ts`, `DecisionManager.test.ts`, `EntropyFilter.test.ts`, `FailureManager.test.ts`, `HeuristicExtractionStage.test.ts`, `HeuristicManager.test.ts`, `ProjectContextManager.test.ts`, `ReflectionStage.test.ts`, `ToolAffordanceManager.test.ts`, `ToolCallObserver.test.ts`, `WorkingMemoryManager.test.ts`, `EntityManager.test.ts`, `HierarchyManager.test.ts`, `ObservationManager.test.ts`, `RefIndex.test.ts`, `RelationManager.test.ts`, `TransactionManager.test.ts`, `entity-manager-profile-namespace.test.ts`, `optimistic-concurrency.test.ts`, `rename-entity.test.ts`, `temporal-versioning.test.ts`, `write-path-delta.test.ts`, `CompressionManager.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `errorSuggestions.test.ts`, `errors.test.ts`, `formatters.test.ts`, `operationUtils.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/formatters.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/index.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/indexes.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `indexes.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
-| `utils/logger.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `logger.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
+| `utils/logger.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `jsonl.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `logger.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/operationUtils.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `operationUtils.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/parallelUtils.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `parallelUtils.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/relationHelpers.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `relationHelpers.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
@@ -298,9 +329,9 @@ The following 21 source files are not directly imported by any test file:
 | `utils/schemas.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entity-content-hash.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `update-entity-schema-strip.test.ts` |
 | `utils/searchAlgorithms.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
 | `utils/searchCache.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `write-path-delta.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `searchCache.test.ts` |
-| `utils/taskScheduler.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `taskScheduler.test.ts`, `WorkerTaskManager.test.ts` |
+| `utils/taskScheduler.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `task-scheduler-config-benchmarks.test.ts`, `RankedSearch.test.ts`, `WorkerTaskManager.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `taskScheduler.test.ts` |
 | `utils/textSimilarity.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `embedding-benchmarks.test.ts`, `RankedSearch.test.ts`, `SemanticSearch.test.ts`, `TemporalQueryParser.lazy.test.ts`, `VectorStore.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts` |
-| `utils/validators.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `entityUtils.test.ts`, `EntityValidator.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `validators.test.ts` |
+| `utils/validators.ts` | `file-path.test.ts`, `knowledge-graph.test.ts`, `RankedSearch.test.ts`, `EntityValidator.test.ts`, `entityUtils.test.ts`, `formatters.test.ts`, `schemas.test.ts`, `searchAlgorithms.test.ts`, `validators.test.ts` |
 | `workers/levenshteinWorker.ts` | `levenshteinWorker.test.ts` |
 
 ---
@@ -310,56 +341,58 @@ The following 21 source files are not directly imported by any test file:
 | Test File | Imports from Source |
 |-----------|---------------------|
 | `edge-cases/edge-cases.test.ts` | 1 files |
-| `tests/file-path.test.ts` | 203 files |
+| `tests/file-path.test.ts` | 224 files |
+| `integration/MemoryEngineStorage.test.ts` | 2 files |
 | `agent/access-tracking.test.ts` | 1 files |
 | `agent/agent-memory-manager-profile.test.ts` | 1 files |
-| `integration/backup-compression.test.ts` | 12 files |
+| `integration/backup-compression.test.ts` | 13 files |
 | `integration/compression-optimization.test.ts` | 2 files |
 | `core/manager-context-semantic-forget.test.ts` | 1 files |
 | `core/observation-manager-contradiction.test.ts` | 2 files |
 | `features/contradiction-detector-supersede.test.ts` | 3 files |
 | `features/governance-enforcement.test.ts` | 3 files |
-| `integration/hybrid-search.test.ts` | 13 files |
-| `integration/MemoryEngineStorage.test.ts` | 1 files |
+| `integration/hybrid-search.test.ts` | 14 files |
 | `integration/operation-progress.test.ts` | 9 files |
+| `integration/procedural-graph-guidance.test.ts` | 2 files |
+| `integration/procedural-graph-iomanager-roundtrip.test.ts` | 1 files |
+| `integration/procedural-graph-recovery.test.ts` | 8 files |
 | `search/project-scope-isolation.test.ts` | 1 files |
-| `integration/smart-search.test.ts` | 16 files |
+| `integration/smart-search.test.ts` | 17 files |
 | `storage/graph-storage-new-fields.test.ts` | 2 files |
 | `storage/sqlite-storage-new-fields.test.ts` | 2 files |
 | `integration/streaming-export.test.ts` | 3 files |
-| `integration/worker-pool-integration.test.ts` | 12 files |
+| `integration/worker-pool-integration.test.ts` | 13 files |
 | `integration/workflows.test.ts` | 8 files |
-| `tests/knowledge-graph.test.ts` | 203 files |
+| `tests/knowledge-graph.test.ts` | 224 files |
 | `performance/benchmarks.test.ts` | 8 files |
-| `performance/compression-benchmarks.test.ts` | 15 files |
+| `performance/compression-benchmarks.test.ts` | 16 files |
 | `performance/embedding-benchmarks.test.ts` | 5 files |
-| `performance/foundation-benchmarks.test.ts` | 15 files |
+| `performance/foundation-benchmarks.test.ts` | 16 files |
 | `performance/memory-engine-perf.test.ts` | 1 files |
-| `performance/merge-perf.test.ts` | 12 files |
-| `performance/mmap-load-benchmark.test.ts` | 11 files |
+| `performance/merge-perf.test.ts` | 13 files |
+| `performance/mmap-load-benchmark.test.ts` | 12 files |
 | `performance/optimization-benchmarks.test.ts` | 3 files |
-| `performance/parallel-benchmarks.test.ts` | 13 files |
-| `performance/query-execution-benchmarks.test.ts` | 15 files |
-| `performance/ranked-search-benchmarks.test.ts` | 12 files |
-| `performance/search-algorithm-benchmarks.test.ts` | 15 files |
+| `performance/parallel-benchmarks.test.ts` | 14 files |
+| `performance/query-execution-benchmarks.test.ts` | 16 files |
+| `performance/ranked-search-benchmarks.test.ts` | 13 files |
+| `performance/search-algorithm-benchmarks.test.ts` | 16 files |
 | `performance/task-scheduler-benchmarks.test.ts` | 6 files |
 | `performance/task-scheduler-config-benchmarks.test.ts` | 5 files |
-| `performance/v10-benchmarks.test.ts` | 28 files |
-| `performance/write-path-benchmarks.test.ts` | 13 files |
-| `performance/write-performance.test.ts` | 13 files |
+| `performance/v10-benchmarks.test.ts` | 29 files |
+| `performance/write-path-benchmarks.test.ts` | 14 files |
+| `performance/write-performance.test.ts` | 14 files |
 | `adapters/ApiKeyAuthMiddleware.test.ts` | 4 files |
 | `adapters/LangChainMemoryAdapter.test.ts` | 2 files |
 | `adapters/MCPToolObserverAdapter.test.ts` | 6 files |
-| `adapters/pagination.test.ts` | 1 files |
 | `adapters/RateLimiter.test.ts` | 1 files |
 | `adapters/RestRouter.test.ts` | 2 files |
+| `adapters/pagination.test.ts` | 1 files |
 | `agent/AccessTracker.test.ts` | 3 files |
-| `agent/ActiveRetrieval.test.ts` | 14 files |
-| `agent/agent-memory-manager-diary.test.ts` | 1 files |
-| `agent/AgentMemoryManager.test.ts` | 85 files |
+| `agent/ActiveRetrieval.test.ts` | 15 files |
+| `agent/AgentMemoryManager.test.ts` | 106 files |
 | `agent/AgentReflectionManager.test.ts` | 5 files |
 | `agent/ArtifactManager.test.ts` | 7 files |
-| `agent/CausalReasoner.test.ts` | 12 files |
+| `agent/CausalReasoner.test.ts` | 13 files |
 | `agent/CognitiveLoadAnalyzer.test.ts` | 2 files |
 | `agent/CollaborationAuditEnforcer.test.ts` | 5 files |
 | `agent/CollaborativeSynthesis.test.ts` | 5 files |
@@ -367,14 +400,11 @@ The following 21 source files are not directly imported by any test file:
 | `agent/ConnectivitySignals.test.ts` | 8 files |
 | `agent/ConsolidationPipeline.test.ts` | 5 files |
 | `agent/ConsolidationScheduler.test.ts` | 4 files |
-| `agent/context-window-manager-compress.test.ts` | 1 files |
-| `agent/context-window-manager-wakeup.test.ts` | 1 files |
 | `agent/ContextProfileManager.test.ts` | 7 files |
 | `agent/ContextWindowManager.test.ts` | 6 files |
 | `agent/DecayEngine.test.ts` | 4 files |
 | `agent/DecayScheduler.test.ts` | 3 files |
 | `agent/DecisionManager.test.ts` | 5 files |
-| `agent/delta-services-wiring.test.ts` | 4 files |
 | `agent/DistillationPipeline.test.ts` | 3 files |
 | `agent/DistillationPolicy.test.ts` | 3 files |
 | `agent/DreamEngine.test.ts` | 3 files |
@@ -390,7 +420,6 @@ The following 21 source files are not directly imported by any test file:
 | `agent/IMemoryBackend.contract.test.ts` | 1 files |
 | `agent/ImportanceScorer.test.ts` | 1 files |
 | `agent/InMemoryBackend.test.ts` | 5 files |
-| `agent/memoryBackend-wiring.test.ts` | 3 files |
 | `agent/MemoryEngine.test.ts` | 5 files |
 | `agent/MemoryFormatter.test.ts` | 2 files |
 | `agent/MemoryFormatterSalience.test.ts` | 2 files |
@@ -401,188 +430,230 @@ The following 21 source files are not directly imported by any test file:
 | `agent/ObserverPipeline.test.ts` | 3 files |
 | `agent/PatternDetector.test.ts` | 1 files |
 | `agent/PlanManager.test.ts` | 3 files |
-| `agent/ProcedureManager.test.ts` | 8 files |
-| `agent/ProcedureStore.test.ts` | 8 files |
-| `agent/profile-manager-basics.test.ts` | 2 files |
-| `agent/profile-manager-extraction.test.ts` | 4 files |
+| `agent/ProcedureManager.test.ts` | 29 files |
+| `agent/ProcedureStore.test.ts` | 29 files |
 | `agent/ProjectContextManager.test.ts` | 4 files |
 | `agent/ProspectiveMemoryManager.test.ts` | 3 files |
+| `agent/ReflectionStage.test.ts` | 9 files |
+| `agent/RelationConsolidator.test.ts` | 10 files |
+| `agent/RoleProfiles.test.ts` | 2 files |
+| `agent/RuleEvaluator.test.ts` | 2 files |
+| `agent/SQLiteBackend.test.ts` | 2 files |
+| `agent/SalienceEngine.test.ts` | 5 files |
+| `agent/SessionCheckpoint.test.ts` | 9 files |
+| `agent/SessionManager.test.ts` | 5 files |
+| `agent/SessionQueryBuilder.test.ts` | 5 files |
+| `agent/SummarizationService.test.ts` | 1 files |
+| `agent/ToolAffordanceManager.test.ts` | 4 files |
+| `agent/ToolCallObserver.test.ts` | 5 files |
+| `agent/TrajectoryCompressor.test.ts` | 3 files |
+| `agent/VisibilityResolver.test.ts` | 2 files |
+| `agent/WorkThreadManager.test.ts` | 5 files |
+| `agent/WorkingMemoryManager.test.ts` | 4 files |
+| `agent/WorldModel.test.ts` | 5 files |
+| `agent/agent-memory-manager-diary.test.ts` | 1 files |
+| `agent/context-window-manager-compress.test.ts` | 1 files |
+| `agent/context-window-manager-wakeup.test.ts` | 1 files |
+| `agent/delta-services-wiring.test.ts` | 4 files |
+| `agent/memoryBackend-wiring.test.ts` | 3 files |
+| `graph/CompletionProvider.test.ts` | 2 files |
+| `graph/ProceduralGraph.test.ts` | 3 files |
+| `graph/ProceduralGraphEvolution.test.ts` | 8 files |
+| `graph/ProceduralGraphManager.test.ts` | 4 files |
+| `graph/ProceduralGraphRefiner.test.ts` | 2 files |
+| `graph/ProceduralGraphSchemas.test.ts` | 3 files |
+| `graph/ProceduralGraphSerializer.test.ts` | 4 files |
+| `graph/ProceduralGraphSession.test.ts` | 5 files |
+| `graph/ProceduralGraphValidator.test.ts` | 4 files |
+| `graph/ProcedureGraphAdapter.test.ts` | 3 files |
+| `graph/appendixF.test.ts` | 3 files |
+| `backing/jsonl.test.ts` | 2 files |
+| `backing/memory.test.ts` | 2 files |
+| `backing/sqlite.test.ts` | 3 files |
+| `graph/canonical.test.ts` | 2 files |
+| `graph/prompts.test.ts` | 1 files |
+| `graph/tokenTail.test.ts` | 2 files |
+| `agent/profile-manager-basics.test.ts` | 2 files |
+| `agent/profile-manager-extraction.test.ts` | 4 files |
 | `agent/rbac.test.ts` | 5 files |
 | `reconstruction/CueTagContentGraph.test.ts` | 1 files |
 | `reconstruction/MemoryDistiller.test.ts` | 3 files |
 | `reconstruction/MemoryGraphBridge.test.ts` | 5 files |
 | `reconstruction/MemoryToolkit.test.ts` | 2 files |
 | `reconstruction/ReconstructiveMemory.test.ts` | 4 files |
-| `agent/ReflectionStage.test.ts` | 9 files |
-| `agent/RelationConsolidator.test.ts` | 10 files |
-| `agent/RoleProfiles.test.ts` | 2 files |
-| `agent/RuleEvaluator.test.ts` | 2 files |
-| `agent/SalienceEngine.test.ts` | 5 files |
-| `agent/SessionCheckpoint.test.ts` | 9 files |
-| `agent/SessionManager.test.ts` | 5 files |
-| `agent/SessionQueryBuilder.test.ts` | 5 files |
-| `agent/SQLiteBackend.test.ts` | 2 files |
-| `agent/SummarizationService.test.ts` | 1 files |
-| `agent/ToolAffordanceManager.test.ts` | 4 files |
-| `agent/ToolCallObserver.test.ts` | 5 files |
-| `agent/TrajectoryCompressor.test.ts` | 3 files |
-| `agent/VisibilityResolver.test.ts` | 2 files |
-| `agent/WorkingMemoryManager.test.ts` | 4 files |
-| `agent/WorkThreadManager.test.ts` | 5 files |
-| `agent/WorldModel.test.ts` | 5 files |
 | `cli/audit.test.ts` | 2 files |
 | `cli/cache-reindex.test.ts` | 3 files |
 | `cli/check.test.ts` | 2 files |
 | `cli/commands.test.ts` | 1 files |
 | `cli/config.test.ts` | 1 files |
+| `cli/decision.test.ts` | 1 files |
 | `cli/diag.test.ts` | 2 files |
 | `cli/doctor.test.ts` | 1 files |
+| `cli/exclusion.test.ts` | 2 files |
 | `cli/formatters.test.ts` | 2 files |
+| `cli/graph.test.ts` | 2 files |
+| `cli/heuristic.test.ts` | 1 files |
+| `cli/hierarchy.test.ts` | 2 files |
 | `cli/index.test.ts` | 2 files |
 | `cli/inspect.test.ts` | 2 files |
 | `cli/interactive.test.ts` | 1 files |
+| `cli/maintenance-cli.test.ts` | 2 files |
+| `cli/observation.test.ts` | 2 files |
+| `cli/observationDedup.test.ts` | 2 files |
 | `cli/options.test.ts` | 1 files |
+| `cli/projectContext.test.ts` | 1 files |
+| `cli/search-extended.test.ts` | 2 files |
 | `cli/smoke.test.ts` | 1 files |
+| `cli/spell.test.ts` | 2 files |
+| `cli/tag.test.ts` | 2 files |
+| `cli/toolAffordance.test.ts` | 2 files |
 | `core/BatchTransaction.test.ts` | 3 files |
-| `columns/columns-review-fixes.test.ts` | 3 files |
+| `core/ConcurrencyControl.test.ts` | 4 files |
+| `core/EntityManager.test.ts` | 5 files |
+| `core/EntityStateMachine.test.ts` | 1 files |
+| `core/GraphEventEmitter.test.ts` | 3 files |
+| `core/GraphEvents.test.ts` | 13 files |
+| `core/GraphStorage.test.ts` | 2 files |
+| `core/GraphTraversal.test.ts` | 2 files |
+| `core/GraphTraversalLookFor.test.ts` | 2 files |
+| `core/HierarchyManager.test.ts` | 3 files |
+| `core/ManagerContext-proceduralGraph.test.ts` | 3 files |
+| `core/ManagerContext.test.ts` | 27 files |
+| `core/ObservationManager.dedup.test.ts` | 3 files |
+| `core/ObservationManager.test.ts` | 3 files |
+| `core/ObservationStore.test.ts` | 1 files |
+| `core/PostgreSQLStorage.test.ts` | 12 files |
+| `core/RefIndex.test.ts` | 4 files |
+| `core/RelationManager-metadata.test.ts` | 5 files |
+| `core/RelationManager.test.ts` | 4 files |
+| `core/SQLiteStorage.test.ts` | 1 files |
+| `core/StorageFactory.test.ts` | 14 files |
+| `core/TransactionBatching.test.ts` | 2 files |
+| `core/TransactionManager.test.ts` | 3 files |
+| `core/TransitionLedger.test.ts` | 2 files |
 | `columns/IColumnStore.test.ts` | 1 files |
 | `columns/JsonlColumnStore.test.ts` | 2 files |
 | `columns/ObservationColumnStore-wiring.test.ts` | 4 files |
-| `core/ConcurrencyControl.test.ts` | 4 files |
+| `columns/columns-review-fixes.test.ts` | 3 files |
+| `columns/shadow-write-drain.test.ts` | 1 files |
 | `core/entity-id.test.ts` | 3 files |
 | `core/entity-manager-list-projects.test.ts` | 1 files |
 | `core/entity-manager-profile-namespace.test.ts` | 2 files |
 | `core/entity-manager-project-stamping.test.ts` | 1 files |
 | `core/entity-manager-version-chain.test.ts` | 1 files |
-| `core/EntityManager.test.ts` | 5 files |
-| `core/EntityStateMachine.test.ts` | 1 files |
-| `core/GraphEventEmitter.test.ts` | 3 files |
-| `core/GraphEvents.test.ts` | 12 files |
-| `core/GraphStorage.test.ts` | 1 files |
-| `core/GraphTraversal.test.ts` | 2 files |
-| `core/GraphTraversalLookFor.test.ts` | 2 files |
-| `core/HierarchyManager.test.ts` | 3 files |
-| `core/known-issue-fixes.test.ts` | 12 files |
+| `core/known-issue-fixes.test.ts` | 13 files |
 | `core/manager-context-default-embedding.test.ts` | 1 files |
 | `core/manager-context-new-managers.test.ts` | 5 files |
 | `core/manager-context-project.test.ts` | 1 files |
-| `core/ManagerContext.test.ts` | 27 files |
 | `mmap/FsReadMmapBackend.test.ts` | 2 files |
-| `mmap/GraphStorage-mmap-wiring.test.ts` | 11 files |
+| `mmap/GraphStorage-mmap-wiring.test.ts` | 12 files |
 | `mmap/IMmapBackend.test.ts` | 1 files |
 | `mmap/mmap-review-fixes.test.ts` | 3 files |
+| `core/nodeSqliteAdapter.test.ts` | 1 files |
 | `core/observation-validate-hook.test.ts` | 1 files |
-| `core/ObservationManager.dedup.test.ts` | 3 files |
-| `core/ObservationManager.test.ts` | 3 files |
-| `core/ObservationStore.test.ts` | 1 files |
 | `core/optimistic-concurrency.test.ts` | 3 files |
-| `core/PostgreSQLStorage.test.ts` | 11 files |
-| `core/RefIndex.test.ts` | 4 files |
 | `core/relation-manager-temporal.test.ts` | 1 files |
-| `core/RelationManager.test.ts` | 4 files |
-| `core/rename-entity.test.ts` | 18 files |
+| `core/rename-entity.test.ts` | 19 files |
 | `segments/FileSegmentStorage.test.ts` | 3 files |
-| `segments/GraphStorage-segments.test.ts` | 11 files |
+| `segments/GraphStorage-segments.test.ts` | 13 files |
 | `segments/ISegmentStorage.test.ts` | 2 files |
-| `segments/segments-review-fixes.test.ts` | 13 files |
+| `segments/segments-review-fixes.test.ts` | 14 files |
 | `core/sqlite-content-hash-migration.test.ts` | 1 files |
+| `core/sqlite-driver-resolver.test.ts` | 2 files |
 | `core/sqlite-events.test.ts` | 12 files |
 | `core/sqlite-lazy-load.test.ts` | 0 files |
-| `core/SQLiteStorage.test.ts` | 1 files |
-| `core/StorageFactory.test.ts` | 13 files |
 | `core/temporal-versioning.test.ts` | 4 files |
-| `core/TransactionBatching.test.ts` | 2 files |
-| `core/TransactionManager.test.ts` | 3 files |
-| `core/TransitionLedger.test.ts` | 2 files |
 | `core/write-path-delta.test.ts` | 8 files |
-| `eslint/no-unused-updateentity-return.test.ts` | 0 files |
 | `features/AnalyticsManager.test.ts` | 2 files |
 | `features/ArchiveManager.test.ts` | 2 files |
 | `features/AuditLog.test.ts` | 1 files |
-| `features/AutoLinker.test.ts` | 14 files |
+| `features/AutoLinker.test.ts` | 15 files |
 | `features/BackupManager.test.ts` | 3 files |
-| `features/compression-manager-priority-dedup.test.ts` | 1 files |
-| `features/compression-manager-versioning-guard.test.ts` | 1 files |
 | `features/CompressionManager.test.ts` | 5 files |
-| `features/contradiction-detector-detect.test.ts` | 3 files |
 | `features/FactExtractor.test.ts` | 3 files |
 | `features/FreshnessManager.test.ts` | 3 files |
-| `features/GovernanceManager.test.ts` | 14 files |
+| `features/GovernanceManager.test.ts` | 15 files |
+| `features/IOManager.rdf-export.test.ts` | 13 files |
+| `features/IOManager.test.ts` | 15 files |
+| `features/ObservableDataModelAdapter.test.ts` | 3 files |
+| `features/ObservationNormalizer.test.ts` | 13 files |
+| `features/StreamingExporter.test.ts` | 2 files |
+| `features/TagManager.test.ts` | 1 files |
+| `features/compression-manager-priority-dedup.test.ts` | 1 files |
+| `features/compression-manager-versioning-guard.test.ts` | 1 files |
+| `features/contradiction-detector-detect.test.ts` | 3 files |
 | `features/ingest-provenance-modes.test.ts` | 3 files |
 | `features/io-manager-ingest.test.ts` | 1 files |
 | `features/io-manager-split.test.ts` | 1 files |
 | `features/io-manager-visualize.test.ts` | 1 files |
-| `features/IOManager.rdf-export.test.ts` | 12 files |
-| `features/IOManager.test.ts` | 14 files |
-| `features/ObservableDataModelAdapter.test.ts` | 3 files |
-| `features/ObservationNormalizer.test.ts` | 12 files |
-| `features/pii-redaction-export.test.ts` | 15 files |
+| `features/pii-redaction-export.test.ts` | 16 files |
 | `features/semantic-forget-exact.test.ts` | 2 files |
 | `features/semantic-forget-semantic.test.ts` | 3 files |
-| `features/StreamingExporter.test.ts` | 2 files |
-| `features/TagManager.test.ts` | 1 files |
+| `lint-rules/lint-rules.test.ts` | 0 files |
 | `performance/baselineHelper.test.ts` | 0 files |
+| `search/BM25Search.test.ts` | 3 files |
 | `search/BasicSearch.test.ts` | 4 files |
 | `search/BloomFilter.test.ts` | 3 files |
-| `search/BM25Search.test.ts` | 3 files |
 | `search/BooleanSearch.test.ts` | 4 files |
-| `search/EarlyTerminationManager.test.ts` | 12 files |
+| `search/EarlyTerminationManager.test.ts` | 13 files |
 | `search/EmbeddingCache.test.ts` | 1 files |
 | `search/EmbeddingService.test.ts` | 2 files |
-| `search/EvidencePathBuilder.test.ts` | 11 files |
-| `search/FuzzySearch.test.ts` | 5 files |
+| `search/EvidencePathBuilder.test.ts` | 12 files |
+| `search/FuzzySearch.test.ts` | 16 files |
 | `search/FuzzySearchWorkerPath.test.ts` | 1 files |
-| `search/GraphRankPrior.test.ts` | 14 files |
-| `search/HybridScorer.test.ts` | 11 files |
-| `search/HybridScorerGraphChannel.test.ts` | 11 files |
-| `search/HybridSearchExplain.test.ts` | 12 files |
-| `search/HybridSearchManager.test.ts` | 12 files |
-| `search/HybridSearchManagerGraph.test.ts` | 12 files |
-| `search/IncrementalIndexer.test.ts` | 11 files |
+| `search/GraphRankPrior.test.ts` | 15 files |
+| `search/HybridScorer.test.ts` | 12 files |
+| `search/HybridScorerGraphChannel.test.ts` | 12 files |
+| `search/HybridSearchExplain.test.ts` | 13 files |
+| `search/HybridSearchManager.test.ts` | 13 files |
+| `search/HybridSearchManagerGraph.test.ts` | 13 files |
+| `search/IncrementalIndexer.test.ts` | 12 files |
 | `search/IncrementalTFIDF.test.ts` | 4 files |
-| `search/LLMQueryPlanner.test.ts` | 12 files |
-| `search/LLMSearchExecutor.test.ts` | 12 files |
-| `search/LLMSearchExecutorExplain.test.ts` | 12 files |
+| `search/LLMQueryPlanner.test.ts` | 13 files |
+| `search/LLMSearchExecutor.test.ts` | 13 files |
+| `search/LLMSearchExecutorExplain.test.ts` | 13 files |
+| `search/LlamaCppEmbeddingService.test.ts` | 1 files |
 | `search/MaterializedViews.test.ts` | 2 files |
 | `search/NGramFuzzyIntegration.test.ts` | 5 files |
 | `search/NGramIndex.test.ts` | 1 files |
 | `search/OptimizedInvertedIndex.test.ts` | 1 files |
-| `search/ParallelSearchExecutor.test.ts` | 11 files |
+| `search/ParallelSearchExecutor.test.ts` | 12 files |
 | `search/PartialIndexAdvisor.test.ts` | 1 files |
 | `search/ProximitySearch.test.ts` | 3 files |
 | `search/QuantizedVectorStore.test.ts` | 1 files |
 | `search/QueryAnalyzer.test.ts` | 1 files |
-| `search/QueryCostEstimator.test.ts` | 12 files |
+| `search/QueryCostEstimator.test.ts` | 13 files |
 | `search/QueryLogger.test.ts` | 1 files |
 | `search/QueryParser.test.ts` | 1 files |
-| `search/QueryPlanCache.test.ts` | 11 files |
-| `search/QueryPlanFormatter.test.ts` | 11 files |
-| `search/QueryPlanner.test.ts` | 11 files |
-| `search/RankedSearch.test.ts` | 40 files |
+| `search/QueryPlanCache.test.ts` | 12 files |
+| `search/QueryPlanFormatter.test.ts` | 12 files |
+| `search/QueryPlanner.test.ts` | 12 files |
+| `search/RankedSearch.test.ts` | 41 files |
 | `search/RankedSearchGraphBoost.test.ts` | 6 files |
-| `search/ReflectionManager.test.ts` | 12 files |
+| `search/ReflectionManager.test.ts` | 13 files |
+| `search/SQLiteFtsSearchIntegration.test.ts` | 4 files |
 | `search/SavedSearchManager.test.ts` | 3 files |
-| `search/search-filter-chain-project.test.ts` | 2 files |
-| `search/search-filter-chain-versioning.test.ts` | 2 files |
-| `search/SearchFilterChain.test.ts` | 11 files |
+| `search/SearchFilterChain.test.ts` | 12 files |
 | `search/SearchManager.test.ts` | 2 files |
 | `search/SearchSuggestions.test.ts` | 2 files |
-| `search/SemanticSearch.test.ts` | 51 files |
+| `search/SemanticSearch.test.ts` | 52 files |
 | `search/SpellChecker.test.ts` | 2 files |
-| `search/SymbolicSearch.test.ts` | 11 files |
+| `search/SymbolicSearch.test.ts` | 12 files |
+| `search/TFIDFEventSync.test.ts` | 15 files |
+| `search/TFIDFIndexManager.test.ts` | 12 files |
 | `search/TemporalQueryParser.lazy.test.ts` | 42 files |
 | `search/TemporalQueryParser.test.ts` | 1 files |
-| `search/TemporalSearch.test.ts` | 12 files |
-| `search/TFIDFEventSync.test.ts` | 14 files |
-| `search/TFIDFIndexManager.test.ts` | 11 files |
+| `search/TemporalSearch.test.ts` | 13 files |
+| `search/VectorStore.test.ts` | 2 files |
+| `search/search-filter-chain-project.test.ts` | 2 files |
+| `search/search-filter-chain-versioning.test.ts` | 2 files |
 | `tiered/BrotliColdTier.test.ts` | 2 files |
 | `tiered/DiskWarmTier.test.ts` | 1 files |
 | `tiered/ITieredIndex.test.ts` | 1 files |
 | `tiered/LRUHotTier.test.ts` | 1 files |
-| `tiered/tiered-review-fixes.test.ts` | 4 files |
 | `tiered/TieredIndex-wiring.test.ts` | 1 files |
 | `tiered/TieredIndex.test.ts` | 3 files |
-| `search/VectorStore.test.ts` | 2 files |
+| `tiered/tiered-review-fixes.test.ts` | 4 files |
 | `security/ABACPolicy.test.ts` | 1 files |
 | `security/APIKeyStore.test.ts` | 1 files |
 | `security/PiiRedactor.test.ts` | 5 files |
@@ -590,7 +661,7 @@ The following 21 source files are not directly imported by any test file:
 | `tools/observations-to-columns.test.ts` | 1 files |
 | `tools/plan-doc-audit.test.ts` | 0 files |
 | `tools/segment-jsonl.test.ts` | 2 files |
-| `types/agent-memory.test.ts` | 10 files |
+| `types/agent-memory.test.ts` | 11 files |
 | `types/entity-content-hash.test.ts` | 1 files |
 | `types/entity-new-fields.test.ts` | 1 files |
 | `types/profile-entity.test.ts` | 2 files |
@@ -601,32 +672,32 @@ The following 21 source files are not directly imported by any test file:
 | `utils/AsyncMutex.test.ts` | 1 files |
 | `utils/BatchProcessor.test.ts` | 1 files |
 | `utils/CachePressureCoordinator.test.ts` | 1 files |
-| `utils/compressedCache.test.ts` | 11 files |
-| `compression/compressedEntityCache-wiring.test.ts` | 11 files |
+| `utils/EntityValidator.test.ts` | 3 files |
+| `utils/MemoryMonitor.test.ts` | 1 files |
+| `utils/SchemaValidator.test.ts` | 2 files |
+| `utils/WorkerPoolManager.test.ts` | 1 files |
+| `utils/WorkerTaskManager.test.ts` | 3 files |
+| `utils/compressedCache.test.ts` | 12 files |
 | `compression/CompressedMap.test.ts` | 2 files |
 | `compression/ICompressionAdapter.test.ts` | 1 files |
+| `compression/compressedEntityCache-wiring.test.ts` | 12 files |
 | `utils/compressionUtil.test.ts` | 2 files |
 | `utils/durableWriteFile.test.ts` | 1 files |
-| `utils/entityUtils.test.ts` | 37 files |
-| `utils/EntityValidator.test.ts` | 3 files |
-| `utils/errors.test.ts` | 1 files |
+| `utils/entityUtils.test.ts` | 38 files |
 | `utils/errorSuggestions.test.ts` | 2 files |
+| `utils/errors.test.ts` | 1 files |
 | `utils/formatters.test.ts` | 27 files |
-| `utils/indexes.test.ts` | 11 files |
+| `utils/indexes.test.ts` | 12 files |
 | `utils/logger.test.ts` | 1 files |
-| `utils/MemoryMonitor.test.ts` | 1 files |
 | `utils/operationUtils.test.ts` | 2 files |
 | `utils/parallelUtils.test.ts` | 1 files |
 | `utils/relationHelpers.test.ts` | 2 files |
 | `utils/relationValidation.test.ts` | 2 files |
 | `utils/schemas.test.ts` | 27 files |
-| `utils/SchemaValidator.test.ts` | 2 files |
 | `utils/searchAlgorithms.test.ts` | 27 files |
 | `utils/searchCache.test.ts` | 1 files |
 | `utils/taskScheduler.test.ts` | 1 files |
-| `utils/update-entity-schema-strip.test.ts` | 13 files |
+| `utils/update-entity-schema-strip.test.ts` | 14 files |
 | `utils/validators.test.ts` | 2 files |
-| `utils/WorkerPoolManager.test.ts` | 1 files |
-| `utils/WorkerTaskManager.test.ts` | 3 files |
-| `workers/levenshteinWorker.test.ts` | 1 files |
 | `workers/WorkerPool.test.ts` | 0 files |
+| `workers/levenshteinWorker.test.ts` | 1 files |

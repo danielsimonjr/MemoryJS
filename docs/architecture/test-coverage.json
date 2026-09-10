@@ -1,41 +1,31 @@
 {
   "metadata": {
-    "generatedAt": "2026-08-07T21:35:24.218Z",
-    "totalSourceFiles": 266,
-    "totalTestFiles": 321,
-    "testedCount": 245,
-    "untestedCount": 21,
-    "coveragePercent": "92.1",
+    "generatedAt": "2026-09-10T02:37:20.638Z",
+    "totalSourceFiles": 291,
+    "totalTestFiles": 361,
+    "testedCount": 280,
+    "untestedCount": 11,
+    "coveragePercent": "96.2",
     "effectiveCoverage": {
       "policyLoaded": false,
-      "activeFiles": 266,
-      "testedActive": 245,
-      "activeUntested": 21,
+      "activeFiles": 291,
+      "testedActive": 280,
+      "activeUntested": 11,
       "excludedTotal": 0,
-      "percent": "92.1",
+      "percent": "96.2",
       "breakdown": {
-        "active_untested": 21
+        "active_untested": 11
       }
     }
   },
   "untestedFiles": [
-    "src/cli/commands/decision.ts",
+    "src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts",
+    "src/agent/procedural/graph/backing/ProceduralGraphState.ts",
     "src/cli/commands/entity.ts",
-    "src/cli/commands/exclusion.ts",
-    "src/cli/commands/graph.ts",
     "src/cli/commands/helpers.ts",
-    "src/cli/commands/heuristic.ts",
-    "src/cli/commands/hierarchy.ts",
     "src/cli/commands/io.ts",
-    "src/cli/commands/maintenance.ts",
-    "src/cli/commands/observation.ts",
-    "src/cli/commands/observationDedup.ts",
-    "src/cli/commands/projectContext.ts",
     "src/cli/commands/relation.ts",
-    "src/cli/commands/search.ts",
-    "src/cli/commands/spell.ts",
-    "src/cli/commands/tag.ts",
-    "src/cli/commands/toolAffordance.ts",
+    "src/search/inducedSubgraph.ts",
     "src/sqlite.ts",
     "src/utils/Diagnostics.ts",
     "src/utils/IIndexHealth.ts",
@@ -113,6 +103,26 @@
     "src/agent/procedural/ProcedureManager.ts",
     "src/agent/procedural/ProcedureStore.ts",
     "src/agent/procedural/StepSequencer.ts",
+    "src/agent/procedural/graph/CompletionProvider.ts",
+    "src/agent/procedural/graph/ProceduralGraph.ts",
+    "src/agent/procedural/graph/ProceduralGraphEvolution.ts",
+    "src/agent/procedural/graph/ProceduralGraphManager.ts",
+    "src/agent/procedural/graph/ProceduralGraphRefiner.ts",
+    "src/agent/procedural/graph/ProceduralGraphSchemas.ts",
+    "src/agent/procedural/graph/ProceduralGraphSerializer.ts",
+    "src/agent/procedural/graph/ProceduralGraphSession.ts",
+    "src/agent/procedural/graph/ProceduralGraphValidator.ts",
+    "src/agent/procedural/graph/ProceduralGuidance.ts",
+    "src/agent/procedural/graph/ProcedureGraphAdapter.ts",
+    "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
+    "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+    "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
+    "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts",
+    "src/agent/procedural/graph/backing/index.ts",
+    "src/agent/procedural/graph/canonical.ts",
+    "src/agent/procedural/graph/index.ts",
+    "src/agent/procedural/graph/prompts.ts",
+    "src/agent/procedural/graph/tokenTail.ts",
     "src/agent/procedural/index.ts",
     "src/agent/rbac/PermissionMatrix.ts",
     "src/agent/rbac/RbacMiddleware.ts",
@@ -135,12 +145,25 @@
     "src/cli/commands/audit.ts",
     "src/cli/commands/cache.ts",
     "src/cli/commands/check.ts",
+    "src/cli/commands/decision.ts",
     "src/cli/commands/diag.ts",
     "src/cli/commands/doctor.ts",
+    "src/cli/commands/exclusion.ts",
+    "src/cli/commands/graph.ts",
+    "src/cli/commands/heuristic.ts",
+    "src/cli/commands/hierarchy.ts",
     "src/cli/commands/index.ts",
     "src/cli/commands/inspect.ts",
+    "src/cli/commands/maintenance.ts",
+    "src/cli/commands/observation.ts",
+    "src/cli/commands/observationDedup.ts",
+    "src/cli/commands/projectContext.ts",
     "src/cli/commands/reindex.ts",
+    "src/cli/commands/search.ts",
     "src/cli/commands/smoke.ts",
+    "src/cli/commands/spell.ts",
+    "src/cli/commands/tag.ts",
+    "src/cli/commands/toolAffordance.ts",
     "src/cli/config.ts",
     "src/cli/formatters.ts",
     "src/cli/index.ts",
@@ -167,6 +190,7 @@
     "src/core/index.ts",
     "src/core/mmap/FsReadMmapBackend.ts",
     "src/core/mmap/IMmapBackend.ts",
+    "src/core/nodeSqliteAdapter.ts",
     "src/core/segments/FileSegmentStorage.ts",
     "src/core/segments/ISegmentStorage.ts",
     "src/core/sqlite-register.ts",
@@ -248,6 +272,7 @@
     "src/types/artifact.ts",
     "src/types/event.ts",
     "src/types/index.ts",
+    "src/types/proceduralGraph.ts",
     "src/types/procedure.ts",
     "src/types/progress.ts",
     "src/types/reconstruction.ts",
@@ -294,10 +319,6 @@
       "tests/knowledge-graph.test.ts",
       "tests/unit/adapters/ApiKeyAuthMiddleware.test.ts"
     ],
-    "src/adapters/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts"
-    ],
     "src/adapters/LangChainMemoryAdapter.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -307,11 +328,6 @@
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/adapters/MCPToolObserverAdapter.test.ts"
-    ],
-    "src/adapters/pagination.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/adapters/pagination.test.ts"
     ],
     "src/adapters/RateLimiter.ts": [
       "tests/file-path.test.ts",
@@ -323,6 +339,15 @@
       "tests/knowledge-graph.test.ts",
       "tests/unit/adapters/ApiKeyAuthMiddleware.test.ts",
       "tests/unit/adapters/RestRouter.test.ts"
+    ],
+    "src/adapters/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts"
+    ],
+    "src/adapters/pagination.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/adapters/pagination.test.ts"
     ],
     "src/agent/AccessTracker.ts": [
       "tests/file-path.test.ts",
@@ -363,29 +388,11 @@
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/ArtifactManager.test.ts"
     ],
-    "src/agent/causal/CausalReasoner.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/CausalReasoner.test.ts",
-      "tests/unit/core/manager-context-new-managers.test.ts"
-    ],
-    "src/agent/causal/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts"
-    ],
     "src/agent/CognitiveLoadAnalyzer.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/CognitiveLoadAnalyzer.test.ts"
-    ],
-    "src/agent/collaboration/CollaborationAuditEnforcer.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/CollaborationAuditEnforcer.test.ts"
     ],
     "src/agent/CollaborativeSynthesis.ts": [
       "tests/file-path.test.ts",
@@ -399,9 +406,6 @@
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/ConflictResolver.test.ts",
       "tests/unit/agent/MemoryValidator.test.ts"
-    ],
-    "src/agent/connectivity.ts": [
-      "tests/unit/agent/ConnectivitySignals.test.ts"
     ],
     "src/agent/ConsolidationPipeline.ts": [
       "tests/file-path.test.ts",
@@ -497,18 +501,6 @@
       "tests/unit/agent/EpisodicMemoryManager.test.ts",
       "tests/unit/agent/SessionManager.test.ts"
     ],
-    "src/agent/events/EventManager.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/EventManager.test.ts"
-    ],
-    "src/agent/events/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/EventManager.test.ts"
-    ],
     "src/agent/ExclusionManager.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -519,9 +511,9 @@
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/delta-services-wiring.test.ts",
       "tests/unit/agent/ExperienceExtractor.test.ts",
-      "tests/unit/agent/ReflectionStage.test.ts"
+      "tests/unit/agent/ReflectionStage.test.ts",
+      "tests/unit/agent/delta-services-wiring.test.ts"
     ],
     "src/agent/FailureDistillation.ts": [
       "tests/file-path.test.ts",
@@ -548,11 +540,6 @@
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/ImportanceScorer.test.ts",
       "tests/unit/agent/MemoryEngine.test.ts"
-    ],
-    "src/agent/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts"
     ],
     "src/agent/InMemoryBackend.ts": [
       "tests/file-path.test.ts",
@@ -585,8 +572,8 @@
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/delta-services-wiring.test.ts",
-      "tests/unit/agent/MemoryValidator.test.ts"
+      "tests/unit/agent/MemoryValidator.test.ts",
+      "tests/unit/agent/delta-services-wiring.test.ts"
     ],
     "src/agent/MultiAgentMemoryManager.ts": [
       "tests/file-path.test.ts",
@@ -621,12 +608,172 @@
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/PlanManager.test.ts"
     ],
-    "src/agent/procedural/index.ts": [
+    "src/agent/ProfileManager.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/ProcedureManager.test.ts",
-      "tests/unit/agent/ProcedureStore.test.ts"
+      "tests/unit/agent/profile-manager-basics.test.ts",
+      "tests/unit/agent/profile-manager-extraction.test.ts"
+    ],
+    "src/agent/ProjectContextManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProjectContextManager.test.ts"
+    ],
+    "src/agent/ProspectiveMemoryManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProspectiveMemoryManager.test.ts"
+    ],
+    "src/agent/RelationConsolidator.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/RelationConsolidator.test.ts"
+    ],
+    "src/agent/RoleProfiles.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/RoleProfiles.test.ts"
+    ],
+    "src/agent/RuleEvaluator.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/RuleEvaluator.test.ts"
+    ],
+    "src/agent/SQLiteBackend.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/SQLiteBackend.test.ts",
+      "tests/unit/agent/memoryBackend-wiring.test.ts"
+    ],
+    "src/agent/SalienceEngine.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/CollaborativeSynthesis.test.ts",
+      "tests/unit/agent/ConnectivitySignals.test.ts",
+      "tests/unit/agent/ContextProfileManager.test.ts",
+      "tests/unit/agent/ContextWindowManager.test.ts",
+      "tests/unit/agent/SalienceEngine.test.ts",
+      "tests/unit/agent/profile-manager-extraction.test.ts",
+      "tests/unit/core/ManagerContext.test.ts"
+    ],
+    "src/agent/SessionCheckpoint.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/SessionCheckpoint.test.ts"
+    ],
+    "src/agent/SessionManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/SessionManager.test.ts",
+      "tests/unit/agent/SessionQueryBuilder.test.ts",
+      "tests/unit/agent/profile-manager-extraction.test.ts"
+    ],
+    "src/agent/SessionQueryBuilder.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/SessionQueryBuilder.test.ts"
+    ],
+    "src/agent/SummarizationService.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/SummarizationService.test.ts"
+    ],
+    "src/agent/ToolAffordanceManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/adapters/MCPToolObserverAdapter.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ToolAffordanceManager.test.ts",
+      "tests/unit/agent/ToolCallObserver.test.ts"
+    ],
+    "src/agent/ToolCallObserver.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/adapters/MCPToolObserverAdapter.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ToolCallObserver.test.ts"
+    ],
+    "src/agent/TrajectoryCompressor.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ReflectionStage.test.ts",
+      "tests/unit/agent/TrajectoryCompressor.test.ts",
+      "tests/unit/agent/delta-services-wiring.test.ts"
+    ],
+    "src/agent/VisibilityResolver.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/VisibilityResolver.test.ts"
+    ],
+    "src/agent/WorkThreadManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/WorkThreadManager.test.ts"
+    ],
+    "src/agent/WorkingMemoryManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ConsolidationPipeline.test.ts",
+      "tests/unit/agent/EntropyFilter.test.ts",
+      "tests/unit/agent/RelationConsolidator.test.ts",
+      "tests/unit/agent/SessionCheckpoint.test.ts",
+      "tests/unit/agent/SessionManager.test.ts",
+      "tests/unit/agent/SessionQueryBuilder.test.ts",
+      "tests/unit/agent/WorkingMemoryManager.test.ts"
+    ],
+    "src/agent/causal/CausalReasoner.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/CausalReasoner.test.ts",
+      "tests/unit/core/manager-context-new-managers.test.ts"
+    ],
+    "src/agent/causal/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts"
+    ],
+    "src/agent/collaboration/CollaborationAuditEnforcer.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/CollaborationAuditEnforcer.test.ts"
+    ],
+    "src/agent/connectivity.ts": [
+      "tests/unit/agent/ConnectivitySignals.test.ts"
+    ],
+    "src/agent/events/EventManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/EventManager.test.ts"
+    ],
+    "src/agent/events/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/EventManager.test.ts"
+    ],
+    "src/agent/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts"
     ],
     "src/agent/procedural/ProcedureManager.ts": [
       "tests/file-path.test.ts",
@@ -648,32 +795,200 @@
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProcedureGraphAdapter.test.ts"
+    ],
+    "src/agent/procedural/graph/CompletionProvider.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/CompletionProvider.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGraph.ts": [
+      "tests/file-path.test.ts",
+      "tests/integration/procedural-graph-guidance.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraph.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSerializer.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphValidator.test.ts",
+      "tests/unit/agent/procedural/graph/appendixF.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGraphEvolution.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGraphManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphManager.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGraphRefiner.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphRefiner.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGraphSchemas.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSchemas.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGraphSerializer.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSerializer.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGraphSession.ts": [
+      "tests/file-path.test.ts",
+      "tests/integration/procedural-graph-guidance.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts",
+      "tests/unit/agent/procedural/graph/appendixF.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGraphValidator.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphValidator.test.ts"
+    ],
+    "src/agent/procedural/graph/ProceduralGuidance.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
       "tests/unit/agent/ProcedureStore.test.ts"
     ],
-    "src/agent/ProfileManager.ts": [
+    "src/agent/procedural/graph/ProcedureGraphAdapter.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/profile-manager-basics.test.ts",
-      "tests/unit/agent/profile-manager-extraction.test.ts"
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProcedureGraphAdapter.test.ts"
     ],
-    "src/agent/ProjectContextManager.ts": [
+    "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts": [
       "tests/file-path.test.ts",
+      "tests/integration/procedural-graph-recovery.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/ProjectContextManager.test.ts"
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/backing/memory.test.ts"
     ],
-    "src/agent/ProspectiveMemoryManager.ts": [
+    "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/ProspectiveMemoryManager.test.ts"
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphManager.test.ts",
+      "tests/unit/agent/procedural/graph/backing/memory.test.ts",
+      "tests/unit/core/ManagerContext-proceduralGraph.test.ts"
     ],
-    "src/agent/rbac/index.ts": [
+    "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts": [
+      "tests/file-path.test.ts",
+      "tests/integration/procedural-graph-recovery.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/backing/jsonl.test.ts"
+    ],
+    "src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts": [],
+    "src/agent/procedural/graph/backing/ProceduralGraphState.ts": [],
+    "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts": [
+      "tests/file-path.test.ts",
+      "tests/integration/procedural-graph-recovery.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/backing/sqlite.test.ts"
+    ],
+    "src/agent/procedural/graph/backing/index.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/rbac.test.ts"
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts"
+    ],
+    "src/agent/procedural/graph/canonical.ts": [
+      "tests/file-path.test.ts",
+      "tests/integration/procedural-graph-recovery.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraph.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphManager.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSchemas.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSerializer.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphValidator.test.ts",
+      "tests/unit/agent/procedural/graph/canonical.test.ts"
+    ],
+    "src/agent/procedural/graph/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts"
+    ],
+    "src/agent/procedural/graph/prompts.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts",
+      "tests/unit/agent/procedural/graph/prompts.test.ts"
+    ],
+    "src/agent/procedural/graph/tokenTail.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts",
+      "tests/unit/agent/procedural/graph/tokenTail.test.ts"
+    ],
+    "src/agent/procedural/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts"
     ],
     "src/agent/rbac/PermissionMatrix.ts": [
       "tests/file-path.test.ts",
@@ -701,17 +1016,18 @@
       "tests/unit/agent/rbac.test.ts",
       "tests/unit/core/manager-context-new-managers.test.ts"
     ],
+    "src/agent/rbac/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/rbac.test.ts"
+    ],
     "src/agent/reconstruction/CueTagContentGraph.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
       "tests/unit/agent/reconstruction/CueTagContentGraph.test.ts",
       "tests/unit/agent/reconstruction/MemoryToolkit.test.ts"
-    ],
-    "src/agent/reconstruction/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts"
     ],
     "src/agent/reconstruction/MemoryDistiller.ts": [
       "tests/file-path.test.ts",
@@ -744,19 +1060,12 @@
       "tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts",
       "tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts"
     ],
-    "src/agent/RelationConsolidator.ts": [
+    "src/agent/reconstruction/index.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/RelationConsolidator.test.ts"
-    ],
-    "src/agent/retrieval/ActiveRetrievalController.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts"
     ],
-    "src/agent/retrieval/index.ts": [
+    "src/agent/retrieval/ActiveRetrievalController.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/ActiveRetrieval.test.ts",
@@ -768,115 +1077,11 @@
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts"
     ],
-    "src/agent/RoleProfiles.ts": [
+    "src/agent/retrieval/index.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/RoleProfiles.test.ts"
-    ],
-    "src/agent/RuleEvaluator.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/RuleEvaluator.test.ts"
-    ],
-    "src/agent/SalienceEngine.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/CollaborativeSynthesis.test.ts",
-      "tests/unit/agent/ConnectivitySignals.test.ts",
-      "tests/unit/agent/ContextProfileManager.test.ts",
-      "tests/unit/agent/ContextWindowManager.test.ts",
-      "tests/unit/agent/profile-manager-extraction.test.ts",
-      "tests/unit/agent/SalienceEngine.test.ts",
-      "tests/unit/core/ManagerContext.test.ts"
-    ],
-    "src/agent/SessionCheckpoint.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/SessionCheckpoint.test.ts"
-    ],
-    "src/agent/SessionManager.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/profile-manager-extraction.test.ts",
-      "tests/unit/agent/SessionManager.test.ts",
-      "tests/unit/agent/SessionQueryBuilder.test.ts"
-    ],
-    "src/agent/SessionQueryBuilder.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/SessionQueryBuilder.test.ts"
-    ],
-    "src/agent/SQLiteBackend.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/memoryBackend-wiring.test.ts",
-      "tests/unit/agent/SQLiteBackend.test.ts"
-    ],
-    "src/agent/SummarizationService.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/SummarizationService.test.ts"
-    ],
-    "src/agent/ToolAffordanceManager.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/adapters/MCPToolObserverAdapter.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/ToolAffordanceManager.test.ts",
-      "tests/unit/agent/ToolCallObserver.test.ts"
-    ],
-    "src/agent/ToolCallObserver.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/adapters/MCPToolObserverAdapter.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/ToolCallObserver.test.ts"
-    ],
-    "src/agent/TrajectoryCompressor.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/delta-services-wiring.test.ts",
-      "tests/unit/agent/ReflectionStage.test.ts",
-      "tests/unit/agent/TrajectoryCompressor.test.ts"
-    ],
-    "src/agent/VisibilityResolver.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/VisibilityResolver.test.ts"
-    ],
-    "src/agent/WorkingMemoryManager.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/ConsolidationPipeline.test.ts",
-      "tests/unit/agent/EntropyFilter.test.ts",
-      "tests/unit/agent/RelationConsolidator.test.ts",
-      "tests/unit/agent/SessionCheckpoint.test.ts",
-      "tests/unit/agent/SessionManager.test.ts",
-      "tests/unit/agent/SessionQueryBuilder.test.ts",
-      "tests/unit/agent/WorkingMemoryManager.test.ts"
-    ],
-    "src/agent/WorkThreadManager.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/WorkThreadManager.test.ts"
-    ],
-    "src/agent/world/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/agent/AgentMemoryManager.test.ts",
-      "tests/unit/agent/WorldModel.test.ts"
+      "tests/unit/agent/ActiveRetrieval.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts"
     ],
     "src/agent/world/WorldModelManager.ts": [
       "tests/file-path.test.ts",
@@ -885,6 +1090,12 @@
       "tests/unit/agent/WorldModel.test.ts"
     ],
     "src/agent/world/WorldStateSnapshot.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/WorldModel.test.ts"
+    ],
+    "src/agent/world/index.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/agent/AgentMemoryManager.test.ts",
@@ -899,7 +1110,9 @@
     "src/cli/commands/check.ts": [
       "tests/unit/cli/check.test.ts"
     ],
-    "src/cli/commands/decision.ts": [],
+    "src/cli/commands/decision.ts": [
+      "tests/unit/cli/decision.test.ts"
+    ],
     "src/cli/commands/diag.ts": [
       "tests/unit/cli/diag.test.ts"
     ],
@@ -907,11 +1120,19 @@
       "tests/unit/cli/doctor.test.ts"
     ],
     "src/cli/commands/entity.ts": [],
-    "src/cli/commands/exclusion.ts": [],
-    "src/cli/commands/graph.ts": [],
+    "src/cli/commands/exclusion.ts": [
+      "tests/unit/cli/exclusion.test.ts"
+    ],
+    "src/cli/commands/graph.ts": [
+      "tests/unit/cli/graph.test.ts"
+    ],
     "src/cli/commands/helpers.ts": [],
-    "src/cli/commands/heuristic.ts": [],
-    "src/cli/commands/hierarchy.ts": [],
+    "src/cli/commands/heuristic.ts": [
+      "tests/unit/cli/heuristic.test.ts"
+    ],
+    "src/cli/commands/hierarchy.ts": [
+      "tests/unit/cli/hierarchy.test.ts"
+    ],
     "src/cli/commands/index.ts": [
       "tests/unit/cli/commands.test.ts",
       "tests/unit/cli/index.test.ts"
@@ -920,21 +1141,37 @@
       "tests/unit/cli/inspect.test.ts"
     ],
     "src/cli/commands/io.ts": [],
-    "src/cli/commands/maintenance.ts": [],
-    "src/cli/commands/observation.ts": [],
-    "src/cli/commands/observationDedup.ts": [],
-    "src/cli/commands/projectContext.ts": [],
+    "src/cli/commands/maintenance.ts": [
+      "tests/unit/cli/maintenance-cli.test.ts"
+    ],
+    "src/cli/commands/observation.ts": [
+      "tests/unit/cli/observation.test.ts"
+    ],
+    "src/cli/commands/observationDedup.ts": [
+      "tests/unit/cli/observationDedup.test.ts"
+    ],
+    "src/cli/commands/projectContext.ts": [
+      "tests/unit/cli/projectContext.test.ts"
+    ],
     "src/cli/commands/reindex.ts": [
       "tests/unit/cli/cache-reindex.test.ts"
     ],
     "src/cli/commands/relation.ts": [],
-    "src/cli/commands/search.ts": [],
+    "src/cli/commands/search.ts": [
+      "tests/unit/cli/search-extended.test.ts"
+    ],
     "src/cli/commands/smoke.ts": [
       "tests/unit/cli/smoke.test.ts"
     ],
-    "src/cli/commands/spell.ts": [],
-    "src/cli/commands/tag.ts": [],
-    "src/cli/commands/toolAffordance.ts": [],
+    "src/cli/commands/spell.ts": [
+      "tests/unit/cli/spell.test.ts"
+    ],
+    "src/cli/commands/tag.ts": [
+      "tests/unit/cli/tag.test.ts"
+    ],
+    "src/cli/commands/toolAffordance.ts": [
+      "tests/unit/cli/toolAffordance.test.ts"
+    ],
     "src/cli/config.ts": [
       "tests/unit/cli/config.test.ts"
     ],
@@ -949,17 +1186,6 @@
     ],
     "src/cli/options.ts": [
       "tests/unit/cli/options.test.ts"
-    ],
-    "src/core/columns/IColumnStore.ts": [
-      "tests/unit/core/columns/columns-review-fixes.test.ts",
-      "tests/unit/core/columns/IColumnStore.test.ts",
-      "tests/unit/core/columns/JsonlColumnStore.test.ts",
-      "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
-      "tests/unit/core/sqlite-events.test.ts"
-    ],
-    "src/core/columns/JsonlColumnStore.ts": [
-      "tests/unit/core/columns/columns-review-fixes.test.ts",
-      "tests/unit/core/columns/JsonlColumnStore.test.ts"
     ],
     "src/core/EntityManager.ts": [
       "tests/file-path.test.ts",
@@ -997,12 +1223,13 @@
       "tests/unit/agent/WorkThreadManager.test.ts",
       "tests/unit/agent/WorldModel.test.ts",
       "tests/unit/core/ConcurrencyControl.test.ts",
-      "tests/unit/core/entity-id.test.ts",
       "tests/unit/core/EntityManager.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
-      "tests/unit/core/optimistic-concurrency.test.ts",
       "tests/unit/core/RefIndex.test.ts",
+      "tests/unit/core/RelationManager-metadata.test.ts",
       "tests/unit/core/RelationManager.test.ts",
+      "tests/unit/core/entity-id.test.ts",
+      "tests/unit/core/optimistic-concurrency.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/sqlite-events.test.ts",
       "tests/unit/core/temporal-versioning.test.ts",
@@ -1010,8 +1237,8 @@
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/CompressionManager.test.ts",
       "tests/unit/features/FactExtractor.test.ts",
-      "tests/unit/search/BasicSearch.test.ts",
       "tests/unit/search/BM25Search.test.ts",
+      "tests/unit/search/BasicSearch.test.ts",
       "tests/unit/search/BooleanSearch.test.ts",
       "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/NGramFuzzyIntegration.test.ts",
@@ -1029,8 +1256,8 @@
       "tests/unit/core/GraphEventEmitter.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
-      "tests/unit/core/sqlite-events.test.ts",
       "tests/unit/core/TransitionLedger.test.ts",
+      "tests/unit/core/sqlite-events.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts"
     ],
@@ -1070,9 +1297,7 @@
       "tests/unit/agent/WorkThreadManager.test.ts",
       "tests/unit/agent/WorldModel.test.ts",
       "tests/unit/core/BatchTransaction.test.ts",
-      "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
       "tests/unit/core/ConcurrencyControl.test.ts",
-      "tests/unit/core/entity-id.test.ts",
       "tests/unit/core/EntityManager.test.ts",
       "tests/unit/core/GraphEventEmitter.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
@@ -1080,23 +1305,26 @@
       "tests/unit/core/GraphTraversal.test.ts",
       "tests/unit/core/GraphTraversalLookFor.test.ts",
       "tests/unit/core/HierarchyManager.test.ts",
-      "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
-      "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/mmap/mmap-review-fixes.test.ts",
       "tests/unit/core/ObservationManager.dedup.test.ts",
       "tests/unit/core/ObservationManager.test.ts",
-      "tests/unit/core/optimistic-concurrency.test.ts",
       "tests/unit/core/RefIndex.test.ts",
+      "tests/unit/core/RelationManager-metadata.test.ts",
       "tests/unit/core/RelationManager.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
+      "tests/unit/core/TransactionBatching.test.ts",
+      "tests/unit/core/TransactionManager.test.ts",
+      "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
+      "tests/unit/core/entity-id.test.ts",
+      "tests/unit/core/known-issue-fixes.test.ts",
+      "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
+      "tests/unit/core/mmap/mmap-review-fixes.test.ts",
+      "tests/unit/core/optimistic-concurrency.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
       "tests/unit/core/sqlite-events.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/temporal-versioning.test.ts",
-      "tests/unit/core/TransactionBatching.test.ts",
-      "tests/unit/core/TransactionManager.test.ts",
       "tests/unit/core/write-path-delta.test.ts",
       "tests/unit/features/AnalyticsManager.test.ts",
       "tests/unit/features/ArchiveManager.test.ts",
@@ -1109,9 +1337,9 @@
       "tests/unit/features/IOManager.test.ts",
       "tests/unit/features/ObservableDataModelAdapter.test.ts",
       "tests/unit/features/pii-redaction-export.test.ts",
+      "tests/unit/search/BM25Search.test.ts",
       "tests/unit/search/BasicSearch.test.ts",
       "tests/unit/search/BloomFilter.test.ts",
-      "tests/unit/search/BM25Search.test.ts",
       "tests/unit/search/BooleanSearch.test.ts",
       "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
@@ -1144,45 +1372,54 @@
       "tests/unit/core/HierarchyManager.test.ts",
       "tests/unit/core/ManagerContext.test.ts"
     ],
-    "src/core/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/core/ManagerContext.test.ts"
-    ],
     "src/core/ManagerContext.ts": [
       "tests/edge-cases/edge-cases.test.ts",
       "tests/file-path.test.ts",
+      "tests/integration/MemoryEngineStorage.test.ts",
       "tests/integration/agent/access-tracking.test.ts",
       "tests/integration/agent/agent-memory-manager-profile.test.ts",
       "tests/integration/core/manager-context-semantic-forget.test.ts",
       "tests/integration/core/observation-manager-contradiction.test.ts",
       "tests/integration/features/contradiction-detector-supersede.test.ts",
       "tests/integration/features/governance-enforcement.test.ts",
-      "tests/integration/MemoryEngineStorage.test.ts",
+      "tests/integration/procedural-graph-iomanager-roundtrip.test.ts",
       "tests/integration/search/project-scope-isolation.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/performance/memory-engine-perf.test.ts",
       "tests/unit/adapters/ApiKeyAuthMiddleware.test.ts",
       "tests/unit/adapters/LangChainMemoryAdapter.test.ts",
       "tests/unit/adapters/RestRouter.test.ts",
-      "tests/unit/agent/agent-memory-manager-diary.test.ts",
       "tests/unit/agent/ArtifactManager.test.ts",
       "tests/unit/agent/ConnectivitySignals.test.ts",
+      "tests/unit/agent/MemoryEngine.test.ts",
+      "tests/unit/agent/SQLiteBackend.test.ts",
+      "tests/unit/agent/agent-memory-manager-diary.test.ts",
       "tests/unit/agent/context-window-manager-compress.test.ts",
       "tests/unit/agent/context-window-manager-wakeup.test.ts",
       "tests/unit/agent/delta-services-wiring.test.ts",
       "tests/unit/agent/memoryBackend-wiring.test.ts",
-      "tests/unit/agent/MemoryEngine.test.ts",
       "tests/unit/agent/profile-manager-basics.test.ts",
       "tests/unit/agent/profile-manager-extraction.test.ts",
       "tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts",
-      "tests/unit/agent/SQLiteBackend.test.ts",
       "tests/unit/cli/cache-reindex.test.ts",
       "tests/unit/cli/check.test.ts",
       "tests/unit/cli/diag.test.ts",
+      "tests/unit/cli/exclusion.test.ts",
+      "tests/unit/cli/graph.test.ts",
+      "tests/unit/cli/hierarchy.test.ts",
       "tests/unit/cli/inspect.test.ts",
-      "tests/unit/core/columns/columns-review-fixes.test.ts",
+      "tests/unit/cli/maintenance-cli.test.ts",
+      "tests/unit/cli/observation.test.ts",
+      "tests/unit/cli/observationDedup.test.ts",
+      "tests/unit/cli/search-extended.test.ts",
+      "tests/unit/cli/spell.test.ts",
+      "tests/unit/cli/tag.test.ts",
+      "tests/unit/cli/toolAffordance.test.ts",
+      "tests/unit/core/ManagerContext-proceduralGraph.test.ts",
+      "tests/unit/core/ManagerContext.test.ts",
       "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
+      "tests/unit/core/columns/columns-review-fixes.test.ts",
+      "tests/unit/core/columns/shadow-write-drain.test.ts",
       "tests/unit/core/entity-manager-list-projects.test.ts",
       "tests/unit/core/entity-manager-profile-namespace.test.ts",
       "tests/unit/core/entity-manager-project-stamping.test.ts",
@@ -1190,13 +1427,12 @@
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/manager-context-new-managers.test.ts",
       "tests/unit/core/manager-context-project.test.ts",
-      "tests/unit/core/ManagerContext.test.ts",
       "tests/unit/core/observation-validate-hook.test.ts",
       "tests/unit/core/relation-manager-temporal.test.ts",
       "tests/unit/core/sqlite-events.test.ts",
+      "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/compression-manager-priority-dedup.test.ts",
       "tests/unit/features/compression-manager-versioning-guard.test.ts",
-      "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/ingest-provenance-modes.test.ts",
       "tests/unit/features/io-manager-ingest.test.ts",
       "tests/unit/features/io-manager-split.test.ts",
@@ -1206,24 +1442,15 @@
       "tests/unit/search/tiered/TieredIndex-wiring.test.ts",
       "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts"
     ],
-    "src/core/mmap/FsReadMmapBackend.ts": [
-      "tests/unit/core/mmap/FsReadMmapBackend.test.ts",
-      "tests/unit/core/mmap/mmap-review-fixes.test.ts"
-    ],
-    "src/core/mmap/IMmapBackend.ts": [
-      "tests/unit/core/mmap/FsReadMmapBackend.test.ts",
-      "tests/unit/core/mmap/IMmapBackend.test.ts",
-      "tests/unit/core/mmap/mmap-review-fixes.test.ts"
-    ],
     "src/core/ObservationManager.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/performance/write-performance.test.ts",
-      "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
       "tests/unit/core/ConcurrencyControl.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
       "tests/unit/core/ObservationManager.dedup.test.ts",
       "tests/unit/core/ObservationManager.test.ts",
+      "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
       "tests/unit/core/sqlite-events.test.ts",
       "tests/unit/core/temporal-versioning.test.ts",
       "tests/unit/core/write-path-delta.test.ts"
@@ -1255,6 +1482,7 @@
       "tests/unit/agent/SessionCheckpoint.test.ts",
       "tests/unit/agent/WorkThreadManager.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
+      "tests/unit/core/RelationManager-metadata.test.ts",
       "tests/unit/core/RelationManager.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/sqlite-events.test.ts",
@@ -1268,34 +1496,25 @@
       "tests/unit/search/NGramFuzzyIntegration.test.ts",
       "tests/unit/search/RankedSearchGraphBoost.test.ts"
     ],
-    "src/core/segments/FileSegmentStorage.ts": [
-      "tests/unit/core/segments/FileSegmentStorage.test.ts",
-      "tests/unit/core/segments/segments-review-fixes.test.ts"
-    ],
-    "src/core/segments/ISegmentStorage.ts": [
-      "tests/unit/core/segments/FileSegmentStorage.test.ts",
-      "tests/unit/core/segments/ISegmentStorage.test.ts",
-      "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/tools/segment-jsonl.test.ts"
-    ],
-    "src/core/sqlite-register.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/core/ManagerContext.test.ts"
-    ],
     "src/core/SQLiteStorage.ts": [
+      "tests/integration/MemoryEngineStorage.test.ts",
+      "tests/integration/procedural-graph-recovery.test.ts",
       "tests/integration/storage/sqlite-storage-new-fields.test.ts",
       "tests/performance/write-path-benchmarks.test.ts",
       "tests/unit/agent/EventManager.test.ts",
+      "tests/unit/agent/procedural/graph/backing/sqlite.test.ts",
       "tests/unit/core/ConcurrencyControl.test.ts",
-      "tests/unit/core/entity-id.test.ts",
       "tests/unit/core/EntityManager.test.ts",
-      "tests/unit/core/rename-entity.test.ts",
-      "tests/unit/core/sqlite-content-hash-migration.test.ts",
-      "tests/unit/core/sqlite-events.test.ts",
+      "tests/unit/core/RelationManager-metadata.test.ts",
       "tests/unit/core/SQLiteStorage.test.ts",
       "tests/unit/core/StorageFactory.test.ts",
-      "tests/unit/core/write-path-delta.test.ts"
+      "tests/unit/core/entity-id.test.ts",
+      "tests/unit/core/rename-entity.test.ts",
+      "tests/unit/core/sqlite-content-hash-migration.test.ts",
+      "tests/unit/core/sqlite-driver-resolver.test.ts",
+      "tests/unit/core/sqlite-events.test.ts",
+      "tests/unit/core/write-path-delta.test.ts",
+      "tests/unit/search/SQLiteFtsSearchIntegration.test.ts"
     ],
     "src/core/StorageFactory.ts": [
       "tests/file-path.test.ts",
@@ -1317,6 +1536,54 @@
       "tests/knowledge-graph.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
       "tests/unit/core/TransitionLedger.test.ts"
+    ],
+    "src/core/columns/IColumnStore.ts": [
+      "tests/unit/core/columns/IColumnStore.test.ts",
+      "tests/unit/core/columns/JsonlColumnStore.test.ts",
+      "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
+      "tests/unit/core/columns/columns-review-fixes.test.ts",
+      "tests/unit/core/sqlite-events.test.ts"
+    ],
+    "src/core/columns/JsonlColumnStore.ts": [
+      "tests/unit/core/columns/JsonlColumnStore.test.ts",
+      "tests/unit/core/columns/columns-review-fixes.test.ts"
+    ],
+    "src/core/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/core/ManagerContext.test.ts"
+    ],
+    "src/core/mmap/FsReadMmapBackend.ts": [
+      "tests/unit/core/mmap/FsReadMmapBackend.test.ts",
+      "tests/unit/core/mmap/mmap-review-fixes.test.ts"
+    ],
+    "src/core/mmap/IMmapBackend.ts": [
+      "tests/unit/core/mmap/FsReadMmapBackend.test.ts",
+      "tests/unit/core/mmap/IMmapBackend.test.ts",
+      "tests/unit/core/mmap/mmap-review-fixes.test.ts"
+    ],
+    "src/core/nodeSqliteAdapter.ts": [
+      "tests/integration/procedural-graph-recovery.test.ts",
+      "tests/unit/agent/procedural/graph/backing/sqlite.test.ts",
+      "tests/unit/core/RelationManager-metadata.test.ts",
+      "tests/unit/core/nodeSqliteAdapter.test.ts",
+      "tests/unit/core/sqlite-driver-resolver.test.ts"
+    ],
+    "src/core/segments/FileSegmentStorage.ts": [
+      "tests/unit/core/segments/FileSegmentStorage.test.ts",
+      "tests/unit/core/segments/GraphStorage-segments.test.ts",
+      "tests/unit/core/segments/segments-review-fixes.test.ts"
+    ],
+    "src/core/segments/ISegmentStorage.ts": [
+      "tests/unit/core/segments/FileSegmentStorage.test.ts",
+      "tests/unit/core/segments/ISegmentStorage.test.ts",
+      "tests/unit/core/segments/segments-review-fixes.test.ts",
+      "tests/unit/tools/segment-jsonl.test.ts"
+    ],
+    "src/core/sqlite-register.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/core/ManagerContext.test.ts"
     ],
     "src/features/AnalyticsManager.ts": [
       "tests/file-path.test.ts",
@@ -1391,10 +1658,6 @@
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/pii-redaction-export.test.ts"
     ],
-    "src/features/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts"
-    ],
     "src/features/IOManager.ts": [
       "tests/file-path.test.ts",
       "tests/integration/backup-compression.test.ts",
@@ -1404,9 +1667,9 @@
       "tests/performance/task-scheduler-benchmarks.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
       "tests/unit/features/BackupManager.test.ts",
-      "tests/unit/features/ingest-provenance-modes.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
       "tests/unit/features/IOManager.test.ts",
+      "tests/unit/features/ingest-provenance-modes.test.ts",
       "tests/unit/features/pii-redaction-export.test.ts"
     ],
     "src/features/KeywordExtractor.ts": [
@@ -1435,8 +1698,8 @@
       "tests/integration/operation-progress.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/performance/task-scheduler-benchmarks.test.ts",
-      "tests/unit/features/pii-redaction-export.test.ts",
-      "tests/unit/features/StreamingExporter.test.ts"
+      "tests/unit/features/StreamingExporter.test.ts",
+      "tests/unit/features/pii-redaction-export.test.ts"
     ],
     "src/features/TagManager.ts": [
       "tests/file-path.test.ts",
@@ -1444,9 +1707,23 @@
       "tests/unit/core/ManagerContext.test.ts",
       "tests/unit/features/TagManager.test.ts"
     ],
+    "src/features/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts"
+    ],
     "src/index.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts"
+    ],
+    "src/search/BM25Search.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/performance/search-algorithm-benchmarks.test.ts",
+      "tests/performance/v10-benchmarks.test.ts",
+      "tests/unit/search/BM25Search.test.ts",
+      "tests/unit/search/SQLiteFtsSearchIntegration.test.ts",
+      "tests/unit/search/SemanticSearch.test.ts",
+      "tests/unit/search/TemporalQueryParser.lazy.test.ts"
     ],
     "src/search/BasicSearch.ts": [
       "tests/file-path.test.ts",
@@ -1464,15 +1741,6 @@
     "src/search/BloomPreScreener.ts": [
       "tests/unit/search/BloomFilter.test.ts",
       "tests/unit/search/FuzzySearch.test.ts"
-    ],
-    "src/search/BM25Search.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/performance/search-algorithm-benchmarks.test.ts",
-      "tests/performance/v10-benchmarks.test.ts",
-      "tests/unit/search/BM25Search.test.ts",
-      "tests/unit/search/SemanticSearch.test.ts",
-      "tests/unit/search/TemporalQueryParser.lazy.test.ts"
     ],
     "src/search/BooleanSearch.ts": [
       "tests/file-path.test.ts",
@@ -1506,6 +1774,7 @@
       "tests/knowledge-graph.test.ts",
       "tests/performance/embedding-benchmarks.test.ts",
       "tests/unit/search/EmbeddingService.test.ts",
+      "tests/unit/search/LlamaCppEmbeddingService.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/TemporalQueryParser.lazy.test.ts"
     ],
@@ -1557,6 +1826,7 @@
       "tests/unit/search/HybridSearchExplain.test.ts",
       "tests/unit/search/HybridSearchManager.test.ts",
       "tests/unit/search/HybridSearchManagerGraph.test.ts",
+      "tests/unit/search/SQLiteFtsSearchIntegration.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/TemporalQueryParser.lazy.test.ts"
     ],
@@ -1569,18 +1839,13 @@
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/TemporalQueryParser.lazy.test.ts"
     ],
-    "src/search/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/search/SemanticSearch.test.ts",
-      "tests/unit/search/TemporalQueryParser.lazy.test.ts"
-    ],
     "src/search/LLMQueryPlanner.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/RelationConsolidator.test.ts",
+      "tests/unit/agent/procedural/graph/CompletionProvider.test.ts",
       "tests/unit/agent/reconstruction/MemoryDistiller.test.ts",
       "tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts",
-      "tests/unit/agent/RelationConsolidator.test.ts",
       "tests/unit/features/ingest-provenance-modes.test.ts",
       "tests/unit/search/LLMQueryPlanner.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
@@ -1708,6 +1973,7 @@
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/search/RankedSearch.test.ts",
       "tests/unit/search/RankedSearchGraphBoost.test.ts",
+      "tests/unit/search/SQLiteFtsSearchIntegration.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/TemporalQueryParser.lazy.test.ts"
     ],
@@ -1730,11 +1996,11 @@
     "src/search/SearchFilterChain.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
-      "tests/unit/search/search-filter-chain-project.test.ts",
-      "tests/unit/search/search-filter-chain-versioning.test.ts",
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
-      "tests/unit/search/TemporalQueryParser.lazy.test.ts"
+      "tests/unit/search/TemporalQueryParser.lazy.test.ts",
+      "tests/unit/search/search-filter-chain-project.test.ts",
+      "tests/unit/search/search-filter-chain-versioning.test.ts"
     ],
     "src/search/SearchManager.ts": [
       "tests/file-path.test.ts",
@@ -1780,6 +2046,27 @@
       "tests/unit/search/SymbolicSearch.test.ts",
       "tests/unit/search/TemporalQueryParser.lazy.test.ts"
     ],
+    "src/search/TFIDFEventSync.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/core/rename-entity.test.ts",
+      "tests/unit/core/sqlite-events.test.ts",
+      "tests/unit/search/IncrementalTFIDF.test.ts",
+      "tests/unit/search/SemanticSearch.test.ts",
+      "tests/unit/search/TFIDFEventSync.test.ts",
+      "tests/unit/search/TemporalQueryParser.lazy.test.ts"
+    ],
+    "src/search/TFIDFIndexManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/core/rename-entity.test.ts",
+      "tests/unit/core/sqlite-events.test.ts",
+      "tests/unit/search/IncrementalTFIDF.test.ts",
+      "tests/unit/search/SemanticSearch.test.ts",
+      "tests/unit/search/TFIDFEventSync.test.ts",
+      "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalQueryParser.lazy.test.ts"
+    ],
     "src/search/TemporalQueryParser.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -1795,27 +2082,21 @@
       "tests/unit/search/TemporalQueryParser.lazy.test.ts",
       "tests/unit/search/TemporalSearch.test.ts"
     ],
-    "src/search/TFIDFEventSync.ts": [
+    "src/search/VectorStore.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
-      "tests/unit/core/rename-entity.test.ts",
-      "tests/unit/core/sqlite-events.test.ts",
-      "tests/unit/search/IncrementalTFIDF.test.ts",
+      "tests/performance/embedding-benchmarks.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/TemporalQueryParser.lazy.test.ts",
-      "tests/unit/search/TFIDFEventSync.test.ts"
+      "tests/unit/search/VectorStore.test.ts"
     ],
-    "src/search/TFIDFIndexManager.ts": [
+    "src/search/index.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
-      "tests/unit/core/rename-entity.test.ts",
-      "tests/unit/core/sqlite-events.test.ts",
-      "tests/unit/search/IncrementalTFIDF.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
-      "tests/unit/search/TemporalQueryParser.lazy.test.ts",
-      "tests/unit/search/TFIDFEventSync.test.ts",
-      "tests/unit/search/TFIDFIndexManager.test.ts"
+      "tests/unit/search/TemporalQueryParser.lazy.test.ts"
     ],
+    "src/search/inducedSubgraph.ts": [],
     "src/search/tiered/BrotliColdTier.ts": [
       "tests/unit/search/tiered/BrotliColdTier.test.ts"
     ],
@@ -1825,25 +2106,17 @@
     ],
     "src/search/tiered/ITieredIndex.ts": [
       "tests/unit/search/tiered/ITieredIndex.test.ts",
-      "tests/unit/search/tiered/tiered-review-fixes.test.ts",
-      "tests/unit/search/tiered/TieredIndex.test.ts"
+      "tests/unit/search/tiered/TieredIndex.test.ts",
+      "tests/unit/search/tiered/tiered-review-fixes.test.ts"
     ],
     "src/search/tiered/LRUHotTier.ts": [
       "tests/unit/search/tiered/LRUHotTier.test.ts",
-      "tests/unit/search/tiered/tiered-review-fixes.test.ts",
-      "tests/unit/search/tiered/TieredIndex.test.ts"
+      "tests/unit/search/tiered/TieredIndex.test.ts",
+      "tests/unit/search/tiered/tiered-review-fixes.test.ts"
     ],
     "src/search/tiered/TieredIndex.ts": [
-      "tests/unit/search/tiered/tiered-review-fixes.test.ts",
-      "tests/unit/search/tiered/TieredIndex.test.ts"
-    ],
-    "src/search/VectorStore.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/performance/embedding-benchmarks.test.ts",
-      "tests/unit/search/SemanticSearch.test.ts",
-      "tests/unit/search/TemporalQueryParser.lazy.test.ts",
-      "tests/unit/search/VectorStore.test.ts"
+      "tests/unit/search/tiered/TieredIndex.test.ts",
+      "tests/unit/search/tiered/tiered-review-fixes.test.ts"
     ],
     "src/security/ABACPolicy.ts": [
       "tests/file-path.test.ts",
@@ -1858,11 +2131,6 @@
       "tests/unit/security/APIKeyStore.test.ts",
       "tests/unit/security/PiiRedactor.test.ts"
     ],
-    "src/security/index.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/security/PiiRedactor.test.ts"
-    ],
     "src/security/PiiRedactor.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -1873,6 +2141,11 @@
       "tests/knowledge-graph.test.ts",
       "tests/unit/security/PiiRedactor.test.ts",
       "tests/unit/security/RowLevelFilter.test.ts"
+    ],
+    "src/security/index.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/security/PiiRedactor.test.ts"
     ],
     "src/sqlite.ts": [],
     "src/types/agent-memory.ts": [
@@ -1933,14 +2206,14 @@
       "tests/unit/agent/VisibilityResolver.test.ts",
       "tests/unit/agent/WorkingMemoryManager.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
-      "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/ManagerContext.test.ts",
-      "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
       "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
+      "tests/unit/core/known-issue-fixes.test.ts",
+      "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -1949,6 +2222,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -1969,9 +2243,9 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/types/profile-entity.test.ts",
       "tests/unit/types/trust-level.test.ts",
@@ -2003,13 +2277,13 @@
       "tests/unit/agent/ArtifactManager.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/PostgreSQLStorage.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -2018,6 +2292,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2038,9 +2313,9 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
       "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts",
@@ -2069,13 +2344,13 @@
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/PostgreSQLStorage.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -2084,6 +2359,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2104,9 +2380,9 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
       "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts",
@@ -2135,13 +2411,13 @@
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/PostgreSQLStorage.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -2150,6 +2426,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2170,9 +2447,92 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
+      "tests/unit/types/agent-memory.test.ts",
+      "tests/unit/utils/compressedCache.test.ts",
+      "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts",
+      "tests/unit/utils/entityUtils.test.ts",
+      "tests/unit/utils/indexes.test.ts",
+      "tests/unit/utils/update-entity-schema-strip.test.ts"
+    ],
+    "src/types/proceduralGraph.ts": [
+      "tests/file-path.test.ts",
+      "tests/integration/backup-compression.test.ts",
+      "tests/integration/hybrid-search.test.ts",
+      "tests/integration/procedural-graph-recovery.test.ts",
+      "tests/integration/smart-search.test.ts",
+      "tests/integration/worker-pool-integration.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/performance/compression-benchmarks.test.ts",
+      "tests/performance/foundation-benchmarks.test.ts",
+      "tests/performance/merge-perf.test.ts",
+      "tests/performance/mmap-load-benchmark.test.ts",
+      "tests/performance/parallel-benchmarks.test.ts",
+      "tests/performance/query-execution-benchmarks.test.ts",
+      "tests/performance/ranked-search-benchmarks.test.ts",
+      "tests/performance/search-algorithm-benchmarks.test.ts",
+      "tests/performance/v10-benchmarks.test.ts",
+      "tests/performance/write-path-benchmarks.test.ts",
+      "tests/performance/write-performance.test.ts",
+      "tests/unit/agent/ActiveRetrieval.test.ts",
+      "tests/unit/agent/AgentMemoryManager.test.ts",
+      "tests/unit/agent/CausalReasoner.test.ts",
+      "tests/unit/agent/ProcedureManager.test.ts",
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraph.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphManager.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphRefiner.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSchemas.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSerializer.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts",
+      "tests/unit/agent/procedural/graph/ProceduralGraphValidator.test.ts",
+      "tests/unit/agent/procedural/graph/appendixF.test.ts",
+      "tests/unit/agent/procedural/graph/canonical.test.ts",
+      "tests/unit/agent/procedural/graph/tokenTail.test.ts",
+      "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/ManagerContext-proceduralGraph.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
+      "tests/unit/core/known-issue-fixes.test.ts",
+      "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
+      "tests/unit/core/rename-entity.test.ts",
+      "tests/unit/core/segments/GraphStorage-segments.test.ts",
+      "tests/unit/core/segments/segments-review-fixes.test.ts",
+      "tests/unit/features/AutoLinker.test.ts",
+      "tests/unit/features/GovernanceManager.test.ts",
+      "tests/unit/features/IOManager.rdf-export.test.ts",
+      "tests/unit/features/IOManager.test.ts",
+      "tests/unit/features/ObservationNormalizer.test.ts",
+      "tests/unit/features/pii-redaction-export.test.ts",
+      "tests/unit/search/EarlyTerminationManager.test.ts",
+      "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
+      "tests/unit/search/GraphRankPrior.test.ts",
+      "tests/unit/search/HybridScorer.test.ts",
+      "tests/unit/search/HybridScorerGraphChannel.test.ts",
+      "tests/unit/search/HybridSearchExplain.test.ts",
+      "tests/unit/search/HybridSearchManager.test.ts",
+      "tests/unit/search/HybridSearchManagerGraph.test.ts",
+      "tests/unit/search/IncrementalIndexer.test.ts",
+      "tests/unit/search/LLMQueryPlanner.test.ts",
+      "tests/unit/search/LLMSearchExecutor.test.ts",
+      "tests/unit/search/LLMSearchExecutorExplain.test.ts",
+      "tests/unit/search/ParallelSearchExecutor.test.ts",
+      "tests/unit/search/QueryCostEstimator.test.ts",
+      "tests/unit/search/QueryPlanCache.test.ts",
+      "tests/unit/search/QueryPlanFormatter.test.ts",
+      "tests/unit/search/QueryPlanner.test.ts",
+      "tests/unit/search/RankedSearch.test.ts",
+      "tests/unit/search/ReflectionManager.test.ts",
+      "tests/unit/search/SearchFilterChain.test.ts",
+      "tests/unit/search/SemanticSearch.test.ts",
+      "tests/unit/search/SymbolicSearch.test.ts",
+      "tests/unit/search/TFIDFEventSync.test.ts",
+      "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
       "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts",
@@ -2182,7 +2542,8 @@
     ],
     "src/types/procedure.ts": [
       "tests/unit/agent/ProcedureManager.test.ts",
-      "tests/unit/agent/ProcedureStore.test.ts"
+      "tests/unit/agent/ProcedureStore.test.ts",
+      "tests/unit/agent/procedural/graph/ProcedureGraphAdapter.test.ts"
     ],
     "src/types/progress.ts": [
       "tests/file-path.test.ts",
@@ -2205,13 +2566,13 @@
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/PostgreSQLStorage.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -2220,6 +2581,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2240,9 +2602,9 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/types/progress.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
@@ -2275,13 +2637,13 @@
       "tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts",
       "tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/PostgreSQLStorage.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -2290,6 +2652,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2310,9 +2673,9 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
       "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts",
@@ -2341,13 +2704,13 @@
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/PostgreSQLStorage.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -2356,6 +2719,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2376,9 +2740,9 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/types/result.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
@@ -2408,13 +2772,13 @@
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/PostgreSQLStorage.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -2423,6 +2787,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2444,10 +2809,10 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalQueryParser.lazy.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalQueryParser.lazy.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/types/search.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
@@ -2477,13 +2842,13 @@
       "tests/unit/agent/ActiveRetrieval.test.ts",
       "tests/unit/agent/CausalReasoner.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
+      "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
       "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
-      "tests/unit/core/PostgreSQLStorage.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
@@ -2492,6 +2857,7 @@
       "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2512,9 +2878,9 @@
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
       "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts",
@@ -2577,7 +2943,6 @@
       "tests/unit/agent/PlanManager.test.ts",
       "tests/unit/agent/ProjectContextManager.test.ts",
       "tests/unit/agent/ProspectiveMemoryManager.test.ts",
-      "tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts",
       "tests/unit/agent/ReflectionStage.test.ts",
       "tests/unit/agent/RelationConsolidator.test.ts",
       "tests/unit/agent/SalienceEngine.test.ts",
@@ -2587,36 +2952,39 @@
       "tests/unit/agent/ToolAffordanceManager.test.ts",
       "tests/unit/agent/ToolCallObserver.test.ts",
       "tests/unit/agent/TrajectoryCompressor.test.ts",
-      "tests/unit/agent/WorkingMemoryManager.test.ts",
       "tests/unit/agent/WorkThreadManager.test.ts",
+      "tests/unit/agent/WorkingMemoryManager.test.ts",
+      "tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts",
       "tests/unit/cli/formatters.test.ts",
       "tests/unit/core/BatchTransaction.test.ts",
       "tests/unit/core/GraphEventEmitter.test.ts",
       "tests/unit/core/GraphEvents.test.ts",
-      "tests/unit/core/known-issue-fixes.test.ts",
-      "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
+      "tests/unit/core/GraphStorage.test.ts",
       "tests/unit/core/ObservationManager.dedup.test.ts",
       "tests/unit/core/PostgreSQLStorage.test.ts",
+      "tests/unit/core/StorageFactory.test.ts",
+      "tests/unit/core/known-issue-fixes.test.ts",
+      "tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/segments/FileSegmentStorage.test.ts",
       "tests/unit/core/segments/GraphStorage-segments.test.ts",
       "tests/unit/core/segments/ISegmentStorage.test.ts",
       "tests/unit/core/segments/segments-review-fixes.test.ts",
       "tests/unit/core/sqlite-events.test.ts",
-      "tests/unit/core/StorageFactory.test.ts",
       "tests/unit/core/write-path-delta.test.ts",
       "tests/unit/features/AutoLinker.test.ts",
-      "tests/unit/features/contradiction-detector-detect.test.ts",
       "tests/unit/features/FreshnessManager.test.ts",
       "tests/unit/features/GovernanceManager.test.ts",
       "tests/unit/features/IOManager.rdf-export.test.ts",
       "tests/unit/features/IOManager.test.ts",
       "tests/unit/features/ObservableDataModelAdapter.test.ts",
       "tests/unit/features/ObservationNormalizer.test.ts",
-      "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/features/StreamingExporter.test.ts",
+      "tests/unit/features/contradiction-detector-detect.test.ts",
+      "tests/unit/features/pii-redaction-export.test.ts",
       "tests/unit/search/EarlyTerminationManager.test.ts",
       "tests/unit/search/EvidencePathBuilder.test.ts",
+      "tests/unit/search/FuzzySearch.test.ts",
       "tests/unit/search/GraphRankPrior.test.ts",
       "tests/unit/search/HybridScorer.test.ts",
       "tests/unit/search/HybridScorerGraphChannel.test.ts",
@@ -2636,29 +3004,29 @@
       "tests/unit/search/QueryPlanner.test.ts",
       "tests/unit/search/RankedSearch.test.ts",
       "tests/unit/search/ReflectionManager.test.ts",
-      "tests/unit/search/search-filter-chain-project.test.ts",
-      "tests/unit/search/search-filter-chain-versioning.test.ts",
       "tests/unit/search/SearchFilterChain.test.ts",
       "tests/unit/search/SemanticSearch.test.ts",
       "tests/unit/search/SpellChecker.test.ts",
       "tests/unit/search/SymbolicSearch.test.ts",
-      "tests/unit/search/TemporalSearch.test.ts",
       "tests/unit/search/TFIDFEventSync.test.ts",
       "tests/unit/search/TFIDFIndexManager.test.ts",
+      "tests/unit/search/TemporalSearch.test.ts",
+      "tests/unit/search/search-filter-chain-project.test.ts",
+      "tests/unit/search/search-filter-chain-versioning.test.ts",
       "tests/unit/security/RowLevelFilter.test.ts",
       "tests/unit/tools/observations-to-columns.test.ts",
       "tests/unit/tools/segment-jsonl.test.ts",
       "tests/unit/types/agent-memory.test.ts",
       "tests/unit/types/entity-new-fields.test.ts",
       "tests/unit/types/profile-entity.test.ts",
+      "tests/unit/utils/EntityValidator.test.ts",
+      "tests/unit/utils/SchemaValidator.test.ts",
       "tests/unit/utils/compressedCache.test.ts",
       "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts",
       "tests/unit/utils/entityUtils.test.ts",
-      "tests/unit/utils/EntityValidator.test.ts",
       "tests/unit/utils/indexes.test.ts",
       "tests/unit/utils/relationHelpers.test.ts",
       "tests/unit/utils/relationValidation.test.ts",
-      "tests/unit/utils/SchemaValidator.test.ts",
       "tests/unit/utils/update-entity-schema-strip.test.ts",
       "tests/unit/utils/validators.test.ts"
     ],
@@ -2686,6 +3054,63 @@
     ],
     "src/utils/CachePressureCoordinator.ts": [
       "tests/unit/utils/CachePressureCoordinator.test.ts"
+    ],
+    "src/utils/Diagnostics.ts": [],
+    "src/utils/EntityValidator.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/search/RankedSearch.test.ts",
+      "tests/unit/utils/EntityValidator.test.ts",
+      "tests/unit/utils/entityUtils.test.ts",
+      "tests/unit/utils/formatters.test.ts",
+      "tests/unit/utils/schemas.test.ts",
+      "tests/unit/utils/searchAlgorithms.test.ts"
+    ],
+    "src/utils/IIndexHealth.ts": [],
+    "src/utils/IndexHealthMonitor.ts": [],
+    "src/utils/MemoryMonitor.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/performance/v10-benchmarks.test.ts",
+      "tests/unit/search/RankedSearch.test.ts",
+      "tests/unit/utils/MemoryMonitor.test.ts",
+      "tests/unit/utils/entityUtils.test.ts",
+      "tests/unit/utils/formatters.test.ts",
+      "tests/unit/utils/schemas.test.ts",
+      "tests/unit/utils/searchAlgorithms.test.ts"
+    ],
+    "src/utils/SchemaValidator.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/search/RankedSearch.test.ts",
+      "tests/unit/utils/SchemaValidator.test.ts",
+      "tests/unit/utils/entityUtils.test.ts",
+      "tests/unit/utils/formatters.test.ts",
+      "tests/unit/utils/schemas.test.ts",
+      "tests/unit/utils/searchAlgorithms.test.ts"
+    ],
+    "src/utils/WorkerPoolManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/performance/parallel-benchmarks.test.ts",
+      "tests/performance/v10-benchmarks.test.ts",
+      "tests/unit/search/RankedSearch.test.ts",
+      "tests/unit/utils/WorkerPoolManager.test.ts",
+      "tests/unit/utils/WorkerTaskManager.test.ts",
+      "tests/unit/utils/entityUtils.test.ts",
+      "tests/unit/utils/formatters.test.ts",
+      "tests/unit/utils/schemas.test.ts",
+      "tests/unit/utils/searchAlgorithms.test.ts"
+    ],
+    "src/utils/WorkerTaskManager.ts": [
+      "tests/file-path.test.ts",
+      "tests/knowledge-graph.test.ts",
+      "tests/unit/search/RankedSearch.test.ts",
+      "tests/unit/utils/WorkerTaskManager.test.ts",
+      "tests/unit/utils/entityUtils.test.ts",
+      "tests/unit/utils/formatters.test.ts",
+      "tests/unit/utils/schemas.test.ts",
+      "tests/unit/utils/searchAlgorithms.test.ts"
     ],
     "src/utils/compressedCache.ts": [
       "tests/file-path.test.ts",
@@ -2733,8 +3158,8 @@
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts"
     ],
-    "src/utils/Diagnostics.ts": [],
     "src/utils/durableWriteFile.ts": [
+      "tests/integration/procedural-graph-recovery.test.ts",
       "tests/unit/utils/durableWriteFile.test.ts"
     ],
     "src/utils/entityUtils.ts": [
@@ -2747,12 +3172,12 @@
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts"
     ],
-    "src/utils/EntityValidator.ts": [
+    "src/utils/errorSuggestions.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/search/RankedSearch.test.ts",
       "tests/unit/utils/entityUtils.test.ts",
-      "tests/unit/utils/EntityValidator.test.ts",
+      "tests/unit/utils/errorSuggestions.test.ts",
       "tests/unit/utils/formatters.test.ts",
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts"
@@ -2775,34 +3200,24 @@
       "tests/unit/agent/ToolAffordanceManager.test.ts",
       "tests/unit/agent/ToolCallObserver.test.ts",
       "tests/unit/agent/WorkingMemoryManager.test.ts",
-      "tests/unit/core/entity-manager-profile-namespace.test.ts",
       "tests/unit/core/EntityManager.test.ts",
       "tests/unit/core/HierarchyManager.test.ts",
       "tests/unit/core/ObservationManager.test.ts",
-      "tests/unit/core/optimistic-concurrency.test.ts",
       "tests/unit/core/RefIndex.test.ts",
       "tests/unit/core/RelationManager.test.ts",
+      "tests/unit/core/TransactionManager.test.ts",
+      "tests/unit/core/entity-manager-profile-namespace.test.ts",
+      "tests/unit/core/optimistic-concurrency.test.ts",
       "tests/unit/core/rename-entity.test.ts",
       "tests/unit/core/temporal-versioning.test.ts",
-      "tests/unit/core/TransactionManager.test.ts",
       "tests/unit/core/write-path-delta.test.ts",
       "tests/unit/features/CompressionManager.test.ts",
       "tests/unit/search/RankedSearch.test.ts",
       "tests/unit/utils/entityUtils.test.ts",
-      "tests/unit/utils/errors.test.ts",
       "tests/unit/utils/errorSuggestions.test.ts",
+      "tests/unit/utils/errors.test.ts",
       "tests/unit/utils/formatters.test.ts",
       "tests/unit/utils/operationUtils.test.ts",
-      "tests/unit/utils/schemas.test.ts",
-      "tests/unit/utils/searchAlgorithms.test.ts"
-    ],
-    "src/utils/errorSuggestions.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/search/RankedSearch.test.ts",
-      "tests/unit/utils/entityUtils.test.ts",
-      "tests/unit/utils/errorSuggestions.test.ts",
-      "tests/unit/utils/formatters.test.ts",
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts"
     ],
@@ -2815,7 +3230,6 @@
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts"
     ],
-    "src/utils/IIndexHealth.ts": [],
     "src/utils/index.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -2835,25 +3249,14 @@
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts"
     ],
-    "src/utils/IndexHealthMonitor.ts": [],
     "src/utils/logger.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
+      "tests/unit/agent/procedural/graph/backing/jsonl.test.ts",
       "tests/unit/search/RankedSearch.test.ts",
       "tests/unit/utils/entityUtils.test.ts",
       "tests/unit/utils/formatters.test.ts",
       "tests/unit/utils/logger.test.ts",
-      "tests/unit/utils/schemas.test.ts",
-      "tests/unit/utils/searchAlgorithms.test.ts"
-    ],
-    "src/utils/MemoryMonitor.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/performance/v10-benchmarks.test.ts",
-      "tests/unit/search/RankedSearch.test.ts",
-      "tests/unit/utils/entityUtils.test.ts",
-      "tests/unit/utils/formatters.test.ts",
-      "tests/unit/utils/MemoryMonitor.test.ts",
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts"
     ],
@@ -2909,16 +3312,6 @@
       "tests/unit/utils/searchAlgorithms.test.ts",
       "tests/unit/utils/update-entity-schema-strip.test.ts"
     ],
-    "src/utils/SchemaValidator.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/search/RankedSearch.test.ts",
-      "tests/unit/utils/entityUtils.test.ts",
-      "tests/unit/utils/formatters.test.ts",
-      "tests/unit/utils/schemas.test.ts",
-      "tests/unit/utils/SchemaValidator.test.ts",
-      "tests/unit/utils/searchAlgorithms.test.ts"
-    ],
     "src/utils/searchAlgorithms.ts": [
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
@@ -2944,12 +3337,12 @@
       "tests/knowledge-graph.test.ts",
       "tests/performance/task-scheduler-config-benchmarks.test.ts",
       "tests/unit/search/RankedSearch.test.ts",
+      "tests/unit/utils/WorkerTaskManager.test.ts",
       "tests/unit/utils/entityUtils.test.ts",
       "tests/unit/utils/formatters.test.ts",
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts",
-      "tests/unit/utils/taskScheduler.test.ts",
-      "tests/unit/utils/WorkerTaskManager.test.ts"
+      "tests/unit/utils/taskScheduler.test.ts"
     ],
     "src/utils/textSimilarity.ts": [
       "tests/file-path.test.ts",
@@ -2968,35 +3361,12 @@
       "tests/file-path.test.ts",
       "tests/knowledge-graph.test.ts",
       "tests/unit/search/RankedSearch.test.ts",
-      "tests/unit/utils/entityUtils.test.ts",
       "tests/unit/utils/EntityValidator.test.ts",
+      "tests/unit/utils/entityUtils.test.ts",
       "tests/unit/utils/formatters.test.ts",
       "tests/unit/utils/schemas.test.ts",
       "tests/unit/utils/searchAlgorithms.test.ts",
       "tests/unit/utils/validators.test.ts"
-    ],
-    "src/utils/WorkerPoolManager.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/performance/parallel-benchmarks.test.ts",
-      "tests/performance/v10-benchmarks.test.ts",
-      "tests/unit/search/RankedSearch.test.ts",
-      "tests/unit/utils/entityUtils.test.ts",
-      "tests/unit/utils/formatters.test.ts",
-      "tests/unit/utils/schemas.test.ts",
-      "tests/unit/utils/searchAlgorithms.test.ts",
-      "tests/unit/utils/WorkerPoolManager.test.ts",
-      "tests/unit/utils/WorkerTaskManager.test.ts"
-    ],
-    "src/utils/WorkerTaskManager.ts": [
-      "tests/file-path.test.ts",
-      "tests/knowledge-graph.test.ts",
-      "tests/unit/search/RankedSearch.test.ts",
-      "tests/unit/utils/entityUtils.test.ts",
-      "tests/unit/utils/formatters.test.ts",
-      "tests/unit/utils/schemas.test.ts",
-      "tests/unit/utils/searchAlgorithms.test.ts",
-      "tests/unit/utils/WorkerTaskManager.test.ts"
     ],
     "src/workers/levenshteinWorker.ts": [
       "tests/unit/workers/levenshteinWorker.test.ts"
@@ -3023,6 +3393,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts",
       "src/utils/errors.ts",
@@ -3185,6 +3556,7 @@
       "src/agent/retrieval/ActiveRetrievalController.ts",
       "src/agent/world/WorldStateSnapshot.ts",
       "src/agent/world/WorldModelManager.ts",
+      "src/agent/procedural/graph/index.ts",
       "src/agent/procedural/ProcedureManager.ts",
       "src/agent/procedural/ProcedureStore.ts",
       "src/agent/procedural/StepSequencer.ts",
@@ -3209,7 +3581,30 @@
       "src/adapters/RateLimiter.ts",
       "src/adapters/pagination.ts",
       "src/adapters/MCPToolObserverAdapter.ts",
-      "src/adapters/LangChainMemoryAdapter.ts"
+      "src/adapters/LangChainMemoryAdapter.ts",
+      "src/agent/procedural/graph/ProceduralGraphSchemas.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphValidator.ts",
+      "src/agent/procedural/graph/ProceduralGraphSerializer.ts",
+      "src/agent/procedural/graph/backing/index.ts",
+      "src/agent/procedural/graph/CompletionProvider.ts",
+      "src/agent/procedural/graph/tokenTail.ts",
+      "src/agent/procedural/graph/prompts.ts",
+      "src/agent/procedural/graph/ProceduralGraphSession.ts",
+      "src/agent/procedural/graph/ProceduralGuidance.ts",
+      "src/agent/procedural/graph/ProceduralGraphRefiner.ts",
+      "src/agent/procedural/graph/ProceduralGraphEvolution.ts",
+      "src/agent/procedural/graph/ProceduralGraphManager.ts",
+      "src/agent/procedural/graph/ProcedureGraphAdapter.ts",
+      "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts"
+    ],
+    "tests/integration/MemoryEngineStorage.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/core/SQLiteStorage.ts"
     ],
     "tests/integration/agent/access-tracking.test.ts": [
       "src/core/ManagerContext.ts"
@@ -3228,6 +3623,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3264,11 +3660,9 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
-    ],
-    "tests/integration/MemoryEngineStorage.test.ts": [
-      "src/core/ManagerContext.ts"
     ],
     "tests/integration/operation-progress.test.ts": [
       "src/core/GraphStorage.ts",
@@ -3280,6 +3674,23 @@
       "src/features/StreamingExporter.ts",
       "src/utils/errors.ts",
       "src/types/types.ts"
+    ],
+    "tests/integration/procedural-graph-guidance.test.ts": [
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphSession.ts"
+    ],
+    "tests/integration/procedural-graph-iomanager-roundtrip.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/integration/procedural-graph-recovery.test.ts": [
+      "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/core/SQLiteStorage.ts",
+      "src/core/nodeSqliteAdapter.ts",
+      "src/types/proceduralGraph.ts",
+      "src/utils/durableWriteFile.ts"
     ],
     "tests/integration/search/project-scope-isolation.test.ts": [
       "src/core/ManagerContext.ts"
@@ -3299,6 +3710,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3326,6 +3738,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3356,6 +3769,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts",
       "src/utils/errors.ts",
@@ -3518,6 +3932,7 @@
       "src/agent/retrieval/ActiveRetrievalController.ts",
       "src/agent/world/WorldStateSnapshot.ts",
       "src/agent/world/WorldModelManager.ts",
+      "src/agent/procedural/graph/index.ts",
       "src/agent/procedural/ProcedureManager.ts",
       "src/agent/procedural/ProcedureStore.ts",
       "src/agent/procedural/StepSequencer.ts",
@@ -3542,7 +3957,26 @@
       "src/adapters/RateLimiter.ts",
       "src/adapters/pagination.ts",
       "src/adapters/MCPToolObserverAdapter.ts",
-      "src/adapters/LangChainMemoryAdapter.ts"
+      "src/adapters/LangChainMemoryAdapter.ts",
+      "src/agent/procedural/graph/ProceduralGraphSchemas.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphValidator.ts",
+      "src/agent/procedural/graph/ProceduralGraphSerializer.ts",
+      "src/agent/procedural/graph/backing/index.ts",
+      "src/agent/procedural/graph/CompletionProvider.ts",
+      "src/agent/procedural/graph/tokenTail.ts",
+      "src/agent/procedural/graph/prompts.ts",
+      "src/agent/procedural/graph/ProceduralGraphSession.ts",
+      "src/agent/procedural/graph/ProceduralGuidance.ts",
+      "src/agent/procedural/graph/ProceduralGraphRefiner.ts",
+      "src/agent/procedural/graph/ProceduralGraphEvolution.ts",
+      "src/agent/procedural/graph/ProceduralGraphManager.ts",
+      "src/agent/procedural/graph/ProcedureGraphAdapter.ts",
+      "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts"
     ],
     "tests/performance/benchmarks.test.ts": [
       "src/core/GraphStorage.ts",
@@ -3568,6 +4002,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3592,6 +4027,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3609,6 +4045,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3622,6 +4059,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3642,6 +4080,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3659,6 +4098,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3673,6 +4113,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3690,6 +4131,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3735,6 +4177,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3750,6 +4193,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3765,6 +4209,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -3786,15 +4231,15 @@
       "src/types/types.ts",
       "src/utils/errors.ts"
     ],
-    "tests/unit/adapters/pagination.test.ts": [
-      "src/adapters/pagination.ts"
-    ],
     "tests/unit/adapters/RateLimiter.test.ts": [
       "src/adapters/RateLimiter.ts"
     ],
     "tests/unit/adapters/RestRouter.test.ts": [
       "src/adapters/RestRouter.ts",
       "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/adapters/pagination.test.ts": [
+      "src/adapters/pagination.ts"
     ],
     "tests/unit/agent/AccessTracker.test.ts": [
       "src/agent/AccessTracker.ts",
@@ -3814,11 +4259,9 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
-    ],
-    "tests/unit/agent/agent-memory-manager-diary.test.ts": [
-      "src/core/ManagerContext.ts"
     ],
     "tests/unit/agent/AgentMemoryManager.test.ts": [
       "src/agent/index.ts",
@@ -3890,6 +4333,7 @@
       "src/agent/retrieval/ActiveRetrievalController.ts",
       "src/agent/world/WorldStateSnapshot.ts",
       "src/agent/world/WorldModelManager.ts",
+      "src/agent/procedural/graph/index.ts",
       "src/agent/procedural/ProcedureManager.ts",
       "src/agent/procedural/ProcedureStore.ts",
       "src/agent/procedural/StepSequencer.ts",
@@ -3905,6 +4349,26 @@
       "src/agent/reconstruction/ReconstructiveMemory.ts",
       "src/agent/reconstruction/MemoryGraphBridge.ts",
       "src/agent/events/EventManager.ts",
+      "src/types/proceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphSchemas.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphValidator.ts",
+      "src/agent/procedural/graph/ProceduralGraphSerializer.ts",
+      "src/agent/procedural/graph/backing/index.ts",
+      "src/agent/procedural/graph/CompletionProvider.ts",
+      "src/agent/procedural/graph/tokenTail.ts",
+      "src/agent/procedural/graph/prompts.ts",
+      "src/agent/procedural/graph/ProceduralGraphSession.ts",
+      "src/agent/procedural/graph/ProceduralGuidance.ts",
+      "src/agent/procedural/graph/ProceduralGraphRefiner.ts",
+      "src/agent/procedural/graph/ProceduralGraphEvolution.ts",
+      "src/agent/procedural/graph/ProceduralGraphManager.ts",
+      "src/agent/procedural/graph/ProcedureGraphAdapter.ts",
+      "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts",
       "src/core/GraphStorage.ts"
     ],
     "tests/unit/agent/AgentReflectionManager.test.ts": [
@@ -3933,6 +4397,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts",
       "src/agent/causal/CausalReasoner.ts"
@@ -3982,12 +4447,6 @@
       "src/features/CompressionManager.ts",
       "src/types/agent-memory.ts"
     ],
-    "tests/unit/agent/context-window-manager-compress.test.ts": [
-      "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/agent/context-window-manager-wakeup.test.ts": [
-      "src/core/ManagerContext.ts"
-    ],
     "tests/unit/agent/ContextProfileManager.test.ts": [
       "src/agent/ContextProfileManager.ts",
       "src/agent/ContextWindowManager.ts",
@@ -4022,12 +4481,6 @@
       "src/types/types.ts",
       "src/types/agent-memory.ts",
       "src/utils/errors.ts"
-    ],
-    "tests/unit/agent/delta-services-wiring.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/agent/MemoryValidator.ts",
-      "src/agent/TrajectoryCompressor.ts",
-      "src/agent/ExperienceExtractor.ts"
     ],
     "tests/unit/agent/DistillationPipeline.test.ts": [
       "src/agent/DistillationPipeline.ts",
@@ -4111,11 +4564,6 @@
       "src/agent/AccessTracker.ts",
       "src/types/types.ts"
     ],
-    "tests/unit/agent/memoryBackend-wiring.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/agent/InMemoryBackend.ts",
-      "src/agent/SQLiteBackend.ts"
-    ],
     "tests/unit/agent/MemoryEngine.test.ts": [
       "src/agent/MemoryEngine.ts",
       "src/agent/ImportanceScorer.ts",
@@ -4172,9 +4620,30 @@
       "src/core/EntityManager.ts",
       "src/core/RelationManager.ts",
       "src/agent/procedural/index.ts",
+      "src/agent/procedural/graph/index.ts",
       "src/agent/procedural/ProcedureManager.ts",
       "src/agent/procedural/ProcedureStore.ts",
       "src/agent/procedural/StepSequencer.ts",
+      "src/types/proceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphSchemas.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphValidator.ts",
+      "src/agent/procedural/graph/ProceduralGraphSerializer.ts",
+      "src/agent/procedural/graph/backing/index.ts",
+      "src/agent/procedural/graph/CompletionProvider.ts",
+      "src/agent/procedural/graph/tokenTail.ts",
+      "src/agent/procedural/graph/prompts.ts",
+      "src/agent/procedural/graph/ProceduralGraphSession.ts",
+      "src/agent/procedural/graph/ProceduralGuidance.ts",
+      "src/agent/procedural/graph/ProceduralGraphRefiner.ts",
+      "src/agent/procedural/graph/ProceduralGraphEvolution.ts",
+      "src/agent/procedural/graph/ProceduralGraphManager.ts",
+      "src/agent/procedural/graph/ProcedureGraphAdapter.ts",
+      "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts",
       "src/types/procedure.ts"
     ],
     "tests/unit/agent/ProcedureStore.test.ts": [
@@ -4182,20 +4651,31 @@
       "src/core/EntityManager.ts",
       "src/core/RelationManager.ts",
       "src/agent/procedural/index.ts",
+      "src/agent/procedural/graph/index.ts",
       "src/agent/procedural/ProcedureManager.ts",
       "src/agent/procedural/ProcedureStore.ts",
       "src/agent/procedural/StepSequencer.ts",
+      "src/types/proceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphSchemas.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphValidator.ts",
+      "src/agent/procedural/graph/ProceduralGraphSerializer.ts",
+      "src/agent/procedural/graph/backing/index.ts",
+      "src/agent/procedural/graph/CompletionProvider.ts",
+      "src/agent/procedural/graph/tokenTail.ts",
+      "src/agent/procedural/graph/prompts.ts",
+      "src/agent/procedural/graph/ProceduralGraphSession.ts",
+      "src/agent/procedural/graph/ProceduralGuidance.ts",
+      "src/agent/procedural/graph/ProceduralGraphRefiner.ts",
+      "src/agent/procedural/graph/ProceduralGraphEvolution.ts",
+      "src/agent/procedural/graph/ProceduralGraphManager.ts",
+      "src/agent/procedural/graph/ProcedureGraphAdapter.ts",
+      "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts",
       "src/types/procedure.ts"
-    ],
-    "tests/unit/agent/profile-manager-basics.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/agent/ProfileManager.ts"
-    ],
-    "tests/unit/agent/profile-manager-extraction.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/agent/ProfileManager.ts",
-      "src/agent/SessionManager.ts",
-      "src/agent/SalienceEngine.ts"
     ],
     "tests/unit/agent/ProjectContextManager.test.ts": [
       "src/agent/ProjectContextManager.ts",
@@ -4207,38 +4687,6 @@
       "src/agent/ProspectiveMemoryManager.ts",
       "src/types/types.ts",
       "src/types/agent-memory.ts"
-    ],
-    "tests/unit/agent/rbac.test.ts": [
-      "src/agent/rbac/index.ts",
-      "src/agent/rbac/PermissionMatrix.ts",
-      "src/agent/rbac/RoleAssignmentStore.ts",
-      "src/agent/rbac/RbacMiddleware.ts",
-      "src/agent/rbac/RbacTypes.ts"
-    ],
-    "tests/unit/agent/reconstruction/CueTagContentGraph.test.ts": [
-      "src/agent/reconstruction/CueTagContentGraph.ts"
-    ],
-    "tests/unit/agent/reconstruction/MemoryDistiller.test.ts": [
-      "src/agent/reconstruction/MemoryDistiller.ts",
-      "src/search/LLMQueryPlanner.ts",
-      "src/types/reconstruction.ts"
-    ],
-    "tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/agent/reconstruction/ReconstructiveMemory.ts",
-      "src/agent/reconstruction/MemoryGraphBridge.ts",
-      "src/types/types.ts",
-      "src/types/reconstruction.ts"
-    ],
-    "tests/unit/agent/reconstruction/MemoryToolkit.test.ts": [
-      "src/agent/reconstruction/CueTagContentGraph.ts",
-      "src/agent/reconstruction/MemoryToolkit.ts"
-    ],
-    "tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts": [
-      "src/agent/reconstruction/ReconstructiveMemory.ts",
-      "src/agent/reconstruction/MemoryDistiller.ts",
-      "src/types/reconstruction.ts",
-      "src/search/LLMQueryPlanner.ts"
     ],
     "tests/unit/agent/ReflectionStage.test.ts": [
       "src/agent/ConsolidationPipeline.ts",
@@ -4270,6 +4718,10 @@
     "tests/unit/agent/RuleEvaluator.test.ts": [
       "src/agent/RuleEvaluator.ts",
       "src/types/agent-memory.ts"
+    ],
+    "tests/unit/agent/SQLiteBackend.test.ts": [
+      "src/agent/SQLiteBackend.ts",
+      "src/core/ManagerContext.ts"
     ],
     "tests/unit/agent/SalienceEngine.test.ts": [
       "src/agent/SalienceEngine.ts",
@@ -4303,10 +4755,6 @@
       "src/types/types.ts",
       "src/types/agent-memory.ts"
     ],
-    "tests/unit/agent/SQLiteBackend.test.ts": [
-      "src/agent/SQLiteBackend.ts",
-      "src/core/ManagerContext.ts"
-    ],
     "tests/unit/agent/SummarizationService.test.ts": [
       "src/agent/SummarizationService.ts"
     ],
@@ -4332,12 +4780,6 @@
       "src/agent/VisibilityResolver.ts",
       "src/types/agent-memory.ts"
     ],
-    "tests/unit/agent/WorkingMemoryManager.test.ts": [
-      "src/agent/WorkingMemoryManager.ts",
-      "src/types/types.ts",
-      "src/types/agent-memory.ts",
-      "src/utils/errors.ts"
-    ],
     "tests/unit/agent/WorkThreadManager.test.ts": [
       "src/agent/WorkThreadManager.ts",
       "src/core/GraphStorage.ts",
@@ -4345,12 +4787,167 @@
       "src/core/RelationManager.ts",
       "src/types/types.ts"
     ],
+    "tests/unit/agent/WorkingMemoryManager.test.ts": [
+      "src/agent/WorkingMemoryManager.ts",
+      "src/types/types.ts",
+      "src/types/agent-memory.ts",
+      "src/utils/errors.ts"
+    ],
     "tests/unit/agent/WorldModel.test.ts": [
       "src/core/GraphStorage.ts",
       "src/core/EntityManager.ts",
       "src/agent/world/index.ts",
       "src/agent/world/WorldStateSnapshot.ts",
       "src/agent/world/WorldModelManager.ts"
+    ],
+    "tests/unit/agent/agent-memory-manager-diary.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/agent/context-window-manager-compress.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/agent/context-window-manager-wakeup.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/agent/delta-services-wiring.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/agent/MemoryValidator.ts",
+      "src/agent/TrajectoryCompressor.ts",
+      "src/agent/ExperienceExtractor.ts"
+    ],
+    "tests/unit/agent/memoryBackend-wiring.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/agent/InMemoryBackend.ts",
+      "src/agent/SQLiteBackend.ts"
+    ],
+    "tests/unit/agent/procedural/graph/CompletionProvider.test.ts": [
+      "src/agent/procedural/graph/CompletionProvider.ts",
+      "src/search/LLMQueryPlanner.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProceduralGraph.test.ts": [
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/types/proceduralGraph.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProceduralGraphEvolution.test.ts": [
+      "src/types/proceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphEvolution.ts",
+      "src/agent/procedural/graph/CompletionProvider.ts",
+      "src/agent/procedural/graph/tokenTail.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphValidator.ts",
+      "src/agent/procedural/graph/ProceduralGraphSerializer.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProceduralGraphManager.test.ts": [
+      "src/types/proceduralGraph.ts",
+      "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/ProceduralGraphManager.ts",
+      "src/agent/procedural/graph/canonical.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProceduralGraphRefiner.test.ts": [
+      "src/types/proceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphRefiner.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProceduralGraphSchemas.test.ts": [
+      "src/agent/procedural/graph/ProceduralGraphSchemas.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/types/proceduralGraph.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProceduralGraphSerializer.test.ts": [
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphSerializer.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/types/proceduralGraph.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProceduralGraphSession.test.ts": [
+      "src/agent/procedural/graph/CompletionProvider.ts",
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphSession.ts",
+      "src/agent/procedural/graph/prompts.ts",
+      "src/types/proceduralGraph.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProceduralGraphValidator.test.ts": [
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphValidator.ts",
+      "src/agent/procedural/graph/canonical.ts",
+      "src/types/proceduralGraph.ts"
+    ],
+    "tests/unit/agent/procedural/graph/ProcedureGraphAdapter.test.ts": [
+      "src/types/procedure.ts",
+      "src/agent/procedural/graph/ProcedureGraphAdapter.ts",
+      "src/agent/procedural/StepSequencer.ts"
+    ],
+    "tests/unit/agent/procedural/graph/appendixF.test.ts": [
+      "src/agent/procedural/graph/ProceduralGraph.ts",
+      "src/agent/procedural/graph/ProceduralGraphSession.ts",
+      "src/types/proceduralGraph.ts"
+    ],
+    "tests/unit/agent/procedural/graph/backing/jsonl.test.ts": [
+      "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
+      "src/utils/logger.ts"
+    ],
+    "tests/unit/agent/procedural/graph/backing/memory.test.ts": [
+      "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+      "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts"
+    ],
+    "tests/unit/agent/procedural/graph/backing/sqlite.test.ts": [
+      "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts",
+      "src/core/SQLiteStorage.ts",
+      "src/core/nodeSqliteAdapter.ts"
+    ],
+    "tests/unit/agent/procedural/graph/canonical.test.ts": [
+      "src/agent/procedural/graph/canonical.ts",
+      "src/types/proceduralGraph.ts"
+    ],
+    "tests/unit/agent/procedural/graph/prompts.test.ts": [
+      "src/agent/procedural/graph/prompts.ts"
+    ],
+    "tests/unit/agent/procedural/graph/tokenTail.test.ts": [
+      "src/agent/procedural/graph/tokenTail.ts",
+      "src/types/proceduralGraph.ts"
+    ],
+    "tests/unit/agent/profile-manager-basics.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/agent/ProfileManager.ts"
+    ],
+    "tests/unit/agent/profile-manager-extraction.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/agent/ProfileManager.ts",
+      "src/agent/SessionManager.ts",
+      "src/agent/SalienceEngine.ts"
+    ],
+    "tests/unit/agent/rbac.test.ts": [
+      "src/agent/rbac/index.ts",
+      "src/agent/rbac/PermissionMatrix.ts",
+      "src/agent/rbac/RoleAssignmentStore.ts",
+      "src/agent/rbac/RbacMiddleware.ts",
+      "src/agent/rbac/RbacTypes.ts"
+    ],
+    "tests/unit/agent/reconstruction/CueTagContentGraph.test.ts": [
+      "src/agent/reconstruction/CueTagContentGraph.ts"
+    ],
+    "tests/unit/agent/reconstruction/MemoryDistiller.test.ts": [
+      "src/agent/reconstruction/MemoryDistiller.ts",
+      "src/search/LLMQueryPlanner.ts",
+      "src/types/reconstruction.ts"
+    ],
+    "tests/unit/agent/reconstruction/MemoryGraphBridge.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "src/types/types.ts",
+      "src/types/reconstruction.ts"
+    ],
+    "tests/unit/agent/reconstruction/MemoryToolkit.test.ts": [
+      "src/agent/reconstruction/CueTagContentGraph.ts",
+      "src/agent/reconstruction/MemoryToolkit.ts"
+    ],
+    "tests/unit/agent/reconstruction/ReconstructiveMemory.test.ts": [
+      "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "src/agent/reconstruction/MemoryDistiller.ts",
+      "src/types/reconstruction.ts",
+      "src/search/LLMQueryPlanner.ts"
     ],
     "tests/unit/cli/audit.test.ts": [
       "src/features/AuditLog.ts",
@@ -4371,6 +4968,9 @@
     "tests/unit/cli/config.test.ts": [
       "src/cli/config.ts"
     ],
+    "tests/unit/cli/decision.test.ts": [
+      "src/cli/commands/decision.ts"
+    ],
     "tests/unit/cli/diag.test.ts": [
       "src/core/ManagerContext.ts",
       "src/cli/commands/diag.ts"
@@ -4378,9 +4978,24 @@
     "tests/unit/cli/doctor.test.ts": [
       "src/cli/commands/doctor.ts"
     ],
+    "tests/unit/cli/exclusion.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/exclusion.ts"
+    ],
     "tests/unit/cli/formatters.test.ts": [
       "src/cli/formatters.ts",
       "src/types/types.ts"
+    ],
+    "tests/unit/cli/graph.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/graph.ts"
+    ],
+    "tests/unit/cli/heuristic.test.ts": [
+      "src/cli/commands/heuristic.ts"
+    ],
+    "tests/unit/cli/hierarchy.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/hierarchy.ts"
     ],
     "tests/unit/cli/index.test.ts": [
       "src/cli/commands/index.ts",
@@ -4393,58 +5008,53 @@
     "tests/unit/cli/interactive.test.ts": [
       "src/cli/interactive.ts"
     ],
+    "tests/unit/cli/maintenance-cli.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/maintenance.ts"
+    ],
+    "tests/unit/cli/observation.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/observation.ts"
+    ],
+    "tests/unit/cli/observationDedup.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/observationDedup.ts"
+    ],
     "tests/unit/cli/options.test.ts": [
       "src/cli/options.ts"
     ],
+    "tests/unit/cli/projectContext.test.ts": [
+      "src/cli/commands/projectContext.ts"
+    ],
+    "tests/unit/cli/search-extended.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/search.ts"
+    ],
     "tests/unit/cli/smoke.test.ts": [
       "src/cli/commands/smoke.ts"
+    ],
+    "tests/unit/cli/spell.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/spell.ts"
+    ],
+    "tests/unit/cli/tag.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/tag.ts"
+    ],
+    "tests/unit/cli/toolAffordance.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/cli/commands/toolAffordance.ts"
     ],
     "tests/unit/core/BatchTransaction.test.ts": [
       "src/core/GraphStorage.ts",
       "src/core/TransactionManager.ts",
       "src/types/types.ts"
     ],
-    "tests/unit/core/columns/columns-review-fixes.test.ts": [
-      "src/core/columns/JsonlColumnStore.ts",
-      "src/core/columns/IColumnStore.ts",
-      "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/core/columns/IColumnStore.test.ts": [
-      "src/core/columns/IColumnStore.ts"
-    ],
-    "tests/unit/core/columns/JsonlColumnStore.test.ts": [
-      "src/core/columns/JsonlColumnStore.ts",
-      "src/core/columns/IColumnStore.ts"
-    ],
-    "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/core/ObservationManager.ts",
-      "src/core/GraphStorage.ts",
-      "src/core/columns/IColumnStore.ts"
-    ],
     "tests/unit/core/ConcurrencyControl.test.ts": [
       "src/core/GraphStorage.ts",
       "src/core/SQLiteStorage.ts",
       "src/core/EntityManager.ts",
       "src/core/ObservationManager.ts"
-    ],
-    "tests/unit/core/entity-id.test.ts": [
-      "src/core/EntityManager.ts",
-      "src/core/GraphStorage.ts",
-      "src/core/SQLiteStorage.ts"
-    ],
-    "tests/unit/core/entity-manager-list-projects.test.ts": [
-      "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/core/entity-manager-profile-namespace.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/utils/errors.ts"
-    ],
-    "tests/unit/core/entity-manager-project-stamping.test.ts": [
-      "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/core/entity-manager-version-chain.test.ts": [
-      "src/core/ManagerContext.ts"
     ],
     "tests/unit/core/EntityManager.test.ts": [
       "src/core/EntityManager.ts",
@@ -4472,11 +5082,13 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
     "tests/unit/core/GraphStorage.test.ts": [
-      "src/core/GraphStorage.ts"
+      "src/core/GraphStorage.ts",
+      "src/types/types.ts"
     ],
     "tests/unit/core/GraphTraversal.test.ts": [
       "src/core/GraphStorage.ts",
@@ -4491,32 +5103,10 @@
       "src/core/GraphStorage.ts",
       "src/utils/errors.ts"
     ],
-    "tests/unit/core/known-issue-fixes.test.ts": [
-      "src/core/GraphStorage.ts",
+    "tests/unit/core/ManagerContext-proceduralGraph.test.ts": [
       "src/core/ManagerContext.ts",
-      "src/types/index.ts",
-      "src/types/search.ts",
-      "src/types/types.ts",
-      "src/types/task-scheduler.ts",
-      "src/types/agent-memory.ts",
-      "src/types/artifact.ts",
-      "src/types/progress.ts",
-      "src/types/result.ts",
-      "src/types/reconstruction.ts",
-      "src/types/event.ts"
-    ],
-    "tests/unit/core/manager-context-default-embedding.test.ts": [
-      "src/utils/constants.ts"
-    ],
-    "tests/unit/core/manager-context-new-managers.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/agent/procedural/ProcedureManager.ts",
-      "src/agent/causal/CausalReasoner.ts",
-      "src/agent/rbac/RbacMiddleware.ts",
-      "src/agent/rbac/RoleAssignmentStore.ts"
-    ],
-    "tests/unit/core/manager-context-project.test.ts": [
-      "src/core/ManagerContext.ts"
+      "src/agent/procedural/graph/backing/InMemoryProceduralGraphBacking.ts",
+      "src/types/proceduralGraph.ts"
     ],
     "tests/unit/core/ManagerContext.test.ts": [
       "src/core/index.ts",
@@ -4547,6 +5137,151 @@
       "src/agent/MemoryFormatter.ts",
       "src/agent/AgentMemoryManager.ts"
     ],
+    "tests/unit/core/ObservationManager.dedup.test.ts": [
+      "src/core/ObservationManager.ts",
+      "src/core/GraphStorage.ts",
+      "src/types/types.ts"
+    ],
+    "tests/unit/core/ObservationManager.test.ts": [
+      "src/core/ObservationManager.ts",
+      "src/core/GraphStorage.ts",
+      "src/utils/errors.ts"
+    ],
+    "tests/unit/core/ObservationStore.test.ts": [
+      "src/core/ObservationStore.ts"
+    ],
+    "tests/unit/core/PostgreSQLStorage.test.ts": [
+      "src/types/index.ts",
+      "src/types/search.ts",
+      "src/types/types.ts",
+      "src/types/task-scheduler.ts",
+      "src/types/agent-memory.ts",
+      "src/types/artifact.ts",
+      "src/types/progress.ts",
+      "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
+      "src/types/reconstruction.ts",
+      "src/types/event.ts",
+      "src/core/PostgreSQLStorage.ts"
+    ],
+    "tests/unit/core/RefIndex.test.ts": [
+      "src/core/RefIndex.ts",
+      "src/core/EntityManager.ts",
+      "src/core/GraphStorage.ts",
+      "src/utils/errors.ts"
+    ],
+    "tests/unit/core/RelationManager-metadata.test.ts": [
+      "src/core/RelationManager.ts",
+      "src/core/EntityManager.ts",
+      "src/core/GraphStorage.ts",
+      "src/core/SQLiteStorage.ts",
+      "src/core/nodeSqliteAdapter.ts"
+    ],
+    "tests/unit/core/RelationManager.test.ts": [
+      "src/core/RelationManager.ts",
+      "src/core/EntityManager.ts",
+      "src/core/GraphStorage.ts",
+      "src/utils/errors.ts"
+    ],
+    "tests/unit/core/SQLiteStorage.test.ts": [
+      "src/core/SQLiteStorage.ts"
+    ],
+    "tests/unit/core/StorageFactory.test.ts": [
+      "src/core/StorageFactory.ts",
+      "src/core/GraphStorage.ts",
+      "src/core/SQLiteStorage.ts",
+      "src/types/index.ts",
+      "src/types/search.ts",
+      "src/types/types.ts",
+      "src/types/task-scheduler.ts",
+      "src/types/agent-memory.ts",
+      "src/types/artifact.ts",
+      "src/types/progress.ts",
+      "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
+      "src/types/reconstruction.ts",
+      "src/types/event.ts"
+    ],
+    "tests/unit/core/TransactionBatching.test.ts": [
+      "src/core/TransactionManager.ts",
+      "src/core/GraphStorage.ts"
+    ],
+    "tests/unit/core/TransactionManager.test.ts": [
+      "src/core/TransactionManager.ts",
+      "src/core/GraphStorage.ts",
+      "src/utils/errors.ts"
+    ],
+    "tests/unit/core/TransitionLedger.test.ts": [
+      "src/core/TransitionLedger.ts",
+      "src/core/GraphEventEmitter.ts"
+    ],
+    "tests/unit/core/columns/IColumnStore.test.ts": [
+      "src/core/columns/IColumnStore.ts"
+    ],
+    "tests/unit/core/columns/JsonlColumnStore.test.ts": [
+      "src/core/columns/JsonlColumnStore.ts",
+      "src/core/columns/IColumnStore.ts"
+    ],
+    "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/core/ObservationManager.ts",
+      "src/core/GraphStorage.ts",
+      "src/core/columns/IColumnStore.ts"
+    ],
+    "tests/unit/core/columns/columns-review-fixes.test.ts": [
+      "src/core/columns/JsonlColumnStore.ts",
+      "src/core/columns/IColumnStore.ts",
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/core/columns/shadow-write-drain.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/core/entity-id.test.ts": [
+      "src/core/EntityManager.ts",
+      "src/core/GraphStorage.ts",
+      "src/core/SQLiteStorage.ts"
+    ],
+    "tests/unit/core/entity-manager-list-projects.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/core/entity-manager-profile-namespace.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/utils/errors.ts"
+    ],
+    "tests/unit/core/entity-manager-project-stamping.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/core/entity-manager-version-chain.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/core/known-issue-fixes.test.ts": [
+      "src/core/GraphStorage.ts",
+      "src/core/ManagerContext.ts",
+      "src/types/index.ts",
+      "src/types/search.ts",
+      "src/types/types.ts",
+      "src/types/task-scheduler.ts",
+      "src/types/agent-memory.ts",
+      "src/types/artifact.ts",
+      "src/types/progress.ts",
+      "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
+      "src/types/reconstruction.ts",
+      "src/types/event.ts"
+    ],
+    "tests/unit/core/manager-context-default-embedding.test.ts": [
+      "src/utils/constants.ts"
+    ],
+    "tests/unit/core/manager-context-new-managers.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/agent/procedural/ProcedureManager.ts",
+      "src/agent/causal/CausalReasoner.ts",
+      "src/agent/rbac/RbacMiddleware.ts",
+      "src/agent/rbac/RoleAssignmentStore.ts"
+    ],
+    "tests/unit/core/manager-context-project.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
     "tests/unit/core/mmap/FsReadMmapBackend.test.ts": [
       "src/core/mmap/FsReadMmapBackend.ts",
       "src/core/mmap/IMmapBackend.ts"
@@ -4561,6 +5296,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -4572,54 +5308,19 @@
       "src/core/mmap/FsReadMmapBackend.ts",
       "src/core/GraphStorage.ts"
     ],
+    "tests/unit/core/nodeSqliteAdapter.test.ts": [
+      "src/core/nodeSqliteAdapter.ts"
+    ],
     "tests/unit/core/observation-validate-hook.test.ts": [
       "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/core/ObservationManager.dedup.test.ts": [
-      "src/core/ObservationManager.ts",
-      "src/core/GraphStorage.ts",
-      "src/types/types.ts"
-    ],
-    "tests/unit/core/ObservationManager.test.ts": [
-      "src/core/ObservationManager.ts",
-      "src/core/GraphStorage.ts",
-      "src/utils/errors.ts"
-    ],
-    "tests/unit/core/ObservationStore.test.ts": [
-      "src/core/ObservationStore.ts"
     ],
     "tests/unit/core/optimistic-concurrency.test.ts": [
       "src/core/GraphStorage.ts",
       "src/core/EntityManager.ts",
       "src/utils/errors.ts"
     ],
-    "tests/unit/core/PostgreSQLStorage.test.ts": [
-      "src/types/index.ts",
-      "src/types/search.ts",
-      "src/types/types.ts",
-      "src/types/task-scheduler.ts",
-      "src/types/agent-memory.ts",
-      "src/types/artifact.ts",
-      "src/types/progress.ts",
-      "src/types/result.ts",
-      "src/types/reconstruction.ts",
-      "src/types/event.ts",
-      "src/core/PostgreSQLStorage.ts"
-    ],
-    "tests/unit/core/RefIndex.test.ts": [
-      "src/core/RefIndex.ts",
-      "src/core/EntityManager.ts",
-      "src/core/GraphStorage.ts",
-      "src/utils/errors.ts"
-    ],
     "tests/unit/core/relation-manager-temporal.test.ts": [
       "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/core/RelationManager.test.ts": [
-      "src/core/RelationManager.ts",
-      "src/core/EntityManager.ts",
-      "src/core/GraphStorage.ts",
-      "src/utils/errors.ts"
     ],
     "tests/unit/core/rename-entity.test.ts": [
       "src/core/EntityManager.ts",
@@ -4638,6 +5339,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -4648,6 +5350,7 @@
     ],
     "tests/unit/core/segments/GraphStorage-segments.test.ts": [
       "src/core/GraphStorage.ts",
+      "src/core/segments/FileSegmentStorage.ts",
       "src/types/index.ts",
       "src/types/search.ts",
       "src/types/types.ts",
@@ -4656,6 +5359,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -4675,11 +5379,16 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
     "tests/unit/core/sqlite-content-hash-migration.test.ts": [
       "src/core/SQLiteStorage.ts"
+    ],
+    "tests/unit/core/sqlite-driver-resolver.test.ts": [
+      "src/core/SQLiteStorage.ts",
+      "src/core/nodeSqliteAdapter.ts"
     ],
     "tests/unit/core/sqlite-events.test.ts": [
       "src/core/SQLiteStorage.ts",
@@ -4696,42 +5405,11 @@
       "src/types/types.ts"
     ],
     "tests/unit/core/sqlite-lazy-load.test.ts": [],
-    "tests/unit/core/SQLiteStorage.test.ts": [
-      "src/core/SQLiteStorage.ts"
-    ],
-    "tests/unit/core/StorageFactory.test.ts": [
-      "src/core/StorageFactory.ts",
-      "src/core/GraphStorage.ts",
-      "src/core/SQLiteStorage.ts",
-      "src/types/index.ts",
-      "src/types/search.ts",
-      "src/types/types.ts",
-      "src/types/task-scheduler.ts",
-      "src/types/agent-memory.ts",
-      "src/types/artifact.ts",
-      "src/types/progress.ts",
-      "src/types/result.ts",
-      "src/types/reconstruction.ts",
-      "src/types/event.ts"
-    ],
     "tests/unit/core/temporal-versioning.test.ts": [
       "src/core/GraphStorage.ts",
       "src/core/EntityManager.ts",
       "src/core/ObservationManager.ts",
       "src/utils/errors.ts"
-    ],
-    "tests/unit/core/TransactionBatching.test.ts": [
-      "src/core/TransactionManager.ts",
-      "src/core/GraphStorage.ts"
-    ],
-    "tests/unit/core/TransactionManager.test.ts": [
-      "src/core/TransactionManager.ts",
-      "src/core/GraphStorage.ts",
-      "src/utils/errors.ts"
-    ],
-    "tests/unit/core/TransitionLedger.test.ts": [
-      "src/core/TransitionLedger.ts",
-      "src/core/GraphEventEmitter.ts"
     ],
     "tests/unit/core/write-path-delta.test.ts": [
       "src/core/GraphStorage.ts",
@@ -4743,7 +5421,6 @@
       "src/types/types.ts",
       "src/utils/errors.ts"
     ],
-    "tests/unit/eslint/no-unused-updateentity-return.test.ts": [],
     "tests/unit/features/AnalyticsManager.test.ts": [
       "src/features/AnalyticsManager.ts",
       "src/core/GraphStorage.ts"
@@ -4768,6 +5445,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -4776,23 +5454,12 @@
       "src/features/IOManager.ts",
       "src/core/GraphStorage.ts"
     ],
-    "tests/unit/features/compression-manager-priority-dedup.test.ts": [
-      "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/features/compression-manager-versioning-guard.test.ts": [
-      "src/core/ManagerContext.ts"
-    ],
     "tests/unit/features/CompressionManager.test.ts": [
       "src/features/CompressionManager.ts",
       "src/core/EntityManager.ts",
       "src/core/RelationManager.ts",
       "src/core/GraphStorage.ts",
       "src/utils/errors.ts"
-    ],
-    "tests/unit/features/contradiction-detector-detect.test.ts": [
-      "src/features/ContradictionDetector.ts",
-      "src/types/types.ts",
-      "src/search/SemanticSearch.ts"
     ],
     "tests/unit/features/FactExtractor.test.ts": [
       "src/features/FactExtractor.ts",
@@ -4816,22 +5483,9 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts",
-      "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/features/ingest-provenance-modes.test.ts": [
-      "src/core/ManagerContext.ts",
-      "src/features/IOManager.ts",
-      "src/search/LLMQueryPlanner.ts"
-    ],
-    "tests/unit/features/io-manager-ingest.test.ts": [
-      "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/features/io-manager-split.test.ts": [
-      "src/core/ManagerContext.ts"
-    ],
-    "tests/unit/features/io-manager-visualize.test.ts": [
       "src/core/ManagerContext.ts"
     ],
     "tests/unit/features/IOManager.rdf-export.test.ts": [
@@ -4845,6 +5499,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -4859,6 +5514,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts",
       "src/utils/compressionUtil.ts",
@@ -4880,8 +5536,41 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
+    ],
+    "tests/unit/features/StreamingExporter.test.ts": [
+      "src/features/StreamingExporter.ts",
+      "src/types/types.ts"
+    ],
+    "tests/unit/features/TagManager.test.ts": [
+      "src/features/TagManager.ts"
+    ],
+    "tests/unit/features/compression-manager-priority-dedup.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/features/compression-manager-versioning-guard.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/features/contradiction-detector-detect.test.ts": [
+      "src/features/ContradictionDetector.ts",
+      "src/types/types.ts",
+      "src/search/SemanticSearch.ts"
+    ],
+    "tests/unit/features/ingest-provenance-modes.test.ts": [
+      "src/core/ManagerContext.ts",
+      "src/features/IOManager.ts",
+      "src/search/LLMQueryPlanner.ts"
+    ],
+    "tests/unit/features/io-manager-ingest.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/features/io-manager-split.test.ts": [
+      "src/core/ManagerContext.ts"
+    ],
+    "tests/unit/features/io-manager-visualize.test.ts": [
+      "src/core/ManagerContext.ts"
     ],
     "tests/unit/features/pii-redaction-export.test.ts": [
       "src/core/GraphStorage.ts",
@@ -4897,6 +5586,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -4909,14 +5599,13 @@
       "src/features/SemanticForget.ts",
       "src/search/SemanticSearch.ts"
     ],
-    "tests/unit/features/StreamingExporter.test.ts": [
-      "src/features/StreamingExporter.ts",
-      "src/types/types.ts"
-    ],
-    "tests/unit/features/TagManager.test.ts": [
-      "src/features/TagManager.ts"
-    ],
+    "tests/unit/lint-rules/lint-rules.test.ts": [],
     "tests/unit/performance/baselineHelper.test.ts": [],
+    "tests/unit/search/BM25Search.test.ts": [
+      "src/search/BM25Search.ts",
+      "src/core/EntityManager.ts",
+      "src/core/GraphStorage.ts"
+    ],
     "tests/unit/search/BasicSearch.test.ts": [
       "src/search/BasicSearch.ts",
       "src/core/EntityManager.ts",
@@ -4926,11 +5615,6 @@
     "tests/unit/search/BloomFilter.test.ts": [
       "src/search/BloomFilter.ts",
       "src/search/BloomPreScreener.ts",
-      "src/core/GraphStorage.ts"
-    ],
-    "tests/unit/search/BM25Search.test.ts": [
-      "src/search/BM25Search.ts",
-      "src/core/EntityManager.ts",
       "src/core/GraphStorage.ts"
     ],
     "tests/unit/search/BooleanSearch.test.ts": [
@@ -4950,6 +5634,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -4970,6 +5655,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -4978,6 +5664,17 @@
       "src/core/EntityManager.ts",
       "src/core/RelationManager.ts",
       "src/core/GraphStorage.ts",
+      "src/types/index.ts",
+      "src/types/search.ts",
+      "src/types/types.ts",
+      "src/types/task-scheduler.ts",
+      "src/types/agent-memory.ts",
+      "src/types/artifact.ts",
+      "src/types/progress.ts",
+      "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
+      "src/types/reconstruction.ts",
+      "src/types/event.ts",
       "src/search/BloomPreScreener.ts"
     ],
     "tests/unit/search/FuzzySearchWorkerPath.test.ts": [
@@ -4996,6 +5693,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5009,6 +5707,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5022,6 +5721,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5036,6 +5736,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5050,6 +5751,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5064,6 +5766,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5077,6 +5780,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5097,6 +5801,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5110,6 +5815,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts",
       "src/search/SearchManager.ts"
@@ -5124,9 +5830,13 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts",
       "src/search/SearchManager.ts"
+    ],
+    "tests/unit/search/LlamaCppEmbeddingService.test.ts": [
+      "src/search/EmbeddingService.ts"
     ],
     "tests/unit/search/MaterializedViews.test.ts": [
       "src/core/GraphStorage.ts",
@@ -5155,6 +5865,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5183,6 +5894,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5202,6 +5914,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5215,6 +5928,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5228,6 +5942,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5270,6 +5985,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5292,21 +6008,20 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
+    ],
+    "tests/unit/search/SQLiteFtsSearchIntegration.test.ts": [
+      "src/core/SQLiteStorage.ts",
+      "src/search/BM25Search.ts",
+      "src/search/HybridSearchManager.ts",
+      "src/search/RankedSearch.ts"
     ],
     "tests/unit/search/SavedSearchManager.test.ts": [
       "src/search/SavedSearchManager.ts",
       "src/search/BasicSearch.ts",
       "src/core/GraphStorage.ts"
-    ],
-    "tests/unit/search/search-filter-chain-project.test.ts": [
-      "src/search/SearchFilterChain.ts",
-      "src/types/types.ts"
-    ],
-    "tests/unit/search/search-filter-chain-versioning.test.ts": [
-      "src/search/SearchFilterChain.ts",
-      "src/types/types.ts"
     ],
     "tests/unit/search/SearchFilterChain.test.ts": [
       "src/search/SearchFilterChain.ts",
@@ -5318,6 +6033,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5379,6 +6095,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5396,6 +6113,38 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
+      "src/types/reconstruction.ts",
+      "src/types/event.ts"
+    ],
+    "tests/unit/search/TFIDFEventSync.test.ts": [
+      "src/search/TFIDFEventSync.ts",
+      "src/search/TFIDFIndexManager.ts",
+      "src/core/GraphEventEmitter.ts",
+      "src/core/GraphStorage.ts",
+      "src/types/index.ts",
+      "src/types/search.ts",
+      "src/types/types.ts",
+      "src/types/task-scheduler.ts",
+      "src/types/agent-memory.ts",
+      "src/types/artifact.ts",
+      "src/types/progress.ts",
+      "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
+      "src/types/reconstruction.ts",
+      "src/types/event.ts"
+    ],
+    "tests/unit/search/TFIDFIndexManager.test.ts": [
+      "src/search/TFIDFIndexManager.ts",
+      "src/types/index.ts",
+      "src/types/search.ts",
+      "src/types/types.ts",
+      "src/types/task-scheduler.ts",
+      "src/types/agent-memory.ts",
+      "src/types/artifact.ts",
+      "src/types/progress.ts",
+      "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5457,37 +6206,21 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
-    "tests/unit/search/TFIDFEventSync.test.ts": [
-      "src/search/TFIDFEventSync.ts",
-      "src/search/TFIDFIndexManager.ts",
-      "src/core/GraphEventEmitter.ts",
-      "src/core/GraphStorage.ts",
-      "src/types/index.ts",
-      "src/types/search.ts",
-      "src/types/types.ts",
-      "src/types/task-scheduler.ts",
-      "src/types/agent-memory.ts",
-      "src/types/artifact.ts",
-      "src/types/progress.ts",
-      "src/types/result.ts",
-      "src/types/reconstruction.ts",
-      "src/types/event.ts"
+    "tests/unit/search/VectorStore.test.ts": [
+      "src/search/VectorStore.ts",
+      "src/utils/textSimilarity.ts"
     ],
-    "tests/unit/search/TFIDFIndexManager.test.ts": [
-      "src/search/TFIDFIndexManager.ts",
-      "src/types/index.ts",
-      "src/types/search.ts",
-      "src/types/types.ts",
-      "src/types/task-scheduler.ts",
-      "src/types/agent-memory.ts",
-      "src/types/artifact.ts",
-      "src/types/progress.ts",
-      "src/types/result.ts",
-      "src/types/reconstruction.ts",
-      "src/types/event.ts"
+    "tests/unit/search/search-filter-chain-project.test.ts": [
+      "src/search/SearchFilterChain.ts",
+      "src/types/types.ts"
+    ],
+    "tests/unit/search/search-filter-chain-versioning.test.ts": [
+      "src/search/SearchFilterChain.ts",
+      "src/types/types.ts"
     ],
     "tests/unit/search/tiered/BrotliColdTier.test.ts": [
       "src/search/tiered/BrotliColdTier.ts",
@@ -5502,12 +6235,6 @@
     "tests/unit/search/tiered/LRUHotTier.test.ts": [
       "src/search/tiered/LRUHotTier.ts"
     ],
-    "tests/unit/search/tiered/tiered-review-fixes.test.ts": [
-      "src/search/tiered/TieredIndex.ts",
-      "src/search/tiered/ITieredIndex.ts",
-      "src/search/tiered/LRUHotTier.ts",
-      "src/search/tiered/DiskWarmTier.ts"
-    ],
     "tests/unit/search/tiered/TieredIndex-wiring.test.ts": [
       "src/core/ManagerContext.ts"
     ],
@@ -5516,9 +6243,11 @@
       "src/search/tiered/ITieredIndex.ts",
       "src/search/tiered/LRUHotTier.ts"
     ],
-    "tests/unit/search/VectorStore.test.ts": [
-      "src/search/VectorStore.ts",
-      "src/utils/textSimilarity.ts"
+    "tests/unit/search/tiered/tiered-review-fixes.test.ts": [
+      "src/search/tiered/TieredIndex.ts",
+      "src/search/tiered/ITieredIndex.ts",
+      "src/search/tiered/LRUHotTier.ts",
+      "src/search/tiered/DiskWarmTier.ts"
     ],
     "tests/unit/security/ABACPolicy.test.ts": [
       "src/security/ABACPolicy.ts"
@@ -5554,6 +6283,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5588,6 +6318,26 @@
     "tests/unit/utils/CachePressureCoordinator.test.ts": [
       "src/utils/CachePressureCoordinator.ts"
     ],
+    "tests/unit/utils/EntityValidator.test.ts": [
+      "src/utils/EntityValidator.ts",
+      "src/utils/validators.ts",
+      "src/types/types.ts"
+    ],
+    "tests/unit/utils/MemoryMonitor.test.ts": [
+      "src/utils/MemoryMonitor.ts"
+    ],
+    "tests/unit/utils/SchemaValidator.test.ts": [
+      "src/utils/SchemaValidator.ts",
+      "src/types/types.ts"
+    ],
+    "tests/unit/utils/WorkerPoolManager.test.ts": [
+      "src/utils/WorkerPoolManager.ts"
+    ],
+    "tests/unit/utils/WorkerTaskManager.test.ts": [
+      "src/utils/WorkerTaskManager.ts",
+      "src/utils/taskScheduler.ts",
+      "src/utils/WorkerPoolManager.ts"
+    ],
     "tests/unit/utils/compressedCache.test.ts": [
       "src/utils/compressedCache.ts",
       "src/types/index.ts",
@@ -5598,8 +6348,16 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
+    ],
+    "tests/unit/utils/compression/CompressedMap.test.ts": [
+      "src/utils/compression/CompressedMap.ts",
+      "src/utils/compression/ICompressionAdapter.ts"
+    ],
+    "tests/unit/utils/compression/ICompressionAdapter.test.ts": [
+      "src/utils/compression/ICompressionAdapter.ts"
     ],
     "tests/unit/utils/compression/compressedEntityCache-wiring.test.ts": [
       "src/core/ManagerContext.ts",
@@ -5611,15 +6369,9 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
-    ],
-    "tests/unit/utils/compression/CompressedMap.test.ts": [
-      "src/utils/compression/CompressedMap.ts",
-      "src/utils/compression/ICompressionAdapter.ts"
-    ],
-    "tests/unit/utils/compression/ICompressionAdapter.test.ts": [
-      "src/utils/compression/ICompressionAdapter.ts"
     ],
     "tests/unit/utils/compressionUtil.test.ts": [
       "src/utils/compressionUtil.ts",
@@ -5664,19 +6416,15 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
-    "tests/unit/utils/EntityValidator.test.ts": [
-      "src/utils/EntityValidator.ts",
-      "src/utils/validators.ts",
-      "src/types/types.ts"
-    ],
-    "tests/unit/utils/errors.test.ts": [
-      "src/utils/errors.ts"
-    ],
     "tests/unit/utils/errorSuggestions.test.ts": [
       "src/utils/errorSuggestions.ts",
+      "src/utils/errors.ts"
+    ],
+    "tests/unit/utils/errors.test.ts": [
       "src/utils/errors.ts"
     ],
     "tests/unit/utils/formatters.test.ts": [
@@ -5718,14 +6466,12 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
     "tests/unit/utils/logger.test.ts": [
       "src/utils/logger.ts"
-    ],
-    "tests/unit/utils/MemoryMonitor.test.ts": [
-      "src/utils/MemoryMonitor.ts"
     ],
     "tests/unit/utils/operationUtils.test.ts": [
       "src/utils/operationUtils.ts",
@@ -5770,10 +6516,6 @@
       "src/utils/SchemaValidator.ts",
       "src/utils/AsyncMutex.ts",
       "src/utils/textSimilarity.ts"
-    ],
-    "tests/unit/utils/SchemaValidator.test.ts": [
-      "src/utils/SchemaValidator.ts",
-      "src/types/types.ts"
     ],
     "tests/unit/utils/searchAlgorithms.test.ts": [
       "src/utils/index.ts",
@@ -5822,6 +6564,7 @@
       "src/types/artifact.ts",
       "src/types/progress.ts",
       "src/types/result.ts",
+      "src/types/proceduralGraph.ts",
       "src/types/reconstruction.ts",
       "src/types/event.ts"
     ],
@@ -5829,22 +6572,18 @@
       "src/utils/validators.ts",
       "src/types/types.ts"
     ],
-    "tests/unit/utils/WorkerPoolManager.test.ts": [
-      "src/utils/WorkerPoolManager.ts"
-    ],
-    "tests/unit/utils/WorkerTaskManager.test.ts": [
-      "src/utils/WorkerTaskManager.ts",
-      "src/utils/taskScheduler.ts",
-      "src/utils/WorkerPoolManager.ts"
-    ],
+    "tests/unit/workers/WorkerPool.test.ts": [],
     "tests/unit/workers/levenshteinWorker.test.ts": [
       "src/workers/levenshteinWorker.ts"
-    ],
-    "tests/unit/workers/WorkerPool.test.ts": []
+    ]
   },
   "classifiedUntested": [
     {
-      "file": "src/cli/commands/decision.ts",
+      "file": "src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts",
+      "category": null
+    },
+    {
+      "file": "src/agent/procedural/graph/backing/ProceduralGraphState.ts",
       "category": null
     },
     {
@@ -5852,23 +6591,7 @@
       "category": null
     },
     {
-      "file": "src/cli/commands/exclusion.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/graph.ts",
-      "category": null
-    },
-    {
       "file": "src/cli/commands/helpers.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/heuristic.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/hierarchy.ts",
       "category": null
     },
     {
@@ -5876,39 +6599,11 @@
       "category": null
     },
     {
-      "file": "src/cli/commands/maintenance.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/observation.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/observationDedup.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/projectContext.ts",
-      "category": null
-    },
-    {
       "file": "src/cli/commands/relation.ts",
       "category": null
     },
     {
-      "file": "src/cli/commands/search.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/spell.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/tag.ts",
-      "category": null
-    },
-    {
-      "file": "src/cli/commands/toolAffordance.ts",
+      "file": "src/search/inducedSubgraph.ts",
       "category": null
     },
     {
