@@ -33,7 +33,7 @@ describe('createProceduralGraphBacking memory factory', () => {
     await expect(createProceduralGraphBacking({ type: 'sqlite', path: '' })).rejects.toThrow(/path is required/);
   });
 
-    it('opens a sqlite backing when a path is provided', async () => {
+  it('opens a sqlite backing when a path is provided', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'pg-'));
     try {
       const backing = await createProceduralGraphBacking({ type: 'sqlite', path: join(dir, 'pg.db') });
@@ -48,7 +48,7 @@ describe('createProceduralGraphBacking memory factory', () => {
     await expect(
       createProceduralGraphBacking({
         type: 'unknown',
-      } as { type: 'jsonl' | 'sqlite' | 'memory' }),
+      } as unknown as { type: 'jsonl' | 'sqlite' | 'memory' }),
     ).rejects.toThrow(/unsupported procedural graph backing type/i);
   });
 });
