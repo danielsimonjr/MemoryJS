@@ -1,10 +1,11 @@
 # Procedural Graph Feature Plan
 
 > **Status:** Audited implementation plan; no runtime implementation is included.
-> **Audit date:** 2026-09-09
-> **Audited repository baseline:** `danielsimonjr/MemoryJS`, `master` at `d07b205662fce96ba699571562ea78ce87f8e923` (`@danielsimonjr/memoryjs` 4.0.0).
-> **Code baseline note:** `d07b205...` is the documentation merge that contains this plan; its parent `549ce11018e5ab2188173ae225c877705d50e453` is the unchanged source-code baseline used for the original code inspection.
+> **Audit date:** 2026-09-10 (third pass: paper-text re-read plus source re-inspection; see Section 3, A10-A14)
+> **Audited repository baseline:** `danielsimonjr/MemoryJS`, `master` at `914324c` (`@danielsimonjr/memoryjs` 4.0.0).
+> **Code baseline note:** every commit after `549ce11018e5ab2188173ae225c877705d50e453` (`d07b205`, `b518ed8`, `914324c`) touches only `docs/` and `CHANGELOG.md`; `549ce11` therefore remains the source-code baseline for every `[C#]` fact below.
 > **Source:** Yuxing Lu, Yicheng Chen, Shanchan Wu, and Sercan O. Arik, *Procedural Graphs: Self-Evolving Execution Structures for LLM Agents*, supplied 36-page PDF, arXiv:2609.09153v1, 8 September 2026.
+> **Companion:** the subagent-executable build plan derived from this document is [`superpowers/plans/2026-09-10-procedural-graph-implementation.md`](./superpowers/plans/2026-09-10-procedural-graph-implementation.md).
 
 ## 1. Feature objective and design boundary
 
@@ -28,15 +29,15 @@ The implementation must satisfy the following requirements before it can be call
 | ID | Requirement | Acceptance consequence |
 |---|---|---|
 | PG-01 | Represent procedural knowledge as a directed attributed graph `G = (V, R, E, Phi)`, where an edge is `(source, relation, target)`. Nodes may abstract tool functions, skills, reasoning steps, or task status. [P1] | Preserve node identity, direction, relation type, and edge attributes. Parallel edges with different relation labels must not collapse. |
-| PG-02 | The paper's implemented edge attribute schema is `condition`, `guidance`, and `pitfalls`. `condition` may be `null`; newly proposed edges must supply guidance and pitfalls. [P1, P3] | Strict edit validation. Preserve nulls, Unicode, multiline text, and all three fields through persistence/export. Do not silently invent missing fields. |
-| PG-03 | First-step localization uses `Start`; later localization exactly matches the most recent procedure/action. The default paper configuration extracts the outgoing `h = 2` neighborhood and falls back to the complete selected PG when matching fails. [P2] | Exact match only in paper-compatible mode. No similarity search may masquerade as localization. A matched terminal is not a localization miss. |
+| PG-02 | The paper's implemented edge attribute schema is `condition`, `guidance`, and `pitfalls`. `condition` may be `null` (unconditional). Refiner-proposed `add_edges` entries must supply `guidance` and `pitfalls` (refiner prompt rules 3-4). Stored expert graphs are **not** fully populated: Appendix B.4 states that "most" edges carry the full triple and that `guidance` is only the "most consistently populated" field. [P1, P3] | Strict validation of refiner output (missing `guidance`/`pitfalls` on an added edge is a parse failure). Imported/expert edges may carry `null` for any of the three fields; missing fields normalize to `null` and are reported as a non-fatal diagnostic, never fabricated. Preserve nulls, Unicode, multiline text, and all three fields through persistence/export. |
+| PG-03 | First-step localization uses `Start` (`a_0 = Start`, so `u_1 = Start`); later localization exactly matches the most recent procedure/action `a_{t-1}` to a node in `V`. The neighborhood `N_h(u_t)` contains `u_t` plus the outgoing transitions reached within `h` steps; the paper configuration uses `h = 2` and falls back to the complete selected PG when matching fails. [P2] | Exact string match against node `id` in paper-compatible mode. No similarity search may masquerade as localization. The paper is silent on a matched zero-outdegree node; MemoryJS treats it as a successful match with an empty neighborhood (design choice, reported as `matched: true, hops: []`), not as a miss that triggers full-graph fallback. |
 | PG-04 | Guidance combines graph context, query/task context, and the recent trajectory; the paper experiments use `w = 3`. Guidance is appended to solver context and remains soft rather than execution-enforcing. [P2] | Return advisory output; never execute, advance, block, or authorize an action solely because the graph recommends it. |
 | PG-05 | The graph remains fixed within each training, validation, or test episode. [P2, P3] | Sessions pin an immutable revision. A newly accepted revision affects only subsequently opened sessions. |
 | PG-06 | Refinement uses four arrays: `add_nodes`, `delete_nodes`, `add_edges`, and `delete_edges`. Attribute changes are expressed by deleting and re-adding an edge. [P3] | Parse exact edit operations and apply them to a detached copy. Unsupported operations are rejected. |
 | PG-07 | A `delete_edges` item contains only `source` and `target` and removes all edges between those endpoints regardless of relation; selected transitions can be re-added afterward. Candidate preparation applies deletions before additions. [P3] | Endpoint-pair deletion tests must cover multiple relation types. Re-add order must be deterministic. |
 | PG-08 | Structural checks occur before validation rollout. Every edge endpoint must exist and every node must have a directed path to a zero-outdegree terminal; the terminal need not be named `End`. [P3] | Invalid candidates never call the validation evaluator. Reachability is computed over PG transition edges only. |
 | PG-09 | The paper's cycle policy is effectively **allow cycles** or **disallow cycles with cycle-closing-edge repair**. When cycles are allowed, repair and the acyclicity check are skipped. [P3] | Paper-compatible modes reproduce these two behaviors. A separate MemoryJS `reject` policy may exist but must be labeled as an extension. |
-| PG-10 | In the refiner prompt, every `ACTION` node must match an available action/tool name. In static refinement modes, existing node IDs must be preserved. [P3] | MemoryJS additionally enforces tool-catalog membership structurally before execution; static-mode renames are rejected. |
+| PG-10 | In the refiner prompt, every `ACTION` node must match an available action/tool name (rule 1), and in static modes existing node IDs must be preserved (rule 6). Appendix B.6 states explicitly that "the generic structural validator does not independently enforce tool-catalog membership". [P3] | Tool-catalog membership is a **prompt** requirement in the paper. MemoryJS offers structural enforcement behind `enforceToolCatalog` (default `true` for production profiles, forced `false` under `paperCompatible: true`); a catalog mismatch is then reported as a warning diagnostic rather than a structural failure `d_k`. Static-mode renames (delete + re-add under a new ID) are rejected in both profiles because rule 6 forbids them. |
 | PG-11 | Refiner guidance should remain general and avoid overfitting/leaking trajectory-specific details. [P3] | Include the paper's generality/leak-prevention instruction in the refiner prompt and add regression fixtures for copied task-specific literals. |
 | PG-12 | The initial validation score is cached. A valid candidate is accepted when `candidateMean >= retainedMean`, including equality. [P3] | Test lower, equal, and higher scores. Paper-compatible mode cannot silently add epsilon, strict-improvement, or secondary tie-break rules. |
 | PG-13 | Each round starts from the last retained graph, never from a rejected candidate. Rejection history includes unsuccessful proposals and diagnostic evidence. [P3] | Persist retained/rejected identity separately. Restart after rejection must resume from the retained checkpoint and matching cached score. |
@@ -46,11 +47,13 @@ The implementation must satisfy the following requirements before it can be call
 
 The paper reports the initial relation vocabulary `LEADS_TO`, `TRIGGERS`, `PROVIDES_INPUT_FOR`, and `CONVERGES_TO`. Use those as the built-in vocabulary for paper-compatible graphs. An explicitly declared extension vocabulary is allowed, but model-invented relation labels are rejected unless present in that graph's declared vocabulary. [P3]
 
+Node types: the only node type attested verbatim in the paper is `ACTION` (refiner output format and the serialized context header `(Type: ACTION)`). Section 3.1 says nodes abstract "a tool function, a skill, an internal reasoning step, or a task status"; the MemoryJS names `SKILL`, `REASONING`, and `STATE` for the other three are this plan's labels, not paper identifiers. The refiner output carries only `id`, `type`, and `description` per node; there is no separate action-name field, so for an `ACTION` node the binding to a tool is the node `id` itself (rule 6 lists "the tool names" among node IDs). MemoryJS's optional `actionName` field defaults to `id` and exists only so imported graphs can bind a display ID to a differently spelled tool name explicitly.
+
 The paper's `h = 2` and `w = 3` are experiment settings, not universal mathematical constraints. MemoryJS may expose bounded configuration, but `paperCompatible: true` fixes those defaults unless the caller deliberately overrides them and records the deviation.
 
 ## 3. Audit findings and corrections
 
-A second-pass audit found concrete implementation issues that the first plan did not fully account for. This revision corrects them before implementation begins.
+A second-pass audit found concrete implementation issues that the first plan did not fully account for, and a third pass (2026-09-10) re-read the paper text against this plan and re-inspected the source tree. Findings A1-A9 come from the second pass; A10-A14 from the third. All are corrected in the body of this document.
 
 ### A1 - Relation metadata is supported by the TypeScript type but rejected by current relation creation schemas
 
@@ -63,8 +66,8 @@ metadata: {
   proceduralGraph: {
     schemaVersion: 1,
     condition: string | null,
-    guidance: string,
-    pitfalls: string,
+    guidance: string | null,
+    pitfalls: string | null,
   },
 }
 ```
@@ -124,6 +127,34 @@ The custom lint rule rejects static and type-only imports from `src/types` into 
 
 **Correction:** PG leaf contracts may live in `src/types/proceduralGraph.ts`, but implementation-specific Zod schemas, hashing, serialization, storage adapters, and provider wrappers belong outside `src/types`. Leaf types may import only allowed external/type-layer dependencies.
 
+### A10 - Tool-catalog membership was mislabeled as a paper structural check
+
+Sections 6.2 and 9.5 of the previous revision listed "action bindings against the provided tool catalog" among the structural checks whose failure sends a candidate to rejection memory without validation. Appendix B.6 states the opposite: catalog matching "is a refiner-prompt requirement; the generic structural validator does not independently enforce tool-catalog membership". [P3]
+
+**Correction:** catalog enforcement is a MemoryJS option (`enforceToolCatalog`), off under the paper-compatible profile. See PG-10, Section 6.2, and Section 9.5.
+
+### A11 - Required attribute triple was over-constrained for imported graphs
+
+The previous revision required `condition`/`guidance`/`pitfalls` on every imported edge. Appendix B.4 reports that only "most" paper edges carry the full triple. Requiring all three on import would reject the paper's own graphs. [P3]
+
+**Correction:** see PG-02. Only refiner `add_edges` entries must carry `guidance` and `pitfalls`; imported edges normalize absent fields to `null` with a diagnostic.
+
+### A12 - The SQLite driver resolver is module-private
+
+`SQLiteStorage.ts` resolves `better-sqlite3` versus `node:sqlite` inside a non-exported `loadDatabaseCtor()`; only `__resetDatabaseCtorForTests()` is exported. `src/core/nodeSqliteAdapter.ts` exports `isNodeSqliteAvailable()` and `createNodeSqliteDatabaseCtor()`. A separate PG SQLite backing cannot reuse the resolver without an export. [C7]
+
+**Correction:** Phase 2 exports the resolver from `SQLiteStorage.ts` (as `resolveSQLiteDatabaseCtor()`, keeping the private name as an alias) so the PG backing honors `MEMORY_SQLITE_DRIVER` identically and both drivers are exercised by the same test seam. Do not duplicate the fallback logic.
+
+### A13 - `IGraphStorage` and relation-schema usage sites were imprecisely located
+
+`IGraphStorage` is declared in `src/types/types.ts` (there is no `src/core/IGraphStorage.ts`). `RelationSchema` (strict, no `metadata`) is the validator used by `IOManager` JSON import; `DeleteRelationsSchema` is built from `CreateRelationSchema`, so relation deletion input carrying `metadata` is also rejected today. Existing procedural tests live at `tests/unit/agent/ProcedureManager.test.ts` and `tests/unit/agent/ProcedureStore.test.ts` (not a `procedural/` subdirectory). [C4, C8]
+
+**Correction:** Phase 2 schema work covers `CreateRelationSchema`, `RelationSchema`, and `DeleteRelationsSchema` together, with an `IOManager` import/export round-trip test. Section 4 and Section 16 paths are corrected.
+
+### A14 - Toolchain facts the implementation must match
+
+Verified from `package.json` / `tsconfig.json` at the baseline: Zod `^4.4.3` (v4 API), TypeScript `^7.0.2`, Vitest `^5.0.0` (`globals: true`, `include: tests/**/*.test.ts`), `module`/`moduleResolution` `NodeNext` (relative imports carry a `.js` suffix), `exactOptionalPropertyTypes: false`, `noUncheckedIndexedAccess: false`. `bun run lint` is `oxlint --type-aware src && node scripts/check-lint-rules.mjs` (the `CLAUDE.md` mention of ESLint 9 is stale). `bun run build` runs `tsup`, `scripts/emit-dts.mjs`, and `scripts/check-exports.mjs`; the last only checks that every `package.json` `exports` target file exists, so re-exporting through existing barrels needs no export-map change. [C8]
+
 ## 4. Existing MemoryJS integration points
 
 | Existing surface | Audited behavior | PG integration |
@@ -133,15 +164,15 @@ The custom lint rule rejects static and type-only imports from `src/types` into 
 | `src/agent/procedural/ProcedureStore.ts` | Stores procedure/step entities plus `has_step`, `precedes`, `has_fallback` relations and migrates legacy JSON blobs. [C3] | Reuse decomposed-graph precedent but not its multi-call replacement sequence for retained checkpoint publication. |
 | `src/agent/procedural/StepSequencer.ts` | In-memory linear cursor with recursive fallback behavior and resume to next main step. [C3] | Adapter must preserve these semantics or return a conversion warning. |
 | `src/types/types.ts` | `Relation` already has weight/confidence/properties/metadata. [C4] | No TypeScript `Relation` field expansion is required for PG metadata. |
-| `src/utils/schemas.ts` | Strict relation schemas lag the richer `Relation` type and currently reject `metadata`. [C4] | Runtime schema work is mandatory before PG metadata uses `RelationManager`. |
+| `src/utils/schemas.ts` | `CreateRelationSchema` (strict; admits `weight`/`confidence`/`properties` but not `metadata`), `RelationSchema` (strict; only `from`/`to`/`relationType`/timestamps), and `DeleteRelationsSchema` (array of `CreateRelationSchema`) all reject `metadata`. `RelationSchema` is what `IOManager` JSON import validates with. [C4] | Runtime schema work on all three is mandatory before PG metadata uses `RelationManager` or round-trips through `IOManager`. |
 | `src/core/RelationManager.ts` | Validates endpoints and relation batches under `graphMutex`; duplicate identity is `(from,to,relationType)`. [C4] | Use it for ordinary relation operations after schema fix; retained publication uses a narrower atomic backing primitive. |
 | `src/search/LLMQueryPlanner.ts` | `LLMProvider.complete(prompt): Promise<string>`. [C5] | Accept a structural completion-provider contract; do not import search code into leaf types. |
-| `src/agent/reconstruction/MemoryDistiller.ts` | Existing optional usage-reporting provider convention (`getLastUsage?`). [C5] | Reuse the convention where practical; distinguish exact provider usage from estimates. |
+| `src/agent/reconstruction/MemoryDistiller.ts` | Existing optional usage-reporting provider convention: `getLastUsage?(): { inputTokens, outputTokens } | undefined`, surfaced as `tokenUsage: { input, output, approximate }` where `approximate: true` marks the chars/4 heuristic. [C5] | Reuse the same shape; distinguish exact provider usage from estimates. |
 | `src/core/ManagerContext.ts` | Lazy agent-manager pattern, primary storage ownership, close lifecycle; declared `storageType` is currently ignored by constructor. [C6] | Add explicit factory and disposal registration; do not use the ignored option pattern. |
 | `src/core/StorageFactory.ts` | Supports JSONL/SQLite/PostgreSQL; env may override explicit type. [C7] | PG backing selection must be explicit and verified. PostgreSQL retained publication is deferred until conformance exists. |
-| `src/core/GraphStorage.ts` | Single-file JSONL plus optional segmented mode; internal mutex; append/delta paths and full-save path differ. [C7] | First-release PG JSONL requires non-segmented backing and PG-specific expected-head publication. |
-| `src/core/SQLiteStorage.ts` | Transactional batch/full saves; private DB handle; better-sqlite3/node:sqlite driver options. [C7] | Add a narrow storage-level PG publication capability or equivalent internal primitive; test both drivers. |
-| `scripts/lint-rules.mjs` | Enforces `src/types` as a leaf, including type-only imports. [C8] | Keep implementation logic outside leaf types. |
+| `src/core/GraphStorage.ts` | Single-file JSONL plus optional segmented mode (`MEMORY_STORAGE_SEGMENT_COUNT` in `[2, 1024]`, strict integer regex); `graphMutex: AsyncMutex`; whole-file writes go through the shared `durableWriteFile()` in `src/utils/durableWriteFile.ts` (temp file + rename, with Windows EPERM fallback). [C7] | The PG JSONL backing does not reuse `GraphStorage`; it owns its own sidecar file and writes it through the same `durableWriteFile()` utility under its own `AsyncMutex`. Segment mode is detected from the same env var and rejected. |
+| `src/core/SQLiteStorage.ts` | Transactional batch/full saves (`this.db.transaction(...)`); private DB handle; driver resolution in non-exported `loadDatabaseCtor()` (better-sqlite3, then `node:sqlite`; `MEMORY_SQLITE_DRIVER=node` forces the fallback); `metadata` column already exists on the relations table. [C7] | PG SQLite backing owns its **own** connection to a separate database file, obtained through an exported driver resolver (A12); publication is one `db.transaction`. Test both drivers. |
+| `scripts/lint-rules.mjs` | Enforces `src/types` as a leaf: no static, `export ... from`, or inline `import('...')` type references into `agent`, `core`, `utils`, `search`, `features`, `adapters`, `security`, `cli`, or `workers`. [C8] | Keep implementation logic (Zod, hashing, serialization, storage, providers) outside `src/types`. `src/types/proceduralGraph.ts` may import only from sibling `src/types` modules. |
 | Package exports/build | Root plus agent/types/etc. dual ESM/CJS exports; build performs declaration and export checks. [C8] | Re-export through existing agent/root/type barrels; no new package subpath in first release. |
 
 ## 5. Proposed module layout
@@ -182,19 +213,29 @@ export type PGBuiltInRelation =
   | 'PROVIDES_INPUT_FOR'
   | 'CONVERGES_TO';
 
-export type PGNode = { id: string; description: string } & (
-  | { type: 'ACTION'; actionName: string }
-  | { type: 'SKILL'; skillName?: string }
-  | { type: 'REASONING' | 'STATE' }
-);
+export type PGNodeType = 'ACTION' | 'SKILL' | 'REASONING' | 'STATE';
+
+export interface PGNode {
+  id: string;
+  type: PGNodeType;
+  description: string;
+  /**
+   * ACTION nodes only. Tool/action name this node binds to. Defaults to `id`
+   * when omitted (the paper's refiner output carries no separate field; the
+   * node ID *is* the tool name). Ignored for other node types.
+   */
+  actionName?: string;
+}
 
 export interface PGEdge {
   source: string;
   relation: string;
   target: string;
+  /** `null` = unconditional (paper rule 2). */
   condition: string | null;
-  guidance: string;
-  pitfalls: string;
+  /** `null` only on imported/expert edges (Appendix B.4 coverage); required on refiner `add_edges`. */
+  guidance: string | null;
+  pitfalls: string | null;
 }
 
 export interface PGSnapshot {
@@ -222,10 +263,10 @@ Validate at every external ingress:
 - unique edge triplets `(source, relation, target)`;
 - allowed node types and declared relation vocabulary;
 - all endpoints present;
-- required `condition`/`guidance`/`pitfalls` fields on imported/refiner edges;
+- refiner `add_edges` entries carry `guidance` and `pitfalls` strings and a `condition` that is a string or `null`; imported edges may carry `null` in any field, and an absent field normalizes to `null` with a `missing-attribute` diagnostic;
 - bounded attribute lengths and total serialized graph size;
 - finite numeric settings and positive budgets;
-- action bindings against the provided tool catalog;
+- action bindings (`actionName ?? id`) against the provided tool catalog, **only when `enforceToolCatalog` is enabled** (forced off under `paperCompatible: true`, where a mismatch is a warning, per A10);
 - static-mode node-ID preservation;
 - entry node existence and terminal reachability;
 - graph limits that permit at least the paper's largest reported main-experiment graph (131 nodes / 265 triplets) when using the reproduction profile. [P3]
@@ -315,7 +356,7 @@ Reject `MEMORY_STORAGE_SEGMENT_COUNT >= 2` for PG JSONL backing until segmented 
 
 ### 7.5 SQLite publication
 
-Use one database transaction that performs the expected-head predicate and inserts the revision, evaluation, round record, relations/nodes, and updated head atomically. No provider/refiner/evaluator call occurs while the storage transaction or graph lock is held.
+The PG SQLite backing opens its own connection to the configured PG database file through the exported driver resolver (A12) and owns a small dedicated schema (`pg_graphs`, `pg_heads`, `pg_revisions`, `pg_evaluations`, `pg_rounds`, `pg_rejections`); it does not share `SQLiteStorage`'s `entities`/`relations` tables. Use one `db.transaction(...)` that performs the expected-head predicate (`UPDATE pg_heads ... WHERE graph_id = ? AND head_version = ?` and check `changes === 1`) and inserts the revision, evaluation, and round record atomically; a `changes === 0` result rolls back and returns `conflict`. No provider/refiner/evaluator call occurs while the storage transaction is open.
 
 Do not implement this as `EntityManager.createEntities()` followed by `RelationManager.createRelations()` followed by `updateEntity(head)`: those are separately locked/committed operations and can expose partial publication.
 
@@ -347,7 +388,7 @@ The session records only externally available trajectory data needed by PG: acti
 
 At each decision:
 
-1. **Locate:** before the first action use `entryNodeId`; thereafter exact-match the most recently recorded procedure/action against the pinned graph. Repeated action names that map to multiple nodes require an explicit node/procedure ID or count as unmatched.
+1. **Locate:** before the first action use `entryNodeId`; thereafter exact-match the most recently recorded procedure/action identifier against node `id` in the pinned graph. If no `id` matches, MemoryJS additionally tries `actionName` bindings (design extension); if that yields more than one node, the step counts as unmatched. Case-folding or other normalization is never applied under `paperCompatible: true`.
 2. **Extract:** traverse only outgoing PG transition edges for at most `hopLimit` steps (paper default 2). Preserve direction, hop grouping, relation label, condition, guidance, and pitfalls. Bound cycles with visited-edge accounting.
 3. **Fallback:** if localization fails, use the complete pinned PG if it fits the configured context budget. Do not substitute the entire MemoryJS factual graph.
 4. **Generate:** combine task/query, graph context, and the last `trajectoryWindow` completed action/observation steps (paper default 3). The completion model returns situational guidance.
@@ -367,11 +408,77 @@ Provider absence does not pretend to implement the generative method. Configured
 
 ### 8.4 Serialization and prompt safety
 
-Default MemoryJS serialization includes relation labels because they carry semantic information. A `paper-compatible` serializer reproduces the paper's demonstrated local serializer behavior, which omits stored relation labels from the human-readable subgraph text. [P3]
+Default MemoryJS serialization includes relation labels because they carry semantic information. A `paper-compatible` serializer reproduces the paper's demonstrated local serializer (Appendix B.5 "Serialized Local Graph Context"), which omits stored relation labels. Its shape, reconstructed from the paper's HotpotQA excerpt, is: [P3]
+
+```text
+Active Cognitive Node: [<node id>] (Type: <node type>)
+Description: <node description>
+
+Immediate Transition Options (Hop 1):
+- Transition: [<source>] → [<target>] (Condition: <condition or "null">)
+  * Guidance: <guidance>
+  * Pitfalls to Avoid: <pitfalls>
+
+Subsequent Horizon (Hop 2):
+- Transition: [<source>] → [<target>] (Condition: ...)
+  * Guidance: ...
+  * Pitfalls to Avoid: ...
+```
+
+Transitions are grouped by hop distance from the active node; within a hop, MemoryJS orders them by `(source, target, relation)` so serialization is deterministic (the paper does not state an order). The full-graph variant binds the complete graph into the same slot with the header text given in Section 8.5.
 
 Treat graph text, observations, tool results, file paths, and prior model output as untrusted data sections. PG guidance remains subordinate to the host's system instructions, authorization checks, and tool schemas. Never execute command text embedded in `guidance` or `pitfalls`.
 
-### 8.5 Budgets and usage accounting
+### 8.5 Prompt templates (verbatim from the paper, Appendix B.5)
+
+Implementations ship these two templates in `prompts.ts` with the placeholders below. Text outside `{...}` must match the paper; MemoryJS-specific additions go in a clearly separated trailing "Data handling" block, never interleaved. [P3]
+
+**Guidance generation prompt (local subgraph; default).** Placeholders: `{task_description}`, `{graph_context_desc}`, `{subgraph_summary}`, `{query}`, `{recent_context}`, `{graph_source}`.
+
+```text
+You are an expert cognitive architect and execution guide for an AI agent solving the task: {task_description}
+Here is {graph_context_desc}: {subgraph_summary}
+Here is the current active query / observation: {query}
+Here is the agent's recent execution trajectory: {recent_context}
+Analyze this {graph_source} in the context of the agent's current progress. Using the condition, guidance, and pitfalls attributes carried by the edges in the graph context, generate clear, detailed, and actionable guidance advising the agent on exactly what step or strategy to pursue next, what pitfalls to avoid, and how to recover from recent failures if any. You must include any specific command patterns, file paths, tools, or arguments defined in the graph context if they are relevant to the next steps.
+```
+
+Local binding: `{graph_context_desc}` = "the localized Procedural Graph neighborhood around the agent's active node" (MemoryJS wording; the paper prints only the full-graph string), `{graph_source}` = "local subgraph". Full-graph binding (paper text): `{graph_context_desc}` = "the complete Procedural Graph governing the task structure and strategic guidance", `{subgraph_summary}` = the serialized full graph, `{graph_source}` = "complete Procedural Graph". The two variants differ only in these bindings.
+
+**Refiner prompt (self-evolution).** Placeholders: `{task_description}`, `{mode}`, `{available_tools_list}`, `{attempts_block}`, `{current_graph_json}`, `{rejected_block}`.
+
+```text
+You are an expert cognitive architect optimizing a Procedural Graph for an intelligent agent. The Procedural Graph encodes structured procedural guidance.
+Task context: {task_description}
+Refinement mode: {mode}
+Available Tool Actions (the agent can only execute these actions): {available_tools_list}
+Recent execution trajectories: {attempts_block}
+Current Procedural Graph representation: {current_graph_json}
+Previously rejected candidates: {rejected_block}
+Your job is to refine the Procedural Graph. Follow these guidelines based on the mode:
+• static_onetime / static_incremental: Prune edges/nodes that lead to loops, deadlocks, or failures. Add missing nodes and edges that could fix the failures and improve performance for future tasks.
+• scratch_onetime / scratch_incremental: If starting from scratch (the graph contains only Start → End), synthesize a brand new, complete Procedural Graph using the Available Tool Actions list, Status, and successful patterns in the trajectories. Otherwise, prune edges/nodes that lead to loops, deadlocks, or failures, and add missing nodes and edges based on the given graph.
+Rules for nodes and edges.
+1. Action Nodes. Any node of type ACTION must match one of the action/tool names in the "Available Tool Actions" list above.
+2. Transition Conditions. If an edge has a condition, provide a natural-language semantic precondition under which this transition should fire (e.g., "When dialogue history has been parsed but target constraints are unknown"). Use null if the transition is unconditional.
+3. Execution Guidance. For every edge added in add_edges, you MUST provide a guidance string detailing exactly what action to take next and the strategic rationale behind it.
+4. Pitfalls. Provide a pitfalls string warning about premature actions, forbidden words, or common formatting pitfalls to avoid during this step.
+5. Generality & Leak Prevention. The updated Procedural Graph must guide the agent effectively without overfitting to specific details of a single trajectory. Use high-level conceptual descriptions.
+6. Node ID Compatibility. If refining an existing graph (static modes), you MUST preserve the existing node IDs (such as Month_Start, Decide_Capital, and the tool names) so they remain compatible with the environment's state tracker. Do not rename them.
+7. Graph Structure. Follow the task's configured cycle policy. Every edge must reference existing nodes, and every node must have a directed path to a terminal node. The environment loop handles repetition across simulation cycles.
+Please propose the exact set of edits to perform. You must output your edits as a single valid JSON block containing four arrays: add_nodes, delete_nodes, add_edges, and delete_edges. Output format must be exactly:
+{
+"add_nodes": [{"id":..., "type": "ACTION", "description":...}],
+"delete_nodes": ["node_id"],
+"add_edges": [{"source":..., "target":..., "relation":..., "condition":..., "guidance":..., "pitfalls":...}],
+"delete_edges": [{"source":..., "target":...}]
+}
+Make sure to output ONLY the raw JSON block. Each entry in delete_edges removes all edges with the specified source and target, regardless of relation. To retain selected transitions between the same endpoints, include them in add_edges, which is applied after deletion.
+```
+
+`{attempts_block}` is the token-tailed concatenation `C_k` (PG-14) with each trajectory's score; `{rejected_block}` is `SerializeRejections(H_rejected)` (Section 9.8); `{current_graph_json}` is the canonical JSON of Section 6.3. The solver's own ReAct prompt (paper B.5, "Solver Execution Prompt") is **host-owned**; MemoryJS only returns the string bound to `{procedural_graph_guidance}`.
+
+### 8.6 Budgets and usage accounting
 
 Bound:
 
@@ -427,7 +534,7 @@ For paper reproduction, record that the paper uses the same underlying LLM for s
 
 ### 9.3 Diagnostic rollout ordering
 
-Each training trajectory records task ID, graph revision, ordered actions/observations, and finite score in `[0,1]`. Preserve high- versus low-scoring groups. If all scores fall into one group, report the absence of a contrast rather than fabricating one.
+Each training trajectory records task ID, graph revision, ordered actions/observations, and finite score in `[0,1]`. Training batches are sequential strides of the training split (paper: `S = 100` for HotpotQA, `S = 20` for MultiChallenge; MemoryJS exposes `batchSize`). The refiner "compares high-scoring traces with low-scoring ones; for tasks with binary outcomes, this reduces to successes versus failures" (Section 3.3). The paper does not define the partition threshold for non-binary scores; MemoryJS uses `successThreshold` (default `1.0`, i.e. only a perfect score counts as high; callers set it per metric) and records the value in the manifest. If all scores fall into one group, report the absence of a contrast rather than fabricating one.
 
 If tasks execute concurrently, sort completed trajectories back into deterministic batch order before concatenation and token-tail truncation. Tail truncation must preserve the final `Lmax` tokens exactly according to the configured tokenizer. [P3]
 
@@ -455,7 +562,7 @@ For a detached copy of the retained graph:
 3. add nodes;
 4. add edges;
 5. apply configured cycle policy;
-6. run endpoint, catalog, entry, and terminal-reachability validation.
+6. run endpoint, entry-node, and terminal-reachability validation (paper structural checks); then, only when `enforceToolCatalog` is on, catalog validation (A10).
 
 Static modes reject an attempt to rename an existing node rather than treating delete+add with a new ID as a harmless rename.
 
@@ -529,9 +636,11 @@ Structural failures enter rejection memory even though they have no candidate va
 
 First production-facing release:
 
-- `fixed_expert` - paper Mode 1, no mutation;
+- `fixed_expert` - paper Mode 1, no mutation (the paper assigns no refinement-mode string to Mode 1; this name is MemoryJS's);
 - `static_incremental` - expert-seeded Mode 3 behavior, validation-gated between batches;
 - `scratch_incremental` - `Start -> End` skeleton, Mode 5 behavior, validation-gated between batches.
+
+The skeleton is `nodes: [Start (STATE), End (STATE)]`, `edges: [(Start, LEADS_TO, End)]` with `condition: null`, `guidance: ''`, `pitfalls: ''`; the paper specifies only "Start → End with no intermediate nodes or additional transitions", so the relation label and empty attributes are MemoryJS defaults. "Starting from scratch" in the refiner prompt is detected structurally as exactly that skeleton.
 
 Research-only reproduction may expose:
 
@@ -603,7 +712,8 @@ No existing `procedure` or `procedure-step` entity is silently migrated. `addPro
 
 **Files:** relation schemas/tests; backing interfaces/adapters; narrowly scoped storage internals; persistence contract tests.
 
-- [ ] Extend strict relation runtime schemas to preserve namespaced PG metadata without weakening unrelated fields.
+- [ ] Extend `CreateRelationSchema`, `RelationSchema`, and `DeleteRelationsSchema` to preserve namespaced PG metadata without weakening unrelated fields; add an `IOManager` JSON round-trip test.
+- [ ] Export the SQLite driver resolver (`resolveSQLiteDatabaseCtor`) from `SQLiteStorage.ts` (A12).
 - [ ] Add bounded digest storage keys and native graph encoding.
 - [ ] Implement explicit backend selection independent of silent env override.
 - [ ] Implement JSONL non-segmented expected-head publication.
@@ -672,7 +782,9 @@ Cover at least:
 - cycle allow/repair/reject behavior;
 - every-node-to-terminal reachability;
 - terminal name other than `End`;
-- action catalog mismatch and static-mode rename;
+- action catalog mismatch as a warning under `paperCompatible` and as a rejection with `enforceToolCatalog`; static-mode rename;
+- imported edge with absent `pitfalls` normalizes to `null` with a diagnostic; refiner `add_edges` entry missing `guidance` or `pitfalls` is a parse failure;
+- paper-compatible serializer output matches the Appendix B.5 excerpt shape byte-for-byte on a fixture;
 - exact localization, repeated action ambiguity, localization miss, sink match;
 - h=2 boundary and bounded cyclic traversal;
 - full-graph fallback budget failure;
@@ -735,7 +847,7 @@ bun run test:ci
 bun run test:coverage
 ```
 
-Also run targeted new PG unit/integration/storage contract suites in each phase. Real-model evaluation remains explicitly opt-in and budgeted.
+Also run targeted new PG unit/integration/storage contract suites in each phase. Real-model evaluation remains explicitly opt-in and budgeted. Toolchain facts the code must match are listed in A14 (Zod v4, TypeScript 7, Vitest 5, NodeNext `.js` import suffixes, oxlint).
 
 `bun run audit:plans` currently scans plan files under `docs/superpowers/plans` and `docs/roadmap`; this root-level plan is **not** covered by that tool. Do not cite `audit:plans` as validation of this document unless the tool scope is deliberately expanded. [C8]
 
@@ -758,7 +870,8 @@ Operationally, expose head version, revision digest, graph size, last validation
 ## 15. Definition of done
 
 - [ ] All sixteen paper-fidelity requirements have traceable implementation and passing tests.
-- [ ] Relation runtime schemas preserve PG metadata through `RelationManager` and storage round-trip.
+- [ ] Relation runtime schemas (`CreateRelationSchema`, `RelationSchema`, `DeleteRelationsSchema`) preserve PG metadata through `RelationManager`, storage, and `IOManager` JSON round-trip.
+- [ ] Tool-catalog enforcement is off under `paperCompatible` and on by default otherwise; the profile is recorded in the manifest.
 - [ ] Explicit backing selection cannot be silently changed by `MEMORY_STORAGE_TYPE`.
 - [ ] Unsupported segmented JSONL/PostgreSQL publication fails closed.
 - [ ] JSONL and SQLite publication/recovery pass injected-failure and stale-writer tests; SQLite is tested with both supported drivers where available.
@@ -791,10 +904,11 @@ All page references refer to the supplied PDF. The paper is the design source; i
 - **C1:** [`src/types/procedure.ts`](../src/types/procedure.ts)
 - **C2:** [`src/agent/procedural/ProcedureManager.ts`](../src/agent/procedural/ProcedureManager.ts)
 - **C3:** [`src/agent/procedural/ProcedureStore.ts`](../src/agent/procedural/ProcedureStore.ts), [`src/agent/procedural/StepSequencer.ts`](../src/agent/procedural/StepSequencer.ts)
-- **C4:** [`src/types/types.ts`](../src/types/types.ts), [`src/utils/schemas.ts`](../src/utils/schemas.ts), [`src/core/RelationManager.ts`](../src/core/RelationManager.ts)
+- **C4:** [`src/types/types.ts`](../src/types/types.ts) (`Relation.metadata?: Record<string, unknown>`; `IGraphStorage` declared here), [`src/utils/schemas.ts`](../src/utils/schemas.ts), [`src/core/RelationManager.ts`](../src/core/RelationManager.ts), [`src/features/IOManager.ts`](../src/features/IOManager.ts)
 - **C5:** [`src/search/LLMQueryPlanner.ts`](../src/search/LLMQueryPlanner.ts), [`src/agent/reconstruction/MemoryDistiller.ts`](../src/agent/reconstruction/MemoryDistiller.ts)
 - **C6:** [`src/core/ManagerContext.ts`](../src/core/ManagerContext.ts)
 - **C7:** [`src/core/StorageFactory.ts`](../src/core/StorageFactory.ts), [`src/core/GraphStorage.ts`](../src/core/GraphStorage.ts), [`src/core/SQLiteStorage.ts`](../src/core/SQLiteStorage.ts), [`src/core/TransactionManager.ts`](../src/core/TransactionManager.ts)
-- **C8:** [`package.json`](../package.json), [`scripts/lint-rules.mjs`](../scripts/lint-rules.mjs), [`tools/plan-doc-audit/audit.ts`](../tools/plan-doc-audit/audit.ts), [`src/agent/procedural/index.ts`](../src/agent/procedural/index.ts), [`src/agent/index.ts`](../src/agent/index.ts), and existing procedural tests.
+- **C8:** [`package.json`](../package.json), [`tsconfig.json`](../tsconfig.json), [`vitest.config.ts`](../vitest.config.ts), [`scripts/lint-rules.mjs`](../scripts/lint-rules.mjs), [`scripts/check-exports.mjs`](../scripts/check-exports.mjs), [`tools/plan-doc-audit/audit.ts`](../tools/plan-doc-audit/audit.ts), [`src/agent/procedural/index.ts`](../src/agent/procedural/index.ts), [`src/agent/index.ts`](../src/agent/index.ts), [`tests/unit/agent/ProcedureManager.test.ts`](../tests/unit/agent/ProcedureManager.test.ts), [`tests/unit/agent/ProcedureStore.test.ts`](../tests/unit/agent/ProcedureStore.test.ts).
+- **C7 (addendum):** [`src/core/nodeSqliteAdapter.ts`](../src/core/nodeSqliteAdapter.ts), [`src/utils/durableWriteFile.ts`](../src/utils/durableWriteFile.ts), [`src/utils/AsyncMutex.ts`](../src/utils/AsyncMutex.ts).
 
 Where documentation prose and active code differ, implementation decisions in this plan follow the audited source and `package.json`. Any future source change that materially alters the cited behavior should trigger a plan re-audit before implementation.
