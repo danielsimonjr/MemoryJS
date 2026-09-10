@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Regenerated `docs/architecture/` dependency reports** via
+  `create-dependency-graph.ts --include-tests` after Procedural Graph landed
+  (291 source files, 361 tests, 96.2% direct-import coverage, 0 dormant files).
+
 - **README documents the Bun toolchain.** Consumer install is `bun add` and
   the CLI one-liner is `bunx --package @danielsimonjr/memoryjs memory --help`.
   Repo tool wrappers are `bun run tools:deps` / `bun run audit:plans`; direct
