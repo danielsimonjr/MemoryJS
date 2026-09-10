@@ -296,3 +296,30 @@ export type {
 // failures (see CONTRIBUTING.md > Error Handling).
 export type { Result } from './result.js';
 export { ok, err, isOk, isErr, unwrap, unwrapOr, mapOk } from './result.js';
+
+// Procedural Graph (PG) leaf contracts — @experimental
+export type {
+  PGBuiltInRelation,
+  PGNodeType,
+  PGNode,
+  PGEdge,
+  PGCyclePolicy,
+  PGSnapshot,
+  PGEditSet,
+  PGRefinementMode,
+  PGConstructionMode,
+  PGDiagnostic,
+  PGValidationReport,
+  PGTraceStep,
+  PGTrajectory,
+  PGTask,
+  PGEvaluationReport,
+  PGHead,
+  PGRoundRecord,
+  PGRejectionRecord,
+  PGGuidanceMode,
+  PGLocalization,
+  PGGuidanceResult,
+} from './proceduralGraph.js';
+export { PG_BUILT_IN_RELATIONS } from './proceduralGraph.js';
+
