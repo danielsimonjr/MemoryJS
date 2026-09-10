@@ -4,7 +4,7 @@
 
 # Duplicate Symbols
 
-**Generated**: 2026-08-07 (by tools/create-dependency-graph)
+**Generated**: 2026-09-10 (by tools/create-dependency-graph)
 
 Names that are OWN-DEFINED (not merely re-exported) by >= 2 distinct files, then CLASSIFIED so the actionable subset is clear: `TRUE_DUPLICATE` (real merge targets) vs `ALIAS_DELEGATION` (a `const X = importedY` forward, excluded once <2 real bodies remain) and `ALLOWLISTED` (matches `duplicate-allowlist.json`).
 

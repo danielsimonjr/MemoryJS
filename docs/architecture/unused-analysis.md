@@ -4,7 +4,7 @@
 
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-08-07
+**Generated**: 2026-09-10
 
 ## Summary
 
@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 56
+- **Potentially unused exports**: 64
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 56
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 64
 
 Seeded reachability roots (4):
 
@@ -75,6 +75,14 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `ContextCompressionResult` (interface) — 2 in-file refs
 - `CompressionLevel` (type) — 4 in-file refs
 
+### `src/agent/PatternDetector.ts`
+
+- `PatternDetectorOptions` (interface) — 1 in-file ref
+
+### `src/agent/procedural/graph/backing/ProceduralGraphState.ts`
+
+- `PGRevisionListItem` (interface) — 6 in-file refs
+
 ### `src/agent/reconstruction/MemoryDistiller.ts`
 
 - `MemoryDistillerConfig` (interface) — 1 in-file ref
@@ -99,8 +107,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/core/EntityManager.ts`
 
-- `GovernanceAuditEvent` (interface) — 2 in-file refs
-- `GovernanceHooks` (interface) — 3 in-file refs
 - `GetEntityOptions` (interface) — 1 in-file ref
 
 ### `src/core/GraphTraversal.ts`
@@ -109,25 +115,37 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `LookForOptions` (interface) — 2 in-file refs
 - `RankedNeighborWithRelation` (interface) — 3 in-file refs
 - `TraversalOptionsWithTracking` (interface) — 4 in-file refs
-
-### `src/core/mmap/FsReadMmapBackend.ts`
-
-- `FsReadMmapBackendOptions` (interface) — 1 in-file ref
+- `FindAllPathsOptions` (interface) — 1 in-file ref
+- `DEFAULT_ALL_PATHS_MAX_PATHS` (constant) — 1 in-file ref
+- `DEFAULT_ALL_PATHS_MAX_EXPANSIONS` (constant) — 1 in-file ref
 
 ### `src/core/ObservationStore.ts`
 
 - `ObservationStoreStats` (interface) — 1 in-file ref
+
+### `src/core/SQLiteStorage.ts`
+
+- `DatabaseCtor` (type) — 6 in-file refs
+
+### `src/core/mmap/FsReadMmapBackend.ts`
+
+- `FsReadMmapBackendOptions` (interface) — 1 in-file ref
 
 ### `src/features/IOManager.ts`
 
 - `IngestTokenUsage` (interface) — 2 in-file refs
 - `IngestProduced` (interface) — 1 in-file ref
 - `IngestValidationFeedback` (interface) — 2 in-file refs
+- `IOManagerOptions` (interface) — 1 in-file ref
 - `IngestMode` (type) — 3 in-file refs
 
 ### `src/search/BloomPreScreener.ts`
 
 - `BloomPreScreenerOptions` (interface) — 1 in-file ref
+
+### `src/search/HybridSearchManager.ts`
+
+- `HybridExecutableLayer` (type) — 1 in-file ref
 
 ### `src/search/MaterializedViews.ts`
 
@@ -147,6 +165,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CorrectedQuery` (interface) — 2 in-file refs
 - `CorrectQueryOptions` (interface) — 1 in-file ref
+
+### `src/search/SemanticSearch.ts`
+
+- `SemanticSearchOptions` (interface) — 1 in-file ref
 
 ### `src/search/tiered/BrotliColdTier.ts`
 
@@ -176,6 +198,19 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CachePressureSnapshot` (interface) — 2 in-file refs
 
+### `src/utils/Diagnostics.ts`
+
+- `EntityCounts` (interface) — 2 in-file refs
+- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
+
+### `src/utils/IndexHealthMonitor.ts`
+
+- `IndexHealthSources` (interface) — 1 in-file ref
+
+### `src/utils/WorkerPoolManager.ts`
+
+- `WorkerPoolRuntimeStats` (interface) — 1 in-file ref
+
 ### `src/utils/compression/CompressedMap.ts`
 
 - `CompressedMapOptions` (interface) — 1 in-file ref
@@ -186,16 +221,7 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/utils/constants.ts`
 
-- `EMBEDDING_ENV_VARS` (constant) — 4 in-file refs
-
-### `src/utils/Diagnostics.ts`
-
-- `EntityCounts` (interface) — 2 in-file refs
-- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
-
-### `src/utils/IndexHealthMonitor.ts`
-
-- `IndexHealthSources` (interface) — 1 in-file ref
+- `EMBEDDING_ENV_VARS` (constant) — 7 in-file refs
 
 ### `src/utils/searchCache.ts`
 
