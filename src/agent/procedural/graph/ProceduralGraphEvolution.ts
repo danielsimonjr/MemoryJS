@@ -19,7 +19,6 @@ import type {
   PGDiagnostic,
   PGEditSet,
   PGEvaluationReport,
-  PGHead,
   PGRefinementMode,
   PGRejectionRecord,
   PGRoundRecord,

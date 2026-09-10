@@ -138,7 +138,7 @@ export class ProceduralGraphManager {
   }
 
   async getGraph(graphId: string, revisionId?: string): Promise<ProceduralGraph | undefined> {
-    if (!(await this.allows(this.policy?.canRead, graphId))) {
+    if (!(await this.allows('canRead', graphId))) {
       return undefined;
     }
     return this.loadGraph(graphId, revisionId);
@@ -148,7 +148,7 @@ export class ProceduralGraphManager {
     graphId: string,
     options: PGSessionOptions & { revisionId?: string },
   ): Promise<ProceduralGraphSession | undefined> {
-    if (!(await this.allows(this.policy?.canRead, graphId))) {
+    if (!(await this.allows('canRead', graphId))) {
       return undefined;
     }
     const graph = await this.loadGraph(graphId, options.revisionId);
@@ -173,7 +173,7 @@ export class ProceduralGraphManager {
       staticMode?: boolean;
     },
   ): Promise<ReturnType<typeof prepareCandidate>> {
-    if (!(await this.allows(this.policy?.canRead, graphId))) {
+    if (!(await this.allows('canRead', graphId))) {
       return policyDeniedPrepare();
     }
     const retained = await this.loadGraph(graphId);
@@ -198,7 +198,7 @@ export class ProceduralGraphManager {
   }
 
   async evolve(options: PGEvolutionOptions, deps: PGEvolutionDependencies): Promise<PGEvolutionResult> {
-    if (!(await this.allows(this.policy?.canEvolve, options.graphId))) {
+    if (!(await this.allows('canEvolve', options.graphId))) {
       return {
         runId: '',
         manifest: {},
@@ -231,7 +231,7 @@ export class ProceduralGraphManager {
     items: Array<Omit<PGRejectionRecord, 'trajectoryRefs'> & { trajectoryRefs?: undefined }>;
     total: number;
   }> {
-    if (!(await this.allows(this.policy?.canRead, graphId))) {
+    if (!(await this.allows('canRead', graphId))) {
       return { items: [], total: 0 };
     }
     const result = await this.backing.listRejections(graphId, resolvePage(page));
@@ -249,7 +249,7 @@ export class ProceduralGraphManager {
     revisionId: string,
     expectedHeadVersion: number,
   ): Promise<PGCommitResult | { status: 'not-found' }> {
-    if (!(await this.allows(this.policy?.canWrite, graphId))) {
+    if (!(await this.allows('canWrite', graphId))) {
       return { status: 'not-found' };
     }
     const revision = await this.backing.loadRevision(graphId, revisionId);
@@ -277,7 +277,7 @@ export class ProceduralGraphManager {
   }
 
   async exportGraph(graphId: string, revisionId?: string): Promise<string | undefined> {
-    if (!(await this.allows(this.policy?.canRead, graphId))) {
+    if (!(await this.allows('canRead', graphId))) {
       return undefined;
     }
     const graph = await this.loadGraph(graphId, revisionId);
@@ -404,7 +404,7 @@ export class ProceduralGraphManager {
     graphId: string,
     page?: { offset?: number; limit?: number },
   ): ReturnType<IProceduralGraphBacking['listRevisions']> {
-    if (!(await this.allows(this.policy?.canRead, graphId))) {
+    if (!(await this.allows('canRead', graphId))) {
       return { items: [], total: 0 };
     }
     return this.backing.listRevisions(graphId, resolvePage(page));
@@ -413,7 +413,7 @@ export class ProceduralGraphManager {
   private async denyWrite(
     graphId: string,
   ): Promise<{ ok: false; diagnostics: PGDiagnostic[] } | undefined> {
-    if (await this.allows(this.policy?.canWrite, graphId)) {
+    if (await this.allows('canWrite', graphId)) {
       return undefined;
     }
     return {
@@ -423,21 +423,27 @@ export class ProceduralGraphManager {
   }
 
   private async allows(
-    check: ((graphId: string) => boolean | Promise<boolean>) | undefined,
+    kind: 'canRead' | 'canWrite' | 'canEvolve',
     graphId: string,
   ): Promise<boolean> {
-    if (check === undefined) {
+    const policy = this.policy;
+    if (policy === undefined) {
       return true;
     }
-    return check(graphId);
+    if (kind === 'canRead') {
+      return policy.canRead === undefined ? true : policy.canRead(graphId);
+    }
+    if (kind === 'canWrite') {
+      return policy.canWrite === undefined ? true : policy.canWrite(graphId);
+    }
+    return policy.canEvolve === undefined ? true : policy.canEvolve(graphId);
   }
 
   private async audit(event: { op: string; graphId: string; revisionId?: string }): Promise<void> {
-    const hook = this.policy?.audit;
-    if (hook === undefined) {
+    if (this.policy?.audit === undefined) {
       return;
     }
-    await hook({ ...event, at: new Date().toISOString() });
+    await this.policy.audit({ ...event, at: new Date().toISOString() });
   }
 }
 
