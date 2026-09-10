@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Procedural Graph** — `ctx.createProceduralGraph(config)` factory plus `ProceduralGraphManager` for validated create/import, frozen-revision sessions with guidance, offline `evolve` with caller-supplied rollout/evaluate/refiner/tokenizer callbacks, and a one-way `procedureToGraphInput` adapter. JSONL / SQLite / in-memory backings; default sidecar `<basename>-procedural-graph.jsonl`. `@experimental`.
+- **Procedural Graph** — `await ctx.createProceduralGraph(config)` async factory (`Promise<ProceduralGraphManager>`) for validated create/import, frozen-revision sessions with guidance, offline `evolve` with caller-supplied rollout/evaluate/refiner/tokenizer callbacks, and a one-way `procedureToGraphInput` adapter. JSONL / SQLite / in-memory backings; default sidecar `<basename>-procedural-graph.jsonl`. `@experimental`.
 
 ### Changed
 
