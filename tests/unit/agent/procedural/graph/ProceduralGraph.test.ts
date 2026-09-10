@@ -216,4 +216,90 @@ describe('ProceduralGraph', () => {
       .toEqual(c.map((x) => `${x.source}|${x.relation}|${x.target}`));
     expect(a.length).toBeGreaterThan(0);
   });
+
+  it('property: withEdits re-adding an identical edge is idempotent across 200 random graphs', () => {
+    const rng = mulberry32(20260911);
+    for (let i = 0; i < 200; i++) {
+      const graph = ProceduralGraph.fromSnapshot(randomSnapshot(rng));
+      const existing = graph.snapshot.edges[0];
+      expect(existing, `graph ${i} must have an edge`).toBeDefined();
+      const identical: PGEdge = {
+        source: existing!.source,
+        relation: existing!.relation,
+        target: existing!.target,
+        condition: existing!.condition,
+        guidance: existing!.guidance,
+        pitfalls: existing!.pitfalls,
+      };
+      const edits: PGEditSet = {
+        ...emptyEdits(),
+        add_edges: [identical],
+      };
+      const once = graph.withEdits(edits);
+      const twice = once.graph.withEdits(edits);
+      expect(once.graph.digest, `graph ${i} first re-add`).toBe(graph.digest);
+      expect(twice.graph.digest, `graph ${i} second re-add`).toBe(graph.digest);
+      expect(once.graph.snapshot.edges).toHaveLength(graph.snapshot.edges.length);
+      expect(twice.graph.snapshot.edges).toHaveLength(graph.snapshot.edges.length);
+    }
+  });
 });
+
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function randInt(rng: () => number, min: number, max: number): number {
+  return min + Math.floor(rng() * (max - min + 1));
+}
+
+function pick<T>(rng: () => number, items: readonly T[]): T {
+  return items[Math.floor(rng() * items.length)]!;
+}
+
+function randomSnapshot(rng: () => number): PGSnapshot {
+  const nodeCount = randInt(rng, 2, 8);
+  const nodes: PGNode[] = [];
+  for (let i = 0; i < nodeCount; i++) {
+    nodes.push(n(`n${i}`, {
+      type: pick(rng, ['ACTION', 'SKILL', 'REASONING', 'STATE'] as const),
+      description: `desc-${i}-${randInt(rng, 0, 99)}`,
+      ...(rng() < 0.3 ? { actionName: `tool_${i}` } : {}),
+    }));
+  }
+  const seen = new Set<string>();
+  const edges: PGEdge[] = [];
+  const edgeCount = randInt(rng, 1, nodeCount + 3);
+  for (let i = 0; i < edgeCount; i++) {
+    const source = pick(rng, nodes).id;
+    const target = pick(rng, nodes).id;
+    const relation = pick(rng, PG_BUILT_IN_RELATIONS);
+    const key = `${source}\0${relation}\0${target}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    edges.push(e(source, target, {
+      relation,
+      condition: rng() < 0.5 ? null : `cond-${i}`,
+      guidance: rng() < 0.2 ? null : `g-${i}`,
+      pitfalls: rng() < 0.2 ? null : `p-${i}`,
+    }));
+  }
+  if (edges.length === 0) {
+    edges.push(e(nodes[0]!.id, nodes[nodes.length - 1]!.id));
+  }
+  return snap(nodes, edges, {
+    graphId: `g-${randInt(rng, 0, 9999)}`,
+    revisionId: `r-${randInt(rng, 0, 9999)}`,
+    entryNodeId: nodes[0]!.id,
+    cyclePolicy: pick(rng, ['allow', 'repair', 'reject'] as const),
+  });
+}
