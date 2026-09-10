@@ -191,11 +191,11 @@ export class ProceduralGraph {
         }
       }
       hopEdges.sort(compareEdges);
-      result.push({ hop, edges: hopEdges });
-      frontier = next;
-      if (frontier.length === 0) {
+      if (hopEdges.length === 0) {
         break;
       }
+      result.push({ hop, edges: hopEdges });
+      frontier = next;
     }
     return result;
   }
