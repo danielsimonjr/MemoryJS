@@ -22,3 +22,4 @@ export {
   HAS_FALLBACK_RELATION,
 } from './ProcedureStore.js';
 export { StepSequencer } from './StepSequencer.js';
+export * from './graph/index.js';

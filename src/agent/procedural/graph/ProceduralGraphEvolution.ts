@@ -6,8 +6,7 @@
  * evaluation error, fixed mode) are recorded on {@link PGEvolutionResult}
  * and never thrown.
  *
- * Backing persistence is duck-typed against Section 4.7
- * (`IProceduralGraphBacking`). Agent B owns `backing/**`.
+ * Persistence goes through {@link IProceduralGraphBacking}.
  *
  * @module agent/procedural/graph/ProceduralGraphEvolution
  * @experimental
@@ -28,6 +27,7 @@ import type {
   PGTask,
   PGTrajectory,
 } from '../../../types/proceduralGraph.js';
+import type { IProceduralGraphBacking } from './backing/IProceduralGraphBacking.js';
 import type { PGCompletionProvider } from './CompletionProvider.js';
 import type { PGTokenizer } from './tokenTail.js';
 import { concatTrajectories, tokenTail } from './tokenTail.js';
@@ -60,52 +60,6 @@ const EMPTY_EDITS: PGEditSet = {
   add_edges: [],
   delete_edges: [],
 };
-
-/**
- * Section 4.7 backing contract (duck-typed). Agent B owns
- * `backing/IProceduralGraphBacking.ts`; this file does not import that
- * module so Wave 2 typecheck can pass before the backing lands.
- */
-interface PGCommitInput {
-  expectedHeadVersion: number;
-  revision: PGSnapshot;
-  validation: PGEvaluationReport;
-  round: PGRoundRecord;
-}
-
-type PGCommitResult =
-  | { status: 'committed'; head: PGHead }
-  | { status: 'conflict'; currentHead: PGHead | undefined };
-
-interface IProceduralGraphBacking {
-  readonly kind: 'jsonl' | 'sqlite' | 'memory';
-  createGraph(revision: PGSnapshot): Promise<PGHead>;
-  loadHead(graphId: string): Promise<PGHead | undefined>;
-  loadRevision(graphId: string, revisionId: string): Promise<PGSnapshot | undefined>;
-  listRevisions(
-    graphId: string,
-    page: { offset: number; limit: number },
-  ): Promise<{
-    items: Array<{ revisionId: string; parentRevisionId?: string; graphDigest: string; createdAt: string }>;
-    total: number;
-  }>;
-  commitRetainedRevision(input: PGCommitInput): Promise<PGCommitResult>;
-  setHead(
-    graphId: string,
-    revisionId: string,
-    expectedHeadVersion: number,
-    round: PGRoundRecord,
-  ): Promise<PGCommitResult>;
-  saveEvaluation(graphId: string, revisionId: string, report: PGEvaluationReport): Promise<void>;
-  loadEvaluation(graphId: string, revisionId: string, fingerprint: string): Promise<PGEvaluationReport | undefined>;
-  appendRejection(record: PGRejectionRecord): Promise<void>;
-  listRejections(
-    graphId: string,
-    page: { offset: number; limit: number },
-  ): Promise<{ items: PGRejectionRecord[]; total: number }>;
-  appendRound(graphId: string, round: PGRoundRecord): Promise<void>;
-  close(): Promise<void>;
-}
 
 export interface PGEvolutionDependencies {
   rollout(task: PGTask, graph: PGSnapshot, signal?: AbortSignal): Promise<PGTrajectory>;
