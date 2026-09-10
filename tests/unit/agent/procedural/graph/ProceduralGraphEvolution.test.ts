@@ -807,6 +807,142 @@ describe('ProceduralGraphEvolution', () => {
     expect(h.refiner.calls).toBe(1);
   });
 
+    it('missing head or revision stops with conflict and parse failures reject structurally', async () => {
+    const missing = new ProceduralGraphEvolution(new InMemoryProceduralGraphBackingFake(), {
+      tokenizer: whitespaceTokenizer(),
+      refiner: queuedRefiner([]),
+      rollout: async () => trajectoryFor('t', 't'),
+      evaluate: async () => 1,
+    });
+    const missingHead = await missing.run(baseOptions({ graphId: 'absent' }));
+    expect(missingHead.stoppedBecause).toBe('conflict');
+    expect(missingHead.retained.revisionId).toBe('');
+
+    const detached = new InMemoryProceduralGraphBackingFake();
+    await detached.createGraph(skeletonSnapshot(GRAPH_ID, 'rev-seed'));
+    detached.store.revisions.clear();
+    const orphaned = new ProceduralGraphEvolution(detached, {
+      tokenizer: whitespaceTokenizer(),
+      refiner: queuedRefiner([]),
+      rollout: async () => trajectoryFor('t', 't'),
+      evaluate: async () => 1,
+    });
+    const missingRev = await orphaned.run(baseOptions());
+    expect(missingRev.stoppedBecause).toBe('conflict');
+    expect(missingRev.retained.revisionId).toBe('rev-seed');
+
+    const parseFail = await createHarness({ refinerQueue: ['not-json'] });
+    const parsed = await parseFail.evolution.run(baseOptions({
+      maxRounds: 1,
+      trainingTasks: [task('train-a')],
+      validationTasks: [],
+    }));
+    expect(parsed.rounds.some((r) => r.outcome === 'rejected-structural')).toBe(true);
+    expect(parseFail.backing.store.rejections[0]?.reason).toBe('parse');
+  });
+
+  it('baseline evaluation error refuses promotion and score-zero records a zero', async () => {
+    const edits = addActionEdits('lookup', 'no-baseline');
+    const preview = ProceduralGraph.fromSnapshot(skeletonSnapshot(GRAPH_ID, 'rev-seed'));
+    const h = await createHarness({
+      refinerQueue: [editsJson(edits)],
+      scoreByDigest: new Map<string, number | 'nan'>([
+        [preview.digest, 'nan'],
+        [candidateDigest(preview, edits), 0.9],
+      ]),
+    });
+    const result = await h.evolution.run(baseOptions({
+      maxRounds: 1,
+      trainingTasks: [task('train-a')],
+    }));
+    expect(result.rounds.some((r) => r.round === 0 && r.outcome === 'evaluation-error')).toBe(true);
+    expect(result.rounds.some((r) => r.round === 1 && r.outcome === 'evaluation-error')).toBe(true);
+    expect(result.retained.revisionId).toBe('rev-seed');
+
+    const throwing = await createHarness({
+      refinerQueue: [editsJson(addActionEdits('search', 'zero'))],
+    });
+    throwing.deps.evaluate = async () => {
+      throw new Error('evaluator exploded');
+    };
+    const zeroed = await throwing.evolution.run(baseOptions({
+      taskFailurePolicy: 'score-zero',
+      maxRounds: 1,
+      trainingTasks: [task('train-a')],
+    }));
+    expect(zeroed.rounds.some((r) => r.round === 0 && r.outcome === 'accepted')).toBe(true);
+    expect(zeroed.retained.validationMean).toBe(0);
+  });
+
+  it('already-aborted signal, empty training, and out-of-range scores take the documented exits', async () => {
+    const aborted = await createHarness({ refinerQueue: [] });
+    const controller = new AbortController();
+    controller.abort();
+    const abortResult = await aborted.evolution.run(baseOptions({
+      signal: controller.signal,
+      maxRounds: 1,
+      trainingTasks: [task('train-a')],
+    }));
+    expect(abortResult.stoppedBecause).toBe('aborted');
+
+    const empty = await createHarness({ refinerQueue: [] });
+    const exhausted = await empty.evolution.run(baseOptions({
+      trainingTasks: [],
+      maxRounds: 0,
+    }));
+    expect(exhausted.stoppedBecause).toBe('batches-exhausted');
+
+    const edits = addActionEdits('lookup', 'oor');
+    const preview = ProceduralGraph.fromSnapshot(skeletonSnapshot(GRAPH_ID, 'rev-seed'));
+    const range = await createHarness({
+      refinerQueue: [editsJson(edits)],
+      scoreByDigest: new Map<string, number | 'nan'>([
+        [preview.digest, 0.5],
+        [candidateDigest(preview, edits), 1.5],
+      ]),
+    });
+    const ranged = await range.evolution.run(baseOptions({
+      maxRounds: 1,
+      trainingTasks: [task('train-a')],
+    }));
+    expect(ranged.rounds.some((r) => r.outcome === 'evaluation-error')).toBe(true);
+    expect(ranged.retained.revisionId).toBe('rev-seed');
+  });
+
+  it('static_onetime paperCompatible conflict and session option defaults are recorded', async () => {
+    const edits = addActionEdits('lookup', 'static');
+    const preview = ProceduralGraph.fromSnapshot(skeletonSnapshot(GRAPH_ID, 'rev-seed'));
+    const h = await createHarness({
+      refinerQueue: [editsJson(edits)],
+      scoreByDigest: new Map<string, number | 'nan'>([
+        [preview.digest, 0.5],
+        [candidateDigest(preview, edits), 0.9],
+      ]),
+    });
+    const originalCommit = h.backing.commitRetainedRevision.bind(h.backing);
+    h.backing.commitRetainedRevision = async (input) => {
+      h.backing.bumpHead(GRAPH_ID);
+      return originalCommit(input);
+    };
+    const result = await h.evolution.run(baseOptions({
+      mode: 'static_onetime',
+      paperCompatible: true,
+      maxRounds: 1,
+      trainingTasks: [task('train-a')],
+      sessionOptions: {
+        hopLimit: 3,
+        trajectoryWindow: 2,
+        timeoutMs: 1_000,
+        maxOutputChars: 500,
+      },
+      manifestExtras: { runId: 'ignored', note: 'kept' },
+    }));
+    expect(result.stoppedBecause).toBe('conflict');
+    expect(result.manifest.note).toBe('kept');
+    expect(result.manifest.runId).not.toBe('ignored');
+    expect(result.manifest.hopLimit).toBe(3);
+  });
+
   it('restart after a rejected round resumes from the retained head with the cached score', async () => {
     const first = addActionEdits('lookup', 'restart-low');
     const second = addActionEdits('search', 'restart-high');
