@@ -2,7 +2,7 @@
 
 [![NPM](https://img.shields.io/npm/v/@danielsimonjr/memoryjs.svg)](https://www.npmjs.com/package/@danielsimonjr/memoryjs)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7.0+-blue.svg)](https://www.typescriptlang.org/)
 
 A TypeScript knowledge-graph library for AI agents and applications that need
 structured long-term memory. Entities, relations, and observations with
@@ -17,7 +17,7 @@ causal reasoning, world-model orchestration).
 > library and the MCP server share the same core; this package is published
 > independently so non-MCP applications can use it directly.
 
-For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
+For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memoryjs memory --help` (shorter: `bunx @danielsimonjr/memoryjs --help`).
 
 ## Table of Contents
 
@@ -146,10 +146,10 @@ For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
 
 | Capability | Entry point |
 |---|---|
-| Command-line interface | `npx -p @danielsimonjr/memoryjs memory --help` |
+| Command-line interface | `bunx --package @danielsimonjr/memoryjs memory --help` (or `bunx @danielsimonjr/memoryjs --help`) |
 | End-to-end smoke test against a fresh temp graph (~30 ops) | `memory smoke --keep --verbose` |
 | Diagnostic snapshot + graph health checks | `memory diag` / `memory health` |
-| Environment preflight (Node/ABI/workers/env-flag lint/provider reachability) | `memory doctor [--json]` |
+| Environment preflight (Node version / ABI, workers, env-flag lint, provider reachability) | `memory doctor [--json]` |
 | Audit-trail query + chain verification | `memory audit log\|history\|verify\|stats` |
 | Orphan + missing-parent + cycle detection with optional repair | `memory check [--apply]` |
 | Rebuild ranked + spell indexes | `memory reindex [--ranked\|--spell]` |
@@ -162,8 +162,11 @@ For a runnable CLI: `npx -p @danielsimonjr/memoryjs memory --help`.
 ## Installation
 
 ```bash
-npm install @danielsimonjr/memoryjs
+bun add @danielsimonjr/memoryjs
 ```
+
+The package still lives on the npm registry, so npm and pnpm consumers can
+keep installing it from there.
 
 Subpath imports are available for smaller load footprints — e.g.
 `@danielsimonjr/memoryjs/search`, `/agent`, `/types`, `/sqlite` — with
@@ -172,8 +175,9 @@ full-featured entry point.
 
 ### Requirements
 
-- Node.js >= 18.0.0
-- TypeScript >= 5.0 (for development)
+- Bun >= 1.4.2 (documented install and development workflow)
+- Node.js >= 18.0.0 (production runtime of the published package)
+- TypeScript >= 7.0 (for development)
 
 ## Quick Start
 
@@ -966,9 +970,9 @@ knobs) lives in [CLAUDE.md](CLAUDE.md#environment-variables).
 
 ### Prerequisites
 
-- Bun 1.4+ (package manager and script driver; `bun.lock` is authoritative)
+- Bun 1.4.2+ (package manager and script driver; `packageManager: bun@1.4.2`; `bun.lock` is authoritative)
 - Node.js 18+ (production runtime for the published package and native addons)
-- TypeScript 5.0+
+- TypeScript 7.0+
 
 > **Bun installs; Node ships.** CI and local development use Bun to install
 > dependencies and run scripts. The published library still targets Node — do
@@ -985,7 +989,7 @@ bun run test:watch     # Watch mode
 bun run test:coverage  # Run with coverage report
 bun run test:ci        # Excludes tests/performance/** (used by prepublishOnly)
 bun run typecheck      # Type checking without emit
-bun run lint           # ESLint (flat config; @typescript-eslint)
+bun run lint           # oxlint (type-aware) + lint-rule check
 bun run benchmark      # Standalone synthetic benchmarks
 bun run bench          # Vitest performance suite
 SKIP_BENCHMARKS=true bun run test  # Skip perf tests in the main suite
@@ -993,12 +997,18 @@ SKIP_BENCHMARKS=true bun run test  # Skip perf tests in the main suite
 
 ### Tooling
 
+`tools/*/` still ship their own npm lockfiles. `bun run tools:install` and
+`bun run tools:build` wrap those npm installs/builds; they are not bun-native
+subpackages. Once installed, run the TypeScript tools with Bun:
+
 ```bash
+bun run tools:install                                                  # npm install inside tools/*/
+bun run tools:build                                                    # npm run build inside tools/*/
 bun run audit:plans                                                    # Detect plan-doc rot
-node tools/create-dependency-graph/create-dependency-graph.ts          # Refresh DEPENDENCY_GRAPH.md
-node tools/chunking-for-files/chunking-for-files.ts split <file>       # Split a large file
-node tools/chunking-for-files/chunking-for-files.ts merge <manifest>   # Merge back
-node tools/migrate-from-jsonl-to-sqlite/...                            # JSONL → SQLite migration
+bun tools/create-dependency-graph/create-dependency-graph.ts          # Refresh DEPENDENCY_GRAPH.md
+bun tools/chunking-for-files/chunking-for-files.ts split <file>       # Split a large file
+bun tools/chunking-for-files/chunking-for-files.ts merge <manifest>   # Merge back
+bun tools/migrate-from-jsonl-to-sqlite/...                            # JSONL → SQLite migration
 ```
 
 ### Architecture overview
@@ -1091,8 +1101,10 @@ Other:
 
 - [@danielsimonjr/memory-mcp](https://github.com/danielsimonjr/memory-mcp) - MCP server built on this library
 
+Install and development commands use Bun (`bun add` / `bunx`). The package is published to the npm registry.
+
 ---
 
 **Repository:** https://github.com/danielsimonjr/memoryjs
-**NPM:** https://www.npmjs.com/package/@danielsimonjr/memoryjs
+**Package:** https://www.npmjs.com/package/@danielsimonjr/memoryjs
 **Issues:** https://github.com/danielsimonjr/memoryjs/issues
