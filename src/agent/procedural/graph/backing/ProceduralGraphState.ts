@@ -402,7 +402,7 @@ export class ProceduralGraphState {
     const revisionId = readString(record, 'revisionId');
     const fingerprint = readString(record, 'fingerprint');
     const report = record.report as PGEvaluationReport;
-    this.upsertEvaluation(graphId, revisionId, report);
+    this.upsertEvaluation(graphId, revisionId, { ...report, fingerprint });
   }
 
   private applyRound(record: Record<string, unknown>): void {
