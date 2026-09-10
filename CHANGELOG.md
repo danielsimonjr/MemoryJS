@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Procedural Graph** — `ctx.createProceduralGraph(config)` factory plus `ProceduralGraphManager` for validated create/import, frozen-revision sessions with guidance, offline `evolve` with caller-supplied rollout/evaluate/refiner callbacks, and a one-way `procedureToGraphInput` adapter. JSONL / SQLite / in-memory backings; default sidecar `<basename>-procedural-graph.jsonl`. `@experimental`.
+
 ### Changed
 
 - **TypeScript raised to `^7.0.2`.** The build blocker was removed in the previous

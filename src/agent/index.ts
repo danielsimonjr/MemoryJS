@@ -381,6 +381,35 @@ export {
   PROCEDURE_ENTITY_TYPE,
   type ProcedureManagerConfig,
 } from './procedural/index.js';
+export {
+  ProceduralGraph,
+  ProceduralGraphManager,
+  ProceduralGraphSession,
+  ProceduralGraphEvolution,
+  InMemoryProceduralGraphBacking,
+  JsonlProceduralGraphBacking,
+  SqliteProceduralGraphBacking,
+  createProceduralGraphBacking,
+  procedureToGraphInput,
+  parseEditSet,
+  prepareCandidate,
+  PG_BUILT_IN_RELATIONS,
+} from './procedural/index.js';
+export type {
+  ProceduralGraphManagerConfig,
+  PGPolicy,
+  PGEvolutionOptions,
+  PGEvolutionResult,
+  PGEvolutionDependencies,
+  PGSessionOptions,
+  PGRefinerInput,
+  PGCommitResult,
+  IProceduralGraphBacking,
+  PGValidatorOptions,
+  PGCompletionProvider,
+  PGTokenizer,
+  PGSerializerStyle,
+} from './procedural/index.js';
 
 // 3B.6 Causal Reasoning
 export {

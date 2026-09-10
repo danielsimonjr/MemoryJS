@@ -91,6 +91,7 @@ ctx.semanticForget      // Two-tier deletion (exact → semantic fallback)
 ctx.queryNaturalLanguage() // LLM-planned query decomposition (optional provider)
 ctx.agentMemory()       // Agent Memory System facade
 ctx.procedureManager    // 3B.4 Procedural Memory (steps as procedure-step entities + has_step/precedes/has_fallback relations)
+ctx.createProceduralGraph(config) // Procedural Graph factory (sessions, guidance, offline evolve)
 ctx.graphRankPrior      // Cached normalized-PageRank ranking signal (event-invalidated, degree fallback)
 ctx.hybridSearchManager // Semantic + lexical + symbolic (+ optional graph channel) layered search
 ctx.causalReasoner      // 3B.6 Causal Reasoning (findCauses/findEffects/counterfactual)

@@ -835,6 +835,35 @@ For hybrid search, instantiate `HybridSearchManager` directly.
 | `matchProcedure(context, candidates, threshold?)` | Token-overlap match |
 | `refineProcedure(id, { succeeded, notes? })` | EWMA success-rate update |
 
+### Procedural Graph (`ctx.createProceduralGraph`)
+
+Self-evolving execution graphs (Lu et al., arXiv:2609.09153). Nodes are actions or states; edges carry `condition`, `guidance`, and `pitfalls`. Revisions are validated before they become the retained head.
+
+```ts
+const pg = await ctx.createProceduralGraph({
+  backing: { type: 'jsonl' }, // sidecar <basename>-procedural-graph.jsonl
+});
+await pg.createGraph({ graphId: 'checkout', nodes, edges });
+
+const session = await pg.openSession('checkout', {
+  taskDescription: 'Complete checkout',
+  toolCatalog: ['pay'],
+});
+const tip = await session?.guidance('what next?');
+
+const evolved = await pg.evolve({
+  graphId: 'checkout',
+  mode: 'static_incremental',
+  trainingTasks, validationTasks,
+  batchSize: 4, maxRounds: 3, maxTokens: 2000,
+  cyclePolicy: 'reject', paperCompatible: false,
+  toolCatalog: ['pay'], taskDescription: 'Complete checkout',
+  taskFailurePolicy: 'fail-round',
+}, { rollout, evaluate, refiner, tokenizer });
+```
+
+`paperCompatible: true` uses paper defaults (`cyclePolicy: 'repair'`; one-time modes may commit without a validation gate). Caller supplies `rollout` / `evaluate` / `refiner`; the library never executes guidance text.
+
 ### WorldModelManager (`ctx.worldModelManager`)
 
 | Method | Description |

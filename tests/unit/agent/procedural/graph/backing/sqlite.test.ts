@@ -46,6 +46,7 @@ describe('SqliteProceduralGraphBacking (default driver)', () => {
   beforeAll(() => {
     delete process.env.MEMORY_SQLITE_DRIVER;
     __resetDatabaseCtorForTests();
+    console.info('SqliteProceduralGraphBacking driver: default');
   });
 
   runBackingContract('sqlite', () => SqliteProceduralGraphBacking.open(dbPath));
@@ -59,6 +60,7 @@ describe.skipIf(!isNodeSqliteAvailable())('SqliteProceduralGraphBacking (node dr
   beforeAll(() => {
     process.env.MEMORY_SQLITE_DRIVER = 'node';
     __resetDatabaseCtorForTests();
+    console.info('SqliteProceduralGraphBacking driver: node');
   });
 
   runBackingContract('sqlite-node', () => SqliteProceduralGraphBacking.open(dbPath));

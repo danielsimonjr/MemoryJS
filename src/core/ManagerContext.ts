@@ -95,6 +95,13 @@ import { ToolAffordanceManager } from '../agent/ToolAffordanceManager.js';
 import { ToolCallObserver } from '../agent/ToolCallObserver.js';
 import { PatternDetector } from '../agent/PatternDetector.js';
 import { ProcedureManager } from '../agent/procedural/ProcedureManager.js';
+import {
+  ProceduralGraphManager,
+  createProceduralGraphBacking,
+  type IProceduralGraphBacking,
+  type PGPolicy,
+  type PGCompletionProvider,
+} from '../agent/procedural/graph/index.js';
 import { EventManager } from '../agent/events/EventManager.js';
 import {
   ProspectiveMemoryManager,
@@ -204,6 +211,7 @@ export class ManagerContext {
   private _toolCallObserver?: ToolCallObserver;
   private _patternDetector?: PatternDetector;
   private _procedureManager?: ProcedureManager;
+  private _proceduralGraphManagers: ProceduralGraphManager[] = [];
   private _eventManager?: EventManager;
   private _prospectiveMemory?: ProspectiveMemoryManager;
   private _failureManager?: FailureManager;
@@ -1112,6 +1120,54 @@ export class ManagerContext {
   }
 
   /**
+   * Factory for a {@link ProceduralGraphManager}. A config `backing`
+   * object is constructed here (`ownsBacking: true`) and disposed by
+   * {@link close}. An injected backing instance is not owned.
+   */
+  async createProceduralGraph(config: {
+    backing: { type: 'jsonl' | 'sqlite' | 'memory'; path?: string } | IProceduralGraphBacking;
+    policy?: PGPolicy;
+    guidanceProvider?: PGCompletionProvider;
+    paperCompatible?: boolean;
+  }): Promise<ProceduralGraphManager> {
+    let backing: IProceduralGraphBacking;
+    let ownsBacking: boolean;
+    if (isProceduralGraphBacking(config.backing)) {
+      backing = config.backing;
+      ownsBacking = false;
+    } else {
+      const spec = config.backing;
+      backing = await createProceduralGraphBacking({
+        type: spec.type,
+        path: spec.path ?? this.defaultProceduralGraphPath(spec.type),
+      });
+      ownsBacking = true;
+    }
+    const manager = new ProceduralGraphManager({
+      backing,
+      ownsBacking,
+      policy: config.policy,
+      guidanceProvider: config.guidanceProvider,
+      paperCompatible: config.paperCompatible,
+    });
+    if (ownsBacking) {
+      this._proceduralGraphManagers.push(manager);
+    }
+    return manager;
+  }
+
+  private defaultProceduralGraphPath(type: 'jsonl' | 'sqlite' | 'memory'): string | undefined {
+    if (type === 'memory') {
+      return undefined;
+    }
+    const filePath = this.storage.getFilePath();
+    const dir = path.dirname(filePath);
+    const basename = path.basename(filePath, path.extname(filePath));
+    const ext = type === 'sqlite' ? 'db' : 'jsonl';
+    return path.join(dir, `${basename}-procedural-graph.${ext}`);
+  }
+
+  /**
    * `EventManager` (R1) — n-ary event reification: actions become
    * first-class `entityType: 'event'` hub entities with role-typed
    * relations (`actor_of` / `targeted` / `occurred_in` /
@@ -1656,6 +1712,9 @@ export class ManagerContext {
    * try { ... } finally { ctx.close(); }
    */
   close(): void {
+    for (const manager of this._proceduralGraphManagers) {
+      void manager.dispose();
+    }
     const storage = this.storage as unknown as { close?: () => void };
     if (typeof storage?.close === 'function') {
       storage.close();
@@ -1684,4 +1743,10 @@ export class ManagerContext {
     if (value === undefined) return defaultValue;
     return value.toLowerCase() === 'true';
   }
+}
+
+function isProceduralGraphBacking(
+  value: { type: 'jsonl' | 'sqlite' | 'memory'; path?: string } | IProceduralGraphBacking,
+): value is IProceduralGraphBacking {
+  return typeof (value as IProceduralGraphBacking).createGraph === 'function';
 }
