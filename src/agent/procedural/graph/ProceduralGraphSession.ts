@@ -22,6 +22,14 @@ import type {
   PGTrajectory,
 } from '../../../types/proceduralGraph.js';
 
+/**
+ * Session options (feature plan 4.8).
+ *
+ * `maxObservationChars` (default 8000) is the one permitted addition to
+ * Section 4.8: per-step observation budget (feature plan 8.6). Oversized
+ * observations are truncated at `recordStep` with a visible marker, never
+ * silently dropped.
+ */
 export interface PGSessionOptions {
   taskDescription: string;
   toolCatalog: readonly string[];
@@ -36,6 +44,7 @@ export interface PGSessionOptions {
   maxGuidanceCalls?: number /*500*/;
   timeoutMs?: number /*60000*/;
   maxOutputChars?: number /*20000*/;
+  maxObservationChars?: number /*8000*/;
 }
 
 interface ResolvedSessionOptions {
@@ -52,6 +61,7 @@ interface ResolvedSessionOptions {
   maxGuidanceCalls: number;
   timeoutMs: number;
   maxOutputChars: number;
+  maxObservationChars: number;
 }
 
 export class ProceduralGraphSession {
@@ -77,7 +87,9 @@ export class ProceduralGraphSession {
     this.steps.push({
       action: step.action,
       ...(step.nodeId !== undefined ? { nodeId: step.nodeId } : {}),
-      ...(step.observation !== undefined ? { observation: step.observation } : {}),
+      ...(step.observation !== undefined
+        ? { observation: truncateObservation(step.observation, this.opts.maxObservationChars) }
+        : {}),
       ...(step.at !== undefined ? { at: step.at } : {}),
     });
   }
@@ -162,5 +174,20 @@ function resolveSessionOptions(options: PGSessionOptions): ResolvedSessionOption
     maxGuidanceCalls: options.maxGuidanceCalls ?? 500,
     timeoutMs: options.timeoutMs ?? 60_000,
     maxOutputChars: options.maxOutputChars ?? 20_000,
+    maxObservationChars: options.maxObservationChars ?? 8_000,
   };
+}
+
+/** Visible marker so per-step observation truncation is never silent. */
+const OBSERVATION_TRUNCATION_MARKER = '…[truncated]';
+
+function truncateObservation(observation: string, maxChars: number): string {
+  if (observation.length <= maxChars) {
+    return observation;
+  }
+  const marker = OBSERVATION_TRUNCATION_MARKER;
+  if (maxChars <= marker.length) {
+    return marker;
+  }
+  return observation.slice(0, maxChars - marker.length) + marker;
 }
