@@ -348,13 +348,18 @@ export class ProceduralGraphState {
     if (matches.size === 1) {
       return [...matches][0]!;
     }
+    // Legacy records only (new records carry `graphId`). Never guess between
+    // graphs: an ambiguous record must fail loudly rather than be filed under
+    // the alphabetically first graph.
     if (matches.size > 1) {
-      return [...matches].sort()[0]!;
+      throw new Error(
+        `Rejection for revision '${record.retainedRevisionId}' matches several graphs; set record.graphId`,
+      );
     }
-    if (this.heads.size >= 1) {
-      return [...this.heads.keys()].sort()[0]!;
+    if (this.heads.size === 1) {
+      return [...this.heads.keys()][0]!;
     }
-    throw new Error('Cannot associate rejection with a graph');
+    throw new Error('Cannot associate rejection with a graph; set record.graphId');
   }
 
   private applyHead(record: Record<string, unknown>): void {

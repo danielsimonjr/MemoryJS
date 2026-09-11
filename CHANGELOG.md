@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Guidance and refiner prompts get a trailing untrusted-data handling note (`DATA_HANDLING_NOTE`) outside `paperCompatible` mode; paper-compatible prompts stay byte-identical to Appendix B.5.
   - `createProceduralGraphBacking` applies the same path-traversal check as `ManagerContext` to JSONL / SQLite paths.
   - `ManagerContext.close()` logs and swallows a rejected `ProceduralGraphManager.dispose()` instead of leaking an unhandled rejection.
+  - `ManagerContextOptions.storageType` is honoured: it selects the backend when `MEMORY_STORAGE_TYPE` is unset (the option was previously declared but ignored; the env var keeps its documented precedence).
+  - The SQLite procedural-graph backing applies `MEMORY_SQLITE_SYNCHRONOUS` like the primary backend (`resolveSQLiteSynchronousMode()` exported from `SQLiteStorage`).
+  - Legacy rejection records without `graphId` resolve to the only graph or fail loudly; they are never filed under the alphabetically first of several graphs.
+  - `localizeForGuidance()` exported; `ProceduralGraphSession` reuses it instead of a private copy of the locate/extract logic.
+
+### Fixed
+
+- **Zero lint warnings.** Cleared all 55 pre-existing `oxlint` warnings across `src/`: unused catch bindings, template literals over `unknown`/`never` values (now stringified explicitly), `[object Object]` risks in `PostgreSQLStorage.rowToEntity`, `errorSuggestions`, and `validateNonEmpty` (typed column/value helpers), redundant union constituents (`ContextProfileManager`, `LLMQueryPlanner`, `SchemaValidator`, the CLI `decision` command), a `this` alias in `DistillationPipeline`, a mixed sync/async `Promise.all` in `SummarizationService`, an unbound `similarity` method in `ReconstructiveMemory`, dead destructuring defaults in `ContextWindowManager`, and useless regex escapes / control-character regexes in `ContextWindowManager` and `IOManager`. No behavior change intended; the full suite is unchanged.
+- **`CLAUDE.md`** now describes the real lint toolchain (`oxlint` plus the two project rules) instead of the removed ESLint 9 config.
 
 ### Changed
 

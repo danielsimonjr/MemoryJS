@@ -689,13 +689,25 @@ export function validateTags(tags: unknown): ValidationResult {
   return { valid: false, errors: formatZodErrors(result.error) };
 }
 
+/** Stringify a non-string value for an error message without `[object Object]`. */
+function describeReceived(value: unknown): string {
+  if (typeof value === 'object' && value !== null) {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return Object.prototype.toString.call(value);
+    }
+  }
+  return String(value as number | boolean | bigint | symbol | undefined);
+}
+
 /** Validate a non-empty string with detailed error reporting. */
 export function validateNonEmpty(value: unknown, fieldName: string, contextName: string = 'Validation'): void {
   if (typeof value !== 'string' || value.trim().length === 0) {
     const received =
       typeof value === 'string'
         ? `string of length ${value.length} (${JSON.stringify(value.slice(0, 40))})`
-        : `${typeof value} (${value === null ? 'null' : String(value).slice(0, 40)})`;
+        : `${typeof value} (${value === null ? 'null' : describeReceived(value).slice(0, 40)})`;
     throw new Error(`${contextName}: '${fieldName}' must be a non-empty string; received ${received}`);
   }
 }

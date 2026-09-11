@@ -139,6 +139,24 @@ export async function generateGuidance(args: {
   };
 }
 
+/**
+ * PG-03 locate + extract: exact-id match (plus optional action binding
+ * outside paper-compatible mode), then the outgoing `hopLimit`
+ * neighborhood; an unmatched action selects the full graph.
+ */
+export function localizeForGuidance(
+  graph: ProceduralGraph,
+  lastAction: string | undefined,
+  hopLimit: number,
+  paperCompatible: boolean,
+): PGLocalization {
+  const loc = graph.locate(lastAction, { allowActionBinding: !paperCompatible });
+  if (loc.matched && loc.nodeId !== undefined) {
+    return { ...loc, hops: graph.neighborhood(loc.nodeId, hopLimit), usedFullGraph: false };
+  }
+  return { ...loc, usedFullGraph: true };
+}
+
 function localizeAndSerialize(
   graph: ProceduralGraph,
   lastAction: string | undefined,
@@ -146,18 +164,14 @@ function localizeAndSerialize(
   paperCompatible: boolean,
   style: PGSerializerStyle,
 ): { localization: PGLocalization; serialized: string; usedFullGraph: boolean } {
-  const loc = graph.locate(lastAction, { allowActionBinding: !paperCompatible });
-  if (loc.matched && loc.nodeId !== undefined) {
-    const hops = graph.neighborhood(loc.nodeId, hopLimit);
-    const localization: PGLocalization = { ...loc, hops, usedFullGraph: false };
+  const localization = localizeForGuidance(graph, lastAction, hopLimit, paperCompatible);
+  if (!localization.usedFullGraph) {
     return {
       localization,
       serialized: serializeLocalContext(graph, localization, style),
       usedFullGraph: false,
     };
   }
-
-  const localization: PGLocalization = { ...loc, usedFullGraph: true };
   return {
     localization,
     serialized: serializeFullGraph(graph, style),

@@ -9,6 +9,20 @@
 
 import { ErrorCode } from './errors.js';
 
+/** Render an unknown context value for a suggestion line without `[object Object]`. */
+function describe(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value === null || value === undefined) return String(value);
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return Object.prototype.toString.call(value);
+    }
+  }
+  return String(value as number | boolean | bigint | symbol);
+}
+
 /**
  * Generate context-specific suggestions based on error code and context.
  */
@@ -26,7 +40,7 @@ export function generateSuggestions(
         'Verify the entity was created before accessing it'
       );
       if (context?.entityName) {
-        suggestions.push(`Searched for: "${context.entityName}"`);
+        suggestions.push(`Searched for: "${describe(context.entityName)}"`);
       }
       break;
 
@@ -53,7 +67,7 @@ export function generateSuggestions(
         'Ensure the file is not locked by another process'
       );
       if (context?.path) {
-        suggestions.push(`Path: ${context.path}`);
+        suggestions.push(`Path: ${describe(context.path)}`);
       }
       break;
 
@@ -80,7 +94,7 @@ export function generateSuggestions(
         'Use simpler query terms to isolate the issue'
       );
       if (context?.query) {
-        suggestions.push(`Query: "${context.query}"`);
+        suggestions.push(`Query: "${describe(context.query)}"`);
       }
       break;
 
@@ -115,7 +129,7 @@ export function generateSuggestions(
         'Review the feature documentation for requirements'
       );
       if (context?.dependency) {
-        suggestions.push(`Missing: ${context.dependency}`);
+        suggestions.push(`Missing: ${describe(context.dependency)}`);
       }
       break;
 
@@ -182,7 +196,7 @@ export function generateSuggestions(
         'Ensure all required fields are present in imported data'
       );
       if (context?.format) {
-        suggestions.push(`Format: ${context.format}`);
+        suggestions.push(`Format: ${describe(context.format)}`);
       }
       break;
 
@@ -193,7 +207,7 @@ export function generateSuggestions(
         'Try a different export format'
       );
       if (context?.format) {
-        suggestions.push(`Format: ${context.format}`);
+        suggestions.push(`Format: ${describe(context.format)}`);
       }
       break;
 
@@ -204,10 +218,10 @@ export function generateSuggestions(
         'Ensure the file is not locked by another process'
       );
       if (context?.operation) {
-        suggestions.push(`Operation: ${context.operation}`);
+        suggestions.push(`Operation: ${describe(context.operation)}`);
       }
       if (context?.path) {
-        suggestions.push(`Path: ${context.path}`);
+        suggestions.push(`Path: ${describe(context.path)}`);
       }
       break;
 

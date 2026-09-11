@@ -653,7 +653,7 @@ export class CompressionManager {
         result.entitiesMerged += group.length - 1;
       } catch (error) {
         // Skip groups that fail to merge
-        logger.error(`Failed to merge group ${group}:`, error);
+        logger.error(`Failed to merge group ${JSON.stringify(group)}:`, error);
       }
 
       mergedGroups++;

@@ -356,7 +356,7 @@ export class IOManager {
       case 'json-ld':
         return this.exportAsJsonLd(graph);
       default:
-        throw new Error(`Unsupported export format: ${format}`);
+        throw new Error(`Unsupported export format: ${String(format)}`);
     }
   }
 
@@ -384,8 +384,11 @@ export class IOManager {
       .replace(/\n/g, '\\n')
       .replace(/\r/g, '\\r')
       .replace(/\t/g, '\\t')
+      // eslint-disable-next-line no-control-regex -- escaping C0 controls for JSON-safe output is the point
       .replace(/\x08/g, '\\b')
+      // eslint-disable-next-line no-control-regex
       .replace(/\x0c/g, '\\f')
+      // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x07\x0B\x0E-\x1F]/g, (c) =>
         `\\u${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}`,
       );
@@ -983,7 +986,7 @@ export class IOManager {
           importedGraph = this.parseGraphMLImport(data);
           break;
         default:
-          throw new Error(`Unsupported import format: ${format}`);
+          throw new Error(`Unsupported import format: ${String(format)}`);
       }
 
       reportProgress?.(createProgress(20, 100, 'parsing complete'));
@@ -1916,7 +1919,7 @@ export class IOManager {
       '<head>',
       '  <meta charset="utf-8">',
       `  <title>${escapedTitle}</title>`,
-      '  <script src="https://d3js.org/d3.v7.min.js"><\/script>',
+      '  <script src="https://d3js.org/d3.v7.min.js"></' + 'script>',
       '  <style>',
       '    body { margin: 0; font-family: sans-serif; background: #1a1a2e; }',
       '    svg { width: 100vw; height: 100vh; }',
@@ -2062,7 +2065,7 @@ export class IOManager {
       '',
       '      node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");',
       '    });',
-      '  <\/script>',
+      '  </' + 'script>',
       '</body>',
       '</html>',
     ].join('\n');

@@ -190,13 +190,12 @@ export class DistillationPipeline {
    * with any component that accepts IDistillationPolicy.
    */
   asPolicyAdapter(): IDistillationPolicy {
-    const pipeline = this;
     return {
-      async distill(
+      distill: async (
         results: HybridSearchResult[],
         config: DistillationConfig
-      ): Promise<DistilledMemory[]> {
-        const result = await pipeline.distill(results, config);
+      ): Promise<DistilledMemory[]> => {
+        const result = await this.distill(results, config);
         return result.kept;
       },
     };

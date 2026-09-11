@@ -46,7 +46,7 @@ export function loadConfig(configPath: string): Partial<GlobalOptions> {
     const content = readFileSync(configPath, 'utf-8');
     const config = JSON.parse(content);
     return validateConfig(config);
-  } catch (error) {
+  } catch {
     console.warn(`Warning: Failed to load config from ${configPath}`);
     return {};
   }

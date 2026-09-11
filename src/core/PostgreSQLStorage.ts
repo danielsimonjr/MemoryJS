@@ -243,31 +243,31 @@ export class PostgreSQLStorage implements IGraphStorage {
 
   private rowToEntity(row: Record<string, unknown>): Entity {
     const entity: Entity = {
-      name: String(row.name),
-      entityType: String(row.entity_type),
+      name: columnText(row.name),
+      entityType: columnText(row.entity_type),
       observations: Array.isArray(row.observations) ? row.observations as string[] : [],
     };
-    if (row.parent_id != null) entity.parentId = String(row.parent_id);
+    if (row.parent_id != null) entity.parentId = columnText(row.parent_id);
     if (Array.isArray(row.tags)) entity.tags = row.tags as string[];
     if (row.importance != null) entity.importance = Number(row.importance);
-    if (row.created_at != null) entity.createdAt = new Date(String(row.created_at)).toISOString();
-    if (row.last_modified != null) entity.lastModified = new Date(String(row.last_modified)).toISOString();
+    if (row.created_at != null) entity.createdAt = columnIso(row.created_at);
+    if (row.last_modified != null) entity.lastModified = columnIso(row.last_modified);
     if (row.ttl != null) entity.ttl = Number(row.ttl);
     if (row.confidence != null) entity.confidence = Number(row.confidence);
-    if (row.project_id != null) entity.projectId = String(row.project_id);
+    if (row.project_id != null) entity.projectId = columnText(row.project_id);
     if (row.version != null) entity.version = Number(row.version);
-    if (row.parent_entity_name != null) entity.parentEntityName = String(row.parent_entity_name);
-    if (row.root_entity_name != null) entity.rootEntityName = String(row.root_entity_name);
+    if (row.parent_entity_name != null) entity.parentEntityName = columnText(row.parent_entity_name);
+    if (row.root_entity_name != null) entity.rootEntityName = columnText(row.root_entity_name);
     if (row.is_latest != null) entity.isLatest = Boolean(row.is_latest);
-    if (row.superseded_by != null) entity.supersededBy = String(row.superseded_by);
-    if (row.content_hash != null) entity.contentHash = String(row.content_hash);
-    if (row.valid_from != null) entity.validFrom = new Date(String(row.valid_from)).toISOString();
-    if (row.valid_until != null) entity.validUntil = new Date(String(row.valid_until)).toISOString();
+    if (row.superseded_by != null) entity.supersededBy = columnText(row.superseded_by);
+    if (row.content_hash != null) entity.contentHash = columnText(row.content_hash);
+    if (row.valid_from != null) entity.validFrom = columnIso(row.valid_from);
+    if (row.valid_until != null) entity.validUntil = columnIso(row.valid_until);
     if (row.observation_meta != null) {
       entity.observationMeta = row.observation_meta as Entity['observationMeta'];
     }
     if (row.lifecycle_status != null) {
-      entity.lifecycleStatus = String(row.lifecycle_status) as Entity['lifecycleStatus'];
+      entity.lifecycleStatus = columnText(row.lifecycle_status) as Entity['lifecycleStatus'];
     }
     if (row.extra != null && typeof row.extra === 'object') {
       Object.assign(entity, row.extra);
@@ -566,4 +566,21 @@ export class PostgreSQLStorage implements IGraphStorage {
       this.pool = null;
     }
   }
+}
+
+/**
+ * Text form of a `pg` column value. `pg` returns strings for text columns
+ * and `Date` objects for timestamps; anything else is stringified
+ * explicitly so an unexpected JSON column never becomes `[object Object]`.
+ */
+function columnText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object' && value !== null) return JSON.stringify(value);
+  return String(value as number | boolean | bigint | null | undefined);
+}
+
+/** ISO-8601 form of a `pg` timestamp column (Date or parseable string). */
+function columnIso(value: unknown): string {
+  return new Date(value instanceof Date ? value : columnText(value)).toISOString();
 }

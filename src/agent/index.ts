@@ -416,6 +416,7 @@ export {
   tokenTail,
   concatTrajectories,
   generateGuidance,
+  localizeForGuidance,
   buildRefinerPrompt,
   serializeRejections,
   proposeEdits,

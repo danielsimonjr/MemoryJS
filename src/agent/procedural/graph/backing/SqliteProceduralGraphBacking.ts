@@ -14,7 +14,7 @@
 
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { resolveSQLiteDatabaseCtor } from '../../../../core/SQLiteStorage.js';
+import { resolveSQLiteDatabaseCtor, resolveSQLiteSynchronousMode } from '../../../../core/SQLiteStorage.js';
 import type {
   PGEvaluationReport,
   PGHead,
@@ -98,6 +98,8 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
     const Ctor = resolveSQLiteDatabaseCtor();
     const db = new Ctor(dbPath) as unknown as AdaptedDatabase;
     db.pragma('journal_mode = WAL');
+    // Same durability knob as the primary backend (MEMORY_SQLITE_SYNCHRONOUS).
+    db.pragma(`synchronous = ${resolveSQLiteSynchronousMode()}`);
     db.exec(`
       CREATE TABLE IF NOT EXISTS pg_heads (
         graph_id TEXT PRIMARY KEY,
@@ -481,12 +483,17 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
       'SELECT DISTINCT graph_id FROM pg_revisions WHERE revision_id = ? ORDER BY graph_id ASC',
     ).all(record.retainedRevisionId) as Array<{ graph_id: string }>;
     if (matches.length === 1) return matches[0]!.graph_id;
-    if (matches.length > 1) return matches[0]!.graph_id;
+    // Legacy records only (new records carry `graphId`); never guess between graphs.
+    if (matches.length > 1) {
+      throw new Error(
+        `Rejection for revision '${record.retainedRevisionId}' matches several graphs; set record.graphId`,
+      );
+    }
     const heads = this.stmt('SELECT graph_id FROM pg_heads ORDER BY graph_id ASC').all() as Array<{
       graph_id: string;
     }>;
-    if (heads.length >= 1) return heads[0]!.graph_id;
-    throw new Error('Cannot associate rejection with a graph');
+    if (heads.length === 1) return heads[0]!.graph_id;
+    throw new Error('Cannot associate rejection with a graph; set record.graphId');
   }
 
   private count(sql: string, graphId: string): number {

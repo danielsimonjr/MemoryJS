@@ -146,7 +146,7 @@ export class PartialIndexAdvisor {
       // re-validate at runtime in case a caller force-casts. DDL goes
       // through `db.exec` and bound parameters cannot appear there.
       if (rec.column !== 'entityType' && rec.column !== 'projectId') {
-        throw new Error(`PartialIndexAdvisor: refused unknown column "${rec.column}"`);
+        throw new Error(`PartialIndexAdvisor: refused unknown column "${String(rec.column)}"`);
       }
       const literal = escapeLiteral(rec.value);
       // Index the filter column itself (not `entities(name)`) so the

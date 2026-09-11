@@ -319,7 +319,7 @@ export class ContextWindowManager {
       : options;
 
     const {
-      maxTokens = this.config.defaultMaxTokens,
+      maxTokens,
       context = {},
       includeWorkingMemory = true,
       includeEpisodicRecent = true,
@@ -625,7 +625,7 @@ export class ContextWindowManager {
       : options;
 
     const {
-      maxTokens = this.config.defaultMaxTokens,
+      maxTokens,
       context = {},
       includeWorkingMemory = true,
       includeEpisodicRecent = true,
@@ -1491,7 +1491,7 @@ export class ContextWindowManager {
     const MAX_MAP_SIZE = 10000;
 
     // Split text into tokens at natural break points
-    const tokens = text.split(/(\s+|[{}()\[\]<>:;,."'`|=])/);
+    const tokens = text.split(/(\s+|[{}()[\]<>:;,."'`|=])/);
 
     // Build n-grams of consecutive tokens
     outer: for (let n = 1; n <= 6; n++) {
@@ -1502,7 +1502,7 @@ export class ContextWindowManager {
         if (/^\s*$/.test(ngram)) continue;
         if ((ngram.match(/\s/g) || []).length > ngram.length * 0.5) continue;
 
-        const opens = (ngram.match(/[{(\[<]/g) || []).length;
+        const opens = (ngram.match(/[{([<]/g) || []).length;
         const closes = (ngram.match(/[})\]>]/g) || []).length;
         if (opens !== closes) continue;
 

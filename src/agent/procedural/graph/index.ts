@@ -98,7 +98,7 @@ export {
 export { ProceduralGraphSession } from './ProceduralGraphSession.js';
 export type { PGSessionOptions } from './ProceduralGraphSession.js';
 
-export { generateGuidance } from './ProceduralGuidance.js';
+export { generateGuidance, localizeForGuidance } from './ProceduralGuidance.js';
 
 export {
   buildRefinerPrompt,

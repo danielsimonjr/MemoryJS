@@ -219,7 +219,7 @@ ctx.eventManager        // R1 event reification: actions as event hub entities (
 - Worker files (`levenshteinWorker.ts`) built separately to `dist/workers/` for dynamic loading
 - CLI built separately to `dist/cli/` with `#!/usr/bin/env node` banner
 - `better-sqlite3` is externalized (native addon, not bundled)
-- `bun run lint` (ESLint 9 flat config in `eslint.config.mjs`) is the primary lint surface; `bun run typecheck` (bare `tsc --noEmit`) catches type-only issues lint doesn't see. Both should exit 0 before commit.
+- `bun run lint` (`oxlint --type-aware src` plus the two project rules in `scripts/check-lint-rules.mjs` / `scripts/lint-rules.mjs`: `src/types` stays a leaf layer, and `storage.updateEntity()` results are never discarded) is the primary lint surface; `bun run typecheck` (bare `tsc --noEmit`) catches type-only issues lint doesn't see. Both should exit 0 before commit.
 - Publishable package: `bun run prepublishOnly` runs clean + build + test
 
 ## Testing

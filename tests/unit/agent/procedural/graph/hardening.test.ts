@@ -326,6 +326,48 @@ describe('ProceduralGraphManager hardening', () => {
   });
 });
 
+describe('legacy rejection records without graphId', () => {
+  it('resolve to the only graph, and fail loudly instead of guessing when several graphs exist', async () => {
+    const single = new InMemoryProceduralGraphBacking();
+    await single.createGraph(skeleton('only', 'rev-1'));
+    const legacy = {
+      runId: 'r', round: 1, proposalDigest: 'p',
+      edits: { add_nodes: [], delete_nodes: [], add_edges: [], delete_edges: [] },
+      reason: 'parse' as const, diagnostics: [], retainedMean: null, retainedRevisionId: 'rev-unknown',
+      trajectoryRefs: [], fingerprint: 'fp', recordedAt: '2026-01-01T00:00:00.000Z',
+    };
+    await single.appendRejection(legacy);
+    expect((await single.listRejections('only', { offset: 0, limit: 10 })).total).toBe(1);
+
+    const multi = new InMemoryProceduralGraphBacking();
+    await multi.createGraph(skeleton('alpha', 'rev-a'));
+    await multi.createGraph(skeleton('beta', 'rev-b'));
+    await expect(multi.appendRejection(legacy)).rejects.toThrow(/set record.graphId/);
+  });
+});
+
+describe('ManagerContext.storageType option', () => {
+  it('selects the backend when MEMORY_STORAGE_TYPE is unset and yields to the env var when set', async () => {
+    const previous = process.env.MEMORY_STORAGE_TYPE;
+    const dir = mkdtempSync(join(tmpdir(), 'pg-'));
+    try {
+      delete process.env.MEMORY_STORAGE_TYPE;
+      const sqlite = new ManagerContext({ storagePath: join(dir, 'a.db'), storageType: 'sqlite' });
+      expect(sqlite.storage.constructor.name).toBe('SQLiteStorage');
+      sqlite.close();
+
+      process.env.MEMORY_STORAGE_TYPE = 'jsonl';
+      const overridden = new ManagerContext({ storagePath: join(dir, 'b.db'), storageType: 'sqlite' });
+      expect(overridden.storage.constructor.name).toBe('GraphStorage');
+      overridden.close();
+    } finally {
+      if (previous === undefined) delete process.env.MEMORY_STORAGE_TYPE;
+      else process.env.MEMORY_STORAGE_TYPE = previous;
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('ManagerContext.close() with a failing procedural-graph dispose', () => {
   it('logs and swallows a rejected dispose() instead of leaking an unhandled rejection', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'pg-'));

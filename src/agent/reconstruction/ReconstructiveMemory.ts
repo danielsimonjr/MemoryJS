@@ -109,7 +109,11 @@ export class ReconstructiveMemory {
     query: string,
     options?: ReconstructionOptions,
   ): Promise<ReconstructionResult> {
-    const reconstructor = new MemoryReconstructor(this.graph, this.llm, this.backing?.similarity);
+    const backing = this.backing;
+    const similarity = backing?.similarity
+      ? (a: string, b: string): Promise<number> => backing.similarity!(a, b)
+      : undefined;
+    const reconstructor = new MemoryReconstructor(this.graph, this.llm, similarity);
     return reconstructor.reconstruct(query, options);
   }
 

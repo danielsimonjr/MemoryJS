@@ -217,7 +217,7 @@ export class SemanticSearch {
           this.vectorStore.add(batch[j].name, embeddings[j]);
           indexed++;
         }
-      } catch (error) {
+      } catch {
         // Try individual embeddings on batch failure
         for (const entity of batch) {
           // Check for cancellation during fallback

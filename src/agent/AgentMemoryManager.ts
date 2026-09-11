@@ -642,7 +642,7 @@ export class AgentMemoryManager extends EventEmitter {
           importance: 8,
           tags: options?.tags ?? [],
         }]);
-      } catch (_err) {
+      } catch {
         // Handle TOCTOU race: entity may have been created concurrently
         await this.observationManager.addObservations([{ entityName, contents: [formatted] }]);
       }

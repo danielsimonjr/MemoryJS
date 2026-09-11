@@ -257,9 +257,9 @@ export class SummarizationService {
    */
   async summarizeGroups(groups: string[][]): Promise<string[]> {
     return Promise.all(
-      groups.map((group) => {
+      groups.map((group): Promise<string> => {
         if (group.length === 1) {
-          return group[0];
+          return Promise.resolve(group[0]);
         }
         return this.summarize(group);
       })

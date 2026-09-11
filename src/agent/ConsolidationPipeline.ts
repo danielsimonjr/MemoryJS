@@ -268,7 +268,7 @@ export class ConsolidationPipeline {
           result.patternsExtracted += stageResult.transformed;
           result.errors.push(...stageResult.errors);
         } catch (error) {
-          result.errors.push(`Stage ${stage.name} failed: ${error}`);
+          result.errors.push(`Stage ${stage.name} failed: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
 
@@ -278,7 +278,7 @@ export class ConsolidationPipeline {
           await this.promoteMemory(candidate.name, effectiveOptions.targetType);
           result.memoriesPromoted++;
         } catch (error) {
-          result.errors.push(`Promotion failed for ${candidate.name}: ${error}`);
+          result.errors.push(`Promotion failed for ${candidate.name}: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
 
@@ -286,7 +286,7 @@ export class ConsolidationPipeline {
       // Working memories will expire naturally via TTL,
       // but we could actively delete them here if needed
     } catch (error) {
-      result.errors.push(`Session consolidation failed: ${error}`);
+      result.errors.push(`Session consolidation failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 
     return result;
