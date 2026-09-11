@@ -399,7 +399,8 @@ Located in `tools/` directory:
 
 ## Claude Code Automations
 
-- **Hooks** (`.claude/settings.local.json`): PostToolUse auto-typecheck on Edit/Write, PreToolUse blocks .env/.db edits
+- **SessionStart hook** (`.claude/settings.json` → `.claude/hooks/session-start.sh`): on Claude Code on the web only (`CLAUDE_CODE_REMOTE=true`), installs the Bun version pinned in `package.json` `packageManager` via `npm install -g bun@<version>` (the web container ships an older Bun that cannot parse `bun.lock`, and the bun.sh installer is blocked by the sandbox proxy), prepends its bin dir to `PATH` through `CLAUDE_ENV_FILE`, then runs `bun install --frozen-lockfile`. Synchronous and idempotent. Local sessions exit immediately.
+- **Hooks** (`.claude/settings.local.json`, untracked): PostToolUse auto-typecheck on Edit/Write, PreToolUse blocks .env/.db edits
 - **Agents** (`.claude/agents/`): `test-runner.md` (maps changed files to test dirs), `security-reviewer.md` (OWASP-based review)
 - **Commands** (`.claude/commands/`): COMMIT, DEPS, CHUNK, SEARCH, MEMORY, RELEASE
 

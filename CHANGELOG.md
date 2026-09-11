@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Zero lint warnings.** Cleared all 55 pre-existing `oxlint` warnings across `src/`: unused catch bindings, template literals over `unknown`/`never` values (now stringified explicitly), `[object Object]` risks in `PostgreSQLStorage.rowToEntity`, `errorSuggestions`, and `validateNonEmpty` (typed column/value helpers), redundant union constituents (`ContextProfileManager`, `LLMQueryPlanner`, `SchemaValidator`, the CLI `decision` command), a `this` alias in `DistillationPipeline`, a mixed sync/async `Promise.all` in `SummarizationService`, an unbound `similarity` method in `ReconstructiveMemory`, dead destructuring defaults in `ContextWindowManager`, and useless regex escapes / control-character regexes in `ContextWindowManager` and `IOManager`. No behavior change intended; the full suite is unchanged.
+- **Claude Code on the web can run lint and tests again.** New `SessionStart` hook (`.claude/hooks/session-start.sh`, registered in `.claude/settings.json`) provisions the Bun version pinned in `package.json` `packageManager` via npm and runs `bun install --frozen-lockfile`; the web container's bundled Bun predates the `bun.lock` format. Runs only when `CLAUDE_CODE_REMOTE=true`.
 - **`CLAUDE.md`** now describes the real lint toolchain (`oxlint` plus the two project rules) instead of the removed ESLint 9 config.
 
 ### Changed
