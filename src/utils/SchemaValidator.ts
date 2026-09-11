@@ -59,8 +59,13 @@ interface AjvError {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AjvInstance = any; // Dynamic import, type compatibility handled at runtime
+/**
+ * The slice of an Ajv instance this validator calls. Ajv is an optional
+ * peer loaded dynamically, so the structural type stands in for its own.
+ */
+interface AjvInstance {
+  compile(schema: JsonSchema): ValidateFunction;
+}
 
 /**
  * AJV validate function interface.
@@ -107,7 +112,9 @@ export class SchemaValidator {
     try {
       // Dynamic import to avoid bundling ajv if not used
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const AjvModule = await (import('ajv' as any) as Promise<any>);
+      const AjvModule = await (import('ajv' as any) as Promise<{
+        default: new (opts: { allErrors: boolean; verbose: boolean }) => AjvInstance;
+      }>);
       const Ajv = AjvModule.default;
       this.ajv = new Ajv({ allErrors: true, verbose: true });
       this.initialized = true;

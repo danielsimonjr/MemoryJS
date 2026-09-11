@@ -912,3 +912,22 @@ All page references refer to the supplied PDF. The paper is the design source; i
 - **C7 (addendum):** [`src/core/nodeSqliteAdapter.ts`](../src/core/nodeSqliteAdapter.ts), [`src/utils/durableWriteFile.ts`](../src/utils/durableWriteFile.ts), [`src/utils/AsyncMutex.ts`](../src/utils/AsyncMutex.ts).
 
 Where documentation prose and active code differ, implementation decisions in this plan follow the audited source and `package.json`. Any future source change that materially alters the cited behavior should trigger a plan re-audit before implementation.
+
+## 17. Post-build review (2026-09-11)
+
+The implementation landed on `master` between `cbb25e6` and `68618eb` (PRs #127–#141). A review of the built code against this plan found the following gaps, all closed in the follow-up hardening change:
+
+| Plan item | Gap in the build | Resolution |
+|---|---|---|
+| §14 operational diagnostics | No health surface for head version / digest / counts | `ProceduralGraphManager.stats(graphId)` |
+| §8.6 wall-clock budget | Only `AbortSignal` and `maxRounds` bounded `evolve` | `PGEvolutionOptions.maxWallClockMs` → `'wall-clock-exhausted'` |
+| §9.1 caller-owned callbacks | A throwing `rollout` escaped `evolve()` with no round record | Caught per task; `'fail-round'` records `rollout-failed`, `'score-zero'` substitutes an empty zero trajectory |
+| §9.8 rejection memory | Records had no `graphId`; unattributable rejections fell back to the alphabetically first graph | `PGRejectionRecord.graphId` written by the loop; fallback kept only for legacy records |
+| PG-02 / A11 | Absent import attributes normalized silently | `missing-attribute` warnings on `parseSnapshot` / `importGraph` / `createGraph` |
+| §8.4 prompt safety | No untrusted-data section in prompts | `DATA_HANDLING_NOTE` appended outside `paperCompatible` |
+| §8.6 output budget | Truncation at `maxOutputChars` was inferable only from length | `completeWithBudget.truncated`; `output-truncated` refiner diagnostic |
+| A2 / §14 path handling | PG backing paths skipped the traversal check the primary path gets | `validateFilePath(..., false)` in `createProceduralGraphBacking` |
+| A6 lifecycle | `close()` detached `dispose()` with `void`, so a failure became an unhandled rejection | Logged and swallowed |
+| §10 result contract | Missing graph and policy denial both reported as `'conflict'` / `'aborted'` | `'not-found'` and `'policy-denied'` stop reasons |
+
+Performance and stability changes made in the same pass (no contract change): append-only JSONL persistence with torn-tail compaction, SQLite prepared-statement cache and indexes, iterative cycle detection, elimination of redundant clone+digest passes in candidate preparation and session pinning, rolling-hash leak detection, single Zod pass per refiner edge. A Wave 1 test that wrote stub `.ts` files into `src/` at test time was removed; tests no longer write outside temp directories.

@@ -1,18 +1,12 @@
 /**
- * ProceduralGraphRefiner unit tests (Wave 1 / Agent D).
+ * ProceduralGraphRefiner tests — prompt assembly, rejection-memory
+ * serialization, strict edit parsing, and the PG-11 leak heuristic.
  *
- * Sibling modules (`prompts`, `CompletionProvider`, `ProceduralGraphSchemas`)
- * are owned by other agents and may be absent in this worktree. Behavior
- * stubs live only here via `vi.mock`, matching Section 4 signatures.
- *
- * Vitest 5's native loader calls `nextResolve` before applying `vi.mock`,
- * so a missing sibling file throws before the factory can run. If the
- * files are not already on disk (Agents A/C), this file writes throwaway
- * resolve stubs and deletes only the files it created.
+ * Runs against the real sibling modules (`prompts`, `CompletionProvider`,
+ * `ProceduralGraphSchemas`).
  */
 
-import { afterAll, describe, it, expect, vi } from 'vitest';
-import { unlinkSync } from 'node:fs';
+import { describe, it, expect } from 'vitest';
 import type {
   PGDiagnostic,
   PGEditSet,
@@ -25,105 +19,6 @@ import {
   type PGRefinerInput,
 } from '../../../../../src/agent/procedural/graph/ProceduralGraphRefiner.js';
 
-const createdSiblingStubs = vi.hoisted(() => {
-  const fs = process.getBuiltinModule('fs');
-  const path = process.getBuiltinModule('path');
-  const dir = path.join(process.cwd(), 'src/agent/procedural/graph');
-  fs.mkdirSync(dir, { recursive: true });
-  const stubs: Array<[string, string]> = [
-    ['CompletionProvider.ts', 'export async function completeWithBudget() { throw new Error("unmocked completeWithBudget"); }\n'],
-    ['ProceduralGraphSchemas.ts', 'export function parseEditSet() { throw new Error("unmocked parseEditSet"); }\n'],
-    ['prompts.ts', 'export const REFINER_PROMPT_TEMPLATE = "";\nexport function renderTemplate() { return ""; }\n'],
-  ];
-  const created: string[] = [];
-  for (const [name, source] of stubs) {
-    const file = path.join(dir, name);
-    if (!fs.existsSync(file)) {
-      fs.writeFileSync(file, source);
-      created.push(file);
-    }
-  }
-  return created;
-});
-
-afterAll(() => {
-  for (const file of createdSiblingStubs) {
-    try {
-      unlinkSync(file);
-    } catch {
-      // already removed or replaced by the owning agent
-    }
-  }
-});
-
-vi.mock('../../../../../src/agent/procedural/graph/prompts.js', () => ({
-  REFINER_PROMPT_TEMPLATE: [
-    'Task context: {task_description}',
-    'Refinement mode: {mode}',
-    'Available Tool Actions (the agent can only execute these actions): {available_tools_list}',
-    'Recent execution trajectories: {attempts_block}',
-    'Current Procedural Graph representation: {current_graph_json}',
-    'Previously rejected candidates: {rejected_block}',
-    '• static_onetime / static_incremental: prune or add.',
-    '• scratch_onetime / scratch_incremental: synthesize or prune.',
-  ].join('\n'),
-  renderTemplate(template: string, bindings: Record<string, string>): string {
-    return template.replace(/\{([a-z_]+)\}/g, (match: string, name: string) =>
-      Object.prototype.hasOwnProperty.call(bindings, name) ? bindings[name]! : match,
-    );
-  },
-}));
-
-vi.mock('../../../../../src/agent/procedural/graph/CompletionProvider.js', () => ({
-  async completeWithBudget(
-    provider: { complete: (prompt: string) => Promise<string> },
-    prompt: string,
-    opts: { timeoutMs: number; maxOutputChars: number },
-  ) {
-    const text = await provider.complete(prompt);
-    const clipped = text.length > opts.maxOutputChars ? text.slice(0, opts.maxOutputChars) : text;
-    return {
-      ok: true as const,
-      text: clipped,
-      usage: {
-        input: Math.ceil(prompt.length / 4),
-        output: Math.ceil(clipped.length / 4),
-        approximate: true,
-      },
-    };
-  },
-}));
-
-vi.mock('../../../../../src/agent/procedural/graph/ProceduralGraphSchemas.js', () => ({
-  parseEditSet(raw: string) {
-    if (raw.includes('```')) {
-      return {
-        ok: false as const,
-        diagnostics: [
-          {
-            severity: 'error' as const,
-            code: 'not-raw-json',
-            message: 'Refiner output must be a single raw JSON object',
-          },
-        ],
-      };
-    }
-    try {
-      return { ok: true as const, value: JSON.parse(raw) as PGEditSet };
-    } catch (error) {
-      return {
-        ok: false as const,
-        diagnostics: [
-          {
-            severity: 'error' as const,
-            code: 'not-raw-json',
-            message: error instanceof Error ? error.message : 'invalid JSON',
-          },
-        ],
-      };
-    }
-  },
-}));
 
 const EMPTY_EDITS: PGEditSet = {
   add_nodes: [],

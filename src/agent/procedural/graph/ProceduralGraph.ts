@@ -70,6 +70,17 @@ export class ProceduralGraph {
     return new ProceduralGraph(deepFreeze(structuredClone(snapshot)));
   }
 
+  /**
+   * Wrap a snapshot the caller has just built and will never touch again.
+   * Skips the defensive `structuredClone` (the snapshot is still deep-frozen).
+   * Only for internal producers such as `withEdits` and `applyCyclePolicy`.
+   *
+   * @internal
+   */
+  static fromOwnedSnapshot(snapshot: PGSnapshot): ProceduralGraph {
+    return new ProceduralGraph(deepFreeze(snapshot));
+  }
+
   hasNode(id: string): boolean {
     return this.nodesById.has(id);
   }
@@ -238,6 +249,9 @@ export class ProceduralGraph {
   /**
    * Cycle-closing back edges. DFS from `entryNodeId`, then remaining nodes
    * in sorted id order. Back edges are recorded in discovery order.
+   *
+   * Iterative (explicit stack) so a `PG_LIMITS.maxNodes`-long chain cannot
+   * overflow the call stack.
    */
   findCycleClosingEdges(): PGEdge[] {
     const WHITE = 0;
@@ -249,17 +263,29 @@ export class ProceduralGraph {
     }
     const closing: PGEdge[] = [];
 
-    const visit = (id: string): void => {
-      color.set(id, GRAY);
-      for (const edge of this.outgoing(id)) {
+    const visit = (root: string): void => {
+      // Each frame is a node plus the index of the next outgoing edge to scan,
+      // which reproduces the recursive discovery order exactly.
+      const stack: Array<{ id: string; next: number }> = [{ id: root, next: 0 }];
+      color.set(root, GRAY);
+      while (stack.length > 0) {
+        const frame = stack[stack.length - 1]!;
+        const edges = this.outgoing(frame.id);
+        if (frame.next >= edges.length) {
+          color.set(frame.id, BLACK);
+          stack.pop();
+          continue;
+        }
+        const edge = edges[frame.next]!;
+        frame.next += 1;
         const targetColor = color.get(edge.target) ?? WHITE;
         if (targetColor === WHITE) {
-          visit(edge.target);
+          color.set(edge.target, GRAY);
+          stack.push({ id: edge.target, next: 0 });
         } else if (targetColor === GRAY) {
           closing.push(edge);
         }
       }
-      color.set(id, BLACK);
     };
 
     const entry = this.snapshot.entryNodeId;
@@ -351,7 +377,8 @@ export class ProceduralGraph {
       nodes: [...nodes.values()],
       edges,
     };
-    return { graph: ProceduralGraph.fromSnapshot(next), diagnostics };
+    // `nodes`/`edges` were cloned above and nothing else holds a reference.
+    return { graph: ProceduralGraph.fromOwnedSnapshot(next), diagnostics };
   }
 }
 

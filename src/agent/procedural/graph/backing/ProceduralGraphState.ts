@@ -63,6 +63,13 @@ export class ProceduralGraphState {
   private readonly rounds: StoredRound[] = [];
   private readonly rejections: StoredRejection[] = [];
   private lastTimestamp = '';
+  /**
+   * JSONL lines produced by mutations since the last {@link drainPendingLines}.
+   * Lets a durable backing append only the delta instead of re-serializing
+   * the whole state on every write. Loading via {@link applyRecord} does not
+   * populate this buffer.
+   */
+  private pending: string[] = [];
 
   createGraph(revision: PGSnapshot): PGHead {
     const graphId = revision.graphId;
@@ -148,7 +155,7 @@ export class ProceduralGraphState {
       return { status: 'conflict', currentHead: current === undefined ? undefined : clone(current) };
     }
     const evaluation = this.latestEvaluation(graphId, revisionId);
-    this.rounds.push({ graphId, record: clone(round) });
+    this.appendRound(graphId, round);
     const head = this.buildHead({
       graphId,
       revisionId,
@@ -178,9 +185,11 @@ export class ProceduralGraphState {
   }
 
   appendRejection(record: PGRejectionRecord): void {
-    const graphId = this.resolveRejectionGraphId(record);
-    this.rejections.push({ graphId, record: clone(record) });
+    const graphId = record.graphId ?? this.resolveRejectionGraphId(record);
+    const stored: StoredRejection = { graphId, record: clone(record) };
+    this.rejections.push(stored);
     this.noteTimestamp(record.recordedAt);
+    this.pending.push(JSON.stringify(rejectionLine(stored)));
   }
 
   listRejections(
@@ -201,7 +210,20 @@ export class ProceduralGraphState {
   }
 
   appendRound(graphId: string, round: PGRoundRecord): void {
-    this.rounds.push({ graphId, record: clone(round) });
+    const stored: StoredRound = { graphId, record: clone(round) };
+    this.rounds.push(stored);
+    this.pending.push(JSON.stringify(roundLine(stored)));
+  }
+
+  /**
+   * Return and clear the JSONL lines written since the last drain, in
+   * mutation order. Each line is a complete record without a trailing
+   * newline.
+   */
+  drainPendingLines(): string[] {
+    const lines = this.pending;
+    this.pending = [];
+    return lines;
   }
 
   applyRecord(record: unknown): void {
@@ -232,63 +254,27 @@ export class ProceduralGraphState {
     throw new Error(`Unknown PG JSONL record kind: ${String(kind)}`);
   }
 
+  /** Complete state as JSONL (used for full re-publication / compaction). */
   toJsonl(): string {
     const lines: unknown[] = [];
     for (const key of this.revisionOrder) {
       const stored = this.revisions.get(key);
       if (stored === undefined) continue;
-      const line: Record<string, unknown> = {
-        kind: 'revision',
-        graphId: stored.snapshot.graphId,
-        revisionId: stored.snapshot.revisionId,
-        graphDigest: stored.graphDigest,
-        createdAt: stored.createdAt,
-        snapshot: stored.snapshot,
-      };
-      if (stored.snapshot.parentRevisionId !== undefined) {
-        line.parentRevisionId = stored.snapshot.parentRevisionId;
-      }
-      lines.push(line);
+      lines.push(revisionLine(stored));
     }
     for (const key of this.evaluationOrder) {
       const stored = this.evaluations.get(key);
       if (stored === undefined) continue;
-      lines.push({
-        kind: 'evaluation',
-        graphId: stored.graphId,
-        revisionId: stored.revisionId,
-        fingerprint: stored.fingerprint,
-        report: stored.report,
-      });
+      lines.push(evaluationLine(stored));
     }
     for (const stored of this.rounds) {
-      lines.push({
-        kind: 'round',
-        graphId: stored.graphId,
-        runId: stored.record.runId,
-        round: stored.record.round,
-        record: stored.record,
-      });
+      lines.push(roundLine(stored));
     }
     for (const stored of this.rejections) {
-      lines.push({
-        kind: 'rejection',
-        graphId: stored.graphId,
-        record: stored.record,
-      });
+      lines.push(rejectionLine(stored));
     }
     for (const head of this.headLog) {
-      lines.push({
-        kind: 'head',
-        graphId: head.graphId,
-        revisionId: head.revisionId,
-        headVersion: head.headVersion,
-        graphDigest: head.graphDigest,
-        validationMean: head.validationMean,
-        evaluationFingerprint: head.evaluationFingerprint,
-        validationReportRef: head.validationReportRef,
-        updatedAt: head.updatedAt,
-      });
+      lines.push(headLine(head));
     }
     if (lines.length === 0) return '';
     return `${lines.map((line) => JSON.stringify(line)).join('\n')}\n`;
@@ -306,10 +292,16 @@ export class ProceduralGraphState {
     };
     this.revisions.set(key, stored);
     this.revisionOrder.push(key);
+    this.pending.push(JSON.stringify(revisionLine(stored)));
     return stored;
   }
 
-  private upsertEvaluation(graphId: string, revisionId: string, report: PGEvaluationReport): void {
+  private upsertEvaluation(
+    graphId: string,
+    revisionId: string,
+    report: PGEvaluationReport,
+    queueForPersistence = true,
+  ): void {
     const key = evaluationKey(graphId, revisionId, report.fingerprint);
     const stored: StoredEvaluation = {
       graphId,
@@ -321,6 +313,9 @@ export class ProceduralGraphState {
       this.evaluationOrder.push(key);
     }
     this.evaluations.set(key, stored);
+    if (queueForPersistence) {
+      this.pending.push(JSON.stringify(evaluationLine(stored)));
+    }
   }
 
   private latestEvaluation(graphId: string, revisionId: string): PGEvaluationReport | undefined {
@@ -336,6 +331,7 @@ export class ProceduralGraphState {
   private publishHead(head: PGHead): void {
     this.headLog.push(head);
     this.heads.set(head.graphId, head);
+    this.pending.push(JSON.stringify(headLine(head)));
   }
 
   private buildHead(fields: Omit<PGHead, 'updatedAt'>): PGHead {
@@ -352,13 +348,18 @@ export class ProceduralGraphState {
     if (matches.size === 1) {
       return [...matches][0]!;
     }
+    // Legacy records only (new records carry `graphId`). Never guess between
+    // graphs: an ambiguous record must fail loudly rather than be filed under
+    // the alphabetically first graph.
     if (matches.size > 1) {
-      return [...matches].sort()[0]!;
+      throw new Error(
+        `Rejection for revision '${record.retainedRevisionId}' matches several graphs; set record.graphId`,
+      );
     }
-    if (this.heads.size >= 1) {
-      return [...this.heads.keys()].sort()[0]!;
+    if (this.heads.size === 1) {
+      return [...this.heads.keys()][0]!;
     }
-    throw new Error('Cannot associate rejection with a graph');
+    throw new Error('Cannot associate rejection with a graph; set record.graphId');
   }
 
   private applyHead(record: Record<string, unknown>): void {
@@ -402,7 +403,8 @@ export class ProceduralGraphState {
     const revisionId = readString(record, 'revisionId');
     const fingerprint = readString(record, 'fingerprint');
     const report = record.report as PGEvaluationReport;
-    this.upsertEvaluation(graphId, revisionId, { ...report, fingerprint });
+    // Loading must not re-queue the line for persistence.
+    this.upsertEvaluation(graphId, revisionId, { ...report, fingerprint }, false);
   }
 
   private applyRound(record: Record<string, unknown>): void {
@@ -432,6 +434,63 @@ export class ProceduralGraphState {
       this.lastTimestamp = ts;
     }
   }
+}
+
+function revisionLine(stored: StoredRevision): Record<string, unknown> {
+  const line: Record<string, unknown> = {
+    kind: 'revision',
+    graphId: stored.snapshot.graphId,
+    revisionId: stored.snapshot.revisionId,
+    graphDigest: stored.graphDigest,
+    createdAt: stored.createdAt,
+    snapshot: stored.snapshot,
+  };
+  if (stored.snapshot.parentRevisionId !== undefined) {
+    line.parentRevisionId = stored.snapshot.parentRevisionId;
+  }
+  return line;
+}
+
+function evaluationLine(stored: StoredEvaluation): Record<string, unknown> {
+  return {
+    kind: 'evaluation',
+    graphId: stored.graphId,
+    revisionId: stored.revisionId,
+    fingerprint: stored.fingerprint,
+    report: stored.report,
+  };
+}
+
+function roundLine(stored: StoredRound): Record<string, unknown> {
+  return {
+    kind: 'round',
+    graphId: stored.graphId,
+    runId: stored.record.runId,
+    round: stored.record.round,
+    record: stored.record,
+  };
+}
+
+function rejectionLine(stored: StoredRejection): Record<string, unknown> {
+  return {
+    kind: 'rejection',
+    graphId: stored.graphId,
+    record: stored.record,
+  };
+}
+
+function headLine(head: PGHead): Record<string, unknown> {
+  return {
+    kind: 'head',
+    graphId: head.graphId,
+    revisionId: head.revisionId,
+    headVersion: head.headVersion,
+    graphDigest: head.graphDigest,
+    validationMean: head.validationMean,
+    evaluationFingerprint: head.evaluationFingerprint,
+    validationReportRef: head.validationReportRef,
+    updatedAt: head.updatedAt,
+  };
 }
 
 function revisionKey(graphId: string, revisionId: string): string {

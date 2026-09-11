@@ -92,3 +92,30 @@ async function expectAtomicCommit(file: string): Promise<void> {
     await backing.close();
   }
 }
+
+describe('SqliteProceduralGraphBacking pragma parity', () => {
+  it('applies MEMORY_SQLITE_SYNCHRONOUS like the primary backend and falls back to NORMAL', async () => {
+    const previous = process.env.MEMORY_SQLITE_SYNCHRONOUS;
+    try {
+      process.env.MEMORY_SQLITE_SYNCHRONOUS = 'full';
+      const full = await SqliteProceduralGraphBacking.open(path.join(dir, 'full.db'));
+      expect(readSynchronous(full)).toBe(2);
+      await full.close();
+
+      process.env.MEMORY_SQLITE_SYNCHRONOUS = 'bogus';
+      const normal = await SqliteProceduralGraphBacking.open(path.join(dir, 'normal.db'));
+      expect(readSynchronous(normal)).toBe(1);
+      await normal.close();
+    } finally {
+      if (previous === undefined) delete process.env.MEMORY_SQLITE_SYNCHRONOUS;
+      else process.env.MEMORY_SQLITE_SYNCHRONOUS = previous;
+    }
+  });
+});
+
+/** synchronous pragma as SQLite reports it: 0 = OFF, 1 = NORMAL, 2 = FULL. */
+function readSynchronous(backing: SqliteProceduralGraphBacking): number {
+  const db = (backing as unknown as { db: { pragma(s: string, o?: { simple?: boolean }): unknown } }).db;
+  const value = db.pragma('synchronous', { simple: true });
+  return Number(typeof value === 'object' && value !== null ? (value as { synchronous: number }).synchronous : value);
+}

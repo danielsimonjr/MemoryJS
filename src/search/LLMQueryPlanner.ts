@@ -225,7 +225,7 @@ export class LLMQueryPlanner {
    * Extract a JSON object from raw LLM response text.
    * Handles markdown code fences and leading/trailing text.
    */
-  private parseLLMResponse(response: string): unknown | null {
+  private parseLLMResponse(response: string): unknown {
     const trimmed = response.trim();
 
     // Try direct parse first

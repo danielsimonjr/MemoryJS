@@ -83,6 +83,28 @@ export async function durableWriteFile(
 }
 
 /**
+ * Durably append `content` to `target`: open in append mode (creating the
+ * file with mode 0600 and its parent directory when missing), write, fsync,
+ * close. Not atomic across a crash — a torn tail is possible — so callers
+ * must use a line-oriented format whose loader tolerates a truncated final
+ * record, and should re-publish the whole file (see {@link durableWriteFile})
+ * after a failed append.
+ */
+export async function durableAppendFile(
+  target: string,
+  content: string | Buffer,
+): Promise<void> {
+  await fs.mkdir(dirname(target), { recursive: true, mode: 0o700 });
+  const fd = await fs.open(target, 'a', 0o600);
+  try {
+    await writeAll(fd, content);
+    await fd.sync();
+  } finally {
+    await fd.close();
+  }
+}
+
+/**
  * Restrict an existing sensitive file to owner read/write while preserving
  * tighter owner permissions (for example, an existing `0400` file).
  */

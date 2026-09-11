@@ -219,7 +219,7 @@ export class TransactionManager {
       this.transactionBackup = undefined;
 
       return { success: true, backupUsed };
-    } catch (error) {
+    } catch {
       // Rollback failed - keep backup for manual recovery
       this.inTransaction = false;
       this.operations = [];

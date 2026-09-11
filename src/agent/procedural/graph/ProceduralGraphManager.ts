@@ -57,6 +57,21 @@ export interface ProceduralGraphManagerConfig {
   paperCompatible?: boolean;
 }
 
+/** Result of {@link ProceduralGraphManager.stats}. */
+export interface PGGraphStats {
+  graphId: string;
+  revisionId: string;
+  headVersion: number;
+  graphDigest: string;
+  validationMean: number | null;
+  evaluationFingerprint: string | null;
+  updatedAt: string;
+  nodeCount: number;
+  edgeCount: number;
+  revisionCount: number;
+  rejectionCount: number;
+}
+
 export interface PGPolicy {
   canRead?(graphId: string): boolean | Promise<boolean>;
   canWrite?(graphId: string): boolean | Promise<boolean>;
@@ -88,7 +103,7 @@ export class ProceduralGraphManager {
     relationVocabulary?: string[];
     cyclePolicy?: PGCyclePolicy;
     toolCatalog?: string[];
-  }): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }> {
+  }): Promise<{ ok: true; head: PGHead; diagnostics: PGDiagnostic[] } | { ok: false; diagnostics: PGDiagnostic[] }> {
     const denied = await this.denyWrite(input.graphId);
     if (denied !== undefined) {
       return denied;
@@ -114,7 +129,7 @@ export class ProceduralGraphManager {
     graphId: string;
     toolCatalog?: string[];
     cyclePolicy?: PGCyclePolicy;
-  }): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }> {
+  }): Promise<{ ok: true; head: PGHead; diagnostics: PGDiagnostic[] } | { ok: false; diagnostics: PGDiagnostic[] }> {
     return this.createGraph({
       graphId: input.graphId,
       toolCatalog: input.toolCatalog,
@@ -204,7 +219,7 @@ export class ProceduralGraphManager {
         manifest: {},
         retained: { revisionId: '', graphDigest: '', validationMean: null },
         rounds: [],
-        stoppedBecause: 'aborted',
+        stoppedBecause: 'policy-denied',
       };
     }
     const evolution = new ProceduralGraphEvolution(this.backing, deps);
@@ -276,6 +291,39 @@ export class ProceduralGraphManager {
     return result;
   }
 
+  /**
+   * Operational snapshot for health/diagnostics (feature plan 14): head
+   * identity, graph size, last validation fingerprint, and revision /
+   * rejection counts. Never includes prompt or trace bodies.
+   */
+  async stats(graphId: string): Promise<PGGraphStats | undefined> {
+    if (!(await this.allows('canRead', graphId))) {
+      return undefined;
+    }
+    const head = await this.backing.loadHead(graphId);
+    if (head === undefined) {
+      return undefined;
+    }
+    const [snapshot, revisions, rejections] = await Promise.all([
+      this.backing.loadRevision(graphId, head.revisionId),
+      this.backing.listRevisions(graphId, { offset: 0, limit: 0 }),
+      this.backing.listRejections(graphId, { offset: 0, limit: 0 }),
+    ]);
+    return {
+      graphId,
+      revisionId: head.revisionId,
+      headVersion: head.headVersion,
+      graphDigest: head.graphDigest,
+      validationMean: head.validationMean,
+      evaluationFingerprint: head.evaluationFingerprint,
+      updatedAt: head.updatedAt,
+      nodeCount: snapshot?.nodes.length ?? 0,
+      edgeCount: snapshot?.edges.length ?? 0,
+      revisionCount: revisions.total,
+      rejectionCount: rejections.total,
+    };
+  }
+
   async exportGraph(graphId: string, revisionId?: string): Promise<string | undefined> {
     if (!(await this.allows('canRead', graphId))) {
       return undefined;
@@ -290,7 +338,7 @@ export class ProceduralGraphManager {
   async importGraph(
     document: string,
     options?: { graphId?: string; toolCatalog?: string[]; enforceToolCatalog?: boolean },
-  ): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }> {
+  ): Promise<{ ok: true; head: PGHead; diagnostics: PGDiagnostic[] } | { ok: false; diagnostics: PGDiagnostic[] }> {
     let parsed: unknown;
     try {
       parsed = JSON.parse(document);
@@ -304,6 +352,7 @@ export class ProceduralGraphManager {
     if (!snap.ok) {
       return snap;
     }
+    const importWarnings = snap.diagnostics;
     const snapshot: PGSnapshot = options?.graphId === undefined
       ? snap.value
       : { ...snap.value, graphId: options.graphId };
@@ -311,11 +360,16 @@ export class ProceduralGraphManager {
     if (denied !== undefined) {
       return denied;
     }
-    return this.persistNewGraph(snapshot, 'importGraph', {
-      toolCatalog: options?.toolCatalog,
-      enforceToolCatalog: options?.enforceToolCatalog ?? !this.paperCompatible,
-      paperCompatible: this.paperCompatible,
-    });
+    return this.persistNewGraph(
+      snapshot,
+      'importGraph',
+      {
+        toolCatalog: options?.toolCatalog,
+        enforceToolCatalog: options?.enforceToolCatalog ?? !this.paperCompatible,
+        paperCompatible: this.paperCompatible,
+      },
+      importWarnings,
+    );
   }
 
   async dispose(): Promise<void> {
@@ -358,24 +412,21 @@ export class ProceduralGraphManager {
     snapshot: PGSnapshot,
     op: string,
     validateOpts: PGValidatorOptions,
-  ): Promise<{ ok: true; head: PGHead } | { ok: false; diagnostics: PGDiagnostic[] }> {
+    priorDiagnostics: PGDiagnostic[] = [],
+  ): Promise<{ ok: true; head: PGHead; diagnostics: PGDiagnostic[] } | { ok: false; diagnostics: PGDiagnostic[] }> {
     const cycled = applyCyclePolicy(ProceduralGraph.fromSnapshot(snapshot), snapshot.cyclePolicy);
-    const candidate = ProceduralGraph.fromSnapshot({
-      ...cycled.graph.snapshot,
-      graphId: snapshot.graphId,
-      revisionId: snapshot.revisionId,
-      cyclePolicy: snapshot.cyclePolicy,
-      toolCatalogHash: snapshot.toolCatalogHash,
-    });
-    const report = validateSnapshot(candidate.snapshot, validateOpts);
-    const diagnostics = [...cycled.diagnostics, ...report.diagnostics];
+    const candidate = cycled.repairs.length === 0
+      ? cycled.graph
+      : ProceduralGraph.fromOwnedSnapshot({ ...cycled.graph.snapshot });
+    const report = validateSnapshot(candidate, validateOpts);
+    const diagnostics = [...priorDiagnostics, ...cycled.diagnostics, ...report.diagnostics];
     if (diagnostics.some((d) => d.severity === 'error')) {
       return { ok: false, diagnostics };
     }
     try {
       const head = await this.backing.createGraph(candidate.snapshot);
       await this.audit({ op, graphId: snapshot.graphId, revisionId: head.revisionId });
-      return { ok: true, head };
+      return { ok: true, head, diagnostics };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {

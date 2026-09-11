@@ -25,10 +25,17 @@ export interface PGValidatorOptions {
   baselineNodeIds?: readonly string[];
 }
 
+/**
+ * Validate a snapshot. Accepts an already-built {@link ProceduralGraph} so
+ * callers that hold one (candidate preparation, the manager) do not pay for
+ * a second clone + digest.
+ */
 export function validateSnapshot(
-  snapshot: PGSnapshot,
+  input: PGSnapshot | ProceduralGraph,
   opts: PGValidatorOptions,
 ): PGValidationReport {
+  const prebuilt = input instanceof ProceduralGraph ? input : undefined;
+  const snapshot: PGSnapshot = input instanceof ProceduralGraph ? input.snapshot : input;
   const diagnostics: PGDiagnostic[] = [];
   const seenNodeIds = new Set<string>();
   const duplicateNodeIds = new Set<string>();
@@ -101,7 +108,7 @@ export function validateSnapshot(
     });
   }
 
-  const graph = ProceduralGraph.fromSnapshot(snapshot);
+  const graph = prebuilt ?? ProceduralGraph.fromSnapshot(snapshot);
   const reach = graph.reachesTerminal();
   if (!reach.ok) {
     for (const nodeId of reach.unreachable) {
@@ -155,7 +162,7 @@ export function validateSnapshot(
       message: `Graph exceeds limits (nodes ${snapshot.nodes.length}/${PG_LIMITS.maxNodes}, edges ${snapshot.edges.length}/${PG_LIMITS.maxEdges})`,
     });
   } else {
-    const bytes = new TextEncoder().encode(canonicalJson(snapshot)).length;
+    const bytes = Buffer.byteLength(canonicalJson(snapshot), 'utf8');
     if (bytes > PG_LIMITS.maxSerializedBytes) {
       diagnostics.push({
         severity: 'error',
@@ -235,7 +242,9 @@ export function applyCyclePolicy(
         edge: { source: edge.source, target: edge.target, relation: edge.relation },
       });
     }
-    current = ProceduralGraph.fromSnapshot({
+    // Frozen edge objects are shared with the previous (also frozen) graph;
+    // only the arrays are new, so no defensive clone is needed.
+    current = ProceduralGraph.fromOwnedSnapshot({
       ...current.snapshot,
       edges: current.snapshot.edges.filter(
         (e) => !remove.has(`${e.source}\0${e.relation}\0${e.target}`),
@@ -254,12 +263,12 @@ export function prepareCandidate(
   | { ok: false; diagnostics: PGDiagnostic[]; repairs: PGEdge[] } {
   const edited = retained.withEdits(edits);
   const cycled = applyCyclePolicy(edited.graph, opts.cyclePolicy);
-  const candidate = ProceduralGraph.fromSnapshot({
+  const candidate = ProceduralGraph.fromOwnedSnapshot({
     ...cycled.graph.snapshot,
     revisionId: opts.nextRevisionId,
     parentRevisionId: opts.parentRevisionId,
   });
-  const report = validateSnapshot(candidate.snapshot, opts);
+  const report = validateSnapshot(candidate, opts);
   const diagnostics = [...edited.diagnostics, ...cycled.diagnostics, ...report.diagnostics];
   const repairs = cycled.repairs;
   if (diagnostics.some((d) => d.severity === 'error')) {

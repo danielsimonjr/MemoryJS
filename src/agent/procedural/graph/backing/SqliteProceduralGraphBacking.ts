@@ -14,7 +14,7 @@
 
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { resolveSQLiteDatabaseCtor } from '../../../../core/SQLiteStorage.js';
+import { resolveSQLiteDatabaseCtor, resolveSQLiteSynchronousMode } from '../../../../core/SQLiteStorage.js';
 import type {
   PGEvaluationReport,
   PGHead,
@@ -84,6 +84,12 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   readonly kind = 'sqlite' as const;
   private closed = false;
   private lastTimestamp = '';
+  /**
+   * Prepared-statement cache keyed by SQL text. Neither driver caches
+   * statements itself, and every method here runs a fixed set of queries,
+   * so preparing once per connection removes a parse from every call.
+   */
+  private readonly statements = new Map<string, AdaptedStatement>();
 
   private constructor(private readonly db: AdaptedDatabase) {}
 
@@ -92,6 +98,8 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
     const Ctor = resolveSQLiteDatabaseCtor();
     const db = new Ctor(dbPath) as unknown as AdaptedDatabase;
     db.pragma('journal_mode = WAL');
+    // Same durability knob as the primary backend (MEMORY_SQLITE_SYNCHRONOUS).
+    db.pragma(`synchronous = ${resolveSQLiteSynchronousMode()}`);
     db.exec(`
       CREATE TABLE IF NOT EXISTS pg_heads (
         graph_id TEXT PRIMARY KEY,
@@ -132,8 +140,23 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
         record_json TEXT NOT NULL,
         recorded_at TEXT NOT NULL
       );
+      CREATE INDEX IF NOT EXISTS idx_pg_rejections_graph_recorded
+        ON pg_rejections(graph_id, recorded_at DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_pg_rounds_graph ON pg_rounds(graph_id);
+      CREATE INDEX IF NOT EXISTS idx_pg_revisions_graph_created
+        ON pg_revisions(graph_id, created_at DESC, revision_id DESC);
     `);
     return new SqliteProceduralGraphBacking(db);
+  }
+
+  /** Prepare once per connection; see {@link statements}. */
+  private stmt(sql: string): AdaptedStatement {
+    let prepared = this.statements.get(sql);
+    if (prepared === undefined) {
+      prepared = this.db.prepare(sql);
+      this.statements.set(sql, prepared);
+    }
+    return prepared;
   }
 
   async createGraph(revision: PGSnapshot): Promise<PGHead> {
@@ -146,7 +169,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
       }
       const snapshotJson = JSON.stringify(revision);
       const digest = graphDigest(revision);
-      this.db.prepare(`
+      this.stmt(`
         INSERT INTO pg_revisions (
           graph_id, revision_id, parent_revision_id, graph_digest, created_at, snapshot_json
         ) VALUES (?, ?, ?, ?, ?, ?)
@@ -158,7 +181,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
         createdAt,
         snapshotJson,
       );
-      this.db.prepare(`
+      this.stmt(`
         INSERT INTO pg_heads (
           graph_id, revision_id, head_version, graph_digest,
           validation_mean, evaluation_fingerprint, validation_report_ref, updated_at
@@ -175,7 +198,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
 
   async loadRevision(graphId: string, revisionId: string): Promise<PGSnapshot | undefined> {
     this.assertOpen();
-    const row = this.db.prepare(
+    const row = this.stmt(
       'SELECT snapshot_json FROM pg_revisions WHERE graph_id = ? AND revision_id = ?',
     ).get(graphId, revisionId) as { snapshot_json: string } | undefined;
     if (row === undefined) return undefined;
@@ -188,7 +211,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   ): ReturnType<IProceduralGraphBacking['listRevisions']> {
     this.assertOpen();
     const total = this.count('SELECT COUNT(*) AS total FROM pg_revisions WHERE graph_id = ?', graphId);
-    const rows = this.db.prepare(`
+    const rows = this.stmt(`
       SELECT revision_id, parent_revision_id, graph_digest, created_at
       FROM pg_revisions
       WHERE graph_id = ?
@@ -226,7 +249,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
         const reportJson = JSON.stringify(input.validation);
         const recordJson = JSON.stringify(input.round);
         const digest = graphDigest(input.revision);
-        this.db.prepare(`
+        this.stmt(`
           INSERT INTO pg_revisions (
             graph_id, revision_id, parent_revision_id, graph_digest, created_at, snapshot_json
           ) VALUES (?, ?, ?, ?, ?, ?)
@@ -275,7 +298,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
     const updatedAt = this.nextTimestamp();
     try {
       this.db.transaction(() => {
-        const revision = this.db.prepare(
+        const revision = this.stmt(
           'SELECT graph_digest FROM pg_revisions WHERE graph_id = ? AND revision_id = ?',
         ).get(graphId, revisionId) as { graph_digest: string } | undefined;
         if (revision === undefined) {
@@ -318,7 +341,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
     fingerprint: string,
   ): Promise<PGEvaluationReport | undefined> {
     this.assertOpen();
-    const row = this.db.prepare(
+    const row = this.stmt(
       'SELECT report_json FROM pg_evaluations WHERE graph_id = ? AND revision_id = ? AND fingerprint = ?',
     ).get(graphId, revisionId, fingerprint) as EvaluationRow | undefined;
     if (row === undefined) return undefined;
@@ -327,9 +350,9 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
 
   async appendRejection(record: PGRejectionRecord): Promise<void> {
     this.assertOpen();
-    const graphId = this.resolveRejectionGraphId(record);
+    const graphId = record.graphId ?? this.resolveRejectionGraphId(record);
     const recordJson = JSON.stringify(record);
-    this.db.prepare(
+    this.stmt(
       'INSERT INTO pg_rejections (graph_id, record_json, recorded_at) VALUES (?, ?, ?)',
     ).run(graphId, recordJson, record.recordedAt);
   }
@@ -340,7 +363,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   ): ReturnType<IProceduralGraphBacking['listRejections']> {
     this.assertOpen();
     const total = this.count('SELECT COUNT(*) AS total FROM pg_rejections WHERE graph_id = ?', graphId);
-    const rows = this.db.prepare(`
+    const rows = this.stmt(`
       SELECT record_json FROM pg_rejections
       WHERE graph_id = ?
       ORDER BY recorded_at DESC, id DESC
@@ -360,6 +383,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   async close(): Promise<void> {
     if (this.closed) return;
     this.closed = true;
+    this.statements.clear();
     this.db.close();
   }
 
@@ -385,7 +409,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   }
 
   private readHeadRow(graphId: string): HeadRow | undefined {
-    return this.db.prepare('SELECT * FROM pg_heads WHERE graph_id = ?').get(graphId) as HeadRow | undefined;
+    return this.stmt('SELECT * FROM pg_heads WHERE graph_id = ?').get(graphId) as HeadRow | undefined;
   }
 
   private bumpHead(args: {
@@ -398,7 +422,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
     validationReportRef: string | null;
     updatedAt: string;
   }): void {
-    const info = this.db.prepare(`
+    const info = this.stmt(`
       UPDATE pg_heads SET
         revision_id = ?,
         head_version = ?,
@@ -430,7 +454,7 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
     fingerprint: string,
     reportJson: string,
   ): void {
-    this.db.prepare(`
+    this.stmt(`
       INSERT INTO pg_evaluations (graph_id, revision_id, fingerprint, report_json)
       VALUES (?, ?, ?, ?)
       ON CONFLICT(graph_id, revision_id, fingerprint) DO UPDATE SET report_json = excluded.report_json
@@ -438,13 +462,13 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   }
 
   private insertRound(graphId: string, round: PGRoundRecord, recordJson: string): void {
-    this.db.prepare(
+    this.stmt(
       'INSERT INTO pg_rounds (graph_id, run_id, round, record_json) VALUES (?, ?, ?, ?)',
     ).run(graphId, round.runId, round.round, recordJson);
   }
 
   private latestEvaluation(graphId: string, revisionId: string): PGEvaluationReport | undefined {
-    const row = this.db.prepare(`
+    const row = this.stmt(`
       SELECT report_json FROM pg_evaluations
       WHERE graph_id = ? AND revision_id = ?
       ORDER BY rowid DESC
@@ -455,20 +479,25 @@ export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   }
 
   private resolveRejectionGraphId(record: PGRejectionRecord): string {
-    const matches = this.db.prepare(
+    const matches = this.stmt(
       'SELECT DISTINCT graph_id FROM pg_revisions WHERE revision_id = ? ORDER BY graph_id ASC',
     ).all(record.retainedRevisionId) as Array<{ graph_id: string }>;
     if (matches.length === 1) return matches[0]!.graph_id;
-    if (matches.length > 1) return matches[0]!.graph_id;
-    const heads = this.db.prepare('SELECT graph_id FROM pg_heads ORDER BY graph_id ASC').all() as Array<{
+    // Legacy records only (new records carry `graphId`); never guess between graphs.
+    if (matches.length > 1) {
+      throw new Error(
+        `Rejection for revision '${record.retainedRevisionId}' matches several graphs; set record.graphId`,
+      );
+    }
+    const heads = this.stmt('SELECT graph_id FROM pg_heads ORDER BY graph_id ASC').all() as Array<{
       graph_id: string;
     }>;
-    if (heads.length >= 1) return heads[0]!.graph_id;
-    throw new Error('Cannot associate rejection with a graph');
+    if (heads.length === 1) return heads[0]!.graph_id;
+    throw new Error('Cannot associate rejection with a graph; set record.graphId');
   }
 
   private count(sql: string, graphId: string): number {
-    const row = this.db.prepare(sql).get(graphId) as { total: number | bigint };
+    const row = this.stmt(sql).get(graphId) as { total: number | bigint };
     return typeof row.total === 'bigint' ? Number(row.total) : row.total;
   }
 

@@ -90,13 +90,15 @@ export {
   FULL_GRAPH_SOURCE,
   LOCAL_GRAPH_CONTEXT_DESC,
   LOCAL_GRAPH_SOURCE,
+  DATA_HANDLING_NOTE,
   renderTemplate,
+  withDataHandlingNote,
 } from './prompts.js';
 
 export { ProceduralGraphSession } from './ProceduralGraphSession.js';
 export type { PGSessionOptions } from './ProceduralGraphSession.js';
 
-export { generateGuidance } from './ProceduralGuidance.js';
+export { generateGuidance, localizeForGuidance } from './ProceduralGuidance.js';
 
 export {
   buildRefinerPrompt,
@@ -110,12 +112,14 @@ export type {
   PGEvolutionDependencies,
   PGEvolutionOptions,
   PGEvolutionResult,
+  PGEvolutionStopReason,
 } from './ProceduralGraphEvolution.js';
 
 export { ProceduralGraphManager } from './ProceduralGraphManager.js';
 export type {
   ProceduralGraphManagerConfig,
   PGPolicy,
+  PGGraphStats,
 } from './ProceduralGraphManager.js';
 
 export { procedureToGraphInput } from './ProcedureGraphAdapter.js';

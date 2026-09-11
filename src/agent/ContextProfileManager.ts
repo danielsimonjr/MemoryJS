@@ -180,7 +180,7 @@ export class ContextProfileManager {
    * @returns Profile configuration
    * @throws Error if profile name is not registered
    */
-  getProfile(name: ContextProfile | string): ProfileConfig {
+  getProfile(name: string): ProfileConfig {
     // 'auto' resolves to 'default' when no query context is available
     const resolvedName = name === 'auto' ? 'default' : name;
     const profile = this.profiles.get(resolvedName);
@@ -235,7 +235,7 @@ export class ContextProfileManager {
    * @param baseContext - Optional base context to merge with
    * @returns SalienceContext configured for the profile
    */
-  buildSalienceContext(profile: ContextProfile | string, baseContext?: SalienceContext): SalienceContext {
+  buildSalienceContext(profile: string, baseContext?: SalienceContext): SalienceContext {
     const resolvedProfile = profile === 'auto'
       ? this.inferProfile(baseContext?.queryText ?? '')
       : profile;

@@ -44,17 +44,18 @@ const crashWrite = vi.hoisted(() => ({
 
 vi.mock('../../src/utils/durableWriteFile.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/utils/durableWriteFile.js')>();
-  const { writeFile } = await import('node:fs/promises');
+  const { appendFile } = await import('node:fs/promises');
   return {
     ...actual,
-    durableWriteFile: async (target: string, content: string | Buffer) => {
+    // The JSONL backing persists append-only deltas; a crash mid-append
+    // leaves a torn prefix of the appended chunk at the end of the file.
+    durableAppendFile: async (target: string, content: string | Buffer) => {
       if (!crashWrite.active) {
-        return actual.durableWriteFile(target, content);
+        return actual.durableAppendFile(target, content);
       }
       crashWrite.active = false;
       const text = typeof content === 'string' ? content : content.toString('utf8');
-      // Crash mid-write: land a torn prefix on durableWriteFile's target.
-      await writeFile(target, crashWrite.tornPrefix(text));
+      await appendFile(target, crashWrite.tornPrefix(text));
       throw new Error('simulated crash mid-write');
     },
   };

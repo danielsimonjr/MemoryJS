@@ -200,6 +200,17 @@ export function runBackingContract(
       expect(await backing.loadHead(initial.graphId)).toEqual(before);
     });
 
+    it('a rejection with an explicit graphId is attributed to that graph even when its revision id is unknown', async () => {
+      await backing.createGraph(makeSnapshot({ graphId: 'alpha', revisionId: 'rev-a' }));
+      await backing.createGraph(makeSnapshot({ graphId: 'beta', revisionId: 'rev-b' }));
+      await backing.appendRejection(makeRejection({ graphId: 'beta', retainedRevisionId: 'rev-unknown', proposalDigest: 'explicit' }));
+      const beta = await backing.listRejections('beta', { offset: 0, limit: 10 });
+      const alpha = await backing.listRejections('alpha', { offset: 0, limit: 10 });
+      expect(beta.total).toBe(1);
+      expect(beta.items[0]?.proposalDigest).toBe('explicit');
+      expect(alpha.total).toBe(0);
+    });
+
     it('appendRejection/listRejections paginate newest-first with total', async () => {
       const initial = makeSnapshot();
       await backing.createGraph(initial);

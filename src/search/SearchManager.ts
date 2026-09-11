@@ -485,7 +485,7 @@ export class SearchManager {
 
       default: {
         const _exhaustiveCheck: never = selectedMethod;
-        throw new Error(`Unknown search method: ${_exhaustiveCheck}`);
+        throw new Error(`Unknown search method: ${String(_exhaustiveCheck)}`);
       }
     }
 

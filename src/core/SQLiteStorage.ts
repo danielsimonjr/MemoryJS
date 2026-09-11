@@ -97,6 +97,17 @@ export function __resetDatabaseCtorForTests(): void {
 export function resolveSQLiteDatabaseCtor(): DatabaseCtor {
   return loadDatabaseCtor();
 }
+
+/**
+ * The `synchronous` pragma mode `SQLiteStorage` applies, resolved from
+ * `MEMORY_SQLITE_SYNCHRONOUS` (see `resolveSynchronousMode`). Exported so
+ * sibling SQLite databases (the procedural-graph backing) honour the same
+ * operator setting.
+ */
+export function resolveSQLiteSynchronousMode(): 'FULL' | 'NORMAL' | 'OFF' {
+  const raw = (process.env.MEMORY_SQLITE_SYNCHRONOUS ?? 'NORMAL').trim().toUpperCase();
+  return raw === 'FULL' || raw === 'OFF' ? raw : 'NORMAL';
+}
 import { Mutex } from 'async-mutex';
 import type { KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData } from '../types/index.js';
 import {
@@ -347,8 +358,7 @@ export class SQLiteStorage implements IGraphStorage {
    * Invalid values fall back to `NORMAL`.
    */
   private static resolveSynchronousMode(): 'FULL' | 'NORMAL' | 'OFF' {
-    const raw = (process.env.MEMORY_SQLITE_SYNCHRONOUS ?? 'NORMAL').trim().toUpperCase();
-    return raw === 'FULL' || raw === 'OFF' ? raw : 'NORMAL';
+    return resolveSQLiteSynchronousMode();
   }
 
   /**

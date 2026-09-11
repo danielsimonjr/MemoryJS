@@ -19,7 +19,7 @@ import { MaterializedViewsManager } from '../search/MaterializedViews.js';
 import { SpellChecker } from '../search/SpellChecker.js';
 import { ObservationStore } from './ObservationStore.js';
 import { GraphStorage } from './GraphStorage.js';
-import { createStorageFromPath } from './StorageFactory.js';
+import { createStorage, createStorageFromPath } from './StorageFactory.js';
 // S9: side-effect import registers the SQLiteStorage constructor with
 // StorageFactory (which no longer static-imports the SQLiteStorage module),
 // keeping MEMORY_STORAGE_TYPE=sqlite working for direct ManagerContext
@@ -129,6 +129,12 @@ import { AuditLog } from '../features/AuditLog.js';
  */
 export interface ManagerContextOptions {
   storagePath: string;
+  /**
+   * Storage backend for `storagePath`. Acts as the default when
+   * `MEMORY_STORAGE_TYPE` is unset; the environment variable keeps its
+   * documented precedence over any explicit type (see `createStorage`).
+   * Omitted = `MEMORY_STORAGE_TYPE`, else `jsonl`.
+   */
   storageType?: 'jsonl' | 'sqlite';
   /** Default project scope for this context. */
   defaultProjectId?: string;
@@ -267,9 +273,13 @@ export class ManagerContext {
     // convention used by the other sidecars in this constructor
     // (`-saved-searches`, `-tag-aliases`, `-ref-index`).
     this.observationColumnStorePath = path.join(dir, `${basename}-observations.jsonl`);
-    // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable
+    // Use StorageFactory to respect MEMORY_STORAGE_TYPE environment variable.
+    // An explicit `storageType` option is the default type when the env var
+    // is unset (previously the option was declared but ignored).
     // Type assertion: SQLiteStorage implements same interface as GraphStorage
-    this.storage = createStorageFromPath(validatedPath) as GraphStorage;
+    this.storage = (opts.storageType
+      ? createStorage({ type: opts.storageType, path: validatedPath })
+      : createStorageFromPath(validatedPath)) as GraphStorage;
 
     // Wire contradiction detection if enabled (gracefully degrades without embedding provider)
     if (opts.enableContradictionDetection) {
@@ -1712,9 +1722,16 @@ export class ManagerContext {
    * try { ... } finally { ctx.close(); }
    */
   close(): void {
+    // `close()` is synchronous; backing disposal is async. Detach it but never
+    // let a failing dispose surface as an unhandled rejection at shutdown.
     for (const manager of this._proceduralGraphManagers) {
-      void manager.dispose();
+      manager.dispose().catch((error: unknown) => {
+        logger.warn('ProceduralGraphManager.dispose() failed during ManagerContext.close()', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
+    this._proceduralGraphManagers = [];
     const storage = this.storage as unknown as { close?: () => void };
     if (typeof storage?.close === 'function') {
       storage.close();

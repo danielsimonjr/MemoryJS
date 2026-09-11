@@ -219,7 +219,7 @@ export class TFIDFIndexManager implements IIndexHealth {
           : this.calculateDocumentFrequency(this.index.documents);
 
       return this.index;
-    } catch (error) {
+    } catch {
       // Index doesn't exist or is invalid
       return undefined;
     }

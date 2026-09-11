@@ -7,6 +7,7 @@
  * @module cli/commands/decision
  */
 
+import type { DecisionId } from '../../types/agent-memory.js';
 import { readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { Command } from 'commander';
@@ -46,7 +47,7 @@ export function registerDecisionCommands(program: Command): void {
           decision: opts.decision,
           alternatives: opts.alternative ?? [],
           consequences: opts.consequence ?? [],
-          supersedes: opts.supersedes as ReturnType<() => never> | undefined,
+          supersedes: opts.supersedes as DecisionId | undefined,
         });
         logger.info(formatSuccess(`Proposed ${rec.id}: ${rec.decision}`));
       } catch (error) {

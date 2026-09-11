@@ -341,7 +341,7 @@ export class ConflictResolver extends EventEmitter {
         break;
 
       default:
-        throw new Error(`Unknown resolution strategy: ${resolveStrategy}`);
+        throw new Error(`Unknown resolution strategy: ${String(resolveStrategy)}`);
     }
 
     // Emit resolution event
