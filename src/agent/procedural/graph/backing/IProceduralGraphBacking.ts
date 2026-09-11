@@ -15,6 +15,7 @@ import type {
   PGRoundRecord,
   PGSnapshot,
 } from '../../../../types/proceduralGraph.js';
+import { validateFilePath } from '../../../../utils/entityUtils.js';
 import { InMemoryProceduralGraphBacking } from './InMemoryProceduralGraphBacking.js';
 import { JsonlProceduralGraphBacking } from './JsonlProceduralGraphBacking.js';
 import { SqliteProceduralGraphBacking } from './SqliteProceduralGraphBacking.js';
@@ -60,6 +61,11 @@ export interface IProceduralGraphBacking {
 /**
  * Construct the requested PG backing. The `type` field is authoritative —
  * this function does not read `MEMORY_STORAGE_TYPE`.
+ *
+ * File paths get the same traversal check `ManagerContext` applies to its
+ * own storage path (`..` segments rejected; absolute paths allowed), so a
+ * caller-supplied PG path cannot escape via traversal any more than the
+ * primary storage path can.
  */
 export async function createProceduralGraphBacking(
   config: { type: 'jsonl' | 'sqlite' | 'memory'; path?: string },
@@ -71,13 +77,13 @@ export async function createProceduralGraphBacking(
       if (config.path === undefined || config.path === '') {
         throw new Error('path is required for jsonl procedural graph backing');
       }
-      return JsonlProceduralGraphBacking.open(config.path);
+      return JsonlProceduralGraphBacking.open(validateFilePath(config.path, undefined, false));
     }
     case 'sqlite': {
       if (config.path === undefined || config.path === '') {
         throw new Error('path is required for sqlite procedural graph backing');
       }
-      return SqliteProceduralGraphBacking.open(config.path);
+      return SqliteProceduralGraphBacking.open(validateFilePath(config.path, undefined, false));
     }
     default: {
       const _never: never = config.type;

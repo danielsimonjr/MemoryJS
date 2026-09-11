@@ -22,6 +22,7 @@ import {
   LOCAL_GRAPH_CONTEXT_DESC,
   LOCAL_GRAPH_SOURCE,
   renderTemplate,
+  withDataHandlingNote,
 } from './prompts.js';
 import type {
   PGGuidanceResult,
@@ -103,14 +104,17 @@ export async function generateGuidance(args: {
   }
 
   const recent = windowedSteps(recentSteps, options.trajectoryWindow);
-  const prompt = renderTemplate(GUIDANCE_PROMPT_TEMPLATE, {
-    task_description: options.taskDescription,
-    graph_context_desc: usedFullGraph ? FULL_GRAPH_CONTEXT_DESC : LOCAL_GRAPH_CONTEXT_DESC,
-    subgraph_summary: serialized,
-    query,
-    recent_context: formatRecentContext(recent),
-    graph_source: usedFullGraph ? FULL_GRAPH_SOURCE : LOCAL_GRAPH_SOURCE,
-  });
+  const prompt = withDataHandlingNote(
+    renderTemplate(GUIDANCE_PROMPT_TEMPLATE, {
+      task_description: options.taskDescription,
+      graph_context_desc: usedFullGraph ? FULL_GRAPH_CONTEXT_DESC : LOCAL_GRAPH_CONTEXT_DESC,
+      subgraph_summary: serialized,
+      query,
+      recent_context: formatRecentContext(recent),
+      graph_source: usedFullGraph ? FULL_GRAPH_SOURCE : LOCAL_GRAPH_SOURCE,
+    }),
+    options.paperCompatible,
+  );
 
   const completed = await completeWithBudget(provider, prompt, {
     timeoutMs: options.timeoutMs,

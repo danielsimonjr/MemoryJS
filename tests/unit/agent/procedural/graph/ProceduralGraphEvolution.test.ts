@@ -807,7 +807,7 @@ describe('ProceduralGraphEvolution', () => {
     expect(h.refiner.calls).toBe(1);
   });
 
-    it('missing head or revision stops with conflict and parse failures reject structurally', async () => {
+    it('missing head or revision stops with not-found and parse failures reject structurally', async () => {
     const missing = new ProceduralGraphEvolution(new InMemoryProceduralGraphBackingFake(), {
       tokenizer: whitespaceTokenizer(),
       refiner: queuedRefiner([]),
@@ -815,7 +815,7 @@ describe('ProceduralGraphEvolution', () => {
       evaluate: async () => 1,
     });
     const missingHead = await missing.run(baseOptions({ graphId: 'absent' }));
-    expect(missingHead.stoppedBecause).toBe('conflict');
+    expect(missingHead.stoppedBecause).toBe('not-found');
     expect(missingHead.retained.revisionId).toBe('');
 
     const detached = new InMemoryProceduralGraphBackingFake();
@@ -828,7 +828,7 @@ describe('ProceduralGraphEvolution', () => {
       evaluate: async () => 1,
     });
     const missingRev = await orphaned.run(baseOptions());
-    expect(missingRev.stoppedBecause).toBe('conflict');
+    expect(missingRev.stoppedBecause).toBe('not-found');
     expect(missingRev.retained.revisionId).toBe('rev-seed');
 
     const parseFail = await createHarness({ refinerQueue: ['not-json'] });

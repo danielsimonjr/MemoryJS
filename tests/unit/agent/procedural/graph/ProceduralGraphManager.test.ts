@@ -263,7 +263,7 @@ describe('ProceduralGraphManager', () => {
     expect(listed.items[0]?.revisionId).toBe(created.ok ? created.head.revisionId : '');
   });
 
-  it('evolve fixed_expert is a no-op and canEvolve=false aborts', async () => {
+  it('evolve fixed_expert is a no-op and canEvolve=false reports policy-denied', async () => {
     const backing = new InMemoryProceduralGraphBacking();
     const manager = new ProceduralGraphManager({ backing, ownsBacking: false });
     const created = await manager.createGraph({
@@ -323,7 +323,7 @@ describe('ProceduralGraphManager', () => {
       },
       deps,
     );
-    expect(aborted.stoppedBecause).toBe('aborted');
+    expect(aborted.stoppedBecause).toBe('policy-denied');
   });
 
   it('rollback to the current revision commits and canRead=false hides graphs', async () => {

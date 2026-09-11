@@ -17,6 +17,7 @@ export class InMemoryProceduralGraphBacking extends LockedProceduralGraphBacking
   }
 
   protected override async afterWrite(): Promise<void> {
-    // In-memory only.
+    // In-memory only; drop the delta so the pending buffer stays empty.
+    this.state.drainPendingLines();
   }
 }

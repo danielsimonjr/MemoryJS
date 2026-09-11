@@ -64,16 +64,16 @@ function usageFromProvider(
  * A response that arrives after `timeoutMs` is discarded (`ok: false`).
  * When `getLastUsage` is absent or returns undefined, usage is
  * `ceil(chars / 4)` marked `approximate: true`. Output longer than
- * `maxOutputChars` is truncated; the returned text is the prefix and
- * truncation is visible to the caller (`text.length === maxOutputChars`
- * while generation was longer).
+ * `maxOutputChars` is truncated to that prefix and reported with
+ * `truncated: true` so a downstream JSON parse failure can be attributed
+ * to the budget rather than to the model.
  */
 export async function completeWithBudget(
   p: PGCompletionProvider,
   prompt: string,
   opts: { timeoutMs: number; maxOutputChars: number; signal?: AbortSignal },
 ): Promise<
-  | { ok: true; text: string; usage: { input: number; output: number; approximate: boolean } }
+  | { ok: true; text: string; truncated: boolean; usage: { input: number; output: number; approximate: boolean } }
   | { ok: false; error: string; usage?: { input: number; output: number; approximate: boolean } }
 > {
   if (opts.signal?.aborted) {
@@ -120,9 +120,9 @@ export async function completeWithBudget(
     const text = winner.text;
     const usage = usageFromProvider(p, prompt, text);
     if (opts.maxOutputChars >= 0 && text.length > opts.maxOutputChars) {
-      return { ok: true, text: text.slice(0, opts.maxOutputChars), usage };
+      return { ok: true, text: text.slice(0, opts.maxOutputChars), truncated: true, usage };
     }
-    return { ok: true, text, usage };
+    return { ok: true, text, truncated: false, usage };
   } finally {
     if (timeoutId !== undefined) {
       clearTimeout(timeoutId);

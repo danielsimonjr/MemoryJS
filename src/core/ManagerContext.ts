@@ -1712,9 +1712,16 @@ export class ManagerContext {
    * try { ... } finally { ctx.close(); }
    */
   close(): void {
+    // `close()` is synchronous; backing disposal is async. Detach it but never
+    // let a failing dispose surface as an unhandled rejection at shutdown.
     for (const manager of this._proceduralGraphManagers) {
-      void manager.dispose();
+      manager.dispose().catch((error: unknown) => {
+        logger.warn('ProceduralGraphManager.dispose() failed during ManagerContext.close()', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     }
+    this._proceduralGraphManagers = [];
     const storage = this.storage as unknown as { close?: () => void };
     if (typeof storage?.close === 'function') {
       storage.close();

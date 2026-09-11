@@ -10,8 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Procedural Graph** — `await ctx.createProceduralGraph(config)` async factory (`Promise<ProceduralGraphManager>`) for validated create/import, frozen-revision sessions with guidance, offline `evolve` with caller-supplied rollout/evaluate/refiner/tokenizer callbacks, and a one-way `procedureToGraphInput` adapter. JSONL / SQLite / in-memory backings; default sidecar `<basename>-procedural-graph.jsonl`. `@experimental`.
+- **Procedural Graph post-build hardening** (review against the feature plan):
+  - `ProceduralGraphManager.stats(graphId)` — operational snapshot (head identity, graph size, revision / rejection counts, last validation fingerprint) with no prompt or trace bodies (feature plan §14).
+  - `PGEvolutionOptions.maxWallClockMs` — wall-clock budget for a whole `evolve` run (§8.6); stops with `stoppedBecause: 'wall-clock-exhausted'`.
+  - `PGEvolutionStopReason` now distinguishes `'not-found'` (missing graph / revision) and `'policy-denied'` from `'conflict'` / `'aborted'`.
+  - A throwing `rollout` no longer escapes `evolve()`: under `taskFailurePolicy: 'fail-round'` the round is recorded as `evaluation-error` with a `rollout-failed` diagnostic and skipped; under `'score-zero'` the task contributes an empty, zero-scored trajectory.
+  - `PGRejectionRecord.graphId` — rejections are attributed explicitly; the previous fallback (resolve by retained revision id, else the alphabetically first graph) only applies to legacy records.
+  - `parseSnapshot` / `importGraph` / `createGraph` return `missing-attribute` warnings when an imported edge omits `condition` / `guidance` / `pitfalls` (normalized to `null`, PG-02).
+  - `completeWithBudget` reports `truncated: true` when output was cut at `maxOutputChars`; a refiner parse failure on truncated output carries an `output-truncated` diagnostic first.
+  - Guidance and refiner prompts get a trailing untrusted-data handling note (`DATA_HANDLING_NOTE`) outside `paperCompatible` mode; paper-compatible prompts stay byte-identical to Appendix B.5.
+  - `createProceduralGraphBacking` applies the same path-traversal check as `ManagerContext` to JSONL / SQLite paths.
+  - `ManagerContext.close()` logs and swallows a rejected `ProceduralGraphManager.dispose()` instead of leaking an unhandled rejection.
 
 ### Changed
+
+- **Procedural Graph performance.** JSONL backing persistence is now append-only (`durableAppendFile`; O(delta) per write instead of re-serializing the whole state) with self-healing: a torn trailing line is compacted at `open()` and a failed append forces a full atomic re-publication on the next write. SQLite backing caches prepared statements per connection and indexes `pg_rejections(graph_id, recorded_at)`, `pg_rounds(graph_id)`, and `pg_revisions(graph_id, created_at)`. `findCycleClosingEdges` is iterative (no recursion-depth limit). Candidate preparation, cycle repair, and validation no longer re-clone and re-hash already-immutable graphs; `ProceduralGraphSession` pins the graph by reference. The PG-11 trajectory-leak heuristic indexes the trajectory block once with a rolling hash (was O(|field| × |block|) per field). `parseEditSet` runs one Zod pass per edge instead of two.
 
 - **Hand-written architecture docs aligned to the 2026-09-10 census.**
   `OVERVIEW.md`, `ARCHITECTURE.md`, `COMPONENTS.md`, `DATAFLOW.md`, and

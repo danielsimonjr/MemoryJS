@@ -76,15 +76,21 @@ export const PGEditSetSchema: z.ZodType<PGEditSet> = z.object({
   delete_edges: z.array(PGDeleteEdgeSchema),
 }).strict();
 
+/**
+ * Parse an imported snapshot. Absent `condition` / `guidance` / `pitfalls`
+ * fields normalize to `null` (PG-02 / A11) and are reported as
+ * `missing-attribute` warnings on the `ok` branch so callers can surface
+ * them without failing the import.
+ */
 export function parseSnapshot(
   input: unknown,
-): { ok: true; value: PGSnapshot } | { ok: false; diagnostics: PGDiagnostic[] } {
-  const normalized = normalizeSnapshotInput(input);
+): { ok: true; value: PGSnapshot; diagnostics: PGDiagnostic[] } | { ok: false; diagnostics: PGDiagnostic[] } {
+  const { normalized, diagnostics } = normalizeSnapshotInput(input);
   const parsed = PGSnapshotSchema.safeParse(normalized);
   if (!parsed.success) {
     return { ok: false, diagnostics: zodIssuesToDiagnostics(parsed.error.issues) };
   }
-  return { ok: true, value: parsed.data };
+  return { ok: true, value: parsed.data, diagnostics };
 }
 
 /**
@@ -189,17 +195,12 @@ export function parseEditSet(
   const seenEdgeKeys = new Set<string>();
   for (let i = 0; i < addEdges.length; i++) {
     const item = addEdges[i];
-    const edgeDiags = diagnoseAddEdge(item, i);
-    if (edgeDiags.length > 0) {
-      diagnostics.push(...edgeDiags);
+    const outcome = diagnoseAddEdge(item, i);
+    if (!outcome.ok) {
+      diagnostics.push(...outcome.diagnostics);
       continue;
     }
-    const parsedEdge = PGAddEdgeSchema.safeParse(item);
-    if (!parsedEdge.success) {
-      diagnostics.push(...itemIssues('add_edges', i, item, parsedEdge.error.issues, 'edge'));
-      continue;
-    }
-    const parsed = parsedEdge.data;
+    const parsed = outcome.value;
     const key = `${parsed.source}\0${parsed.relation}\0${parsed.target}`;
     if (seenEdgeKeys.has(key)) {
       diagnostics.push({
@@ -274,39 +275,61 @@ function isRawJsonObject(raw: string): boolean {
   return trimmed.startsWith('{') && trimmed.endsWith('}');
 }
 
-function normalizeSnapshotInput(input: unknown): unknown {
+const OPTIONAL_EDGE_ATTRIBUTES = ['condition', 'guidance', 'pitfalls'] as const;
+
+function normalizeSnapshotInput(
+  input: unknown,
+): { normalized: unknown; diagnostics: PGDiagnostic[] } {
+  const diagnostics: PGDiagnostic[] = [];
   if (input === null || typeof input !== 'object' || Array.isArray(input)) {
-    return input;
+    return { normalized: input, diagnostics };
   }
   const obj = input as Record<string, unknown>;
   if (!Array.isArray(obj.edges)) {
-    return input;
+    return { normalized: input, diagnostics };
   }
-  return {
-    ...obj,
-    edges: obj.edges.map((edge) => {
-      if (edge === null || typeof edge !== 'object' || Array.isArray(edge)) {
-        return edge;
+  const edges = obj.edges.map((edge, index) => {
+    if (edge === null || typeof edge !== 'object' || Array.isArray(edge)) {
+      return edge;
+    }
+    const e = { ...(edge as Record<string, unknown>) };
+    for (const field of OPTIONAL_EDGE_ATTRIBUTES) {
+      if (e[field] !== undefined) {
+        continue;
       }
-      const e = edge as Record<string, unknown>;
-      return {
-        ...e,
-        condition: e.condition === undefined ? null : e.condition,
-        guidance: e.guidance === undefined ? null : e.guidance,
-        pitfalls: e.pitfalls === undefined ? null : e.pitfalls,
-      };
-    }),
-  };
+      e[field] = null;
+      diagnostics.push({
+        severity: 'warning',
+        code: 'missing-attribute',
+        message: `edges[${index}] has no '${field}' attribute; normalized to null`,
+        editIndex: index,
+        edge: optionalEdgeRef(e),
+      });
+    }
+    return e;
+  });
+  return { normalized: { ...obj, edges }, diagnostics };
 }
 
-function diagnoseAddEdge(item: unknown, editIndex: number): PGDiagnostic[] {
+/**
+ * Validate one `add_edges` entry with a single Zod pass. The attribute
+ * pre-checks produce the paper-specific codes (`missing-required-attribute`,
+ * `invalid-condition`); the schema pass covers everything else.
+ */
+function diagnoseAddEdge(
+  item: unknown,
+  editIndex: number,
+): { ok: true; value: PGEdge } | { ok: false; diagnostics: PGDiagnostic[] } {
   if (item === null || typeof item !== 'object' || Array.isArray(item)) {
-    return [{
-      severity: 'error',
-      code: 'invalid-type',
-      message: `add_edges[${editIndex}] must be an object`,
-      editIndex,
-    }];
+    return {
+      ok: false,
+      diagnostics: [{
+        severity: 'error',
+        code: 'invalid-type',
+        message: `add_edges[${editIndex}] must be an object`,
+        editIndex,
+      }],
+    };
   }
   const e = item as Record<string, unknown>;
   const out: PGDiagnostic[] = [];
@@ -331,11 +354,18 @@ function diagnoseAddEdge(item: unknown, editIndex: number): PGDiagnostic[] {
     });
   }
 
-  const parsed = PGAddEdgeSchema.safeParse(item);
-  if (!parsed.success && out.length === 0) {
-    out.push(...itemIssues('add_edges', editIndex, item, parsed.error.issues, 'edge'));
+  if (out.length > 0) {
+    return { ok: false, diagnostics: out };
   }
-  return out;
+
+  const parsed = PGAddEdgeSchema.safeParse(item);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      diagnostics: itemIssues('add_edges', editIndex, item, parsed.error.issues, 'edge'),
+    };
+  }
+  return { ok: true, value: parsed.data };
 }
 
 function isNonEmptyString(value: unknown): value is string {

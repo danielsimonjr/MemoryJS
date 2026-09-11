@@ -866,7 +866,9 @@ const evolved = await pg.evolve({
 }, { rollout, evaluate, refiner, tokenizer });
 ```
 
-`paperCompatible: true` uses paper defaults (`cyclePolicy: 'repair'`; one-time modes may commit without a validation gate). Caller supplies `rollout` / `evaluate` / `refiner`; the library never executes guidance text.
+`paperCompatible: true` uses paper defaults (`cyclePolicy: 'repair'`; one-time modes may commit without a validation gate; prompts are byte-identical to the paper's Appendix B.5). Outside that mode every prompt ends with an untrusted-data handling note. Caller supplies `rollout` / `evaluate` / `refiner`; the library never executes guidance text. Budgets: `maxRounds`, `maxWallClockMs`, and an `AbortSignal` on `evolve`; `maxGuidanceCalls`, `maxContextBytes`, `timeoutMs`, `maxOutputChars`, and `maxObservationChars` on sessions. `pg.stats(graphId)` returns head version, digest, node/edge counts, and revision/rejection counts for health checks.
+
+Persistence: the JSONL backing is append-only and single-writer per file (a torn tail from a crash is healed at the next `open()`); the SQLite backing commits each retained revision in one transaction and honours `MEMORY_SQLITE_DRIVER`. Neither backing is selected by `MEMORY_STORAGE_TYPE`.
 
 ### WorldModelManager (`ctx.worldModelManager`)
 

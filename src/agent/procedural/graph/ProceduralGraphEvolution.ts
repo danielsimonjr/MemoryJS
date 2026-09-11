@@ -87,14 +87,31 @@ export interface PGEvolutionOptions {
   manifestExtras?: Record<string, unknown>;
   signal?: AbortSignal;
   sessionOptions?: Partial<PGSessionOptions>;
+  /**
+   * Wall-clock budget for the whole run (feature plan 8.6). Checked before
+   * each round; an in-flight round always completes and is recorded. Use
+   * `signal` for hard cancellation.
+   */
+  maxWallClockMs?: number;
 }
+
+/** Why {@link ProceduralGraphEvolution.run} returned. */
+export type PGEvolutionStopReason =
+  | 'rounds-exhausted'
+  | 'batches-exhausted'
+  | 'wall-clock-exhausted'
+  | 'aborted'
+  | 'conflict'
+  | 'fixed-mode'
+  | 'not-found'
+  | 'policy-denied';
 
 export interface PGEvolutionResult {
   runId: string;
   manifest: Record<string, unknown>;
   retained: { revisionId: string; graphDigest: string; validationMean: number | null };
   rounds: PGRoundRecord[];
-  stoppedBecause: 'rounds-exhausted' | 'batches-exhausted' | 'aborted' | 'conflict' | 'fixed-mode';
+  stoppedBecause: PGEvolutionStopReason;
 }
 
 export class ProceduralGraphEvolution {
@@ -118,7 +135,7 @@ export class ProceduralGraphEvolution {
         manifest,
         retained: missing,
         rounds: [],
-        stoppedBecause: 'conflict',
+        stoppedBecause: 'not-found',
       };
     }
 
@@ -147,7 +164,7 @@ export class ProceduralGraphEvolution {
           validationMean: head.validationMean,
         },
         rounds: [],
-        stoppedBecause: 'conflict',
+        stoppedBecause: 'not-found',
       };
     }
 
@@ -226,6 +243,7 @@ export class ProceduralGraphEvolution {
 
     const batches = trainingBatches(opts.trainingTasks, opts.batchSize, opts.mode);
     const maxRefineRounds = isOnetime(opts.mode) ? 1 : Math.max(0, opts.maxRounds);
+    const deadline = opts.maxWallClockMs === undefined ? undefined : Date.now() + opts.maxWallClockMs;
     let refineRound = 0;
 
     for (const batch of batches) {
@@ -235,14 +253,59 @@ export class ProceduralGraphEvolution {
       if (refineRound >= maxRefineRounds) {
         return finish('rounds-exhausted');
       }
+      if (deadline !== undefined && Date.now() >= deadline) {
+        return finish('wall-clock-exhausted');
+      }
       refineRound += 1;
       const roundNumber = refineRound;
       const roundStarted = new Date().toISOString();
       const refineMode = refinementModeOf(opts.mode);
 
-      const rolled = await mapInChunks(batch, resolved.concurrency, (task, index) =>
-        this.deps.rollout(task, retained.snapshot, opts.signal).then((trajectory) => ({ index, trajectory })),
-      );
+      // A throwing rollout is a caller-side failure, not a graph verdict.
+      // Under 'fail-round' the round is recorded and skipped; under
+      // 'score-zero' the failed task contributes an empty, zero-scored
+      // trajectory (mirroring the evaluator policy) and the round proceeds.
+      const rolled = await mapInChunks(batch, resolved.concurrency, async (task, index) => {
+        try {
+          const trajectory = await this.deps.rollout(task, retained.snapshot, opts.signal);
+          return { index, trajectory, error: undefined as string | undefined };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          const trajectory: PGTrajectory = {
+            taskId: task.id,
+            revisionId: retained.snapshot.revisionId,
+            steps: [],
+            score: 0,
+            outcome: 'failure',
+          };
+          return { index, trajectory, error: message };
+        }
+      });
+      const rolloutFailures = rolled.filter((r) => r.error !== undefined);
+      if (rolloutFailures.length > 0 && resolved.taskFailurePolicy === 'fail-round') {
+        const round = makeRound({
+          runId,
+          round: roundNumber,
+          retainedRevisionId: retained.snapshot.revisionId,
+          outcome: 'evaluation-error',
+          baselineMean: baseline?.meanScore ?? null,
+          candidateMean: null,
+          diagnostics: rolloutFailures.map((r) => ({
+            severity: 'error' as const,
+            code: 'rollout-failed',
+            message: `rollout for task '${r.trajectory.taskId}' threw: ${r.error}`,
+          })),
+          repairs: [],
+          startedAt: roundStarted,
+          finishedAt: new Date().toISOString(),
+        });
+        rounds.push(round);
+        await this.backing.appendRound(opts.graphId, round);
+        if (opts.signal?.aborted) {
+          return finish('aborted');
+        }
+        continue;
+      }
       const traces = restoreDeterministicBatchOrder(rolled);
 
       const attemptsBlock = tokenTail(
@@ -255,6 +318,7 @@ export class ProceduralGraphEvolution {
       const proposal = await proposeEdits(
         this.deps.refiner,
         {
+          paperCompatible: opts.paperCompatible,
           taskDescription: opts.taskDescription,
           mode: refineMode,
           toolCatalog: opts.toolCatalog,
@@ -549,6 +613,7 @@ export class ProceduralGraphEvolution {
     candidateMean?: number;
   }): Promise<PGRejectionRecord> {
     const record: PGRejectionRecord = {
+      graphId: input.retained.snapshot.graphId,
       runId: input.runId,
       round: input.round,
       proposalDigest: sha256Hex(input.proposalRaw ?? ''),

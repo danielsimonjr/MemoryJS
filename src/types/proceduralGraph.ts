@@ -143,6 +143,12 @@ export interface PGRoundRecord {
 }
 
 export interface PGRejectionRecord {
+  /**
+   * Graph the rejection belongs to. Optional for records written before
+   * this field existed; backings fall back to resolving it from
+   * `retainedRevisionId` when absent.
+   */
+  graphId?: string;
   runId: string;
   round: number;
   proposalDigest: string;

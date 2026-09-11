@@ -11,7 +11,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type { PGCompletionProvider } from './CompletionProvider.js';
-import { ProceduralGraph } from './ProceduralGraph.js';
+import type { ProceduralGraph } from './ProceduralGraph.js';
 import { generateGuidance } from './ProceduralGuidance.js';
 import type { PGSerializerStyle } from './ProceduralGraphSerializer.js';
 import type {
@@ -75,7 +75,11 @@ export class ProceduralGraphSession {
   private guidanceCalls = 0;
 
   constructor(graph: ProceduralGraph, options: PGSessionOptions, ids?: { sessionId?: string }) {
-    this.graph = ProceduralGraph.fromSnapshot(graph.snapshot);
+    // `ProceduralGraph` instances are immutable (deep-frozen at construction),
+    // so pinning is a reference, not another clone + digest. A caller who
+    // mutates the original PGSnapshot after `fromSnapshot` cannot reach this
+    // graph either (PG-05).
+    this.graph = graph;
     this.sessionId = ids?.sessionId ?? randomUUID();
     this.revisionId = this.graph.snapshot.revisionId;
     this.graphDigest = this.graph.digest;
