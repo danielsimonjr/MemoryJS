@@ -55,9 +55,9 @@ export interface RestResponse {
   headers?: Record<string, string>;
 }
 
-/** Handler signature. Async; thrown errors become a 500 (unless the
- * thrown error has a numeric `status` field, in which case that status
- * is used and the message becomes the body). */
+/** Handler signature. Async; thrown errors become a 500 unless they carry
+ * an integer HTTP error `status` from 400–599. Client error messages are
+ * exposed; server error messages are redacted. */
 export type RestHandler = (
   req: RestRequest,
   ctx: ManagerContext,
@@ -99,6 +99,8 @@ export interface RestRouterOptions {
    * UNAUTHENTICATED — see the {@link RestRouter.withDefaults} warning.
    */
   auth?: ApiKeyAuthMiddleware;
+  /** Maximum JSON request body size in bytes for serve(). Default: 1 MiB. */
+  maxBodyBytes?: number;
   /**
    * Explicit opt-in to mount {@link RestRouter.withDefaults} routes without
    * authentication. Ignored when `auth` is set. Required when `auth` is
@@ -110,9 +112,14 @@ export interface RestRouterOptions {
 export class RestRouter {
   private readonly routes: RouteDefinition[] = [];
   private readonly auth?: ApiKeyAuthMiddleware;
+  private readonly maxBodyBytes: number;
 
   constructor(private ctx: ManagerContext, options?: RestRouterOptions) {
     this.auth = options?.auth;
+    this.maxBodyBytes = options?.maxBodyBytes ?? 1024 * 1024;
+    if (!Number.isSafeInteger(this.maxBodyBytes) || this.maxBodyBytes < 0) {
+      throw new RangeError('RestRouter: maxBodyBytes must be a non-negative safe integer');
+    }
   }
 
   /** Register a `GET` route. */
@@ -172,21 +179,20 @@ export class RestRouter {
       if (!outcome.ok) return outcome.response;
       req = { ...req, auth: outcome.auth };
     }
+    return this.dispatchRoutes(req);
+  }
+
+  private async dispatchRoutes(req: RestRequest): Promise<RestResponse> {
     for (const route of this.routes) {
       if (route.method !== req.method) continue;
-      const params = matchPath(route.pattern, req.path);
-      if (!params) continue;
       try {
+        const params = matchPath(route.pattern, req.path);
+        if (!params) continue;
         const enriched: RestRequest = { ...req, params: { ...req.params, ...params } };
         return await route.handler(enriched, this.ctx);
       } catch (err) {
-        const status = (err as { status?: number } | null)?.status;
-        const message = err instanceof Error ? err.message : String(err);
         logger.error(`[RestRouter] ${route.method} ${route.pattern} threw:`, err);
-        return {
-          status: typeof status === 'number' ? status : 500,
-          body: { error: message },
-        };
+        return errorResponse(err);
       }
     }
     return { status: 404, body: { error: `No route for ${req.method} ${req.path}` } };
@@ -294,9 +300,9 @@ export class RestRouter {
   /**
    * Minimal Node `http` adapter. Converts an `IncomingMessage` /
    * `ServerResponse` pair into a `RestRequest`, runs `dispatch`, and
-   * writes the response. Reads the body as JSON when the
-   * `content-type` looks JSON-shaped; otherwise leaves `body` as
-   * `null` so handlers can decide how to interpret raw payloads.
+   * writes the response. Authenticates before reading a JSON body, limits it
+   * to `maxBodyBytes` (default 1 MiB), and returns 400 for malformed JSON
+   * or 413 for an oversized body. Non-JSON content leaves `body` as `null`.
    *
    * @example
    * ```typescript
@@ -309,24 +315,33 @@ export class RestRouter {
     try {
       const method = (req.method ?? 'GET').toUpperCase() as RestMethod;
       const url = new URL(req.url ?? '/', 'http://localhost');
-      const query: Record<string, string> = {};
+      const query: Record<string, string> = Object.create(null);
       for (const [k, v] of url.searchParams) query[k] = v;
       const headers: Record<string, string> = {};
       for (const [k, v] of Object.entries(req.headers)) {
         if (typeof v === 'string') headers[k.toLowerCase()] = v;
         else if (Array.isArray(v)) headers[k.toLowerCase()] = v.join(',');
       }
-      const body = await readJsonBody(req, headers);
 
-      const restReq: RestRequest = {
+      let restReq: RestRequest = {
         method,
         path: url.pathname,
         params: {},
         query,
-        body,
+        body: null,
         headers,
       };
-      const restRes = await this.dispatch(restReq);
+      // Reject unauthorized requests before buffering or parsing their body.
+      let restRes: RestResponse;
+      const outcome = this.auth?.authenticate(restReq);
+      if (outcome && !outcome.ok) {
+        restRes = outcome.response;
+        res.setHeader('connection', 'close');
+      } else {
+        if (outcome?.ok) restReq = { ...restReq, auth: outcome.auth };
+        restReq.body = await readJsonBody(req, headers, this.maxBodyBytes);
+        restRes = await this.dispatchRoutes(restReq);
+      }
 
       res.statusCode = restRes.status;
       if (restRes.headers) {
@@ -343,9 +358,12 @@ export class RestRouter {
     } catch (err) {
       logger.error('[RestRouter.serve] unhandled error:', err);
       if (!res.headersSent) {
-        res.statusCode = 500;
+        const response = errorResponse(err);
+        res.statusCode = response.status;
+        // A rejected body may be unread. Close after sending the response.
+        res.setHeader('connection', 'close');
         res.setHeader('content-type', 'application/json');
-        res.end(JSON.stringify({ error: 'Internal Server Error' }));
+        res.end(JSON.stringify(response.body));
       }
     }
   }
@@ -359,20 +377,31 @@ export class RestRouter {
 async function readJsonBody(
   req: IncomingMessage,
   headers: Record<string, string>,
+  maxBodyBytes: number,
 ): Promise<unknown> {
+  const declaredLength = Number(headers['content-length']);
+  if (Number.isFinite(declaredLength) && declaredLength > maxBodyBytes) {
+    throw new HttpInputError(413, 'Request body too large');
+  }
   const ctype = headers['content-type'] ?? '';
   if (!ctype.includes('json')) return null;
   const chunks: Buffer[] = [];
-  for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
+  let bytes = 0;
+  // Keep the socket alive long enough to send 413 when stopping early.
+  const input = req.iterator({ destroyOnReturn: false });
+  for await (const chunk of input) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
+    bytes += buffer.length;
+    if (bytes > maxBodyBytes) throw new HttpInputError(413, 'Request body too large');
+    chunks.push(buffer);
   }
   if (chunks.length === 0) return null;
-  const text = Buffer.concat(chunks).toString('utf-8');
+  const text = Buffer.concat(chunks, bytes).toString('utf-8');
   if (text.trim().length === 0) return null;
   try {
     return JSON.parse(text);
   } catch {
-    return null;
+    throw new HttpInputError(400, 'Invalid JSON request body');
   }
 }
 
@@ -385,15 +414,38 @@ function matchPath(pattern: string, path: string): Record<string, string> | null
   const pathParts = path.split('/').filter((s) => s.length > 0);
   if (patternParts.length !== pathParts.length) return null;
 
-  const params: Record<string, string> = {};
+  const params: Record<string, string> = Object.create(null);
   for (let i = 0; i < patternParts.length; i++) {
     const pat = patternParts[i]!;
     const seg = pathParts[i]!;
     if (pat.startsWith(':')) {
-      params[pat.slice(1)] = decodeURIComponent(seg);
+      try {
+        params[pat.slice(1)] = decodeURIComponent(seg);
+      } catch {
+        throw new HttpInputError(400, 'Invalid URL encoding');
+      }
     } else if (pat !== seg) {
       return null;
     }
   }
   return params;
+}
+
+class HttpInputError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+/** Only valid client errors are safe to expose; server details stay in logs. */
+function errorResponse(error: unknown): RestResponse {
+  const status = (error as { status?: unknown } | null)?.status;
+  const validStatus = typeof status === 'number' && Number.isInteger(status) &&
+    status >= 400 && status <= 599 ? status : 500;
+  return {
+    status: validStatus,
+    body: { error: validStatus < 500
+      ? (error instanceof Error ? error.message : String(error))
+      : 'Internal Server Error' },
+  };
 }

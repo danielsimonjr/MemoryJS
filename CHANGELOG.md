@@ -28,11 +28,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Disk-tier concurrency:** serialize warm/cold shard operations to prevent simultaneous first-use writes and reloads from losing entries; preserve eviction order on failed deletion.
+- **Authorization and REST security:** isolate API-key authorization snapshots, validate restored credentials and expiry, limit JSON request bodies to a configurable 1 MiB by default, authenticate before buffering, return 400/413 for invalid input, and redact internal server errors.
+- **Persistence and native startup:** complete partial writes across durable graph/segment paths; verify `better-sqlite3` by opening/querying/closing a database rather than loading only its JavaScript wrapper.
+- **Fuzzy correctness:** workers now match entity types and misspelled observation words consistently with the main-thread matcher; tag cache keys preserve caller arrays and distinguish comma-containing tags.
+
 - **Zero lint warnings.** Cleared all 55 pre-existing `oxlint` warnings across `src/`: unused catch bindings, template literals over `unknown`/`never` values (now stringified explicitly), `[object Object]` risks in `PostgreSQLStorage.rowToEntity`, `errorSuggestions`, and `validateNonEmpty` (typed column/value helpers), redundant union constituents (`ContextProfileManager`, `LLMQueryPlanner`, `SchemaValidator`, the CLI `decision` command), a `this` alias in `DistillationPipeline`, a mixed sync/async `Promise.all` in `SummarizationService`, an unbound `similarity` method in `ReconstructiveMemory`, dead destructuring defaults in `ContextWindowManager`, and useless regex escapes / control-character regexes in `ContextWindowManager` and `IOManager`. No behavior change intended; the full suite is unchanged.
 - **Claude Code on the web can run lint and tests again.** New `SessionStart` hook (`.claude/hooks/session-start.sh`, registered in `.claude/settings.json`) provisions the Bun version pinned in `package.json` `packageManager` via npm and runs `bun install --frozen-lockfile`; the web container's bundled Bun predates the `bun.lock` format. Runs only when `CLAUDE_CODE_REMOTE=true`.
 - **`CLAUDE.md`** now describes the real lint toolchain (`oxlint` plus the two project rules) instead of the removed ESLint 9 config.
 
 ### Changed
+
+- **Search and policy performance:** share bounded Levenshtein matching across workers and main-thread search; flatten authorization context once and choose policy outcomes in one pass. See [review measurements and compatibility notes](docs/development/REVIEW-2026-09-12.md) and `benchmarks/review-bench.ts`.
 
 - **Procedural Graph performance.** JSONL backing persistence is now append-only (`durableAppendFile`; O(delta) per write instead of re-serializing the whole state) with self-healing: a torn trailing line is compacted at `open()` and a failed append forces a full atomic re-publication on the next write. SQLite backing caches prepared statements per connection and indexes `pg_rejections(graph_id, recorded_at)`, `pg_rounds(graph_id)`, and `pg_revisions(graph_id, created_at)`. `findCycleClosingEdges` is iterative (no recursion-depth limit). Candidate preparation, cycle repair, and validation no longer re-clone and re-hash already-immutable graphs; `ProceduralGraphSession` pins the graph by reference. The PG-11 trajectory-leak heuristic indexes the trajectory block once with a rolling hash (was O(|field| × |block|) per field). `parseEditSet` runs one Zod pass per edge instead of two.
 

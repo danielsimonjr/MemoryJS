@@ -34,6 +34,7 @@
  */
 
 import { promises as fs } from 'fs';
+import { Mutex } from 'async-mutex';
 import { logger } from '../../utils/logger.js';
 import { compress, decompress } from '../../utils/compressionUtil.js';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
@@ -69,8 +70,8 @@ interface ShardLine<V> {
  *
  * Assumes a single writer at a time — concurrent mutations from
  * separate processes against the same shard path will produce lost
- * writes. In-process callers are fine because every mutation is
- * awaited end-to-end.
+ * writes. In-process operations are serialized across all keys, including reads
+ * and reloads, so overlapping callers observe only committed state.
  *
  * @example
  * ```typescript
@@ -89,6 +90,9 @@ export class BrotliColdTier<V> implements IIndexTier<string, V> {
   // Once loaded, the map IS the in-memory view of the shard. Flushes
   // rewrite the file from this map.
   private cache: Map<string, V> | null = null;
+  // A shard is one file: different keys must share the same operation lock.
+  // Reads and reloads wait too, so a failed flush never exposes uncommitted data.
+  private readonly mutex = new Mutex();
 
   constructor(options: BrotliColdTierOptions) {
     if (typeof options.filePath !== 'string' || options.filePath.length === 0) {
@@ -106,65 +110,78 @@ export class BrotliColdTier<V> implements IIndexTier<string, V> {
   }
 
   async get(key: string): Promise<V | undefined> {
-    const cache = await this.ensureLoaded();
-    return cache.get(key);
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      return cache.get(key);
+    });
   }
 
   async has(key: string): Promise<boolean> {
-    const cache = await this.ensureLoaded();
-    return cache.has(key);
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      return cache.has(key);
+    });
   }
 
   async put(key: string, value: V): Promise<void> {
-    const cache = await this.ensureLoaded();
-    // Snapshot prior state so the cache rolls back if the disk flush
-    // fails — without this, the in-memory cache would be the new
-    // value while disk holds the old one, and a process restart
-    // (which re-reads disk) would silently lose the write.
-    const hadPrior = cache.has(key);
-    const priorValue = hadPrior ? cache.get(key)! : undefined;
-    cache.set(key, value);
-    try {
-      await this.flush(cache);
-    } catch (err) {
-      if (hadPrior) cache.set(key, priorValue!);
-      else cache.delete(key);
-      throw err;
-    }
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      // Snapshot prior state so the cache rolls back if the disk flush
+      // fails — without this, the in-memory cache would be the new
+      // value while disk holds the old one, and a process restart
+      // (which re-reads disk) would silently lose the write.
+      const hadPrior = cache.has(key);
+      const priorValue = hadPrior ? cache.get(key)! : undefined;
+      cache.set(key, value);
+      try {
+        await this.flush(cache);
+      } catch (err) {
+        if (hadPrior) cache.set(key, priorValue!);
+        else cache.delete(key);
+        throw err;
+      }
+    });
   }
 
   async delete(key: string): Promise<boolean> {
-    const cache = await this.ensureLoaded();
-    if (!cache.has(key)) return false;
-    const priorValue = cache.get(key)!;
-    cache.delete(key);
-    try {
-      await this.flush(cache);
-    } catch (err) {
-      cache.set(key, priorValue);
-      throw err;
-    }
-    return true;
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      if (!cache.has(key)) return false;
+      const snapshot = new Map(cache);
+      cache.delete(key);
+      try {
+        await this.flush(cache);
+      } catch (err) {
+        cache.clear();
+        for (const [k, v] of snapshot) cache.set(k, v);
+        throw err;
+      }
+      return true;
+    });
   }
 
   async size(): Promise<number> {
-    const cache = await this.ensureLoaded();
-    return cache.size;
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      return cache.size;
+    });
   }
 
   async clear(): Promise<void> {
-    const cache = await this.ensureLoaded();
-    if (cache.size === 0) return;
-    // Snapshot the whole map so a flush failure restores every
-    // entry. Matches the rollback semantics of `put` and `delete`.
-    const priorSnapshot = new Map(cache);
-    cache.clear();
-    try {
-      await this.flush(cache);
-    } catch (err) {
-      for (const [k, v] of priorSnapshot) cache.set(k, v);
-      throw err;
-    }
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      if (cache.size === 0) return;
+      // Snapshot the whole map so a flush failure restores every
+      // entry. Matches the rollback semantics of `put` and `delete`.
+      const priorSnapshot = new Map(cache);
+      cache.clear();
+      try {
+        await this.flush(cache);
+      } catch (err) {
+        for (const [k, v] of priorSnapshot) cache.set(k, v);
+        throw err;
+      }
+    });
   }
 
   /**
@@ -174,7 +191,9 @@ export class BrotliColdTier<V> implements IIndexTier<string, V> {
    * call re-reads + re-decompresses lazily.
    */
   async reload(): Promise<void> {
-    this.cache = null;
+    return this.mutex.runExclusive(async () => {
+      this.cache = null;
+    });
   }
 
   /**

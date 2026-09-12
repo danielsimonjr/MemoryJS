@@ -139,18 +139,18 @@ function isWindowsRenameInterference(error: unknown): boolean {
   return code === 'EPERM' || code === 'EBUSY' || code === 'EACCES';
 }
 
-/**
- * Narrow `string | Buffer` to one of the two overloads of
- * `FileHandle.write` so TypeScript can pick a single signature.
- * Buffer/string union doesn't satisfy either overload directly.
- */
+/** Write every byte, including when the OS completes only part of a write. */
 async function writeAll(
   fd: import('fs/promises').FileHandle,
   content: string | Buffer,
 ): Promise<void> {
-  if (typeof content === 'string') {
-    await fd.write(content);
-  } else {
-    await fd.write(content);
+  const buffer = typeof content === 'string' ? Buffer.from(content, 'utf8') : content;
+  let offset = 0;
+  while (offset < buffer.length) {
+    const { bytesWritten } = await fd.write(buffer, offset, buffer.length - offset, null);
+    if (bytesWritten <= 0) {
+      throw new Error('File write made no progress');
+    }
+    offset += bytesWritten;
   }
 }

@@ -374,7 +374,7 @@ export class GraphStorage implements IGraphStorage {
     const fd = await fs.open(this.memoryFilePath, 'a', 0o600);
     try {
       const dataToWrite = prependNewline ? '\n' + content : content;
-      await fd.write(dataToWrite);
+      await fd.writeFile(dataToWrite);
       await fd.sync();
     } finally {
       await fd.close();

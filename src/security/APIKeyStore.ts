@@ -119,6 +119,14 @@ export class APIKeyStore {
    * Wire {@link APIKeyStoreOptions.onMutate} for auto-persist.
    */
   issue(options: IssueOptions = {}): IssueResult {
+    if (options.ttlSeconds !== undefined && options.expiresAt !== undefined) {
+      throw new RangeError('ttlSeconds and expiresAt are mutually exclusive');
+    }
+    if (options.ttlSeconds !== undefined &&
+        (!Number.isFinite(options.ttlSeconds) || options.ttlSeconds < 0)) {
+      throw new RangeError('ttlSeconds must be finite and non-negative');
+    }
+    if (options.expiresAt !== undefined) assertTimestamp(options.expiresAt, 'expiresAt');
     const plaintext = `mjs_${randomBytes(24).toString('base64url')}`;
     const hash = sha256(plaintext);
     const keyId = `kid_${randomBytes(8).toString('base64url')}`;
@@ -131,7 +139,7 @@ export class APIKeyStore {
       keyId,
       hash,
       ownerId: options.ownerId,
-      scopes: options.scopes ?? [],
+      scopes: [...(options.scopes ?? [])],
       issuedAt,
       expiresAt,
       metadata: options.metadata,
@@ -139,7 +147,7 @@ export class APIKeyStore {
     this.records.set(keyId, record);
     this.byHash.set(hash, keyId);
     this.onMutate?.('issue');
-    return { plaintext, record };
+    return { plaintext, record: copyRecord(record) };
   }
 
   /**
@@ -175,8 +183,11 @@ export class APIKeyStore {
 
     if (record.revokedAt) return { valid: false, reason: 'revoked' };
 
-    if (record.expiresAt && new Date(record.expiresAt).getTime() <= Date.now()) {
-      return { valid: false, reason: 'expired' };
+    if (record.expiresAt !== undefined) {
+      const expiry = Date.parse(record.expiresAt);
+      if (!Number.isFinite(expiry) || expiry <= Date.now()) {
+        return { valid: false, reason: 'expired' };
+      }
     }
 
     if (requiredScopes.length > 0) {
@@ -189,7 +200,7 @@ export class APIKeyStore {
     return {
       valid: true,
       keyId: record.keyId,
-      scopes: record.scopes,
+      scopes: [...record.scopes],
       ownerId: record.ownerId,
     };
   }
@@ -216,12 +227,13 @@ export class APIKeyStore {
 
   /** List records (revoked entries are included — caller can filter). */
   list(): ReadonlyArray<Readonly<KeyRecord>> {
-    return [...this.records.values()];
+    return [...this.records.values()].map(copyRecord);
   }
 
   /** Get a single record by id. */
   get(keyId: string): Readonly<KeyRecord> | undefined {
-    return this.records.get(keyId);
+    const record = this.records.get(keyId);
+    return record ? copyRecord(record) : undefined;
   }
 
   /**
@@ -229,17 +241,32 @@ export class APIKeyStore {
    * only hashes, no plaintext. Use `load()` to restore.
    */
   serialize(): KeyRecord[] {
-    return [...this.records.values()].map((r) => ({ ...r }));
+    return [...this.records.values()].map(copyRecord);
   }
 
   /** Rehydrate from a previously-serialized array. */
   load(records: KeyRecord[]): void {
-    this.records.clear();
-    this.byHash.clear();
+    // Validate a replacement fully before publishing either lookup index.
+    const nextRecords = new Map<string, KeyRecord>();
+    const nextByHash = new Map<string, string>();
     for (const r of records) {
-      this.records.set(r.keyId, r);
-      this.byHash.set(r.hash, r.keyId);
+      if (!r || typeof r.keyId !== 'string' || r.keyId.length === 0 ||
+          typeof r.hash !== 'string' || !/^[0-9a-f]{64}$/.test(r.hash) ||
+          !Array.isArray(r.scopes) || !r.scopes.every(s => typeof s === 'string') ||
+          (r.ownerId !== undefined && typeof r.ownerId !== 'string')) {
+        throw new TypeError('Invalid API key record');
+      }
+      assertTimestamp(r.issuedAt, 'issuedAt');
+      if (r.expiresAt !== undefined) assertTimestamp(r.expiresAt, 'expiresAt');
+      if (r.revokedAt !== undefined) assertTimestamp(r.revokedAt, 'revokedAt');
+      if (nextRecords.has(r.keyId) || nextByHash.has(r.hash)) {
+        throw new TypeError('Duplicate API key id or hash');
+      }
+      nextRecords.set(r.keyId, copyRecord(r));
+      nextByHash.set(r.hash, r.keyId);
     }
+    this.records = nextRecords;
+    this.byHash = nextByHash;
     this.onMutate?.('load');
   }
 
@@ -251,4 +278,16 @@ export class APIKeyStore {
 
 function sha256(input: string): string {
   return createHash('sha256').update(input, 'utf-8').digest('hex');
+}
+
+/** Authorization fields never share mutable references with callers. */
+function copyRecord(record: KeyRecord): KeyRecord {
+  return { ...record, scopes: [...record.scopes],
+    ...(record.metadata ? { metadata: { ...record.metadata } } : {}) };
+}
+
+function assertTimestamp(value: string, field: string): void {
+  if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
+    throw new TypeError(`Invalid API key ${field}`);
+  }
 }

@@ -23,7 +23,9 @@
  *
  * @param str1 - First string to compare
  * @param str2 - Second string to compare
- * @returns Minimum number of edits required (0 = identical strings)
+ * @param maxDistance - Optional cutoff. Distances above it return maxDistance + 1.
+ *   Restricts work to O(n * min(m, 2 * maxDistance + 1)) cells.
+ * @returns Minimum number of edits, or the cutoff sentinel when exceeded
  *
  * @example
  * ```typescript
@@ -32,41 +34,44 @@
  * levenshteinDistance("abc", "");           // Returns 3
  * ```
  */
-export function levenshteinDistance(str1: string, str2: string): number {
-  // Ensure str1 is the shorter string for optimal space usage
-  if (str1.length > str2.length) {
-    [str1, str2] = [str2, str1];
-  }
-
+export function levenshteinDistance(
+  str1: string,
+  str2: string,
+  maxDistance: number = Number.POSITIVE_INFINITY,
+): number {
+  const limit = Number.isFinite(maxDistance)
+    ? Math.max(0, Math.floor(maxDistance)) : Number.POSITIVE_INFINITY;
+  if (str1 === str2) return 0;
+  if (str1.length > str2.length) [str1, str2] = [str2, str1];
   const m = str1.length;
   const n = str2.length;
+  if (n - m > limit) return limit + 1;
+  if (m === 0) return n;
 
-  // Use two rows instead of full matrix - O(min(m,n)) space
-  let prev: number[] = Array.from({ length: m + 1 }, (_, i) => i);
-  let curr: number[] = new Array(m + 1);
+  let prev: number[] = new Array(m + 1).fill(Infinity);
+  let curr: number[] = new Array(m + 1).fill(Infinity);
+  for (let i = 0; i <= Math.min(m, limit); i++) prev[i] = i;
 
   for (let j = 1; j <= n; j++) {
-    curr[0] = j; // Distance from empty string
-
-    for (let i = 1; i <= m; i++) {
-      if (str1[i - 1] === str2[j - 1]) {
-        // Characters match, no edit needed
-        curr[i] = prev[i - 1];
-      } else {
-        // Take minimum of three operations
-        curr[i] = 1 + Math.min(
-          prev[i - 1],  // substitution
-          prev[i],      // deletion
-          curr[i - 1]   // insertion
-        );
-      }
+    const start = Math.max(1, j - limit);
+    const end = Math.min(m, j + limit);
+    curr[0] = j <= limit ? j : Infinity;
+    if (start > 1) curr[start - 1] = Infinity;
+    let minimum = curr[0];
+    // Only cells within the requested edit distance can reach an accepted match.
+    for (let i = start; i <= end; i++) {
+      curr[i] = Math.min(
+        prev[i] + 1,
+        curr[i - 1] + 1,
+        prev[i - 1] + (str1.charCodeAt(i - 1) === str2.charCodeAt(j - 1) ? 0 : 1),
+      );
+      minimum = Math.min(minimum, curr[i]);
     }
-
-    // Swap rows for next iteration
+    if (end < m) curr[end + 1] = Infinity;
+    if (minimum > limit) return limit + 1;
     [prev, curr] = [curr, prev];
   }
-
-  return prev[m];
+  return Math.min(prev[m], limit + 1);
 }
 
 // ==================== TF-IDF ====================

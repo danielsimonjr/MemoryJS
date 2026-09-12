@@ -72,7 +72,7 @@ describe('RestRouter', () => {
     });
     const res = await router.dispatch(makeRequest({ method: 'GET', path: '/boom' }));
     expect(res.status).toBe(500);
-    expect((res.body as { error: string }).error).toBe('fail');
+    expect((res.body as { error: string }).error).toBe('Internal Server Error');
   });
 
   it('honours a thrown error.status when present', async () => {

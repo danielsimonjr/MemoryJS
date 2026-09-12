@@ -412,3 +412,13 @@ describe('levenshteinWorker', () => {
     });
   });
 });
+
+
+describe('worker fuzzy field parity', () => {
+  it('matches entity types and misspelled words inside longer observations', () => {
+    expect(searchEntities({ query: 'enginer', threshold: 0.8, entities: [
+      { name: 'one', nameLower: 'one', entityTypeLower: 'engineer', observations: [] },
+      { name: 'two', nameLower: 'two', observations: ['Alice is an engineer working remotely'] },
+    ] }).map(r => r.name)).toEqual(['one', 'two']);
+  });
+});
