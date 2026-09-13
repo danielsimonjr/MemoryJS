@@ -694,3 +694,32 @@ describe('searchAlgorithms - Sprint 14 Extended Tests', () => {
     });
   });
 });
+
+
+describe('bounded Levenshtein oracle', () => {
+  function oracle(a: string, b: string): number {
+    const matrix = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1));
+    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+      matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    return matrix[a.length][b.length];
+  }
+  it('matches an independent full-matrix oracle across strings and cutoffs', () => {
+    const strings = ['', '🙂', 'é', '🙂a'];
+    let level = [''];
+    for (let n = 0; n < 5; n++) {
+      level = level.flatMap(s => [s + 'a', s + 'b']);
+      strings.push(...level);
+    }
+    for (const a of strings) for (const b of strings) {
+      const expected = oracle(a, b);
+      expect(levenshteinDistance(a, b)).toBe(expected);
+      for (let limit = 0; limit < 6; limit++) {
+        expect(levenshteinDistance(a, b, limit)).toBe(Math.min(expected, limit + 1));
+      }
+    }
+  });
+});

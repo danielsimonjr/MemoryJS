@@ -68,7 +68,15 @@ const NPM = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 /** The only question that matters: can this package load the module? */
 function loads(pkg) {
   try {
-    require(pkg);
+    const Database = require(pkg);
+    // better-sqlite3 loads its native binding lazily, in the constructor.
+    // Requiring the JS wrapper alone cannot detect missing/ABI-incompatible addons.
+    const db = new Database(':memory:');
+    try {
+      db.prepare('SELECT 1').get();
+    } finally {
+      db.close();
+    }
     return { ok: true };
   } catch (err) {
     return { ok: false, reason: String(err?.message ?? err).split('\n')[0] };

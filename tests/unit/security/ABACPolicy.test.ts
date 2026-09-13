@@ -318,3 +318,21 @@ describe('ABACPolicy', () => {
     ).toBe('permit');
   });
 });
+
+
+describe('ABAC attribute isolation', () => {
+  it('evaluates shared subject/resource objects under both attribute paths', () => {
+    const shared = { team: { id: 'engineering' } };
+    const policy = new ABACPolicy([{ id: 'match', action: 'read', effect: 'permit', conditions: [
+      { attribute: 'subject.team.id', op: 'eq', value: 'engineering' },
+      { attribute: 'resource.team.id', op: 'eq', value: 'engineering' },
+    ] }]);
+    expect(policy.evaluate({ subject: shared, resource: shared, action: 'read' })).toBe('permit');
+  });
+  it('does not mistake Object.prototype properties for supplied attributes', () => {
+    const policy = new ABACPolicy([{ id: 'match', action: 'read', effect: 'permit', conditions: [
+      { attribute: 'toString', op: 'present' },
+    ] }]);
+    expect(policy.evaluate({ subject: {}, resource: {}, action: 'read' })).toBe('not-applicable');
+  });
+});

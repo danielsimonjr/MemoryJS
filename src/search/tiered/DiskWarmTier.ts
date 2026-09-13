@@ -37,6 +37,7 @@
  */
 
 import { promises as fs } from 'fs';
+import { Mutex } from 'async-mutex';
 import { logger } from '../../utils/logger.js';
 import { durableWriteFile } from '../../utils/durableWriteFile.js';
 import type { IIndexTier } from './ITieredIndex.js';
@@ -81,9 +82,16 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
   private readonly maxEntries: number | undefined;
   private readonly onEvict: ((key: string, value: V) => void) | undefined;
   private cache: Map<string, V> | null = null;
+  // A shard is one file: different keys must share the same operation lock.
+  // Reads and reloads wait too, so a failed flush never exposes uncommitted data.
+  private readonly mutex = new Mutex();
   private evictionCount = 0;
 
   constructor(options: DiskWarmTierOptions<V>) {
+    if (options.maxEntries !== undefined &&
+        (!Number.isSafeInteger(options.maxEntries) || options.maxEntries < 0)) {
+      throw new RangeError('DiskWarmTier: maxEntries must be a non-negative safe integer');
+    }
     this.filePath = options.filePath;
     this.name = options.name ?? 'warm';
     this.maxEntries = options.maxEntries;
@@ -91,101 +99,114 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
   }
 
   async get(key: string): Promise<V | undefined> {
-    const cache = await this.ensureLoaded();
-    return cache.get(key);
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      return cache.get(key);
+    });
   }
 
   async has(key: string): Promise<boolean> {
-    const cache = await this.ensureLoaded();
-    return cache.has(key);
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      return cache.has(key);
+    });
   }
 
   async put(key: string, value: V): Promise<void> {
-    const cache = await this.ensureLoaded();
-    // Snapshot the WHOLE map before mutating. Restoring entry-by-
-    // entry from collected diffs (the prior implementation) lost the
-    // original LRU position of `key` when `hadPrior` was true — a
-    // later eviction round would target the wrong oldest. A full
-    // snapshot pays GC cost only on the rare error path but
-    // guarantees byte-exact rollback including insertion order
-    // (review #2).
-    const snapshot = new Map(cache);
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      // Snapshot the WHOLE map before mutating. Restoring entry-by-
+      // entry from collected diffs (the prior implementation) lost the
+      // original LRU position of `key` when `hadPrior` was true — a
+      // later eviction round would target the wrong oldest. A full
+      // snapshot preserves ordering on failure and
+      // guarantees byte-exact rollback including insertion order
+      // (review #2).
+      const snapshot = new Map(cache);
 
-    const hadPrior = cache.has(key);
-    // Re-inserting refreshes Map insertion order so LRU eviction
-    // targets the genuinely-oldest key.
-    if (hadPrior) cache.delete(key);
-    cache.set(key, value);
+      const hadPrior = cache.has(key);
+      // Re-inserting refreshes Map insertion order so LRU eviction
+      // targets the genuinely-oldest key.
+      if (hadPrior) cache.delete(key);
+      cache.set(key, value);
 
-    // Collect evictees before flush so we can fire their callbacks
-    // post-flush (and so the snapshot rollback can leave them
-    // un-evicted on failure).
-    const evicted: Array<{ k: string; v: V }> = [];
-    if (this.maxEntries !== undefined) {
-      while (cache.size > this.maxEntries) {
-        const oldest = cache.keys().next().value as string | undefined;
-        if (oldest === undefined) break;
-        const oldestValue = cache.get(oldest)!;
-        cache.delete(oldest);
-        evicted.push({ k: oldest, v: oldestValue });
-      }
-    }
-
-    try {
-      await this.flush(cache);
-    } catch (err) {
-      // Restore from the upfront snapshot — guarantees pre-mutation
-      // LRU order, no entry-by-entry reconstruction needed.
-      cache.clear();
-      for (const [k, v] of snapshot) cache.set(k, v);
-      throw err;
-    }
-
-    // Fire eviction callbacks only after the flush has durably landed.
-    // If a callback throws we still count the eviction — disk is the
-    // source of truth and the entry is gone for good.
-    for (const { k, v } of evicted) {
-      this.evictionCount++;
-      if (this.onEvict) {
-        try {
-          this.onEvict(k, v);
-        } catch (cbErr) {
-          logger.warn(`DiskWarmTier(${this.name}): onEvict callback threw`, cbErr);
+      // Collect evictees before flush so we can fire their callbacks
+      // post-flush (and so the snapshot rollback can leave them
+      // un-evicted on failure).
+      const evicted: Array<{ k: string; v: V }> = [];
+      if (this.maxEntries !== undefined) {
+        while (cache.size > this.maxEntries) {
+          const oldest = cache.keys().next().value as string | undefined;
+          if (oldest === undefined) break;
+          const oldestValue = cache.get(oldest)!;
+          cache.delete(oldest);
+          evicted.push({ k: oldest, v: oldestValue });
         }
       }
-    }
+
+      try {
+        await this.flush(cache);
+      } catch (err) {
+        // Restore from the upfront snapshot — guarantees pre-mutation
+        // LRU order, no entry-by-entry reconstruction needed.
+        cache.clear();
+        for (const [k, v] of snapshot) cache.set(k, v);
+        throw err;
+      }
+
+      // Fire eviction callbacks only after the flush has durably landed.
+      // If a callback throws we still count the eviction — disk is the
+      // source of truth and the entry is gone for good.
+      for (const { k, v } of evicted) {
+        this.evictionCount++;
+        if (this.onEvict) {
+          try {
+            this.onEvict(k, v);
+          } catch (cbErr) {
+            logger.warn(`DiskWarmTier(${this.name}): onEvict callback threw`, cbErr);
+          }
+        }
+      }
+    });
   }
 
   async delete(key: string): Promise<boolean> {
-    const cache = await this.ensureLoaded();
-    if (!cache.has(key)) return false;
-    const priorValue = cache.get(key)!;
-    cache.delete(key);
-    try {
-      await this.flush(cache);
-    } catch (err) {
-      cache.set(key, priorValue);
-      throw err;
-    }
-    return true;
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      if (!cache.has(key)) return false;
+      const snapshot = new Map(cache);
+      cache.delete(key);
+      try {
+        await this.flush(cache);
+      } catch (err) {
+        cache.clear();
+        for (const [k, v] of snapshot) cache.set(k, v);
+        throw err;
+      }
+      return true;
+    });
   }
 
   async size(): Promise<number> {
-    const cache = await this.ensureLoaded();
-    return cache.size;
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      return cache.size;
+    });
   }
 
   async clear(): Promise<void> {
-    const cache = await this.ensureLoaded();
-    if (cache.size === 0) return;
-    const priorSnapshot = new Map(cache);
-    cache.clear();
-    try {
-      await this.flush(cache);
-    } catch (err) {
-      for (const [k, v] of priorSnapshot) cache.set(k, v);
-      throw err;
-    }
+    return this.mutex.runExclusive(async () => {
+      const cache = await this.ensureLoaded();
+      if (cache.size === 0) return;
+      const priorSnapshot = new Map(cache);
+      cache.clear();
+      try {
+        await this.flush(cache);
+      } catch (err) {
+        for (const [k, v] of priorSnapshot) cache.set(k, v);
+        throw err;
+      }
+    });
   }
 
   /** Eviction count for diagnostics. */
@@ -198,7 +219,9 @@ export class DiskWarmTier<V> implements IIndexTier<string, V> {
    * edits. Cheap — `ensureLoaded` re-parses the sidecar lazily.
    */
   async reload(): Promise<void> {
-    this.cache = null;
+    return this.mutex.runExclusive(async () => {
+      this.cache = null;
+    });
   }
 
   private async ensureLoaded(): Promise<Map<string, V>> {

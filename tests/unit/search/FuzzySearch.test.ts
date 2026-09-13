@@ -85,6 +85,19 @@ describe('FuzzySearch', () => {
     }
   });
 
+  it('keeps caller tags unchanged and distinguishes comma-containing cache keys', async () => {
+    await entityManager.createEntities([
+      { name: 'cache comma', entityType: 'entry', observations: [], tags: ['a,b'] },
+      { name: 'cache split', entityType: 'entry', observations: [], tags: ['a', 'b'] },
+    ]);
+    const combined = await fuzzySearch.fuzzySearch('cache', 0.9, ['a,b']);
+    const tags = Object.freeze(['b', 'a']) as unknown as string[];
+    const separate = await fuzzySearch.fuzzySearch('cache', 0.9, tags);
+    expect(combined.entities.map(e => e.name)).toEqual(['cache comma']);
+    expect(separate.entities.map(e => e.name)).toEqual(['cache split']);
+    expect(tags).toEqual(['b', 'a']);
+  });
+
   describe('Exact and Substring Matching', () => {
     it('should match exact name', async () => {
       const result = await fuzzySearch.fuzzySearch('Alice');

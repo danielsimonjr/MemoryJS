@@ -166,3 +166,43 @@ describe('APIKeyStore.size / list', () => {
     expect(store.list()).toHaveLength(2);
   });
 });
+
+
+describe('APIKeyStore authorization isolation', () => {
+  it('detaches all public authorization records and supplied scopes', () => {
+    const store = new APIKeyStore();
+    const scopes = ['read'];
+    const { plaintext, record } = store.issue({ scopes });
+    scopes.push('admin');
+    const snapshots = [record, store.get(record.keyId)!, store.list()[0], store.serialize()[0]];
+    for (const snapshot of snapshots) (snapshot.scopes as string[]).push('admin');
+    (store.validate(plaintext).scopes as string[]).push('admin');
+    expect(store.validate(plaintext, ['admin']).valid).toBe(false);
+    store.revoke(record.keyId);
+    (store.get(record.keyId)! as { revokedAt?: string }).revokedAt = undefined;
+    expect(store.validate(plaintext).reason).toBe('revoked');
+  });
+
+  it('detaches loaded records, and rejects invalid replacements atomically', () => {
+    const store = new APIKeyStore();
+    const { plaintext } = store.issue({ scopes: ['read'] });
+    const records = store.serialize();
+    store.load(records);
+    (records[0].scopes as string[]).push('admin');
+    expect(store.validate(plaintext, ['admin']).valid).toBe(false);
+    expect(() => store.load([{ ...records[0], expiresAt: 'invalid' }])).toThrow();
+    expect(store.validate(plaintext).valid).toBe(true);
+    expect(() => store.load([records[0], records[0]])).toThrow(/Duplicate/);
+    expect(store.validate(plaintext).valid).toBe(true);
+  });
+
+  it.each(['', 'not-a-date'])('rejects invalid expiry %j', expiresAt => {
+    expect(() => new APIKeyStore().issue({ expiresAt })).toThrow();
+  });
+  it.each([NaN, Infinity, -1])('rejects invalid TTL %s', ttlSeconds => {
+    expect(() => new APIKeyStore().issue({ ttlSeconds })).toThrow();
+  });
+  it('rejects conflicting TTL and expiry', () => {
+    expect(() => new APIKeyStore().issue({ ttlSeconds: 1, expiresAt: new Date().toISOString() })).toThrow();
+  });
+});

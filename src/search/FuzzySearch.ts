@@ -240,7 +240,7 @@ export class FuzzySearch {
     return JSON.stringify({
       q: query.toLowerCase(),
       t: threshold,
-      tags: tags?.sort().join(',') ?? '',
+      tags: tags ? [...tags].sort() : [],
       min: minImportance,
       max: maxImportance,
       off: offset,
@@ -261,6 +261,7 @@ export class FuzzySearch {
    */
   setNgramIndex(index: NGramIndex | null, threshold?: number): void {
     this.ngramIndex = index;
+    this.clearCache();
     if (threshold !== undefined) {
       this.ngramThreshold = threshold;
     }
@@ -538,7 +539,7 @@ export class FuzzySearch {
       (1 - threshold) * maxLength + Number.EPSILON * maxLength
     );
     if (Math.abs(s1.length - s2.length) > maxDistance) return false;
-    const distance = levenshteinDistance(s1, s2);
+    const distance = levenshteinDistance(s1, s2, maxDistance);
     const similarity = 1 - distance / maxLength;
 
     return similarity >= threshold;
@@ -588,6 +589,7 @@ export class FuzzySearch {
         threshold,
         entities: chunk.map(e => ({
           name: e.name,
+          entityTypeLower: e.entityType.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(),
           nameLower: this.truncateField(
             e.name.slice(0, FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH).toLowerCase(),
             FUZZY_SEARCH_LIMITS.MAX_NAME_LENGTH

@@ -143,34 +143,29 @@ export class ABACPolicy {
   }
 
   evaluate(context: ABACContext): ABACDecision {
-    const applicable = this.rules.filter(
-      (r) => r.action === '*' || r.action === context.action,
-    );
-    if (applicable.length === 0) return 'not-applicable';
-
-    let matched: ABACRule[] = [];
-    for (const rule of applicable) {
-      if (this.matches(rule, context)) matched.push(rule);
+    let flat: Record<string, unknown> | undefined;
+    let winner: ABACRule | undefined;
+    for (const rule of this.rules) {
+      if (rule.action !== '*' && rule.action !== context.action) continue;
+      if (rule.conditions?.length) {
+        // Flatten once per evaluation, only when a condition needs attributes.
+        flat ??= flatten(context);
+        if (!this.matches(rule, flat)) continue;
+      }
+      const priority = rule.priority ?? 0;
+      const winningPriority = winner?.priority ?? 0;
+      if (!winner || priority > winningPriority ||
+          (priority === winningPriority && rule.effect === 'deny')) {
+        winner = rule;
+      }
     }
-    if (matched.length === 0) return 'not-applicable';
-
-    // Sort by priority descending, then deny before permit, finally
-    // by rule id lexicographically so the winning rule is fully
-    // deterministic across runs (matters for audit logs).
-    matched.sort((a, b) => {
-      const ap = a.priority ?? 0;
-      const bp = b.priority ?? 0;
-      if (ap !== bp) return bp - ap;
-      if (a.effect !== b.effect) return a.effect === 'deny' ? -1 : 1;
-      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-    });
-    return matched[0]!.effect;
+    return winner?.effect ?? 'not-applicable';
   }
 
-  private matches(rule: ABACRule, context: ABACContext): boolean {
+  private matches(rule: ABACRule, flat: Record<string, unknown>): boolean {
     if (!rule.conditions || rule.conditions.length === 0) return true;
     for (const cond of rule.conditions) {
-      if (!evalCondition(cond, context)) return false;
+      if (!evalCondition(cond, flat)) return false;
     }
     return true;
   }
@@ -178,8 +173,7 @@ export class ABACPolicy {
 
 // ==================== Condition evaluation ====================
 
-function evalCondition(cond: ABACCondition, context: ABACContext): boolean {
-  const flat = flatten(context);
+function evalCondition(cond: ABACCondition, flat: Record<string, unknown>): boolean {
   const left = flat[cond.attribute];
 
   switch (cond.op) {
@@ -235,7 +229,7 @@ function evalCondition(cond: ABACCondition, context: ABACContext): boolean {
 const FLATTEN_MAX_DEPTH = 4;
 
 function flatten(ctx: ABACContext): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
+  const out: Record<string, unknown> = Object.create(null);
   out['action'] = ctx.action;
   const visited = new WeakSet<object>();
   flattenInto(ctx.subject, 'subject', out, visited, 0);
@@ -265,4 +259,7 @@ function flattenInto(
       flattenInto(v as Record<string, unknown>, key, out, visited, depth + 1);
     }
   }
+  // Track ancestors, not every object ever seen: shared references have a
+  // distinct valid path under each subject/resource attribute.
+  visited.delete(obj);
 }

@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 
 /**
  * Regression test for the lazy better-sqlite3 load (S9 follow-up).
@@ -41,22 +40,22 @@ describe('SQLiteStorage lazy native-addon load', () => {
         const path = require('path');
         const file = path.join(os.tmpdir(), 'lazy-probe-' + Date.now() + '.db');
         const store = new mod.SQLiteStorage(file);
-        await store.saveGraph({ entities: [], relations: [] });
-        const afterUse = loaded();
-        process.stdout.write(JSON.stringify({ afterImport, afterUse }));
+        try {
+          await store.saveGraph({ entities: [], relations: [] });
+          const afterUse = loaded();
+          process.stdout.write(JSON.stringify({ afterImport, afterUse }));
+        } finally {
+          store.close();
+          const fs = require('node:fs');
+          for (const suffix of ['', '-wal', '-shm']) fs.rmSync(file + suffix, { force: true });
+        }
       })().catch((e) => { process.stderr.write(String(e)); process.exit(1); });
     `;
-    // Invoke the locally-installed tsx CLI through `process.execPath` rather
-    // than `npx tsx`. `execFileSync` does not spawn a shell, and on Windows
-    // `npx` is `npx.cmd` — resolvable only via PATHEXT — so the npx form died
-    // with `spawnSync npx ENOENT` on Windows while passing on POSIX. Running
-    // the CLI directly is also deterministic (uses the pinned devDependency,
-    // never a network fetch) and skips npx's resolution overhead.
-    const require = createRequire(import.meta.url);
-    const tsxCli = require.resolve('tsx/cli');
+    // Node's import hook runs the same loader without the tsx CLI's IPC
+    // listener, which is unnecessary here and unavailable in restricted CI.
     const out = execFileSync(
       process.execPath,
-      [tsxCli, '-e', script],
+      ['--import', 'tsx', '-e', script],
       {
         cwd: process.cwd(),
         encoding: 'utf8',

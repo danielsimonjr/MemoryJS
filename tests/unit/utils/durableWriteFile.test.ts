@@ -2,12 +2,13 @@
  * durableWriteFile unit tests.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   durableWriteFile,
+  durableAppendFile,
   restrictSensitiveFilePermissions,
 } from '../../../src/utils/durableWriteFile.js';
 
@@ -20,6 +21,7 @@ describe('durableWriteFile', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     try {
       await fs.rm(dir, { recursive: true, force: true });
     } catch {
@@ -47,6 +49,38 @@ describe('durableWriteFile', () => {
     await durableWriteFile(target, 'v1');
     await durableWriteFile(target, 'v2');
     expect(await fs.readFile(target, 'utf8')).toBe('v2');
+  });
+
+  for (const write of [durableWriteFile, durableAppendFile]) {
+    it(`${write.name} completes partial writes without losing UTF-8 bytes`, async () => {
+      const target = join(dir, 'short-write.txt');
+      const content = 'α🙂—complete'.repeat(10);
+      const open = fs.open.bind(fs);
+      vi.spyOn(fs, 'open').mockImplementationOnce(async (...args) => {
+        const handle = await open(...args);
+        const realWrite = handle.write.bind(handle);
+        vi.spyOn(handle, 'write').mockImplementation(async (input: any, offset = 0, length?: number) => {
+          const bytes = typeof input === 'string' ? Buffer.from(input) : input;
+          return realWrite(bytes, offset, Math.min(3, length ?? bytes.length), null);
+        });
+        return handle;
+      });
+      await write(target, content);
+      expect(await fs.readFile(target, 'utf8')).toBe(content);
+    });
+  }
+
+  it('rejects zero-progress writes without replacing the old file', async () => {
+    const target = join(dir, 'no-progress.txt');
+    await fs.writeFile(target, 'original');
+    const open = fs.open.bind(fs);
+    vi.spyOn(fs, 'open').mockImplementationOnce(async (...args) => {
+      const handle = await open(...args);
+      vi.spyOn(handle, 'write').mockResolvedValue({ bytesWritten: 0, buffer: Buffer.alloc(0) });
+      return handle;
+    });
+    await expect(durableWriteFile(target, 'replacement')).rejects.toThrow(/no progress/);
+    expect(await fs.readFile(target, 'utf8')).toBe('original');
   });
 
   it('restrictSensitiveFilePermissions tightens mode', async () => {

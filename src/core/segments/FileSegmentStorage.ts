@@ -603,7 +603,7 @@ async function writeTmpFile(target: string, content: string): Promise<string> {
   const tmpPath = `${target}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
   const fd = await fs.open(tmpPath, 'w');
   try {
-    await fd.write(content);
+    await fd.writeFile(content);
     await fd.sync();
   } finally {
     await fd.close();
@@ -619,7 +619,7 @@ async function renameWithFallback(tmp: string, target: string): Promise<void> {
     const fallback = await fs.open(target, 'w');
     try {
       const content = await fs.readFile(tmp, 'utf-8');
-      await fallback.write(content);
+      await fallback.writeFile(content);
       await fallback.sync();
     } finally {
       await fallback.close();
