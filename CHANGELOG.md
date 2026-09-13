@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.0] - 2026-09-13
+
 ### Added
 
 - **Procedural Graph** — `await ctx.createProceduralGraph(config)` async factory (`Promise<ProceduralGraphManager>`) for validated create/import, frozen-revision sessions with guidance, offline `evolve` with caller-supplied rollout/evaluate/refiner/tokenizer callbacks, and a one-way `procedureToGraphInput` adapter. JSONL / SQLite / in-memory backings; default sidecar `<basename>-procedural-graph.jsonl`. `@experimental`.
@@ -28,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The leak-heuristic guard measures the algorithm, not the machine.** `hardening.test.ts` asserted `elapsed < 2000 ms` for a 400 KB trajectory scan; it passed in isolation and failed at 2058 ms under full-suite contention — a 3% miss that says nothing about the code. It now scans 1x and 20x the data on the same box and asserts the ratio stays under 60x (measured: 16x, i.e. linear; a quadratic regression would be ~400x), so contention scales both measurements together and cannot produce a false red.
+- **`AsyncMutex` timeout now bounds one critical section, not the whole drain.** The deadline was armed when a waiter ENQUEUED, so its budget had to cover every predecessor as well as itself — the effective per-operation budget was `timeoutMs / queueDepth`. That contradicted the class's own defaults: at `maxQueueLength` 1000 a full queue allowed 30 ms per operation. Measured per-op cost is flat (~5 ms at depths 10–200), so the lock was never degrading; a slow CI runner was simply timing out on work that was progressing. The deadline now starts when a waiter reaches the HEAD of the queue, so it reports a stalled holder rather than a deep queue. Fixes the `known-issue-fixes.test.ts` flake on windows/node-24 under full-suite load (`AsyncMutex acquire timeout (30000ms)` at depth 100).
+- **Segmented storage no longer writes empty segment files.** `saveAll` materialised every segment, so saving a single entity at the 1024-segment cap wrote 1024 files — 1023 of them empty — costing ~7.6 s per save. `loadSegment` already maps `ENOENT` onto an empty segment, so an absent file and an empty file describe the same graph. An empty segment whose file already exists is still written, to truncate it; skipping that would resurrect deleted entities. `segments-review-fixes.test.ts` drops from 17.7 s to 5.1 s and no longer needs its 120 s per-test override.
+
 - **Disk-tier concurrency:** serialize warm/cold shard operations to prevent simultaneous first-use writes and reloads from losing entries; preserve eviction order on failed deletion.
 - **Authorization and REST security:** isolate API-key authorization snapshots, validate restored credentials and expiry, limit JSON request bodies to a configurable 1 MiB by default, authenticate before buffering, return 400/413 for invalid input, and redact internal server errors.
 - **Persistence and native startup:** complete partial writes across durable graph/segment paths; verify `better-sqlite3` by opening/querying/closing a database rather than loading only its JavaScript wrapper.
@@ -36,6 +42,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Zero lint warnings.** Cleared all 55 pre-existing `oxlint` warnings across `src/`: unused catch bindings, template literals over `unknown`/`never` values (now stringified explicitly), `[object Object]` risks in `PostgreSQLStorage.rowToEntity`, `errorSuggestions`, and `validateNonEmpty` (typed column/value helpers), redundant union constituents (`ContextProfileManager`, `LLMQueryPlanner`, `SchemaValidator`, the CLI `decision` command), a `this` alias in `DistillationPipeline`, a mixed sync/async `Promise.all` in `SummarizationService`, an unbound `similarity` method in `ReconstructiveMemory`, dead destructuring defaults in `ContextWindowManager`, and useless regex escapes / control-character regexes in `ContextWindowManager` and `IOManager`. No behavior change intended; the full suite is unchanged.
 - **Claude Code on the web can run lint and tests again.** New `SessionStart` hook (`.claude/hooks/session-start.sh`, registered in `.claude/settings.json`) provisions the Bun version pinned in `package.json` `packageManager` via npm and runs `bun install --frozen-lockfile`; the web container's bundled Bun predates the `bun.lock` format. Runs only when `CLAUDE_CODE_REMOTE=true`.
 - **`CLAUDE.md`** now describes the real lint toolchain (`oxlint` plus the two project rules) instead of the removed ESLint 9 config.
+
+
+- **Several storage-backed manager and CLI paths did not ensure storage was loaded first.**
+  `EntityManager`, `ProjectContextManager`, and the `decision` / `exclusion` / `heuristic` /
+  `projectContext` / `toolAffordance` CLI commands now await `ensureLoaded()` before querying
+  storage or performing storage-backed decision mutations, preventing empty or stale behavior on
+  a cold `ManagerContext`.
+  Found by the coverage work in the same change — the tests are what exposed it.
+
+
+- **`master` was red on all six CI legs: the Node runtime smoke ran BEFORE the build.** The step
+  added in d5c64da imports `./dist/index.cjs`, but it was placed above `Build`, so the artifact it
+  loads did not exist yet -- every leg failed with `Cannot find module .../dist/index.cjs`, which
+  reads like a packaging or exports defect rather than a step-ordering one. Moved below `Build`,
+  with a comment recording why the order is load-bearing.
+  The check itself is correct and worth keeping: `package.json` declares `main` and
+  `exports.require` as `./dist/index.cjs`, and the rest of CI runs under Bun, so without this step
+  nothing ever loads the shipped CJS artifact under Node. Verified by running the step's exact
+  command against a real local build: "PASS: loaded cleanly under Node".
 
 ### Changed
 
@@ -88,7 +113,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   return value used?") is unanswerable there. TypeScript 7 does not ship its
   programmatic Compiler API. `oxc-parser` is the same engine oxlint already runs here.
 
-### Changed
 
 - **Declaration files are now emitted by `tsc`, not by tsup.** `tsup.config.ts` sets
   `dts: false`; `scripts/emit-dts.mjs` runs `tsc --emitDeclarationOnly` and produces
@@ -123,7 +147,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rejected by its config parser). Those guards are load-bearing, so they are not
   being dropped to make a version number move.
 
-### Changed
 
 - **Bun pinned to 1.4.2** in `packageManager`, `engines.bun` and the CI workflow, and
   `tsconfig.json` now declares `"types": ["node"]` explicitly.
@@ -137,14 +160,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a pre-existing breakage: clean install + TS 5.7.2 builds, clean install + TS 7.0.2
   fails. Revisit when TS 7.1 lands.
 
-### Fixed
 
-- **Several storage-backed manager and CLI paths did not ensure storage was loaded first.**
-  `EntityManager`, `ProjectContextManager`, and the `decision` / `exclusion` / `heuristic` /
-  `projectContext` / `toolAffordance` CLI commands now await `ensureLoaded()` before querying
-  storage or performing storage-backed decision mutations, preventing empty or stale behavior on
-  a cold `ManagerContext`.
-  Found by the coverage work in the same change — the tests are what exposed it.
+- **Docs and scripts finish the Bun toolchain migration.** CI already installed and
+  ran via Bun (`bun.lock` authoritative; Node remains the shipped runtime). Root
+  `package.json` now declares `packageManager: bun@1.4.0`, `prepublishOnly` uses
+  `bun run`, and contributor docs / Claude agent commands no longer tell people to
+  `npm install` a lockfile that does not exist.
 
 ### Noted
 
@@ -186,30 +207,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   missing dependency -> exit 1, good artifact -> exit 0. The missing-dependency case is the
   class that forced six repos to revert during the Bun migration.
 - Smoke run locally against this repo's own artifact before the step was added.
-
-## [Unreleased]
-
-### Changed
-
-- **Docs and scripts finish the Bun toolchain migration.** CI already installed and
-  ran via Bun (`bun.lock` authoritative; Node remains the shipped runtime). Root
-  `package.json` now declares `packageManager: bun@1.4.0`, `prepublishOnly` uses
-  `bun run`, and contributor docs / Claude agent commands no longer tell people to
-  `npm install` a lockfile that does not exist.
-
-
-### Fixed
-
-- **`master` was red on all six CI legs: the Node runtime smoke ran BEFORE the build.** The step
-  added in d5c64da imports `./dist/index.cjs`, but it was placed above `Build`, so the artifact it
-  loads did not exist yet -- every leg failed with `Cannot find module .../dist/index.cjs`, which
-  reads like a packaging or exports defect rather than a step-ordering one. Moved below `Build`,
-  with a comment recording why the order is load-bearing.
-  The check itself is correct and worth keeping: `package.json` declares `main` and
-  `exports.require` as `./dist/index.cjs`, and the rest of CI runs under Bun, so without this step
-  nothing ever loads the shipped CJS artifact under Node. Verified by running the step's exact
-  command against a real local build: "PASS: loaded cleanly under Node".
-
 
 ## [4.0.0] - 2026-09-03
 

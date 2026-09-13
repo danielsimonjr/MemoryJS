@@ -189,7 +189,46 @@ describe('Review #8: strict env-var parsing + 1024-segment cap', () => {
     const storage = new GraphStorage(join(dir, 'memory.jsonl'));
     await storage.saveGraph({ entities: [ent('alice')], relations: [] });
     await expect(fs.access(join(dir, 'segments'))).resolves.toBeUndefined();
-  }, 120_000);
+  }, 30_000);
+
+  it('writes only the occupied segment at the cap, not 1024 empty ones', async () => {
+    // ROOT CAUSE of this file's CI timeout. saveAll used to materialise every
+    // segment, so one entity at the 1024 cap cost 1024 tmp-writes + 1024
+    // renames (~7.6 s locally, and past the 120 s override under full-suite
+    // contention). `loadSegment` maps ENOENT onto an empty segment, so an
+    // absent file and an empty file describe the same graph.
+    process.env.MEMORY_STORAGE_SEGMENT_COUNT = '1024';
+    const storage = new GraphStorage(join(dir, 'memory.jsonl'));
+    await storage.saveGraph({ entities: [ent('alice')], relations: [] });
+
+    const written = (await fs.readdir(join(dir, 'segments'))).filter(f =>
+      f.endsWith('.jsonl'),
+    );
+    expect(written).toHaveLength(1);
+
+    // The graph must still round-trip identically.
+    const reloaded = await new GraphStorage(join(dir, 'memory.jsonl')).loadGraph();
+    expect(reloaded.entities.map(e => e.name)).toEqual(['alice']);
+  }, 30_000);
+
+  it('truncates an existing segment file that becomes empty (no resurrection)', async () => {
+    // The other half of the optimisation: skipping an empty segment is only
+    // safe when no file is there. If one IS there it must be overwritten, or
+    // deleted entities would reappear on the next load.
+    process.env.MEMORY_STORAGE_SEGMENT_COUNT = '4';
+    const path = join(dir, 'memory.jsonl');
+    await new GraphStorage(path).saveGraph({
+      entities: [ent('alice'), ent('bob')],
+      relations: [],
+    });
+    const before = (await fs.readdir(join(dir, 'segments'))).filter(f => f.endsWith('.jsonl'));
+    expect(before.length).toBeGreaterThan(0);
+
+    // Save an EMPTY graph over the top; every previously-written file must clear.
+    await new GraphStorage(path).saveGraph({ entities: [], relations: [] });
+    const reloaded = await new GraphStorage(path).loadGraph();
+    expect(reloaded.entities).toEqual([]);
+  }, 30_000);
 });
 
 describe('Review #1: appendViaSegmentSave reload-failure path', () => {

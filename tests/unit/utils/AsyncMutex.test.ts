@@ -104,6 +104,42 @@ describe('AsyncMutex', () => {
     release();
   });
 
+  it('bounds the wait by the critical section ahead, not the whole drain', async () => {
+    // REGRESSION GUARD. The deadline used to be armed at ENQUEUE, so a waiter's
+    // budget had to cover every predecessor's critical section as well as its own.
+    // That made the effective per-operation budget `timeoutMs / queueDepth`, which
+    // collides with this class's own defaults: at maxQueueLength 1000 a full queue
+    // allowed 30 ms per operation. Here each section is well inside the 100 ms
+    // budget while the cumulative drain (4 x 80 ms) is far outside it.
+    const mutex = new AsyncMutex({ timeoutMs: 100 });
+    const release0 = await mutex.acquire();
+
+    const outcomes: string[] = [];
+    const waiters = [1, 2, 3, 4].map(i =>
+      mutex
+        .acquire()
+        .then(rel => {
+          outcomes.push(`ok${i}`);
+          return rel;
+        })
+        .catch((e: Error) => {
+          outcomes.push(`fail${i}`);
+          throw e;
+        }),
+    );
+
+    let current = release0;
+    for (const w of waiters) {
+      await vi.advanceTimersByTimeAsync(80); // one critical section, under budget
+      current();
+      current = await w;
+    }
+    current();
+
+    expect(outcomes).toEqual(['ok1', 'ok2', 'ok3', 'ok4']);
+    expect(mutex.queueLength).toBe(0);
+  });
+
   it('should not timeout if timeoutMs is 0', async () => {
     const mutex = new AsyncMutex({ timeoutMs: 0 });
 

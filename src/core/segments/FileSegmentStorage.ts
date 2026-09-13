@@ -76,6 +76,20 @@ interface RelationLine {
 
 type SegmentLine = EntityLine | RelationLine;
 
+/** A segment with nothing in it - indistinguishable from an absent file to `loadSegment`. */
+function isEmptySegment(seg: Segment): boolean {
+  return seg.entities.length === 0 && seg.relations.length === 0;
+}
+
+async function fileExists(path: string): Promise<boolean> {
+  try {
+    await fs.access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export class FileSegmentStorage implements ISegmentStorage {
   readonly segmentCount: number;
   private readonly segmentsDir: string;
@@ -243,6 +257,21 @@ export class FileSegmentStorage implements ISegmentStorage {
     try {
       for (const seg of segs) {
         const target = this.segmentPath(seg.id);
+
+        // An EMPTY segment whose file does not exist yet is skipped entirely.
+        // `loadSegment` already maps ENOENT onto an empty segment, so a missing
+        // file and an empty file are the same graph - but writing one costs a
+        // tmp write, an fsync and a rename each. At the 1024-segment cap a
+        // single-entity save wrote 1024 files (1023 of them empty) and took
+        // ~7.6 s; it now writes one.
+        //
+        // An empty segment whose file DOES exist must still be written, to
+        // truncate it. Skipping that would leave the previous contents on disk
+        // and resurrect deleted entities on the next load.
+        if (isEmptySegment(seg) && !(await fileExists(target))) {
+          continue;
+        }
+
         const content = serializeSegment(seg);
         const tmp = await writeTmpFile(target, content);
         staged.push({ tmp, target });

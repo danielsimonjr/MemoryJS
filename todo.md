@@ -6,7 +6,7 @@ release where applicable.
 
 ## In progress
 
-- [ ] **Flaky: `known-issue-fixes.test.ts` times out on windows/node-24 under full-suite load.**
+- [x] **Flaky: `known-issue-fixes.test.ts` times out on windows/node-24 under full-suite load.**
       Found by the 2026-09-07 02:18 patrol. Nightly run 34094099357, leg
       `ci (windows-latest, 24)`; the other five legs passed. Two failures, both timeouts:
       `100 concurrent addObservations on the same entity all land` — **`AsyncMutex acquire
@@ -56,6 +56,15 @@ release where applicable.
       that with a measurement of acquisition time vs. queue depth first.
 
 
+      **RESOLVED 2026-09-13 — the recommended fix was taken, not the timeout widen.**
+      `AsyncMutex` armed its deadline at ENQUEUE, so a waiter's budget had to cover every
+      predecessor's critical section too; the effective per-op budget was `timeoutMs / depth`,
+      which at `maxQueueLength` 1000 allowed 30 ms per operation and collided with the class's
+      own defaults. The deadline now starts when a waiter reaches the HEAD of the queue, so it
+      bounds one critical section and reports a stalled holder rather than a deep queue.
+      Regression test `bounds the wait by the critical section ahead, not the whole drain`
+      fails on the old code and passes on the new; `known-issue-fixes.test.ts` 7/7 green.
+
 - [x] ✅ **Release v3.4.0** (2026-08-29) — tagged, GitHub release, `npm publish` verified via `npm view dist-tags` = 3.4.0.
       Original item:
 - [x] **Release v3.4.0** — cut the accumulated `[Unreleased]` work (adapter.write/onWrite seam,
@@ -97,13 +106,27 @@ Documenting findings for future cycles in this repo:
 - [ ] Wire `batchProcessViaWorkers` into a real agent-system consumer (entropy filter or pairwise similarity batch) to demonstrate the pattern end-to-end.
 - [ ] Optional Memory-mcp surface: `worker_stats` MCP tool exposing `WorkerTaskManager.getStats()` so MCP clients can observe queue + pool state. Marginal value; defer unless asked.
 - [ ] Real-database integration tests for PostgreSQLStorage under `MEMORYJS_TEST_PG_URL` (currently only unit-tested via the mocked `pg` module).
-- [ ] `tests/unit/core/segments/segments-review-fixes.test.ts` exceeds the 120s default `testTimeout`
+- [x] `tests/unit/core/segments/segments-review-fixes.test.ts` exceeds the 120s default `testTimeout`
       under full-suite contention on a 12-core box (1 failure of 7843 on 2026-08-30), but passes
       **13/13 in 19s when run in isolation** and is green on all six CI legs. So it is worker
       contention while 320 other test files run, not a code defect -- the variance source is named,
       which is the bar for touching the threshold. Decide between raising the timeout for this file
       only, or marking it `sequential`. Do **not** widen the global timeout: that would mask real
       hangs everywhere else. Untouched by #115/#116; last changed in #103.
+
+      **RESOLVED 2026-09-13 — and two premises in this entry were wrong.** (a) The global
+      `testTimeout` is **30 s**, and has been since the initial release; the "120s default" was a
+      misreading of a per-test `120_000` override already carried by the offending test — so
+      "raise the timeout for this file" had in fact already been done, and the CI failure means it
+      blew *120 s*. (b) It was not diffuse worker contention: **one test cost 12,632 ms** while
+      every other test in the file cost under 200 ms. The root cause was a real product
+      inefficiency, not a test defect — `saveAll` materialised every segment, so saving ONE entity
+      at the 1024-segment cap wrote 1024 files, 1023 of them empty (~7.6 s measured).
+      `loadSegment` already maps ENOENT onto an empty segment, so an absent file and an empty file
+      describe the same graph; an empty segment whose file does not exist is now skipped, while one
+      whose file DOES exist is still written, to truncate it (skipping that would resurrect deleted
+      entities). File drops 17.7 s -> 5.1 s and the 120 s override is removed, so it now runs
+      inside the normal 30 s budget.
 
 ## Recently completed
 

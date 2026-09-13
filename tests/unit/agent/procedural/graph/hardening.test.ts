@@ -184,20 +184,56 @@ describe('completeWithBudget and refiner diagnostics', () => {
     expect(result.diagnostics[0]?.code).toBe('output-truncated');
   });
 
-  it('the leak heuristic scans a 400 KB trajectory block against 4 KB fields quickly and without false positives', async () => {
-    const block = Array.from({ length: 20_000 }, (_, i) => `Observation: row ${i} value ${(i * 7919) % 10_007}`).join('\n');
+  it('the leak heuristic scans a 400 KB trajectory block against 4 KB fields without false positives, and scales linearly', async () => {
+    // The property under test is that the heuristic is NOT quadratic in the
+    // trajectory block. This used to be asserted as `elapsed < 2000 ms`, which
+    // measures the MACHINE rather than the code: it passed in isolation and
+    // failed at 2058 ms under full-suite contention (2026-09-13) - a 3% miss
+    // that says nothing about the algorithm. A ratio between two scans taken on
+    // the same box under the same load is contention-proof, because contention
+    // scales both measurements together.
+    const makeBlock = (rows: number) =>
+      Array.from({ length: rows }, (_, i) => `Observation: row ${i} value ${(i * 7919) % 10_007}`).join('\n');
+
     const clean = addSearchEdits();
     clean.add_edges[0]!.guidance = Array.from({ length: 400 }, (_, i) => `step-${i}`).join(' ');
     const leaking = addSearchEdits();
     leaking.add_edges[1]!.pitfalls = `never repeat "Observation: row 777 value ${(777 * 7919) % 10_007}" verbatim`;
-    const input = { taskDescription: 't', mode: 'scratch_incremental' as const, toolCatalog: [...TOOLS], attemptsBlock: block, currentGraphJson: '{}', rejectedBlock: '' };
-    const started = performance.now();
-    const cleanResult = await proposeEdits({ complete: async () => JSON.stringify(clean) }, input, { timeoutMs: 5_000, maxOutputChars: 100_000 });
-    const leakResult = await proposeEdits({ complete: async () => JSON.stringify(leaking) }, input, { timeoutMs: 5_000, maxOutputChars: 100_000 });
-    const elapsed = performance.now() - started;
-    expect(cleanResult.ok && cleanResult.diagnostics.some((d) => d.code === 'possible-trajectory-leak')).toBe(false);
-    expect(leakResult.ok && leakResult.diagnostics.some((d) => d.code === 'possible-trajectory-leak' && d.editIndex === 1)).toBe(true);
-    expect(elapsed).toBeLessThan(2_000);
+
+    const inputFor = (block: string) => ({
+      taskDescription: 't',
+      mode: 'scratch_incremental' as const,
+      toolCatalog: [...TOOLS],
+      attemptsBlock: block,
+      currentGraphJson: '{}',
+      rejectedBlock: '',
+    });
+    const scan = async (payload: unknown, block: string) => {
+      const t0 = performance.now();
+      const result = await proposeEdits(
+        { complete: async () => JSON.stringify(payload) },
+        inputFor(block),
+        { timeoutMs: 5_000, maxOutputChars: 100_000 },
+      );
+      return { result, ms: performance.now() - t0 };
+    };
+
+    const SMALL_ROWS = 1_000;
+    const LARGE_ROWS = 20_000; // 20x the data - the original 400 KB block
+    const baseline = await scan(clean, makeBlock(SMALL_ROWS));
+    const largeBlock = makeBlock(LARGE_ROWS);
+    const cleanScan = await scan(clean, largeBlock);
+    const leakScan = await scan(leaking, largeBlock);
+
+    // Correctness: no false positive on clean text, a true positive on the leak.
+    expect(cleanScan.result.ok && cleanScan.result.diagnostics.some((d) => d.code === 'possible-trajectory-leak')).toBe(false);
+    expect(leakScan.result.ok && leakScan.result.diagnostics.some((d) => d.code === 'possible-trajectory-leak' && d.editIndex === 1)).toBe(true);
+
+    // Scaling: 20x the data costs ~20x if linear and ~400x if quadratic. A
+    // ceiling of 60x leaves 3x headroom over linear while still failing
+    // decisively on any quadratic regression.
+    const ratio = cleanScan.ms / Math.max(baseline.ms, 1);
+    expect(ratio).toBeLessThan(60);
   });
 
   it('appends the untrusted-data note outside paper-compatible mode and never inside it', async () => {
