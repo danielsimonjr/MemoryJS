@@ -20,6 +20,7 @@
  * @module core/SQLiteStorage
  */
 
+import { borrowGraphView, deepCopyPlain } from '../utils/graphCopy.js';
 import { createRequire } from 'node:module';
 import { createNodeSqliteDatabaseCtor, isNodeSqliteAvailable } from './nodeSqliteAdapter.js';
 import { chmodSync, statSync } from 'node:fs';
@@ -828,28 +829,30 @@ export class SQLiteStorage implements IGraphStorage {
   /**
    * Load the knowledge graph (read-only access).
    *
-   * @returns Promise resolving to read-only knowledge graph reference
+   * Ownership: the result is a READ-ONLY BORROWED VIEW. Do not mutate
+   * it or any nested object, and do not keep it across writes. In
+   * production it is the live cache (O(1), no copy). Outside production
+   * (`NODE_ENV !== 'production'`) it is a deep-frozen copy, so a mutation
+   * throws a TypeError. To change data, use getGraphForMutation().
+   *
+   * @returns Promise resolving to read-only knowledge graph view
    */
   async loadGraph(): Promise<ReadonlyKnowledgeGraph> {
     await this.ensureLoaded();
-    return this.cache!;
+    return borrowGraphView(this.cache!);
   }
 
   /**
    * Get a mutable copy of the graph for write operations.
    *
+   * Ownership: the result is a fully independent deep copy. The caller
+   * owns every nested object, and edits never reach the live cache.
+   *
    * @returns Promise resolving to mutable knowledge graph copy
    */
   async getGraphForMutation(): Promise<KnowledgeGraph> {
     await this.ensureLoaded();
-    return {
-      entities: this.cache!.entities.map(e => ({
-        ...e,
-        observations: [...e.observations],
-        tags: e.tags ? [...e.tags] : undefined,
-      })),
-      relations: this.cache!.relations.map(r => ({ ...r })),
-    };
+    return deepCopyPlain(this.cache!);
   }
 
   /**

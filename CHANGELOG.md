@@ -35,6 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Search cache isolation across storages.** `BasicSearch` cache keys (`searchNodes`, `searchByDateRange`) now include a unique per-storage id (`getCacheOwnerId`). Before this fix, two stores searched with the same query both returned the results of the first store.
 - **Per-storage generation counters.** `bumpEntityGeneration(owner?)` and `bumpRelationGeneration(owner?)` take the storage instance. A write to storage A no longer invalidates the cached results of storage B. A call with no owner still invalidates all entries.
 - **Cached search results can no longer be poisoned.** `SearchCache` stores a deep copy and returns a deep copy on every hit. `BasicSearch` also returns a copy on a cache miss, so a caller that edits a result does not change later hits or the live storage entities.
+- **Mutation copies are fully independent.** `getGraphForMutation()` (JSONL, SQLite and PostgreSQL) and the JSONL `renameEntity` rollback copy now deep-copy every nested record. Before this fix, an edit to a nested field such as relation `metadata` or entity `observationMeta` on a mutation copy changed the live cache without a save.
+
+### Changed
+
+- **`loadGraph()` ownership contract.** The result is a read-only borrowed view. In production it is still the live cache, with no copy. When `NODE_ENV` is not `production`, it is a deep-frozen copy, so code that mutates the result throws a `TypeError`. The contract is documented on `IGraphStorage` and on each storage. Code that edits a `loadGraph()` result, or an entity that a manager returns from it (for example `EntityManager.getEntity`), must copy the data first. Two consequences: repeated calls outside production no longer return the same object, and a test spy cannot attach to the frozen arrays.
+- **New exports** in `utils`: `deepCopyPlain`, `deepFreeze`, `borrowGraphView` and `isReadViewGuardEnabled`.
 
 ### Documentation
 

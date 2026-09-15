@@ -6,6 +6,7 @@
  * @module search/BasicSearch
  */
 
+import { deepCopyPlain } from '../utils/graphCopy.js';
 import type { KnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
@@ -88,7 +89,7 @@ export class BasicSearch {
       searchCaches.basic.set(cacheKey, result, this.storage);
       this.cachePressure?.evictIfOverBudget();
       // Hand the caller a copy: the result holds live storage entities.
-      return structuredClone(result);
+      return deepCopyPlain(result);
     }
 
     return result;
@@ -157,7 +158,7 @@ export class BasicSearch {
       searchCaches.basic.set(cacheKey, result, this.storage);
       this.cachePressure?.evictIfOverBudget();
       // Hand the caller a copy: the result holds live storage entities.
-      return structuredClone(result);
+      return deepCopyPlain(result);
     }
 
     return result;

@@ -105,6 +105,9 @@ export {
   type CacheStats,
 } from './searchCache.js';
 
+// ==================== Graph Copy / Ownership ====================
+export { deepCopyPlain, deepFreeze, borrowGraphView, isReadViewGuardEnabled } from './graphCopy.js';
+
 // ==================== Schemas and Validation ====================
 // Consolidated from: schemas.ts, validationHelper.ts, validationUtils.ts
 export {

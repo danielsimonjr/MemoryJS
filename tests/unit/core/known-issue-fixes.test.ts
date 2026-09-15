@@ -223,7 +223,8 @@ describe('column-store + addObservations concurrency: shadow stays in sync', () 
     // Inline state on disk:
     const fresh = new ManagerContext(join(dir, 'memory.jsonl'));
     const alice = await fresh.entityManager.getEntity('alice');
-    expect(alice!.observations.sort()).toEqual(expected.sort());
+    // getEntity returns a read-only view of storage data: sort a copy.
+    expect([...alice!.observations].sort()).toEqual(expected.sort());
 
     // Column-store state:
     const fromColumn = await ctx.observationManager.getObservationsFor('alice');

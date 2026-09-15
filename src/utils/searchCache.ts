@@ -7,6 +7,7 @@
  * @module utils/searchCache
  */
 
+import { deepCopyPlain } from './graphCopy.js';
 import type { SearchResult, KnowledgeGraph } from '../types/index.js';
 
 /**
@@ -227,7 +228,7 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     this.cache.set(key, entry);
     this.hits++;
 
-    return structuredClone(entry.value);
+    return deepCopyPlain(entry.value);
   }
 
   /**
@@ -259,7 +260,7 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     // Add new entry (recording the current graph generations when this
     // cache declares generation dependencies)
     const entry: CacheEntry<T> = {
-      value: structuredClone(value),
+      value: deepCopyPlain(value),
       owner,
       timestamp: Date.now(),
       expiresAt: Date.now() + this.ttlMs,

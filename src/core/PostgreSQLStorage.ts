@@ -29,6 +29,7 @@
  * @module core/PostgreSQLStorage
  */
 
+import { borrowGraphView, deepCopyPlain } from '../utils/graphCopy.js';
 import { logger } from '../utils/logger.js';
 import type {
   Entity,
@@ -303,22 +304,24 @@ export class PostgreSQLStorage implements IGraphStorage {
 
   // ==================== IGraphStorage — read ====================
 
+  /**
+   * Load the knowledge graph (read-only access).
+   *
+   * Ownership: the result is a READ-ONLY BORROWED VIEW. Do not mutate
+   * it or any nested object, and do not keep it across writes. In
+   * production it is the live cache (O(1), no copy). Outside production
+   * (`NODE_ENV !== 'production'`) it is a deep-frozen copy, so a mutation
+   * throws a TypeError. To change data, use getGraphForMutation().
+   */
   async loadGraph(): Promise<ReadonlyKnowledgeGraph> {
     await this.ensureLoaded();
-    return this.cache as ReadonlyKnowledgeGraph;
+    return borrowGraphView(this.cache as ReadonlyKnowledgeGraph);
   }
 
+  /** Get a fully independent deep copy of the graph for write operations. */
   async getGraphForMutation(): Promise<KnowledgeGraph> {
     await this.ensureLoaded();
-    const cache = this.cache as KnowledgeGraph;
-    return {
-      entities: cache.entities.map((e) => ({
-        ...e,
-        observations: [...e.observations],
-        tags: e.tags ? [...e.tags] : undefined,
-      })),
-      relations: cache.relations.map((r) => ({ ...r })),
-    };
+    return deepCopyPlain(this.cache as KnowledgeGraph);
   }
 
   async ensureLoaded(): Promise<void> {

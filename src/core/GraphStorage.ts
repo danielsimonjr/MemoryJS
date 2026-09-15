@@ -7,6 +7,7 @@
  * @module core/GraphStorage
  */
 
+import { borrowGraphView, deepCopyPlain } from '../utils/graphCopy.js';
 import { promises as fs } from 'fs';
 import {
   durableWriteFile as durableWriteFileShared,
@@ -406,43 +407,36 @@ export class GraphStorage implements IGraphStorage {
   /**
    * Load the knowledge graph from disk (read-only access).
    *
-   * OPTIMIZED: Returns cached reference directly without copying.
-   * This is O(1) regardless of graph size. For mutation operations,
-   * use getGraphForMutation() instead.
+   * Ownership: the result is a READ-ONLY BORROWED VIEW. Do not mutate
+   * it or any nested object, and do not keep it across writes. In
+   * production it is the live cache (O(1), no copy). Outside production
+   * (`NODE_ENV !== 'production'`) it is a deep-frozen copy, so a mutation
+   * throws a TypeError. To change data, use getGraphForMutation().
    *
-   * @returns Promise resolving to read-only knowledge graph reference
+   * @returns Promise resolving to read-only knowledge graph view
    * @throws Error if file exists but cannot be read or parsed
    */
   async loadGraph(): Promise<ReadonlyKnowledgeGraph> {
-    // Return cached graph directly (no copying - O(1))
-    if (this.cache !== null) {
-      return this.cache;
-    }
-
     // Cache miss - load from disk via the shared in-flight
     // promise so concurrent callers don't both invoke loadFromDisk.
-    await this.ensureLoaded();
-    return this.cache!;
+    if (this.cache === null) {
+      await this.ensureLoaded();
+    }
+    return borrowGraphView(this.cache!);
   }
 
   /**
    * Get a mutable copy of the graph for write operations.
    *
-   * Creates deep copies of entity and relation arrays to allow
-   * safe mutation without affecting the cached data.
+   * Ownership: the result is a fully independent deep copy. The caller
+   * owns every nested object (for example `metadata`), and edits never
+   * reach the live cache until the graph is saved.
    *
    * @returns Promise resolving to mutable knowledge graph copy
    */
   async getGraphForMutation(): Promise<KnowledgeGraph> {
     await this.ensureLoaded();
-    return {
-      entities: this.cache!.entities.map(e => ({
-        ...e,
-        observations: [...e.observations],
-        tags: e.tags ? [...e.tags] : undefined,
-      })),
-      relations: this.cache!.relations.map(r => ({ ...r })),
-    };
+    return deepCopyPlain(this.cache!);
   }
 
   /**
@@ -1716,16 +1710,9 @@ export class GraphStorage implements IGraphStorage {
         throw new DuplicateEntityError(newName);
       }
 
-      // Deep-copy the graph (same shape as getGraphForMutation) so a
-      // failed save leaves the cache untouched.
-      const graph: KnowledgeGraph = {
-        entities: this.cache!.entities.map(e => ({
-          ...e,
-          observations: [...e.observations],
-          tags: e.tags ? [...e.tags] : undefined,
-        })),
-        relations: this.cache!.relations.map(r => ({ ...r })),
-      };
+      // Fully independent deep copy, so a failed save leaves the cache
+      // (including nested records) untouched.
+      const graph: KnowledgeGraph = deepCopyPlain(this.cache!);
 
       const renamed = graph.entities.find(e => e.name === oldName)!;
       renamed.name = newName;
