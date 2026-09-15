@@ -46,7 +46,7 @@ import {
 import type { Entity, KnowledgeGraph, Relation } from '../../types/types.js';
 import { logger } from '../../utils/logger.js';
 import { sanitizeObject } from '../../utils/entityUtils.js';
-import { durableWriteFile } from '../../utils/durableWriteFile.js';
+import { durableWriteFile, renameOver, syncParentDirectory } from '../../utils/durableWriteFile.js';
 import {
   type ISegmentStorage,
   type Segment,
@@ -90,6 +90,11 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
+/**
+ * JSONL segment files under `<dir>/segments/`, committed atomically across
+ * files by a recovery manifest (see {@link FileSegmentStorage.saveAll}).
+ * Single-process: nothing coordinates a second process on the same directory.
+ */
 export class FileSegmentStorage implements ISegmentStorage {
   readonly segmentCount: number;
   private readonly segmentsDir: string;
@@ -138,15 +143,15 @@ export class FileSegmentStorage implements ISegmentStorage {
     try {
       manifest = JSON.parse(manifestContent);
     } catch {
-      // Malformed manifest — bail out by deleting it. Worst case the
-      // store is in the pre-saveAll state since the tmps weren't
-      // renamed; users see the old snapshot.
-      await fs.unlink(manifestPath).catch(() => undefined);
+      // Malformed manifest. A manifest is published by atomic rename, so a
+      // torn one is not a normal crash artefact. Move it aside for diagnosis
+      // instead of deleting the evidence, and load the segments as they are.
+      await preserveCorruptManifest(manifestPath);
       return;
     }
 
     if (manifest.version !== 1 || !Array.isArray(manifest.moves)) {
-      await fs.unlink(manifestPath).catch(() => undefined);
+      await preserveCorruptManifest(manifestPath);
       return;
     }
 
@@ -158,7 +163,7 @@ export class FileSegmentStorage implements ISegmentStorage {
         this.segmentCount,
       );
     } catch (err) {
-      await fs.unlink(manifestPath).catch(() => undefined);
+      await preserveCorruptManifest(manifestPath);
       throw err;
     }
 
@@ -180,8 +185,9 @@ export class FileSegmentStorage implements ISegmentStorage {
       await assertExistingPathIsRegularFile(move.target, 'recovery target');
       await assertRealPathIsDirectChild(move.tmp, this.segmentsDir);
       await assertRealPathIsDirectChildIfPresent(move.target, this.segmentsDir);
-      await renameWithFallback(move.tmp, move.target);
+      await renameOver(move.tmp, move.target);
     }
+    await syncParentDirectory(manifestPath);
     await fs.unlink(manifestPath).catch(() => undefined);
   }
 
@@ -242,12 +248,21 @@ export class FileSegmentStorage implements ISegmentStorage {
    *   moves; the next `loadAll` finishes the rename loop and deletes
    *   the manifest. Loaders see the new snapshot atomically.
    *
+   * A phase-3 rename failure without a crash throws
+   * {@link SegmentCommitIncompleteError}. The manifest and the remaining
+   * tmps stay on disk, so the commit rolls FORWARD on the next `loadAll`
+   * or `saveAll`: the outcome is the new graph, not the old one. A corrupt
+   * manifest is renamed to `_manifest.json.corrupt-<ms>` for diagnosis.
+   *
    * This is the multi-file analog of the temp+rename trick the
    * single-file `GraphStorage.durableWriteFile` uses. The previous
    * "two-phase staging" was misleading — a crash mid-rename DID
    * leave a torn snapshot. The manifest sidecar closes that window.
    */
   async saveAll(graph: KnowledgeGraph): Promise<void> {
+    // Finish an earlier incomplete commit first. Writing a new manifest over
+    // an unrecovered one would orphan its tmps and lose that commit's outcome.
+    await this.recoverFromManifestIfPresent();
     const segs = splitGraphIntoSegments(graph, this.router);
     await this.ensureDir();
 
@@ -296,7 +311,8 @@ export class FileSegmentStorage implements ISegmentStorage {
         })),
       });
       const manifestTmp = await writeTmpFile(manifestPath, manifestContent);
-      await renameWithFallback(manifestTmp, manifestPath);
+      await renameOver(manifestTmp, manifestPath);
+      await syncParentDirectory(manifestPath);
     } catch (err) {
       for (const { tmp } of staged) {
         try { await fs.unlink(tmp); } catch { /* best-effort */ }
@@ -304,21 +320,17 @@ export class FileSegmentStorage implements ISegmentStorage {
       throw err;
     }
 
-    // Phase 3 — perform the renames. On failure, leave the manifest
-    // in place so the next `loadAll` can complete recovery. Unlink
-    // remaining tmps that didn't get renamed so they don't leak
-    // across recovery cycles.
-    let renamedThroughIdx = -1;
+    // Phase 3 — perform the renames. On failure, leave the manifest AND the
+    // tmps that did not get renamed: the next `loadAll` replays them forward
+    // to the complete new state. Deleting those tmps would make recovery skip
+    // them and publish a torn mix of old and new segments.
     try {
-      for (let i = 0; i < staged.length; i++) {
-        await renameWithFallback(staged[i]!.tmp, staged[i]!.target);
-        renamedThroughIdx = i;
+      for (const { tmp, target } of staged) {
+        await renameOver(tmp, target);
       }
+      await syncParentDirectory(manifestPath);
     } catch (err) {
-      for (let i = renamedThroughIdx + 1; i < staged.length; i++) {
-        try { await fs.unlink(staged[i]!.tmp); } catch { /* may not exist */ }
-      }
-      throw err;
+      throw new SegmentCommitIncompleteError(err);
     }
 
     // Phase 3 complete — drop the manifest.
@@ -623,9 +635,9 @@ function isENOENT(err: unknown): boolean {
 
 // Note: per-segment writes go through `durableWriteFile` imported
 // from `src/utils/durableWriteFile.ts`. The local `writeTmpFile` +
-// `renameWithFallback` helpers below remain because the two-phase
-// crash-atomic `saveAll` (stage every tmp, then commit every rename,
-// then drop the manifest) uses them standalone — that's a different
+// the shared `renameOver` / `syncParentDirectory` helpers are used
+// standalone because the two-phase crash-atomic `saveAll` (stage every
+// tmp, then commit every rename, then drop the manifest) is a different
 // pattern than "one durable write to one target."
 
 async function writeTmpFile(target: string, content: string): Promise<string> {
@@ -640,23 +652,33 @@ async function writeTmpFile(target: string, content: string): Promise<string> {
   return tmpPath;
 }
 
-async function renameWithFallback(tmp: string, target: string): Promise<void> {
+/**
+ * Thrown when `saveAll` published its manifest but could not finish the
+ * segment renames. Some segments are already new; the manifest completes
+ * the commit forward on the next `loadAll` or `saveAll`. Reload before
+ * trusting any cached graph.
+ */
+export class SegmentCommitIncompleteError extends Error {
+  constructor(override readonly cause: unknown) {
+    super(
+      `Segment commit incomplete: ${cause instanceof Error ? cause.message : String(cause)}. ` +
+        'The recovery manifest completes the commit on the next load.',
+    );
+    this.name = 'SegmentCommitIncompleteError';
+  }
+}
+
+/**
+ * Move a corrupt recovery manifest aside as `_manifest.json.corrupt-<ms>`
+ * so the evidence survives for diagnosis and the next load does not trip
+ * on it again.
+ */
+async function preserveCorruptManifest(manifestPath: string): Promise<void> {
+  const preservedPath = `${manifestPath}.corrupt-${Date.now()}`;
   try {
-    await fs.rename(tmp, target);
-  } catch {
-    await assertExistingPathIsRegularFile(target, 'rename target');
-    const fallback = await fs.open(target, 'w');
-    try {
-      const content = await fs.readFile(tmp, 'utf-8');
-      await fallback.writeFile(content);
-      await fallback.sync();
-    } finally {
-      await fallback.close();
-    }
-    try {
-      await fs.unlink(tmp);
-    } catch {
-      /* best-effort cleanup */
-    }
+    await fs.rename(manifestPath, preservedPath);
+    logger.warn(`FileSegmentStorage: corrupt recovery manifest preserved at ${preservedPath}`);
+  } catch (err) {
+    logger.warn(`FileSegmentStorage: could not preserve corrupt recovery manifest ${manifestPath}: ${String(err)}`);
   }
 }
