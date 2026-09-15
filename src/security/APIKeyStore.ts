@@ -332,9 +332,15 @@ export const MAX_KEY_PROJECT_ID_LENGTH = 256;
 /** Validate and de-duplicate a key's project list. `undefined` stays `undefined`. */
 function normalizeProjectIds(value: unknown): string[] | undefined {
   if (value === undefined) return undefined;
-  if (!Array.isArray(value) || value.length > MAX_KEY_PROJECT_IDS ||
-      !value.every(p => typeof p === 'string' && p.length > 0 && p.length <= MAX_KEY_PROJECT_ID_LENGTH)) {
+  if (!Array.isArray(value) || value.length > MAX_KEY_PROJECT_IDS) {
     throw new TypeError('Invalid API key projectIds');
+  }
+  // Index every slot: Array.prototype.every skips the holes of a sparse array.
+  for (let i = 0; i < value.length; i++) {
+    const p: unknown = value[i];
+    if (typeof p !== 'string' || p.length === 0 || p.length > MAX_KEY_PROJECT_ID_LENGTH) {
+      throw new TypeError('Invalid API key projectIds');
+    }
   }
   return [...new Set(value as string[])];
 }

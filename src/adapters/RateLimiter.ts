@@ -127,11 +127,20 @@ export class RateLimiter {
    */
   peek(key: string): RateLimitVerdict {
     const now = Date.now();
-    const bucket = this.refill(key, now);
-    if (!bucket) return { allowed: true, remaining: this.capacity };
-    return bucket.tokens >= 1
-      ? { allowed: true, remaining: Math.floor(bucket.tokens) }
-      : { allowed: false, remaining: 0, resetAt: this.nextTokenIso(bucket, now) };
+    const stored = this.buckets.get(key);
+    if (!stored || now - stored.lastRefillMs >= this.bucketTtlMs) {
+      return { allowed: true, remaining: this.capacity };
+    }
+    // Compute the refilled state on a copy: peek changes neither the bucket
+    // nor its recency, so sweep() can rely on Map order.
+    const elapsedSec = (now - stored.lastRefillMs) / 1000;
+    const projected = {
+      tokens: Math.min(this.capacity, stored.tokens + elapsedSec * this.refillPerSecond),
+      lastRefillMs: now,
+    };
+    return projected.tokens >= 1
+      ? { allowed: true, remaining: Math.floor(projected.tokens) }
+      : { allowed: false, remaining: 0, resetAt: this.nextTokenIso(projected, now) };
   }
 
   /**

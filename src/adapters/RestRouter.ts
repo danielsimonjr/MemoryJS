@@ -25,6 +25,7 @@ import { logger } from '../utils/logger.js';
 import { paginate, parsePaginationParams } from './pagination.js';
 import type { ApiKeyAuthMiddleware, AuthContext } from './ApiKeyAuthMiddleware.js';
 import { RateLimiter } from './RateLimiter.js';
+import { ValidationError } from '../utils/errors.js';
 import type { Entity } from '../types/types.js';
 
 /** HTTP methods this router handles. */
@@ -132,20 +133,26 @@ export interface RestRouterOptions {
 export interface RestLimits {
   /** Maximum length of the `/search` query `q`. Default 1024. */
   maxQueryLength: number;
-  /** Maximum length of `name`, `entityType` and `projectId`. Default 512. */
+  /** Maximum length of an entity `name` (body or path) and `projectId`. Default 500, as the entity schema. */
   maxNameLength: number;
+  /** Maximum length of `entityType`. Default 100, as the entity schema. */
+  maxEntityTypeLength: number;
   /** Maximum number of observations on a created entity. Default 1000. */
   maxObservations: number;
-  /** Maximum length of one observation. Default 16 384. */
+  /** Maximum length of one observation. Default 5000, as the entity schema. */
   maxObservationLength: number;
 }
 
 const DEFAULT_LIMITS: RestLimits = {
   maxQueryLength: 1024,
-  maxNameLength: 512,
+  maxNameLength: 500,
+  maxEntityTypeLength: 100,
   maxObservations: 1000,
-  maxObservationLength: 16_384,
+  maxObservationLength: 5000,
 };
+
+/** Largest delay Node's `setTimeout` honors; larger values fire after about 1 ms. */
+const MAX_TIMER_MS = 2_147_483_647;
 
 /**
  * Dispatch table over typed routes.
@@ -178,8 +185,8 @@ export class RestRouter {
       throw new RangeError('RestRouter: maxBodyBytes must be a non-negative safe integer');
     }
     this.bodyTimeoutMs = options?.bodyTimeoutMs ?? 10_000;
-    if (!Number.isSafeInteger(this.bodyTimeoutMs) || this.bodyTimeoutMs < 1) {
-      throw new RangeError('RestRouter: bodyTimeoutMs must be a positive safe integer');
+    if (!Number.isSafeInteger(this.bodyTimeoutMs) || this.bodyTimeoutMs < 1 || this.bodyTimeoutMs > MAX_TIMER_MS) {
+      throw new RangeError(`RestRouter: bodyTimeoutMs must be an integer from 1 to ${MAX_TIMER_MS}`);
     }
     this.limits = { ...DEFAULT_LIMITS, ...options?.limits };
     for (const [name, value] of Object.entries(this.limits)) {
@@ -354,6 +361,9 @@ export class RestRouter {
         return { status: 200, body: { entities: result.page, total: result.total, nextCursor: result.nextCursor } };
       })
       .get('/entities/:name', async (req, c) => {
+        if (req.params.name!.length > limits.maxNameLength) {
+          return { status: 400, body: { error: 'Field length out of range' } };
+        }
         const entity = await c.entityManager.getEntity(req.params.name!);
         // An entity outside the key's projects is reported exactly like a missing one.
         return entity && canAccess(req, entity) ? { status: 200, body: entity } : notFound();
@@ -380,9 +390,11 @@ export class RestRouter {
         const { name, entityType } = body;
         const projectId = body.projectId as string | undefined;
         const observations = body.observations as string[];
+        // Mirror the entity schema at the boundary: a schema failure must be a 400, not a 500.
         if (
-          name.length > limits.maxNameLength ||
-          entityType.length > limits.maxNameLength ||
+          name.trim().length === 0 || name.length > limits.maxNameLength ||
+          entityType.trim().length === 0 || entityType.length > limits.maxEntityTypeLength ||
+          observations.some((o) => o.length === 0) ||
           (projectId !== undefined && projectId.length > limits.maxNameLength)
         ) {
           return { status: 400, body: { error: 'Field length out of range' } };
@@ -404,14 +416,24 @@ export class RestRouter {
             return { status: 409, body: { error: 'Conflict' } };
           }
         }
-        const created = await c.entityManager.createEntities([
-          { name, entityType, observations, ...(projectId !== undefined ? { projectId } : {}) },
-        ]);
+        let created: Entity[];
+        try {
+          created = await c.entityManager.createEntities([
+            { name, entityType, observations, ...(projectId !== undefined ? { projectId } : {}) },
+          ]);
+        } catch (err) {
+          // Schema details stay server-side; the client gets a fixed message.
+          if (err instanceof ValidationError) return { status: 400, body: { error: 'Invalid entity' } };
+          throw err;
+        }
         // A concurrent create of the same name makes createEntities skip it.
         if (scope && created.length === 0) return { status: 409, body: { error: 'Conflict' } };
         return { status: 201, body: { created } };
       })
       .delete('/entities/:name', async (req, c) => {
+        if (req.params.name!.length > limits.maxNameLength) {
+          return { status: 400, body: { error: 'Field length out of range' } };
+        }
         if (projectScope(req)) {
           const name = req.params.name!;
           const entity = await c.entityManager.getEntity(name);

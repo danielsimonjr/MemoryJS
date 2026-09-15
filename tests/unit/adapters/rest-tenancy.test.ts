@@ -64,7 +64,7 @@ describe('APIKeyStore project scoping', () => {
     expect(copy.validate(plaintext).projectIds).toBeUndefined();
   });
 
-  it.each([[['']], [[1]], ['A'], [Array(1001).fill('x').map((x, i) => x + i)], [['x'.repeat(257)]]])(
+  it.each([[new Array(1)], [['A', , 'B']], [['']], [[1]], ['A'], [Array(1001).fill('x').map((x, i) => x + i)], [['x'.repeat(257)]]])(
     'rejects invalid projectIds %#', (projectIds) => {
       const store = new APIKeyStore();
       expect(() => store.issue({ projectIds: projectIds as string[] })).toThrow(TypeError);
@@ -204,6 +204,39 @@ describe('RestRouter request limits', () => {
     expect((await call('POST', '/entities', {}, { name: 'n', entityType: 't', observations: ['a', 'b', 'c'] })).status).toBe(413);
     expect((await call('POST', '/entities', {}, { name: 'n', entityType: 't', observations: ['abcde'] })).status).toBe(413);
     expect(createEntities).not.toHaveBeenCalled();
+  });
+
+  it('matches the entity schema limits and returns 400 instead of 500 for schema failures', async () => {
+    const fake = fakeCtx();
+    const router = RestRouter.withDefaults(fake.ctx, { allowUnauthenticated: true });
+    const post = (body: unknown) =>
+      router.dispatch({ method: 'POST', path: '/entities', query: {}, body, params: {}, headers: {} });
+    expect((await post({ name: '   ', entityType: 't', observations: [] })).status).toBe(400);
+    expect((await post({ name: 'n', entityType: '', observations: [] })).status).toBe(400);
+    expect((await post({ name: 'n', entityType: 't'.repeat(101), observations: [] })).status).toBe(400);
+    expect((await post({ name: 'n'.repeat(501), entityType: 't', observations: [] })).status).toBe(400);
+    expect((await post({ name: 'n', entityType: 't', observations: [''] })).status).toBe(400);
+    expect((await post({ name: 'n', entityType: 't', observations: ['o'.repeat(5001)] })).status).toBe(413);
+    expect(fake.createEntities).not.toHaveBeenCalled();
+    const { ValidationError } = await import('../../../src/utils/errors.js');
+    fake.createEntities.mockRejectedValueOnce(new ValidationError('Invalid entity data', ['/private/detail']));
+    const res = await post({ name: 'n', entityType: 't', observations: ['o'] });
+    expect(res).toEqual({ status: 400, body: { error: 'Invalid entity' } });
+  });
+
+  it('bounds the entity name in the path', async () => {
+    const { ctx } = fakeCtx();
+    const router = RestRouter.withDefaults(ctx, { allowUnauthenticated: true });
+    const long = 'n'.repeat(501);
+    for (const method of ['GET', 'DELETE'] as const) {
+      const res = await router.dispatch({ method, path: `/entities/${long}`, query: {}, body: null, params: {}, headers: {} });
+      expect(res.status).toBe(400);
+    }
+  });
+
+  it('rejects a body timeout beyond the Node timer range', () => {
+    expect(() => new RestRouter({} as ManagerContext, { bodyTimeoutMs: 2 ** 31 })).toThrow(RangeError);
+    expect(() => new RestRouter({} as ManagerContext, { bodyTimeoutMs: 2 ** 31 - 1 })).not.toThrow();
   });
 
   it('dispatch enforces the body limit itself', async () => {

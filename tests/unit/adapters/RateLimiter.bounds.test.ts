@@ -29,6 +29,21 @@ describe('RateLimiter bounds', () => {
     expect(rl.size()).toBe(1);
   });
 
+  it('peek does not refresh a bucket, so expiry order stays consistent', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const rl = new RateLimiter({ capacity: 1, refillPerSecond: 0, bucketTtlMs: 1000 });
+    rl.check('a');
+    vi.setSystemTime(500);
+    rl.check('b');
+    vi.setSystemTime(900);
+    rl.peek('a');
+    vi.setSystemTime(1600);
+    rl.check('c');
+    // a (idle since 0) and b (idle since 500) are both expired and swept.
+    expect(rl.size()).toBe(1);
+  });
+
   it('peek and consume do not create buckets for unseen keys', () => {
     const rl = new RateLimiter({ capacity: 1, refillPerSecond: 0 });
     expect(rl.peek('x').allowed).toBe(true);
