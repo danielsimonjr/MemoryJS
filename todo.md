@@ -123,13 +123,17 @@ Documenting findings for future cycles in this repo:
         median at 10k entities / 20k relations (measured on dist). If test suites with large
         graphs slow down, memoise the frozen view per storage generation.
       - `hardening.test.ts` "scales linearly" failed once under full-suite load (ratio 62.3,
-        limit 60); passed 3/3 alone and in the next full run. Watch for a repeat.
+        limit 60). Seen in 2 of 5 full-suite runs on this branch; passed 6/6 when run alone.
+        The procedural graph code does not use storage, so the change on this branch is not the
+        cause. The variance source is full-suite CPU contention against a timing-ratio assertion.
       - `bun run test:perf` / `bench` do not set `NODE_ENV=production`, so benchmarks now time
         the dev-mode `loadGraph` copy. Decide with the step 1 (CI and test gates) owner whether
         the perf scripts set it.
       - `cachedGraph` stays the live, unguarded cache (documented). `CompressionManager` uses it
         as the pre-merge governance graph; that is safe only while full saves replace the cache
-        object. Revisit if a save path starts to edit the cache in place.
+        object. Revisit if a save path starts to edit the cache in place. Known gap (review,
+        confidence ~40, pre-existing): a concurrent in-place delta write (for example
+        `updateEntity`) during the awaits between capture and save still changes that graph.
 - [x] `tests/unit/core/segments/segments-review-fixes.test.ts` exceeds the 120s default `testTimeout`
       under full-suite contention on a 12-core box (1 failure of 7843 on 2026-08-30), but passes
       **13/13 in 19s when run in isolation** and is green on all six CI legs. So it is worker

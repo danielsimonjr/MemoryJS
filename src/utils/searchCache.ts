@@ -171,8 +171,8 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
    * was inserted (lazy invalidation — checked on read).
    */
   private isGenerationStale(entry: CacheEntry<T>): boolean {
+    const own = entry.gens ?? anyGenerations;
     for (const dep of this.generationDeps) {
-      const own = entry.gens ?? anyGenerations;
       if (dep === 'entity') {
         if (entry.entityGen !== own.entity || entry.globalEntityGen !== globalGenerations.entity) return true;
       }
@@ -268,8 +268,8 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
       timestamp: Date.now(),
       expiresAt: Date.now() + this.ttlMs,
     };
+    const own = generationsOf(owner);
     for (const dep of this.generationDeps) {
-      const own = generationsOf(owner);
       entry.gens = own;
       if (dep === 'entity') {
         entry.entityGen = own.entity;

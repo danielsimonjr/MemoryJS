@@ -39,9 +39,9 @@ export class BasicSearch {
     limit: number = SEARCH_LIMITS.DEFAULT,
     projectId?: string
   ): Promise<KnowledgeGraph> {
+    const cacheKey = { storageId: getCacheOwnerId(this.storage), query, tags, minImportance, maxImportance, offset, limit, projectId };
     // Check cache first
     if (this.enableCache) {
-      const cacheKey = { storageId: getCacheOwnerId(this.storage), query, tags, minImportance, maxImportance, offset, limit, projectId };
       const cached = searchCaches.basic.get(cacheKey);
       if (cached) {
         return cached;
@@ -85,7 +85,6 @@ export class BasicSearch {
 
     // Cache the result
     if (this.enableCache) {
-      const cacheKey = { storageId: getCacheOwnerId(this.storage), query, tags, minImportance, maxImportance, offset, limit, projectId };
       searchCaches.basic.set(cacheKey, result, this.storage);
       this.cachePressure?.evictIfOverBudget();
       // Hand the caller a copy: the result holds live storage entities.
@@ -116,9 +115,9 @@ export class BasicSearch {
     offset: number = 0,
     limit: number = SEARCH_LIMITS.DEFAULT
   ): Promise<KnowledgeGraph> {
+    const cacheKey = { storageId: getCacheOwnerId(this.storage), method: 'dateRange', startDate, endDate, entityType, tags, offset, limit };
     // Check cache first
     if (this.enableCache) {
-      const cacheKey = { storageId: getCacheOwnerId(this.storage), method: 'dateRange', startDate, endDate, entityType, tags, offset, limit };
       const cached = searchCaches.basic.get(cacheKey);
       if (cached) {
         return cached;
@@ -154,7 +153,6 @@ export class BasicSearch {
 
     // Cache the result
     if (this.enableCache) {
-      const cacheKey = { storageId: getCacheOwnerId(this.storage), method: 'dateRange', startDate, endDate, entityType, tags, offset, limit };
       searchCaches.basic.set(cacheKey, result, this.storage);
       this.cachePressure?.evictIfOverBudget();
       // Hand the caller a copy: the result holds live storage entities.
