@@ -1,0 +1,100 @@
+{
+  "label": "MemoryJS step-1 baseline",
+  "date": "2026-09-15T20:38:49.317Z",
+  "machine": {
+    "cpu": "AMD RYZEN AI MAX+ 395 w/ Radeon 8060S",
+    "logicalCores": 32,
+    "memoryGiB": 63.647,
+    "os": "win32 10.0.26200 x64",
+    "node": "v24.19.0"
+  },
+  "commit": "20e10ea",
+  "config": {
+    "description": "Step-1 baseline configuration. Change a value only together with a new baseline result file.",
+    "coldImportRuns": 7,
+    "entities": 2000,
+    "observationsPerEntity": 3,
+    "writeBatchSize": 100,
+    "searchQueries": [
+      "entity-1234",
+      "observation",
+      "topic-7",
+      "no-such-term"
+    ],
+    "searchSamplesPerQuery": 7,
+    "lockWaitConcurrency": 100,
+    "eventLoopResolutionMs": 10
+  },
+  "coldImport": {
+    "runs": 7,
+    "medianMs": 116.673,
+    "minMs": 109.571,
+    "maxMs": 130.033,
+    "rssAfterImportMiB": 75.531
+  },
+  "write": {
+    "entities": 2000,
+    "batchSize": 100,
+    "totalMs": 186.403,
+    "entitiesPerSec": 10729.464,
+    "bytesWritten": 595559
+  },
+  "search": {
+    "entity-1234": {
+      "firstCallMs": 1.728,
+      "warmMedianMs": 0.008,
+      "hits": 1
+    },
+    "observation": {
+      "firstCallMs": 0.453,
+      "warmMedianMs": 0.003,
+      "hits": 50
+    },
+    "topic-7": {
+      "firstCallMs": 0.279,
+      "warmMedianMs": 0.004,
+      "hits": 50
+    },
+    "no-such-term": {
+      "firstCallMs": 0.231,
+      "warmMedianMs": 0.002,
+      "hits": 0
+    }
+  },
+  "lockWait": {
+    "concurrency": 100,
+    "p50Ms": 181.819,
+    "p99Ms": 541.033,
+    "maxMs": 543.411
+  },
+  "eventLoopDelay": {
+    "p50Ms": 14.631,
+    "p99Ms": 16.212,
+    "maxMs": 16.54
+  },
+  "rss": {
+    "afterWorkloadMiB": 102.324,
+    "peakMiB": 103.945
+  },
+  "reviewBench": [
+    {
+      "name": "ABAC: 100 rules, 4 conditions, 100 attributes",
+      "iterations": 200,
+      "medianMs": 3.406
+    },
+    {
+      "name": "Fuzzy: near match, 512 characters, cutoff 5",
+      "iterations": 300,
+      "medianMs": 3.885
+    },
+    {
+      "name": "Fuzzy: non-match, 512 characters, cutoff 5",
+      "iterations": 300,
+      "medianMs": 0.632
+    },
+    {
+      "node": "v24.19.0",
+      "checksum": 3700
+    }
+  ]
+}

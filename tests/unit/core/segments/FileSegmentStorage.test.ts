@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { promises as fs } from 'fs';
+import { promises as fs, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { FileSegmentStorage } from '../../../../src/core/segments/FileSegmentStorage.js';
@@ -15,6 +15,28 @@ import {
   FnvSegmentRouter,
 } from '../../../../src/core/segments/ISegmentStorage.js';
 import type { Entity, KnowledgeGraph, Relation } from '../../../../src/types/types.js';
+
+/**
+ * Probe once whether this environment can create symlinks. Windows denies
+ * symlink creation without Developer Mode or elevation (EPERM). The probe
+ * decides skip versus run; it never weakens the assertion where symlinks work.
+ */
+function probeSymlinkSupport(): { ok: true } | { ok: false; reason: string } {
+  let dir: string | undefined;
+  try {
+    dir = mkdtempSync(join(tmpdir(), 'fss-symlink-probe-'));
+    const target = join(dir, 'target');
+    writeFileSync(target, '');
+    symlinkSync(target, join(dir, 'link'));
+    return { ok: true };
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code ?? String(err);
+    return { ok: false, reason: `this environment cannot create symlinks (${code})` };
+  } finally {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+  }
+}
+const symlinkSupport = probeSymlinkSupport();
 
 function ent(name: string, entityType = 'thing', observations: string[] = []): Entity {
   return { name, entityType, observations };
@@ -322,25 +344,30 @@ describe('FileSegmentStorage', () => {
       expect(await fs.readFile(outsideTarget, 'utf-8')).toBe('original content');
     });
 
-    it('rejects symlink temp files during recovery', async () => {
-      const store = makeStore(testDir, 4);
-      const segmentsDir = join(testDir, 'segments');
-      await fs.mkdir(segmentsDir, { recursive: true });
+    // Skips (with the probe's reason in the test name) only where symlink creation is denied.
+    // Wherever symlinks work, the confinement assertion below runs unchanged.
+    it.skipIf(!symlinkSupport.ok)(
+      `rejects symlink temp files during recovery${symlinkSupport.ok ? '' : ` [skipped: ${symlinkSupport.reason}]`}`,
+      async () => {
+        const store = makeStore(testDir, 4);
+        const segmentsDir = join(testDir, 'segments');
+        await fs.mkdir(segmentsDir, { recursive: true });
 
-      const outside = join(testDir, 'outside.jsonl');
-      const target = '0.jsonl';
-      const tmp = `${target}.tmp.123.0123456789ab`;
-      await fs.writeFile(outside, 'outside content');
-      await fs.writeFile(join(segmentsDir, target), '');
-      await fs.symlink(outside, join(segmentsDir, tmp));
-      await fs.writeFile(
-        join(segmentsDir, '_manifest.json'),
-        JSON.stringify({ version: 1, moves: [{ tmp, target }] }),
-      );
+        const outside = join(testDir, 'outside.jsonl');
+        const target = '0.jsonl';
+        const tmp = `${target}.tmp.123.0123456789ab`;
+        await fs.writeFile(outside, 'outside content');
+        await fs.writeFile(join(segmentsDir, target), '');
+        await fs.symlink(outside, join(segmentsDir, tmp));
+        await fs.writeFile(
+          join(segmentsDir, '_manifest.json'),
+          JSON.stringify({ version: 1, moves: [{ tmp, target }] }),
+        );
 
-      await expect(store.loadAll()).rejects.toThrow(/regular file/);
-      expect(await fs.readFile(outside, 'utf-8')).toBe('outside content');
-    });
+        await expect(store.loadAll()).rejects.toThrow(/regular file/);
+        expect(await fs.readFile(outside, 'utf-8')).toBe('outside content');
+      },
+    );
   });
 
   describe('stress / property-based round-trip', () => {

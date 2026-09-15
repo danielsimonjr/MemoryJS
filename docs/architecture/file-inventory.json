@@ -1,25 +1,32 @@
 {
-  "generated": "2026-09-10",
-  "totalFiles": 671,
+  "generated": "2026-09-15",
+  "totalFiles": 676,
   "byDisposition": {
     "reachable": 287,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 365,
+    "test": 369,
     "tool": 10,
     "config": 2,
-    "bench": 3,
+    "bench": 4,
     "example": 0
   },
   "byArea": {
-    "benchmarks": 3,
+    "benchmarks": 4,
     "src": 291,
-    "tests": 365,
+    "tests": 369,
     "tools": 10,
     "config": 2
   },
   "files": [
+    {
+      "file": "benchmarks/review-bench.ts",
+      "package": "(root)",
+      "area": "benchmarks",
+      "disposition": "bench",
+      "loc": 51
+    },
     {
       "file": "benchmarks/semantic-forget-benchmark.ts",
       "package": "(root)",
@@ -88,7 +95,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 400
+      "loc": 452
     },
     {
       "file": "src/agent/AccessTracker.ts",
@@ -228,7 +235,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 205
+      "loc": 204
     },
     {
       "file": "src/agent/DistillationPolicy.ts",
@@ -319,7 +326,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 567
+      "loc": 605
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -403,21 +410,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 23
+      "loc": 24
     },
     {
       "file": "src/agent/procedural/graph/backing/IProceduralGraphBacking.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 88
+      "loc": 94
     },
     {
       "file": "src/agent/procedural/graph/backing/JsonlProceduralGraphBacking.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 96
+      "loc": 134
     },
     {
       "file": "src/agent/procedural/graph/backing/LockedProceduralGraphBacking.ts",
@@ -431,14 +438,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 511
+      "loc": 570
     },
     {
       "file": "src/agent/procedural/graph/backing/SqliteProceduralGraphBacking.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 484
+      "loc": 513
     },
     {
       "file": "src/agent/procedural/graph/canonical.ts",
@@ -459,42 +466,42 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 122
+      "loc": 126
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGraph.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 416
+      "loc": 443
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGraphEvolution.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 821
+      "loc": 886
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGraphManager.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 468
+      "loc": 519
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGraphRefiner.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 247
+      "loc": 317
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGraphSchemas.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 393
+      "loc": 423
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGraphSerializer.ts",
@@ -508,21 +515,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 194
+      "loc": 188
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGraphValidator.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 270
+      "loc": 279
     },
     {
       "file": "src/agent/procedural/graph/ProceduralGuidance.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 201
+      "loc": 219
     },
     {
       "file": "src/agent/procedural/graph/ProcedureGraphAdapter.ts",
@@ -536,7 +543,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 80
+      "loc": 96
     },
     {
       "file": "src/agent/procedural/graph/tokenTail.ts",
@@ -676,7 +683,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 141
+      "loc": 145
     },
     {
       "file": "src/agent/RelationConsolidator.ts",
@@ -851,7 +858,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 233
+      "loc": 234
     },
     {
       "file": "src/cli/commands/diag.ts",
@@ -1110,7 +1117,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1753
+      "loc": 1770
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -1152,7 +1159,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 570
+      "loc": 587
     },
     {
       "file": "src/core/RefIndex.ts",
@@ -1173,7 +1180,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 634
+      "loc": 663
     },
     {
       "file": "src/core/segments/ISegmentStorage.ts",
@@ -1194,7 +1201,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2453
+      "loc": 2463
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -1299,7 +1306,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2078
+      "loc": 2081
     },
     {
       "file": "src/features/KeywordExtractor.ts",
@@ -1418,7 +1425,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 655
+      "loc": 657
     },
     {
       "file": "src/search/GraphRankPrior.ts",
@@ -1670,14 +1677,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 288
+      "loc": 307
     },
     {
       "file": "src/search/tiered/DiskWarmTier.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 250
+      "loc": 273
     },
     {
       "file": "src/search/tiered/ITieredIndex.ts",
@@ -1712,14 +1719,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 269
+      "loc": 266
     },
     {
       "file": "src/security/APIKeyStore.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 255
+      "loc": 294
     },
     {
       "file": "src/security/index.ts",
@@ -1782,7 +1789,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 184
+      "loc": 190
     },
     {
       "file": "src/types/procedure.ts",
@@ -1838,7 +1845,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 81
+      "loc": 120
     },
     {
       "file": "src/utils/BatchProcessor.ts",
@@ -1901,7 +1908,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 135
+      "loc": 157
     },
     {
       "file": "src/utils/entityUtils.ts",
@@ -1929,7 +1936,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 254
+      "loc": 268
     },
     {
       "file": "src/utils/formatters.ts",
@@ -2013,21 +2020,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 709
+      "loc": 721
     },
     {
       "file": "src/utils/SchemaValidator.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 366
+      "loc": 373
     },
     {
       "file": "src/utils/searchAlgorithms.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 214
+      "loc": 219
     },
     {
       "file": "src/utils/searchCache.ts",
@@ -2076,7 +2083,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "build-entry",
-      "loc": 167
+      "loc": 132
     },
     {
       "file": "tests/edge-cases/edge-cases.test.ts",
@@ -2188,7 +2195,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 231
+      "loc": 232
     },
     {
       "file": "tests/integration/search/project-scope-isolation.test.ts",
@@ -2413,6 +2420,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 92
+    },
+    {
+      "file": "tests/unit/adapters/rest-input-security.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 78
     },
     {
       "file": "tests/unit/adapters/RestRouter.test.ts",
@@ -2769,14 +2783,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 372
+      "loc": 383
     },
     {
       "file": "tests/unit/agent/procedural/graph/backing/jsonl.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 62
+      "loc": 118
     },
     {
       "file": "tests/unit/agent/procedural/graph/backing/memory.test.ts",
@@ -2790,7 +2804,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 95
+      "loc": 122
     },
     {
       "file": "tests/unit/agent/procedural/graph/canonical.test.ts",
@@ -2828,6 +2842,13 @@
       "loc": 103
     },
     {
+      "file": "tests/unit/agent/procedural/graph/hardening.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 429
+    },
+    {
       "file": "tests/unit/agent/procedural/graph/ProceduralGraph.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -2853,7 +2874,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 340
+      "loc": 235
     },
     {
       "file": "tests/unit/agent/procedural/graph/ProceduralGraphSchemas.test.ts",
@@ -3556,6 +3577,13 @@
       "loc": 355
     },
     {
+      "file": "tests/unit/core/rebuild-native.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 42
+    },
+    {
       "file": "tests/unit/core/RefIndex.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -3595,7 +3623,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 471
+      "loc": 498
     },
     {
       "file": "tests/unit/core/segments/GraphStorage-segments.test.ts",
@@ -3616,7 +3644,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 327
+      "loc": 366
     },
     {
       "file": "tests/unit/core/sqlite-content-hash-migration.test.ts",
@@ -3644,7 +3672,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 83
+      "loc": 82
     },
     {
       "file": "tests/unit/core/SQLiteStorage.test.ts",
@@ -3945,7 +3973,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1171
+      "loc": 1184
     },
     {
       "file": "tests/unit/search/FuzzySearchWorkerPath.test.ts",
@@ -4277,6 +4305,13 @@
       "loc": 395
     },
     {
+      "file": "tests/unit/search/tiered/disk-tier-concurrency.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 69
+    },
+    {
       "file": "tests/unit/search/tiered/DiskWarmTier.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -4330,14 +4365,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 321
+      "loc": 339
     },
     {
       "file": "tests/unit/security/APIKeyStore.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 169
+      "loc": 209
     },
     {
       "file": "tests/unit/security/PiiRedactor.test.ts",
@@ -4435,7 +4470,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 134
+      "loc": 170
     },
     {
       "file": "tests/unit/utils/BatchProcessor.test.ts",
@@ -4491,7 +4526,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 72
+      "loc": 106
     },
     {
       "file": "tests/unit/utils/entityUtils.test.ts",
@@ -4596,7 +4631,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 697
+      "loc": 726
     },
     {
       "file": "tests/unit/utils/searchCache.test.ts",
@@ -4645,7 +4680,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 415
+      "loc": 425
     },
     {
       "file": "tests/unit/workers/WorkerPool.test.ts",

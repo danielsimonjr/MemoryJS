@@ -4,7 +4,7 @@
 
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-09-10
+**Generated**: 2026-09-15
 
 ## Summary
 
@@ -119,6 +119,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 - `DEFAULT_ALL_PATHS_MAX_PATHS` (constant) — 1 in-file ref
 - `DEFAULT_ALL_PATHS_MAX_EXPANSIONS` (constant) — 1 in-file ref
 
+### `src/core/mmap/FsReadMmapBackend.ts`
+
+- `FsReadMmapBackendOptions` (interface) — 1 in-file ref
+
 ### `src/core/ObservationStore.ts`
 
 - `ObservationStoreStats` (interface) — 1 in-file ref
@@ -126,10 +130,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 ### `src/core/SQLiteStorage.ts`
 
 - `DatabaseCtor` (type) — 6 in-file refs
-
-### `src/core/mmap/FsReadMmapBackend.ts`
-
-- `FsReadMmapBackendOptions` (interface) — 1 in-file ref
 
 ### `src/features/IOManager.ts`
 
@@ -198,19 +198,6 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `CachePressureSnapshot` (interface) — 2 in-file refs
 
-### `src/utils/Diagnostics.ts`
-
-- `EntityCounts` (interface) — 2 in-file refs
-- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
-
-### `src/utils/IndexHealthMonitor.ts`
-
-- `IndexHealthSources` (interface) — 1 in-file ref
-
-### `src/utils/WorkerPoolManager.ts`
-
-- `WorkerPoolRuntimeStats` (interface) — 1 in-file ref
-
 ### `src/utils/compression/CompressedMap.ts`
 
 - `CompressedMapOptions` (interface) — 1 in-file ref
@@ -223,7 +210,20 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `EMBEDDING_ENV_VARS` (constant) — 7 in-file refs
 
+### `src/utils/Diagnostics.ts`
+
+- `EntityCounts` (interface) — 2 in-file refs
+- `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
+
+### `src/utils/IndexHealthMonitor.ts`
+
+- `IndexHealthSources` (interface) — 1 in-file ref
+
 ### `src/utils/searchCache.ts`
 
 - `GraphGenerationDependency` (type) — 2 in-file refs
+
+### `src/utils/WorkerPoolManager.ts`
+
+- `WorkerPoolRuntimeStats` (interface) — 1 in-file ref
 
