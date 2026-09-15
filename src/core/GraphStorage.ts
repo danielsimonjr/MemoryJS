@@ -881,7 +881,7 @@ export class GraphStorage implements IGraphStorage {
           new Set([this.segmentStorage.router.route(entity.name)]),
         );
         this.pendingAppends = 0;
-        bumpEntityGeneration();
+        bumpEntityGeneration(this);
         this.eventEmitter.emitEntityCreated(entity);
         return;
       }
@@ -899,7 +899,7 @@ export class GraphStorage implements IGraphStorage {
       this.pendingAppends++;
 
       // S6: lazily invalidate entity-dependent search caches
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       // Phase 10 Sprint 2: Emit entity:created event
       this.eventEmitter.emitEntityCreated(entity);
@@ -946,7 +946,7 @@ export class GraphStorage implements IGraphStorage {
           dirtySegments,
         );
         this.pendingAppends = 0;
-        bumpEntityGeneration();
+        bumpEntityGeneration(this);
         for (const entity of entities) {
           this.eventEmitter.emitEntityCreated(entity);
         }
@@ -961,7 +961,7 @@ export class GraphStorage implements IGraphStorage {
       }
 
       this.pendingAppends += entities.length;
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       for (const entity of entities) {
         this.eventEmitter.emitEntityCreated(entity);
@@ -996,7 +996,7 @@ export class GraphStorage implements IGraphStorage {
           new Set([this.segmentStorage.router.route(relation.from)]),
         );
         this.pendingAppends = 0;
-        bumpRelationGeneration();
+        bumpRelationGeneration(this);
         this.eventEmitter.emitRelationCreated(relation);
         return;
       }
@@ -1014,7 +1014,7 @@ export class GraphStorage implements IGraphStorage {
       this.pendingAppends++;
 
       // S6: lazily invalidate relation-dependent search caches
-      bumpRelationGeneration();
+      bumpRelationGeneration(this);
 
       // Phase 10 Sprint 2: Emit relation:created event
       this.eventEmitter.emitRelationCreated(relation);
@@ -1055,7 +1055,7 @@ export class GraphStorage implements IGraphStorage {
           dirtySegments,
         );
         this.pendingAppends = 0;
-        bumpRelationGeneration();
+        bumpRelationGeneration(this);
         for (const relation of relations) {
           this.eventEmitter.emitRelationCreated(relation);
         }
@@ -1070,7 +1070,7 @@ export class GraphStorage implements IGraphStorage {
       }
 
       this.pendingAppends += relations.length;
-      bumpRelationGeneration();
+      bumpRelationGeneration(this);
 
       for (const relation of relations) {
         this.eventEmitter.emitRelationCreated(relation);
@@ -1125,8 +1125,8 @@ export class GraphStorage implements IGraphStorage {
       this.buildEntityIndexes(graph.entities);
       this.buildRelationIndex(graph.relations);
       clearAllSearchCaches();
-      bumpEntityGeneration();
-      bumpRelationGeneration();
+      bumpEntityGeneration(this);
+      bumpRelationGeneration(this);
       this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
       return;
     }
@@ -1145,8 +1145,8 @@ export class GraphStorage implements IGraphStorage {
     // Clear all search caches since graph data has changed (full clear is
     // retained for true full-graph writes; delta ops use generation bumps)
     clearAllSearchCaches();
-    bumpEntityGeneration();
-    bumpRelationGeneration();
+    bumpEntityGeneration(this);
+    bumpRelationGeneration(this);
 
     // Phase 10 Sprint 2: Emit graph:saved event
     this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
@@ -1229,7 +1229,7 @@ export class GraphStorage implements IGraphStorage {
           new Set([this.segmentStorage.router.route(entityName)]),
         );
         this.pendingAppends = 0;
-        bumpEntityGeneration();
+        bumpEntityGeneration(this);
         this.eventEmitter.emitEntityUpdated(entityName, updates, previous);
         return true;
       }
@@ -1277,7 +1277,7 @@ export class GraphStorage implements IGraphStorage {
       this.pendingAppends++;
 
       // S6: lazily invalidate entity-dependent search caches
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       // Phase 10 Sprint 2: Emit entity:updated event
       this.eventEmitter.emitEntityUpdated(entityName, updates, previousValues);
@@ -1380,7 +1380,7 @@ export class GraphStorage implements IGraphStorage {
           dirtySegments,
         );
         this.pendingAppends = 0;
-        bumpEntityGeneration();
+        bumpEntityGeneration(this);
         for (const p of prepared) {
           this.eventEmitter.emitEntityUpdated(p.entity.name, p.updates, p.previousValues);
         }
@@ -1395,7 +1395,7 @@ export class GraphStorage implements IGraphStorage {
       }
 
       this.pendingAppends += prepared.length;
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       for (const p of prepared) {
         this.eventEmitter.emitEntityUpdated(p.entity.name, p.updates, p.previousValues);
@@ -1516,8 +1516,8 @@ export class GraphStorage implements IGraphStorage {
         this.pendingAppends = 0;
       }
 
-      if (deletedEntities.length > 0) bumpEntityGeneration();
-      if (deletedRelations.length > 0) bumpRelationGeneration();
+      if (deletedEntities.length > 0) bumpEntityGeneration(this);
+      if (deletedRelations.length > 0) bumpRelationGeneration(this);
 
       for (const e of deletedEntities) {
         this.eventEmitter.emitEntityDeleted(e.name, e);
@@ -1648,8 +1648,8 @@ export class GraphStorage implements IGraphStorage {
         this.pendingAppends += touchedEntities.length;
       }
 
-      if (deletedRelations.length > 0) bumpRelationGeneration();
-      if (touchedEntities.length > 0) bumpEntityGeneration();
+      if (deletedRelations.length > 0) bumpRelationGeneration(this);
+      if (touchedEntities.length > 0) bumpEntityGeneration(this);
 
       for (const r of deletedRelations) {
         this.eventEmitter.emitRelationDeleted(r.from, r.to, r.relationType);

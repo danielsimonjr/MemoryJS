@@ -962,8 +962,8 @@ export class SQLiteStorage implements IGraphStorage {
       // Clear search caches (full clear is retained for true full-graph
       // writes; delta ops use generation bumps)
       clearAllSearchCaches();
-      bumpEntityGeneration();
-      bumpRelationGeneration();
+      bumpEntityGeneration(this);
+      bumpRelationGeneration(this);
 
       // Emit graph:saved (parity with GraphStorage.saveGraphInternal)
       this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
@@ -1056,7 +1056,7 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Update cache + indexes in O(1)
       this.upsertEntityInCache(entity);
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       this.pendingChanges++;
 
@@ -1091,7 +1091,7 @@ export class SQLiteStorage implements IGraphStorage {
       for (const entity of entities) {
         this.upsertEntityInCache(entity);
       }
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       this.pendingChanges += entities.length;
 
@@ -1120,7 +1120,7 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Update cache in O(1) via the relation key map
       this.upsertRelationInCache(relation);
-      bumpRelationGeneration();
+      bumpRelationGeneration(this);
 
       this.pendingChanges++;
 
@@ -1203,7 +1203,7 @@ export class SQLiteStorage implements IGraphStorage {
       for (const relation of relations) {
         this.upsertRelationInCache(relation);
       }
-      bumpRelationGeneration();
+      bumpRelationGeneration(this);
 
       this.pendingChanges += relations.length;
 
@@ -1262,7 +1262,7 @@ export class SQLiteStorage implements IGraphStorage {
         this.typeIndex.updateType(entityName, oldType, updates.entityType);
       }
       this.updateLowercaseCache(entity);
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       this.pendingChanges++;
 
@@ -1406,7 +1406,7 @@ export class SQLiteStorage implements IGraphStorage {
         }
         this.updateLowercaseCache(p.entity);
       }
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       this.pendingChanges += prepared.length;
 
@@ -1508,8 +1508,8 @@ export class SQLiteStorage implements IGraphStorage {
         this.relationKeyMap.delete(relationKeyOf(r));
       }
 
-      if (deletedEntities.length > 0) bumpEntityGeneration();
-      if (deletedRelations.length > 0) bumpRelationGeneration();
+      if (deletedEntities.length > 0) bumpEntityGeneration(this);
+      if (deletedRelations.length > 0) bumpRelationGeneration(this);
 
       this.pendingChanges++;
 
@@ -1604,8 +1604,8 @@ export class SQLiteStorage implements IGraphStorage {
         entity.lastModified = timestamp;
       }
 
-      if (deletedRelations.length > 0) bumpRelationGeneration();
-      if (touchedEntities.length > 0) bumpEntityGeneration();
+      if (deletedRelations.length > 0) bumpRelationGeneration(this);
+      if (touchedEntities.length > 0) bumpEntityGeneration(this);
 
       this.pendingChanges++;
 
@@ -1730,8 +1730,8 @@ export class SQLiteStorage implements IGraphStorage {
       this.lowercaseCache.delete(oldName);
       this.updateLowercaseCache(entity);
       clearAllSearchCaches();
-      bumpEntityGeneration();
-      bumpRelationGeneration();
+      bumpEntityGeneration(this);
+      bumpRelationGeneration(this);
 
       this.pendingChanges++;
 

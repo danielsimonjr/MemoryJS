@@ -10,6 +10,7 @@ import type { KnowledgeGraph } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { isWithinDateRange, SEARCH_LIMITS, searchCaches } from '../utils/index.js';
+import { getCacheOwnerId } from '../utils/searchCache.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import { collectInducedRelations } from './inducedSubgraph.js';
 
@@ -39,7 +40,7 @@ export class BasicSearch {
   ): Promise<KnowledgeGraph> {
     // Check cache first
     if (this.enableCache) {
-      const cacheKey = { query, tags, minImportance, maxImportance, offset, limit, projectId };
+      const cacheKey = { storageId: getCacheOwnerId(this.storage), query, tags, minImportance, maxImportance, offset, limit, projectId };
       const cached = searchCaches.basic.get(cacheKey);
       if (cached) {
         return cached;
@@ -83,9 +84,11 @@ export class BasicSearch {
 
     // Cache the result
     if (this.enableCache) {
-      const cacheKey = { query, tags, minImportance, maxImportance, offset, limit, projectId };
-      searchCaches.basic.set(cacheKey, result);
+      const cacheKey = { storageId: getCacheOwnerId(this.storage), query, tags, minImportance, maxImportance, offset, limit, projectId };
+      searchCaches.basic.set(cacheKey, result, this.storage);
       this.cachePressure?.evictIfOverBudget();
+      // Hand the caller a copy: the result holds live storage entities.
+      return structuredClone(result);
     }
 
     return result;
@@ -114,7 +117,7 @@ export class BasicSearch {
   ): Promise<KnowledgeGraph> {
     // Check cache first
     if (this.enableCache) {
-      const cacheKey = { method: 'dateRange', startDate, endDate, entityType, tags, offset, limit };
+      const cacheKey = { storageId: getCacheOwnerId(this.storage), method: 'dateRange', startDate, endDate, entityType, tags, offset, limit };
       const cached = searchCaches.basic.get(cacheKey);
       if (cached) {
         return cached;
@@ -150,9 +153,11 @@ export class BasicSearch {
 
     // Cache the result
     if (this.enableCache) {
-      const cacheKey = { method: 'dateRange', startDate, endDate, entityType, tags, offset, limit };
-      searchCaches.basic.set(cacheKey, result);
+      const cacheKey = { storageId: getCacheOwnerId(this.storage), method: 'dateRange', startDate, endDate, entityType, tags, offset, limit };
+      searchCaches.basic.set(cacheKey, result, this.storage);
       this.cachePressure?.evictIfOverBudget();
+      // Hand the caller a copy: the result holds live storage entities.
+      return structuredClone(result);
     }
 
     return result;
