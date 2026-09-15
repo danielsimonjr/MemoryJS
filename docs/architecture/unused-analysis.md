@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 69
+- **Potentially unused exports**: 71
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 69
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 71
 
 Seeded reachability roots (4):
 
@@ -139,6 +139,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `ObservationStoreStats` (interface) — 1 in-file ref
 
+### `src/core/segments/FileSegmentStorage.ts`
+
+- `SegmentCommitIncompleteError` (class) — 3 in-file refs
+
 ### `src/core/SQLiteStorage.ts`
 
 - `DatabaseCtor` (type) — 6 in-file refs
@@ -231,6 +235,10 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `EntityCounts` (interface) — 2 in-file refs
 - `TieredIndexStatsSnapshot` (interface) — 2 in-file refs
+
+### `src/utils/durableWriteFile.ts`
+
+- `DurableReplaceError` (class) — 3 in-file refs
 
 ### `src/utils/IndexHealthMonitor.ts`
 

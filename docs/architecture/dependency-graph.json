@@ -5,7 +5,7 @@
     "lastUpdated": "2026-09-15",
     "totalFiles": 292,
     "totalModules": 12,
-    "totalExports": 2025
+    "totalExports": 2030
   },
   "entryPoints": [
     {
@@ -11209,7 +11209,9 @@
           {
             "file": "../../utils/durableWriteFile.js",
             "imports": [
-              "durableWriteFile"
+              "durableWriteFile",
+              "renameOver",
+              "syncParentDirectory"
             ]
           },
           {
@@ -11225,10 +11227,12 @@
           }
         ],
         "exports": [
-          "FileSegmentStorage"
+          "FileSegmentStorage",
+          "SegmentCommitIncompleteError"
         ],
         "classes": [
-          "FileSegmentStorage"
+          "FileSegmentStorage",
+          "SegmentCommitIncompleteError"
         ]
       },
       "src/core/segments/ISegmentStorage.ts": {
@@ -11480,7 +11484,7 @@
         ]
       },
       "src/core/TransactionManager.ts": {
-        "description": "Validate all operations before executing.",
+        "description": "Acquire the storage's manager-level write lock (`graphMutex`). The same",
         "externalDependencies": [],
         "nodeDependencies": [],
         "internalDependencies": [
@@ -11493,7 +11497,8 @@
               "LongRunningOperationOptions",
               "BatchOperation",
               "BatchResult",
-              "BatchOptions"
+              "BatchOptions",
+              "OperationResult"
             ],
             "typeOnly": true
           },
@@ -17133,7 +17138,8 @@
           "AsyncMutex"
         ],
         "interfaces": [
-          "AsyncMutexOptions"
+          "AsyncMutexOptions",
+          "AcquireOptions"
         ]
       },
       "src/utils/BatchProcessor.ts": {
@@ -17435,18 +17441,28 @@
           {
             "module": "path",
             "imports": [
-              "dirname"
+              "basename",
+              "dirname",
+              "join"
             ]
           }
         ],
         "internalDependencies": [],
         "exports": [
           "durableWriteFile",
+          "renameOver",
+          "syncParentDirectory",
           "durableAppendFile",
-          "restrictSensitiveFilePermissions"
+          "restrictSensitiveFilePermissions",
+          "DurableReplaceError"
+        ],
+        "classes": [
+          "DurableReplaceError"
         ],
         "functions": [
           "durableWriteFile",
+          "renameOver",
+          "syncParentDirectory",
           "durableAppendFile",
           "restrictSensitiveFilePermissions"
         ]
@@ -18150,7 +18166,8 @@
             "file": "./AsyncMutex.js",
             "imports": [
               "AsyncMutex",
-              "AsyncMutexOptions"
+              "AsyncMutexOptions",
+              "AcquireOptions"
             ],
             "reExport": true
           },
@@ -18428,6 +18445,7 @@
           "JsonSchema",
           "AsyncMutex",
           "AsyncMutexOptions",
+          "AcquireOptions",
           "tokenizeStripped",
           "textTokenize",
           "buildTFVector",
@@ -18697,6 +18715,7 @@
           "JsonSchema",
           "AsyncMutex",
           "AsyncMutexOptions",
+          "AcquireOptions",
           "tokenizeStripped",
           "buildTFVector",
           "cosineSimilarity",
@@ -19856,15 +19875,15 @@
   "statistics": {
     "totalTypeScriptFiles": 292,
     "totalModules": 12,
-    "totalLinesOfCode": 102283,
-    "totalExports": 2025,
-    "totalClasses": 231,
-    "totalInterfaces": 619,
-    "totalFunctions": 320,
+    "totalLinesOfCode": 102570,
+    "totalExports": 2030,
+    "totalClasses": 233,
+    "totalInterfaces": 620,
+    "totalFunctions": 322,
     "totalTypeGuards": 30,
     "totalEnums": 4,
     "totalConstants": 123,
-    "totalReExports": 1335,
+    "totalReExports": 1336,
     "totalTypeOnlyImports": 476,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
@@ -19874,6 +19893,6 @@
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 69
+    "unusedExportsCount": 71
   }
 }

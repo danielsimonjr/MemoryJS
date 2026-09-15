@@ -196,8 +196,13 @@ export class GraphStorage implements IGraphStorage {
   private mutex = new Mutex();
 
   /**
-   * Application-level mutex for managers to serialize validate+mutate+save.
-   * Shared across all managers using this storage instance.
+   * Application-level write lock: serializes the whole
+   * read-validate-mutate-commit interval of managers, `BatchTransaction`
+   * and `TransactionManager` that use this storage instance.
+   *
+   * **Single-process only.** An in-process mutex cannot coordinate another
+   * process. Two processes that open the same JSONL file can lose each
+   * other's writes; give each JSONL file exactly one owning process.
    */
   readonly graphMutex = new AsyncMutex();
 
@@ -1116,7 +1121,14 @@ export class GraphStorage implements IGraphStorage {
    */
   private async saveGraphInternal(graph: KnowledgeGraph): Promise<void> {
     if (this.segmentStorage !== null) {
-      await this.segmentStorage.saveAll(graph);
+      try {
+        await this.segmentStorage.saveAll(graph);
+      } catch (error) {
+        // The commit rolls forward on the next load, so the cached old graph
+        // is no longer the truth. Drop it; the next read recovers from disk.
+        if ((error as Error).name === 'SegmentCommitIncompleteError') this.clearCache();
+        throw error;
+      }
       this.cache = graph;
       this.buildEntityIndexes(graph.entities);
       this.buildRelationIndex(graph.relations);

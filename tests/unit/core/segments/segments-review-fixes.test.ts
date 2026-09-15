@@ -83,7 +83,7 @@ describe('Review #4: manifest-based forward recovery', () => {
     await expect(fs.access(tmpPath)).rejects.toThrow();
   });
 
-  it('loadAll ignores a malformed manifest (deletes it, returns pre-save state)', async () => {
+  it('loadAll ignores a malformed manifest (preserves it for diagnosis, returns pre-save state)', async () => {
     const store = new FileSegmentStorage(dir, new FnvSegmentRouter(4));
     const segmentsDir = join(dir, 'segments');
     await fs.mkdir(segmentsDir, { recursive: true });
@@ -92,6 +92,82 @@ describe('Review #4: manifest-based forward recovery', () => {
     const graph = await store.loadAll();
     expect(graph.entities).toEqual([]);
     await expect(fs.access(join(segmentsDir, '_manifest.json'))).rejects.toThrow();
+    const preserved = (await fs.readdir(segmentsDir)).filter((n) => n.startsWith('_manifest.json.corrupt-'));
+    expect(preserved).toHaveLength(1);
+    expect(await fs.readFile(join(segmentsDir, preserved[0]!), 'utf-8')).toBe('not-json');
+  });
+
+  it('loadAll preserves a manifest with an unknown version for diagnosis', async () => {
+    const store = new FileSegmentStorage(dir, new FnvSegmentRouter(4));
+    const segmentsDir = join(dir, 'segments');
+    await fs.mkdir(segmentsDir, { recursive: true });
+    await fs.writeFile(join(segmentsDir, '_manifest.json'), '{"version":99}');
+
+    await store.loadAll();
+    const preserved = (await fs.readdir(segmentsDir)).filter((n) => n.startsWith('_manifest.json.corrupt-'));
+    expect(preserved).toHaveLength(1);
+  });
+
+  it('a manifest-write failure during saveAll leaves the old state on reopen', async () => {
+    const store = new FileSegmentStorage(dir, new FnvSegmentRouter(4));
+    await store.saveAll({ entities: [ent('old')], relations: [] });
+    const rename = fs.rename.bind(fs);
+    vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+      if (String(to).endsWith('_manifest.json')) throw Object.assign(new Error('injected'), { code: 'EIO' });
+      return rename(from, to);
+    });
+    await expect(store.saveAll({ entities: [ent('new')], relations: [] })).rejects.toThrow();
+    vi.restoreAllMocks();
+
+    const reopened = new FileSegmentStorage(dir, new FnvSegmentRouter(4));
+    const graph = await reopened.loadAll();
+    expect(graph.entities.map((e) => e.name)).toEqual(['old']);
+  });
+
+  it('a phase-3 rename failure rolls the commit forward to the new state on reopen', async () => {
+    const store = new FileSegmentStorage(dir, new FnvSegmentRouter(4));
+    const oldNames = Array.from({ length: 12 }, (_, i) => `old${i}`);
+    const newNames = Array.from({ length: 12 }, (_, i) => `new${i}`);
+    await store.saveAll({ entities: oldNames.map(ent), relations: [] });
+
+    const rename = fs.rename.bind(fs);
+    let segmentRenames = 0;
+    vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+      if (/[0-9]+\.jsonl$/.test(String(to)) && ++segmentRenames === 2) {
+        throw Object.assign(new Error('injected phase-3 failure'), { code: 'EIO' });
+      }
+      return rename(from, to);
+    });
+    await expect(store.saveAll({ entities: newNames.map(ent), relations: [] }))
+      .rejects.toThrow(/Segment commit incomplete/);
+    vi.restoreAllMocks();
+
+    const reopened = new FileSegmentStorage(dir, new FnvSegmentRouter(4));
+    const graph = await reopened.loadAll();
+    expect(graph.entities.map((e) => e.name).sort()).toEqual([...newNames].sort());
+    await expect(fs.access(join(dir, 'segments', '_manifest.json'))).rejects.toThrow();
+  });
+
+  it('saveAll completes an unrecovered manifest before writing a new one', async () => {
+    const store = new FileSegmentStorage(dir, new FnvSegmentRouter(4));
+    await store.saveAll({ entities: [ent('a0'), ent('a1'), ent('a2'), ent('a3'), ent('a4')], relations: [] });
+    const rename = fs.rename.bind(fs);
+    let segmentRenames = 0;
+    vi.spyOn(fs, 'rename').mockImplementation(async (from, to) => {
+      if (/[0-9]+\.jsonl$/.test(String(to)) && ++segmentRenames === 1) {
+        throw Object.assign(new Error('injected'), { code: 'EIO' });
+      }
+      return rename(from, to);
+    });
+    await expect(store.saveAll({ entities: [ent('b0'), ent('b1'), ent('b2'), ent('b3'), ent('b4')], relations: [] }))
+      .rejects.toThrow();
+    vi.restoreAllMocks();
+
+    await store.saveAll({ entities: [ent('c0')], relations: [] });
+    const leftovers = (await fs.readdir(join(dir, 'segments'))).filter((n) => n.includes('.tmp.'));
+    expect(leftovers).toEqual([]);
+    const graph = await new FileSegmentStorage(dir, new FnvSegmentRouter(4)).loadAll();
+    expect(graph.entities.map((e) => e.name)).toEqual(['c0']);
   });
 
   it('saveAll deletes the manifest on the success path', async () => {

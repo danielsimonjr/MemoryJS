@@ -10,6 +10,68 @@ describe('AsyncMutex', () => {
     vi.restoreAllMocks();
   });
 
+  it('calling a release function twice is harmless', async () => {
+    const mutex = new AsyncMutex();
+    const releaseA = await mutex.acquire();
+    const order: string[] = [];
+    const b = mutex.acquire().then(r => { order.push('b'); return r; });
+    const c = mutex.acquire().then(r => { order.push('c'); return r; });
+
+    releaseA();
+    releaseA();
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(order).toEqual(['b']);
+    expect(mutex.isLocked).toBe(true);
+    expect(mutex.queueLength).toBe(1);
+
+    const releaseB = await b;
+    releaseB();
+    releaseB();
+    const releaseC = await c;
+    expect(order).toEqual(['b', 'c']);
+    releaseC();
+    releaseC();
+    expect(mutex.isLocked).toBe(false);
+  });
+
+  it('a queued acquire cancelled before it gets the lock never runs', async () => {
+    const mutex = new AsyncMutex();
+    const release = await mutex.acquire();
+    const controller = new AbortController();
+    let ran = false;
+    const cancelled = mutex.acquire({ signal: controller.signal }).then(() => { ran = true; });
+    const next = mutex.acquire();
+    expect(mutex.queueLength).toBe(2);
+
+    controller.abort();
+    await expect(cancelled).rejects.toThrow(/abort|cancel/i);
+    expect(mutex.queueLength).toBe(1);
+
+    release();
+    const releaseNext = await next;
+    expect(ran).toBe(false);
+    releaseNext();
+    expect(mutex.isLocked).toBe(false);
+  });
+
+  it('rejects an acquire whose signal is already aborted', async () => {
+    const mutex = new AsyncMutex();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(mutex.acquire({ signal: controller.signal })).rejects.toThrow(/abort|cancel/i);
+    expect(mutex.isLocked).toBe(false);
+  });
+
+  it('aborting after the lock is granted does not release or cancel the holder', async () => {
+    const mutex = new AsyncMutex();
+    const controller = new AbortController();
+    const release = await mutex.acquire({ signal: controller.signal });
+    controller.abort();
+    expect(mutex.isLocked).toBe(true);
+    release();
+    expect(mutex.isLocked).toBe(false);
+  });
+
   it('should initialize with default values', () => {
     const mutex = new AsyncMutex();
     expect(mutex.isLocked).toBe(false);

@@ -8,6 +8,7 @@ import type {
   BatchOperation,
   BatchResult,
   BatchOptions,
+  OperationResult,
 } from '../types/index.js';
 import type { GraphStorage } from './GraphStorage.js';
 import { IOManager } from '../features/IOManager.js';
@@ -22,6 +23,7 @@ export enum OperationType {
   DELETE_RELATION = 'DELETE_RELATION',
 }
 
+/** One staged operation in a {@link TransactionManager} transaction. */
 export type TransactionOperation =
   | {
       type: OperationType.CREATE_ENTITY;
@@ -44,6 +46,33 @@ export type TransactionOperation =
       data: { from: string; to: string; relationType: string };
     };
 
+/**
+ * Acquire the storage's manager-level write lock (`graphMutex`). The same
+ * lock serializes `EntityManager`, `RelationManager` and `ObservationManager`
+ * writes, so holding it across read-validate-mutate-commit prevents lost
+ * updates. Lock order is `graphMutex` then the storage's internal I/O mutex,
+ * the same order the managers use. A storage without `graphMutex` gets a
+ * no-op release.
+ */
+async function acquireWriteLock(storage: GraphStorage, signal?: AbortSignal): Promise<() => void> {
+  const mutex = (storage as Partial<Pick<GraphStorage, 'graphMutex'>>).graphMutex;
+  return mutex ? mutex.acquire({ signal }) : () => undefined;
+}
+
+function emptyBatchResult(): BatchResult {
+  return {
+    success: true,
+    operationsExecuted: 0,
+    entitiesCreated: 0,
+    entitiesUpdated: 0,
+    entitiesDeleted: 0,
+    relationsCreated: 0,
+    relationsDeleted: 0,
+    executionTimeMs: 0,
+  };
+}
+
+/** Outcome of {@link TransactionManager.commit}. */
 export interface TransactionResult {
   success: boolean;
   operationsExecuted: number;
@@ -57,6 +86,7 @@ export class TransactionManager {
   private inTransaction: boolean = false;
   private ioManager: IOManager;
   private transactionBackup?: string;
+  private preCommitGraph?: KnowledgeGraph;
 
   constructor(private storage: GraphStorage) {
     this.ioManager = new IOManager(storage);
@@ -117,7 +147,15 @@ export class TransactionManager {
     });
   }
 
-  /** Commit the transaction, applying all staged operations atomically. */
+  /**
+   * Commit the transaction, applying all staged operations atomically.
+   *
+   * The storage write lock (`graphMutex`) is held from before the backup
+   * until the save or the rollback ends, so no other in-process writer can
+   * change the graph between the read and the save. `options.signal` can
+   * cancel the commit while it waits for that lock. JSONL storage is
+   * single-process: the lock cannot coordinate another process.
+   */
   async commit(options?: LongRunningOperationOptions): Promise<TransactionResult> {
     this.ensureInTransaction();
 
@@ -126,8 +164,11 @@ export class TransactionManager {
     const totalOperations = this.operations.length;
     reportProgress?.(createProgress(0, 100, 'commit'));
 
+    let release: (() => void) | undefined;
     try {
       // Check for early cancellation (inside try block to handle gracefully)
+      checkCancellation(options?.signal, 'commit');
+      release = await acquireWriteLock(this.storage, options?.signal);
       checkCancellation(options?.signal, 'commit');
       // Phase 1: Create backup for rollback (0-20% progress)
       reportProgress?.(createProgress(5, 100, 'creating backup'));
@@ -165,12 +206,16 @@ export class TransactionManager {
 
       // Phase 4: Save the modified graph (80-95% progress)
       reportProgress?.(createProgress(85, 100, 'saving graph'));
+      // Exact pre-commit state for rollback. Taken only once a save is about
+      // to run: before this point nothing on disk or in the cache has changed.
+      this.preCommitGraph = await this.storage.getGraphForMutation();
       await this.storage.saveGraph(graph);
       reportProgress?.(createProgress(95, 100, 'graph saved'));
 
       // Clean up transaction state
       this.inTransaction = false;
       this.operations = [];
+      this.preCommitGraph = undefined;
 
       // Delete the transaction backup (no longer needed)
       if (this.transactionBackup) {
@@ -195,36 +240,43 @@ export class TransactionManager {
         error: error instanceof Error ? error.message : String(error),
         rollbackBackup: rollbackResult.backupUsed,
       };
+    } finally {
+      release?.();
     }
   }
 
-  /** Rollback the current transaction. */
+  /**
+   * Rollback the current transaction to the exact pre-commit state.
+   *
+   * When no save was attempted, storage still holds the pre-commit state and
+   * nothing is rewritten. When a save was attempted, the in-memory pre-commit
+   * graph is saved back unchanged. Rollback does not restore through
+   * `restoreFromBackup`, because that path normalizes legacy records (it
+   * fills a missing `createdAt` / `lastModified`), which would change data
+   * the transaction never touched. The backup file is deleted after a
+   * successful rollback and kept for manual recovery when rollback fails.
+   */
   async rollback(): Promise<{ success: boolean; backupUsed?: string }> {
-    if (!this.transactionBackup) {
-      this.inTransaction = false;
-      this.operations = [];
+    const backupUsed = this.transactionBackup;
+    const preCommitGraph = this.preCommitGraph;
+    this.inTransaction = false;
+    this.operations = [];
+    this.preCommitGraph = undefined;
+
+    if (!backupUsed) {
       return { success: false };
     }
 
     try {
-      // Restore from backup
-      await this.ioManager.restoreFromBackup(this.transactionBackup);
-
-      // Clean up
-      const backupUsed = this.transactionBackup;
-      await this.ioManager.deleteBackup(this.transactionBackup);
-
-      this.inTransaction = false;
-      this.operations = [];
+      if (preCommitGraph) {
+        await this.storage.saveGraph(preCommitGraph);
+      }
+      await this.ioManager.deleteBackup(backupUsed);
       this.transactionBackup = undefined;
-
       return { success: true, backupUsed };
     } catch {
       // Rollback failed - keep backup for manual recovery
-      this.inTransaction = false;
-      this.operations = [];
-
-      return { success: false, backupUsed: this.transactionBackup };
+      return { success: false, backupUsed };
     }
   }
 
@@ -238,14 +290,14 @@ export class TransactionManager {
     return this.operations.length;
   }
 
-  /** @private */
+  /** Throw NO_TRANSACTION unless begin() has started a transaction. */
   private ensureInTransaction(): void {
     if (!this.inTransaction) {
       throw new KnowledgeGraphError('No transaction in progress. Call begin() first.', 'NO_TRANSACTION');
     }
   }
 
-  /** @private */
+  /** Apply one staged operation to the mutable graph copy; throws on conflict. */
   private applyOperation(graph: KnowledgeGraph, operation: TransactionOperation, timestamp: string): void {
     switch (operation.type) {
       case OperationType.CREATE_ENTITY: {
@@ -403,26 +455,47 @@ export class BatchTransaction {
     return [...this.operations];
   }
 
-  /** Execute all operations atomically. */
+  /**
+   * Execute all operations atomically.
+   *
+   * Holds the storage write lock (`graphMutex`) from the graph load until the
+   * save ends, so concurrent batches and manager writes in this process
+   * cannot overwrite each other. `options.signal` cancels the batch only
+   * while it waits for the lock. JSONL storage is single-process: the lock
+   * cannot coordinate another process that opens the same file.
+   */
   async execute(options: BatchOptions = {}): Promise<BatchResult> {
     const startTime = Date.now();
-    const { stopOnError = true, validateBeforeExecute = true } = options;
-
-    const result: BatchResult = {
-      success: true,
-      operationsExecuted: 0,
-      entitiesCreated: 0,
-      entitiesUpdated: 0,
-      entitiesDeleted: 0,
-      relationsCreated: 0,
-      relationsDeleted: 0,
-      executionTimeMs: 0,
-    };
-
+    const result = emptyBatchResult();
     if (this.operations.length === 0) {
-      result.executionTimeMs = Date.now() - startTime;
       return result;
     }
+
+    let release: () => void;
+    try {
+      release = await acquireWriteLock(this.storage, options.signal);
+    } catch (error) {
+      return {
+        ...result,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        executionTimeMs: Date.now() - startTime,
+      };
+    }
+    try {
+      return await this.executeLocked(options, result, startTime);
+    } finally {
+      release();
+    }
+  }
+
+  /** Load, validate, apply and save. Caller must hold the write lock. */
+  private async executeLocked(
+    options: BatchOptions,
+    result: BatchResult,
+    startTime: number,
+  ): Promise<BatchResult> {
+    const { stopOnError = true, validateBeforeExecute = true } = options;
 
     // Load graph for mutation
     const graph = await this.storage.getGraphForMutation();
@@ -443,7 +516,7 @@ export class BatchTransaction {
     }
 
     // Track per-operation results when stopOnError is false
-    const operationResults: import('../types/index.js').OperationResult[] = [];
+    const operationResults: OperationResult[] = [];
     let failedCount = 0;
 
     // Execute operations

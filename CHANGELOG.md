@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (wave 1 step 4: transaction isolation and persistence)
+
+- Concurrent `BatchTransaction.execute` / `ctx.batch` and `TransactionManager.commit` calls no longer lose acknowledged updates. Both now hold the storage write lock (`graphMutex`) from the graph load until the save or rollback ends. Measured: 100 concurrent batches kept 1 of 100 updates on master and 100 of 100 on this change; batch throughput is unchanged within run-to-run noise.
+- `AsyncMutex` release functions are idempotent. `acquire({ signal })` cancels a queued request, which then never runs. `BatchOptions.signal` exposes this for batches.
+- `durableWriteFile` never truncates the live file. Windows `EPERM`/`EBUSY`/`EACCES` renames are retried with backoff, then fail with `DurableReplaceError`; the previous file stays intact and the synced new content stays in the newest tmp file. `FileSegmentStorage` had the same truncating fallback and now uses the shared helper.
+- `durableWriteFile` and segment commits fsync the parent directory after the rename. Platforms that report `EISDIR`, `EPERM` or `EINVAL` skip this step.
+- Segment storage keeps corrupt recovery manifests as `_manifest.json.corrupt-<ms>` for diagnosis. A failed segment rename now throws `SegmentCommitIncompleteError` and keeps the manifest and tmps, so the commit completes on the next load or save. Before, the remaining tmps were deleted and the store could load a torn mix of old and new segments.
+- `TransactionManager` rollback restores the exact pre-commit state. It no longer rewrites the file through the backup restore path when nothing was saved.
+- `PostgreSQLStorage.saveGraph` runs the truncate and re-insert in one database transaction.
+
+### Documentation
+
+- JSONL storage is single-process: an in-process lock cannot coordinate a second process. Stated in the README, the configuration guide, the API reference and the `GraphStorage.graphMutex` JSDoc.
+
 ### CI
 
 - The Node runtime smoke now fails when its deadline expires. Before, a hung import printed PASS and exited 0. The smoke is now `scripts/node-runtime-smoke.mjs`: it loads `dist/index.cjs` and `dist/sqlite.cjs`, opens an in-memory SQLite database, and executes statements. `SMOKE_SIMULATE_HANG=1` proves the failure path.

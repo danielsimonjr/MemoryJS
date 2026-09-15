@@ -1,25 +1,30 @@
 /**
  * Durable file write helper
  *
- * Atomic write: temp file → fsync → rename over target, with a
- * fallback that bypasses rename on Windows EPERM (Dropbox /
- * antivirus / file-locking interference, documented in CLAUDE.md
- * gotchas).
+ * Atomic write: temp file → fsync → rename over target → fsync of the
+ * parent directory.
  *
  * Centralizes the pattern that was duplicated across
  * `GraphStorage`, `JsonlColumnStore`, `DiskWarmTier`,
- * `BrotliColdTier`, and `FileSegmentStorage`. Future bug fixes
- * (e.g. POSIX directory fsync for first-write durability —
- * already in `WriteAheadLog` but not propagated here) land in one
- * place.
+ * `BrotliColdTier`, and `FileSegmentStorage`.
  *
  * **Contract:**
  * - On success: `target` contains exactly the bytes/chars of
  *   `content`. Any pre-existing file at `target` is replaced.
- * - On failure: `target` is either still the prior file (if rename
- *   never happened) or contains `content` (if the fallback ran
- *   successfully). Unexpected rename failures preserve the tmp file
- *   for diagnosis.
+ * - On failure: `target` is still the previous generation. The helper
+ *   never opens the live target for writing, so it never truncates it.
+ *   When the fsynced temp file was written but the rename failed, the
+ *   temp file is kept next to the target for recovery and diagnosis.
+ * - Windows rename interference (`EPERM` / `EBUSY` / `EACCES` from
+ *   antivirus, sync clients or open handles) is retried with a short
+ *   backoff. If the rename still fails, the helper throws a
+ *   {@link DurableReplaceError}. It does not fall back to an in-place
+ *   rewrite: a crash during such a rewrite destroys the previous good
+ *   generation.
+ * - Directory fsync after the rename makes the new directory entry
+ *   durable where the platform supports it. Platforms that cannot open or
+ *   sync a directory (Windows reports `EISDIR`; some file systems report
+ *   `EPERM` or `EINVAL`) skip this step.
  * - Caller-supplied `content` may be a string (written as UTF-8)
  *   or a `Buffer` (written as raw bytes — used by
  *   `BrotliColdTier`'s compressed shard).
@@ -30,7 +35,36 @@
 
 import { promises as fs } from 'fs';
 import { randomBytes } from 'crypto';
-import { dirname } from 'path';
+import { basename, dirname, join } from 'path';
+
+/** Backoff (ms) between rename attempts after Windows interference. */
+const RENAME_RETRY_DELAYS_MS = [10, 25, 50, 100, 200, 400];
+
+/** Directory-fsync error codes that mean "not supported on this platform". */
+const UNSUPPORTED_DIR_SYNC_CODES = new Set(['EISDIR', 'EPERM', 'EINVAL']);
+
+/**
+ * Thrown when a durable replace cannot rename the synced temp file over
+ * the target. The target still holds the previous generation; `tmpPath`
+ * holds the synced new generation.
+ */
+export class DurableReplaceError extends Error {
+  readonly code: string | undefined;
+
+  constructor(
+    readonly target: string,
+    readonly tmpPath: string,
+    override readonly cause: unknown,
+  ) {
+    const code = (cause as NodeJS.ErrnoException | undefined)?.code;
+    super(
+      `Cannot replace ${target} (${code ?? String(cause)}). The previous file is unchanged; ` +
+        `the new content is kept at ${tmpPath}.`,
+    );
+    this.name = 'DurableReplaceError';
+    this.code = code;
+  }
+}
 
 /**
  * Atomically write `content` to `target`. See module JSDoc for the
@@ -53,32 +87,51 @@ export async function durableWriteFile(
   } finally {
     await fd.close();
   }
+  await renameOver(tmpPath, target);
+  await syncParentDirectory(target);
+}
+
+/**
+ * Rename a synced temp file over `target`. Retries Windows rename
+ * interference with backoff, refuses to replace a symbolic link after
+ * interference, and otherwise throws with the temp file left in place.
+ * Never writes into `target`.
+ */
+export async function renameOver(tmpPath: string, target: string): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await fs.rename(tmpPath, target);
+      return;
+    } catch (error) {
+      if (!isWindowsRenameInterference(error)) throw error;
+      await refuseSymlinkTarget(target, error);
+      if (attempt >= RENAME_RETRY_DELAYS_MS.length) {
+        await pruneEarlierFailedTmps(tmpPath, target);
+        throw new DurableReplaceError(target, tmpPath, error);
+      }
+      await delay(RENAME_RETRY_DELAYS_MS[attempt]!);
+    }
+  }
+}
+
+/**
+ * Fsync the directory that contains `target` so a completed rename survives
+ * power loss. Skips platforms that do not support directory fsync.
+ */
+export async function syncParentDirectory(target: string): Promise<void> {
+  let dirFd: import('fs/promises').FileHandle;
   try {
-    await fs.rename(tmpPath, target);
+    dirFd = await fs.open(dirname(target), 'r');
   } catch (error) {
-    if (!isWindowsRenameInterference(error)) {
-      // Keep the fsynced temp file: it is useful for recovery/debugging and
-      // the original target remains untouched.
-      throw error;
-    }
-    // Windows EPERM fallback — Dropbox / antivirus / open-file-locks
-    // can refuse the rename; direct-write keeps the operation
-    // recoverable. Other errors must not silently lose atomicity.
-    try {
-      const targetStat = await fs.lstat(target);
-      if (targetStat.isSymbolicLink()) throw error;
-    } catch (statError) {
-      if ((statError as NodeJS.ErrnoException).code !== 'ENOENT') throw statError;
-    }
-    const fallbackFd = await fs.open(target, 'w', targetMode);
-    try {
-      await writeAll(fallbackFd, content);
-      await fallbackFd.sync();
-      await fallbackFd.chmod(targetMode);
-    } finally {
-      await fallbackFd.close();
-    }
-    try { await fs.unlink(tmpPath); } catch { /* best-effort */ }
+    if (isUnsupportedDirSync(error)) return;
+    throw error;
+  }
+  try {
+    await dirFd.sync();
+  } catch (error) {
+    if (!isUnsupportedDirSync(error)) throw error;
+  } finally {
+    await dirFd.close();
   }
 }
 
@@ -129,14 +182,51 @@ async function restrictedModeForReplacement(target: string): Promise<number> {
 }
 
 /**
+ * After a failed replace, keep only the newest synced tmp for `target`.
+ * Without this, a lock that outlasts the retry budget leaves one
+ * whole-file tmp per save. Best-effort: cleanup errors are ignored.
+ */
+async function pruneEarlierFailedTmps(keepTmpPath: string, target: string): Promise<void> {
+  const prefix = `${basename(target)}.tmp.`;
+  const keep = basename(keepTmpPath);
+  try {
+    for (const name of await fs.readdir(dirname(target))) {
+      if (name.startsWith(prefix) && name !== keep) {
+        await fs.unlink(join(dirname(target), name)).catch(() => undefined);
+      }
+    }
+  } catch {
+    // Diagnostics only; the replace failure is the error that matters.
+  }
+}
+
+/** Throw `renameError` when `target` is a symbolic link. */
+async function refuseSymlinkTarget(target: string, renameError: unknown): Promise<void> {
+  try {
+    if ((await fs.lstat(target)).isSymbolicLink()) throw renameError;
+  } catch (statError) {
+    if (statError === renameError) throw statError;
+    if ((statError as NodeJS.ErrnoException).code !== 'ENOENT') throw statError;
+  }
+}
+
+/**
  * Windows can report these codes when antivirus/sync software temporarily
- * locks the destination. They are the only failures for which the historical
- * direct-write fallback is safe enough to retain.
+ * locks the destination. They are the only rename failures worth retrying.
  */
 function isWindowsRenameInterference(error: unknown): boolean {
   if (process.platform !== 'win32') return false;
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
   return code === 'EPERM' || code === 'EBUSY' || code === 'EACCES';
+}
+
+function isUnsupportedDirSync(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  return code !== undefined && UNSUPPORTED_DIR_SYNC_CODES.has(code);
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /** Write every byte, including when the OS completes only part of a write. */
