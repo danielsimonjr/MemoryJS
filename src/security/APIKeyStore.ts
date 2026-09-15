@@ -26,6 +26,8 @@ export interface KeyValidationResult {
   keyId?: string;
   scopes?: readonly string[];
   ownerId?: string;
+  /** Allowed projects; absent means every project (legacy full access). */
+  projectIds?: readonly string[];
   reason?: 'unknown' | 'revoked' | 'expired' | 'wrong-scope';
 }
 
@@ -39,6 +41,12 @@ export interface KeyRecord {
   ownerId?: string;
   /** Permission/scope set, e.g. `['read:entities', 'write:relations']`. */
   scopes: readonly string[];
+  /**
+   * Projects the key may access. When absent, the key has access to every
+   * project (the behavior of keys issued before project scoping). An empty
+   * array grants access to no project data.
+   */
+  projectIds?: readonly string[];
   /** ISO 8601 issuance timestamp. */
   issuedAt: string;
   /** ISO 8601 expiry — when omitted, the key never expires. */
@@ -52,6 +60,8 @@ export interface KeyRecord {
 export interface IssueOptions {
   ownerId?: string;
   scopes?: readonly string[];
+  /** Allowed projects. Omit for access to every project. */
+  projectIds?: readonly string[];
   /** TTL in seconds; mutually exclusive with `expiresAt`. */
   ttlSeconds?: number;
   /** Explicit expiry ISO 8601 string. */
@@ -127,6 +137,7 @@ export class APIKeyStore {
       throw new RangeError('ttlSeconds must be finite and non-negative');
     }
     if (options.expiresAt !== undefined) assertTimestamp(options.expiresAt, 'expiresAt');
+    const projectIds = normalizeProjectIds(options.projectIds);
     const plaintext = `mjs_${randomBytes(24).toString('base64url')}`;
     const hash = sha256(plaintext);
     const keyId = `kid_${randomBytes(8).toString('base64url')}`;
@@ -140,6 +151,7 @@ export class APIKeyStore {
       hash,
       ownerId: options.ownerId,
       scopes: [...(options.scopes ?? [])],
+      ...(projectIds ? { projectIds } : {}),
       issuedAt,
       expiresAt,
       metadata: options.metadata,
@@ -202,6 +214,7 @@ export class APIKeyStore {
       keyId: record.keyId,
       scopes: [...record.scopes],
       ownerId: record.ownerId,
+      ...(record.projectIds ? { projectIds: [...record.projectIds] } : {}),
     };
   }
 
@@ -262,7 +275,9 @@ export class APIKeyStore {
       if (nextRecords.has(r.keyId) || nextByHash.has(r.hash)) {
         throw new TypeError('Duplicate API key id or hash');
       }
-      nextRecords.set(r.keyId, copyRecord(r));
+      const projectIds = normalizeProjectIds(r.projectIds);
+      const { projectIds: _ignored, ...rest } = r;
+      nextRecords.set(r.keyId, copyRecord(projectIds ? { ...rest, projectIds } : rest));
       nextByHash.set(r.hash, r.keyId);
     }
     this.records = nextRecords;
@@ -283,6 +298,7 @@ function sha256(input: string): string {
 /** Authorization fields never share mutable references with callers. */
 function copyRecord(record: KeyRecord): KeyRecord {
   return { ...record, scopes: [...record.scopes],
+    ...(record.projectIds ? { projectIds: [...record.projectIds] } : {}),
     ...(record.metadata ? { metadata: { ...record.metadata } } : {}) };
 }
 
@@ -290,4 +306,19 @@ function assertTimestamp(value: string, field: string): void {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
     throw new TypeError(`Invalid API key ${field}`);
   }
+}
+
+/** Maximum number of projects on one key. */
+export const MAX_KEY_PROJECT_IDS = 1000;
+/** Maximum length of one project id on a key. */
+export const MAX_KEY_PROJECT_ID_LENGTH = 256;
+
+/** Validate and de-duplicate a key's project list. `undefined` stays `undefined`. */
+function normalizeProjectIds(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > MAX_KEY_PROJECT_IDS ||
+      !value.every(p => typeof p === 'string' && p.length > 0 && p.length <= MAX_KEY_PROJECT_ID_LENGTH)) {
+    throw new TypeError('Invalid API key projectIds');
+  }
+  return [...new Set(value as string[])];
 }

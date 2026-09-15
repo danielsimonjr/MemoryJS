@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The FileSegmentStorage symlink-recovery test now probes symlink support once. Where the environment denies symlink creation (for example Windows without Developer Mode, EPERM), the test skips and its name shows the reason. Where symlinks work, the confinement assertion runs unchanged.
 
+### Security
+
+- **REST tenancy: API keys scoped to projects.** `APIKeyStore.issue({ projectIds })` records the projects a key may access; `load()` validates the list (at most 1000 non-empty ids of at most 256 characters). The `RestRouter.withDefaults` routes filter `GET /entities` and `GET /search` by those projects before pagination, so totals and cursors reveal no other records. A direct `GET` or `DELETE /entities/:name` outside the key's projects returns the same 404 as a missing entity. `POST /entities` with a scoped key must name an allowed `projectId` (403) and gets 409 for an existing name. Entities without a `projectId` are hidden from scoped keys. Scoped keys need `entities:read` for `GET` under the default scope mapping. Keys without `projectIds` and the explicit `allowUnauthenticated` opt-in keep full access.
+- **REST request budgets.** With `auth` set, a default pre-authentication limiter (60 failures per client address, 1 per second refill) returns 429 before the key is checked; only failed authentications consume it. `RestRouterOptions.rateLimiter` adds an optional per-key limiter. `serve()` ends a slow JSON body with 408 after `bodyTimeoutMs` (default 10 s). `dispatch()` applies `maxBodyBytes` itself. `RestRouterOptions.limits` bounds the search query length, name length, observation count and observation length.
+- **RateLimiter memory bounds.** Buckets expire after `bucketTtlMs` idle time and at most `maxBuckets` (default 10 000) exist, with least-recently-used eviction. New `peek()` checks a bucket without consuming a token. State is per process.
+- **REST 4xx bodies use fixed messages.** A thrown error with a 4xx status now returns a fixed message for the status (for example `Unprocessable Entity`) instead of the error text. Unknown routes return `Not Found` without echoing the path. Router-raised input errors keep their fixed messages.
+
 ### Documentation
 
 - Add a source dependency inventory and a ten-step plan for speed, stability, and security in docs/analysis.

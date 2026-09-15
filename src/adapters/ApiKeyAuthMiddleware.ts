@@ -35,18 +35,30 @@ export interface AuthContext {
   keyId: string;
   scopes: readonly string[];
   ownerId?: string;
+  /**
+   * Projects the key may access. Absent means every project (legacy keys).
+   * The default `RestRouter` routes filter or reject by this list.
+   */
+  projectIds?: readonly string[];
 }
 
 /** Default scope demanded for mutating HTTP methods. */
 export const DEFAULT_WRITE_SCOPE = 'entities:write';
+
+/**
+ * Default scope demanded for `GET` requests made with a project-scoped key.
+ * Keys without `projectIds` do not need it, so legacy keys keep working.
+ */
+export const DEFAULT_READ_SCOPE = 'entities:read';
 
 export interface ApiKeyAuthOptions {
   /** The key store to validate against. */
   store: APIKeyStore;
   /**
    * Map a request to the scopes it requires. Return `[]` for
-   * "any valid key". Default: `GET` requires no scopes; `POST` / `PUT` /
-   * `PATCH` / `DELETE` require `['entities:write']`.
+   * "any valid key". Default: `GET` requires no scopes (or `['entities:read']`
+   * for a key with `projectIds`); `POST` / `PUT` / `PATCH` / `DELETE` require
+   * `['entities:write']`. A custom mapping replaces both defaults.
    */
   requiredScopes?: (method: RestMethod, path: string) => readonly string[];
   /**
@@ -74,14 +86,12 @@ export type AuthOutcome =
  */
 export class ApiKeyAuthMiddleware {
   private readonly store: APIKeyStore;
-  private readonly scopesFor: (method: RestMethod, path: string) => readonly string[];
+  private readonly scopesFor?: (method: RestMethod, path: string) => readonly string[];
   private readonly onReject?: ApiKeyAuthOptions['onReject'];
 
   constructor(options: ApiKeyAuthOptions) {
     this.store = options.store;
-    this.scopesFor =
-      options.requiredScopes ??
-      ((method) => (method === 'GET' ? [] : [DEFAULT_WRITE_SCOPE]));
+    this.scopesFor = options.requiredScopes;
     this.onReject = options.onReject;
   }
 
@@ -127,6 +137,7 @@ export class ApiKeyAuthMiddleware {
       keyId: validation.keyId,
       scopes: validation.scopes ?? [],
       ownerId: validation.ownerId,
+      ...(validation.projectIds ? { projectIds: validation.projectIds } : {}),
     };
 
     const denial = this.checkScopes(auth, req.method, req.path);
@@ -142,7 +153,8 @@ export class ApiKeyAuthMiddleware {
    * Public so custom handlers can enforce additional scopes themselves.
    */
   checkScopes(auth: AuthContext, method: RestMethod, path: string): RestResponse | null {
-    const required = this.scopesFor(method, path);
+    const required = this.scopesFor?.(method, path) ??
+      (method !== 'GET' ? [DEFAULT_WRITE_SCOPE] : auth.projectIds ? [DEFAULT_READ_SCOPE] : []);
     if (required.length === 0) return null;
     const have = new Set(auth.scopes);
     const missing = required.filter((s) => !have.has(s));

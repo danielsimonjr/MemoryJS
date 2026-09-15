@@ -68,10 +68,10 @@ describe('REST input boundaries', () => {
     expect(response.status).toBe(status === 503 ? 503 : 500);
   });
 
-  it('retains explicitly raised client errors', async () => {
+  it('keeps the status of client errors but replaces their message', async () => {
     const router = new RestRouter(ctx).get('/fail', () => {
       throw Object.assign(new Error('Invalid entity'), { status: 422 });
     });
-    expect(await router.dispatch(request('/fail'))).toEqual({ status: 422, body: { error: 'Invalid entity' } });
+    expect(await router.dispatch(request('/fail'))).toEqual({ status: 422, body: { error: 'Unprocessable Entity' } });
   });
 });
