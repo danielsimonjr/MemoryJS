@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Documentation
+
+- Add a source dependency inventory and a ten-step plan for speed, stability, and security in docs/analysis.
+
 ## [4.1.0] - 2026-09-13
 
 ### Added

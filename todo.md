@@ -153,3 +153,9 @@ Update this file when:
 - A new task lands → add to **In progress**
 - A task ships → move to **Recently completed** with the release tag
 - Investigation rules a candidate out → note the rationale + drop from list
+
+## Repository analysis
+
+- [x] Inspect dependencies, functions, and configuration. Record the ten-step optimization plan in docs/analysis/optimization-review.md.
+- [ ] Revalidate the 549ce11 analysis against current source, then implement remaining optimization work. Acceptance criteria and sequencing are in docs/analysis/optimization-review.md.
+- [ ] Recheck documentation gates on current source. The 549ce11 analysis recorded stale architecture metrics and 219 source documentation issues.

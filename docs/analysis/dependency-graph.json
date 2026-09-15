@@ -1,0 +1,5626 @@
+{
+  "files": 268,
+  "counts": {
+    "functions": 4365,
+    "classes": 223,
+    "interfaces": 648,
+    "typeAliases": 156,
+    "variables": 8067,
+    "lines": 95507
+  },
+  "edgeCounts": {
+    "runtime": 669,
+    "type": 411,
+    "dynamic": 15
+  },
+  "runtimeCycles": [],
+  "fanOut": [
+    {
+      "file": "src/core/ManagerContext.ts",
+      "count": 86
+    },
+    {
+      "file": "src/agent/index.ts",
+      "count": 62
+    },
+    {
+      "file": "src/search/index.ts",
+      "count": 39
+    },
+    {
+      "file": "src/utils/index.ts",
+      "count": 26
+    },
+    {
+      "file": "src/agent/AgentMemoryManager.ts",
+      "count": 25
+    },
+    {
+      "file": "src/cli/commands/index.ts",
+      "count": 24
+    },
+    {
+      "file": "src/features/index.ts",
+      "count": 16
+    },
+    {
+      "file": "src/core/index.ts",
+      "count": 14
+    },
+    {
+      "file": "src/search/SearchManager.ts",
+      "count": 12
+    },
+    {
+      "file": "src/core/GraphStorage.ts",
+      "count": 11
+    },
+    {
+      "file": "src/features/IOManager.ts",
+      "count": 9
+    },
+    {
+      "file": "src/index.ts",
+      "count": 8
+    }
+  ],
+  "fanIn": [
+    {
+      "file": "src/utils/errors.ts",
+      "count": 28
+    },
+    {
+      "file": "src/utils/logger.ts",
+      "count": 28
+    },
+    {
+      "file": "src/utils/index.ts",
+      "count": 27
+    },
+    {
+      "file": "src/cli/formatters.ts",
+      "count": 24
+    },
+    {
+      "file": "src/types/agent-memory.ts",
+      "count": 24
+    },
+    {
+      "file": "src/cli/commands/helpers.ts",
+      "count": 23
+    },
+    {
+      "file": "src/utils/constants.ts",
+      "count": 19
+    },
+    {
+      "file": "src/utils/textSimilarity.ts",
+      "count": 14
+    },
+    {
+      "file": "src/core/EntityManager.ts",
+      "count": 9
+    },
+    {
+      "file": "src/utils/durableWriteFile.ts",
+      "count": 9
+    },
+    {
+      "file": "src/core/ManagerContext.ts",
+      "count": 8
+    },
+    {
+      "file": "src/utils/entityUtils.ts",
+      "count": 8
+    }
+  ],
+  "external": {
+    "http": 1,
+    "events": 5,
+    "crypto": 27,
+    "node:events": 2,
+    "node:crypto": 4,
+    "fs": 22,
+    "path": 16,
+    "cli-table3": 1,
+    "chalk": 2,
+    "commander": 27,
+    "readline": 2,
+    "url": 2,
+    "node:util": 1,
+    "async-mutex": 4,
+    "node:module": 4,
+    "pg": 1,
+    "node:fs": 7,
+    "better-sqlite3": 3,
+    "fs/promises": 4,
+    "@xenova/transformers": 1,
+    "@danielsimonjr/workerpool": 4,
+    "chrono-node": 1,
+    "zlib": 3,
+    "util": 1,
+    "os": 2,
+    "zod": 1,
+    "node:path": 5,
+    "node:perf_hooks": 3,
+    "node:url": 2,
+    "node:os": 1
+  },
+  "edges": [
+    {
+      "from": "src/index.ts",
+      "to": "src/types/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/index.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/index.ts",
+      "to": "src/core/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/index.ts",
+      "to": "src/features/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/index.ts",
+      "to": "src/search/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/index.ts",
+      "to": "src/agent/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/index.ts",
+      "to": "src/security/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/index.ts",
+      "to": "src/adapters/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/sqlite.ts",
+      "to": "src/core/sqlite-register.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/sqlite.ts",
+      "to": "src/core/StorageFactory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/ApiKeyAuthMiddleware.ts",
+      "to": "src/security/APIKeyStore.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/adapters/ApiKeyAuthMiddleware.ts",
+      "to": "src/adapters/RestRouter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/adapters/index.ts",
+      "to": "src/adapters/RestRouter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/index.ts",
+      "to": "src/adapters/ApiKeyAuthMiddleware.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/index.ts",
+      "to": "src/adapters/RateLimiter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/index.ts",
+      "to": "src/adapters/pagination.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/index.ts",
+      "to": "src/adapters/MCPToolObserverAdapter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/index.ts",
+      "to": "src/adapters/LangChainMemoryAdapter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/LangChainMemoryAdapter.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/adapters/LangChainMemoryAdapter.ts",
+      "to": "src/agent/MemoryEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/adapters/LangChainMemoryAdapter.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/adapters/MCPToolObserverAdapter.ts",
+      "to": "src/agent/ToolCallObserver.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/adapters/RestRouter.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/adapters/RestRouter.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/RestRouter.ts",
+      "to": "src/adapters/pagination.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/adapters/RestRouter.ts",
+      "to": "src/adapters/ApiKeyAuthMiddleware.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AccessTracker.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AccessTracker.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AccessTracker.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/WorkingMemoryManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/SessionManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/EpisodicMemoryManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/ConsolidationPipeline.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/SummarizationService.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/DecayScheduler.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/SalienceEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/ContextWindowManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/MemoryFormatter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/MultiAgentMemoryManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/ConflictResolver.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/CollaborativeSynthesis.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/core/GraphTraversal.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryConfig.ts",
+      "to": "src/agent/ProfileManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/core/ObservationManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/AccessTracker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/DecayScheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/WorkingMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/SessionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/EpisodicMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/ConsolidationPipeline.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/SummarizationService.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/PatternDetector.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/RuleEvaluator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/SalienceEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/ContextWindowManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/MemoryFormatter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/MultiAgentMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/ConflictResolver.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/SessionCheckpoint.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/WorkThreadManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/AgentMemoryConfig.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/DistillationPolicy.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/RoleProfiles.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/DreamEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentMemoryManager.ts",
+      "to": "src/agent/ProfileManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentReflectionManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentReflectionManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentReflectionManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentReflectionManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/AgentReflectionManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/AgentReflectionManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ArtifactManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ArtifactManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ArtifactManager.ts",
+      "to": "src/core/RefIndex.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ArtifactManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ArtifactManager.ts",
+      "to": "src/types/artifact.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ArtifactManager.ts",
+      "to": "src/types/artifact.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/CognitiveLoadAnalyzer.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/CollaborativeSynthesis.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/CollaborativeSynthesis.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/CollaborativeSynthesis.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/CollaborativeSynthesis.ts",
+      "to": "src/core/GraphTraversal.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/CollaborativeSynthesis.ts",
+      "to": "src/agent/SalienceEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConflictResolver.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConflictResolver.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/connectivity.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/WorkingMemoryManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/SummarizationService.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/PatternDetector.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/RuleEvaluator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/AgentReflectionManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/TrajectoryCompressor.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/ExperienceExtractor.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/HeuristicManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/agent/ObservationDedupManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationPipeline.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationScheduler.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ConsolidationScheduler.ts",
+      "to": "src/agent/ConsolidationPipeline.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationScheduler.ts",
+      "to": "src/features/CompressionManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ConsolidationScheduler.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ContextProfileManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/agent/SalienceEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/agent/DistillationPolicy.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/agent/ContextProfileManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/agent/ProjectContextManager.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/agent/ProfileManager.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/core/ObservationManager.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/agent/ContextWindowManager.ts",
+      "to": "src/agent/ProspectiveMemoryManager.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/agent/DecayEngine.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecayEngine.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecayEngine.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DecayEngine.ts",
+      "to": "src/agent/AccessTracker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DecayEngine.ts",
+      "to": "src/features/FreshnessManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DecayEngine.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DecayEngine.ts",
+      "to": "src/agent/connectivity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DecayEngine.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecayScheduler.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecayScheduler.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecayScheduler.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DecayScheduler.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecisionManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecisionManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecisionManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DecisionManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DecisionManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DecisionManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DistillationPipeline.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DistillationPipeline.ts",
+      "to": "src/agent/DistillationPolicy.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DistillationPolicy.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DistillationPolicy.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DistillationPolicy.ts",
+      "to": "src/features/FreshnessManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DreamEngine.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DreamEngine.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/DreamEngine.ts",
+      "to": "src/features/FreshnessManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DreamEngine.ts",
+      "to": "src/features/CompressionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DreamEngine.ts",
+      "to": "src/features/ObservationNormalizer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DreamEngine.ts",
+      "to": "src/agent/PatternDetector.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DreamEngine.ts",
+      "to": "src/agent/ConsolidationPipeline.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/DreamEngine.ts",
+      "to": "src/agent/EntropyFilter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/EntropyFilter.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/EntropyFilter.ts",
+      "to": "src/agent/ConsolidationPipeline.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/EntropyFilter.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/EpisodicMemoryManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/EpisodicMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/EpisodicMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ExclusionManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ExclusionManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ExclusionManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ExclusionManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ExperienceExtractor.ts",
+      "to": "src/agent/PatternDetector.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ExperienceExtractor.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ExperienceExtractor.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/FailureDistillation.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/FailureDistillation.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/FailureDistillation.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/FailureDistillation.ts",
+      "to": "src/agent/EpisodicMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/FailureManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/FailureManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/FailureManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/FailureManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/FailureManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/FailureManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/HeuristicManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/HeuristicManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/HeuristicManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/HeuristicManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/HeuristicManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/AccessTracker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/DecayScheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/WorkingMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/SessionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/SessionQueryBuilder.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/EpisodicMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ProspectiveMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/FailureManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/PlanManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/AgentReflectionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ConsolidationPipeline.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/SummarizationService.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/PatternDetector.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/RuleEvaluator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/SalienceEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ContextWindowManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/MemoryFormatter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/MultiAgentMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ConflictResolver.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/SessionCheckpoint.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/AgentMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/CollaborativeSynthesis.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/AgentMemoryConfig.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ArtifactManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/DistillationPolicy.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/DistillationPipeline.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/RoleProfiles.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/EntropyFilter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/FailureDistillation.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/CognitiveLoadAnalyzer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/VisibilityResolver.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ConsolidationScheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/DreamEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ProfileManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ObserverPipeline.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/WorkThreadManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ContextProfileManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/MemoryEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ImportanceScorer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/MemoryBackend.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/InMemoryBackend.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/SQLiteBackend.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/MemoryValidator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/TrajectoryCompressor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ExperienceExtractor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/collaboration/CollaborationAuditEnforcer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/retrieval/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/world/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/procedural/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/causal/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/HeuristicManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ExclusionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/DecisionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ProjectContextManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ObservationDedupManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ToolAffordanceManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ToolCallObserver.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/ConsolidationPipeline.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/rbac/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/reconstruction/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/RelationConsolidator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/index.ts",
+      "to": "src/agent/events/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/InMemoryBackend.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/InMemoryBackend.ts",
+      "to": "src/agent/MemoryBackend.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/InMemoryBackend.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/agent/EpisodicMemoryManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/agent/WorkingMemoryManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/search/SemanticSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/agent/ImportanceScorer.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryEngine.ts",
+      "to": "src/agent/ExclusionManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryFormatter.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryValidator.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryValidator.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryValidator.ts",
+      "to": "src/features/ContradictionDetector.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MemoryValidator.ts",
+      "to": "src/agent/ConflictResolver.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MultiAgentMemoryManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MultiAgentMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/MultiAgentMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/MultiAgentMemoryManager.ts",
+      "to": "src/agent/ConflictResolver.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/MultiAgentMemoryManager.ts",
+      "to": "src/agent/VisibilityResolver.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ObservationDedupManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ObserverPipeline.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ObserverPipeline.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ObserverPipeline.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/PatternDetector.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/PlanManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/PlanManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/PlanManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/PlanManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ProfileManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProfileManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProfileManager.ts",
+      "to": "src/core/ObservationManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProfileManager.ts",
+      "to": "src/agent/SessionManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProfileManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ProfileManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProfileManager.ts",
+      "to": "src/agent/SalienceEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProjectContextManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProjectContextManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProjectContextManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ProjectContextManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProjectContextManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ProspectiveMemoryManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProspectiveMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ProspectiveMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ProspectiveMemoryManager.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/RelationConsolidator.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/RelationConsolidator.ts",
+      "to": "src/search/LLMQueryPlanner.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/RelationConsolidator.ts",
+      "to": "src/agent/reconstruction/MemoryDistiller.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/RelationConsolidator.ts",
+      "to": "src/agent/ConsolidationPipeline.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/RelationConsolidator.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/RoleProfiles.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/RuleEvaluator.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/RuleEvaluator.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/agent/AccessTracker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/agent/SummarizationService.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/features/FreshnessManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/agent/connectivity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SalienceEngine.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionCheckpoint.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionCheckpoint.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionCheckpoint.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SessionCheckpoint.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SessionCheckpoint.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionCheckpoint.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionCheckpoint.ts",
+      "to": "src/agent/WorkingMemoryManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionCheckpoint.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SessionManager.ts",
+      "to": "src/agent/WorkingMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SessionManager.ts",
+      "to": "src/agent/EpisodicMemoryManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionQueryBuilder.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionQueryBuilder.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionQueryBuilder.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/SessionQueryBuilder.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SessionQueryBuilder.ts",
+      "to": "src/agent/SessionManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SQLiteBackend.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SQLiteBackend.ts",
+      "to": "src/agent/MemoryEngine.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SQLiteBackend.ts",
+      "to": "src/agent/MemoryBackend.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SQLiteBackend.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/SummarizationService.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ToolAffordanceManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ToolAffordanceManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ToolAffordanceManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ToolAffordanceManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/ToolAffordanceManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/ToolCallObserver.ts",
+      "to": "src/agent/ToolAffordanceManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/TrajectoryCompressor.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/TrajectoryCompressor.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/TrajectoryCompressor.ts",
+      "to": "src/agent/ContextWindowManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/VisibilityResolver.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/WorkingMemoryManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/WorkingMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/WorkingMemoryManager.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/WorkingMemoryManager.ts",
+      "to": "src/agent/EntropyFilter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/WorkingMemoryManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/WorkingMemoryManager.ts",
+      "to": "src/agent/ExclusionManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/WorkThreadManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/cli/config.ts",
+      "to": "src/cli/options.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/cli/formatters.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/cli/formatters.ts",
+      "to": "src/utils/entityUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/index.ts",
+      "to": "src/cli/commands/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/index.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/interactive.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/interactive.ts",
+      "to": "src/cli/options.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/cli/interactive.ts",
+      "to": "src/cli/commands/inspect.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/cli/interactive.ts",
+      "to": "src/cli/commands/inspect.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/cli/interactive.ts",
+      "to": "src/cli/commands/inspect.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/cli/interactive.ts",
+      "to": "src/cli/commands/inspect.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/cli/interactive.ts",
+      "to": "src/cli/commands/check.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/cli/interactive.ts",
+      "to": "src/utils/searchCache.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/agent/AccessTracker.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/core/RefIndex.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/core/EntityStateMachine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/features/GovernanceManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/EntityManager.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/EntityStateMachine.ts",
+      "to": "src/types/types.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphEventEmitter.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/GraphEventEmitter.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/utils/searchCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/utils/indexes.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/core/TransactionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/core/segments/FileSegmentStorage.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/core/segments/ISegmentStorage.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/core/mmap/FsReadMmapBackend.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphStorage.ts",
+      "to": "src/core/mmap/IMmapBackend.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphTraversal.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/GraphTraversal.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/GraphTraversal.ts",
+      "to": "src/agent/AccessTracker.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/GraphTraversal.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/GraphTraversal.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/HierarchyManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/HierarchyManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/HierarchyManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/sqlite-register.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/ObservationManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/HierarchyManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/GraphTraversal.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/TransactionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/StorageFactory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/RefIndex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/TransitionLedger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/index.ts",
+      "to": "src/core/TransitionLedger.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/utils/IndexHealthMonitor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/utils/Diagnostics.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/TransactionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/utils/CachePressureCoordinator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/MaterializedViews.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/SpellChecker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/ObservationStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/StorageFactory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/sqlite-register.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/ObservationManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/columns/JsonlColumnStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/tiered/TieredIndex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/tiered/LRUHotTier.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/tiered/DiskWarmTier.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/tiered/BrotliColdTier.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/utils/compression/CompressedMap.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/utils/compression/ICompressionAdapter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/columns/IColumnStore.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/HierarchyManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/GraphTraversal.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/SearchManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/RankedSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/GraphRankPrior.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/HybridSearchManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/LLMQueryPlanner.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/LLMSearchExecutor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/LLMQueryPlanner.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/SemanticSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/EmbeddingService.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/EmbeddingCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/search/VectorStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/IOManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/TagManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/AnalyticsManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/CompressionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/ArchiveManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/AutoLinker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/FactExtractor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/TransitionLedger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/AccessTracker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/DecayEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/DecayScheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ConsolidationScheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/SalienceEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ContextWindowManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/MemoryFormatter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/AgentMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ArtifactManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/DreamEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/core/RefIndex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ObserverPipeline.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ObserverPipeline.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/AgentMemoryConfig.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/ContradictionDetector.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/SemanticForget.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/MemoryEngine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ImportanceScorer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/MemoryBackend.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/InMemoryBackend.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/SQLiteBackend.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/MemoryValidator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/TrajectoryCompressor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ExperienceExtractor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/HeuristicManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ObservationDedupManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ExclusionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/DecisionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ProjectContextManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ToolAffordanceManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ToolCallObserver.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/PatternDetector.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/procedural/ProcedureManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/events/EventManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/ProspectiveMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/FailureManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/PlanManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/AgentReflectionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/causal/CausalReasoner.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/rbac/RbacMiddleware.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/rbac/RoleAssignmentStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/world/WorldModelManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/retrieval/ActiveRetrievalController.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/agent/reconstruction/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/GovernanceManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ManagerContext.ts",
+      "to": "src/features/AuditLog.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/features/AutoLinker.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/features/ContradictionDetector.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/agent/MemoryValidator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/core/columns/IColumnStore.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/ObservationManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/PostgreSQLStorage.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/PostgreSQLStorage.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/RefIndex.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/RelationManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/RelationManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/RelationManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/RelationManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/RelationManager.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/RelationManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/sqlite-register.ts",
+      "to": "src/core/SQLiteStorage.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/sqlite-register.ts",
+      "to": "src/core/StorageFactory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/sqlite-register.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/core/nodeSqliteAdapter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/utils/searchCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/utils/indexes.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/search/PartialIndexAdvisor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/SQLiteStorage.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/StorageFactory.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/StorageFactory.ts",
+      "to": "src/core/PostgreSQLStorage.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/StorageFactory.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/StorageFactory.ts",
+      "to": "src/core/SQLiteStorage.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/core/TransactionManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/TransactionManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/TransactionManager.ts",
+      "to": "src/features/IOManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/TransactionManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/TransactionManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/TransitionLedger.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/TransitionLedger.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/AnalyticsManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/AnalyticsManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/ArchiveManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/ArchiveManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/ArchiveManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/ArchiveManager.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/ArchiveManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/AutoLinker.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/AutoLinker.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/utils/entityUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/security/PiiRedactor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/features/IOManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/features/GovernanceManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/BackupManager.ts",
+      "to": "src/features/IOManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/CompressionManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/CompressionManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/CompressionManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/CompressionManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/CompressionManager.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/CompressionManager.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/CompressionManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/ContradictionDetector.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/ContradictionDetector.ts",
+      "to": "src/search/SemanticSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/ContradictionDetector.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/FactExtractor.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/FactExtractor.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/FreshnessManager.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/GovernanceManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/GovernanceManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/GovernanceManager.ts",
+      "to": "src/features/AuditLog.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/GovernanceManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/GovernanceManager.ts",
+      "to": "src/utils/entityUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/GovernanceManager.ts",
+      "to": "src/security/PiiRedactor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/TagManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/IOManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/AnalyticsManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/CompressionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/ArchiveManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/StreamingExporter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/AutoLinker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/FactExtractor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/ObservationNormalizer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/KeywordExtractor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/AuditLog.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/GovernanceManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/FreshnessManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/ContradictionDetector.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/ContradictionDetector.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/SemanticForget.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/SemanticForget.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/index.ts",
+      "to": "src/features/ObservableDataModelAdapter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/features/StreamingExporter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/features/BackupManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/utils/schemas.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/security/PiiRedactor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/IOManager.ts",
+      "to": "src/agent/reconstruction/MemoryDistiller.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/features/ObservableDataModelAdapter.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/ObservableDataModelAdapter.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/ObservableDataModelAdapter.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/ObservationNormalizer.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/SemanticForget.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/SemanticForget.ts",
+      "to": "src/core/ObservationManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/SemanticForget.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/SemanticForget.ts",
+      "to": "src/search/SemanticSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/SemanticForget.ts",
+      "to": "src/features/AuditLog.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/SemanticForget.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/StreamingExporter.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/features/StreamingExporter.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/StreamingExporter.ts",
+      "to": "src/security/PiiRedactor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/StreamingExporter.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/features/TagManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BasicSearch.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BasicSearch.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BasicSearch.ts",
+      "to": "src/utils/CachePressureCoordinator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BasicSearch.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BasicSearch.ts",
+      "to": "src/search/SearchFilterChain.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BasicSearch.ts",
+      "to": "src/search/inducedSubgraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BloomPreScreener.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BloomPreScreener.ts",
+      "to": "src/search/BloomFilter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BloomPreScreener.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BM25Search.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BM25Search.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BooleanSearch.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BooleanSearch.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BooleanSearch.ts",
+      "to": "src/utils/CachePressureCoordinator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/BooleanSearch.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BooleanSearch.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BooleanSearch.ts",
+      "to": "src/search/SearchFilterChain.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/BooleanSearch.ts",
+      "to": "src/search/inducedSubgraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/EarlyTerminationManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/EarlyTerminationManager.ts",
+      "to": "src/search/HybridSearchManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/EarlyTerminationManager.ts",
+      "to": "src/search/QueryCostEstimator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/EarlyTerminationManager.ts",
+      "to": "src/search/QueryCostEstimator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/EmbeddingService.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/EmbeddingService.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/EvidencePathBuilder.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/EvidencePathBuilder.ts",
+      "to": "src/types/search.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/utils/CachePressureCoordinator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/search/SearchFilterChain.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/search/NGramIndex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/search/BloomPreScreener.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/FuzzySearch.ts",
+      "to": "src/search/inducedSubgraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/GraphRankPrior.ts",
+      "to": "src/core/GraphTraversal.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/GraphRankPrior.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/GraphRankPrior.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/GraphRankPrior.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/HybridScorer.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/search/SemanticSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/search/RankedSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/search/GraphRankPrior.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/search/SymbolicSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/types/search.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/search/EvidencePathBuilder.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/HybridSearchManager.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/IncrementalIndexer.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/IncrementalIndexer.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/IncrementalIndexer.ts",
+      "to": "src/search/EmbeddingService.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/BasicSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/RankedSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/BooleanSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/FuzzySearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/SearchSuggestions.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/SavedSearchManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/SearchManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/SearchFilterChain.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/EmbeddingService.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/EmbeddingCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/IncrementalIndexer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/VectorStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/SemanticSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/TFIDFIndexManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/TFIDFEventSync.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/QueryCostEstimator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/SymbolicSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/HybridSearchManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/GraphRankPrior.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/QueryAnalyzer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/QueryPlanner.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/ReflectionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/BM25Search.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/OptimizedInvertedIndex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/HybridScorer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/ParallelSearchExecutor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/EarlyTerminationManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/QueryPlanCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/QuantizedVectorStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/QueryLogger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/QueryParser.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/ProximitySearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/TemporalQueryParser.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/TemporalSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/NGramIndex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/LLMQueryPlanner.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/LLMSearchExecutor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/SpellChecker.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/EvidencePathBuilder.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/types/search.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/index.ts",
+      "to": "src/search/HybridSearchManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/inducedSubgraph.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/inducedSubgraph.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/LLMSearchExecutor.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/LLMSearchExecutor.ts",
+      "to": "src/types/search.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/LLMSearchExecutor.ts",
+      "to": "src/search/SearchManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/LLMSearchExecutor.ts",
+      "to": "src/search/LLMQueryPlanner.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/LLMSearchExecutor.ts",
+      "to": "src/search/EvidencePathBuilder.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/MaterializedViews.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/MaterializedViews.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/MaterializedViews.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/MaterializedViews.ts",
+      "to": "src/search/SearchFilterChain.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/OptimizedInvertedIndex.ts",
+      "to": "src/utils/IIndexHealth.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/ParallelSearchExecutor.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/ParallelSearchExecutor.ts",
+      "to": "src/search/SemanticSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/ParallelSearchExecutor.ts",
+      "to": "src/search/RankedSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/ParallelSearchExecutor.ts",
+      "to": "src/search/SymbolicSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/ParallelSearchExecutor.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/ProximitySearch.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/ProximitySearch.ts",
+      "to": "src/types/search.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/QueryAnalyzer.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/QueryCostEstimator.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/QueryLogger.ts",
+      "to": "src/types/search.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/QueryParser.ts",
+      "to": "src/types/search.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/QueryPlanCache.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/QueryPlanFormatter.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/QueryPlanner.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/utils/CachePressureCoordinator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/search/TFIDFIndexManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/search/SearchFilterChain.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/utils/IIndexHealth.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/RankedSearch.ts",
+      "to": "src/search/GraphRankPrior.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/ReflectionManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/ReflectionManager.ts",
+      "to": "src/search/HybridSearchManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/ReflectionManager.ts",
+      "to": "src/search/QueryAnalyzer.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SavedSearchManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SavedSearchManager.ts",
+      "to": "src/search/BasicSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SavedSearchManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchFilterChain.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SearchFilterChain.ts",
+      "to": "src/core/EntityStateMachine.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchFilterChain.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/TemporalSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/BasicSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/RankedSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/BooleanSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/FuzzySearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/SearchSuggestions.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/SavedSearchManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/QueryCostEstimator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/QueryAnalyzer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/QueryPlanner.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/QueryPlanCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/search/QueryPlanFormatter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/agent/AccessTracker.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SearchManager.ts",
+      "to": "src/utils/CachePressureCoordinator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SearchSuggestions.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SearchSuggestions.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SearchSuggestions.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SemanticSearch.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SemanticSearch.ts",
+      "to": "src/search/VectorStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SemanticSearch.ts",
+      "to": "src/search/EmbeddingCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SemanticSearch.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SemanticSearch.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SpellChecker.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/SpellChecker.ts",
+      "to": "src/search/NGramIndex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SpellChecker.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/SymbolicSearch.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TemporalSearch.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TemporalSearch.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TemporalSearch.ts",
+      "to": "src/search/TemporalQueryParser.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TemporalSearch.ts",
+      "to": "src/search/TemporalQueryParser.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/TFIDFEventSync.ts",
+      "to": "src/core/GraphEventEmitter.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TFIDFEventSync.ts",
+      "to": "src/search/TFIDFIndexManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TFIDFEventSync.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TFIDFEventSync.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TFIDFIndexManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/TFIDFIndexManager.ts",
+      "to": "src/utils/index.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/TFIDFIndexManager.ts",
+      "to": "src/utils/IIndexHealth.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/VectorStore.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/VectorStore.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/VectorStore.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/security/index.ts",
+      "to": "src/security/PiiRedactor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/security/index.ts",
+      "to": "src/security/ABACPolicy.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/security/index.ts",
+      "to": "src/security/RowLevelFilter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/security/index.ts",
+      "to": "src/security/APIKeyStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/security/RowLevelFilter.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/agent-memory.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/artifact.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/search.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/search.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/types.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/task-scheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/task-scheduler.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/artifact.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/artifact.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/progress.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/progress.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/reconstruction.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/event.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/result.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/types/index.ts",
+      "to": "src/types/result.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/types/types.ts",
+      "to": "src/types/task-scheduler.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/compressedCache.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/compressedCache.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/compressionUtil.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/Diagnostics.ts",
+      "to": "src/utils/IndexHealthMonitor.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/entityUtils.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/entityUtils.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/entityUtils.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/EntityValidator.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/errorSuggestions.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/formatters.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/errorSuggestions.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/compressionUtil.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/compressedCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/searchAlgorithms.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/indexes.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/searchCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/schemas.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/entityUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/parallelUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/taskScheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/operationUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/WorkerPoolManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/WorkerTaskManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/BatchProcessor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/MemoryMonitor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/relationHelpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/relationValidation.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/EntityValidator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/validators.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/SchemaValidator.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/AsyncMutex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/index.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/indexes.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/IndexHealthMonitor.ts",
+      "to": "src/utils/IIndexHealth.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/operationUtils.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/operationUtils.ts",
+      "to": "src/utils/taskScheduler.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/relationHelpers.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/relationValidation.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/schemas.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/schemas.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/SchemaValidator.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/SchemaValidator.ts",
+      "to": "src/utils/EntityValidator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/SchemaValidator.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/searchCache.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/taskScheduler.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/taskScheduler.ts",
+      "to": "src/types/task-scheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/taskScheduler.ts",
+      "to": "src/types/task-scheduler.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/validators.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/validators.ts",
+      "to": "src/utils/EntityValidator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/utils/WorkerPoolManager.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/WorkerTaskManager.ts",
+      "to": "src/utils/taskScheduler.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/WorkerTaskManager.ts",
+      "to": "src/utils/WorkerPoolManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/WorkerTaskManager.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/workers/levenshteinWorker.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/causal/CausalReasoner.ts",
+      "to": "src/core/GraphTraversal.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/causal/CausalReasoner.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/causal/index.ts",
+      "to": "src/agent/causal/CausalReasoner.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/collaboration/CollaborationAuditEnforcer.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/collaboration/CollaborationAuditEnforcer.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/collaboration/CollaborationAuditEnforcer.ts",
+      "to": "src/features/AuditLog.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/collaboration/CollaborationAuditEnforcer.ts",
+      "to": "src/utils/errors.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/events/EventManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/events/EventManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/events/EventManager.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/events/EventManager.ts",
+      "to": "src/types/event.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/events/index.ts",
+      "to": "src/agent/events/EventManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/procedural/index.ts",
+      "to": "src/agent/procedural/ProcedureManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/procedural/index.ts",
+      "to": "src/agent/procedural/ProcedureStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/procedural/index.ts",
+      "to": "src/agent/procedural/StepSequencer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureManager.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureManager.ts",
+      "to": "src/types/procedure.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureManager.ts",
+      "to": "src/agent/procedural/ProcedureStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureManager.ts",
+      "to": "src/agent/procedural/StepSequencer.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureManager.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureStore.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureStore.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureStore.ts",
+      "to": "src/core/RelationManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/procedural/ProcedureStore.ts",
+      "to": "src/types/procedure.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/procedural/StepSequencer.ts",
+      "to": "src/types/procedure.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/rbac/index.ts",
+      "to": "src/agent/rbac/RbacTypes.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/rbac/index.ts",
+      "to": "src/agent/rbac/PermissionMatrix.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/rbac/index.ts",
+      "to": "src/agent/rbac/RoleAssignmentStore.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/rbac/index.ts",
+      "to": "src/agent/rbac/RbacMiddleware.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/rbac/PermissionMatrix.ts",
+      "to": "src/agent/rbac/RbacTypes.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/rbac/RbacMiddleware.ts",
+      "to": "src/agent/rbac/RbacTypes.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/rbac/RbacMiddleware.ts",
+      "to": "src/agent/rbac/PermissionMatrix.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/rbac/RbacMiddleware.ts",
+      "to": "src/agent/rbac/RoleAssignmentStore.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/rbac/RoleAssignmentStore.ts",
+      "to": "src/agent/rbac/RbacTypes.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/CueTagContentGraph.ts",
+      "to": "src/types/reconstruction.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/CueTagContentGraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/MemoryToolkit.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/MemoryToolkit.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/MemoryDistiller.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/MemoryReconstructor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/index.ts",
+      "to": "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryDistiller.ts",
+      "to": "src/search/LLMQueryPlanner.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryDistiller.ts",
+      "to": "src/features/KeywordExtractor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryDistiller.ts",
+      "to": "src/types/reconstruction.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryDistiller.ts",
+      "to": "src/agent/reconstruction/CueTagContentGraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "to": "src/types/agent-memory.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "to": "src/agent/EpisodicMemoryManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "to": "src/types/reconstruction.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "to": "src/agent/reconstruction/CueTagContentGraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryReconstructor.ts",
+      "to": "src/search/LLMQueryPlanner.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryReconstructor.ts",
+      "to": "src/features/KeywordExtractor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryReconstructor.ts",
+      "to": "src/types/reconstruction.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryReconstructor.ts",
+      "to": "src/agent/reconstruction/CueTagContentGraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryReconstructor.ts",
+      "to": "src/agent/reconstruction/MemoryToolkit.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryReconstructor.ts",
+      "to": "src/agent/reconstruction/MemoryDistiller.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryToolkit.ts",
+      "to": "src/types/reconstruction.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/MemoryToolkit.ts",
+      "to": "src/agent/reconstruction/CueTagContentGraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "to": "src/search/LLMQueryPlanner.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "to": "src/types/reconstruction.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "to": "src/agent/reconstruction/CueTagContentGraph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "to": "src/agent/reconstruction/MemoryDistiller.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "to": "src/agent/reconstruction/MemoryReconstructor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "to": "src/agent/reconstruction/MemoryToolkit.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/reconstruction/ReconstructiveMemory.ts",
+      "to": "src/agent/reconstruction/MemoryGraphBridge.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/retrieval/ActiveRetrievalController.ts",
+      "to": "src/search/RankedSearch.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/retrieval/ActiveRetrievalController.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/retrieval/ActiveRetrievalController.ts",
+      "to": "src/agent/retrieval/QueryRewriter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/retrieval/index.ts",
+      "to": "src/agent/retrieval/QueryRewriter.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/retrieval/index.ts",
+      "to": "src/agent/retrieval/ActiveRetrievalController.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/retrieval/QueryRewriter.ts",
+      "to": "src/utils/textSimilarity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/world/index.ts",
+      "to": "src/agent/world/WorldStateSnapshot.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/world/index.ts",
+      "to": "src/agent/world/WorldModelManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/agent/world/WorldModelManager.ts",
+      "to": "src/types/index.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/world/WorldModelManager.ts",
+      "to": "src/core/EntityManager.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/world/WorldModelManager.ts",
+      "to": "src/agent/causal/CausalReasoner.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/world/WorldModelManager.ts",
+      "to": "src/agent/MemoryValidator.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/agent/world/WorldModelManager.ts",
+      "to": "src/agent/world/WorldStateSnapshot.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/audit.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/audit.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/audit.ts",
+      "to": "src/utils/entityUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/audit.ts",
+      "to": "src/features/AuditLog.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/cache.ts",
+      "to": "src/utils/searchCache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/cache.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/cache.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/check.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/check.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/check.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/decision.ts",
+      "to": "src/agent/DecisionManager.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/decision.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/decision.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/decision.ts",
+      "to": "src/utils/entityUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/diag.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/diag.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/cli/commands/diag.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/diag.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/doctor.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/doctor.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/doctor.ts",
+      "to": "src/cli/commands/diag.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/entity.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/entity.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/exclusion.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/exclusion.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/graph.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/graph.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/helpers.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/helpers.ts",
+      "to": "src/cli/options.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/helpers.ts",
+      "to": "src/cli/config.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/heuristic.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/heuristic.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/hierarchy.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/hierarchy.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/entity.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/relation.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/search.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/observation.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/tag.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/hierarchy.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/graph.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/io.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/maintenance.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/exclusion.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/decision.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/projectContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/toolAffordance.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/smoke.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/diag.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/inspect.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/heuristic.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/observationDedup.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/spell.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/check.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/cache.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/reindex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/audit.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/index.ts",
+      "to": "src/cli/commands/doctor.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/inspect.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/inspect.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/cli/commands/inspect.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/inspect.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/io.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/io.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/io.ts",
+      "to": "src/utils/entityUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/maintenance.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/maintenance.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/maintenance.ts",
+      "to": "src/utils/constants.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/maintenance.ts",
+      "to": "src/cli/interactive.ts",
+      "kind": "dynamic"
+    },
+    {
+      "from": "src/cli/commands/observation.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/observation.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/observationDedup.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/observationDedup.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/projectContext.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/projectContext.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/reindex.ts",
+      "to": "src/search/RankedSearch.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/reindex.ts",
+      "to": "src/core/GraphStorage.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/cli/commands/reindex.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/reindex.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/relation.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/relation.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/search.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/search.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/search.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/cli/commands/smoke.ts",
+      "to": "src/core/ManagerContext.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/smoke.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/spell.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/spell.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/tag.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/tag.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/toolAffordance.ts",
+      "to": "src/cli/commands/helpers.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/cli/commands/toolAffordance.ts",
+      "to": "src/cli/formatters.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/columns/JsonlColumnStore.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/columns/JsonlColumnStore.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/columns/JsonlColumnStore.ts",
+      "to": "src/core/columns/IColumnStore.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/mmap/FsReadMmapBackend.ts",
+      "to": "src/core/mmap/IMmapBackend.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/segments/FileSegmentStorage.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/core/segments/FileSegmentStorage.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/segments/FileSegmentStorage.ts",
+      "to": "src/utils/entityUtils.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/segments/FileSegmentStorage.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/segments/FileSegmentStorage.ts",
+      "to": "src/core/segments/ISegmentStorage.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/core/segments/ISegmentStorage.ts",
+      "to": "src/types/types.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/tiered/BrotliColdTier.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/tiered/BrotliColdTier.ts",
+      "to": "src/utils/compressionUtil.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/tiered/BrotliColdTier.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/tiered/BrotliColdTier.ts",
+      "to": "src/search/tiered/ITieredIndex.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/tiered/DiskWarmTier.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/tiered/DiskWarmTier.ts",
+      "to": "src/utils/durableWriteFile.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/tiered/DiskWarmTier.ts",
+      "to": "src/search/tiered/ITieredIndex.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/tiered/LRUHotTier.ts",
+      "to": "src/search/tiered/ITieredIndex.ts",
+      "kind": "type"
+    },
+    {
+      "from": "src/search/tiered/TieredIndex.ts",
+      "to": "src/search/tiered/ITieredIndex.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/search/tiered/TieredIndex.ts",
+      "to": "src/utils/logger.ts",
+      "kind": "runtime"
+    },
+    {
+      "from": "src/utils/compression/CompressedMap.ts",
+      "to": "src/utils/compression/ICompressionAdapter.ts",
+      "kind": "runtime"
+    }
+  ]
+}
