@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### CI
+
+- The Node runtime smoke now fails when its deadline expires. Before, a hung import printed PASS and exited 0. The smoke is now `scripts/node-runtime-smoke.mjs`: it loads `dist/index.cjs` and `dist/sqlite.cjs`, opens an in-memory SQLite database, and executes statements. `SMOKE_SIMULATE_HANG=1` proves the failure path.
+
 ### Documentation
 
 - Add a source dependency inventory and a ten-step plan for speed, stability, and security in docs/analysis.
