@@ -1,0 +1,11 @@
+{
+  "description": "Step-1 baseline configuration. Change a value only together with a new baseline result file.",
+  "coldImportRuns": 7,
+  "entities": 2000,
+  "observationsPerEntity": 3,
+  "writeBatchSize": 100,
+  "searchQueries": ["entity-1234", "observation", "topic-7", "no-such-term"],
+  "searchSamplesPerQuery": 7,
+  "lockWaitConcurrency": 100,
+  "eventLoopResolutionMs": 10
+}

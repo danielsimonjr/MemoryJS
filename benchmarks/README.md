@@ -1,5 +1,33 @@
 # MemoryJS Benchmarks
 
+## Step-1 Baseline
+
+Records a reproducible baseline before optimization work. It is a record, not a CI gate. The default test run does not execute it.
+
+### Run
+
+```bash
+bun run build
+bun run bench:baseline -- --out benchmarks/results/<name>.json
+```
+
+### Inputs
+
+- `baseline-bench.mjs`: the harness. It measures the built `dist` output.
+- `baseline.config.json`: the workload sizes. Change a value only together with a new result file.
+
+### Metrics
+
+- **coldImport**: time to import `dist/index.js` in a fresh Node process (median of N runs).
+- **rss**: resident memory after the workload, and peak.
+- **eventLoopDelay**: p50, p99 and max during writes, search and lock contention.
+- **search**: median `searchNodes` latency per query.
+- **write**: `createEntities` throughput and bytes on disk.
+- **lockWait**: latency of N concurrent `addObservations` calls on one entity, measured from enqueue.
+- **reviewBench**: the CPU cases from `review-bench.ts`, embedded unchanged.
+
+Each result file records the machine, OS, Node version, commit and date. Compare results only from the same machine.
+
 ## Synthetic Memory Benchmark
 
 Measures recall accuracy (R@5, R@10) and search latency across different search strategies using generated conversation data.

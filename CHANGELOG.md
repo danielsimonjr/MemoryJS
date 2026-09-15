@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The graph census check is now source-backed. CI installs the graph tool's locked dependencies, runs `bun run tools:check-census` against the committed inventory, regenerates the reports from `src` for the duplicate-symbol gate, and fails if the regenerated `file-inventory.json` differs from the committed one. Before, the gate read a committed report with `--no-regen`, and that report was stale (3 test files missing).
 - Regenerate `docs/architecture` reports from current source (676 files: 291 src, 369 tests).
 
+### Benchmarks
+
+- Add a step-1 baseline record: `benchmarks/baseline-bench.mjs`, `benchmarks/baseline.config.json` and one labelled result file under `benchmarks/results/`. The harness measures the built `dist` output: cold import time, RSS, event-loop delay, search latency (first call and warm), write throughput and bytes written, and lock wait. It embeds the `review-bench.ts` CPU cases. Run it with `bun run bench:baseline`. The default test run does not execute it.
+
 ### Tests
 
 - The FileSegmentStorage symlink-recovery test now probes symlink support once. Where the environment denies symlink creation (for example Windows without Developer Mode, EPERM), the test skips and its name shows the reason. Where symlinks work, the confinement assertion runs unchanged.
