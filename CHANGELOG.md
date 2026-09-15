@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### CI
 
 - The Node runtime smoke now fails when its deadline expires. Before, a hung import printed PASS and exited 0. The smoke is now `scripts/node-runtime-smoke.mjs`: it loads `dist/index.cjs` and `dist/sqlite.cjs`, opens an in-memory SQLite database, and executes statements. `SMOKE_SIMULATE_HANG=1` proves the failure path.
+- The graph census check is now source-backed. CI installs the graph tool's locked dependencies, runs `bun run tools:check-census` against the committed inventory, regenerates the reports from `src` for the duplicate-symbol gate, and fails if the regenerated `file-inventory.json` differs from the committed one. Before, the gate read a committed report with `--no-regen`, and that report was stale (3 test files missing).
+- Regenerate `docs/architecture` reports from current source (676 files: 291 src, 369 tests).
 
 ### Tests
 

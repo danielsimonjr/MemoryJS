@@ -1,5 +1,5 @@
 {
-  "generated": "2026-09-10",
+  "generated": "2026-09-15",
   "note": "This report groups names by OWN definition, not by call graph, then classifies each flagged name: TRUE_DUPLICATE (the actionable merge targets), ALIAS_DELEGATION (a const-alias forward to an imported symbol, not an independent body — excluded once fewer than 2 real bodies remain), and ALLOWLISTED (matches duplicate-allowlist.json: deliberately-independent local helpers/types). A flagged name may be a genuine duplicate OR a legitimately-independent local definition; a human triages TRUE_DUPLICATE entries using the defining files + public flags before merging anything.",
   "summary": {
     "runtimeDuplicates": 0,
@@ -7,7 +7,7 @@
     "runtimeByTag": {
       "TRUE_DUPLICATE": 0,
       "ALIAS_DELEGATION": 0,
-      "ALLOWLISTED": 1
+      "ALLOWLISTED": 0
     },
     "typeByTag": {
       "TRUE_DUPLICATE": 0,
@@ -15,28 +15,6 @@
       "ALLOWLISTED": 0
     }
   },
-  "runtime": [
-    {
-      "name": "levenshteinDistance",
-      "category": "function",
-      "definers": [
-        {
-          "file": "src/utils/searchAlgorithms.ts",
-          "package": "@danielsimonjr/memoryjs",
-          "public": true,
-          "tag": "PLAIN"
-        },
-        {
-          "file": "src/workers/levenshteinWorker.ts",
-          "package": "@danielsimonjr/memoryjs",
-          "public": true,
-          "tag": "ALLOWLISTED",
-          "reason": "Worker bundle is built standalone to dist/workers/ and loaded by file path at runtime (see tsup.config.ts); it deliberately keeps local copies rather than importing across the worker bundle boundary."
-        }
-      ],
-      "canonicalHint": "AMBIGUOUS",
-      "tag": "ALLOWLISTED"
-    }
-  ],
+  "runtime": [],
   "types": []
 }

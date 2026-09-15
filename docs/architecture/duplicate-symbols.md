@@ -4,7 +4,7 @@
 
 # Duplicate Symbols
 
-**Generated**: 2026-09-10 (by tools/create-dependency-graph)
+**Generated**: 2026-09-15 (by tools/create-dependency-graph)
 
 Names that are OWN-DEFINED (not merely re-exported) by >= 2 distinct files, then CLASSIFIED so the actionable subset is clear: `TRUE_DUPLICATE` (real merge targets) vs `ALIAS_DELEGATION` (a `const X = importedY` forward, excluded once <2 real bodies remain) and `ALLOWLISTED` (matches `duplicate-allowlist.json`).
 
@@ -16,8 +16,8 @@ Names that are OWN-DEFINED (not merely re-exported) by >= 2 distinct files, then
 | --- | --: |
 | **TRUE_DUPLICATE** (actionable) | 0 |
 | ALIAS_DELEGATION | 0 |
-| ALLOWLISTED | 1 |
-| _Total flagged names_ | 1 |
+| ALLOWLISTED | 0 |
+| _Total flagged names_ | 0 |
 
 ## Summary — types (interface/type/enum)
 
@@ -40,9 +40,7 @@ _None._
 
 ### ALLOWLISTED — accepted duplication (see duplicate-allowlist.json)
 
-| Name | Category | Defining files (public?, sub-tag) | Canonical hint |
-| --- | --- | --- | --- |
-| `levenshteinDistance` | function | `src/utils/searchAlgorithms.ts` (public, PLAIN)<br>`src/workers/levenshteinWorker.ts` (public, ALLOWLISTED: Worker bundle is built standalone to dist/workers/ and loaded by file path at runtime (see tsup.config.ts); it deliberately keeps local copies rather than importing across the worker bundle boundary.) | **AMBIGUOUS** |
+_None._
 
 ## Type duplicates (lower priority)
 

@@ -69,8 +69,30 @@ jobs:
             npm audit --audit-level=high --package-lock-only --prefix "$tool_dir"
           done < <(find tools -mindepth 2 -maxdepth 2 -name package-lock.json -print0)
 
-      - name: Check duplicate symbols
-        run: bun run tools:check-duplicates -- --no-regen
+      # The graph generator needs its own locked dependencies (js-yaml). Without them it
+      # cannot start, which is why the duplicate gate used to read a committed report
+      # (--no-regen) that could be arbitrarily stale.
+      - name: Install graph tool dependencies
+        run: npm ci --prefix tools/create-dependency-graph --ignore-scripts --no-audit --no-fund
+
+      # Source-backed census, step 1 of 2. MUST run before any regeneration: it compares the
+      # COMMITTED docs/architecture/file-inventory.json with a fresh walk of the repository and
+      # fails if a file was added or removed after the last regeneration.
+      - name: Check file census against the source tree
+        run: bun run tools:check-census
+
+      # Step 2 of 2. Regenerates every report by parsing src (no --no-regen), gates duplicate
+      # symbols on that fresh parse, then fails if the regenerated census differs from the
+      # committed one. Only the "generated" date line is ignored.
+      - name: Check duplicate symbols and census freshness (regenerated from source)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run tools:check-duplicates
+          if ! git diff --ignore-cr-at-eol -I '"generated":' --exit-code -- docs/architecture/file-inventory.json; then
+            echo "::error::docs/architecture/file-inventory.json is stale. Run 'bun run tools:deps' and commit docs/architecture."
+            exit 1
+          fi
 
       - name: Typecheck
         run: bun run typecheck
