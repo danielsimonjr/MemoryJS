@@ -349,23 +349,23 @@ describe('FileSegmentStorage', () => {
     it.skipIf(!symlinkSupport.ok)(
       `rejects symlink temp files during recovery${symlinkSupport.ok ? '' : ` [skipped: ${symlinkSupport.reason}]`}`,
       async () => {
-      const store = makeStore(testDir, 4);
-      const segmentsDir = join(testDir, 'segments');
-      await fs.mkdir(segmentsDir, { recursive: true });
+        const store = makeStore(testDir, 4);
+        const segmentsDir = join(testDir, 'segments');
+        await fs.mkdir(segmentsDir, { recursive: true });
 
-      const outside = join(testDir, 'outside.jsonl');
-      const target = '0.jsonl';
-      const tmp = `${target}.tmp.123.0123456789ab`;
-      await fs.writeFile(outside, 'outside content');
-      await fs.writeFile(join(segmentsDir, target), '');
-      await fs.symlink(outside, join(segmentsDir, tmp));
-      await fs.writeFile(
-        join(segmentsDir, '_manifest.json'),
-        JSON.stringify({ version: 1, moves: [{ tmp, target }] }),
-      );
+        const outside = join(testDir, 'outside.jsonl');
+        const target = '0.jsonl';
+        const tmp = `${target}.tmp.123.0123456789ab`;
+        await fs.writeFile(outside, 'outside content');
+        await fs.writeFile(join(segmentsDir, target), '');
+        await fs.symlink(outside, join(segmentsDir, tmp));
+        await fs.writeFile(
+          join(segmentsDir, '_manifest.json'),
+          JSON.stringify({ version: 1, moves: [{ tmp, target }] }),
+        );
 
-      await expect(store.loadAll()).rejects.toThrow(/regular file/);
-      expect(await fs.readFile(outside, 'utf-8')).toBe('outside content');
+        await expect(store.loadAll()).rejects.toThrow(/regular file/);
+        expect(await fs.readFile(outside, 'utf-8')).toBe('outside content');
       },
     );
   });
