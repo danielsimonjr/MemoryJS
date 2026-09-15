@@ -83,6 +83,99 @@ describe('durableWriteFile', () => {
     expect(await fs.readFile(target, 'utf8')).toBe('original');
   });
 
+  describe('Windows rename interference', () => {
+    const realPlatform = process.platform;
+    beforeEach(() => {
+      Object.defineProperty(process, 'platform', { value: 'win32' });
+    });
+    afterEach(() => {
+      Object.defineProperty(process, 'platform', { value: realPlatform });
+    });
+
+    it('never truncates the live file when the rename keeps failing', async () => {
+      const target = join(dir, 'live.jsonl');
+      await fs.writeFile(target, 'previous generation');
+      const eperm = Object.assign(new Error('EPERM: operation not permitted'), { code: 'EPERM' });
+      vi.spyOn(fs, 'rename').mockRejectedValue(eperm);
+      const realOpen = fs.open.bind(fs);
+      const opens: string[] = [];
+      vi.spyOn(fs, 'open').mockImplementation(async (...args: Parameters<typeof fs.open>) => {
+        opens.push(`${String(args[0])}|${String(args[1])}`);
+        return realOpen(...args);
+      });
+
+      await expect(durableWriteFile(target, 'next generation')).rejects.toThrow(/EPERM|replace/);
+
+      expect(await fs.readFile(target, 'utf8')).toBe('previous generation');
+      expect(opens.some(o => o.startsWith(`${target}|w`))).toBe(false);
+      const leftovers = (await fs.readdir(dir)).filter(n => n.startsWith('live.jsonl.tmp.'));
+      expect(leftovers).toHaveLength(1);
+      expect(await fs.readFile(join(dir, leftovers[0]), 'utf8')).toBe('next generation');
+    });
+
+    it('keeps only the newest synced tmp after repeated failed replaces', async () => {
+      const target = join(dir, 'locked.jsonl');
+      await fs.writeFile(target, 'previous');
+      vi.spyOn(fs, 'rename').mockRejectedValue(Object.assign(new Error('EPERM'), { code: 'EPERM' }));
+      await expect(durableWriteFile(target, 'first')).rejects.toThrow();
+      await expect(durableWriteFile(target, 'second')).rejects.toThrow();
+
+      const leftovers = (await fs.readdir(dir)).filter(n => n.startsWith('locked.jsonl.tmp.'));
+      expect(leftovers).toHaveLength(1);
+      expect(await fs.readFile(join(dir, leftovers[0]), 'utf8')).toBe('second');
+      expect(await fs.readFile(target, 'utf8')).toBe('previous');
+    });
+
+    it('retries a transient rename failure and then replaces the file', async () => {
+      const target = join(dir, 'transient.jsonl');
+      await fs.writeFile(target, 'old');
+      const rename = fs.rename.bind(fs);
+      const eperm = Object.assign(new Error('EBUSY'), { code: 'EBUSY' });
+      vi.spyOn(fs, 'rename').mockRejectedValueOnce(eperm).mockRejectedValueOnce(eperm)
+        .mockImplementation((a, b) => rename(a, b));
+
+      await durableWriteFile(target, 'new');
+      expect(await fs.readFile(target, 'utf8')).toBe('new');
+    });
+  });
+
+  describe('directory fsync', () => {
+    it('syncs the parent directory after the rename', async () => {
+      const target = join(dir, 'dirsync.txt');
+      const realOpen = fs.open.bind(fs);
+      const opened: string[] = [];
+      vi.spyOn(fs, 'open').mockImplementation(async (...args: Parameters<typeof fs.open>) => {
+        opened.push(String(args[0]));
+        return realOpen(...args);
+      });
+      await durableWriteFile(target, 'x');
+      expect(opened).toContain(dir);
+    });
+
+    for (const code of ['EISDIR', 'EPERM', 'EINVAL']) {
+      it(`tolerates ${code} from a platform without directory fsync`, async () => {
+        const target = join(dir, `tolerate-${code}.txt`);
+        const realOpen = fs.open.bind(fs);
+        vi.spyOn(fs, 'open').mockImplementation(async (...args: Parameters<typeof fs.open>) => {
+          if (String(args[0]) === dir) throw Object.assign(new Error(code), { code });
+          return realOpen(...args);
+        });
+        await durableWriteFile(target, 'ok');
+        expect(await fs.readFile(target, 'utf8')).toBe('ok');
+      });
+    }
+
+    it('propagates an unexpected directory fsync error', async () => {
+      const target = join(dir, 'dir-eio.txt');
+      const realOpen = fs.open.bind(fs);
+      vi.spyOn(fs, 'open').mockImplementation(async (...args: Parameters<typeof fs.open>) => {
+        if (String(args[0]) === dir) throw Object.assign(new Error('EIO'), { code: 'EIO' });
+        return realOpen(...args);
+      });
+      await expect(durableWriteFile(target, 'x')).rejects.toThrow(/EIO/);
+    });
+  });
+
   it('restrictSensitiveFilePermissions tightens mode', async () => {
     if (process.platform === 'win32') return; // POSIX modes don't apply
     const target = join(dir, 'secret.txt');
