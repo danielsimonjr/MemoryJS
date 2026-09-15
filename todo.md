@@ -116,9 +116,21 @@ Documenting findings for future cycles in this repo:
       - Audit the other search caches for the cross-storage defect: `BooleanSearch` has its own
         `resultCache`, and `searchCaches.ranked` / `boolean` / `fuzzy` have no storage id in
         their keys. This PR scoped only `BasicSearch`.
-      - A failed transaction rolls back by restoring the backup. `BackupManager.parseBackupGraph`
+      - [x] A failed transaction rolls back by restoring the backup. `BackupManager.parseBackupGraph`
         fills a missing `createdAt` / `lastModified` on restore, so relations without timestamps
         change after a failed commit. Owner: step 4 (TransactionManager).
+        Resolved in step 4 (branch `fix/wave1-step4-transactions`): the JSONL loader already fills
+        missing timestamps in memory on every load (kept). Rollback no longer restores through the
+        backup: it rewrites nothing when no save ran, and re-saves the exact pre-commit graph when
+        one did.
+- [ ] **Wave 1 step 4 follow-ups (branch `fix/wave1-step4-transactions`).**
+      - No test covers `appendViaSegmentSave` when both the save rename and the recovery rename
+        fail (review, confidence ~55). Expected: manifest stays, next load succeeds.
+      - Windows users behind a long antivirus/sync lock now get `DurableReplaceError` after ~785 ms
+        of retries instead of a silent in-place rewrite. Watch for reports; do not restore the
+        truncating fallback.
+      - PostgreSQL `BatchTransaction`/`TransactionManager` still have no `graphMutex` (the storage
+        has none); only `saveGraph` is transactional. Decide with the PostgreSQL owner.
       - Outside production every `loadGraph()` call deep-copies and freezes the graph: 16-24 ms
         median at 10k entities / 20k relations (measured on dist). If test suites with large
         graphs slow down, memoise the frozen view per storage generation.

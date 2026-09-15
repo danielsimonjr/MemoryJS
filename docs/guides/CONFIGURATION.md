@@ -127,9 +127,14 @@ const storage = new GraphStorage('./data/memory.jsonl');
 **JSONL Configuration**:
 | Setting | Value | Description |
 |---------|-------|-------------|
-| Atomic writes | Enabled | Uses temp file + rename |
+| Atomic writes | Enabled | Temp file, fsync, rename, directory fsync where supported |
+| Windows rename blocked | Retry, then fail | `DurableReplaceError`; the previous file is never truncated |
+| Write lock | Per storage instance | Batches and transactions hold it from read to save |
+| Process model | Single process | The lock cannot coordinate a second process |
 | Cache | In-memory | Full graph cached |
 | Deep copy | Enabled | Prevents mutation |
+
+**Single-process ownership:** open each JSONL file from one process only. Two processes that write the same file can lose each other's updates. Use SQLite when several processes need the same graph.
 
 ### SQLite Storage
 

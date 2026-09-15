@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-09-15"
   totalFiles: 292
   totalModules: 12
-  totalExports: 2025
+  totalExports: 2030
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -7569,6 +7569,8 @@ modules:
         - file: ../../utils/durableWriteFile.js
           imports:
             - durableWriteFile
+            - renameOver
+            - syncParentDirectory
         - file: ./ISegmentStorage.js
           imports:
             - ISegmentStorage
@@ -7579,8 +7581,10 @@ modules:
             - splitGraphIntoSegments
       exports:
         - FileSegmentStorage
+        - SegmentCommitIncompleteError
       classes:
         - FileSegmentStorage
+        - SegmentCommitIncompleteError
     src/core/segments/ISegmentStorage.ts:
       description: Segment Storage — Interface + Reference Impl
       externalDependencies: []
@@ -7739,7 +7743,7 @@ modules:
         - createStorage
         - createStorageFromPath
     src/core/TransactionManager.ts:
-      description: Validate all operations before executing.
+      description: Acquire the storage's manager-level write lock (`graphMutex`). The same
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
@@ -7752,6 +7756,7 @@ modules:
             - BatchOperation
             - BatchResult
             - BatchOptions
+            - OperationResult
           typeOnly: true
         - file: ./GraphStorage.js
           imports:
@@ -11894,6 +11899,7 @@ modules:
         - AsyncMutex
       interfaces:
         - AsyncMutexOptions
+        - AcquireOptions
     src/utils/BatchProcessor.ts:
       description: Batch Processor
       externalDependencies: []
@@ -12115,14 +12121,23 @@ modules:
             - randomBytes
         - module: path
           imports:
+            - basename
             - dirname
+            - join
       internalDependencies: []
       exports:
         - durableWriteFile
+        - renameOver
+        - syncParentDirectory
         - durableAppendFile
         - restrictSensitiveFilePermissions
+        - DurableReplaceError
+      classes:
+        - DurableReplaceError
       functions:
         - durableWriteFile
+        - renameOver
+        - syncParentDirectory
         - durableAppendFile
         - restrictSensitiveFilePermissions
     src/utils/entityUtils.ts:
@@ -12694,6 +12709,7 @@ modules:
           imports:
             - AsyncMutex
             - AsyncMutexOptions
+            - AcquireOptions
           reExport: true
         - file: ./textSimilarity.js
           imports:
@@ -12965,6 +12981,7 @@ modules:
         - JsonSchema
         - AsyncMutex
         - AsyncMutexOptions
+        - AcquireOptions
         - tokenizeStripped
         - textTokenize
         - buildTFVector
@@ -13233,6 +13250,7 @@ modules:
         - JsonSchema
         - AsyncMutex
         - AsyncMutexOptions
+        - AcquireOptions
         - tokenizeStripped
         - buildTFVector
         - cosineSimilarity
@@ -14143,15 +14161,15 @@ reachability:
 statistics:
   totalTypeScriptFiles: 292
   totalModules: 12
-  totalLinesOfCode: 102283
-  totalExports: 2025
-  totalClasses: 231
-  totalInterfaces: 619
-  totalFunctions: 320
+  totalLinesOfCode: 102570
+  totalExports: 2030
+  totalClasses: 233
+  totalInterfaces: 620
+  totalFunctions: 322
   totalTypeGuards: 30
   totalEnums: 4
   totalConstants: 123
-  totalReExports: 1335
+  totalReExports: 1336
   totalTypeOnlyImports: 476
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
@@ -14161,4 +14179,4 @@ statistics:
   orphanedFiles: 0
   testOnlyFiles: 0
   unusedFilesCount: 0
-  unusedExportsCount: 69
+  unusedExportsCount: 71

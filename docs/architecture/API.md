@@ -1524,8 +1524,11 @@ createRelation(relation: CreateRelation): BatchTransaction
 deleteRelation(relation: Relation): BatchTransaction
 addObservations(entityName: string, contents: string[]): BatchTransaction
 deleteObservations(entityName: string, contents: string[]): BatchTransaction
-async execute(options?: { force?: boolean }): Promise<BatchResult>
+async execute(options?: BatchOptions): Promise<BatchResult>
+// BatchOptions: { stopOnError?: boolean; validateBeforeExecute?: boolean; signal?: AbortSignal }
 ```
+
+`execute()` and `TransactionManager.commit()` hold the storage write lock (`graphMutex`) from the graph load until the save or rollback ends. `signal` cancels only while the call waits for the lock. JSONL storage is single-process.
 
 ---
 

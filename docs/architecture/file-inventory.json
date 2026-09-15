@@ -1,12 +1,12 @@
 {
   "generated": "2026-09-15",
-  "totalFiles": 682,
+  "totalFiles": 683,
   "byDisposition": {
     "reachable": 288,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 374,
+    "test": 375,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 292,
-    "tests": 374,
+    "tests": 375,
     "tools": 10,
     "config": 2
   },
@@ -1089,7 +1089,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1956
+      "loc": 1968
     },
     {
       "file": "src/core/GraphTraversal.ts",
@@ -1159,7 +1159,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 597
+      "loc": 624
     },
     {
       "file": "src/core/RefIndex.ts",
@@ -1180,7 +1180,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 663
+      "loc": 685
     },
     {
       "file": "src/core/segments/ISegmentStorage.ts",
@@ -1215,7 +1215,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 693
+      "loc": 766
     },
     {
       "file": "src/core/TransitionLedger.ts",
@@ -1838,14 +1838,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2477
+      "loc": 2486
     },
     {
       "file": "src/utils/AsyncMutex.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 120
+      "loc": 174
     },
     {
       "file": "src/utils/BatchProcessor.ts",
@@ -1908,7 +1908,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 157
+      "loc": 247
     },
     {
       "file": "src/utils/entityUtils.ts",
@@ -2238,6 +2238,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 227
+    },
+    {
+      "file": "tests/integration/transaction-isolation.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 230
     },
     {
       "file": "tests/integration/worker-pool-integration.test.ts",
@@ -3609,7 +3616,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 355
+      "loc": 395
     },
     {
       "file": "tests/unit/core/rebuild-native.test.ts",
@@ -3679,7 +3686,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 366
+      "loc": 442
     },
     {
       "file": "tests/unit/core/sqlite-content-hash-migration.test.ts",
@@ -4512,7 +4519,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 170
+      "loc": 232
     },
     {
       "file": "tests/unit/utils/BatchProcessor.test.ts",
@@ -4568,7 +4575,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 106
+      "loc": 199
     },
     {
       "file": "tests/unit/utils/entityUtils.test.ts",

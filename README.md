@@ -465,7 +465,7 @@ ctx.rbacMiddleware
 | Transactions | Basic | Full ACID with WAL mode |
 | Full-Text Search | Basic | FTS5 with BM25 ranking |
 | Performance | Good | 3-10x faster |
-| Concurrency | Single-threaded | Thread-safe with async-mutex |
+| Concurrency | One owning process; in-process writes serialized | Thread-safe with async-mutex |
 | Best For | Small graphs, debugging | Large graphs (10k+ entities) |
 
 ### JSONL Storage
@@ -477,7 +477,10 @@ const ctx = new ManagerContext('./memory.jsonl');
 Features:
 - Human-readable line-delimited JSON
 - In-memory caching with write-through invalidation
-- Atomic writes via temp file + rename
+- Atomic writes: temp file, fsync, rename, then directory fsync where the platform supports it
+- The live file is never rewritten in place. If Windows blocks the rename after retries, the write fails and the previous file stays intact.
+- Batches and transactions hold the storage write lock from read to save
+- **Single-process only.** Open each JSONL file from one process. The write lock cannot coordinate a second process; use SQLite for multi-process access.
 - Backward compatibility for legacy formats
 
 ### SQLite Storage
