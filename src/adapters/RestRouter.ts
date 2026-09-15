@@ -86,20 +86,6 @@ export interface RouteDefinition {
   handler: RestHandler;
 }
 
-/**
- * Dispatch table over typed routes.
- *
- * @example
- * ```typescript
- * const router = new RestRouter(ctx);
- * router.get('/entities/:name', async (req, ctx) => {
- *   const entity = await ctx.entityManager.getEntity(req.params.name);
- *   return entity ? { status: 200, body: entity } : { status: 404, body: { error: 'not found' } };
- * });
- * // Wire into your framework:
- * fastify.all('/api/*', async (req, reply) => reply.code(...).send(await router.dispatch(...)));
- * ```
- */
 /** Optional router configuration. */
 export interface RestRouterOptions {
   /**
@@ -161,6 +147,20 @@ const DEFAULT_LIMITS: RestLimits = {
   maxObservationLength: 16_384,
 };
 
+/**
+ * Dispatch table over typed routes.
+ *
+ * @example
+ * ```typescript
+ * const router = new RestRouter(ctx);
+ * router.get('/entities/:name', async (req, ctx) => {
+ *   const entity = await ctx.entityManager.getEntity(req.params.name);
+ *   return entity ? { status: 200, body: entity } : { status: 404, body: { error: 'not found' } };
+ * });
+ * // Wire into your framework:
+ * fastify.all('/api/*', async (req, reply) => reply.code(...).send(await router.dispatch(...)));
+ * ```
+ */
 export class RestRouter {
   private readonly routes: RouteDefinition[] = [];
   private readonly auth?: ApiKeyAuthMiddleware;
@@ -267,11 +267,10 @@ export class RestRouter {
   private authorize(req: RestRequest): RestRequest | RestResponse {
     const client = req.clientAddress ? `addr:${clientBucket(req.clientAddress)}` : undefined;
     if (this.auth) {
-      const failures = client ? this.preAuthLimiter : undefined;
       const outcome = this.auth.authenticate(req);
       if (!outcome.ok) {
-        if (outcome.response.status !== 401 || !failures || !client) return outcome.response;
-        const verdict = failures.check(client);
+        if (outcome.response.status !== 401 || !this.preAuthLimiter || !client) return outcome.response;
+        const verdict = this.preAuthLimiter.check(client);
         return verdict.allowed ? outcome.response : tooManyRequests(verdict.resetAt);
       }
       req = { ...req, auth: outcome.auth };
@@ -446,7 +445,9 @@ export class RestRouter {
           found = [];
           for (const projectId of scope) {
             for (const e of (await c.searchManager.searchNodes(q, { projectId })).entities) {
-              if (!seen.has(e.name)) { seen.add(e.name); found.push(e); }
+              if (seen.has(e.name)) continue;
+              seen.add(e.name);
+              found.push(e);
             }
           }
         }
@@ -711,13 +712,17 @@ function projectScope(req: RestRequest): ReadonlySet<string> | null {
   return ids ? new Set(ids) : null;
 }
 
+function inScope(scope: ReadonlySet<string>, entity: Entity): boolean {
+  return entity.projectId !== undefined && scope.has(entity.projectId);
+}
+
 function canAccess(req: RestRequest, entity: Entity): boolean {
   const scope = projectScope(req);
-  return !scope || (entity.projectId !== undefined && scope.has(entity.projectId));
+  return !scope || inScope(scope, entity);
 }
 
 function visibleEntities(req: RestRequest, entities: readonly Entity[]): Entity[] {
   const scope = projectScope(req);
   if (!scope) return [...entities];
-  return entities.filter((e) => e.projectId !== undefined && scope.has(e.projectId));
+  return entities.filter((e) => inScope(scope, e));
 }

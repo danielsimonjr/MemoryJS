@@ -1001,7 +1001,8 @@ The default routes apply these rules to a key with `projectIds`:
 |---|---|
 | `GET /entities`, `GET /search` | Only entities whose `projectId` is in the list. The filter runs before pagination, so `total` and `nextCursor` count visible entities only. |
 | `GET /entities/:name`, `DELETE /entities/:name` | An entity outside the list returns `404 Not Found`, the same response as a missing entity. The router does not reveal existence. |
-| `POST /entities` | The body must name an allowed `projectId` (else 403). An existing name returns 409, because names are unique across projects. |
+| `DELETE /entities/:name` | Returns 409 when a relation connects the entity to an existing entity outside the list, because the delete would also remove that relation. |
+| `POST /entities` | The body must name an allowed `projectId` (else 403). An existing name returns 409, because names are unique across projects. A create that a concurrent create of the same name pre-empts also returns 409. |
 
 Entities without a `projectId` are hidden from scoped keys. Scoped keys need
 `entities:read` for `GET` under the default scope mapping. An empty
@@ -1011,8 +1012,10 @@ full access, and `allowUnauthenticated: true` keeps full access.
 **Request budgets.**
 
 - With `auth` set, failed authentications consume a per-address budget
-  (default 60, refilled at 1 per second). When the budget is empty, the router
-  returns 429 before it checks the key. Set `preAuthLimiter` to change it.
+  (default 60, refilled at 1 per second). When the budget of an address is
+  empty, a request with an invalid key gets 429. A valid key still passes.
+  Requests without `clientAddress` have no budget. IPv6 addresses share a
+  budget per /64. Set `preAuthLimiter` to change it.
 - `rateLimiter` adds an optional per-key budget for accepted requests.
 - `serve()` returns 408 when a JSON body takes longer than `bodyTimeoutMs`
   (default 10 000 ms). Configure `headersTimeout` and `requestTimeout` on the

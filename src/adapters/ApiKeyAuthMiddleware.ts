@@ -51,6 +51,7 @@ export const DEFAULT_WRITE_SCOPE = 'entities:write';
  */
 export const DEFAULT_READ_SCOPE = 'entities:read';
 
+/** Constructor options for {@link ApiKeyAuthMiddleware}. */
 export interface ApiKeyAuthOptions {
   /** The key store to validate against. */
   store: APIKeyStore;
@@ -158,8 +159,7 @@ export class ApiKeyAuthMiddleware {
    * Public so custom handlers can enforce additional scopes themselves.
    */
   checkScopes(auth: AuthContext, method: RestMethod, path: string): RestResponse | null {
-    const required = this.scopesFor?.(method, path) ??
-      (method !== 'GET' ? [DEFAULT_WRITE_SCOPE] : auth.projectIds ? [DEFAULT_READ_SCOPE] : []);
+    const required = this.scopesFor?.(method, path) ?? defaultScopes(auth, method);
     if (required.length === 0) return null;
     const have = new Set(auth.scopes);
     const missing = required.filter((s) => !have.has(s));
@@ -170,6 +170,16 @@ export class ApiKeyAuthMiddleware {
       body: { error: 'forbidden', requiredScopes: required },
     };
   }
+}
+
+/**
+ * Default scope mapping: mutations need the write scope; a `GET` needs the
+ * read scope only for a project-scoped key.
+ */
+function defaultScopes(auth: AuthContext, method: RestMethod): readonly string[] {
+  if (method !== 'GET') return [DEFAULT_WRITE_SCOPE];
+  if (auth.projectIds) return [DEFAULT_READ_SCOPE];
+  return [];
 }
 
 /** Uniform 401 envelope — no key-state detail leaks to the caller. */

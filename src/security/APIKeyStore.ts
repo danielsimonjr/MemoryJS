@@ -57,6 +57,7 @@ export interface KeyRecord {
   metadata?: Record<string, unknown>;
 }
 
+/** Options for {@link APIKeyStore.issue}. */
 export interface IssueOptions {
   ownerId?: string;
   scopes?: readonly string[];
@@ -72,11 +73,25 @@ export interface IssueOptions {
   metadata?: Record<string, unknown>;
 }
 
+/** Result of {@link APIKeyStore.issue}. */
 export interface IssueResult {
   /** Plaintext key — show to the caller once, then discard. */
   plaintext: string;
   /** Stored record (without the plaintext). */
   record: Readonly<KeyRecord>;
+}
+
+/** Constructor options for {@link APIKeyStore}. */
+export interface APIKeyStoreOptions {
+  /**
+   * Called synchronously after every state mutation (`issue`, `revoke`,
+   * `load`) with the mutation kind. Enables auto-persist wiring — e.g.
+   * `onMutate: () => fs.writeFileSync(path, JSON.stringify(store.serialize()))`
+   * — so the durability requirement documented on {@link APIKeyStore.issue}
+   * / {@link APIKeyStore.revoke} is met without every call site
+   * remembering to persist.
+   */
+  onMutate?: (kind: 'issue' | 'revoke' | 'load') => void;
 }
 
 /**
@@ -98,19 +113,6 @@ export interface IssueResult {
  * if (v.valid) console.log('hello', v.ownerId);
  * ```
  */
-/** Constructor options for {@link APIKeyStore}. */
-export interface APIKeyStoreOptions {
-  /**
-   * Called synchronously after every state mutation (`issue`, `revoke`,
-   * `load`) with the mutation kind. Enables auto-persist wiring — e.g.
-   * `onMutate: () => fs.writeFileSync(path, JSON.stringify(store.serialize()))`
-   * — so the durability requirement documented on {@link APIKeyStore.issue}
-   * / {@link APIKeyStore.revoke} is met without every call site
-   * remembering to persist.
-   */
-  onMutate?: (kind: 'issue' | 'revoke' | 'load') => void;
-}
-
 export class APIKeyStore {
   /** keyId -> record. */
   private records: Map<string, KeyRecord> = new Map();

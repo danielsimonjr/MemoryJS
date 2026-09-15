@@ -32,6 +32,7 @@ export interface RateLimiterConfig {
   bucketTtlMs?: number;
 }
 
+/** Outcome of {@link RateLimiter.check} or {@link RateLimiter.peek}. */
 export interface RateLimitVerdict {
   /** Whether the request is allowed (a token was consumed). */
   allowed: boolean;
@@ -52,6 +53,10 @@ interface Bucket {
 /** Default maximum bucket count. */
 export const DEFAULT_MAX_BUCKETS = 10_000;
 
+/**
+ * Token-bucket limiter with idle expiry and a hard bucket cap (LRU eviction).
+ * State is per process.
+ */
 export class RateLimiter {
   private readonly capacity: number;
   private readonly refillPerSecond: number;

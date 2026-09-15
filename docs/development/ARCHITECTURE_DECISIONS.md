@@ -789,7 +789,7 @@ The default `RestRouter` routes read the whole graph. API-key scopes such as `en
 - Entities without a `projectId` are hidden from scoped keys.
 - Scoped keys need `entities:read` for `GET` under the default scope mapping.
 - The explicit `allowUnauthenticated: true` opt-in keeps full access.
-- When a router with `auth` starts, it logs one warning per process with the number of unscoped keys.
+- When a router with `auth` starts, it logs one warning per process with the number of unscoped keys. The count is taken at router construction, so load keys before you create the router.
 
 ### Rationale for default open
 
