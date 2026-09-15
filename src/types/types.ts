@@ -49,6 +49,7 @@ export const ENTITY_STATUS_TRANSITIONS: ReadonlyArray<readonly [EntityStatus, En
   ['archived', 'published'],
 ] as const;
 
+/** A knowledge-graph node: a uniquely named item with a type and observations. */
 export interface Entity {
   /** Unique name identifying the entity */
   name: string;
@@ -1929,6 +1930,14 @@ export interface BatchOptions {
    * Helps catch errors early before making any changes.
    */
   validateBeforeExecute?: boolean;
+
+  /**
+   * Cancels the batch while it waits for the storage write lock. A batch
+   * cancelled before it acquires the lock applies no operation. The signal
+   * has no effect after the lock is acquired: the batch then runs to
+   * completion so that it commits or fails as one unit.
+   */
+  signal?: AbortSignal;
 }
 
 // ==================== Graph Change Events Types (Phase 10 Sprint 2) ====================
