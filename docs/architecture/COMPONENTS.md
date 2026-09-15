@@ -1750,10 +1750,11 @@ interface AuthContext {
   keyId: string;
   scopes: readonly string[];
   ownerId?: string;
+  projectIds?: readonly string[];
 }
 ```
 
-Reads `Authorization: Bearer <key>` (preferred) with an `X-Api-Key` fallback. Default scope policy: `GET` requires no scopes; `POST`/`PUT`/`PATCH`/`DELETE` require `entities:write`. Failure responses are `401 { error: 'unauthorized' }` (missing/unknown/revoked/expired key — the specific reason is deliberately kept off the wire, available server-side via `onReject`) or `403 { error: 'forbidden', requiredScopes }` (valid key, insufficient scope). Composes with `RestRouter.withDefaults(ctx, { auth })` or any adapter building `RestRequest`/`RestResponse` envelopes. Previously `APIKeyStore` existed with sound crypto (SHA-256 of a 192-bit random key, timing-safe comparison) but had zero call sites wiring it into the REST surface — this middleware closes that gap.
+Reads `Authorization: Bearer <key>` (preferred) with an `X-Api-Key` fallback. Default scope policy: `GET` requires no scopes (a key with `projectIds` needs `entities:read`); `POST`/`PUT`/`PATCH`/`DELETE` require `entities:write`. `AuthContext.projectIds` drives tenancy in the `RestRouter` default routes: list and search filter before pagination, and direct reads and deletes outside the key's projects return 404. `RestRouter` also applies a pre-authentication budget for failed keys, an optional per-key `RateLimiter` (idle expiry, `maxBuckets` LRU cap, per process), a body-read deadline and input limits. Failure responses are `401 { error: 'unauthorized' }` (missing/unknown/revoked/expired key — the specific reason is deliberately kept off the wire, available server-side via `onReject`) or `403 { error: 'forbidden', requiredScopes }` (valid key, insufficient scope). Composes with `RestRouter.withDefaults(ctx, { auth })` or any adapter building `RestRequest`/`RestResponse` envelopes. Previously `APIKeyStore` existed with sound crypto (SHA-256 of a 192-bit random key, timing-safe comparison) but had zero call sites wiring it into the REST surface — this middleware closes that gap.
 
 ---
 

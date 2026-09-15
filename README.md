@@ -134,6 +134,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | Enforced governance — every EntityManager mutation policy-checked + audited | `MEMORY_GOVERNANCE_ENABLED=true` (`GovernanceError` on denial) |
 | Tamper-evident audit trail (SHA-256 hash chain, `verifyChain()`) + query CLI | `ctx.auditLog` / `memory audit log\|history\|verify\|stats` |
 | REST API-key auth (Bearer / X-Api-Key, scopes, timing-safe) | `ApiKeyAuthMiddleware` + `RestRouter` `auth` option |
+| REST tenancy — keys scoped to projects. **A key without `projectIds` can access ALL projects.** | `APIKeyStore.issue({ projectIds })` |
 | Strict-mode attribution enforcer | `CollaborationAuditEnforcer` (requires `agentId` on every mutation) |
 | RBAC — role / permission / matrix / middleware | `ctx.rbacMiddleware.checkPermission()` / `ctx.roleAssignmentStore` |
 | ABAC + row-level security + API-key scoping | `src/security/abac.ts`, `rls.ts`, `apiKeys.ts` |

@@ -2225,15 +2225,17 @@ async consolidate(options?: { newRelations?: Relation[]; apply?: boolean }): Pro
 ```typescript
 new ApiKeyAuthMiddleware(options: {
   store: APIKeyStore;
-  requiredScopes?: (method: RestMethod, path: string) => readonly string[];  // default: GET → [], others → ['entities:write']
+  requiredScopes?: (method: RestMethod, path: string) => readonly string[];  // default: GET → [] (['entities:read'] for a key with projectIds), others → ['entities:write']
   onReject?: (info: { reason: string; method: RestMethod; path: string }) => void;
 })
 
 extractKey(req: RestRequest): string | null       // Authorization: Bearer <key>, falls back to X-Api-Key
 authenticate(req: RestRequest): { ok: true; auth: AuthContext } | { ok: false; response: RestResponse }
 
-interface AuthContext { keyId: string; scopes: readonly string[]; ownerId?: string }
+interface AuthContext { keyId: string; scopes: readonly string[]; ownerId?: string; projectIds?: readonly string[] }
 ```
+
+`APIKeyStore.issue({ projectIds })` scopes a key to projects; the default `RestRouter` routes then filter list and search before pagination, return 404 for direct reads and deletes outside those projects, and require an allowed `projectId` on create. A key without `projectIds` keeps full access. `RestRouterOptions` also accepts `preAuthLimiter`, `rateLimiter`, `bodyTimeoutMs` and `limits`. See the security guide section "REST tenancy and request budgets".
 
 `401 { error: 'unauthorized' }` for a missing/unknown/revoked/expired key — the specific rejection reason is intentionally not serialized to the client (available server-side via `onReject` for logging). `403 { error: 'forbidden', requiredScopes }` for a valid key lacking a required scope.
 

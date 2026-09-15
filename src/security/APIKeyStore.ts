@@ -42,9 +42,9 @@ export interface KeyRecord {
   /** Permission/scope set, e.g. `['read:entities', 'write:relations']`. */
   scopes: readonly string[];
   /**
-   * Projects the key may access. When absent, the key has access to every
-   * project (the behavior of keys issued before project scoping). An empty
-   * array grants access to no project data.
+   * Projects the key may access. **When absent, the key can access ALL
+   * projects** (the behavior of keys issued before project scoping). An
+   * empty array grants access to no project data.
    */
   projectIds?: readonly string[];
   /** ISO 8601 issuance timestamp. */
@@ -60,7 +60,10 @@ export interface KeyRecord {
 export interface IssueOptions {
   ownerId?: string;
   scopes?: readonly string[];
-  /** Allowed projects. Omit for access to every project. */
+  /**
+   * Allowed projects. **Omit it and the key can access ALL projects.**
+   * Pass `[]` for a key with no project data access.
+   */
   projectIds?: readonly string[];
   /** TTL in seconds; mutually exclusive with `expiresAt`. */
   ttlSeconds?: number;
@@ -121,6 +124,10 @@ export class APIKeyStore {
 
   /**
    * Issue a new key. The plaintext is returned exactly once.
+   *
+   * **Default open:** a key issued without `options.projectIds` can access
+   * ALL projects through the default `RestRouter` routes. Pass `projectIds`
+   * to isolate tenants.
    *
    * **Persistence requirement:** this store is in-memory. The new record
    * exists only in this process until the caller persists `serialize()`.
@@ -283,6 +290,13 @@ export class APIKeyStore {
     this.records = nextRecords;
     this.byHash = nextByHash;
     this.onMutate?.('load');
+  }
+
+  /** Number of non-revoked keys without `projectIds` (keys with access to ALL projects). */
+  unscopedKeyCount(): number {
+    let count = 0;
+    for (const r of this.records.values()) if (!r.revokedAt && !r.projectIds) count++;
+    return count;
   }
 
   /** Total registered keys (including revoked). */

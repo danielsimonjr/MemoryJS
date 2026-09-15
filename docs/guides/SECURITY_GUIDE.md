@@ -984,6 +984,50 @@ the client, only to your `onReject` callback for server-side logging) or
 `issue()`/`revoke()` — a crash between the call and your persistence step
 can resurrect a revoked key on the next `load()`.
 
+### REST tenancy and request budgets (Unreleased)
+
+**Project-scoped keys.** Give a key a list of projects to isolate tenants:
+
+```typescript
+const { plaintext } = store.issue({
+  scopes: ['entities:read', 'entities:write'],
+  projectIds: ['project-a'],
+});
+```
+
+The default routes apply these rules to a key with `projectIds`:
+
+| Route | Rule |
+|---|---|
+| `GET /entities`, `GET /search` | Only entities whose `projectId` is in the list. The filter runs before pagination, so `total` and `nextCursor` count visible entities only. |
+| `GET /entities/:name`, `DELETE /entities/:name` | An entity outside the list returns `404 Not Found`, the same response as a missing entity. The router does not reveal existence. |
+| `POST /entities` | The body must name an allowed `projectId` (else 403). An existing name returns 409, because names are unique across projects. |
+
+Entities without a `projectId` are hidden from scoped keys. Scoped keys need
+`entities:read` for `GET` under the default scope mapping. An empty
+`projectIds` array grants no project data. A key without `projectIds` keeps
+full access, and `allowUnauthenticated: true` keeps full access.
+
+**Request budgets.**
+
+- With `auth` set, failed authentications consume a per-address budget
+  (default 60, refilled at 1 per second). When the budget is empty, the router
+  returns 429 before it checks the key. Set `preAuthLimiter` to change it.
+- `rateLimiter` adds an optional per-key budget for accepted requests.
+- `serve()` returns 408 when a JSON body takes longer than `bodyTimeoutMs`
+  (default 10 000 ms). Configure `headersTimeout` and `requestTimeout` on the
+  Node `http.Server` for the header phase.
+- `dispatch()` applies `maxBodyBytes` to the parsed body.
+- `limits` bounds the search query length, name length, observation count and
+  observation length.
+
+`RateLimiter` state is per process. Buckets expire when idle, and at most
+`maxBuckets` (default 10 000) exist. N processes allow N times the rate. Use a
+shared store (for example Redis) for multi-process deployments.
+
+**Error bodies.** A 4xx response carries a fixed message for its status. The
+router does not return thrown error text or echo the request path.
+
 ### Decompression-bomb caps (Unreleased, Sec8)
 
 **Before:** `decompress()`/`decompressFile()` (Brotli) and the zlib

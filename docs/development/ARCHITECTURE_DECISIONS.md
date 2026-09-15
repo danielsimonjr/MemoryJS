@@ -768,6 +768,50 @@ Code examples or links to implementation.
 
 ---
 
+## ADR-012: REST tenancy — API keys scoped to projects
+
+### Status
+
+Accepted (the default-open rule). One item below is **proposed, needs owner approval**.
+
+### Context
+
+The default `RestRouter` routes read the whole graph. API-key scopes such as `entities:write` limit actions, but they do not isolate tenants. A key could list, search, read and delete every entity.
+
+### Decision
+
+- Each API key record has an optional `projectIds` list.
+- **Default open: a key without `projectIds` has access to ALL projects.** Keys issued before this decision keep their behavior. An empty list (`[]`) grants no project data.
+- The default routes filter list and search by the key's projects before pagination.
+- A direct read or delete of an entity outside the key's projects returns 404, the same response as a missing entity. The router uses 404, not 403, so that responses do not reveal existence.
+- A scoped delete returns 409 when a relation connects the entity to an entity the key cannot see. This stops a tenant from changing another tenant's relations.
+- A scoped create must name an allowed `projectId` (403 otherwise). Entity names are unique across projects, so an existing name returns 409.
+- Entities without a `projectId` are hidden from scoped keys.
+- Scoped keys need `entities:read` for `GET` under the default scope mapping.
+- The explicit `allowUnauthenticated: true` opt-in keeps full access.
+- When a router with `auth` starts, it logs one warning per process with the number of unscoped keys.
+
+### Rationale for default open
+
+Existing deployments issue keys without projects. A default-closed rule would lock those keys out at upgrade. That change breaks the public API, so it belongs in a major version. The startup warning makes unscoped keys visible until then.
+
+### Proposed (proposed, needs owner approval)
+
+In the next major version, `APIKeyStore.issue()` requires an explicit `projectIds` value for new keys. `[]` is a valid explicit value. Omitting the field throws. This item is not implemented.
+
+### Consequences
+
+**Positive:**
+- Tenants are isolated without changes to storage.
+- Totals and cursors reveal no records from other projects.
+
+**Negative:**
+- A 409 on create reveals that a name exists in some project.
+- A key with many projects runs one search per project.
+- Rate-limit state is per process.
+
+---
+
 ## See Also
 
 - [../architecture/ARCHITECTURE.md](../architecture/ARCHITECTURE.md) - Full architecture documentation

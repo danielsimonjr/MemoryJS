@@ -19,6 +19,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
+import { isIP } from 'net';
 import type { ManagerContext } from '../core/ManagerContext.js';
 import { logger } from '../utils/logger.js';
 import { paginate, parsePaginationParams } from './pagination.js';
@@ -50,7 +51,9 @@ export interface RestRequest {
   /**
    * Network address of the client. `serve()` fills it from the socket.
    * The router uses it only to key rate-limit buckets; it is never trusted
-   * for authorization. Requests without it share one bucket.
+   * for authorization. Without it, the pre-authentication budget does not
+   * apply. Behind a reverse proxy, set it from a header that only the proxy
+   * can write. IPv6 addresses share a bucket per /64.
    */
   clientAddress?: string;
 }
@@ -123,9 +126,11 @@ export interface RestRouterOptions {
   /**
    * Budget for requests that FAIL authentication, keyed by
    * {@link RestRequest.clientAddress}. When the budget of an address is
-   * empty, the router returns 429 before it examines the key. Only failed
-   * attempts consume tokens. Default when `auth` is set: 60 failures,
-   * refilled at 1 per second, at most 10 000 addresses.
+   * empty, a request with an invalid key gets 429; a valid key still
+   * passes, so a flood from a shared address cannot lock out valid keys.
+   * Only failed attempts consume tokens, and no request body is read for
+   * them. Default when `auth` is set: 60 failures, refilled at 1 per second,
+   * at most 10 000 addresses.
    */
   preAuthLimiter?: RateLimiter;
   /**
@@ -185,6 +190,7 @@ export class RestRouter {
     this.preAuthLimiter = options?.preAuthLimiter ??
       (this.auth ? new RateLimiter({ capacity: 60, refillPerSecond: 1 }) : undefined);
     this.rateLimiter = options?.rateLimiter;
+    if (this.auth) warnUnscopedKeysOnce(this.auth.unscopedKeyCount());
   }
 
   /** Register a `GET` route. */
@@ -259,19 +265,19 @@ export class RestRouter {
    * rejection response.
    */
   private authorize(req: RestRequest): RestRequest | RestResponse {
-    const client = `addr:${req.clientAddress ?? 'unknown'}`;
+    const client = req.clientAddress ? `addr:${clientBucket(req.clientAddress)}` : undefined;
     if (this.auth) {
-      const budget = this.preAuthLimiter?.peek(client);
-      if (budget && !budget.allowed) return tooManyRequests(budget.resetAt);
+      const failures = client ? this.preAuthLimiter : undefined;
       const outcome = this.auth.authenticate(req);
       if (!outcome.ok) {
-        if (outcome.response.status === 401) this.preAuthLimiter?.check(client);
-        return outcome.response;
+        if (outcome.response.status !== 401 || !failures || !client) return outcome.response;
+        const verdict = failures.check(client);
+        return verdict.allowed ? outcome.response : tooManyRequests(verdict.resetAt);
       }
       req = { ...req, auth: outcome.auth };
     }
     if (this.rateLimiter) {
-      const verdict = this.rateLimiter.check(req.auth ? `key:${req.auth.keyId}` : client);
+      const verdict = this.rateLimiter.check(req.auth ? `key:${req.auth.keyId}` : client ?? 'addr:unknown');
       if (!verdict.allowed) return tooManyRequests(verdict.resetAt);
     }
     return req;
@@ -402,12 +408,22 @@ export class RestRouter {
         const created = await c.entityManager.createEntities([
           { name, entityType, observations, ...(projectId !== undefined ? { projectId } : {}) },
         ]);
+        // A concurrent create of the same name makes createEntities skip it.
+        if (scope && created.length === 0) return { status: 409, body: { error: 'Conflict' } };
         return { status: 201, body: { created } };
       })
       .delete('/entities/:name', async (req, c) => {
         if (projectScope(req)) {
-          const entity = await c.entityManager.getEntity(req.params.name!);
+          const name = req.params.name!;
+          const entity = await c.entityManager.getEntity(name);
           if (!entity || !canAccess(req, entity)) return notFound();
+          // Deleting an entity also deletes its relations. Refuse when one
+          // of them reaches an existing entity the key cannot see. Uses the
+          // relation index, not a full graph load.
+          for (const r of await c.relationManager.getRelations(name)) {
+            const other = await c.entityManager.getEntity(r.from === name ? r.to : r.from);
+            if (other && !canAccess(req, other)) return { status: 409, body: { error: 'Conflict' } };
+          }
         }
         await c.entityManager.deleteEntities([req.params.name!]);
         return { status: 204, body: null };
@@ -417,14 +433,25 @@ export class RestRouter {
         if (q.length > limits.maxQueryLength) {
           return { status: 400, body: { error: 'Query too long' } };
         }
-        // Push a single allowed project down to the search layer; always
-        // filter again before pagination. Relations are not returned.
+        // For a few projects, push each one down to the search layer, so the
+        // search result cap is not consumed by other tenants' matches. Above
+        // MAX_PUSHDOWN_PROJECTS, run one search to bound the cost per request.
+        // Filter again before pagination. Relations are not returned.
         const scope = projectScope(req);
-        const result = scope?.size === 1
-          ? await c.searchManager.searchNodes(q, { projectId: [...scope][0] })
-          : await c.searchManager.searchNodes(q);
+        let found: Entity[];
+        if (!scope || scope.size > MAX_PUSHDOWN_PROJECTS) {
+          found = (await c.searchManager.searchNodes(q)).entities;
+        } else {
+          const seen = new Set<string>();
+          found = [];
+          for (const projectId of scope) {
+            for (const e of (await c.searchManager.searchNodes(q, { projectId })).entities) {
+              if (!seen.has(e.name)) { seen.add(e.name); found.push(e); }
+            }
+          }
+        }
         const params = parsePaginationParams(req.query);
-        const paginated = paginate(visibleEntities(req, result.entities), params);
+        const paginated = paginate(visibleEntities(req, found), params);
         return {
           status: 200,
           body: {
@@ -621,6 +648,52 @@ function errorResponse(error: unknown): RestResponse {
     ? error.message
     : CLIENT_ERROR_MESSAGES[validStatus] ?? 'Client Error';
   return { status: validStatus, body: { error: message } };
+}
+
+/** Above this many allowed projects, a scoped search runs once and filters. */
+const MAX_PUSHDOWN_PROJECTS = 8;
+
+let unscopedKeyWarningLogged = false;
+
+/** Log the default-open key count once per process. Logs no key material. */
+function warnUnscopedKeysOnce(count: number): void {
+  if (unscopedKeyWarningLogged || count === 0) return;
+  unscopedKeyWarningLogged = true;
+  logger.warn(
+    `[RestRouter] ${count} API ${count === 1 ? 'key has' : 'keys have'} no projectIds and can access all projects`,
+  );
+}
+
+/**
+ * Rate-limit bucket for a client address. IPv6 addresses group by /64,
+ * because one host usually controls a whole /64.
+ */
+function clientBucket(address: string): string {
+  const host = address.split('%')[0]!.toLowerCase();
+  const version = isIP(host);
+  if (version === 4) return host;
+  if (version !== 6) return 'invalid';
+  const [head = '', tail = ''] = host.split('::');
+  const expand = (part: string): string[] => {
+    if (!part) return [];
+    const groups = part.split(':');
+    const last = groups[groups.length - 1]!;
+    if (isIP(last) === 4) {
+      // Embedded IPv4 (for example ::ffff:1.2.3.4): two 16-bit groups.
+      const [a, b, c, d] = last.split('.').map(Number) as [number, number, number, number];
+      groups.splice(-1, 1, ((a << 8) | b).toString(16), ((c << 8) | d).toString(16));
+    }
+    return groups;
+  };
+  const headParts = expand(head);
+  const tailParts = expand(tail);
+  const fill = host.includes('::') ? 8 - headParts.length - tailParts.length : 0;
+  const groups = [...headParts, ...Array<string>(fill).fill('0'), ...tailParts].map((g) => parseInt(g, 16));
+  // IPv4-mapped (::ffff:a.b.c.d in any spelling) buckets as the IPv4 address.
+  if (groups.slice(0, 5).every((g) => g === 0) && groups[5] === 0xffff) {
+    return [groups[6]! >> 8, groups[6]! & 255, groups[7]! >> 8, groups[7]! & 255].join('.');
+  }
+  return `${groups.slice(0, 4).map((g) => g.toString(16)).join(':')}::/64`;
 }
 
 function notFound(): RestResponse {

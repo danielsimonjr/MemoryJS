@@ -95,6 +95,11 @@ export class ApiKeyAuthMiddleware {
     this.onReject = options.onReject;
   }
 
+  /** Number of non-revoked keys in the store without `projectIds` (access to ALL projects). */
+  unscopedKeyCount(): number {
+    return this.store.unscopedKeyCount();
+  }
+
   /**
    * Extract the API key from the request headers.
    * Prefers `Authorization: Bearer <key>`; falls back to `X-Api-Key`.

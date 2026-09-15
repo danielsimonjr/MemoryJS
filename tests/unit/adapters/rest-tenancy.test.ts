@@ -27,6 +27,7 @@ function fakeCtx() {
       createEntities,
     },
     searchManager: { searchNodes },
+    relationManager: { getRelations: async () => [] as unknown[] },
   } as unknown as ManagerContext;
   return { ctx, deleteEntities, createEntities, searchNodes };
 }
@@ -88,12 +89,16 @@ describe('RestRouter tenancy', () => {
     expect((page2.body as { nextCursor?: unknown }).nextCursor).toBeFalsy();
   });
 
-  it('filters search results before pagination and pushes a single project down', async () => {
+  it('filters search results before pagination and pushes each project down', async () => {
     const { call, searchNodes } = setup(scoped);
     const res = await call('GET', '/search', { q: 'secret' });
     expect(res.body).toMatchObject({ total: 2 });
     expect(names(res.body)).toEqual(['a1', 'a2']);
     expect(searchNodes).toHaveBeenCalledWith('secret', { projectId: 'A' });
+    const multi = setup({ scopes: ['entities:read'], projectIds: ['A', 'B'] });
+    const both = await multi.call('GET', '/search', { q: 'secret' });
+    expect(names(both.body)).toEqual(['a1', 'a2', 'b1']);
+    expect(multi.searchNodes).toHaveBeenCalledTimes(2);
   });
 
   it('returns the same 404 for foreign, unprojected and missing entities', async () => {
@@ -105,6 +110,26 @@ describe('RestRouter tenancy', () => {
     expect(foreign).toEqual(missing);
     expect(legacy).toEqual(missing);
     expect(missing).toEqual({ status: 404, body: { error: 'Not Found' } });
+  });
+
+  it('refuses a scoped delete that would remove a relation to a foreign entity', async () => {
+    const { ctx, deleteEntities } = fakeCtx();
+    const relations = [{ from: 'b1', to: 'a2', relationType: 'uses' }, { from: 'a1', to: 'gone', relationType: 'uses' }];
+    (ctx.relationManager as { getRelations: unknown }).getRelations = async (n: string) =>
+      relations.filter((r) => r.from === n || r.to === n);
+    const store = new APIKeyStore();
+    const { plaintext } = store.issue(scoped);
+    const router = RestRouter.withDefaults(ctx, { auth: new ApiKeyAuthMiddleware({ store }) });
+    const del = (name: string) => router.dispatch({ method: 'DELETE', path: `/entities/${name}`, query: {}, body: null, params: {}, headers: { authorization: `Bearer ${plaintext}` } });
+    expect((await del('a2')).status).toBe(409);
+    expect((await del('a1')).status).toBe(204);
+    expect(deleteEntities).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns 409 when a concurrent create skips the name', async () => {
+    const { call, createEntities } = setup(scoped);
+    createEntities.mockResolvedValueOnce([]);
+    expect((await call('POST', '/entities', {}, { name: 'n', entityType: 't', observations: [], projectId: 'A' })).status).toBe(409);
   });
 
   it('refuses to delete foreign entities with 404', async () => {
@@ -223,10 +248,9 @@ describe('RestRouter request limits', () => {
 });
 
 describe('RestRouter rate limiting', () => {
-  it('blocks failed-key traffic after the pre-auth budget without consulting the store', async () => {
+  it('returns 429 to failed-key traffic after the pre-auth budget', async () => {
     const store = new APIKeyStore();
     const { plaintext } = store.issue({});
-    const validate = vi.spyOn(store, 'validate');
     const router = RestRouter.withDefaults(fakeCtx().ctx, {
       auth: new ApiKeyAuthMiddleware({ store }),
       preAuthLimiter: new RateLimiter({ capacity: 2, refillPerSecond: 0 }),
@@ -235,13 +259,42 @@ describe('RestRouter rate limiting', () => {
       ({ method: 'GET', path: '/entities', query: {}, body: null, params: {}, clientAddress, headers: { authorization: `Bearer ${key}` } });
     expect((await router.dispatch(req('bad'))).status).toBe(401);
     expect((await router.dispatch(req('bad'))).status).toBe(401);
-    validate.mockClear();
     const blocked = await router.dispatch(req('bad'));
     expect(blocked.status).toBe(429);
-    expect(validate).not.toHaveBeenCalled();
+    expect(blocked.headers?.['retry-after']).toBeDefined();
     expect((await router.dispatch(req('bad', '2.2.2.2'))).status).toBe(401);
-    // A valid key from the same address is not charged against the failure budget.
-    expect((await router.dispatch(req(plaintext, '3.3.3.3'))).status).toBe(200);
+    // A valid key from the exhausted address still passes.
+    expect((await router.dispatch(req(plaintext))).status).toBe(200);
+  });
+
+  it('does not apply the failure budget without a client address', async () => {
+    const store = new APIKeyStore();
+    const { plaintext } = store.issue({});
+    const router = RestRouter.withDefaults(fakeCtx().ctx, {
+      auth: new ApiKeyAuthMiddleware({ store }),
+      preAuthLimiter: new RateLimiter({ capacity: 1, refillPerSecond: 0 }),
+    });
+    const req = (key: string): RestRequest =>
+      ({ method: 'GET', path: '/entities', query: {}, body: null, params: {}, headers: { authorization: `Bearer ${key}` } });
+    for (let i = 0; i < 5; i++) expect((await router.dispatch(req('bad'))).status).toBe(401);
+    expect((await router.dispatch(req(plaintext))).status).toBe(200);
+  });
+
+  it('groups IPv6 clients by /64 and keeps the bucket count capped under many failing clients', async () => {
+    const store = new APIKeyStore();
+    const limiter = new RateLimiter({ capacity: 1, refillPerSecond: 0, maxBuckets: 50 });
+    const router = RestRouter.withDefaults(fakeCtx().ctx, { auth: new ApiKeyAuthMiddleware({ store }), preAuthLimiter: limiter });
+    const req = (clientAddress: string): RestRequest =>
+      ({ method: 'GET', path: '/entities', query: {}, body: null, params: {}, clientAddress, headers: { authorization: 'Bearer bad' } });
+    expect((await router.dispatch(req('2001:db8:1:2::1'))).status).toBe(401);
+    expect((await router.dispatch(req('2001:DB8:1:2:ffff::9%eth0'))).status).toBe(429);
+    // IPv4-mapped spellings share the IPv4 bucket; invalid strings share one bucket.
+    expect((await router.dispatch(req('9.8.7.6'))).status).toBe(401);
+    expect((await router.dispatch(req('::ffff:908:706'))).status).toBe(429);
+    expect((await router.dispatch(req('not-an-ip'))).status).toBe(401);
+    expect((await router.dispatch(req('also bad'))).status).toBe(429);
+    for (let i = 0; i < 500; i++) await router.dispatch(req(`10.0.${i >> 8}.${i & 255}`));
+    expect(limiter.size()).toBeLessThanOrEqual(50);
   });
 
   it('applies the authenticated limiter per key', async () => {
