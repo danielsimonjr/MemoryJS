@@ -2,7 +2,7 @@
  * BooleanSearch Unit Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, onTestFinished } from 'vitest';
 import { BooleanSearch } from '../../../src/search/BooleanSearch.js';
 import { EntityManager } from '../../../src/core/EntityManager.js';
 import { RelationManager } from '../../../src/core/RelationManager.js';
@@ -382,6 +382,13 @@ describe('BooleanSearch', () => {
     });
 
     it('packages relations through adjacency indexes without a full scan', async () => {
+      // Spy on the live cache: turn the dev-mode frozen copy off for this test.
+      const prevNodeEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      onTestFinished(() => {
+        if (prevNodeEnv === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = prevNodeEnv;
+      });
       const graph = await storage.loadGraph();
       const fullRelationScan = vi.spyOn(graph.relations, 'filter');
 

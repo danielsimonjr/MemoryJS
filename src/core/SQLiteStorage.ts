@@ -20,6 +20,7 @@
  * @module core/SQLiteStorage
  */
 
+import { borrowGraphView, deepCopyPlain } from '../utils/graphCopy.js';
 import { createRequire } from 'node:module';
 import { createNodeSqliteDatabaseCtor, isNodeSqliteAvailable } from './nodeSqliteAdapter.js';
 import { chmodSync, statSync } from 'node:fs';
@@ -217,6 +218,10 @@ export class SQLiteStorage implements IGraphStorage {
    * does NOT force a load. Returns null when the cache has not been
    * populated yet. Mirrors `GraphStorage.cachedGraph` so observability
    * code (`ctx.diagnostics`) works uniformly across both backends.
+   *
+   * Ownership: this is the LIVE cache in every environment (never copied
+   * or frozen, updated in place). Do not mutate it or keep it as a
+   * snapshot; use `getGraphForMutation()` for an independent copy.
    */
   get cachedGraph(): KnowledgeGraph | null {
     return this.cache;
@@ -828,28 +833,30 @@ export class SQLiteStorage implements IGraphStorage {
   /**
    * Load the knowledge graph (read-only access).
    *
-   * @returns Promise resolving to read-only knowledge graph reference
+   * Ownership: the result is a READ-ONLY BORROWED VIEW. Do not mutate
+   * it or any nested object, and do not keep it across writes. In
+   * production it is the live cache (O(1), no copy). Outside production
+   * (`NODE_ENV !== 'production'`) it is a deep-frozen copy, so a mutation
+   * throws a TypeError. To change data, use getGraphForMutation().
+   *
+   * @returns Promise resolving to read-only knowledge graph view
    */
   async loadGraph(): Promise<ReadonlyKnowledgeGraph> {
     await this.ensureLoaded();
-    return this.cache!;
+    return borrowGraphView(this.cache!);
   }
 
   /**
    * Get a mutable copy of the graph for write operations.
    *
+   * Ownership: the result is a fully independent deep copy. The caller
+   * owns every nested object, and edits never reach the live cache.
+   *
    * @returns Promise resolving to mutable knowledge graph copy
    */
   async getGraphForMutation(): Promise<KnowledgeGraph> {
     await this.ensureLoaded();
-    return {
-      entities: this.cache!.entities.map(e => ({
-        ...e,
-        observations: [...e.observations],
-        tags: e.tags ? [...e.tags] : undefined,
-      })),
-      relations: this.cache!.relations.map(r => ({ ...r })),
-    };
+    return deepCopyPlain(this.cache!);
   }
 
   /**
@@ -962,8 +969,8 @@ export class SQLiteStorage implements IGraphStorage {
       // Clear search caches (full clear is retained for true full-graph
       // writes; delta ops use generation bumps)
       clearAllSearchCaches();
-      bumpEntityGeneration();
-      bumpRelationGeneration();
+      bumpEntityGeneration(this);
+      bumpRelationGeneration(this);
 
       // Emit graph:saved (parity with GraphStorage.saveGraphInternal)
       this.eventEmitter.emitGraphSaved(graph.entities.length, graph.relations.length);
@@ -1056,7 +1063,7 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Update cache + indexes in O(1)
       this.upsertEntityInCache(entity);
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       this.pendingChanges++;
 
@@ -1091,7 +1098,7 @@ export class SQLiteStorage implements IGraphStorage {
       for (const entity of entities) {
         this.upsertEntityInCache(entity);
       }
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       this.pendingChanges += entities.length;
 
@@ -1120,7 +1127,7 @@ export class SQLiteStorage implements IGraphStorage {
 
       // Update cache in O(1) via the relation key map
       this.upsertRelationInCache(relation);
-      bumpRelationGeneration();
+      bumpRelationGeneration(this);
 
       this.pendingChanges++;
 
@@ -1203,7 +1210,7 @@ export class SQLiteStorage implements IGraphStorage {
       for (const relation of relations) {
         this.upsertRelationInCache(relation);
       }
-      bumpRelationGeneration();
+      bumpRelationGeneration(this);
 
       this.pendingChanges += relations.length;
 
@@ -1262,7 +1269,7 @@ export class SQLiteStorage implements IGraphStorage {
         this.typeIndex.updateType(entityName, oldType, updates.entityType);
       }
       this.updateLowercaseCache(entity);
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       this.pendingChanges++;
 
@@ -1406,7 +1413,7 @@ export class SQLiteStorage implements IGraphStorage {
         }
         this.updateLowercaseCache(p.entity);
       }
-      bumpEntityGeneration();
+      bumpEntityGeneration(this);
 
       this.pendingChanges += prepared.length;
 
@@ -1508,8 +1515,8 @@ export class SQLiteStorage implements IGraphStorage {
         this.relationKeyMap.delete(relationKeyOf(r));
       }
 
-      if (deletedEntities.length > 0) bumpEntityGeneration();
-      if (deletedRelations.length > 0) bumpRelationGeneration();
+      if (deletedEntities.length > 0) bumpEntityGeneration(this);
+      if (deletedRelations.length > 0) bumpRelationGeneration(this);
 
       this.pendingChanges++;
 
@@ -1604,8 +1611,8 @@ export class SQLiteStorage implements IGraphStorage {
         entity.lastModified = timestamp;
       }
 
-      if (deletedRelations.length > 0) bumpRelationGeneration();
-      if (touchedEntities.length > 0) bumpEntityGeneration();
+      if (deletedRelations.length > 0) bumpRelationGeneration(this);
+      if (touchedEntities.length > 0) bumpEntityGeneration(this);
 
       this.pendingChanges++;
 
@@ -1730,8 +1737,8 @@ export class SQLiteStorage implements IGraphStorage {
       this.lowercaseCache.delete(oldName);
       this.updateLowercaseCache(entity);
       clearAllSearchCaches();
-      bumpEntityGeneration();
-      bumpRelationGeneration();
+      bumpEntityGeneration(this);
+      bumpRelationGeneration(this);
 
       this.pendingChanges++;
 

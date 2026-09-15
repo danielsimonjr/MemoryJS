@@ -1196,12 +1196,20 @@ export interface IGraphStorage {
   /**
    * Load the knowledge graph from storage (read-only access).
    *
-   * @returns Promise resolving to read-only knowledge graph reference
+   * Ownership contract: the result is a READ-ONLY BORROWED VIEW of the
+   * storage cache. Callers must not mutate it or any nested object.
+   * Implementations may return the live cache in production. Outside
+   * production they return a deep-frozen copy, so a mutation throws.
+   *
+   * @returns Promise resolving to read-only knowledge graph view
    */
   loadGraph(): Promise<ReadonlyKnowledgeGraph>;
 
   /**
    * Get a mutable copy of the graph for write operations.
+   *
+   * Ownership contract: the result is a fully independent deep copy.
+   * No nested object is shared with the storage cache.
    *
    * @returns Promise resolving to mutable knowledge graph copy
    */
@@ -1219,6 +1227,11 @@ export interface IGraphStorage {
    * Side-effect-free getter — does NOT trigger a load. Used by
    * `Diagnostics` and similar observability surfaces that want a cheap
    * peek at the current state without forcing I/O.
+   *
+   * Ownership contract: the result is the LIVE cache in every environment.
+   * Unlike `loadGraph()`, it is never copied or frozen, and storages update
+   * it in place. Callers must not mutate it or keep it as a snapshot. For an
+   * independent snapshot, use `getGraphForMutation()`.
    */
   readonly cachedGraph: ReadonlyKnowledgeGraph | null;
 

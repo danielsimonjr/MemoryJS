@@ -106,6 +106,34 @@ Documenting findings for future cycles in this repo:
 - [ ] Wire `batchProcessViaWorkers` into a real agent-system consumer (entropy filter or pairwise similarity batch) to demonstrate the pattern end-to-end.
 - [ ] Optional Memory-mcp surface: `worker_stats` MCP tool exposing `WorkerTaskManager.getStats()` so MCP clients can observe queue + pool state. Marginal value; defer unless asked.
 - [ ] Real-database integration tests for PostgreSQLStorage under `MEMORYJS_TEST_PG_URL` (currently only unit-tested via the mocked `pg` module).
+- [ ] **Wave 1 step 2 follow-ups (branch `fix/wave1-step2-isolation`).**
+      - `EntityManager` public reads return live cache entities in production: `getEntity`
+        (via `loadGraph`), `updateEntity` and `batchUpdate` (via `getEntityByName`),
+        `getVersionChain`, and the items of `listEntities`. A caller that edits a returned
+        entity (for example `observations.sort()`) changes the cache without a save. Outside
+        production the frozen `loadGraph` view now throws for the `getEntity` path only. Decide:
+        copy at the API boundary, or document these as borrowed views too.
+      - Audit the other search caches for the cross-storage defect: `BooleanSearch` has its own
+        `resultCache`, and `searchCaches.ranked` / `boolean` / `fuzzy` have no storage id in
+        their keys. This PR scoped only `BasicSearch`.
+      - A failed transaction rolls back by restoring the backup. `BackupManager.parseBackupGraph`
+        fills a missing `createdAt` / `lastModified` on restore, so relations without timestamps
+        change after a failed commit. Owner: step 4 (TransactionManager).
+      - Outside production every `loadGraph()` call deep-copies and freezes the graph: 16-24 ms
+        median at 10k entities / 20k relations (measured on dist). If test suites with large
+        graphs slow down, memoise the frozen view per storage generation.
+      - `hardening.test.ts` "scales linearly" failed once under full-suite load (ratio 62.3,
+        limit 60). Seen in 2 of 5 full-suite runs on this branch; passed 6/6 when run alone.
+        The procedural graph code does not use storage, so the change on this branch is not the
+        cause. The variance source is full-suite CPU contention against a timing-ratio assertion.
+      - `bun run test:perf` / `bench` do not set `NODE_ENV=production`, so benchmarks now time
+        the dev-mode `loadGraph` copy. Decide with the step 1 (CI and test gates) owner whether
+        the perf scripts set it.
+      - `cachedGraph` stays the live, unguarded cache (documented). `CompressionManager` uses it
+        as the pre-merge governance graph; that is safe only while full saves replace the cache
+        object. Revisit if a save path starts to edit the cache in place. Known gap (review,
+        confidence ~40, pre-existing): a concurrent in-place delta write (for example
+        `updateEntity`) during the awaits between capture and save still changes that graph.
 - [x] `tests/unit/core/segments/segments-review-fixes.test.ts` exceeds the 120s default `testTimeout`
       under full-suite contention on a 12-core box (1 failure of 7843 on 2026-08-30), but passes
       **13/13 in 19s when run in isolation** and is green on all six CI legs. So it is worker

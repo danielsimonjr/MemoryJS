@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.1.0
   lastUpdated: "2026-09-15"
-  totalFiles: 291
+  totalFiles: 292
   totalModules: 12
-  totalExports: 2016
+  totalExports: 2025
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -6744,6 +6744,10 @@ modules:
           imports:
             - dirname
       internalDependencies:
+        - file: ../utils/graphCopy.js
+          imports:
+            - borrowGraphView
+            - deepCopyPlain
         - file: ../utils/durableWriteFile.js
           imports:
             - durableWriteFile
@@ -7453,6 +7457,10 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/graphCopy.js
+          imports:
+            - borrowGraphView
+            - deepCopyPlain
         - file: ../utils/logger.js
           imports:
             - logger
@@ -7643,6 +7651,10 @@ modules:
           imports:
             - randomUUID
       internalDependencies:
+        - file: ../utils/graphCopy.js
+          imports:
+            - borrowGraphView
+            - deepCopyPlain
         - file: ./nodeSqliteAdapter.js
           imports:
             - createNodeSqliteDatabaseCtor
@@ -8674,6 +8686,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ../utils/graphCopy.js
+          imports:
+            - deepCopyPlain
         - file: ../types/index.js
           imports:
             - KnowledgeGraph
@@ -8691,6 +8706,9 @@ modules:
             - isWithinDateRange
             - SEARCH_LIMITS
             - searchCaches
+        - file: ../utils/searchCache.js
+          imports:
+            - getCacheOwnerId
         - file: ./SearchFilterChain.js
           imports:
             - SearchFilterChain
@@ -12309,6 +12327,21 @@ modules:
         - applyPagination
         - paginateArray
         - getPaginationMeta
+    src/utils/graphCopy.ts:
+      description: Graph copy and ownership helpers.
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - deepCopyPlain
+        - deepFreeze
+        - isReadViewGuardEnabled
+        - borrowGraphView
+      functions:
+        - deepCopyPlain
+        - deepFreeze
+        - isReadViewGuardEnabled
+        - borrowGraphView
     src/utils/IIndexHealth.ts:
       description: Index Health interface.
       externalDependencies: []
@@ -12416,6 +12449,13 @@ modules:
             - getAllCacheStats
             - cleanupAllCaches
             - CacheStats
+          reExport: true
+        - file: ./graphCopy.js
+          imports:
+            - deepCopyPlain
+            - deepFreeze
+            - borrowGraphView
+            - isReadViewGuardEnabled
           reExport: true
         - file: ./schemas.js
           imports:
@@ -12731,6 +12771,10 @@ modules:
         - getAllCacheStats
         - cleanupAllCaches
         - CacheStats
+        - deepCopyPlain
+        - deepFreeze
+        - borrowGraphView
+        - isReadViewGuardEnabled
         - EntitySchema
         - CreateEntitySchema
         - UpdateEntitySchema
@@ -12995,6 +13039,10 @@ modules:
         - getAllCacheStats
         - cleanupAllCaches
         - CacheStats
+        - deepCopyPlain
+        - deepFreeze
+        - borrowGraphView
+        - isReadViewGuardEnabled
         - EntitySchema
         - CreateEntitySchema
         - UpdateEntitySchema
@@ -13489,6 +13537,9 @@ modules:
       externalDependencies: []
       nodeDependencies: []
       internalDependencies:
+        - file: ./graphCopy.js
+          imports:
+            - deepCopyPlain
         - file: ../types/index.js
           imports:
             - SearchResult
@@ -13496,6 +13547,7 @@ modules:
           typeOnly: true
       exports:
         - searchCaches
+        - getCacheOwnerId
         - bumpEntityGeneration
         - bumpRelationGeneration
         - getGraphGenerations
@@ -13508,6 +13560,7 @@ modules:
       interfaces:
         - CacheStats
       functions:
+        - getCacheOwnerId
         - bumpEntityGeneration
         - bumpRelationGeneration
         - getGraphGenerations
@@ -14054,6 +14107,7 @@ dependencyGraph:
         - src/utils/errors.ts
         - src/utils/errorSuggestions.ts
         - src/utils/formatters.ts
+        - src/utils/graphCopy.ts
         - src/utils/IIndexHealth.ts
         - src/utils/index.ts
         - src/utils/indexes.ts
@@ -14082,27 +14136,27 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 291
+  reachableCount: 292
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 291
+  totalTypeScriptFiles: 292
   totalModules: 12
-  totalLinesOfCode: 102085
-  totalExports: 2016
+  totalLinesOfCode: 102283
+  totalExports: 2025
   totalClasses: 231
   totalInterfaces: 619
-  totalFunctions: 315
-  totalTypeGuards: 29
+  totalFunctions: 320
+  totalTypeGuards: 30
   totalEnums: 4
   totalConstants: 123
-  totalReExports: 1331
+  totalReExports: 1335
   totalTypeOnlyImports: 476
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 291
+  reachableFiles: 292
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0

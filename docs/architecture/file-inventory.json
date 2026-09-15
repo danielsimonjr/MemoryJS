@@ -1,12 +1,12 @@
 {
   "generated": "2026-09-15",
-  "totalFiles": 679,
+  "totalFiles": 682,
   "byDisposition": {
-    "reachable": 287,
+    "reachable": 288,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 372,
+    "test": 374,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 291,
-    "tests": 372,
+    "src": 292,
+    "tests": 374,
     "tools": 10,
     "config": 2
   },
@@ -1089,7 +1089,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1967
+      "loc": 1956
     },
     {
       "file": "src/core/GraphTraversal.ts",
@@ -1159,7 +1159,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 587
+      "loc": 597
     },
     {
       "file": "src/core/RefIndex.ts",
@@ -1201,7 +1201,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2463
+      "loc": 2470
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -1264,7 +1264,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 687
+      "loc": 689
     },
     {
       "file": "src/features/ContradictionDetector.ts",
@@ -1362,7 +1362,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 161
+      "loc": 165
     },
     {
       "file": "src/search/BloomFilter.ts",
@@ -1838,7 +1838,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2464
+      "loc": 2477
     },
     {
       "file": "src/utils/AsyncMutex.ts",
@@ -1946,6 +1946,13 @@
       "loc": 197
     },
     {
+      "file": "src/utils/graphCopy.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 93
+    },
+    {
       "file": "src/utils/IIndexHealth.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -1957,7 +1964,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 388
+      "loc": 391
     },
     {
       "file": "src/utils/indexes.ts",
@@ -2041,7 +2048,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 356
+      "loc": 433
     },
     {
       "file": "src/utils/taskScheduler.ts",
@@ -3455,7 +3462,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 663
+      "loc": 666
     },
     {
       "file": "tests/unit/core/GraphTraversal.test.ts",
@@ -3483,7 +3490,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 233
+      "loc": 234
     },
     {
       "file": "tests/unit/core/manager-context-default-embedding.test.ts",
@@ -3547,6 +3554,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 264
+    },
+    {
+      "file": "tests/unit/core/mutation-isolation.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 108
     },
     {
       "file": "tests/unit/core/nodeSqliteAdapter.test.ts",
@@ -3700,7 +3714,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1284
+      "loc": 1289
     },
     {
       "file": "tests/unit/core/StorageFactory.test.ts",
@@ -3938,7 +3952,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 421
+      "loc": 428
     },
     {
       "file": "tests/unit/search/BloomFilter.test.ts",
@@ -3959,7 +3973,14 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 562
+      "loc": 569
+    },
+    {
+      "file": "tests/unit/search/cache-isolation.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 113
     },
     {
       "file": "tests/unit/search/EarlyTerminationManager.test.ts",
@@ -3994,7 +4015,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1184
+      "loc": 1191
     },
     {
       "file": "tests/unit/search/FuzzySearchWorkerPath.test.ts",

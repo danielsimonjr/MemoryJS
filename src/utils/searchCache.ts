@@ -7,6 +7,7 @@
  * @module utils/searchCache
  */
 
+import { deepCopyPlain } from './graphCopy.js';
 import type { SearchResult, KnowledgeGraph } from '../types/index.js';
 
 /**
@@ -24,32 +25,78 @@ import type { SearchResult, KnowledgeGraph } from '../types/index.js';
  * a depended-on counter has moved. This lets e.g. relation-only writes
  * leave entity-text-only caches (ranked search) intact.
  *
- * Counters are module-global (like the `searchCaches` singletons they
- * guard), so multiple storage instances in one process over-invalidate
- * across each other — exactly the same behavior the previous global
- * `clearAllSearchCaches()` calls had.
+ * Counters are scoped per storage instance: storages pass `this` as the
+ * `owner`, and caches check an entry against the counters of the owner it
+ * was stored for, so a write to storage A never invalidates storage B.
+ * Calling a bump function with no owner invalidates every entry. Entries
+ * stored with no owner are invalidated by any bump (legacy behavior).
  *
  * `clearAllSearchCaches()` is retained for explicit full clears
  * (full-graph saves, CLI cache clear, tests).
  */
 export type GraphGenerationDependency = 'entity' | 'relation';
 
-let entityGeneration = 0;
-let relationGeneration = 0;
-
-/** Bump the entity-data mutation generation (call on any entity write). */
-export function bumpEntityGeneration(): void {
-  entityGeneration++;
+interface Generations {
+  entity: number;
+  relation: number;
 }
 
-/** Bump the relation-data mutation generation (call on any relation write). */
-export function bumpRelationGeneration(): void {
-  relationGeneration++;
+/** Process-wide counters, bumped when no owner is given. */
+const globalGenerations: Generations = { entity: 0, relation: 0 };
+/** Counters bumped by every bump, owned or not (checked by unowned entries). */
+const anyGenerations: Generations = { entity: 0, relation: 0 };
+/** Per-owner (per-storage) counters. */
+const ownerGenerations = new WeakMap<object, Generations>();
+/** Stable, unambiguous per-owner ids for cache-key namespacing. */
+const ownerIds = new WeakMap<object, number>();
+let nextOwnerId = 1;
+
+function generationsOf(owner: object | undefined): Generations {
+  if (owner === undefined) return anyGenerations;
+  let gens = ownerGenerations.get(owner);
+  if (!gens) {
+    gens = { entity: 0, relation: 0 };
+    ownerGenerations.set(owner, gens);
+  }
+  return gens;
 }
 
-/** Current generation counter values (diagnostics / tests). */
-export function getGraphGenerations(): { entity: number; relation: number } {
-  return { entity: entityGeneration, relation: relationGeneration };
+/**
+ * Return a unique id for `owner` (normally a storage instance). The id is
+ * stable for the owner's lifetime and never reused, so it can namespace
+ * cache keys.
+ */
+export function getCacheOwnerId(owner: object): number {
+  let id = ownerIds.get(owner);
+  if (id === undefined) {
+    id = nextOwnerId++;
+    ownerIds.set(owner, id);
+  }
+  return id;
+}
+
+/**
+ * Bump the entity-data mutation generation (call on any entity write).
+ * Pass the storage instance as `owner`; omit it to invalidate all owners.
+ */
+export function bumpEntityGeneration(owner?: object): void {
+  (owner === undefined ? globalGenerations : generationsOf(owner)).entity++;
+  anyGenerations.entity++;
+}
+
+/**
+ * Bump the relation-data mutation generation (call on any relation write).
+ * Pass the storage instance as `owner`; omit it to invalidate all owners.
+ */
+export function bumpRelationGeneration(owner?: object): void {
+  (owner === undefined ? globalGenerations : generationsOf(owner)).relation++;
+  anyGenerations.relation++;
+}
+
+/** Generation counters for `owner`; with no owner, counters that move on every bump (diagnostics / tests). */
+export function getGraphGenerations(owner?: object): { entity: number; relation: number } {
+  const gens = generationsOf(owner);
+  return { entity: gens.entity, relation: gens.relation };
 }
 
 /**
@@ -59,10 +106,20 @@ interface CacheEntry<T> {
   value: T;
   timestamp: number;
   expiresAt: number;
-  /** Entity generation at insert (only set when the cache depends on it). */
+  /**
+   * Generation counters of the entry's owner (the storage's own counters,
+   * or the any-owner counters for an unowned entry). The entry keeps the
+   * counters object, not the storage, so it never keeps a storage alive.
+   */
+  gens?: Generations;
+  /** Owner entity generation at insert (only set when the cache depends on it). */
   entityGen?: number;
-  /** Relation generation at insert (only set when the cache depends on it). */
+  /** Owner relation generation at insert (only set when the cache depends on it). */
   relationGen?: number;
+  /** Global entity generation at insert. */
+  globalEntityGen?: number;
+  /** Global relation generation at insert. */
+  globalRelationGen?: number;
 }
 
 /**
@@ -114,9 +171,14 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
    * was inserted (lazy invalidation — checked on read).
    */
   private isGenerationStale(entry: CacheEntry<T>): boolean {
+    const own = entry.gens ?? anyGenerations;
     for (const dep of this.generationDeps) {
-      if (dep === 'entity' && entry.entityGen !== entityGeneration) return true;
-      if (dep === 'relation' && entry.relationGen !== relationGeneration) return true;
+      if (dep === 'entity') {
+        if (entry.entityGen !== own.entity || entry.globalEntityGen !== globalGenerations.entity) return true;
+      }
+      if (dep === 'relation') {
+        if (entry.relationGen !== own.relation || entry.globalRelationGen !== globalGenerations.relation) return true;
+      }
     }
     return false;
   }
@@ -135,6 +197,9 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
 
   /**
    * Get value from cache.
+   *
+   * The value is a deep copy, so callers can mutate it without poisoning
+   * later hits.
    *
    * @param params - Query parameters to generate cache key
    * @returns Cached value or undefined if not found/expired
@@ -167,16 +232,20 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     this.cache.set(key, entry);
     this.hits++;
 
-    return entry.value;
+    return deepCopyPlain(entry.value);
   }
 
   /**
    * Set value in cache.
    *
    * @param params - Query parameters to generate cache key
-   * @param value - Value to cache
+   * @param value - Value to cache (stored as a deep copy)
+   * @param owner - Storage instance the value was computed from. Entries
+   *   are invalidated only by generation bumps for this owner (or global
+   *   bumps). Callers must also put an owner id in `params`
+   *   (see {@link getCacheOwnerId}) so owners never share a key.
    */
-  set(params: Record<string, unknown>, value: T): void {
+  set(params: Record<string, unknown>, value: T, owner?: object): void {
     const key = this.generateKey(params);
 
     // delete-then-set moves an existing key to the end of the Map's
@@ -195,13 +264,21 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     // Add new entry (recording the current graph generations when this
     // cache declares generation dependencies)
     const entry: CacheEntry<T> = {
-      value,
+      value: deepCopyPlain(value),
       timestamp: Date.now(),
       expiresAt: Date.now() + this.ttlMs,
     };
+    const own = generationsOf(owner);
     for (const dep of this.generationDeps) {
-      if (dep === 'entity') entry.entityGen = entityGeneration;
-      if (dep === 'relation') entry.relationGen = relationGeneration;
+      entry.gens = own;
+      if (dep === 'entity') {
+        entry.entityGen = own.entity;
+        entry.globalEntityGen = globalGenerations.entity;
+      }
+      if (dep === 'relation') {
+        entry.relationGen = own.relation;
+        entry.globalRelationGen = globalGenerations.relation;
+      }
     }
     this.cache.set(key, entry);
   }

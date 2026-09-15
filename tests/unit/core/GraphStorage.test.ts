@@ -126,10 +126,12 @@ describe('GraphStorage', () => {
     });
 
     it('should return read-only graph from loadGraph and mutable copy from getGraphForMutation', async () => {
-      // loadGraph returns read-only reference (same object)
+      // loadGraph returns a read-only view
       const graph1 = await storage.loadGraph();
       const graph2 = await storage.loadGraph();
-      expect(graph1).toBe(graph2); // Same cached reference
+      // Outside production loadGraph returns a deep-frozen copy per call,
+      // so compare contents, not identity.
+      expect(graph1).toEqual(graph2);
 
       // getGraphForMutation returns a mutable copy
       const mutableGraph = await storage.getGraphForMutation();
@@ -654,9 +656,10 @@ describe('GraphStorage', () => {
         storage.loadGraph(),
       ]);
 
-      // All should return same cached data
-      expect(results[0]).toBe(results[1]);
-      expect(results[1]).toBe(results[2]);
+      // All should return the same cached data (equal contents; outside
+      // production each call gets its own frozen copy)
+      expect(results[0]).toEqual(results[1]);
+      expect(results[1]).toEqual(results[2]);
     });
   });
 });
