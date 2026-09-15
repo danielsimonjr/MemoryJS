@@ -378,7 +378,7 @@ export {
 export { SchemaValidator, type JsonSchema } from './SchemaValidator.js';
 
 // ==================== Async Mutex ====================
-export { AsyncMutex, type AsyncMutexOptions } from './AsyncMutex.js';
+export { AsyncMutex, type AsyncMutexOptions, type AcquireOptions } from './AsyncMutex.js';
 
 // ==================== Text Similarity ====================
 export {
