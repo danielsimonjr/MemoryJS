@@ -218,6 +218,10 @@ export class SQLiteStorage implements IGraphStorage {
    * does NOT force a load. Returns null when the cache has not been
    * populated yet. Mirrors `GraphStorage.cachedGraph` so observability
    * code (`ctx.diagnostics`) works uniformly across both backends.
+   *
+   * Ownership: this is the LIVE cache in every environment (never copied
+   * or frozen, updated in place). Do not mutate it or keep it as a
+   * snapshot; use `getGraphForMutation()` for an independent copy.
    */
   get cachedGraph(): KnowledgeGraph | null {
     return this.cache;

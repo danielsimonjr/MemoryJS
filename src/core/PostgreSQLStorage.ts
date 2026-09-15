@@ -340,6 +340,13 @@ export class PostgreSQLStorage implements IGraphStorage {
     this.rebuildIndexes(graph);
   }
 
+  /**
+   * In-memory cached graph, or null before the first load.
+   *
+   * Ownership: this is the LIVE cache in every environment (never copied
+   * or frozen). Do not mutate it or keep it as a snapshot; use
+   * `getGraphForMutation()` for an independent copy.
+   */
   get cachedGraph(): ReadonlyKnowledgeGraph | null {
     return this.cache;
   }

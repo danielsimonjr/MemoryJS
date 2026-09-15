@@ -345,9 +345,11 @@ export class GraphStorage implements IGraphStorage {
    * synchronous `snapshot()` to React's `useSyncExternalStore`). Most
    * callers should prefer `loadGraph()`, which lazy-loads on first call.
    *
-   * The returned reference is the live cache object — do NOT mutate it.
-   * Use `loadGraph()` for a defensive read or `getGraphForMutation()` for
-   * a mutable copy.
+   * Ownership: the returned reference is the LIVE cache object in every
+   * environment. It is never copied or frozen (unlike `loadGraph()`
+   * outside production), and writes update it in place. Do NOT mutate it
+   * or keep it as a snapshot. Use `getGraphForMutation()` for an
+   * independent copy.
    */
   get cachedGraph(): ReadonlyKnowledgeGraph | null {
     return this.cache;

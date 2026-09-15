@@ -585,8 +585,10 @@ export class CompressionManager {
     checkCancellation(options?.signal, 'compressGraph');
     reportProgress?.(createProgress(50, 100, 'compressGraph'));
 
-    // OPTIMIZATION: Load graph once for all operations. Keep the immutable
-    // cache snapshot for the final all-or-nothing governance preflight.
+    // OPTIMIZATION: Load graph once for all operations. Keep the pre-merge
+    // cache graph for the final all-or-nothing governance preflight. It is
+    // the live cache, not a frozen snapshot: it stays valid because the
+    // full save below replaces the cache object instead of editing it.
     const beforeGraph = this.storage.cachedGraph ?? await this.storage.loadGraph();
     const graph = await this.storage.getGraphForMutation();
     const initialSize = JSON.stringify(graph).length;

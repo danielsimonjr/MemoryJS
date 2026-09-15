@@ -1227,6 +1227,11 @@ export interface IGraphStorage {
    * Side-effect-free getter — does NOT trigger a load. Used by
    * `Diagnostics` and similar observability surfaces that want a cheap
    * peek at the current state without forcing I/O.
+   *
+   * Ownership contract: the result is the LIVE cache in every environment.
+   * Unlike `loadGraph()`, it is never copied or frozen, and storages update
+   * it in place. Callers must not mutate it or keep it as a snapshot. For an
+   * independent snapshot, use `getGraphForMutation()`.
    */
   readonly cachedGraph: ReadonlyKnowledgeGraph | null;
 

@@ -39,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`loadGraph()` ownership contract.** The result is a read-only borrowed view. In production it is still the live cache, with no copy. When `NODE_ENV` is not `production`, it is a deep-frozen copy, so code that mutates the result throws a `TypeError`. The contract is documented on `IGraphStorage` and on each storage. Code that edits a `loadGraph()` result, or an entity that a manager returns from it (for example `EntityManager.getEntity`), must copy the data first. Two consequences: repeated calls outside production no longer return the same object, and a test spy cannot attach to the frozen arrays.
+- **`loadGraph()` ownership contract.** The result is a read-only borrowed view. In production it is still the live cache, with no copy. When `NODE_ENV` is not `production`, it is a deep-frozen copy, so code that mutates the result throws a `TypeError`. The contract is documented on `IGraphStorage` and on each storage. Code that edits a `loadGraph()` result, or an entity that a manager returns from it (for example `EntityManager.getEntity`), must copy the data first. Consequences outside production: repeated calls no longer return the same object, a test spy cannot attach to the frozen arrays, and each call costs a copy plus a freeze (16-24 ms median at 10k entities and 20k relations). Benchmarks therefore measure this copying path unless they run with `NODE_ENV=production`. `cachedGraph` is unchanged: it is the live cache in every environment, and its JSDoc now says so.
+- **Search cache entries no longer keep a storage alive.** An entry keeps its owner's generation counters, not the storage instance.
 - **New exports** in `utils`: `deepCopyPlain`, `deepFreeze`, `borrowGraphView` and `isReadViewGuardEnabled`.
 
 ### Documentation

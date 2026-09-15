@@ -106,8 +106,12 @@ interface CacheEntry<T> {
   value: T;
   timestamp: number;
   expiresAt: number;
-  /** Storage instance the entry belongs to (scopes generation checks). */
-  owner?: object;
+  /**
+   * Generation counters of the entry's owner (the storage's own counters,
+   * or the any-owner counters for an unowned entry). The entry keeps the
+   * counters object, not the storage, so it never keeps a storage alive.
+   */
+  gens?: Generations;
   /** Owner entity generation at insert (only set when the cache depends on it). */
   entityGen?: number;
   /** Owner relation generation at insert (only set when the cache depends on it). */
@@ -168,7 +172,7 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
    */
   private isGenerationStale(entry: CacheEntry<T>): boolean {
     for (const dep of this.generationDeps) {
-      const own = generationsOf(entry.owner);
+      const own = entry.gens ?? anyGenerations;
       if (dep === 'entity') {
         if (entry.entityGen !== own.entity || entry.globalEntityGen !== globalGenerations.entity) return true;
       }
@@ -261,12 +265,12 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
     // cache declares generation dependencies)
     const entry: CacheEntry<T> = {
       value: deepCopyPlain(value),
-      owner,
       timestamp: Date.now(),
       expiresAt: Date.now() + this.ttlMs,
     };
     for (const dep of this.generationDeps) {
       const own = generationsOf(owner);
+      entry.gens = own;
       if (dep === 'entity') {
         entry.entityGen = own.entity;
         entry.globalEntityGen = globalGenerations.entity;
