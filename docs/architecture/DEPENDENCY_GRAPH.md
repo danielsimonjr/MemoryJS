@@ -83,7 +83,7 @@ Reachable from a root: **291** of 291 files. Dormant: **0** (0 orphaned, 0 test-
 - Classes: `ApiKeyAuthMiddleware`
 - Interfaces: `AuthContext`, `ApiKeyAuthOptions`
 - Types: `AuthOutcome`
-- Constants: `DEFAULT_WRITE_SCOPE`
+- Constants: `DEFAULT_WRITE_SCOPE`, `DEFAULT_READ_SCOPE`
 
 ---
 
@@ -145,6 +145,7 @@ Reachable from a root: **291** of 291 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `RateLimiter`
 - Interfaces: `RateLimiterConfig`, `RateLimitVerdict`
+- Constants: `DEFAULT_MAX_BUCKETS`
 
 ---
 
@@ -154,6 +155,7 @@ Reachable from a root: **291** of 291 files. Dormant: **0** (0 orphaned, 0 test-
 | Module | Import |
 |--------|--------|
 | `http` | `IncomingMessage, ServerResponse` |
+| `net` | `isIP` |
 
 **Internal Dependencies:**
 | File | Imports | Type |
@@ -162,10 +164,13 @@ Reachable from a root: **291** of 291 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/logger.js` | `logger` | Import |
 | `./pagination.js` | `paginate, parsePaginationParams` | Import |
 | `./ApiKeyAuthMiddleware.js` | `ApiKeyAuthMiddleware, AuthContext` | Import (type-only) |
+| `./RateLimiter.js` | `RateLimiter` | Import |
+| `../utils/errors.js` | `ValidationError` | Import |
+| `../types/types.js` | `Entity` | Import (type-only) |
 
 **Exports:**
 - Classes: `RestRouter`
-- Interfaces: `RestRequest`, `RestResponse`, `RouteDefinition`, `RestRouterOptions`
+- Interfaces: `RestRequest`, `RestResponse`, `RouteDefinition`, `RestRouterOptions`, `RestLimits`
 - Types: `RestMethod`, `RestHandler`
 
 ---
@@ -4574,6 +4579,7 @@ Reachable from a root: **291** of 291 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `APIKeyStore`
 - Interfaces: `KeyValidationResult`, `KeyRecord`, `IssueOptions`, `IssueResult`, `APIKeyStoreOptions`
+- Constants: `MAX_KEY_PROJECT_IDS`, `MAX_KEY_PROJECT_ID_LENGTH`
 
 ---
 
@@ -5286,7 +5292,7 @@ Reachable from a root: **291** of 291 files. Dormant: **0** (0 orphaned, 0 test-
 |------|--------------|------------|
 | `src/core/ManagerContext` | 91 files | 9 files |
 | `src/types/index` | 10 files | 63 files |
-| `src/types/types` | 1 file | 64 files |
+| `src/types/types` | 1 file | 65 files |
 | `src/agent/index` | 62 files | 1 file |
 | `src/utils/index` | 26 files | 27 files |
 | `src/types/agent-memory` | 1 file | 45 files |
@@ -5294,8 +5300,8 @@ Reachable from a root: **291** of 291 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/search/index` | 40 files | 1 file |
 | `src/core/EntityManager` | 10 files | 30 files |
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
+| `src/utils/errors` | 0 files | 29 files |
 | `src/utils/logger` | 0 files | 29 files |
-| `src/utils/errors` | 0 files | 28 files |
 | `src/cli/commands/helpers` | 3 files | 23 files |
 | `src/cli/formatters` | 2 files | 24 files |
 | `src/cli/commands/index` | 24 files | 1 file |
@@ -5496,6 +5502,7 @@ graph TD
     N6 --> N38
     N6 --> N4
     N6 --> N0
+    N6 --> N5
     N7 --> N69
     N8 --> N16
     N8 --> N35
@@ -5557,7 +5564,6 @@ graph TD
     N37 --> N33
     N38 --> N88
     N38 --> N72
-    N38 --> N82
 ```
 
 ---
@@ -5569,15 +5575,15 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 291 |
 | Total Modules | 12 |
-| Total Lines of Code | 101627 |
-| Total Exports | 2012 |
+| Total Lines of Code | 102085 |
+| Total Exports | 2016 |
 | Total Re-exports | 1331 |
 | Total Classes | 231 |
-| Total Interfaces | 618 |
+| Total Interfaces | 619 |
 | Total Functions | 315 |
 | Total Type Guards | 29 |
 | Total Enums | 4 |
-| Type-only Imports | 475 |
+| Type-only Imports | 476 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |

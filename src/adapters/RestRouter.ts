@@ -19,10 +19,14 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
+import { isIP } from 'net';
 import type { ManagerContext } from '../core/ManagerContext.js';
 import { logger } from '../utils/logger.js';
 import { paginate, parsePaginationParams } from './pagination.js';
 import type { ApiKeyAuthMiddleware, AuthContext } from './ApiKeyAuthMiddleware.js';
+import { RateLimiter } from './RateLimiter.js';
+import { ValidationError } from '../utils/errors.js';
+import type { Entity } from '../types/types.js';
 
 /** HTTP methods this router handles. */
 export type RestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
@@ -45,6 +49,14 @@ export interface RestRequest {
    * unauthenticated routers.
    */
   auth?: AuthContext;
+  /**
+   * Network address of the client. `serve()` fills it from the socket.
+   * The router uses it only to key rate-limit buckets; it is never trusted
+   * for authorization. Without it, the pre-authentication budget does not
+   * apply. Behind a reverse proxy, set it from a header that only the proxy
+   * can write. IPv6 addresses share a bucket per /64.
+   */
+  clientAddress?: string;
 }
 
 /** Framework-agnostic response envelope. */
@@ -56,8 +68,8 @@ export interface RestResponse {
 }
 
 /** Handler signature. Async; thrown errors become a 500 unless they carry
- * an integer HTTP error `status` from 400–599. Client error messages are
- * exposed; server error messages are redacted. */
+ * an integer HTTP error `status` from 400–599. The response body carries a
+ * fixed message for the status; thrown error messages never reach clients. */
 export type RestHandler = (
   req: RestRequest,
   ctx: ManagerContext,
@@ -75,20 +87,6 @@ export interface RouteDefinition {
   handler: RestHandler;
 }
 
-/**
- * Dispatch table over typed routes.
- *
- * @example
- * ```typescript
- * const router = new RestRouter(ctx);
- * router.get('/entities/:name', async (req, ctx) => {
- *   const entity = await ctx.entityManager.getEntity(req.params.name);
- *   return entity ? { status: 200, body: entity } : { status: 404, body: { error: 'not found' } };
- * });
- * // Wire into your framework:
- * fastify.all('/api/*', async (req, reply) => reply.code(...).send(await router.dispatch(...)));
- * ```
- */
 /** Optional router configuration. */
 export interface RestRouterOptions {
   /**
@@ -107,12 +105,78 @@ export interface RestRouterOptions {
    * omitted — otherwise `withDefaults` throws.
    */
   allowUnauthenticated?: boolean;
+  /**
+   * Time limit in milliseconds for reading a request body in `serve()`.
+   * A slower body gets 408. Default: 10 000.
+   */
+  bodyTimeoutMs?: number;
+  /**
+   * Budget for requests that FAIL authentication, keyed by
+   * {@link RestRequest.clientAddress}. When the budget of an address is
+   * empty, a request with an invalid key gets 429; a valid key still
+   * passes, so a flood from a shared address cannot lock out valid keys.
+   * Only failed attempts consume tokens, and no request body is read for
+   * them. Default when `auth` is set: 60 failures, refilled at 1 per second,
+   * at most 10 000 addresses.
+   */
+  preAuthLimiter?: RateLimiter;
+  /**
+   * Optional limiter for accepted requests, keyed by API key id (or by
+   * client address on an unauthenticated router). No default.
+   */
+  rateLimiter?: RateLimiter;
+  /** Input limits for the default routes. */
+  limits?: Partial<RestLimits>;
 }
 
+/** Input limits applied by the {@link RestRouter.withDefaults} routes. */
+export interface RestLimits {
+  /** Maximum length of the `/search` query `q`. Default 1024. */
+  maxQueryLength: number;
+  /** Maximum length of an entity `name` (body or path) and `projectId`. Default 500, as the entity schema. */
+  maxNameLength: number;
+  /** Maximum length of `entityType`. Default 100, as the entity schema. */
+  maxEntityTypeLength: number;
+  /** Maximum number of observations on a created entity. Default 1000. */
+  maxObservations: number;
+  /** Maximum length of one observation. Default 5000, as the entity schema. */
+  maxObservationLength: number;
+}
+
+const DEFAULT_LIMITS: RestLimits = {
+  maxQueryLength: 1024,
+  maxNameLength: 500,
+  maxEntityTypeLength: 100,
+  maxObservations: 1000,
+  maxObservationLength: 5000,
+};
+
+/** Largest delay Node's `setTimeout` honors; larger values fire after about 1 ms. */
+const MAX_TIMER_MS = 2_147_483_647;
+
+/**
+ * Dispatch table over typed routes.
+ *
+ * @example
+ * ```typescript
+ * const router = new RestRouter(ctx);
+ * router.get('/entities/:name', async (req, ctx) => {
+ *   const entity = await ctx.entityManager.getEntity(req.params.name);
+ *   return entity ? { status: 200, body: entity } : { status: 404, body: { error: 'not found' } };
+ * });
+ * // Wire into your framework:
+ * fastify.all('/api/*', async (req, reply) => reply.code(...).send(await router.dispatch(...)));
+ * ```
+ */
 export class RestRouter {
   private readonly routes: RouteDefinition[] = [];
   private readonly auth?: ApiKeyAuthMiddleware;
   private readonly maxBodyBytes: number;
+  private readonly bodyTimeoutMs: number;
+  private readonly preAuthLimiter?: RateLimiter;
+  private readonly rateLimiter?: RateLimiter;
+  /** Input limits for the default routes. */
+  readonly limits: Readonly<RestLimits>;
 
   constructor(private ctx: ManagerContext, options?: RestRouterOptions) {
     this.auth = options?.auth;
@@ -120,6 +184,20 @@ export class RestRouter {
     if (!Number.isSafeInteger(this.maxBodyBytes) || this.maxBodyBytes < 0) {
       throw new RangeError('RestRouter: maxBodyBytes must be a non-negative safe integer');
     }
+    this.bodyTimeoutMs = options?.bodyTimeoutMs ?? 10_000;
+    if (!Number.isSafeInteger(this.bodyTimeoutMs) || this.bodyTimeoutMs < 1 || this.bodyTimeoutMs > MAX_TIMER_MS) {
+      throw new RangeError(`RestRouter: bodyTimeoutMs must be an integer from 1 to ${MAX_TIMER_MS}`);
+    }
+    this.limits = { ...DEFAULT_LIMITS, ...options?.limits };
+    for (const [name, value] of Object.entries(this.limits)) {
+      if (!Number.isSafeInteger(value) || value < 0) {
+        throw new RangeError(`RestRouter: limits.${name} must be a non-negative safe integer`);
+      }
+    }
+    this.preAuthLimiter = options?.preAuthLimiter ??
+      (this.auth ? new RateLimiter({ capacity: 60, refillPerSecond: 1 }) : undefined);
+    this.rateLimiter = options?.rateLimiter;
+    if (this.auth) warnUnscopedKeysOnce(this.auth.unscopedKeyCount());
   }
 
   /** Register a `GET` route. */
@@ -174,12 +252,41 @@ export class RestRouter {
    * routes, and `req.auth` is populated for the matched handler.
    */
   async dispatch(req: RestRequest): Promise<RestResponse> {
+    const authorized = this.authorize(req);
+    if ('status' in authorized) return authorized;
+    if (req.body !== null && req.body !== undefined) {
+      let bytes: number;
+      try {
+        bytes = Buffer.byteLength(JSON.stringify(req.body));
+      } catch {
+        return errorResponse(new HttpInputError(400, 'Invalid request body'));
+      }
+      if (bytes > this.maxBodyBytes) return errorResponse(new HttpInputError(413, 'Request body too large'));
+    }
+    return this.dispatchRoutes(authorized);
+  }
+
+  /**
+   * Apply the pre-authentication budget, authentication and the accepted-
+   * request limiter. Returns the request with `auth` attached, or the
+   * rejection response.
+   */
+  private authorize(req: RestRequest): RestRequest | RestResponse {
+    const client = req.clientAddress ? `addr:${clientBucket(req.clientAddress)}` : undefined;
     if (this.auth) {
       const outcome = this.auth.authenticate(req);
-      if (!outcome.ok) return outcome.response;
+      if (!outcome.ok) {
+        if (outcome.response.status !== 401 || !this.preAuthLimiter || !client) return outcome.response;
+        const verdict = this.preAuthLimiter.check(client);
+        return verdict.allowed ? outcome.response : tooManyRequests(verdict.resetAt);
+      }
       req = { ...req, auth: outcome.auth };
     }
-    return this.dispatchRoutes(req);
+    if (this.rateLimiter) {
+      const verdict = this.rateLimiter.check(req.auth ? `key:${req.auth.keyId}` : client ?? 'addr:unknown');
+      if (!verdict.allowed) return tooManyRequests(verdict.resetAt);
+    }
+    return req;
   }
 
   private async dispatchRoutes(req: RestRequest): Promise<RestResponse> {
@@ -195,7 +302,7 @@ export class RestRouter {
         return errorResponse(err);
       }
     }
-    return { status: 404, body: { error: `No route for ${req.method} ${req.path}` } };
+    return notFound();
   }
 
   /**
@@ -223,6 +330,18 @@ export class RestRouter {
    *
    * With auth configured, mutations additionally require the
    * `entities:write` scope (default scope mapping).
+   *
+   * ## Project scoping
+   *
+   * A key with `projectIds` (see `APIKeyStore.issue`) sees only entities
+   * whose `projectId` is in that list. Entities without a `projectId` are
+   * hidden from such keys. List and search filter before pagination.
+   * A direct read or delete of an entity outside the list returns 404, the
+   * same response as a missing entity, so existence is not revealed.
+   * Creation must name an allowed `projectId` (403 otherwise). Because names
+   * are unique across projects, a scoped key that creates an existing name
+   * gets 409. A key without `projectIds`, and an unauthenticated router,
+   * keep full access.
    */
   static withDefaults(ctx: ManagerContext, options?: RestRouterOptions): RestRouter {
     if (!options?.auth && !options?.allowUnauthenticated) {
@@ -232,18 +351,22 @@ export class RestRouter {
       );
     }
     const router = new RestRouter(ctx, options);
+    const limits = router.limits;
     router
       .get('/entities', async (req, c) => {
         const graph = await c.storage.loadGraph();
         const params = parsePaginationParams(req.query);
-        const result = paginate(graph.entities, params);
+        // Filter before pagination so totals and cursors count only visible entities.
+        const result = paginate(visibleEntities(req, graph.entities), params);
         return { status: 200, body: { entities: result.page, total: result.total, nextCursor: result.nextCursor } };
       })
       .get('/entities/:name', async (req, c) => {
+        if (req.params.name!.length > limits.maxNameLength) {
+          return { status: 400, body: { error: 'Field length out of range' } };
+        }
         const entity = await c.entityManager.getEntity(req.params.name!);
-        return entity
-          ? { status: 200, body: entity }
-          : { status: 404, body: { error: `Entity not found: ${req.params.name}` } };
+        // An entity outside the key's projects is reported exactly like a missing one.
+        return entity && canAccess(req, entity) ? { status: 200, body: entity } : notFound();
       })
       .post('/entities', async (req, c) => {
         const body = req.body as Record<string, unknown> | null;
@@ -253,38 +376,105 @@ export class RestRouter {
           typeof body.name !== 'string' ||
           typeof body.entityType !== 'string' ||
           !Array.isArray(body.observations) ||
-          !body.observations.every((o) => typeof o === 'string')
+          !body.observations.every((o) => typeof o === 'string') ||
+          (body.projectId !== undefined && typeof body.projectId !== 'string')
         ) {
           return {
             status: 400,
             body: {
               error:
-                'Body must be an Entity object with string `name`, string `entityType`, and string[] `observations`',
+                'Body must be an Entity object with string `name`, string `entityType`, string[] `observations` and optional string `projectId`',
             },
           };
         }
-        const created = await c.entityManager.createEntities([
-          {
-            name: body.name,
-            entityType: body.entityType,
-            observations: body.observations,
-          },
-        ]);
+        const { name, entityType } = body;
+        const projectId = body.projectId as string | undefined;
+        const observations = body.observations as string[];
+        // Mirror the entity schema at the boundary: a schema failure must be a 400, not a 500.
+        if (
+          name.trim().length === 0 || name.length > limits.maxNameLength ||
+          entityType.trim().length === 0 || entityType.length > limits.maxEntityTypeLength ||
+          observations.some((o) => o.length === 0) ||
+          (projectId !== undefined && projectId.length > limits.maxNameLength)
+        ) {
+          return { status: 400, body: { error: 'Field length out of range' } };
+        }
+        if (
+          observations.length > limits.maxObservations ||
+          observations.some((o) => o.length > limits.maxObservationLength)
+        ) {
+          return { status: 413, body: { error: 'Too many or too large observations' } };
+        }
+        const scope = projectScope(req);
+        if (scope) {
+          // A project-scoped key must name one of its projects.
+          if (projectId === undefined || !scope.has(projectId)) {
+            return { status: 403, body: { error: 'forbidden' } };
+          }
+          // Names are unique across projects; report any existing name as a conflict.
+          if (await c.entityManager.getEntity(name)) {
+            return { status: 409, body: { error: 'Conflict' } };
+          }
+        }
+        let created: Entity[];
+        try {
+          created = await c.entityManager.createEntities([
+            { name, entityType, observations, ...(projectId !== undefined ? { projectId } : {}) },
+          ]);
+        } catch (err) {
+          // Schema details stay server-side; the client gets a fixed message.
+          if (err instanceof ValidationError) return { status: 400, body: { error: 'Invalid entity' } };
+          throw err;
+        }
+        // A concurrent create of the same name makes createEntities skip it.
+        if (scope && created.length === 0) return { status: 409, body: { error: 'Conflict' } };
         return { status: 201, body: { created } };
       })
       .delete('/entities/:name', async (req, c) => {
+        if (req.params.name!.length > limits.maxNameLength) {
+          return { status: 400, body: { error: 'Field length out of range' } };
+        }
+        if (projectScope(req)) {
+          const name = req.params.name!;
+          const entity = await c.entityManager.getEntity(name);
+          if (!entity || !canAccess(req, entity)) return notFound();
+          // Deleting an entity also deletes its relations. Refuse when one
+          // of them reaches an existing entity the key cannot see. Uses the
+          // relation index, not a full graph load.
+          for (const r of await c.relationManager.getRelations(name)) {
+            const other = await c.entityManager.getEntity(r.from === name ? r.to : r.from);
+            if (other && !canAccess(req, other)) return { status: 409, body: { error: 'Conflict' } };
+          }
+        }
         await c.entityManager.deleteEntities([req.params.name!]);
         return { status: 204, body: null };
       })
       .get('/search', async (req, c) => {
         const q = req.query.q ?? '';
-        // searchNodes returns a KnowledgeGraph; paginate over its
-        // entities array — relations stay with the unpaginated result
-        // since they reference entity names that may not all be present
-        // on a given page (clients re-fetch as needed).
-        const result = await c.searchManager.searchNodes(q);
+        if (q.length > limits.maxQueryLength) {
+          return { status: 400, body: { error: 'Query too long' } };
+        }
+        // For a few projects, push each one down to the search layer, so the
+        // search result cap is not consumed by other tenants' matches. Above
+        // MAX_PUSHDOWN_PROJECTS, run one search to bound the cost per request.
+        // Filter again before pagination. Relations are not returned.
+        const scope = projectScope(req);
+        let found: Entity[];
+        if (!scope || scope.size > MAX_PUSHDOWN_PROJECTS) {
+          found = (await c.searchManager.searchNodes(q)).entities;
+        } else {
+          const seen = new Set<string>();
+          found = [];
+          for (const projectId of scope) {
+            for (const e of (await c.searchManager.searchNodes(q, { projectId })).entities) {
+              if (seen.has(e.name)) continue;
+              seen.add(e.name);
+              found.push(e);
+            }
+          }
+        }
         const params = parsePaginationParams(req.query);
-        const paginated = paginate(result.entities, params);
+        const paginated = paginate(visibleEntities(req, found), params);
         return {
           status: 200,
           body: {
@@ -301,8 +491,10 @@ export class RestRouter {
    * Minimal Node `http` adapter. Converts an `IncomingMessage` /
    * `ServerResponse` pair into a `RestRequest`, runs `dispatch`, and
    * writes the response. Authenticates before reading a JSON body, limits it
-   * to `maxBodyBytes` (default 1 MiB), and returns 400 for malformed JSON
-   * or 413 for an oversized body. Non-JSON content leaves `body` as `null`.
+   * to `maxBodyBytes` (default 1 MiB) and `bodyTimeoutMs` (default 10 s), and
+   * returns 400 for malformed JSON, 408 for a slow body or 413 for an
+   * oversized body. Header-phase timeouts belong to the Node `http.Server`
+   * (`headersTimeout`, `requestTimeout`). Non-JSON content leaves `body` as `null`.
    *
    * @example
    * ```typescript
@@ -323,24 +515,24 @@ export class RestRouter {
         else if (Array.isArray(v)) headers[k.toLowerCase()] = v.join(',');
       }
 
-      let restReq: RestRequest = {
+      const restReq: RestRequest = {
         method,
         path: url.pathname,
         params: {},
         query,
         body: null,
         headers,
+        clientAddress: req.socket?.remoteAddress,
       };
       // Reject unauthorized requests before buffering or parsing their body.
       let restRes: RestResponse;
-      const outcome = this.auth?.authenticate(restReq);
-      if (outcome && !outcome.ok) {
-        restRes = outcome.response;
+      const authorized = this.authorize(restReq);
+      if ('status' in authorized) {
+        restRes = authorized;
         res.setHeader('connection', 'close');
       } else {
-        if (outcome?.ok) restReq = { ...restReq, auth: outcome.auth };
-        restReq.body = await readJsonBody(req, headers, this.maxBodyBytes);
-        restRes = await this.dispatchRoutes(restReq);
+        authorized.body = await readJsonBody(req, headers, this.maxBodyBytes, this.bodyTimeoutMs);
+        restRes = await this.dispatchRoutes(authorized);
       }
 
       res.statusCode = restRes.status;
@@ -378,6 +570,7 @@ async function readJsonBody(
   req: IncomingMessage,
   headers: Record<string, string>,
   maxBodyBytes: number,
+  timeoutMs: number,
 ): Promise<unknown> {
   const declaredLength = Number(headers['content-length']);
   if (Number.isFinite(declaredLength) && declaredLength > maxBodyBytes) {
@@ -385,19 +578,38 @@ async function readJsonBody(
   }
   const ctype = headers['content-type'] ?? '';
   if (!ctype.includes('json')) return null;
-  const chunks: Buffer[] = [];
-  let bytes = 0;
-  // Keep the socket alive long enough to send 413 when stopping early.
-  const input = req.iterator({ destroyOnReturn: false });
-  for await (const chunk of input) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
-    bytes += buffer.length;
-    if (bytes > maxBodyBytes) throw new HttpInputError(413, 'Request body too large');
-    chunks.push(buffer);
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      reject(new HttpInputError(408, 'Request body timeout'));
+    }, timeoutMs);
+  });
+  const collect = (async (): Promise<string | null> => {
+    const chunks: Buffer[] = [];
+    let bytes = 0;
+    // Keep the socket alive long enough to send 408/413 when stopping early.
+    const input = req.iterator({ destroyOnReturn: false });
+    for await (const chunk of input) {
+      // After the deadline, drop data until the connection closes.
+      if (timedOut) return null;
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string);
+      bytes += buffer.length;
+      if (bytes > maxBodyBytes) throw new HttpInputError(413, 'Request body too large');
+      chunks.push(buffer);
+    }
+    return Buffer.concat(chunks, bytes).toString('utf-8');
+  })();
+  // The losing promise must not surface as an unhandled rejection.
+  collect.catch(() => undefined);
+  let text: string | null;
+  try {
+    text = await Promise.race([collect, deadline]);
+  } finally {
+    clearTimeout(timer);
   }
-  if (chunks.length === 0) return null;
-  const text = Buffer.concat(chunks, bytes).toString('utf-8');
-  if (text.trim().length === 0) return null;
+  if (text === null || text.trim().length === 0) return null;
   try {
     return JSON.parse(text);
   } catch {
@@ -437,15 +649,102 @@ class HttpInputError extends Error {
   }
 }
 
-/** Only valid client errors are safe to expose; server details stay in logs. */
+/** Fixed client-facing messages for 4xx statuses. */
+const CLIENT_ERROR_MESSAGES: Readonly<Record<number, string>> = {
+  400: 'Bad Request', 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found',
+  405: 'Method Not Allowed', 408: 'Request Timeout', 409: 'Conflict',
+  413: 'Payload Too Large', 415: 'Unsupported Media Type',
+  422: 'Unprocessable Entity', 429: 'Too Many Requests',
+};
+
+/**
+ * Map a thrown error to a response. Messages of router-raised input errors
+ * are fixed strings and are kept. Any other error gets a fixed message for
+ * its status, so internal text never reaches clients.
+ */
 function errorResponse(error: unknown): RestResponse {
   const status = (error as { status?: unknown } | null)?.status;
   const validStatus = typeof status === 'number' && Number.isInteger(status) &&
     status >= 400 && status <= 599 ? status : 500;
-  return {
-    status: validStatus,
-    body: { error: validStatus < 500
-      ? (error instanceof Error ? error.message : String(error))
-      : 'Internal Server Error' },
+  if (validStatus >= 500) return { status: validStatus, body: { error: 'Internal Server Error' } };
+  const message = error instanceof HttpInputError
+    ? error.message
+    : CLIENT_ERROR_MESSAGES[validStatus] ?? 'Client Error';
+  return { status: validStatus, body: { error: message } };
+}
+
+/** Above this many allowed projects, a scoped search runs once and filters. */
+const MAX_PUSHDOWN_PROJECTS = 8;
+
+let unscopedKeyWarningLogged = false;
+
+/** Log the default-open key count once per process. Logs no key material. */
+function warnUnscopedKeysOnce(count: number): void {
+  if (unscopedKeyWarningLogged || count === 0) return;
+  unscopedKeyWarningLogged = true;
+  logger.warn(
+    `[RestRouter] ${count} API ${count === 1 ? 'key has' : 'keys have'} no projectIds and can access all projects`,
+  );
+}
+
+/**
+ * Rate-limit bucket for a client address. IPv6 addresses group by /64,
+ * because one host usually controls a whole /64.
+ */
+function clientBucket(address: string): string {
+  const host = address.split('%')[0]!.toLowerCase();
+  const version = isIP(host);
+  if (version === 4) return host;
+  if (version !== 6) return 'invalid';
+  const [head = '', tail = ''] = host.split('::');
+  const expand = (part: string): string[] => {
+    if (!part) return [];
+    const groups = part.split(':');
+    const last = groups[groups.length - 1]!;
+    if (isIP(last) === 4) {
+      // Embedded IPv4 (for example ::ffff:1.2.3.4): two 16-bit groups.
+      const [a, b, c, d] = last.split('.').map(Number) as [number, number, number, number];
+      groups.splice(-1, 1, ((a << 8) | b).toString(16), ((c << 8) | d).toString(16));
+    }
+    return groups;
   };
+  const headParts = expand(head);
+  const tailParts = expand(tail);
+  const fill = host.includes('::') ? 8 - headParts.length - tailParts.length : 0;
+  const groups = [...headParts, ...Array<string>(fill).fill('0'), ...tailParts].map((g) => parseInt(g, 16));
+  // IPv4-mapped (::ffff:a.b.c.d in any spelling) buckets as the IPv4 address.
+  if (groups.slice(0, 5).every((g) => g === 0) && groups[5] === 0xffff) {
+    return [groups[6]! >> 8, groups[6]! & 255, groups[7]! >> 8, groups[7]! & 255].join('.');
+  }
+  return `${groups.slice(0, 4).map((g) => g.toString(16)).join(':')}::/64`;
+}
+
+function notFound(): RestResponse {
+  return { status: 404, body: { error: 'Not Found' } };
+}
+
+function tooManyRequests(resetAt: string | undefined): RestResponse {
+  const seconds = resetAt ? Math.max(1, Math.ceil((Date.parse(resetAt) - Date.now()) / 1000)) : 1;
+  return { status: 429, body: { error: 'Too Many Requests' }, headers: { 'retry-after': String(seconds) } };
+}
+
+/** Allowed projects of the caller, or `null` for full access. */
+function projectScope(req: RestRequest): ReadonlySet<string> | null {
+  const ids = req.auth?.projectIds;
+  return ids ? new Set(ids) : null;
+}
+
+function inScope(scope: ReadonlySet<string>, entity: Entity): boolean {
+  return entity.projectId !== undefined && scope.has(entity.projectId);
+}
+
+function canAccess(req: RestRequest, entity: Entity): boolean {
+  const scope = projectScope(req);
+  return !scope || inScope(scope, entity);
+}
+
+function visibleEntities(req: RestRequest, entities: readonly Entity[]): Entity[] {
+  const scope = projectScope(req);
+  if (!scope) return [...entities];
+  return entities.filter((e) => inScope(scope, e));
 }

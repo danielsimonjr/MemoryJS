@@ -158,6 +158,14 @@ Update this file when:
 
 - [x] Inspect dependencies, functions, and configuration. Record the ten-step optimization plan in docs/analysis/optimization-review.md.
 - [ ] Revalidate the 549ce11 analysis against current source, then implement remaining optimization work. Acceptance criteria and sequencing are in docs/analysis/optimization-review.md.
+- [x] Step 3: bound and authorize the HTTP boundary (project-scoped keys, request budgets, body deadline, fixed 4xx messages). Branch `fix/wave1-step3-http-tenancy`.
+- [ ] Step 3 follow-up: `RateLimiter` state is per process. Add a shared-store limiter interface for multi-process deployments.
+- [ ] Step 3 follow-up: entity names are unique across projects, so a scoped `POST /entities` returns 409 for a name in another project. Per-project name spaces need a storage change.
+- [ ] Step 3 follow-up: custom `requiredScopes` mappings replace the `entities:read` default for project-scoped keys. Document or enforce read scope for custom mappings.
+- [ ] Step 3 follow-up: `SearchOptions.projectId` accepts one project only. Accept a list, so keys with more than 8 projects get one pushed-down search.
+- [ ] Step 3 follow-up: the scoped `DELETE` relation check and the delete do not run under one lock; a relation created in between is still removed.
+- [ ] Step 3 follow-up: `dispatch()` callers that set no `clientAddress` have no failed-key budget. Consider a loose global failure bucket.
+- [ ] Step 3 follow-up: the unscoped-key warning runs at router construction only; keys loaded later are not counted.
 - [ ] Recheck documentation gates on current source. The 549ce11 analysis recorded stale architecture metrics and 219 source documentation issues.
 - [x] Optimization step 1, trustworthy gates (branch fix/wave1-step1-gates): the Node smoke fails on a hang and executes SQLite; the symlink fixture skips only where symlinks are denied; the census check is source-backed; a labelled baseline is under benchmarks/results/.
 - [ ] Follow-up from step 1: CI Windows legs may skip the symlink-recovery test (EPERM). Confirm from the CI log which legs run it. Keep at least one leg (Linux or macOS) that executes the confinement assertion.

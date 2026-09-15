@@ -26,6 +26,8 @@ export interface KeyValidationResult {
   keyId?: string;
   scopes?: readonly string[];
   ownerId?: string;
+  /** Allowed projects; absent means every project (legacy full access). */
+  projectIds?: readonly string[];
   reason?: 'unknown' | 'revoked' | 'expired' | 'wrong-scope';
 }
 
@@ -39,6 +41,12 @@ export interface KeyRecord {
   ownerId?: string;
   /** Permission/scope set, e.g. `['read:entities', 'write:relations']`. */
   scopes: readonly string[];
+  /**
+   * Projects the key may access. **When absent, the key can access ALL
+   * projects** (the behavior of keys issued before project scoping). An
+   * empty array grants access to no project data.
+   */
+  projectIds?: readonly string[];
   /** ISO 8601 issuance timestamp. */
   issuedAt: string;
   /** ISO 8601 expiry — when omitted, the key never expires. */
@@ -49,9 +57,15 @@ export interface KeyRecord {
   metadata?: Record<string, unknown>;
 }
 
+/** Options for {@link APIKeyStore.issue}. */
 export interface IssueOptions {
   ownerId?: string;
   scopes?: readonly string[];
+  /**
+   * Allowed projects. **Omit it and the key can access ALL projects.**
+   * Pass `[]` for a key with no project data access.
+   */
+  projectIds?: readonly string[];
   /** TTL in seconds; mutually exclusive with `expiresAt`. */
   ttlSeconds?: number;
   /** Explicit expiry ISO 8601 string. */
@@ -59,11 +73,25 @@ export interface IssueOptions {
   metadata?: Record<string, unknown>;
 }
 
+/** Result of {@link APIKeyStore.issue}. */
 export interface IssueResult {
   /** Plaintext key — show to the caller once, then discard. */
   plaintext: string;
   /** Stored record (without the plaintext). */
   record: Readonly<KeyRecord>;
+}
+
+/** Constructor options for {@link APIKeyStore}. */
+export interface APIKeyStoreOptions {
+  /**
+   * Called synchronously after every state mutation (`issue`, `revoke`,
+   * `load`) with the mutation kind. Enables auto-persist wiring — e.g.
+   * `onMutate: () => fs.writeFileSync(path, JSON.stringify(store.serialize()))`
+   * — so the durability requirement documented on {@link APIKeyStore.issue}
+   * / {@link APIKeyStore.revoke} is met without every call site
+   * remembering to persist.
+   */
+  onMutate?: (kind: 'issue' | 'revoke' | 'load') => void;
 }
 
 /**
@@ -85,19 +113,6 @@ export interface IssueResult {
  * if (v.valid) console.log('hello', v.ownerId);
  * ```
  */
-/** Constructor options for {@link APIKeyStore}. */
-export interface APIKeyStoreOptions {
-  /**
-   * Called synchronously after every state mutation (`issue`, `revoke`,
-   * `load`) with the mutation kind. Enables auto-persist wiring — e.g.
-   * `onMutate: () => fs.writeFileSync(path, JSON.stringify(store.serialize()))`
-   * — so the durability requirement documented on {@link APIKeyStore.issue}
-   * / {@link APIKeyStore.revoke} is met without every call site
-   * remembering to persist.
-   */
-  onMutate?: (kind: 'issue' | 'revoke' | 'load') => void;
-}
-
 export class APIKeyStore {
   /** keyId -> record. */
   private records: Map<string, KeyRecord> = new Map();
@@ -111,6 +126,10 @@ export class APIKeyStore {
 
   /**
    * Issue a new key. The plaintext is returned exactly once.
+   *
+   * **Default open:** a key issued without `options.projectIds` can access
+   * ALL projects through the default `RestRouter` routes. Pass `projectIds`
+   * to isolate tenants.
    *
    * **Persistence requirement:** this store is in-memory. The new record
    * exists only in this process until the caller persists `serialize()`.
@@ -127,6 +146,7 @@ export class APIKeyStore {
       throw new RangeError('ttlSeconds must be finite and non-negative');
     }
     if (options.expiresAt !== undefined) assertTimestamp(options.expiresAt, 'expiresAt');
+    const projectIds = normalizeProjectIds(options.projectIds);
     const plaintext = `mjs_${randomBytes(24).toString('base64url')}`;
     const hash = sha256(plaintext);
     const keyId = `kid_${randomBytes(8).toString('base64url')}`;
@@ -140,6 +160,7 @@ export class APIKeyStore {
       hash,
       ownerId: options.ownerId,
       scopes: [...(options.scopes ?? [])],
+      ...(projectIds ? { projectIds } : {}),
       issuedAt,
       expiresAt,
       metadata: options.metadata,
@@ -202,6 +223,7 @@ export class APIKeyStore {
       keyId: record.keyId,
       scopes: [...record.scopes],
       ownerId: record.ownerId,
+      ...(record.projectIds ? { projectIds: [...record.projectIds] } : {}),
     };
   }
 
@@ -262,12 +284,21 @@ export class APIKeyStore {
       if (nextRecords.has(r.keyId) || nextByHash.has(r.hash)) {
         throw new TypeError('Duplicate API key id or hash');
       }
-      nextRecords.set(r.keyId, copyRecord(r));
+      const projectIds = normalizeProjectIds(r.projectIds);
+      const { projectIds: _ignored, ...rest } = r;
+      nextRecords.set(r.keyId, copyRecord(projectIds ? { ...rest, projectIds } : rest));
       nextByHash.set(r.hash, r.keyId);
     }
     this.records = nextRecords;
     this.byHash = nextByHash;
     this.onMutate?.('load');
+  }
+
+  /** Number of non-revoked keys without `projectIds` (keys with access to ALL projects). */
+  unscopedKeyCount(): number {
+    let count = 0;
+    for (const r of this.records.values()) if (!r.revokedAt && !r.projectIds) count++;
+    return count;
   }
 
   /** Total registered keys (including revoked). */
@@ -283,6 +314,7 @@ function sha256(input: string): string {
 /** Authorization fields never share mutable references with callers. */
 function copyRecord(record: KeyRecord): KeyRecord {
   return { ...record, scopes: [...record.scopes],
+    ...(record.projectIds ? { projectIds: [...record.projectIds] } : {}),
     ...(record.metadata ? { metadata: { ...record.metadata } } : {}) };
 }
 
@@ -290,4 +322,25 @@ function assertTimestamp(value: string, field: string): void {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) {
     throw new TypeError(`Invalid API key ${field}`);
   }
+}
+
+/** Maximum number of projects on one key. */
+export const MAX_KEY_PROJECT_IDS = 1000;
+/** Maximum length of one project id on a key. */
+export const MAX_KEY_PROJECT_ID_LENGTH = 256;
+
+/** Validate and de-duplicate a key's project list. `undefined` stays `undefined`. */
+function normalizeProjectIds(value: unknown): string[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > MAX_KEY_PROJECT_IDS) {
+    throw new TypeError('Invalid API key projectIds');
+  }
+  // Index every slot: Array.prototype.every skips the holes of a sparse array.
+  for (let i = 0; i < value.length; i++) {
+    const p: unknown = value[i];
+    if (typeof p !== 'string' || p.length === 0 || p.length > MAX_KEY_PROJECT_ID_LENGTH) {
+      throw new TypeError('Invalid API key projectIds');
+    }
+  }
+  return [...new Set(value as string[])];
 }
