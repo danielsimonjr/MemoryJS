@@ -27,6 +27,8 @@ interface MemRow extends Record<string, unknown> {
 }
 const memEntities = new Map<string, MemRow>();
 const memRelations: MemRow[] = [];
+const statementLog: string[] = [];
+let failEntityInsert = false;
 
 // Mock the `pg` module. The implementation parses the SQL coarsely (good
 // enough for the storage class which uses just five distinct statement
@@ -133,6 +135,22 @@ vi.mock('pg', () => {
       return { rows: [], rowCount: 0 };
     }
     async end(): Promise<void> { /* no-op */ }
+    async connect() {
+      return {
+        query: async <R = unknown>(sql: string, params: unknown[] = []) => {
+          const head = sql.trim().split(/\s+/)[0]!.toUpperCase();
+          statementLog.push(head);
+          if (head === 'BEGIN' || head === 'COMMIT' || head === 'ROLLBACK') {
+            return { rows: [] as R[], rowCount: 0 };
+          }
+          if (failEntityInsert && head === 'INSERT' && sql.includes('entities')) {
+            throw new Error('injected insert failure');
+          }
+          return this.query<R>(sql, params);
+        },
+        release: () => { statementLog.push('RELEASE'); },
+      };
+    }
   }
   return { Pool: MockPool };
 });
@@ -248,6 +266,28 @@ describe('PostgreSQLStorage', () => {
       expect(storage.getEntityByName('old')).toBeUndefined();
       expect(storage.getEntityByName('A')?.observations).toEqual(['fresh']);
       expect(storage.getRelationsFor('A')).toHaveLength(1);
+    });
+
+    it('saveGraph runs the replace inside one database transaction', async () => {
+      await storage.loadGraph();
+      statementLog.length = 0;
+      await storage.saveGraph({ entities: [{ name: 'A', entityType: 't', observations: [] }], relations: [] });
+      expect(statementLog).toEqual(['BEGIN', 'TRUNCATE', 'INSERT', 'COMMIT', 'RELEASE']);
+    });
+
+    it('saveGraph rolls back and keeps the cache when an insert fails', async () => {
+      await storage.appendEntity({ name: 'old', entityType: 't', observations: [] });
+      statementLog.length = 0;
+      failEntityInsert = true;
+      try {
+        await expect(
+          storage.saveGraph({ entities: [{ name: 'A', entityType: 't', observations: [] }], relations: [] }),
+        ).rejects.toThrow(/injected/);
+      } finally {
+        failEntityInsert = false;
+      }
+      expect(statementLog).toEqual(['BEGIN', 'TRUNCATE', 'INSERT', 'ROLLBACK', 'RELEASE']);
+      expect(storage.getEntityByName('old')).toBeDefined();
     });
   });
 

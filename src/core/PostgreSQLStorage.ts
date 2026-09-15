@@ -49,9 +49,16 @@ interface PgQueryResult<R = unknown> {
   rows: R[];
   rowCount: number | null;
 }
-interface PgPool {
+interface PgQueryable {
   query<R = unknown>(text: string, params?: unknown[]): Promise<PgQueryResult<R>>;
+}
+interface PgPoolClient extends PgQueryable {
+  release(): void;
+}
+interface PgPool extends PgQueryable {
   end(): Promise<void>;
+  /** Checks out one connection; needed for a multi-statement transaction. */
+  connect?(): Promise<PgPoolClient>;
 }
 interface PgPoolConstructor {
   new (config: { connectionString: string }): PgPool;
@@ -358,12 +365,32 @@ export class PostgreSQLStorage implements IGraphStorage {
     const pool = await this.getPool();
     // Truncate-and-reinsert is the simplest correct implementation. For very
     // large graphs a smarter diff would be faster; v1 keeps it simple.
-    await pool.query('TRUNCATE entities, relations');
-    for (const entity of graph.entities) {
-      await this.insertEntityRow(pool, entity);
-    }
-    for (const relation of graph.relations) {
-      await this.insertRelationRow(pool, relation);
+    // The whole replace runs in one database transaction on one checked-out
+    // connection, so a failed insert cannot leave a truncated table. A pool
+    // without `connect()` (a custom shim) keeps the non-transactional path.
+    const client = pool.connect ? await pool.connect() : undefined;
+    const db: PgQueryable = client ?? pool;
+    try {
+      if (client) await client.query('BEGIN');
+      await db.query('TRUNCATE entities, relations');
+      for (const entity of graph.entities) {
+        await this.insertEntityRow(db, entity);
+      }
+      for (const relation of graph.relations) {
+        await this.insertRelationRow(db, relation);
+      }
+      if (client) await client.query('COMMIT');
+    } catch (error) {
+      if (client) {
+        try {
+          await client.query('ROLLBACK');
+        } catch {
+          // Keep the original failure; the connection is released below.
+        }
+      }
+      throw error;
+    } finally {
+      client?.release();
     }
     this.cache = {
       entities: graph.entities.map((e) => ({ ...e })),
@@ -373,7 +400,7 @@ export class PostgreSQLStorage implements IGraphStorage {
     this.pendingAppends = 0;
   }
 
-  private async insertEntityRow(pool: PgPool, entity: Entity): Promise<void> {
+  private async insertEntityRow(pool: PgQueryable, entity: Entity): Promise<void> {
     const row = this.entityToRow(entity);
     const cols = ENTITY_COLUMNS.join(', ');
     const placeholders = ENTITY_COLUMNS.map((_, i) => `$${i + 1}`).join(', ');
@@ -386,7 +413,7 @@ export class PostgreSQLStorage implements IGraphStorage {
     );
   }
 
-  private async insertRelationRow(pool: PgPool, relation: Relation): Promise<void> {
+  private async insertRelationRow(pool: PgQueryable, relation: Relation): Promise<void> {
     await pool.query(
       `INSERT INTO relations (from_name, to_name, relation_type)
        VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
