@@ -5,7 +5,7 @@
     "lastUpdated": "2026-09-15",
     "totalFiles": 291,
     "totalModules": 12,
-    "totalExports": 2012
+    "totalExports": 2016
   },
   "entryPoints": [
     {
@@ -56,6 +56,7 @@
         ],
         "exports": [
           "DEFAULT_WRITE_SCOPE",
+          "DEFAULT_READ_SCOPE",
           "ApiKeyAuthMiddleware"
         ],
         "classes": [
@@ -66,7 +67,8 @@
           "ApiKeyAuthOptions"
         ],
         "constants": [
-          "DEFAULT_WRITE_SCOPE"
+          "DEFAULT_WRITE_SCOPE",
+          "DEFAULT_READ_SCOPE"
         ]
       },
       "src/adapters/index.ts": {
@@ -274,6 +276,7 @@
         "nodeDependencies": [],
         "internalDependencies": [],
         "exports": [
+          "DEFAULT_MAX_BUCKETS",
           "RateLimiter"
         ],
         "classes": [
@@ -282,6 +285,9 @@
         "interfaces": [
           "RateLimiterConfig",
           "RateLimitVerdict"
+        ],
+        "constants": [
+          "DEFAULT_MAX_BUCKETS"
         ]
       },
       "src/adapters/RestRouter.ts": {
@@ -293,6 +299,12 @@
             "imports": [
               "IncomingMessage",
               "ServerResponse"
+            ]
+          },
+          {
+            "module": "net",
+            "imports": [
+              "isIP"
             ]
           }
         ],
@@ -324,6 +336,25 @@
               "AuthContext"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./RateLimiter.js",
+            "imports": [
+              "RateLimiter"
+            ]
+          },
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "ValidationError"
+            ]
+          },
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "Entity"
+            ],
+            "typeOnly": true
           }
         ],
         "exports": [
@@ -336,7 +367,8 @@
           "RestRequest",
           "RestResponse",
           "RouteDefinition",
-          "RestRouterOptions"
+          "RestRouterOptions",
+          "RestLimits"
         ]
       }
     },
@@ -15612,6 +15644,8 @@
         ],
         "internalDependencies": [],
         "exports": [
+          "MAX_KEY_PROJECT_IDS",
+          "MAX_KEY_PROJECT_ID_LENGTH",
           "APIKeyStore"
         ],
         "classes": [
@@ -15623,6 +15657,10 @@
           "IssueOptions",
           "IssueResult",
           "APIKeyStoreOptions"
+        ],
+        "constants": [
+          "MAX_KEY_PROJECT_IDS",
+          "MAX_KEY_PROJECT_ID_LENGTH"
         ]
       },
       "src/security/index.ts": {
@@ -19740,16 +19778,16 @@
   "statistics": {
     "totalTypeScriptFiles": 291,
     "totalModules": 12,
-    "totalLinesOfCode": 101627,
-    "totalExports": 2012,
+    "totalLinesOfCode": 102085,
+    "totalExports": 2016,
     "totalClasses": 231,
-    "totalInterfaces": 618,
+    "totalInterfaces": 619,
     "totalFunctions": 315,
     "totalTypeGuards": 29,
     "totalEnums": 4,
-    "totalConstants": 119,
+    "totalConstants": 123,
     "totalReExports": 1331,
-    "totalTypeOnlyImports": 475,
+    "totalTypeOnlyImports": 476,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
@@ -19758,6 +19796,6 @@
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 64
+    "unusedExportsCount": 69
   }
 }

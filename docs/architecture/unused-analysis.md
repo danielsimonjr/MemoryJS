@@ -12,9 +12,9 @@
 - **Dormant files** (runtime code on disk, unreachable from any entry/build root): 0
   - **Orphaned (reachable from nothing — delete/wire candidates)**: 0
   - **Test-only (exercised by a test, ships nothing)**: 0
-- **Potentially unused exports**: 64
+- **Potentially unused exports**: 69
   - **Unreferenced anywhere (deletion candidates)**: 0
-  - **Referenced in-module (type contracts / helpers backing live exports)**: 64
+  - **Referenced in-module (type contracts / helpers backing live exports)**: 69
 
 Seeded reachability roots (4):
 
@@ -58,12 +58,24 @@ _None._
 Not imported cross-file, but referenced within their own module — they type or
 support exports that ARE used, so they cannot be deleted in isolation.
 
+### `src/adapters/ApiKeyAuthMiddleware.ts`
+
+- `DEFAULT_READ_SCOPE` (constant) — 1 in-file ref
+
 ### `src/adapters/LangChainMemoryAdapter.ts`
 
 - `ChatMessage` (interface) — 6 in-file refs
 - `MemoryInputs` (interface) — 1 in-file ref
 - `MemoryVariables` (interface) — 1 in-file ref
 - `LangChainMemoryAdapterOptions` (interface) — 1 in-file ref
+
+### `src/adapters/RateLimiter.ts`
+
+- `DEFAULT_MAX_BUCKETS` (constant) — 1 in-file ref
+
+### `src/adapters/RestRouter.ts`
+
+- `RestLimits` (interface) — 3 in-file refs
 
 ### `src/agent/CollaborativeSynthesis.ts`
 
@@ -186,6 +198,11 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 - `TieredIndexOptions` (interface) — 1 in-file ref
 - `TieredIndexBuildOptions` (interface) — 1 in-file ref
+
+### `src/security/APIKeyStore.ts`
+
+- `MAX_KEY_PROJECT_IDS` (constant) — 1 in-file ref
+- `MAX_KEY_PROJECT_ID_LENGTH` (constant) — 1 in-file ref
 
 ### `src/types/agent-memory.ts`
 
