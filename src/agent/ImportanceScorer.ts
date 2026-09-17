@@ -1,3 +1,6 @@
+/**
+ * Configuration for `ImportanceScorer`. The three weights combine the length, keyword and overlap signals. The defaults are 0.3, 0.4 and 0.3.
+ */
 export interface ImportanceScorerConfig {
   domainKeywords?: Set<string>;
   lengthWeight?: number;
@@ -5,11 +8,19 @@ export interface ImportanceScorerConfig {
   overlapWeight?: number;
 }
 
+/**
+ * Optional text that `score` compares with the new content to measure token overlap.
+ */
 export interface ScoreOptions {
   queryContext?: string;
   recentTurns?: string[];
 }
 
+/**
+ * Scores new content on the 0-10 importance scale.
+ *
+ * The score combines log-scaled content length, domain keyword presence and token overlap with the query context or recent turns. The class keeps no state between calls.
+ */
 export class ImportanceScorer {
   private readonly domainKeywords: Set<string>;
   private readonly lengthWeight: number;

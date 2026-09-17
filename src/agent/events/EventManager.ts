@@ -100,6 +100,7 @@ export function eventEntityName(action: string, shortId: string): string {
 // Config
 // ============================================================
 
+/** Options for `EventManager`. */
 export interface EventManagerConfig {
   /**
    * When true (default), endpoint entities (actor/target/context/

@@ -63,11 +63,18 @@ function isStoreRecord(value: unknown): value is StoreRecord {
     && (record.resourceType === undefined || isResourceType(record.resourceType));
 }
 
+/** Options for {@link RoleAssignmentStore}. */
 export interface RoleAssignmentStoreOptions {
   /** Path to a JSONL sidecar; absent ⇒ in-memory only. */
   persistencePath?: string;
 }
 
+/**
+ * Registry of agent role assignments.
+ *
+ * When `persistencePath` is set, each assign and revoke appends one JSONL line.
+ * `hydrate` replays that file to rebuild the registry.
+ */
 export class RoleAssignmentStore {
   private readonly assignments = new Map<string, RoleAssignment[]>();
   private readonly persistencePath?: string;

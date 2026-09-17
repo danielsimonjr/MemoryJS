@@ -79,6 +79,15 @@ export function findEntityByName(
   name: string,
   throwIfNotFound?: boolean
 ): Entity | null;
+/**
+ * Finds an entity by exact name.
+ *
+ * @param graph - Graph to search.
+ * @param name - Entity name to match.
+ * @param throwIfNotFound - If true, throw when no entity matches. Default true.
+ * @returns The entity, or null when none matches and `throwIfNotFound` is false.
+ * @throws EntityNotFoundError when no entity matches and `throwIfNotFound` is true.
+ */
 export function findEntityByName(
   graph: KnowledgeGraph,
   name: string,

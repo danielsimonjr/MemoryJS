@@ -282,7 +282,7 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 694 | repo_map.py |
-| totalLinesOfCode | 235882 | repo_map.py |
+| totalLinesOfCode | 236905 | repo_map.py |
 | totalExports | 2874 | repo_map.py |
 | totalTypeOnlyImports | 730 | repo_map.py |
 | totalModules | 6 | repo_map.py |
@@ -295,7 +295,7 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 
 - Source files in `src/`: 292 (292 reachable, 0 dormant).
-- Lines of code in `src/`: 102,570.
+- Lines of code in `src/`: 103,593.
 - Exports in `src/`: 2,030 (1,336 re-exports).
 - Classes 233, interfaces 620, functions 322, type guards 30, enums 4, constants 123.
 - Type-only imports in `src/`: 476.

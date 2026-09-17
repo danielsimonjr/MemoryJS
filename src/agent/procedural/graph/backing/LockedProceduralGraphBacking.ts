@@ -21,6 +21,11 @@ import type {
 } from './IProceduralGraphBacking.js';
 import type { ProceduralGraphState } from './ProceduralGraphState.js';
 
+/**
+ * Base backing that runs each operation on a {@link ProceduralGraphState} under a mutex.
+ *
+ * Subclasses implement `afterWrite` to persist the changes of a mutation.
+ */
 export abstract class LockedProceduralGraphBacking implements IProceduralGraphBacking {
   abstract readonly kind: 'jsonl' | 'memory';
   private readonly mutex = new AsyncMutex();

@@ -11,6 +11,11 @@ import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';
 
+/**
+ * Register the `project-context` command group: `show`, `append-fact`, `append-convention`, `append-command`, `append-glossary` and `clear`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerProjectContextCommands(program: Command): void {
   const pc = program
     .command('project-context')

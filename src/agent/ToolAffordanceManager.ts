@@ -68,6 +68,11 @@ export interface ToolSuggestion {
   score: number;
 }
 
+/**
+ * Records rolling outcome statistics for each tool and suggests tools for a task hint.
+ *
+ * Each tool has one `tool-affordance-<toolName>` entity. The manager keeps the success rate, failure modes and average duration over a rolling window.
+ */
 export class ToolAffordanceManager {
   private readonly storage: IGraphStorage;
   private readonly entityManager: EntityManager;

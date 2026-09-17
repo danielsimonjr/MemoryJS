@@ -24,6 +24,9 @@ import type { Entity } from '../types/types.js';
 import { jaccard, tokenizeToSet } from '../utils/textSimilarity.js';
 import type { ContextWindowManager } from './ContextWindowManager.js';
 
+/**
+ * Options for `TrajectoryCompressor.distill`.
+ */
 export interface DistillOptions {
   /** Keep events in the order they arrived. Default true. */
   preserveTemporalOrder?: boolean;
@@ -37,6 +40,9 @@ export interface DistillOptions {
   preserveEntities?: string[];
 }
 
+/**
+ * Result of `distill`: a summary, key facts, and the details that it kept and dropped.
+ */
 export interface CompressedMemory {
   /** Plain-text rollup spanning the compressed observations. */
   summary: string;
@@ -52,8 +58,14 @@ export interface CompressedMemory {
   discardedDetails: string[];
 }
 
+/**
+ * Detail level that `abstractAtLevel` produces.
+ */
 export type Granularity = 'fine' | 'medium' | 'coarse';
 
+/**
+ * Group of entities that `findRedundancies` treats as duplicates of each other.
+ */
 export interface RedundancyGroup {
   /** All entities considered duplicates of each other. */
   entities: Entity[];
@@ -70,11 +82,19 @@ export type TrajectoryMergeStrategy =
   | 'keep-most-confident'
   | 'union-observations';
 
+/**
+ * Configuration for `TrajectoryCompressor`.
+ */
 export interface TrajectoryCompressorConfig {
   /** Min token-overlap ratio to call two entities redundant. Default 0.7. */
   redundancyThreshold?: number;
 }
 
+/**
+ * Compresses observation histories and merges redundant entities.
+ *
+ * Context folding delegates to `ContextWindowManager.compressForContext`. The other methods use token overlap.
+ */
 export class TrajectoryCompressor {
   private readonly contextWindow: ContextWindowManager;
   private readonly redundancyThreshold: number;

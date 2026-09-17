@@ -28,6 +28,14 @@ function emitJson(payload: unknown): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+/**
+ * Register the `reindex` command.
+ *
+ * The command rebuilds the ranked-search (TF-IDF/BM25) index and the spell-checker vocabulary.
+ * `--ranked` or `--spell` limits the rebuild to one index.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerReindexCommand(program: Command): void {
   program
     .command('reindex')

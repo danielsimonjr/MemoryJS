@@ -41,6 +41,11 @@ export function extractToolName(envelope: unknown): string {
   return 'unknown';
 }
 
+/**
+ * Wraps MCP tool handlers so a `ToolCallObserver` records each call.
+ *
+ * The adapter reads the tool name from the request envelope. It reports start, completion and error to the observer.
+ */
 export class MCPToolObserverAdapter {
   private readonly observer: ToolCallObserver;
 

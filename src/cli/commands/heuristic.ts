@@ -15,6 +15,11 @@ function emitJson(payload: unknown): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+/**
+ * Register the `heuristic` command group: `add`, `list`, `count`, `get`, `match`, `reinforce`, `contradict`, `conflicts`, `remove` and `clear`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerHeuristicCommands(program: Command): void {
   const h = program
     .command('heuristic')

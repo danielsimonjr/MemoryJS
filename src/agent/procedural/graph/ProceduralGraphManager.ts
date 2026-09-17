@@ -49,6 +49,12 @@ import {
 
 const DEFAULT_PAGE_LIMIT = 100;
 
+/**
+ * Options for {@link ProceduralGraphManager}.
+ *
+ * `backing` stores the graphs. Set `ownsBacking` to true to close the backing on dispose.
+ * `policy` controls access, and `guidanceProvider` is the default model for sessions.
+ */
 export interface ProceduralGraphManagerConfig {
   backing: IProceduralGraphBacking;
   ownsBacking: boolean;
@@ -72,6 +78,12 @@ export interface PGGraphStats {
   rejectionCount: number;
 }
 
+/**
+ * Access and audit hooks for {@link ProceduralGraphManager}.
+ *
+ * A missing `can*` hook allows the operation. A hook that returns false denies it.
+ * `audit` receives an event after each successful mutation.
+ */
 export interface PGPolicy {
   canRead?(graphId: string): boolean | Promise<boolean>;
   canWrite?(graphId: string): boolean | Promise<boolean>;
@@ -79,6 +91,12 @@ export interface PGPolicy {
   audit?(event: { op: string; graphId: string; revisionId?: string; at: string }): void | Promise<void>;
 }
 
+/**
+ * Public entry point to create, read, guide, evolve and import Procedural Graphs.
+ *
+ * Checks the policy before each operation. Returns expected validation and
+ * policy failures as result values, not as exceptions.
+ */
 export class ProceduralGraphManager {
   private readonly backing: IProceduralGraphBacking;
   private readonly ownsBacking: boolean;

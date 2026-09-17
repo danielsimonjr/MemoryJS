@@ -16,6 +16,9 @@ export interface PaginationParams {
   offset: number;
 }
 
+/**
+ * Limits that `parsePaginationParams` applies to parsed query parameters.
+ */
 export interface ParsePaginationOptions {
   /** Cap on `limit`. Default 200. */
   maxLimit?: number;
@@ -23,6 +26,9 @@ export interface ParsePaginationOptions {
   defaultLimit?: number;
 }
 
+/**
+ * One page of items, with the source total and an optional cursor to the next page.
+ */
 export interface PaginatedResult<T> {
   page: T[];
   /** Total items in the source array (before slicing). */

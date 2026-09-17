@@ -32,6 +32,9 @@ import {
   ZlibCompressionAdapter,
 } from './ICompressionAdapter.js';
 
+/**
+ * Options for a `CompressedMap`.
+ */
 export interface CompressedMapOptions<V = unknown> {
   /** Number of recent unique keys to keep uncompressed. Default: 1000. */
   hotThreshold?: number;
@@ -50,6 +53,11 @@ export interface CompressedMapOptions<V = unknown> {
   onInsert?: () => void;
 }
 
+/**
+ * A map that keeps recent entries uncompressed and compresses older entries.
+ *
+ * The constructor throws when `hotThreshold` is not a positive integer.
+ */
 export class CompressedMap<K, V> {
   private readonly hot: Map<K, V> = new Map();
   private readonly cold: Map<K, Buffer> = new Map();

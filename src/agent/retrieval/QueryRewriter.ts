@@ -32,6 +32,7 @@ function getValidTokens(s: string): string[] {
     .filter(t => t.length >= 3 && !STOPWORDS.has(t));
 }
 
+/** Result of a query rewrite. */
 export interface RewriteResult {
   /** The expanded query string. */
   query: string;
@@ -39,6 +40,7 @@ export interface RewriteResult {
   expansionTokens: string[];
 }
 
+/** Expands a query with frequent tokens from result snippets. The rewriter needs no LLM. */
 export class QueryRewriter {
   /**
    * Expand `query` with the top-`expansionLimit` co-occurring tokens

@@ -19,6 +19,12 @@ export function canonicalJson(value: unknown): string {
   return JSON.stringify(sortKeys(value));
 }
 
+/**
+ * Computes the SHA-256 hash of a UTF-8 string.
+ *
+ * @param input - Text to hash.
+ * @returns The hash as lowercase hexadecimal.
+ */
 export function sha256Hex(input: string): string {
   return createHash('sha256').update(input, 'utf8').digest('hex');
 }
@@ -59,6 +65,12 @@ export function storageKey(
   return `pg:${kind}:${sha256Hex(canonicalJson(tuple))}`;
 }
 
+/**
+ * Computes a fingerprint for evaluation settings, so a cached evaluation is reused only for identical settings.
+ *
+ * @param parts - Settings that affect an evaluation score.
+ * @returns The SHA-256 hash of the canonical JSON of `parts`.
+ */
 export function evaluationFingerprint(parts: Record<string, unknown>): string {
   return sha256Hex(canonicalJson(parts));
 }

@@ -17,6 +17,14 @@ interface InteractiveContext {
   history: string[];
 }
 
+/**
+ * Start the interactive REPL for the knowledge graph.
+ *
+ * The REPL loads the graph once to seed entity-name completion.
+ * The promise stays pending until the user closes the shell.
+ *
+ * @param options - The global CLI options. `storage` selects the graph file.
+ */
 export async function startInteractiveMode(options: GlobalOptions): Promise<void> {
   const ctx = new ManagerContext(options.storage);
 

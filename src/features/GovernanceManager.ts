@@ -382,6 +382,12 @@ export interface GovernanceManagerOptions {
   redactor?: PiiRedactor;
 }
 
+/**
+ * Applies governance policy, audit logging and rollback to graph mutations.
+ *
+ * A transaction checks the policy before each operation, records before and
+ * after snapshots in the audit log, and can reverse an entry by its audit ID.
+ */
 export class GovernanceManager {
   private policy: GovernancePolicy = {};
   private readonly snapshotRedactor?: PiiRedactor;

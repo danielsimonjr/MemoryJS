@@ -26,14 +26,23 @@ import type { PatternDetector } from './PatternDetector.js';
 import type { PatternResult } from '../types/agent-memory.js';
 import { tokenizeToSet, jaccard } from '../utils/textSimilarity.js';
 
+/**
+ * Result of a trajectory. `unknown` marks a trajectory with no recorded result.
+ */
 export type Outcome = 'success' | 'failure' | 'partial' | 'unknown';
 
+/**
+ * One action in a trajectory: the action name, optional parameters and an optional ok or error result.
+ */
 export interface Action {
   name: string;
   parameters?: Record<string, unknown>;
   result?: 'ok' | 'error';
 }
 
+/**
+ * One recorded attempt at a task: its observations, actions, outcome and context.
+ */
 export interface Trajectory {
   id: string;
   sessionId: string;
@@ -44,6 +53,9 @@ export interface Trajectory {
   timestamp: string;
 }
 
+/**
+ * Condition-action rule that `extractFromContrastivePairs` derives from successful and failed trajectories.
+ */
 export interface Rule {
   /** When this rule applies (textual condition). */
   condition: string;
@@ -56,6 +68,9 @@ export interface Rule {
   contraCount: number;
 }
 
+/**
+ * Template pattern that `abstractPattern` finds across trajectories. `variables` holds the parts that change between occurrences.
+ */
 export interface HeuristicGuideline {
   pattern: string;
   variables: string[];
@@ -64,6 +79,9 @@ export interface HeuristicGuideline {
   sourceTrajectoryIds: string[];
 }
 
+/**
+ * Token-based boundary that `learnDecisionBoundary` finds between trajectory outcomes.
+ */
 export interface DecisionRule {
   /** Tokens whose presence indicates `outcomeIfPresent` outcome. */
   presenceTokens: string[];
@@ -74,8 +92,14 @@ export interface DecisionRule {
   confidence: number;
 }
 
+/**
+ * Similarity basis that `clusterTrajectories` uses to group trajectories.
+ */
 export type ClusterMethod = 'semantic' | 'structural' | 'outcome';
 
+/**
+ * Group of similar trajectories that `clusterTrajectories` returns.
+ */
 export interface TrajectoryCluster {
   id: string;
   method: ClusterMethod;
@@ -84,8 +108,14 @@ export interface TrajectoryCluster {
   cohesion: number;
 }
 
+/**
+ * Category of a synthesized experience.
+ */
 export type ExperienceType = 'heuristic' | 'procedure' | 'constraint' | 'preference';
 
+/**
+ * Transferable lesson that `synthesizeExperience` produces from a trajectory cluster.
+ */
 export interface Experience {
   id: string;
   type: ExperienceType;
@@ -98,6 +128,9 @@ export interface Experience {
   createdAt: string;
 }
 
+/**
+ * Configuration for `ExperienceExtractor`.
+ */
 export interface ExperienceExtractorConfig {
   /** Default min-occurrence count for `abstractPattern`. Default 2. */
   minPatternOccurrences?: number;
@@ -105,6 +138,11 @@ export interface ExperienceExtractorConfig {
   similarityThreshold?: number;
 }
 
+/**
+ * Abstracts reusable rules, patterns, decision boundaries and experiences from trajectories.
+ *
+ * Pattern abstraction delegates to `PatternDetector`. The other methods compare trajectory tokens directly. The class does not write to storage.
+ */
 export class ExperienceExtractor {
   private readonly patternDetector: PatternDetector;
   private readonly minPatternOccurrences: number;

@@ -39,6 +39,7 @@ export interface WorldStateChange {
   }>;
 }
 
+/** Immutable set of entity states at one time, indexed by entity name. */
 export class WorldStateSnapshot {
   /** ISO 8601 timestamp this snapshot was taken. */
   readonly takenAt: string;

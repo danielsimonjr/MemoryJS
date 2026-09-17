@@ -33,6 +33,11 @@ const SEGMENT_COUNT_PATTERN = /^[1-9][0-9]*$/;
 
 const SEGMENT_MODE_ERROR = 'PG JSONL backing does not support MEMORY_STORAGE_SEGMENT_COUNT>=2';
 
+/**
+ * Procedural Graph backing that stores state in one JSONL file.
+ *
+ * Create an instance with `open`. Each write appends only the new records.
+ */
 export class JsonlProceduralGraphBacking extends LockedProceduralGraphBacking {
   readonly kind = 'jsonl' as const;
 

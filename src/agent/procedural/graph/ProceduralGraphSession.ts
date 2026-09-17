@@ -64,6 +64,12 @@ interface ResolvedSessionOptions {
   maxObservationChars: number;
 }
 
+/**
+ * Guidance session pinned to one frozen graph revision.
+ *
+ * Records the action and observation trace, locates the active node, and
+ * generates guidance. Recording a step never changes the graph.
+ */
 export class ProceduralGraphSession {
   readonly sessionId: string;
   readonly graph: ProceduralGraph;

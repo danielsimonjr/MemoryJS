@@ -68,6 +68,11 @@ export interface ObservationDedupManagerConfig {
   jaccardThreshold?: number;
 }
 
+/**
+ * Finds observations that repeat across different entities.
+ *
+ * The manager reports exact and near-duplicate groups. It does not write to storage.
+ */
 export class ObservationDedupManager {
   private readonly storage: IGraphStorage;
   private readonly jaccardThreshold: number;

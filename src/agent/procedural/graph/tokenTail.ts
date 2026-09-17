@@ -12,6 +12,7 @@
 
 import type { PGTrajectory } from '../../../types/proceduralGraph.js';
 
+/** Tokenizer that converts text to token ids and back. */
 export interface PGTokenizer {
   encode(text: string): number[];
   decode(tokens: number[]): string;

@@ -15,6 +15,11 @@ const IMPORT_FORMATS = ['json', 'csv', 'graphml'] as const;
 // W3C Linked-Data formats (turtle / rdf-xml / json-ld) added by η.5.4.
 const EXPORT_FORMATS = ['json', 'csv', 'graphml', 'gexf', 'dot', 'markdown', 'mermaid', 'turtle', 'rdf-xml', 'json-ld'] as const;
 
+/**
+ * Register the top-level `import` and `export` commands for graph files.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerIOCommands(program: Command): void {
   program
     .command('import <file>')

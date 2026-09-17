@@ -793,7 +793,7 @@ export class ContextWindowManager {
    * Tracks excluded entities, generates suggestions, and provides pagination cursor.
    *
    * @param excluded - Entities that were excluded
-   * @param context - Salience context for prioritization
+   * @param _context - Salience context. The method does not read this value.
    * @param pageSize - Number of entities per page (default: 10)
    * @returns Spillover result with pagination support
    */
@@ -956,7 +956,7 @@ export class ContextWindowManager {
    *
    * @param entities - Selected entities to check
    * @param candidates - Pool of candidate replacements
-   * @param context - Salience context
+   * @param _context - Salience context. The method does not read this value.
    * @returns Diversified entities and replaced entities
    */
   async enforceDiversity(

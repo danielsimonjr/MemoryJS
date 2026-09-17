@@ -42,6 +42,13 @@ function emitJson(payload: unknown): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+/**
+ * Register the `obs-dedup` command group for cross-entity duplicate observations.
+ *
+ * `find` reports exact duplicates. `find-jaccard` reports near-duplicates by Jaccard similarity.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerObservationDedupCommands(program: Command): void {
   const od = program
     .command('obs-dedup')

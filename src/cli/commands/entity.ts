@@ -13,6 +13,11 @@ import {
   formatError,
 } from '../formatters.js';
 
+/**
+ * Register the `entity` command group: `create`, `get`, `list`, `update` and `delete`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerEntityCommands(program: Command): void {
   const entity = program
     .command('entity')

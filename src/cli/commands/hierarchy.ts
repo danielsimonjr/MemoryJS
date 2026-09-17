@@ -8,6 +8,11 @@ import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatEntities, formatSuccess, formatError } from '../formatters.js';
 
+/**
+ * Register the `hierarchy` command group: `set-parent`, `children`, `ancestors`, `descendants` and `roots`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerHierarchyCommands(program: Command): void {
   const hierarchy = program
     .command('hierarchy')

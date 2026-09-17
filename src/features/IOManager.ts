@@ -89,10 +89,22 @@ function stringifyForInlineScript(value: unknown): string {
     .replace(/\u2029/g, '\\u2029');
 }
 
+/**
+ * Output formats that the export operations support.
+ */
 export type ExportFormat = 'json' | 'csv' | 'graphml' | 'gexf' | 'dot' | 'markdown' | 'mermaid' | 'turtle' | 'rdf-xml' | 'json-ld';
+/**
+ * Input formats that the import operations support.
+ */
 export type ImportFormat = 'json' | 'csv' | 'graphml';
+/**
+ * Conflict rule for an import: replace, skip or merge the existing entity, or fail.
+ */
 export type MergeStrategy = 'replace' | 'skip' | 'merge' | 'fail';
 
+/**
+ * Conversation input for an ingest run: an ordered list of role-tagged messages.
+ */
 export interface IngestInput {
   messages: Array<{
     role: 'user' | 'assistant' | 'system';
@@ -156,6 +168,9 @@ export interface IngestValidationFeedback {
   issues?: string[];
 }
 
+/**
+ * Options that control how an ingest run maps messages to entities and observations.
+ */
 export interface IngestOptions {
   projectId?: string;
   entityType?: string;
@@ -191,6 +206,9 @@ export interface IngestOptions {
   validate?: (produced: IngestProduced) => Promise<IngestValidationFeedback>;
 }
 
+/**
+ * Counts and details that an ingest run returns.
+ */
 export interface IngestResult {
   entitiesCreated: number;
   observationsAdded: number;
@@ -208,6 +226,9 @@ export interface IngestResult {
   validation?: IngestValidationFeedback;
 }
 
+/**
+ * Metadata that a backup file records: time, graph counts, size and compression.
+ */
 export interface BackupMetadata {
   timestamp: string;
   entityCount: number;
@@ -220,6 +241,9 @@ export interface BackupMetadata {
   compressionFormat?: 'brotli' | 'none';
 }
 
+/**
+ * One backup file on disk, with its path, metadata and size.
+ */
 export interface BackupInfo {
   fileName: string;
   filePath: string;
@@ -227,6 +251,8 @@ export interface BackupInfo {
   compressed: boolean;
   size: number;
 }
+
+/** Options for splitting a transcript into sessions. */
 export interface SplitOptions {
   /** Minimum messages per session to keep (skip tiny fragments). Default 2. */
   minMessages?: number;
@@ -236,6 +262,9 @@ export interface SplitOptions {
   dryRun?: boolean;
 }
 
+/**
+ * Result of a transcript split: session counts and a preview of each kept session.
+ */
 export interface SplitResult {
   sessionsFound: number;
   sessionsKept: number;
@@ -247,6 +276,9 @@ export interface SplitResult {
   }>;
 }
 
+/**
+ * Options for the HTML graph visualization.
+ */
 export interface VisualizeOptions {
   /** Max entities to include. Default 100. */
   maxEntities?: number;
@@ -259,6 +291,9 @@ export interface VisualizeOptions {
 }
 
 
+/**
+ * Options for the HTML graph visualization.
+ */
 export interface VisualizeOptions {
   /** Max entities to include. Default 100. */
   maxEntities?: number;
@@ -270,6 +305,9 @@ export interface VisualizeOptions {
   title?: string;
 }
 
+/**
+ * Optional managers and governance hooks that an `IOManager` uses for writes.
+ */
 export interface IOManagerOptions {
   /** Context-owned EntityManager (governed when the env gate is enabled). */
   entityManager?: EntityManager;
@@ -279,6 +317,12 @@ export interface IOManagerOptions {
   governanceHooks?: GovernanceHooks;
 }
 
+/**
+ * Imports, exports, ingests and backs up the knowledge graph.
+ *
+ * Writes go through the context-owned managers and governance hooks when the
+ * caller supplies them.
+ */
 export class IOManager {
   private readonly backupDir: string;
   private readonly entityManager?: EntityManager;

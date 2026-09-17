@@ -15,6 +15,11 @@ function emitJson(payload: unknown): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+/**
+ * Register the `spell` command group: `suggest`, `rebuild` and `size`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerSpellCommands(program: Command): void {
   const sp = program
     .command('spell')

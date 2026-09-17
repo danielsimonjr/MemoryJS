@@ -74,6 +74,9 @@ export interface EntityValidationResult {
 
 // ==================== Validator Class ====================
 
+/**
+ * Configuration for an `EntityValidator`.
+ */
 export interface EntityValidatorConfig {
   /** Rules to apply */
   rules?: EntityValidationRule[];

@@ -24,6 +24,11 @@ function validateRange(value: unknown, option: string, min: number, max: number)
   return value;
 }
 
+/**
+ * Register the top-level maintenance commands: `stats`, `archive`, `compress`, `validate` and `interactive`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerMaintenanceCommands(program: Command): void {
   // Stats
   program

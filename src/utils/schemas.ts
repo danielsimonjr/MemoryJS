@@ -498,22 +498,73 @@ export const OptionalEntityNamesSchema = z.array(entityNameSchema).optional();
 
 // ==================== Schema Type Exports ====================
 
+/**
+ * Validated input for an entity. The type comes from its Zod schema.
+ */
 export type EntityInput = z.infer<typeof EntitySchema>;
+/**
+ * Validated input for an entity to create. The type comes from its Zod schema.
+ */
 export type CreateEntityInput = z.infer<typeof CreateEntitySchema>;
+/**
+ * Validated input for an entity update. The type comes from its Zod schema.
+ */
 export type UpdateEntityInput = z.infer<typeof UpdateEntitySchema>;
+/**
+ * Validated input for a relation. The type comes from its Zod schema.
+ */
 export type RelationInput = z.infer<typeof RelationSchema>;
+/**
+ * Validated input for a relation to create. The type comes from its Zod schema.
+ */
 export type CreateRelationInput = z.infer<typeof CreateRelationSchema>;
+/**
+ * Validated input for a search query. The type comes from its Zod schema.
+ */
 export type SearchQuery = z.infer<typeof SearchQuerySchema>;
+/**
+ * Validated input for a date range. The type comes from its Zod schema.
+ */
 export type DateRange = z.infer<typeof DateRangeSchema>;
+/**
+ * Validated input for a tag alias. The type comes from its Zod schema.
+ */
 export type TagAliasInput = z.infer<typeof TagAliasSchema>;
+/**
+ * Validated input for observations to add. The type comes from its Zod schema.
+ */
 export type AddObservationInput = z.infer<typeof AddObservationInputSchema>;
+/**
+ * Validated input for observations to delete. The type comes from its Zod schema.
+ */
 export type DeleteObservationInput = z.infer<typeof DeleteObservationInputSchema>;
+/**
+ * Validated input for archive criteria. The type comes from its Zod schema.
+ */
 export type ArchiveCriteriaInput = z.infer<typeof ArchiveCriteriaSchema>;
+/**
+ * Validated input for a saved search. The type comes from its Zod schema.
+ */
 export type SavedSearchInput = z.infer<typeof SavedSearchInputSchema>;
+/**
+ * Validated input for a saved search update. The type comes from its Zod schema.
+ */
 export type SavedSearchUpdateInput = z.infer<typeof SavedSearchUpdateSchema>;
+/**
+ * Validated input for an import format. The type comes from its Zod schema.
+ */
 export type ImportFormatInput = z.infer<typeof ImportFormatSchema>;
+/**
+ * Validated input for an export format. The type comes from its Zod schema.
+ */
 export type ExtendedExportFormatInput = z.infer<typeof ExtendedExportFormatSchema>;
+/**
+ * Validated input for an import merge strategy. The type comes from its Zod schema.
+ */
 export type MergeStrategyInput = z.infer<typeof MergeStrategySchema>;
+/**
+ * Validated input for an export filter. The type comes from its Zod schema.
+ */
 export type ExportFilterInput = z.infer<typeof ExportFilterSchema>;
 
 // ==================== Validation Result Type ====================

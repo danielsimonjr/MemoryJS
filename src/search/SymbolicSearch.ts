@@ -31,7 +31,10 @@ export class SymbolicSearch {
     return results.sort((a, b) => b.score - a.score);
   }
 
-  /** @internal Evaluate all filters against an entity. */
+  /**
+   * Evaluate all filters against an entity and return the match, score and matched filter names.
+   * @internal
+   */
   private evaluateFilters(
     entity: Entity,
     filters: SymbolicFilters

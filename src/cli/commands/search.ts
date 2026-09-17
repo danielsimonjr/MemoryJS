@@ -11,6 +11,11 @@ import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSearchResults, formatError } from '../formatters.js';
 import type { Entity } from '../../types/types.js';
 
+/**
+ * Register the top-level `search <query>` command.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerSearchCommands(program: Command): void {
   program
     .command('search <query>')

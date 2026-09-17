@@ -39,6 +39,9 @@ export enum ErrorCode {
   UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
 
+/**
+ * Optional details for a `KnowledgeGraphError`: context, suggestions and the cause.
+ */
 export interface ErrorOptions {
   context?: Record<string, unknown>;
   suggestions?: string[];

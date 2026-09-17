@@ -33,8 +33,14 @@ import { ENV_VAR_CATALOG } from './diag.js';
 
 // ==================== Types ====================
 
+/**
+ * Outcome of one doctor check: `pass`, `warn` or `fail`.
+ */
 export type DoctorStatus = 'pass' | 'warn' | 'fail';
 
+/**
+ * Result of one doctor check.
+ */
 export interface DoctorCheckResult {
   /** Stable check identifier (used in JSON output + tests). */
   name: string;
@@ -45,6 +51,11 @@ export interface DoctorCheckResult {
   hint?: string;
 }
 
+/**
+ * Aggregate result of all doctor checks, with per-status counts.
+ *
+ * `ok` is true when no check has the status `fail`.
+ */
 export interface DoctorReport {
   ok: boolean;
   passed: number;
@@ -62,6 +73,12 @@ export interface DoctorReport {
  */
 export const MIN_NODE_MAJOR = 18;
 
+/**
+ * Check that the Node major version meets {@link MIN_NODE_MAJOR}.
+ *
+ * @param version - The Node version string, for example `v20.1.0`. The default is `process.version`.
+ * @returns `pass` or `fail`, or `warn` when the string has no leading major number.
+ */
 export function checkNodeVersion(version: string = process.version): DoctorCheckResult {
   const name = 'node-version';
   const match = /^v?(\d+)/.exec(version);
@@ -82,6 +99,16 @@ export function checkNodeVersion(version: string = process.version): DoctorCheck
 
 // ==================== Check 2: better-sqlite3 ====================
 
+/**
+ * Check that the `better-sqlite3` native addon loads.
+ *
+ * A `NODE_MODULE_VERSION` error gives `fail` (ABI mismatch).
+ * A missing module gives `warn`, because the JSONL backend still works.
+ * Any other load error gives `fail`.
+ *
+ * @param requireFn - The require function to use. Tests inject a stub. The default is a `createRequire` for this module.
+ * @returns The check result. The function does not throw.
+ */
 export function checkBetterSqlite3(
   requireFn?: (id: string) => unknown,
 ): DoctorCheckResult {
@@ -137,6 +164,12 @@ export function defaultWorkerDirs(): string[] {
   ];
 }
 
+/**
+ * Check that a built Levenshtein worker bundle exists.
+ *
+ * @param dirs - The directories to search for `levenshteinWorker.js`, `.cjs` or `.mjs`.
+ * @returns `pass` with the first match, or `fail` when no directory holds the bundle.
+ */
 export function checkWorkersBuilt(dirs: string[] = defaultWorkerDirs()): DoctorCheckResult {
   const name = 'workers-built';
   for (const dir of dirs) {
@@ -159,6 +192,17 @@ export function checkWorkersBuilt(dirs: string[] = defaultWorkerDirs()): DoctorC
 
 const SQLITE_MAGIC = 'SQLite format 3\u0000';
 
+/**
+ * Check that the file in `MEMORY_FILE_PATH` is usable storage.
+ *
+ * The check needs a writable parent directory.
+ * For SQLite, it compares the 16-byte file header with the SQLite magic string.
+ * For JSONL, it parses the first non-blank line as JSON.
+ * An unset path, a missing file and an empty file give `pass`.
+ *
+ * @param env - The environment to read. The default is `process.env`.
+ * @returns The check result. The function closes the file handle before it returns.
+ */
 export async function checkStorageFile(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<DoctorCheckResult> {
@@ -295,6 +339,15 @@ export function numericEnvVarNames(): string[] {
   return [...new Set([...fromCatalog, ...EXTRA_NUMERIC_VARS])];
 }
 
+/**
+ * Find environment variables that the library silently ignores.
+ *
+ * The check flags a strict-literal flag with a truthy lookalike value, such as `1` or `TRUE`.
+ * It also flags a numeric variable whose value does not parse as a number.
+ *
+ * @param env - The environment to read. The default is `process.env`.
+ * @returns `pass`, or `warn` with every issue in the message.
+ */
 export function checkEnvVarLint(env: NodeJS.ProcessEnv = process.env): DoctorCheckResult {
   const name = 'env-var-lint';
   const issues: string[] = [];
@@ -328,6 +381,15 @@ export function checkEnvVarLint(env: NodeJS.ProcessEnv = process.env): DoctorChe
 
 // ==================== Check 6: Embedding provider ====================
 
+/**
+ * Check the `MEMORY_EMBEDDING_PROVIDER` setting.
+ *
+ * The `openai` provider needs `MEMORY_OPENAI_API_KEY`, and gives `fail` without it.
+ * The check does not test network access.
+ *
+ * @param env - The environment to read. The default is `process.env`.
+ * @returns `pass` for a valid configuration, `fail` for a missing key, or `warn` for an unknown provider.
+ */
 export function checkEmbeddingProvider(env: NodeJS.ProcessEnv = process.env): DoctorCheckResult {
   const name = 'embedding-provider';
   const provider = env.MEMORY_EMBEDDING_PROVIDER ?? 'local';
@@ -358,6 +420,12 @@ export function checkEmbeddingProvider(env: NodeJS.ProcessEnv = process.env): Do
 
 // ==================== Runner + command ====================
 
+/**
+ * Run all six doctor checks in sequence and count the results.
+ *
+ * @param env - The environment for the checks that read it. The default is `process.env`.
+ * @returns The report with every check result and the pass, warn and fail counts.
+ */
 export async function runDoctorChecks(
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<DoctorReport> {
@@ -375,6 +443,14 @@ export async function runDoctorChecks(
   return { ok: failed === 0, passed, warned, failed, checks };
 }
 
+/**
+ * Register the `doctor` command.
+ *
+ * The command prints each check result, or a JSON report with `--json`.
+ * The process exits with code 1 when a check fails.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerDoctorCommand(program: Command): void {
   program
     .command('doctor')

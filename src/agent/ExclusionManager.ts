@@ -57,6 +57,11 @@ export interface ExclusionCheckResult {
   reason?: string;
 }
 
+/**
+ * Stores `do_not_remember` exclusion rules and matches content against them.
+ *
+ * A rule can delete matching existing content and block matching future writes. Matching uses substrings only.
+ */
 export class ExclusionManager {
   private readonly storage: IGraphStorage;
   private readonly entityManager: EntityManager;

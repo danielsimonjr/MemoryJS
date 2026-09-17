@@ -47,6 +47,9 @@ interface SidecarLine<V> {
   v: V;
 }
 
+/**
+ * Options for `DiskWarmTier`: sidecar file path, name, entry bound and eviction callback.
+ */
 export interface DiskWarmTierOptions<V> {
   /** Sidecar file path. */
   filePath: string;

@@ -33,6 +33,9 @@ function tokeniseForDedup(text: string): Set<string> {
   );
 }
 
+/**
+ * Configuration for `MemoryEngine`: dedup thresholds, the dedup scan window, the per-session turn limit and optional semantic dedup.
+ */
 export interface MemoryEngineConfig {
   jaccardThreshold?: number;
   prefixOverlapThreshold?: number;
@@ -51,6 +54,9 @@ export interface MemoryEngineConfig {
   exclusionManager?: ExclusionManager;
 }
 
+/**
+ * Input for `MemoryEngine.addTurn`: the session, the speaker role, optional owner ids and scoring hints.
+ */
 export interface AddTurnOptions {
   sessionId: string;
   role: 'user' | 'assistant' | 'system';
@@ -62,6 +68,9 @@ export interface AddTurnOptions {
   recentTurns?: string[];
 }
 
+/**
+ * Dedup check that matched a duplicate turn: exact, prefix, Jaccard or semantic.
+ */
 export type DedupTier = 'exact' | 'prefix' | 'jaccard' | 'semantic';
 
 /**
@@ -88,12 +97,18 @@ export interface AddTurnResult {
   blockedReason?: string;
 }
 
+/**
+ * Result of a duplicate check. `match` and `tier` are present only when `isDuplicate` is true.
+ */
 export interface DuplicateCheckResult {
   isDuplicate: boolean;
   match?: AgentEntity;
   tier?: DedupTier;
 }
 
+/**
+ * Names of the events that `MemoryEngine.events` emits.
+ */
 export type MemoryEngineEventName =
   | 'memoryEngine:turnAdded'
   | 'memoryEngine:duplicateDetected'
@@ -123,6 +138,11 @@ interface Deps {
   exclusionManager: ExclusionManager | undefined;
 }
 
+/**
+ * Adds conversation turns to memory with a tiered dedup chain and importance scoring.
+ *
+ * Writes for one session run in sequence through a per-session queue. The engine emits events on `events` for added, duplicate, blocked and deleted turns.
+ */
 export class MemoryEngine {
   public readonly events = new EventEmitter();
   private readonly sessionWriteQueues = new Map<string, Promise<void>>();

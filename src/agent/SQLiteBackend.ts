@@ -38,6 +38,9 @@ import type {
 } from './MemoryBackend.js';
 import type { AgentEntity } from '../types/agent-memory.js';
 
+/**
+ * Options for `SQLiteBackend`.
+ */
 export interface SQLiteBackendOptions {
   /** When true (default), `add()` runs the dedup chain via
    * `MemoryEngine.addTurn`. When false, writes bypass dedup. */
@@ -48,6 +51,11 @@ export interface SQLiteBackendOptions {
   preserveCallerIds?: boolean;
 }
 
+/**
+ * Durable `IMemoryBackend` that stores turns as graph entities through `MemoryEngine`.
+ *
+ * By default `add` runs the dedup chain of the engine. Decay scoring uses `DecayEngine`.
+ */
 export class SQLiteBackend implements IMemoryBackend {
   private readonly options: Required<SQLiteBackendOptions>;
 

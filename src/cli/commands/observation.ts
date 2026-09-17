@@ -8,6 +8,11 @@ import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError, escapeCSV } from '../formatters.js';
 
+/**
+ * Register the `observation` command group: `add`, `remove` and `list`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerObservationCommands(program: Command): void {
   const observation = program
     .command('observation')

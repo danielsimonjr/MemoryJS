@@ -32,6 +32,11 @@ import type {
 } from './MemoryBackend.js';
 import type { AgentEntity } from '../types/agent-memory.js';
 
+/**
+ * Ephemeral `IMemoryBackend` that keeps turns in a per-session in-process list.
+ *
+ * Data does not survive the process. Use `SQLiteBackend` for durable storage.
+ */
 export class InMemoryBackend implements IMemoryBackend {
   /** Per-session FIFO ordered list of turns. */
   private readonly turns = new Map<string, MemoryTurn[]>();

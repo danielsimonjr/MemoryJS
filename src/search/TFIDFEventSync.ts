@@ -17,6 +17,27 @@ import type {
 } from '../types/types.js';
 
 /**
+ * Pending coalesced index operation. Stored per-entity-name so consecutive
+ * events on the same entity collapse to a single final operation. Create
+ * and update are kept distinct so the flush dispatches to the correct
+ * underlying method (`addDocument` vs `updateDocument`).
+ *
+ * Merge rules (new event arriving for an entity that already has a pending op):
+ *   create + update  → create  (with the update's content)
+ *   create + delete  → cancel  (entity never made it to the index)
+ *   update + update  → update  (last writer wins)
+ *   update + delete  → delete
+ *   delete + create  → create  (entity recreated)
+ *   delete + update  → update  (we cancel the delete and treat it as update)
+ *   create + create  → create  (idempotent)
+ *   delete + delete  → delete  (idempotent)
+ */
+type PendingOp =
+  | { op: 'create'; name: string; entityType: string; observations: string[] }
+  | { op: 'update'; name: string; entityType: string; observations: string[] }
+  | { op: 'delete'; name: string };
+
+/**
  * Phase 10 Sprint 3: Synchronizes TF-IDF index with graph changes via events.
  *
  * Listens to graph events and triggers incremental index updates automatically.
@@ -41,27 +62,6 @@ import type {
  * sync.disable();
  * ```
  */
-/**
- * Pending coalesced index operation. Stored per-entity-name so consecutive
- * events on the same entity collapse to a single final operation. Create
- * and update are kept distinct so the flush dispatches to the correct
- * underlying method (`addDocument` vs `updateDocument`).
- *
- * Merge rules (new event arriving for an entity that already has a pending op):
- *   create + update  → create  (with the update's content)
- *   create + delete  → cancel  (entity never made it to the index)
- *   update + update  → update  (last writer wins)
- *   update + delete  → delete
- *   delete + create  → create  (entity recreated)
- *   delete + update  → update  (we cancel the delete and treat it as update)
- *   create + create  → create  (idempotent)
- *   delete + delete  → delete  (idempotent)
- */
-type PendingOp =
-  | { op: 'create'; name: string; entityType: string; observations: string[] }
-  | { op: 'update'; name: string; entityType: string; observations: string[] }
-  | { op: 'delete'; name: string };
-
 export class TFIDFEventSync {
   private indexManager: TFIDFIndexManager;
   private eventEmitter: GraphEventEmitter;

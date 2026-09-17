@@ -87,6 +87,11 @@ export interface ListDecisionsOptions {
   limit?: number;
 }
 
+/**
+ * Stores decision records and moves them through the proposed, accepted, rejected and superseded states.
+ *
+ * Mutations use optimistic concurrency through `EntityManager.updateEntity`. An illegal transition returns a discriminated result and does not throw.
+ */
 export class DecisionManager {
   private readonly storage: IGraphStorage;
   private readonly entityManager: EntityManager;

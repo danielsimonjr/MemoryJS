@@ -20,6 +20,7 @@ import { InMemoryProceduralGraphBacking } from './InMemoryProceduralGraphBacking
 import { JsonlProceduralGraphBacking } from './JsonlProceduralGraphBacking.js';
 import { SqliteProceduralGraphBacking } from './SqliteProceduralGraphBacking.js';
 
+/** Input to commit a retained revision: the expected head version, the revision, its validation report, and the round record. */
 export interface PGCommitInput {
   expectedHeadVersion: number;
   revision: PGSnapshot;
@@ -27,10 +28,17 @@ export interface PGCommitInput {
   round: PGRoundRecord;
 }
 
+/** Result of a head change. `conflict` means the head version did not match the expected version. */
 export type PGCommitResult =
   | { status: 'committed'; head: PGHead }
   | { status: 'conflict'; currentHead: PGHead | undefined };
 
+/**
+ * Storage contract for Procedural Graphs.
+ *
+ * Stores revisions, heads, evaluations, rejections and round records.
+ * Head changes use optimistic concurrency on the head version.
+ */
 export interface IProceduralGraphBacking {
   readonly kind: 'jsonl' | 'sqlite' | 'memory';
   createGraph(revision: PGSnapshot): Promise<PGHead>;

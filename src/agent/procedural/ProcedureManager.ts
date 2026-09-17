@@ -29,6 +29,7 @@ import { StepSequencer } from './StepSequencer.js';
 import { randomUUID } from 'crypto';
 import { tokenizeToSet } from '../../utils/textSimilarity.js';
 
+/** Options for {@link ProcedureManager}. */
 export interface ProcedureManagerConfig {
   /** EWMA weight for new feedback in `refineProcedure` (default 0.2). */
   successRateAlpha?: number;
@@ -56,6 +57,12 @@ export type InvocationResult =
       openSequencer: () => StepSequencer;
     };
 
+/**
+ * Adds, loads, matches and refines stored procedures.
+ *
+ * Uses `ProcedureStore` for persistence. Gives callers a `StepSequencer` to walk
+ * the steps of one procedure.
+ */
 export class ProcedureManager {
   private readonly store: ProcedureStore;
   private readonly successRateAlpha: number;

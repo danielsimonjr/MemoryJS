@@ -816,7 +816,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/agent/ImportanceScorer.ts` - Score new content at creation time.
+### `src/agent/ImportanceScorer.ts` - Configuration for `ImportanceScorer`. The three weights combine the length, keyword and overlap signals. The defaults ar
 
 **Exports:**
 - Classes: `ImportanceScorer`
@@ -921,7 +921,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/agent/MemoryEngine.ts` - Optional `ExclusionManager` (Phase 3 `do_not_remember`). When
+### `src/agent/MemoryEngine.ts` - Configuration for `MemoryEngine`: dedup thresholds, the dedup scan window, the per-session turn limit and optional seman
 
 **Node.js Built-in Dependencies:**
 | Module | Import |
@@ -4307,7 +4307,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../types/index.js` | `KnowledgeGraph, SearchResult, SavedSearch, AutoSearchResult, Entity, AccessContext` | Import (type-only) |
+| `../types/index.js` | `KnowledgeGraph, SearchResult, SavedSearch, AutoSearchResult, Entity, AccessContext, QueryCostEstimate` | Import (type-only) |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
 | `./TemporalSearch.js` | `TemporalSearch, TemporalSearchOptions` | Import |
 | `./BasicSearch.js` | `BasicSearch` | Import |
@@ -4953,7 +4953,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/utils/errors.ts` - Error thrown when a ref alias is already registered.
+### `src/utils/errors.ts` - Optional details for a `KnowledgeGraphError`: context, suggestions and the cause.
 
 **Exports:**
 - Classes: `KnowledgeGraphError`, `EntityNotFoundError`, `RelationNotFoundError`, `DuplicateEntityError`, `ValidationError`, `CycleDetectedError`, `InvalidImportanceError`, `FileOperationError`, `ImportError`, `ExportError`, `InsufficientEntitiesError`, `RefConflictError`, `RefNotFoundError`, `AttributionRequiredError`, `VersionConflictError`, `LowEntropyContentError`, `MemoryWriteBlockedError`, `OperationCancelledError`
@@ -5236,7 +5236,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
-### `src/utils/WorkerPoolManager.ts` - WorkerPoolManager module
+### `src/utils/WorkerPoolManager.ts` - Runtime statistics of a pool, with the execution totals that the manager records.
 
 **External Dependencies:**
 | Package | Import |
@@ -5590,7 +5590,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 292 |
 | Total Modules | 12 |
-| Total Lines of Code | 102570 |
+| Total Lines of Code | 103593 |
 | Total Exports | 2030 |
 | Total Re-exports | 1336 |
 | Total Classes | 233 |

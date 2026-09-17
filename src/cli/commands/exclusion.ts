@@ -13,6 +13,11 @@ import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';
 
+/**
+ * Register the `exclude` command group: `add`, `list` and `remove`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerExclusionCommands(program: Command): void {
   const exclude = program
     .command('exclude')

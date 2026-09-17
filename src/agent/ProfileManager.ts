@@ -25,6 +25,9 @@ import type { SalienceEngine } from './SalienceEngine.js';
 const STATIC_PREFIX = '[static] ';
 const DYNAMIC_PREFIX = '[dynamic] ';
 
+/**
+ * Profile facts in a static list and a dynamic list, with the name of the backing entity.
+ */
 export interface ProfileResponse {
   /** Long-lived stable facts (parsed from [static] observations). */
   static: string[];
@@ -34,6 +37,9 @@ export interface ProfileResponse {
   entityName: string;
 }
 
+/**
+ * Configuration for `ProfileManager`: thresholds that classify facts as static or dynamic, the dynamic fact limit and automatic extraction.
+ */
 export interface ProfileManagerConfig {
   staticThreshold?: number;
   dynamicRecencyThreshold?: number;
@@ -41,11 +47,19 @@ export interface ProfileManagerConfig {
   autoExtract?: boolean;
 }
 
+/**
+ * Scope of a profile. The project id and the agent id select the profile entity.
+ */
 export interface ProfileOptions {
   projectId?: string;
   agentId?: string;
 }
 
+/**
+ * Reads and updates user profiles that are stored as `profile` entities.
+ *
+ * Each observation holds one fact with a `[static]` or `[dynamic]` prefix.
+ */
 export class ProfileManager {
   constructor(
     private storage: IGraphStorage,

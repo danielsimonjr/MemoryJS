@@ -8,6 +8,11 @@ import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatPath, formatCentrality, formatComponents, formatError } from '../formatters.js';
 
+/**
+ * Register the `graph` command group: `shortest-path`, `centrality` and `components`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerGraphCommands(program: Command): void {
   const graph = program
     .command('graph')

@@ -57,6 +57,7 @@ export interface AdaptiveResult {
   rounds: RetrievalRound[];
 }
 
+/** Options for {@link ActiveRetrievalController}. */
 export interface ActiveRetrievalConfig {
   /** Max retrieval rounds. Default 3. */
   maxRounds?: number;
@@ -70,6 +71,12 @@ export interface ActiveRetrievalConfig {
   expansionLimit?: number;
 }
 
+/**
+ * Decides whether to retrieve, then runs rounds of ranked search.
+ *
+ * Each round expands the query with tokens from the previous results.
+ * The loop stops at the round limit or when coverage reaches the threshold.
+ */
 export class ActiveRetrievalController {
   private readonly rewriter = new QueryRewriter();
   private readonly maxRounds: number;

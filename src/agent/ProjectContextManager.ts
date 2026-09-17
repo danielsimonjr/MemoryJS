@@ -40,16 +40,27 @@ export interface ProjectContextUpsertInput {
   glossary?: ProjectContextGlossaryTerm[];
 }
 
+/**
+ * Configuration for `ProjectContextManager`.
+ */
 export interface ProjectContextManagerConfig {
   /** Default character budget for `forContext`. Default 1500. */
   defaultBudgetChars?: number;
 }
 
+/**
+ * Options for `ProjectContextManager.forContext`.
+ */
 export interface ForContextOptions {
   /** Character cap for the rendered prose. Default uses manager config. */
   budgetChars?: number;
 }
 
+/**
+ * Stores one structured project-context record for each project id.
+ *
+ * An upsert appends and deduplicates arrays and overwrites scalars. `forContext` renders the record as prose within a character budget.
+ */
 export class ProjectContextManager {
   private readonly storage: IGraphStorage;
   private readonly entityManager: EntityManager;

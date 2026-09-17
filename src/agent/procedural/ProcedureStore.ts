@@ -65,6 +65,12 @@ export function fallbackEntityName(parentStepName: string): string {
   return `${parentStepName}::fallback`;
 }
 
+/**
+ * Saves and loads procedures as graph entities and relations.
+ *
+ * The procedure, each step and each fallback become separate entities, so
+ * search and traversal can reach procedure content.
+ */
 export class ProcedureStore {
   constructor(
     private readonly entityManager: EntityManager,

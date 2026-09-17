@@ -9,6 +9,7 @@
 import { LockedProceduralGraphBacking } from './LockedProceduralGraphBacking.js';
 import { ProceduralGraphState } from './ProceduralGraphState.js';
 
+/** Procedural Graph backing that keeps all state in memory. The state is lost when the process exits. */
 export class InMemoryProceduralGraphBacking extends LockedProceduralGraphBacking {
   readonly kind = 'memory' as const;
 

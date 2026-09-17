@@ -53,6 +53,7 @@ export interface CausalCycle {
   relations: Relation[];
 }
 
+/** Options for {@link CausalReasoner}. */
 export interface CausalReasonerConfig {
   /** Relation types to treat as causal (default: DEFAULT_CAUSAL_RELATION_TYPES). */
   causalTypes?: ReadonlyArray<CausalRelationType>;
@@ -73,6 +74,12 @@ function chainScore(relations: Relation[]): number {
   return score;
 }
 
+/**
+ * Finds causal chains, effects and cycles in the graph.
+ *
+ * Follows only the configured causal relation types. Scores each chain by the
+ * product of the `causalStrength` metadata on its edges.
+ */
 export class CausalReasoner {
   private readonly causalTypes: ReadonlyArray<string>;
   private readonly maxDepth: number;

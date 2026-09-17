@@ -11,6 +11,13 @@
 
 import type { LLMProvider } from '../../../search/LLMQueryPlanner.js';
 
+/**
+ * Text-completion provider for Procedural Graph guidance and refinement.
+ *
+ * `complete` returns the model output for a prompt and honours an optional abort signal.
+ * `getLastUsage` reports the token usage of the last call, if the provider knows it.
+ * `identity` names the model for run manifests.
+ */
 export interface PGCompletionProvider {
   complete(prompt: string, opts?: { signal?: AbortSignal }): Promise<string>;
   getLastUsage?(): { inputTokens: number; outputTokens: number } | undefined;

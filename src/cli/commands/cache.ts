@@ -21,6 +21,11 @@ function emitJson(payload: unknown): void {
   console.log(JSON.stringify(payload, null, 2));
 }
 
+/**
+ * Register the `cache` command group: `stats`, `clear` and `cleanup`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerCacheCommands(program: Command): void {
   const cache = program
     .command('cache')

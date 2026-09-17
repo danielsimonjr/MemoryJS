@@ -369,6 +369,14 @@ function printSummary(results: SmokeResult[], totalMs: number, verbose: boolean)
   }
 }
 
+/**
+ * Register the `smoke` command.
+ *
+ * The command runs an end-to-end smoke test against a fresh temporary graph.
+ * `--keep` preserves the graph, and `--storage` sets its path.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerSmokeCommand(program: Command): void {
   program
     .command('smoke')

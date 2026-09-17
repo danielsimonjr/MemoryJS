@@ -25,6 +25,7 @@ import {
 } from './PermissionMatrix.js';
 import type { RoleAssignmentStore } from './RoleAssignmentStore.js';
 
+/** Options for {@link RbacMiddleware}. */
 export interface RbacMiddlewareOptions {
   /** Custom matrix; defaults to `DEFAULT_PERMISSION_MATRIX`. */
   matrix?: PermissionMatrix;
@@ -42,6 +43,11 @@ export interface RbacMiddlewareOptions {
   defaultRole?: string;
 }
 
+/**
+ * RBAC policy that grants or denies an action from the role assignments of the agent and the permission matrix.
+ *
+ * Denies the action when no assignment grants it.
+ */
 export class RbacMiddleware implements RbacPolicy {
   private readonly matrix: PermissionMatrix;
   private readonly overrides?: ResourcePermissionOverrides;

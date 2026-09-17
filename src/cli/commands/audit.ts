@@ -137,6 +137,11 @@ interface AuditLogCliOpts {
   json?: boolean;
 }
 
+/**
+ * Register the `audit` command group: `log`, `history`, `verify` and `stats`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerAuditCommands(program: Command): void {
   const audit = program
     .command('audit')

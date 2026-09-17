@@ -70,6 +70,7 @@ function slug(text: string): string {
   return text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
+/** Writes Cue-Tag-Content nodes into the MemoryJS episodic, semantic and topic memory, so reconstructed memory persists. */
 export class MemoryGraphBridge {
   private readonly sessionId: string;
 

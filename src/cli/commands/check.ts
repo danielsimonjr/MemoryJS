@@ -130,6 +130,15 @@ async function applyFixes(
   return { orphanRelationsDeleted: deleted, missingParentsCleared: cleared };
 }
 
+/**
+ * Register the `check` command.
+ *
+ * The command reports orphan relations, missing parents and hierarchy cycles as JSON.
+ * With `--apply`, it deletes orphan relations and clears missing parent IDs.
+ * Without `--apply`, the process exits with code 1 when it finds an issue.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerCheckCommand(program: Command): void {
   program
     .command('check')

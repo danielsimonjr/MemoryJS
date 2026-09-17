@@ -11,6 +11,11 @@ import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatError } from '../formatters.js';
 
+/**
+ * Register the `tool-affordance` command group: `list`, `show`, `stats` and `suggest`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerToolAffordanceCommands(program: Command): void {
   const ta = program
     .command('tool-affordance')

@@ -47,6 +47,9 @@ export interface TieredIndexStatsSnapshot {
   hitRate: number;
 }
 
+/**
+ * A diagnostics snapshot: index health, entity counts and optional tier statistics.
+ */
 export interface DiagnosticsReport {
   generatedAt: string;
   indexHealth: IndexHealthReport;

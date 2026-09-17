@@ -19,6 +19,9 @@
 
 import type { IIndexTier } from './ITieredIndex.js';
 
+/**
+ * Options for `LRUHotTier`: entry and byte bounds, size estimator, name and eviction callback.
+ */
 export interface LRUHotTierOptions<K, V> {
   /** Max entries before LRU eviction kicks in. Default: 10_000. */
   maxEntries?: number;
@@ -48,6 +51,13 @@ function defaultEstimateBytes<K, V>(key: K, value: V): number {
   }
 }
 
+/**
+ * In-memory index tier with least-recently-used eviction.
+ *
+ * A get hit moves the entry to the most-recent end. When the entry count or the
+ * approximate byte size passes its bound, the oldest entries are evicted and
+ * passed to `onEvict`.
+ */
 export class LRUHotTier<K, V> implements IIndexTier<K, V> {
   readonly name: string;
 

@@ -11,6 +11,9 @@ import chalk from 'chalk';
 import type { Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport } from '../types/types.js';
 import { escapeCsvFormula } from '../utils/entityUtils.js';
 
+/**
+ * Output format for CLI results.
+ */
 export type OutputFormat = 'json' | 'table' | 'csv';
 
 /**
@@ -344,6 +347,15 @@ function calculateColWidths(totalWidth: number, ratios: number[]): number[] {
   return ratios.map(r => Math.max(10, Math.floor(available * r)));
 }
 
+/**
+ * Escape a value for one CSV cell.
+ *
+ * The function first neutralises spreadsheet formula prefixes.
+ * It then quotes the value if it holds a comma, a quote or a newline, and doubles each inner quote.
+ *
+ * @param value - The raw cell text.
+ * @returns The safe CSV cell text.
+ */
 export function escapeCSV(value: string): string {
   const escapedValue = escapeCsvFormula(value);
   if (

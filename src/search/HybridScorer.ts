@@ -5,18 +5,27 @@
 
 import type { Entity } from '../types/index.js';
 
+/**
+ * One result from the semantic layer, with its cosine similarity.
+ */
 export interface SemanticLayerResult {
   entityName: string;
   similarity: number;
   entity?: Entity;
 }
 
+/**
+ * One result from the lexical layer, with its raw lexical score.
+ */
 export interface LexicalSearchResult {
   entityName: string;
   score: number;
   entity?: Entity;
 }
 
+/**
+ * One result from the symbolic (metadata filter) layer, with its raw score.
+ */
 export interface SymbolicSearchResult {
   entityName: string;
   score: number;
@@ -29,6 +38,9 @@ export interface SymbolicSearchResult {
  */
 export type GraphLayerResult = SymbolicSearchResult;
 
+/**
+ * One combined result: normalized per-layer scores, raw scores and the weighted total.
+ */
 export interface ScoredResult {
   entityName: string;
   entity: Entity;
@@ -48,6 +60,9 @@ export interface ScoredResult {
   };
 }
 
+/**
+ * Weight of each layer in the combined score.
+ */
 export interface HybridWeights {
   semantic: number;
   lexical: number;
@@ -63,6 +78,9 @@ export const DEFAULT_SCORER_WEIGHTS: HybridWeights = {
   graph: 0,
 };
 
+/**
+ * Options for `HybridScorer`: layer weights, minimum combined score, and weight normalization.
+ */
 export interface HybridScorerOptions {
   weights?: Partial<HybridWeights>;
   minScore?: number;

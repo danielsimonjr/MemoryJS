@@ -11,6 +11,12 @@
 
 import type { Procedure, ProcedureStep } from '../../types/procedure.js';
 
+/**
+ * Tracks the position in the steps of one procedure.
+ *
+ * Moves to a fallback chain when the executor reports a step failure.
+ * The sequencer does no I/O.
+ */
 export class StepSequencer {
   private cursor = 0;
   /** When set, all `current()` / `next()` calls return this fallback chain

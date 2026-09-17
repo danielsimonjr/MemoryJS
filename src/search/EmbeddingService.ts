@@ -347,6 +347,12 @@ function normalizeLlamaHost(host: string): string {
   return host.trim().toLowerCase().replace(/^\[(.*)\]$/, '$1').replace(/\.$/, '');
 }
 
+/**
+ * Embedding service that calls a llama.cpp server over HTTP.
+ *
+ * Requests go only to loopback hosts or to hosts in `allowedHosts`. The service
+ * limits the request time, the response size and the vector dimensions.
+ */
 export class LlamaCppEmbeddingService implements EmbeddingService {
   readonly provider = 'llamacpp';
   readonly model: string;

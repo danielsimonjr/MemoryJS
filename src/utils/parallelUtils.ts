@@ -57,7 +57,7 @@ export async function shutdownParallelUtils(): Promise<void> {
  * @template R - Output item type
  * @param items - Array of items to map
  * @param fn - Mapping function (must be serializable)
- * @param chunkSize - Optional chunk size (default: DEFAULT_CHUNK_SIZE)
+ * @param _chunkSize - Ignored. The function runs on the main thread. The parameter stays for API compatibility.
  * @returns Promise resolving to array of mapped results
  *
  * @example
@@ -95,7 +95,7 @@ export async function parallelMap<T, R>(
  * @template T - Item type
  * @param items - Array of items to filter
  * @param predicate - Filter predicate (must be serializable)
- * @param chunkSize - Optional chunk size (default: DEFAULT_CHUNK_SIZE)
+ * @param _chunkSize - Ignored. The function runs on the main thread. The parameter stays for API compatibility.
  * @returns Promise resolving to filtered array
  *
  * @example

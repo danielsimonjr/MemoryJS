@@ -65,6 +65,12 @@ export interface SpellSuggestion {
   distance: number;
 }
 
+/**
+ * Suggests vocabulary terms that are close to a possibly misspelled query.
+ *
+ * An n-gram pre-filter selects candidates. Levenshtein distance ranks them.
+ * The vocabulary builds on the first `suggest()` call and on `rebuild()`.
+ */
 export class SpellChecker {
   private readonly storage: IGraphStorage;
   private readonly cfg: Required<SpellCheckerConfig>;

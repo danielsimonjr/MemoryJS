@@ -25,6 +25,9 @@ interface PatternCandidate {
   sourceTextSet: Set<string>;
 }
 
+/**
+ * Configuration for `PatternDetector`.
+ */
 export interface PatternDetectorOptions {
   /** Hard cap on template-extraction comparisons per invocation. Default 50,000. */
   maxComparisons?: number;

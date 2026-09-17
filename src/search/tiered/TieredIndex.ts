@@ -44,6 +44,9 @@ import {
 } from './ITieredIndex.js';
 import { logger } from '../../utils/logger.js';
 
+/**
+ * The tier instances that a `TieredIndex` composes: hot, warm and an optional cold tier.
+ */
 export interface TieredIndexOptions<V> {
   hot: IIndexTier<string, V>;
   warm: IIndexTier<string, V>;
@@ -269,6 +272,15 @@ export interface TieredIndexBuildOptions<V> {
   makeCold?: () => IIndexTier<string, V>;
 }
 
+/**
+ * Build a `TieredIndex` with the eviction chain wired: hot evicts to warm, warm evicts to cold.
+ *
+ * The function builds cold first, then warm, then hot, so each callback can
+ * reference the next tier. Without a cold tier, warm evictions are dropped.
+ *
+ * @param options - Factories for the hot, warm and optional cold tiers
+ * @returns The composed three-tier index
+ */
 export function buildTieredIndex<V>(options: TieredIndexBuildOptions<V>): TieredIndex<V> {
   // Deferred construction: build cold first (it has no callback to
   // wire), then warm with a callback referencing cold, then hot with

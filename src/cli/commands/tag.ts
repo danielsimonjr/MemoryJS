@@ -8,6 +8,11 @@ import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError, escapeCSV } from '../formatters.js';
 
+/**
+ * Register the `tag` command group: `add`, `remove`, `alias` and `aliases`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerTagCommands(program: Command): void {
   const tag = program
     .command('tag')

@@ -17,6 +17,7 @@ import type {
 import { graphDigest, storageKey } from '../canonical.js';
 import type { PGCommitInput, PGCommitResult } from './IProceduralGraphBacking.js';
 
+/** One entry in a revision list: the revision id, parent id, digest and creation time. */
 export interface PGRevisionListItem {
   revisionId: string;
   parentRevisionId?: string;
@@ -49,10 +50,22 @@ interface StoredRejection {
 
 const GRAPH_EXISTS = 'graph-exists';
 
+/**
+ * Creates the error for an attempt to create a graph id that already exists.
+ *
+ * @param graphId - Graph id that already exists.
+ * @returns An `Error` whose message starts with `graph-exists`.
+ */
 export function graphExistsError(graphId: string): Error {
   return new Error(`${GRAPH_EXISTS}: graph '${graphId}' already exists`);
 }
 
+/**
+ * In-memory Procedural Graph state for the memory and JSONL backings.
+ *
+ * Mutations are synchronous. Each mutation queues the JSONL lines that describe it.
+ * Callers serialize access with a mutex.
+ */
 export class ProceduralGraphState {
   private readonly heads = new Map<string, PGHead>();
   private readonly headLog: PGHead[] = [];

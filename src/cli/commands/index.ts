@@ -32,6 +32,11 @@ import { registerReindexCommand } from './reindex.js';
 import { registerAuditCommands } from './audit.js';
 import { registerDoctorCommand } from './doctor.js';
 
+/**
+ * Register every CLI command group on the program.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerCommands(program: Command): void {
   registerEntityCommands(program);
   registerRelationCommands(program);

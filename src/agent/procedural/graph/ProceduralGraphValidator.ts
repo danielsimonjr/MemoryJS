@@ -17,6 +17,7 @@ import { PG_LIMITS } from './ProceduralGraphSchemas.js';
 import { ProceduralGraph } from './ProceduralGraph.js';
 import { canonicalJson } from './canonical.js';
 
+/** Options for snapshot validation: the tool catalog and whether to enforce it, paper-compatible mode, static mode, and the baseline node ids. */
 export interface PGValidatorOptions {
   toolCatalog?: readonly string[];
   enforceToolCatalog: boolean;
@@ -199,6 +200,16 @@ export function validateSnapshot(
   };
 }
 
+/**
+ * Applies a cycle policy to a graph.
+ *
+ * `allow` returns the graph unchanged. `reject` reports each cycle-closing edge as an error.
+ * The repair policy removes cycle-closing edges until no cycle remains.
+ *
+ * @param graph - Graph to check.
+ * @param policy - Cycle policy to apply.
+ * @returns The resulting graph, the removed edges, and the diagnostics.
+ */
 export function applyCyclePolicy(
   graph: ProceduralGraph,
   policy: PGCyclePolicy,
@@ -254,6 +265,16 @@ export function applyCyclePolicy(
   return { graph: current, repairs, diagnostics };
 }
 
+/**
+ * Builds and validates the next candidate revision from a retained graph and an edit set.
+ *
+ * Applies the edits, then the cycle policy, then full validation.
+ *
+ * @param retained - Current retained graph.
+ * @param edits - Edits to apply.
+ * @param opts - Validator options, cycle policy, and the new and parent revision ids.
+ * @returns The candidate with repairs and diagnostics, or `ok: false` when any diagnostic is an error.
+ */
 export function prepareCandidate(
   retained: ProceduralGraph,
   edits: PGEditSet,

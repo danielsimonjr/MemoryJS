@@ -76,6 +76,11 @@ export interface ABACCondition {
   value?: unknown;
 }
 
+/**
+ * An attribute-based access rule.
+ *
+ * The rule permits or denies one action when all of its conditions match the context.
+ */
 export interface ABACRule {
   id: string;
   description?: string;

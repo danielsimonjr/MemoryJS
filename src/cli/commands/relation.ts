@@ -8,6 +8,11 @@ import { Command } from 'commander';
 import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatRelations, formatSuccess, formatError } from '../formatters.js';
 
+/**
+ * Register the `relation` command group: `create`, `list` and `delete`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerRelationCommands(program: Command): void {
   const relation = program
     .command('relation')

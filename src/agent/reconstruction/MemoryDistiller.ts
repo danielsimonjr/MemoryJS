@@ -131,6 +131,11 @@ export interface UsageReportingLLMProvider extends LLMProvider {
   getLastUsage?(): { inputTokens: number; outputTokens: number } | undefined;
 }
 
+/**
+ * Turns raw dialogue turns into Cue-Tag-Content graph elements.
+ *
+ * Uses the LLM prompts when a provider is available. Otherwise uses deterministic heuristics.
+ */
 export class MemoryDistiller {
   private readonly keywords = new KeywordExtractor();
   private readonly mode: DistillerMode;

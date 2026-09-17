@@ -291,6 +291,13 @@ export class WorkerTaskManager {
  * singleton is exposed so the agent system can wire stats into diagnostics.
  */
 let DEFAULT_INSTANCE: WorkerTaskManager | null = null;
+/**
+ * Returns the shared default `WorkerTaskManager`.
+ *
+ * The first call creates the instance. Later calls return the same instance.
+ *
+ * @returns The shared manager.
+ */
 export function getWorkerTaskManager(): WorkerTaskManager {
   if (!DEFAULT_INSTANCE) DEFAULT_INSTANCE = new WorkerTaskManager();
   return DEFAULT_INSTANCE;

@@ -71,6 +71,9 @@ export const DEFAULT_PII_PATTERNS: ReadonlyArray<PiiPattern> = [
   },
 ];
 
+/**
+ * Options that select the pattern bank for a `PiiRedactor`.
+ */
 export interface PiiRedactorOptions {
   /** Replace the default pattern bank entirely. */
   patterns?: ReadonlyArray<PiiPattern>;
@@ -92,6 +95,11 @@ export interface RedactionResult {
   stats: RedactionStats;
 }
 
+/**
+ * Replaces personally identifiable information in text with placeholder tokens.
+ *
+ * The redactor applies each regex pattern in order. It uses the default pattern bank unless the options replace it.
+ */
 export class PiiRedactor {
   private readonly patterns: ReadonlyArray<PiiPattern>;
 

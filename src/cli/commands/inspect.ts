@@ -202,6 +202,11 @@ async function neighbors(ctx: ManagerContext, name: string): Promise<NeighborRep
   };
 }
 
+/**
+ * Register the top-level inspection commands: `show`, `tree`, `neighbors` and `size`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerInspectCommands(program: Command): void {
   program
     .command('show <entity>')

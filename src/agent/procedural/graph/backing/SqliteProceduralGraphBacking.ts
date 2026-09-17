@@ -80,6 +80,11 @@ class HeadConflictError extends Error {
   }
 }
 
+/**
+ * Procedural Graph backing that stores state in dedicated `pg_*` SQLite tables.
+ *
+ * Create an instance with `open`. A retained-revision commit runs in one transaction.
+ */
 export class SqliteProceduralGraphBacking implements IProceduralGraphBacking {
   readonly kind = 'sqlite' as const;
   private closed = false;

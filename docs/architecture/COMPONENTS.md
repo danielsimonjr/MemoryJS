@@ -49,7 +49,7 @@ MemoryJS follows a layered architecture with specialized components:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total (`src/` only):** 292 TypeScript files | 102,570 LOC | 2,030 exports | 233 classes | 620 interfaces
+**Total (`src/` only):** 292 TypeScript files | 103,593 LOC | 2,030 exports | 233 classes | 620 interfaces
 (authoritative numbers from `docs/architecture/dependency-summary.compact.json`, see `TEST_COVERAGE.md` for test counts — 371 test files, 281/292 source files with tests, 96.2%). Runtime circular dependencies in `src/` are 0; type-only circular dependencies in `src/` are 8 (from 39 pre-optimization) via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
 
 ### New since v1.13: dedicated sub-modules under `agent/`
@@ -2080,7 +2080,7 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 694 | repo_map.py |
-| totalLinesOfCode | 235882 | repo_map.py |
+| totalLinesOfCode | 236905 | repo_map.py |
 | totalExports | 2874 | repo_map.py |
 | reachableFiles | 290 | repo_map.py |
 | runtimeCircularDeps | 0 | repo_map.py |
@@ -2089,7 +2089,7 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 
 - Source files in `src/`: 292 (292 reachable, 0 dormant).
-- Lines of code in `src/`: 102,570.
+- Lines of code in `src/`: 103,593.
 - Exports in `src/`: 2,030 (1,336 re-exports).
 - Classes 233, interfaces 620, functions 322, type guards 30, enums 4, constants 123.
 - Circular dependencies in `src/`: 0 runtime, 8 type-only.

@@ -21,12 +21,20 @@ interface InFlightCall {
   args?: Record<string, unknown>;
 }
 
+/**
+ * Names of the events that `ToolCallObserver.events` emits.
+ */
 export type ToolCallEvent =
   | 'toolCall:start'
   | 'toolCall:complete'
   | 'toolCall:error'
   | 'toolCall:partial';
 
+/**
+ * Times tool calls and records their outcomes in `ToolAffordanceManager`.
+ *
+ * Call `observeStart` before a tool runs. Call one of the completion methods after the tool ends. The observer also emits an event for each step.
+ */
 export class ToolCallObserver {
   /** Public event emitter — subscribe for `toolCall:start|complete|error|partial`. */
   public readonly events = new EventEmitter();

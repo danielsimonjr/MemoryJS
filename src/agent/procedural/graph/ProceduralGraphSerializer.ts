@@ -11,8 +11,17 @@ import type { PGEdge, PGLocalization, PGNode } from '../../../types/proceduralGr
 import { canonicalJson } from './canonical.js';
 import type { ProceduralGraph } from './ProceduralGraph.js';
 
+/** Text format for serialized graphs: the paper format or the MemoryJS format. */
 export type PGSerializerStyle = 'paper-compatible' | 'memoryjs';
 
+/**
+ * Writes the active node and its nearby transitions as prompt text.
+ *
+ * @param graph - Graph to read.
+ * @param loc - Active node and the edges at each hop. A missing node id selects the entry node.
+ * @param style - Text format for transitions.
+ * @returns Lines for the active node, then the transitions grouped by hop.
+ */
 export function serializeLocalContext(
   graph: ProceduralGraph,
   loc: PGLocalization,
@@ -40,6 +49,13 @@ export function serializeLocalContext(
   return lines.join('\n');
 }
 
+/**
+ * Writes all nodes and edges of a graph as prompt text, in a stable sorted order.
+ *
+ * @param graph - Graph to write.
+ * @param style - Text format for transitions.
+ * @returns The graph text.
+ */
 export function serializeFullGraph(graph: ProceduralGraph, style: PGSerializerStyle): string {
   const lines: string[] = ['Complete Procedural Graph:'];
   const nodes = [...graph.snapshot.nodes].sort((a, b) => compareString(a.id, b.id));
@@ -56,6 +72,12 @@ export function serializeFullGraph(graph: ProceduralGraph, style: PGSerializerSt
   return lines.join('\n');
 }
 
+/**
+ * Writes the nodes and edges of a graph as canonical JSON with sorted keys.
+ *
+ * @param graph - Graph to write.
+ * @returns The JSON text.
+ */
 export function serializeGraphJson(graph: ProceduralGraph): string {
   return canonicalJson({
     nodes: graph.snapshot.nodes,

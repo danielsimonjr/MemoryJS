@@ -19,6 +19,9 @@ export interface WorkerPoolRuntimeStats {
   // getPoolStats and declare it on ExtendedPoolStats, not on this mirror.
 }
 
+/**
+ * Runtime statistics of a pool, with the execution totals that the manager records.
+ */
 export interface ExtendedPoolStats extends WorkerPoolRuntimeStats {
   poolId: string;
   createdAt: number;
@@ -27,6 +30,9 @@ export interface ExtendedPoolStats extends WorkerPoolRuntimeStats {
   averageExecutionTime: number;
 }
 
+/**
+ * Options for a worker pool that the manager creates.
+ */
 export interface WorkerPoolConfig {
   maxWorkers?: number;
   workerType?: 'thread' | 'process';
@@ -35,6 +41,11 @@ export interface WorkerPoolConfig {
   defaultTimeout?: number;
 }
 
+/**
+ * Listener for pool lifecycle events.
+ *
+ * The manager passes the pool identifier, the event kind and optional event data, for example the error.
+ */
 export type PoolEventCallback = (poolId: string, event: 'created' | 'shutdown' | 'error', data?: unknown) => void;
 
 interface PoolEntry {

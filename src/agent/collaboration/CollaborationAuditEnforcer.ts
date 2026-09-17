@@ -37,6 +37,12 @@ export interface CollaborationAuditEnforcerOptions {
   mode?: AttributionMode;
 }
 
+/**
+ * Wraps `EntityManager` mutations so that each one carries an `agentId`.
+ *
+ * Each successful mutation appends an entry to the `AuditLog`. The mode sets the
+ * result of a missing `agentId`: `strict` throws, the other mode substitutes a value.
+ */
 export class CollaborationAuditEnforcer {
   private readonly mode: AttributionMode;
 

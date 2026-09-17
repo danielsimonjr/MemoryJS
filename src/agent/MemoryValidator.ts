@@ -65,12 +65,20 @@ export interface MemoryContradiction {
   resolution?: string;
 }
 
+/**
+ * Configuration for `MemoryValidator`.
+ */
 export interface MemoryValidatorConfig {
   /** Confidence floor below which `calculateReliability` flags
    * `low-confidence`. Default 0.4. */
   lowConfidenceThreshold?: number;
 }
 
+/**
+ * Checks memories for contradictions, temporal order and reliability.
+ *
+ * Contradiction detection delegates to `ContradictionDetector`.
+ */
 export class MemoryValidator {
   private readonly contradictionDetector: ContradictionDetector;
   private readonly lowConfidenceThreshold: number;
@@ -190,10 +198,10 @@ export class MemoryValidator {
    *
    * @param entity         Primary memory being repaired (must be `AgentEntity`).
    * @param competing      Competing memory to resolve against.
-   * @param contradiction  Optional similarity score / context. Severity
+   * @param options.contradiction  Optional similarity score / context. Severity
    *                       is mapped onto `detectionMethod = 'similarity'`.
    * @param resolver       The `ConflictResolver` instance.
-   * @param agents         Optional agent-metadata registry (used by the
+   * @param options.agents  Optional agent-metadata registry (used by the
    *                       `trusted_agent` strategy). Empty Map is fine
    *                       for the strategies that don't need it.
    * @returns The resolved memory per the resolver's verdict.

@@ -16,6 +16,11 @@ import { getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';
 import { validateFilePath } from '../../utils/entityUtils.js';
 
+/**
+ * Register the `decision` command group: `propose`, `accept`, `reject`, `supersede`, `list`, `find`, `export` and `import`.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerDecisionCommands(program: Command): void {
   const decision = program
     .command('decision')

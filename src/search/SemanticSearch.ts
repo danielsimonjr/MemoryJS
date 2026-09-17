@@ -50,6 +50,9 @@ export function entityToText(entity: Entity): string {
   return parts.join('\n');
 }
 
+/**
+ * Optional collaborators for `SemanticSearch`, such as the embedding cache.
+ */
 export interface SemanticSearchOptions {
   /** Optional text-to-vector cache, normally wired by ManagerContext. */
   embeddingCache?: EmbeddingCache;

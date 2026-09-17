@@ -62,6 +62,12 @@ export interface ReconstructiveMemoryConfig {
   backing?: ReconstructiveBacking;
 }
 
+/**
+ * Public entry point for Cue-Tag-Content memory.
+ *
+ * Ingests dialogue through the distiller, stores it in the graph, and answers
+ * queries through the reconstructor.
+ */
 export class ReconstructiveMemory {
   private graph: CueTagContentGraph;
   private readonly distiller: MemoryDistiller;

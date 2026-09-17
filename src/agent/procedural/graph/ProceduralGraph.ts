@@ -17,6 +17,12 @@ import type {
 } from '../../../types/proceduralGraph.js';
 import { graphDigest } from './canonical.js';
 
+/**
+ * Immutable, indexed view of one Procedural Graph snapshot.
+ *
+ * Holds the snapshot, its digest, and node and edge indexes.
+ * The class does not validate the snapshot; use `validateSnapshot` for that.
+ */
 export class ProceduralGraph {
   readonly snapshot: PGSnapshot;
   readonly digest: string;

@@ -60,6 +60,13 @@ const EMPTY_EDITS: PGEditSet = {
   delete_edges: [],
 };
 
+/**
+ * Caller-supplied callbacks for one evolution run.
+ *
+ * `rollout` runs a task against a graph and returns the trajectory.
+ * `evaluate` scores a graph on a task.
+ * `refiner` proposes edits, and `tokenizer` limits the trajectory text by tokens.
+ */
 export interface PGEvolutionDependencies {
   rollout(task: PGTask, graph: PGSnapshot, signal?: AbortSignal): Promise<PGTrajectory>;
   evaluate(task: PGTask, graph: PGSnapshot, signal?: AbortSignal): Promise<number>;
@@ -67,6 +74,7 @@ export interface PGEvolutionDependencies {
   tokenizer: PGTokenizer;
 }
 
+/** Settings for one {@link ProceduralGraphEvolution.run} call: the graph, the task sets, the round and token limits, and the cycle policy. */
 export interface PGEvolutionOptions {
   graphId: string;
   mode: PGConstructionMode;
@@ -106,6 +114,7 @@ export type PGEvolutionStopReason =
   | 'not-found'
   | 'policy-denied';
 
+/** Outcome of an evolution run: the run id and manifest, the retained revision, the per-round records, and the stop reason. */
 export interface PGEvolutionResult {
   runId: string;
   manifest: Record<string, unknown>;
@@ -114,6 +123,13 @@ export interface PGEvolutionResult {
   stoppedBecause: PGEvolutionStopReason;
 }
 
+/**
+ * Runs offline self-evolution of a Procedural Graph.
+ *
+ * Each round proposes edits, validates the candidate, and evaluates it.
+ * A candidate becomes the retained revision only when its validation score improves.
+ * Expected outcomes are recorded in the result and are not thrown.
+ */
 export class ProceduralGraphEvolution {
   constructor(
     private readonly backing: IProceduralGraphBacking,

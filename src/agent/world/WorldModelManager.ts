@@ -27,6 +27,7 @@ import {
   type WorldStateEntity,
 } from './WorldStateSnapshot.js';
 
+/** Options for {@link WorldModelManager}. */
 export interface WorldModelManagerOptions {
   /**
    * Cap on snapshot size — keeps the snapshot small enough to roundtrip
@@ -36,6 +37,12 @@ export interface WorldModelManagerOptions {
   maxSnapshotSize?: number;
 }
 
+/**
+ * Gives a world-state view over existing services.
+ *
+ * Takes snapshots of the graph, compares snapshots, and passes fact validation
+ * and outcome prediction to `MemoryValidator` and `CausalReasoner` when present.
+ */
 export class WorldModelManager {
   private readonly maxSnapshotSize: number;
 

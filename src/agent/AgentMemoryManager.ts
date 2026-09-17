@@ -55,6 +55,9 @@ import { resolveRoleProfile } from './RoleProfiles.js';
 import { DreamEngine, type DreamEngineConfig, type DreamCycleResult } from './DreamEngine.js';
 import { ProfileManager } from './ProfileManager.js';
 
+/**
+ * Options for `createMemory`. The session id and content are required. The other fields set importance, expiry, owner and visibility.
+ */
 export interface CreateMemoryOptions {
   sessionId: string;
   content: string;
@@ -65,6 +68,9 @@ export interface CreateMemoryOptions {
   visibility?: MemoryVisibility;
 }
 
+/**
+ * Options for `retrieveForContext`. The fields select the memory tiers to read, filter by session, task or keywords, and limit the token budget.
+ */
 export interface RetrieveContextOptions {
   sessionId?: string;
   taskId?: string;

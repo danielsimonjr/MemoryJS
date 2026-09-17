@@ -171,7 +171,10 @@ export class QueryCostEstimator {
     return this.estimateMethodInternal(method, query, entityCount, method === recommendedMethod);
   }
 
-  /** @internal Estimate without triggering recursion. */
+  /**
+   * Build a cost estimate for one method without a recommendation lookup.
+   * @internal
+   */
   private estimateMethodInternal(
     method: SearchMethod,
     query: string,
@@ -194,7 +197,10 @@ export class QueryCostEstimator {
     };
   }
 
-  /** @internal Get recommended method without full estimate (avoids recursion). */
+  /**
+   * Return the best-scoring method without building full estimates.
+   * @internal
+   */
   private getRecommendedMethodOnly(
     query: string,
     entityCount: number,
@@ -258,7 +264,10 @@ export class QueryCostEstimator {
     };
   }
 
-  /** @internal */
+  /**
+   * Return the time per entity for a method: the learned average when present, else the configured constant.
+   * @internal
+   */
   private getBaseTimeForMethod(method: SearchMethod): number {
     // Prefer the EWMA learned from `recordExecution()` once we have one;
     // it tracks the live workload. Fall back to the configured constant
@@ -279,7 +288,10 @@ export class QueryCostEstimator {
     }
   }
 
-  /** @internal */
+  /**
+   * Return a time multiplier from query length, operators and wildcards, clamped to 0.5-3.0.
+   * @internal
+   */
   private getQueryComplexityFactor(query: string, method: SearchMethod): number {
     const words = query.trim().split(/\s+/).length;
     const hasOperators = /\b(AND|OR|NOT)\b/.test(query);
@@ -321,7 +333,10 @@ export class QueryCostEstimator {
     return Math.max(0.5, Math.min(factor, 3.0)); // Clamp between 0.5 and 3.0
   }
 
-  /** @internal */
+  /**
+   * Classify the graph size as low, medium or high complexity.
+   * @internal
+   */
   private getComplexity(entityCount: number): 'low' | 'medium' | 'high' {
     if (entityCount <= this.options.lowComplexityThreshold) {
       return 'low';
@@ -332,7 +347,10 @@ export class QueryCostEstimator {
     return 'medium';
   }
 
-  /** @internal */
+  /**
+   * Build the human-readable recommendation text for a method.
+   * @internal
+   */
   private getRecommendation(
     method: SearchMethod,
     _query: string,
@@ -360,7 +378,10 @@ export class QueryCostEstimator {
     return recommendation;
   }
 
-  /** @internal Score a method (higher = better fit). */
+  /**
+   * Score how well a method fits the query. A higher score is a better fit.
+   * @internal
+   */
   private scoreMethod(method: SearchMethod, query: string, entityCount: number): number {
     let score = 50; // Base score
 
@@ -449,7 +470,10 @@ export class QueryCostEstimator {
     return score;
   }
 
-  /** @internal */
+  /**
+   * Explain why the selector chose a method for this query.
+   * @internal
+   */
   private getSelectionReason(method: SearchMethod, query: string, entityCount: number): string {
     const hasOperators = /\b(AND|OR|NOT)\b/.test(query);
     const hasWildcard = query.includes('*');
@@ -505,7 +529,10 @@ export class QueryCostEstimator {
     return Math.min(Math.round(kDyn), maxDepth);
   }
 
-  /** @internal */
+  /**
+   * Compute a query complexity score from the query text and optional analysis.
+   * @internal
+   */
   private calculateComplexityScore(query: string, analysis?: QueryAnalysis): number {
     let score = 0;
 
@@ -622,7 +649,10 @@ export class QueryCostEstimator {
     return layers.slice(0, maxLayers).map(l => l.layer);
   }
 
-  /** @internal */
+  /**
+   * Return the relative cost of a search layer for this query.
+   * @internal
+   */
   private estimateLayerCost(layer: SearchLayer, query: string): number {
     const words = query.trim().split(/\s+/).length;
 
@@ -636,7 +666,10 @@ export class QueryCostEstimator {
     }
   }
 
-  /** @internal */
+  /**
+   * Score how well the lexical layer fits the query.
+   * @internal
+   */
   private scoreLexicalLayer(query: string, analysis?: QueryAnalysis): number {
     let score = 50;
 
@@ -654,7 +687,10 @@ export class QueryCostEstimator {
     return score;
   }
 
-  /** @internal */
+  /**
+   * Score how well the symbolic layer fits the query.
+   * @internal
+   */
   private scoreSymbolicLayer(query: string, analysis?: QueryAnalysis): number {
     let score = 40;
 
@@ -672,7 +708,10 @@ export class QueryCostEstimator {
     return score;
   }
 
-  /** @internal */
+  /**
+   * Score how well the semantic layer fits the query.
+   * @internal
+   */
   private scoreSemanticLayer(query: string, analysis?: QueryAnalysis): number {
     let score = 45;
 

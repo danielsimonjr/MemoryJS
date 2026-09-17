@@ -222,6 +222,13 @@ async function runHealthChecks(ctx: ManagerContext): Promise<HealthCheck[]> {
   return checks;
 }
 
+/**
+ * Register the `diag` command, which prints a diagnostic snapshot of version, runtime, storage and environment.
+ *
+ * The group also holds the `env`, `health` and `version` subcommands.
+ *
+ * @param program - The root Commander program that receives the commands.
+ */
 export function registerDiagCommand(program: Command): void {
   program
     .command('diag')

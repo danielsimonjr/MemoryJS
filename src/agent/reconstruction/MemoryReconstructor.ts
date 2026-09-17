@@ -77,6 +77,12 @@ const DEFAULTS: Required<ReconstructionOptions> = {
   evidenceTarget: 12,
 };
 
+/**
+ * Answers a query by multi-step traversal of the Cue-Tag-Content graph.
+ *
+ * Each step selects traversal actions, runs them, and adds the useful evidence
+ * to the context. The loop stops at the step limit or when enough evidence exists.
+ */
 export class MemoryReconstructor {
   private readonly toolkit: MemoryToolkit;
   private readonly keywords = new KeywordExtractor();

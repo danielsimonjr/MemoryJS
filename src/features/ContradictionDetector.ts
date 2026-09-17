@@ -11,6 +11,9 @@ import type { Entity } from '../types/types.js';
 import type { SemanticSearch } from '../search/SemanticSearch.js';
 import type { EntityManager } from '../core/EntityManager.js';
 
+/**
+ * A pair of observations that are semantically close but not identical.
+ */
 export interface Contradiction {
   /** Existing observation on the entity */
   existingObservation: string;
@@ -20,6 +23,12 @@ export interface Contradiction {
   similarity: number;
 }
 
+/**
+ * Finds new observations that contradict existing observations on an entity.
+ *
+ * A contradiction is a pair with a cosine similarity at or above the
+ * threshold (default 0.85) that is not an exact text match.
+ */
 export class ContradictionDetector {
   constructor(
     private semanticSearch: SemanticSearch,

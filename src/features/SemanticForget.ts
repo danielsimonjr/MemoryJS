@@ -14,6 +14,9 @@ import type { SemanticSearch } from '../search/SemanticSearch.js';
 import type { AuditLog } from './AuditLog.js';
 import type { Entity } from '../types/types.js';
 
+/**
+ * Result of a forget call: the match method, the deleted observations and entities, and the similarity for a semantic match.
+ */
 export interface SemanticForgetResult {
   method: 'exact' | 'semantic' | 'not_found';
   deletedObservations: { entityName: string; observation: string }[];
@@ -21,6 +24,9 @@ export interface SemanticForgetResult {
   similarity?: number;
 }
 
+/**
+ * Options for a forget call: similarity threshold, project scope, dry run and audit agent ID.
+ */
 export interface SemanticForgetOptions {
   threshold?: number;
   projectId?: string;
@@ -28,6 +34,14 @@ export interface SemanticForgetOptions {
   agentId?: string;
 }
 
+/**
+ * Deletes an observation by its content.
+ *
+ * An exact text match runs first. If no entity holds the exact text and semantic
+ * search is available, the best match at or above the threshold is deleted.
+ * An entity with no observations left is deleted. Each deletion goes to the
+ * audit log when one is configured.
+ */
 export class SemanticForget {
   constructor(
     private storage: GraphStorage,

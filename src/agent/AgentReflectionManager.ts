@@ -43,11 +43,17 @@ export type ArchiveReflectionResult =
   | 'vanished-mid-update'
   | 'conflict';
 
+/**
+ * Configuration for `AgentReflectionManager`.
+ */
 export interface ReflectionManagerConfig {
   /** Maximum reflections returned by `getRelevantForSession` (default 10). */
   defaultRelevanceLimit?: number;
 }
 
+/**
+ * Input for `AgentReflectionManager.create`. The manager validates the evidence, summary and confidence before it writes the reflection.
+ */
 export interface ReflectionInput {
   scope: ReflectionScope;
   /** Non-empty array of entity names backing this reflection. */
@@ -63,11 +69,17 @@ export interface ReflectionInput {
   sourceProjectId?: string;
 }
 
+/**
+ * Entity-level options that `create` applies to the reflection entity it writes.
+ */
 export interface ReflectionEntityOptions {
   importance?: number;
   agentId?: string;
 }
 
+/**
+ * Filters for `AgentReflectionManager.list`. All fields are optional. An empty object lists every reflection that is not archived.
+ */
 export interface ListReflectionsOptions {
   scope?: ReflectionScope;
   sourceSessionId?: string;
@@ -79,6 +91,9 @@ export interface ListReflectionsOptions {
   limit?: number;
 }
 
+/**
+ * Options for `getRelevantForSession`: evidence names to match, a confidence floor and a result limit.
+ */
 export interface RelevanceOptions {
   /**
    * Entity names from the session whose evidence overlap should be
@@ -89,6 +104,11 @@ export interface RelevanceOptions {
   limit?: number;
 }
 
+/**
+ * Writes, reads, lists and archives reflection entities.
+ *
+ * The manager deduplicates on a content hash of the scope and the sorted evidence. A reflection adds to its evidence entities and does not replace them.
+ */
 export class AgentReflectionManager {
   private readonly storage: IGraphStorage;
   private readonly entityManager: EntityManager;

@@ -163,6 +163,9 @@ export const MEMORY_TYPES = [
   'tool_affordance',
 ] as const;
 
+/**
+ * Kind of agent memory. The values come from `MEMORY_TYPES`.
+ */
 export type MemoryType = (typeof MEMORY_TYPES)[number];
 
 /**

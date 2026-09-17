@@ -7,7 +7,7 @@
  * @module search/SearchManager
  */
 
-import type { KnowledgeGraph, SearchResult, SavedSearch, AutoSearchResult, Entity, AccessContext } from '../types/index.js';
+import type { KnowledgeGraph, SearchResult, SavedSearch, AutoSearchResult, Entity, AccessContext, QueryCostEstimate } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import { TemporalSearch, type TemporalSearchOptions } from './TemporalSearch.js';
 import { BasicSearch } from './BasicSearch.js';
@@ -502,7 +502,7 @@ export class SearchManager {
   }
 
   /** Get cost estimates for all search methods. */
-  async getSearchCostEstimates(query: string): Promise<import('../types/index.js').QueryCostEstimate[]> {
+  async getSearchCostEstimates(query: string): Promise<QueryCostEstimate[]> {
     const graph = await this.storage.loadGraph();
     const entityCount = graph.entities.length;
     return this.queryEstimator.estimateAllMethods(query, entityCount);

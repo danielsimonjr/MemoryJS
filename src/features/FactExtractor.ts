@@ -150,7 +150,7 @@ export class FactExtractor {
   /**
    * Extract facts from observations and persist them to the knowledge graph.
    *
-   * @param entityName - The entity whose observations are being processed
+   * @param _entityName - The entity whose observations are being processed (not used)
    * @param observations - Array of observation strings to extract facts from
    * @param options - Extraction and persistence options
    * @returns Result with extracted facts, created entities, and created relations

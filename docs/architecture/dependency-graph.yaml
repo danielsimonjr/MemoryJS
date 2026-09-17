@@ -1576,7 +1576,9 @@ modules:
         - HeuristicMatch
         - HeuristicConflict
     src/agent/ImportanceScorer.ts:
-      description: Score new content at creation time.
+      description: >-
+        Configuration for `ImportanceScorer`. The three weights combine the length, keyword and overlap signals. The
+        defaults ar
       externalDependencies: []
       nodeDependencies: []
       internalDependencies: []
@@ -2990,7 +2992,9 @@ modules:
         - GetWeightedOptions
         - IMemoryBackend
     src/agent/MemoryEngine.ts:
-      description: Optional `ExclusionManager` (Phase 3 `do_not_remember`). When
+      description: >-
+        Configuration for `MemoryEngine`: dedup thresholds, the dedup scan window, the per-session turn limit and
+        optional seman
       externalDependencies: []
       nodeDependencies:
         - module: events
@@ -10171,6 +10175,7 @@ modules:
             - AutoSearchResult
             - Entity
             - AccessContext
+            - QueryCostEstimate
           typeOnly: true
         - file: ../core/GraphStorage.js
           imports:
@@ -12253,7 +12258,7 @@ modules:
         - EntityValidationResult
         - EntityValidatorConfig
     src/utils/errors.ts:
-      description: Error thrown when a ref alias is already registered.
+      description: "Optional details for a `KnowledgeGraphError`: context, suggestions and the cause."
       externalDependencies: []
       nodeDependencies: []
       internalDependencies: []
@@ -13705,7 +13710,7 @@ modules:
         - all
         - when
     src/utils/WorkerPoolManager.ts:
-      description: WorkerPoolManager module
+      description: Runtime statistics of a pool, with the execution totals that the manager records.
       externalDependencies:
         - package: "@danielsimonjr/workerpool"
           imports:
@@ -14161,7 +14166,7 @@ reachability:
 statistics:
   totalTypeScriptFiles: 292
   totalModules: 12
-  totalLinesOfCode: 102570
+  totalLinesOfCode: 103593
   totalExports: 2030
   totalClasses: 233
   totalInterfaces: 620

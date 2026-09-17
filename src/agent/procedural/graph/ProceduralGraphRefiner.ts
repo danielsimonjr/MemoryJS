@@ -65,6 +65,12 @@ export interface PGRefinerInput {
   rejectedBlock: string;
 }
 
+/**
+ * Builds the refiner prompt from the task, mode, tool catalog, attempts, current graph and rejected edits.
+ *
+ * @param input - Prompt fields for one refinement round.
+ * @returns The prompt text, with the data-handling note added unless `paperCompatible` is set.
+ */
 export function buildRefinerPrompt(input: PGRefinerInput): string {
   return withDataHandlingNote(
     renderTemplate(REFINER_PROMPT_TEMPLATE, {
@@ -132,6 +138,17 @@ export function serializeRejections(
   return { text: parts.join(separator), omitted };
 }
 
+/**
+ * Asks the refiner model for an edit set and parses the response.
+ *
+ * The result is `ok: false` when the provider fails, times out, or returns output
+ * that is not a valid edit set. A possible trajectory leak adds a warning only.
+ *
+ * @param provider - Completion provider for the refiner model.
+ * @param input - Prompt fields for one refinement round.
+ * @param budget - Time limit and maximum output length for the call.
+ * @returns The parsed edits with usage and diagnostics, or the failure diagnostics.
+ */
 export async function proposeEdits(
   provider: PGCompletionProvider,
   input: PGRefinerInput,

@@ -1688,7 +1688,7 @@ export class ManagerContext {
    * @param text - Natural language query
    * @returns Matching entities
    */
-  async queryNaturalLanguage(text: string): Promise<import('../types/index.js').Entity[]> {
+  async queryNaturalLanguage(text: string): Promise<Entity[]> {
     const planner = this._llmQueryPlanner ?? this.llmQueryPlanner();
 
     if (!this._llmSearchExecutor) {
