@@ -1493,10 +1493,12 @@ Debug and inspection tools:
 
 ## Verification
 
-Generated 2026-08-07 by `repo_map.py map`.
-Regenerate: `python repo_map.py map <repo> --out <dir>` · Check: `python repo_map.py check <repo> --docs docs/architecture`
+Two tools measure this repository. The two tools use different scopes.
+
+The table holds `repo_map.py` metrics. `repo_map.py` parses the whole repository: `src/`, tests, tools, benchmarks and scripts. The gate compares each row with a fresh parse.
+Check: `python repo_map.py check <repo> --docs docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalTypeScriptFiles | 613 | dependency-graph.json |
-| totalModules | 5 | dependency-graph.json |
+| totalSourceFiles | 694 | repo_map.py |
+| totalModules | 6 | repo_map.py |

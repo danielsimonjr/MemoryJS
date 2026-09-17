@@ -2253,10 +2253,17 @@ const router = RestRouter.withDefaults(ctx, { auth });
 
 ## Verification
 
-Generated 2026-09-10 from `dependency-summary.compact.json`.
-Regenerate: `bun run tools:deps` · Test coverage: `bun run tools:deps:full`
+Two tools measure this repository. The two tools use different scopes.
+
+The table holds `repo_map.py` metrics. `repo_map.py` parses the whole repository: `src/`, tests, tools, benchmarks and scripts. The gate compares each row with a fresh parse.
+Check: `python repo_map.py check <repo> --docs docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 1960 (1287 re-exports) | dependency-summary.compact.json |
-| totalTypeScriptFiles | 291 | dependency-summary.compact.json |
+| totalExports | 2874 | repo_map.py |
+| totalSourceFiles | 694 | repo_map.py |
+
+The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
+
+- Exports in `src/`: 2,030 (1,336 re-exports).
+- Source files in `src/`: 292 (292 reachable, 0 dormant).

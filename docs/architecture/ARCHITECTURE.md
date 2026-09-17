@@ -855,7 +855,7 @@ Where a type genuinely needs to be shared, the shared type moves *into* `src/typ
 
 ### Coverage (2026-09-10)
 
-Per [`TEST_COVERAGE.md`](TEST_COVERAGE.md): 280 of 291 source files have a direct test import (**96.2%**). 11 files have no dedicated test. This is not 100% coverage.
+Per [`TEST_COVERAGE.md`](TEST_COVERAGE.md): 281 of 292 source files have a direct test import (**96.2%**). 11 files have no dedicated test. This is not 100% coverage.
 
 ### Running Tests
 
@@ -879,13 +879,22 @@ The MemoryJS architecture prioritizes:
 
 ## Verification
 
-Generated 2026-09-10 from `dependency-summary.compact.json`.
-Regenerate: `bun run tools:deps` · Test coverage: `bun run tools:deps:full`
+Two tools measure this repository. The two tools use different scopes.
+
+The table holds `repo_map.py` metrics. `repo_map.py` parses the whole repository: `src/`, tests, tools, benchmarks and scripts. The gate compares each row with a fresh parse.
+Check: `python repo_map.py check <repo> --docs docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| sourceFiles | 291 (all reachable, 0 dormant) | dependency-summary.compact.json |
-| totalModules | 12 | dependency-summary.compact.json |
-| entryRoots | 4 (`src/cli/index.ts`, `src/index.ts`, `src/sqlite.ts`, `src/workers/levenshteinWorker.ts`) | DEPENDENCY_GRAPH.md |
-| runtimeCircularDeps | 0 | dependency-summary.compact.json |
-| typeOnlyCircularDeps | 8 | dependency-summary.compact.json |
+| totalSourceFiles | 694 | repo_map.py |
+| totalModules | 6 | repo_map.py |
+| entryRoots | 11 | repo_map.py |
+| runtimeCircularDeps | 0 | repo_map.py |
+| typeOnlyCircularDeps | 23 | repo_map.py |
+
+The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
+
+- Source files in `src/`: 292 (292 reachable, 0 dormant).
+- Files per module: adapters 7, agent 105, cli 31, core 25, features 18, entry 1, search 51, security 5, root 1, types 12, utils 35, workers 1.
+- Seeded entry roots in `src/`: `src/cli/index.ts`, `src/index.ts`, `src/sqlite.ts`, `src/workers/levenshteinWorker.ts`.
+- Circular dependencies in `src/`: 0 runtime, 8 type-only.

@@ -49,8 +49,8 @@ MemoryJS follows a layered architecture with specialized components:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total:** 291 TypeScript files | 100,890 LOC | 1,960 exports | 231 classes | 617 interfaces
-(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, regenerated 2026-09-10; see `TEST_COVERAGE.md` for test counts — 361 tests, 280/291 source files with tests, 96.2%). Runtime circular dependencies remain 0; type-only circular dependencies are 8 (from 39 pre-optimization) via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
+**Total (`src/` only):** 292 TypeScript files | 102,570 LOC | 2,030 exports | 233 classes | 620 interfaces
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, see `TEST_COVERAGE.md` for test counts — 371 test files, 281/292 source files with tests, 96.2%). Runtime circular dependencies in `src/` are 0; type-only circular dependencies in `src/` are 8 (from 39 pre-optimization) via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
 
 ### New since v1.13: dedicated sub-modules under `agent/`
 
@@ -2072,18 +2072,25 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 
 ## Verification
 
-Generated 2026-09-10 from `docs/architecture/dependency-summary.compact.json` (companion reports: `dependency-graph.json`, `TEST_COVERAGE.md`).
-Regenerate: `bun run tools:deps:full`
+Two tools measure this repository. The two tools use different scopes.
+
+The table holds `repo_map.py` metrics. `repo_map.py` parses the whole repository: `src/`, tests, tools, benchmarks and scripts. The gate compares each row with a fresh parse.
+Check: `python repo_map.py check <repo> --docs docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalTypeScriptFiles | 291 | dependency-summary.compact.json / dependency-graph.json |
-| totalLOC | 100890 | dependency-summary.compact.json |
-| totalExports | 1960 | dependency-summary.compact.json / dependency-graph.json |
-| totalClasses | 231 | dependency-summary.compact.json |
-| totalInterfaces | 617 | dependency-summary.compact.json |
-| runtimeCycles | 0 | dependency-summary.compact.json |
-| typeOnlyCycles | 8 | dependency-summary.compact.json |
-| reachableFiles | 291 | dependency-summary.compact.json (`rf`) |
-| testFiles | 361 | TEST_COVERAGE.md |
-| sourceFilesWithTests | 280/291 (96.2%) | TEST_COVERAGE.md |
+| totalSourceFiles | 694 | repo_map.py |
+| totalLinesOfCode | 235882 | repo_map.py |
+| totalExports | 2874 | repo_map.py |
+| reachableFiles | 290 | repo_map.py |
+| runtimeCircularDeps | 0 | repo_map.py |
+| typeOnlyCircularDeps | 23 | repo_map.py |
+
+The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
+
+- Source files in `src/`: 292 (292 reachable, 0 dormant).
+- Lines of code in `src/`: 102,570.
+- Exports in `src/`: 2,030 (1,336 re-exports).
+- Classes 233, interfaces 620, functions 322, type guards 30, enums 4, constants 123.
+- Circular dependencies in `src/`: 0 runtime, 8 type-only.
+- Test files: 371. Source files with a direct-import test: 281 of 292 (96.2%).

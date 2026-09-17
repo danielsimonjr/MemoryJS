@@ -1833,14 +1833,21 @@ search(query, { explain: true })
 
 ## Verification
 
-Generated 2026-09-10 by `tools/create-dependency-graph`.
-Regenerate: `bun run tools:deps:full`
+Two tools measure this repository. The two tools use different scopes.
+
+The table holds `repo_map.py` metrics. `repo_map.py` parses the whole repository: `src/`, tests, tools, benchmarks and scripts. The gate compares each row with a fresh parse.
+Check: `python repo_map.py check <repo> --docs docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalTypeScriptFiles | 291 | dependency-graph.json |
-| reachableFiles | 291 | dependency-graph.json |
-| dormantFiles | 0 | dependency-graph.json |
-| runtimeCircularDeps | 0 | dependency-graph.json |
-| typeOnlyCircularDeps | 8 | dependency-graph.json |
-| totalTestFiles | 361 | test-coverage.json |
+| totalSourceFiles | 694 | repo_map.py |
+| reachableFiles | 290 | repo_map.py |
+| dormantFiles | 2 | repo_map.py |
+| runtimeCircularDeps | 0 | repo_map.py |
+| typeOnlyCircularDeps | 23 | repo_map.py |
+
+The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
+
+- Source files in `src/`: 292 (292 reachable, 0 dormant).
+- Circular dependencies in `src/`: 0 runtime, 8 type-only.
+- Test files: 371. Source files with a direct-import test: 281 of 292 (96.2%).
