@@ -4,7 +4,7 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-09-15 (by tools/create-dependency-graph)
+**Generated**: 2026-09-17 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
