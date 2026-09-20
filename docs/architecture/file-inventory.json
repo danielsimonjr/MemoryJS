@@ -1,12 +1,12 @@
 {
-  "generated": "2026-09-17",
-  "totalFiles": 683,
+  "generated": "2026-09-20",
+  "totalFiles": 684,
   "byDisposition": {
     "reachable": 288,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 375,
+    "test": 376,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 292,
-    "tests": 375,
+    "tests": 376,
     "tools": 10,
     "config": 2
   },
@@ -1586,7 +1586,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 540
+      "loc": 548
     },
     {
       "file": "src/search/ReflectionManager.ts",
@@ -4233,6 +4233,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 121
+    },
+    {
+      "file": "tests/unit/search/RankedSearchProjectStarvation.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 70
     },
     {
       "file": "tests/unit/search/ReflectionManager.test.ts",
