@@ -145,6 +145,23 @@ export interface ManagerContextOptions {
 }
 
 /**
+ * Range contract for a numeric environment variable.
+ *
+ * @internal
+ */
+interface EnvNumberBounds {
+  /** Lowest accepted value, inclusive. */
+  min?: number;
+  /** Highest accepted value, inclusive. */
+  max?: number;
+  /** When true, a fractional value is rejected. */
+  integer?: boolean;
+}
+
+/** Inclusive `[0, 1]` range shared by every probability and weight knob. */
+const PROBABILITY: EnvNumberBounds = { min: 0, max: 1 };
+
+/**
  * Central context holding all manager instances.
  * Core managers are eagerly initialized in the constructor.
  * Agent memory managers use lazy initialization due to dependency chains and conditional creation.
@@ -596,7 +613,7 @@ export class ManagerContext {
       );
       // Optional graph-connectivity boost. When MEMORY_RANKED_GRAPH_BOOST is
       // 0/unset (the default), the prior is not even constructed — zero overhead.
-      const graphBoost = this.getEnvNumber('MEMORY_RANKED_GRAPH_BOOST', 0);
+      const graphBoost = this.getEnvNumber('MEMORY_RANKED_GRAPH_BOOST', 0, { min: 0 });
       if (graphBoost > 0) {
         this._rankedSearch.setGraphPrior(this.graphRankPrior, graphBoost);
       }
@@ -623,7 +640,7 @@ export class ManagerContext {
    */
   get hybridSearchManager(): HybridSearchManager {
     if (!this._hybridSearchManager) {
-      const graphWeight = this.getEnvNumber('MEMORY_HYBRID_GRAPH_WEIGHT', 0);
+      const graphWeight = this.getEnvNumber('MEMORY_HYBRID_GRAPH_WEIGHT', 0, PROBABILITY);
       this._hybridSearchManager =
         graphWeight > 0
           ? new HybridSearchManager(this.semanticSearch, this.rankedSearch, this.graphRankPrior, {
@@ -868,9 +885,9 @@ export class ManagerContext {
     if (!this._memoryEngine) {
       const agent = this.agentMemory();
       const importanceScorer = new ImportanceScorer({
-        lengthWeight: this.getEnvNumber('MEMORY_ENGINE_LENGTH_WEIGHT', 0.3),
-        keywordWeight: this.getEnvNumber('MEMORY_ENGINE_KEYWORD_WEIGHT', 0.4),
-        overlapWeight: this.getEnvNumber('MEMORY_ENGINE_OVERLAP_WEIGHT', 0.3),
+        lengthWeight: this.getEnvNumber('MEMORY_ENGINE_LENGTH_WEIGHT', 0.3, PROBABILITY),
+        keywordWeight: this.getEnvNumber('MEMORY_ENGINE_KEYWORD_WEIGHT', 0.4, PROBABILITY),
+        overlapWeight: this.getEnvNumber('MEMORY_ENGINE_OVERLAP_WEIGHT', 0.3, PROBABILITY),
       });
       const semanticSearch = this.semanticSearch ?? null;
       // Use the public accessor so a future rename of the private field
@@ -886,18 +903,18 @@ export class ManagerContext {
         semanticSearch,
         embeddingService,
         {
-          jaccardThreshold: this.getEnvNumber('MEMORY_ENGINE_JACCARD_THRESHOLD', 0.72),
-          prefixOverlapThreshold: this.getEnvNumber('MEMORY_ENGINE_PREFIX_OVERLAP', 0.5),
+          jaccardThreshold: this.getEnvNumber('MEMORY_ENGINE_JACCARD_THRESHOLD', 0.72, PROBABILITY),
+          prefixOverlapThreshold: this.getEnvNumber('MEMORY_ENGINE_PREFIX_OVERLAP', 0.5, PROBABILITY),
           dedupScanWindow: Math.trunc(
-            this.getEnvNumber('MEMORY_ENGINE_DEDUP_SCAN_WINDOW', 200),
+            this.getEnvNumber('MEMORY_ENGINE_DEDUP_SCAN_WINDOW', 200, { integer: true, min: 1 }),
           ),
           maxTurnsPerSession: Math.trunc(
-            this.getEnvNumber('MEMORY_ENGINE_MAX_TURNS_PER_SESSION', 1000),
+            this.getEnvNumber('MEMORY_ENGINE_MAX_TURNS_PER_SESSION', 1000, { integer: true, min: 1 }),
           ),
           semanticDedupEnabled: this.getEnvBool('MEMORY_ENGINE_SEMANTIC_DEDUP', false),
-          semanticThreshold: this.getEnvNumber('MEMORY_ENGINE_SEMANTIC_THRESHOLD', 0.92),
+          semanticThreshold: this.getEnvNumber('MEMORY_ENGINE_SEMANTIC_THRESHOLD', 0.92, PROBABILITY),
           recentTurnsForImportance: Math.trunc(
-            this.getEnvNumber('MEMORY_ENGINE_RECENT_TURNS', 10),
+            this.getEnvNumber('MEMORY_ENGINE_RECENT_TURNS', 10, { integer: true, min: 1 }),
           ),
           // Phase 3 do_not_remember: auto-wire so addTurn consults
           // active exclusion rules. Direct-construct MemoryEngine
@@ -1206,8 +1223,8 @@ export class ManagerContext {
         }
       };
       this._prospectiveMemory = new ProspectiveMemoryManager(this.storage, {
-        defaultExpiryHours: this.getEnvNumber('MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS', 168),
-        maxPendingPerSession: this.getEnvNumber('MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION', 100),
+        defaultExpiryHours: this.getEnvNumber('MEMORY_PROSPECTIVE_DEFAULT_EXPIRY_HOURS', 168, { min: 0 }),
+        maxPendingPerSession: this.getEnvNumber('MEMORY_PROSPECTIVE_MAX_PENDING_PER_SESSION', 100, { integer: true, min: 1 }),
         procedureInvoker,
       });
     }
@@ -1224,7 +1241,7 @@ export class ManagerContext {
   get failureManager(): FailureManager {
     if (!this._failureManager) {
       this._failureManager = new FailureManager(this.storage, this.entityManager, {
-        defaultLookupLimit: this.getEnvNumber('MEMORY_FAILURE_LOOKUP_LIMIT', 5),
+        defaultLookupLimit: this.getEnvNumber('MEMORY_FAILURE_LOOKUP_LIMIT', 5, { integer: true, min: 1 }),
       });
     }
     return this._failureManager;
@@ -1445,17 +1462,17 @@ export class ManagerContext {
   get decayEngine(): DecayEngine {
     if (!this._decayEngine) {
       this._decayEngine = new DecayEngine(this.storage, this.accessTracker, {
-        halfLifeHours: this.getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168),
-        minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1),
+        halfLifeHours: this.getEnvNumber('MEMORY_DECAY_HALF_LIFE_HOURS', 168, { min: 0 }),
+        minImportance: this.getEnvNumber('MEMORY_DECAY_MIN_IMPORTANCE', 0.1, { min: 0 }),
         importanceModulation: this.getEnvBool('MEMORY_DECAY_IMPORTANCE_MOD', true),
         accessModulation: this.getEnvBool('MEMORY_DECAY_ACCESS_MOD', true),
-        connectivityProtection: this.getEnvNumber('MEMORY_DECAY_CONNECTIVITY_PROTECTION', 0),
+        connectivityProtection: this.getEnvNumber('MEMORY_DECAY_CONNECTIVITY_PROTECTION', 0, PROBABILITY),
         // PRD MEM-01 (v1.12.0). decayRate is auto-derived from halfLifeHours
         // when env-var unset (NaN check avoids overriding the auto-derive).
         decayRate: this.envNumberOrUndefined('MEMORY_PRD_DECAY_RATE'),
-        freshnessCoefficient: this.getEnvNumber('MEMORY_PRD_FRESHNESS_COEFFICIENT', 0.01),
-        relevanceWeight: this.getEnvNumber('MEMORY_PRD_RELEVANCE_WEIGHT', 0.35),
-        minImportanceThreshold: this.getEnvNumber('MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD', 0.1),
+        freshnessCoefficient: this.getEnvNumber('MEMORY_PRD_FRESHNESS_COEFFICIENT', 0.01, { min: 0 }),
+        relevanceWeight: this.getEnvNumber('MEMORY_PRD_RELEVANCE_WEIGHT', 0.35, PROBABILITY),
+        minImportanceThreshold: this.getEnvNumber('MEMORY_PRD_MIN_IMPORTANCE_THRESHOLD', 0.1, { min: 0 }),
       });
     }
     return this._decayEngine;
@@ -1479,10 +1496,10 @@ export class ManagerContext {
 
     if (this.getEnvBool('MEMORY_AUTO_DECAY', false)) {
       this._decayScheduler = new DecayScheduler(this.decayEngine, {
-        decayIntervalMs: this.getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000),
+        decayIntervalMs: this.getEnvNumber('MEMORY_DECAY_INTERVAL_MS', 3600000, { integer: true, min: 1 }),
         autoForget: this.getEnvBool('MEMORY_AUTO_FORGET', false),
         forgetOptions: {
-          effectiveImportanceThreshold: this.getEnvNumber('MEMORY_FORGET_THRESHOLD', 0.05),
+          effectiveImportanceThreshold: this.getEnvNumber('MEMORY_FORGET_THRESHOLD', 0.05, { min: 0 }),
         },
       });
     }
@@ -1511,7 +1528,7 @@ export class ManagerContext {
         {
           consolidationIntervalMs: this.getEnvNumber(
             'MEMORY_CONSOLIDATION_INTERVAL_MS',
-            3600000
+            3600000, { integer: true, min: 1 }
           ),
           autoMergeDuplicates: this.getEnvBool(
             'MEMORY_CONSOLIDATION_MERGE_DUPLICATES',
@@ -1544,7 +1561,7 @@ export class ManagerContext {
         this.storage,
         this.agentMemory().consolidationPipeline,
         {
-          intervalMs: this.getEnvNumber('MEMORY_DREAM_INTERVAL_MS', 4 * 60 * 60 * 1000),
+          intervalMs: this.getEnvNumber('MEMORY_DREAM_INTERVAL_MS', 4 * 60 * 60 * 1000, { integer: true, min: 1 }),
           ...config,
         }
       );
@@ -1570,12 +1587,12 @@ export class ManagerContext {
         this.accessTracker,
         this.decayEngine,
         {
-          importanceWeight: this.getEnvNumber('MEMORY_SALIENCE_IMPORTANCE_WEIGHT', 0.25),
-          recencyWeight: this.getEnvNumber('MEMORY_SALIENCE_RECENCY_WEIGHT', 0.25),
-          frequencyWeight: this.getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2),
-          contextWeight: this.getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2),
-          noveltyWeight: this.getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1),
-          connectivityWeight: this.getEnvNumber('MEMORY_SALIENCE_CONNECTIVITY_WEIGHT', 0),
+          importanceWeight: this.getEnvNumber('MEMORY_SALIENCE_IMPORTANCE_WEIGHT', 0.25, PROBABILITY),
+          recencyWeight: this.getEnvNumber('MEMORY_SALIENCE_RECENCY_WEIGHT', 0.25, PROBABILITY),
+          frequencyWeight: this.getEnvNumber('MEMORY_SALIENCE_FREQUENCY_WEIGHT', 0.2, PROBABILITY),
+          contextWeight: this.getEnvNumber('MEMORY_SALIENCE_CONTEXT_WEIGHT', 0.2, PROBABILITY),
+          noveltyWeight: this.getEnvNumber('MEMORY_SALIENCE_NOVELTY_WEIGHT', 0.1, PROBABILITY),
+          connectivityWeight: this.getEnvNumber('MEMORY_SALIENCE_CONNECTIVITY_WEIGHT', 0, PROBABILITY),
         }
       );
     }
@@ -1744,11 +1761,34 @@ export class ManagerContext {
    * Get a number from environment variable with default.
    * @internal
    */
-  private getEnvNumber(key: string, defaultValue: number): number {
+  private getEnvNumber(key: string, defaultValue: number, bounds?: EnvNumberBounds): number {
     const value = process.env[key];
     if (value === undefined) return defaultValue;
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? defaultValue : parsed;
+
+    const raw = value.trim();
+    if (raw === '') return defaultValue;
+
+    // `Number` rejects a numeric prefix ('10abc') that `parseFloat` accepts,
+    // and the finite check rejects 'Infinity' and 'NaN'. An operator's
+    // malformed value must not become a silent, out-of-contract setting.
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed)) {
+      logger.warn(`${key}='${value}' is not a finite number; using ${defaultValue}`);
+      return defaultValue;
+    }
+    if (bounds?.integer && !Number.isInteger(parsed)) {
+      logger.warn(`${key}='${value}' must be an integer; using ${defaultValue}`);
+      return defaultValue;
+    }
+    if (bounds?.min !== undefined && parsed < bounds.min) {
+      logger.warn(`${key}='${value}' is below the minimum ${bounds.min}; using ${defaultValue}`);
+      return defaultValue;
+    }
+    if (bounds?.max !== undefined && parsed > bounds.max) {
+      logger.warn(`${key}='${value}' is above the maximum ${bounds.max}; using ${defaultValue}`);
+      return defaultValue;
+    }
+    return parsed;
   }
 
   /**

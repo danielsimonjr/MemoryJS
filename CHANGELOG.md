@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (wave 2 step 8: numeric configuration validation)
+
+- `ManagerContext` numeric environment variables are validated before use. The parser used `parseFloat`, which accepts a numeric prefix followed by text (`MEMORY_ENGINE_JACCARD_THRESHOLD='10abc'` became `10`) and accepts `Infinity`. It now uses `Number`, rejects a non-finite value, and rejects a value outside the range documented for that variable. A rejected value logs a warning and falls back to the documented default, so a misconfigured deployment degrades instead of failing at import.
+- Ranges are applied to 30 call sites: 17 probability and weight knobs take `[0, 1]`; 8 count and interval knobs must be integers of at least 1; 7 rate and threshold knobs must be at least 0.
+
 ### Documentation
 
 - The architecture-docs gate (`repo_map.py check . --docs docs/architecture`) passes. Each Verification table now uses only `repo_map` metric names, with values from a whole-repository parse. Figures from `tools:deps` (`src/` scope) move to a list below each table and name their source. The generated reports are regenerated with `bun run tools:deps:full` (371 test files; 281 of 292 source files have a direct-import test).

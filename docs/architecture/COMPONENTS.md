@@ -2079,8 +2079,8 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 694 | repo_map.py |
-| totalLinesOfCode | 236905 | repo_map.py |
+| totalSourceFiles | 695 | repo_map.py |
+| totalLinesOfCode | 237025 | repo_map.py |
 | totalExports | 2874 | repo_map.py |
 | reachableFiles | 290 | repo_map.py |
 | runtimeCircularDeps | 0 | repo_map.py |
