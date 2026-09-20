@@ -265,18 +265,31 @@ export class RankedSearch {
     const preFilters: SearchFilters = { tags, minImportance, maxImportance };
     const candidateEntities = SearchFilterChain.applyFilters(graph.entities, preFilters);
     const ftsCandidateNames = await this.getFtsCandidateNames(query, graph.entities.length);
-    const scoringEntities = ftsCandidateNames === null
+    const lexicalCandidates = ftsCandidateNames === null
       ? candidateEntities
       : candidateEntities.filter(entity => ftsCandidateNames.has(entity.name));
+    // projectId narrows which entities are ELIGIBLE to be returned, but never
+    // the corpus that IDF is derived from (`candidateEntities`). Narrowing
+    // eligibility here rather than after scoring is both a correctness fix and
+    // a work reduction: a post-scoring filter competed for the same bounded
+    // top-k window as every other project, so a large neighbouring project
+    // could fill that window and starve this project of eligible results.
+    const scoringEntities = projectId
+      ? lexicalCandidates.filter(entity => entity.projectId === projectId)
+      : lexicalCandidates;
     if (scoringEntities.length === 0) return [];
 
     // Try to use pre-calculated index
     const index = await this.ensureIndexLoaded();
     const queryTerms = tokenize(query);
 
-    // Score across the full candidate corpus (no projectId narrowing yet).
-    // Pass a large limit so we capture all matches before post-filtering.
-    const scoringLimit = projectId ? SEARCH_LIMITS.MAX : effectiveLimit;
+    // Score the eligible entities against corpus-wide IDF. A graph boost can
+    // reorder results, so widen the scoring window when one is active to keep
+    // the boost applied before final truncation.
+    const boostActive = this.graphPrior !== null && this.graphBoost > 0;
+    const scoringLimit = boostActive
+      ? Math.max(effectiveLimit, SEARCH_LIMITS.MAX)
+      : effectiveLimit;
     let scored: SearchResult[];
     if (index) {
       scored = this.searchWithIndex(scoringEntities, queryTerms, index, scoringLimit);
@@ -287,11 +300,6 @@ export class RankedSearch {
         scoringLimit,
         candidateEntities,
       );
-    }
-
-    // Apply projectId filter post-scoring to preserve IDF corpus integrity
-    if (projectId) {
-      scored = scored.filter(r => r.entity.projectId === projectId);
     }
 
     // Optional graph-connectivity boost (off unless setGraphPrior enabled it)
