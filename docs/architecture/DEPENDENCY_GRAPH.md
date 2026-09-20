@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.2.0 | **Last Updated**: 2026-09-17
+**Version**: 4.2.0 | **Last Updated**: 2026-09-20
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -5590,7 +5590,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 292 |
 | Total Modules | 12 |
-| Total Lines of Code | 103593 |
+| Total Lines of Code | 103633 |
 | Total Exports | 2030 |
 | Total Re-exports | 1336 |
 | Total Classes | 233 |
@@ -5607,5 +5607,5 @@ graph TD
 
 ---
 
-*Last Updated*: 2026-09-17
+*Last Updated*: 2026-09-20
 *Version*: 4.2.0

@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "generatedAt": "2026-09-17T17:01:09.123Z",
+    "generatedAt": "2026-09-20T18:13:41.036Z",
     "totalSourceFiles": 292,
-    "totalTestFiles": 371,
+    "totalTestFiles": 372,
     "testedCount": 281,
     "untestedCount": 11,
     "coveragePercent": "96.2",
@@ -1468,6 +1468,7 @@
       "tests/unit/core/entity-manager-project-stamping.test.ts",
       "tests/unit/core/entity-manager-version-chain.test.ts",
       "tests/unit/core/known-issue-fixes.test.ts",
+      "tests/unit/core/manager-context-env-number.test.ts",
       "tests/unit/core/manager-context-new-managers.test.ts",
       "tests/unit/core/manager-context-project.test.ts",
       "tests/unit/core/ManagerContext-proceduralGraph.test.ts",
@@ -5261,6 +5262,9 @@
     ],
     "tests/unit/core/manager-context-default-embedding.test.ts": [
       "src/utils/constants.ts"
+    ],
+    "tests/unit/core/manager-context-env-number.test.ts": [
+      "src/core/ManagerContext.ts"
     ],
     "tests/unit/core/manager-context-new-managers.test.ts": [
       "src/core/ManagerContext.ts",

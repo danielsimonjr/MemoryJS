@@ -2,7 +2,7 @@
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
     "version": "4.2.0",
-    "lastUpdated": "2026-09-17",
+    "lastUpdated": "2026-09-20",
     "totalFiles": 292,
     "totalModules": 12,
     "totalExports": 2030
@@ -19876,7 +19876,7 @@
   "statistics": {
     "totalTypeScriptFiles": 292,
     "totalModules": 12,
-    "totalLinesOfCode": 103593,
+    "totalLinesOfCode": 103633,
     "totalExports": 2030,
     "totalClasses": 233,
     "totalInterfaces": 620,
