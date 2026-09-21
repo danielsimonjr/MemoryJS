@@ -4,13 +4,13 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-09-20 (by tools/create-dependency-graph)
+**Generated**: 2026-09-21 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 684
+**Total files**: 685
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 376 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 377 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **684** | |
+| **Total** | **685** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 292 |
-| `tests` | 376 |
+| `tests` | 377 |
 | `tools` | 10 |
 
 ## All files
@@ -264,7 +264,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/QueryPlanCache.ts` | src | reachable | 515 |
 | `src/search/QueryPlanFormatter.ts` | src | reachable | 76 |
 | `src/search/QueryPlanner.ts` | src | reachable | 124 |
-| `src/search/RankedSearch.ts` | src | reachable | 540 |
+| `src/search/RankedSearch.ts` | src | reachable | 548 |
 | `src/search/ReflectionManager.ts` | src | reachable | 374 |
 | `src/search/SavedSearchManager.ts` | src | reachable | 225 |
 | `src/search/SearchFilterChain.ts` | src | reachable | 285 |
@@ -644,6 +644,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/QueryPlanner.test.ts` | tests | test | 197 |
 | `tests/unit/search/RankedSearch.test.ts` | tests | test | 765 |
 | `tests/unit/search/RankedSearchGraphBoost.test.ts` | tests | test | 121 |
+| `tests/unit/search/RankedSearchProjectStarvation.test.ts` | tests | test | 70 |
 | `tests/unit/search/ReflectionManager.test.ts` | tests | test | 476 |
 | `tests/unit/search/SavedSearchManager.test.ts` | tests | test | 347 |
 | `tests/unit/search/search-filter-chain-project.test.ts` | tests | test | 52 |
