@@ -177,7 +177,7 @@ full-featured entry point.
 ### Requirements
 
 - Bun >= 1.4.2 (documented install and development workflow)
-- Node.js >= 18.0.0 (production runtime of the published package)
+- Node.js >= 22.12.0 (production runtime of the published package)
 - TypeScript >= 7.0 (for development)
 
 ## Quick Start

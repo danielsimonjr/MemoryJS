@@ -12,6 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ManagerContext` numeric environment variables are validated before use. The parser used `parseFloat`, which accepts a numeric prefix followed by text (`MEMORY_ENGINE_JACCARD_THRESHOLD='10abc'` became `10`) and accepts `Infinity`. It now uses `Number`, rejects a non-finite value, and rejects a value outside the range documented for that variable. A rejected value logs a warning and falls back to the documented default, so a misconfigured deployment degrades instead of failing at import.
 - Ranges are applied to 30 call sites: 17 probability and weight knobs take `[0, 1]`; 8 count and interval knobs must be integers of at least 1; 7 rate and threshold knobs must be at least 0.
 
+### Fixed (declared Node floor)
+
+- `engines.node` was `>=18.0.0` and the package could never run there. The runtime dependencies
+  require **22.12.0** — `commander@15` (`>=22.12.0`, the binding one), plus `better-sqlite3@13` and
+  `chalk@6` (each `>=22`) independently. Note the floor is 22.12.0 and not a bare 22, so the
+  obvious reading of the two `>=22` deps would still have been slightly wrong.
+- This was never cosmetic. `better-sqlite3@13` is a native addon built against a Node 22+ ABI, so
+  it genuinely fails on 18/20 — and npm only *warns* on `EBADENGINE` by default, so the install
+  succeeds and the failure surfaces later, at runtime, in the consumer's application.
+- The claim had never been exercised: the CI matrix is `node: [22, 24]`, so 18 and 20 are not
+  tested and never were. A declared floor that no job runs is a guess with a version number on it.
+- README updated to match.
+
+
 ### Fixed (wave 2 step 6: search eligibility)
 
 - `RankedSearch.searchNodesRanked` no longer loses project-scoped results when a larger project shares the corpus. The `projectId` constraint now selects which entities are eligible to be scored, instead of filtering the already-truncated top-k list. IDF still comes from the whole tag/importance-filtered corpus, so scores are unchanged. Reproduced before the change: a query scoped to `project-b`, against 201 higher-scoring `project-a` documents, returned no results; it now returns the eligible document. A graph boost (`MEMORY_RANKED_GRAPH_BOOST`) still widens the scoring window, so the boost applies before the final truncation.
