@@ -2261,7 +2261,7 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 | Claim | Value | Source |
 |---|---|---|
 | totalExports | 2874 | repo_map.py |
-| totalSourceFiles | 694 | repo_map.py |
+| totalSourceFiles | 695 | repo_map.py |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

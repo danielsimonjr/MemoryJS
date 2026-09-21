@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (wave 2 step 6: search eligibility)
+
+- `RankedSearch.searchNodesRanked` no longer loses project-scoped results when a larger project shares the corpus. The `projectId` constraint now selects which entities are eligible to be scored, instead of filtering the already-truncated top-k list. IDF still comes from the whole tag/importance-filtered corpus, so scores are unchanged. Reproduced before the change: a query scoped to `project-b`, against 201 higher-scoring `project-a` documents, returned no results; it now returns the eligible document. A graph boost (`MEMORY_RANKED_GRAPH_BOOST`) still widens the scoring window, so the boost applies before the final truncation.
+- Performance: the change scores fewer entities for a project-scoped query. The measured medians overlap run-to-run variance on the test machine, so no speedup figure is claimed.
+
 ### Documentation
 
 - The architecture-docs gate (`repo_map.py check . --docs docs/architecture`) passes. Each Verification table now uses only `repo_map` metric names, with values from a whole-repository parse. Figures from `tools:deps` (`src/` scope) move to a list below each table and name their source. The generated reports are regenerated with `bun run tools:deps:full` (371 test files; 281 of 292 source files have a direct-import test).

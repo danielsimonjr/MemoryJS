@@ -281,10 +281,10 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 694 | repo_map.py |
-| totalLinesOfCode | 236905 | repo_map.py |
+| totalSourceFiles | 695 | repo_map.py |
+| totalLinesOfCode | 236982 | repo_map.py |
 | totalExports | 2874 | repo_map.py |
-| totalTypeOnlyImports | 730 | repo_map.py |
+| totalTypeOnlyImports | 731 | repo_map.py |
 | totalModules | 6 | repo_map.py |
 | entryRoots | 11 | repo_map.py |
 | reachableFiles | 290 | repo_map.py |
