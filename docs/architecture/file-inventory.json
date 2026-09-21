@@ -1,12 +1,12 @@
 {
-  "generated": "2026-09-20",
-  "totalFiles": 684,
+  "generated": "2026-09-21",
+  "totalFiles": 685,
   "byDisposition": {
     "reachable": 288,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 376,
+    "test": 377,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 292,
-    "tests": 376,
+    "tests": 377,
     "tools": 10,
     "config": 2
   },
@@ -1117,7 +1117,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1770
+      "loc": 1810
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -3505,6 +3505,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 29
+    },
+    {
+      "file": "tests/unit/core/manager-context-env-number.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 81
     },
     {
       "file": "tests/unit/core/manager-context-new-managers.test.ts",

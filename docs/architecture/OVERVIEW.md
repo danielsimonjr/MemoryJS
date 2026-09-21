@@ -282,7 +282,7 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 695 | repo_map.py |
-| totalLinesOfCode | 236982 | repo_map.py |
+| totalLinesOfCode | 237025 | repo_map.py |
 | totalExports | 2874 | repo_map.py |
 | totalTypeOnlyImports | 731 | repo_map.py |
 | totalModules | 6 | repo_map.py |
