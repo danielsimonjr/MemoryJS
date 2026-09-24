@@ -4,13 +4,13 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-09-21 (by tools/create-dependency-graph)
+**Generated**: 2026-09-24 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 685
+**Total files**: 686
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 377 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 378 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **685** | |
+| **Total** | **686** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 292 |
-| `tests` | 377 |
+| `tests` | 378 |
 | `tools` | 10 |
 
 ## All files
@@ -674,6 +674,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/security/APIKeyStore.test.ts` | tests | test | 209 |
 | `tests/unit/security/PiiRedactor.test.ts` | tests | test | 139 |
 | `tests/unit/security/RowLevelFilter.test.ts` | tests | test | 157 |
+| `tests/unit/tools-migrate-rebuild-native.test.ts` | tests | test | 52 |
 | `tests/unit/tools/observations-to-columns.test.ts` | tools | tool | 780 |
 | `tests/unit/tools/plan-doc-audit.test.ts` | tools | tool | 326 |
 | `tests/unit/tools/segment-jsonl.test.ts` | tools | tool | 411 |
