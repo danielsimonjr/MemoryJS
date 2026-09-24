@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (stale `rebuild-native.mjs` copy under tools/migrate-from-jsonl-to-sqlite)
+
+- `tools/migrate-from-jsonl-to-sqlite/scripts/rebuild-native.mjs` was the OLD, pre-fix copy of this
+  repo's own `scripts/rebuild-native.mjs`: its `loads(pkg)` only did `require('better-sqlite3')`,
+  which detects a MISSING module but not one that is PRESENT and broken - ABI-mismatched to the
+  running Node, or failing at lazy load. better-sqlite3 compiles its native binding lazily, in the
+  `Database` constructor, so requiring the JS wrapper alone never touches it. This copy is not dead
+  code: `tools/migrate-from-jsonl-to-sqlite/package.json` has its own `postinstall`/`rebuild:native`
+  scripts pointing at it, and the tool carries its own `better-sqlite3` dependency and
+  `node_modules` separate from the repo root - so it is fixed in place, matching this repo's own
+  already-fixed copy, rather than deleted.
+- `loads()` now opens a `:memory:` database and runs `SELECT 1` before declaring success. Proven
+  with a `Module._load` stub that returns a `Database` class whose constructor throws until a fake
+  rebuild runs: the OLD `loads()` reported "loads" against that stub and exited 0 having detected
+  nothing; the fixed version reports the failure, rebuilds, and verifies the reload
+  (`tests/unit/tools-migrate-rebuild-native.test.ts`). Suite: 357 files / 8196 tests, all passing.
+
 ### Fixed (wave 2 step 8: numeric configuration validation)
 
 - `ManagerContext` numeric environment variables are validated before use. The parser used `parseFloat`, which accepts a numeric prefix followed by text (`MEMORY_ENGINE_JACCARD_THRESHOLD='10abc'` became `10`) and accepts `Infinity`. It now uses `Number`, rejects a non-finite value, and rejects a value outside the range documented for that variable. A rejected value logs a warning and falls back to the documented default, so a misconfigured deployment degrades instead of failing at import.

@@ -1,12 +1,12 @@
 {
-  "generated": "2026-09-21",
-  "totalFiles": 685,
+  "generated": "2026-09-24",
+  "totalFiles": 686,
   "byDisposition": {
     "reachable": 288,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 377,
+    "test": 378,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 292,
-    "tests": 377,
+    "tests": 378,
     "tools": 10,
     "config": 2
   },
@@ -4450,6 +4450,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 157
+    },
+    {
+      "file": "tests/unit/tools-migrate-rebuild-native.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 52
     },
     {
       "file": "tests/unit/tools/observations-to-columns.test.ts",
