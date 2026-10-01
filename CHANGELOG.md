@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `brace-expansion` moves from 5.0.9 to 5.0.12 in `bun.lock`. Two HIGH advisories apply to 5.0.9:
+  GHSA-qhr7-859c-m2p7 (denial of service by uncontrolled recursion on nested brace groups, affected
+  range `>=4.0.0 <5.0.11`) and GHSA-6j4f-fj2g-mc7p (denial of service by uncontrolled recursion in
+  `parseCommaParts`, affected range `>=4.0.0 <5.0.10`). The `bun audit --audit-level=high` step in CI
+  failed on every run while 5.0.9 was locked. It now reports no vulnerabilities across 261 packages.
+- The package is a transitive DEVELOPMENT dependency only, through `rimraf` > `glob` > `minimatch` >
+  `brace-expansion`, and it is not part of any published artifact. `minimatch@10.2.6` accepts
+  `^5.0.8`, so 5.0.12 satisfies the existing range: the fix is one line of `bun.lock`, with no
+  manifest change and no `overrides` entry. Suite unchanged at 357 files / 8196 tests, all passing
+  before and after.
+
 ### Fixed (stale `rebuild-native.mjs` copy under tools/migrate-from-jsonl-to-sqlite)
 
 - `tools/migrate-from-jsonl-to-sqlite/scripts/rebuild-native.mjs` was the OLD, pre-fix copy of this
