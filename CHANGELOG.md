@@ -20,6 +20,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   manifest change and no `overrides` entry. Suite unchanged at 357 files / 8196 tests, all passing
   before and after.
 
+### Fixed
+
+- **Removed the dead root `npm` Dependabot entry.** No dependency-update ecosystem works on a
+  Bun-managed root right now: `bun` fails with "Unsupported bun.lock 'lockfileVersion' 2" and `npm`
+  aborts during file fetching with "npm_and_yarn ecosystem cannot update bun.lock". Each error
+  recommends the other. Measured fleet-wide 2026-10-01: 19 dead updater jobs. The entry was failing
+  weekly and proposing nothing, so it was removed and the reason recorded in `dependabot.yml`.
+  Security alerts are unaffected; automated remediation is what stops. `github-actions` updates
+  continue.
+
 ### Fixed (stale `rebuild-native.mjs` copy under tools/migrate-from-jsonl-to-sqlite)
 
 - `tools/migrate-from-jsonl-to-sqlite/scripts/rebuild-native.mjs` was the OLD, pre-fix copy of this
