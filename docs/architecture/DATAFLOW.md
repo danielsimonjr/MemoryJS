@@ -1850,4 +1850,4 @@ The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. 
 
 - Source files in `src/`: 292 (292 reachable, 0 dormant).
 - Circular dependencies in `src/`: 0 runtime, 8 type-only.
-- Test files: 371. Source files with a direct-import test: 281 of 292 (96.2%).
+- Test files: 374. Source files with a direct-import test: 281 of 292 (96.2%).
