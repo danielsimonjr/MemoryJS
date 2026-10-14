@@ -51,7 +51,7 @@ import { basename, dirname, join, relative } from 'path';
 /**
  * Banner prepended to every generated Markdown report in docs/architecture/.
  *
- * `docs/architecture/` is also checked by repo_map's drift gate, which fails a
+ * `docs/architecture/` is also checked by the `repo-tools check` drift gate, which fails a
  * doc carrying no `## Verification` section rather than skipping it silently.
  * These reports are generated here, on a different methodology, so that gate
  * cannot meaningfully verify their numbers -- their freshness is governed by
