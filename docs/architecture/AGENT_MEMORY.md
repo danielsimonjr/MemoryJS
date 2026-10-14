@@ -1495,10 +1495,10 @@ Debug and inspection tools:
 
 Two tools measure this repository. The two tools use different scopes.
 
-The table holds `repo_map.py` metrics. `repo_map.py` parses the whole repository: `src/`, tests, tools, benchmarks and scripts. The gate compares each row with a fresh parse.
-Check: `python repo_map.py check <repo> --docs docs/architecture`
+The table holds `repo-tools map` metrics. `repo-tools map` parses the whole repository. The gate compares each row with a fresh parse.
+Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 697 | repo_map.py |
-| totalModules | 6 | repo_map.py |
+| totalSourceFiles | 697 | repo-tools map |
+| totalModules | 6 | repo-tools map |

@@ -2074,17 +2074,17 @@ mapOk<T, U, E>(result: Result<T, E>, fn: (value: T) => U): Result<U, E>
 
 Two tools measure this repository. The two tools use different scopes.
 
-The table holds `repo_map.py` metrics. `repo_map.py` parses the whole repository: `src/`, tests, tools, benchmarks and scripts. The gate compares each row with a fresh parse.
-Check: `python repo_map.py check <repo> --docs docs/architecture`
+The table holds `repo-tools map` metrics. `repo-tools map` parses the whole repository. The gate compares each row with a fresh parse.
+Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 697 | repo_map.py |
-| totalLinesOfCode | 237161 | repo_map.py |
-| totalExports | 2874 | repo_map.py |
-| reachableFiles | 291 | repo_map.py |
-| runtimeCircularDeps | 0 | repo_map.py |
-| typeOnlyCircularDeps | 24 | repo_map.py |
+| totalSourceFiles | 697 | repo-tools map |
+| totalLinesOfCode | 237161 | repo-tools map |
+| totalExports | 2874 | repo-tools map |
+| reachableFiles | 291 | repo-tools map |
+| runtimeCircularDeps | 0 | repo-tools map |
+| typeOnlyCircularDeps | 24 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 

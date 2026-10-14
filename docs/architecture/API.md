@@ -2255,13 +2255,13 @@ const router = RestRouter.withDefaults(ctx, { auth });
 
 Two tools measure this repository. The two tools use different scopes.
 
-The table holds `repo_map.py` metrics. `repo_map.py` parses the whole repository: `src/`, tests, tools, benchmarks and scripts. The gate compares each row with a fresh parse.
-Check: `python repo_map.py check <repo> --docs docs/architecture`
+The table holds `repo-tools map` metrics. `repo-tools map` parses the whole repository. The gate compares each row with a fresh parse.
+Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 2874 | repo_map.py |
-| totalSourceFiles | 697 | repo_map.py |
+| totalExports | 2874 | repo-tools map |
+| totalSourceFiles | 697 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 
