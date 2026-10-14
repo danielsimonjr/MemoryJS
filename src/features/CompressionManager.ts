@@ -195,7 +195,7 @@ export class CompressionManager {
    * @param threshold - Similarity threshold (0.0 to 1.0), default DEFAULT_DUPLICATE_THRESHOLD
    * @param options - Optional progress/cancellation options (Phase 9B)
    * @returns Array of duplicate groups (each group has similar entities)
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
+   * @throws OperationCancelledError If operation is cancelled via signal (Phase 9B)
    */
   async findDuplicates(
     threshold: number = DEFAULT_DUPLICATE_THRESHOLD,
@@ -327,8 +327,8 @@ export class CompressionManager {
    * @param options.graph - Pre-loaded graph to use (avoids reload)
    * @param options.skipSave - If true, don't save (caller will save)
    * @returns The merged entity
-   * @throws {InsufficientEntitiesError} If less than 2 entities provided
-   * @throws {EntityNotFoundError} If any entity not found
+   * @throws InsufficientEntitiesError If less than 2 entities provided
+   * @throws EntityNotFoundError If any entity not found
    */
   async mergeEntities(
     entityNames: string[],
@@ -557,7 +557,7 @@ export class CompressionManager {
    * @param dryRun - If true, only report what would be compressed without applying changes
    * @param options - Optional progress/cancellation options (Phase 9B)
    * @returns Compression result with statistics
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
+   * @throws OperationCancelledError If operation is cancelled via signal (Phase 9B)
    */
   async compressGraph(
     threshold: number = DEFAULT_DUPLICATE_THRESHOLD,

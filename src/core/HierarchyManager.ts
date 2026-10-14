@@ -27,8 +27,8 @@ export class HierarchyManager {
    * @param entityName - Entity to set parent for
    * @param parentName - Parent entity name (null to remove parent)
    * @returns Updated entity
-   * @throws {EntityNotFoundError} If entity or parent not found
-   * @throws {CycleDetectedError} If setting parent would create a cycle
+   * @throws EntityNotFoundError If entity or parent not found
+   * @throws CycleDetectedError If setting parent would create a cycle
    */
   async setEntityParent(entityName: string, parentName: string | null): Promise<Entity> {
     // Use read-only graph for validation checks
@@ -113,7 +113,7 @@ export class HierarchyManager {
    *
    * @param entityName - Parent entity name
    * @returns Array of child entities
-   * @throws {EntityNotFoundError} If entity not found
+   * @throws EntityNotFoundError If entity not found
    */
   async getChildren(entityName: string): Promise<Entity[]> {
     const graph = await this.storage.loadGraph();
@@ -131,7 +131,7 @@ export class HierarchyManager {
    *
    * @param entityName - Entity name
    * @returns Parent entity or null if no parent
-   * @throws {EntityNotFoundError} If entity not found
+   * @throws EntityNotFoundError If entity not found
    */
   async getParent(entityName: string): Promise<Entity | null> {
     const graph = await this.storage.loadGraph();
@@ -154,7 +154,7 @@ export class HierarchyManager {
    *
    * @param entityName - Entity name
    * @returns Array of ancestor entities (ordered from immediate parent to root)
-   * @throws {EntityNotFoundError} If entity not found
+   * @throws EntityNotFoundError If entity not found
    */
   async getAncestors(entityName: string): Promise<Entity[]> {
     const graph = await this.storage.loadGraph();
@@ -186,7 +186,7 @@ export class HierarchyManager {
    *
    * @param entityName - Entity name
    * @returns Array of descendant entities
-   * @throws {EntityNotFoundError} If entity not found
+   * @throws EntityNotFoundError If entity not found
    */
   async getDescendants(entityName: string): Promise<Entity[]> {
     const graph = await this.storage.loadGraph();
@@ -236,7 +236,7 @@ export class HierarchyManager {
    *
    * @param entityName - Root entity name
    * @returns Knowledge graph containing subtree
-   * @throws {EntityNotFoundError} If entity not found
+   * @throws EntityNotFoundError If entity not found
    */
   async getSubtree(entityName: string): Promise<KnowledgeGraph> {
     const graph = await this.storage.loadGraph();
@@ -278,7 +278,7 @@ export class HierarchyManager {
    *
    * @param entityName - Entity name
    * @returns Depth (number of ancestors)
-   * @throws {EntityNotFoundError} If entity not found
+   * @throws EntityNotFoundError If entity not found
    */
   async getEntityDepth(entityName: string): Promise<number> {
     const ancestors = await this.getAncestors(entityName);

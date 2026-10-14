@@ -109,7 +109,7 @@ export class RelationManager {
    *
    * @param relations - Array of relations to create
    * @returns Promise resolving to array of newly created relations (excludes duplicates)
-   * @throws {ValidationError} If any relation references non-existent entities
+   * @throws ValidationError If any relation references non-existent entities
    *
    * @example
    * ```typescript
@@ -342,7 +342,7 @@ export class RelationManager {
    * @param to - Target entity name
    * @param ended - ISO 8601 timestamp when the relation ended (defaults to current time)
    * @returns Promise that resolves when invalidation is complete
-   * @throws {Error} If no active relation is found matching the criteria
+   * @throws RelationNotFoundError If no active relation is found matching the criteria
    *
    * @example
    * ```typescript

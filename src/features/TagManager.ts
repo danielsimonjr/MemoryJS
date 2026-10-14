@@ -134,7 +134,7 @@ export class TagManager {
    * @param canonical - The canonical (main) tag name (will be normalized to lowercase)
    * @param description - Optional description explaining the alias relationship
    * @returns Newly created TagAlias object with metadata
-   * @throws {Error} If alias already exists or would create chained aliases
+   * @throws Error If alias already exists or would create chained aliases
    *
    * @example
    * ```typescript

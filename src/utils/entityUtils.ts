@@ -724,7 +724,7 @@ export function escapeCsvFormula(field: string | undefined | null): string {
  * @param baseDir - Optional base directory for relative paths (defaults to process.cwd())
  * @param confineToBase - Whether to confine the resolved path to the base directory (defaults to true)
  * @returns Validated absolute file path
- * @throws {FileOperationError} If path traversal is detected or path is invalid
+ * @throws FileOperationError If path traversal is detected or path is invalid
  *
  * @example
  * ```typescript
@@ -790,7 +790,7 @@ export const defaultMemoryPath = path.join(process.cwd(), 'memory.jsonl');
  * 3. Absolute vs relative path resolution
  *
  * @returns Resolved and validated memory file path
- * @throws {FileOperationError} If path traversal is detected in MEMORY_FILE_PATH
+ * @throws FileOperationError If path traversal is detected in MEMORY_FILE_PATH
  *
  * @example
  * ```typescript

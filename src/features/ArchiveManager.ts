@@ -104,7 +104,7 @@ export class ArchiveManager {
    * @param criteria - Archiving criteria
    * @param options - Archive options (dryRun, saveToFile, onProgress, signal)
    * @returns Archive result with count, entity names, and compression stats
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
+   * @throws OperationCancelledError If operation is cancelled via signal (Phase 9B)
    *
    * @example
    * ```typescript

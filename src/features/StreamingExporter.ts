@@ -96,7 +96,7 @@ export class StreamingExporter {
    * Create a new streaming exporter.
    *
    * @param filePath - Path to the output file
-   * @throws {FileOperationError} If path traversal is detected
+   * @throws FileOperationError If path traversal is detected
    */
   constructor(filePath: string) {
     // Export targets are user-supplied and may legitimately point outside
@@ -123,7 +123,7 @@ export class StreamingExporter {
    * @param graph - The knowledge graph to export
    * @param options - Optional progress/cancellation options (Phase 9B)
    * @returns Promise resolving to export statistics
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
+   * @throws OperationCancelledError If operation is cancelled via signal (Phase 9B)
    *
    * @example
    * ```typescript
@@ -226,7 +226,7 @@ export class StreamingExporter {
    * @param graph - The knowledge graph to export
    * @param options - Optional progress/cancellation options (Phase 9B)
    * @returns Promise resolving to export statistics
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
+   * @throws OperationCancelledError If operation is cancelled via signal (Phase 9B)
    *
    * @example
    * ```typescript

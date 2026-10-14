@@ -20,7 +20,7 @@ import { logger } from './logger.js';
  *
  * @param fn - Function to validate
  * @param paramName - Parameter name for error message
- * @throws {TypeError} If fn is not a function
+ * @throws TypeError If fn is not a function
  * @internal
  */
 function validateFunction(fn: unknown, paramName: string): void {

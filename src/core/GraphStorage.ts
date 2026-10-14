@@ -301,7 +301,7 @@ export class GraphStorage implements IGraphStorage {
    * Create a new GraphStorage instance.
    *
    * @param memoryFilePath - Absolute path to the JSONL file
-   * @throws {FileOperationError} If path traversal is detected
+   * @throws FileOperationError If path traversal is detected
    */
   constructor(memoryFilePath: string) {
     // Security: Validate path to prevent path traversal attacks.
@@ -1317,7 +1317,7 @@ export class GraphStorage implements IGraphStorage {
    * @param batch - Per-entity partial updates
    * @param options - Optional shared timestamp for the batch
    * @returns The live updated entity objects (same order as `batch`)
-   * @throws {EntityNotFoundError} If any named entity does not exist
+   * @throws EntityNotFoundError If any named entity does not exist
    *   (checked before any mutation)
    */
   async updateEntities(
@@ -1710,8 +1710,8 @@ export class GraphStorage implements IGraphStorage {
    * @param oldName - Current entity name (must exist)
    * @param newName - New entity name (must not exist)
    * @returns The renamed entity
-   * @throws {EntityNotFoundError} If `oldName` does not exist
-   * @throws {DuplicateEntityError} If `newName` already exists
+   * @throws EntityNotFoundError If `oldName` does not exist
+   * @throws DuplicateEntityError If `newName` already exists
    */
   async renameEntity(oldName: string, newName: string): Promise<Entity> {
     await this.ensureLoaded();
