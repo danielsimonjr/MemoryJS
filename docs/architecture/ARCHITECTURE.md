@@ -36,32 +36,34 @@ MemoryJS is a TypeScript knowledge graph library providing:
 - **Batch Operations**: Efficient bulk updates
 - **Graph Algorithms**: Shortest path, centrality, connected components
 
-### Key Statistics (Unreleased)
+### Key Statistics
 
-Numbers below are extracted from the authoritative `dependency-summary.compact.json`
-produced by `tools/create-dependency-graph`, regenerated 2026-09-10 after the
-Procedural Graph landing (v4.0.0 census; prior regen 2026-07-24 covered the
-brainapi2-inspired feature batch + S1–S10/Sec1–Sec10 optimization program). To
-regenerate run `bun run tools:deps` / `bun run tools:deps:full`.
+The figures below come from `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
+The script in `tools/create-dependency-graph/` produces both files.
+The Tests row counts test files and source files with a direct-import test.
+All other rows cover `src/` only.
+The gate does not check these figures.
+To regenerate the JSON file, run `bun run tools:deps`.
+To regenerate `TEST_COVERAGE.md`, run `bun run tools:deps:full`.
 
 | Metric | Value |
 |--------|-------|
-| Source files | 291 TypeScript files (all reachable, 0 dormant) |
-| Lines of code | 100,890 |
-| Total exports | 1,960 |
-| Re-exports (barrel) | 1,287 |
-| Classes | 231 |
-| Interfaces | 617 |
-| Functions | 312 |
-| Type guards | 29 |
+| Source files | 292 TypeScript files (all reachable, 0 dormant) |
+| Lines of code | 103,641 |
+| Total exports | 2,030 |
+| Re-exports (barrel) | 1,336 |
+| Classes | 233 |
+| Interfaces | 620 |
+| Functions | 322 |
+| Type guards | 30 |
 | Enums | 4 |
-| Constants | 118 |
-| Type-only imports | 473 |
+| Constants | 123 |
+| Type-only imports | 476 |
 | Runtime circular dependencies | 0 |
-| Type-only circular dependencies | 8 (was documented as 4; down from 39 pre-optimization — S10, see [Build & Packaging](#build--packaging)) |
+| Type-only circular dependencies | 8 |
 | Modules | 12 |
 | Entry roots | `src/cli/index.ts`, `src/index.ts`, `src/sqlite.ts`, `src/workers/levenshteinWorker.ts` |
-| Tests | 361 files; 280/291 source files covered (96.2% direct-import) |
+| Tests | 374 files; 281/292 source files covered (96.2% direct-import) |
 
 ### Module Distribution
 
@@ -72,7 +74,7 @@ regenerate run `bun run tools:deps` / `bun run tools:deps:full`.
 | `core/` | 25 | ManagerContext, EntityManager (with optimistic concurrency + temporal validity + state machine + **`GovernanceHooks`**, Sec1), RelationManager (with temporal invalidation), ObservationManager (with bitemporal axis), HierarchyManager, GraphStorage (with optional mmap branch), SQLiteStorage (with read-pool + `PartialIndexAdvisor` + **tuned pragmas + cached prepared statements**, S3), **PostgreSQLStorage**, GraphTraversal (HITS / clique / Louvain), TransactionManager, RefIndex, `FileSegmentStorage`, `JsonlColumnStore`, `TieredIndex` (`LRUHotTier` / `DiskWarmTier` / `BrotliColdTier`), `IMmapBackend` / `FsReadMmapBackend`, **`sqlite-register`** (S9 lazy-loading side effect) |
 | `search/` | 51 | SearchManager, RankedSearch (incremental TF-IDF), BM25Search (incremental), BooleanSearch, FuzzySearch, SemanticSearch, HybridSearchManager, NGramIndex, TemporalSearch, LLMQueryPlanner, LLMSearchExecutor, `PartialIndexAdvisor`, `SpellChecker`, **`EvidencePathBuilder`** (R2, `@experimental`) |
 | `features/` | 18 | IOManager (with RDF / Turtle / JSON-LD export + **ingest provenance/mode dial**, R4b/R5), `BackupManager`, TagManager, ArchiveManager, CompressionManager, StreamingExporter, FreshnessManager, AuditLog (**hash-chained**, Sec5), GovernanceManager (**enforcement chokepoint**, Sec1), ContradictionDetector, SemanticForget, AutoLinker |
-| `utils/` | 34 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
+| `utils/` | 35 | BatchProcessor, CompressedCache, WorkerPoolManager, schemas (Zod), errors (with VersionConflictError + AttributionRequiredError), `logger` (Phase 0), `taskScheduler` (Phase 0, bounded), **`compression/`** (`ICompressionAdapter` + `Zlib`/`Brotli`/`Identity` + `CompressedMap`, Phase 10) |
 | `types/` | 12 | Entity (with bitemporal + supersession + contentHash fields), Relation, AgentEntity (with allowedRoles + visibleFrom/Until), SessionEntity, ArtifactEntity, Procedure, **`proceduralGraph.ts`** (Procedural Graph leaf contracts), **ProspectiveEntity** + **FailureEntity** + **PlanEntity** + **ReflectionEntity** (Phase 2 memory-type entities), **TrustLevel** mixin on `MemorySource` (`ground-truth`/`verified`/`inferred`/`unverified`), **`Result<T, E>`** (v2.0.0 — `ok`/`err`/`isOk`/`isErr`/`unwrap`/`unwrapOr`/`mapOk` in `result.ts`), **`event.ts`** (R1 — `EventRecord`/`EventQueryFilter`/`WhoDidWhatEntry`) — leaf layer, ESLint-enforced (S10) |
 | `security/` | 5 | **PiiRedactor** + DEFAULT_PII_PATTERNS, **ABAC + RLS + API keys** (Phase 5) |
 | `cli/` | 31 | `memory` / `memoryjs` binary commands (with pipe support, Phase 0), **`memory audit log\|history\|verify\|stats`** (R4a) + **`memory doctor`** (R9) |

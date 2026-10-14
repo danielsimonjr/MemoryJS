@@ -49,8 +49,8 @@ MemoryJS follows a layered architecture with specialized components:
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Total (`src/` only):** 292 TypeScript files | 103,593 LOC | 2,030 exports | 233 classes | 620 interfaces
-(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, see `TEST_COVERAGE.md` for test counts — 371 test files, 281/292 source files with tests, 96.2%). Runtime circular dependencies in `src/` are 0; type-only circular dependencies in `src/` are 8 (from 39 pre-optimization) via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
+**Total (`src/` only):** 292 TypeScript files | 103,641 LOC | 2,030 exports | 233 classes | 620 interfaces
+(authoritative numbers from `docs/architecture/dependency-summary.compact.json`, see `TEST_COVERAGE.md` for test counts — 374 test files, 281/292 source files with tests, 96.2%). Runtime circular dependencies in `src/` are 0; type-only circular dependencies in `src/` are 8 via the `src/types/**` ESLint leaf-layer guard (S10) — see [ARCHITECTURE.md](./ARCHITECTURE.md#build--packaging).
 
 ### New since v1.13: dedicated sub-modules under `agent/`
 
@@ -2089,8 +2089,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 
 - Source files in `src/`: 292 (292 reachable, 0 dormant).
-- Lines of code in `src/`: 103,593.
+- Lines of code in `src/`: 103,641.
 - Exports in `src/`: 2,030 (1,336 re-exports).
 - Classes 233, interfaces 620, functions 322, type guards 30, enums 4, constants 123.
 - Circular dependencies in `src/`: 0 runtime, 8 type-only.
-- Test files: 371. Source files with a direct-import test: 281 of 292 (96.2%).
+- Test files: 374. Source files with a direct-import test: 281 of 292 (96.2%).

@@ -295,11 +295,11 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 
 - Source files in `src/`: 292 (292 reachable, 0 dormant).
-- Lines of code in `src/`: 103,593.
+- Lines of code in `src/`: 103,641.
 - Exports in `src/`: 2,030 (1,336 re-exports).
 - Classes 233, interfaces 620, functions 322, type guards 30, enums 4, constants 123.
 - Type-only imports in `src/`: 476.
 - Circular dependencies in `src/`: 0 runtime, 8 type-only.
 - Files per module: adapters 7, agent 105, cli 31, core 25, features 18, entry 1, search 51, security 5, root 1, types 12, utils 35, workers 1.
 - Seeded entry roots in `src/`: `src/cli/index.ts`, `src/index.ts`, `src/sqlite.ts`, `src/workers/levenshteinWorker.ts`.
-- Test files: 371. Source files with a direct-import test: 281 of 292 (96.2%).
+- Test files: 374. Source files with a direct-import test: 281 of 292 (96.2%).
