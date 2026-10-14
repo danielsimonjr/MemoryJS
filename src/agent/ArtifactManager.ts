@@ -112,7 +112,7 @@ export class ArtifactManager {
    *
    * @param options - Artifact creation options
    * @returns The created ArtifactEntity
-   * @throws {Error} If a unique name cannot be found after 10 attempts
+   * @throws Error If a unique name cannot be found after 10 attempts
    */
   async createArtifact(options: CreateArtifactOptions): Promise<ArtifactEntity> {
     const { content, toolName, artifactType, description, sessionId, taskId } = options;

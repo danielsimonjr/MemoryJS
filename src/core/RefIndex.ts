@@ -79,7 +79,7 @@ export class RefIndex {
    * @param entityName - Entity name to resolve to
    * @param description - Optional human-readable description
    * @returns The newly created RefEntry
-   * @throws {RefConflictError} If the ref is already registered
+   * @throws RefConflictError If the ref is already registered
    */
   async register(ref: string, entityName: string, description?: string): Promise<RefEntry> {
     return this.mutex.runExclusive(async () => {

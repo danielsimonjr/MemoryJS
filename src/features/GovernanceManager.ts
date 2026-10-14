@@ -132,7 +132,7 @@ export class GovernanceTransaction {
    *
    * @param entity - Entity to create (without timestamps)
    * @param options - Optional operation metadata
-   * @throws {KnowledgeGraphError} If policy blocks the create operation
+   * @throws GovernanceError If policy blocks the create operation
    */
   async createEntity(
     entity: Omit<Entity, 'createdAt' | 'lastModified'>,
@@ -183,7 +183,7 @@ export class GovernanceTransaction {
    * @param name - Name of entity to update
    * @param updates - Partial entity updates
    * @param options - Optional operation metadata
-   * @throws {KnowledgeGraphError} If policy blocks the update or entity not found
+   * @throws KnowledgeGraphError If policy blocks the update or entity not found
    */
   async updateEntity(
     name: string,
@@ -229,7 +229,7 @@ export class GovernanceTransaction {
    *
    * @param name - Name of entity to delete
    * @param options - Optional operation metadata
-   * @throws {KnowledgeGraphError} If policy blocks the delete or entity not found
+   * @throws KnowledgeGraphError If policy blocks the delete or entity not found
    */
   async deleteEntity(name: string, options?: GovernanceOperationOptions): Promise<void> {
     const graph = await this.storage.getGraphForMutation();
@@ -515,7 +515,7 @@ export class GovernanceManager {
    * A new audit entry with `status: 'rolled_back'` is appended to the log.
    *
    * @param auditEntryId - ID of the audit entry to reverse
-   * @throws {KnowledgeGraphError} If the entry is not found or has no snapshot data
+   * @throws KnowledgeGraphError If the entry is not found or has no snapshot data
    */
   async rollback(auditEntryId: string): Promise<void> {
     const entries = await this.auditLog.loadAll();

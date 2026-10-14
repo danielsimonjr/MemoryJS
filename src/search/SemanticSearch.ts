@@ -174,7 +174,7 @@ export class SemanticSearch {
    * @param graph - Knowledge graph to index
    * @param options - Indexing options (includes signal for cancellation)
    * @returns Index statistics
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
+   * @throws OperationCancelledError If operation is cancelled via signal (Phase 9B)
    */
   async indexAll(
     graph: ReadonlyKnowledgeGraph,

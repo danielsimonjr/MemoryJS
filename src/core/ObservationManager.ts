@@ -434,7 +434,7 @@ export class ObservationManager {
    * @param observations - Array of entity names and observations to add
    * @param dedup - Optional deduplication options for fuzzy matching
    * @returns Promise resolving to array of results showing which observations were added
-   * @throws {EntityNotFoundError} If any entity is not found
+   * @throws EntityNotFoundError If any entity is not found
    *
    * @example
    * ```typescript
@@ -897,8 +897,8 @@ export class ObservationManager {
    * (preserves backwards-compat for entities that don't use the bitemporal
    * axis). Idempotent: a second call updates the existing `validUntil`.
    *
-   * @throws {EntityNotFoundError} If no entity exists with the given name
-   * @throws {ValidationError} If the observation isn't found on the entity
+   * @throws EntityNotFoundError If no entity exists with the given name
+   * @throws ValidationError If the observation isn't found on the entity
    */
   async invalidateObservation(
     entityName: string,
@@ -957,7 +957,7 @@ export class ObservationManager {
    * - `validFrom` undefined OR `validFrom` <= asOf
    * - `validUntil` undefined OR `validUntil` >= asOf
    *
-   * @throws {ValidationError} If `asOf` is not an ISO 8601 date string
+   * @throws ValidationError If `asOf` is not an ISO 8601 date string
    */
   async observationsAsOf(entityName: string, asOf: string): Promise<string[]> {
     if (!/^\d{4}-\d{2}-\d{2}/.test(asOf)) {

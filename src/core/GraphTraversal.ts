@@ -551,7 +551,7 @@ export class GraphTraversal {
    * @param maxDepth - Maximum path length (default: 5)
    * @param options - Traversal options, resource caps, cancellation, and access tracking
    * @returns Array of PathResult objects for all found paths
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
+   * @throws OperationCancelledError If operation is cancelled via signal (Phase 9B)
    */
   async findAllPaths(
     source: string,

@@ -388,7 +388,7 @@ export class EntityManager {
    *
    * @param ref - The alias to resolve
    * @returns The entity, or null if the alias is unknown or entity no longer exists
-   * @throws {ValidationError} If no RefIndex is configured
+   * @throws ValidationError If no RefIndex is configured
    */
   async resolveRef(ref: string): Promise<Entity | null> {
     if (!this.refIndex) {
@@ -408,8 +408,8 @@ export class EntityManager {
    * @param entityName - Entity name the alias points to
    * @param description - Optional human-readable description
    * @returns The created RefEntry
-   * @throws {ValidationError} If no RefIndex is configured
-   * @throws {RefConflictError} If the alias is already registered
+   * @throws ValidationError If no RefIndex is configured
+   * @throws RefConflictError If the alias is already registered
    */
   async registerRef(ref: string, entityName: string, description?: string): Promise<RefEntry> {
     if (!this.refIndex) {
@@ -424,7 +424,7 @@ export class EntityManager {
    * Remove a stable alias.
    *
    * @param ref - The alias to remove
-   * @throws {ValidationError} If no RefIndex is configured
+   * @throws ValidationError If no RefIndex is configured
    */
   async deregisterRef(ref: string): Promise<void> {
     if (!this.refIndex) {
@@ -440,7 +440,7 @@ export class EntityManager {
    *
    * @param entityName - When given, only aliases pointing at this entity
    * @returns Array of RefEntry objects
-   * @throws {ValidationError} If no RefIndex is configured
+   * @throws ValidationError If no RefIndex is configured
    */
   async listRefs(entityName?: string): Promise<RefEntry[]> {
     if (!this.refIndex) {
@@ -465,8 +465,8 @@ export class EntityManager {
    * @param entities - Array of entities to create. Each entity must have a unique name.
    * @param options - Optional progress/cancellation options (Phase 9B)
    * @returns Promise resolving to array of newly created entities (excludes duplicates)
-   * @throws {InvalidImportanceError} If any entity has importance outside the valid range [0-10]
-   * @throws {OperationCancelledError} If operation is cancelled via signal (Phase 9B)
+   * @throws InvalidImportanceError If any entity has importance outside the valid range [0-10]
+   * @throws OperationCancelledError If operation is cancelled via signal (Phase 9B)
    *
    * @example
    * ```typescript
@@ -886,7 +886,7 @@ export class EntityManager {
    * @param name - The unique name of the entity to update
    * @param updates - Partial entity object containing only the fields to update
    * @returns Promise resolving to the fully updated Entity object
-   * @throws {EntityNotFoundError} If no entity with the given name exists
+   * @throws EntityNotFoundError If no entity with the given name exists
    *
    * @example
    * ```typescript
@@ -1062,10 +1062,10 @@ export class EntityManager {
    *   validation as `createEntities`, including the reserved `profile-` /
    *   `diary-` namespace rules)
    * @returns The renamed entity
-   * @throws {ValidationError} If `newName` fails name validation or
+   * @throws ValidationError If `newName` fails name validation or
    *   violates a reserved namespace
-   * @throws {EntityNotFoundError} If `oldName` does not exist
-   * @throws {DuplicateEntityError} If `newName` already exists
+   * @throws EntityNotFoundError If `oldName` does not exist
+   * @throws DuplicateEntityError If `newName` already exists
    */
   async renameEntity(oldName: string, newName: string): Promise<Entity> {
     // New name must pass the same schema checks as createEntities names.
@@ -1146,8 +1146,8 @@ export class EntityManager {
    *
    * @param updates - Array of updates, each containing entity name and changes
    * @returns Promise resolving to array of updated entities
-   * @throws {EntityNotFoundError} If any entity is not found
-   * @throws {ValidationError} If any update data is invalid
+   * @throws EntityNotFoundError If any entity is not found
+   * @throws ValidationError If any update data is invalid
    *
    * @example
    * ```typescript
@@ -1247,7 +1247,7 @@ export class EntityManager {
    * @param entityName - Name of the entity
    * @param tags - Tags to add
    * @returns Result with entity name and added tags
-   * @throws {EntityNotFoundError} If entity is not found
+   * @throws EntityNotFoundError If entity is not found
    */
   async addTags(entityName: string, tags: string[]): Promise<{ entityName: string; addedTags: string[] }> {
     await this.storage.ensureLoaded();
@@ -1279,7 +1279,7 @@ export class EntityManager {
    * @param entityName - Name of the entity
    * @param tags - Tags to remove
    * @returns Result with entity name and removed tags
-   * @throws {EntityNotFoundError} If entity is not found
+   * @throws EntityNotFoundError If entity is not found
    */
   async removeTags(entityName: string, tags: string[]): Promise<{ entityName: string; removedTags: string[] }> {
     await this.storage.ensureLoaded();
@@ -1321,8 +1321,8 @@ export class EntityManager {
    * @param entityName - Name of the entity
    * @param importance - Importance level (0-10)
    * @returns Result with entity name and importance
-   * @throws {EntityNotFoundError} If entity is not found
-   * @throws {Error} If importance is out of range
+   * @throws EntityNotFoundError If entity is not found
+   * @throws Error If importance is out of range
    */
   async setImportance(entityName: string, importance: number): Promise<{ entityName: string; importance: number }> {
     // Validate importance range (0-10)
@@ -1513,7 +1513,7 @@ export class EntityManager {
    *
    * @param name - The entity to invalidate
    * @param ended - ISO 8601 timestamp; defaults to current time
-   * @throws {EntityNotFoundError} If no entity exists with the given name
+   * @throws EntityNotFoundError If no entity exists with the given name
    */
   async invalidateEntity(name: string, ended?: string): Promise<void> {
     const release = await this.storage.graphMutex.acquire();
@@ -1539,7 +1539,7 @@ export class EntityManager {
    *
    * @param name - The entity name
    * @param asOf - ISO 8601 date string
-   * @throws {ValidationError} If `asOf` is not an ISO 8601 date string
+   * @throws ValidationError If `asOf` is not an ISO 8601 date string
    */
   async entityAsOf(name: string, asOf: string): Promise<Entity | null> {
     if (!/^\d{4}-\d{2}-\d{2}/.test(asOf)) {
