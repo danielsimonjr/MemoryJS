@@ -2079,12 +2079,12 @@ Check: `python repo_map.py check <repo> --docs docs/architecture`
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 695 | repo_map.py |
-| totalLinesOfCode | 237025 | repo_map.py |
+| totalSourceFiles | 697 | repo_map.py |
+| totalLinesOfCode | 237161 | repo_map.py |
 | totalExports | 2874 | repo_map.py |
-| reachableFiles | 290 | repo_map.py |
+| reachableFiles | 291 | repo_map.py |
 | runtimeCircularDeps | 0 | repo_map.py |
-| typeOnlyCircularDeps | 23 | repo_map.py |
+| typeOnlyCircularDeps | 24 | repo_map.py |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 
