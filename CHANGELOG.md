@@ -20,6 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   manifest change and no `overrides` entry. Suite unchanged at 357 files / 8196 tests, all passing
   before and after.
 
+- `source-map-js` moves from 1.2.1 to 1.2.2 in `bun.lock`. One HIGH advisory applies to 1.2.1:
+  GHSA-68fv-2mgg-jv7q (denial of service of the event loop through indexed source-map section
+  offsets, affected range `>=1.0.0 <1.2.2`, first patched version 1.2.2). The
+  `bun audit --audit-level=high` step in CI failed the scheduled TypeScript run on `master` at the
+  Ubuntu / Node 22 leg while 1.2.1 was locked, and the steps after the audit were skipped on that
+  leg. It now reports no vulnerabilities across 261 packages.
+- The package is a transitive DEVELOPMENT dependency only, through `@vitest/coverage-v8` > `magicast`
+  and through `vite` > `postcss` (`vitest` takes `vite` as a peer). It is not part of any published
+  artifact. The parents accept `^1.2.1`, so 1.2.2 satisfies the existing ranges: the fix is one line
+  of `bun.lock`, with no manifest change and no `overrides` entry. The lockfile hash equals the registry
+  hash, and the four `tools/*` lockfiles audit clean. On a fresh install the audit reports no
+  vulnerabilities and `bun install --frozen-lockfile` makes no change. Suite unchanged at 357 files /
+  8196 tests, all passing.
+
 ### Fixed
 
 - **The Dependabot bun.lock workflow no longer leaves a PR BLOCKED.** GitHub holds the
