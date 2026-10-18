@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-10-18
+
 ### Security
 
 - `brace-expansion` moves from 5.0.9 to 5.0.12 in `bun.lock`. Two HIGH advisories apply to 5.0.9:
