@@ -1,6 +1,6 @@
 # MemoryJS Roadmap
 
-**Last refreshed**: 2026-05-13 (v1.15.0)
+**Last refreshed**: 2026-05-13 (v1.15.0). Memorilla research note added 2026-10-18 — [MEMORILLA_LATENT_MEMORY_PLAN.md](./MEMORILLA_LATENT_MEMORY_PLAN.md). Docs only; that note does not change the snapshot below.
 
 Forward-looking work tracker. **Shipped features are not listed here** — see [CHANGELOG.md](../../CHANGELOG.md) for the per-version history and [`docs/planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md`](../planning/FUTURE_FEATURES_IMPLEMENTATION_PLAN.md) for the per-phase task ledger of completed work.
 
@@ -237,6 +237,36 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
   `better-sqlite3` ABI (`NODE_MODULE_VERSION` mismatch), `dist/workers/` presence, embedding-provider
   reachability, strict-literal env flags. Effort: S
 
+### Research track — Memorilla (2026-10-18), audited against `src/`
+
+> Full audit and acceptance criteria: [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md) §3–§4.
+> Planning only. Paper numbers are the authors' Qwen results, not targets.
+
+> Source: Fallahpour et al., *Memorilla: Latent Semantic Memory for LLMs*, arXiv:2610.21375 (15 Oct 2026).
+> FactKG Table 11: 84.33% vs 80.43% full context at 108× fewer document tokens. TextWorld §6.1: avg@3
+> 0.186 → 0.242, memory tokens supplementing the same history. Code: <https://github.com/snap-stanford/memorilla>.
+
+Most of the paper's *system shape* is already in this repo. Chunks are entities (`IOManager.ingest` + `Entity.contentHash` + `idx_entities_content_hash`). Vectors have a table (`SQLiteStorage.embeddings`, `SQLiteVectorStore`). Packing has a budget (`ContextWindowManager.retrieveForContext`, `TokenBreakdown`, `enforceDiversity`, `MemoryFormatter.formatWithSalienceBudget`). Ranking has hybrid search (`HybridSearchManager` over `SemanticSearch` + `RankedSearch` TF-IDF + optional `GraphRankPrior`). On SQLite, `RankedSearch` already narrows candidates with `SQLiteStorage.fullTextSearch` (FTS5 `bm25()`). `BM25Search` is a second, unwired caller of that method. Turns already append via `MemoryEngine.addTurn`. Soft tokens and GRPO are dropped: no class accepts hidden states.
+
+What is actually missing is wiring and two fields:
+
+#### E1. Point semantic search at the embeddings table — estimate S
+- `ManagerContext.semanticSearch` calls `createVectorStore('jsonl')`, so `embeddings` is never the live store. When storage is `SQLiteStorage`, call `createVectorStore('sqlite', this.storage, model)` (`src/search/VectorStore.ts`). JSONL stays `InMemoryVectorStore`.
+- `SemanticSearch.indexAll` skips by name. Also re-embed when `entity.contentHash` differs from a new nullable `embeddings.contentHash` column written by the existing `storeEmbedding`. `EmbeddingCache.get(key, text)` already does the in-process version of this check.
+- Tests: extend `tests/unit/search/SemanticSearch.test.ts` and `tests/unit/search/VectorStore.test.ts`. No new module.
+
+#### E2. Candidate-token ratio, optional slot cap, query rank via hybrid search — estimate S
+- Add `sourceTokens` and `compressionRatio` on `ContextPackage` (`src/types/agent-memory.ts`) from the `estimateTokens` sums `retrieveForContext` already computes. Ratio is 1 when the source fits (PubMedQA lesson, Table 11).
+- Optional `ContextRetrievalOptions.maxSlots`, applied in the existing `prioritize` loop. Unset means today's behavior.
+- When `SalienceContext.queryText` is set, order candidates with `HybridSearchManager` before the salience cut. Lexical ranking stays `RankedSearch` (TF-IDF, with FTS5 `bm25()` as the SQLite candidate filter). Do not construct `BM25Search`. `mustInclude` keeps recent turns verbatim.
+- Tests: extend `tests/unit/agent/ContextWindowManager.test.ts`.
+
+#### E3. Finish `SummarizationService`'s provider — estimate S, only if a caller asks
+- `summarize(texts)` has no query argument, and `initProvider` never builds `ISummarizationProvider`. Wire the `LLMProvider` `MemoryDistiller` already uses, pass `queryText`, and let `retrieveForContext` shorten `excluded` entities only when a provider is configured.
+- Tests: extend `tests/unit/agent/SummarizationService.test.ts`.
+
+Suggested order: **E1 → E2**. E3 waits. No new store, no latent adapter, no FactKG download.
+
 ---
 
 ## Status Summary
@@ -250,7 +280,8 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
 | **Integration** | Elasticsearch, REST API polish, framework adapters, GraphQL |
 | **Enterprise** | Distributed coordinator, cloud-native artefacts, GDPR tooling, encryption layer |
 | **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport, affective tagging (deferred P3) |
-| **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline) |
+| **Latent memory (Memorilla)** | Two enhancements, not new modules: E1 wire `semanticSearch` to the existing `embeddings` table and re-embed on `contentHash` change; E2 `sourceTokens` / `compressionRatio` / optional `maxSlots` on `ContextPackage`, ranking via `HybridSearchManager`. E3 finishes the `SummarizationService` stub only if a caller asks. Soft tokens and GRPO dropped. See [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). |
+| **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline), Memorilla soft-token injection and in-core GRPO |
 
 **Genuinely active P1/P2 items: 6.** Everything else is gated, strategic, or long-horizon.
 
@@ -333,6 +364,9 @@ Items reaching P1/P2 must have:
 - **Luo, J., Tian, Y., Cao, C., et al. (2026)**. ["From Storage to Experience: A Survey on the Evolution of LLM Agent Memory Mechanisms."](https://www.preprints.org/manuscript/202601.0618/v2) *Preprints.org*, doi:10.20944/preprints202601.0618.v2
   - Proposes three-stage evolutionary framework: Storage → Reflection → Experience
   - Sourced the Phase 3B design (3B.1–3B.7 all now shipped; 3B.8 remains)
+- **Fallahpour, A., Idehpour, P., Kothapalli, V., Mounier, N., Wu, S., Pardis, S., and Leskovec, J. (2026).** ["Memorilla: Latent Semantic Memory for LLMs."](https://arxiv.org/abs/2610.21375) arXiv:2610.21375. HTML: <https://arxiv.org/html/2610.21375>. Site: <https://memory.stanford.edu/>.
+  - Write-once embeddings and a K = 16 soft-token readout for a frozen LLM
+  - Audited in [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). Chunk store, vector table, hybrid search, and token budgets already exist. Open work is wiring `embeddings` into `semanticSearch` and reporting the context-packer's compression ratio. Soft-token injection is dropped.
 
 ### Companion documents
 
@@ -343,3 +377,4 @@ Items reaching P1/P2 must have:
 - [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) — Phase 2 planning (catalog-driven candidate set: failure-memory hardening / plan / trust hierarchy / tool affordance / reflection)
 - [`docs/architecture/DEPENDENCY_GRAPH.md`](../architecture/DEPENDENCY_GRAPH.md) — auto-generated dependency map; source of truth for what exists in `src/`
 - [`docs/roadmap/GAP_ANALYSIS_VS_MEMPALACE.md`](./GAP_ANALYSIS_VS_MEMPALACE.md), [`GAP_ANALYSIS_VS_SUPERMEMORY.md`](./GAP_ANALYSIS_VS_SUPERMEMORY.md) — comparative analysis against adjacent projects
+- [`docs/roadmap/MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md) — Memorilla (arXiv:2610.21375) summary, codebase audit, and enhancements E1–E3
