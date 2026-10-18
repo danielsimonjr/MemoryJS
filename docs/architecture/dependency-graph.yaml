@@ -1,7 +1,7 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.2.0
-  lastUpdated: "2026-09-24"
+  lastUpdated: "2026-10-18"
   totalFiles: 292
   totalModules: 12
   totalExports: 2030
@@ -8776,6 +8776,9 @@ modules:
         - file: ../utils/constants.js
           imports:
             - SEARCH_LIMITS
+        - file: ../utils/graphCopy.js
+          imports:
+            - borrowGraphView
       exports:
         - STOPWORDS
         - DEFAULT_BM25_CONFIG
@@ -14166,7 +14169,7 @@ reachability:
 statistics:
   totalTypeScriptFiles: 292
   totalModules: 12
-  totalLinesOfCode: 103641
+  totalLinesOfCode: 103701
   totalExports: 2030
   totalClasses: 233
   totalInterfaces: 620
