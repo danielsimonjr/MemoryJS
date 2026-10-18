@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.2.0 | **Last Updated**: 2026-09-24
+**Version**: 4.2.0 | **Last Updated**: 2026-10-18
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -3763,6 +3763,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/index.js` | `Entity, IGraphStorage, SearchResult` | Import (type-only) |
 | `../utils/constants.js` | `SEARCH_LIMITS` | Import |
+| `../utils/graphCopy.js` | `borrowGraphView` | Import |
 
 **Exports:**
 - Classes: `BM25Search`
@@ -5590,7 +5591,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 292 |
 | Total Modules | 12 |
-| Total Lines of Code | 103641 |
+| Total Lines of Code | 103701 |
 | Total Exports | 2030 |
 | Total Re-exports | 1336 |
 | Total Classes | 233 |
@@ -5607,5 +5608,5 @@ graph TD
 
 ---
 
-*Last Updated*: 2026-09-24
+*Last Updated*: 2026-10-18
 *Version*: 4.2.0

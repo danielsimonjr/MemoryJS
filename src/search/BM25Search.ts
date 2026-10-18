@@ -11,6 +11,7 @@
 
 import type { Entity, IGraphStorage, SearchResult } from '../types/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
+import { borrowGraphView } from '../utils/graphCopy.js';
 
 /**
  * Common English stopwords to filter from queries and documents.
@@ -199,6 +200,16 @@ export class BM25Search {
   /**
    * Search using the BM25 algorithm.
    *
+   * The graph does not reload per query.
+   * The method scores candidates from the in-memory index.
+   * The method requests only the entity of each returned hit from the storage.
+   * The method uses the public lookup for these requests.
+   * The method builds matched fields for each returned hit only.
+   * Outside production, each returned entity is a frozen copy, as `loadGraph()` provides.
+   * A caller cannot mutate the storage cache through a result.
+   *
+   * A `limit` below 1 returns no results.
+   *
    * @param query - Search query
    * @param limit - Maximum results to return
    * @returns Array of search results sorted by BM25 score
@@ -215,30 +226,25 @@ export class BM25Search {
       return [];
     }
 
-    const graph = await this.storage.loadGraph();
-    const entityMap = new Map(graph.entities.map(e => [e.name, e]));
-
     // Tokenize query
     const queryTerms = this.tokenize(query);
     if (queryTerms.length === 0) {
       return [];
     }
-    const candidateNames = await this.getFtsCandidateNames(query, graph.entities.length);
+    await this.storage.ensureLoaded();
+    const corpusSize = this.storage.cachedGraph?.entities.length ?? this.index.totalDocs;
+    const candidateNames = await this.getFtsCandidateNames(query, corpusSize);
     if (candidateNames?.size === 0) return [];
 
     const { k1, b } = this.config;
     const { documents, documentFrequency, avgDocLength, totalDocs } = this.index;
-    const results: SearchResult[] = [];
+    const scored: Array<{ entityName: string; docEntry: BM25DocumentEntry; score: number }> = [];
 
     // Calculate BM25 score for each document
     for (const [entityName, docEntry] of documents) {
       if (candidateNames !== null && !candidateNames.has(entityName)) continue;
-      const entity = entityMap.get(entityName);
-      if (!entity) continue;
 
       let score = 0;
-      const matchedFields: SearchResult['matchedFields'] = {};
-
       for (const term of queryTerms) {
         const tf = docEntry.termFreqs.get(term) || 0;
         if (tf === 0) continue;
@@ -250,44 +256,69 @@ export class BM25Search {
         // Calculate BM25 score component
         const numerator = tf * (k1 + 1);
         const denominator = tf + k1 * (1 - b + b * (docEntry.docLength / avgDocLength));
-        const termScore = idf * (numerator / denominator);
-
-        score += termScore;
-
-        // Track which fields matched
-        if (entity.name.toLowerCase().includes(term)) {
-          matchedFields.name = true;
-        }
-        if (entity.entityType.toLowerCase().includes(term)) {
-          matchedFields.entityType = true;
-        }
-        const matchedObs = entity.observations.filter(o =>
-          o.toLowerCase().includes(term)
-        );
-        if (matchedObs.length > 0) {
-          matchedFields.observations = matchedObs;
-        }
+        score += idf * (numerator / denominator);
       }
 
       if (score > 0) {
-        results.push({
-          entity,
-          score,
-          matchedFields,
-        });
+        scored.push({ entityName, docEntry, score });
       }
     }
 
-    // Sort by score descending and limit
-    return results
-      .sort((a, b) => b.score - a.score)
-      .slice(0, effectiveLimit);
+    // Sort by score in descending order. The sort is stable: ties keep the index order.
+    // Then resolve the entities of the returned hits.
+    // Skip a document if its entity left the storage after the index was built.
+    // The next document fills the place of the skipped document.
+    scored.sort((x, y) => y.score - x.score);
+    const cap = Number.isFinite(effectiveLimit) ? Math.max(0, Math.floor(effectiveLimit)) : 0;
+    const results: SearchResult[] = [];
+    for (const { entityName, docEntry, score } of scored) {
+      if (results.length >= cap) break;
+      const live = this.storage.getEntityByName(entityName);
+      if (!live) continue;
+      const entity = borrowGraphView(live);
+      results.push({
+        entity,
+        score,
+        matchedFields: this.matchedFieldsOf(entity, queryTerms, docEntry),
+      });
+    }
+    return results;
   }
 
   /**
-   * Prefer storage-native FTS for candidate retrieval when available.
-   * The in-memory BM25 index remains the scorer, preserving BM25 config and
-   * matched-field behavior while avoiding a full document loop.
+   * Return the fields of an entity that contain the query terms that the document matched.
+   * For observations, the last matching term decides the list.
+   */
+  private matchedFieldsOf(
+    entity: Entity,
+    queryTerms: string[],
+    docEntry: BM25DocumentEntry,
+  ): SearchResult['matchedFields'] {
+    const matchedFields: SearchResult['matchedFields'] = {};
+    for (const term of queryTerms) {
+      if ((docEntry.termFreqs.get(term) || 0) === 0) continue;
+      if (entity.name.toLowerCase().includes(term)) {
+        matchedFields.name = true;
+      }
+      if (entity.entityType.toLowerCase().includes(term)) {
+        matchedFields.entityType = true;
+      }
+      const matchedObs = entity.observations.filter(o =>
+        o.toLowerCase().includes(term)
+      );
+      if (matchedObs.length > 0) {
+        matchedFields.observations = matchedObs;
+      }
+    }
+    return matchedFields;
+  }
+
+  /**
+   * Use storage-native FTS for candidate retrieval when available.
+   * The in-memory BM25 index remains the scorer.
+   * This preserves the BM25 config and the matched-field behavior.
+   * This avoids a full document loop.
+   * The method uses only the set of matching names, so it asks the storage for the set unranked.
    */
   private async getFtsCandidateNames(
     query: string,
@@ -297,6 +328,7 @@ export class BM25Search {
     await this.storage.ensureLoaded();
     const matches = await this.storage.fullTextSearch(query, {
       limit: Math.max(corpusSize, 1),
+      rank: false,
     });
     return new Set(matches.map(match => match.name));
   }

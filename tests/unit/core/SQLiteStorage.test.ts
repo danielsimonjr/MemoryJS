@@ -777,6 +777,100 @@ describe('SQLiteStorage', () => {
       expect(results).toEqual([]);
     });
 
+    describe('unranked candidate mode (rank: false)', () => {
+      const stamp = new Date().toISOString();
+      const entity = (name: string, entityType: string, observations: string[]) =>
+        ({ name, entityType, observations, createdAt: stamp, lastModified: stamp });
+
+      beforeEach(async () => {
+        await storage.saveGraph({
+          entities: [
+            entity('Alice Smith', 'person', ['Software engineer at Google']),
+            entity('Bob Johnson', 'person', ['Designer at Apple']),
+            entity('Alice Cooper', 'person', ['Musician and engineer']),
+            entity('Carol', 'person', ['alice wrote the engineer guide']),
+            entity('Dave', 'person', ['Plain text with no match']),
+          ],
+          relations: [],
+        });
+      });
+
+      const sorted = (rows: Array<{ name: string }>) => rows.map(r => r.name).sort();
+
+      it.each([
+        ['one term', 'Alice'],
+        ['two terms', 'Alice engineer'],
+        ['a term that is nowhere', 'zzyzx'],
+        ['a mix of present and absent terms', 'zzyzx engineer'],
+        ['operators and punctuation', 'Alice AND (engineer) "x" NOT *'],
+        ['only operators', 'AND OR NOT'],
+        ['an empty query', ''],
+      ])('returns the same entities as the ranked mode for %s', (_label, query) => {
+        const ranked = storage.fullTextSearch(query, { limit: 1000 });
+        const unranked = storage.fullTextSearch(query, { limit: 1000, rank: false });
+
+        expect(sorted(unranked)).toEqual(sorted(ranked));
+      });
+
+      it('finds entities for a query that matches', () => {
+        const unranked = storage.fullTextSearch('Alice engineer', { limit: 1000, rank: false });
+
+        expect(sorted(unranked)).toEqual(['Alice Cooper', 'Alice Smith', 'Carol']);
+      });
+
+      it('reports a score of 0 for every row, because nothing was ranked', () => {
+        const unranked = storage.fullTextSearch('Alice engineer', { limit: 1000, rank: false });
+
+        expect(unranked.length).toBeGreaterThan(0);
+        expect(unranked.every(r => r.score === 0)).toBe(true);
+      });
+
+      it('keeps the ranked mode as the default, with real scores', () => {
+        const byDefault = storage.fullTextSearch('Alice engineer', { limit: 1000 });
+        const explicit = storage.fullTextSearch('Alice engineer', { limit: 1000, rank: true });
+
+        expect(byDefault.length).toBeGreaterThan(0);
+        expect(byDefault.some(r => r.score !== 0)).toBe(true);
+        expect(explicit).toEqual(byDefault);
+      });
+
+      it('caps the number of rows at the limit', () => {
+        const unranked = storage.fullTextSearch('Alice engineer', { limit: 2, rank: false });
+
+        expect(unranked).toHaveLength(2);
+      });
+
+      it('returns every live match after an entity is re-appended under its name', async () => {
+        // INSERT OR REPLACE gives the entity a new rowid. The delete trigger does not fire for a
+        // replaced row, so the full-text index keeps the old posting. The index then holds more
+        // matches than the corpus holds entities, and a limit of the corpus size must still
+        // return every live entity.
+        await storage.appendEntity(entity('Alice Smith', 'person', ['Software engineer at Google']));
+        const corpusSize = (await storage.loadGraph()).entities.length;
+        const query = 'engineer Designer Musician alice Plain';
+
+        const unranked = storage.fullTextSearch(query, { limit: corpusSize, rank: false });
+
+        expect(sorted(unranked.filter(r => r.name !== null))).toEqual(
+          ['Alice Cooper', 'Alice Smith', 'Bob Johnson', 'Carol', 'Dave'],
+        );
+        expect(unranked.every(r => typeof r.name === 'string')).toBe(true);
+      });
+
+      it('falls back to the default limit for an invalid limit, as the ranked mode does', () => {
+        const unranked = storage.fullTextSearch('Alice', { limit: -5, rank: false });
+        const ranked = storage.fullTextSearch('Alice', { limit: -5 });
+
+        expect(sorted(unranked)).toEqual(sorted(ranked));
+      });
+
+      it('returns no rows for an uninitialized database', () => {
+        const uninit = new SQLiteStorage(join(testDir, 'uninit-unranked.db'));
+
+        expect(uninit.fullTextSearch('Alice', { rank: false })).toEqual([]);
+      });
+    });
+
     it('should perform simple LIKE-based search', async () => {
       await storage.saveGraph({
         entities: [

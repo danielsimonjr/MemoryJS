@@ -4,13 +4,13 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-09-24 (by tools/create-dependency-graph)
+**Generated**: 2026-10-18 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 686
+**Total files**: 687
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 378 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 379 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **686** | |
+| **Total** | **687** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 292 |
-| `tests` | 378 |
+| `tests` | 379 |
 | `tools` | 10 |
 
 ## All files
@@ -209,7 +209,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 685 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 266 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2470 |
+| `src/core/SQLiteStorage.ts` | src | reachable | 2492 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 766 |
 | `src/core/TransitionLedger.ts` | src | reachable | 450 |
@@ -235,7 +235,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/BasicSearch.ts` | src | reachable | 165 |
 | `src/search/BloomFilter.ts` | src | reachable | 130 |
 | `src/search/BloomPreScreener.ts` | src | reachable | 156 |
-| `src/search/BM25Search.ts` | src | reachable | 515 |
+| `src/search/BM25Search.ts` | src | reachable | 547 |
 | `src/search/BooleanSearch.ts` | src | reachable | 586 |
 | `src/search/EarlyTerminationManager.ts` | src | reachable | 394 |
 | `src/search/EmbeddingCache.ts` | src | reachable | 352 |
@@ -300,7 +300,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/types/result.ts` | src | reachable | 97 |
 | `src/types/search.ts` | src | reachable | 345 |
 | `src/types/task-scheduler.ts` | src | reachable | 34 |
-| `src/types/types.ts` | src | reachable | 2486 |
+| `src/types/types.ts` | src | reachable | 2492 |
 | `src/utils/AsyncMutex.ts` | src | reachable | 174 |
 | `src/utils/BatchProcessor.ts` | src | reachable | 539 |
 | `src/utils/CachePressureCoordinator.ts` | src | reachable | 181 |
@@ -570,7 +570,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 72 |
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
 | `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 82 |
-| `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1289 |
+| `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1383 |
 | `tests/unit/core/StorageFactory.test.ts` | tests | test | 220 |
 | `tests/unit/core/temporal-versioning.test.ts` | tests | test | 267 |
 | `tests/unit/core/TransactionBatching.test.ts` | tests | test | 440 |
@@ -607,6 +607,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/BasicSearch.test.ts` | tests | test | 428 |
 | `tests/unit/search/BloomFilter.test.ts` | tests | test | 133 |
 | `tests/unit/search/BM25Search.test.ts` | tests | test | 307 |
+| `tests/unit/search/BM25SearchReadPath.test.ts` | tests | test | 281 |
 | `tests/unit/search/BooleanSearch.test.ts` | tests | test | 569 |
 | `tests/unit/search/cache-isolation.test.ts` | tests | test | 113 |
 | `tests/unit/search/EarlyTerminationManager.test.ts` | tests | test | 411 |

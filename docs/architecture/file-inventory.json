@@ -1,12 +1,12 @@
 {
-  "generated": "2026-09-24",
-  "totalFiles": 686,
+  "generated": "2026-10-18",
+  "totalFiles": 687,
   "byDisposition": {
     "reachable": 288,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 378,
+    "test": 379,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 292,
-    "tests": 378,
+    "tests": 379,
     "tools": 10,
     "config": 2
   },
@@ -1201,7 +1201,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2470
+      "loc": 2492
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -1383,7 +1383,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 515
+      "loc": 547
     },
     {
       "file": "src/search/BooleanSearch.ts",
@@ -1838,7 +1838,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2486
+      "loc": 2492
     },
     {
       "file": "src/utils/AsyncMutex.ts",
@@ -3728,7 +3728,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1289
+      "loc": 1383
     },
     {
       "file": "tests/unit/core/StorageFactory.test.ts",
@@ -3981,6 +3981,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 307
+    },
+    {
+      "file": "tests/unit/search/BM25SearchReadPath.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 281
     },
     {
       "file": "tests/unit/search/BooleanSearch.test.ts",
