@@ -34,8 +34,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   vulnerabilities and `bun install --frozen-lockfile` makes no change. Suite unchanged at 357 files /
   8196 tests, all passing.
 
+### Added
+
+- `SQLiteStorage.fullTextSearch` takes an optional `rank` flag. With `rank: false` the query returns the
+  matching names only: it does not compute `bm25()` and does not sort, every `score` is 0, and the rows come
+  back in storage order. The default stays `true`, so existing callers see no change. While `limit` is at least
+  the number of matches, the set equals the ranked set; below that, the rows that are kept are not the best
+  ones. `IGraphStorage.fullTextSearch` carries the same optional flag. A backend that cannot skip ranking
+  (`PostgreSQLStorage`) ignores it.
+
+### Changed
+
+- `BM25Search.search` no longer reloads the whole graph for each query. Outside `NODE_ENV=production`,
+  `loadGraph()` hands out a deep-frozen copy of every entity, and that copy cost more than the search itself on a
+  large corpus. The method now reads the corpus size from the storage cache, takes the candidate names from
+  `fullTextSearch(query, { limit, rank: false })`, scores them from the in-memory index, and resolves entities
+  through `getEntityByName` for the returned hits only. It builds `matchedFields` for the returned hits only,
+  where it built them for every candidate before. Outside production each returned entity is still a frozen
+  copy, so a caller cannot change the storage cache through a result.
+- Results of `BM25Search.search` are unchanged. Entity, score and `matchedFields` equal the earlier
+  implementation on all 757 queries of a probe set against a 31,292-entity catalogue at limit 50, and on 60
+  of them also at limits 1, 10 and 200, in both `NODE_ENV` modes (937 comparisons per mode, 0 differences).
+- Time of `BM25Search.search` at limit 50 on that catalogue, 190 queries, each run on both builds with the order
+  alternated. Median with the 25th to 75th percentile: 651 ms (435 to 974) before and 173 ms (108 to 348) after
+  with `NODE_ENV` unset; 403 ms (274 to 651) before and 146 ms (90 to 263) after with `NODE_ENV=production`.
+  A Defender full scan used about five cores during the run, so the absolute values are higher than on an idle
+  machine. The two builds shared that load.
+- `BM25Search.search` with a `limit` below 1 returns no results. A negative `limit` used to drop the last result
+  instead of returning an empty list.
+
 ### Fixed
 
+- **`BM25Search.search` returns the live matches when the full-text index holds a posting of a replaced
+  row.** The entity upsert is `INSERT OR REPLACE`. The delete trigger of the external-content index does not
+  fire for a replaced row, because `recursive_triggers` is off, so the old row id stays in `entities_fts`. A
+  ranked query that reads the name through the index hits that posting, SQLite throws `SQLITE_CORRUPT_VTAB`,
+  `fullTextSearch` swallows the error and the search returned no results. The unranked query joins to
+  `entities` and skips the posting. The default ranked query of `fullTextSearch` is unchanged by this release
+  and still has the fault; `compact()` clears the stale rows.
 - **The Dependabot bun.lock workflow no longer leaves a PR BLOCKED.** GitHub holds the
   `pull_request` runs that the workflow's lockfile push triggers at `action_required`, and a
   `workflow_dispatch` run never reaches the PR's required checks. The workflow now approves the

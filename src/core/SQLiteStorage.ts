@@ -1941,11 +1941,20 @@ export class SQLiteStorage implements IGraphStorage {
    * Perform full-text search using FTS5.
    *
    * @param query - Search query (supports FTS5 query syntax)
+   * @param options.limit - Maximum number of rows to return (default 100)
+   * @param options.rank - Set `false` to fetch matching names only.
+   *   The query skips BM25 scoring and sorting.
+   *   Every `score` value is 0.
+   *   The rows are in storage order.
+   *   The query returns the entities that exist now, so it skips a stale index posting.
+   *   The set equals the ranked set if `limit` is at least the number of matches.
+   *   If `limit` is lower, the query does not keep the best rows.
+   *   Default is `true`.
    * @returns Array of matching entity names with relevance scores
    */
   fullTextSearch(
     query: string,
-    options: { limit?: number } = {},
+    options: { limit?: number; rank?: boolean } = {},
   ): Array<{ name: string; score: number }> {
     if (!this.db || !this.initialized) return [];
 
@@ -1980,7 +1989,20 @@ export class SQLiteStorage implements IGraphStorage {
       // out a pooled connection so they can run concurrently with writes
       // at the SQLite level (WAL mode).
       const reader = this.pickReadConnection();
-      const stmt = this.prepareCached(reader, `
+      // Scoring and sorting the whole match set dominates the cost when most of
+      // the corpus matches. A caller that only needs the set can skip both.
+      // The unranked query takes each name from the entities table. A posting of
+      // a replaced row has no entities row, so the join skips it. Reading the
+      // name through the full-text table instead throws SQLITE_CORRUPT_VTAB.
+      const stmt = this.prepareCached(reader, options.rank === false
+        ? `
+        SELECT e.name AS name, 0 AS score
+        FROM entities_fts f
+        JOIN entities e ON e.rowid = f.rowid
+        WHERE entities_fts MATCH ?
+        LIMIT ?
+      `
+        : `
         SELECT name, bm25(entities_fts, 10, 5, 3, 1) as score
         FROM entities_fts
         WHERE entities_fts MATCH ?

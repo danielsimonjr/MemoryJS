@@ -1363,10 +1363,16 @@ export interface IGraphStorage {
   /**
    * Optional storage-native lexical candidate retrieval. Indexed backends
    * expose BM25/FTS-ranked entity names; in-memory backends may omit it.
+   *
+   * `rank: false` requests matching names only.
+   * The backend performs no scoring and no ordering, and every score is 0.
+   * The option serves a caller that scores the candidates itself.
+   * That caller needs the whole set, so it passes a `limit` of at least the corpus size.
+   * A backend that cannot skip ranking ignores the option.
    */
   fullTextSearch?(
     query: string,
-    options?: { limit?: number },
+    options?: { limit?: number; rank?: boolean },
   ):
     | Array<{ name: string; score: number }>
     | Promise<Array<{ name: string; score: number }>>;
