@@ -237,52 +237,35 @@ Forward-looking work tracker. **Shipped features are not listed here** — see [
   `better-sqlite3` ABI (`NODE_MODULE_VERSION` mismatch), `dist/workers/` presence, embedding-provider
   reachability, strict-literal env flags. Effort: S
 
-### Research track — Memorilla latent semantic memory (2026-10-18)
+### Research track — Memorilla (2026-10-18), audited against `src/`
 
-> Full note, tables, and acceptance criteria: [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md).
-> Planning only. No runtime change. Effort labels are estimates. Paper numbers below are the authors'
-> Qwen results, not targets for this library.
+> Full audit and acceptance criteria: [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md) §3–§4.
+> Planning only. Paper numbers are the authors' Qwen results, not targets.
 
-> Source: Fallahpour, Idehpour, Kothapalli, Mounier, Wu, Pardis, and Leskovec, *Memorilla: Latent
-> Semantic Memory for LLMs*, arXiv:2610.21375 (15 Oct 2026), HTML full text including Appendices A–G.
-> A frozen Qwen3-Embedding-4B encoder writes each chunk once. A trained module (194,123,776 parameters
-> with the 8B decoder) reads **every** stored embedding and prepends K = 16 soft tokens to a frozen
-> Qwen3-8B. On FactKG, Table 11 reports 84.33% accuracy against 80.43% for full-context text, at 108×
-> fewer document tokens. On TextWorld, Section 6.1 reports avg@3 0.186 → 0.242 against full-history
-> prompting; the 8 memory tokens **supplement** the same history, and an untrained module scores 0.153.
-> Code: <https://github.com/snap-stanford/memorilla> (Apache-2.0). Checkpoints (memory module only):
-> <https://huggingface.co/memorilla/Memorilla-Qwen3-8B>. Data: <https://huggingface.co/datasets/memorilla/Memorilla-Data>.
+> Source: Fallahpour et al., *Memorilla: Latent Semantic Memory for LLMs*, arXiv:2610.21375 (15 Oct 2026).
+> FactKG Table 11: 84.33% vs 80.43% full context at 108× fewer document tokens. TextWorld §6.1: avg@3
+> 0.186 → 0.242, memory tokens supplementing the same history. Code: <https://github.com/snap-stanford/memorilla>.
 
-Ideas to adopt, in order. Soft-token injection and GRPO training stay out of core: hosted chat APIs
-cannot accept vectors in the input-embedding table, and the released `memory.pt` is tied to Qwen3-8B
-(h_L = 4096).
+Most of the paper's *system shape* is already in this repo. Chunks are entities (`IOManager.ingest` + `Entity.contentHash` + `idx_entities_content_hash`). Vectors have a table (`SQLiteStorage.embeddings`, `SQLiteVectorStore`). Packing has a budget (`ContextWindowManager.retrieveForContext`, `TokenBreakdown`, `enforceDiversity`, `MemoryFormatter.formatWithSalienceBudget`). Ranking has hybrid search (`HybridSearchManager` over `SemanticSearch` + `RankedSearch` TF-IDF + optional `GraphRankPrior`). On SQLite, `RankedSearch` already narrows candidates with `SQLiteStorage.fullTextSearch` (FTS5 `bm25()`). `BM25Search` is a second, unwired caller of that method. Turns already append via `MemoryEngine.addTurn`. Soft tokens and GRPO are dropped: no class accepts hidden states.
 
-#### M0. Write-once collection store — estimate S
-- Paper: Section 2.1. Z_D is query-independent; only added or changed documents are re-encoded. Appendix F: 5 KB per document, encode cost shared with a dense index.
-- MemoryJS delta: `SQLiteVectorStore` persists entity vectors, not a collection-scoped chunk matrix keyed by content hash. Fit: `ctx.documentMemory.upsertChunks`, reusing `EmbeddingService`. Hash hit skips the provider. `deleteCollection` drops vectors and audits when governance is on.
-- Done: second upsert of unchanged chunks makes zero embedding calls, on both backends.
+What is actually missing is wiring and two fields:
 
-#### M1. Fixed-budget query readout (text) — estimate M
-- Paper: Section 2.2–2.3. The learned read is continuous over all N embeddings and always emits K tokens. Equation 6 prepends them to the prompt embeddings. Table 13: cosine top-16 with a matched budget scores 33.86 on PersonaMem-v2 short-answer against 44.04 for the learned slots (4B, from scratch; not comparable to Table 11).
-- MemoryJS delta: `compressForContext` is query-agnostic n-gram abbreviation. Hybrid search returns a ranked subset. Fit: an **extractive** pack of at most 16 text slots and a hard token cap, with diversified chunks plus verbatim graph-path slots when edges exist. If the source already fits, return it unchanged (PubMedQA, Table 11: compression lowered accuracy, 59.00 vs 67–69). The caller prepends the text. This is the cosine arm, not Memorilla.
-- Done: emitted estimate ≤ budget; every slot cites a real chunk id.
+#### E1. Point semantic search at the embeddings table — estimate S
+- `ManagerContext.semanticSearch` calls `createVectorStore('jsonl')`, so `embeddings` is never the live store. When storage is `SQLiteStorage`, call `createVectorStore('sqlite', this.storage, model)` (`src/search/VectorStore.ts`). JSONL stays `InMemoryVectorStore`.
+- `SemanticSearch.indexAll` skips by name. Also re-embed when `entity.contentHash` differs from a new nullable `embeddings.contentHash` column written by the existing `storeEmbedding`. `EmbeddingCache.get(key, text)` already does the in-process version of this check.
+- Tests: extend `tests/unit/search/SemanticSearch.test.ts` and `tests/unit/search/VectorStore.test.ts`. No new module.
 
-#### M2. Fixture eval with a token ratio — estimate M
-- Paper: Figure 4(c), RAG-50 falls from 78.73 to 51.75 as composed facts go from 1 to 4, while Memorilla stays in the 80–89 range. Table 10’s compression column is source document tokens over tokens actually given to the decoder.
-- MemoryJS delta: no fact-composition or growing-trajectory harness. Fit: a checked-in toy triple set (1 / 2 / 4 hops) and a 20-step room log. Report extractive accuracy, full-text accuracy, and `sourceTokens / emittedTokens`. Do not download the 69.4 GiB FactKG embedding shard. Do not quote 84.33 as a library target; those numbers are in-domain (Section 2.6 trains on the eval splits).
-- Done: the new test passes offline and prints both scores and the ratio.
+#### E2. Candidate-token ratio, optional slot cap, query rank via hybrid search — estimate S
+- Add `sourceTokens` and `compressionRatio` on `ContextPackage` (`src/types/agent-memory.ts`) from the `estimateTokens` sums `retrieveForContext` already computes. Ratio is 1 when the source fits (PubMedQA lesson, Table 11).
+- Optional `ContextRetrievalOptions.maxSlots`, applied in the existing `prioritize` loop. Unset means today's behavior.
+- When `SalienceContext.queryText` is set, order candidates with `HybridSearchManager` before the salience cut. Lexical ranking stays `RankedSearch` (TF-IDF, with FTS5 `bm25()` as the SQLite candidate filter). Do not construct `BM25Search`. `mustInclude` keeps recent turns verbatim.
+- Tests: extend `tests/unit/agent/ContextWindowManager.test.ts`.
 
-#### M3. Query-conditioned summary over a wider candidate set — estimate M, gated on M2
-- Paper: Section 5, the union of Memorilla and RAG-50 beats either method alone (FactKG: 15.9% solved by Memorilla only, 10.0% by RAG-50 only). Section 7 asks for latent memory plus text retrieval.
-- MemoryJS delta: `LLMProvider` already exists for ingest and query planning. Fit: `mode: 'summary'` asks that provider for ≤ 16 fact lines from a candidate pool larger than the slot count, caches by collection version and query hash, and drops any line that cites nothing. Default stays extractive. If M2 shows graph paths solving the fixture, summarize the path.
-- Done: stub-provider test; missing provider throws a typed error on `summary` and `auto` stays extractive.
+#### E3. Finish `SummarizationService`'s provider — estimate S, only if a caller asks
+- `summarize(texts)` has no query argument, and `initProvider` never builds `ISummarizationProvider`. Wire the `LLMProvider` `MemoryDistiller` already uses, pass `queryText`, and let `retrieveForContext` shorten `excluded` entities only when a provider is configured.
+- Tests: extend `tests/unit/agent/SummarizationService.test.ts`.
 
-#### M4. Local latent adapter — estimate L, gated on a caller with open weights
-- Paper: Equation 6 and the website’s current-limits paragraph. Injection needs open weights and a module trained per decoder. Cross-family transfer is untested.
-- MemoryJS delta: none of the core process can write another model’s input embeddings. Fit: an optional out-of-process `LatentReadoutAdapter` (`N × h_e` floats in, `K × h_L` floats out) documented against `snap-stanford/memorilla`. Core install does not gain PyTorch. Untrained tokens are not a feature: on TextWorld they lowered avg@3 from 0.186 to 0.153 (Section 6.1).
-- Done: a shape contract test with a fake adapter; core tests pass with the adapter unset.
-
-Suggested order: **M0 → M1 → M2 → (M3 if M2 says extractive slots drop composed facts) → M4 only on demand.**
+Suggested order: **E1 → E2**. E3 waits. No new store, no latent adapter, no FactKG download.
 
 ---
 
@@ -297,8 +280,8 @@ Suggested order: **M0 → M1 → M2 → (M3 if M2 says extractive slots drop com
 | **Integration** | Elasticsearch, REST API polish, framework adapters, GraphQL |
 | **Enterprise** | Distributed coordinator, cloud-native artefacts, GDPR tooling, encryption layer |
 | **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport, affective tagging (deferred P3) |
-| **Latent memory (Memorilla)** | Planning only. M0 write-once collection store → M1 fixed-budget text readout → M2 fixture eval. M3 summary gated on M2. M4 local soft-token adapter gated on a caller with open weights. See [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). |
-| **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline), in-core GRPO / 194M memory-module training |
+| **Latent memory (Memorilla)** | Two enhancements, not new modules: E1 wire `semanticSearch` to the existing `embeddings` table and re-embed on `contentHash` change; E2 `sourceTokens` / `compressionRatio` / optional `maxSlots` on `ContextPackage`, ranking via `HybridSearchManager`. E3 finishes the `SummarizationService` stub only if a caller asks. Soft tokens and GRPO dropped. See [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). |
+| **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline), Memorilla soft-token injection and in-core GRPO |
 
 **Genuinely active P1/P2 items: 6.** Everything else is gated, strategic, or long-horizon.
 
@@ -382,8 +365,8 @@ Items reaching P1/P2 must have:
   - Proposes three-stage evolutionary framework: Storage → Reflection → Experience
   - Sourced the Phase 3B design (3B.1–3B.7 all now shipped; 3B.8 remains)
 - **Fallahpour, A., Idehpour, P., Kothapalli, V., Mounier, N., Wu, S., Pardis, S., and Leskovec, J. (2026).** ["Memorilla: Latent Semantic Memory for LLMs."](https://arxiv.org/abs/2610.21375) arXiv:2610.21375. HTML: <https://arxiv.org/html/2610.21375>. Site: <https://memory.stanford.edu/>.
-  - Write-once embeddings, query-conditioned readout into K = 16 soft tokens for a frozen LLM
-  - Mapped in [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). Adopt the fixed budget, the collection store, and the hybrid with verbatim retrieval. Leave soft-token injection and reward training out of core.
+  - Write-once embeddings and a K = 16 soft-token readout for a frozen LLM
+  - Audited in [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). Chunk store, vector table, hybrid search, and token budgets already exist. Open work is wiring `embeddings` into `semanticSearch` and reporting the context-packer's compression ratio. Soft-token injection is dropped.
 
 ### Companion documents
 
@@ -394,4 +377,4 @@ Items reaching P1/P2 must have:
 - [`docs/roadmap/MEMORY_TYPES_EXPANSION_PHASE_2.md`](./MEMORY_TYPES_EXPANSION_PHASE_2.md) — Phase 2 planning (catalog-driven candidate set: failure-memory hardening / plan / trust hierarchy / tool affordance / reflection)
 - [`docs/architecture/DEPENDENCY_GRAPH.md`](../architecture/DEPENDENCY_GRAPH.md) — auto-generated dependency map; source of truth for what exists in `src/`
 - [`docs/roadmap/GAP_ANALYSIS_VS_MEMPALACE.md`](./GAP_ANALYSIS_VS_MEMPALACE.md), [`GAP_ANALYSIS_VS_SUPERMEMORY.md`](./GAP_ANALYSIS_VS_SUPERMEMORY.md) — comparative analysis against adjacent projects
-- [`docs/roadmap/MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md) — Memorilla (arXiv:2610.21375) summary, limits, and the M0–M4 plan
+- [`docs/roadmap/MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md) — Memorilla (arXiv:2610.21375) summary, codebase audit, and enhancements E1–E3

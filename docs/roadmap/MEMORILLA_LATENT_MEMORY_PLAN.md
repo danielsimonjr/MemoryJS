@@ -5,7 +5,7 @@
 **Paper**: Fallahpour, Idehpour, Kothapalli, Mounier, Wu, Pardis, and Leskovec. *Memorilla: Latent Semantic Memory for LLMs*. arXiv:2610.21375, posted 15 Oct 2026. HTML full text including Appendices A–G: <https://arxiv.org/html/2610.21375>. Abstract: <https://arxiv.org/abs/2610.21375>. Workshop citation on the project site: COLM Workshop on Context Beyond the Window, 2026, <https://openreview.net/forum?id=VV0vvzL783>.
 **Project site**: <https://memory.stanford.edu/>
 
-This note records what the paper and its public artifacts actually say, then maps each idea onto MemoryJS. Effort labels (S / M / L) are estimates. Nothing here claims that a TypeScript analogue will reproduce the paper’s scores.
+This note records what the paper and its public artifacts actually say, then audits MemoryJS module by module. A Memorilla idea becomes a roadmap item only when no current module already does that job. Where a module is close, the item is an enhancement of that module, with the classes, schema, and search APIs it must call. Effort labels (S / M) are estimates. Nothing here claims that those enhancements will reproduce the paper’s scores.
 
 Sources read for this note:
 
@@ -20,13 +20,14 @@ Figure images are not re-measured. Numbers below are the ones written in the pro
 
 ## Recommendation
 
-Ship the interface the paper argues for, and leave the 194M-parameter soft-token module outside this library.
+Do not add a document-collection store, a readout type, a latent-token adapter, or an eval harness. Those jobs already have owners. Two small enhancements are worth doing, in this order:
 
-Suggested order: **M0 → M1 → M2**, then **M3** only if M2 shows that extractive slots drop multi-fact questions, then **M4** only for a caller who already runs an open-weight model locally. M4 is gated. Do not start by injecting latent tokens.
+1. **E1.** Point the existing `semanticSearch` getter at the existing SQLite `embeddings` table, and make `SemanticSearch.indexAll` re-embed an entity when `contentHash` changes. Estimate: S.
+2. **E2.** On the existing `ContextPackage`, report how many candidate tokens were considered versus how many were packed, and let `retrieveForContext` rank those candidates with the existing `HybridSearchManager` when the caller passes `queryText`. Estimate: S.
 
-The reason to sequence it this way is in the paper itself. Memorilla’s gain on FactKG and on “why” / “how” questions comes from a **query-conditioned read of the whole collection** (Section 2.2, Figure 4). A cosine top-16 readout with a matched parameter budget scores 33.86 on PersonaMem-v2 short-answer, against 44.04 for the learned slots, in the from-scratch 4B ablation (Table 13). Copying top-k retrieval into a shorter prompt will not be Memorilla. MemoryJS already has the other half of the paper’s suggested hybrid: verbatim retrieval, graph multi-hop, and a token budget. The missing half is a **fixed-budget, collection-wide, query-conditioned pack** with a reported compression ratio, plus an eval that scores fact composition and not only top-k hit rate.
+A third change, **E3**, finishes the stub inside `SummarizationService` so a query can shorten the entities that missed the budget. Build it only if a caller asks. Estimate: S.
 
-Soft-token injection (Equation 6) needs the decoder’s input-embedding matrix. Hosted chat APIs do not accept that. The released checkpoint is a Qwen3-8B-specific `memory.pt` (194M parameters, 16 tokens, no document self-attention). A practical text analogue is a fixed number of short fact lines prepended to the prompt the caller already sends.
+Soft-token injection, a new Perceiver module, and GRPO training are dropped. No class in `src/` can host them, and they would be new code beside SQLite, FTS, and the context packer.
 
 ---
 
@@ -229,191 +230,82 @@ The reproducibility statement says code, data with precomputed embeddings, and P
 
 ---
 
-## 3. Mapping onto MemoryJS
+## 3. Codebase audit
 
-MemoryJS is a TypeScript library (Node ≥ 18, Bun for development) with JSONL and SQLite storage, entity / relation / observation graphs, and an optional embedding provider. It does not own model weights. Callers pass text to whatever LLM they use. That boundary decides which Memorilla ideas belong in this repo.
+Audit date 2026-10-18, against `src/`. Each row is one Memorilla idea. "Already covered" means a caller can do the job with the modules named, so it is not a new feature.
 
-| Memorilla idea | Where it lives in the paper | What MemoryJS has today | Feasible here? |
+| Memorilla idea | Paper | What already exists | Verdict |
 | --- | --- | --- | --- |
-| Write-once document embeddings, re-encode only changes | §2.1, Eq. 1, Appendix F | `EmbeddingService` (`OpenAI`, `LlamaCpp`, `Local`) and `SQLiteVectorStore` persist **entity** vectors. There is no collection-scoped chunk matrix that survives across queries as its own store. | **Yes.** A collection store beside the entity index. Reuse the existing embedding provider. No new required dependency. |
-| Query-conditioned read of **all** stored vectors, fixed K | §2.2, Eq. 3–4, Table 13 | `HybridSearchManager` is a weighted mix of semantic, lexical, symbolic, and optional PageRank. It returns a ranked subset. `compressForContext` abbreviates repeated substrings with a `§` legend and is not query-conditioned. `TrajectoryCompressor.distill` keeps high-overlap observations. `IDistillationPolicy` filters candidates before salience scoring. | **The fixed budget and the query are feasible. The learned all-pairs read is not, inside this process.** Top-k cosine is the ablation that lost (Table 13). A faithful stand-in for a graph library is: traverse or diversify across the whole collection, then emit a fixed number of text slots. |
-| Inject K vectors into the frozen LLM’s input embeddings | §2.3, Eq. 6 | No decoder, no embedding-table access. Optional `LLMProvider` is a text API, used by ingest and by `LLMQueryPlanner`. | **No for hosted APIs.** Needs open weights and a module trained per h_L (Table 3, website limits). Text analogue: prepend K short fact lines to the prompt the caller already builds. Optional later: an out-of-process adapter that returns floats for a local model the caller runs. |
-| Answer-token NLL, three-stage curriculum, ~194M parameters | §2.4–2.6, Tables 1, 3, 4 | No training loop, and the dependency policy rejects a PyTorch runtime for a core feature. | **Out of core.** Training stays in the Python repo. MemoryJS can load nothing from `memory.pt` until M4, and only behind an explicit local-model adapter. |
-| Token accounting that makes compression visible | Table 10, Table 11 “Compression” column | `ContextCompressionResult.stats` (`originalTokens`, `compressedTokens`, `savedTokens`, `savedPercent`), `TokenBreakdown` inside context retrieval, and `IngestTokenUsage` on `IOManager.ingest`. None of these report “document tokens handed to the caller ÷ tokens in the whole collection”. | **Yes.** Add that ratio on the new readout. Reuse the existing token estimator rather than inventing a second one. |
-| Hybrid of latent memory and verbatim retrieval | §5, Figure 5; §7 future work | Hybrid search, graph traversal, and `CausalReasoner` already return structured evidence. They do not sit beside a compressed pack with an oracle-style overlap report. | **Yes, and this is the highest-leverage idea.** The paper’s union is an upper bound, not a system. MemoryJS can actually return both: a graph path or verbatim chunks, and a short synthesis, with provenance. |
-| FactKG-style multi-hop fact verification | §4–5, Figure 4, Table 2 | Relations are first-class. FactKG chunks are single triples (13 tokens). A claim that composes facts is a graph question. | **Do not route this through latent tokens first.** Render the multi-hop chain into the fixed text budget. Latent compression is what you need when the consumer can only read a prompt; MemoryJS can read the edges. |
-| Continual agent memory trained by reward | §6, Appendix G, Eq. 8–10 | `MemoryEngine.addTurn`, episodic and working memory, decay, consolidation, `TrajectoryCompressor`. No environment reward, no GRPO. | **The write pattern is feasible** (append each turn once). **The GRPO training is out of scope.** The paper’s control says the summary must supplement recent history, not replace it, and that an untrained extra channel can hurt. |
-| Per-user store that can be deleted | §7 ethics statement | `projectId`, `SemanticForget`, governance audit, entity delete. | **Yes.** Delete-by-collection must drop vectors and audit the deletion. |
-| Same embedding store, many decoders | §7 last paragraph | Embeddings are already provider-scoped (`SQLiteVectorStore` takes an embedding model name). | **Store yes, readout no**, until someone trains a projection per decoder. Do not pretend one text summary is that projection. |
-| Eval on FactKG and an agent task, with a token budget in the score | Tables 7, 10, 11; §6 | Tests are unit and integration tests of the library. There is no fact-verification or trajectory-success harness. | **Yes, at fixture scale.** Do not download the 69.4 GiB FactKG embedding shard or claim a leaderboard number. |
+| Write a chunk once, skip unchanged text, keep the vector | §2.1, Appendix F | `IOManager.ingest` (`src/features/IOManager.ts`) splits input (`chunkBy`: `exchange` / `paragraph` / `fixed`), SHA-256s the chunk, stores it on `Entity.contentHash`, and increments `skippedDuplicates` when the hash is already present. The same hash is written into an `ingest-manifest` entity (`INGEST_CHUNK_PREFIX` lines with `id`, `source`, `offset`, `length`, `hash`) and each observation gets `observationMeta.sourceRef`. A `derived_from` relation points at the manifest. `Entity.contentHash` is a persisted field (`src/core/GraphStorage.ts` allow-list) and a SQLite column with `idx_entities_content_hash` (`src/core/SQLiteStorage.ts`, `getEntitiesByContentHash`). | **Covered at write time.** Do not add a collection store or a second chunk table. |
+| Persist embeddings and reuse them on the next query | §2.1, Table 14 | `SQLiteStorage` already has `embeddings (entityName TEXT PRIMARY KEY REFERENCES entities(name) ON DELETE CASCADE, embedding BLOB, embeddingModel TEXT, embeddingUpdatedAt TEXT, dimensions INTEGER)` plus `idx_embedding_model`, and methods `storeEmbedding`, `getEmbedding`, `hasEmbedding`, `loadAllEmbeddings`, `removeEmbedding`. `SQLiteVectorStore` and `createVectorStore('sqlite', storage, model)` wrap that table (`src/search/VectorStore.ts`). `SemanticSearch.indexAll` (`src/search/SemanticSearch.ts`) already skips names for which `vectorStore.has` is true. `EmbeddingCache.get(key, text)` (`src/search/EmbeddingCache.ts`) already misses when the text hash changes. `IncrementalIndexer` (`src/search/IncrementalIndexer.ts`) already batches create/update/delete embeds through `EmbeddingService`. | **Module exists, not wired.** `ManagerContext.semanticSearch` calls `createVectorStore('jsonl')` (`src/core/ManagerContext.ts`), so the live store is `InMemoryVectorStore` and the SQLite table stays empty. `indexAll` also skips by name only, so a changed `contentHash` keeps a stale vector. Enhancement E1. |
+| Delete one user's memory without touching the model | §7 ethics | `embeddings.entityName` is `ON DELETE CASCADE`. Entity delete already goes through `EntityManager` / `SemanticForget`, and governance audit already records deletions when enabled. | **Covered.** No new delete API. |
+| Rank a query across the whole graph, then keep a fixed token budget | §2.2–2.3, Table 10 | `ContextWindowManager.retrieveForContext` (`src/agent/ContextWindowManager.ts`) already takes `ContextRetrievalOptions.maxTokens` (`src/types/agent-memory.ts`), subtracts `reserveBuffer`, scores with `SalienceEngine`, drops near-duplicates in `enforceDiversity` (threshold `diversityThreshold`, default 0.8), and returns `ContextPackage` with `totalTokens`, `TokenBreakdown` (working / episodic / semantic / procedural / mustInclude), and `excluded[]` (`reason`, `tokens`, `salience`). `AgentMemoryManager.retrieveForContext` forwards to it. `compressForContext` already returns `originalTokens`, `compressedTokens`, `savedTokens`, `savedPercent`. `MemoryFormatter.formatWithSalienceBudget` (`src/agent/MemoryFormatter.ts`) already splits a token budget across entities. `wakeUp` already caps L0 / L1 / L1.5 / project-context tokens. `CognitiveLoadAnalyzer` already reports density and redundancy. | **Budget packing is covered.** Missing: the ratio of candidate tokens to packed tokens (Table 10's compression column), and a query ranker in front of the packer. Today `retrieveForContext` loads every agent entity and prefilters by recency (`maxEntitiesToConsider`). `SalienceContext.queryText` is only split into `queryKeywords` for `IDistillationPolicy`. Enhancement E2. |
+| Query-conditioned shortening of what was retrieved | §2.2, §5 | Write-time shortening exists: `ingest` calls `MemoryDistiller.distill` (`src/agent/reconstruction/MemoryDistiller.ts`) when `IngestOptions.llmProvider` is set, and `IngestResult.tokenUsage` sums that provider's tokens. `DefaultDistillationPolicy.distill` (`src/agent/DistillationPolicy.ts`) already filters a `HybridSearchResult[]` with `queryKeywords`, recency, importance, and near-duplicate names. `TrajectoryCompressor.distill` and `foldContext` already wrap `compressForContext`. | **Read-time query summary is the stub, not a new subsystem.** `SummarizationService` (`src/agent/SummarizationService.ts`) has `summarize(texts)`, `maxTokens` (default 150), and `ISummarizationProvider`, but `initProvider` never constructs a provider ("fallback summarization only") and `summarize` has no query argument. Enhancement E3, and only on that class. |
+| Hybrid of verbatim hits and a compressed view | §5, Figure 5 | `HybridSearchManager` (`src/search/HybridSearchManager.ts`) already mixes `SemanticSearch`, `RankedSearch` (TF-IDF lexical channel), `SymbolicSearch`, and optional `GraphRankPrior`. `explain: true` already attaches `EvidencePathBuilder` paths (`src/search/EvidencePathBuilder.ts`). `GraphTraversal.findPathWithin` (`src/core/GraphTraversal.ts`) already returns a bounded path. On SQLite, `RankedSearch.getFtsCandidateNames` already calls `SQLiteStorage.fullTextSearch`, whose SQL ranks with FTS5 `bm25(entities_fts, 10, 5, 3, 1)`; `RankedSearch` then TF-IDF-scores that candidate set. | **Covered.** Do not add a second hybrid. `BM25Search` (`src/search/BM25Search.ts`) also calls `fullTextSearch`, is exported, and has no constructor call site in `src/`. Leave it unwired. |
+| Append each agent turn and still show recent history | §6, Eq. 10 | `MemoryEngine.addTurn` already writes the turn, with four-tier dedup keyed by `contentHash`. `retrieveForContext` already accepts `mustInclude` for the turns the caller wants kept verbatim, which is the paper's "memory supplements the history" control. | **Covered.** No trajectory store. |
+| FactKG-style multi-hop over triples | §4–5, Figure 4, Table 2 | Relations are first-class. FactKG chunks are single triples. `GraphTraversal` and `CausalReasoner` already walk them. `ingest` already stores a chunk as an entity with observations. | **Covered.** A claim that composes facts is a graph walk plus the existing context packer. No fact-verification type. |
+| Inject K soft tokens into a frozen LLM, train the module by answer NLL or GRPO | §2.3–2.6, §6, Appendix G | No decoder, no input-embedding table, no training loop. `LLMProvider` is a text API used by `MemoryDistiller` and `LLMQueryPlanner`. | **Dropped.** Nothing to extend. Hosted APIs cannot take the vectors in Equation 6, and the released `memory.pt` is a Qwen3-8B module. |
+| Benchmark harness on FactKG and TextWorld | Tables 7, 10, 11, §6 | Tests already cover the pieces: `tests/unit/search/SemanticSearch.test.ts`, `tests/unit/search/VectorStore.test.ts`, `tests/unit/agent/ContextWindowManager.test.ts`, `tests/unit/agent/SummarizationService.test.ts`, `tests/unit/features/IOManager.test.ts`. | **No new harness.** E1 and E2 add cases to those files. Do not download `memorilla/Memorilla-Data` (FactKG embeddings alone are 69.4 GiB on the dataset card). |
 
 ---
 
-## 4. Proposed work
+## 4. What to build
 
-### 4.1 Goals
+### E1. Use the SQLite embedding table the context already owns
 
-1. Persist a document collection’s embeddings once, and skip re-encoding unchanged chunks.
-2. For a query, produce a **text** pack whose estimated token count is at most a caller-set budget, defaulting to a small fixed slot count in the spirit of K = 16 text lines (not 16 hidden vectors).
-3. Let that pack see more of the collection than a single top-k list: diversified chunks, and, when the collection has been written into the graph, a multi-hop chain.
-4. Report source tokens, emitted tokens, and the ratio, in the sense of Table 10.
-5. Keep verbatim evidence addressable. Every emitted slot cites the chunk or edge it came from.
-6. Evaluate on a tiny FactKG-shaped claim set and a tiny growing-trajectory set. Publish the token ratio next to the score.
-7. Leave soft-token injection and GRPO outside the default install.
+**Goal.** A second process reuses vectors for unchanged entities, and re-embeds an entity whose `contentHash` changed. Same behavior `EmbeddingCache` already has inside one process.
 
-### 4.2 Design sketch
+**Builds on.**
 
-```
-write path (once per chunk)
-  chunks ── EmbeddingService (existing) ──► DocumentCollectionStore
-                                              SQLite blob, keyed by
-                                              (collectionId, chunkId, embeddingModel)
-                                              unchanged chunkId + content hash ⇒ no re-encode
+- `ManagerContext.semanticSearch` (`src/core/ManagerContext.ts`). When `this.storage` is `SQLiteStorage`, call `createVectorStore('sqlite', this.storage, embeddingService.model)` instead of `createVectorStore('jsonl')`. JSONL keeps `InMemoryVectorStore`, because `GraphStorage` has no `embeddings` table.
+- `SemanticSearch.indexAll` / `indexEntity`. The skip branch (`forceReindex || !vectorStore.has(name)`) gains one check: if the store can report the hash it embedded, and `entity.contentHash` differs, treat the entity as not indexed. `EmbeddingService.embed` / `embedBatch` stay the only encoders. `IncrementalIndexer` stays the batch queue for callers who already use it; `indexAll` does not grow a second queue.
+- `SQLiteStorage.embeddings`. One nullable column, `contentHash TEXT`, written by `storeEmbedding` from the entity hash the caller passes. No new table. `ON DELETE CASCADE` stays the delete path.
+- `SQLiteVectorStore.add` already calls `storeEmbedding`. Extend that signature with an optional hash rather than adding a store class.
 
-read path (every query)
-  query ── embed ──► rank / diversify over the WHOLE collection
-                 └─► optional graph expansion (existing traversal) when edges exist
-                          │
-                          ▼
-                    slot filler, at most B tokens
-                      • extractive: short verbatim spans (default, no LLM)
-                      • summary: optional LLMProvider writes B tokens of fact lines
-                          │
-                          ▼
-                    MemoryReadout { text, slots, token stats, provenance }
-                          │
-                          ▼
-                    caller prepends `text` to the prompt it already sends
+**New code.** A branch in the existing getter, an optional argument on `storeEmbedding` / `SQLiteVectorStore.add`, and the hash compare inside `indexAll`. No new module, no new dependency.
 
-fallback
-  if sourceTokens <= budget, return the source text and set compressionRatio = 1
-  (PubMedQA lesson: do not compress a collection that already fits)
-```
+**Done when.** `tests/unit/search/SemanticSearch.test.ts` and `tests/unit/search/VectorStore.test.ts` show: a second `indexAll` on an unchanged entity makes zero `embed` calls; changing `contentHash` makes one; deleting the entity removes the `embeddings` row through the existing foreign key. JSONL tests still pass with the in-memory store.
 
-The extractive filler is a **baseline**, corresponding to the paper’s cosine top-16 arm, not to Memorilla. M2 exists to measure how far that baseline is from “read the whole collection” on composed facts. If the fixture shows the same collapse Figure 4(c) shows for RAG-50, M3 adds a query-conditioned summary over a **larger** candidate set than the slots themselves (the summary may read 50 chunks and emit 16 lines). That is still text. It is the closest behaviour this library can offer a hosted model.
+**Risk.** `indexAll` today skips by name on purpose. The hash check must no-op when the column is null (rows written before the column existed) by re-embedding once and then storing the hash. Estimate: S.
 
-M4, if it is ever built, is a separate process. MemoryJS would pass embeddings out and receive K × h_L floats back. Injection stays in the caller’s model runner (the Python repo’s `MemoryVLLM` does this today). This package would not link PyTorch.
+### E2. Report the budget cut, and rank with the hybrid search that already exists
 
-### 4.3 API changes (proposed, `@experimental`)
+**Goal.** `retrieveForContext` tells the caller how many tokens it considered and how many it packed, and, when the caller passed a query, the candidate order comes from hybrid search.
 
-New types, new lazy getter. No change to `Entity`, `Relation`, search ranking, or the JSONL format.
+**Builds on.**
 
-```typescript
-/** One persisted chunk. `contentHash` is SHA-256 of `text`. */
-interface DocumentChunk {
-  collectionId: string;
-  chunkId: string;
-  text: string;
-  contentHash: string;
-  embeddingModel: string;
-}
+- `ContextRetrievalOptions` and `ContextPackage` in `src/types/agent-memory.ts`. Add `sourceTokens: number` and `compressionRatio: number` (`sourceTokens / totalTokens`, or `1` when `sourceTokens <= maxTokens`). Both are sums of the `estimateTokens` values `retrieveForContext` already computes for selected and `excluded` entities. `ExcludedEntity.tokens` is the unused side of that sum.
+- `ContextRetrievalOptions.maxSlots?: number`, applied inside the existing `prioritize` loop next to `maxTokens`. Default unset, so current callers keep today's packing. This is the fixed-K idea, expressed as a count of entities the packer already returns, not as hidden vectors.
+- `SalienceContext.queryText`. When it is set, build the candidate list with `HybridSearchManager` (`semanticSearch` + `rankedSearch` + optional `graphRankPrior`) scoped to those entities, then run the existing salience cut, `IDistillationPolicy`, and `enforceDiversity` on that order. When it is unset, keep the current recency prefilter. The lexical half is `RankedSearch`: TF-IDF scoring, and on SQLite a candidate filter through `SQLiteStorage.fullTextSearch` (FTS5 `bm25()`). Do not construct `BM25Search`.
+- `mustInclude` stays the way a caller pins the latest turns, matching Section 6.1's "same history in every condition".
+- Passthrough is the current behavior: entities that fit are returned whole. The new ratio is `1` in that case, which is the PubMedQA lesson (Table 11: compression lowered accuracy when the source was 324 tokens).
 
-interface UpsertChunksResult {
-  written: number;
-  unchanged: number; // hash hit, embedding reused
-  reembedded: number;
-}
+**New code.** Two fields, one optional cap, and a call into `HybridSearchManager` from `retrieveForContext`. `MemoryFormatter.formatWithSalienceBudget` is unchanged and is how a caller renders the package.
 
-interface MemoryReadout {
-  /** Prompt fragment the caller prepends. Empty when the collection is empty. */
-  text: string;
-  /** Individual slots, length <= maxSlots. */
-  slots: ReadonlyArray<{ text: string; sourceChunkIds: string[] }>;
-  sourceTokens: number;
-  emittedTokens: number;
-  /** sourceTokens / emittedTokens. 1 when the source already fit. */
-  compressionRatio: number;
-  /** 'passthrough' | 'extractive' | 'summary' */
-  mode: string;
-  truncated: boolean;
-}
+**Done when.** `tests/unit/agent/ContextWindowManager.test.ts` shows a package whose `sourceTokens` is greater than `totalTokens` under a tight `maxTokens`, a ratio of `1` when the budget fits, `maxSlots` truncating the list, and a `queryText` run whose first entity is the hybrid-search top hit (search stubbed with the existing `HybridSearchResult` shape). No network, no new fixture corpus.
 
-interface DocumentMemory {
-  upsertChunks(chunks: ReadonlyArray<Omit<DocumentChunk, 'contentHash' | 'embeddingModel'> & {
-    embedding?: Float32Array;
-  }>): Promise<UpsertChunksResult>;
-  deleteCollection(collectionId: string): Promise<void>;
-  readout(request: {
-    collectionId: string;
-    query: string;
-    maxSlots?: number;      // default 16 text slots
-    budgetTokens?: number;  // hard cap; estimator is the existing one
-    mode?: 'auto' | 'extractive' | 'summary';
-    includeGraphPaths?: boolean; // default true when relations exist for the collection
-  }): Promise<MemoryReadout>;
-}
-```
+**Risk.** Hybrid search over every agent entity can be heavier than the recency prefilter. Gate it on `queryText` so the no-query path stays as it is. Estimate: S.
 
-Wiring: `ctx.documentMemory` on `ManagerContext`, created on first access, `@experimental`. `summary` mode requires an `LLMProvider` already passed into context; without one it throws a typed error that names the missing provider, and `auto` falls back to `extractive`. Graph paths reuse `GraphTraversal` / the existing causal helpers when the caller has also stored the chunks as entities and relations. The readout does not create those edges by itself.
+### E3. Finish the summarizer that is already stubbed — only if a caller asks
 
-Optional and not part of M0–M3:
+**Goal.** Entities that `excluded` already lists can be shortened with the query, using the LLM client the process already has.
 
-```typescript
-/** Out of process. MemoryJS does not inject these into a model. */
-interface LatentReadoutAdapter {
-  readonly decoderId: string; // e.g. 'Qwen/Qwen3-8B'
-  readonly slots: number;     // 16 in the released supervised checkpoint
-  read(input: {
-    documentEmbeddings: Float32Array; // N * h_e
-    queryEmbedding: Float32Array;     // h_e
-  }): Promise<Float32Array>;          // K * h_L
-}
-```
+**Builds on.** `SummarizationService.summarize` and `SummarizationConfig.maxTokens`. Add an optional `query` argument. Construct `ISummarizationProvider` from the same `LLMProvider` object `MemoryDistiller` already accepts on `IngestOptions.llmProvider`. `ContextWindowManager` calls it only when a provider is configured and only on `excluded` entities, then the caller appends that string with `MemoryFormatter`. No provider means today's extractive pack, unchanged.
 
-Token-budget fields on `MemoryReadout` are the acceptance surface for “we measured compression”. They are estimates from the same character-based estimator `ContextWindowManager` already uses, so they will not match the Qwen3 tokenizer counts in Table 10. The eval report must say which estimator it used.
+**New code.** The provider body inside `SummarizationService` (the file already says the OpenAI provider would be initialized there) and one optional call from `retrieveForContext`. No new policy interface: `IDistillationPolicy` keeps filtering; it does not rewrite text.
 
-### 4.4 Phases
+**Done when.** `tests/unit/agent/SummarizationService.test.ts` passes a stub `LLMProvider` and a query, and the summary string is the stub's text, clipped by `maxTokens`. A missing provider still returns `fallbackSummarize`.
 
-#### M0 — collection store (estimate: S)
+**Risk.** The provider can invent a sentence the entities do not contain. Keep the fallback path as the default until a caller opts in. This does not train Equation 7. Estimate: S. Do not start E3 in the same change as E1.
 
-Persist chunks and embeddings in SQLite (and a JSONL sidecar when the active backend is JSONL, same dual-backend rule as the rest of the library). `upsertChunks` re-embeds only when `chunkId` is new or the content hash differs. `deleteCollection` removes vectors and writes an audit record when governance is already enabled.
+### Dropped
 
-**Done when:** a unit test writes three chunks, repeats the upsert, and observes `unchanged: 3` and zero embedding-provider calls on the second call; deleting the collection leaves no rows; the JSONL and SQLite backends both round-trip.
+- A `DocumentCollectionStore`, `DocumentMemory`, `ctx.documentMemory`, or any new SQLite table. Chunks are entities; vectors are `embeddings` rows.
+- A latent readout adapter, a port of `f_mem`, and GRPO. No existing class accepts hidden states.
+- A FactKG or TextWorld harness, and any download of `memorilla/Memorilla-Data`.
+- Wiring `BM25Search` into hybrid search. `RankedSearch` and `SQLiteStorage.fullTextSearch` already rank lexically.
+- Replacing `compressForContext`, `MemoryEngine`, or `HybridSearchManager`.
 
-**Risk:** embedding dimension differs across providers. Key the row by `embeddingModel` and refuse to mix dimensions in one readout. Estimated cost is one new table, no new dependency.
+### Sequencing
 
-#### M1 — extractive fixed-budget readout (estimate: M)
-
-`readout` in `extractive` / `auto`. Rank chunks with the existing embedding similarity. Fill slots with a diversity constraint so sixteen slots are not sixteen sentences from the same document (the FactKG failure mode is evidence spread across documents, Section 5). If a graph path is available, reserve some slots for the path’s edge labels, verbatim. If `sourceTokens <= budgetTokens`, return the source unchanged.
-
-**Done when:** on a fixture of 40 short documents, the emitted estimate is ≤ the budget; every slot’s `sourceChunkIds` resolve; a query whose relevant sentences share no tokens with the query still surfaces them when their embeddings are close (provider stubbed with hand-built vectors); passthrough triggers on a 4-chunk collection under the budget.
-
-**Risk:** this is the Table 13 cosine arm. It will look like RAG. That is acceptable for M1 because M2 is what tells us the gap. Do not describe M1 as Memorilla in the API docs.
-
-#### M2 — fixture eval (estimate: M)
-
-Two fixtures, checked in, no network, no Hugging Face download.
-
-- **Composed facts.** About 30 claims over a toy triple set. Include claims that need 1, 2, and 4 triples, mirroring Figure 4(c)’s axis. Score exact support / refute. Report extractive-readout accuracy and full-collection-text accuracy beside `compressionRatio`. The full-collection arm is the control, not a leaderboard.
-- **Growing trajectory.** A scripted 20-step “room” log. At each step the store appends one turn and the readout must mention a room already visited, within a fixed budget, while the caller also receives the last 4 turns verbatim (Section 6.1: memory supplements history). Score whether the pack still names the visited room at step 20.
-
-**Done when:** `bunx vitest run` on the new file passes offline; the report object includes both accuracies and the token ratio; the test does not fetch `memorilla/Memorilla-Data`.
-
-**Risk:** a toy graph can be solved by traversal alone, which would make the extractive text pack look redundant. That result is worth having. If graph-path slots score the composed-fact fixture and extractive cosine slots do not, the write-up should say so and M3 should summarize the **path**, not the top cosine chunks.
-
-#### M3 — query-conditioned text summary (estimate: M, after M2)
-
-`mode: 'summary'` calls the existing `LLMProvider` with the query plus a candidate set larger than `maxSlots`, and asks for at most `maxSlots` fact lines. Cache by `(collectionId, collectionVersion, queryHash, budgetTokens)`. Extractive mode remains the default. Summary text still carries `sourceChunkIds`; a line that cites nothing is dropped.
-
-**Done when:** with a stub provider, the readout contains only lines the stub returned and only citations that exist; a missing provider on `mode: 'summary'` throws the typed error; `auto` without a provider stays extractive; the M2 fixture records a third column for the stubbed summary.
-
-**Risk:** the provider can hallucinate a fact that was not in the candidates. The citation filter is the mitigation. This will not reproduce Equation 7, because we cannot backpropagate into the summary through a hosted API.
-
-#### M4 — local latent adapter (estimate: L, gated)
-
-Only if a caller asks to run the released Qwen checkpoint. An optional package or a documented subprocess wraps `snap-stanford/memorilla` and implements `LatentReadoutAdapter`. MemoryJS never decodes the floats. Documentation states the hosted-API limit in the same paragraph as the API.
-
-**Done when:** a contract test with a fake adapter checks shapes N × h_e in and K × h_L out, and the core `bun run test` suite passes with the adapter unset. No `torch`, `transformers`, or `better-sqlite3`-level native build is added to the core package.
-
-**Risk:** the checkpoint is decoder-specific, the personalization folders’ init is inconsistently described (Section 1.3), and the paper does not show cross-family transfer. Shipping M4 as a default would violate the minimal-dependency rule and still fail closed for API-only users.
-
-### 4.5 What this plan explicitly leaves out
-
-- Training a memory module, or a GRPO loop, inside MemoryJS.
-- Vendoring FactKG, TriviaQA, NarrativeQA, or the precomputed embedding shards. Licenses differ by config, and the shards are tens of gigabytes (dataset card).
-- Replacing `HybridSearchManager`, `compressForContext`, or `MemoryEngine` dedup. Those stay. The new readout is another way to **render** a collection for a prompt.
-- Claiming the paper’s 84.33, 44.60, 24.2%, or 27× figures for any MemoryJS build. Those numbers belong to the frozen Qwen stack in Tables 11 and 14 and Section 6.1.
-
-### 4.6 Sequencing
-
-M0 and M1 are useful even if M2’s extractive arm loses on composed facts, because the store and the token ratio are the substrate for M3. M2 is the decision gate for M3: if graph-path slots already solve the fixture, M3 should compress paths, and a general abstractive summary is optional. M4 waits on a concrete caller with a local open-weight decoder. Until that caller exists, the text pack is the product.
+E1 first: it is a wiring fix plus a hash column, and E2's query path is only as good as the vectors it reads. E2 next, in the existing context-window tests. E3 waits for a caller. Paper scores (84.33, 44.60, 24.2%, 27×) stay in Section 1 as Qwen results, not as acceptance thresholds.
