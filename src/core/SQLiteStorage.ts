@@ -475,6 +475,7 @@ export class SQLiteStorage implements IGraphStorage {
 
     // Schema migration for existing DBs (v1.8.0)
     this.migrateEntitiesTable();
+    this.migrateEmbeddingsTable();
 
     // Indexes for fast lookups
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entity_type ON entities(entityType)`);
@@ -636,6 +637,23 @@ export class SQLiteStorage implements IGraphStorage {
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_projectId ON entities(projectId)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_isLatest ON entities(isLatest)`);
     this.db.exec(`CREATE INDEX IF NOT EXISTS idx_entities_content_hash ON entities(contentHash)`);
+  }
+
+  /**
+   * Migrate the embeddings table to add the contentHash column.
+   * Does nothing when the table does not exist yet; `ensureEmbeddingsTable`
+   * creates it with the column.
+   */
+  private migrateEmbeddingsTable(): void {
+    if (!this.db) return;
+
+    const columns = this.db.pragma('table_info(embeddings)') as Array<{ name: string }>;
+    if (columns.length === 0) return;
+
+    const columnNames = new Set(columns.map(c => c.name));
+    if (!columnNames.has('contentHash')) {
+      this.db.exec('ALTER TABLE embeddings ADD COLUMN contentHash TEXT');
+    }
   }
 
   /**
@@ -2295,7 +2313,8 @@ export class SQLiteStorage implements IGraphStorage {
         embedding BLOB NOT NULL,
         embeddingModel TEXT NOT NULL,
         embeddingUpdatedAt TEXT NOT NULL,
-        dimensions INTEGER NOT NULL
+        dimensions INTEGER NOT NULL,
+        contentHash TEXT
       )
     `);
 
@@ -2309,8 +2328,9 @@ export class SQLiteStorage implements IGraphStorage {
    * @param entityName - Name of the entity
    * @param vector - Embedding vector
    * @param model - Model name used for the embedding
+   * @param contentHash - Optional hash of the content the vector was made from; stored as NULL when absent
    */
-  storeEmbedding(entityName: string, vector: number[], model: string): void {
+  storeEmbedding(entityName: string, vector: number[], model: string, contentHash?: string): void {
     if (!this.db || !this.initialized) {
       throw new Error('Database not initialized');
     }
@@ -2321,11 +2341,11 @@ export class SQLiteStorage implements IGraphStorage {
     const buffer = Buffer.from(new Float32Array(vector).buffer);
 
     const stmt = this.db.prepare(`
-      INSERT OR REPLACE INTO embeddings (entityName, embedding, embeddingModel, embeddingUpdatedAt, dimensions)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO embeddings (entityName, embedding, embeddingModel, embeddingUpdatedAt, dimensions, contentHash)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(entityName, buffer, model, new Date().toISOString(), vector.length);
+    stmt.run(entityName, buffer, model, new Date().toISOString(), vector.length, contentHash ?? null);
   }
 
   /**
@@ -2371,6 +2391,24 @@ export class SQLiteStorage implements IGraphStorage {
         const float32Array = new Float32Array(row.embedding.buffer, row.embedding.byteOffset, row.embedding.length / 4);
         return [row.entityName, Array.from(float32Array)] as [string, number[]];
       });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Load the metadata of every stored embedding, without the vectors.
+   *
+   * @returns One entry per embedding with its entity name, model and content hash (null when none was stored)
+   */
+  async loadEmbeddingMetadata(): Promise<Array<{ entityName: string; embeddingModel: string; contentHash: string | null }>> {
+    if (!this.db || !this.initialized) return [];
+
+    try {
+      this.ensureEmbeddingsTable();
+
+      const stmt = this.db.prepare(`SELECT entityName, embeddingModel, contentHash FROM embeddings`);
+      return stmt.all() as Array<{ entityName: string; embeddingModel: string; contentHash: string | null }>;
     } catch {
       return [];
     }
