@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- `vite` moves from 8.0.16 to 8.1.6 in `bun.lock` (with `rolldown` 1.1.5 and four small helper packages), through `bun audit fix`. The advisory GHSA-587h-7wmj-h5pm (HIGH, `launch-editor` before 8.1.6, reached through `vitest > @vitest/mocker > vite`) made `bun audit --audit-level=high` fail in CI on every branch. Dev tooling only: no change to `package.json` or to the published package. Typecheck passes and 8,239 tests pass.
+
 ## [4.3.0] - 2026-10-18
 
 ### Security
