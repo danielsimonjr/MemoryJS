@@ -6,13 +6,18 @@
  * @module __tests__/unit/search/VectorStore.test.ts
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import {
   InMemoryVectorStore,
   SQLiteVectorStore,
   createVectorStore,
   cosineSimilarity,
+  isEmbeddingStorage,
 } from '../../../src/search/VectorStore.js';
+import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 
 describe('cosineSimilarity', () => {
   it('should return 1.0 for identical vectors', () => {
@@ -328,5 +333,114 @@ describe('VectorStore performance', () => {
       expect(r.score).toBeGreaterThanOrEqual(-1);
       expect(r.score).toBeLessThanOrEqual(1);
     });
+  });
+});
+
+describe('SQLiteVectorStore with SQLiteStorage', () => {
+  const vecA = [1, 0, 0];
+  const vecB = [0, 1, 0];
+  let dir: string;
+  let storage: SQLiteStorage;
+
+  beforeEach(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'vectorstore-'));
+    storage = new SQLiteStorage(join(dir, 'graph.db'));
+    await storage.saveGraph({
+      entities: [
+        { name: 'a', entityType: 'test', observations: [] },
+        { name: 'b', entityType: 'test', observations: [] },
+      ],
+      relations: [],
+    });
+  });
+
+  afterEach(() => {
+    storage.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('persists a content hash and reloads it in a new store', async () => {
+    const store1 = new SQLiteVectorStore(storage, 'mock-model');
+    await store1.initialize();
+    store1.add('a', vecA, 'h1');
+
+    const store2 = new SQLiteVectorStore(storage, 'mock-model');
+    await store2.initialize();
+    expect(store2.has('a')).toBe(true);
+    expect(store2.getContentHash('a')).toBe('h1');
+  });
+
+  it('drops rows of another model on initialize', async () => {
+    storage.storeEmbedding('a', vecA, 'unknown');
+
+    const store = new SQLiteVectorStore(storage, 'mock-model');
+    await store.initialize();
+    expect(store.has('a')).toBe(false);
+    expect(store.size()).toBe(0);
+    expect(storage.hasEmbedding('a')).toBe(true);
+  });
+
+  it('add without a hash clears an earlier hash', async () => {
+    const store = new SQLiteVectorStore(storage, 'mock-model');
+    await store.initialize();
+    store.add('a', vecA, 'h1');
+    store.add('a', vecA);
+
+    expect(store.getContentHash('a')).toBeUndefined();
+    const metadata = await storage.loadEmbeddingMetadata();
+    expect(metadata.find(m => m.entityName === 'a')?.contentHash).toBeNull();
+  });
+
+  it('remove clears the hash and the row', async () => {
+    const store = new SQLiteVectorStore(storage, 'mock-model');
+    await store.initialize();
+    store.add('a', vecA, 'h1');
+    store.remove('a');
+
+    expect(store.getContentHash('a')).toBeUndefined();
+    expect(storage.hasEmbedding('a')).toBe(false);
+  });
+
+  it('remove deletes the row before initialize', () => {
+    storage.storeEmbedding('a', vecA, 'mock-model');
+
+    const store = new SQLiteVectorStore(storage, 'mock-model');
+    store.remove('a');
+    expect(storage.hasEmbedding('a')).toBe(false);
+  });
+
+  it('clear removes every hash', async () => {
+    const store = new SQLiteVectorStore(storage, 'mock-model');
+    await store.initialize();
+    store.add('a', vecA, 'h1');
+    store.add('b', vecB, 'h2');
+    store.clear();
+
+    expect(store.getContentHash('a')).toBeUndefined();
+    expect(store.size()).toBe(0);
+  });
+
+  it('initialize loads storage that is not loaded yet', async () => {
+    storage.storeEmbedding('a', vecA, 'mock-model');
+    storage.close();
+    storage = new SQLiteStorage(join(dir, 'graph.db'));
+
+    const store = new SQLiteVectorStore(storage, 'mock-model');
+    await store.initialize();
+    expect(store.has('a')).toBe(true);
+  });
+
+  it('isEmbeddingStorage accepts SQLiteStorage', () => {
+    expect(isEmbeddingStorage(storage)).toBe(true);
+  });
+
+  it('isEmbeddingStorage rejects other values', () => {
+    expect(isEmbeddingStorage({})).toBe(false);
+    expect(isEmbeddingStorage(null)).toBe(false);
+    expect(isEmbeddingStorage({ storeEmbedding() {} })).toBe(false);
+  });
+
+  it('InMemoryVectorStore does not track content hashes', () => {
+    expect('getContentHash' in new InMemoryVectorStore()).toBe(false);
   });
 });
