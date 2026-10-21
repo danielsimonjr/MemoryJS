@@ -1645,8 +1645,22 @@ export interface IVectorStore {
    *
    * @param entityName - Name of the entity
    * @param vector - Embedding vector
+   * @param contentHash - Optional hash of the source content; stores that track hashes keep it with the vector
    */
-  add(entityName: string, vector: number[]): void;
+  add(entityName: string, vector: number[], contentHash?: string): void;
+
+  /**
+   * Load persisted vectors. Callers await it before the first read.
+   */
+  initialize?(): Promise<void>;
+
+  /**
+   * Get the content hash stored with a vector.
+   *
+   * @param entityName - Name of the entity
+   * @returns The stored hash, or `undefined`
+   */
+  getContentHash?(entityName: string): string | undefined;
 
   /**
    * Search for similar vectors.
