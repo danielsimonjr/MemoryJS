@@ -51,7 +51,7 @@ import type { LLMQueryPlannerConfig } from '../search/LLMQueryPlanner.js';
 import { SemanticSearch } from '../search/SemanticSearch.js';
 import { createEmbeddingService } from '../search/EmbeddingService.js';
 import { EmbeddingCache } from '../search/EmbeddingCache.js';
-import { createVectorStore } from '../search/VectorStore.js';
+import { createVectorStore, isEmbeddingStorage } from '../search/VectorStore.js';
 import { IOManager } from '../features/IOManager.js';
 import { TagManager } from '../features/TagManager.js';
 import { AnalyticsManager } from '../features/AnalyticsManager.js';
@@ -858,7 +858,9 @@ export class ManagerContext {
       const embeddingService = createEmbeddingService(config);
 
       if (embeddingService) {
-        const vectorStore = createVectorStore('jsonl');
+        const vectorStore = isEmbeddingStorage(this.storage)
+          ? createVectorStore('sqlite', this.storage, embeddingService.model)
+          : createVectorStore('jsonl');
         const pressure = this.cachePressure.enabled ? this.cachePressure : undefined;
         const embeddingCache = pressure
           ? new EmbeddingCache({ dimensions: embeddingService.dimensions })
