@@ -2,7 +2,7 @@
 
 **Status**: planning only. No code in this change.
 **Added**: 2026-10-18
-**Revised**: 2026-10-21 (paper figures re-checked; mixing rows added to Section 3; E2 extended; mixing map added to Section 4)
+**Revised**: 2026-10-21 (paper figures re-checked; gap review, E4, E5 and mixing map added to Section 4; E2 extended; two audit rows added to Section 3)
 **Paper**: Fallahpour, Idehpour, Kothapalli, Mounier, Wu, Pardis, and Leskovec. *Memorilla: Latent Semantic Memory for LLMs*. arXiv:2610.21375, posted 15 Oct 2026. HTML full text including Appendices A–G: <https://arxiv.org/html/2610.21375>. Abstract: <https://arxiv.org/abs/2610.21375>. Workshop citation on the project site: COLM Workshop on Context Beyond the Window, 2026, <https://openreview.net/forum?id=VV0vvzL783>.
 **Project site**: <https://memory.stanford.edu/>
 
@@ -27,6 +27,8 @@ Do not add a document-collection store, a readout type, a latent-token adapter, 
 2. **E2.** On the existing `ContextPackage`, report how many candidate tokens were considered versus how many were packed, and let `retrieveForContext` rank those candidates with the existing `HybridSearchManager` when the caller passes `queryText`. The caller can also turn on the one-hop neighbor expansion that `HybridSearchManager` already has, so a question that composes facts reaches the connected facts (Section 4, "Mixing map"). Estimate: S.
 
 A third change, **E3**, finishes the stub inside `SummarizationService` so a query can shorten the entities that missed the budget. Build it only if a caller asks. Estimate: S.
+
+Two further items come from the gap review in Section 4. **E4** sets a retrieval style from the question type, through the profile system that already exists, and stays an experiment until a measurement supports it. **E5** counts repeated turns per session, as a cheap proxy for the loops that Section 6 of the paper reports. Build E4 and E5 only after E2 lands.
 
 Soft-token injection, a new Perceiver module, and GRPO training are dropped. No class in `src/` can host them, and they would be new code beside SQLite, FTS, and the context packer.
 
@@ -278,10 +280,10 @@ Audit date 2026-10-18, against `src/`. Each row is one Memorilla idea. "Already 
 **Builds on.**
 
 - `ContextRetrievalOptions` and `ContextPackage` in `src/types/agent-memory.ts`. Add `sourceTokens: number` and `compressionRatio: number` (`sourceTokens / totalTokens`, or `1` when `sourceTokens <= maxTokens`). Both are sums of the `estimateTokens` values `retrieveForContext` already computes for selected and `excluded` entities. `ExcludedEntity.tokens` is the unused side of that sum.
-- `ContextRetrievalOptions.maxSlots?: number`, applied inside the existing `prioritize` loop next to `maxTokens`. Default unset, so current callers keep today's packing. This is the fixed-K idea, expressed as a count of entities the packer already returns, not as hidden vectors.
+- `ContextRetrievalOptions.maxSlots?: number`, applied inside the existing `prioritize` loop next to `maxTokens`. Default unset, so current callers keep today's packing. This is the fixed-K idea, expressed as a count of entities the packer already returns, not as hidden vectors. Figure 10 of the paper does not justify a small default: it cuts a module that was trained at K=16, and quality stays near the closed-book level up to K=4 on PMv2. Add a test that packs the same fixture at `maxSlots` 1, 2, 4, 8 and 16 and checks that the packed list only grows.
 - `SalienceContext.queryText`. When it is set, build the candidate list with `HybridSearchManager` (`semanticSearch` + `rankedSearch` + optional `graphRankPrior`) scoped to those entities, then run the existing salience cut, `IDistillationPolicy`, and `enforceDiversity` on that order. When it is unset, keep the current recency prefilter. The lexical half is `RankedSearch`: TF-IDF scoring, and on SQLite a candidate filter through `SQLiteStorage.fullTextSearch` (FTS5 `bm25()`). Do not construct `BM25Search`.
 - `HybridSearchManager.search` takes a `ReadonlyKnowledgeGraph`, not a list of names. To scope the search to the agent entities, pass a graph that holds only those entities and their relations. `SymbolicFilters` (`entityType`, tags, `projectId`) can narrow it further.
-- `ContextRetrievalOptions.composeHops?: 0 | 1` (default 0). When it is `1` and `queryText` is set, pass `expandNeighbors: { hops: 1, topK, damping }` to the same `search` call. This needs a `GraphRankPrior` on the `HybridSearchManager`; the existing `lookFor` option can carry the query text so that the neighbors rank by it. This is the graph analogue of Figure 4: the connected facts enter the candidate list before the token budget cuts it. Follow the pattern of the other graph signals: an option plus an environment knob (for example `MEMORY_CONTEXT_COMPOSE_HOPS`), where `0` keeps today's behavior.
+- `ContextRetrievalOptions.composeHops?: 0 | 1` (default 0). When it is `1` and `queryText` is set, pass `expandNeighbors: { hops: 1, topK, damping }` to the same `search` call. This needs a `GraphRankPrior` on the `HybridSearchManager`; the existing `lookFor` option can carry the query text so that the neighbors rank by it. The semantic channel matters here: Figure 6 of the paper shows a question with no words in common with the history that answers it, and the lexical factor in `SalienceEngine` cannot rank that history. This is the graph analogue of Figure 4: the connected facts enter the candidate list before the token budget cuts it. Follow the pattern of the other graph signals: an option plus an environment knob (for example `MEMORY_CONTEXT_COMPOSE_HOPS`), where `0` keeps today's behavior.
 - `mustInclude` stays the way a caller pins the latest turns, matching Section 6.1's "same history in every condition".
 - Passthrough is the current behavior: entities that fit are returned whole. The new ratio is `1` in that case, which is the PubMedQA lesson (Table 11: compression lowered accuracy when the source was 324 tokens).
 
@@ -303,6 +305,54 @@ Audit date 2026-10-18, against `src/`. Each row is one Memorilla idea. "Already 
 
 **Risk.** The provider can invent a sentence the entities do not contain. Keep the fallback path as the default until a caller opts in. This does not train Equation 7. Estimate: S. Do not start E3 in the same change as E1.
 
+### Gap review: paper findings that the first version of this plan did not carry into a build decision
+
+Method: the paper text (main body and Appendices A–G) was compared with Sections 1 to 4 of this plan, finding by finding. The rows below are the findings that the plan either did not mention or mentioned without a decision. Numbers are the ones printed in the paper.
+
+| Paper finding | Evidence in the paper | Code that can use it | Decision |
+| --- | --- | --- | --- |
+| Compression helps "why" and "how" questions; retrieval helps "who" and "which" questions. | NarrativeQA: Memorilla leads RAG-50 by 4.91 ROUGE-L on "why" and 7.02 on "how"; RAG-50 leads by 3.45 on "who" and 2.93 on "which" (Figure 4a). The authors note that question type also varies with answer length and entity frequency. | `ContextProfileManager.inferProfile` (regex rules, five profiles), `applyProfile` in `ContextWindowManager`. | **E4**, experiment, default unchanged. |
+| The advantage grows with the number of composed facts. | FactKG: RAG-50 falls from 78.73 to 51.75 as composed facts go from 1 to 4; Memorilla stays between 80 and 89; the lead over RAG-50 grows from 4.23 to 7.59 points (Figure 4b, 4c). 73.5% of FactKG claims have more than 50 chunks, so part of the gap is evidence that RAG-50 never retrieves. | `HybridSearchManager.expandNeighbors`, `lookFor`, `GraphRankPrior`. | Folded into **E2** (`composeHops`). |
+| The relevant history can share no words with the question. | Figure 6: the question has no lexical overlap with the iron-deficiency history that answers it. | `SalienceEngine.calculateQueryRelevance` is lexical today (TF-IDF cosine). The semantic channel of `HybridSearchManager` and the vectors of E1 are not. | Folded into **E2** (`queryText` ranking with the semantic channel) and **E1** (stored vectors). |
+| The errors that remain need facts to be linked, not found. | Section 5, "What neither method solves": on PersonalizationV4 many shared errors need facts that each appear somewhere in the history. | `composeHops`, `explain: true` evidence paths. | Folded into **E2**. No separate item. |
+| FactKG errors lean toward "false". | True claims are 89.5% of the claims that both methods get wrong and 28.7% of those both get right (Section 5). The authors read this as a decision threshold problem. | None. This is a property of a claim-verification task, not of memory. | **Dropped.** |
+| A global memory writes clue queries that guide retrieval (MemoRAG). | MemoRAG is the best baseline on PersonalizationV4 (67.88 against 66.65 for Memorilla) and scores 80.38 on FactKG (Table 11; Appendix C). The paper does not ablate the clue step. | `ActiveRetrievalController` (query rewriting rounds), `LLMQueryPlanner`, `wakeUp` (L0 and L1 summary text). | **Caller pattern only.** A caller can run `ActiveRetrievalController` with the `wakeUp` text as context and pass the final query to `retrieveForContext`. No evidence yet that justifies a built-in clue step. |
+| Write-time extraction and consolidation (Mem0). | Appendix C; Mem0 is a baseline in Table 11. | `MemoryDistiller` through `IOManager.ingest`, `ConsolidationPipeline`, `MemoryEngine` dedup. | **Covered.** |
+| Fewer navigation loops with learned memory. | Section 6 and Figure 7: the in-context agent loops between explored rooms; the memory agent reaches the goal. The paper measures loops on game states. | `MemoryEngine` already detects a repeated turn (`checkDuplicate`, event `memoryEngine:duplicateDetected`). | **E5**, optional. A repeat count is a proxy, not the paper's measure. |
+| A smaller slot count at inference loses quality without retraining. | Figure 10: slots are the first K of a module trained at K=16. PMv2 is 26.58 at K=4 (closed book 25.64) and 44.60 at K=16. PV4 starts at 57.66 (closed book 58.30), dips at K=2 and 4, and reaches 66.65 at K=16. | `maxSlots` in E2. | **Note on E2.** This truncates a trained module. It is no evidence for a good small default. Leave `maxSlots` unset. |
+| The best slot count depends on the task. | Figure 9: FactKG, TriviaQA and NarrativeQA rise with every doubling of K; PubMedQA and LaMP-4 stay flat at low K; training at K=128 does not help. | `ProfileConfig` and `ContextRetrievalOptions.maxTokens`. | **Note.** A caller or a profile sets `maxTokens` per task. No global default changes. |
+| A larger encoder changes little. | Figure 12 (Appendix E.5): Qwen3-Embedding-4B to 8B moves every score by 1.3 or less, except PubMedQA at +3.00, which is 3 of 100 questions. | `EmbeddingService`, `MEMORY_EMBEDDING_PROVIDER` (default `local`). | **Config note.** Do not buy a larger embedding model for the hybrid channel on this evidence. |
+| A synthetic persona benchmark (PersonalizationV4). | Appendix D.1 gives the data pipeline. | `IOManager.ingest` (`chunkBy: 'exchange'`). | **Dropped for now.** E2 uses small hand-made fixtures. Revisit if a recall benchmark is needed. |
+
+#### E4. Question-type profiles (experiment)
+
+**Goal.** A question that asks "why" or "how" gets a context that favors connected facts and, when a provider exists, summaries of the entities that missed the budget. A question that asks "who", "which", "when" or "where" gets verbatim entities. Today the profile system infers only incident, planning, handoff and review from the query.
+
+**Builds on.**
+
+- `ContextProfileManager.inferProfile` (`src/agent/ContextProfileManager.ts`). Add two rules after the four existing ones, so a query that matches an existing profile keeps it: a lookup rule and a synthesis rule, both anchored at the start of the question.
+- `ContextProfile` (`src/types/agent-memory.ts`) gains `'lookup'` and `'synthesis'`. Adding members to a string union does not break callers.
+- `ProfileConfig` gains an optional `retrieval?: { composeHops?: 0 | 1; summarizeExcluded?: boolean }`. The two new profiles copy the salience weights, temporal focus and budget split of `default`. Only `retrieval` differs.
+- `ContextWindowManager.applyProfile` already merges profile values into the options and lets an explicit option win. It copies `retrieval` into `composeHops` (E2) and into the E3 switch.
+
+**New code.** Two regular expressions, two preset entries, one optional field, and a copy in `applyProfile`. No new class.
+
+**Done when.** `tests/unit/agent/ContextProfileManager.test.ts` shows: "why did the build fail" resolves to `synthesis`; "who owns the build" resolves to `lookup`; the four existing profiles resolve as before; a query that matches both an existing rule and a question word keeps the existing profile. A `ContextWindowManager` test shows that `profile: 'auto'` with a "why" question sets `composeHops` to 1 and that an explicit `composeHops: 0` wins.
+
+**Risk.** The paper's own caveat applies: question type is confounded with answer length and entity frequency. Ship the profiles with `retrieval` empty, and fill it only after a measurement on this library's own data shows a gain. Estimate: S. Start after E2.
+
+#### E5. Repeat count per session (optional)
+
+**Goal.** A caller can ask how many turns of a session were repeats, as a cheap signal that an agent is looping.
+
+**Builds on.** `MemoryEngine.addTurn` already returns `duplicateDetected` and emits `memoryEngine:duplicateDetected`. Keep a per-session counter next to the existing session state and expose it through the existing `getSessionTurns` result or one getter. `PatternDetector` and `FailureDistillation` stay the place for deeper analysis.
+
+**New code.** One counter and one getter. No new module.
+
+**Done when.** `tests/unit/agent/MemoryEngine.test.ts` shows the counter rising for an exact repeat and a Jaccard repeat, staying at 0 for distinct turns, and resetting with `deleteSession`.
+
+**Risk.** A repeat of text is not a loop in the world. Name the getter for what it counts. Do not present it as the measure in Section 6 of the paper. Build it only if a caller asks. Estimate: S.
+
 ### Mixing map: Memorilla idea, existing module, how they combine
 
 Each row joins a Memorilla idea to a module that already ships. The "Default" column is what a caller gets without any new option. Every new option defaults to today's behavior.
@@ -316,8 +366,9 @@ Each row joins a Memorilla idea to a module that already ships. The "Default" co
 | Keep verbatim text when it fits | `retrieveForContext` passthrough, `mustInclude` | The ratio is `1` when the source fits. Pinned turns stay verbatim, as in Section 6.1 of the paper. | Unchanged. | E2 |
 | Hybrid of verbatim hits and a compressed view | `excluded[]` of `ContextPackage`, `SummarizationService`, `LLMProvider` | The package keeps the verbatim winners. Only the entities that missed the budget get a query-aware summary, appended after the winners. | No provider: extractive pack. | E3 |
 | Show why an item was chosen | `explain: true`, `EvidencePathBuilder`, `matchedLayers` | A caller that wants provenance calls `HybridSearchManager.search` with `explain: true`. No change to `ContextPackage`. | Off. | none |
-| Adapt the read to the task | `ContextProfileManager` (`profile: 'auto'`), `RoleProfiles` | Profile and role presets already set salience weights and budget splits from the query and the agent role. They run before E2's ranking and stay as they are. | Unchanged. | none |
+| Adapt the read to the task | `ContextProfileManager` (`profile: 'auto'`), `RoleProfiles` | Profile and role presets already set salience weights and budget splits from the query and the agent role. They run before E2's ranking and stay as they are. E4 adds two question-type profiles to the same mechanism. | Unchanged until E4. | E4 |
 | Multi-step recall for hard questions | `ActiveRetrievalController`, `MemoryReconstructor` | A caller runs these first and passes the final query text to `retrieveForContext`. The packer stays single-pass. | Unchanged. | none |
+| Spot a looping agent | `MemoryEngine` duplicate detection | A per-session repeat count, read by the caller. | Not built unless asked. | E5 |
 
 Order of the pipeline after E1 to E3, for a call with `queryText`: profile resolution, then hybrid ranking over the agent entities (with optional neighbor expansion), then `SalienceEngine`, `IDistillationPolicy` and `enforceDiversity`, then the budget cut, then (only with a provider) a summary of the `excluded[]` entities, then `MemoryFormatter`. A call without `queryText` follows today's path.
 
@@ -333,4 +384,4 @@ Order of the pipeline after E1 to E3, for a call with `queryText`: profile resol
 
 ### Sequencing
 
-E1 first: it is a wiring fix plus a hash column, and E2's query path is only as good as the vectors it reads. E2 next, in the existing context-window tests, in two commits: the report fields and `maxSlots` first, then the `queryText` ranking and `composeHops`. E3 waits for a caller. Paper scores (84.33, 44.60, 24.2%, 27×) stay in Section 1 as Qwen results, not as acceptance thresholds.
+E1 first: it is a wiring fix plus a hash column, and E2's query path is only as good as the vectors it reads. E2 next, in the existing context-window tests, in two commits: the report fields and `maxSlots` first, then the `queryText` ranking and `composeHops`. E3 waits for a caller. E4 follows E2 and starts with empty `retrieval` settings. E5 waits for a caller. Paper scores (84.33, 44.60, 24.2%, 27×) stay in Section 1 as Qwen results, not as acceptance thresholds.
