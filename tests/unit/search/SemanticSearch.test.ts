@@ -6,13 +6,18 @@
  * @module __tests__/unit/search/SemanticSearch.test.ts
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   SemanticSearch,
   entityToText,
   MockEmbeddingService,
   InMemoryVectorStore,
 } from '../../../src/search/index.js';
+import { SQLiteVectorStore } from '../../../src/search/VectorStore.js';
+import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import type { Entity, KnowledgeGraph } from '../../../src/types/index.js';
 
 // Helper to create test entities
@@ -367,5 +372,124 @@ describe('SemanticSearch with default vector store', () => {
     const semanticSearch = new SemanticSearch(embeddingService);
 
     expect(semanticSearch.getVectorStore()).toBeInstanceOf(InMemoryVectorStore);
+  });
+});
+
+/** One open "process": its own storage, embedding service, vector store and search. */
+interface SearchProcess {
+  storage: SQLiteStorage;
+  embedding: MockEmbeddingService;
+  store: SQLiteVectorStore;
+  search: SemanticSearch;
+}
+
+describe('SemanticSearch with SQLiteVectorStore', () => {
+  let dir: string;
+  let open: SearchProcess[];
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), 'semantic-search-'));
+    open = [];
+  });
+
+  afterEach(() => {
+    for (const proc of open) {
+      proc.storage.close();
+    }
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  function openProcess(): SearchProcess {
+    const storage = new SQLiteStorage(join(dir, 'memory.db'));
+    const embedding = new MockEmbeddingService(8);
+    const store = new SQLiteVectorStore(storage, 'mock-model');
+    const proc = { storage, embedding, store, search: new SemanticSearch(embedding, store) };
+    open.push(proc);
+    return proc;
+  }
+
+  function closeProcess(proc: SearchProcess): void {
+    proc.storage.close();
+    open.splice(open.indexOf(proc), 1);
+  }
+
+  /** Save entities and load them back, so each entity carries its stored contentHash. */
+  async function saveAndLoad(storage: SQLiteStorage, entities: Entity[]) {
+    await storage.saveGraph({ entities, relations: [] });
+    return storage.loadGraph();
+  }
+
+  it('skips unchanged entities in a second process', async () => {
+    const first = openProcess();
+    const graph = await saveAndLoad(first.storage, [
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h1' },
+    ]);
+    expect(await first.search.indexAll(graph)).toEqual({ indexed: 1, skipped: 0, errors: 0 });
+    closeProcess(first);
+
+    const second = openProcess();
+    const embedSpy = vi.spyOn(second.embedding, 'embedBatch');
+    const reloaded = await second.storage.loadGraph();
+    expect(await second.search.indexAll(reloaded)).toEqual({ indexed: 0, skipped: 1, errors: 0 });
+    expect(embedSpy).not.toHaveBeenCalled();
+  });
+
+  it('re-embeds once when the contentHash changes', async () => {
+    const proc = openProcess();
+    const graph = await saveAndLoad(proc.storage, [
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h1' },
+    ]);
+    expect(await proc.search.indexAll(graph)).toMatchObject({ indexed: 1 });
+
+    const changed = await saveAndLoad(proc.storage, [
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h2' },
+    ]);
+    expect(await proc.search.indexAll(changed)).toMatchObject({ indexed: 1 });
+    expect(await proc.search.indexAll(changed)).toMatchObject({ skipped: 1 });
+  });
+
+  it('re-embeds a row that has no stored hash once', async () => {
+    const proc = openProcess();
+    const graph = await saveAndLoad(proc.storage, [
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h1' },
+    ]);
+    proc.store.add('a', [1, 0, 0, 0, 0, 0, 0, 0]);
+    expect(await proc.search.indexAll(graph)).toMatchObject({ indexed: 1 });
+    expect(await proc.search.indexAll(graph)).toMatchObject({ skipped: 1 });
+  });
+
+  it('skips by name when the entity has no contentHash', async () => {
+    const first = openProcess();
+    const graph = await saveAndLoad(first.storage, [createTestEntity('a', 'thing', ['alpha'])]);
+    expect(await first.search.indexAll(graph)).toMatchObject({ indexed: 1 });
+    closeProcess(first);
+
+    const second = openProcess();
+    const reloaded = await second.storage.loadGraph();
+    expect(await second.search.indexAll(reloaded)).toEqual({ indexed: 0, skipped: 1, errors: 0 });
+  });
+
+  it('search before indexAll finds persisted vectors', async () => {
+    const first = openProcess();
+    const graph = await saveAndLoad(first.storage, [
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h1' },
+    ]);
+    await first.search.indexAll(graph);
+    closeProcess(first);
+
+    const second = openProcess();
+    const reloaded = await second.storage.loadGraph();
+    const results = await second.search.search(reloaded, 'x', 10, -1);
+    expect(results.map(r => r.entity.name)).toContain('a');
+  });
+
+  it('keeps the old behavior with InMemoryVectorStore', async () => {
+    const embedding = new MockEmbeddingService(8);
+    const search = new SemanticSearch(embedding, new InMemoryVectorStore());
+    const graph = createTestGraph([
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h1' },
+    ]);
+    expect(await search.indexAll(graph)).toMatchObject({ indexed: 1 });
+    expect(await search.indexAll(graph)).toMatchObject({ skipped: 1 });
   });
 });

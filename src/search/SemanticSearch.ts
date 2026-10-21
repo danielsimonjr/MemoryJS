@@ -89,6 +89,9 @@ export class SemanticSearch {
   private embeddingCache?: EmbeddingCache;
   private onCacheInsert?: () => void;
 
+  /** Pending or completed load of the vector store */
+  private storeReady?: Promise<void>;
+
   /**
    * Create a semantic search manager.
    *
@@ -164,10 +167,40 @@ export class SemanticSearch {
   }
 
   /**
+   * Load the vector store once before the first read or write.
+   *
+   * A rejected load is cleared, so a later call tries again.
+   *
+   * @returns Promise that resolves when the store is ready
+   */
+  private ensureStoreReady(): Promise<void> {
+    if (!this.storeReady) {
+      this.storeReady = this.vectorStore.initialize?.() ?? Promise.resolve();
+      this.storeReady.catch(() => {
+        this.storeReady = undefined;
+      });
+    }
+    return this.storeReady;
+  }
+
+  /**
+   * Check whether an entity's stored vector was built from different content.
+   *
+   * @param entity - Entity to check
+   * @returns True when the entity has a contentHash that differs from the stored hash
+   */
+  private isStale(entity: Entity): boolean {
+    if (typeof this.vectorStore.getContentHash !== 'function') return false;
+    if (typeof entity.contentHash !== 'string') return false;
+    return this.vectorStore.getContentHash(entity.name) !== entity.contentHash;
+  }
+
+  /**
    * Index all entities in the knowledge graph.
    *
    * Generates embeddings for all entities and stores them in the vector store.
-   * Can be called incrementally - only indexes entities that aren't already indexed.
+   * Can be called incrementally - only indexes entities that aren't already indexed,
+   * or whose contentHash differs from the stored hash.
    *
    * Phase 9B: Supports cancellation via AbortSignal in options.
    *
@@ -189,6 +222,7 @@ export class SemanticSearch {
 
     // Check for early cancellation
     checkCancellation(signal, 'indexAll');
+    await this.ensureStoreReady();
 
     let indexed = 0;
     let skipped = 0;
@@ -200,7 +234,7 @@ export class SemanticSearch {
     // Collect entities to index
     const toIndex: Entity[] = [];
     for (const entity of entities) {
-      if (forceReindex || !this.vectorStore.has(entity.name)) {
+      if (forceReindex || !this.vectorStore.has(entity.name) || this.isStale(entity)) {
         toIndex.push(entity);
       } else {
         skipped++;
@@ -217,7 +251,7 @@ export class SemanticSearch {
         const embeddings = await this.embedEntityBatch(batch);
 
         for (let j = 0; j < batch.length; j++) {
-          this.vectorStore.add(batch[j].name, embeddings[j]);
+          this.vectorStore.add(batch[j].name, embeddings[j], batch[j].contentHash);
           indexed++;
         }
       } catch {
@@ -232,7 +266,7 @@ export class SemanticSearch {
               `document:${entity.name}`,
               text,
             );
-            this.vectorStore.add(entity.name, embedding);
+            this.vectorStore.add(entity.name, embedding, entity.contentHash);
             indexed++;
           } catch {
             errors++;
@@ -260,9 +294,10 @@ export class SemanticSearch {
    */
   async indexEntity(entity: Entity): Promise<boolean> {
     try {
+      await this.ensureStoreReady();
       const text = entityToText(entity);
       const embedding = await this.embedCached(`document:${entity.name}`, text);
-      this.vectorStore.add(entity.name, embedding);
+      this.vectorStore.add(entity.name, embedding, entity.contentHash);
       this.indexedCount = this.vectorStore.size();
       return true;
     } catch {
@@ -317,6 +352,7 @@ export class SemanticSearch {
     limit: number = SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT,
     minSimilarity: number = SEMANTIC_SEARCH_LIMITS.MIN_SIMILARITY
   ): Promise<SemanticSearchResult[]> {
+    await this.ensureStoreReady();
     // Ensure limit is within bounds
     const effectiveLimit = Math.min(limit, SEMANTIC_SEARCH_LIMITS.MAX_LIMIT);
 
@@ -366,6 +402,7 @@ export class SemanticSearch {
     limit: number = SEMANTIC_SEARCH_LIMITS.DEFAULT_LIMIT,
     minSimilarity: number = SEMANTIC_SEARCH_LIMITS.MIN_SIMILARITY
   ): Promise<SemanticSearchResult[]> {
+    await this.ensureStoreReady();
     // Get the entity's embedding
     const embedding = this.vectorStore.get(entityName);
     if (!embedding) {
