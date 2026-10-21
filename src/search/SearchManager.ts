@@ -292,6 +292,16 @@ export class SearchManager {
     query: string,
     options: SearchOptionsWithTracking
   ): Promise<KnowledgeGraph>;
+  /**
+   * Shared implementation of the two `searchNodesRanked` overloads.
+   *
+   * @param query - Search query text
+   * @param tagsOrOptions - Tag filter (positional form) or a `SearchOptionsWithTracking` object
+   * @param minImportance - Minimum importance (0-10), positional form only
+   * @param maxImportance - Maximum importance (0-10), positional form only
+   * @param limit - Maximum number of results, positional form only
+   * @returns Ranked results (positional form) or a knowledge graph (options form)
+   */
   async searchNodesRanked(
     query: string,
     tagsOrOptions?: string[] | SearchOptionsWithTracking,
