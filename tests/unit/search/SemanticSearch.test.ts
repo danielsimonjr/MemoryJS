@@ -483,6 +483,38 @@ describe('SemanticSearch with SQLiteVectorStore', () => {
     expect(results.map(r => r.entity.name)).toContain('a');
   });
 
+  it('loads the store once for concurrent first calls', async () => {
+    const proc = openProcess();
+    const graph = await saveAndLoad(proc.storage, [
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h1' },
+    ]);
+    const initSpy = vi.spyOn(proc.store, 'initialize');
+
+    await Promise.all([
+      proc.search.search(graph, 'x', 10, -1),
+      proc.search.indexAll(graph),
+      proc.search.search(graph, 'y', 10, -1),
+    ]);
+
+    expect(initSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries the load after the store initialize rejects once', async () => {
+    const proc = openProcess();
+    const graph = await saveAndLoad(proc.storage, [
+      { ...createTestEntity('a', 'thing', ['alpha']), contentHash: 'h1' },
+    ]);
+    const realInit = proc.store.initialize.bind(proc.store);
+    const initSpy = vi
+      .spyOn(proc.store, 'initialize')
+      .mockRejectedValueOnce(new Error('disk busy'))
+      .mockImplementation(realInit);
+
+    await expect(proc.search.indexAll(graph)).rejects.toThrow('disk busy');
+    expect(await proc.search.indexAll(graph)).toMatchObject({ indexed: 1 });
+    expect(initSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps the old behavior with InMemoryVectorStore', async () => {
     const embedding = new MockEmbeddingService(8);
     const search = new SemanticSearch(embedding, new InMemoryVectorStore());
