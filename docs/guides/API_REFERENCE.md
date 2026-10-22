@@ -1986,7 +1986,7 @@ class MemoryEngine extends EventEmitter {
 
   getRepeatedTurnCount(sessionId: string): number;
 
-  deleteSession(sessionId: string): Promise<void>;
+  deleteSession(sessionId: string): Promise<{ deleted: number }>;
   listSessions(): Promise<string[]>;
 }
 // Events: memoryEngine:turnAdded / duplicateDetected / sessionDeleted
