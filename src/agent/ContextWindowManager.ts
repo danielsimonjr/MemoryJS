@@ -200,7 +200,8 @@ export class ContextWindowManager {
    * When set and `context.queryText` is non-blank, `retrieveForContext` orders the
    * candidates by hybrid rank before the salience cut. Only entities that hybrid
    * search returns enter the result, plus must-include entities. An entity with no
-   * lexical or semantic match drops out. Without a set search, retrieval is unchanged.
+   * lexical or semantic match drops out. If the search throws, retrieval logs a warning and
+   * uses the salience order. Without a set search, retrieval is unchanged.
    *
    * @param search - A hybrid search manager, or undefined to disable query ranking.
    */
@@ -409,18 +410,26 @@ export class ContextWindowManager {
     }
 
     const queryText = context.queryText?.trim();
-    const queryMode = !!queryText && !!this.hybridSearch;
+    let queryMode = !!queryText && !!this.hybridSearch;
 
     if (queryMode) {
-      // Query mode: hybrid search orders the candidates before the salience cut
-      candidates = await this.rankByQuery(
-        candidates,
-        graph,
-        queryText,
-        mustInclude,
-        composeHops
-      );
-    } else if (candidates.length > this.config.maxEntitiesToConsider) {
+      // Query mode: hybrid search orders the candidates before the salience cut.
+      // A failing search must not fail retrieval: fall back to the salience path.
+      try {
+        candidates = await this.rankByQuery(
+          candidates,
+          graph,
+          queryText!,
+          mustInclude,
+          composeHops
+        );
+      } catch (err) {
+        logger.warn('[ContextWindowManager.retrieveForContext] hybrid search failed, using salience order:', err);
+        queryMode = false;
+      }
+    }
+
+    if (!queryMode && candidates.length > this.config.maxEntitiesToConsider) {
       // Limit candidates for performance
       // Cheap metadata-only prefilter before the comparatively expensive
       // context-aware salience pass. Must-includes bypass the cap.
