@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.2.0 | **Last Updated**: 2026-10-18
+**Version**: 4.3.0 | **Last Updated**: 2026-10-21
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -3017,7 +3017,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 | `../search/SemanticSearch.js` | `SemanticSearch` | Import |
 | `../search/EmbeddingService.js` | `createEmbeddingService` | Import |
 | `../search/EmbeddingCache.js` | `EmbeddingCache` | Import |
-| `../search/VectorStore.js` | `createVectorStore` | Import |
+| `../search/VectorStore.js` | `createVectorStore, isEmbeddingStorage` | Import |
 | `../features/IOManager.js` | `IOManager` | Import |
 | `../features/TagManager.js` | `TagManager` | Import |
 | `../features/AnalyticsManager.js` | `AnalyticsManager` | Import |
@@ -4557,7 +4557,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `InMemoryVectorStore`, `SQLiteVectorStore`
 - Interfaces: `SQLiteStorageWithEmbeddings`
-- Functions: `createVectorStore`
+- Functions: `isEmbeddingStorage`, `createVectorStore`
 - Re-exports: `cosineSimilarity`
 
 ---
@@ -5591,13 +5591,13 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 292 |
 | Total Modules | 12 |
-| Total Lines of Code | 103701 |
-| Total Exports | 2030 |
+| Total Lines of Code | 103870 |
+| Total Exports | 2031 |
 | Total Re-exports | 1336 |
 | Total Classes | 233 |
 | Total Interfaces | 620 |
-| Total Functions | 322 |
-| Total Type Guards | 30 |
+| Total Functions | 323 |
+| Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 476 |
 | Runtime Circular Deps | 0 |
@@ -5608,5 +5608,5 @@ graph TD
 
 ---
 
-*Last Updated*: 2026-10-18
-*Version*: 4.2.0
+*Last Updated*: 2026-10-21
+*Version*: 4.3.0

@@ -4,7 +4,7 @@
 
 # Unused Files and Exports Analysis
 
-**Generated**: 2026-10-18
+**Generated**: 2026-10-21
 
 ## Summary
 
@@ -175,7 +175,7 @@ support exports that ARE used, so they cannot be deleted in isolation.
 
 ### `src/search/SearchManager.ts`
 
-- `SearchOptionsWithTracking` (interface) — 12 in-file refs
+- `SearchOptionsWithTracking` (interface) — 13 in-file refs
 
 ### `src/search/SearchSuggestions.ts`
 

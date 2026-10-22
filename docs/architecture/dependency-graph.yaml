@@ -1,10 +1,10 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
-  version: 4.2.0
-  lastUpdated: "2026-10-18"
+  version: 4.3.0
+  lastUpdated: "2026-10-21"
   totalFiles: 292
   totalModules: 12
-  totalExports: 2030
+  totalExports: 2031
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -7142,6 +7142,7 @@ modules:
         - file: ../search/VectorStore.js
           imports:
             - createVectorStore
+            - isEmbeddingStorage
         - file: ../features/IOManager.js
           imports:
             - IOManager
@@ -10567,6 +10568,7 @@ modules:
           reExport: true
       exports:
         - cosineSimilarity
+        - isEmbeddingStorage
         - createVectorStore
         - InMemoryVectorStore
         - SQLiteVectorStore
@@ -10578,6 +10580,7 @@ modules:
       interfaces:
         - SQLiteStorageWithEmbeddings
       functions:
+        - isEmbeddingStorage
         - createVectorStore
   security:
     src/security/ABACPolicy.ts:
@@ -14169,12 +14172,12 @@ reachability:
 statistics:
   totalTypeScriptFiles: 292
   totalModules: 12
-  totalLinesOfCode: 103701
-  totalExports: 2030
+  totalLinesOfCode: 103870
+  totalExports: 2031
   totalClasses: 233
   totalInterfaces: 620
-  totalFunctions: 322
-  totalTypeGuards: 30
+  totalFunctions: 323
+  totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
   totalReExports: 1336

@@ -250,10 +250,10 @@ Most of the paper's *system shape* is already in this repo. Chunks are entities 
 
 What is actually missing is wiring and two fields:
 
-#### E1. Point semantic search at the embeddings table — estimate S
-- `ManagerContext.semanticSearch` calls `createVectorStore('jsonl')`, so `embeddings` is never the live store. When storage is `SQLiteStorage`, call `createVectorStore('sqlite', this.storage, model)` (`src/search/VectorStore.ts`). JSONL stays `InMemoryVectorStore`.
-- `SemanticSearch.indexAll` skips by name. Also re-embed when `entity.contentHash` differs from a new nullable `embeddings.contentHash` column written by the existing `storeEmbedding`. `EmbeddingCache.get(key, text)` already does the in-process version of this check.
-- Tests: extend `tests/unit/search/SemanticSearch.test.ts` and `tests/unit/search/VectorStore.test.ts`. No new module.
+#### E1. ~~Point semantic search at the embeddings table~~ — ✅ shipped
+- With `SQLiteStorage`, `ManagerContext.semanticSearch` calls `createVectorStore('sqlite', this.storage, model)` (`src/search/VectorStore.ts`). The `embeddings` table is the live store. JSONL stays `InMemoryVectorStore`.
+- `SemanticSearch.indexAll` skips unchanged entities. It re-embeds an entity when `entity.contentHash` differs from the nullable `embeddings.contentHash` column that `storeEmbedding` writes.
+- Tests: `tests/unit/search/SemanticSearch.test.ts` and `tests/unit/search/VectorStore.test.ts`. No new module.
 
 #### E2. Candidate-token ratio, optional slot cap, query rank via hybrid search — estimate S
 - Add `sourceTokens` and `compressionRatio` on `ContextPackage` (`src/types/agent-memory.ts`) from the `estimateTokens` sums `retrieveForContext` already computes. Ratio is 1 when the source fits (PubMedQA lesson, Table 11).

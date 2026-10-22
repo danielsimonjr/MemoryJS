@@ -358,14 +358,15 @@ export const OPENAI_API_CONFIG = {
 ```typescript
 import { createVectorStore, InMemoryVectorStore, SQLiteVectorStore } from '@danielsimonjr/memoryjs';
 
-// Auto-select based on storage type
-const vectorStore = createVectorStore('memory', storage);
+// Select by storage type: 'jsonl' (in-memory) or 'sqlite'
+const vectorStore = createVectorStore('sqlite', sqliteStorage, 'model-name');
 
 // Explicit in-memory store
 const inMemory = new InMemoryVectorStore();
 
 // Explicit SQLite store (requires SQLiteStorage)
-const sqliteVector = new SQLiteVectorStore(sqliteStorage);
+const sqliteVector = new SQLiteVectorStore(sqliteStorage, 'model-name');
+await sqliteVector.initialize(); // load the stored vectors before the first search
 ```
 
 ### Embedding Cache Configuration
