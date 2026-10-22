@@ -346,7 +346,7 @@ interface ContextPackage {
 
 `sourceTokens` and `compressionRatio` are required. Code that builds a `ContextPackage` by hand must set both.
 
-**Query-ranked retrieval:** call `setHybridSearch(search)` on the `ContextWindowManager` to attach a hybrid search. When `context.queryText` is non-blank, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. Without an attached search, retrieval is unchanged. No production code calls `setHybridSearch`.
+**Query-ranked retrieval:** call `setHybridSearch(search)` on the `ContextWindowManager` to attach a hybrid search. When `context.queryText` is non-blank, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. Without an attached search, retrieval is unchanged. No production code calls `setHybridSearch`.
 
 **Example:**
 ```typescript
