@@ -1117,6 +1117,24 @@ describe('ContextWindowManager', () => {
       expect(result.memories).toHaveLength(16);
     });
 
+    it('caps the memories in retrieveWithBudgetAllocation', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveWithBudgetAllocation({
+        maxTokens: 1000,
+        maxSlots: 4,
+        mustInclude: ['e16'],
+      });
+
+      const names = result.memories.map((m) => m.name);
+      expect(names).toHaveLength(4);
+      expect(names).toContain('e16');
+      const slotCut = result.excluded.filter((e) => e.reason === 'slot_limit');
+      expect(slotCut.length).toBeGreaterThan(0);
+      const excludedTokens = result.excluded.reduce((sum, e) => sum + e.tokens, 0);
+      expect(result.sourceTokens).toBe(result.totalTokens + excludedTokens);
+    });
+
     it('prioritize accepts maxSlots', async () => {
       const manager = createBudgetManager([]);
       const entities = createNamedEntities(sixteenNames());
