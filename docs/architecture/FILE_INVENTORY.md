@@ -407,7 +407,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ConsolidationScheduler.test.ts` | tests | test | 363 |
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
-| `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 499 |
+| `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
 | `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1422 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1164 |
 | `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 382 |
@@ -429,7 +429,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/ImportanceScorer.test.ts` | tests | test | 79 |
 | `tests/unit/agent/InMemoryBackend.test.ts` | tests | test | 99 |
 | `tests/unit/agent/memoryBackend-wiring.test.ts` | tests | test | 71 |
-| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 697 |
+| `tests/unit/agent/MemoryEngine.test.ts` | tests | test | 739 |
 | `tests/unit/agent/MemoryFormatter.test.ts` | tests | test | 313 |
 | `tests/unit/agent/MemoryFormatterSalience.test.ts` | tests | test | 242 |
 | `tests/unit/agent/MemoryValidator.test.ts` | tests | test | 203 |
