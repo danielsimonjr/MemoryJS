@@ -9,6 +9,8 @@ import { ContextWindowManager } from '../../../src/agent/ContextWindowManager.js
 import { SalienceEngine } from '../../../src/agent/SalienceEngine.js';
 import { AccessTracker } from '../../../src/agent/AccessTracker.js';
 import { DecayEngine } from '../../../src/agent/DecayEngine.js';
+import { HybridSearchManager } from '../../../src/search/HybridSearchManager.js';
+import type { GraphRankPrior } from '../../../src/search/GraphRankPrior.js';
 import type { IGraphStorage, Entity, Relation } from '../../../src/types/types.js';
 import type { AgentEntity, ContextRetrievalOptions } from '../../../src/types/agent-memory.js';
 
@@ -1045,6 +1047,198 @@ describe('ContextWindowManager', () => {
           ? 1
           : result.sourceTokens / Math.max(result.totalTokens, 1)
       );
+    });
+  });
+
+  describe('query ranking', () => {
+    const timestamp = '2026-01-01T00:00:00.000Z';
+
+    /** Four entities with one fixed timestamp and distinct importance below 10. */
+    function createQueryEntities(names: string[] = ['e1', 'e2', 'e3', 'e4']): AgentEntity[] {
+      return names.map((name, index) =>
+        createTestEntity({
+          name,
+          observations: ['alpha beta gamma'],
+          createdAt: timestamp,
+          lastModified: timestamp,
+          lastAccessedAt: timestamp,
+          importance: 6 - index * 0.25,
+        })
+      );
+    }
+
+    function createQueryManager(
+      entities: AgentEntity[],
+      relations: Relation[] = []
+    ): ContextWindowManager {
+      const queryStorage = createMockStorage(entities, relations);
+      const tracker = new AccessTracker(queryStorage);
+      const decay = new DecayEngine(queryStorage, tracker);
+      const salience = new SalienceEngine(queryStorage, tracker, decay);
+      return new ContextWindowManager(queryStorage, salience, { reserveBuffer: 0 });
+    }
+
+    function hit(entity: AgentEntity) {
+      return {
+        entity,
+        scores: { semantic: 0, lexical: 1, symbolic: 0, combined: 1 },
+        matchedLayers: ['lexical'],
+      };
+    }
+
+    function namesOf(memories: Array<{ name: string }>): string[] {
+      return memories.map((m) => m.name);
+    }
+
+    it('orders candidates by hybrid rank when queryText is set', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[2]), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e3', 'e1']);
+    });
+
+    it('passes the scoped graph and limit to hybrid search', async () => {
+      const entities = createQueryEntities();
+      const relations: Relation[] = [
+        { from: 'e1', to: 'e2', relationType: 'links_to' },
+        { from: 'e1', to: 'outside', relationType: 'links_to' },
+      ];
+      const manager = createQueryManager(entities, relations);
+      const search = vi.fn().mockResolvedValue([hit(entities[2]), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(search).toHaveBeenCalledTimes(1);
+      const [scopedGraph, queryText, options] = search.mock.calls[0];
+      expect(scopedGraph.entities.map((e: { name: string }) => e.name)).toEqual([
+        'e1',
+        'e2',
+        'e3',
+        'e4',
+      ]);
+      expect(scopedGraph.relations).toHaveLength(1);
+      expect(queryText).toBe('alpha');
+      expect(options).toEqual({ limit: 1000 });
+    });
+
+    it('keeps the salience path when queryText is absent', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[2])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000 });
+
+      expect(search).not.toHaveBeenCalled();
+      expect(result.memories).toHaveLength(4);
+    });
+
+    it('keeps the salience path when no hybrid search is set', async () => {
+      const manager = createQueryManager(createQueryEntities());
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(result.memories).toHaveLength(4);
+    });
+
+    it('treats whitespace-only queryText as absent', async () => {
+      const manager = createQueryManager(createQueryEntities());
+      const search = vi.fn().mockResolvedValue([]);
+      manager.setHybridSearch({ search });
+
+      await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: '   ' },
+      });
+
+      expect(search).not.toHaveBeenCalled();
+    });
+
+    it('puts must-include entities first in query mode', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[2]), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+        mustInclude: ['e4'],
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e4', 'e3', 'e1']);
+    });
+
+    it('passes expandNeighbors and lookFor when composeHops is 1', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+        composeHops: 1,
+      });
+
+      const [, , options] = search.mock.calls[0];
+      expect(options).toEqual({ limit: 1000, expandNeighbors: { hops: 1 }, lookFor: 'alpha' });
+    });
+
+    it('adds one-hop neighbors through HybridSearchManager', async () => {
+      const entities = createQueryEntities(['A', 'B', 'C']);
+      const neighbors: Record<string, string[]> = { A: ['B'], B: ['A', 'C'], C: ['B'] };
+      const prior = {
+        getScores: vi.fn(async (names: string[]) => new Map(names.map((n) => [n, 0]))),
+        neighbors: vi.fn((name: string) => neighbors[name] ?? []),
+      } as unknown as GraphRankPrior;
+      const rankedSearch = {
+        searchNodesRanked: vi.fn().mockResolvedValue([{ entity: entities[0], score: 5 }]),
+      };
+      const manager = createQueryManager(entities);
+      manager.setHybridSearch(new HybridSearchManager(null, rankedSearch as never, prior));
+
+      const withHops = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+        composeHops: 1,
+      });
+      const withoutHops = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(withHops.memories)).toEqual(['A', 'B']);
+      expect(namesOf(withoutHops.memories)).toEqual(['A']);
+    });
+
+    it('drops hybrid hits outside the candidate set', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const outside = createQueryEntities(['outside'])[0];
+      const search = vi.fn().mockResolvedValue([hit(outside), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e1']);
     });
   });
 

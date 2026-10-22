@@ -25,6 +25,7 @@ import { isAgentEntity } from '../types/agent-memory.js';
 import { SalienceEngine } from './SalienceEngine.js';
 import type { IDistillationPolicy } from './DistillationPolicy.js';
 import { ContextProfileManager, type ProfileConfig } from './ContextProfileManager.js';
+import type { HybridSearchManager } from '../search/HybridSearchManager.js';
 
 // S10: `ContextWindowManagerConfig` moved to src/types/agent-memory.ts (the
 // types layer references it via `RoleProfile` and must stay a leaf).
@@ -114,6 +115,8 @@ export interface SpilloverResult {
 export interface PrioritizeOptions {
   /** Maximum number of selected entities, must-include entities included. Unset = no cap. */
   maxSlots?: number;
+  /** Keep the input order of optional entities instead of the efficiency order. */
+  preserveOrder?: boolean;
 }
 
 /**
@@ -142,6 +145,8 @@ export class ContextWindowManager {
   private readonly config: Required<ContextWindowManagerConfig>;
   /** Optional distillation policy applied before salience scoring */
   private distillationPolicy?: IDistillationPolicy;
+  /** Optional hybrid search used to order candidates when `context.queryText` is set */
+  private hybridSearch?: Pick<HybridSearchManager, 'search'>;
   private readonly contextProfileManager: ContextProfileManager;
 
   constructor(
@@ -187,6 +192,20 @@ export class ContextWindowManager {
    */
   getDistillationPolicy(): IDistillationPolicy | undefined {
     return this.distillationPolicy;
+  }
+
+  /**
+   * Set an optional hybrid search for query-ranked retrieval.
+   *
+   * When set and `context.queryText` is non-blank, `retrieveForContext` orders the
+   * candidates by hybrid rank before the salience cut. Only entities that hybrid
+   * search returns enter the result, plus must-include entities. An entity with no
+   * lexical or semantic match drops out. Without a set search, retrieval is unchanged.
+   *
+   * @param search - A hybrid search manager, or undefined to disable query ranking.
+   */
+  setHybridSearch(search: Pick<HybridSearchManager, 'search'> | undefined): void {
+    this.hybridSearch = search;
   }
 
   // ==================== Token Estimation ====================
@@ -275,8 +294,16 @@ export class ContextWindowManager {
       efficiency: s.tokens > 0 ? s.salienceScore / s.tokens : 0,
     }));
 
-    // Sort by efficiency (descending) for greedy selection
-    withEfficiency.sort((a, b) => b.efficiency - a.efficiency);
+    if (options.preserveOrder) {
+      // Keep the input order (for example, hybrid rank) for greedy selection
+      const inputIndex = new Map(entities.map((e, index) => [e.name, index]));
+      withEfficiency.sort(
+        (a, b) => (inputIndex.get(a.entity.name) ?? 0) - (inputIndex.get(b.entity.name) ?? 0)
+      );
+    } else {
+      // Sort by efficiency (descending) for greedy selection
+      withEfficiency.sort((a, b) => b.efficiency - a.efficiency);
+    }
 
     // Start with must-include entities
     const selected: ScoredEntity[] = required.map((r) => ({
@@ -346,6 +373,7 @@ export class ContextWindowManager {
       mustInclude = [],
       minSalience = 0,
       maxSlots,
+      composeHops,
     } = resolvedOptions;
 
     // Effective budget after reserve
@@ -380,8 +408,20 @@ export class ContextWindowManager {
       candidates = candidates.filter((e) => keptNames.has(e.name));
     }
 
-    // Limit candidates for performance
-    if (candidates.length > this.config.maxEntitiesToConsider) {
+    const queryText = context.queryText?.trim();
+    const queryMode = !!queryText && !!this.hybridSearch;
+
+    if (queryMode) {
+      // Query mode: hybrid search orders the candidates before the salience cut
+      candidates = await this.rankByQuery(
+        candidates,
+        graph,
+        queryText,
+        mustInclude,
+        composeHops
+      );
+    } else if (candidates.length > this.config.maxEntitiesToConsider) {
+      // Limit candidates for performance
       // Cheap metadata-only prefilter before the comparatively expensive
       // context-aware salience pass. Must-includes bypass the cap.
       candidates = this.prefilterCandidates(candidates, mustInclude);
@@ -393,7 +433,7 @@ export class ContextWindowManager {
       effectiveBudget,
       context,
       mustInclude,
-      { maxSlots }
+      { maxSlots, preserveOrder: queryMode }
     );
 
     // Filter by minimum salience
@@ -476,6 +516,50 @@ export class ContextWindowManager {
       ...required,
       ...optional.slice(0, optionalLimit).map(({ entity }) => entity),
     ];
+  }
+
+  /**
+   * Order candidates by hybrid search rank for query mode.
+   *
+   * Hybrid search runs over a graph scoped to the candidates, so hits outside the
+   * candidate set never enter the result. Must-include candidates come first, in
+   * candidate order, even when hybrid search does not return them.
+   *
+   * @param candidates - Candidates after distillation
+   * @param graph - Loaded graph, used for the relations between candidates
+   * @param queryText - Trimmed, non-empty query text
+   * @param mustInclude - Entity names that must be included
+   * @param composeHops - 1 adds the one-hop neighbors of the top hybrid results
+   * @returns Candidates in query order
+   */
+  private async rankByQuery(
+    candidates: AgentEntity[],
+    graph: ReadonlyKnowledgeGraph,
+    queryText: string,
+    mustInclude: string[],
+    composeHops: 0 | 1 | undefined
+  ): Promise<AgentEntity[]> {
+    const byName = new Map(candidates.map((e) => [e.name, e]));
+    const scopedGraph = {
+      entities: candidates,
+      relations: graph.relations.filter((r) => byName.has(r.from) && byName.has(r.to)),
+    };
+    const hits = await this.hybridSearch!.search(scopedGraph, queryText, {
+      limit: this.config.maxEntitiesToConsider,
+      ...(composeHops === 1 ? { expandNeighbors: { hops: 1 }, lookFor: queryText } : {}),
+    });
+
+    const requiredNames = new Set(mustInclude);
+    const ranked = candidates.filter((e) => requiredNames.has(e.name));
+    const seen = new Set(ranked.map((e) => e.name));
+    for (const hit of hits) {
+      const entity = byName.get(hit.entity.name);
+      if (entity && !seen.has(entity.name)) {
+        seen.add(entity.name);
+        ranked.push(entity);
+      }
+    }
+    return ranked;
   }
 
   // ==================== Type-Specific Retrieval ====================

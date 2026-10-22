@@ -2249,6 +2249,11 @@ export interface ContextRetrievalOptions {
    * against the cap but are never cut.
    */
   maxSlots?: number;
+  /**
+   * Hybrid search hop count. `1` adds the one-hop neighbors of the top hybrid results.
+   * Needs `context.queryText`, an attached hybrid search and a `GraphRankPrior`.
+   */
+  composeHops?: 0 | 1;
 }
 
 /**
