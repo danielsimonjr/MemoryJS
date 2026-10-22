@@ -197,7 +197,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/GraphTraversal.ts` | src | reachable | 1421 |
 | `src/core/HierarchyManager.ts` | src | reachable | 301 |
 | `src/core/index.ts` | src | reachable | 42 |
-| `src/core/ManagerContext.ts` | src | reachable | 1822 |
+| `src/core/ManagerContext.ts` | src | reachable | 1823 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
 | `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
@@ -542,7 +542,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/manager-context-env-number.test.ts` | tests | test | 81 |
 | `tests/unit/core/manager-context-new-managers.test.ts` | tests | test | 78 |
 | `tests/unit/core/manager-context-project.test.ts` | tests | test | 33 |
-| `tests/unit/core/ManagerContext-hybridContext.test.ts` | tests | test | 79 |
+| `tests/unit/core/ManagerContext-hybridContext.test.ts` | tests | test | 127 |
 | `tests/unit/core/ManagerContext-proceduralGraph.test.ts` | tests | test | 76 |
 | `tests/unit/core/ManagerContext-vectorStore.test.ts` | tests | test | 55 |
 | `tests/unit/core/ManagerContext.test.ts` | tests | test | 1359 |
