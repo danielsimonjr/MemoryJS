@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - `repo-tools docs check src` passes again: the `searchNodesRanked` implementation signature now has its own doc comment.
-- `SemanticSearch` now initializes its vector store before the first read, so a persisted `SQLiteVectorStore` is searchable without a full re-index. `indexAll` re-embeds an entity when its `contentHash` differs from the stored hash.
+- `SemanticSearch` now initializes its vector store before the first read, so a persisted `SQLiteVectorStore` is searchable without a full re-index. `indexAll` re-embeds an entity when its content hash differs from the stored hash. The hash is `entity.contentHash`, or a SHA-256 of the embedding text when the entity has none.
 
 ### Security
 

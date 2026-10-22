@@ -252,7 +252,7 @@ What is actually missing is wiring and two fields:
 
 #### E1. ~~Point semantic search at the embeddings table~~ — ✅ shipped
 - With `SQLiteStorage`, `ManagerContext.semanticSearch` calls `createVectorStore('sqlite', this.storage, model)` (`src/search/VectorStore.ts`). The `embeddings` table is the live store. JSONL stays `InMemoryVectorStore`.
-- `SemanticSearch.indexAll` skips unchanged entities. It re-embeds an entity when `entity.contentHash` differs from the nullable `embeddings.contentHash` column that `storeEmbedding` writes.
+- `SemanticSearch.indexAll` skips unchanged entities. It re-embeds an entity when its hash differs from the nullable `embeddings.contentHash` column that `storeEmbedding` writes. The hash is `entity.contentHash`, or a SHA-256 of the embedding text when the entity has none.
 - Tests: `tests/unit/search/SemanticSearch.test.ts` and `tests/unit/search/VectorStore.test.ts`. No new module.
 
 #### E2. Candidate-token ratio, optional slot cap, query rank via hybrid search — estimate S

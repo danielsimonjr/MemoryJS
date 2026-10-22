@@ -1277,7 +1277,7 @@ export class SQLiteVectorStore implements IVectorStore { }     // SQLite embeddi
 export class QuantizedVectorStore { }                          // Compressed
 ```
 
-`SQLiteVectorStore.initialize()` loads the stored vectors. It skips rows of another embedding model. Each vector keeps a `contentHash`. `SemanticSearch.indexAll` re-embeds an entity when its `contentHash` changes.
+`SQLiteVectorStore.initialize()` loads the stored vectors. It skips rows of another embedding model. Each vector can keep a content hash. `SemanticSearch.indexAll` re-embeds an entity when its hash changes. An entity without a `contentHash` gets a SHA-256 of its embedding text.
 
 ---
 
