@@ -2587,7 +2587,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 499
+      "loc": 526
     },
     {
       "file": "tests/unit/agent/ContextWindowManager.test.ts",
@@ -2741,7 +2741,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 697
+      "loc": 739
     },
     {
       "file": "tests/unit/agent/MemoryFormatter.test.ts",
