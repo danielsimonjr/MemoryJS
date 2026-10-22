@@ -625,3 +625,72 @@ describe('MemoryEngine — ManagerContext wiring', () => {
     }
   });
 });
+
+describe('MemoryEngine — repeated turn count', () => {
+  const T1 = 'alpha beta gamma delta epsilon zeta eta theta iota kappa lambda extra';
+  const JACCARD_REPEAT = 'lambda kappa iota theta eta zeta epsilon delta gamma beta alpha other';
+
+  function mkEngine(ctx: ManagerContext): MemoryEngine {
+    const agent = ctx.agentMemory();
+    return new MemoryEngine(
+      ctx.storage, ctx.entityManager, agent.episodicMemory,
+      agent.workingMemory, new ImportanceScorer(),
+    );
+  }
+
+  it('counts exact and Jaccard repeats', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      const exact = await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      const jaccard = await engine.addTurn(JACCARD_REPEAT, { sessionId: 'sess-A', role: 'user' });
+      expect(exact.duplicateTier).toBe('exact');
+      expect(jaccard.duplicateTier).toBe('jaccard');
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(2);
+    } finally { cleanup(); }
+  });
+
+  it('returns 0 for distinct turns', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn('alpha beta gamma', { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn('delta epsilon zeta', { sessionId: 'sess-A', role: 'user' });
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('returns 0 for an unknown session', () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      expect(engine.getRepeatedTurnCount('nope')).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('keeps counts per session', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(T1, { sessionId: 'sess-B', role: 'user' });
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(1);
+      expect(engine.getRepeatedTurnCount('sess-B')).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('resets the count on deleteSession', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(JACCARD_REPEAT, { sessionId: 'sess-A', role: 'user' });
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(2);
+      await engine.deleteSession('sess-A');
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
+    } finally { cleanup(); }
+  });
+});
