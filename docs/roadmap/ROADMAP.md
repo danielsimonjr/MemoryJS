@@ -277,7 +277,7 @@ What is actually missing is wiring and two fields:
 - The count is not persisted. `deleteSession` resets it.
 - Tests: `tests/unit/agent/MemoryEngine.test.ts`.
 
-Suggested order: **E1 → E2**. E3 waits. No new store, no latent adapter, no FactKG download.
+Suggested order: **E1 → E2**. E3 has shipped as a library API. No new store, no latent adapter, no FactKG download.
 
 ---
 
