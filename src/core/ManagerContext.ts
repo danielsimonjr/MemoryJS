@@ -1613,7 +1613,7 @@ export class ManagerContext {
    */
   get contextWindowManager(): ContextWindowManager {
     if (!this._contextWindowManager) {
-      this._contextWindowManager = new ContextWindowManager(
+      const manager = new ContextWindowManager(
         this.storage,
         this.salienceEngine,
         {
@@ -1625,8 +1625,9 @@ export class ManagerContext {
         }
       );
       if (this.getEnvBool('MEMORY_CONTEXT_HYBRID_RANKING', false)) {
-        this._contextWindowManager.setHybridSearch(this.hybridSearchManager);
+        manager.setHybridSearch(this.hybridSearchManager);
       }
+      this._contextWindowManager = manager;
     }
     return this._contextWindowManager;
   }
