@@ -207,7 +207,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1939
+      "loc": 1942
     },
     {
       "file": "src/agent/DecayEngine.ts",
@@ -767,7 +767,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 337
+      "loc": 341
     },
     {
       "file": "src/agent/ToolAffordanceManager.ts",
@@ -2594,7 +2594,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1553
+      "loc": 1639
     },
     {
       "file": "tests/unit/agent/DecayEngine.test.ts",
@@ -3112,7 +3112,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 496
+      "loc": 531
     },
     {
       "file": "tests/unit/agent/ToolAffordanceManager.test.ts",
