@@ -1603,6 +1603,13 @@ export class ManagerContext {
 
   /**
    * ContextWindowManager - Token-budgeted memory retrieval.
+   *
+   * When `MEMORY_CONTEXT_HYBRID_RANKING` is `'true'` (default off), the
+   * manager ranks candidates through {@link hybridSearchManager} once at
+   * construction. The hybrid manager is not built while the switch is off.
+   *
+   * This getter covers only this context's instance. `AgentMemoryManager`
+   * builds its own ContextWindowManager and does not use this switch.
    */
   get contextWindowManager(): ContextWindowManager {
     if (!this._contextWindowManager) {
@@ -1617,6 +1624,9 @@ export class ManagerContext {
           enforceDiversity: this.getEnvBool('MEMORY_CONTEXT_ENFORCE_DIVERSITY', true),
         }
       );
+      if (this.getEnvBool('MEMORY_CONTEXT_HYBRID_RANKING', false)) {
+        this._contextWindowManager.setHybridSearch(this.hybridSearchManager);
+      }
     }
     return this._contextWindowManager;
   }
