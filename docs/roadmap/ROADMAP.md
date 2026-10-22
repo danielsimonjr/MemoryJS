@@ -261,9 +261,11 @@ What is actually missing is wiring and two fields:
 - `ContextWindowManager.setHybridSearch()` attaches a `HybridSearchManager`. When `SalienceContext.queryText` is set, `retrieveForContext` orders candidates by hybrid rank before the salience cut. `composeHops: 1` adds one-hop neighbors of the top hits.
 - Tests: `tests/unit/agent/ContextWindowManager.test.ts`.
 
-#### E3. Finish `SummarizationService`'s provider — estimate S, only if a caller asks
-- `summarize(texts)` has no query argument, and `initProvider` never builds `ISummarizationProvider`. Wire the `LLMProvider` `MemoryDistiller` already uses, pass `queryText`, and let `retrieveForContext` shorten `excluded` entities only when a provider is configured.
-- Tests: extend `tests/unit/agent/SummarizationService.test.ts`.
+#### E3. ~~Finish `SummarizationService`'s provider~~ — ✅ shipped
+- `SummarizationService.summarize(texts, query?)` takes an optional query. `LLMSummarizationProvider(llm, maxTokens)` sends the texts and the query to an `LLMProvider` and clips the reply to the word limit. The caller passes the provider in code: `new SummarizationService(config, { llmProvider })`.
+- `ContextRetrievalOptions.summarizeExcluded` (off by default) makes `retrieveForContext` return one summary of the excluded entities in `ContextPackage.excludedSummary`. A summarizer must be attached with `ContextWindowManager.setSummarizer()`. The summary is not counted in `totalTokens`. `ProfileConfig.retrieval.summarizeExcluded` sets the default.
+- No production code calls `setSummarizer()`. Default retrieval output is unchanged.
+- Tests: `tests/unit/agent/SummarizationService.test.ts` and `tests/unit/agent/ContextWindowManager.test.ts`.
 
 #### E4. ~~Question-type profiles~~ — ✅ shipped
 - `ContextProfile` has `lookup` (query starts with who, which, when or where) and `synthesis` (query starts with why or how). `ContextProfileManager.inferProfile` checks them after the four task profiles.
@@ -290,7 +292,7 @@ Suggested order: **E1 → E2**. E3 waits. No new store, no latent adapter, no Fa
 | **Integration** | Elasticsearch, REST API polish, framework adapters, GraphQL |
 | **Enterprise** | Distributed coordinator, cloud-native artefacts, GDPR tooling, encryption layer |
 | **Long horizon** | GPU, GraphSAGE, KG completion, real-time WS transport, affective tagging (deferred P3) |
-| **Latent memory (Memorilla)** | Two enhancements, not new modules: E1 wire `semanticSearch` to the existing `embeddings` table and re-embed on `contentHash` change; E2 `sourceTokens` / `compressionRatio` / optional `maxSlots` on `ContextPackage`, ranking via `HybridSearchManager`. E3 finishes the `SummarizationService` stub only if a caller asks. Soft tokens and GRPO dropped. See [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). |
+| **Latent memory (Memorilla)** | Two enhancements, not new modules: E1 wire `semanticSearch` to the existing `embeddings` table and re-embed on `contentHash` change; E2 `sourceTokens` / `compressionRatio` / optional `maxSlots` on `ContextPackage`, ranking via `HybridSearchManager`. E3 finishes the `SummarizationService` provider and adds an optional excluded-entity summary; no production code calls it yet. Soft tokens and GRPO dropped. See [`MEMORILLA_LATENT_MEMORY_PLAN.md`](./MEMORILLA_LATENT_MEMORY_PLAN.md). |
 | **Out of scope** | Clawvault (sibling repo), sensory buffer (covered by ingest pipeline), Memorilla soft-token injection and in-core GRPO |
 
 **Genuinely active P1/P2 items: 6.** Everything else is gated, strategic, or long-horizon.

@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-22"
   totalFiles: 292
   totalModules: 12
-  totalExports: 2032
+  totalExports: 2035
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -957,6 +957,10 @@ modules:
           imports:
             - HybridSearchManager
           typeOnly: true
+        - file: ./SummarizationService.js
+          imports:
+            - SummarizationService
+          typeOnly: true
         - file: ../types/agent-memory.js
           imports:
             - ContextWindowManagerConfig
@@ -1703,8 +1707,10 @@ modules:
         - file: ./SummarizationService.js
           imports:
             - SummarizationService
+            - LLMSummarizationProvider
             - ISummarizationProvider
             - SummarizationConfig
+            - SummarizationServiceOptions
             - GroupingResult
           reExport: true
         - file: ./PatternDetector.js
@@ -2250,8 +2256,10 @@ modules:
         - ReflectionStageConfig
         - StageResult
         - SummarizationService
+        - LLMSummarizationProvider
         - ISummarizationProvider
         - SummarizationConfig
+        - SummarizationServiceOptions
         - GroupingResult
         - PatternDetector
         - RuleEvaluator
@@ -2644,8 +2652,10 @@ modules:
         - ReflectionStageConfig
         - StageResult
         - SummarizationService
+        - LLMSummarizationProvider
         - ISummarizationProvider
         - SummarizationConfig
+        - SummarizationServiceOptions
         - GroupingResult
         - PatternDetector
         - RuleEvaluator
@@ -5356,12 +5366,19 @@ modules:
         - file: ../utils/textSimilarity.js
           imports:
             - calculateTextSimilarity
+        - file: ../search/LLMQueryPlanner.js
+          imports:
+            - LLMProvider
+          typeOnly: true
       exports:
+        - LLMSummarizationProvider
         - SummarizationService
       classes:
+        - LLMSummarizationProvider
         - SummarizationService
       interfaces:
         - ISummarizationProvider
+        - SummarizationServiceOptions
         - SummarizationConfig
         - GroupingResult
     src/agent/ToolAffordanceManager.ts:
@@ -14183,16 +14200,16 @@ reachability:
 statistics:
   totalTypeScriptFiles: 292
   totalModules: 12
-  totalLinesOfCode: 104156
-  totalExports: 2032
-  totalClasses: 233
-  totalInterfaces: 621
+  totalLinesOfCode: 104268
+  totalExports: 2035
+  totalClasses: 234
+  totalInterfaces: 622
   totalFunctions: 323
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
-  totalReExports: 1337
-  totalTypeOnlyImports: 477
+  totalReExports: 1339
+  totalTypeOnlyImports: 479
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
