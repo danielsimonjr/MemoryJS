@@ -28,7 +28,8 @@ describe('AgentMemoryManager', () => {
     manager.stop();
     // Allow any pending async operations to complete before cleanup
     await new Promise((resolve) => setTimeout(resolve, 50));
-    fs.rmSync(tempDir, { recursive: true, force: true });
+    // A late async write can recreate a file during removal (ENOTEMPTY on Windows); retry.
+    fs.rmSync(tempDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   });
 
   describe('constructor', () => {
