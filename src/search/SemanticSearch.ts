@@ -266,16 +266,20 @@ export class SemanticSearch {
       checkCancellation(signal, 'indexAll');
 
       const batch = toIndex.slice(i, i + batchSize);
+      const added = new Set<string>();
       try {
         const embeddings = await this.embedEntityBatch(batch);
 
         for (let j = 0; j < batch.length; j++) {
           this.vectorStore.add(batch[j].name, embeddings[j], this.hashFor(batch[j]));
+          added.add(batch[j].name);
           indexed++;
         }
       } catch {
         // Try individual embeddings on batch failure
         for (const entity of batch) {
+          // Skip entities the batch path already stored and counted
+          if (added.has(entity.name)) continue;
           // Check for cancellation during fallback
           checkCancellation(signal, 'indexAll');
 

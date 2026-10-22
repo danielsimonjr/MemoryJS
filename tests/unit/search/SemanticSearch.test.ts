@@ -482,6 +482,22 @@ describe('SemanticSearch with SQLiteVectorStore', () => {
     expect(await proc.search.indexAll({ entities: [entity], relations: [] })).toMatchObject({ skipped: 1 });
   });
 
+  it('does not leave a vector behind or count an entity twice when the store write fails', async () => {
+    const proc = openProcess();
+    await proc.storage.saveGraph({ entities: [createTestEntity('a', 'thing', ['alpha'])], relations: [] });
+    const graph = {
+      entities: [
+        createTestEntity('a', 'thing', ['alpha']),
+        createTestEntity('ghost', 'thing', ['x']),
+        createTestEntity('z', 'thing', ['y']),
+      ],
+      relations: [],
+    };
+    expect(await proc.search.indexAll(graph)).toEqual({ indexed: 1, skipped: 0, errors: 2 });
+    expect(proc.store.has('ghost')).toBe(false);
+    expect(proc.store.size()).toBe(1);
+  });
+
   it('search before indexAll finds persisted vectors', async () => {
     const first = openProcess();
     const graph = await saveAndLoad(first.storage, [
