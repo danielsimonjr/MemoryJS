@@ -194,6 +194,11 @@ describe('ContextProfileManager', () => {
       expect(manager.inferProfile('how should we plan the migration')).toBe('planning');
     });
 
+    it('does not match a question word later in the query', () => {
+      expect(manager.inferProfile('the file I wonder where it lives')).toBe('default');
+      expect(manager.inferProfile('tell me how it works')).toBe('default');
+    });
+
     it('does not match a question word inside another word', () => {
       expect(manager.inferProfile('somehow it works')).toBe('default');
     });
@@ -209,6 +214,10 @@ describe('ContextProfileManager', () => {
         const profile = manager.getProfile(name);
         expect(profile.retrieval).toBeUndefined();
         expect(profile.salienceWeights).toEqual(defaultProfile.salienceWeights);
+        expect(profile.temporalFocus).toBe(defaultProfile.temporalFocus);
+        expect(profile.budgetAllocation).toEqual(defaultProfile.budgetAllocation);
+        expect(profile.maxTokens).toBe(defaultProfile.maxTokens);
+        expect(profile.preferredEntityTypes).toEqual(defaultProfile.preferredEntityTypes);
       }
     });
 
@@ -455,6 +464,24 @@ describe('ContextProfileManager', () => {
         await contextWindowManager.retrieveForContext({
           maxTokens: 1000,
           profile: 'synthesis',
+          context: { queryText: 'why does it fail' },
+        });
+
+        expect(hybrid.search.mock.calls[0][2].expandNeighbors).toEqual({ hops: 1 });
+      });
+
+      it('applies registered retrieval.composeHops when the profile is auto', async () => {
+        const profileManager = contextWindowManager.getContextProfileManager();
+        profileManager.registerProfile('synthesis', {
+          ...profileManager.getProfile('default'),
+          retrieval: { composeHops: 1 },
+        });
+        const hybrid = hybridStub();
+        contextWindowManager.setHybridSearch(hybrid);
+
+        await contextWindowManager.retrieveForContext({
+          maxTokens: 1000,
+          profile: 'auto',
           context: { queryText: 'why does it fail' },
         });
 
