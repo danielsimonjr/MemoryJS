@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-21",
+  "generated": "2026-10-22",
   "totalFiles": 689,
   "byDisposition": {
     "reachable": 288,
@@ -1628,7 +1628,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 549
+      "loc": 572
     },
     {
       "file": "src/search/SpellChecker.ts",
@@ -1712,7 +1712,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 474
+      "loc": 473
     },
     {
       "file": "src/security/ABACPolicy.ts",
@@ -4323,7 +4323,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 496
+      "loc": 557
     },
     {
       "file": "tests/unit/search/SpellChecker.test.ts",
@@ -4442,7 +4442,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 447
+      "loc": 463
     },
     {
       "file": "tests/unit/security/ABACPolicy.test.ts",

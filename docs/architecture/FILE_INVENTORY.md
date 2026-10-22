@@ -4,7 +4,7 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-10-21 (by tools/create-dependency-graph)
+**Generated**: 2026-10-22 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
@@ -270,7 +270,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/SearchFilterChain.ts` | src | reachable | 285 |
 | `src/search/SearchManager.ts` | src | reachable | 555 |
 | `src/search/SearchSuggestions.ts` | src | reachable | 240 |
-| `src/search/SemanticSearch.ts` | src | reachable | 549 |
+| `src/search/SemanticSearch.ts` | src | reachable | 572 |
 | `src/search/SpellChecker.ts` | src | reachable | 173 |
 | `src/search/SymbolicSearch.ts` | src | reachable | 165 |
 | `src/search/TemporalQueryParser.ts` | src | reachable | 417 |
@@ -282,7 +282,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/tiered/ITieredIndex.ts` | src | reachable | 225 |
 | `src/search/tiered/LRUHotTier.ts` | src | reachable | 164 |
 | `src/search/tiered/TieredIndex.ts` | src | reachable | 319 |
-| `src/search/VectorStore.ts` | src | reachable | 474 |
+| `src/search/VectorStore.ts` | src | reachable | 473 |
 | `src/security/ABACPolicy.ts` | src | reachable | 271 |
 | `src/security/APIKeyStore.ts` | src | reachable | 347 |
 | `src/security/index.ts` | src | reachable | 39 |
@@ -655,7 +655,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/SearchFilterChain.test.ts` | tests | test | 381 |
 | `tests/unit/search/SearchManager.test.ts` | tests | test | 568 |
 | `tests/unit/search/SearchSuggestions.test.ts` | tests | test | 304 |
-| `tests/unit/search/SemanticSearch.test.ts` | tests | test | 496 |
+| `tests/unit/search/SemanticSearch.test.ts` | tests | test | 557 |
 | `tests/unit/search/SpellChecker.test.ts` | tests | test | 132 |
 | `tests/unit/search/SQLiteFtsSearchIntegration.test.ts` | tests | test | 58 |
 | `tests/unit/search/SymbolicSearch.test.ts` | tests | test | 244 |
@@ -672,7 +672,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |
 | `tests/unit/search/tiered/TieredIndex-wiring.test.ts` | tests | test | 142 |
 | `tests/unit/search/tiered/TieredIndex.test.ts` | tests | test | 270 |
-| `tests/unit/search/VectorStore.test.ts` | tests | test | 447 |
+| `tests/unit/search/VectorStore.test.ts` | tests | test | 463 |
 | `tests/unit/security/ABACPolicy.test.ts` | tests | test | 339 |
 | `tests/unit/security/APIKeyStore.test.ts` | tests | test | 209 |
 | `tests/unit/security/PiiRedactor.test.ts` | tests | test | 139 |

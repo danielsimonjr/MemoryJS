@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.3.0 | **Last Updated**: 2026-10-21
+**Version**: 4.3.0 | **Last Updated**: 2026-10-22
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -4348,6 +4348,11 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/SemanticSearch.ts` - Semantic Search Manager
 
+**Node.js Built-in Dependencies:**
+| Module | Import |
+|--------|--------|
+| `crypto` | `createHash` |
+
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
@@ -5591,7 +5596,7 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 292 |
 | Total Modules | 12 |
-| Total Lines of Code | 103870 |
+| Total Lines of Code | 103892 |
 | Total Exports | 2031 |
 | Total Re-exports | 1336 |
 | Total Classes | 233 |
@@ -5608,5 +5613,5 @@ graph TD
 
 ---
 
-*Last Updated*: 2026-10-21
+*Last Updated*: 2026-10-22
 *Version*: 4.3.0

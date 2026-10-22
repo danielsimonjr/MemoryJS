@@ -1,7 +1,7 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
-  lastUpdated: "2026-10-21"
+  lastUpdated: "2026-10-22"
   totalFiles: 292
   totalModules: 12
   totalExports: 2031
@@ -10263,7 +10263,10 @@ modules:
     src/search/SemanticSearch.ts:
       description: Semantic Search Manager
       externalDependencies: []
-      nodeDependencies: []
+      nodeDependencies:
+        - module: crypto
+          imports:
+            - createHash
       internalDependencies:
         - file: ../types/index.js
           imports:
@@ -14172,7 +14175,7 @@ reachability:
 statistics:
   totalTypeScriptFiles: 292
   totalModules: 12
-  totalLinesOfCode: 103870
+  totalLinesOfCode: 103892
   totalExports: 2031
   totalClasses: 233
   totalInterfaces: 620
