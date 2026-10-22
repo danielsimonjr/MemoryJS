@@ -24,9 +24,19 @@ import type { Entity } from './types.js';
  * - incident: Optimizes for recency and errors/failures
  * - handoff: Optimizes for session continuity and context
  * - review: Balanced with high context weight for retrospectives
+ * - lookup: For short factual questions (who, which, when, where)
+ * - synthesis: For why and how questions
  * - auto: Automatically inferred from query text
  */
-export type ContextProfile = 'default' | 'planning' | 'incident' | 'handoff' | 'review' | 'auto';
+export type ContextProfile =
+  | 'default'
+  | 'planning'
+  | 'incident'
+  | 'handoff'
+  | 'review'
+  | 'lookup'
+  | 'synthesis'
+  | 'auto';
 
 // ==================== Role Profiles (S10 — relocated from src/agent) ====================
 // Definitions live here because `AgentMetadata.roleProfile` (this module)
