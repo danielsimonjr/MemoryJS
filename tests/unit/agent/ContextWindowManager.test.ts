@@ -1051,7 +1051,8 @@ describe('ContextWindowManager', () => {
   });
 
   describe('query ranking', () => {
-    const timestamp = '2026-01-01T00:00:00.000Z';
+    // Recent, so decay does not flatten the importance differences between entities.
+    const timestamp = new Date().toISOString();
 
     /** Four entities with one fixed timestamp and distinct importance below 10. */
     function createQueryEntities(names: string[] = ['e1', 'e2', 'e3', 'e4']): AgentEntity[] {
@@ -1240,6 +1241,20 @@ describe('ContextWindowManager', () => {
       expect(result.memories).toHaveLength(4);
     });
 
+    it('uses the salience order after a hybrid search failure', async () => {
+      // Graph order is the reverse of salience order, so only the salience path gives e4 first.
+      const entities = createQueryEntities().reverse();
+      const manager = createQueryManager(entities);
+      manager.setHybridSearch({ search: vi.fn().mockRejectedValue(new Error('down')) });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e1', 'e2', 'e3', 'e4']);
+    });
+
     it('returns must-include entities when hybrid search returns no hits', async () => {
       const manager = createQueryManager(createQueryEntities());
       const search = vi.fn().mockResolvedValue([]);
@@ -1345,12 +1360,35 @@ describe('ContextWindowManager', () => {
       expect(names).toHaveLength(2);
     });
 
+    it('ignores a negative or non-finite maxSlots', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      for (const cap of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
+        const result = await manager.retrieveForContext({ maxTokens: 1000, maxSlots: cap });
+        expect(result.memories).toHaveLength(16);
+        const allocated = await manager.retrieveWithBudgetAllocation({ maxTokens: 1000, maxSlots: cap });
+        expect(allocated.excluded.filter((e) => e.reason === 'slot_limit')).toEqual([]);
+      }
+    });
+
     it('ignores maxSlots when unset', async () => {
       const manager = createBudgetManager(createNamedEntities(sixteenNames()));
 
       const result = await manager.retrieveForContext({ maxTokens: 1000 });
 
       expect(result.memories).toHaveLength(16);
+    });
+
+    it('counts low-salience exclusions in sourceTokens of retrieveWithBudgetAllocation', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveWithBudgetAllocation({ maxTokens: 1000, minSalience: 2 });
+
+      expect(result.totalTokens).toBe(0);
+      expect(result.excluded.every((e) => e.reason === 'low_salience')).toBe(true);
+      expect(result.sourceTokens).toBe(result.excluded.reduce((sum, e) => sum + e.tokens, 0));
+      expect(result.sourceTokens).toBeGreaterThan(0);
+      expect(result.compressionRatio).toBe(result.sourceTokens);
     });
 
     it('caps the memories in retrieveWithBudgetAllocation', async () => {
