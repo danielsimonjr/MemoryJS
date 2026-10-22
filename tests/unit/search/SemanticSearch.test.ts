@@ -458,7 +458,7 @@ describe('SemanticSearch with SQLiteVectorStore', () => {
     expect(await proc.search.indexAll(graph)).toMatchObject({ skipped: 1 });
   });
 
-  it('skips by name when the entity has no contentHash', async () => {
+  it('hashes the text of an entity without contentHash, and re-embeds it once after an edit', async () => {
     const first = openProcess();
     const graph = await saveAndLoad(first.storage, [createTestEntity('a', 'thing', ['alpha'])]);
     expect(await first.search.indexAll(graph)).toMatchObject({ indexed: 1 });
@@ -467,6 +467,19 @@ describe('SemanticSearch with SQLiteVectorStore', () => {
     const second = openProcess();
     const reloaded = await second.storage.loadGraph();
     expect(await second.search.indexAll(reloaded)).toEqual({ indexed: 0, skipped: 1, errors: 0 });
+
+    const edited = await saveAndLoad(second.storage, [createTestEntity('a', 'thing', ['alpha', 'beta'])]);
+    expect(await second.search.indexAll(edited)).toMatchObject({ indexed: 1, skipped: 0 });
+    expect(await second.search.indexAll(edited)).toMatchObject({ indexed: 0, skipped: 1 });
+  });
+
+  it('stores the text hash when indexEntity gets an entity without contentHash', async () => {
+    const proc = openProcess();
+    const entity = createTestEntity('a', 'thing', ['alpha']);
+    await proc.storage.saveGraph({ entities: [entity], relations: [] });
+    expect(await proc.search.indexEntity(entity)).toBe(true);
+    expect(proc.store.getContentHash('a')).toMatch(/^[0-9a-f]{64}$/);
+    expect(await proc.search.indexAll({ entities: [entity], relations: [] })).toMatchObject({ skipped: 1 });
   });
 
   it('search before indexAll finds persisted vectors', async () => {

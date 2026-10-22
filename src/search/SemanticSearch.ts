@@ -16,6 +16,7 @@ import type {
   ReadonlyKnowledgeGraph,
   EmbeddingMode,
 } from '../types/index.js';
+import { createHash } from 'node:crypto';
 import { InMemoryVectorStore, cosineSimilarity } from './VectorStore.js';
 import { EmbeddingCache } from './EmbeddingCache.js';
 import { EMBEDDING_DEFAULTS, SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
@@ -184,15 +185,33 @@ export class SemanticSearch {
   }
 
   /**
+   * Get the hash that marks the content a vector was made from.
+   *
+   * Uses `entity.contentHash` when it is a string. Otherwise hashes the
+   * embedding text (`entityToText`: name, type, the first 10 observations and
+   * the tags) with SHA-256 in hex.
+   *
+   * @param entity - Entity to hash
+   * @returns The content hash for the entity
+   */
+  private hashFor(entity: Entity): string {
+    if (typeof entity.contentHash === 'string') return entity.contentHash;
+    return createHash('sha256').update(entityToText(entity)).digest('hex');
+  }
+
+  /**
    * Check whether an entity's stored vector was built from different content.
    *
+   * Compares the stored hash with `hashFor(entity)`: `entity.contentHash`, or a
+   * SHA-256 of `entityToText(entity)` when the entity has none. Always false
+   * for stores that do not track hashes.
+   *
    * @param entity - Entity to check
-   * @returns True when the entity has a contentHash that differs from the stored hash
+   * @returns True when the stored hash differs from the hash of the entity
    */
   private isStale(entity: Entity): boolean {
     if (typeof this.vectorStore.getContentHash !== 'function') return false;
-    if (typeof entity.contentHash !== 'string') return false;
-    return this.vectorStore.getContentHash(entity.name) !== entity.contentHash;
+    return this.vectorStore.getContentHash(entity.name) !== this.hashFor(entity);
   }
 
   /**
@@ -200,7 +219,7 @@ export class SemanticSearch {
    *
    * Generates embeddings for all entities and stores them in the vector store.
    * Can be called incrementally - only indexes entities that aren't already indexed,
-   * or whose contentHash differs from the stored hash.
+   * or whose content hash differs from the stored hash (see `hashFor`).
    *
    * Phase 9B: Supports cancellation via AbortSignal in options.
    *
@@ -251,7 +270,7 @@ export class SemanticSearch {
         const embeddings = await this.embedEntityBatch(batch);
 
         for (let j = 0; j < batch.length; j++) {
-          this.vectorStore.add(batch[j].name, embeddings[j], batch[j].contentHash);
+          this.vectorStore.add(batch[j].name, embeddings[j], this.hashFor(batch[j]));
           indexed++;
         }
       } catch {
@@ -266,7 +285,7 @@ export class SemanticSearch {
               `document:${entity.name}`,
               text,
             );
-            this.vectorStore.add(entity.name, embedding, entity.contentHash);
+            this.vectorStore.add(entity.name, embedding, this.hashFor(entity));
             indexed++;
           } catch {
             errors++;
@@ -297,7 +316,7 @@ export class SemanticSearch {
       await this.ensureStoreReady();
       const text = entityToText(entity);
       const embedding = await this.embedCached(`document:${entity.name}`, text);
-      this.vectorStore.add(entity.name, embedding, entity.contentHash);
+      this.vectorStore.add(entity.name, embedding, this.hashFor(entity));
       this.indexedCount = this.vectorStore.size();
       return true;
     } catch {
