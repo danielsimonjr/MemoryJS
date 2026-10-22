@@ -964,9 +964,23 @@ describe('ContextWindowManager', () => {
 
   /**
    * Create entities that each cost 8 tokens (one-word name, three observation words).
+   *
+   * All entities share one timestamp, so recency affects them equally. Importance falls by
+   * 0.25 per entity from 6, below the point where normalized importance saturates at 1,
+   * so the salience order is strict and the clock cannot break ties between calls.
    */
   function createNamedEntities(names: string[]): AgentEntity[] {
-    return names.map((name) => createTestEntity({ name, observations: ['alpha beta gamma'] }));
+    const timestamp = new Date().toISOString();
+    return names.map((name, index) =>
+      createTestEntity({
+        name,
+        observations: ['alpha beta gamma'],
+        createdAt: timestamp,
+        lastModified: timestamp,
+        lastAccessedAt: timestamp,
+        importance: 6 - index * 0.25,
+      })
+    );
   }
 
   /** Names 'e01' to 'e16'. */
