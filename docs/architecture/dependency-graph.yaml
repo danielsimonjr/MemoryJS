@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-22"
   totalFiles: 292
   totalModules: 12
-  totalExports: 2031
+  totalExports: 2032
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -953,6 +953,10 @@ modules:
           imports:
             - ContextProfileManager
             - ProfileConfig
+        - file: ../search/HybridSearchManager.js
+          imports:
+            - HybridSearchManager
+          typeOnly: true
         - file: ../types/agent-memory.js
           imports:
             - ContextWindowManagerConfig
@@ -991,6 +995,7 @@ modules:
         - WakeUpOptions
         - WakeUpResult
         - SpilloverResult
+        - PrioritizeOptions
     src/agent/DecayEngine.ts:
       description: Decay Engine
       externalDependencies: []
@@ -1720,6 +1725,7 @@ modules:
           imports:
             - ContextWindowManager
             - ContextWindowManagerConfig
+            - PrioritizeOptions
             - SpilloverResult
             - WakeUpOptions
             - WakeUpResult
@@ -2254,6 +2260,7 @@ modules:
         - SalienceEngineConfig
         - ContextWindowManager
         - ContextWindowManagerConfig
+        - PrioritizeOptions
         - SpilloverResult
         - WakeUpOptions
         - WakeUpResult
@@ -2647,6 +2654,7 @@ modules:
         - SalienceEngineConfig
         - ContextWindowManager
         - ContextWindowManagerConfig
+        - PrioritizeOptions
         - SpilloverResult
         - WakeUpOptions
         - WakeUpResult
@@ -14175,16 +14183,16 @@ reachability:
 statistics:
   totalTypeScriptFiles: 292
   totalModules: 12
-  totalLinesOfCode: 103892
-  totalExports: 2031
+  totalLinesOfCode: 104084
+  totalExports: 2032
   totalClasses: 233
-  totalInterfaces: 620
+  totalInterfaces: 621
   totalFunctions: 323
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
-  totalReExports: 1336
-  totalTypeOnlyImports: 476
+  totalReExports: 1337
+  totalTypeOnlyImports: 477
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
