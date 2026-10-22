@@ -139,7 +139,7 @@ ctx.eventManager        // R1 event reification: actions as event hub entities (
 - **Memory types**: `WorkingMemoryManager` (short-term with TTL + promotion), `EpisodicMemoryManager` (timeline-based events)
 - **Decay & salience**: `DecayEngine`/`DecayScheduler` (TTL-aware decay), `SalienceEngine` (context-aware scoring with `freshnessWeight`)
 - **Multi-agent**: `MultiAgentMemoryManager` (visibility controls: private/shared/public), `ConflictResolver`
-- **Processing**: `ConsolidationPipeline`, `SummarizationService`, `PatternDetector`, `RuleEvaluator`
+- **Processing**: `ConsolidationPipeline`, `SummarizationService` (`summarize(texts, query?)`; an LLM provider is passed in code as `{ llmProvider }`, with no environment variable), `PatternDetector`, `RuleEvaluator`
 - **Context**: `ContextWindowManager` (token budgeting + distillation), `MemoryFormatter` (`formatWithSalienceBudget()` for proportional allocation), `AccessTracker`
 - **Artifacts**: `ArtifactManager` — `createArtifact()` generates stable human-readable names (`toolName-date-shortId`), auto-registers refs; `ArtifactEntity` type + `ArtifactType` union
 - **Distillation**: `IDistillationPolicy` interface + `DefaultDistillationPolicy` (relevance + freshness + dedup), `CompositeDistillationPolicy`, `NoOpDistillationPolicy` — wired into `ContextWindowManager`

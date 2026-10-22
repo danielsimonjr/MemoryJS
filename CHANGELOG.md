@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ContextProfile` gains `lookup` and `synthesis`. Auto-detection infers `lookup` for queries that start with who, which, when or where, and `synthesis` for queries that start with why or how. Both checks run after the four task profiles (incident, planning, handoff, review), so a query that matches a task profile keeps that profile.
 - `ProfileConfig.retrieval.composeHops` (`0 | 1`). `ContextWindowManager.applyProfile` applies it when the caller leaves `composeHops` unset. The shipped presets leave `retrieval` unset, so default retrieval does not change.
 - `MemoryEngine.getRepeatedTurnCount(sessionId)` returns the number of turns that the dedup chain rejected for a session in this process. The count counts only dedup-chain rejections, not exclusion-manager rejections. The count is not persisted, and `deleteSession` resets it.
+- `SummarizationService.summarize(texts, query?)` takes an optional query. With a query, the service summarizes even a single text. Without a query, a single text is returned unchanged.
+- `ISummarizationProvider.summarize(texts, query?)` takes the same optional query.
+- `LLMSummarizationProvider(llm, maxTokens)` is a new export. It sends the texts and the optional query to an `LLMProvider` and clips the reply to a word limit derived from `maxTokens`.
+- `SummarizationServiceOptions { llmProvider? }` is a new export. The `SummarizationService(config, options)` constructor builds an `LLMSummarizationProvider` from `options.llmProvider`. When a provider call fails, the service returns the algorithmic summary. The caller passes the LLM provider in code. No environment variable selects it.
+- `ContextRetrievalOptions.summarizeExcluded` (off by default). With the flag set, a summarizer attached, and at least one entity excluded, `retrieveForContext` returns one summary of the excluded entities in `ContextPackage.excludedSummary`. The summary is not counted in `totalTokens`. A summarizer that throws logs a warning and leaves `excludedSummary` unset.
+- `ContextWindowManager.setSummarizer(summarizer)` attaches a summarizer. Pass `undefined` to detach it. No production code calls it, so default retrieval does not change.
+- `ProfileConfig.retrieval.summarizeExcluded` sets the default for `summarizeExcluded` when the caller leaves it unset. The shipped presets leave `retrieval` unset.
 
 ### Changed
 

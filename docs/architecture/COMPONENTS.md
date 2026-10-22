@@ -228,6 +228,7 @@ export class ContextWindowManager {
 
   async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
   setHybridSearch(search: Pick<HybridSearchManager, 'search'> | undefined): void  // Enables query-ranked retrieval
+  setSummarizer(summarizer: Pick<SummarizationService, 'summarize'> | undefined): void  // Enables excludedSummary when summarizeExcluded is set
   estimateTokens(entity: AgentEntity): number
   prioritize(entities: AgentEntity[], maxTokens: number): AgentEntity[]
 }
@@ -337,12 +338,21 @@ export class EpisodicMemoryManager {
 
 ```typescript
 export class SummarizationService {
-  constructor(config?: SummarizationConfig)
+  constructor(config?: SummarizationConfig, options?: SummarizationServiceOptions)
 
-  async summarizeObservations(observations: string[]): Promise<string>
-  async summarizeEntities(entities: AgentEntity[]): Promise<string>
+  async summarize(texts: string[], query?: string): Promise<string>
+  async groupSimilarObservations(observations: string[], threshold?: number): Promise<GroupingResult>
+  async summarizeGroups(groups: string[][]): Promise<string[]>
+}
+
+interface SummarizationServiceOptions {
+  llmProvider?: LLMProvider;   // Passed in code by the caller. No environment variable selects it.
 }
 ```
+
+`summarize` uses the provider when one is available. When no provider is available, or the provider call fails, the service returns the algorithmic summary. With a `query`, a single text is not returned unchanged. Without a `query`, a single text is returned unchanged.
+
+`LLMSummarizationProvider(llm, maxTokens)` implements `ISummarizationProvider`. It sends the texts and the optional query to the `LLMProvider`. It clips the reply to a word limit derived from `maxTokens`.
 
 ---
 
@@ -1932,10 +1942,15 @@ interface ContextPackage {
   breakdown: TokenBreakdown;   // working, episodic, semantic, procedural, mustInclude
   excluded: ExcludedEntity[];  // reason: budget_exceeded | low_salience | filtered | slot_limit
   suggestions: string[];
+  excludedSummary?: string;    // One summary of the excluded entities. Set only with summarizeExcluded. Not counted in totalTokens.
 }
 ```
 
-`ContextRetrievalOptions` also accepts `maxSlots?: number` (cap on the number of memories; must-include entities count and are never cut) and `composeHops?: 0 | 1` (one-hop neighbor expansion in query mode).
+`ContextRetrievalOptions` also accepts these options:
+
+- `maxSlots?: number`. Caps the number of memories. Must-include entities count and are never cut.
+- `composeHops?: 0 | 1`. Adds one-hop neighbor expansion in query mode.
+- `summarizeExcluded?: boolean`. Summarizes the excluded entities. Off by default.
 
 ### Artifact Types (`types/artifact.ts`)
 
@@ -2095,8 +2110,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 700 | repo-tools map |
-| totalLinesOfCode | 239265 | repo-tools map |
-| totalExports | 2877 | repo-tools map |
+| totalLinesOfCode | 239572 | repo-tools map |
+| totalExports | 2881 | repo-tools map |
 | reachableFiles | 291 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 24 | repo-tools map |
