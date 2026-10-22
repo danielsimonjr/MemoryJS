@@ -1803,7 +1803,7 @@ Chronological turns for a session.
 async getSessionTurns(
   sessionId: string,
   opts?: { role?: 'user' | 'assistant' | 'system' | 'tool'; limit?: number }
-): Promise<TurnEntity[]>
+): Promise<AgentEntity[]>
 ```
 
 ### getRepeatedTurnCount
@@ -1817,8 +1817,8 @@ getRepeatedTurnCount(sessionId: string): number
 ### deleteSession / listSessions
 
 ```typescript
-async deleteSession(sessionId: string): Promise<{ deletedCount: number }>
-async listSessions(): Promise<SessionEntity[]>
+async deleteSession(sessionId: string): Promise<{ deleted: number }>
+async listSessions(): Promise<string[]>
 ```
 
 ### Events

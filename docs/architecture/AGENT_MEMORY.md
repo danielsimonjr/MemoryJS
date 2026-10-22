@@ -717,7 +717,7 @@ The inference checks the rules in this order. The first match wins. If no rule m
 2. `lookup`. The query starts with `who`, `which`, `when` or `where`.
 3. `synthesis`. The query starts with `why` or `how`.
 
-A profile can set `retrieval.composeHops` (`0 | 1`). `applyProfile` uses this value when the caller leaves `composeHops` unset. An explicit `composeHops` option wins. The shipped presets do not set `retrieval`.
+A profile can set `retrieval.composeHops` (`0 | 1`). `applyProfile` uses this value when the caller leaves `composeHops` unset. An explicit `composeHops` option wins. The shipped presets do not set `retrieval`. Only `retrieveForContext` reads `composeHops`; `retrieveWithBudgetAllocation` ignores it.
 
 ### 6. Working Memory Manager
 
