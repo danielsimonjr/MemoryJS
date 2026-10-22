@@ -227,7 +227,7 @@ export class ContextWindowManager {
   constructor(config?: ContextWindowConfig)
 
   async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
-  setHybridSearch(search: Pick<HybridSearchManager, 'search'> | undefined): void  // Enables query-ranked retrieval
+  setHybridSearch(search: Pick<HybridSearchManager, 'search'> | undefined): void  // Enables query-ranked retrieval; ctx.contextWindowManager calls it when MEMORY_CONTEXT_HYBRID_RANKING is true
   setSummarizer(summarizer: Pick<SummarizationService, 'summarize'> | undefined): void  // Enables excludedSummary when summarizeExcluded is set
   estimateTokens(entity: AgentEntity): number
   prioritize(entities: AgentEntity[], maxTokens: number): AgentEntity[]
@@ -2109,8 +2109,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 700 | repo-tools map |
-| totalLinesOfCode | 239700 | repo-tools map |
+| totalSourceFiles | 701 | repo-tools map |
+| totalLinesOfCode | 239790 | repo-tools map |
 | totalExports | 2881 | repo-tools map |
 | reachableFiles | 291 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |

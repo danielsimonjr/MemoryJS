@@ -287,7 +287,7 @@ All default to 0 = off with behavior identical to before they existed. See `docs
 | `MEMORY_SALIENCE_CONNECTIVITY_WEIGHT` | Number (0–1) | `0` | Adds normalized entity degree to the salience weighted sum (other weights are not renormalized). |
 | `MEMORY_DECAY_CONNECTIVITY_PROTECTION` | Number (0–1) | `0` | Legacy decay path only: well-connected entities decay slower (`effectiveDecayFactor = decayFactor + (1 − decayFactor) × protection × normalizedDegree`). Requires a degree snapshot (refreshed by batch decay ops or `refreshConnectivitySnapshot()`). |
 
-Context window: `MEMORY_CONTEXT_MAX_TOKENS` (4000), `MEMORY_CONTEXT_TOKEN_MULTIPLIER` (1.3), `MEMORY_CONTEXT_RESERVE_BUFFER` (100)
+Context window: `MEMORY_CONTEXT_MAX_TOKENS` (4000), `MEMORY_CONTEXT_TOKEN_MULTIPLIER` (1.3), `MEMORY_CONTEXT_RESERVE_BUFFER` (100), `MEMORY_CONTEXT_HYBRID_RANKING` (false)
 
 Query logging: `MEMORY_QUERY_LOGGING` (false), `MEMORY_QUERY_LOG_FILE`, `MEMORY_QUERY_LOG_LEVEL` (info)
 

@@ -956,6 +956,7 @@ opt-in / require explicit configuration.
 | `MEMORY_CONTEXT_MAX_TOKENS` | `4000` |
 | `MEMORY_CONTEXT_TOKEN_MULTIPLIER` | `1.3` |
 | `MEMORY_CONTEXT_RESERVE_BUFFER` | `100` |
+| `MEMORY_CONTEXT_HYBRID_RANKING` | `false` |
 
 ### Query logging
 

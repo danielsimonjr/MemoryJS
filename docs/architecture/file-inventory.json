@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-22",
-  "totalFiles": 689,
+  "totalFiles": 690,
   "byDisposition": {
     "reachable": 288,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 381,
+    "test": 382,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 292,
-    "tests": 381,
+    "tests": 382,
     "tools": 10,
     "config": 2
   },
@@ -865,7 +865,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 308
+      "loc": 310
     },
     {
       "file": "src/cli/commands/doctor.ts",
@@ -1117,7 +1117,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1812
+      "loc": 1822
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -3526,6 +3526,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 33
+    },
+    {
+      "file": "tests/unit/core/ManagerContext-hybridContext.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 79
     },
     {
       "file": "tests/unit/core/ManagerContext-proceduralGraph.test.ts",
