@@ -385,6 +385,41 @@ describe('SummarizationService', () => {
       expect(result).toBe(await new SummarizationService().summarize(texts));
     });
 
+    it('falls back when the LLM returns an empty reply', async () => {
+      const texts = ['User likes pasta', 'User enjoys wine'];
+      const complete = vi.fn(async (_prompt: string) => '  \n ');
+      const withLLM = new SummarizationService({}, { llmProvider: { complete } });
+
+      const result = await withLLM.summarize(texts, 'q');
+
+      expect(result).toBe(await new SummarizationService().summarize(texts));
+    });
+
+    it('trims the whitespace around the LLM reply', async () => {
+      const complete = vi.fn(async (_prompt: string) => '\n  the summary \n');
+      const withLLM = new SummarizationService({}, { llmProvider: { complete } });
+
+      const result = await withLLM.summarize(['a', 'b']);
+
+      expect(result).toBe('the summary');
+    });
+
+    it('falls back when the LLM returns a value that is not a string', async () => {
+      const texts = ['User likes pasta', 'User enjoys wine'];
+      const complete = vi.fn(async (_prompt: string) => undefined as unknown as string);
+      const withLLM = new SummarizationService({}, { llmProvider: { complete } });
+
+      const result = await withLLM.summarize(texts);
+
+      expect(result).toBe(await new SummarizationService().summarize(texts));
+    });
+
+    it('returns one text unchanged when a query is set and no provider is attached', async () => {
+      const result = await new SummarizationService().summarize(['only'], 'q');
+
+      expect(result).toBe('only');
+    });
+
     it('uses the provider for one text when a query is set', async () => {
       const complete = vi.fn(async (_prompt: string) => 'answer');
       const withLLM = new SummarizationService({}, { llmProvider: { complete } });

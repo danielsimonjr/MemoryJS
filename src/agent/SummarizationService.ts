@@ -34,7 +34,8 @@ export interface SummarizationServiceOptions {
  * Summarization provider that asks an LLM for one summary.
  *
  * The prompt carries the optional query. The reply is clipped to the
- * word limit derived from maxTokens.
+ * word limit derived from maxTokens. An empty reply throws, so the service
+ * falls back to the algorithmic summary.
  */
 export class LLMSummarizationProvider implements ISummarizationProvider {
   constructor(
@@ -56,7 +57,10 @@ export class LLMSummarizationProvider implements ISummarizationProvider {
     texts.forEach((text, i) => lines.push(`[${i + 1}] ${text}`));
 
     const reply = await this.llm.complete(lines.join('\n'));
-    return reply.trim().split(/\s+/).slice(0, wordLimit).join(' ');
+    const summary = reply.trim().split(/\s+/).slice(0, wordLimit).join(' ');
+    // An empty reply is no summary: the throw makes the service use the algorithmic fallback.
+    if (summary.length === 0) throw new Error('LLM returned an empty summary');
+    return summary;
   }
 }
 
