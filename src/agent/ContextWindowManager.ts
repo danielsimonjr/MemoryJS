@@ -1310,6 +1310,7 @@ export class ContextWindowManager {
       ...options,
       context: profileContext,
       maxTokens: options.maxTokens ?? profileConfig.maxTokens ?? this.config.defaultMaxTokens,
+      composeHops: options.composeHops ?? profileConfig.retrieval?.composeHops,
     };
 
     return result;
