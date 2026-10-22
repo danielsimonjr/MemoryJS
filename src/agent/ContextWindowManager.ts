@@ -498,8 +498,8 @@ export class ContextWindowManager {
   /**
    * Summarize the entities that retrieval excluded.
    *
-   * Runs only when the flag is set, a summarizer is attached and at least one entity is
-   * excluded. A failing summarizer must not fail retrieval: it logs a warning and returns
+   * Runs only when the flag is set, a summarizer is attached and at least one excluded entity
+   * has observation text. A failing summarizer must not fail retrieval: it logs a warning and returns
    * undefined.
    *
    * @param excluded - Every excluded entity (budget, slot and salience cuts)
@@ -514,11 +514,14 @@ export class ContextWindowManager {
   ): Promise<string | undefined> {
     if (!enabled || !this.summarizer || excluded.length === 0) return undefined;
 
+    // An entity without observations has no text to summarize.
+    const texts = excluded
+      .map((e) => (e.entity.observations ?? []).join(' '))
+      .filter((text) => text.trim().length > 0);
+    if (texts.length === 0) return undefined;
+
     try {
-      return await this.summarizer.summarize(
-        excluded.map((e) => (e.entity.observations ?? []).join(' ')),
-        query
-      );
+      return await this.summarizer.summarize(texts, query);
     } catch (err) {
       logger.warn('[ContextWindowManager.retrieveForContext] excluded summary failed, continuing without it:', err);
       return undefined;
