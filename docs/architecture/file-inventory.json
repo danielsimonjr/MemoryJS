@@ -1,12 +1,12 @@
 {
-  "generated": "2026-10-18",
-  "totalFiles": 687,
+  "generated": "2026-10-21",
+  "totalFiles": 689,
   "byDisposition": {
     "reachable": 288,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 379,
+    "test": 381,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 292,
-    "tests": 379,
+    "tests": 381,
     "tools": 10,
     "config": 2
   },
@@ -1117,7 +1117,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1810
+      "loc": 1812
     },
     {
       "file": "src/core/mmap/FsReadMmapBackend.ts",
@@ -1201,7 +1201,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2492
+      "loc": 2530
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -1614,7 +1614,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 545
+      "loc": 555
     },
     {
       "file": "src/search/SearchSuggestions.ts",
@@ -1628,7 +1628,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 512
+      "loc": 549
     },
     {
       "file": "src/search/SpellChecker.ts",
@@ -1712,7 +1712,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 406
+      "loc": 474
     },
     {
       "file": "src/security/ABACPolicy.ts",
@@ -1838,7 +1838,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2492
+      "loc": 2506
     },
     {
       "file": "src/utils/AsyncMutex.ts",
@@ -3535,6 +3535,13 @@
       "loc": 76
     },
     {
+      "file": "tests/unit/core/ManagerContext-vectorStore.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 55
+    },
+    {
       "file": "tests/unit/core/ManagerContext.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -3708,6 +3715,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 72
+    },
+    {
+      "file": "tests/unit/core/sqlite-embeddings-content-hash.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 138
     },
     {
       "file": "tests/unit/core/sqlite-events.test.ts",
@@ -4309,7 +4323,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 372
+      "loc": 496
     },
     {
       "file": "tests/unit/search/SpellChecker.test.ts",
@@ -4428,7 +4442,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 333
+      "loc": 447
     },
     {
       "file": "tests/unit/security/ABACPolicy.test.ts",

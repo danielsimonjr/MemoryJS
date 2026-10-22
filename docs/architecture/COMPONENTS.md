@@ -1259,17 +1259,25 @@ export class MockEmbeddingService implements EmbeddingService { }
 **Purpose**: Vector storage and similarity search
 
 ```typescript
-export interface VectorStore {
-  add(id: string, vector: number[]): Promise<void>
-  search(vector: number[], limit: number): Promise<VectorSearchResult[]>
-  delete(id: string): Promise<void>
+export interface IVectorStore {
+  add(entityName: string, vector: number[], contentHash?: string): void
+  initialize?(): Promise<void>                       // load persisted vectors
+  getContentHash?(entityName: string): string | undefined
+  search(queryVector: number[], k: number): VectorSearchResult[]
+  remove(entityName: string): boolean
+  size(): number
+  clear(): void
+  has(entityName: string): boolean
+  get(entityName: string): number[] | undefined
 }
 
 // Implementations
-export class InMemoryVectorStore implements VectorStore { }
-export class SQLiteVectorStore implements VectorStore { }
-export class QuantizedVectorStore implements VectorStore { }  // Compressed
+export class InMemoryVectorStore implements IVectorStore { }   // JSONL storage
+export class SQLiteVectorStore implements IVectorStore { }     // SQLite embeddings table
+export class QuantizedVectorStore { }                          // Compressed
 ```
+
+`SQLiteVectorStore.initialize()` loads the stored vectors. It skips rows of another embedding model. Each vector keeps a `contentHash`. `SemanticSearch.indexAll` re-embeds an entity when its `contentHash` changes.
 
 ---
 
@@ -2079,9 +2087,9 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalSourceFiles | 698 | repo-tools map |
-| totalLinesOfCode | 237595 | repo-tools map |
-| totalExports | 2874 | repo-tools map |
+| totalSourceFiles | 700 | repo-tools map |
+| totalLinesOfCode | 238193 | repo-tools map |
+| totalExports | 2875 | repo-tools map |
 | reachableFiles | 291 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 24 | repo-tools map |

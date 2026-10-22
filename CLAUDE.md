@@ -121,7 +121,7 @@ ctx.eventManager        // R1 event reification: actions as event hub entities (
 **Search System** (`src/search/`): Layered search architecture:
 - **Text search**: `BasicSearch` (substring), `BooleanSearch` (AND/OR/NOT with AST), `FuzzySearch` (Levenshtein via worker pool, N-gram pre-filtered)
 - **Ranked search**: `RankedSearch` (TF-IDF via `TFIDFIndexManager`), `BM25Search` (Okapi BM25 with stopwords)
-- **Semantic search**: `SemanticSearch` + `EmbeddingService` + `VectorStore`/`QuantizedVectorStore` (requires embedding provider)
+- **Semantic search**: `SemanticSearch` + `EmbeddingService` + `IVectorStore` (`InMemoryVectorStore`, `SQLiteVectorStore`) / `QuantizedVectorStore` (requires embedding provider). With `SQLiteStorage`, `ctx.semanticSearch` uses `SQLiteVectorStore`. Vectors live in the `embeddings` table. `initialize()` loads them. Restarts skip unchanged entities. A `contentHash` change triggers one re-embed. JSONL storage keeps `InMemoryVectorStore`.
 - **Hybrid search**: `HybridSearchManager` + `HybridScorer` + `SymbolicSearch` - combines semantic, lexical, symbolic, and (opt-in) graph-connectivity signals; `GraphRankPrior` provides cached normalized PageRank with one-hop neighbor expansion (`expandNeighbors`)
 - **Temporal search**: `TemporalQueryParser` (chrono-node NL time parsing) + `TemporalSearch` — `searchByTime()` on SearchManager
 - **LLM-planned search**: `LLMQueryPlanner` (NL → `StructuredQuery`) + `LLMSearchExecutor` — optional `LLMProvider`, keyword fallback

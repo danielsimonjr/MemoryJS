@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- SQLite `embeddings` table: nullable `contentHash` column, written by `storeEmbedding(name, vector, model, contentHash?)` and read by `loadEmbeddingMetadata()`. Existing databases get the column when they open.
+- `SQLiteVectorStore` loads persisted vectors on `initialize()`, skips rows of another embedding model, and keeps a content hash per vector (`add(name, vector, contentHash?)`, `getContentHash(name)`). `IVectorStore` gains optional `initialize()` and `getContentHash()`.
+
+### Changed
+
+- With `SQLiteStorage`, `ctx.semanticSearch` (and so `ctx.hybridSearchManager`) now keeps vectors in the `embeddings` table and reuses them across restarts. JSONL storage is unchanged.
+
+### Fixed
+
+- `repo-tools docs check src` passes again: the `searchNodesRanked` implementation signature now has its own doc comment.
+- `SemanticSearch` now initializes its vector store before the first read, so a persisted `SQLiteVectorStore` is searchable without a full re-index. `indexAll` re-embeds an entity when its `contentHash` differs from the stored hash.
+
 ### Security
 
 - `vite` moves from 8.0.16 to 8.1.6 in `bun.lock` (with `rolldown` 1.1.5 and four small helper packages), through `bun audit fix`. The advisory GHSA-587h-7wmj-h5pm (HIGH, `launch-editor` before 8.1.6, reached through `vitest > @vitest/mocker > vite`) made `bun audit --audit-level=high` fail in CI on every branch. Dev tooling only: no change to `package.json` or to the published package. Typecheck passes and 8,239 tests pass.

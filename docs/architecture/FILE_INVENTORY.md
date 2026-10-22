@@ -4,13 +4,13 @@
 
 # Complete File Inventory
 
-**Generated**: 2026-10-18 (by tools/create-dependency-graph)
+**Generated**: 2026-10-21 (by tools/create-dependency-graph)
 
 Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks/`, root-level `*.config.ts` — tagged with a disposition. A completeness census: no `.ts` may be silently missing. The self-check gate does a MAXIMAL, location-agnostic repo walk (broader than this census’s enumerated discovery) and fails the run if any `.ts` on disk is unaccounted.
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 687
+**Total files**: 689
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 379 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 381 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **687** | |
+| **Total** | **689** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 292 |
-| `tests` | 379 |
+| `tests` | 381 |
 | `tools` | 10 |
 
 ## All files
@@ -197,7 +197,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/GraphTraversal.ts` | src | reachable | 1421 |
 | `src/core/HierarchyManager.ts` | src | reachable | 301 |
 | `src/core/index.ts` | src | reachable | 42 |
-| `src/core/ManagerContext.ts` | src | reachable | 1810 |
+| `src/core/ManagerContext.ts` | src | reachable | 1812 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
 | `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
@@ -209,7 +209,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/segments/FileSegmentStorage.ts` | src | reachable | 685 |
 | `src/core/segments/ISegmentStorage.ts` | src | reachable | 266 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2492 |
+| `src/core/SQLiteStorage.ts` | src | reachable | 2530 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
 | `src/core/TransactionManager.ts` | src | reachable | 766 |
 | `src/core/TransitionLedger.ts` | src | reachable | 450 |
@@ -268,9 +268,9 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/ReflectionManager.ts` | src | reachable | 374 |
 | `src/search/SavedSearchManager.ts` | src | reachable | 225 |
 | `src/search/SearchFilterChain.ts` | src | reachable | 285 |
-| `src/search/SearchManager.ts` | src | reachable | 545 |
+| `src/search/SearchManager.ts` | src | reachable | 555 |
 | `src/search/SearchSuggestions.ts` | src | reachable | 240 |
-| `src/search/SemanticSearch.ts` | src | reachable | 512 |
+| `src/search/SemanticSearch.ts` | src | reachable | 549 |
 | `src/search/SpellChecker.ts` | src | reachable | 173 |
 | `src/search/SymbolicSearch.ts` | src | reachable | 165 |
 | `src/search/TemporalQueryParser.ts` | src | reachable | 417 |
@@ -282,7 +282,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/search/tiered/ITieredIndex.ts` | src | reachable | 225 |
 | `src/search/tiered/LRUHotTier.ts` | src | reachable | 164 |
 | `src/search/tiered/TieredIndex.ts` | src | reachable | 319 |
-| `src/search/VectorStore.ts` | src | reachable | 406 |
+| `src/search/VectorStore.ts` | src | reachable | 474 |
 | `src/security/ABACPolicy.ts` | src | reachable | 271 |
 | `src/security/APIKeyStore.ts` | src | reachable | 347 |
 | `src/security/index.ts` | src | reachable | 39 |
@@ -300,7 +300,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/types/result.ts` | src | reachable | 97 |
 | `src/types/search.ts` | src | reachable | 345 |
 | `src/types/task-scheduler.ts` | src | reachable | 34 |
-| `src/types/types.ts` | src | reachable | 2492 |
+| `src/types/types.ts` | src | reachable | 2506 |
 | `src/utils/AsyncMutex.ts` | src | reachable | 174 |
 | `src/utils/BatchProcessor.ts` | src | reachable | 539 |
 | `src/utils/CachePressureCoordinator.ts` | src | reachable | 181 |
@@ -543,6 +543,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/manager-context-new-managers.test.ts` | tests | test | 78 |
 | `tests/unit/core/manager-context-project.test.ts` | tests | test | 33 |
 | `tests/unit/core/ManagerContext-proceduralGraph.test.ts` | tests | test | 76 |
+| `tests/unit/core/ManagerContext-vectorStore.test.ts` | tests | test | 55 |
 | `tests/unit/core/ManagerContext.test.ts` | tests | test | 1359 |
 | `tests/unit/core/mmap/FsReadMmapBackend.test.ts` | tests | test | 275 |
 | `tests/unit/core/mmap/GraphStorage-mmap-wiring.test.ts` | tests | test | 250 |
@@ -568,6 +569,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/segments/segments-review-fixes.test.ts` | tests | test | 442 |
 | `tests/unit/core/sqlite-content-hash-migration.test.ts` | tests | test | 57 |
 | `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 72 |
+| `tests/unit/core/sqlite-embeddings-content-hash.test.ts` | tests | test | 138 |
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
 | `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 82 |
 | `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1383 |
@@ -653,7 +655,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/SearchFilterChain.test.ts` | tests | test | 381 |
 | `tests/unit/search/SearchManager.test.ts` | tests | test | 568 |
 | `tests/unit/search/SearchSuggestions.test.ts` | tests | test | 304 |
-| `tests/unit/search/SemanticSearch.test.ts` | tests | test | 372 |
+| `tests/unit/search/SemanticSearch.test.ts` | tests | test | 496 |
 | `tests/unit/search/SpellChecker.test.ts` | tests | test | 132 |
 | `tests/unit/search/SQLiteFtsSearchIntegration.test.ts` | tests | test | 58 |
 | `tests/unit/search/SymbolicSearch.test.ts` | tests | test | 244 |
@@ -670,7 +672,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/search/tiered/tiered-review-fixes.test.ts` | tests | test | 275 |
 | `tests/unit/search/tiered/TieredIndex-wiring.test.ts` | tests | test | 142 |
 | `tests/unit/search/tiered/TieredIndex.test.ts` | tests | test | 270 |
-| `tests/unit/search/VectorStore.test.ts` | tests | test | 333 |
+| `tests/unit/search/VectorStore.test.ts` | tests | test | 447 |
 | `tests/unit/security/ABACPolicy.test.ts` | tests | test | 339 |
 | `tests/unit/security/APIKeyStore.test.ts` | tests | test | 209 |
 | `tests/unit/security/PiiRedactor.test.ts` | tests | test | 139 |
