@@ -705,7 +705,7 @@ interface ContextPackage {
 }
 ```
 
-`setSummarizer(summarizer)` attaches a summarizer to the context window manager. Pass `undefined` to detach it. The summary is made only when `summarizeExcluded` is `true`, a summarizer is attached and at least one entity is excluded. The summarizer receives the observations of the excluded entities and the trimmed query text. If the summarizer throws, retrieval logs a warning and leaves `excludedSummary` unset. Retrieval does not fail. No production code calls `setSummarizer`.
+`setSummarizer(summarizer)` attaches a summarizer to the context window manager. Pass `undefined` to detach it. The summary is made only when `summarizeExcluded` is `true`, a summarizer is attached and at least one excluded entity has observation text. The excluded entities are every entity in `excluded`: budget, slot and low-salience cuts. The summarizer receives their observations (entities without observations are left out) and the trimmed query text, or no query when the text is blank. Only `retrieveForContext` reads `summarizeExcluded`; `retrieveWithBudgetAllocation` ignores it. If the summarizer throws, retrieval logs a warning and leaves `excludedSummary` unset. Retrieval does not fail. No production code calls `setSummarizer`.
 
 `setHybridSearch(search)` attaches a hybrid search to the manager. When `context.queryText` is non-blank, `retrieveForContext` orders the candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. The default is off. `composeHops: 1` requires an attached hybrid search and a query.
 

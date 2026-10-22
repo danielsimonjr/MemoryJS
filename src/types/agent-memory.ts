@@ -2265,7 +2265,7 @@ export interface ContextRetrievalOptions {
    */
   composeHops?: 0 | 1;
   /**
-   * Summarize the memories the budget or slot cut excluded into
+   * Summarize the memories retrieval excluded (budget, slot and low-salience cuts) into
    * `ContextPackage.excludedSummary`. Off by default. Needs a summarizer attached with
    * `ContextWindowManager.setSummarizer()`.
    */
@@ -2321,7 +2321,7 @@ export interface ContextPackage {
   suggestions: string[];
   /**
    * One summary of the excluded entities. Set only when `summarizeExcluded` is on, a
-   * summarizer is attached and at least one entity is excluded. Not counted in `totalTokens`.
+   * summarizer is attached and at least one excluded entity has observation text. Not counted in `totalTokens`.
    */
   excludedSummary?: string;
 }
