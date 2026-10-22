@@ -45,6 +45,8 @@ function createTestPackage(memories: AgentEntity[] = []): ContextPackage {
   return {
     memories,
     totalTokens: 250,
+    sourceTokens: 250,
+    compressionRatio: 1,
     breakdown,
     excluded: [],
     suggestions: ['Consider adding more context'],
