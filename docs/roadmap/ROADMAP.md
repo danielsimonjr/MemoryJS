@@ -258,7 +258,7 @@ What is actually missing is wiring and two fields:
 #### E2. ~~Candidate-token ratio, optional slot cap, query rank via hybrid search~~ — ✅ shipped
 - `ContextPackage` reports `sourceTokens` and `compressionRatio` (`src/types/agent-memory.ts`). The ratio is 1 when nothing is excluded.
 - `ContextRetrievalOptions.maxSlots` caps the result. Unset means no cap. The cap applies in `prioritize`, `retrieveForContext` and `retrieveWithBudgetAllocation`.
-- `ContextWindowManager.setHybridSearch()` attaches a `HybridSearchManager`. When `SalienceContext.queryText` is set, `retrieveForContext` orders candidates by hybrid rank before the salience cut. `composeHops: 1` adds one-hop neighbors of the top hits.
+- `ContextWindowManager.setHybridSearch()` attaches a `HybridSearchManager`. When `SalienceContext.queryText` is set, `retrieveForContext` orders candidates by hybrid rank before the salience cut. `composeHops: 1` adds one-hop neighbors of the top hits. `MEMORY_CONTEXT_HYBRID_RANKING=true` (default `false`) makes `ctx.contextWindowManager` call `setHybridSearch` with the hybrid search manager. `AgentMemoryManager` is not covered.
 - Tests: `tests/unit/agent/ContextWindowManager.test.ts`.
 
 #### E3. ~~Finish `SummarizationService`'s provider~~ — ✅ shipped

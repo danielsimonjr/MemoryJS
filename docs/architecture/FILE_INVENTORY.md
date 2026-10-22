@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 689
+**Total files**: 690
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 381 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 382 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **689** | |
+| **Total** | **690** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 292 |
-| `tests` | 381 |
+| `tests` | 382 |
 | `tools` | 10 |
 
 ## All files
@@ -161,7 +161,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/cli/commands/cache.ts` | src | reachable | 76 |
 | `src/cli/commands/check.ts` | src | reachable | 180 |
 | `src/cli/commands/decision.ts` | src | reachable | 239 |
-| `src/cli/commands/diag.ts` | src | reachable | 308 |
+| `src/cli/commands/diag.ts` | src | reachable | 310 |
 | `src/cli/commands/doctor.ts` | src | reachable | 486 |
 | `src/cli/commands/entity.ts` | src | reachable | 165 |
 | `src/cli/commands/exclusion.ts` | src | reachable | 122 |
@@ -197,7 +197,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/GraphTraversal.ts` | src | reachable | 1421 |
 | `src/core/HierarchyManager.ts` | src | reachable | 301 |
 | `src/core/index.ts` | src | reachable | 42 |
-| `src/core/ManagerContext.ts` | src | reachable | 1812 |
+| `src/core/ManagerContext.ts` | src | reachable | 1822 |
 | `src/core/mmap/FsReadMmapBackend.ts` | src | reachable | 239 |
 | `src/core/mmap/IMmapBackend.ts` | src | reachable | 169 |
 | `src/core/nodeSqliteAdapter.ts` | src | reachable | 181 |
@@ -542,6 +542,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/manager-context-env-number.test.ts` | tests | test | 81 |
 | `tests/unit/core/manager-context-new-managers.test.ts` | tests | test | 78 |
 | `tests/unit/core/manager-context-project.test.ts` | tests | test | 33 |
+| `tests/unit/core/ManagerContext-hybridContext.test.ts` | tests | test | 79 |
 | `tests/unit/core/ManagerContext-proceduralGraph.test.ts` | tests | test | 76 |
 | `tests/unit/core/ManagerContext-vectorStore.test.ts` | tests | test | 55 |
 | `tests/unit/core/ManagerContext.test.ts` | tests | test | 1359 |

@@ -1,6 +1,6 @@
 # Memorilla — latent semantic memory: research note and plan
 
-**Status**: E1 to E5 have shipped. E3 is a library API with no production caller: `src/` never calls `setSummarizer()`. Soft tokens and GRPO are dropped.
+**Status**: All planned cards (E1 to E5) have shipped. E3 is a library API with no production caller: `src/` never calls `setSummarizer()`. Soft tokens and GRPO are dropped.
 **Added**: 2026-10-18
 **Revised**: 2026-10-21 (paper figures re-checked; gap review, E4, E5 and mixing map added to Section 4; E2 extended; two audit rows added to Section 3)
 **Paper**: Fallahpour, Idehpour, Kothapalli, Mounier, Wu, Pardis, and Leskovec. *Memorilla: Latent Semantic Memory for LLMs*. arXiv:2610.21375, posted 15 Oct 2026. HTML full text including Appendices A–G: <https://arxiv.org/html/2610.21375>. Abstract: <https://arxiv.org/abs/2610.21375>. Workshop citation on the project site: COLM Workshop on Context Beyond the Window, 2026, <https://openreview.net/forum?id=VV0vvzL783>.

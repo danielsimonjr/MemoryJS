@@ -350,7 +350,7 @@ interface ContextPackage {
 
 **Excluded summary:** `excludedSummary` is set only when `summarizeExcluded` is `true`, a summarizer is attached with `setSummarizer()`, and at least one excluded entity has observation text. `retrieveWithBudgetAllocation` ignores the option. If the summarizer throws, retrieval logs a warning and leaves `excludedSummary` unset.
 
-**Query-ranked retrieval:** call `setHybridSearch(search)` on the `ContextWindowManager` to attach a hybrid search. When `context.queryText` is non-blank, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. Without an attached search, retrieval is unchanged. No production code calls `setHybridSearch`.
+**Query-ranked retrieval:** call `setHybridSearch(search)` on the `ContextWindowManager` to attach a hybrid search. When `context.queryText` is non-blank, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. Without an attached search, retrieval is unchanged. `ctx.contextWindowManager` attaches the hybrid search only when `MEMORY_CONTEXT_HYBRID_RANKING` is `true`. `AgentMemoryManager` is not covered by this switch.
 
 **Example:**
 ```typescript
@@ -2278,7 +2278,7 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 | Claim | Value | Source |
 |---|---|---|
 | totalExports | 2881 | repo-tools map |
-| totalSourceFiles | 700 | repo-tools map |
+| totalSourceFiles | 701 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.
 
