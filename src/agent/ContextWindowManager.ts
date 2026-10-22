@@ -110,6 +110,12 @@ export interface SpilloverResult {
   nextPageCursor?: string;
 }
 
+/** Options for {@link ContextWindowManager.prioritize}. */
+export interface PrioritizeOptions {
+  /** Maximum number of selected entities, must-include entities included. Unset = no cap. */
+  maxSlots?: number;
+}
+
 /**
  * Manages memory retrieval within LLM token budget constraints.
  *
@@ -234,15 +240,21 @@ export class ContextWindowManager {
    * @param budget - Maximum tokens allowed
    * @param context - Salience context for scoring
    * @param mustInclude - Entity names that must be included
+   * @param options - Prioritization options (`maxSlots` caps the number of selected entities)
    * @returns Prioritized entities and excluded entities
    */
   async prioritize(
     entities: AgentEntity[],
     budget: number,
     context: SalienceContext = {},
-    mustInclude: string[] = []
+    mustInclude: string[] = [],
+    options: PrioritizeOptions = {}
   ): Promise<{ selected: ScoredEntity[]; excluded: ExcludedEntity[] }> {
     const mustIncludeSet = new Set(mustInclude);
+    const slotCap =
+      options.maxSlots !== undefined && Number.isFinite(options.maxSlots) && options.maxSlots >= 0
+        ? Math.floor(options.maxSlots)
+        : Infinity;
 
     // Score all entities
     const scored = await this.salienceEngine.rankEntitiesBySalience(entities, context);
@@ -284,7 +296,14 @@ export class ContextWindowManager {
 
     // Greedily add optional entities by efficiency
     for (const candidate of withEfficiency) {
-      if (usedTokens + candidate.tokens <= budget) {
+      if (selected.length >= slotCap) {
+        excluded.push({
+          entity: candidate.entity,
+          reason: 'slot_limit',
+          tokens: candidate.tokens,
+          salience: candidate.salienceScore,
+        });
+      } else if (usedTokens + candidate.tokens <= budget) {
         selected.push({
           entity: candidate.entity,
           salienceScore: candidate.salienceScore,
@@ -326,6 +345,7 @@ export class ContextWindowManager {
       includeSemanticRelevant = true,
       mustInclude = [],
       minSalience = 0,
+      maxSlots,
     } = resolvedOptions;
 
     // Effective budget after reserve
@@ -372,7 +392,8 @@ export class ContextWindowManager {
       candidates,
       effectiveBudget,
       context,
-      mustInclude
+      mustInclude,
+      { maxSlots }
     );
 
     // Filter by minimum salience
@@ -392,13 +413,32 @@ export class ContextWindowManager {
     // Generate suggestions for excluded high-salience entities
     const suggestions = this.generateSuggestions(excluded);
 
-    return {
+    return this.withBudgetReport({
       memories: filtered.map((s) => s.entity),
       totalTokens: this.estimateTotalTokens(filtered.map((s) => s.entity)),
       breakdown,
       excluded: [...excluded, ...lowSalienceExcluded],
       suggestions,
-    };
+    });
+  }
+
+  /**
+   * Add the budget-cut report to a context package.
+   *
+   * `sourceTokens` is `totalTokens` plus the tokens of every excluded entity.
+   * `compressionRatio` is `sourceTokens / totalTokens`, or 1 when nothing is excluded.
+   *
+   * @param pkg - Context package without the budget-cut report
+   * @returns Context package with `sourceTokens` and `compressionRatio` set
+   */
+  private withBudgetReport(
+    pkg: Omit<ContextPackage, 'sourceTokens' | 'compressionRatio'>
+  ): ContextPackage {
+    const sourceTokens =
+      pkg.totalTokens + pkg.excluded.reduce((sum, e) => sum + e.tokens, 0);
+    const compressionRatio =
+      sourceTokens === pkg.totalTokens ? 1 : sourceTokens / Math.max(pkg.totalTokens, 1);
+    return { ...pkg, sourceTokens, compressionRatio };
   }
 
   private prefilterCandidates(
@@ -613,6 +653,9 @@ export class ContextWindowManager {
    *
    * Must-include entities are subtracted from total first.
    *
+   * `sourceTokens` is a lower bound. Only low-salience exclusions are tracked here,
+   * because the per-type retrievals do not report their budget cuts.
+   *
    * @param options - Retrieval options
    * @returns Context package with allocated retrieval
    */
@@ -716,13 +759,13 @@ export class ContextWindowManager {
       mustInclude: mustIncludeResult.tokens,
     };
 
-    return {
+    return this.withBudgetReport({
       memories: filtered.map((s) => s.entity),
       totalTokens: this.estimateTotalTokens(filtered.map((s) => s.entity)),
       breakdown,
       excluded: allExcluded,
       suggestions: allSuggestions,
-    };
+    });
   }
 
   // ==================== Helper Methods ====================

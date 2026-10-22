@@ -949,4 +949,167 @@ describe('ContextWindowManager', () => {
       expect(config.enforceDiversity).toBe(true);
     });
   });
+
+  /**
+   * Build a manager over the given entities with no budget reserve,
+   * so the budget equals maxTokens.
+   */
+  function createBudgetManager(entities: AgentEntity[]): ContextWindowManager {
+    const budgetStorage = createMockStorage(entities);
+    const tracker = new AccessTracker(budgetStorage);
+    const decay = new DecayEngine(budgetStorage, tracker);
+    const salience = new SalienceEngine(budgetStorage, tracker, decay);
+    return new ContextWindowManager(budgetStorage, salience, { reserveBuffer: 0 });
+  }
+
+  /**
+   * Create entities that each cost 8 tokens (one-word name, three observation words).
+   */
+  function createNamedEntities(names: string[]): AgentEntity[] {
+    return names.map((name) => createTestEntity({ name, observations: ['alpha beta gamma'] }));
+  }
+
+  /** Names 'e01' to 'e16'. */
+  function sixteenNames(): string[] {
+    return Array.from({ length: 16 }, (_, i) => `e${String(i + 1).padStart(2, '0')}`);
+  }
+
+  describe('budget-cut report', () => {
+    it('reports sourceTokens and compressionRatio when the budget cuts entities', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveForContext({ maxTokens: 20 });
+
+      expect(result.totalTokens).toBe(16);
+      expect(result.sourceTokens).toBe(32);
+      expect(result.compressionRatio).toBe(2);
+      expect(result.excluded).toHaveLength(2);
+      expect(result.excluded.map((e) => e.reason)).toEqual(['budget_exceeded', 'budget_exceeded']);
+    });
+
+    it('reports a ratio of 1 when every candidate fits', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000 });
+
+      expect(result.totalTokens).toBe(32);
+      expect(result.sourceTokens).toBe(32);
+      expect(result.compressionRatio).toBe(1);
+      expect(result.excluded).toEqual([]);
+    });
+
+    it('reports a ratio of 1 for an empty store', async () => {
+      const manager = createBudgetManager([]);
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000 });
+
+      expect(result.totalTokens).toBe(0);
+      expect(result.sourceTokens).toBe(0);
+      expect(result.compressionRatio).toBe(1);
+    });
+
+    it('counts low-salience exclusions in sourceTokens', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      // Salience is in [0, 1], so minSalience 2 excludes every entity.
+      const result = await manager.retrieveForContext({ maxTokens: 1000, minSalience: 2 });
+
+      expect(result.totalTokens).toBe(0);
+      expect(result.sourceTokens).toBe(32);
+      expect(result.compressionRatio).toBe(32);
+    });
+
+    it('sets both fields in retrieveWithBudgetAllocation', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveWithBudgetAllocation({ maxTokens: 1000 });
+
+      const excludedTokens = result.excluded.reduce((sum, e) => sum + e.tokens, 0);
+      expect(result.sourceTokens).toBe(result.totalTokens + excludedTokens);
+      expect(result.compressionRatio).toBe(
+        result.sourceTokens === result.totalTokens
+          ? 1
+          : result.sourceTokens / Math.max(result.totalTokens, 1)
+      );
+    });
+  });
+
+  describe('maxSlots', () => {
+    it('caps the number of memories', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      for (const cap of [1, 2, 4, 8, 16]) {
+        const result = await manager.retrieveForContext({ maxTokens: 1000, maxSlots: cap });
+        expect(result.memories).toHaveLength(cap);
+      }
+    });
+
+    it('returns nested selections as maxSlots grows', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      let previous: string[] = [];
+      for (const cap of [1, 2, 4, 8, 16]) {
+        const result = await manager.retrieveForContext({ maxTokens: 1000, maxSlots: cap });
+        const names = result.memories.map((m) => m.name);
+        expect(names).toHaveLength(cap);
+        for (const name of previous) {
+          expect(names).toContain(name);
+        }
+        previous = names;
+      }
+    });
+
+    it('marks slot-cut entities with reason slot_limit', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000, maxSlots: 4 });
+
+      expect(result.excluded).toHaveLength(12);
+      expect(result.excluded.every((e) => e.reason === 'slot_limit')).toBe(true);
+    });
+
+    it('returns only must-include entities when maxSlots is 0', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        maxSlots: 0,
+        mustInclude: ['e05'],
+      });
+
+      expect(result.memories.map((m) => m.name)).toEqual(['e05']);
+    });
+
+    it('keeps every must-include entity when maxSlots is smaller', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        maxSlots: 1,
+        mustInclude: ['e01', 'e02'],
+      });
+
+      const names = result.memories.map((m) => m.name);
+      expect(names).toContain('e01');
+      expect(names).toContain('e02');
+      expect(names).toHaveLength(2);
+    });
+
+    it('ignores maxSlots when unset', async () => {
+      const manager = createBudgetManager(createNamedEntities(sixteenNames()));
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000 });
+
+      expect(result.memories).toHaveLength(16);
+    });
+
+    it('prioritize accepts maxSlots', async () => {
+      const manager = createBudgetManager([]);
+      const entities = createNamedEntities(sixteenNames());
+
+      const { selected } = await manager.prioritize(entities, 1000, {}, [], { maxSlots: 3 });
+
+      expect(selected).toHaveLength(3);
+    });
+  });
 });
