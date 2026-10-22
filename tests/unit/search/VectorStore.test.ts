@@ -440,6 +440,22 @@ describe('SQLiteVectorStore with SQLiteStorage', () => {
     expect(isEmbeddingStorage({ storeEmbedding() {} })).toBe(false);
   });
 
+  it('add keeps nothing in memory when the SQLite write fails', () => {
+    const failing = {
+      storeEmbedding: () => {
+        throw new Error('constraint failed');
+      },
+      loadAllEmbeddings: async () => [],
+      removeEmbedding: () => {},
+      clearAllEmbeddings: () => {},
+    };
+    const store = new SQLiteVectorStore(failing, 'mock-model');
+
+    expect(() => store.add('a', vecA, 'h1')).toThrow('constraint failed');
+    expect(store.has('a')).toBe(false);
+    expect(store.getContentHash('a')).toBeUndefined();
+  });
+
   it('InMemoryVectorStore does not track content hashes', () => {
     expect('getContentHash' in new InMemoryVectorStore()).toBe(false);
   });

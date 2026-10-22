@@ -268,18 +268,17 @@ export class SQLiteVectorStore implements IVectorStore {
    * @param contentHash - Optional hash of the source content; replaces any earlier hash for the entity
    */
   add(entityName: string, vector: number[], contentHash?: string): void {
-    // Add to in-memory cache
+    // Persist first: a failed write leaves no vector or hash in memory
+    if (this.storage) {
+      this.storage.storeEmbedding(entityName, vector, this.embeddingModel, contentHash);
+    }
+
     this.memoryStore.add(entityName, vector);
 
     if (contentHash === undefined) {
       this.contentHashes.delete(entityName);
     } else {
       this.contentHashes.set(entityName, contentHash);
-    }
-
-    // Persist to SQLite if available
-    if (this.storage) {
-      this.storage.storeEmbedding(entityName, vector, this.embeddingModel, contentHash);
     }
   }
 
