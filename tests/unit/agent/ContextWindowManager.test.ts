@@ -1166,6 +1166,89 @@ describe('ContextWindowManager', () => {
       expect(result.excludedSummary).toBeUndefined();
     });
 
+    it('summarizes the entities that the slot cap cut', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        maxSlots: 2,
+        summarizeExcluded: true,
+      });
+
+      expect(result.excluded.map((e) => e.reason)).toEqual(['slot_limit']);
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma'], undefined);
+    });
+
+    it('summarizes the entities that the salience floor cut', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        minSalience: 2,
+        summarizeExcluded: true,
+      });
+
+      expect(result.excluded.map((e) => e.reason)).toEqual(['low_salience', 'low_salience']);
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma', 'alpha beta gamma'], undefined);
+    });
+
+    it('passes no query when the query text is blank', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      await manager.retrieveForContext({
+        maxTokens: 20,
+        summarizeExcluded: true,
+        context: { queryText: '   ' },
+      });
+
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma', 'alpha beta gamma'], undefined);
+    });
+
+    it('leaves empty observation lists out of the summarizer input', async () => {
+      const timestamp = new Date().toISOString();
+      const empty = createTestEntity({
+        name: 'empty',
+        observations: [],
+        createdAt: timestamp,
+        lastModified: timestamp,
+        lastAccessedAt: timestamp,
+      });
+      const manager = createBudgetManager([...createNamedEntities(['e1']), empty]);
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000, minSalience: 2, summarizeExcluded: true });
+
+      expect(result.excluded).toHaveLength(2);
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma'], undefined);
+    });
+
+    it('does not call the summarizer when every excluded entity has no observations', async () => {
+      const timestamp = new Date().toISOString();
+      const empty = createTestEntity({
+        name: 'empty',
+        observations: [],
+        createdAt: timestamp,
+        lastModified: timestamp,
+        lastAccessedAt: timestamp,
+      });
+      const manager = createBudgetManager([empty]);
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000, minSalience: 2, summarizeExcluded: true });
+
+      expect(result.excluded).toHaveLength(1);
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
     it('returns the package without a summary when the summarizer throws', async () => {
       const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
       manager.setSummarizer({ summarize: vi.fn().mockRejectedValue(new Error('down')) });
