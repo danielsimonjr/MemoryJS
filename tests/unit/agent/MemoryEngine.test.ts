@@ -693,4 +693,46 @@ describe('MemoryEngine — repeated turn count', () => {
       expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
     } finally { cleanup(); }
   });
+  it('counts concurrent repeats in one session once each', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      const results = await Promise.all([
+        engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' }),
+        engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' }),
+        engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' }),
+      ]);
+      expect(results.filter((r) => r.duplicateDetected)).toHaveLength(2);
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(2);
+    } finally { cleanup(); }
+  });
+
+  it('does not count turns that an exclusion rule blocks', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      await ctx.exclusionManager.add({ pattern: 'password' });
+      const engine = ctx.memoryEngine;
+      const first = await engine.addTurn('my password is hunter2', { sessionId: 'sess-A', role: 'user' });
+      const second = await engine.addTurn('my password is hunter2', { sessionId: 'sess-A', role: 'user' });
+      expect(first.blocked).toBe(true);
+      expect(second.blocked).toBe(true);
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
+    } finally { cleanup(); }
+  });
+
+  it('resets the count on deleteSession when the session has no stored turns', async () => {
+    const { ctx, cleanup } = mkCtx();
+    try {
+      const engine = mkEngine(ctx);
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      await engine.addTurn(T1, { sessionId: 'sess-A', role: 'user' });
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(1);
+      const turns = await engine.getSessionTurns('sess-A');
+      await ctx.entityManager.deleteEntities(turns.map((t) => t.name));
+      expect(await engine.getSessionTurns('sess-A')).toHaveLength(0);
+      const result = await engine.deleteSession('sess-A');
+      expect(result.deleted).toBe(0);
+      expect(engine.getRepeatedTurnCount('sess-A')).toBe(0);
+    } finally { cleanup(); }
+  });
 });
