@@ -653,8 +653,10 @@ export class ContextWindowManager {
    *
    * Must-include entities are subtracted from total first.
    *
-   * `sourceTokens` is a lower bound. Only low-salience exclusions are tracked here,
-   * because the per-type retrievals do not report their budget cuts.
+   * `maxSlots` caps the combined result; must-include entities are never cut.
+   *
+   * `sourceTokens` is a lower bound. Only low-salience and slot-limit exclusions are
+   * tracked here, because the per-type retrievals do not report their budget cuts.
    *
    * @param options - Retrieval options
    * @returns Context package with allocated retrieval
@@ -675,6 +677,7 @@ export class ContextWindowManager {
       includeSemanticRelevant = true,
       mustInclude = [],
       minSalience = 0,
+      maxSlots,
     } = resolvedOptions;
 
     const effectiveBudget = maxTokens - this.config.reserveBuffer;
@@ -735,8 +738,15 @@ export class ContextWindowManager {
     // Filter by minimum salience
     const scored = await this.salienceEngine.rankEntitiesBySalience(deduped, context);
     const mustIncludeSet = new Set(mustInclude);
-    const filtered = scored.filter(
+    const aboveMinSalience = scored.filter(
       (s) => s.salienceScore >= minSalience || mustIncludeSet.has(s.entity.name)
+    );
+
+    // Apply the slot cap: must-include entities stay, the rest keep salience order
+    const { kept: filtered, slotExcluded } = this.applySlotCap(
+      aboveMinSalience,
+      mustIncludeSet,
+      maxSlots
     );
 
     // Track low salience exclusions
@@ -748,7 +758,7 @@ export class ContextWindowManager {
         tokens: this.estimateTokens(s.entity),
         salience: s.salienceScore,
       }));
-    allExcluded.push(...lowSalienceExcluded);
+    allExcluded.push(...lowSalienceExcluded, ...slotExcluded);
 
     // Calculate breakdown
     const breakdown: TokenBreakdown = {
@@ -769,6 +779,44 @@ export class ContextWindowManager {
   }
 
   // ==================== Helper Methods ====================
+
+  /**
+   * Cap a salience-ordered list at `maxSlots` entities.
+   *
+   * Must-include entities count against the cap and are never cut.
+   * The other entities keep their order until the cap is full.
+   *
+   * @param scored - Entities in descending salience order
+   * @param mustIncludeSet - Names that are never cut
+   * @param maxSlots - Maximum number of entities, or unset for no cap
+   * @returns Kept entities in the input order, and the entities cut with reason `slot_limit`
+   */
+  private applySlotCap(
+    scored: ScoredEntity[],
+    mustIncludeSet: Set<string>,
+    maxSlots: number | undefined
+  ): { kept: ScoredEntity[]; slotExcluded: ExcludedEntity[] } {
+    if (maxSlots === undefined || !Number.isFinite(maxSlots) || maxSlots < 0) {
+      return { kept: scored, slotExcluded: [] };
+    }
+
+    let free = Math.floor(maxSlots) - scored.filter((s) => mustIncludeSet.has(s.entity.name)).length;
+    const kept: ScoredEntity[] = [];
+    const slotExcluded: ExcludedEntity[] = [];
+    for (const s of scored) {
+      if (mustIncludeSet.has(s.entity.name) || free-- > 0) {
+        kept.push(s);
+      } else {
+        slotExcluded.push({
+          entity: s.entity,
+          reason: 'slot_limit',
+          tokens: this.estimateTokens(s.entity),
+          salience: s.salienceScore,
+        });
+      }
+    }
+    return { kept, slotExcluded };
+  }
 
   /**
    * Calculate token breakdown by memory type.
