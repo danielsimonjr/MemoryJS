@@ -113,8 +113,10 @@ export {
 
 export {
   SummarizationService,
+  LLMSummarizationProvider,
   type ISummarizationProvider,
   type SummarizationConfig,
+  type SummarizationServiceOptions,
   type GroupingResult,
 } from './SummarizationService.js';
 

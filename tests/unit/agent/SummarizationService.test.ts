@@ -4,7 +4,7 @@
  * Tests for text summarization, similarity detection, and observation grouping.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   SummarizationService,
   type ISummarizationProvider,
@@ -345,6 +345,70 @@ describe('SummarizationService', () => {
 
       const result = await service.summarize(['text1', 'text2']);
       expect(result).not.toBe('Should not be called');
+    });
+  });
+
+  // ==================== LLM Summarization Provider Tests ====================
+
+  describe('LLMSummarizationProvider', () => {
+    it('passes the query and the texts to the LLM', async () => {
+      const complete = vi.fn(async (_prompt: string) => 'summary');
+      const withLLM = new SummarizationService({}, { llmProvider: { complete } });
+
+      await withLLM.summarize(['first text', 'second text'], 'why x');
+
+      const prompt = complete.mock.calls[0][0];
+      expect(prompt).toContain('why x');
+      expect(prompt).toContain('first text');
+      expect(prompt).toContain('second text');
+    });
+
+    it('clips the LLM output to maxTokens', async () => {
+      const words = Array.from({ length: 30 }, (_, i) => `w${i + 1}`);
+      const complete = vi.fn(async (_prompt: string) => words.join(' '));
+      const withLLM = new SummarizationService({ maxTokens: 14 }, { llmProvider: { complete } });
+
+      const result = await withLLM.summarize(['first text', 'second text'], 'q');
+
+      expect(result).toBe('w1 w2 w3 w4 w5 w6 w7 w8 w9 w10');
+    });
+
+    it('falls back when the LLM throws', async () => {
+      const texts = ['User likes pasta', 'User enjoys wine'];
+      const complete = vi.fn(async (_prompt: string): Promise<string> => {
+        throw new Error('LLM failed');
+      });
+      const withLLM = new SummarizationService({}, { llmProvider: { complete } });
+
+      const result = await withLLM.summarize(texts);
+
+      expect(result).toBe(await new SummarizationService().summarize(texts));
+    });
+
+    it('uses the provider for one text when a query is set', async () => {
+      const complete = vi.fn(async (_prompt: string) => 'answer');
+      const withLLM = new SummarizationService({}, { llmProvider: { complete } });
+
+      await withLLM.summarize(['only'], 'q');
+
+      expect(complete).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns one text unchanged without a query', async () => {
+      const complete = vi.fn(async (_prompt: string) => 'unused');
+      const withLLM = new SummarizationService({}, { llmProvider: { complete } });
+
+      const result = await withLLM.summarize(['only']);
+
+      expect(result).toBe('only');
+      expect(complete).not.toHaveBeenCalled();
+    });
+
+    it('registers the provider from the constructor option', () => {
+      const complete = vi.fn(async (_prompt: string) => 'unused');
+      const withLLM = new SummarizationService({}, { llmProvider: { complete } });
+
+      expect(withLLM.isLLMAvailable()).toBe(true);
     });
   });
 
