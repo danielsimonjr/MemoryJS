@@ -265,6 +265,16 @@ What is actually missing is wiring and two fields:
 - `summarize(texts)` has no query argument, and `initProvider` never builds `ISummarizationProvider`. Wire the `LLMProvider` `MemoryDistiller` already uses, pass `queryText`, and let `retrieveForContext` shorten `excluded` entities only when a provider is configured.
 - Tests: extend `tests/unit/agent/SummarizationService.test.ts`.
 
+#### E4. ~~Question-type profiles~~ — ✅ shipped
+- `ContextProfile` has `lookup` (query starts with who, which, when or where) and `synthesis` (query starts with why or how). `ContextProfileManager.inferProfile` checks them after the four task profiles.
+- `ProfileConfig.retrieval.composeHops` is applied by `ContextWindowManager.applyProfile` when the caller leaves `composeHops` unset. The shipped presets leave `retrieval` unset, so default retrieval does not change.
+- Tests: `tests/unit/agent/ContextProfileManager.test.ts`.
+
+#### E5. ~~Repeat count per session~~ — ✅ shipped
+- `MemoryEngine.getRepeatedTurnCount(sessionId)` returns the number of turns that the dedup chain rejected for the session in this process. It counts only dedup-chain rejections.
+- The count is not persisted. `deleteSession` resets it.
+- Tests: `tests/unit/agent/MemoryEngine.test.ts`.
+
 Suggested order: **E1 → E2**. E3 waits. No new store, no latent adapter, no FactKG download.
 
 ---

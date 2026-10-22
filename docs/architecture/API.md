@@ -1806,6 +1806,14 @@ async getSessionTurns(
 ): Promise<TurnEntity[]>
 ```
 
+### getRepeatedTurnCount
+
+Number of turns that the dedup chain rejected for a session in this process. The count is not persisted. `deleteSession` resets it. Exclusion-manager rejections are not counted.
+
+```typescript
+getRepeatedTurnCount(sessionId: string): number
+```
+
 ### deleteSession / listSessions
 
 ```typescript
