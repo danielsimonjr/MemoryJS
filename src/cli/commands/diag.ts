@@ -66,6 +66,8 @@ export const ENV_VAR_CATALOG: Array<{ name: string; defaultValue: string; descri
   { name: 'MEMORY_CONSOLIDATION_SCHEDULER_ENABLED', defaultValue: 'false', description: 'Enable background consolidation' },
   { name: 'MEMORY_CONSOLIDATION_INTERVAL_MS', defaultValue: '3600000', description: 'Consolidation interval (ms)' },
   { name: 'MEMORY_DEFAULT_VISIBILITY', defaultValue: 'private', description: 'private | team | org | shared | public' },
+  // Context window
+  { name: 'MEMORY_CONTEXT_HYBRID_RANKING', defaultValue: 'false', description: 'true rates context candidates with hybrid search (opt-in; AgentMemoryManager not covered)' },
   // CLI-only
   { name: 'MEMORYJS_STORAGE_PATH', defaultValue: './memory.jsonl', description: 'CLI: default storage path' },
   { name: 'MEMORYJS_OUTPUT_FORMAT', defaultValue: 'json', description: 'CLI: json | table | csv' },
