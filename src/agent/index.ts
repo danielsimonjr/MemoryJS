@@ -134,6 +134,7 @@ export {
 export {
   ContextWindowManager,
   type ContextWindowManagerConfig,
+  type PrioritizeOptions,
   type SpilloverResult,
   type WakeUpOptions,
   type WakeUpResult,

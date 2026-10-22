@@ -2244,6 +2244,11 @@ export interface ContextRetrievalOptions {
   minSalience?: number;
   /** Context profile to tune retrieval strategy. Use 'auto' to infer from query text. */
   profile?: ContextProfile;
+  /**
+   * Maximum number of memories, or no cap when unset. Must-include entities count
+   * against the cap but are never cut.
+   */
+  maxSlots?: number;
 }
 
 /**
@@ -2270,6 +2275,8 @@ export interface TokenBreakdown {
  * const result: ContextPackage = {
  *   memories: [entity1, entity2],
  *   totalTokens: 3500,
+ *   sourceTokens: 4300,
+ *   compressionRatio: 1.23,
  *   breakdown: { working: 1000, episodic: 2000, semantic: 500, procedural: 0, mustInclude: 0 },
  *   excluded: [{ entity: entity3, reason: 'budget_exceeded', tokens: 800 }],
  *   suggestions: ['Consider retrieving user_history if more space available'],
@@ -2281,6 +2288,10 @@ export interface ContextPackage {
   memories: AgentEntity[];
   /** Total tokens used */
   totalTokens: number;
+  /** `totalTokens` plus the tokens of every excluded entity */
+  sourceTokens: number;
+  /** `sourceTokens / totalTokens`; 1 when nothing is excluded */
+  compressionRatio: number;
   /** Token breakdown by memory type */
   breakdown: TokenBreakdown;
   /** Entities that didn't fit in budget */
@@ -2296,7 +2307,7 @@ export interface ExcludedEntity {
   /** The excluded entity */
   entity: AgentEntity;
   /** Why it was excluded */
-  reason: 'budget_exceeded' | 'low_salience' | 'filtered';
+  reason: 'budget_exceeded' | 'low_salience' | 'filtered' | 'slot_limit';
   /** Estimated tokens for this entity */
   tokens: number;
   /** Salience score at time of exclusion */
