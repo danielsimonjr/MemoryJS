@@ -318,6 +318,8 @@ interface ContextRetrievalOptions {
   includeEpisodicRecent?: boolean;
   includeSemanticRelevant?: boolean;
   mustInclude?: string[];
+  maxSlots?: number;      // Cap on the number of memories. Must-include entities count and are never cut.
+  composeHops?: 0 | 1;    // 1 adds one-hop neighbors of the top hybrid hits. Needs a query and an attached hybrid search.
 }
 
 interface SalienceContext {
@@ -334,14 +336,17 @@ interface SalienceContext {
 interface ContextPackage {
   memories: AgentEntity[];
   totalTokens: number;
-  breakdown: {
-    workingMemory: number;
-    episodic: number;
-    semantic: number;
-  };
-  excluded: string[];
+  sourceTokens: number;        // totalTokens plus the tokens of every excluded entity
+  compressionRatio: number;    // sourceTokens / totalTokens; 1 when nothing is excluded
+  breakdown: TokenBreakdown;   // working, episodic, semantic, procedural, mustInclude
+  excluded: ExcludedEntity[];  // reason: budget_exceeded | low_salience | filtered | slot_limit
+  suggestions: string[];
 }
 ```
+
+`sourceTokens` and `compressionRatio` are required. Code that builds a `ContextPackage` by hand must set both.
+
+**Query-ranked retrieval:** call `setHybridSearch(search)` on the `ContextWindowManager` to attach a hybrid search. When `context.queryText` is non-blank, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. Without an attached search, retrieval is unchanged. No production code calls `setHybridSearch`.
 
 **Example:**
 ```typescript
@@ -2260,7 +2265,7 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 
 | Claim | Value | Source |
 |---|---|---|
-| totalExports | 2875 | repo-tools map |
+| totalExports | 2877 | repo-tools map |
 | totalSourceFiles | 700 | repo-tools map |
 
 The figures below come from `bun run tools:deps` and `bun run tools:deps:full`. These generators read `src/` only. The gate does not check these figures. Read them in `dependency-summary.compact.json` and `TEST_COVERAGE.md`.

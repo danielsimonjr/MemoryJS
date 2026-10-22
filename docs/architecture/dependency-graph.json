@@ -5,7 +5,7 @@
     "lastUpdated": "2026-10-22",
     "totalFiles": 292,
     "totalModules": 12,
-    "totalExports": 2031
+    "totalExports": 2032
   },
   "entryPoints": [
     {
@@ -1475,6 +1475,13 @@
             ]
           },
           {
+            "file": "../search/HybridSearchManager.js",
+            "imports": [
+              "HybridSearchManager"
+            ],
+            "typeOnly": true
+          },
+          {
             "file": "../types/agent-memory.js",
             "imports": [
               "ContextWindowManagerConfig"
@@ -1532,7 +1539,8 @@
           "ContextCompressionResult",
           "WakeUpOptions",
           "WakeUpResult",
-          "SpilloverResult"
+          "SpilloverResult",
+          "PrioritizeOptions"
         ]
       },
       "src/agent/DecayEngine.ts": {
@@ -2627,6 +2635,7 @@
             "imports": [
               "ContextWindowManager",
               "ContextWindowManagerConfig",
+              "PrioritizeOptions",
               "SpilloverResult",
               "WakeUpOptions",
               "WakeUpResult"
@@ -3308,6 +3317,7 @@
           "SalienceEngineConfig",
           "ContextWindowManager",
           "ContextWindowManagerConfig",
+          "PrioritizeOptions",
           "SpilloverResult",
           "WakeUpOptions",
           "WakeUpResult",
@@ -3702,6 +3712,7 @@
           "SalienceEngineConfig",
           "ContextWindowManager",
           "ContextWindowManagerConfig",
+          "PrioritizeOptions",
           "SpilloverResult",
           "WakeUpOptions",
           "WakeUpResult",
@@ -19892,16 +19903,16 @@
   "statistics": {
     "totalTypeScriptFiles": 292,
     "totalModules": 12,
-    "totalLinesOfCode": 103892,
-    "totalExports": 2031,
+    "totalLinesOfCode": 104084,
+    "totalExports": 2032,
     "totalClasses": 233,
-    "totalInterfaces": 620,
+    "totalInterfaces": 621,
     "totalFunctions": 323,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,
-    "totalReExports": 1336,
-    "totalTypeOnlyImports": 476,
+    "totalReExports": 1337,
+    "totalTypeOnlyImports": 477,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,

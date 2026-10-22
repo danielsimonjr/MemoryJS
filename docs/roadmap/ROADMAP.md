@@ -255,11 +255,11 @@ What is actually missing is wiring and two fields:
 - `SemanticSearch.indexAll` skips unchanged entities. It re-embeds an entity when its hash differs from the nullable `embeddings.contentHash` column that `storeEmbedding` writes. The hash is `entity.contentHash`, or a SHA-256 of the embedding text when the entity has none.
 - Tests: `tests/unit/search/SemanticSearch.test.ts` and `tests/unit/search/VectorStore.test.ts`. No new module.
 
-#### E2. Candidate-token ratio, optional slot cap, query rank via hybrid search — estimate S
-- Add `sourceTokens` and `compressionRatio` on `ContextPackage` (`src/types/agent-memory.ts`) from the `estimateTokens` sums `retrieveForContext` already computes. Ratio is 1 when the source fits (PubMedQA lesson, Table 11).
-- Optional `ContextRetrievalOptions.maxSlots`, applied in the existing `prioritize` loop. Unset means today's behavior.
-- When `SalienceContext.queryText` is set, order candidates with `HybridSearchManager` before the salience cut. Lexical ranking stays `RankedSearch` (TF-IDF, with FTS5 `bm25()` as the SQLite candidate filter). Do not construct `BM25Search`. `mustInclude` keeps recent turns verbatim.
-- Tests: extend `tests/unit/agent/ContextWindowManager.test.ts`.
+#### E2. ~~Candidate-token ratio, optional slot cap, query rank via hybrid search~~ — ✅ shipped
+- `ContextPackage` reports `sourceTokens` and `compressionRatio` (`src/types/agent-memory.ts`). The ratio is 1 when the source fits.
+- `ContextRetrievalOptions.maxSlots` caps the result. Unset means no cap. The cap applies in `prioritize`, `retrieveForContext` and `retrieveWithBudgetAllocation`.
+- `ContextWindowManager.setHybridSearch()` attaches a `HybridSearchManager`. When `SalienceContext.queryText` is set, `retrieveForContext` orders candidates by hybrid rank before the salience cut. `composeHops: 1` adds one-hop neighbors of the top hits.
+- Tests: `tests/unit/agent/ContextWindowManager.test.ts`.
 
 #### E3. Finish `SummarizationService`'s provider — estimate S, only if a caller asks
 - `summarize(texts)` has no query argument, and `initProvider` never builds `ISummarizationProvider`. Wire the `LLMProvider` `MemoryDistiller` already uses, pass `queryText`, and let `retrieveForContext` shorten `excluded` entities only when a provider is configured.

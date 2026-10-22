@@ -207,7 +207,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1698
+      "loc": 1873
     },
     {
       "file": "src/agent/DecayEngine.ts",
@@ -326,7 +326,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 605
+      "loc": 606
     },
     {
       "file": "src/agent/InMemoryBackend.ts",
@@ -1761,7 +1761,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2370
+      "loc": 2386
     },
     {
       "file": "src/types/artifact.ts",
@@ -2594,7 +2594,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 953
+      "loc": 1342
     },
     {
       "file": "tests/unit/agent/DecayEngine.test.ts",
@@ -2748,7 +2748,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 311
+      "loc": 313
     },
     {
       "file": "tests/unit/agent/MemoryFormatterSalience.test.ts",

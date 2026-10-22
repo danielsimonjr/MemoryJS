@@ -227,6 +227,7 @@ export class ContextWindowManager {
   constructor(config?: ContextWindowConfig)
 
   async retrieveForContext(options: ContextRetrievalOptions): Promise<ContextPackage>
+  setHybridSearch(search: Pick<HybridSearchManager, 'search'> | undefined): void  // Enables query-ranked retrieval
   estimateTokens(entity: AgentEntity): number
   prioritize(entities: AgentEntity[], maxTokens: number): AgentEntity[]
 }
@@ -1926,9 +1927,15 @@ interface SalienceContext {
 interface ContextPackage {
   memories: AgentEntity[];
   totalTokens: number;
-  excluded: string[];
+  sourceTokens: number;        // totalTokens plus the tokens of every excluded entity
+  compressionRatio: number;    // sourceTokens / totalTokens; 1 when nothing is excluded
+  breakdown: TokenBreakdown;   // working, episodic, semantic, procedural, mustInclude
+  excluded: ExcludedEntity[];  // reason: budget_exceeded | low_salience | filtered | slot_limit
+  suggestions: string[];
 }
 ```
+
+`ContextRetrievalOptions` also accepts `maxSlots?: number` (cap on the number of memories; must-include entities count and are never cut) and `composeHops?: 0 | 1` (one-hop neighbor expansion in query mode).
 
 ### Artifact Types (`types/artifact.ts`)
 
@@ -2088,8 +2095,8 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 | Claim | Value | Source |
 |---|---|---|
 | totalSourceFiles | 700 | repo-tools map |
-| totalLinesOfCode | 238292 | repo-tools map |
-| totalExports | 2875 | repo-tools map |
+| totalLinesOfCode | 238875 | repo-tools map |
+| totalExports | 2877 | repo-tools map |
 | reachableFiles | 291 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 24 | repo-tools map |

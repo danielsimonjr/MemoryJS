@@ -688,20 +688,24 @@ interface ContextRetrievalOptions {
   includeEpisodicRecent: boolean;
   includeSemanticRelevant: boolean;
   mustInclude?: string[];        // Entity names to always include
+  maxSlots?: number;             // Cap on the number of memories; unset = no cap
+  composeHops?: 0 | 1;           // 1 adds one-hop neighbors of the top hybrid hits (query mode only)
 }
 
 interface ContextPackage {
   memories: AgentEntity[];
   totalTokens: number;
-  breakdown: {
-    workingMemory: number;
-    episodic: number;
-    semantic: number;
-  };
-  excluded: string[];            // What didn't fit
+  sourceTokens: number;          // totalTokens plus the tokens of every excluded entity
+  compressionRatio: number;      // sourceTokens / totalTokens; 1 when nothing is excluded
+  breakdown: TokenBreakdown;     // working, episodic, semantic, procedural, mustInclude
+  excluded: ExcludedEntity[];    // What didn't fit; reason includes slot_limit
   suggestions: string[];         // What to retrieve if more space
 }
 ```
+
+`setHybridSearch(search)` attaches a hybrid search to the manager. When `context.queryText` is non-blank, `retrieveForContext` orders the candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. The default is off. `composeHops: 1` requires an attached hybrid search and a query.
+
+`maxSlots` caps the result in `retrieveForContext` and `retrieveWithBudgetAllocation`. Must-include entities count against the cap and are never cut. Entities that the cap cuts have reason `slot_limit`.
 
 ### 6. Working Memory Manager
 
