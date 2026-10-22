@@ -11,10 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - SQLite `embeddings` table: nullable `contentHash` column, written by `storeEmbedding(name, vector, model, contentHash?)` and read by `loadEmbeddingMetadata()`. Existing databases get the column when they open.
 - `SQLiteVectorStore` loads persisted vectors on `initialize()`, skips rows of another embedding model, and keeps a content hash per vector (`add(name, vector, contentHash?)`, `getContentHash(name)`). `IVectorStore` gains optional `initialize()` and `getContentHash()`.
-- `ContextRetrievalOptions.maxSlots` caps the number of memories that `retrieveForContext`, `retrieveWithBudgetAllocation` and `ContextWindowManager.prioritize` return. Must-include entities count against the cap and are never cut. Unset means no cap, so the default selection is unchanged.
+- `ContextRetrievalOptions.maxSlots` caps the number of memories that `retrieveForContext` and `retrieveWithBudgetAllocation` return. `prioritize(..., { maxSlots })` takes the same cap. Must-include entities count against the cap and are never cut. Unset means no cap, so the default selection is unchanged.
 - `ExcludedEntity.reason` has a new value, `slot_limit`, for entities that the slot cap cut.
 - `ContextRetrievalOptions.composeHops` (`0 | 1`). With `1`, query-ranked retrieval adds the one-hop neighbors of the top hybrid hits. Without a query, `composeHops` has no effect.
-- `ContextWindowManager.setHybridSearch(search)` attaches a hybrid search. When `context.queryText` is non-blank and a hybrid search is attached, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. The default is off, and no production code calls it.
+- `ContextWindowManager.setHybridSearch(search)` attaches a hybrid search. When `context.queryText` is non-blank and a hybrid search is attached, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. The default is off, and no production code calls it.
 - `PrioritizeOptions.preserveOrder` keeps the input order of optional entities during greedy selection, instead of the salience-per-token order.
 
 ### Changed
@@ -26,7 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `repo-tools docs check src` passes again: the `searchNodesRanked` implementation signature now has its own doc comment.
 - `SemanticSearch` now initializes its vector store before the first read, so a persisted `SQLiteVectorStore` is searchable without a full re-index. `indexAll` re-embeds an entity when its content hash differs from the stored hash. The hash is `entity.contentHash`, or a SHA-256 of the embedding text when the entity has none.
-- `retrieveWithBudgetAllocation` now applies `ContextRetrievalOptions.maxSlots`. Before this fix, only `retrieveForContext` applied the cap.
 
 ### Security
 

@@ -256,7 +256,7 @@ What is actually missing is wiring and two fields:
 - Tests: `tests/unit/search/SemanticSearch.test.ts` and `tests/unit/search/VectorStore.test.ts`. No new module.
 
 #### E2. ~~Candidate-token ratio, optional slot cap, query rank via hybrid search~~ — ✅ shipped
-- `ContextPackage` reports `sourceTokens` and `compressionRatio` (`src/types/agent-memory.ts`). The ratio is 1 when the source fits.
+- `ContextPackage` reports `sourceTokens` and `compressionRatio` (`src/types/agent-memory.ts`). The ratio is 1 when nothing is excluded.
 - `ContextRetrievalOptions.maxSlots` caps the result. Unset means no cap. The cap applies in `prioritize`, `retrieveForContext` and `retrieveWithBudgetAllocation`.
 - `ContextWindowManager.setHybridSearch()` attaches a `HybridSearchManager`. When `SalienceContext.queryText` is set, `retrieveForContext` orders candidates by hybrid rank before the salience cut. `composeHops: 1` adds one-hop neighbors of the top hits.
 - Tests: `tests/unit/agent/ContextWindowManager.test.ts`.

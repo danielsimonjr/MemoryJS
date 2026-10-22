@@ -703,7 +703,7 @@ interface ContextPackage {
 }
 ```
 
-`setHybridSearch(search)` attaches a hybrid search to the manager. When `context.queryText` is non-blank, `retrieveForContext` orders the candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. The default is off. `composeHops: 1` requires an attached hybrid search and a query.
+`setHybridSearch(search)` attaches a hybrid search to the manager. When `context.queryText` is non-blank, `retrieveForContext` orders the candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. The default is off. `composeHops: 1` requires an attached hybrid search and a query.
 
 `maxSlots` caps the result in `retrieveForContext` and `retrieveWithBudgetAllocation`. Must-include entities count against the cap and are never cut. Entities that the cap cuts have reason `slot_limit`.
 
