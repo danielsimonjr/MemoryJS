@@ -440,7 +440,7 @@ Both first-party backends (`GraphStorage`, `SQLiteStorage`) implement `renameEnt
 
 #### SQLiteVectorStore
 
-Keeps vector embeddings in the SQLite `embeddings` table. `ManagerContext.semanticSearch` uses it when the storage is `SQLiteStorage`. `initialize()` loads the stored vectors and skips rows of another embedding model. Each vector can carry a `contentHash`. `SemanticSearch.indexAll` skips unchanged entities across restarts. It re-embeds an entity when its `contentHash` differs from the stored hash. JSONL storage keeps `InMemoryVectorStore`.
+Keeps vector embeddings in the SQLite `embeddings` table. `ManagerContext.semanticSearch` uses it when the storage is `SQLiteStorage`. `initialize()` loads the stored vectors and skips rows of another embedding model. Each vector can carry a `contentHash`. `SemanticSearch.indexAll` skips unchanged entities across restarts. It re-embeds an entity when its hash differs from the stored hash. An entity without a `contentHash` gets a SHA-256 of its embedding text. JSONL storage keeps `InMemoryVectorStore`.
 
 ---
 
