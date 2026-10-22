@@ -67,7 +67,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ConsolidationPipeline.ts` | src | reachable | 1899 |
 | `src/agent/ConsolidationScheduler.ts` | src | reachable | 239 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 266 |
-| `src/agent/ContextWindowManager.ts` | src | reachable | 1873 |
+| `src/agent/ContextWindowManager.ts` | src | reachable | 1882 |
 | `src/agent/DecayEngine.ts` | src | reachable | 763 |
 | `src/agent/DecayScheduler.ts` | src | reachable | 229 |
 | `src/agent/DecisionManager.ts` | src | reachable | 428 |
@@ -394,7 +394,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/AccessTracker.test.ts` | tests | test | 646 |
 | `tests/unit/agent/ActiveRetrieval.test.ts` | tests | test | 194 |
 | `tests/unit/agent/agent-memory-manager-diary.test.ts` | tests | test | 70 |
-| `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 667 |
+| `tests/unit/agent/AgentMemoryManager.test.ts` | tests | test | 668 |
 | `tests/unit/agent/AgentReflectionManager.test.ts` | tests | test | 362 |
 | `tests/unit/agent/ArtifactManager.test.ts` | tests | test | 616 |
 | `tests/unit/agent/CausalReasoner.test.ts` | tests | test | 276 |
@@ -408,7 +408,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 400 |
-| `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1342 |
+| `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1422 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1164 |
 | `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 382 |
 | `tests/unit/agent/DecisionManager.test.ts` | tests | test | 394 |

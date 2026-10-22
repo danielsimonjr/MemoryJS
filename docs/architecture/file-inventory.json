@@ -207,7 +207,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1873
+      "loc": 1882
     },
     {
       "file": "src/agent/DecayEngine.ts",
@@ -2496,7 +2496,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 667
+      "loc": 668
     },
     {
       "file": "tests/unit/agent/AgentReflectionManager.test.ts",
@@ -2594,7 +2594,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1342
+      "loc": 1422
     },
     {
       "file": "tests/unit/agent/DecayEngine.test.ts",
