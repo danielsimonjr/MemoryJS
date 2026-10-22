@@ -707,6 +707,18 @@ interface ContextPackage {
 
 `maxSlots` caps the result in `retrieveForContext` and `retrieveWithBudgetAllocation`. Must-include entities count against the cap and are never cut. Entities that the cap cuts have reason `slot_limit`.
 
+#### Context profiles
+
+A named profile sets the salience weights, the temporal focus and the budget split. The `profile` option selects it. `profile: 'auto'` infers the profile from the query text. The presets are `default`, `planning`, `incident`, `handoff`, `review`, `lookup` and `synthesis`.
+
+The inference checks the rules in this order. The first match wins. If no rule matches, the profile is `default`.
+
+1. `incident`, `planning`, `handoff` and `review`. These match anywhere in the query.
+2. `lookup`. The query starts with `who`, `which`, `when` or `where`.
+3. `synthesis`. The query starts with `why` or `how`.
+
+A profile can set `retrieval.composeHops` (`0 | 1`). `applyProfile` uses this value when the caller leaves `composeHops` unset. An explicit `composeHops` option wins. The shipped presets do not set `retrieval`.
+
 ### 6. Working Memory Manager
 
 Manages short-term, session-scoped memory.

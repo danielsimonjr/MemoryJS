@@ -88,7 +88,7 @@ For a runnable CLI (`memory` / `memoryjs`): `bunx --package @danielsimonjr/memor
 | Capability | Entry point |
 |---|---|
 | Sessions, working memory, episodic memory | `ctx.agentMemory()` — `startSession` / `addWorkingMemory` / `retrieveForContext` |
-| Turn-aware conversation memory with 4-tier dedup (exact / prefix / Jaccard / semantic) | `ctx.memoryEngine.addTurn()` / `getSessionTurns()` |
+| Turn-aware conversation memory with 4-tier dedup (exact / prefix / Jaccard / semantic) | `ctx.memoryEngine.addTurn()` / `getSessionTurns()` / `getRepeatedTurnCount()` |
 | Decay, salience, freshness | `DecayEngine`, `SalienceEngine`, `ctx.freshnessManager` |
 | Role profiles — `researcher` / `planner` / `executor` / `reviewer` / `coordinator` | `MEMORY_AGENT_ROLE` or `RoleProfileManager.apply(role)` |
 | Memory consolidation, summarization, pattern detection | `ConsolidationPipeline`, `ConsolidationScheduler` |

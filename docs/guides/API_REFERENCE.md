@@ -1984,6 +1984,8 @@ class MemoryEngine extends EventEmitter {
     options?: { role?: string; limit?: number },
   ): Promise<MemoryTurn[]>;
 
+  getRepeatedTurnCount(sessionId: string): number;
+
   deleteSession(sessionId: string): Promise<void>;
   listSessions(): Promise<string[]>;
 }

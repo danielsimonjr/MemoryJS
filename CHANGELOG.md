@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ContextRetrievalOptions.composeHops` (`0 | 1`). With `1`, query-ranked retrieval adds the one-hop neighbors of the top hybrid hits. Without a query, `composeHops` has no effect.
 - `ContextWindowManager.setHybridSearch(search)` attaches a hybrid search. When `context.queryText` is non-blank and a hybrid search is attached, `retrieveForContext` orders candidates by hybrid rank before the salience cut. Only candidates that the hybrid search returns, plus must-include entities, enter the result. If the hybrid search throws, retrieval logs a warning and uses the salience order. The default is off, and no production code calls it.
 - `PrioritizeOptions.preserveOrder` keeps the input order of optional entities during greedy selection, instead of the salience-per-token order.
+- `ContextProfile` gains `lookup` and `synthesis`. Auto-detection infers `lookup` for queries that start with who, which, when or where, and `synthesis` for queries that start with why or how. Both checks run after the four task profiles (incident, planning, handoff, review), so a query that matches a task profile keeps that profile.
+- `ProfileConfig.retrieval.composeHops` (`0 | 1`). `ContextWindowManager.applyProfile` applies it when the caller leaves `composeHops` unset. The shipped presets leave `retrieval` unset, so default retrieval does not change.
+- `MemoryEngine.getRepeatedTurnCount(sessionId)` returns the number of turns that the dedup chain rejected for a session in this process. The count counts only dedup-chain rejections, not exclusion-manager rejections. The count is not persisted, and `deleteSession` resets it.
 
 ### Changed
 
