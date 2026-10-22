@@ -2264,6 +2264,12 @@ export interface ContextRetrievalOptions {
    * Needs `context.queryText`, an attached hybrid search and a `GraphRankPrior`.
    */
   composeHops?: 0 | 1;
+  /**
+   * Summarize the memories the budget or slot cut excluded into
+   * `ContextPackage.excludedSummary`. Off by default. Needs a summarizer attached with
+   * `ContextWindowManager.setSummarizer()`.
+   */
+  summarizeExcluded?: boolean;
 }
 
 /**
@@ -2313,6 +2319,11 @@ export interface ContextPackage {
   excluded: ExcludedEntity[];
   /** Suggestions for additional retrieval if budget increases */
   suggestions: string[];
+  /**
+   * One summary of the excluded entities. Set only when `summarizeExcluded` is on, a
+   * summarizer is attached and at least one entity is excluded. Not counted in `totalTokens`.
+   */
+  excludedSummary?: string;
 }
 
 /**
