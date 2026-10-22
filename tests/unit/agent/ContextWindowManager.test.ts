@@ -1226,6 +1226,48 @@ describe('ContextWindowManager', () => {
       expect(namesOf(withoutHops.memories)).toEqual(['A']);
     });
 
+    it('falls back to the salience path when hybrid search throws', async () => {
+      const manager = createQueryManager(createQueryEntities());
+      const search = vi.fn().mockRejectedValue(new Error('embedding service down'));
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(search).toHaveBeenCalledTimes(1);
+      expect(result.memories).toHaveLength(4);
+    });
+
+    it('returns must-include entities when hybrid search returns no hits', async () => {
+      const manager = createQueryManager(createQueryEntities());
+      const search = vi.fn().mockResolvedValue([]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+        mustInclude: ['e4'],
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e4']);
+    });
+
+    it('lists an entity once when hybrid search returns it twice', async () => {
+      const entities = createQueryEntities();
+      const manager = createQueryManager(entities);
+      const search = vi.fn().mockResolvedValue([hit(entities[1]), hit(entities[1]), hit(entities[0])]);
+      manager.setHybridSearch({ search });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 1000,
+        context: { queryText: 'alpha' },
+      });
+
+      expect(namesOf(result.memories)).toEqual(['e2', 'e1']);
+    });
+
     it('drops hybrid hits outside the candidate set', async () => {
       const entities = createQueryEntities();
       const manager = createQueryManager(entities);
