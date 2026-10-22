@@ -13,6 +13,7 @@ import { HybridSearchManager } from '../../../src/search/HybridSearchManager.js'
 import type { GraphRankPrior } from '../../../src/search/GraphRankPrior.js';
 import type { IGraphStorage, Entity, Relation } from '../../../src/types/types.js';
 import type { AgentEntity, ContextRetrievalOptions } from '../../../src/types/agent-memory.js';
+import { logger } from '../../../src/utils/logger.js';
 
 /**
  * Create a mock storage with entities.
@@ -1047,6 +1048,136 @@ describe('ContextWindowManager', () => {
           ? 1
           : result.sourceTokens / Math.max(result.totalTokens, 1)
       );
+    });
+  });
+
+  describe('excluded summary', () => {
+    /** Summarizer stub that resolves to 'S'. */
+    function createSummarizerStub() {
+      return { summarize: vi.fn().mockResolvedValue('S') };
+    }
+
+    it('summarizes excluded memories with the query', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 20,
+        summarizeExcluded: true,
+        context: { queryText: 'q' },
+      });
+
+      expect(result.excludedSummary).toBe('S');
+      expect(summarizer.summarize).toHaveBeenCalledTimes(1);
+      expect(summarizer.summarize).toHaveBeenCalledWith(['alpha beta gamma', 'alpha beta gamma'], 'q');
+    });
+
+    it('does not count the summary in totalTokens', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      manager.setSummarizer({ summarize: vi.fn().mockResolvedValue('a long summary of many words') });
+
+      const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
+
+      expect(result.totalTokens).toBe(16);
+      expect(result.excludedSummary).toBe('a long summary of many words');
+    });
+
+    it('does not summarize by default', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({ maxTokens: 20 });
+
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('does not summarize when nothing is excluded', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+
+      const result = await manager.retrieveForContext({ maxTokens: 1000, summarizeExcluded: true });
+
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('does not summarize without an attached summarizer', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+
+      const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
+
+      expect(result.excludedSummary).toBeUndefined();
+      expect(result.excluded).toHaveLength(2);
+    });
+
+    it('stops summarizing after setSummarizer(undefined)', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+      manager.setSummarizer(undefined);
+
+      const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
+
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('takes summarizeExcluded from the profile', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+      const profiles = manager.getContextProfileManager();
+      profiles.registerProfile('planning', {
+        ...profiles.getProfile('planning'),
+        retrieval: { summarizeExcluded: true },
+      });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 20,
+        profile: 'planning',
+        context: { queryText: 'q' },
+      });
+
+      expect(summarizer.summarize).toHaveBeenCalledTimes(1);
+      expect(result.excludedSummary).toBe('S');
+    });
+
+    it('lets an explicit summarizeExcluded override the profile', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const summarizer = createSummarizerStub();
+      manager.setSummarizer(summarizer);
+      const profiles = manager.getContextProfileManager();
+      profiles.registerProfile('planning', {
+        ...profiles.getProfile('planning'),
+        retrieval: { summarizeExcluded: true },
+      });
+
+      const result = await manager.retrieveForContext({
+        maxTokens: 20,
+        profile: 'planning',
+        summarizeExcluded: false,
+      });
+
+      expect(summarizer.summarize).not.toHaveBeenCalled();
+      expect(result.excludedSummary).toBeUndefined();
+    });
+
+    it('returns the package without a summary when the summarizer throws', async () => {
+      const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      manager.setSummarizer({ summarize: vi.fn().mockRejectedValue(new Error('down')) });
+      const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+      const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
+
+      expect(result.excludedSummary).toBeUndefined();
+      expect(result.memories.map((m) => m.name)).toEqual(['e1', 'e2']);
+      expect(result.excluded).toHaveLength(2);
+      expect(warn).toHaveBeenCalledTimes(1);
+      warn.mockRestore();
     });
   });
 

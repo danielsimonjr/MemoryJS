@@ -60,7 +60,7 @@ export interface ProfileConfig {
    * Retrieval settings that the context window manager applies when the
    * caller does not set them.
    */
-  retrieval?: { composeHops?: 0 | 1 };
+  retrieval?: { composeHops?: 0 | 1; summarizeExcluded?: boolean };
 }
 
 // ==================== Auto-Detection Patterns ====================

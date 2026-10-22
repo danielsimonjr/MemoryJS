@@ -26,6 +26,7 @@ import { SalienceEngine } from './SalienceEngine.js';
 import type { IDistillationPolicy } from './DistillationPolicy.js';
 import { ContextProfileManager, type ProfileConfig } from './ContextProfileManager.js';
 import type { HybridSearchManager } from '../search/HybridSearchManager.js';
+import type { SummarizationService } from './SummarizationService.js';
 
 // S10: `ContextWindowManagerConfig` moved to src/types/agent-memory.ts (the
 // types layer references it via `RoleProfile` and must stay a leaf).
@@ -147,6 +148,7 @@ export class ContextWindowManager {
   private distillationPolicy?: IDistillationPolicy;
   /** Optional hybrid search used to order candidates when `context.queryText` is set */
   private hybridSearch?: Pick<HybridSearchManager, 'search'>;
+  private summarizer?: Pick<SummarizationService, 'summarize'>;
   private readonly contextProfileManager: ContextProfileManager;
 
   constructor(
@@ -207,6 +209,19 @@ export class ContextWindowManager {
    */
   setHybridSearch(search: Pick<HybridSearchManager, 'search'> | undefined): void {
     this.hybridSearch = search;
+  }
+
+  /**
+   * Set an optional summarizer for the excluded memories.
+   *
+   * When set and a retrieval passes `summarizeExcluded: true`, `retrieveForContext`
+   * summarizes the entities the budget or slot cut excluded. A failing summarizer
+   * logs a warning and leaves `excludedSummary` unset.
+   *
+   * @param summarizer - A summarization service, or undefined to disable the summary.
+   */
+  setSummarizer(summarizer: Pick<SummarizationService, 'summarize'> | undefined): void {
+    this.summarizer = summarizer;
   }
 
   // ==================== Token Estimation ====================
@@ -375,6 +390,7 @@ export class ContextWindowManager {
       minSalience = 0,
       maxSlots,
       composeHops,
+      summarizeExcluded,
     } = resolvedOptions;
 
     // Effective budget after reserve
@@ -462,13 +478,51 @@ export class ContextWindowManager {
     // Generate suggestions for excluded high-salience entities
     const suggestions = this.generateSuggestions(excluded);
 
+    const allExcluded = [...excluded, ...lowSalienceExcluded];
+    const excludedSummary = await this.summarizeExcluded(
+      allExcluded,
+      summarizeExcluded,
+      queryText || undefined
+    );
+
     return this.withBudgetReport({
       memories: filtered.map((s) => s.entity),
       totalTokens: this.estimateTotalTokens(filtered.map((s) => s.entity)),
       breakdown,
-      excluded: [...excluded, ...lowSalienceExcluded],
+      excluded: allExcluded,
       suggestions,
+      excludedSummary,
     });
+  }
+
+  /**
+   * Summarize the entities that retrieval excluded.
+   *
+   * Runs only when the flag is set, a summarizer is attached and at least one entity is
+   * excluded. A failing summarizer must not fail retrieval: it logs a warning and returns
+   * undefined.
+   *
+   * @param excluded - Every excluded entity (budget, slot and salience cuts)
+   * @param enabled - The `summarizeExcluded` option after profile resolution
+   * @param query - Trimmed query text, passed to the summarizer as its focus
+   * @returns The summary, or undefined when no summary was made
+   */
+  private async summarizeExcluded(
+    excluded: ExcludedEntity[],
+    enabled: boolean | undefined,
+    query: string | undefined
+  ): Promise<string | undefined> {
+    if (!enabled || !this.summarizer || excluded.length === 0) return undefined;
+
+    try {
+      return await this.summarizer.summarize(
+        excluded.map((e) => (e.entity.observations ?? []).join(' ')),
+        query
+      );
+    } catch (err) {
+      logger.warn('[ContextWindowManager.retrieveForContext] excluded summary failed, continuing without it:', err);
+      return undefined;
+    }
   }
 
   /**
@@ -1311,6 +1365,8 @@ export class ContextWindowManager {
       context: profileContext,
       maxTokens: options.maxTokens ?? profileConfig.maxTokens ?? this.config.defaultMaxTokens,
       composeHops: options.composeHops ?? profileConfig.retrieval?.composeHops,
+      summarizeExcluded:
+        options.summarizeExcluded ?? profileConfig.retrieval?.summarizeExcluded,
     };
 
     return result;
