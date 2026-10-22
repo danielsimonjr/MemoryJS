@@ -67,7 +67,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/ConsolidationPipeline.ts` | src | reachable | 1899 |
 | `src/agent/ConsolidationScheduler.ts` | src | reachable | 239 |
 | `src/agent/ContextProfileManager.ts` | src | reachable | 301 |
-| `src/agent/ContextWindowManager.ts` | src | reachable | 1939 |
+| `src/agent/ContextWindowManager.ts` | src | reachable | 1942 |
 | `src/agent/DecayEngine.ts` | src | reachable | 763 |
 | `src/agent/DecayScheduler.ts` | src | reachable | 229 |
 | `src/agent/DecisionManager.ts` | src | reachable | 428 |
@@ -147,7 +147,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/agent/SessionManager.ts` | src | reachable | 678 |
 | `src/agent/SessionQueryBuilder.ts` | src | reachable | 558 |
 | `src/agent/SQLiteBackend.ts` | src | reachable | 176 |
-| `src/agent/SummarizationService.ts` | src | reachable | 337 |
+| `src/agent/SummarizationService.ts` | src | reachable | 341 |
 | `src/agent/ToolAffordanceManager.ts` | src | reachable | 279 |
 | `src/agent/ToolCallObserver.ts` | src | reachable | 155 |
 | `src/agent/TrajectoryCompressor.ts` | src | reachable | 326 |
@@ -408,7 +408,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/context-window-manager-compress.test.ts` | tests | test | 166 |
 | `tests/unit/agent/context-window-manager-wakeup.test.ts` | tests | test | 226 |
 | `tests/unit/agent/ContextProfileManager.test.ts` | tests | test | 526 |
-| `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1553 |
+| `tests/unit/agent/ContextWindowManager.test.ts` | tests | test | 1639 |
 | `tests/unit/agent/DecayEngine.test.ts` | tests | test | 1164 |
 | `tests/unit/agent/DecayScheduler.test.ts` | tests | test | 382 |
 | `tests/unit/agent/DecisionManager.test.ts` | tests | test | 394 |
@@ -482,7 +482,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/agent/SessionManager.test.ts` | tests | test | 827 |
 | `tests/unit/agent/SessionQueryBuilder.test.ts` | tests | test | 526 |
 | `tests/unit/agent/SQLiteBackend.test.ts` | tests | test | 152 |
-| `tests/unit/agent/SummarizationService.test.ts` | tests | test | 496 |
+| `tests/unit/agent/SummarizationService.test.ts` | tests | test | 531 |
 | `tests/unit/agent/ToolAffordanceManager.test.ts` | tests | test | 198 |
 | `tests/unit/agent/ToolCallObserver.test.ts` | tests | test | 187 |
 | `tests/unit/agent/TrajectoryCompressor.test.ts` | tests | test | 159 |
