@@ -1107,11 +1107,14 @@ describe('ContextWindowManager', () => {
 
     it('does not summarize without an attached summarizer', async () => {
       const manager = createBudgetManager(createNamedEntities(['e1', 'e2', 'e3', 'e4']));
+      const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
       const result = await manager.retrieveForContext({ maxTokens: 20, summarizeExcluded: true });
 
       expect(result.excludedSummary).toBeUndefined();
       expect(result.excluded).toHaveLength(2);
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
     });
 
     it('stops summarizing after setSummarizer(undefined)', async () => {
