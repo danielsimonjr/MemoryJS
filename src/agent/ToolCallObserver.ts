@@ -74,7 +74,10 @@ export class ToolCallObserver {
    * pollute the affordance stats with phantom successes).
    */
   async observeComplete(callId: string, meta?: { result?: string }): Promise<void> {
-    await this.finish(callId, { outcome: 'success' }, 'toolCall:complete', { result: meta?.result });
+    await this.finish(callId, 'toolCall:complete', () => ({
+      outcome: { outcome: 'success' },
+      eventFields: () => ({ result: meta?.result }),
+    }));
   }
 
   /**
@@ -83,13 +86,13 @@ export class ToolCallObserver {
    * `commonFailureModes` ranking. No-op on unknown `callId`.
    */
   async observeError(callId: string, error: Error | string): Promise<void> {
-    const message = error instanceof Error ? error.message : String(error);
-    await this.finish(
-      callId,
-      { outcome: 'failure', errorMessage: message },
-      'toolCall:error',
-      { errorMessage: message },
-    );
+    await this.finish(callId, 'toolCall:error', () => {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        outcome: { outcome: 'failure', errorMessage: message },
+        eventFields: () => ({ errorMessage: message }),
+      };
+    });
   }
 
   /**
@@ -99,36 +102,39 @@ export class ToolCallObserver {
    * `callId`.
    */
   async observePartial(callId: string, reason: string): Promise<void> {
-    await this.finish(
-      callId,
-      { outcome: 'partial', errorMessage: reason },
-      'toolCall:partial',
-      { reason },
-    );
+    await this.finish(callId, 'toolCall:partial', () => ({
+      outcome: { outcome: 'partial', errorMessage: reason },
+      eventFields: () => ({ reason }),
+    }));
   }
 
   /**
-   * Close an in-flight call. Record its outcome with the call duration and
-   * emit `eventName`. Does nothing when `callId` is unknown.
+   * Close an in-flight call. Does nothing when `callId` is unknown, and
+   * then `describe` does not run. Otherwise the steps run in this order:
+   * remove the call, measure its duration, run `describe`, record the
+   * outcome with the duration, run `eventFields`, emit `eventName`.
    *
    * @internal
    */
   private async finish(
     callId: string,
-    outcome: Omit<RecordOutcomeInput, 'durationMs'>,
     eventName: string,
-    eventFields: Record<string, unknown>,
+    describe: () => {
+      outcome: Omit<RecordOutcomeInput, 'durationMs'>;
+      eventFields: () => Record<string, unknown>;
+    },
   ): Promise<void> {
     const entry = this.inFlight.get(callId);
     if (!entry) return;
     this.inFlight.delete(callId);
     const durationMs = Date.now() - entry.startedAtMs;
+    const { outcome, eventFields } = describe();
     await this.manager.recordOutcome(entry.toolName, { ...outcome, durationMs });
     this.events.emit(eventName, {
       callId,
       toolName: entry.toolName,
       durationMs,
-      ...eventFields,
+      ...eventFields(),
     });
   }
 

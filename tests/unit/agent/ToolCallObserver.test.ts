@@ -232,6 +232,63 @@ describe('ToolCallObserver', () => {
     ]);
   });
 
+  it('does not touch the error value for an unknown call id', async () => {
+    const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+    const hostile = {
+      toString(): string {
+        throw new Error('toString must not run');
+      },
+    };
+
+    await expect(observer.observeError('unknown', hostile as unknown as Error)).resolves.toBeUndefined();
+    expect(recordOutcome).not.toHaveBeenCalled();
+  });
+
+  it('closes the call before it reads an error value that throws', async () => {
+    const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+    const emitted: unknown[] = [];
+    observer.events.on('toolCall:error', (payload) => emitted.push(payload));
+    const hostile = {
+      toString(): string {
+        throw new Error('toString failed');
+      },
+    };
+    const callId = observer.observeStart('tool_bad');
+
+    await expect(observer.observeError(callId, hostile as unknown as Error)).rejects.toThrow('toString failed');
+
+    expect(observer.inFlightCount()).toBe(0);
+    expect(recordOutcome).not.toHaveBeenCalled();
+    expect(emitted).toStrictEqual([]);
+  });
+
+  it('reads the error text before recording and the result after recording', async () => {
+    const order: string[] = [];
+    vi.spyOn(manager, 'recordOutcome').mockImplementation(async () => {
+      order.push('record');
+      return undefined as never;
+    });
+    const completed = observer.observeStart('tool_ok');
+    const failed = observer.observeStart('tool_bad');
+    const meta = {
+      get result(): string {
+        order.push('read result');
+        return 'r';
+      },
+    };
+    const text = {
+      toString(): string {
+        order.push('read text');
+        return 'x';
+      },
+    };
+
+    await observer.observeComplete(completed, meta);
+    await observer.observeError(failed, text as unknown as Error);
+
+    expect(order).toStrictEqual(['record', 'read result', 'read text', 'record']);
+  });
+
   it('fires events for start / complete / error / partial', async () => {
     const events: Array<{ event: string; payload: unknown }> = [];
     observer.events.on('toolCall:start', (p) => events.push({ event: 'start', payload: p }));
