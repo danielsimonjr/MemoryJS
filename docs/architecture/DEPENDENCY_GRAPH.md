@@ -39,7 +39,7 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 7 files
-- **agent**: 106 files
+- **agent**: 108 files
 - **cli**: 31 files
 - **core**: 25 files
 - **features**: 18 files
@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 37 files
+- **utils**: 38 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -283,7 +283,7 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `ReflectionEntity, ReflectionId, ReflectionRecord, ReflectionScope` | Import (type-only) |
 | `../types/agent-memory.js` | `isReflectionMemory, toIsoDateTime` | Import |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
-| `../utils/errors.js` | `VersionConflictError, EntityNotFoundError` | Import |
+| `./versionedWriteFailure.js` | `versionedWriteFailure` | Import |
 | `../utils/index.js` | `validateNonEmpty, validateNonEmptyArray` | Import |
 
 **Exports:**
@@ -439,6 +439,7 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/textSimilarity.js` | `tokenizeStripped` | Import |
 | `../utils/entityUtils.js` | `hash31` | Import |
 | `./WorkingMemoryManager.js` | `WorkingMemoryManager` | Import (type-only) |
+| `./workingMemoryGuard.js` | `requireWorkingMemoryEntity` | Import |
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
 | `./SummarizationService.js` | `SummarizationService` | Import |
 | `./PatternDetector.js` | `PatternDetector` | Import |
@@ -789,7 +790,7 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `FailureEntity, FailureLifecycle, FailureRecord, MarkResolvedResult` | Import (type-only) |
 | `../types/agent-memory.js` | `isFailureMemory, toIsoDateTime` | Import |
 | `../core/EntityManager.js` | `EntityManager` | Import (type-only) |
-| `../utils/errors.js` | `VersionConflictError, EntityNotFoundError` | Import |
+| `./versionedWriteFailure.js` | `versionedWriteFailure` | Import |
 | `../utils/index.js` | `validateNonEmpty` | Import |
 
 **Exports:**
@@ -2044,6 +2045,18 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/agent/versionedWriteFailure.ts` - Versioned Write Failure
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../utils/errors.js` | `VersionConflictError, EntityNotFoundError` | Import |
+
+**Exports:**
+- Functions: `versionedWriteFailure`
+
+---
+
 ### `src/agent/VisibilityResolver.ts` - Visibility Resolver
 
 **Internal Dependencies:**
@@ -2053,6 +2066,20 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `VisibilityResolver`
+
+---
+
+### `src/agent/workingMemoryGuard.ts` - Working Memory Guard
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../types/types.js` | `IGraphStorage` | Import (type-only) |
+| `../types/agent-memory.js` | `AgentEntity` | Import (type-only) |
+| `../types/agent-memory.js` | `isAgentEntity` | Import |
+
+**Exports:**
+- Functions: `requireWorkingMemoryEntity`
 
 ---
 
@@ -2068,6 +2095,7 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/errors.js` | `LowEntropyContentError, MemoryWriteBlockedError` | Import |
 | `../utils/entityUtils.js` | `hash31` | Import |
 | `./ExclusionManager.js` | `ExclusionManager` | Import (type-only) |
+| `./workingMemoryGuard.js` | `requireWorkingMemoryEntity` | Import |
 
 **Exports:**
 - Classes: `WorkingMemoryManager`
@@ -4986,6 +5014,7 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/types.js` | `Entity` | Import (type-only) |
+| `./fieldPath.js` | `getFieldByDotPath` | Import |
 
 **Exports:**
 - Classes: `EntityValidator`
@@ -5011,6 +5040,13 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Functions: `generateSuggestions`, `getQuickHint`
+
+---
+
+### `src/utils/fieldPath.ts` - Field Path
+
+**Exports:**
+- Functions: `getFieldByDotPath`
 
 ---
 
@@ -5291,6 +5327,7 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/types.js` | `Entity` | Import (type-only) |
 | `./EntityValidator.js` | `EntityValidationRule, EntityRuleResult` | Import (type-only) |
+| `./fieldPath.js` | `getFieldByDotPath` | Import |
 
 **Exports:**
 - Functions: `required`, `minLength`, `maxLength`, `pattern`, `range`, `min`, `max`, `oneOf`, `minItems`, `maxItems`, `email`, `url`, `isoDate`, `typeOf`, `custom`, `customSync`, `asWarning`, `all`, `when`
@@ -5368,20 +5405,20 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 |------|--------------|------------|
 | `src/core/ManagerContext` | 91 files | 9 files |
 | `src/types/index` | 10 files | 63 files |
-| `src/types/types` | 1 file | 65 files |
+| `src/types/types` | 1 file | 66 files |
 | `src/agent/index` | 62 files | 1 file |
 | `src/utils/index` | 27 files | 27 files |
-| `src/types/agent-memory` | 1 file | 45 files |
+| `src/types/agent-memory` | 1 file | 46 files |
 | `src/core/GraphStorage` | 13 files | 31 files |
 | `src/search/index` | 40 files | 1 file |
 | `src/core/EntityManager` | 10 files | 30 files |
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
-| `src/utils/errors` | 0 files | 29 files |
+| `src/utils/errors` | 0 files | 28 files |
 | `src/utils/logger` | 0 files | 28 files |
 | `src/cli/commands/helpers` | 3 files | 23 files |
 | `src/cli/formatters` | 2 files | 24 files |
 | `src/cli/commands/index` | 24 files | 1 file |
-| `src/agent/ConsolidationPipeline` | 14 files | 7 files |
+| `src/agent/ConsolidationPipeline` | 15 files | 7 files |
 | `src/agent/ContextWindowManager` | 14 files | 5 files |
 | `src/search/SearchManager` | 16 files | 3 files |
 | `src/utils/constants` | 0 files | 19 files |
@@ -5396,10 +5433,10 @@ Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/RelationManager` | 6 files | 10 files |
 | `src/search/RankedSearch` | 9 files | 7 files |
 | `src/agent/SalienceEngine` | 7 files | 7 files |
+| `src/agent/WorkingMemoryManager` | 7 files | 7 files |
 | `src/core/index` | 13 files | 1 file |
 | `src/search/HybridSearchManager` | 9 files | 5 files |
 | `src/agent/MemoryEngine` | 9 files | 4 files |
-| `src/agent/WorkingMemoryManager` | 6 files | 7 files |
 | `src/core/SQLiteStorage` | 10 files | 3 files |
 | `src/utils/textSimilarity` | 0 files | 13 files |
 | `src/agent/procedural/graph/ProceduralGraphEvolution` | 10 files | 2 files |
@@ -5458,7 +5495,7 @@ graph TD
         N14[CognitiveLoadAnalyzer]
         N15[CollaborationAuditEnforcer]
         N16[CollaborativeSynthesis]
-        N17[...96 more]
+        N17[...98 more]
     end
 
     subgraph Cli
@@ -5558,7 +5595,7 @@ graph TD
         N87[constants]
         N88[Diagnostics]
         N89[durableWriteFile]
-        N90[...27 more]
+        N90[...28 more]
     end
 
     subgraph Workers
@@ -5649,21 +5686,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 296 |
+| Total TypeScript Files | 299 |
 | Total Modules | 12 |
-| Total Lines of Code | 104215 |
-| Total Exports | 2046 |
+| Total Lines of Code | 104233 |
+| Total Exports | 2049 |
 | Total Re-exports | 1340 |
 | Total Classes | 235 |
 | Total Interfaces | 624 |
-| Total Functions | 333 |
+| Total Functions | 336 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
-| Type-only Imports | 478 |
+| Type-only Imports | 480 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 296 |
+| Reachable Files | 299 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-23",
-    "totalFiles": 296,
+    "totalFiles": 299,
     "totalModules": 12,
-    "totalExports": 2046
+    "totalExports": 2049
   },
   "entryPoints": [
     {
@@ -824,10 +824,9 @@
             "typeOnly": true
           },
           {
-            "file": "../utils/errors.js",
+            "file": "./versionedWriteFailure.js",
             "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
+              "versionedWriteFailure"
             ]
           },
           {
@@ -1240,6 +1239,12 @@
               "WorkingMemoryManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./workingMemoryGuard.js",
+            "imports": [
+              "requireWorkingMemoryEntity"
+            ]
           },
           {
             "file": "./DecayEngine.js",
@@ -2381,10 +2386,9 @@
             "typeOnly": true
           },
           {
-            "file": "../utils/errors.js",
+            "file": "./versionedWriteFailure.js",
             "imports": [
-              "VersionConflictError",
-              "EntityNotFoundError"
+              "versionedWriteFailure"
             ]
           },
           {
@@ -7772,6 +7776,26 @@
           "TrajectoryCompressorConfig"
         ]
       },
+      "src/agent/versionedWriteFailure.ts": {
+        "description": "Versioned Write Failure",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../utils/errors.js",
+            "imports": [
+              "VersionConflictError",
+              "EntityNotFoundError"
+            ]
+          }
+        ],
+        "exports": [
+          "versionedWriteFailure"
+        ],
+        "functions": [
+          "versionedWriteFailure"
+        ]
+      },
       "src/agent/VisibilityResolver.ts": {
         "description": "Visibility Resolver",
         "externalDependencies": [],
@@ -7791,6 +7815,39 @@
         ],
         "classes": [
           "VisibilityResolver"
+        ]
+      },
+      "src/agent/workingMemoryGuard.ts": {
+        "description": "Working Memory Guard",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../types/types.js",
+            "imports": [
+              "IGraphStorage"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "AgentEntity"
+            ],
+            "typeOnly": true
+          },
+          {
+            "file": "../types/agent-memory.js",
+            "imports": [
+              "isAgentEntity"
+            ]
+          }
+        ],
+        "exports": [
+          "requireWorkingMemoryEntity"
+        ],
+        "functions": [
+          "requireWorkingMemoryEntity"
         ]
       },
       "src/agent/WorkingMemoryManager.ts": {
@@ -7846,6 +7903,12 @@
               "ExclusionManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./workingMemoryGuard.js",
+            "imports": [
+              "requireWorkingMemoryEntity"
+            ]
           }
         ],
         "exports": [
@@ -17785,6 +17848,12 @@
               "Entity"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./fieldPath.js",
+            "imports": [
+              "getFieldByDotPath"
+            ]
           }
         ],
         "exports": [
@@ -17873,6 +17942,18 @@
         "functions": [
           "generateSuggestions",
           "getQuickHint"
+        ]
+      },
+      "src/utils/fieldPath.ts": {
+        "description": "Field Path",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "getFieldByDotPath"
+        ],
+        "functions": [
+          "getFieldByDotPath"
         ]
       },
       "src/utils/formatters.ts": {
@@ -19495,6 +19576,12 @@
               "EntityRuleResult"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./fieldPath.js",
+            "imports": [
+              "getFieldByDotPath"
+            ]
           }
         ],
         "exports": [
@@ -19854,7 +19941,9 @@
           "src/agent/ToolAffordanceManager.ts",
           "src/agent/ToolCallObserver.ts",
           "src/agent/TrajectoryCompressor.ts",
+          "src/agent/versionedWriteFailure.ts",
           "src/agent/VisibilityResolver.ts",
+          "src/agent/workingMemoryGuard.ts",
           "src/agent/WorkingMemoryManager.ts",
           "src/agent/WorkThreadManager.ts",
           "src/agent/world/index.ts",
@@ -20064,6 +20153,7 @@
           "src/utils/EntityValidator.ts",
           "src/utils/errors.ts",
           "src/utils/errorSuggestions.ts",
+          "src/utils/fieldPath.ts",
           "src/utils/formatters.ts",
           "src/utils/graphCopy.ts",
           "src/utils/halfLife.ts",
@@ -20104,28 +20194,28 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 296,
+    "reachableCount": 299,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 296,
+    "totalTypeScriptFiles": 299,
     "totalModules": 12,
-    "totalLinesOfCode": 104215,
-    "totalExports": 2046,
+    "totalLinesOfCode": 104233,
+    "totalExports": 2049,
     "totalClasses": 235,
     "totalInterfaces": 624,
-    "totalFunctions": 333,
+    "totalFunctions": 336,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,
     "totalReExports": 1340,
-    "totalTypeOnlyImports": 478,
+    "totalTypeOnlyImports": 480,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 296,
+    "reachableFiles": 299,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,

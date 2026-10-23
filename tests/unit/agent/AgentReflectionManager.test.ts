@@ -16,6 +16,7 @@ import type { Entity, KnowledgeGraph, IGraphStorage } from '../../../src/types/t
 import type { ReflectionEntity } from '../../../src/types/agent-memory.js';
 import { isReflectionMemory } from '../../../src/types/agent-memory.js';
 import { VersionConflictError, EntityNotFoundError } from '../../../src/utils/errors.js';
+import { microtaskTicks } from '../../test-utils/microtask-ticks.js';
 
 /** Minimal in-memory storage that satisfies the duck-typed `IGraphStorage` slice AgentReflectionManager needs. */
 function createMockStorage(): IGraphStorage & {
@@ -340,6 +341,37 @@ describe('AgentReflectionManager', () => {
     });
   });
 
+  describe('archive (pinned before the extraction)', () => {
+    it('sends the stored version as expectedVersion and two patch keys', async () => {
+      const rec = await rm.create({
+        scope: 'session',
+        evidence: ['e'],
+        summary: 's',
+        generalization_confidence: 0.7,
+      });
+      await rm.archive(rec.id);
+      const update = entityManager.updateEntity as ReturnType<typeof vi.fn>;
+      expect(update).toHaveBeenCalledTimes(1);
+      const [name, patch, options] = update.mock.calls[0];
+      expect(name).toBe(rec.id);
+      expect(Object.keys(patch)).toEqual(['reflectionRecord', 'lastModified']);
+      expect(options).toStrictEqual({ expectedVersion: 1 });
+    });
+
+    it('stores archived true with an archivedAt timestamp', async () => {
+      const rec = await rm.create({
+        scope: 'session',
+        evidence: ['e'],
+        summary: 's',
+        generalization_confidence: 0.7,
+      });
+      await rm.archive(rec.id);
+      const stored = storage.getEntityByName(rec.id) as ReflectionEntity;
+      expect(stored.reflectionRecord.archived).toBe(true);
+      expect(typeof stored.reflectionRecord.archivedAt).toBe('string');
+    });
+  });
+
   describe('isReflectionMemory type guard', () => {
     it('returns true for ReflectionEntity', async () => {
       const rec = await rm.create({
@@ -356,6 +388,166 @@ describe('AgentReflectionManager', () => {
       expect(isReflectionMemory({ memoryType: 'episodic' })).toBe(false);
       expect(isReflectionMemory(null)).toBe(false);
       expect(isReflectionMemory(undefined)).toBe(false);
+    });
+  });
+});
+
+/**
+ * Microtask turns until each result settles, counted by microtaskTicks on V8.
+ * A different count changes the order in which waiting callers resume.
+ */
+const REFLECTION_TICKS = {
+  archived: 2,
+  notFound: 1,
+  alreadyArchived: 1,
+  conflict: 2,
+  vanished: 2,
+  rejected: 2,
+};
+
+describe('AgentReflectionManager archive write errors', () => {
+  const input = {
+    scope: 'session' as const,
+    evidence: ['e'],
+    summary: 's',
+    generalization_confidence: 0.7,
+  };
+
+  /** Seeds one reflection, then builds a manager whose entity manager runs `write`. */
+  async function withWrite(write: (...args: unknown[]) => unknown) {
+    const storage = createMockStorage();
+    const rec = await new AgentReflectionManager(storage, createFakeEntityManager(storage)).create(input);
+    const calls: Array<{ self: unknown; args: unknown[] }> = [];
+    const entityManager: { updateEntity(...args: unknown[]): unknown } = {
+      updateEntity(this: unknown, ...args: unknown[]) {
+        calls.push({ self: this, args });
+        return write(...args);
+      },
+    };
+    const rm = new AgentReflectionManager(storage, entityManager as unknown as EntityManager);
+    return { rm, id: rec.id, storage, calls, entityManager };
+  }
+
+  it('rethrows an error that is not a conflict or a missing entity', async () => {
+    const boom = new Error('boom');
+    const { rm, id } = await withWrite(async () => {
+      throw boom;
+    });
+    await expect(rm.archive(id)).rejects.toBe(boom);
+  });
+
+  it('rethrows a rejection that is not an Error', async () => {
+    const { rm, id } = await withWrite(() => Promise.reject('plain text'));
+    await expect(rm.archive(id)).rejects.toBe('plain text');
+  });
+
+  it('maps errors that the entity manager throws before it returns a promise', async () => {
+    const conflict = await withWrite(() => {
+      throw new VersionConflictError('x', 1, 2);
+    });
+    expect(await conflict.rm.archive(conflict.id)).toBe('conflict');
+    const vanished = await withWrite(() => {
+      throw new EntityNotFoundError('x');
+    });
+    expect(await vanished.rm.archive(vanished.id)).toBe('vanished-mid-update');
+    const boom = new Error('sync boom');
+    const other = await withWrite(() => {
+      throw boom;
+    });
+    await expect(other.rm.archive(other.id)).rejects.toBe(boom);
+  });
+
+  it('maps a rejection with a subclass of the missing-entity error', async () => {
+    class LateMissing extends EntityNotFoundError {}
+    const { rm, id } = await withWrite(() => Promise.reject(new LateMissing('x')));
+    expect(await rm.archive(id)).toBe('vanished-mid-update');
+  });
+
+  it('calls updateEntity as a method of the entity manager, with the id, the patch and the version', async () => {
+    const { rm, id, calls, entityManager, storage } = await withWrite(async () => ({}));
+    (storage.getEntityByName(id) as Entity).version = 6;
+    expect(await rm.archive(id)).toBe('archived');
+    expect(calls).toHaveLength(1);
+    expect(calls[0].self).toBe(entityManager);
+    const [name, patch, options] = calls[0].args as [string, Record<string, unknown>, unknown];
+    expect(name).toBe(id);
+    expect(Object.keys(patch)).toEqual(['reflectionRecord', 'lastModified']);
+    expect(options).toStrictEqual({ expectedVersion: 6 });
+  });
+
+  it('sends version 1 when the entity has no version', async () => {
+    const { rm, id, calls } = await withWrite(async () => ({}));
+    await rm.archive(id);
+    expect(calls[0].args[2]).toStrictEqual({ expectedVersion: 1 });
+  });
+
+  it('stores one timestamp in archivedAt and in lastModified', async () => {
+    const { rm, id, calls } = await withWrite(async () => ({}));
+    await rm.archive(id);
+    const patch = calls[0].args[1] as {
+      reflectionRecord: { archived: boolean; archivedAt: string };
+      lastModified: string;
+    };
+    expect(patch.reflectionRecord.archived).toBe(true);
+    expect(patch.reflectionRecord.archivedAt).toBe(patch.lastModified);
+  });
+
+  it('does not call updateEntity for an unknown id', async () => {
+    const { rm, calls } = await withWrite(async () => ({}));
+    expect(await rm.archive('reflection-missing')).toBe('not-found');
+    expect(calls).toHaveLength(0);
+  });
+
+  describe('settle timing', () => {
+    it('archived settles after the expected number of microtask turns', async () => {
+      const { rm, id } = await withWrite(async () => ({}));
+      const pending = rm.archive(id);
+      expect(await microtaskTicks(pending)).toBe(REFLECTION_TICKS.archived);
+      expect(await pending).toBe('archived');
+    });
+
+    it('not-found settles after the expected number of turns', async () => {
+      const { rm } = await withWrite(async () => ({}));
+      const pending = rm.archive('reflection-missing');
+      expect(await microtaskTicks(pending)).toBe(REFLECTION_TICKS.notFound);
+      expect(await pending).toBe('not-found');
+    });
+
+    it('already-archived settles after the expected number of turns', async () => {
+      const storage = createMockStorage();
+      const rm = new AgentReflectionManager(storage, createFakeEntityManager(storage));
+      const rec = await rm.create(input);
+      await rm.archive(rec.id);
+      const pending = rm.archive(rec.id);
+      expect(await microtaskTicks(pending)).toBe(REFLECTION_TICKS.alreadyArchived);
+      expect(await pending).toBe('already-archived');
+    });
+
+    it('conflict settles after the expected number of turns', async () => {
+      const { rm, id } = await withWrite(async () => {
+        throw new VersionConflictError('x', 1, 2);
+      });
+      const pending = rm.archive(id);
+      expect(await microtaskTicks(pending)).toBe(REFLECTION_TICKS.conflict);
+      expect(await pending).toBe('conflict');
+    });
+
+    it('vanished-mid-update settles after the expected number of turns', async () => {
+      const { rm, id } = await withWrite(async () => {
+        throw new EntityNotFoundError('x');
+      });
+      const pending = rm.archive(id);
+      expect(await microtaskTicks(pending)).toBe(REFLECTION_TICKS.vanished);
+      expect(await pending).toBe('vanished-mid-update');
+    });
+
+    it('a rethrown error rejects after the expected number of turns', async () => {
+      const { rm, id } = await withWrite(async () => {
+        throw new Error('boom');
+      });
+      const pending = rm.archive(id);
+      expect(await microtaskTicks(pending)).toBe(REFLECTION_TICKS.rejected);
+      await expect(pending).rejects.toThrow('boom');
     });
   });
 });

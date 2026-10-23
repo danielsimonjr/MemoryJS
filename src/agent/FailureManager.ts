@@ -33,7 +33,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isFailureMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
-import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
+import { versionedWriteFailure } from './versionedWriteFailure.js';
 import { validateNonEmpty } from '../utils/index.js';
 
 /** Configuration for `FailureManager`. */
@@ -264,9 +264,7 @@ export class FailureManager {
       );
       return 'resolved';
     } catch (err) {
-      if (err instanceof VersionConflictError) return 'conflict';
-      if (err instanceof EntityNotFoundError) return 'vanished-mid-update';
-      throw err;
+      return versionedWriteFailure(err);
     }
   }
 

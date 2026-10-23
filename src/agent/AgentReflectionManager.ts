@@ -32,7 +32,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isReflectionMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
-import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
+import { versionedWriteFailure } from './versionedWriteFailure.js';
 import { validateNonEmpty, validateNonEmptyArray } from '../utils/index.js';
 
 /** Discriminated return from `archive`. Mirrors `MarkResolvedResult`. */
@@ -252,9 +252,7 @@ export class AgentReflectionManager {
       );
       return 'archived';
     } catch (err) {
-      if (err instanceof VersionConflictError) return 'conflict';
-      if (err instanceof EntityNotFoundError) return 'vanished-mid-update';
-      throw err;
+      return versionedWriteFailure(err);
     }
   }
 

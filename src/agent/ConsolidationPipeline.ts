@@ -30,6 +30,7 @@ import {
 import { tokenizeStripped } from '../utils/textSimilarity.js';
 import { hash31 } from '../utils/entityUtils.js';
 import type { WorkingMemoryManager } from './WorkingMemoryManager.js';
+import { requireWorkingMemoryEntity } from './workingMemoryGuard.js';
 import type { DecayEngine } from './DecayEngine.js';
 import { SummarizationService } from './SummarizationService.js';
 import { PatternDetector } from './PatternDetector.js';
@@ -319,19 +320,7 @@ export class ConsolidationPipeline {
     entityName: string,
     targetType: MemoryType
   ): Promise<AgentEntity> {
-    const entity = this.storage.getEntityByName(entityName);
-    if (!entity) {
-      throw new Error(`Entity not found: ${entityName}`);
-    }
-
-    if (!isAgentEntity(entity)) {
-      throw new Error(`Entity is not an AgentEntity: ${entityName}`);
-    }
-
-    const agentEntity = entity as AgentEntity;
-    if (agentEntity.memoryType !== 'working') {
-      throw new Error(`Entity is not working memory: ${entityName}`);
-    }
+    const agentEntity = requireWorkingMemoryEntity(this.storage, entityName);
 
     const now = new Date().toISOString();
     const updates: Partial<AgentEntity> = {

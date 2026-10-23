@@ -9,6 +9,7 @@
  */
 
 import type { Entity } from '../types/types.js';
+import { getFieldByDotPath } from './fieldPath.js';
 
 // ==================== Validation Types ====================
 // Note: These are ENTITY validation types, distinct from graph ValidationIssue
@@ -268,22 +269,6 @@ export class EntityValidator {
    * Get a field value from entity using dot notation path.
    */
   private getFieldValue(entity: Entity, field: string): unknown {
-    const parts = field.split('.');
-    let value: unknown = entity;
-
-    for (const part of parts) {
-      if (value && typeof value === 'object') {
-        // Handle array index
-        if (/^\d+$/.test(part)) {
-          value = (value as unknown[])[parseInt(part, 10)];
-        } else {
-          value = (value as Record<string, unknown>)[part];
-        }
-      } else {
-        return undefined;
-      }
-    }
-
-    return value;
+    return getFieldByDotPath(entity, field);
   }
 }

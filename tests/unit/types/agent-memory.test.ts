@@ -18,6 +18,16 @@ import {
   type SessionEntity,
   type MemoryVisibility,
 } from '../../../src/types/index.js';
+import {
+  isFailureMemory,
+  isPlanMemory,
+  isReflectionMemory,
+  isHeuristicMemory,
+  isExclusionMemory,
+  isDecisionMemory,
+  isProjectContextMemory,
+  isToolAffordanceMemory,
+} from '../../../src/types/agent-memory.js';
 
 // ==================== Test Fixtures ====================
 
@@ -561,3 +571,314 @@ describe('Type Guard Edge Cases', () => {
     }
   });
 });
+
+// ==================== Record Guards (failure to tool affordance) ====================
+
+type FieldKind = 'string' | 'number' | 'object' | 'array';
+
+interface RecordGuardCase {
+  readonly name: string;
+  readonly guard: (entity: unknown) => boolean;
+  readonly memoryType: string;
+  readonly recordKey: string;
+  readonly fields: Readonly<Record<string, FieldKind>>;
+}
+
+const RECORD_GUARD_CASES: readonly RecordGuardCase[] = [
+  {
+    name: 'isFailureMemory',
+    guard: isFailureMemory,
+    memoryType: 'failure',
+    recordKey: 'failureRecord',
+    fields: { id: 'string', lifecycle: 'object' },
+  },
+  {
+    name: 'isPlanMemory',
+    guard: isPlanMemory,
+    memoryType: 'plan',
+    recordKey: 'planRecord',
+    fields: { id: 'string', rootGoal: 'object', lifecycle: 'object' },
+  },
+  {
+    name: 'isReflectionMemory',
+    guard: isReflectionMemory,
+    memoryType: 'reflection',
+    recordKey: 'reflectionRecord',
+    fields: { id: 'string', scope: 'string', evidenceHash: 'string', evidence: 'array' },
+  },
+  {
+    name: 'isHeuristicMemory',
+    guard: isHeuristicMemory,
+    memoryType: 'heuristic',
+    recordKey: 'heuristicRecord',
+    fields: { id: 'string', condition: 'string', action: 'string', confidence: 'number' },
+  },
+  {
+    name: 'isExclusionMemory',
+    guard: isExclusionMemory,
+    memoryType: 'exclusion',
+    recordKey: 'exclusionRule',
+    fields: { id: 'string', pattern: 'string', mode: 'string', scope: 'string' },
+  },
+  {
+    name: 'isDecisionMemory',
+    guard: isDecisionMemory,
+    memoryType: 'decision',
+    recordKey: 'decisionRecord',
+    fields: { id: 'string', status: 'string', context: 'string', decision: 'string', lifecycle: 'object' },
+  },
+  {
+    name: 'isProjectContextMemory',
+    guard: isProjectContextMemory,
+    memoryType: 'project_context',
+    recordKey: 'projectContextRecord',
+    fields: {
+      id: 'string',
+      projectId: 'string',
+      facts: 'array',
+      conventions: 'array',
+      commands: 'array',
+      glossary: 'array',
+    },
+  },
+  {
+    name: 'isToolAffordanceMemory',
+    guard: isToolAffordanceMemory,
+    memoryType: 'tool_affordance',
+    recordKey: 'toolAffordanceRecord',
+    fields: { id: 'string', toolName: 'string', outcomes: 'array', successRate: 'number', totalCalls: 'number' },
+  },
+];
+
+const VALID_FIELD_VALUE: Readonly<Record<FieldKind, () => unknown>> = {
+  string: () => 'value',
+  number: () => 1,
+  object: () => ({}),
+  array: () => [],
+};
+
+const WRONG_FIELD_VALUE: Readonly<Record<FieldKind, () => unknown>> = {
+  string: () => 1,
+  number: () => 'one',
+  object: () => null,
+  array: () => ({}),
+};
+
+/** Builds a record that passes every checked field, minus `omitted`, plus `changes`. */
+function buildRecord(
+  c: RecordGuardCase,
+  changes: Record<string, unknown> = {},
+  omitted: readonly string[] = [],
+): Record<string, unknown> {
+  const record: Record<string, unknown> = {};
+  for (const [field, kind] of Object.entries(c.fields)) {
+    record[field] = VALID_FIELD_VALUE[kind]();
+  }
+  for (const field of omitted) {
+    delete record[field];
+  }
+  return { ...record, ...changes };
+}
+
+/** Wraps a record in an AgentEntity of the given memory type. */
+function buildEntity(c: RecordGuardCase, record: unknown, memoryType: string = c.memoryType): Record<string, unknown> {
+  return {
+    ...createAgentEntity({ memoryType: memoryType as AgentEntity['memoryType'] }),
+    [c.recordKey]: record,
+  };
+}
+
+for (const c of RECORD_GUARD_CASES) {
+  describe(`${c.name} (record guard)`, () => {
+    it('returns true for a valid record', () => {
+      expect(c.guard(buildEntity(c, buildRecord(c)))).toBe(true);
+    });
+
+    it('returns true when an object field holds an array', () => {
+      for (const [field, kind] of Object.entries(c.fields)) {
+        if (kind === 'object') {
+          expect(c.guard(buildEntity(c, buildRecord(c, { [field]: [] })))).toBe(true);
+        }
+      }
+    });
+
+    for (const [field, kind] of Object.entries(c.fields)) {
+      it(`returns false when ${field} is missing`, () => {
+        expect(c.guard(buildEntity(c, buildRecord(c, {}, [field])))).toBe(false);
+      });
+
+      it(`returns false when ${field} has the wrong kind`, () => {
+        const wrong = WRONG_FIELD_VALUE[kind]();
+        expect(c.guard(buildEntity(c, buildRecord(c, { [field]: wrong })))).toBe(false);
+      });
+    }
+
+    it('returns false for a wrong memoryType', () => {
+      expect(c.guard(buildEntity(c, buildRecord(c), 'episodic'))).toBe(false);
+    });
+
+    it('returns false when the record property is null', () => {
+      expect(c.guard(buildEntity(c, null))).toBe(false);
+    });
+
+    it('returns false when the record property is missing', () => {
+      const entity = buildEntity(c, buildRecord(c));
+      delete entity[c.recordKey];
+      expect(c.guard(entity)).toBe(false);
+    });
+
+    it('returns false when the value is not an AgentEntity', () => {
+      expect(c.guard({ ...buildEntity(c, buildRecord(c)), name: 42 })).toBe(false);
+      expect(c.guard({ memoryType: c.memoryType, [c.recordKey]: buildRecord(c) })).toBe(false);
+      expect(c.guard(null)).toBe(false);
+    });
+  });
+}
+
+// ==================== Record Guards: field kind probes ====================
+
+/** Values that each field kind accepts. */
+const KIND_ACCEPTS: Readonly<Record<FieldKind, readonly unknown[]>> = {
+  string: ['', 'text'],
+  number: [0, -1, 1.5, NaN, Infinity],
+  object: [{}, { a: 1 }, [], [1]],
+  array: [[], [1]],
+};
+
+/** Values that each field kind rejects. */
+const KIND_REJECTS: Readonly<Record<FieldKind, readonly unknown[]>> = {
+  string: [0, 1, NaN, null, undefined, {}, [], true],
+  number: ['', '5', 'one', null, undefined, {}, [], true],
+  object: [null, undefined, '', 'text', 0, 1, true, () => 1],
+  array: [{}, { length: 0 }, '', 'abc', 0, null, undefined, true],
+};
+
+for (const c of RECORD_GUARD_CASES) {
+  describe(`${c.name} (field kinds)`, () => {
+    for (const [field, kind] of Object.entries(c.fields)) {
+      it(`accepts these values in ${field} (${kind})`, () => {
+        for (const value of KIND_ACCEPTS[kind]) {
+          expect(c.guard(buildEntity(c, buildRecord(c, { [field]: value })))).toBe(true);
+        }
+      });
+
+      it(`rejects these values in ${field} (${kind})`, () => {
+        for (const value of KIND_REJECTS[kind]) {
+          expect(c.guard(buildEntity(c, buildRecord(c, { [field]: value })))).toBe(false);
+        }
+      });
+    }
+
+    it('rejects a record property that is not an object', () => {
+      for (const value of ['', 'text', 0, 1, true, () => 1]) {
+        expect(c.guard(buildEntity(c, value))).toBe(false);
+      }
+    });
+
+    it('accepts an array as the record property only when it carries the fields', () => {
+      expect(c.guard(buildEntity(c, []))).toBe(false);
+      expect(c.guard(buildEntity(c, Object.assign([], buildRecord(c))))).toBe(true);
+    });
+
+    it('rejects an entity of another record type with a valid record of this type', () => {
+      for (const other of RECORD_GUARD_CASES) {
+        if (other.memoryType === c.memoryType) continue;
+        expect(c.guard(buildEntity(c, buildRecord(c), other.memoryType))).toBe(false);
+        expect(c.guard(buildEntity(other, buildRecord(other)))).toBe(false);
+      }
+    });
+
+    it('returns a strict boolean', () => {
+      expect(c.guard(buildEntity(c, buildRecord(c)))).toBe(true);
+      expect(c.guard(buildEntity(c, null))).toBe(false);
+      expect(c.guard(undefined)).toBe(false);
+    });
+  });
+}
+
+// ==================== Record Guards: property reads ====================
+
+/**
+ * Builds an entity whose record and record fields are accessors. Each read is logged.
+ * A guard reads the record property once, read each field in declaration
+ * order, and read an object field twice (the type test, then the null test).
+ */
+function buildWatchedEntity(
+  c: RecordGuardCase,
+  changes: Record<string, unknown> = {},
+): { entity: Record<string, unknown>; reads: string[] } {
+  const reads: string[] = [];
+  const values = buildRecord(c, changes);
+  const record: Record<string, unknown> = {};
+  for (const field of Object.keys(c.fields)) {
+    Object.defineProperty(record, field, {
+      enumerable: true,
+      get: () => {
+        reads.push(field);
+        return values[field];
+      },
+    });
+  }
+  const entity = buildEntity(c, null);
+  Object.defineProperty(entity, c.recordKey, {
+    enumerable: true,
+    get: () => {
+      reads.push(c.recordKey);
+      return record;
+    },
+  });
+  return { entity, reads };
+}
+
+/** Whether a value has the field kind. This is the rule of the field kinds. */
+function passesKind(kind: FieldKind, value: unknown): boolean {
+  switch (kind) {
+    case 'string':
+      return typeof value === 'string';
+    case 'number':
+      return typeof value === 'number';
+    case 'object':
+      return typeof value === 'object' && value !== null;
+    case 'array':
+      return Array.isArray(value);
+  }
+}
+
+/** Reads that a guard makes until it stops at the first rejected field. */
+function expectedReads(c: RecordGuardCase, changes: Record<string, unknown> = {}): string[] {
+  const expected = [c.recordKey];
+  for (const [field, kind] of Object.entries(c.fields)) {
+    const value = field in changes ? changes[field] : VALID_FIELD_VALUE[kind]();
+    expected.push(field);
+    if (kind === 'object' && typeof value === 'object') expected.push(field);
+    if (!passesKind(kind, value)) break;
+  }
+  return expected;
+}
+
+for (const c of RECORD_GUARD_CASES) {
+  describe(`${c.name} (property reads)`, () => {
+    it('reads the record once and each field in order, an object field twice', () => {
+      const { entity, reads } = buildWatchedEntity(c);
+      expect(c.guard(entity)).toBe(true);
+      expect(reads).toStrictEqual(expectedReads(c));
+    });
+
+    for (const [field, kind] of Object.entries(c.fields)) {
+      it(`stops reading at ${field} when it has the wrong kind`, () => {
+        const wrong = WRONG_FIELD_VALUE[kind]();
+        const { entity, reads } = buildWatchedEntity(c, { [field]: wrong });
+        expect(c.guard(entity)).toBe(false);
+        expect(reads).toStrictEqual(expectedReads(c, { [field]: wrong }));
+      });
+
+      if (kind === 'object') {
+        it(`reads ${field} once when it holds a primitive`, () => {
+          const { entity, reads } = buildWatchedEntity(c, { [field]: 'text' });
+          expect(c.guard(entity)).toBe(false);
+          expect(reads.filter((name) => name === field)).toStrictEqual([field]);
+        });
+      }
+    }
+  });
+}

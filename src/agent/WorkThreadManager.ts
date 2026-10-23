@@ -360,21 +360,8 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or invalid transition
    */
-  async complete(threadId: string): Promise<WorkThread> {
-    const thread = this.threads.get(threadId);
-    if (!thread) {
-      throw new Error(`Thread not found: ${threadId}`);
-    }
-
-    if (!this.canTransition(threadId, 'done')) {
-      throw new Error(`Cannot complete thread ${threadId} from '${thread.status}' status`);
-    }
-
-    thread.status = 'done';
-    thread.updatedAt = new Date().toISOString();
-
-    await this.persistThread(thread);
-    return { ...thread };
+  complete(threadId: string): Promise<WorkThread> {
+    return this.finish(threadId, 'done', 'complete');
   }
 
   /**
@@ -384,21 +371,8 @@ export class WorkThreadManager {
    * @returns Updated work thread
    * @throws Error if thread not found or invalid transition
    */
-  async cancel(threadId: string): Promise<WorkThread> {
-    const thread = this.threads.get(threadId);
-    if (!thread) {
-      throw new Error(`Thread not found: ${threadId}`);
-    }
-
-    if (!this.canTransition(threadId, 'cancelled')) {
-      throw new Error(`Cannot cancel thread ${threadId} from '${thread.status}' status`);
-    }
-
-    thread.status = 'cancelled';
-    thread.updatedAt = new Date().toISOString();
-
-    await this.persistThread(thread);
-    return { ...thread };
+  cancel(threadId: string): Promise<WorkThread> {
+    return this.finish(threadId, 'cancelled', 'cancel');
   }
 
   /**
@@ -572,6 +546,35 @@ export class WorkThreadManager {
   }
 
   // ==================== Private Methods ====================
+
+  /**
+   * Moves a thread to a terminal status. The verb names the operation in the error text.
+   * complete and cancel return the promise of this method and are not async
+   * themselves, so they settle in the same number of microtask turns as a
+   * method that holds the whole body.
+   *
+   * @param threadId - Thread to move
+   * @param target - Terminal status to set
+   * @param verb - Operation name used in the error text
+   * @returns Updated work thread
+   * @throws Error if thread not found or invalid transition
+   */
+  private async finish(threadId: string, target: 'done' | 'cancelled', verb: 'complete' | 'cancel'): Promise<WorkThread> {
+    const thread = this.threads.get(threadId);
+    if (!thread) {
+      throw new Error(`Thread not found: ${threadId}`);
+    }
+
+    if (!this.canTransition(threadId, target)) {
+      throw new Error(`Cannot ${verb} thread ${threadId} from '${thread.status}' status`);
+    }
+
+    thread.status = target;
+    thread.updatedAt = new Date().toISOString();
+
+    await this.persistThread(thread);
+    return { ...thread };
+  }
 
   /**
    * Detect cycles in blocker dependencies using BFS.
