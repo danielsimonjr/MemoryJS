@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-23",
-  "totalFiles": 694,
+  "totalFiles": 697,
   "byDisposition": {
-    "reachable": 290,
+    "reachable": 292,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 384,
+    "test": 385,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 294,
-    "tests": 384,
+    "src": 296,
+    "tests": 385,
     "tools": 10,
     "config": 2
   },
@@ -1068,7 +1068,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 270
+      "loc": 251
     },
     {
       "file": "src/core/EntityManager.ts",
@@ -1110,7 +1110,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 301
+      "loc": 305
     },
     {
       "file": "src/core/index.ts",
@@ -1551,7 +1551,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 792
+      "loc": 795
     },
     {
       "file": "src/search/QueryLogger.ts",
@@ -1614,7 +1614,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 285
+      "loc": 282
     },
     {
       "file": "src/search/SearchManager.ts",
@@ -1684,14 +1684,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 307
+      "loc": 179
     },
     {
       "file": "src/search/tiered/DiskWarmTier.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 276
+      "loc": 168
     },
     {
       "file": "src/search/tiered/ITieredIndex.ts",
@@ -1706,6 +1706,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 164
+    },
+    {
+      "file": "src/search/tiered/MapFileTier.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 153
     },
     {
       "file": "src/search/tiered/TieredIndex.ts",
@@ -1922,7 +1929,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 893
+      "loc": 889
     },
     {
       "file": "src/utils/EntityValidator.ts",
@@ -1993,6 +2000,13 @@
       "area": "src",
       "disposition": "reachable",
       "loc": 78
+    },
+    {
+      "file": "src/utils/jsonlMapFile.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 82
     },
     {
       "file": "src/utils/logger.ts",
@@ -3399,7 +3413,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 253
+      "loc": 390
     },
     {
       "file": "tests/unit/core/columns/ObservationColumnStore-wiring.test.ts",
@@ -3511,7 +3525,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 353
+      "loc": 423
     },
     {
       "file": "tests/unit/core/known-issue-fixes.test.ts",
@@ -4239,7 +4253,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 566
+      "loc": 668
     },
     {
       "file": "tests/unit/search/QueryLogger.test.ts",
@@ -4330,7 +4344,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 381
+      "loc": 524
     },
     {
       "file": "tests/unit/search/SearchManager.test.ts",
@@ -4414,7 +4428,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 395
+      "loc": 599
     },
     {
       "file": "tests/unit/search/tiered/disk-tier-concurrency.test.ts",
@@ -4428,7 +4442,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 365
+      "loc": 537
     },
     {
       "file": "tests/unit/search/tiered/ITieredIndex.test.ts",
@@ -4652,7 +4666,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1069
+      "loc": 1097
     },
     {
       "file": "tests/unit/utils/EntityValidator.test.ts",
@@ -4695,6 +4709,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 847
+    },
+    {
+      "file": "tests/unit/utils/jsonlMapFile.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 122
     },
     {
       "file": "tests/unit/utils/logger.test.ts",

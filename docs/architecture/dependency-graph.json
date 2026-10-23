@@ -3,9 +3,9 @@
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
     "lastUpdated": "2026-10-23",
-    "totalFiles": 294,
+    "totalFiles": 296,
     "totalModules": 12,
-    "totalExports": 2043
+    "totalExports": 2046
   },
   "entryPoints": [
     {
@@ -9683,15 +9683,16 @@
         ],
         "internalDependencies": [
           {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
-          {
             "file": "../../utils/durableWriteFile.js",
             "imports": [
               "durableWriteFile"
+            ]
+          },
+          {
+            "file": "../../utils/jsonlMapFile.js",
+            "imports": [
+              "parseJsonlMapLines",
+              "serializeJsonlMap"
             ]
           },
           {
@@ -15119,6 +15120,7 @@
               "normalizeTags",
               "hasMatchingTag",
               "isWithinImportanceRange",
+              "entityPassesFilters",
               "validatePagination",
               "applyPagination",
               "ValidatedPagination"
@@ -15583,14 +15585,7 @@
       },
       "src/search/tiered/BrotliColdTier.ts": {
         "description": "BrotliColdTier — Brotli-compressed JSONL shard `IIndexTier<string, V>`",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15600,12 +15595,6 @@
           }
         ],
         "internalDependencies": [
-          {
-            "file": "../../utils/logger.js",
-            "imports": [
-              "logger"
-            ]
-          },
           {
             "file": "../../utils/compressionUtil.js",
             "imports": [
@@ -15620,11 +15609,10 @@
             ]
           },
           {
-            "file": "./ITieredIndex.js",
+            "file": "./MapFileTier.js",
             "imports": [
-              "IIndexTier"
-            ],
-            "typeOnly": true
+              "MapFileTier"
+            ]
           }
         ],
         "exports": [
@@ -15639,14 +15627,7 @@
       },
       "src/search/tiered/DiskWarmTier.ts": {
         "description": "DiskWarmTier — JSONL-sidecar-backed `IIndexTier<string, V>`",
-        "externalDependencies": [
-          {
-            "package": "async-mutex",
-            "imports": [
-              "Mutex"
-            ]
-          }
-        ],
+        "externalDependencies": [],
         "nodeDependencies": [
           {
             "module": "fs",
@@ -15669,11 +15650,10 @@
             ]
           },
           {
-            "file": "./ITieredIndex.js",
+            "file": "./MapFileTier.js",
             "imports": [
-              "IIndexTier"
-            ],
-            "typeOnly": true
+              "MapFileTier"
+            ]
           }
         ],
         "exports": [
@@ -15730,6 +15710,41 @@
         ],
         "interfaces": [
           "LRUHotTierOptions"
+        ]
+      },
+      "src/search/tiered/MapFileTier.ts": {
+        "description": "MapFileTier — shared base of the file-backed index tiers",
+        "externalDependencies": [
+          {
+            "package": "async-mutex",
+            "imports": [
+              "Mutex"
+            ]
+          }
+        ],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "../../utils/jsonlMapFile.js",
+            "imports": [
+              "parseJsonlMapLines",
+              "serializeJsonlMap",
+              "JsonlMapFormat"
+            ]
+          },
+          {
+            "file": "./ITieredIndex.js",
+            "imports": [
+              "IIndexTier"
+            ],
+            "typeOnly": true
+          }
+        ],
+        "exports": [
+          "MapFileTier"
+        ],
+        "classes": [
+          "MapFileTier"
         ]
       },
       "src/search/tiered/TieredIndex.ts": {
@@ -18969,6 +18984,31 @@
           "IndexHealthSources"
         ]
       },
+      "src/utils/jsonlMapFile.ts": {
+        "description": "JSONL map file codec",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [
+          {
+            "file": "./logger.js",
+            "imports": [
+              "logger"
+            ]
+          }
+        ],
+        "exports": [
+          "parseJsonlMapLines",
+          "serializeJsonlMap"
+        ],
+        "interfaces": [
+          "JsonlMapFormat",
+          "JsonlMapParseOptions"
+        ],
+        "functions": [
+          "parseJsonlMapLines",
+          "serializeJsonlMap"
+        ]
+      },
       "src/utils/logger.ts": {
         "description": "Simple logging utility for the Memory MCP Server",
         "externalDependencies": [],
@@ -19969,6 +20009,7 @@
           "src/search/tiered/DiskWarmTier.ts",
           "src/search/tiered/ITieredIndex.ts",
           "src/search/tiered/LRUHotTier.ts",
+          "src/search/tiered/MapFileTier.ts",
           "src/search/tiered/TieredIndex.ts",
           "src/search/VectorStore.ts"
         ]
@@ -20030,6 +20071,7 @@
           "src/utils/index.ts",
           "src/utils/indexes.ts",
           "src/utils/IndexHealthMonitor.ts",
+          "src/utils/jsonlMapFile.ts",
           "src/utils/logger.ts",
           "src/utils/MemoryMonitor.ts",
           "src/utils/operationUtils.ts",
@@ -20062,32 +20104,32 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 294,
+    "reachableCount": 296,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 294,
+    "totalTypeScriptFiles": 296,
     "totalModules": 12,
-    "totalLinesOfCode": 104235,
-    "totalExports": 2043,
-    "totalClasses": 234,
-    "totalInterfaces": 622,
-    "totalFunctions": 331,
+    "totalLinesOfCode": 104215,
+    "totalExports": 2046,
+    "totalClasses": 235,
+    "totalInterfaces": 624,
+    "totalFunctions": 333,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,
     "totalReExports": 1340,
-    "totalTypeOnlyImports": 479,
+    "totalTypeOnlyImports": 478,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 294,
+    "reachableFiles": 296,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,
     "unusedFilesCount": 0,
-    "unusedExportsCount": 71
+    "unusedExportsCount": 72
   }
 }
