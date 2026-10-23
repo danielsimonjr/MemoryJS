@@ -340,6 +340,37 @@ describe('AgentReflectionManager', () => {
     });
   });
 
+  describe('archive (pinned before the extraction)', () => {
+    it('sends the stored version as expectedVersion and two patch keys', async () => {
+      const rec = await rm.create({
+        scope: 'session',
+        evidence: ['e'],
+        summary: 's',
+        generalization_confidence: 0.7,
+      });
+      await rm.archive(rec.id);
+      const update = entityManager.updateEntity as ReturnType<typeof vi.fn>;
+      expect(update).toHaveBeenCalledTimes(1);
+      const [name, patch, options] = update.mock.calls[0];
+      expect(name).toBe(rec.id);
+      expect(Object.keys(patch)).toEqual(['reflectionRecord', 'lastModified']);
+      expect(options).toStrictEqual({ expectedVersion: 1 });
+    });
+
+    it('stores archived true with an archivedAt timestamp', async () => {
+      const rec = await rm.create({
+        scope: 'session',
+        evidence: ['e'],
+        summary: 's',
+        generalization_confidence: 0.7,
+      });
+      await rm.archive(rec.id);
+      const stored = storage.getEntityByName(rec.id) as ReflectionEntity;
+      expect(stored.reflectionRecord.archived).toBe(true);
+      expect(typeof stored.reflectionRecord.archivedAt).toBe('string');
+    });
+  });
+
   describe('isReflectionMemory type guard', () => {
     it('returns true for ReflectionEntity', async () => {
       const rec = await rm.create({

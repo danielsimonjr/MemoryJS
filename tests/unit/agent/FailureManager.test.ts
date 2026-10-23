@@ -306,6 +306,31 @@ describe('FailureManager', () => {
     });
   });
 
+  describe('markResolved (pinned before the extraction)', () => {
+    it('keeps the reason key only when a reason is given', async () => {
+      const withReason = await fm.record(validInput({ context: 'Failure with reason' }));
+      await fm.markResolved(withReason.id, 'fixed');
+      const lifecycleA = ((await storage.getEntityByName(withReason.id)) as FailureEntity).failureRecord.lifecycle;
+      expect(Object.keys(lifecycleA)).toEqual(['status', 'resolvedAt', 'resolvedReason']);
+
+      const noReason = await fm.record(validInput({ context: 'Failure without reason' }));
+      await fm.markResolved(noReason.id);
+      const lifecycleB = ((await storage.getEntityByName(noReason.id)) as FailureEntity).failureRecord.lifecycle;
+      expect(Object.keys(lifecycleB)).toEqual(['status', 'resolvedAt']);
+    });
+
+    it('sends the stored version as expectedVersion and two patch keys', async () => {
+      const rec = await fm.record(validInput({ context: 'Failure for the call shape' }));
+      await fm.markResolved(rec.id, 'fixed');
+      const update = entityManager.updateEntity as ReturnType<typeof vi.fn>;
+      expect(update).toHaveBeenCalledTimes(1);
+      const [name, patch, options] = update.mock.calls[0];
+      expect(name).toBe(rec.id);
+      expect(Object.keys(patch)).toEqual(['failureRecord', 'lastModified']);
+      expect(options).toStrictEqual({ expectedVersion: 1 });
+    });
+  });
+
   // ==================== getAll() ====================
 
   describe('getAll', () => {

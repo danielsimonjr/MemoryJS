@@ -33,7 +33,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isFailureMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
-import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
+import { updateRecordVersioned } from './versionedRecordUpdate.js';
 import { validateNonEmpty } from '../utils/index.js';
 
 /** Configuration for `FailureManager`. */
@@ -253,21 +253,13 @@ export class FailureManager {
       ...entity.failureRecord,
       lifecycle: newLifecycle,
     };
-    try {
-      await this.entityManager.updateEntity(
-        id,
-        {
-          failureRecord: updatedRecord,
-          lastModified: now,
-        } as unknown as Partial<Entity>,
-        { expectedVersion: entity.version ?? 1 },
-      );
-      return 'resolved';
-    } catch (err) {
-      if (err instanceof VersionConflictError) return 'conflict';
-      if (err instanceof EntityNotFoundError) return 'vanished-mid-update';
-      throw err;
-    }
+    return updateRecordVersioned(
+      this.entityManager,
+      id,
+      { failureRecord: updatedRecord, lastModified: now },
+      entity.version ?? 1,
+      'resolved',
+    );
   }
 
   // ==================== Get-all ====================

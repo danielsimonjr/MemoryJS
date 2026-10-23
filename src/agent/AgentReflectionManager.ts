@@ -32,7 +32,7 @@ import type {
 } from '../types/agent-memory.js';
 import { isReflectionMemory, toIsoDateTime } from '../types/agent-memory.js';
 import type { EntityManager } from '../core/EntityManager.js';
-import { VersionConflictError, EntityNotFoundError } from '../utils/errors.js';
+import { updateRecordVersioned } from './versionedRecordUpdate.js';
 import { validateNonEmpty, validateNonEmptyArray } from '../utils/index.js';
 
 /** Discriminated return from `archive`. Mirrors `MarkResolvedResult`. */
@@ -241,21 +241,13 @@ export class AgentReflectionManager {
       archived: true,
       archivedAt: now,
     };
-    try {
-      await this.entityManager.updateEntity(
-        id,
-        {
-          reflectionRecord: updated,
-          lastModified: now,
-        } as unknown as Partial<Entity>,
-        { expectedVersion: entity.version ?? 1 },
-      );
-      return 'archived';
-    } catch (err) {
-      if (err instanceof VersionConflictError) return 'conflict';
-      if (err instanceof EntityNotFoundError) return 'vanished-mid-update';
-      throw err;
-    }
+    return updateRecordVersioned(
+      this.entityManager,
+      id,
+      { reflectionRecord: updated, lastModified: now },
+      entity.version ?? 1,
+      'archived',
+    );
   }
 
   // ==================== Internal ====================

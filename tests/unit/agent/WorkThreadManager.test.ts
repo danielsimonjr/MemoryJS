@@ -1007,4 +1007,68 @@ describe('WorkThreadManager (decomposed graph shape)', () => {
       expect(entity?.observations).toContain('[title]: Legacy task');
     });
   });
+
+  describe('complete and cancel (pinned before the extraction)', () => {
+    async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
+      try {
+        await promise;
+      } catch (err) {
+        return (err as Error).message;
+      }
+      return 'resolved';
+    }
+
+    it('complete moves an active thread to done and keeps the owner', async () => {
+      const thread = await manager.create('Task');
+      await manager.claim(thread.id, 'agent_1');
+      const done = await manager.complete(thread.id);
+      expect(done.status).toBe('done');
+      expect(done.owner).toBe('agent_1');
+    });
+
+    it('cancel moves an open thread to cancelled and leaves no owner', async () => {
+      const thread = await manager.create('Task');
+      const cancelled = await manager.cancel(thread.id);
+      expect(cancelled.status).toBe('cancelled');
+      expect(cancelled.owner).toBeUndefined();
+    });
+
+    it('complete on an open thread names the verb and the status', async () => {
+      const thread = await manager.create('Task');
+      expect(await rejectionMessage(manager.complete(thread.id))).toBe(
+        `Cannot complete thread ${thread.id} from 'open' status`,
+      );
+    });
+
+    it('cancel on a done thread names the verb and the status', async () => {
+      const thread = await manager.create('Task');
+      await manager.claim(thread.id, 'agent_1');
+      await manager.complete(thread.id);
+      expect(await rejectionMessage(manager.cancel(thread.id))).toBe(
+        `Cannot cancel thread ${thread.id} from 'done' status`,
+      );
+    });
+
+    it('a repeated complete reports the done status', async () => {
+      const thread = await manager.create('Task');
+      await manager.claim(thread.id, 'agent_1');
+      await manager.complete(thread.id);
+      expect(await rejectionMessage(manager.complete(thread.id))).toBe(
+        `Cannot complete thread ${thread.id} from 'done' status`,
+      );
+    });
+
+    it('a repeated cancel reports the cancelled status', async () => {
+      const thread = await manager.create('Task');
+      await manager.cancel(thread.id);
+      expect(await rejectionMessage(manager.cancel(thread.id))).toBe(
+        `Cannot cancel thread ${thread.id} from 'cancelled' status`,
+      );
+    });
+
+    it('complete and cancel report a missing thread', async () => {
+      expect(await rejectionMessage(manager.complete('thread_missing'))).toBe('Thread not found: thread_missing');
+      expect(await rejectionMessage(manager.cancel('thread_missing'))).toBe('Thread not found: thread_missing');
+    });
+  });
 });

@@ -272,6 +272,64 @@ describe('PlanManager', () => {
     });
   });
 
+  describe('plan lifecycle keys (pinned before the extraction)', () => {
+    it('keeps the note key only when a note is given', async () => {
+      const plan = await pm.createPlan('with-note');
+      await pm.markPlanComplete(plan.id, 'shipped');
+      const lifecycle = (await pm.findPlan(plan.id))!.lifecycle as Record<string, unknown>;
+      expect(Object.keys(lifecycle)).toEqual(['status', 'completedAt', 'completionNote']);
+      expect(lifecycle.completionNote).toBe('shipped');
+    });
+
+    it('omits the note key when no note is given', async () => {
+      const plan = await pm.createPlan('no-note');
+      await pm.markPlanComplete(plan.id);
+      const lifecycle = (await pm.findPlan(plan.id))!.lifecycle as Record<string, unknown>;
+      expect(Object.keys(lifecycle)).toEqual(['status', 'completedAt']);
+    });
+
+    it('omits the note key for an empty note', async () => {
+      const plan = await pm.createPlan('empty-note');
+      await pm.markPlanComplete(plan.id, '');
+      const lifecycle = (await pm.findPlan(plan.id))!.lifecycle as Record<string, unknown>;
+      expect(Object.keys(lifecycle)).toEqual(['status', 'completedAt']);
+    });
+
+    it('keeps the reason key only when a reason is given', async () => {
+      const plan = await pm.createPlan('with-reason');
+      await pm.abandonPlan(plan.id, 'pivoted');
+      const lifecycle = (await pm.findPlan(plan.id))!.lifecycle as Record<string, unknown>;
+      expect(Object.keys(lifecycle)).toEqual(['status', 'abandonedAt', 'abandonedReason']);
+      expect(lifecycle.abandonedReason).toBe('pivoted');
+    });
+
+    it('omits the reason key when no reason is given', async () => {
+      const plan = await pm.createPlan('no-reason');
+      await pm.abandonPlan(plan.id);
+      const lifecycle = (await pm.findPlan(plan.id))!.lifecycle as Record<string, unknown>;
+      expect(Object.keys(lifecycle)).toEqual(['status', 'abandonedAt']);
+    });
+
+    it('lets an abandoned plan move to complete', async () => {
+      const plan = await pm.createPlan('switch');
+      await pm.abandonPlan(plan.id);
+      expect(await pm.markPlanComplete(plan.id)).toBe('resolved');
+      expect((await pm.findPlan(plan.id))!.lifecycle.status).toBe('complete');
+    });
+
+    it('returns already-resolved for a repeated abandon', async () => {
+      const plan = await pm.createPlan('abandon-twice');
+      await pm.abandonPlan(plan.id);
+      expect(await pm.abandonPlan(plan.id)).toBe('already-resolved');
+    });
+
+    it('returns vanished-mid-update when storage rejects the write', async () => {
+      const plan = await pm.createPlan('vanish');
+      vi.spyOn(storage, 'updateEntity').mockResolvedValueOnce(false);
+      expect(await pm.markPlanComplete(plan.id)).toBe('vanished-mid-update');
+    });
+  });
+
   // ==================== findNode / findPlan ====================
 
   describe('findNode / findPlan', () => {

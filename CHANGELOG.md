@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Four lifecycle pairs share one body. `PlanManager.markPlanComplete` and `abandonPlan` call a private `finishPlan`. `FailureManager.markResolved` and `AgentReflectionManager.archive` call `updateRecordVersioned` in `src/agent/versionedRecordUpdate.ts`, which maps `VersionConflictError` to `conflict` and `EntityNotFoundError` to `vanished-mid-update`. `WorkThreadManager.complete` and `cancel` call a private `finish`. The results and error texts do not change.
 - The seven rule builders in `src/utils/validators.ts` (`minLength`, `maxLength`, `pattern`, `range`, `minItems`, `maxItems`, `email`) share one private builder, `typedRule`. The dot-path getter is `getFieldByDotPath` in `src/utils/fieldPath.ts`. `validators.ts` and `EntityValidator` call it. Behaviour does not change.
 - The type guards for failure, plan, reflection, heuristic, exclusion, decision, project-context and tool-affordance memory share one factory, `recordGuard`, in `src/types/agent-memory.ts`. The eight exported guards keep their names and signatures. Behaviour does not change.
 - `DiskWarmTier` and `BrotliColdTier` extend `MapFileTier`, which holds their lock, lazy load and shared operations. `JsonlColumnStore`, `DiskWarmTier` and `BrotliColdTier` read and write JSONL through `src/utils/jsonlMapFile.ts`. File formats, warning texts and results do not change.
