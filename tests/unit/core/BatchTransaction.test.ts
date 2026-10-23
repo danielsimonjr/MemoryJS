@@ -528,6 +528,15 @@ describe('BatchTransaction operation pins', () => {
     expect(result).toEqual({ ...emptyResult(), entitiesUpdated: 1 });
   });
 
+  it('createEntity and createRelation replace timestamps that the data carries', () => {
+    const graph = baseGraph();
+    const stale = { createdAt: 'stale-created', lastModified: 'stale-modified' };
+    applyOp(graph, { type: 'createEntity', data: { name: 'c', entityType: 'node', observations: [], ...stale } }, emptyResult());
+    applyOp(graph, { type: 'createRelation', data: { from: 'b', to: 'a', relationType: 'knows', ...stale } }, emptyResult());
+    expect(graph.entities[2]).toMatchObject({ name: 'c', createdAt: TS, lastModified: TS });
+    expect(graph.relations[1]).toMatchObject({ from: 'b', createdAt: TS, lastModified: TS });
+  });
+
   it('createRelation accepts a different type or target and rejects an exact copy', () => {
     const graph = baseGraph();
     const result = emptyResult();

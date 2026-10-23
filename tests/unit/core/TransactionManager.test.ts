@@ -616,6 +616,21 @@ describe('TransactionManager operation pins', () => {
     expect(graph.entities).toHaveLength(2);
   });
 
+  it('CREATE_ENTITY and CREATE_RELATION replace timestamps that the data carries', () => {
+    const graph = baseGraph();
+    const stale = { createdAt: 'stale-created', lastModified: 'stale-modified' };
+    applyOp(graph, {
+      type: OperationType.CREATE_ENTITY,
+      data: { name: 'c', entityType: 'node', observations: [], ...stale },
+    });
+    applyOp(graph, {
+      type: OperationType.CREATE_RELATION,
+      data: { from: 'b', to: 'a', relationType: 'knows', ...stale },
+    });
+    expect(graph.entities[2]).toMatchObject({ name: 'c', createdAt: TS, lastModified: TS });
+    expect(graph.relations[1]).toMatchObject({ from: 'b', createdAt: TS, lastModified: TS });
+  });
+
   it('CREATE_RELATION accepts a different type or target and rejects an exact copy', () => {
     const graph = baseGraph();
     applyOp(graph, {
