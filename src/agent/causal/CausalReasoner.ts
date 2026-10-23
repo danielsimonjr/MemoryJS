@@ -107,8 +107,11 @@ export class CausalReasoner {
     candidateCauses: string[],
     maxDepth?: number,
   ): Promise<CausalChain[]> {
-    const pairs = candidateCauses.map((cause): [string, string] => [cause, effectEntityName]);
-    return this.collectChains(pairs, maxDepth ?? this.maxDepth);
+    return this.collectChains(
+      candidateCauses,
+      (cause) => [cause, effectEntityName],
+      maxDepth ?? this.maxDepth,
+    );
   }
 
   /**
@@ -120,19 +123,29 @@ export class CausalReasoner {
     candidateEffects: string[],
     maxDepth?: number,
   ): Promise<CausalChain[]> {
-    const pairs = candidateEffects.map((effect): [string, string] => [causeEntityName, effect]);
-    return this.collectChains(pairs, maxDepth ?? this.maxDepth);
+    return this.collectChains(
+      candidateEffects,
+      (effect) => [causeEntityName, effect],
+      maxDepth ?? this.maxDepth,
+    );
   }
 
   /**
-   * Find the causal paths for each `[from, to]` pair, in pair order. Sort
-   * the chains by score, highest first.
+   * Find the causal paths for each candidate, in candidate order. `toPair`
+   * gives the `[from, to]` pair of one candidate. The loop reads
+   * `candidates` as it goes, so a candidate that the caller appends during
+   * the search is searched too. Sort the chains by score, highest first.
    *
    * @internal
    */
-  private async collectChains(pairs: Array<[from: string, to: string]>, depth: number): Promise<CausalChain[]> {
+  private async collectChains(
+    candidates: string[],
+    toPair: (candidate: string) => [from: string, to: string],
+    depth: number,
+  ): Promise<CausalChain[]> {
     const chains: CausalChain[] = [];
-    for (const [from, to] of pairs) {
+    for (const candidate of candidates) {
+      const [from, to] = toPair(candidate);
       const paths = await this.traversal.findAllPaths(from, to, depth, {
         relationTypes: this.causalTypes as string[],
       });
