@@ -1,10 +1,10 @@
 metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
-  lastUpdated: "2026-10-22"
-  totalFiles: 292
+  lastUpdated: "2026-10-23"
+  totalFiles: 294
   totalModules: 12
-  totalExports: 2035
+  totalExports: 2038
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -278,6 +278,9 @@ modules:
             - AccessContext
             - AccessPattern
           typeOnly: true
+        - file: ../utils/halfLife.js
+          imports:
+            - halfLifeFactor
         - file: ../types/agent-memory.js
           imports:
             - AccessContext
@@ -1029,6 +1032,9 @@ modules:
         - file: ../utils/textSimilarity.js
           imports:
             - tokenizeToSet
+        - file: ../utils/halfLife.js
+          imports:
+            - halfLifeFactor
         - file: ./connectivity.js
           imports:
             - computeDegreeMap
@@ -1174,6 +1180,9 @@ modules:
         - file: ../features/FreshnessManager.js
           imports:
             - FreshnessManager
+        - file: ../utils/halfLife.js
+          imports:
+            - halfLifeFactor
       exports:
         - NoOpDistillationPolicy
         - DefaultDistillationPolicy
@@ -2998,6 +3007,19 @@ modules:
         - InMemoryBackend
       classes:
         - InMemoryBackend
+    src/agent/keyValueLine.ts:
+      description: Encodes and decodes one observation line of the form
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - encodeKeyValueBody
+        - decodeKeyValueBody
+      functions:
+        - encodeKeyValueBody
+        - encodeKeyValueBody
+        - encodeKeyValueBody
+        - decodeKeyValueBody
     src/agent/MemoryBackend.ts:
       description: Memory Backend Interface (`IMemoryBackend`)
       externalDependencies: []
@@ -4429,6 +4451,10 @@ modules:
             - Procedure
             - ProcedureStep
           typeOnly: true
+        - file: ../keyValueLine.js
+          imports:
+            - decodeKeyValueBody
+            - encodeKeyValueBody
       exports:
         - PROCEDURE_ENTITY_TYPE
         - PROCEDURE_STEP_ENTITY_TYPE
@@ -5235,6 +5261,10 @@ modules:
           imports:
             - DecayEngine
           typeOnly: true
+        - file: ./keyValueLine.js
+          imports:
+            - decodeKeyValueBody
+            - encodeKeyValueBody
       exports:
         - SESSION_CHECKPOINT_ENTITY_TYPE
         - HAS_CHECKPOINT_RELATION
@@ -5432,6 +5462,7 @@ modules:
       internalDependencies:
         - file: ./ToolAffordanceManager.js
           imports:
+            - RecordOutcomeInput
             - ToolAffordanceManager
           typeOnly: true
       exports:
@@ -5533,6 +5564,10 @@ modules:
             - Entity
             - Relation
           typeOnly: true
+        - file: ./keyValueLine.js
+          imports:
+            - decodeKeyValueBody
+            - encodeKeyValueBody
       exports:
         - CHILD_OF_RELATION
         - BLOCKED_BY_RELATION
@@ -8136,6 +8171,9 @@ modules:
             - Entity
             - IGraphStorage
           typeOnly: true
+        - file: ../utils/halfLife.js
+          imports:
+            - halfLifeFactor
       exports:
         - FreshnessManager
       classes:
@@ -12396,6 +12434,15 @@ modules:
         - deepFreeze
         - isReadViewGuardEnabled
         - borrowGraphView
+    src/utils/halfLife.ts:
+      description: Half-Life Utilities
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - halfLifeFactor
+      functions:
+        - halfLifeFactor
     src/utils/IIndexHealth.ts:
       description: Index Health interface.
       externalDependencies: []
@@ -13916,6 +13963,7 @@ dependencyGraph:
         - src/agent/ImportanceScorer.ts
         - src/agent/index.ts
         - src/agent/InMemoryBackend.ts
+        - src/agent/keyValueLine.ts
         - src/agent/MemoryBackend.ts
         - src/agent/MemoryEngine.ts
         - src/agent/MemoryFormatter.ts
@@ -14165,6 +14213,7 @@ dependencyGraph:
         - src/utils/errorSuggestions.ts
         - src/utils/formatters.ts
         - src/utils/graphCopy.ts
+        - src/utils/halfLife.ts
         - src/utils/IIndexHealth.ts
         - src/utils/index.ts
         - src/utils/indexes.ts
@@ -14193,18 +14242,18 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 292
+  reachableCount: 294
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 292
+  totalTypeScriptFiles: 294
   totalModules: 12
-  totalLinesOfCode: 104288
-  totalExports: 2035
+  totalLinesOfCode: 104231
+  totalExports: 2038
   totalClasses: 234
   totalInterfaces: 622
-  totalFunctions: 323
+  totalFunctions: 328
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
@@ -14213,7 +14262,7 @@ statistics:
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 292
+  reachableFiles: 294
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0
