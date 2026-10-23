@@ -295,3 +295,33 @@ describe('InMemorySegmentStorage', () => {
     expect(back.relations).toHaveLength(50);
   });
 });
+
+describe('InMemorySegmentStorage saveSegment ownership', () => {
+  async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
+    try {
+      await promise;
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('expected the promise to reject');
+  }
+
+  it('names the class and the entity when an entity routes to another segment', async () => {
+    const store = new InMemorySegmentStorage(new FnvSegmentRouter(4));
+    const message = await rejectionMessage(
+      store.saveSegment({ id: 0, entities: [ent('alpha')], relations: [] }),
+    );
+    expect(message).toBe("InMemorySegmentStorage.saveSegment: entity 'alpha' routes to segment 3, not 0");
+  });
+
+  it('names the class and the relation when a relation routes to another segment', async () => {
+    const store = new InMemorySegmentStorage(new FnvSegmentRouter(4));
+    const relation: Relation = { from: 'alpha', to: 'beta', relationType: 'knows' };
+    const message = await rejectionMessage(
+      store.saveSegment({ id: 0, entities: [], relations: [relation] }),
+    );
+    expect(message).toBe(
+      "InMemorySegmentStorage.saveSegment: relation from='alpha' routes to segment 3, not 0",
+    );
+  });
+});

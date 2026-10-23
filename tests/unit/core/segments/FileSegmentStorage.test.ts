@@ -574,3 +574,68 @@ describe('FileSegmentStorage segment file modes', () => {
     expect((await fs.stat(target)).mode & 0o777).toBe(0o640 & 0o600);
   });
 });
+
+describe('FileSegmentStorage saveSegment ownership and temp files', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-owner-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
+    try {
+      await promise;
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('expected the promise to reject');
+  }
+
+  it('names the class and the entity when an entity routes to another segment', async () => {
+    const message = await rejectionMessage(
+      makeStore(testDir).saveSegment({ id: 0, entities: [ent('alpha')], relations: [] }),
+    );
+    expect(message).toBe("FileSegmentStorage.saveSegment: entity 'alpha' routes to segment 3, not 0");
+  });
+
+  it('names the class and the relation when a relation routes to another segment', async () => {
+    const relation: Relation = { from: 'alpha', to: 'beta', relationType: 'knows' };
+    const message = await rejectionMessage(
+      makeStore(testDir).saveSegment({ id: 0, entities: [], relations: [relation] }),
+    );
+    expect(message).toBe(
+      "FileSegmentStorage.saveSegment: relation from='alpha' routes to segment 3, not 0",
+    );
+  });
+
+  it('writes each temp file with the plain write flag, so a stale temp file is replaced', async () => {
+    // Leave a stale file at every temp path that `open` receives.
+    const realOpen = fs.open.bind(fs);
+    const flags: string[] = [];
+    vi.spyOn(fs, 'open').mockImplementation(async (...args: Parameters<typeof fs.open>) => {
+      const [path, flag] = args;
+      if (String(path).includes('.tmp.')) {
+        flags.push(String(flag));
+        await fs.writeFile(path, 'stale');
+      }
+      return realOpen(...args);
+    });
+    const entities = Array.from({ length: 12 }, (_, i) => ent(`item-${i}`));
+
+    await makeStore(testDir).saveAll({ entities, relations: [] });
+    vi.restoreAllMocks();
+
+    expect(flags.length).toBeGreaterThan(1);
+    expect(new Set(flags)).toEqual(new Set(['w']));
+    expect((await makeStore(testDir).loadAll()).entities).toHaveLength(12);
+  });
+});

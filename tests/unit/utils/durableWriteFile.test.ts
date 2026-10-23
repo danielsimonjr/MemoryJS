@@ -196,3 +196,34 @@ describe('durableWriteFile', () => {
     expect(stat.mode & 0o777).toBe(0o400);
   });
 });
+
+describe('durableWriteFile temp file flag', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = join(tmpdir(), `durable-write-flag-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(dir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  it('opens the temp file with the exclusive flag, so a stale temp path fails', async () => {
+    // Leave a stale file at the temp path that `open` receives.
+    const realOpen = fs.open.bind(fs);
+    const flags: string[] = [];
+    vi.spyOn(fs, 'open').mockImplementation(async (...args: Parameters<typeof fs.open>) => {
+      const [path, flag] = args;
+      if (String(path).includes('.tmp.')) {
+        flags.push(String(flag));
+        await fs.writeFile(path, 'stale');
+      }
+      return realOpen(...args);
+    });
+
+    await expect(durableWriteFile(join(dir, 'exclusive.txt'), 'fresh')).rejects.toThrow(/EEXIST/);
+    expect(flags).toEqual(['wx']);
+  });
+});
