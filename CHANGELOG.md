@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `docs/analysis/DUPLICATE_FUNCTION_AUDIT.md` lists duplicate and near-duplicate functions in `src/`. It groups them into 26 refactor families, proposes a merge target for each family, and records 13 behaviour differences and defects. No source file changed.
 - SQLite `embeddings` table: nullable `contentHash` column, written by `storeEmbedding(name, vector, model, contentHash?)` and read by `loadEmbeddingMetadata()`. Existing databases get the column when they open.
 - `SQLiteVectorStore` loads persisted vectors on `initialize()`, skips rows of another embedding model, and keeps a content hash per vector (`add(name, vector, contentHash?)`, `getContentHash(name)`). `IVectorStore` gains optional `initialize()` and `getContentHash()`.
 - `ContextRetrievalOptions.maxSlots` caps the number of memories that `retrieveForContext` and `retrieveWithBudgetAllocation` return. `prioritize(..., { maxSlots })` takes the same cap. Must-include entities count against the cap and are never cut. Unset means no cap, so the default selection is unchanged.
