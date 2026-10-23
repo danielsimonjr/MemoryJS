@@ -289,6 +289,24 @@ describe('ToolCallObserver', () => {
     expect(order).toStrictEqual(['record', 'read result', 'read text', 'record']);
   });
 
+  it('measures the call duration before it reads the error text', async () => {
+    const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+    const slow = {
+      toString(): string {
+        vi.advanceTimersByTime(100);
+        return 'slow';
+      },
+    };
+    const callId = observer.observeStart('tool_slow');
+    vi.advanceTimersByTime(50);
+
+    await observer.observeError(callId, slow as unknown as Error);
+
+    expect(recordOutcome.mock.calls).toStrictEqual([
+      ['tool_slow', { outcome: 'failure', errorMessage: 'slow', durationMs: 50 }],
+    ]);
+  });
+
   it('fires events for start / complete / error / partial', async () => {
     const events: Array<{ event: string; payload: unknown }> = [];
     observer.events.on('toolCall:start', (p) => events.push({ event: 'start', payload: p }));
