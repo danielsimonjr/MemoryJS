@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Cache eviction and TTL cleanup in the search layer share three helpers in `src/utils/searchCache.ts`: `evictOldest`, `evictInsertionOrder` and `cleanupExpiredEntries`. `GraphRankPrior` and `TFIDFEventSync` share `CoalescingTimer` in `src/utils/timing.ts`. `QueryPlanCache` writes analysis and plan entries through one private method. Behaviour does not change.
+- The sleep, timeout and chunk helpers of the utilities and the search layer share one implementation. `src/utils/timing.ts` also holds `sleep`, `createTimeout` and `withTimeout`. `chunkArray` accepts a readonly array. Behaviour is unchanged.
 - `TransactionManager` and `BatchTransaction` share their entity and relation operation code (`applyGraphOperation` in `src/core/TransactionManager.ts`). Behaviour is unchanged.
 - `SQLiteStorage` shares its column migrations (`ensureColumns`), its entity bind values and its relation lookups by direction (`relationsFor`). Behaviour is unchanged.
 - Segment storage shares its ownership check and its temp file write with `durableWriteFile` (`assertSegmentOwnership`, `writeSyncedTmp`). Behaviour is unchanged.
@@ -58,6 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `BatchProcessor` clears the item timeout timer when the item settles. Before, the timer stayed pending until the timeout passed, even after the item finished. The timer is now owned by `withTimeout` in the internal module `src/utils/timing.ts`.
 - `FileSegmentStorage.saveAll` writes each staged segment file and the recovery manifest with the mode of `durableWriteFile`: `0o600`, or the tighter mode of the existing file. Before, these files got the default mode from the umask, usually `0o644`. `saveSegment` already wrote `0o600`.
 - `SearchFilterChain` excludes an entity whose `createdAt` or `lastModified` cannot be parsed, when a created or modified bound is set. Before, such an entity passed every date bound.
 - `HierarchyManager.getDescendants` and `getSubtree` return when stored `parentId` fields form a cycle. Before, the walk never ended and the process ran out of memory. Each entity is listed once, and the root is never listed as its own descendant.

@@ -1188,3 +1188,135 @@ describe('FuzzySearch - Sprint 14 Extended Tests', () => {
     });
   });
 });
+
+describe('FuzzySearch TTL cleanup (R09 pins)', () => {
+  const NOW = 10_000_000;
+  const TTL_MS = 5 * 60 * 1000;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const entry = (timestamp: number): object => ({ entityNames: [], entityCount: 0, timestamp });
+
+  it('FuzzySearch drops entries older than the TTL and keeps fresh ones', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new FuzzySearch({} as never);
+    const cache = (search as unknown as { fuzzyResultCache: Map<string, unknown> }).fuzzyResultCache;
+    cache.set('stale', entry(NOW - TTL_MS - 1));
+    cache.set('fresh', entry(NOW));
+
+    (search as unknown as { cleanupCache: () => void }).cleanupCache();
+
+    expect([...cache.keys()]).toEqual(['fresh']);
+  });
+
+  it('FuzzySearch keeps the newest 100 entries when over the size limit', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new FuzzySearch({} as never);
+    const cache = (search as unknown as { fuzzyResultCache: Map<string, unknown> }).fuzzyResultCache;
+    for (let i = 0; i <= 100; i++) {
+      cache.set(`k${i}`, entry(NOW - (101 - i)));
+    }
+
+    (search as unknown as { cleanupCache: () => void }).cleanupCache();
+
+    expect(cache.size).toBe(100);
+    expect(cache.has('k0')).toBe(false);
+    expect(cache.has('k1')).toBe(true);
+  });
+});
+
+describe('FuzzySearch evictTo (R09 pins)', () => {
+  const entry = (timestamp: number): object => ({ entityNames: [], entityCount: 0, timestamp });
+
+  const seed = (): { search: FuzzySearch; cache: Map<string, unknown> } => {
+    const search = new FuzzySearch({} as never);
+    const cache = (search as unknown as { fuzzyResultCache: Map<string, unknown> }).fuzzyResultCache;
+    for (let i = 1; i <= 5; i++) {
+      cache.set(`e${i}`, entry(i));
+    }
+    return { search, cache };
+  };
+
+  it('keeps the newest entries for an integer target', () => {
+    const { search, cache } = seed();
+    search.evictTo(2);
+    expect([...cache.keys()]).toEqual(['e4', 'e5']);
+  });
+
+  it('floors a fractional target to the integer below it', () => {
+    const { search, cache } = seed();
+    search.evictTo(2.5);
+    expect(cache.size).toBe(2);
+    expect([...cache.keys()]).toEqual(['e4', 'e5']);
+  });
+
+  it('removes nothing when the target is NaN', () => {
+    const { search, cache } = seed();
+    search.evictTo(Number.NaN);
+    expect(cache.size).toBe(5);
+  });
+
+  it('clears the cache when the target is negative', () => {
+    const { search, cache } = seed();
+    search.evictTo(-1);
+    expect(cache.size).toBe(0);
+  });
+});
+
+describe('FuzzySearch cache trimming (review pins)', () => {
+  const NOW = 10_000_000;
+  const TTL_MS = 5 * 60 * 1000;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const entry = (timestamp: number): object => ({ entityNames: [], entityCount: 0, timestamp });
+  const cacheOf = (search: FuzzySearch): Map<string, unknown> =>
+    (search as unknown as { fuzzyResultCache: Map<string, unknown> }).fuzzyResultCache;
+
+  it('keeps an entry that is exactly as old as the TTL and an entry that is one second old', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new FuzzySearch({} as never);
+    const cache = cacheOf(search);
+    cache.set('past', entry(NOW - TTL_MS - 1));
+    cache.set('exact', entry(NOW - TTL_MS));
+    cache.set('second', entry(NOW - 1000));
+
+    (search as unknown as { cleanupCache: () => void }).cleanupCache();
+
+    expect([...cache.keys()]).toEqual(['exact', 'second']);
+  });
+
+  it('removes the 5 oldest of 105 entries wherever they sit in the map', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new FuzzySearch({} as never);
+    const cache = cacheOf(search);
+    for (let i = 0; i < 105; i++) {
+      cache.set(`k${i}`, entry(NOW - ((i * 37) % 105) - 1));
+    }
+
+    (search as unknown as { cleanupCache: () => void }).cleanupCache();
+
+    expect(cache.size).toBe(100);
+    for (const gone of ['k17', 'k34', 'k51', 'k68', 'k85']) {
+      expect(cache.has(gone)).toBe(false);
+    }
+  });
+
+  it('evictTo orders by timestamp, not by insertion order', () => {
+    const search = new FuzzySearch({} as never);
+    const cache = cacheOf(search);
+    [5, 1, 4, 2, 3].forEach((timestamp, i) => cache.set(`e${i}`, entry(timestamp)));
+
+    search.evictTo(2);
+
+    expect([...cache.keys()]).toEqual(['e0', 'e2']);
+  });
+});

@@ -453,3 +453,44 @@ describe('IncrementalIndexer', () => {
     });
   });
 });
+
+describe('IncrementalIndexer shutdown wait loop (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('polls every 10 ms while a flush is in progress', async () => {
+    vi.useFakeTimers();
+    const service = {
+      isConfigured: () => true,
+      getDimensions: () => 3,
+      embed: vi.fn(),
+      embedBatch: vi.fn().mockResolvedValue([]),
+      getProviderName: () => 'mock',
+      getModelName: () => 'mock-model',
+    } as unknown as EmbeddingService;
+    const store = {
+      add: vi.fn(),
+      remove: vi.fn(),
+      findNearest: vi.fn().mockReturnValue([]),
+      has: vi.fn().mockReturnValue(false),
+      size: vi.fn().mockReturnValue(0),
+      clear: vi.fn(),
+    } as unknown as IVectorStore;
+    const indexer = new IncrementalIndexer(service, store, { flushIntervalMs: 1_000_000 });
+    const state = indexer as unknown as { isFlushing: boolean };
+    state.isFlushing = true;
+    let done = false;
+
+    void indexer.shutdown().then(() => {
+      done = true;
+    });
+    await vi.advanceTimersByTimeAsync(24);
+    state.isFlushing = false;
+    await vi.advanceTimersByTimeAsync(5);
+    expect(done).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(done).toBe(true);
+  });
+});

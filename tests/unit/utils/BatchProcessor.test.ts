@@ -4,7 +4,7 @@
  * Phase 12 Sprint 2: Tests for generic batch processing utility.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   BatchProcessor,
   processBatch,
@@ -561,5 +561,111 @@ describe('Convenience Functions', () => {
 
       expect(results).toEqual(['a', 'c']);
     });
+  });
+});
+
+describe('BatchProcessor item timeout timer', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('clears the item timeout timer when the item settles', async () => {
+    vi.useFakeTimers();
+    const processor = new BatchProcessor({ itemTimeoutMs: 1000 });
+
+    const batch = await processor.process([1], async x => x);
+
+    expect(batch.allSucceeded).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe('BatchProcessor item timeout with a plain-value processor', () => {
+  it('still succeeds when the processor returns a plain value', async () => {
+    const processor = new BatchProcessor({ itemTimeoutMs: 1000 });
+
+    const batch = await processor.process([1], ((x: number) => x) as unknown as (item: number) => Promise<number>);
+
+    expect(batch.allSucceeded).toBe(true);
+    expect(batch.results[0]?.result).toBe(1);
+  });
+});
+
+describe('chunkArray with a readonly input', () => {
+  it('chunks a readonly array and leaves the input unchanged', () => {
+    const input: readonly number[] = [1, 2, 3, 4, 5];
+
+    expect(chunkArray(input, 2)).toEqual([[1, 2], [3, 4], [5]]);
+    expect(input).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
+describe('BatchProcessor item timers (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('clears the item timeout timer when the processor rejects', async () => {
+    vi.useFakeTimers();
+    const processor = new BatchProcessor({ itemTimeoutMs: 1000 });
+
+    const batch = await processor.process([1], async () => {
+      throw new Error('boom');
+    });
+
+    expect(batch.failed).toBe(1);
+    expect(batch.results[0]?.error?.message).toBe('boom');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('clears the timer of every attempt when a retried item finally succeeds', async () => {
+    vi.useFakeTimers();
+    const processor = new BatchProcessor<number, number>({ itemTimeoutMs: 1000, maxRetries: 2, retryDelayMs: 10 });
+    let calls = 0;
+
+    const pending = processor.process([1], async x => {
+      calls++;
+      if (calls < 3) throw new Error('again');
+      return x;
+    });
+    await vi.advanceTimersByTimeAsync(30);
+    const batch = await pending;
+
+    expect(batch.results[0]?.attempts).toBe(3);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps an item that ends exactly at the timeout and fails one that ends a millisecond later', async () => {
+    vi.useFakeTimers();
+    const processor = new BatchProcessor<number, string>({ itemTimeoutMs: 100, concurrency: 2 });
+
+    const pending = processor.process(
+      [100, 101],
+      ms => new Promise<string>(resolve => setTimeout(() => resolve(`done ${ms}`), ms))
+    );
+    await vi.advanceTimersByTimeAsync(101);
+    const batch = await pending;
+
+    expect(batch.results[0]?.success).toBe(true);
+    expect(batch.results[0]?.result).toBe('done 100');
+    expect(batch.results[1]?.success).toBe(false);
+    expect(batch.results[1]?.error?.message).toBe('Item processing timeout');
+  });
+
+  it('waits retryDelayMs and then twice that between attempts', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const processor = new BatchProcessor<number, number>({ maxRetries: 2, retryDelayMs: 10 });
+    const starts: number[] = [];
+
+    const pending = processor.process([1], async x => {
+      starts.push(Date.now());
+      if (starts.length < 3) throw new Error('again');
+      return x;
+    });
+    await vi.advanceTimersByTimeAsync(30);
+    await pending;
+
+    expect(starts).toEqual([0, 10, 30]);
   });
 });

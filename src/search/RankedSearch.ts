@@ -18,6 +18,7 @@ import type { GraphEventEmitter } from '../core/GraphEventEmitter.js';
 import type { CachePressureCoordinator } from '../utils/CachePressureCoordinator.js';
 import { calculateTFFromTokens, calculateIDFFromTokenSets, tokenize } from '../utils/index.js';
 import { SEARCH_LIMITS } from '../utils/constants.js';
+import { evictInsertionOrder } from '../utils/searchCache.js';
 import { TFIDFIndexManager } from './TFIDFIndexManager.js';
 import { SearchFilterChain, type SearchFilters } from './SearchFilterChain.js';
 import type { IndexHealthSnapshot } from '../utils/IIndexHealth.js';
@@ -159,12 +160,7 @@ export class RankedSearch {
 
   /** Evict oldest tokenized documents using Map insertion order. */
   evictTo(targetEntries: number): void {
-    const target = Math.max(0, Math.floor(targetEntries));
-    while (this.fallbackTokenCache.size > target) {
-      const oldest = this.fallbackTokenCache.keys().next().value;
-      if (oldest === undefined) break;
-      this.fallbackTokenCache.delete(oldest);
-    }
+    evictInsertionOrder(this.fallbackTokenCache, targetEntries);
   }
 
   /**

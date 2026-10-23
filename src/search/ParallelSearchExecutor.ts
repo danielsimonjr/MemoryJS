@@ -16,6 +16,7 @@ import type { SemanticSearch } from './SemanticSearch.js';
 import type { RankedSearch } from './RankedSearch.js';
 import { SymbolicSearch } from './SymbolicSearch.js';
 import { SEMANTIC_SEARCH_LIMITS } from '../utils/constants.js';
+import { createTimeout } from '../utils/timing.js';
 
 /**
  * Timing information for a search layer.
@@ -230,7 +231,7 @@ export class ParallelSearchExecutor {
       };
     }
 
-    const timeout = this.createTimeout<never>(_timeoutMs, 'Semantic search timeout');
+    const timeout = createTimeout<never>(_timeoutMs, 'Semantic search timeout');
     try {
       // Execute semantic search with timeout
       const semanticResults = await Promise.race([
@@ -283,7 +284,7 @@ export class ParallelSearchExecutor {
     let success = true;
     let error: string | undefined;
 
-    const timeout = this.createTimeout<never>(_timeoutMs, 'Lexical search timeout');
+    const timeout = createTimeout<never>(_timeoutMs, 'Lexical search timeout');
     try {
       // Execute lexical search with timeout
       const lexicalResults = await Promise.race([
@@ -366,17 +367,6 @@ export class ParallelSearchExecutor {
         resultCount: results.size,
       },
     };
-  }
-
-  /**
-   * Create a timeout promise.
-   */
-  private createTimeout<T>(ms: number, message: string): { promise: Promise<T>; clear: () => void } {
-    let timer: ReturnType<typeof setTimeout>;
-    const promise = new Promise<T>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(message)), ms);
-    });
-    return { promise, clear: () => clearTimeout(timer!) };
   }
 
   /**

@@ -8,6 +8,7 @@
  */
 
 import { createHash } from 'crypto';
+import { evictOldest } from '../utils/searchCache.js';
 
 /**
  * Cache entry for embedding vectors.
@@ -320,13 +321,7 @@ export class EmbeddingCache {
    * because each call re-scans the full map for the oldest entry.
    */
   evictTo(targetEntries: number): void {
-    if (this.cache.size <= targetEntries) return;
-    const entries = [...this.cache.entries()];
-    entries.sort((a, b) => a[1].lastAccess - b[1].lastAccess);
-    const toRemove = this.cache.size - Math.max(0, targetEntries);
-    for (let i = 0; i < toRemove; i++) {
-      this.cache.delete(entries[i]![0]);
-    }
+    evictOldest(this.cache, targetEntries, entry => entry.lastAccess);
   }
 
   /**

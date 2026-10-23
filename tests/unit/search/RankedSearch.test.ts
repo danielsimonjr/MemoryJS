@@ -762,3 +762,54 @@ describe('RankedSearch', () => {
     });
   });
 });
+
+describe('RankedSearch evictTo targets (R09 pins)', () => {
+  const tokenMap = (search: RankedSearch): Map<string, unknown> =>
+    (search as unknown as { fallbackTokenCache: Map<string, unknown> }).fallbackTokenCache;
+
+  const fill = (search: RankedSearch): void => {
+    for (let i = 0; i < 5; i++) tokenMap(search).set(`e${i}`, {});
+  };
+
+  it('keeps the two most recently inserted tokenized documents for a target of 2', () => {
+    const search = new RankedSearch({} as never);
+    fill(search);
+    search.evictTo(2);
+    expect([...tokenMap(search).keys()]).toEqual(['e3', 'e4']);
+  });
+
+  it('floors a fractional target of 2.5 to 2', () => {
+    const search = new RankedSearch({} as never);
+    fill(search);
+    search.evictTo(2.5);
+    expect(search.currentEntries()).toBe(2);
+  });
+
+  it('keeps every entry for a NaN target', () => {
+    const search = new RankedSearch({} as never);
+    fill(search);
+    search.evictTo(Number.NaN);
+    expect(search.currentEntries()).toBe(5);
+  });
+
+  it('empties the cache for a negative target', () => {
+    const search = new RankedSearch({} as never);
+    fill(search);
+    search.evictTo(-1);
+    expect(search.currentEntries()).toBe(0);
+  });
+});
+
+describe('RankedSearch evictTo with an undefined key (review pins)', () => {
+  it('stops at an undefined key and leaves the rest in place', () => {
+    const search = new RankedSearch({} as never);
+    const cache = (search as unknown as { fallbackTokenCache: Map<string | undefined, unknown> }).fallbackTokenCache;
+    cache.set(undefined, {});
+    cache.set('e0', {});
+    cache.set('e1', {});
+
+    search.evictTo(1);
+
+    expect([...cache.keys()]).toEqual([undefined, 'e0', 'e1']);
+  });
+});

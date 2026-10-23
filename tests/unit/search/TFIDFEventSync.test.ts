@@ -500,3 +500,242 @@ describe('TFIDFEventSync', () => {
     });
   });
 });
+
+describe('TFIDFEventSync debounce timers (R09 pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  type SyncInternals = {
+    flushNow: () => void;
+    runRebuild: () => Promise<void>;
+    scheduleFlush: () => void;
+    handleGraphSaved: () => void;
+    coalesceMs: number;
+    rebuildDebounceMs: number;
+  };
+
+  const makeSync = (coalesceMs: number, rebuildDebounceMs: number): TFIDFEventSync => {
+    const indexManager = { isInitialized: () => true } as unknown as TFIDFIndexManager;
+    return new TFIDFEventSync(indexManager, new GraphEventEmitter(), {} as never, {
+      coalesceMs,
+      rebuildDebounceMs,
+    });
+  };
+
+  it('flushes at once when coalesceMs is 0', () => {
+    const sync = makeSync(0, 100);
+    const flush = vi.spyOn(sync as unknown as SyncInternals, 'flushNow').mockImplementation(() => undefined);
+    (sync as unknown as SyncInternals).scheduleFlush();
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces three flush requests into one flush with a 50 ms window', () => {
+    vi.useFakeTimers();
+    const sync = makeSync(50, 100);
+    const flush = vi.spyOn(sync as unknown as SyncInternals, 'flushNow').mockImplementation(() => undefined);
+    const internals = sync as unknown as SyncInternals;
+    internals.scheduleFlush();
+    internals.scheduleFlush();
+    internals.scheduleFlush();
+    expect(flush).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts a timer for a negative coalesce delay instead of flushing at once', () => {
+    vi.useFakeTimers();
+    const sync = makeSync(50, 100);
+    const internals = sync as unknown as SyncInternals;
+    internals.coalesceMs = -1;
+    const flush = vi.spyOn(internals, 'flushNow').mockImplementation(() => undefined);
+    internals.scheduleFlush();
+    expect(flush).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebuilds at once when rebuildDebounceMs is 0', () => {
+    const sync = makeSync(0, 0);
+    const rebuild = vi
+      .spyOn(sync as unknown as SyncInternals, 'runRebuild')
+      .mockImplementation(() => Promise.resolve());
+    (sync as unknown as SyncInternals).handleGraphSaved();
+    expect(rebuild).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces graph saves into one rebuild with a 50 ms window', () => {
+    vi.useFakeTimers();
+    const sync = makeSync(0, 50);
+    const rebuild = vi
+      .spyOn(sync as unknown as SyncInternals, 'runRebuild')
+      .mockImplementation(() => Promise.resolve());
+    const internals = sync as unknown as SyncInternals;
+    internals.handleGraphSaved();
+    internals.handleGraphSaved();
+    expect(rebuild).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(rebuild).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts a timer for a negative rebuild delay instead of rebuilding at once', () => {
+    vi.useFakeTimers();
+    const sync = makeSync(0, 50);
+    const internals = sync as unknown as SyncInternals;
+    internals.rebuildDebounceMs = -1;
+    const rebuild = vi.spyOn(internals, 'runRebuild').mockImplementation(() => Promise.resolve());
+    internals.handleGraphSaved();
+    expect(rebuild).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(rebuild).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('TFIDFEventSync timer details (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  type Internals = {
+    handleEntityCreated: (event: { entity: { name: string; entityType: string; observations: string[] } }) => void;
+    handleGraphSaved: () => void;
+    coalesceMs: number;
+  };
+
+  const makeParts = (coalesceMs: number, rebuildDebounceMs: number) => {
+    const indexManager = {
+      isInitialized: () => true,
+      beginIdfBatch: vi.fn(),
+      endIdfBatch: vi.fn(),
+      addDocument: vi.fn(),
+      removeDocument: vi.fn(),
+      updateDocument: vi.fn(),
+      buildIndex: vi.fn().mockResolvedValue(undefined),
+    };
+    const storage = {
+      getEntityByName: vi.fn(),
+      loadGraph: vi.fn().mockResolvedValue({ entities: [], relations: [] }),
+    };
+    const sync = new TFIDFEventSync(
+      indexManager as unknown as TFIDFIndexManager,
+      new GraphEventEmitter(),
+      storage as never,
+      { coalesceMs, rebuildDebounceMs }
+    );
+    return { sync, indexManager, storage, internals: sync as unknown as Internals };
+  };
+  const created = { entity: { name: 'Zed', entityType: 'person', observations: ['x'] } };
+
+  it('opens the flush window with coalesceMs and the rebuild window with rebuildDebounceMs, both unreferenced', () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const { internals } = makeParts(50, 100);
+
+    internals.handleEntityCreated(created);
+    internals.handleGraphSaved();
+
+    expect(setTimeoutSpy.mock.calls.map(call => call[1])).toEqual([50, 100]);
+    for (const result of setTimeoutSpy.mock.results) {
+      expect((result.value as { hasRef: () => boolean }).hasRef()).toBe(false);
+    }
+  });
+
+  it('passes a negative coalesce delay on to setTimeout unchanged', () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const { internals } = makeParts(50, 100);
+    internals.coalesceMs = -1;
+
+    internals.handleEntityCreated(created);
+
+    expect(setTimeoutSpy.mock.calls.map(call => call[1])).toEqual([-1]);
+  });
+
+  it('flushes at once when the coalesce delay drops to 0 while a window is open, and the flush clears the window', () => {
+    vi.useFakeTimers();
+    const { internals, indexManager } = makeParts(50, 100);
+
+    internals.handleEntityCreated(created);
+    internals.coalesceMs = 0;
+    internals.handleEntityCreated({ entity: { ...created.entity, name: 'Yan' } });
+
+    expect(indexManager.addDocument).toHaveBeenCalledTimes(2);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('flushNow clears the open flush window, so nothing is applied a second time', () => {
+    vi.useFakeTimers();
+    const { sync, internals, indexManager } = makeParts(50, 100);
+    internals.handleEntityCreated(created);
+    expect(vi.getTimerCount()).toBe(1);
+
+    sync.flushNow();
+
+    expect(indexManager.addDocument).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(200);
+    expect(indexManager.addDocument).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the flush window and the rebuild window apart', async () => {
+    vi.useFakeTimers();
+    const { internals, indexManager, storage } = makeParts(50, 100);
+    internals.handleEntityCreated(created);
+    internals.handleGraphSaved();
+    expect(vi.getTimerCount()).toBe(2);
+
+    await vi.advanceTimersByTimeAsync(50);
+    expect(indexManager.addDocument).toHaveBeenCalledTimes(1);
+    expect(storage.loadGraph).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(50);
+
+    expect(storage.loadGraph).toHaveBeenCalledTimes(1);
+  });
+
+  it('disable starts no rebuild when none is scheduled', async () => {
+    vi.useFakeTimers();
+    const { sync, storage } = makeParts(50, 100);
+    sync.enable();
+
+    sync.disable();
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect(storage.loadGraph).not.toHaveBeenCalled();
+  });
+
+  it('disable starts the scheduled rebuild at once and clears its window', async () => {
+    vi.useFakeTimers();
+    const { sync, internals, storage } = makeParts(50, 100);
+    sync.enable();
+    internals.handleGraphSaved();
+    expect(vi.getTimerCount()).toBe(1);
+
+    sync.disable();
+
+    expect(storage.loadGraph).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(storage.loadGraph).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebuildNow starts no rebuild when none is scheduled or running', async () => {
+    vi.useFakeTimers();
+    const { sync, storage } = makeParts(50, 100);
+
+    await sync.rebuildNow();
+
+    expect(storage.loadGraph).not.toHaveBeenCalled();
+  });
+
+  it('rebuildNow runs the scheduled rebuild at once and clears its window', async () => {
+    vi.useFakeTimers();
+    const { sync, internals, storage } = makeParts(50, 100);
+    internals.handleGraphSaved();
+
+    await sync.rebuildNow();
+
+    expect(storage.loadGraph).toHaveBeenCalledTimes(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

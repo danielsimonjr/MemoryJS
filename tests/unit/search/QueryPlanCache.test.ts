@@ -4,7 +4,7 @@
  * Phase 12 Sprint 4: Tests for query plan caching with LRU eviction.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { QueryPlanCache } from '../../../src/search/QueryPlanCache.js';
 import type { QueryAnalysis, QueryPlan } from '../../../src/types/index.js';
 
@@ -537,5 +537,149 @@ describe('QueryPlanCache', () => {
       cache.evictTo(0);
       expect(cache.currentEntries()).toBe(0);
     });
+  });
+});
+
+describe('QueryPlanCache evictTo and setters (R09 pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const analysis = (query: string): QueryAnalysis => ({ query }) as unknown as QueryAnalysis;
+  const plan = {} as unknown as QueryPlan;
+  const entries = (cache: QueryPlanCache): object[] =>
+    [...(cache as unknown as { cache: Map<string, object> }).cache.values()];
+
+  it('counts expired and over-target evictions exactly', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    const cache = new QueryPlanCache({ enableStats: true, ttlMs: 1000, maxSize: 100 });
+    for (let i = 0; i < 3; i++) cache.setAnalysis(`old${i}`, analysis(`old${i}`));
+    vi.setSystemTime(1_002_000);
+    for (let i = 0; i < 4; i++) cache.setAnalysis(`new${i}`, analysis(`new${i}`));
+
+    cache.evictTo(2);
+
+    expect(cache.size).toBe(2);
+    expect(cache.getStats().evictions).toBe(5);
+  });
+
+  it('keeps two entries for a fractional target of 2.5', () => {
+    const cache = new QueryPlanCache();
+    for (let i = 0; i < 5; i++) cache.setAnalysis(`q${i}`, analysis(`q${i}`));
+    cache.evictTo(2.5);
+    expect(cache.size).toBe(2);
+  });
+
+  it('keeps every entry for a NaN target', () => {
+    const cache = new QueryPlanCache();
+    for (let i = 0; i < 5; i++) cache.setAnalysis(`q${i}`, analysis(`q${i}`));
+    cache.evictTo(Number.NaN);
+    expect(cache.size).toBe(5);
+  });
+
+  it('setAnalysis on a new key writes no plan key', () => {
+    const cache = new QueryPlanCache();
+    cache.setAnalysis('find alice', analysis('find alice'));
+    expect('plan' in entries(cache)[0]).toBe(false);
+  });
+
+  it('setAnalysis keeps a plan that setPlan stored', () => {
+    const cache = new QueryPlanCache();
+    cache.setPlan('find bob', analysis('find bob'), plan);
+    cache.setAnalysis('find bob', analysis('find bob'));
+    expect((entries(cache)[0] as { plan?: unknown }).plan).toBe(plan);
+  });
+});
+
+describe('QueryPlanCache evictTo order, stats and setter keys (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const analysis = (query: string): QueryAnalysis => ({ query }) as unknown as QueryAnalysis;
+  const plan = {} as unknown as QueryPlan;
+  const inner = (cache: QueryPlanCache): Map<string, object> =>
+    (cache as unknown as { cache: Map<string, object> }).cache;
+
+  it('evicts by last access time, not by creation time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    const cache = new QueryPlanCache();
+    cache.setAnalysis('q0', analysis('q0'));
+    vi.setSystemTime(1_000_001);
+    cache.setAnalysis('q1', analysis('q1'));
+    vi.setSystemTime(1_000_002);
+    cache.setAnalysis('q2', analysis('q2'));
+    vi.setSystemTime(1_000_010);
+    cache.getAnalysis('q0');
+
+    cache.evictTo(2);
+
+    expect([...inner(cache).keys()]).toEqual(['q0', 'q2']);
+  });
+
+  it('counts no evictions when statistics are off', () => {
+    const cache = new QueryPlanCache({ enableStats: false });
+    for (let i = 0; i < 5; i++) cache.setAnalysis(`q${i}`, analysis(`q${i}`));
+
+    cache.evictTo(2);
+
+    expect(cache.size).toBe(2);
+    expect(cache.getStats().evictions).toBe(0);
+  });
+
+  it('drops an expired entry first even when it was accessed most recently', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    const cache = new QueryPlanCache({ ttlMs: 1000, enableStats: true });
+    cache.setAnalysis('a', analysis('a'));
+    vi.setSystemTime(1_000_950);
+    cache.setAnalysis('b', analysis('b'));
+    vi.setSystemTime(1_000_960);
+    cache.setAnalysis('c', analysis('c'));
+    vi.setSystemTime(1_000_970);
+    cache.getAnalysis('a');
+    vi.setSystemTime(1_001_100);
+
+    cache.evictTo(2);
+
+    expect([...inner(cache).keys()]).toEqual(['b', 'c']);
+    expect(cache.getStats().evictions).toBe(1);
+  });
+
+  it('setPlan with an undefined plan still writes the plan key', () => {
+    const cache = new QueryPlanCache();
+    cache.setPlan('fresh', analysis('fresh'), undefined as unknown as QueryPlan);
+    cache.setAnalysis('later', analysis('later'));
+    cache.setPlan('later', analysis('later'), undefined as unknown as QueryPlan);
+
+    const entries = [...inner(cache).values()];
+    expect(entries.map(entry => 'plan' in entry)).toEqual([true, true]);
+  });
+
+  it('keeps the key order of a new entry, with the plan key after the analysis key', () => {
+    const cache = new QueryPlanCache();
+    cache.setPlan('with plan', analysis('with plan'), plan);
+    cache.setAnalysis('no plan', analysis('no plan'));
+
+    const [withPlan, noPlan] = [...inner(cache).values()];
+    expect(Object.keys(withPlan)).toEqual([
+      'normalizedQuery',
+      'originalQuery',
+      'analysis',
+      'plan',
+      'createdAt',
+      'lastAccessed',
+      'hitCount',
+    ]);
+    expect(Object.keys(noPlan)).toEqual([
+      'normalizedQuery',
+      'originalQuery',
+      'analysis',
+      'createdAt',
+      'lastAccessed',
+      'hitCount',
+    ]);
   });
 });

@@ -8,6 +8,7 @@
  */
 
 import type { QueryAnalysis, QueryPlan } from '../types/index.js';
+import { evictOldest } from '../utils/searchCache.js';
 
 /**
  * Cached query entry with metadata.
@@ -183,28 +184,7 @@ export class QueryPlanCache {
    * @param analysis - The analysis result to cache
    */
   setAnalysis(query: string, analysis: QueryAnalysis): void {
-    const key = this.normalizeQuery(query);
-    const now = Date.now();
-
-    const existing = this.cache.get(key);
-    if (existing) {
-      // Update existing entry
-      existing.analysis = analysis;
-      existing.lastAccessed = now;
-    } else {
-      // Evict if necessary
-      this.evictIfNeeded();
-
-      // Create new entry
-      this.cache.set(key, {
-        normalizedQuery: key,
-        originalQuery: query,
-        analysis,
-        createdAt: now,
-        lastAccessed: now,
-        hitCount: 0,
-      });
-    }
+    this.writeEntry(query, analysis);
   }
 
   /**
@@ -215,6 +195,17 @@ export class QueryPlanCache {
    * @param plan - The plan result to cache
    */
   setPlan(query: string, analysis: QueryAnalysis, plan: QueryPlan): void {
+    this.writeEntry(query, analysis, plan);
+  }
+
+  /**
+   * Write an entry for a query. The plan is stored only when the caller passes one.
+   *
+   * @param query - The search query
+   * @param analysis - The analysis result to cache
+   * @param planArg - The plan result to cache, when given
+   */
+  private writeEntry(query: string, analysis: QueryAnalysis, ...planArg: [QueryPlan] | []): void {
     const key = this.normalizeQuery(query);
     const now = Date.now();
 
@@ -222,7 +213,7 @@ export class QueryPlanCache {
     if (existing) {
       // Update existing entry
       existing.analysis = analysis;
-      existing.plan = plan;
+      if (planArg.length === 1) existing.plan = planArg[0];
       existing.lastAccessed = now;
     } else {
       // Evict if necessary
@@ -233,7 +224,7 @@ export class QueryPlanCache {
         normalizedQuery: key,
         originalQuery: query,
         analysis,
-        plan,
+        ...(planArg.length === 1 ? { plan: planArg[0] } : {}),
         createdAt: now,
         lastAccessed: now,
         hitCount: 0,
@@ -499,16 +490,10 @@ export class QueryPlanCache {
         if (this.options.enableStats) this.evictions++;
       }
     }
-    if (this.cache.size <= targetEntries) return;
 
-    // Pass 2: sort surviving entries by lastAccessed ascending and
-    // delete the oldest until we're at or under target.
-    const survivors = [...this.cache.entries()];
-    survivors.sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
-    const toRemove = this.cache.size - Math.max(0, targetEntries);
-    for (let i = 0; i < toRemove; i++) {
-      this.cache.delete(survivors[i]![0]);
+    // Pass 2: delete the oldest survivors by lastAccessed until at or under target.
+    evictOldest(this.cache, targetEntries, entry => entry.lastAccessed, () => {
       if (this.options.enableStats) this.evictions++;
-    }
+    });
   }
 }

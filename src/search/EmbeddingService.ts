@@ -16,6 +16,7 @@ import {
   getEmbeddingConfig,
 } from '../utils/constants.js';
 import { hash31 } from '../utils/entityUtils.js';
+import { sleep } from '../utils/timing.js';
 
 /**
  * Phase 12 Sprint 5: Prefixes for query-optimized embedding encoding.
@@ -251,7 +252,7 @@ export class OpenAIEmbeddingService implements EmbeddingService {
           // Handle rate limiting
           if (response.status === 429) {
             if (attempt < OPENAI_API_CONFIG.MAX_RETRIES) {
-              await this.sleep(backoff);
+              await sleep(backoff);
               backoff = Math.min(backoff * 2, OPENAI_API_CONFIG.MAX_BACKOFF_MS);
               continue;
             }
@@ -270,7 +271,7 @@ export class OpenAIEmbeddingService implements EmbeddingService {
 
         // Retry on network errors
         if (attempt < OPENAI_API_CONFIG.MAX_RETRIES && this.isRetryableError(error)) {
-          await this.sleep(backoff);
+          await sleep(backoff);
           backoff = Math.min(backoff * 2, OPENAI_API_CONFIG.MAX_BACKOFF_MS);
           continue;
         }
@@ -293,13 +294,6 @@ export class OpenAIEmbeddingService implements EmbeddingService {
              error.message.includes('429');
     }
     return false;
-  }
-
-  /**
-   * Sleep for a given duration.
-   */
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 
