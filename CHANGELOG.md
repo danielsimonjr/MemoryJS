@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The Verification tables in four architecture documents (`ARCHITECTURE.md`, `COMPONENTS.md`, `DATAFLOW.md`, `OVERVIEW.md`) carry the values of the current whole-repository parse again: `entryRoots` 12, `reachableFiles` 292 and `dormantFiles` 0. `repo-tools check . --docs=docs/architecture` exits 0 again. Only the values change.
 - With `SQLiteStorage`, `ctx.semanticSearch` (and so `ctx.hybridSearchManager`) now keeps vectors in the `embeddings` table and reuses them across restarts. JSONL storage is unchanged.
 - **Breaking:** `ContextPackage` has two new required fields, `sourceTokens` and `compressionRatio`. Code that builds a `ContextPackage` object by hand must set both fields. `sourceTokens` is `totalTokens` plus the tokens of every excluded entity. `compressionRatio` is `sourceTokens / totalTokens`, or `1` when nothing is excluded.
 
