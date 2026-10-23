@@ -1585,6 +1585,28 @@ describe('SQLiteStorage statement pins', () => {
     });
   });
 
+  it('returns no relations while the database is open but not initialized', async () => {
+    const store = open();
+    await store.saveGraph({
+      entities: ['a', 'b'].map(name => ({ name, entityType: 'node', observations: [] })),
+      relations: [{ from: 'a', to: 'b', relationType: 'knows' }],
+    });
+    await store.ensureLoaded();
+    const internals = store as unknown as { cache: unknown; initialized: boolean };
+    const savedCache = internals.cache;
+    internals.cache = null;
+    internals.initialized = false;
+    try {
+      expect(store.getRelationsFrom('a')).toEqual([]);
+      expect(store.getRelationsTo('b')).toEqual([]);
+      expect(store.getRelationsFor('a')).toEqual([]);
+    } finally {
+      internals.initialized = true;
+      internals.cache = savedCache;
+    }
+    expect(store.getRelationsFrom('a')).toHaveLength(1);
+  });
+
   it('stores SQL NULL and the defaults for an entity without optional fields', async () => {
     const writer = open();
     await writer.saveGraph({ entities: [], relations: [] });
