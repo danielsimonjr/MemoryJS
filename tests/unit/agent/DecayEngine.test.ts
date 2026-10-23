@@ -1185,6 +1185,22 @@ describe('DecayEngine.getDecayedMemories and getMemoriesAtRisk (pins)', () => {
   });
 });
 
+describe('DecayEngine.getMemoriesAtRisk reads its floor late (pins)', () => {
+  it('uses the minImportance that is set when the graph has loaded', async () => {
+    const now = new Date().toISOString();
+    const storage = createMockStorage([
+      createAgentEntity('low', { importance: 2, lastAccessedAt: now, createdAt: now }),
+    ]);
+    const decay = new DecayEngine(storage, new AccessTracker(storage), { minImportance: 5 });
+    vi.mocked(storage.loadGraph).mockImplementation(async () => {
+      (decay as unknown as { config: { minImportance: number } }).config.minImportance = 0.1;
+      return { entities: [createAgentEntity('low', { importance: 2, lastAccessedAt: now, createdAt: now })], relations: [] };
+    });
+
+    expect((await decay.getMemoriesAtRisk(3)).map((e) => e.name)).toStrictEqual(['low']);
+  });
+});
+
 describe('DecayEngine half-life factors (pins)', () => {
   const now = '2026-01-02T00:00:00.000Z';
   const hoursBefore = (hours: number) => new Date(Date.parse(now) - hours * 60 * 60 * 1000).toISOString();

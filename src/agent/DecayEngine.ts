@@ -520,10 +520,10 @@ export class DecayEngine {
    * @returns Array of at-risk AgentEntity records
    */
   async getMemoriesAtRisk(threshold: number = 1.0): Promise<AgentEntity[]> {
-    const minImportance = this.config.minImportance;
-    // At risk if between min floor and threshold
+    // At risk if between min floor and threshold. The floor is read from
+    // the config for each entity, after the graph has loaded.
     return this.collectByEffectiveImportance(
-      (importance) => importance >= minImportance && importance < threshold
+      (importance) => importance >= this.config.minImportance && importance < threshold
     );
   }
 
