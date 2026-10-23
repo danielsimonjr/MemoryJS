@@ -61,6 +61,31 @@ export function buildTFVector(tokens: string[], vocab: Set<string>): number[] {
 }
 
 /**
+ * Sums the dot product and the squared norms of two numeric arrays.
+ * Iterates over the first n elements, or over a.length when n is absent.
+ *
+ * @param a - First array-like numeric input
+ * @param b - Second array-like numeric input
+ * @param n - Optional number of elements to sum
+ * @returns The dot product and the squared norm of each input
+ */
+export function cosineParts(
+  a: ArrayLike<number>,
+  b: ArrayLike<number>,
+  n?: number,
+): { dot: number; normA: number; normB: number } {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < (n ?? a.length); i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return { dot, normA, normB };
+}
+
+/**
  * Calculate cosine similarity between two numeric vectors.
  *
  * Canonical implementation shared by the text-similarity utilities and the
@@ -77,15 +102,7 @@ export function cosineSimilarity(vec1: number[], vec2: number[]): number {
     throw new Error(`Vector dimensions mismatch: ${vec1.length} vs ${vec2.length}`);
   }
 
-  let dot = 0;
-  let norm1 = 0;
-  let norm2 = 0;
-
-  for (let i = 0; i < vec1.length; i++) {
-    dot += vec1[i] * vec2[i];
-    norm1 += vec1[i] * vec1[i];
-    norm2 += vec2[i] * vec2[i];
-  }
+  const { dot, normA: norm1, normB: norm2 } = cosineParts(vec1, vec2);
 
   if (norm1 === 0 || norm2 === 0) return 0;
 
