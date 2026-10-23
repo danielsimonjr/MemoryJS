@@ -495,3 +495,82 @@ describe('FileSegmentStorage', () => {
     });
   });
 });
+
+describe('FileSegmentStorage segment file modes', () => {
+  let testDir: string;
+  let previousUmask: number;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-modes-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+    // A fixed umask makes the default mode of a new file the same on every machine.
+    previousUmask = process.umask(0o022);
+  });
+
+  afterEach(async () => {
+    process.umask(previousUmask);
+    vi.restoreAllMocks();
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  function twelveEntityGraph(): KnowledgeGraph {
+    return {
+      entities: Array.from({ length: 12 }, (_, i) => ent(`item-${i}`, 'thing', [`note ${i}`])),
+      relations: [],
+    };
+  }
+
+  async function segmentFileModes(): Promise<Map<string, number>> {
+    const dir = join(testDir, 'segments');
+    const modes = new Map<string, number>();
+    for (const name of await fs.readdir(dir)) {
+      if (!name.endsWith('.jsonl')) continue;
+      modes.set(name, (await fs.stat(join(dir, name))).mode & 0o777);
+    }
+    return modes;
+  }
+
+  it('saveAll writes every segment file with mode 0o600', async () => {
+    if (process.platform === 'win32') return; // POSIX modes don't apply
+    await makeStore(testDir).saveAll(twelveEntityGraph());
+
+    const modes = await segmentFileModes();
+    expect(modes.size).toBeGreaterThan(0);
+    for (const [name, mode] of modes) {
+      expect(mode, name).toBe(0o600);
+    }
+  });
+
+  it('saveAll writes the recovery manifest with mode 0o600 when a segment rename fails', async () => {
+    if (process.platform === 'win32') return; // POSIX modes don't apply
+    const realRename = fs.rename.bind(fs);
+    vi.spyOn(fs, 'rename').mockImplementation(((from: string, to: string) =>
+      String(to).endsWith('.jsonl')
+        ? Promise.reject(new Error('synthetic-segment-rename'))
+        : realRename(from, to)) as typeof fs.rename);
+
+    await expect(makeStore(testDir).saveAll(twelveEntityGraph())).rejects.toThrow(
+      /Segment commit incomplete/,
+    );
+    vi.restoreAllMocks();
+
+    const manifest = join(testDir, 'segments', '_manifest.json');
+    expect((await fs.stat(manifest)).mode & 0o777).toBe(0o600);
+  });
+
+  it('saveAll keeps a tighter existing segment mode and does not widen it', async () => {
+    if (process.platform === 'win32') return; // POSIX modes don't apply
+    const store = makeStore(testDir);
+    await store.saveAll(twelveEntityGraph());
+    const [name] = [...(await segmentFileModes()).keys()];
+    const target = join(testDir, 'segments', name);
+    await fs.chmod(target, 0o640);
+
+    await store.saveAll(twelveEntityGraph());
+
+    expect((await fs.stat(target)).mode & 0o777).toBe(0o640 & 0o600);
+  });
+});
