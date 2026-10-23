@@ -475,3 +475,21 @@ describe('CompressionManager similarity values (pinned)', () => {
     expect(() => cm.calculateEntitySimilarity(make('A', [1]), make('A', ['x']))).toThrow(/o\.toLowerCase is not a function/);
   });
 });
+
+describe('CompressionManager name length measure (D7, both argument orders)', () => {
+  const cm = new CompressionManager({} as never) as unknown as {
+    calculateEntitySimilarity(e1: Entity, e2: Entity): number;
+    prepareEntity(entity: Entity): unknown;
+    calculatePreparedSimilarity(p1: unknown, p2: unknown): number;
+  };
+  const named = (name: string) => ({ name, entityType: 'person', observations: [] }) as unknown as Entity;
+
+  // U+0130 lowercases to two code units. The literal is the score of the prepared path, which always measured the lowercased name.
+  it.each([
+    ['İx', 'ix'],
+    ['ix', 'İx'],
+  ])('scores %s and %s as the prepared path does', (a, b) => {
+    expect(cm.calculateEntitySimilarity(named(a), named(b))).toBe(0.5185185185185185);
+    expect(cm.calculatePreparedSimilarity(cm.prepareEntity(named(a)), cm.prepareEntity(named(b)))).toBe(0.5185185185185185);
+  });
+});
