@@ -1184,3 +1184,27 @@ describe('DecayEngine.getDecayedMemories and getMemoriesAtRisk (pins)', () => {
     expect((await decay.getMemoriesAtRisk(3)).map((e) => e.name)).toStrictEqual(['below-floor', 'at-risk-low', 'at-risk-high']);
   });
 });
+
+describe('DecayEngine half-life factors (pins)', () => {
+  const now = '2026-01-02T00:00:00.000Z';
+  const hoursBefore = (hours: number) => new Date(Date.parse(now) - hours * 60 * 60 * 1000).toISOString();
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(now));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('calculateDecayFactorStatic at 24 hours with a 24 hour half-life', () => {
+    expect(DecayEngine.calculateDecayFactorStatic(hoursBefore(24), 24)).toBe(0.5);
+  });
+
+  it('calculateDecayFactor at 1 hour with a 168 hour half-life', () => {
+    const storage = createMockStorage([]);
+    const decay = new DecayEngine(storage, new AccessTracker(storage));
+    expect(decay.calculateDecayFactor(hoursBefore(1), 168)).toBe(0.9958826236582974);
+  });
+});

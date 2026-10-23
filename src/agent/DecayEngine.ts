@@ -14,6 +14,7 @@ import { isAgentEntity } from '../types/agent-memory.js';
 import { AccessTracker } from './AccessTracker.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
 import { tokenizeToSet } from '../utils/textSimilarity.js';
+import { halfLifeFactor } from '../utils/halfLife.js';
 import { computeDegreeMap, normalizedDegree, type DegreeMap } from './connectivity.js';
 
 // Re-export for convenience
@@ -225,9 +226,7 @@ export class DecayEngine {
       }
     }
 
-    // Exponential decay formula
-    const decayConstant = Math.LN2 / effectiveHalfLife;
-    const decayFactor = Math.exp(-decayConstant * ageHours);
+    const decayFactor = halfLifeFactor(ageHours, effectiveHalfLife);
 
     return Math.max(0, Math.min(1, decayFactor));
   }
@@ -249,8 +248,7 @@ export class DecayEngine {
     const lastAccess = new Date(lastAccessedAt).getTime();
     const ageHours = (now - lastAccess) / (1000 * 60 * 60);
 
-    const decayConstant = Math.LN2 / halfLifeHours;
-    return Math.max(0, Math.min(1, Math.exp(-decayConstant * ageHours)));
+    return Math.max(0, Math.min(1, halfLifeFactor(ageHours, halfLifeHours)));
   }
 
   // ==================== Effective Importance Calculation ====================

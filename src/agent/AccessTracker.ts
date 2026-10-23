@@ -10,6 +10,7 @@
 
 import type { IGraphStorage } from '../types/types.js';
 import type { AgentEntity, AccessContext, AccessPattern } from '../types/agent-memory.js';
+import { halfLifeFactor } from '../utils/halfLife.js';
 
 // Re-export AccessContext for convenience
 export type { AccessContext } from '../types/agent-memory.js';
@@ -201,9 +202,7 @@ export class AccessTracker {
     const now = Date.now();
     const hoursSinceAccess = (now - lastAccess) / (1000 * 60 * 60);
 
-    // Exponential decay formula
-    const decayConstant = Math.LN2 / halfLife;
-    const score = Math.exp(-decayConstant * hoursSinceAccess);
+    const score = halfLifeFactor(hoursSinceAccess, halfLife);
 
     return Math.max(0, Math.min(1, score)); // Clamp to [0, 1]
   }
@@ -226,8 +225,7 @@ export class AccessTracker {
     const now = Date.now();
     const hoursSinceAccess = (now - lastAccess) / (1000 * 60 * 60);
 
-    const decayConstant = Math.LN2 / halfLifeHours;
-    const score = Math.exp(-decayConstant * hoursSinceAccess);
+    const score = halfLifeFactor(hoursSinceAccess, halfLifeHours);
 
     return Math.max(0, Math.min(1, score));
   }

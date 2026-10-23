@@ -11,6 +11,7 @@
 import type { Entity } from '../types/types.js';
 import type { HybridSearchResult } from '../types/types.js';
 import { FreshnessManager } from '../features/FreshnessManager.js';
+import { halfLifeFactor } from '../utils/halfLife.js';
 
 // ==================== Distillation Types ====================
 
@@ -196,9 +197,8 @@ export class DefaultDistillationPolicy implements IDistillationPolicy {
     const ageMs = Date.now() - new Date(timestamp).getTime();
     const ageHours = ageMs / (1000 * 60 * 60);
     const halfLifeHours = 24;
-    const decayConstant = Math.LN2 / halfLifeHours;
     // A future timestamp counts as age 0. The score stays in [0, 1].
-    return Math.max(0, Math.min(1, Math.exp(-decayConstant * Math.max(0, ageHours))));
+    return Math.max(0, Math.min(1, halfLifeFactor(Math.max(0, ageHours), halfLifeHours)));
   }
 
   /**

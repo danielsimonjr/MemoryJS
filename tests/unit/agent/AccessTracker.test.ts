@@ -660,3 +660,29 @@ describe('AccessTracker top-N ordering (pins)', () => {
     expect(names).toStrictEqual(['entity_b', 'entity_a', 'entity_c']);
   });
 });
+
+describe('AccessTracker half-life scores (pins)', () => {
+  const now = '2026-01-02T00:00:00.000Z';
+  const hoursBefore = (hours: number) => new Date(Date.parse(now) - hours * 60 * 60 * 1000).toISOString();
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(now));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('calculateRecencyScoreFromTimestamp at 10 hours with a 24 hour half-life', () => {
+    expect(AccessTracker.calculateRecencyScoreFromTimestamp(hoursBefore(10), 24)).toBe(0.7491535384383408);
+  });
+
+  it('calculateRecencyScore for a record touched 10 hours ago with a 24 hour half-life', async () => {
+    const tracker = new AccessTracker(createMockStorage({}));
+    vi.setSystemTime(new Date(hoursBefore(10)));
+    await tracker.recordAccess('entity_a');
+    vi.setSystemTime(new Date(now));
+    expect(tracker.calculateRecencyScore('entity_a', 24)).toBe(0.7491535384383408);
+  });
+});

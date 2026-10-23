@@ -38,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `key=value` observation codec of session checkpoints, work threads and procedure steps lives in one module, `src/agent/keyValueLine.ts`. The stored line format does not change.
 - Agent managers share duplicated private helpers: visibility filtering, conflict text similarity, episode timelines, causal neighbours and chains, tool-call completion, and the token-budget loop of context retrieval. Behaviour does not change.
 - The decay scheduler's scheduled and manual cycles share one routine. `runNow()` now documents that it calls no `onDecayComplete`, `onForgetComplete` or `onError` hook. Hook order is unchanged: `onDecayComplete` runs before forgetting.
+- Six sites that compute an exponential half-life factor call one helper, `halfLifeFactor(ageHours, halfLifeHours)` in `src/utils/halfLife.ts`: two in `AccessTracker`, two in `DecayEngine`, one in `DistillationPolicy` and one in `FreshnessManager`. Behaviour does not change.
 
 ### Fixed
 

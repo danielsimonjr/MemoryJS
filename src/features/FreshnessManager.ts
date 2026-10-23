@@ -9,6 +9,7 @@
  */
 
 import type { Entity, IGraphStorage } from '../types/types.js';
+import { halfLifeFactor } from '../utils/halfLife.js';
 
 // ==================== Report Types ====================
 
@@ -106,8 +107,7 @@ export class FreshnessManager {
     } else {
       // Exponential half-life decay when no TTL is set
       const halfLifeHours = this.config.defaultHalfLifeHours;
-      const decayConstant = Math.LN2 / halfLifeHours;
-      timeScore = Math.exp(-decayConstant * ageHours);
+      timeScore = halfLifeFactor(ageHours, halfLifeHours);
     }
 
     // Confidence component (defaults to 1.0 if not set)
