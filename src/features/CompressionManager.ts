@@ -7,6 +7,7 @@
  * @module features/CompressionManager
  */
 
+import { jaccard } from '../utils/textSimilarity.js';
 import type { Entity, Relation, GraphCompressionResult, KnowledgeGraph, LongRunningOperationOptions, PreparedEntity } from '../types/index.js';
 import type { GraphStorage } from '../core/GraphStorage.js';
 import {
@@ -102,9 +103,7 @@ export class CompressionManager {
     // Observation overlap (Jaccard similarity)
     const obs1Set = new Set(e1.observations.map(o => o.toLowerCase()));
     const obs2Set = new Set(e2.observations.map(o => o.toLowerCase()));
-    const intersection = new Set([...obs1Set].filter(x => obs2Set.has(x)));
-    const union = new Set([...obs1Set, ...obs2Set]);
-    const observationSimilarity = union.size > 0 ? intersection.size / union.size : 0;
+    const observationSimilarity = jaccard(obs1Set, obs2Set);
     score += observationSimilarity * SIMILARITY_WEIGHTS.OBSERVATIONS;
     factors += SIMILARITY_WEIGHTS.OBSERVATIONS;
 
@@ -112,9 +111,7 @@ export class CompressionManager {
     if ((e1.tags?.length ?? 0) > 0 || (e2.tags?.length ?? 0) > 0) {
       const tags1Set = new Set((e1.tags ?? []).map(t => t.toLowerCase()));
       const tags2Set = new Set((e2.tags ?? []).map(t => t.toLowerCase()));
-      const tagIntersection = new Set([...tags1Set].filter(x => tags2Set.has(x)));
-      const tagUnion = new Set([...tags1Set, ...tags2Set]);
-      const tagSimilarity = tagUnion.size > 0 ? tagIntersection.size / tagUnion.size : 0;
+      const tagSimilarity = jaccard(tags1Set, tags2Set);
       score += tagSimilarity * SIMILARITY_WEIGHTS.TAGS;
       factors += SIMILARITY_WEIGHTS.TAGS;
     }

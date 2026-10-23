@@ -8,6 +8,7 @@
  * @module agent/CognitiveLoadAnalyzer
  */
 
+import { jaccard } from '../utils/textSimilarity.js';
 import type { AgentEntity, CognitiveLoadMetrics, AdaptiveReductionResult } from '../types/agent-memory.js';
 
 // ==================== Configuration ====================
@@ -287,13 +288,7 @@ export class CognitiveLoadAnalyzer {
     if (tokensA.size === 0 && tokensB.size === 0) return 1;
     if (tokensA.size === 0 || tokensB.size === 0) return 0;
 
-    let intersectionSize = 0;
-    for (const token of tokensA) {
-      if (tokensB.has(token)) intersectionSize++;
-    }
-
-    const unionSize = tokensA.size + tokensB.size - intersectionSize;
-    return unionSize === 0 ? 0 : intersectionSize / unionSize;
+    return jaccard(tokensA, tokensB);
   }
 
   /**

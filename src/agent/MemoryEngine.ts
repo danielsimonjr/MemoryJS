@@ -1,3 +1,4 @@
+import { jaccard } from '../utils/textSimilarity.js';
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 import type { IGraphStorage, ReadonlyKnowledgeGraph } from '../types/types.js';
@@ -554,13 +555,8 @@ export class MemoryEngine {
       const candidateTokens = tokeniseForDedup(candidateContent);
       if (candidateTokens.size === 0) continue;
 
-      let intersection = 0;
-      for (const token of contentTokens) {
-        if (candidateTokens.has(token)) intersection += 1;
-      }
-      const union = contentTokens.size + candidateTokens.size - intersection;
-      const jaccard = union === 0 ? 0 : intersection / union;
-      if (jaccard >= this.cfg.jaccardThreshold) {
+      const score = jaccard(contentTokens, candidateTokens);
+      if (score >= this.cfg.jaccardThreshold) {
         return { isDuplicate: true, match: candidate, tier: 'jaccard' };
       }
     }

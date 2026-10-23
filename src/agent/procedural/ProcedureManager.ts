@@ -27,7 +27,7 @@ import type {
 import { ProcedureStore } from './ProcedureStore.js';
 import { StepSequencer } from './StepSequencer.js';
 import { randomUUID } from 'crypto';
-import { tokenizeToSet } from '../../utils/textSimilarity.js';
+import { jaccard, tokenizeToSet } from '../../utils/textSimilarity.js';
 
 /** Options for {@link ProcedureManager}. */
 export interface ProcedureManagerConfig {
@@ -188,10 +188,7 @@ export class ProcedureManager {
       }
       if (procTokens.size === 0) continue;
 
-      const intersection = new Set<string>();
-      for (const t of ctxTokens) if (procTokens.has(t)) intersection.add(t);
-      const union = new Set<string>([...ctxTokens, ...procTokens]);
-      const score = intersection.size / union.size;
+      const score = jaccard(ctxTokens, procTokens);
 
       if (score >= threshold) matches.push({ procedure, score });
     }

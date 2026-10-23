@@ -216,3 +216,33 @@ export function tokenize(text: string): string[] {
     .split(/\s+/)
     .filter(token => token.length > 0);
 }
+
+/**
+ * Scales scores to the range zero to one with min-max normalization.
+ * Returns an empty map for empty input.
+ * Returns zero for uniform zero scores and one for other uniform scores.
+ *
+ * @param scores - Map of names to raw numeric scores
+ * @returns Map of names to normalized values
+ */
+export function minMaxNormalize(scores: ReadonlyMap<string, number>): Map<string, number> {
+  const normalized = new Map<string, number>();
+  if (scores.size === 0) return normalized;
+
+  let min = Infinity;
+  let max = -Infinity;
+  for (const score of scores.values()) {
+    if (score < min) min = score;
+    if (score > max) max = score;
+  }
+
+  // Handle edge case where all scores are the same
+  if (max === min) {
+    for (const name of scores.keys()) normalized.set(name, max === 0 ? 0 : 1);
+    return normalized;
+  }
+
+  const range = max - min;
+  for (const [name, score] of scores) normalized.set(name, (score - min) / range);
+  return normalized;
+}
