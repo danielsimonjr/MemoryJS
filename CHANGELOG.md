@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `TransactionManager` and `BatchTransaction` share their entity and relation operation code (`applyGraphOperation` in `src/core/TransactionManager.ts`). Behaviour is unchanged.
 - `SQLiteStorage` shares its column migrations (`ensureColumns`), its entity bind values and its relation lookups by direction (`relationsFor`). Behaviour is unchanged.
 - Segment storage shares its ownership check and its temp file write with `durableWriteFile` (`assertSegmentOwnership`, `writeSyncedTmp`). Behaviour is unchanged.
 - The working-memory entity check has one function, `requireWorkingMemoryEntity`, in `src/agent/workingMemoryGuard.ts`. `WorkingMemoryManager.extendTTL`, `markForPromotion`, `promoteMemory` and `confirmMemory` and `ConsolidationPipeline.promoteMemory` call it. The lookup, the three error texts and their order do not change. Behaviour does not change.
