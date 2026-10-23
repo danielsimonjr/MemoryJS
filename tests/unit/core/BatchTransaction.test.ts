@@ -10,7 +10,7 @@ import * as path from 'path';
 import * as os from 'os';
 import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { BatchTransaction } from '../../../src/core/TransactionManager.js';
-import type { BatchOperation, BatchResult } from '../../../src/types/types.js';
+import type { BatchOperation, BatchResult, KnowledgeGraph } from '../../../src/types/types.js';
 
 describe('BatchTransaction', () => {
   let tempDir: string;
@@ -425,6 +425,176 @@ describe('BatchTransaction', () => {
         .execute();
 
       expect(result.success).toBe(true);
+    });
+  });
+});
+
+describe('BatchTransaction operation pins', () => {
+  const TS = '2026-01-01T00:00:00.000Z';
+
+  function applyOp(graph: KnowledgeGraph, operation: BatchOperation, result: BatchResult): void {
+    const batch = new BatchTransaction(new GraphStorage(path.join(os.tmpdir(), 'pin-unused.jsonl')));
+    (batch as unknown as {
+      applyBatchOperation(g: KnowledgeGraph, o: BatchOperation, ts: string, r: BatchResult): void;
+    }).applyBatchOperation(graph, operation, TS, result);
+  }
+
+  function emptyResult(): BatchResult {
+    return {
+      success: true,
+      operationsExecuted: 0,
+      entitiesCreated: 0,
+      entitiesUpdated: 0,
+      entitiesDeleted: 0,
+      relationsCreated: 0,
+      relationsDeleted: 0,
+      executionTimeMs: 0,
+    };
+  }
+
+  function baseGraph(): KnowledgeGraph {
+    return {
+      entities: [
+        { name: 'a', entityType: 'node', observations: ['x'] },
+        { name: 'b', entityType: 'node', observations: [] },
+      ],
+      relations: [{ from: 'a', to: 'b', relationType: 'knows' }],
+    };
+  }
+
+  function errorOf(action: () => void): { code: string; message: string } {
+    try {
+      action();
+    } catch (error) {
+      const failure = error as { code: string; message: string };
+      return { code: failure.code, message: failure.message };
+    }
+    throw new Error('expected the operation to throw');
+  }
+
+  it('createEntity adds the entity and counts it', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    applyOp(graph, { type: 'createEntity', data: { name: 'c', entityType: 'node', observations: ['y'] } }, result);
+    expect(graph.entities[2]).toEqual({ name: 'c', entityType: 'node', observations: ['y'], createdAt: TS, lastModified: TS });
+    expect(result).toEqual({ ...emptyResult(), entitiesCreated: 1 });
+  });
+
+  it('updateEntity merges the updates and counts an update', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    applyOp(graph, { type: 'updateEntity', data: { name: 'a', updates: { entityType: 'topic' } } }, result);
+    expect(graph.entities[0]).toEqual({ name: 'a', entityType: 'topic', observations: ['x'], lastModified: TS });
+    expect(result).toEqual({ ...emptyResult(), entitiesUpdated: 1 });
+  });
+
+  it('deleteEntity removes the entity with its relations and counts it', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    applyOp(graph, { type: 'deleteEntity', data: { name: 'a' } }, result);
+    expect(graph).toEqual({ entities: [{ name: 'b', entityType: 'node', observations: [] }], relations: [] });
+    expect(result).toEqual({ ...emptyResult(), entitiesDeleted: 1 });
+  });
+
+  it('createRelation adds the relation and counts it', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    applyOp(graph, { type: 'createRelation', data: { from: 'b', to: 'a', relationType: 'knows' } }, result);
+    expect(graph.relations[1]).toEqual({ from: 'b', to: 'a', relationType: 'knows', createdAt: TS, lastModified: TS });
+    expect(result).toEqual({ ...emptyResult(), relationsCreated: 1 });
+  });
+
+  it('deleteRelation removes the relation and counts it', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    applyOp(graph, { type: 'deleteRelation', data: { from: 'a', to: 'b', relationType: 'knows' } }, result);
+    expect(graph.relations).toEqual([]);
+    expect(result).toEqual({ ...emptyResult(), relationsDeleted: 1 });
+  });
+
+  it('addObservations appends only the new observations and counts an update', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    applyOp(graph, { type: 'addObservations', data: { name: 'a', observations: ['x', 'z'] } }, result);
+    expect(graph.entities[0]).toEqual({ name: 'a', entityType: 'node', observations: ['x', 'z'], lastModified: TS });
+    expect(result).toEqual({ ...emptyResult(), entitiesUpdated: 1 });
+  });
+
+  it('deleteObservations removes the listed observations and counts an update', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    applyOp(graph, { type: 'deleteObservations', data: { name: 'a', observations: ['x'] } }, result);
+    expect(graph.entities[0]).toEqual({ name: 'a', entityType: 'node', observations: [], lastModified: TS });
+    expect(result).toEqual({ ...emptyResult(), entitiesUpdated: 1 });
+  });
+
+  it('reports the error code and message of each failing operation and counts nothing', () => {
+    const failures: Array<[BatchOperation, { code: string; message: string }]> = [
+      [
+        { type: 'createEntity', data: { name: 'a', entityType: 'node', observations: [] } },
+        { code: 'DUPLICATE_ENTITY', message: 'Entity "a" already exists' },
+      ],
+      [
+        { type: 'updateEntity', data: { name: 'zz', updates: {} } },
+        { code: 'ENTITY_NOT_FOUND', message: 'Entity "zz" not found' },
+      ],
+      [
+        { type: 'deleteEntity', data: { name: 'zz' } },
+        { code: 'ENTITY_NOT_FOUND', message: 'Entity "zz" not found' },
+      ],
+      [
+        { type: 'createRelation', data: { from: 'a', to: 'b', relationType: 'knows' } },
+        { code: 'DUPLICATE_RELATION', message: 'Relation "a" -> "b" (knows) already exists' },
+      ],
+      [
+        { type: 'deleteRelation', data: { from: 'b', to: 'a', relationType: 'knows' } },
+        { code: 'RELATION_NOT_FOUND', message: 'Relation "b" -> "a" (knows) not found' },
+      ],
+      [
+        { type: 'addObservations', data: { name: 'zz', observations: ['q'] } },
+        { code: 'ENTITY_NOT_FOUND', message: 'Entity "zz" not found' },
+      ],
+      [
+        { type: 'deleteObservations', data: { name: 'zz', observations: ['q'] } },
+        { code: 'ENTITY_NOT_FOUND', message: 'Entity "zz" not found' },
+      ],
+    ];
+    for (const [op, expected] of failures) {
+      const result = emptyResult();
+      expect(errorOf(() => applyOp(baseGraph(), op, result))).toEqual(expected);
+      expect(result).toEqual(emptyResult());
+    }
+  });
+
+  it('applies a mixed batch of seven operations to the final graph and counts them', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    const ops: BatchOperation[] = [
+      { type: 'createEntity', data: { name: 'c', entityType: 'node', observations: [] } },
+      { type: 'updateEntity', data: { name: 'a', updates: { entityType: 'topic' } } },
+      { type: 'addObservations', data: { name: 'a', observations: ['z'] } },
+      { type: 'deleteObservations', data: { name: 'a', observations: ['x'] } },
+      { type: 'createRelation', data: { from: 'b', to: 'c', relationType: 'links' } },
+      { type: 'deleteRelation', data: { from: 'a', to: 'b', relationType: 'knows' } },
+      { type: 'deleteEntity', data: { name: 'c' } },
+    ];
+    for (const op of ops) applyOp(graph, op, result);
+    expect(graph).toEqual({
+      entities: [
+        { name: 'a', entityType: 'topic', observations: ['z'], lastModified: TS },
+        { name: 'b', entityType: 'node', observations: [] },
+      ],
+      relations: [],
+    });
+    expect(result).toEqual({
+      success: true,
+      operationsExecuted: 0,
+      entitiesCreated: 1,
+      entitiesUpdated: 3,
+      entitiesDeleted: 1,
+      relationsCreated: 1,
+      relationsDeleted: 1,
+      executionTimeMs: 0,
     });
   });
 });
