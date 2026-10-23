@@ -8,7 +8,7 @@
  */
 
 import { Command } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
+import { runAction, getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';
 
 /**
@@ -45,34 +45,18 @@ export function registerProjectContextCommands(program: Command): void {
   pc
     .command('append-fact <projectId> <fact>')
     .description('Append a fact to the project context (dedups)')
-    .action(async (projectId: string, fact: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        await ctx.projectContextManager.appendFact(projectId, fact);
-        logger.info(formatSuccess(`${projectId}: appended fact`));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, logger, projectId: string, fact: string) => {
+      await ctx.projectContextManager.appendFact(projectId, fact);
+      logger.info(formatSuccess(`${projectId}: appended fact`));
+    }));
 
   pc
     .command('append-convention <projectId> <convention>')
     .description('Append a convention to the project context (dedups)')
-    .action(async (projectId: string, convention: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        await ctx.projectContextManager.appendConvention(projectId, convention);
-        logger.info(formatSuccess(`${projectId}: appended convention`));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, logger, projectId: string, convention: string) => {
+      await ctx.projectContextManager.appendConvention(projectId, convention);
+      logger.info(formatSuccess(`${projectId}: appended convention`));
+    }));
 
   pc
     .command('append-command <projectId>')
@@ -80,62 +64,38 @@ export function registerProjectContextCommands(program: Command): void {
     .requiredOption('--name <name>', 'Command short name (e.g. "test")')
     .requiredOption('--command <command>', 'Command line (e.g. "npm test")')
     .requiredOption('--purpose <purpose>', 'What the command does')
-    .action(async (projectId: string, opts: { name: string; command: string; purpose: string }) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        await ctx.projectContextManager.appendCommand(projectId, {
-          name: opts.name,
-          command: opts.command,
-          purpose: opts.purpose,
-        });
-        logger.info(formatSuccess(`${projectId}: appended command '${opts.name}'`));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, logger, projectId: string, opts: { name: string; command: string; purpose: string }) => {
+      await ctx.projectContextManager.appendCommand(projectId, {
+        name: opts.name,
+        command: opts.command,
+        purpose: opts.purpose,
+      });
+      logger.info(formatSuccess(`${projectId}: appended command '${opts.name}'`));
+    }));
 
   pc
     .command('append-glossary <projectId>')
     .description('Append a glossary term to the project context')
     .requiredOption('--term <term>', 'Domain term')
     .requiredOption('--definition <definition>', 'Term definition')
-    .action(async (projectId: string, opts: { term: string; definition: string }) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        await ctx.projectContextManager.appendGlossaryTerm(projectId, {
-          term: opts.term,
-          definition: opts.definition,
-        });
-        logger.info(formatSuccess(`${projectId}: appended glossary term '${opts.term}'`));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, logger, projectId: string, opts: { term: string; definition: string }) => {
+      await ctx.projectContextManager.appendGlossaryTerm(projectId, {
+        term: opts.term,
+        definition: opts.definition,
+      });
+      logger.info(formatSuccess(`${projectId}: appended glossary term '${opts.term}'`));
+    }));
 
   pc
     .command('clear <projectId>')
     .description('Wipe all four arrays (facts/conventions/commands/glossary) — keeps the entity')
-    .action(async (projectId: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const cleared = await ctx.projectContextManager.clear(projectId);
-        if (cleared) {
-          logger.info(formatSuccess(`${projectId}: cleared`));
-        } else {
-          logger.error(formatError(`No project-context record for '${projectId}'`));
-          process.exit(1);
-        }
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
+    .action(runAction(program, async (ctx, _options, logger, projectId: string) => {
+      const cleared = await ctx.projectContextManager.clear(projectId);
+      if (cleared) {
+        logger.info(formatSuccess(`${projectId}: cleared`));
+      } else {
+        logger.error(formatError(`No project-context record for '${projectId}'`));
         process.exit(1);
       }
-    });
+    }));
 }
