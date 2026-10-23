@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `OpenAIEmbeddingService.embedBatch` and `LocalEmbeddingService.embedBatch` call `embedBatchWithProgress` with no callback. Each service has one batch code path. Behaviour does not change.
 - `computeLowercase(entity)` in `src/utils/indexes.ts` is the one place that builds the lowercase view of an entity. `LowercaseCache`, `SQLiteStorage` and `PostgreSQLStorage` call it. Behaviour does not change.
 - The `TypeScript` workflow has a new job, `Architecture docs`. It installs `@danielsimonjr/repo-tools` 2.3.0 and runs `repo-tools check . --docs=docs/architecture` and `repo-tools docs check src`. A stale Verification table or an exported symbol without a doc comment now fails the pull request. The six `ci (...)` job names are unchanged.
 - The Verification tables in four architecture documents (`ARCHITECTURE.md`, `COMPONENTS.md`, `DATAFLOW.md`, `OVERVIEW.md`) carry the values of the current whole-repository parse again: `entryRoots` 12, `reachableFiles` 292 and `dormantFiles` 0. `repo-tools check . --docs=docs/architecture` exits 0 again. Only the values change.

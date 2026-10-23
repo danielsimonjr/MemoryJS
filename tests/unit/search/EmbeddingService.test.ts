@@ -813,3 +813,127 @@ describe('createEmbeddingService - Extended Tests', () => {
     expect((service as LocalEmbeddingService).model).toBe('custom/model');
   });
 });
+
+describe('embedBatch and embedBatchWithProgress (R22 pins)', () => {
+  const openAiKey = 'sk-test-api-key';
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Answers each request with one vector per input text, indexed by position.
+  const openAiAnswer = (body: string): Response => {
+    const { input } = JSON.parse(body) as { input: string[] };
+    return {
+      ok: true,
+      json: async () => ({
+        object: 'list',
+        data: input.map((_, index) => ({ object: 'embedding', embedding: [index], index })),
+        model: EMBEDDING_DEFAULTS.OPENAI_MODEL,
+        usage: { prompt_tokens: 0, total_tokens: 0 },
+      }),
+    } as Response;
+  };
+
+  const requestInputs = (spy: { mock: { calls: unknown[][] } }): string[][] =>
+    spy.mock.calls.map(([, init]) => (JSON.parse((init as RequestInit).body as string) as { input: string[] }).input);
+
+  it('OpenAI embedBatchWithProgress splits 2,100 texts into two requests with the document prefix', async () => {
+    const texts = Array.from({ length: 2100 }, (_, i) => `text ${i}`);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
+      openAiAnswer((init as RequestInit).body as string)
+    );
+    const progress: Array<{ current: number; total: number; percentage: number }> = [];
+
+    const results = await new OpenAIEmbeddingService(openAiKey).embedBatchWithProgress(texts, 'document', (p) =>
+      progress.push({ ...p })
+    );
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const inputs = requestInputs(fetchSpy);
+    expect(inputs.map((input) => input.length)).toEqual([2048, 52]);
+    expect(inputs.flat().every((text) => text.startsWith('passage: '))).toBe(true);
+    expect(progress).toEqual([
+      { current: 2048, total: 2100, percentage: 98 },
+      { current: 2100, total: 2100, percentage: 100 },
+    ]);
+    expect(results).toHaveLength(2100);
+  });
+
+  it('OpenAI embedBatch makes the same two requests as embedBatchWithProgress', async () => {
+    const texts = Array.from({ length: 2100 }, (_, i) => `text ${i}`);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
+      openAiAnswer((init as RequestInit).body as string)
+    );
+
+    const results = await new OpenAIEmbeddingService(openAiKey).embedBatch(texts, 'document');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const inputs = requestInputs(fetchSpy);
+    expect(inputs.map((input) => input.length)).toEqual([2048, 52]);
+    expect(inputs.flat().every((text) => text.startsWith('passage: '))).toBe(true);
+    expect(results).toHaveLength(2100);
+  });
+
+  it('OpenAI embedBatch returns [] for no input and sends no request', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    expect(await new OpenAIEmbeddingService(openAiKey).embedBatch([])).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('Local embedBatch initializes once, before the first embed call', async () => {
+    const service = new LocalEmbeddingService();
+    const initialize = vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
+    const embed = vi.spyOn(service, 'embed').mockImplementation(async (text) => [text.length]);
+
+    const results = await service.embedBatch(['a', 'bb', 'ccc'], 'document');
+
+    expect(initialize).toHaveBeenCalledTimes(1);
+    expect(initialize.mock.invocationCallOrder[0]).toBeLessThan(embed.mock.invocationCallOrder[0]);
+    expect(results).toEqual([[1], [2], [3]]);
+  });
+
+  it('Local embedBatchWithProgress reports 33, 67 and 100 percent for three texts', async () => {
+    const service = new LocalEmbeddingService();
+    vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
+    vi.spyOn(service, 'embed').mockResolvedValue([0]);
+    const progress: Array<{ current: number; total: number; percentage: number }> = [];
+
+    await service.embedBatchWithProgress(['a', 'b', 'c'], 'document', (p) => progress.push({ ...p }));
+
+    expect(progress).toEqual([
+      { current: 1, total: 3, percentage: 33 },
+      { current: 2, total: 3, percentage: 67 },
+      { current: 3, total: 3, percentage: 100 },
+    ]);
+  });
+
+  it('Local embedBatch returns [] for no input', async () => {
+    const service = new LocalEmbeddingService();
+    vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
+
+    expect(await service.embedBatch([])).toEqual([]);
+  });
+
+  it('Mock embedBatchWithProgress reports 33, 67 and 100 percent for three texts', async () => {
+    const service = new MockEmbeddingService();
+    const progress: Array<{ current: number; total: number; percentage: number }> = [];
+
+    await service.embedBatchWithProgress(['a', 'b', 'c'], 'document', (p) => progress.push({ ...p }));
+
+    expect(progress).toEqual([
+      { current: 1, total: 3, percentage: 33 },
+      { current: 2, total: 3, percentage: 67 },
+      { current: 3, total: 3, percentage: 100 },
+    ]);
+  });
+
+  it('Mock embedBatch returns the vectors of embedBatchWithProgress and [] for no input', async () => {
+    const service = new MockEmbeddingService();
+    const texts = ['alpha', 'beta', 'gamma'];
+
+    expect(await service.embedBatch([])).toEqual([]);
+    expect(await service.embedBatch(texts, 'query')).toEqual(await service.embedBatchWithProgress(texts, 'query'));
+  });
+});
