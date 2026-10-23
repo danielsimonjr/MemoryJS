@@ -2224,8 +2224,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatError` | Import |
+| `./helpers.js` | `runAction` | Import |
 
 **Exports:**
 - Functions: `registerCheckCommand`
@@ -2250,7 +2249,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../../types/agent-memory.js` | `DecisionId` | Import (type-only) |
 | `../../agent/DecisionManager.js` | `DecisionManager` | Import |
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatSuccess, formatError` | Import |
 | `../../utils/entityUtils.js` | `validateFilePath` | Import |
 
@@ -2280,8 +2279,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
 | `../../types/types.js` | `Entity` | Import (type-only) |
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatError` | Import |
+| `./helpers.js` | `runAction` | Import |
 
 **Exports:**
 - Functions: `registerDiagCommand`
@@ -2330,7 +2328,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatEntities, formatEntityDetail, formatSuccess, formatError` | Import |
 
 **Exports:**
@@ -2348,7 +2346,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatSuccess, formatError` | Import |
 
 **Exports:**
@@ -2366,7 +2364,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatPath, formatCentrality, formatComponents, formatError` | Import |
 
 **Exports:**
@@ -2387,9 +2385,10 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
 | `../options.js` | `parseGlobalOptions, createLogger, GlobalOptions` | Import |
 | `../config.js` | `findConfigFile, loadConfig, mergeCliConfig` | Import |
+| `../formatters.js` | `formatError` | Import |
 
 **Exports:**
-- Functions: `getOptions`, `createContext`
+- Functions: `getOptions`, `createContext`, `runAction`
 
 ---
 
@@ -2403,7 +2402,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatError` | Import |
 
 **Exports:**
@@ -2421,8 +2420,8 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatEntities, formatSuccess, formatError` | Import |
+| `./helpers.js` | `runAction` | Import |
+| `../formatters.js` | `formatEntities, formatSuccess` | Import |
 
 **Exports:**
 - Functions: `registerHierarchyCommands`
@@ -2486,8 +2485,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../../core/ManagerContext.js` | `ManagerContext` | Import |
 | `../../types/types.js` | `Relation, ReadonlyKnowledgeGraph` | Import (type-only) |
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatError` | Import |
+| `./helpers.js` | `runAction` | Import |
 
 **Exports:**
 - Functions: `registerInspectCommands`
@@ -2510,8 +2508,8 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatSuccess, formatError` | Import |
+| `./helpers.js` | `runAction` | Import |
+| `../formatters.js` | `formatSuccess` | Import |
 | `../../utils/entityUtils.js` | `validateFilePath` | Import |
 
 **Exports:**
@@ -2529,7 +2527,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatValidation, formatSuccess, formatError` | Import |
 | `../../utils/constants.js` | `IMPORTANCE_RANGE` | Import |
 | `../interactive.js` | `startInteractiveMode` | Dynamic import |
@@ -2549,7 +2547,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `runAction` | Import |
 | `../formatters.js` | `formatSuccess, formatError, escapeCSV` | Import |
 
 **Exports:**
@@ -2567,8 +2565,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatError` | Import |
+| `./helpers.js` | `runAction` | Import |
 
 **Exports:**
 - Functions: `registerObservationDedupCommands`
@@ -2585,7 +2582,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
+| `./helpers.js` | `runAction, getOptions, createContext, createLogger` | Import |
 | `../formatters.js` | `formatSuccess, formatError` | Import |
 
 **Exports:**
@@ -2629,8 +2626,8 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatRelations, formatSuccess, formatError` | Import |
+| `./helpers.js` | `runAction` | Import |
+| `../formatters.js` | `formatRelations, formatSuccess` | Import |
 
 **Exports:**
 - Functions: `registerRelationCommands`
@@ -2692,8 +2689,7 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatError` | Import |
+| `./helpers.js` | `runAction` | Import |
 
 **Exports:**
 - Functions: `registerSpellCommands`
@@ -2710,8 +2706,8 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./helpers.js` | `getOptions, createContext, createLogger` | Import |
-| `../formatters.js` | `formatSuccess, formatError, escapeCSV` | Import |
+| `./helpers.js` | `runAction` | Import |
+| `../formatters.js` | `formatSuccess, escapeCSV` | Import |
 
 **Exports:**
 - Functions: `registerTagCommands`
@@ -5443,10 +5439,10 @@ Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
 | `src/utils/errors` | 0 files | 28 files |
 | `src/utils/logger` | 0 files | 28 files |
-| `src/cli/commands/helpers` | 3 files | 23 files |
-| `src/cli/formatters` | 2 files | 24 files |
+| `src/cli/commands/helpers` | 4 files | 23 files |
 | `src/cli/commands/index` | 24 files | 1 file |
 | `src/agent/ConsolidationPipeline` | 15 files | 7 files |
+| `src/cli/formatters` | 2 files | 20 files |
 | `src/agent/ContextWindowManager` | 14 files | 5 files |
 | `src/search/SearchManager` | 16 files | 3 files |
 | `src/utils/constants` | 0 files | 19 files |
@@ -5716,12 +5712,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 300 |
 | Total Modules | 12 |
-| Total Lines of Code | 104283 |
-| Total Exports | 2058 |
+| Total Lines of Code | 103801 |
+| Total Exports | 2059 |
 | Total Re-exports | 1340 |
 | Total Classes | 236 |
 | Total Interfaces | 624 |
-| Total Functions | 344 |
+| Total Functions | 345 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 480 |

@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-23",
-  "totalFiles": 706,
+  "totalFiles": 707,
   "byDisposition": {
     "reachable": 296,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 390,
+    "test": 391,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 300,
-    "tests": 390,
+    "tests": 391,
     "tools": 10,
     "config": 2
   },
@@ -872,21 +872,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 180
+      "loc": 172
     },
     {
       "file": "src/cli/commands/decision.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 239
+      "loc": 185
     },
     {
       "file": "src/cli/commands/diag.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 310
+      "loc": 294
     },
     {
       "file": "src/cli/commands/doctor.ts",
@@ -900,42 +900,42 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 165
+      "loc": 115
     },
     {
       "file": "src/cli/commands/exclusion.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 122
+      "loc": 113
     },
     {
       "file": "src/cli/commands/graph.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 106
+      "loc": 79
     },
     {
       "file": "src/cli/commands/helpers.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 32
+      "loc": 69
     },
     {
       "file": "src/cli/commands/heuristic.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 197
+      "loc": 125
     },
     {
       "file": "src/cli/commands/hierarchy.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 111
+      "loc": 66
     },
     {
       "file": "src/cli/commands/index.ts",
@@ -949,42 +949,42 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 292
+      "loc": 260
     },
     {
       "file": "src/cli/commands/io.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 89
+      "loc": 71
     },
     {
       "file": "src/cli/commands/maintenance.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 206
+      "loc": 188
     },
     {
       "file": "src/cli/commands/observation.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 107
+      "loc": 80
     },
     {
       "file": "src/cli/commands/observationDedup.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 99
+      "loc": 83
     },
     {
       "file": "src/cli/commands/projectContext.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 142
+      "loc": 102
     },
     {
       "file": "src/cli/commands/reindex.ts",
@@ -998,7 +998,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 88
+      "loc": 61
     },
     {
       "file": "src/cli/commands/search.ts",
@@ -1019,14 +1019,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 79
+      "loc": 55
     },
     {
       "file": "src/cli/commands/tag.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 110
+      "loc": 74
     },
     {
       "file": "src/cli/commands/toolAffordance.ts",
@@ -3248,32 +3248,39 @@
       "loc": 176
     },
     {
+      "file": "tests/unit/cli/actionFrame.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 416
+    },
+    {
       "file": "tests/unit/cli/audit.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 404
+      "loc": 420
     },
     {
       "file": "tests/unit/cli/cache-reindex.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 121
+      "loc": 157
     },
     {
       "file": "tests/unit/cli/check.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 148
+      "loc": 165
     },
     {
       "file": "tests/unit/cli/commands.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 736
+      "loc": 814
     },
     {
       "file": "tests/unit/cli/config.test.ts",
@@ -3287,28 +3294,28 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 98
+      "loc": 114
     },
     {
       "file": "tests/unit/cli/diag.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 168
+      "loc": 185
     },
     {
       "file": "tests/unit/cli/doctor.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 399
+      "loc": 419
     },
     {
       "file": "tests/unit/cli/exclusion.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 54
+      "loc": 71
     },
     {
       "file": "tests/unit/cli/formatters.test.ts",
@@ -3322,28 +3329,28 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 60
+      "loc": 77
     },
     {
       "file": "tests/unit/cli/helpers/cliTestHarness.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 91
+      "loc": 103
     },
     {
       "file": "tests/unit/cli/heuristic.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 53
+      "loc": 70
     },
     {
       "file": "tests/unit/cli/hierarchy.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 48
+      "loc": 65
     },
     {
       "file": "tests/unit/cli/index.test.ts",
@@ -3357,7 +3364,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 167
+      "loc": 184
     },
     {
       "file": "tests/unit/cli/interactive.test.ts",
@@ -3371,21 +3378,21 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 61
+      "loc": 78
     },
     {
       "file": "tests/unit/cli/observation.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 49
+      "loc": 66
     },
     {
       "file": "tests/unit/cli/observationDedup.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 43
+      "loc": 60
     },
     {
       "file": "tests/unit/cli/options.test.ts",
@@ -3399,42 +3406,42 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 48
+      "loc": 65
     },
     {
       "file": "tests/unit/cli/search-extended.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 49
+      "loc": 66
     },
     {
       "file": "tests/unit/cli/smoke.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 69
+      "loc": 83
     },
     {
       "file": "tests/unit/cli/spell.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 37
+      "loc": 72
     },
     {
       "file": "tests/unit/cli/tag.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 49
+      "loc": 66
     },
     {
       "file": "tests/unit/cli/toolAffordance.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 59
+      "loc": 76
     },
     {
       "file": "tests/unit/core/BatchTransaction.test.ts",

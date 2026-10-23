@@ -5,7 +5,7 @@
     "lastUpdated": "2026-10-23",
     "totalFiles": 300,
     "totalModules": 12,
-    "totalExports": 2058
+    "totalExports": 2059
   },
   "entryPoints": [
     {
@@ -8232,15 +8232,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -8295,6 +8287,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -8381,15 +8374,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -8522,9 +8507,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
@@ -8559,6 +8542,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -8594,9 +8578,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
@@ -8649,17 +8631,25 @@
               "loadConfig",
               "mergeCliConfig"
             ]
+          },
+          {
+            "file": "../formatters.js",
+            "imports": [
+              "formatError"
+            ]
           }
         ],
         "exports": [
           "createLogger",
           "GlobalOptions",
           "getOptions",
-          "createContext"
+          "createContext",
+          "runAction"
         ],
         "functions": [
           "getOptions",
-          "createContext"
+          "createContext",
+          "runAction"
         ]
       },
       "src/cli/commands/heuristic.ts": {
@@ -8677,6 +8667,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -8711,17 +8702,14 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
             "file": "../formatters.js",
             "imports": [
               "formatEntities",
-              "formatSuccess",
-              "formatError"
+              "formatSuccess"
             ]
           }
         ],
@@ -8932,15 +8920,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -8986,16 +8966,13 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
             "file": "../formatters.js",
             "imports": [
-              "formatSuccess",
-              "formatError"
+              "formatSuccess"
             ]
           },
           {
@@ -9028,6 +9005,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -9078,9 +9056,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
@@ -9114,15 +9090,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -9148,6 +9116,7 @@
           {
             "file": "./helpers.js",
             "imports": [
+              "runAction",
               "getOptions",
               "createContext",
               "createLogger"
@@ -9243,17 +9212,14 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
             "file": "../formatters.js",
             "imports": [
               "formatRelations",
-              "formatSuccess",
-              "formatError"
+              "formatSuccess"
             ]
           }
         ],
@@ -9379,15 +9345,7 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
-            ]
-          },
-          {
-            "file": "../formatters.js",
-            "imports": [
-              "formatError"
+              "runAction"
             ]
           }
         ],
@@ -9413,16 +9371,13 @@
           {
             "file": "./helpers.js",
             "imports": [
-              "getOptions",
-              "createContext",
-              "createLogger"
+              "runAction"
             ]
           },
           {
             "file": "../formatters.js",
             "imports": [
               "formatSuccess",
-              "formatError",
               "escapeCSV"
             ]
           }
@@ -20311,11 +20266,11 @@
   "statistics": {
     "totalTypeScriptFiles": 300,
     "totalModules": 12,
-    "totalLinesOfCode": 104283,
-    "totalExports": 2058,
+    "totalLinesOfCode": 103801,
+    "totalExports": 2059,
     "totalClasses": 236,
     "totalInterfaces": 624,
-    "totalFunctions": 344,
+    "totalFunctions": 345,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,

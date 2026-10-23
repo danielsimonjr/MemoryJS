@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-23"
   totalFiles: 300
   totalModules: 12
-  totalExports: 2058
+  totalExports: 2059
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -5794,12 +5794,7 @@ modules:
             - ManagerContext
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
-        - file: ../formatters.js
-          imports:
-            - formatError
+            - runAction
       exports:
         - detectIssues
         - applyFixes
@@ -5830,6 +5825,7 @@ modules:
             - DecisionManager
         - file: ./helpers.js
           imports:
+            - runAction
             - getOptions
             - createContext
             - createLogger
@@ -5877,12 +5873,7 @@ modules:
           typeOnly: true
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
-        - file: ../formatters.js
-          imports:
-            - formatError
+            - runAction
       exports:
         - ENV_VAR_CATALOG
         - registerDiagCommand
@@ -5968,9 +5959,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
+            - runAction
         - file: ../formatters.js
           imports:
             - formatEntities
@@ -5991,6 +5980,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
+            - runAction
             - getOptions
             - createContext
             - createLogger
@@ -6012,9 +6002,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
+            - runAction
         - file: ../formatters.js
           imports:
             - formatPath
@@ -6046,14 +6034,19 @@ modules:
             - findConfigFile
             - loadConfig
             - mergeCliConfig
+        - file: ../formatters.js
+          imports:
+            - formatError
       exports:
         - createLogger
         - GlobalOptions
         - getOptions
         - createContext
+        - runAction
       functions:
         - getOptions
         - createContext
+        - runAction
     src/cli/commands/heuristic.ts:
       description: Heuristic CLI commands — `memory heuristic` (Phase 3B.8).
       externalDependencies:
@@ -6064,6 +6057,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
+            - runAction
             - getOptions
             - createContext
             - createLogger
@@ -6084,14 +6078,11 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
+            - runAction
         - file: ../formatters.js
           imports:
             - formatEntities
             - formatSuccess
-            - formatError
       exports:
         - registerHierarchyCommands
       functions:
@@ -6201,12 +6192,7 @@ modules:
           typeOnly: true
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
-        - file: ../formatters.js
-          imports:
-            - formatError
+            - runAction
       exports:
         - snapshotEntity
         - buildTree
@@ -6234,13 +6220,10 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
+            - runAction
         - file: ../formatters.js
           imports:
             - formatSuccess
-            - formatError
         - file: ../../utils/entityUtils.js
           imports:
             - validateFilePath
@@ -6259,6 +6242,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
+            - runAction
             - getOptions
             - createContext
             - createLogger
@@ -6289,9 +6273,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
+            - runAction
         - file: ../formatters.js
           imports:
             - formatSuccess
@@ -6311,12 +6293,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
-        - file: ../formatters.js
-          imports:
-            - formatError
+            - runAction
       exports:
         - registerObservationDedupCommands
       functions:
@@ -6331,6 +6308,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
+            - runAction
             - getOptions
             - createContext
             - createLogger
@@ -6385,14 +6363,11 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
+            - runAction
         - file: ../formatters.js
           imports:
             - formatRelations
             - formatSuccess
-            - formatError
       exports:
         - registerRelationCommands
       functions:
@@ -6463,12 +6438,7 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
-        - file: ../formatters.js
-          imports:
-            - formatError
+            - runAction
       exports:
         - registerSpellCommands
       functions:
@@ -6483,13 +6453,10 @@ modules:
       internalDependencies:
         - file: ./helpers.js
           imports:
-            - getOptions
-            - createContext
-            - createLogger
+            - runAction
         - file: ../formatters.js
           imports:
             - formatSuccess
-            - formatError
             - escapeCSV
       exports:
         - registerTagCommands
@@ -14441,11 +14408,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 300
   totalModules: 12
-  totalLinesOfCode: 104283
-  totalExports: 2058
+  totalLinesOfCode: 103801
+  totalExports: 2059
   totalClasses: 236
   totalInterfaces: 624
-  totalFunctions: 344
+  totalFunctions: 345
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
