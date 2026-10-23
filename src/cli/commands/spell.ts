@@ -8,8 +8,8 @@
  */
 
 import { Command } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatError } from '../formatters.js';
+import { runAction } from './helpers.js';
+
 
 function emitJson(payload: unknown): void {
   console.log(JSON.stringify(payload, null, 2));
@@ -30,49 +30,25 @@ export function registerSpellCommands(program: Command): void {
     .option('-l, --limit <n>', 'Max suggestions to return', (v) => parseInt(v, 10))
     .option('-s, --min-score <n>', 'Minimum match score 0–1', parseFloat)
     .option('-d, --max-distance <n>', 'Maximum Levenshtein distance', parseFloat)
-    .action(async (query: string, opts: Record<string, unknown>) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const suggestions = await ctx.spellChecker.suggest(query, {
-          limit: opts.limit as number | undefined,
-          minScore: opts.minScore as number | undefined,
-          maxDistance: opts.maxDistance as number | undefined,
-        });
-        emitJson({ query, suggestions, count: suggestions.length });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger, query: string, opts: Record<string, unknown>) => {
+      const suggestions = await ctx.spellChecker.suggest(query, {
+        limit: opts.limit as number | undefined,
+        minScore: opts.minScore as number | undefined,
+        maxDistance: opts.maxDistance as number | undefined,
+      });
+      emitJson({ query, suggestions, count: suggestions.length });
+    }));
 
   sp.command('rebuild')
     .description('Rebuild the spell-checker vocabulary index from the graph')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        await ctx.spellChecker.rebuild();
-        emitJson({ rebuilt: true, vocabularySize: ctx.spellChecker.vocabularySize() });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger) => {
+      await ctx.spellChecker.rebuild();
+      emitJson({ rebuilt: true, vocabularySize: ctx.spellChecker.vocabularySize() });
+    }));
 
   sp.command('size')
     .description('Print the current vocabulary size')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        emitJson({ vocabularySize: ctx.spellChecker.vocabularySize() });
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger) => {
+      emitJson({ vocabularySize: ctx.spellChecker.vocabularySize() });
+    }));
 }
