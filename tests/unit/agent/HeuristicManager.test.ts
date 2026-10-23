@@ -191,3 +191,15 @@ describe('HeuristicManager.match scores (pinned)', () => {
     expect(await manager.match('a', { minScore: 0 })).toEqual([]);
   });
 });
+
+describe('HeuristicManager.match minScore boundary (pinned)', () => {
+  it('keeps a match whose score equals minScore and drops one just above it', async () => {
+    const manager = Object.create(HeuristicManager.prototype) as unknown as {
+      loadAllHeuristics: () => Promise<unknown[]>;
+      match(input: string, options?: { minScore?: number }): Promise<Array<{ score: number }>>;
+    };
+    manager.loadAllHeuristics = async () => [{ id: 'h1', condition: 'alpha beta gamma', confidence: 1, action: 'x' }];
+    expect((await manager.match('beta gamma delta epsilon', { minScore: 0.4 })).map((m) => m.score)).toEqual([0.4]);
+    expect(await manager.match('beta gamma delta epsilon', { minScore: 0.4000000000000001 })).toEqual([]);
+  });
+});

@@ -326,6 +326,94 @@ describe('RelationConsolidator (R3)', () => {
     expect(none.semanticDuplicates).toHaveLength(0);
   });
 
+  // ==================== Tier 2 - exact similarity values of the cosine step ====================
+
+  async function seedTwoRelations(): Promise<void> {
+    await seedEntities(['Fay', 'Globex']);
+    await relationManager.createRelations([
+      { from: 'Fay', to: 'Globex', relationType: 'works_at', confidence: 0.5 },
+      { from: 'Fay', to: 'Globex', relationType: 'employed_by', confidence: 0.9 },
+    ]);
+  }
+
+  /** Runs tier 2 over `works_at` -> `works` and `employed_by` -> `employed`; returns the reported similarity. */
+  async function similarityOf(
+    works: number[],
+    employed: number[],
+    semantic: number,
+  ): Promise<number | undefined> {
+    await seedTwoRelations();
+    const report = await new RelationConsolidator(relationManager, entityManager, {
+      embedding: {
+        async embed(text: string): Promise<number[]> {
+          return text.includes('works_at') ? works : employed;
+        },
+      },
+      thresholds: { semantic },
+    }).analyze();
+    return report.semanticDuplicates[0]?.similarity;
+  }
+
+  it('reports the similarity when works_at holds the longer vector', async () => {
+    expect(await similarityOf([1, 2, 3], [3, 5], 0.99)).toBe(0.9970544855015815);
+  });
+
+  it('reports the similarity when employed_by holds the longer vector', async () => {
+    expect(await similarityOf([3, 5], [1, 2, 3], 0.99)).toBe(0.9970544855015815);
+  });
+
+  it('matches a zero vector on employed_by at threshold 0 with similarity 0', async () => {
+    expect(await similarityOf([4, 3], [0, 0], 0)).toBe(0);
+  });
+
+  it('matches a zero vector on works_at at threshold 0 with similarity 0', async () => {
+    expect(await similarityOf([0, 0], [4, 3], 0)).toBe(0);
+  });
+
+  it('does not clamp a raw similarity above 1', async () => {
+    // The raw cosine of this vector with itself is 1.0000000000000002.
+    const v = [1.987643243273554, 1.0383844385102319, 1.0193700799808698, -0.48190593695356787];
+    expect(await similarityOf(v, v, 0.95)).toBe(1.0000000000000002);
+  });
+
+  it('divides by the product of the two square roots', async () => {
+    // sqrt(2) * sqrt(50) gives 0.7999999999999998; sqrt(2 * 50) would give 0.8.
+    expect(await similarityOf([1, 1], [1, 7], 0.79)).toBe(0.7999999999999998);
+  });
+
+  it.each([
+    ['the longer vector on works_at', [1, 2, 3], [4, 5], [
+      'employed.length', 'works.length',
+      'employed.0', 'works.0', 'employed.0', 'employed.0', 'works.0', 'works.0',
+      'employed.1', 'works.1', 'employed.1', 'employed.1', 'works.1', 'works.1',
+    ]],
+    ['the longer vector on employed_by', [1, 2], [3, 4, 5], [
+      'employed.length', 'works.length',
+      'employed.0', 'works.0', 'employed.0', 'employed.0', 'works.0', 'works.0',
+      'employed.1', 'works.1', 'employed.1', 'employed.1', 'works.1', 'works.1',
+    ]],
+  ])('reads the vectors in the recorded order with %s: both lengths first, then each element', async (_label, works, employed, expected) => {
+    await seedTwoRelations();
+    const trace: string[] = [];
+    const tagged = (values: number[], tag: string): number[] =>
+      new Proxy(values, {
+        get(target, key) {
+          if (typeof key === 'string' && key !== 'then') trace.push(`${tag}.${key}`);
+          return (target as unknown as Record<string, unknown>)[key] as number;
+        },
+      });
+    const report = await new RelationConsolidator(relationManager, entityManager, {
+      embedding: {
+        async embed(text: string): Promise<number[]> {
+          return text.includes('works_at') ? tagged(works, 'works') : tagged(employed, 'employed');
+        },
+      },
+      thresholds: { semantic: 0.9 },
+    }).analyze();
+    expect(report.semanticDuplicates).toHaveLength(1);
+    expect(trace).toEqual(expected);
+  });
+
   it('skips tier 2 silently when no embedding provider is configured', async () => {
     await seedSemanticPair();
     const consolidator = new RelationConsolidator(relationManager, entityManager);

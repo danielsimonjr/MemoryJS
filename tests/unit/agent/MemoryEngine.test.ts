@@ -757,3 +757,19 @@ describe('MemoryEngine Jaccard tier (pinned)', () => {
     expect(engine.checkTierJaccard(content, [other])).toMatchObject({ isDuplicate: true, tier: 'jaccard' });
   });
 });
+
+describe('MemoryEngine Jaccard tier at threshold 0 (pinned)', () => {
+  // checkTierJaccard reads only cfg and module helpers, so the prototype is enough.
+  const engine = Object.assign(Object.create(MemoryEngine.prototype), { cfg: { jaccardThreshold: 0 } }) as {
+    checkTierJaccard(content: string, candidates: unknown[]): { isDuplicate: boolean; match?: { name: string } };
+  };
+  const candidate = (name: string, observation: string) => ({ name, entityType: 'turn', observations: [observation] });
+
+  it('skips empty content and empty candidates although a score of 0 would pass', () => {
+    expect(engine.checkTierJaccard('', [candidate('c1', 'alpha')])).toEqual({ isDuplicate: false });
+    expect(engine.checkTierJaccard('alpha', [candidate('c1', '')])).toEqual({ isDuplicate: false });
+    const result = engine.checkTierJaccard('alpha', [candidate('c1', ''), candidate('c2', 'beta')]);
+    expect(result.isDuplicate).toBe(true);
+    expect(result.match?.name).toBe('c2');
+  });
+});

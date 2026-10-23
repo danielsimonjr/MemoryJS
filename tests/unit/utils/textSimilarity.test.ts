@@ -71,3 +71,42 @@ describe('cosineSimilarity', () => {
     ]);
   });
 });
+
+/** Wraps an array so that every string property read is pushed to `trace` as `<tag>.<key>`, in order. */
+function tagged(values: number[], tag: string, trace: string[]): number[] {
+  return new Proxy(values, {
+    get(target, key) {
+      if (typeof key === 'string') trace.push(`${tag}.${key}`);
+      return (target as unknown as Record<string, unknown>)[key] as number;
+    },
+  });
+}
+
+describe('cosineSimilarity (guard, formula and read order)', () => {
+  it('throws the dimension message when the first vector is the longer one', () => {
+    expect(() => cosineSimilarity([1, 2, 3], [1, 2])).toThrow('Vector dimensions mismatch: 3 vs 2');
+  });
+
+  it('divides by the product of the two square roots', () => {
+    // sqrt(2) * sqrt(50) gives 0.7999999999999998; sqrt(2 * 50) would give 0.8.
+    expect(cosineSimilarity([1, 1], [1, 7])).toBe(0.7999999999999998);
+  });
+
+  it('clamps a raw result below -1 to -1', () => {
+    // The raw cosine of this vector and its negation is -1.0000000000000002.
+    const v = [0.561574518942076, 0.5675604346057216, 1.7546017178122895];
+    expect(cosineSimilarity(v, v.map((x) => -x))).toBe(-1);
+  });
+
+  it('reads the two arrays in the recorded interleaved order', () => {
+    const trace: string[] = [];
+    expect(cosineSimilarity(tagged([1, 2, 3], 'A', trace), tagged([4, 5, 6], 'B', trace))).toBe(0.9746318461970762);
+    expect(trace).toEqual([
+      'A.length', 'B.length',
+      'A.length', 'A.0', 'B.0', 'A.0', 'A.0', 'B.0', 'B.0',
+      'A.length', 'A.1', 'B.1', 'A.1', 'A.1', 'B.1', 'B.1',
+      'A.length', 'A.2', 'B.2', 'A.2', 'A.2', 'B.2', 'B.2',
+      'A.length',
+    ]);
+  });
+});

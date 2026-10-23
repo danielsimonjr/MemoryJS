@@ -336,3 +336,32 @@ describe('HybridScorer.minMaxNormalize (pinned)', () => {
     expect([...scorer.minMaxNormalize(new Map([['a', -1], ['b', 1], ['c', 0]]))]).toEqual([['a', 0], ['b', 1], ['c', 0.5]]);
   });
 });
+
+/** A Map that records every size read, every iterator start and every iteration step, in order. */
+function loggedMap(entries: Array<[string, number]>, log: string[]): Map<string, number> {
+  class LoggedMap extends Map<string, number> {
+    get size(): number { log.push('size'); return super.size; }
+    *values() { log.push('values'); for (const x of super.values()) { log.push('v'); yield x; } }
+    *keys() { log.push('keys'); for (const x of super.keys()) { log.push('k'); yield x; } }
+    *[Symbol.iterator]() { log.push('iterator'); for (const x of super[Symbol.iterator]()) { log.push('i'); yield x; } }
+  }
+  const map = new LoggedMap();
+  for (const [key, value] of entries) Map.prototype.set.call(map, key, value);
+  return map;
+}
+
+describe('HybridScorer.minMaxNormalize read pattern (pinned)', () => {
+  const scorer = new HybridScorer();
+
+  it('reads size, then values, then one more pass for each score shape', () => {
+    const spread: string[] = [];
+    expect([...scorer.minMaxNormalize(loggedMap([['a', 1], ['b', 3], ['c', 2]], spread))]).toEqual([['a', 0], ['b', 1], ['c', 0.5]]);
+    expect(spread.join(',')).toBe('size,values,v,v,v,iterator,i,i,i');
+    const uniform: string[] = [];
+    expect([...scorer.minMaxNormalize(loggedMap([['a', 2], ['b', 2]], uniform))]).toEqual([['a', 1], ['b', 1]]);
+    expect(uniform.join(',')).toBe('size,values,v,v,keys,k,k');
+    const empty: string[] = [];
+    expect([...scorer.minMaxNormalize(loggedMap([], empty))]).toEqual([]);
+    expect(empty.join(',')).toBe('size');
+  });
+});
