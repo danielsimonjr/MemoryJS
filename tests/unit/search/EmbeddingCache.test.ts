@@ -418,3 +418,37 @@ describe('EmbeddingCache evictTo targets (R09 pins)', () => {
     expect(cache.keys()).toEqual(['e3', 'e4']);
   });
 });
+
+describe('EmbeddingCache evictTo ordering (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('orders eviction by access time, not by insertion order', () => {
+    vi.useFakeTimers();
+    const cache = new EmbeddingCache();
+    [1004, 1000, 1003, 1001, 1002].forEach((time, i) => {
+      vi.setSystemTime(time);
+      cache.set(`e${i}`, `t${i}`, [i]);
+    });
+
+    cache.evictTo(2);
+
+    expect(cache.keys()).toEqual(['e0', 'e2']);
+  });
+
+  it('orders eviction by last access, not by creation time', () => {
+    vi.useFakeTimers();
+    const cache = new EmbeddingCache();
+    [1000, 1001, 1002].forEach((time, i) => {
+      vi.setSystemTime(time);
+      cache.set(`e${i}`, `t${i}`, [i]);
+    });
+    vi.setSystemTime(1010);
+    cache.get('e0', 't0');
+
+    cache.evictTo(2);
+
+    expect(cache.keys()).toEqual(['e0', 'e2']);
+  });
+});

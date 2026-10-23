@@ -606,3 +606,47 @@ describe('BooleanSearch TTL cleanup (R09 pins)', () => {
     expect(cache.has('k1')).toBe(true);
   });
 });
+
+describe('BooleanSearch cache trimming (review pins)', () => {
+  const NOW = 10_000_000;
+  const TTL_MS = 5 * 60 * 1000;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const entry = (timestamp: number): object => ({ entityNames: [], entityCount: 0, timestamp, ast: {} });
+  const cacheOf = (search: BooleanSearch): Map<string, unknown> =>
+    (search as unknown as { resultCache: Map<string, unknown> }).resultCache;
+
+  it('keeps an entry that is exactly as old as the TTL and an entry that is one second old', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new BooleanSearch({} as never);
+    const cache = cacheOf(search);
+    cache.set('past', entry(NOW - TTL_MS - 1));
+    cache.set('exact', entry(NOW - TTL_MS));
+    cache.set('second', entry(NOW - 1000));
+
+    (search as unknown as { cleanupResultCache: () => void }).cleanupResultCache();
+
+    expect([...cache.keys()]).toEqual(['exact', 'second']);
+  });
+
+  it('removes the 5 oldest of 105 entries wherever they sit in the map', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new BooleanSearch({} as never);
+    const cache = cacheOf(search);
+    for (let i = 0; i < 105; i++) {
+      cache.set(`k${i}`, entry(NOW - ((i * 37) % 105) - 1));
+    }
+
+    (search as unknown as { cleanupResultCache: () => void }).cleanupResultCache();
+
+    expect(cache.size).toBe(100);
+    for (const gone of ['k17', 'k34', 'k51', 'k68', 'k85']) {
+      expect(cache.has(gone)).toBe(false);
+    }
+  });
+});
