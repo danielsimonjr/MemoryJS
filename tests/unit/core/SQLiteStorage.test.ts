@@ -10,7 +10,7 @@
  * - WAL mode persistence
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SQLiteStorage } from '../../../src/core/SQLiteStorage.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
@@ -1451,6 +1451,47 @@ describe('SQLiteStorage statement pins', () => {
     } finally {
       db.close();
     }
+  });
+
+  it('reads each table once and adds the missing columns in a fixed order', async () => {
+    createOldestSchema();
+    // Record the table reads and the ALTER statements, in call order.
+    const seen: string[] = [];
+    const realPragma = Database.prototype.pragma;
+    const realExec = Database.prototype.exec;
+    vi.spyOn(Database.prototype, 'pragma').mockImplementation(function (this: unknown, source: string, options?: unknown) {
+      if (/^table_info/.test(source)) seen.push(source);
+      return realPragma.call(this, source, options as never);
+    } as typeof Database.prototype.pragma);
+    vi.spyOn(Database.prototype, 'exec').mockImplementation(function (this: unknown, source: string) {
+      if (/^ALTER TABLE/.test(source)) seen.push(source);
+      return realExec.call(this, source);
+    } as typeof Database.prototype.exec);
+    try {
+      await open().ensureLoaded();
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    expect(seen).toEqual([
+      'table_info(relations)',
+      'ALTER TABLE relations ADD COLUMN weight REAL',
+      'ALTER TABLE relations ADD COLUMN confidence REAL',
+      'ALTER TABLE relations ADD COLUMN properties TEXT',
+      'ALTER TABLE relations ADD COLUMN metadata TEXT',
+      'table_info(entities)',
+      'ALTER TABLE entities ADD COLUMN projectId TEXT',
+      'ALTER TABLE entities ADD COLUMN version INTEGER DEFAULT 1',
+      'ALTER TABLE entities ADD COLUMN parentEntityName TEXT',
+      'ALTER TABLE entities ADD COLUMN rootEntityName TEXT',
+      'ALTER TABLE entities ADD COLUMN isLatest INTEGER DEFAULT 1',
+      'ALTER TABLE entities ADD COLUMN supersededBy TEXT',
+      'ALTER TABLE entities ADD COLUMN contentHash TEXT',
+      'ALTER TABLE entities ADD COLUMN agentMetadata TEXT',
+      'ALTER TABLE entities ADD COLUMN id TEXT',
+      'table_info(embeddings)',
+      'ALTER TABLE embeddings ADD COLUMN contentHash TEXT',
+    ]);
   });
 
   it('round-trips every optional entity field through an insert and an update', async () => {
