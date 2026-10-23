@@ -365,4 +365,18 @@ describe('AutoLinker', () => {
       expect(mentions).toContain('Alice');
     });
   });
+
+  describe('regex metacharacters in entity names (R19 pins)', () => {
+    const knownEntities: Entity[] = [
+      { name: 'Apollo.v2', entityType: 'project', observations: [] },
+    ];
+
+    it('matches the dot in an entity name as a literal dot', () => {
+      expect(autoLinker.detectMentions('Ship Apollo.v2 today', knownEntities)).toEqual(['Apollo.v2']);
+    });
+
+    it('does not match text where another character stands in for the dot', () => {
+      expect(autoLinker.detectMentions('Ship Apolloxv2 today', knownEntities)).toEqual([]);
+    });
+  });
 });

@@ -710,6 +710,34 @@ export function escapeCsvFormula(field: string | undefined | null): string {
   return str;
 }
 
+/**
+ * Escapes a value for one CSV cell.
+ * Neutralises spreadsheet formula prefixes first.
+ * It quotes the cell when `alwaysQuote` is set, or when the value holds a comma, a quote or a newline.
+ * It doubles each inner quote.
+ *
+ * @param value - The raw cell text. A null or undefined value gives an empty cell.
+ * @param options - Optional. Set `alwaysQuote` to quote every cell.
+ * @returns The safe CSV cell text.
+ */
+export function escapeCsvCell(value: string | undefined | null, options?: { alwaysQuote?: boolean }): string {
+  const s = escapeCsvFormula(value);
+  if (options?.alwaysQuote || s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+/**
+ * Returns a string safe for use in a regular expression.
+ *
+ * @param str - The input text.
+ * @returns A string with special characters escaped.
+ */
+export function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // ==================== Path Utilities ====================
 
 /**

@@ -587,4 +587,30 @@ describe('CLI Formatters', () => {
       expect(escapeCSV('say "hi"')).toBe('"say ""hi"""');
     });
   });
+
+  describe('escapeCSV cell table (R19 pins)', () => {
+    // Golden values recorded from the unchanged escapeCSV.
+    it.each([
+      ['', ''],
+      ['plain', 'plain'],
+      ['a,b', '"a,b"'],
+      ['say "hi"', '"say ""hi"""'],
+      ['line\nbreak', '"line\nbreak"'],
+      ['=SUM(A1)', "'=SUM(A1)"],
+      ['+1', "'+1"],
+      ['-1', "'-1"],
+      ['@x', "'@x"],
+      ['a\rb', 'a\rb'],
+      ['a\r\nb', '"a\r\nb"'],
+    ])('escapeCSV(%j) is %j', async (input, expected) => {
+      const { escapeCSV } = await import('../../../src/cli/formatters.js');
+      expect(escapeCSV(input)).toBe(expected);
+    });
+
+    it('escapeCSV returns an empty cell for null and undefined', async () => {
+      const { escapeCSV } = await import('../../../src/cli/formatters.js');
+      expect(escapeCSV(null as unknown as string)).toBe('');
+      expect(escapeCSV(undefined as unknown as string)).toBe('');
+    });
+  });
 });

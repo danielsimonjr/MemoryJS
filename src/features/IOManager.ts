@@ -32,9 +32,9 @@ import {
   createProgress,
   validateFilePath,
   sanitizeObject,
-  escapeCsvFormula,
   formatZodErrors,
 } from '../utils/index.js';
+import { escapeCsvCell, escapeRegExp } from '../utils/entityUtils.js';
 import { StreamingExporter, type StreamResult } from './StreamingExporter.js';
 import { BackupManager } from './BackupManager.js';
 import { EntitySchema, RelationSchema } from '../utils/schemas.js';
@@ -77,6 +77,23 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+/**
+ * Replaces the five XML special characters with entity references.
+ * A null or undefined value gives an empty string.
+ *
+ * @param str - The text to escape. This value may be undefined or null.
+ * @returns The text with XML entities in place of special characters.
+ */
+function escapeXml(str: string | undefined | null): string {
+  if (str === undefined || str === null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 }
 
 /** Serialize data safely for an inline JavaScript expression. */
@@ -714,17 +731,6 @@ export class IOManager {
   private exportAsCsv(graph: ReadonlyKnowledgeGraph): string {
     const lines: string[] = [];
 
-    const escapeCsvField = (field: string | undefined | null): string => {
-      if (field === undefined || field === null) return '';
-      // First protect against CSV formula injection
-      let str = escapeCsvFormula(String(field));
-      // Then handle CSV special characters
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-
     lines.push('# ENTITIES');
     lines.push('name,entityType,observations,createdAt,lastModified,tags,importance');
 
@@ -735,13 +741,13 @@ export class IOManager {
 
       lines.push(
         [
-          escapeCsvField(entity.name),
-          escapeCsvField(entity.entityType),
-          escapeCsvField(observationsStr),
-          escapeCsvField(entity.createdAt),
-          escapeCsvField(entity.lastModified),
-          escapeCsvField(tagsStr),
-          escapeCsvField(importanceStr),
+          escapeCsvCell(entity.name),
+          escapeCsvCell(entity.entityType),
+          escapeCsvCell(observationsStr),
+          escapeCsvCell(entity.createdAt),
+          escapeCsvCell(entity.lastModified),
+          escapeCsvCell(tagsStr),
+          escapeCsvCell(importanceStr),
         ].join(',')
       );
     }
@@ -753,11 +759,11 @@ export class IOManager {
     for (const relation of graph.relations) {
       lines.push(
         [
-          escapeCsvField(relation.from),
-          escapeCsvField(relation.to),
-          escapeCsvField(relation.relationType),
-          escapeCsvField(relation.createdAt),
-          escapeCsvField(relation.lastModified),
+          escapeCsvCell(relation.from),
+          escapeCsvCell(relation.to),
+          escapeCsvCell(relation.relationType),
+          escapeCsvCell(relation.createdAt),
+          escapeCsvCell(relation.lastModified),
         ].join(',')
       );
     }
@@ -767,16 +773,6 @@ export class IOManager {
 
   private exportAsGraphML(graph: ReadonlyKnowledgeGraph): string {
     const lines: string[] = [];
-
-    const escapeXml = (str: string | undefined | null): string => {
-      if (str === undefined || str === null) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-    };
 
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
     lines.push('<graphml xmlns="http://graphml.graphdrawing.org/xmlns">');
@@ -822,16 +818,6 @@ export class IOManager {
 
   private exportAsGEXF(graph: ReadonlyKnowledgeGraph): string {
     const lines: string[] = [];
-
-    const escapeXml = (str: string | undefined | null): string => {
-      if (str === undefined || str === null) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-    };
 
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
     lines.push('<gexf xmlns="http://www.gexf.net/1.2draft" version="1.2">');
@@ -1295,9 +1281,6 @@ export class IOManager {
       const nodeId = nodeMatch[1];
       const nodeContent = nodeMatch[2];
 
-      // Escape RegExp special chars for safe use in dynamic regex
-      const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
       const getDataValue = (key: string): string | undefined => {
         const dataRegex = new RegExp(`<data\\s+key="${escapeRegExp(key)}">([^<]*)<\\/data>`);
         const match = dataRegex.exec(nodeContent);
@@ -1347,10 +1330,8 @@ export class IOManager {
       const source = sourceMatch[1];
       const target = targetMatch[1];
 
-      const escapeRegExpEdge = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
       const getDataValue = (key: string): string | undefined => {
-        const dataRegex = new RegExp(`<data\\s+key="${escapeRegExpEdge(key)}">([^<]*)<\\/data>`);
+        const dataRegex = new RegExp(`<data\\s+key="${escapeRegExp(key)}">([^<]*)<\\/data>`);
         const match = dataRegex.exec(edgeContent);
         return match ? match[1] : undefined;
       };

@@ -10,6 +10,7 @@
 
 import type { Entity, Relation, IGraphStorage } from '../types/index.js';
 import type { RelationManager } from '../core/RelationManager.js';
+import { escapeRegExp } from '../utils/entityUtils.js';
 
 /**
  * Configuration options for auto-linking behavior.
@@ -56,16 +57,6 @@ const STOPWORDS = new Set([
   'come', 'your', 'true', 'false', 'null', 'undefined', 'void',
   'test', 'type', 'name', 'data', 'none',
 ]);
-
-/**
- * Escapes special regex characters in a string.
- *
- * @param str - String to escape
- * @returns Escaped string safe for use in RegExp constructor
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 
 /**
  * Automatically detects entity mentions in observation text and creates relations.

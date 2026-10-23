@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- CSV cell escaping has one function, `escapeCsvCell`, in `src/utils/entityUtils.ts`. The CLI CSV output, the `IOManager` CSV export and the streaming CSV export call it. `escapeRegExp` in the same file is shared by `AutoLinker` and the GraphML import. The XML escape exists once, in `src/features/IOManager.ts`. Behaviour does not change.
 - `GovernanceTransaction.recordMerge` and `recordArchive` share one private recorder, and the audit snapshot redaction is one function. The audit entries do not change.
 - `OpenAIEmbeddingService.embedBatch` and `LocalEmbeddingService.embedBatch` call `embedBatchWithProgress` with no callback. Each service has one batch code path. Behaviour does not change.
 - `computeLowercase(entity)` in `src/utils/indexes.ts` is the one place that builds the lowercase view of an entity. `LowercaseCache`, `SQLiteStorage` and `PostgreSQLStorage` call it. Behaviour does not change.
