@@ -12,6 +12,7 @@ import { join } from 'path';
 import { randomBytes } from 'crypto';
 import { JsonlColumnStore } from '../../../../src/core/columns/JsonlColumnStore.js';
 import type { ObservationColumn } from '../../../../src/core/columns/IColumnStore.js';
+import { injectFlushFailure } from '../../../test-utils/inject-flush-failure.js';
 
 describe('JsonlColumnStore', () => {
   let dir: string;
@@ -248,5 +249,141 @@ describe('JsonlColumnStore', () => {
     expect(snapshot).toHaveLength(2);
     expect(snapshot.find((e) => e.name === 'alice')?.value).toEqual(['a']);
     expect(snapshot.find((e) => e.name === 'bob')?.value).toEqual(['b']);
+  });
+
+  describe('file format, order and concurrency (pins)', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it('writes one {"name","value"} line per entry, in insertion order', async () => {
+      const store = new JsonlColumnStore<unknown>(sidecar);
+      await store.put('a', 1);
+      await store.put('b', { x: 2 });
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"name":"a","value":1}\n{"name":"b","value":{"x":2}}\n');
+    });
+
+    it('writes an empty sidecar after clear()', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('a', 1);
+      await store.clear();
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('');
+    });
+
+    it('keeps the place of a re-written key in the file', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('a', 1);
+      await store.put('b', 2);
+      await store.put('c', 3);
+      await store.put('a', 9);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe(
+        '{"name":"a","value":9}\n{"name":"b","value":2}\n{"name":"c","value":3}\n',
+      );
+    });
+
+    it('returns every key after reload()', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('a', 1);
+      await store.put('b', 2);
+      await store.put('c', 3);
+      await store.reload();
+      expect([await store.get('a'), await store.get('b'), await store.get('c')]).toEqual([1, 2, 3]);
+    });
+
+    it('moves a key restored after a failed delete to the end of entries()', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('a', 1);
+      await store.put('b', 2);
+      await store.put('c', 3);
+      injectFlushFailure(sidecar);
+      await expect(store.delete('a')).rejects.toThrow(/synthetic/);
+      vi.restoreAllMocks();
+      expect((await store.entries()).map((e) => e.name)).toEqual(['b', 'c', 'a']);
+    });
+
+    it('loads the good line, skips a bad line and a numeric name, and warns with the exact texts', async () => {
+      await fs.writeFile(sidecar, '{"name":"a","value":1}\n{not json\n{"name":5,"value":2}\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const store = new JsonlColumnStore<number>(sidecar);
+      expect(await store.get('a')).toBe(1);
+      expect(await store.size()).toBe(1);
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      const warnText = warnSpy.mock.calls.flat().join('\n');
+      expect(warnText).toContain(`JsonlColumnStore: skipping malformed line in ${sidecar}`);
+      expect(warnText).toContain(`JsonlColumnStore: skipping line with non-string name in ${sidecar}`);
+    });
+
+    it('get() is not held up by a put() that is still flushing', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('a', 1);
+      const realRename = fs.rename;
+      let release: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      vi.spyOn(fs, 'rename').mockImplementationOnce(async (from, to) => {
+        await gate;
+        return realRename(from, to);
+      });
+
+      const pending = store.put('b', 2);
+      await vi.waitFor(() => expect(fs.rename).toHaveBeenCalled());
+      const got = await Promise.race([
+        store.get('a'),
+        new Promise<string>((resolve) => setTimeout(() => resolve('blocked'), 1000)),
+      ]);
+      expect(got).toBe(1);
+
+      release();
+      await pending;
+      expect(await store.get('b')).toBe(2);
+    });
+
+    it('writes no value field for an undefined value and reads the key back', async () => {
+      const store = new JsonlColumnStore<number | undefined>(sidecar);
+      await store.put('a', undefined);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"name":"a"}\n');
+
+      const second = new JsonlColumnStore<number | undefined>(sidecar);
+      expect(await second.has('a')).toBe(true);
+      expect(await second.get('a')).toBeUndefined();
+    });
+
+    it('warns once per line that is the value null or has no string name', async () => {
+      await fs.writeFile(sidecar, 'null\n5\n"str"\n[]\ntrue\n{"name":"a","value":1}\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const store = new JsonlColumnStore<number>(sidecar);
+      expect(await store.size()).toBe(1);
+      const warnings = warnSpy.mock.calls.map((call) => call.join(' '));
+      expect(warnings).toEqual([
+        `[WARN] JsonlColumnStore: skipping malformed line in ${sidecar}`,
+        `[WARN] JsonlColumnStore: skipping line with non-string name in ${sidecar}`,
+        `[WARN] JsonlColumnStore: skipping line with non-string name in ${sidecar}`,
+        `[WARN] JsonlColumnStore: skipping line with non-string name in ${sidecar}`,
+        `[WARN] JsonlColumnStore: skipping line with non-string name in ${sidecar}`,
+      ]);
+    });
+
+    it('keeps an empty-string name across a reload', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('', 7);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"name":"","value":7}\n');
+
+      const second = new JsonlColumnStore<number>(sidecar);
+      expect(await second.get('')).toBe(7);
+    });
+
+    it('loads CRLF line ends and whitespace-only lines without a warning', async () => {
+      await fs.writeFile(sidecar, '{"name":"a","value":1}\r\n   \r\n\r\n{"name":"b","value":2}\r\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const store = new JsonlColumnStore<number>(sidecar);
+      expect(await store.size()).toBe(2);
+      expect(await store.get('a')).toBe(1);
+      expect(await store.get('b')).toBe(2);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
   });
 });

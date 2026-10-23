@@ -1065,4 +1065,32 @@ describe('entityUtils', () => {
       expect(new RegExp(escapeRegExp(text)).test('Apolloxv2 (beta)?')).toBe(false);
     });
   });
+
+  describe('filterByTags and entityPassesFilters with a bound that cannot be parsed', () => {
+    const tagged: Entity[] = [
+      { name: 'X', entityType: 'misc', observations: [], tags: ['Backend'] },
+      { name: 'Y', entityType: 'misc', observations: [], tags: [] },
+      { name: 'Z', entityType: 'misc', observations: [] },
+      { name: 'W', entityType: 'misc', observations: [], tags: ['frontend'] },
+    ];
+
+    it('matches tags regardless of case', () => {
+      expect(filterByTags(tagged, ['BACKEND']).map(e => e.name)).toEqual(['X']);
+      expect(filterByTags(tagged, ['Frontend', 'backend']).map(e => e.name)).toEqual(['X', 'W']);
+    });
+
+    it('returns the input array when the search tags are empty or undefined', () => {
+      expect(filterByTags(tagged, [])).toBe(tagged);
+      expect(filterByTags(tagged, undefined)).toBe(tagged);
+    });
+
+    it('drops entities without a matching tag', () => {
+      expect(filterByTags(tagged, ['infra'])).toEqual([]);
+    });
+
+    it('still fails an entity whose date is valid when the created bound is unparseable', () => {
+      const dated: Entity = { name: 'A', entityType: 'misc', observations: [], createdAt: '2020-06-01T00:00:00Z' };
+      expect(entityPassesFilters(dated, { createdAfter: 'garbage' })).toBe(false);
+    });
+  });
 });

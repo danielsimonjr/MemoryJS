@@ -44,11 +44,11 @@ The codebase is organized into the following modules:
 - **core**: 25 files
 - **features**: 18 files
 - **entry**: 1 file
-- **search**: 51 files
+- **search**: 52 files
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 36 files
+- **utils**: 37 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **296** of 296 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -2831,8 +2831,8 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../utils/logger.js` | `logger` | Import |
 | `../../utils/durableWriteFile.js` | `durableWriteFile` | Import |
+| `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap` | Import |
 | `./IColumnStore.js` | `IColumnStore` | Import (type-only) |
 
 **Exports:**
@@ -4322,7 +4322,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/index.js` | `Entity, EntityStatus` | Import (type-only) |
 | `../core/EntityStateMachine.js` | `DEFAULT_ENTITY_STATUS` | Import |
-| `../utils/index.js` | `normalizeTags, hasMatchingTag, isWithinImportanceRange, validatePagination, applyPagination, ValidatedPagination` | Import |
+| `../utils/index.js` | `normalizeTags, hasMatchingTag, isWithinImportanceRange, entityPassesFilters, validatePagination, applyPagination, ValidatedPagination` | Import |
 
 **Exports:**
 - Classes: `SearchFilterChain`
@@ -4491,11 +4491,6 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/tiered/BrotliColdTier.ts` - BrotliColdTier — Brotli-compressed JSONL shard `IIndexTier<string, V>`
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4504,10 +4499,9 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `../../utils/logger.js` | `logger` | Import |
 | `../../utils/compressionUtil.js` | `compress, decompress` | Import |
 | `../../utils/durableWriteFile.js` | `durableWriteFile` | Import |
-| `./ITieredIndex.js` | `IIndexTier` | Import (type-only) |
+| `./MapFileTier.js` | `MapFileTier` | Import |
 
 **Exports:**
 - Classes: `BrotliColdTier`
@@ -4517,11 +4511,6 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 
 ### `src/search/tiered/DiskWarmTier.ts` - DiskWarmTier — JSONL-sidecar-backed `IIndexTier<string, V>`
 
-**External Dependencies:**
-| Package | Import |
-|---------|--------|
-| `async-mutex` | `Mutex` |
-
 **Node.js Built-in Dependencies:**
 | Module | Import |
 |--------|--------|
@@ -4532,7 +4521,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../../utils/logger.js` | `logger` | Import |
 | `../../utils/durableWriteFile.js` | `durableWriteFile` | Import |
-| `./ITieredIndex.js` | `IIndexTier` | Import (type-only) |
+| `./MapFileTier.js` | `MapFileTier` | Import |
 
 **Exports:**
 - Classes: `DiskWarmTier`
@@ -4559,6 +4548,24 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 **Exports:**
 - Classes: `LRUHotTier`
 - Interfaces: `LRUHotTierOptions`
+
+---
+
+### `src/search/tiered/MapFileTier.ts` - MapFileTier — shared base of the file-backed index tiers
+
+**External Dependencies:**
+| Package | Import |
+|---------|--------|
+| `async-mutex` | `Mutex` |
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../../utils/jsonlMapFile.js` | `parseJsonlMapLines, serializeJsonlMap, JsonlMapFormat` | Import |
+| `./ITieredIndex.js` | `IIndexTier` | Import (type-only) |
+
+**Exports:**
+- Classes: `MapFileTier`
 
 ---
 
@@ -5106,6 +5113,19 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/jsonlMapFile.ts` - JSONL map file codec
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./logger.js` | `logger` | Import |
+
+**Exports:**
+- Interfaces: `JsonlMapFormat`, `JsonlMapParseOptions`
+- Functions: `parseJsonlMapLines`, `serializeJsonlMap`
+
+---
+
 ### `src/utils/logger.ts` - Simple logging utility for the Memory MCP Server
 
 **Exports:**
@@ -5357,7 +5377,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/EntityManager` | 10 files | 30 files |
 | `src/agent/AgentMemoryManager` | 29 files | 2 files |
 | `src/utils/errors` | 0 files | 29 files |
-| `src/utils/logger` | 0 files | 29 files |
+| `src/utils/logger` | 0 files | 28 files |
 | `src/cli/commands/helpers` | 3 files | 23 files |
 | `src/cli/formatters` | 2 files | 24 files |
 | `src/cli/commands/index` | 24 files | 1 file |
@@ -5498,7 +5518,7 @@ graph TD
         N59[EmbeddingService]
         N60[EvidencePathBuilder]
         N61[FuzzySearch]
-        N62[...41 more]
+        N62[...42 more]
     end
 
     subgraph Security
@@ -5538,7 +5558,7 @@ graph TD
         N87[constants]
         N88[Diagnostics]
         N89[durableWriteFile]
-        N90[...26 more]
+        N90[...27 more]
     end
 
     subgraph Workers
@@ -5629,21 +5649,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 294 |
+| Total TypeScript Files | 296 |
 | Total Modules | 12 |
-| Total Lines of Code | 104235 |
-| Total Exports | 2043 |
+| Total Lines of Code | 104215 |
+| Total Exports | 2046 |
 | Total Re-exports | 1340 |
-| Total Classes | 234 |
-| Total Interfaces | 622 |
-| Total Functions | 331 |
+| Total Classes | 235 |
+| Total Interfaces | 624 |
+| Total Functions | 333 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
-| Type-only Imports | 479 |
+| Type-only Imports | 478 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 294 |
+| Reachable Files | 296 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---

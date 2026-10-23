@@ -14,10 +14,19 @@ import {
   normalizeTags,
   hasMatchingTag,
   isWithinImportanceRange,
+  entityPassesFilters as passesCommonFilters,
   validatePagination,
   applyPagination,
   type ValidatedPagination,
 } from '../utils/index.js';
+
+/**
+ * Returns the bound when it parses as a date. Returns undefined for an
+ * empty or unparseable bound, so that the bound does not filter.
+ */
+function parseableBound(bound: string | undefined): string | undefined {
+  return bound && !isNaN(new Date(bound).getTime()) ? bound : undefined;
+}
 
 /**
  * Search filter configuration options.
@@ -109,42 +118,30 @@ export class SearchFilterChain {
       }
     }
 
-    // Importance filter
-    if (!isWithinImportanceRange(entity.importance, filters.minImportance, filters.maxImportance)) {
-      return false;
-    }
-
-    // Entity type filter
-    if (filters.entityType && entity.entityType !== filters.entityType) {
-      return false;
-    }
-
-    // Created date filter
+    // A date bound that is set but unparseable is ignored. An entity with no
+    // date, or with an unparseable date, fails when any bound is set.
     if (filters.createdAfter || filters.createdBefore) {
-      if (!entity.createdAt) {
+      if (!entity.createdAt || isNaN(new Date(entity.createdAt).getTime())) {
         return false;
       }
-      const createdAt = new Date(entity.createdAt);
-      if (filters.createdAfter && createdAt < new Date(filters.createdAfter)) {
-        return false;
-      }
-      if (filters.createdBefore && createdAt > new Date(filters.createdBefore)) {
+    }
+    if (filters.modifiedAfter || filters.modifiedBefore) {
+      if (!entity.lastModified || isNaN(new Date(entity.lastModified).getTime())) {
         return false;
       }
     }
 
-    // Modified date filter
-    if (filters.modifiedAfter || filters.modifiedBefore) {
-      if (!entity.lastModified) {
-        return false;
-      }
-      const modifiedAt = new Date(entity.lastModified);
-      if (filters.modifiedAfter && modifiedAt < new Date(filters.modifiedAfter)) {
-        return false;
-      }
-      if (filters.modifiedBefore && modifiedAt > new Date(filters.modifiedBefore)) {
-        return false;
-      }
+    // Importance, entity type and date ranges
+    if (!passesCommonFilters(entity, {
+      minImportance: filters.minImportance,
+      maxImportance: filters.maxImportance,
+      entityType: filters.entityType,
+      createdAfter: parseableBound(filters.createdAfter),
+      createdBefore: parseableBound(filters.createdBefore),
+      modifiedAfter: parseableBound(filters.modifiedAfter),
+      modifiedBefore: parseableBound(filters.modifiedBefore),
+    })) {
+      return false;
     }
 
     // Project scope filter

@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `DiskWarmTier` and `BrotliColdTier` extend `MapFileTier`, which holds their lock, lazy load and shared operations. `JsonlColumnStore`, `DiskWarmTier` and `BrotliColdTier` read and write JSONL through `src/utils/jsonlMapFile.ts`. File formats, warning texts and results do not change.
+- `entityUtils.filterByTags` matches each entity with `hasMatchingTag`. Results do not change.
+- `SearchFilterChain.entityPassesFilters` takes its importance, entity type and date checks from `entityUtils.entityPassesFilters`. A date bound that cannot be parsed is still ignored, as before. Results do not change.
+- `QueryCostEstimator` names its default method list once, in `DEFAULT_SEARCH_METHODS`. The list and the results do not change.
 - The FNV-1a hash has one body, `fnv1aHash` in `src/utils/entityUtils.ts`. `fnv1a32`, which routes segments, re-exports it. The signed string hash has one body, `hash31`, used by the pattern, content and mock embedding hashes. Behaviour does not change. The `fnv1a32` comment no longer says that `BloomFilter` uses the same function. `BloomFilter.doubleHash` uses a two-seed variant.
 - CSV cell escaping has one function, `escapeCsvCell`, in `src/utils/entityUtils.ts`. The CLI CSV output, the `IOManager` CSV export and the streaming CSV export call it. `escapeRegExp` in the same file is shared by `AutoLinker` and the GraphML import. The GraphML and GEXF exports share one `escapeXml` in `src/features/IOManager.ts`. Behaviour does not change.
 - `GovernanceTransaction.recordMerge` and `recordArchive` share one private recorder, and the audit snapshot redaction is one function. The audit entries do not change.
@@ -47,6 +51,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `SearchFilterChain` excludes an entity whose `createdAt` or `lastModified` cannot be parsed, when a created or modified bound is set. Before, such an entity passed every date bound.
+- `HierarchyManager.getDescendants` and `getSubtree` return when stored `parentId` fields form a cycle. Before, the walk never ended and the process ran out of memory. Each entity is listed once, and the root is never listed as its own descendant.
+- `QueryCostEstimator.recommendMethod(query, entityCount, preferredMethods)` marks the best method of `preferredMethods` as recommended. Before, it marked the best method of the default list, so the flag could be `false` for the method that the call returned.
 - `DefaultDistillationPolicy.scoreRecency` scores an entity modified in the future as 1, not above 1. The score stays in [0, 1]. An unparseable timestamp still gives NaN.
 - `repo-tools docs check src` passes again: the `searchNodesRanked` implementation signature now has its own doc comment.
 - `SemanticSearch` now initializes its vector store before the first read, so a persisted `SQLiteVectorStore` is searchable without a full re-index. `indexAll` re-embeds an entity when its content hash differs from the stored hash. The hash is `entity.contentHash`, or a SHA-256 of the embedding text when the entity has none.
