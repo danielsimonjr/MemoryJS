@@ -61,6 +61,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `CompressionManager.calculateEntitySimilarity` measures the name length after lowercasing, as `calculatePreparedSimilarity` does. Before, a name whose lowercase form has another length (for example `İx`) scored differently on the two paths.
 - `BatchProcessor` clears the item timeout timer when the item settles. Before, the timer stayed pending until the timeout passed, even after the item finished. The timer is now owned by `withTimeout` in the internal module `src/utils/timing.ts`.
 - `FileSegmentStorage.saveAll` writes each staged segment file and the recovery manifest with the mode of `durableWriteFile`: `0o600`, or the tighter mode of the existing file. Before, these files got the default mode from the umask, usually `0o644`. `saveSegment` already wrote `0o600`.
 - `SearchFilterChain` excludes an entity whose `createdAt` or `lastModified` cannot be parsed, when a created or modified bound is set. Before, such an entity passed every date bound.

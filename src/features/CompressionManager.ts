@@ -88,7 +88,7 @@ export class CompressionManager {
 
     // Name similarity (Levenshtein-based)
     const nameDistance = levenshteinDistance(e1.name.toLowerCase(), e2.name.toLowerCase());
-    const maxNameLength = Math.max(e1.name.length, e2.name.length);
+    const maxNameLength = Math.max(e1.name.toLowerCase().length, e2.name.toLowerCase().length);
     const nameSimilarity = 1 - nameDistance / maxNameLength;
     score += nameSimilarity * SIMILARITY_WEIGHTS.NAME;
     factors += SIMILARITY_WEIGHTS.NAME;
