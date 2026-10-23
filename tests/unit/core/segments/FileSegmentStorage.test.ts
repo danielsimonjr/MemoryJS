@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { tmpdir } from 'os';
 import { FileSegmentStorage } from '../../../../src/core/segments/FileSegmentStorage.js';
 import {
@@ -818,5 +818,59 @@ describe('FileSegmentStorage saveSegment router access', () => {
 
     expect(error).toBeInstanceOf(TypeError);
     expect((error as Error).message).toBe('this.router.route is not a function');
+  });
+});
+
+describe('FileSegmentStorage saveAll file steps', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-steps-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  it('writes, syncs and closes every temp file, then renames the manifest, then the segments', async () => {
+    const events: string[] = [];
+    const realOpen = fs.open.bind(fs);
+    const realRename = fs.rename.bind(fs);
+    vi.spyOn(fs, 'open').mockImplementation((async (...args: Parameters<typeof fs.open>) => {
+      const handle = await realOpen(...args);
+      if (!String(args[0]).includes('.tmp.')) return handle;
+      events.push(`open ${basename(String(args[0])).replace(/\.tmp\..*$/, '.tmp')}`);
+      for (const step of ['write', 'writeFile', 'sync', 'close'] as const) {
+        const real = handle[step].bind(handle) as (...a: unknown[]) => Promise<unknown>;
+        (handle as unknown as Record<string, unknown>)[step] = async (...a: unknown[]) => {
+          events.push(step === 'sync' || step === 'close' ? step : 'data');
+          return real(...a);
+        };
+      }
+      return handle;
+    }) as typeof fs.open);
+    vi.spyOn(fs, 'rename').mockImplementation((async (from: string, to: string) => {
+      events.push(`rename ${basename(String(to))}`);
+      return realRename(from, to);
+    }) as typeof fs.rename);
+    const entities = Array.from({ length: 12 }, (_, i) => ent(`item-${i}`, 'thing', [`note ${i}`]));
+
+    await makeStore(testDir).saveAll({ entities, relations: [] });
+    vi.restoreAllMocks();
+
+    expect(events).toEqual([
+      'open 0.jsonl.tmp', 'data', 'sync', 'close',
+      'open 1.jsonl.tmp', 'data', 'sync', 'close',
+      'open 2.jsonl.tmp', 'data', 'sync', 'close',
+      'open 3.jsonl.tmp', 'data', 'sync', 'close',
+      'open _manifest.json.tmp', 'data', 'sync', 'close',
+      'rename _manifest.json',
+      'rename 0.jsonl', 'rename 1.jsonl', 'rename 2.jsonl', 'rename 3.jsonl',
+    ]);
   });
 });
