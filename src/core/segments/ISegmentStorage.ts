@@ -246,11 +246,11 @@ export class InMemorySegmentStorage implements ISegmentStorage {
  * Throws an error on the first routing mismatch.
  * Use this function before writing a segment.
  * Call it as `assertSegmentOwnership.call(this, segment, className)` from a storage class.
+ * The `this` value is the storage whose router decides the owner of each name.
  * The function reads `this.router` for each entity and each relation, as the
  * storage methods did before they shared this code.
  * The className argument appears only in the error message.
  *
- * @param this - The storage whose router decides the owner of each name.
  * @param segment - The segment object to check.
  * @param className - The name for the error message.
  */
