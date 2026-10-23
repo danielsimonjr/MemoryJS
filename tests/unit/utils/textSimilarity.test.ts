@@ -1,7 +1,7 @@
 /**
- * Pins for the shared Jaccard and cosine helpers. The literal values come from the
- * source before the similarity refactor. A trace lists the property reads that the
- * function makes, in order, so a change in the number or order of reads fails a pin.
+ * Pins for the shared Jaccard and cosine helpers. Each literal is the exact output for its input.
+ * A trace lists the property reads that the function makes, in order.
+ * A change in the number or order of reads fails a pin.
  */
 import { describe, it, expect } from 'vitest';
 import { cosineSimilarity, jaccard } from '../../../src/utils/textSimilarity.js';
@@ -46,8 +46,14 @@ describe('cosineSimilarity', () => {
     expect(cosineSimilarity(a, b)).toBe(0.9838699100999074);
   });
 
+  it('gives the plain-pair literal for an array-like with the same numbers', () => {
+    const a = { length: 3, 0: 1, 1: 2, 2: 3 } as unknown as number[];
+    const b = { length: 3, 0: 4, 1: 5, 2: 6 } as unknown as number[];
+    expect(cosineSimilarity(a, b)).toBe(0.9746318461970762);
+  });
+
   it('clamps a raw result above 1 to 1', () => {
-    // The raw self-similarity of this vector is 1.0000000000000002 in the source before the refactor.
+    // The raw self-similarity of this vector is 1.0000000000000002.
     const v = [1.987643243273554, 1.0383844385102319, 1.0193700799808698, -0.48190593695356787];
     expect(cosineSimilarity(v, v)).toBe(1);
   });
