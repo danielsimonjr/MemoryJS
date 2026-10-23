@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `SearchFilterChain` excludes an entity whose `createdAt` or `lastModified` cannot be parsed, when a created or modified bound is set. Before, such an entity passed every date bound.
 - `HierarchyManager.getDescendants` and `getSubtree` return when stored `parentId` fields form a cycle. Before, the walk never ended and the process ran out of memory. Each entity is listed once, and the root is never listed as its own descendant.
 - `QueryCostEstimator.recommendMethod(query, entityCount, preferredMethods)` marks the best method of `preferredMethods` as recommended. Before, it marked the best method of the default list, so the flag could be `false` for the method that the call returned.
 - `DefaultDistillationPolicy.scoreRecency` scores an entity modified in the future as 1, not above 1. The score stays in [0, 1]. An unparseable timestamp still gives NaN.

@@ -377,4 +377,36 @@ describe('SearchFilterChain', () => {
       expect(result.map(e => e.name)).toContain('Alice');
     });
   });
+
+  describe('unparseable entity dates', () => {
+    const badDates: Entity = {
+      name: 'BadDates',
+      entityType: 'misc',
+      observations: [],
+      createdAt: 'not-a-date',
+      lastModified: 'not-a-date',
+    };
+
+    it('excludes an entity whose createdAt cannot be parsed when a created bound is set', () => {
+      const result = SearchFilterChain.applyFilters([badDates], { createdAfter: '2020-01-01' });
+      expect(result).toEqual([]);
+    });
+
+    it('excludes an entity whose lastModified cannot be parsed when a modified bound is set', () => {
+      const result = SearchFilterChain.applyFilters([badDates], { modifiedBefore: '2030-01-01' });
+      expect(result).toEqual([]);
+    });
+
+    it('excludes an unparseable entity date even when the bound is also unparseable', () => {
+      const result = SearchFilterChain.applyFilters([badDates], { createdAfter: 'garbage' });
+      expect(result).toEqual([]);
+    });
+
+    it('keeps the entities with a parseable date', () => {
+      const result = SearchFilterChain.applyFilters([sampleEntities[0], badDates], {
+        createdAfter: '2020-01-01',
+      });
+      expect(result.map(e => e.name)).toEqual(['Alice']);
+    });
+  });
 });

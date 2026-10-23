@@ -125,6 +125,9 @@ export class SearchFilterChain {
         return false;
       }
       const createdAt = new Date(entity.createdAt);
+      if (isNaN(createdAt.getTime())) {
+        return false;
+      }
       if (filters.createdAfter && createdAt < new Date(filters.createdAfter)) {
         return false;
       }
@@ -139,6 +142,9 @@ export class SearchFilterChain {
         return false;
       }
       const modifiedAt = new Date(entity.lastModified);
+      if (isNaN(modifiedAt.getTime())) {
+        return false;
+      }
       if (filters.modifiedAfter && modifiedAt < new Date(filters.modifiedAfter)) {
         return false;
       }
