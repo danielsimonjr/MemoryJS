@@ -562,4 +562,49 @@ describe('QueryCostEstimator', () => {
       expect(e.getAdaptiveStats().sampleCounts.basic).toBeUndefined();
     });
   });
+
+  describe('recommendation over the default and the caller method lists', () => {
+    it('marks the best method of a preferred list as recommended', () => {
+      // With the default list, this query recommends 'ranked'. Within
+      // ['basic', 'fuzzy'], 'basic' is the best method, so it must be marked.
+      const result = estimator.recommendMethod('alice bob', 500, ['basic', 'fuzzy']);
+
+      expect(result.method).toBe('basic');
+      expect(result.estimate.isRecommended).toBe(true);
+    });
+
+    it('keeps the default recommendation when preferredMethods is omitted', () => {
+      expect(estimator.recommendMethod('test', 50)).toEqual({
+        method: 'basic',
+        reason: 'Basic search selected for small graph size - fast and efficient',
+        estimate: expect.objectContaining({ method: 'basic', isRecommended: true }),
+      });
+      expect(estimator.recommendMethod('machine learning algorithms', 500)).toEqual({
+        method: 'ranked',
+        reason: 'Ranked search selected for multi-word query - provides relevance ordering',
+        estimate: expect.objectContaining({ method: 'ranked', isRecommended: true }),
+      });
+      expect(estimator.recommendMethod('test*', 500)).toEqual({
+        method: 'fuzzy',
+        reason: 'Fuzzy search selected - query contains wildcard patterns',
+        estimate: expect.objectContaining({ method: 'fuzzy', isRecommended: true }),
+      });
+    });
+
+    it('marks only the default best method in estimateAllMethods', () => {
+      const flags = estimator.estimateAllMethods('test', 500).map(e => [e.method, e.isRecommended]);
+
+      expect(flags).toEqual([
+        ['basic', true],
+        ['ranked', false],
+        ['boolean', false],
+        ['fuzzy', false],
+        ['semantic', false],
+      ]);
+    });
+
+    it('still throws a TypeError for an empty preferredMethods list', () => {
+      expect(() => estimator.recommendMethod('test', 500, [])).toThrow(TypeError);
+    });
+  });
 });

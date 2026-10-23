@@ -242,7 +242,7 @@ export class QueryCostEstimator {
 
     // Computed once and reused per method — calling `estimateMethod` in the
     // loop would recompute this each time, making the whole pass O(N²).
-    const recommendedMethod = this.getRecommendedMethodOnly(query, entityCount);
+    const recommendedMethod = this.getRecommendedMethodOnly(query, entityCount, preferredMethods);
 
     // Score each method based on query characteristics and cost
     const scores = methods.map(method => ({
