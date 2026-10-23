@@ -333,6 +333,45 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       expect(store.getLowercased('ent-00')).toBeUndefined();
     });
   });
+
+  describe('R02 cache step', () => {
+    it('upsert of an existing entity keeps the live object and replaces its observation words', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      const live = store.getEntityByName('ent-01');
+
+      await store.appendEntity({ name: 'ent-01', entityType: 'person', observations: ['swapword'] });
+
+      expect(store.getEntityByName('ent-01')).toBe(live);
+      expect(live?.observations).toEqual(['swapword']);
+      expect(observationHits(store, 'swapword')).toEqual(['ent-01']);
+      expect(observationHits(store, 'fact')).not.toContain('ent-01');
+    });
+
+    it('upsert of an existing relation keeps the live object and takes the new fields', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      const live = store.getRelationsFrom('ent-00').find(r => r.to === 'ent-03' && r.relationType === 'knows');
+      expect(live).toBeDefined();
+
+      await store.appendRelation({ from: 'ent-00', to: 'ent-03', relationType: 'knows', weight: 2 });
+
+      const after = store.getRelationsFrom('ent-00').filter(r => r.to === 'ent-03' && r.relationType === 'knows');
+      expect(after).toHaveLength(1);
+      expect(after[0]).toBe(live);
+      expect(after[0].weight).toBe(2);
+    });
+
+    it('updateEntities rejects an unknown name with the same error', async () => {
+      await seed();
+      const store = openStore();
+      await expect(
+        store.updateEntities([{ name: 'ghost', updates: { observations: ['x'] } }]),
+      ).rejects.toThrow('Entity "ghost" not found');
+    });
+  });
 });
 
 describe('storage safety net - JSONL crash simulation', () => {

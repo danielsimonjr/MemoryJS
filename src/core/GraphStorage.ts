@@ -30,6 +30,13 @@ import { FileSegmentStorage } from './segments/FileSegmentStorage.js';
 import { FnvSegmentRouter } from './segments/ISegmentStorage.js';
 import { FsReadMmapBackend } from './mmap/FsReadMmapBackend.js';
 import { streamLines } from './mmap/IMmapBackend.js';
+import {
+  relationKeyOf,
+  removeEntitiesFromIndexes,
+  upsertEntityInCache,
+  upsertRelationInCache,
+  type StorageCacheState,
+} from './storageCache.js';
 
 /**
  * Read `MEMORY_STORAGE_SEGMENT_COUNT` and return a `FileSegmentStorage`
@@ -123,15 +130,6 @@ function copyOptionalPersistedFields(
     const v = src[field];
     if (v !== undefined) dst[field] = v;
   }
-}
-
-/**
- * Composite key uniquely identifying a relation (`from`/`to`/`relationType`
- * triple). `\u0000` separator matches `RelationManager.deleteRelations` and
- * cannot collide with entity-name content in practice.
- */
-function relationKeyOf(r: Pick<Relation, 'from' | 'to' | 'relationType'>): string {
-  return `${r.from}\u0000${r.to}\u0000${r.relationType}`;
 }
 
 /**
@@ -298,6 +296,12 @@ export class GraphStorage implements IGraphStorage {
   private segmentStorage: FileSegmentStorage | null;
 
   /**
+   * Cache and index members for the shared cache steps. Each member is a
+   * getter, so a read takes the current value of the field.
+   */
+  private readonly cacheState: StorageCacheState;
+
+  /**
    * Create a new GraphStorage instance.
    *
    * @param memoryFilePath - Absolute path to the JSONL file
@@ -310,6 +314,40 @@ export class GraphStorage implements IGraphStorage {
     // defense-in-depth check still runs.
     this.memoryFilePath = validateFilePath(memoryFilePath, undefined, false);
     this.segmentStorage = resolveSegmentStorage(this.memoryFilePath);
+    this.cacheState = GraphStorage.cacheStateOf(this);
+  }
+
+  /**
+   * Build the cache and index members for `owner`. Each getter reads the
+   * owner field at the moment of use.
+   */
+  private static cacheStateOf(owner: GraphStorage): StorageCacheState {
+    return {
+      get cache() {
+        return owner.cache;
+      },
+      get nameIndex() {
+        return owner.nameIndex;
+      },
+      get typeIndex() {
+        return owner.typeIndex;
+      },
+      get relationIndex() {
+        return owner.relationIndex;
+      },
+      get relationKeyMap() {
+        return owner.relationKeyMap;
+      },
+      get observationIndex() {
+        return owner.observationIndex;
+      },
+      setLowercase(entity: Entity): void {
+        owner.lowercaseCache.set(entity);
+      },
+      removeLowercase(name: string): void {
+        owner.lowercaseCache.remove(name);
+      },
+    };
   }
 
   // ==================== Phase 10 Sprint 2: Event Emitter Access ====================
@@ -769,77 +807,6 @@ export class GraphStorage implements IGraphStorage {
   }
 
   /**
-   * Upsert an entity into the in-memory cache + indexes.
-   *
-   * When an entity with the same name already exists, its live object is
-   * mutated **in place** (stale fields removed, new fields assigned) so
-   * every structure holding a reference to it — `cache.entities`,
-   * `NameIndex` — stays consistent in O(1) without array scans. This
-   * mirrors the on-disk JSONL semantics where a later line for the same
-   * name replaces the earlier one on reload.
-   *
-   * @returns The live cache object for the entity (the existing object on
-   *   replace, the given object on insert)
-   */
-  private upsertEntityInCache(entity: Entity): Entity {
-    const existing = this.nameIndex.get(entity.name);
-    if (existing !== undefined && existing !== entity) {
-      const oldType = existing.entityType;
-      const target = existing as unknown as Record<string, unknown>;
-      const source = entity as unknown as Record<string, unknown>;
-      for (const key of Object.keys(target)) {
-        if (!(key in source)) delete target[key];
-      }
-      Object.assign(target, source);
-      if (oldType !== existing.entityType) {
-        this.typeIndex.updateType(existing.name, oldType, existing.entityType);
-      }
-      this.lowercaseCache.set(existing);
-      this.observationIndex.remove(existing.name);
-      this.observationIndex.add(existing.name, existing.observations);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.entities.push(entity);
-    }
-    this.nameIndex.add(entity);
-    this.typeIndex.add(entity);
-    this.lowercaseCache.set(entity);
-    this.observationIndex.remove(entity.name);
-    this.observationIndex.add(entity.name, entity.observations);
-    return entity;
-  }
-
-  /**
-   * Upsert a relation into the in-memory cache + indexes. Same in-place
-   * replace strategy as `upsertEntityInCache` — a duplicate
-   * `from`/`to`/`relationType` key mutates the live object (matching the
-   * on-disk dedup-on-reload semantics and SQLite's INSERT OR REPLACE)
-   * instead of pushing a duplicate row into the cache array.
-   *
-   * @returns The live cache object for the relation
-   */
-  private upsertRelationInCache(relation: Relation): Relation {
-    const key = relationKeyOf(relation);
-    const existing = this.relationKeyMap.get(key);
-    if (existing !== undefined && existing !== relation) {
-      const target = existing as unknown as Record<string, unknown>;
-      const source = relation as unknown as Record<string, unknown>;
-      for (const k of Object.keys(target)) {
-        if (!(k in source)) delete target[k];
-      }
-      Object.assign(target, source);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.relations.push(relation);
-      this.relationIndex.add(relation);
-      this.relationKeyMap.set(key, relation);
-    }
-    return relation;
-  }
-
-  /**
    * Save the knowledge graph to disk.
    *
    * OPTIMIZED: Updates cache directly after write to avoid re-reading.
@@ -877,7 +844,7 @@ export class GraphStorage implements IGraphStorage {
         // remains reset in segment mode.
         await this.appendViaSegmentSave(
           () => {
-            this.upsertEntityInCache(entity);
+            upsertEntityInCache(this.cacheState, entity);
           },
           new Set([this.segmentStorage.router.route(entity.name)]),
         );
@@ -895,7 +862,7 @@ export class GraphStorage implements IGraphStorage {
       // Update cache + indexes in-place (after successful file write).
       // Duplicate names replace the live cache object (matches on-disk
       // dedup-on-reload semantics and SQLite's INSERT OR REPLACE).
-      this.upsertEntityInCache(entity);
+      upsertEntityInCache(this.cacheState, entity);
 
       this.pendingAppends++;
 
@@ -941,7 +908,7 @@ export class GraphStorage implements IGraphStorage {
         await this.appendViaSegmentSave(
           () => {
             for (const entity of entities) {
-              this.upsertEntityInCache(entity);
+              upsertEntityInCache(this.cacheState, entity);
             }
           },
           dirtySegments,
@@ -958,7 +925,7 @@ export class GraphStorage implements IGraphStorage {
       await this.appendLines(lines);
 
       for (const entity of entities) {
-        this.upsertEntityInCache(entity);
+        upsertEntityInCache(this.cacheState, entity);
       }
 
       this.pendingAppends += entities.length;
@@ -992,7 +959,7 @@ export class GraphStorage implements IGraphStorage {
         // Relations are owned by the segment of their `from` endpoint.
         await this.appendViaSegmentSave(
           () => {
-            this.upsertRelationInCache(relation);
+            upsertRelationInCache(this.cacheState, relation);
           },
           new Set([this.segmentStorage.router.route(relation.from)]),
         );
@@ -1010,7 +977,7 @@ export class GraphStorage implements IGraphStorage {
       // Update cache + index in-place (after successful file write).
       // Duplicate keys replace the live cache object (matches on-disk
       // dedup-on-reload semantics and SQLite's INSERT OR REPLACE).
-      this.upsertRelationInCache(relation);
+      upsertRelationInCache(this.cacheState, relation);
 
       this.pendingAppends++;
 
@@ -1050,7 +1017,7 @@ export class GraphStorage implements IGraphStorage {
         await this.appendViaSegmentSave(
           () => {
             for (const relation of relations) {
-              this.upsertRelationInCache(relation);
+              upsertRelationInCache(this.cacheState, relation);
             }
           },
           dirtySegments,
@@ -1067,7 +1034,7 @@ export class GraphStorage implements IGraphStorage {
       await this.appendLines(lines);
 
       for (const relation of relations) {
-        this.upsertRelationInCache(relation);
+        upsertRelationInCache(this.cacheState, relation);
       }
 
       this.pendingAppends += relations.length;
@@ -1487,16 +1454,7 @@ export class GraphStorage implements IGraphStorage {
         this.cache!.relations = this.cache!.relations.filter(
           r => !nameSet.has(r.from) && !nameSet.has(r.to),
         );
-        for (const e of deletedEntities) {
-          this.nameIndex.remove(e.name);
-          this.typeIndex.remove(e.name, e.entityType);
-          this.lowercaseCache.remove(e.name);
-          this.observationIndex.remove(e.name);
-        }
-        for (const r of deletedRelations) {
-          this.relationIndex.remove(r);
-          this.relationKeyMap.delete(relationKeyOf(r));
-        }
+        removeEntitiesFromIndexes(this.cacheState, deletedEntities, deletedRelations);
       };
 
       if (this.segmentStorage !== null) {

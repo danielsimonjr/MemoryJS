@@ -123,14 +123,14 @@ import { logger } from '../utils/logger.js';
 import { randomUUID } from 'node:crypto';
 import { PartialIndexAdvisor, type FilterObservation } from '../search/PartialIndexAdvisor.js';
 import { GraphEventEmitter } from './GraphEventEmitter.js';
+import {
+  relationKeyOf,
+  removeEntitiesFromIndexes,
+  upsertEntityInCache,
+  upsertRelationInCache,
+  type StorageCacheState,
+} from './storageCache.js';
 
-/**
- * Composite key uniquely identifying a relation. NUL separator cannot
- * appear inside validated entity names (mirrors `GraphStorage`).
- */
-function relationKeyOf(r: Pick<Relation, 'from' | 'to' | 'relationType'>): string {
-  return `${r.from}\u0000${r.to}\u0000${r.relationType}`;
-}
 
 /**
  * SQLiteStorage manages persistence of the knowledge graph using native SQLite.
@@ -305,6 +305,12 @@ export class SQLiteStorage implements IGraphStorage {
   private readonly validatedDbFilePath: string;
 
   /**
+   * Cache and index members for the shared cache steps. Each member is a
+   * getter, so a read takes the current value of the field.
+   */
+  private readonly cacheState: StorageCacheState;
+
+  /**
    * Create a new SQLiteStorage instance.
    *
    * @param dbFilePath - Absolute path to the SQLite database file
@@ -316,6 +322,37 @@ export class SQLiteStorage implements IGraphStorage {
     // already validated it. Tests pass tmpdir() paths; the ".." segment
     // defense-in-depth check still runs.
     this.validatedDbFilePath = validateFilePath(dbFilePath, undefined, false);
+    this.cacheState = SQLiteStorage.cacheStateOf(this);
+  }
+
+  /**
+   * Build the cache and index members for `owner`. Each getter reads the
+   * owner field at the moment of use.
+   */
+  private static cacheStateOf(owner: SQLiteStorage): StorageCacheState {
+    return {
+      get cache() {
+        return owner.cache;
+      },
+      get nameIndex() {
+        return owner.nameIndex;
+      },
+      get typeIndex() {
+        return owner.typeIndex;
+      },
+      get relationIndex() {
+        return owner.relationIndex;
+      },
+      get relationKeyMap() {
+        return owner.relationKeyMap;
+      },
+      setLowercase(entity: Entity): void {
+        owner.updateLowercaseCache(entity);
+      },
+      removeLowercase(name: string): void {
+        owner.lowercaseCache.delete(name);
+      },
+    };
   }
 
   /**
@@ -1031,39 +1068,6 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Upsert an entity into the in-memory cache + indexes in O(1) (S3 —
-   * replaces the previous `findIndex` array scan). On a duplicate name
-   * the live cache object is mutated **in place** (stale fields removed,
-   * new fields assigned) so `cache.entities` and `NameIndex` stay
-   * consistent without any scan; the type index is updated when the
-   * entityType changed.
-   */
-  private upsertEntityInCache(entity: Entity): Entity {
-    const existing = this.nameIndex.get(entity.name);
-    if (existing !== undefined && existing !== entity) {
-      const oldType = existing.entityType;
-      const target = existing as unknown as Record<string, unknown>;
-      const source = entity as unknown as Record<string, unknown>;
-      for (const key of Object.keys(target)) {
-        if (!(key in source)) delete target[key];
-      }
-      Object.assign(target, source);
-      if (oldType !== existing.entityType) {
-        this.typeIndex.updateType(existing.name, oldType, existing.entityType);
-      }
-      this.updateLowercaseCache(existing);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.entities.push(entity);
-    }
-    this.nameIndex.add(entity);
-    this.typeIndex.add(entity);
-    this.updateLowercaseCache(entity);
-    return entity;
-  }
-
-  /**
    * Append a single entity to storage.
    *
    * THREAD-SAFE: Uses mutex to prevent concurrent write operations.
@@ -1081,7 +1085,7 @@ export class SQLiteStorage implements IGraphStorage {
       this.runEntityUpsert(entity);
 
       // Update cache + indexes in O(1)
-      this.upsertEntityInCache(entity);
+      upsertEntityInCache(this.cacheState, entity);
       bumpEntityGeneration(this);
 
       this.pendingChanges++;
@@ -1115,7 +1119,7 @@ export class SQLiteStorage implements IGraphStorage {
       tx();
 
       for (const entity of entities) {
-        this.upsertEntityInCache(entity);
+        upsertEntityInCache(this.cacheState, entity);
       }
       bumpEntityGeneration(this);
 
@@ -1145,7 +1149,7 @@ export class SQLiteStorage implements IGraphStorage {
       this.runRelationUpsert(relation);
 
       // Update cache in O(1) via the relation key map
-      this.upsertRelationInCache(relation);
+      upsertRelationInCache(this.cacheState, relation);
       bumpRelationGeneration(this);
 
       this.pendingChanges++;
@@ -1181,31 +1185,6 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
-   * Upsert a relation into the in-memory cache in O(1) via the composite
-   * key map (S3 — replaces the previous `findIndex` scan). Duplicate keys
-   * mutate the live object in place, mirroring INSERT OR REPLACE.
-   */
-  private upsertRelationInCache(relation: Relation): Relation {
-    const key = relationKeyOf(relation);
-    const existing = this.relationKeyMap.get(key);
-    if (existing !== undefined && existing !== relation) {
-      const target = existing as unknown as Record<string, unknown>;
-      const source = relation as unknown as Record<string, unknown>;
-      for (const k of Object.keys(target)) {
-        if (!(k in source)) delete target[k];
-      }
-      Object.assign(target, source);
-      return existing;
-    }
-    if (existing === undefined) {
-      this.cache!.relations.push(relation);
-      this.relationIndex.add(relation);
-      this.relationKeyMap.set(key, relation);
-    }
-    return relation;
-  }
-
-  /**
    * Append multiple relations in a single transaction (S2 delta
    * persistence). Emits `relation:created` exactly once per relation; no
    * `graph:saved`.
@@ -1227,7 +1206,7 @@ export class SQLiteStorage implements IGraphStorage {
       tx();
 
       for (const relation of relations) {
-        this.upsertRelationInCache(relation);
+        upsertRelationInCache(this.cacheState, relation);
       }
       bumpRelationGeneration(this);
 
@@ -1512,15 +1491,7 @@ export class SQLiteStorage implements IGraphStorage {
       this.cache!.relations = this.cache!.relations.filter(
         r => !nameSet.has(r.from) && !nameSet.has(r.to),
       );
-      for (const e of deletedEntities) {
-        this.nameIndex.remove(e.name);
-        this.typeIndex.remove(e.name, e.entityType);
-        this.lowercaseCache.delete(e.name);
-      }
-      for (const r of deletedRelations) {
-        this.relationIndex.remove(r);
-        this.relationKeyMap.delete(relationKeyOf(r));
-      }
+      removeEntitiesFromIndexes(this.cacheState, deletedEntities, deletedRelations);
 
       if (deletedEntities.length > 0) bumpEntityGeneration(this);
       if (deletedRelations.length > 0) bumpRelationGeneration(this);
