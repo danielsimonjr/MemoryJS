@@ -173,12 +173,17 @@ function serializeRelationLine(r: Relation): string {
  * The steps that differ between the entity and the relation append paths.
  * Each step receives the storage as `owner`, so that the steps can be shared
  * static values.
+ *
+ * `routeAll` and `serializeAll` take the whole list. Their parameter has the
+ * name of the public parameter (`entities`, `relations`), so that a list that
+ * is not an array fails with the same message as before: V8 prints the source
+ * text of the failing expression.
  */
 interface AppendDescriptor<T> {
-  /** Segment routing key of one item. */
-  routeKey(item: T): string;
-  /** JSONL line of one item. */
-  serialize(item: T): string;
+  /** Segment ids of the items, in item order. */
+  routeAll(owner: GraphStorage, items: readonly T[]): number[];
+  /** JSONL lines of the items, in item order. */
+  serializeAll(items: readonly T[]): string[];
   /** Upserts one item into the cache and indexes. */
   upsert(owner: GraphStorage, item: T): void;
   /** Bumps the generation counter of the item kind. */
@@ -918,8 +923,8 @@ export class GraphStorage implements IGraphStorage {
 
   /** Entity steps for `appendLocked`. Each step receives the storage as its owner. */
   private static readonly ENTITY_APPEND: AppendDescriptor<Entity> = {
-    routeKey: entity => entity.name,
-    serialize: serializeEntityLine,
+    routeAll: (owner, entities) => entities.map(entity => owner.segmentStorage!.router.route(entity.name)),
+    serializeAll: entities => entities.map(serializeEntityLine),
     upsert: (owner, entity) => upsertEntityInCache(owner.cacheState, entity),
     bumpGeneration: owner => bumpEntityGeneration(owner),
     emit: (owner, entity) => owner.eventEmitter.emitEntityCreated(entity),
@@ -927,8 +932,8 @@ export class GraphStorage implements IGraphStorage {
 
   /** Relation steps for `appendLocked`. Each step receives the storage as its owner. */
   private static readonly RELATION_APPEND: AppendDescriptor<Relation> = {
-    routeKey: relation => relation.from,
-    serialize: serializeRelationLine,
+    routeAll: (owner, relations) => relations.map(relation => owner.segmentStorage!.router.route(relation.from)),
+    serializeAll: relations => relations.map(serializeRelationLine),
     upsert: (owner, relation) => upsertRelationInCache(owner.cacheState, relation),
     bumpGeneration: owner => bumpRelationGeneration(owner),
     emit: (owner, relation) => owner.eventEmitter.emitRelationCreated(relation),
@@ -946,9 +951,7 @@ export class GraphStorage implements IGraphStorage {
    */
   private async appendLocked<T>(items: readonly T[], d: AppendDescriptor<T>): Promise<void> {
     if (this.segmentStorage !== null) {
-      const dirtySegments = new Set(
-        items.map(item => this.segmentStorage!.router.route(d.routeKey(item))),
-      );
+      const dirtySegments = new Set(d.routeAll(this, items));
       await this.appendViaSegmentSave(() => {
         for (const item of items) {
           d.upsert(this, item);
@@ -962,7 +965,7 @@ export class GraphStorage implements IGraphStorage {
       return;
     }
 
-    const lines = items.map(item => d.serialize(item));
+    const lines = d.serializeAll(items);
     await this.appendLines(lines);
 
     for (const item of items) {

@@ -136,10 +136,15 @@ import {
  * The steps that differ between the entity and the relation append paths.
  * Each step receives the storage as `owner`, so that the steps can be shared
  * static values.
+ *
+ * `writeAll` takes the whole list. Its parameter has the name of the public
+ * parameter (`entities`, `relations`), so that a list that is not iterable
+ * fails with the same message as before: V8 prints the source text of the
+ * failing expression.
  */
 interface AppendDescriptor<T> {
-  /** Writes one item to the database, without a transaction of its own. */
-  write(owner: SQLiteStorage, item: T): void;
+  /** Writes the items to the database, without a transaction of its own. */
+  writeAll(owner: SQLiteStorage, items: readonly T[]): void;
   /** Upserts one item into the cache and indexes. */
   upsert(owner: SQLiteStorage, item: T): void;
   /** Bumps the generation counter of the item kind. */
@@ -1176,7 +1181,9 @@ export class SQLiteStorage implements IGraphStorage {
 
   /** Entity steps for the append helpers. Each step receives the storage as its owner. */
   private static readonly ENTITY_APPEND: AppendDescriptor<Entity> = {
-    write: (owner, entity) => owner.runEntityUpsert(entity),
+    writeAll: (owner, entities) => {
+      for (const entity of entities) owner.runEntityUpsert(entity);
+    },
     upsert: (owner, entity) => upsertEntityInCache(owner.cacheState, entity),
     bumpGeneration: owner => bumpEntityGeneration(owner),
     emit: (owner, entity) => owner.eventEmitter.emitEntityCreated(entity),
@@ -1184,7 +1191,9 @@ export class SQLiteStorage implements IGraphStorage {
 
   /** Relation steps for the append helpers. Each step receives the storage as its owner. */
   private static readonly RELATION_APPEND: AppendDescriptor<Relation> = {
-    write: (owner, relation) => owner.runRelationUpsert(relation),
+    writeAll: (owner, relations) => {
+      for (const relation of relations) owner.runRelationUpsert(relation);
+    },
     upsert: (owner, relation) => upsertRelationInCache(owner.cacheState, relation),
     bumpGeneration: owner => bumpRelationGeneration(owner),
     emit: (owner, relation) => owner.eventEmitter.emitRelationCreated(relation),
@@ -1201,7 +1210,7 @@ export class SQLiteStorage implements IGraphStorage {
     if (!this.db) throw new Error('Database not initialized');
 
     // Use INSERT OR REPLACE to handle updates (cached statement — S3)
-    d.write(this, item);
+    d.writeAll(this, [item]);
 
     // Update cache + indexes in O(1)
     d.upsert(this, item);
@@ -1223,9 +1232,7 @@ export class SQLiteStorage implements IGraphStorage {
     if (!this.db) throw new Error('Database not initialized');
 
     const tx = this.db.transaction(() => {
-      for (const item of items) {
-        d.write(this, item);
-      }
+      d.writeAll(this, items);
     });
     tx();
 
