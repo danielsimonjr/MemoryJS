@@ -56,7 +56,8 @@ export function withTimeout<T>(work: Promise<T>, ms: number, message: string): P
 /**
  * Runs a callback once for a burst of schedule requests.
  *
- * The first request opens a window of delayMs. Requests inside the window do nothing.
+ * The first request opens a window of delayMs. Requests inside the window do nothing,
+ * unless runNow is true: then the callback runs at once and the window stays open.
  * The timer is unreferenced, so it does not keep the process alive.
  */
 export class CoalescingTimer {
@@ -68,7 +69,7 @@ export class CoalescingTimer {
    *
    * @param delayMs - Window in milliseconds.
    * @param run - Callback to run when the window closes.
-   * @param runNow - When true, run at once and open no window.
+   * @param runNow - When true, run at once. A window that is already open stays open.
    */
   schedule(delayMs: number, run: () => void, runNow: boolean): void {
     if (runNow) {
