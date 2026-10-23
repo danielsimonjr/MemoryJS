@@ -795,4 +795,19 @@ describe('CLI action error path (managers mocked)', () => {
     expect(errorLines(errorSpy)).toEqual(['[ERROR] ✗ boom']);
     expect(exitSpy).toHaveBeenCalledWith(1);
   });
+
+  it('entity get logs the not-found error, then the exit that the catch logs again', async () => {
+    mockEntityManager.getEntity.mockResolvedValueOnce(undefined);
+    registerCommands(program);
+
+    // The body calls process.exit(1) inside its try. The spy throws, so the catch logs the exit error too.
+    await expect(program.parseAsync(['node', 'test', 'entity', 'get', 'A'])).rejects.toThrow(
+      'process.exit called'
+    );
+    expect(errorLines(errorSpy)).toEqual([
+      '[ERROR] ✗ Entity "A" not found',
+      '[ERROR] ✗ process.exit called',
+    ]);
+    expect(exitSpy.mock.calls).toEqual([[1], [1]]);
+  });
 });
