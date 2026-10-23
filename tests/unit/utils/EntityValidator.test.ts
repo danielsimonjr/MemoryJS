@@ -473,3 +473,19 @@ describe('EntityValidator', () => {
     });
   });
 });
+
+describe('EntityValidator with a field that is not a string', () => {
+  it('reports the TypeError text from validate', async () => {
+    const validator = new EntityValidator({ rules: [required(5 as unknown as string)] });
+    const result = await validator.validate(createEntity());
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toMatch(/^Validation error: field\.split is not a function/);
+  });
+
+  it('reports the TypeError text from validateSync', () => {
+    const validator = new EntityValidator({ rules: [minLength({} as unknown as string, 1)] });
+    const result = validator.validateSync(createEntity());
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].message).toMatch(/^Validation error: field\.split is not a function/);
+  });
+});

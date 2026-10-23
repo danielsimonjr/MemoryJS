@@ -790,3 +790,211 @@ describe('validators', () => {
     });
   });
 });
+
+describe('field path and rule builders', () => {
+  const entityWith = (extra: Record<string, unknown>): Entity => ({ ...createEntity(), ...extra }) as Entity;
+
+  /** Returns the value that a rule sees at `path`. */
+  const read = (entity: Entity, path: string): unknown => {
+    let seen: unknown = 'unread';
+    customSync(
+      path,
+      (value) => {
+        seen = value;
+        return true;
+      },
+      'probe'
+    ).validate(entity);
+    return seen;
+  };
+
+  describe('path reading', () => {
+    it('reads the key named by the empty string for an empty path', () => {
+      expect(read(entityWith({ '': 'empty-key' }), '')).toBe('empty-key');
+    });
+
+    it('reads an empty segment as the key named by the empty string', () => {
+      expect(read(entityWith({ a: { '': 'inner' } }), 'a.')).toBe('inner');
+      expect(read(entityWith({ '': { a: 'after' } }), '.a')).toBe('after');
+      expect(read(entityWith({ a: { '': { b: 'between' } } }), 'a..b')).toBe('between');
+    });
+
+    it('reads a segment that starts with a letter and ends in a digit as an object key', () => {
+      expect(read(entityWith({ b0: 'letter-digit' }), 'b0')).toBe('letter-digit');
+      expect(read(entityWith({ a: { x1: 'nested' } }), 'a.x1')).toBe('nested');
+    });
+
+    it('turns a segment of digits into a number, so leading zeros select the same index', () => {
+      const tags = ['t0', 't1', 't2'];
+      expect(read(entityWith({ tags }), 'tags.01')).toBe('t1');
+      expect(read(entityWith({ tags }), 'tags.00')).toBe('t0');
+      expect(read(entityWith({ obj: { 1: 'one' } }), 'obj.01')).toBe('one');
+      expect(read(entityWith({ obj: { '01': 'raw' } }), 'obj.01')).toBeUndefined();
+    });
+
+    it('turns a long segment of digits into a number first', () => {
+      expect(read(entityWith({ obj: { '100000000000000000000': 'big' } }), 'obj.99999999999999999999')).toBe('big');
+    });
+
+    it('does not read a non-ASCII digit as an index', () => {
+      expect(read(entityWith({ tags: ['t0', 't1', 't2', 't3'] }), 'tags.٣')).toBeUndefined();
+    });
+
+    it('returns undefined for a path that goes through a function', () => {
+      expect(read(entityWith({ fn: () => 1 }), 'fn.length')).toBeUndefined();
+      expect(read(entityWith({ fn: () => 1 }), 'fn.name')).toBeUndefined();
+    });
+
+    it('returns a function that ends the path', () => {
+      const fn = () => 1;
+      expect(read(entityWith({ fn }), 'fn')).toBe(fn);
+    });
+
+    it('returns undefined for a path that goes through a falsy or primitive value', () => {
+      expect(read(entityWith({ v: null }), 'v.x')).toBeUndefined();
+      expect(read(entityWith({ v: 0 }), 'v.x')).toBeUndefined();
+      expect(read(entityWith({ v: '' }), 'v.length')).toBeUndefined();
+      expect(read(entityWith({ v: true }), 'v.x')).toBeUndefined();
+      expect(read(entityWith({ v: 'text' }), 'v.length')).toBeUndefined();
+    });
+
+    it('reads keys that the entity inherits', () => {
+      expect(read(entityWith({}), 'toString')).toBe(Object.prototype.toString);
+      expect(read(entityWith({}), 'constructor.name')).toBeUndefined();
+    });
+  });
+
+  describe('rule shape', () => {
+    const builders: Array<[string, () => ReturnType<typeof minLength>]> = [
+      ['minLength', () => minLength('f', 1)],
+      ['maxLength', () => maxLength('f', 1)],
+      ['pattern', () => pattern('f', /x/)],
+      ['range', () => range('f', 0, 1)],
+      ['minItems', () => minItems('f', 1)],
+      ['maxItems', () => maxItems('f', 1)],
+      ['email', () => email('f')],
+    ];
+
+    it.each(builders)('%s builds name, field, message and validate in that key order', (_name, build) => {
+      const rule = build();
+      expect(Object.keys(rule)).toStrictEqual(['name', 'field', 'message', 'validate']);
+      expect(rule.field).toBe('f');
+      expect(rule.validate.length).toBe(1);
+    });
+
+    it.each(builders)('%s returns a result object with the single key valid', (_name, build) => {
+      expect(Object.keys(build().validate(entityWith({ f: 5 })) as object)).toStrictEqual(['valid']);
+    });
+  });
+
+  describe('messages', () => {
+    it('uses a given message for pattern, range, minItems, maxItems and maxLength', () => {
+      expect(pattern('f', /x/, 'described', 'custom pattern').message).toBe('custom pattern');
+      expect(range('f', 0, 1, 'custom range').message).toBe('custom range');
+      expect(minItems('f', 1, 'custom min').message).toBe('custom min');
+      expect(maxItems('f', 1, 'custom max').message).toBe('custom max');
+      expect(maxLength('f', 1, 'custom length').message).toBe('custom length');
+    });
+  });
+
+  describe('type gates', () => {
+    it('treats an empty string as a string', () => {
+      expect(minLength('f', 1).validate(entityWith({ f: '' })).valid).toBe(false);
+      expect(maxLength('f', 0).validate(entityWith({ f: '' })).valid).toBe(true);
+      expect(email('f').validate(entityWith({ f: '' })).valid).toBe(false);
+      expect(pattern('f', /^$/).validate(entityWith({ f: '' })).valid).toBe(true);
+    });
+
+    it('treats NaN as a number', () => {
+      expect(range('f', 0, 1).validate(entityWith({ f: NaN })).valid).toBe(false);
+      expect(range('f', -Infinity, Infinity).validate(entityWith({ f: NaN })).valid).toBe(false);
+      expect(range('f', 0, 1).validate(entityWith({ f: Infinity })).valid).toBe(false);
+      expect(range('f', 0, Infinity).validate(entityWith({ f: Infinity })).valid).toBe(true);
+    });
+
+    it('does not read a string as an array', () => {
+      expect(minItems('f', 5).validate(entityWith({ f: 'abc' })).valid).toBe(true);
+      expect(maxItems('f', 0).validate(entityWith({ f: 'abc' })).valid).toBe(true);
+    });
+
+    it('does not read an array as a string', () => {
+      expect(minLength('f', 5).validate(entityWith({ f: ['a'] })).valid).toBe(true);
+      expect(maxLength('f', 0).validate(entityWith({ f: ['a'] })).valid).toBe(true);
+    });
+
+    it('does not read a numeric string as a number', () => {
+      expect(range('f', 0, 1).validate(entityWith({ f: '5' })).valid).toBe(true);
+    });
+  });
+
+  describe('email', () => {
+    it.each([
+      ['a@b.co', true],
+      ['first.last+tag@sub.example.org', true],
+      ['a@b', false],
+      ['a b@c.d', false],
+      ['a@b c.d', false],
+      ['@b.c', false],
+      ['a@@b.c', false],
+      ['a@b.', false],
+      ['a@.c', false],
+    ])('validates %s as %s', (value, valid) => {
+      expect(email('f').validate(entityWith({ f: value })).valid).toBe(valid);
+    });
+  });
+
+  describe('nested paths in the other builders', () => {
+    const nested = entityWith({ m: { n: 3, text: 'abc', when: 'garbage', list: ['a'] } });
+
+    it('min and max read the nested number', () => {
+      expect(min('m.n', 5).validate(nested).valid).toBe(false);
+      expect(min('m.n', 2).validate(nested).valid).toBe(true);
+      expect(max('m.n', 2).validate(nested).valid).toBe(false);
+      expect(max('m.n', 5).validate(nested).valid).toBe(true);
+    });
+
+    it('oneOf reads the nested value', () => {
+      expect(oneOf('m.text', ['abc']).validate(nested).valid).toBe(true);
+      expect(oneOf('m.text', ['x']).validate(nested).valid).toBe(false);
+    });
+
+    it('url and isoDate read the nested string', () => {
+      expect(url('m.text').validate(nested).valid).toBe(false);
+      expect(isoDate('m.when').validate(nested).valid).toBe(false);
+    });
+
+    it('typeOf reads the nested value', () => {
+      expect(typeOf('m.text', 'number').validate(nested).valid).toBe(false);
+      expect(typeOf('m.text', 'string').validate(nested).valid).toBe(true);
+      expect(typeOf('m.list', 'array').validate(nested).valid).toBe(true);
+    });
+
+    it('custom and customSync pass the nested value to the validator', async () => {
+      const seen: unknown[] = [];
+      await custom('m.text', (value) => { seen.push(value); return true; }, 'm').validate(nested);
+      customSync('m.list', (value) => { seen.push(value); return true; }, 'm').validate(nested);
+      expect(seen).toStrictEqual(['abc', ['a']]);
+    });
+
+    it('required reads the nested value', () => {
+      expect(required('m.n').validate(nested).valid).toBe(true);
+      expect(required('m.missing').validate(nested).valid).toBe(false);
+    });
+  });
+});
+
+describe('rule with a field that is not a string', () => {
+  it('throws a TypeError that names the field parameter', () => {
+    const entity = createEntity();
+    expect(() => required(5 as unknown as string).validate(entity)).toThrow(/^field\.split is not a function/);
+    expect(() => minLength(true as unknown as string, 1).validate(entity)).toThrow(/^field\.split is not a function/);
+    expect(() => range(['a'] as unknown as string, 0, 1).validate(entity)).toThrow(/^field\.split is not a function/);
+    expect(() => oneOf({} as unknown as string, ['a']).validate(entity)).toThrow(/^field\.split is not a function/);
+  });
+
+  it('throws a TypeError that reads a missing field', () => {
+    const entity = createEntity();
+    expect(() => required(undefined as unknown as string).validate(entity)).toThrow(TypeError);
+    expect(() => required(null as unknown as string).validate(entity)).toThrow(TypeError);
+  });
+});
