@@ -2,10 +2,11 @@
  * Tag CLI command coverage.
  */
 
+import { promises as fs } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
 import { registerTagCommands } from '../../../src/cli/commands/tag.js';
-import { createCliHarness, cleanupCliHarness, type CliHarness } from './helpers/cliTestHarness.js';
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 
 describe('tag CLI', () => {
   let h: CliHarness;
@@ -44,5 +45,21 @@ describe('tag CLI', () => {
     h.logSpy.mockClear();
     await h.parse(['--output-format', 'table', 'tag', 'aliases']);
     expect(h.output()).toMatch(/js -> javascript/);
+  });
+});
+
+describe('tag error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerTagCommands);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['tag', 'add', 'nosuch', 'x'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

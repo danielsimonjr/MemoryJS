@@ -2,10 +2,11 @@
  * Observation dedup CLI command coverage.
  */
 
+import { promises as fs } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ManagerContext } from '../../../src/core/ManagerContext.js';
 import { registerObservationDedupCommands } from '../../../src/cli/commands/observationDedup.js';
-import { createCliHarness, cleanupCliHarness, type CliHarness } from './helpers/cliTestHarness.js';
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 
 describe('obs-dedup CLI', () => {
   let h: CliHarness;
@@ -38,5 +39,21 @@ describe('obs-dedup CLI', () => {
   it('find-jaccard near duplicates', async () => {
     await h.parse(['obs-dedup', 'find-jaccard', '--entity-type', 'note,memo']);
     expect(h.lastJson<{ count: number }>().count).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('observationDedup error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerObservationDedupCommands);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['obs-dedup', 'find'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

@@ -7,6 +7,7 @@
  * against.
  */
 
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
@@ -116,5 +117,40 @@ describe('cache + reindex CLI commands', () => {
       expect(out.result.spell).toBeDefined();
       expect(out.result.ranked).toBeUndefined();
     });
+  });
+});
+
+describe('reindex error path', () => {
+  it('reports each failed index as JSON, logs one error line, then exits 1', async () => {
+    const h = await createCliHarness(registerReindexCommand);
+    try {
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['reindex'])).rejects.toThrow('process.exit called');
+      expect(h.lastJson()).toMatchObject({
+        ok: false,
+        failed: 2,
+        result: {
+          ranked: { ok: false, detail: 'EISDIR: illegal operation on a directory, read' },
+          spell: { ok: false, detail: 'EISDIR: illegal operation on a directory, read' },
+        },
+      });
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ 2 index(es) failed to rebuild']);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
+  });
+});
+
+describe('cache stats output', () => {
+  it('prints zeroed counters for a fresh process and does not exit', async () => {
+    const h = await createCliHarness(registerCacheCommands);
+    try {
+      await h.parse(['cache', 'stats']);
+      expect(h.lastJson()).toMatchObject({ stats: { basic: { hits: 0, misses: 0, size: 0 } } });
+      expect(h.processExitSpy).not.toHaveBeenCalled();
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

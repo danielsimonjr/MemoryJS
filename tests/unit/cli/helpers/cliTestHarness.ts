@@ -10,6 +10,7 @@ import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { stripVTControlCharacters } from 'node:util';
 
 export interface CliHarness {
   testDir: string;
@@ -87,4 +88,14 @@ export async function cleanupCliHarness(h: CliHarness): Promise<void> {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * Returns the `console.error` lines of a run, with colour codes removed.
+ *
+ * @param errorSpy - The `console.error` spy of a harness, or any spy with the same calls.
+ * @returns One string per `console.error` call, in call order.
+ */
+export function errorLines(errorSpy: MockInstance): string[] {
+  return errorSpy.mock.calls.map((call) => stripVTControlCharacters(String(call[0])));
 }

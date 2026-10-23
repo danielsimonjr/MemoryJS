@@ -6,6 +6,7 @@
  * Command-level tests cover the --json report shape and the exit-1 contract.
  */
 
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
@@ -394,5 +395,24 @@ describe('doctor command', () => {
     const output = logSpy.mock.calls.map((c) => c.join(' ')).join('\n');
     expect(output).toMatch(/\[(PASS|WARN|FAIL)\s*\] node-version/);
     expect(output).toMatch(/6 checks: \d+ passed, \d+ warned, \d+ failed/);
+  });
+});
+
+describe('doctor error path', () => {
+  it('logs the error once, then exits 1 when a check throws', async () => {
+    const h = await createCliHarness(registerDoctorCommand);
+    const saved = process.env.MEMORY_FILE_PATH;
+    try {
+      // A directory as the storage file makes the storage-file check throw EISDIR outside its own try.
+      await fs.mkdir(h.storagePath);
+      process.env.MEMORY_FILE_PATH = h.storagePath;
+      await expect(h.parse(['doctor'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      if (saved === undefined) delete process.env.MEMORY_FILE_PATH;
+      else process.env.MEMORY_FILE_PATH = saved;
+      await cleanupCliHarness(h);
+    }
   });
 });

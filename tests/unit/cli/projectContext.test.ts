@@ -2,9 +2,10 @@
  * Project context CLI command coverage.
  */
 
+import { promises as fs } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { registerProjectContextCommands } from '../../../src/cli/commands/projectContext.js';
-import { createCliHarness, cleanupCliHarness, type CliHarness } from './helpers/cliTestHarness.js';
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 
 describe('project-context CLI', () => {
   let h: CliHarness;
@@ -43,5 +44,21 @@ describe('project-context CLI', () => {
 
   it('clear unknown project fails', async () => {
     await expect(h.parse(['project-context', 'clear', 'ghost'])).rejects.toThrow();
+  });
+});
+
+describe('projectContext error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerProjectContextCommands);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['project-context', 'show', 'p1'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });

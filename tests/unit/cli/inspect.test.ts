@@ -6,6 +6,7 @@
  * hierarchy and a couple of relations.
  */
 
+import { createCliHarness, cleanupCliHarness, errorLines, type CliHarness } from './helpers/cliTestHarness.js';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Command } from 'commander';
 import { promises as fs } from 'node:fs';
@@ -162,5 +163,21 @@ describe('inspect CLI commands', () => {
       expect(r.storage.sizeBytes).toBeGreaterThan(0);
       expect(r.storage.lineCount).toBeGreaterThan(0);
     });
+  });
+});
+
+describe('inspect error path', () => {
+  it('logs the error once, then exits 1', async () => {
+    const h = await createCliHarness(registerInspectCommands);
+    try {
+      // A directory at the storage path makes every read fail with EISDIR.
+      await fs.mkdir(h.storagePath);
+      await expect(h.parse(['show', 'nosuch'])).rejects.toThrow('process.exit called');
+      expect(errorLines(h.errorSpy)).toEqual(['[ERROR] ✗ EISDIR: illegal operation on a directory, read']);
+      expect(h.errorSpy.mock.invocationCallOrder[0]).toBeLessThan(h.processExitSpy.mock.invocationCallOrder[0]!);
+      expect(h.processExitSpy).toHaveBeenCalledWith(1);
+    } finally {
+      await cleanupCliHarness(h);
+    }
   });
 });
