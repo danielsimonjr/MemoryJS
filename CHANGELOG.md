@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The type guards for failure, plan, reflection, heuristic, exclusion, decision, project-context and tool-affordance memory share one factory, `recordGuard`, in `src/types/agent-memory.ts`. The eight exported guards keep their names and signatures. Behaviour does not change.
 - `DiskWarmTier` and `BrotliColdTier` extend `MapFileTier`, which holds their lock, lazy load and shared operations. `JsonlColumnStore`, `DiskWarmTier` and `BrotliColdTier` read and write JSONL through `src/utils/jsonlMapFile.ts`. File formats, warning texts and results do not change.
 - `entityUtils.filterByTags` matches each entity with `hasMatchingTag`. Results do not change.
 - `SearchFilterChain.entityPassesFilters` takes its importance, entity type and date checks from `entityUtils.entityPassesFilters`. A date bound that cannot be parsed is still ignored, as before. Results do not change.
