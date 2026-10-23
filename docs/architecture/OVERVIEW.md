@@ -286,9 +286,9 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 | totalExports | 2881 | repo-tools map |
 | totalTypeOnlyImports | 743 | repo-tools map |
 | totalModules | 6 | repo-tools map |
-| entryRoots | 11 | repo-tools map |
-| reachableFiles | 291 | repo-tools map |
-| dormantFiles | 1 | repo-tools map |
+| entryRoots | 12 | repo-tools map |
+| reachableFiles | 292 | repo-tools map |
+| dormantFiles | 0 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 24 | repo-tools map |
 

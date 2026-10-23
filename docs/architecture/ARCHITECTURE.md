@@ -890,7 +890,7 @@ Regenerate: `repo-tools map . --out=<dir>` · Check: `repo-tools check . --docs=
 |---|---|---|
 | totalSourceFiles | 701 | repo-tools map |
 | totalModules | 6 | repo-tools map |
-| entryRoots | 11 | repo-tools map |
+| entryRoots | 12 | repo-tools map |
 | runtimeCircularDeps | 0 | repo-tools map |
 | typeOnlyCircularDeps | 24 | repo-tools map |
 
