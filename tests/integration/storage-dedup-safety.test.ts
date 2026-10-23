@@ -11,7 +11,7 @@
  * A check that fails after a refactor means behaviour changed.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -19,10 +19,25 @@ import { GraphStorage } from '../../src/core/GraphStorage.js';
 import { SQLiteStorage } from '../../src/core/SQLiteStorage.js';
 import { ManagerContext, type ManagerContextOptions } from '../../src/core/ManagerContext.js';
 import { getGraphGenerations } from '../../src/utils/searchCache.js';
+import { NameIndex, RelationIndex } from '../../src/utils/indexes.js';
 import type { Entity, Relation } from '../../src/types/types.js';
 import { injectFlushFailure } from '../test-utils/inject-flush-failure.js';
+import { microtaskTicks } from '../test-utils/microtask-ticks.js';
 
 type Store = GraphStorage | SQLiteStorage;
+
+/** One row of the R01 append trace. `ticks` is set only when it is measured. */
+interface R01Step {
+  op: string;
+  ticks?: number;
+  events: string[];
+  entityDelta: number;
+  relationDelta: number;
+  nameIndexAdds: number;
+  relationIndexAdds: number;
+  writes: number;
+  pendingAppends: number;
+}
 
 interface Variant {
   /** Name shown in the test titles. */
@@ -120,7 +135,44 @@ function relation(from: string, to: string, relationType: string): Relation {
   return { from, to, relationType };
 }
 
+/** Append trace recorded from the code before the R01 refactor, one list per variant. */
+const R01_TRACE: Record<string, Array<Omit<R01Step, 'ticks'>>> = {
+  'JSONL': [
+      { op: 'appendEntity', events: ['entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 1, relationIndexAdds: 0, writes: 1, pendingAppends: 1 },
+      { op: 'appendEntities', events: ['entity:created', 'entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 2, relationIndexAdds: 0, writes: 1, pendingAppends: 3 },
+      { op: 'appendRelation', events: ['relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 1, writes: 1, pendingAppends: 4 },
+      { op: 'appendRelations', events: ['relation:created', 'relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 2, writes: 1, pendingAppends: 6 },
+      { op: 'appendEntity replace', events: ['entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 0, relationIndexAdds: 0, writes: 1, pendingAppends: 7 },
+      { op: 'appendRelation replace', events: ['relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 0, writes: 1, pendingAppends: 8 },
+  ],
+  'JSONL with 4 segments': [
+      { op: 'appendEntity', events: ['entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 1, relationIndexAdds: 0, writes: 1, pendingAppends: 0 },
+      { op: 'appendEntities', events: ['entity:created', 'entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 2, relationIndexAdds: 0, writes: 1, pendingAppends: 0 },
+      { op: 'appendRelation', events: ['relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 1, writes: 1, pendingAppends: 0 },
+      { op: 'appendRelations', events: ['relation:created', 'relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 2, writes: 1, pendingAppends: 0 },
+      { op: 'appendEntity replace', events: ['entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 0, relationIndexAdds: 0, writes: 1, pendingAppends: 0 },
+      { op: 'appendRelation replace', events: ['relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 0, writes: 1, pendingAppends: 0 },
+  ],
+  'SQLite': [
+      { op: 'appendEntity', events: ['entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 1, relationIndexAdds: 0, writes: 1, pendingAppends: 1 },
+      { op: 'appendEntities', events: ['entity:created', 'entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 2, relationIndexAdds: 0, writes: 2, pendingAppends: 3 },
+      { op: 'appendRelation', events: ['relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 1, writes: 1, pendingAppends: 4 },
+      { op: 'appendRelations', events: ['relation:created', 'relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 2, writes: 2, pendingAppends: 6 },
+      { op: 'appendEntity replace', events: ['entity:created'], entityDelta: 1, relationDelta: 0, nameIndexAdds: 0, relationIndexAdds: 0, writes: 1, pendingAppends: 7 },
+      { op: 'appendRelation replace', events: ['relation:created'], entityDelta: 0, relationDelta: 1, nameIndexAdds: 0, relationIndexAdds: 0, writes: 1, pendingAppends: 8 },
+  ],
+};
+
+/** Microtask turns per append call, in call order, recorded before the R01 refactor. */
+const R01_TICKS: Record<string, number[]> = {
+  'JSONL': [6, 6, 6, 6, 6, 6],
+  'JSONL with 4 segments': [6, 6, 6, 6, 6, 6],
+  'SQLite': [5, 5, 5, 5, 5, 5],
+};
+
 describe.each(VARIANTS)('storage safety net - $label', (variant) => {
+  /** True when the variant stores the graph in segment files. */
+  const segmented = variant.env.MEMORY_STORAGE_SEGMENT_COUNT !== undefined;
   let dir: string;
   let file: string;
   const savedEnv: Record<string, string | undefined> = {};
@@ -372,6 +424,157 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       ).rejects.toThrow('Entity "ghost" not found');
     });
   });
+
+  describe('R01 append twins', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    /**
+     * Runs the four append forms and two replace forms, one row per call.
+     *
+     * With `measureTicks`, each call is measured with `microtaskTicks`, which
+     * must start in the same turn. With `stubWrites`, the JSONL file write is
+     * replaced by a resolved promise, so that only microtasks remain.
+     */
+    async function traceAppends(
+      store: Store,
+      options: { measureTicks: boolean; stubWrites: boolean },
+    ): Promise<R01Step[]> {
+      await store.loadGraph();
+      const events: string[] = [];
+      store.events.onAny(event => events.push(event.type));
+
+      // Methods that the append paths call on the storage class. A refactor keeps these calls.
+      const proto = (variant.sqlite ? SQLiteStorage.prototype : GraphStorage.prototype) as unknown as Record<
+        string,
+        (...args: unknown[]) => unknown
+      >;
+      const writeMethods = variant.sqlite ? ['runEntityUpsert', 'runRelationUpsert'] : ['appendLines', 'appendViaSegmentSave'];
+      const spies = [
+        vi.spyOn(NameIndex.prototype, 'add'),
+        vi.spyOn(RelationIndex.prototype, 'add'),
+        ...writeMethods.map(name => {
+          const spy = vi.spyOn(proto, name);
+          if (options.stubWrites && !variant.sqlite) {
+            spy.mockImplementation(async (...args: unknown[]) => {
+              if (name === 'appendViaSegmentSave') (args[0] as () => void)();
+            });
+          }
+          return spy;
+        }),
+      ];
+
+      const trace: R01Step[] = [];
+      async function step(op: string, start: () => Promise<unknown>): Promise<void> {
+        events.length = 0;
+        const before = getGraphGenerations(store);
+        const calls = spies.map(spy => spy.mock.calls.length);
+        let ticks: number | undefined;
+        if (options.measureTicks) {
+          ticks = await microtaskTicks(start());
+        } else {
+          await start();
+        }
+        const after = getGraphGenerations(store);
+        trace.push({
+          op,
+          ticks,
+          events: [...events],
+          entityDelta: after.entity - before.entity,
+          relationDelta: after.relation - before.relation,
+          nameIndexAdds: spies[0].mock.calls.length - calls[0],
+          relationIndexAdds: spies[1].mock.calls.length - calls[1],
+          writes: spies.slice(2).reduce((sum, spy, i) => sum + spy.mock.calls.length - calls[i + 2], 0),
+          pendingAppends: store.getPendingAppends(),
+        });
+      }
+
+      await step('appendEntity', () => store.appendEntity(entity('r01-a', 'trace note')));
+      await step('appendEntities', () =>
+        store.appendEntities([entity('r01-b', 'trace note'), entity('r01-c', 'trace note')]),
+      );
+      await step('appendRelation', () => store.appendRelation(relation('ent-01', 'r01-a', 'traced')));
+      await step('appendRelations', () =>
+        store.appendRelations([relation('r01-b', 'r01-c', 'traced'), relation('ent-02', 'r01-c', 'traced')]),
+      );
+      await step('appendEntity replace', () => store.appendEntity(entity('ent-03', 'replaced')));
+      await step('appendRelation replace', () =>
+        store.appendRelation({ from: 'ent-00', to: 'ent-03', relationType: 'knows', weight: 2 }),
+      );
+      return trace;
+    }
+
+    it('keeps the events, cache writes, generation moves and file writes of each append form', async () => {
+      await seed();
+      const trace = await traceAppends(openStore(), { measureTicks: false, stubWrites: false });
+      expect(trace).toEqual(R01_TRACE[variant.label]);
+    });
+
+    it('keeps the microtask turns of each append form', async () => {
+      await seed();
+      const trace = await traceAppends(openStore(), { measureTicks: true, stubWrites: true });
+      expect(trace.map(row => row.ticks)).toEqual(R01_TICKS[variant.label]);
+    });
+
+    it.skipIf(variant.sqlite || segmented)('compacts on the append that reaches the threshold, for single and batch forms', async () => {
+      await seed();
+      const store = openStore();
+      await store.loadGraph();
+      // A threshold of 3 makes compaction visible in a few calls. The getter is read once per append.
+      const threshold = vi
+        .spyOn(GraphStorage.prototype as unknown as { compactionThreshold: number }, 'compactionThreshold', 'get')
+        .mockReturnValue(3);
+      const rows: Array<[string, number, number, number]> = [];
+      const lineCount = async (): Promise<number> =>
+        (await fs.readFile(file, 'utf8')).split('\n').filter(line => line.length > 0).length;
+      async function row(op: string, start: () => Promise<unknown>): Promise<void> {
+        const reads = threshold.mock.calls.length;
+        await start();
+        rows.push([op, await lineCount(), store.getPendingAppends(), threshold.mock.calls.length - reads]);
+      }
+      await row('appendEntity', () => store.appendEntity(entity('cmp-a', 'compact note')));
+      await row('appendEntity', () => store.appendEntity(entity('cmp-b', 'compact note')));
+      await row('appendEntity', () => store.appendEntity(entity('cmp-c', 'compact note')));
+      await row('appendEntities', () =>
+        store.appendEntities([entity('cmp-d', 'compact note'), entity('cmp-e', 'compact note'), entity('cmp-f', 'compact note')]),
+      );
+      await row('appendRelation', () => store.appendRelation(relation('ent-01', 'cmp-a', 'compacted')));
+      await row('appendRelation', () => store.appendRelation(relation('ent-02', 'cmp-b', 'compacted')));
+      await row('appendRelations', () =>
+        store.appendRelations([relation('ent-03', 'cmp-c', 'compacted'), relation('ent-04', 'cmp-d', 'compacted'), relation('ent-05', 'cmp-e', 'compacted')]),
+      );
+      // Rows: op, file lines after the call, pending appends after the call, threshold reads in the call.
+      expect(rows).toEqual([
+        ['appendEntity', 51, 1, 1],
+        ['appendEntity', 52, 2, 1],
+        ['appendEntity', 53, 0, 1],
+        ['appendEntities', 56, 0, 1],
+        ['appendRelation', 57, 1, 1],
+        ['appendRelation', 58, 2, 1],
+        ['appendRelations', 61, 0, 1],
+      ]);
+    });
+
+    it.skipIf(!segmented || variant.sqlite)('routes an appended relation to the segment of its from endpoint', async () => {
+      await seed();
+      const store = openStore();
+      await store.loadGraph();
+      await store.appendRelation(relation('ent-07', 'ent-12', 'routed'));
+      await store.appendRelations([relation('ent-08', 'ent-13', 'routed-batch')]);
+      const segmentsDir = join(dir, 'segments');
+      const holders = async (marker: string): Promise<number[]> => {
+        const ids: number[] = [];
+        for (let id = 0; id < 4; id++) {
+          const text = await fs.readFile(join(segmentsDir, `${id}.jsonl`), 'utf8');
+          if (text.includes(marker)) ids.push(id);
+        }
+        return ids;
+      };
+      expect(await holders('"relationType":"routed"')).toEqual([0]);
+      expect(await holders('"relationType":"routed-batch"')).toEqual([1]);
+    });
+  });
 });
 
 describe('storage safety net - JSONL crash simulation', () => {
@@ -421,6 +624,27 @@ describe('storage safety net - JSONL crash simulation', () => {
     const injected = injectFlushFailure(file);
     try {
       await expect(writer.deleteEntities(['ent-00'])).rejects.toThrow(/synthetic/);
+    } finally {
+      injected.restore();
+    }
+
+    expect(structuredClone(await writer.loadGraph())).toEqual(beforeCache);
+    expect(await fs.readFile(file, 'utf8')).toBe(beforeFile);
+    expect(withoutClock(structuredClone(await new GraphStorage(file).loadGraph()))).toEqual(beforeFresh);
+  });
+
+  it('appendEntities leaves the cache and the file at the pre-call state when the write fails', async () => {
+    const writer = new GraphStorage(file);
+    await writer.saveGraph({ entities: seedEntities(), relations: seedRelations() });
+    const beforeCache = structuredClone(await writer.loadGraph());
+    const beforeFile = await fs.readFile(file, 'utf8');
+    const beforeFresh = withoutClock(structuredClone(await new GraphStorage(file).loadGraph()));
+
+    const injected = injectFlushFailure(file);
+    try {
+      await expect(
+        writer.appendEntities([entity('crash-a', 'crash note'), entity('crash-b', 'crash note')]),
+      ).rejects.toThrow(/synthetic/);
     } finally {
       injected.restore();
     }

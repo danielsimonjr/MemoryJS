@@ -170,6 +170,24 @@ function serializeRelationLine(r: Relation): string {
 }
 
 /**
+ * The steps that differ between the entity and the relation append paths.
+ * Each step receives the storage as `owner`, so that the steps can be shared
+ * static values.
+ */
+interface AppendDescriptor<T> {
+  /** Segment routing key of one item. */
+  routeKey(item: T): string;
+  /** JSONL line of one item. */
+  serialize(item: T): string;
+  /** Upserts one item into the cache and indexes. */
+  upsert(owner: GraphStorage, item: T): void;
+  /** Bumps the generation counter of the item kind. */
+  bumpGeneration(owner: GraphStorage): void;
+  /** Emits the created event of one item. */
+  emit(owner: GraphStorage, item: T): void;
+}
+
+/**
  * GraphStorage manages persistence of the knowledge graph to disk.
  *
  * Uses JSONL (JSON Lines) format where each line is a separate JSON object
@@ -837,46 +855,7 @@ export class GraphStorage implements IGraphStorage {
   async appendEntity(entity: Entity): Promise<void> {
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        // Segment mode rewrites only the owning segment for this entity.
-        // `pendingAppends` is a single-file compaction counter, so it
-        // remains reset in segment mode.
-        await this.appendViaSegmentSave(
-          () => {
-            upsertEntityInCache(this.cacheState, entity);
-          },
-          new Set([this.segmentStorage.router.route(entity.name)]),
-        );
-        this.pendingAppends = 0;
-        bumpEntityGeneration(this);
-        this.eventEmitter.emitEntityCreated(entity);
-        return;
-      }
-
-      const line = serializeEntityLine(entity);
-
-      // Append to file with fsync for durability (write FIRST, then update cache)
-      await this.appendLines([line]);
-
-      // Update cache + indexes in-place (after successful file write).
-      // Duplicate names replace the live cache object (matches on-disk
-      // dedup-on-reload semantics and SQLite's INSERT OR REPLACE).
-      upsertEntityInCache(this.cacheState, entity);
-
-      this.pendingAppends++;
-
-      // S6: lazily invalidate entity-dependent search caches
-      bumpEntityGeneration(this);
-
-      // Phase 10 Sprint 2: Emit entity:created event
-      this.eventEmitter.emitEntityCreated(entity);
-
-      // Trigger compaction if threshold reached
-      if (this.pendingAppends >= this.compactionThreshold) {
-        await this.compactInternal();
-      }
-    });
+    return this.mutex.runExclusive(() => this.appendLocked([entity], GraphStorage.ENTITY_APPEND));
   }
 
   /**
@@ -900,45 +879,7 @@ export class GraphStorage implements IGraphStorage {
     if (entities.length === 0) return;
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        const dirtySegments = new Set(
-          entities.map(entity => this.segmentStorage!.router.route(entity.name)),
-        );
-        await this.appendViaSegmentSave(
-          () => {
-            for (const entity of entities) {
-              upsertEntityInCache(this.cacheState, entity);
-            }
-          },
-          dirtySegments,
-        );
-        this.pendingAppends = 0;
-        bumpEntityGeneration(this);
-        for (const entity of entities) {
-          this.eventEmitter.emitEntityCreated(entity);
-        }
-        return;
-      }
-
-      const lines = entities.map(serializeEntityLine);
-      await this.appendLines(lines);
-
-      for (const entity of entities) {
-        upsertEntityInCache(this.cacheState, entity);
-      }
-
-      this.pendingAppends += entities.length;
-      bumpEntityGeneration(this);
-
-      for (const entity of entities) {
-        this.eventEmitter.emitEntityCreated(entity);
-      }
-
-      if (this.pendingAppends >= this.compactionThreshold) {
-        await this.compactInternal();
-      }
-    });
+    return this.mutex.runExclusive(() => this.appendLocked(entities, GraphStorage.ENTITY_APPEND));
   }
 
   /**
@@ -954,44 +895,7 @@ export class GraphStorage implements IGraphStorage {
   async appendRelation(relation: Relation): Promise<void> {
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        // Relations are owned by the segment of their `from` endpoint.
-        await this.appendViaSegmentSave(
-          () => {
-            upsertRelationInCache(this.cacheState, relation);
-          },
-          new Set([this.segmentStorage.router.route(relation.from)]),
-        );
-        this.pendingAppends = 0;
-        bumpRelationGeneration(this);
-        this.eventEmitter.emitRelationCreated(relation);
-        return;
-      }
-
-      const line = serializeRelationLine(relation);
-
-      // Append to file with fsync for durability (write FIRST, then update cache)
-      await this.appendLines([line]);
-
-      // Update cache + index in-place (after successful file write).
-      // Duplicate keys replace the live cache object (matches on-disk
-      // dedup-on-reload semantics and SQLite's INSERT OR REPLACE).
-      upsertRelationInCache(this.cacheState, relation);
-
-      this.pendingAppends++;
-
-      // S6: lazily invalidate relation-dependent search caches
-      bumpRelationGeneration(this);
-
-      // Phase 10 Sprint 2: Emit relation:created event
-      this.eventEmitter.emitRelationCreated(relation);
-
-      // Trigger compaction if threshold reached
-      if (this.pendingAppends >= this.compactionThreshold) {
-        await this.compactInternal();
-      }
-    });
+    return this.mutex.runExclusive(() => this.appendLocked([relation], GraphStorage.RELATION_APPEND));
   }
 
   /**
@@ -1009,45 +913,72 @@ export class GraphStorage implements IGraphStorage {
     if (relations.length === 0) return;
     await this.ensureLoaded();
 
-    return this.mutex.runExclusive(async () => {
-      if (this.segmentStorage !== null) {
-        const dirtySegments = new Set(
-          relations.map(relation => this.segmentStorage!.router.route(relation.from)),
-        );
-        await this.appendViaSegmentSave(
-          () => {
-            for (const relation of relations) {
-              upsertRelationInCache(this.cacheState, relation);
-            }
-          },
-          dirtySegments,
-        );
-        this.pendingAppends = 0;
-        bumpRelationGeneration(this);
-        for (const relation of relations) {
-          this.eventEmitter.emitRelationCreated(relation);
+    return this.mutex.runExclusive(() => this.appendLocked(relations, GraphStorage.RELATION_APPEND));
+  }
+
+  /** Entity steps for `appendLocked`. Each step receives the storage as its owner. */
+  private static readonly ENTITY_APPEND: AppendDescriptor<Entity> = {
+    routeKey: entity => entity.name,
+    serialize: serializeEntityLine,
+    upsert: (owner, entity) => upsertEntityInCache(owner.cacheState, entity),
+    bumpGeneration: owner => bumpEntityGeneration(owner),
+    emit: (owner, entity) => owner.eventEmitter.emitEntityCreated(entity),
+  };
+
+  /** Relation steps for `appendLocked`. Each step receives the storage as its owner. */
+  private static readonly RELATION_APPEND: AppendDescriptor<Relation> = {
+    routeKey: relation => relation.from,
+    serialize: serializeRelationLine,
+    upsert: (owner, relation) => upsertRelationInCache(owner.cacheState, relation),
+    bumpGeneration: owner => bumpRelationGeneration(owner),
+    emit: (owner, relation) => owner.eventEmitter.emitRelationCreated(relation),
+  };
+
+  /**
+   * Append one or more items in one serialized block (S2 delta persistence).
+   *
+   * Runs inside the mutex. A single append passes a one-item list. Segment
+   * mode rewrites the dirty segments and does not compact. Single-file mode
+   * appends one block, then compacts when the threshold is reached.
+   *
+   * @param items - Items to append. The list holds at least one item.
+   * @param d - The steps that differ between entities and relations
+   */
+  private async appendLocked<T>(items: readonly T[], d: AppendDescriptor<T>): Promise<void> {
+    if (this.segmentStorage !== null) {
+      const dirtySegments = new Set(
+        items.map(item => this.segmentStorage!.router.route(d.routeKey(item))),
+      );
+      await this.appendViaSegmentSave(() => {
+        for (const item of items) {
+          d.upsert(this, item);
         }
-        return;
+      }, dirtySegments);
+      this.pendingAppends = 0;
+      d.bumpGeneration(this);
+      for (const item of items) {
+        d.emit(this, item);
       }
+      return;
+    }
 
-      const lines = relations.map(serializeRelationLine);
-      await this.appendLines(lines);
+    const lines = items.map(item => d.serialize(item));
+    await this.appendLines(lines);
 
-      for (const relation of relations) {
-        upsertRelationInCache(this.cacheState, relation);
-      }
+    for (const item of items) {
+      d.upsert(this, item);
+    }
 
-      this.pendingAppends += relations.length;
-      bumpRelationGeneration(this);
+    this.pendingAppends += items.length;
+    d.bumpGeneration(this);
 
-      for (const relation of relations) {
-        this.eventEmitter.emitRelationCreated(relation);
-      }
+    for (const item of items) {
+      d.emit(this, item);
+    }
 
-      if (this.pendingAppends >= this.compactionThreshold) {
-        await this.compactInternal();
-      }
-    });
+    if (this.pendingAppends >= this.compactionThreshold) {
+      await this.compactInternal();
+    }
   }
 
   /**

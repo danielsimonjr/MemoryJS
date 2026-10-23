@@ -133,6 +133,22 @@ import {
 
 
 /**
+ * The steps that differ between the entity and the relation append paths.
+ * Each step receives the storage as `owner`, so that the steps can be shared
+ * static values.
+ */
+interface AppendDescriptor<T> {
+  /** Writes one item to the database, without a transaction of its own. */
+  write(owner: SQLiteStorage, item: T): void;
+  /** Upserts one item into the cache and indexes. */
+  upsert(owner: SQLiteStorage, item: T): void;
+  /** Bumps the generation counter of the item kind. */
+  bumpGeneration(owner: SQLiteStorage): void;
+  /** Emits the created event of one item. */
+  emit(owner: SQLiteStorage, item: T): void;
+}
+
+/**
  * SQLiteStorage manages persistence of the knowledge graph using native SQLite.
  *
  * Uses better-sqlite3 for native SQLite bindings with full FTS5 support,
@@ -1079,19 +1095,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      // Use INSERT OR REPLACE to handle updates (cached statement — S3)
-      this.runEntityUpsert(entity);
-
-      // Update cache + indexes in O(1)
-      upsertEntityInCache(this.cacheState, entity);
-      bumpEntityGeneration(this);
-
-      this.pendingChanges++;
-
-      // Emit entity:created (parity with GraphStorage.appendEntity)
-      this.eventEmitter.emitEntityCreated(entity);
+      this.appendOneLocked(entity, SQLiteStorage.ENTITY_APPEND);
     });
   }
 
@@ -1109,25 +1113,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      const tx = this.db.transaction(() => {
-        for (const entity of entities) {
-          this.runEntityUpsert(entity);
-        }
-      });
-      tx();
-
-      for (const entity of entities) {
-        upsertEntityInCache(this.cacheState, entity);
-      }
-      bumpEntityGeneration(this);
-
-      this.pendingChanges += entities.length;
-
-      for (const entity of entities) {
-        this.eventEmitter.emitEntityCreated(entity);
-      }
+      this.appendManyLocked(entities, SQLiteStorage.ENTITY_APPEND);
     });
   }
 
@@ -1143,19 +1129,7 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
-
-      // Use INSERT OR REPLACE to handle updates (cached statement — S3)
-      this.runRelationUpsert(relation);
-
-      // Update cache in O(1) via the relation key map
-      upsertRelationInCache(this.cacheState, relation);
-      bumpRelationGeneration(this);
-
-      this.pendingChanges++;
-
-      // Emit relation:created (parity with GraphStorage.appendRelation)
-      this.eventEmitter.emitRelationCreated(relation);
+      this.appendOneLocked(relation, SQLiteStorage.RELATION_APPEND);
     });
   }
 
@@ -1196,26 +1170,75 @@ export class SQLiteStorage implements IGraphStorage {
     await this.ensureLoaded();
 
     return this.mutex.runExclusive(async () => {
-      if (!this.db) throw new Error('Database not initialized');
+      this.appendManyLocked(relations, SQLiteStorage.RELATION_APPEND);
+    });
+  }
 
-      const tx = this.db.transaction(() => {
-        for (const relation of relations) {
-          this.runRelationUpsert(relation);
-        }
-      });
-      tx();
+  /** Entity steps for the append helpers. Each step receives the storage as its owner. */
+  private static readonly ENTITY_APPEND: AppendDescriptor<Entity> = {
+    write: (owner, entity) => owner.runEntityUpsert(entity),
+    upsert: (owner, entity) => upsertEntityInCache(owner.cacheState, entity),
+    bumpGeneration: owner => bumpEntityGeneration(owner),
+    emit: (owner, entity) => owner.eventEmitter.emitEntityCreated(entity),
+  };
 
-      for (const relation of relations) {
-        upsertRelationInCache(this.cacheState, relation);
-      }
-      bumpRelationGeneration(this);
+  /** Relation steps for the append helpers. Each step receives the storage as its owner. */
+  private static readonly RELATION_APPEND: AppendDescriptor<Relation> = {
+    write: (owner, relation) => owner.runRelationUpsert(relation),
+    upsert: (owner, relation) => upsertRelationInCache(owner.cacheState, relation),
+    bumpGeneration: owner => bumpRelationGeneration(owner),
+    emit: (owner, relation) => owner.eventEmitter.emitRelationCreated(relation),
+  };
 
-      this.pendingChanges += relations.length;
+  /**
+   * Write one item in a single statement, then update the cache, the
+   * indexes and the events. Runs inside the mutex and takes no transaction.
+   *
+   * @param item - The entity or relation to append
+   * @param d - The steps that differ between entities and relations
+   */
+  private appendOneLocked<T>(item: T, d: AppendDescriptor<T>): void {
+    if (!this.db) throw new Error('Database not initialized');
 
-      for (const relation of relations) {
-        this.eventEmitter.emitRelationCreated(relation);
+    // Use INSERT OR REPLACE to handle updates (cached statement — S3)
+    d.write(this, item);
+
+    // Update cache + indexes in O(1)
+    d.upsert(this, item);
+    d.bumpGeneration(this);
+
+    this.pendingChanges++;
+
+    d.emit(this, item);
+  }
+
+  /**
+   * Write many items in one transaction, then update the cache, the indexes
+   * and the events. Runs inside the mutex.
+   *
+   * @param items - The entities or relations to append. The list holds at least one item.
+   * @param d - The steps that differ between entities and relations
+   */
+  private appendManyLocked<T>(items: readonly T[], d: AppendDescriptor<T>): void {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const tx = this.db.transaction(() => {
+      for (const item of items) {
+        d.write(this, item);
       }
     });
+    tx();
+
+    for (const item of items) {
+      d.upsert(this, item);
+    }
+    d.bumpGeneration(this);
+
+    this.pendingChanges += items.length;
+
+    for (const item of items) {
+      d.emit(this, item);
+    }
   }
 
   /**
