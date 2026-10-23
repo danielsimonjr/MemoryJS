@@ -4,7 +4,7 @@
  * A change in the number or order of reads fails a pin.
  */
 import { describe, it, expect } from 'vitest';
-import { cosineSimilarity, jaccard } from '../../../src/utils/textSimilarity.js';
+import { cosineParts, cosineSimilarity, jaccard } from '../../../src/utils/textSimilarity.js';
 
 /** Wraps an array so that every string property read is pushed to `trace`, in order. */
 function traced(values: number[], trace: string[]): number[] {
@@ -107,6 +107,40 @@ describe('cosineSimilarity (guard, formula and read order)', () => {
       'A.length', 'A.1', 'B.1', 'A.1', 'A.1', 'B.1', 'B.1',
       'A.length', 'A.2', 'B.2', 'A.2', 'A.2', 'B.2', 'B.2',
       'A.length',
+    ]);
+  });
+});
+
+describe('cosineParts', () => {
+  it('sums the dot product and both squared norms', () => {
+    expect(cosineParts([1, 2], [3, 4])).toEqual({ dot: 11, normA: 5, normB: 25 });
+  });
+
+  it('sums only the first n elements when n is given', () => {
+    expect(cosineParts([1, 2], [3, 4], 1)).toEqual({ dot: 3, normA: 1, normB: 9 });
+    expect(cosineParts([1, 2], [3, 4], 0)).toEqual({ dot: 0, normA: 0, normB: 0 });
+  });
+
+  it('takes the loop bound from the first array when n is absent', () => {
+    const parts = cosineParts([1, 2, 3], [1, 2]);
+    expect(parts.normA).toBe(14);
+    expect(parts.dot).toBeNaN();
+    expect(parts.normB).toBeNaN();
+  });
+
+  it('reads a.length on every step when n is absent, and never when n is given', () => {
+    const withoutN: string[] = [];
+    cosineParts(tagged([1, 2], 'A', withoutN), tagged([3, 4], 'B', withoutN));
+    expect(withoutN).toEqual([
+      'A.length', 'A.0', 'B.0', 'A.0', 'A.0', 'B.0', 'B.0',
+      'A.length', 'A.1', 'B.1', 'A.1', 'A.1', 'B.1', 'B.1',
+      'A.length',
+    ]);
+    const withN: string[] = [];
+    cosineParts(tagged([1, 2], 'A', withN), tagged([3, 4], 'B', withN), 2);
+    expect(withN).toEqual([
+      'A.0', 'B.0', 'A.0', 'A.0', 'B.0', 'B.0',
+      'A.1', 'B.1', 'A.1', 'A.1', 'B.1', 'B.1',
     ]);
   });
 });
