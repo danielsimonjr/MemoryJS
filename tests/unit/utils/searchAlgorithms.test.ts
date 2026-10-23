@@ -14,6 +14,7 @@ import {
   calculateTFIDF,
   tokenize,
 } from '../../../src/utils/index.js';
+import { minMaxNormalize } from '../../../src/utils/searchAlgorithms.js';
 
 describe('searchAlgorithms', () => {
   // =============================================================================
@@ -761,5 +762,22 @@ describe('calculateIDF (pinned)', () => {
     });
     calculateIDF('beta', documents as unknown as string[]);
     expect(trace).toEqual(['length', 'filter', 'length', 'constructor', '0', '1', 'length']);
+  });
+});
+
+describe('minMaxNormalize (shared helper)', () => {
+  it('returns a new map with the literal values for each score shape', () => {
+    const input = new Map([['a', 1], ['b', 3], ['c', 2]]);
+    const result = minMaxNormalize(input);
+    expect(result).not.toBe(input);
+    expect([...result]).toEqual([['a', 0], ['b', 1], ['c', 0.5]]);
+    expect([...minMaxNormalize(new Map())]).toEqual([]);
+    expect([...minMaxNormalize(new Map([['a', 2], ['b', 2]]))]).toEqual([['a', 1], ['b', 1]]);
+    expect([...minMaxNormalize(new Map([['a', 0], ['b', 0]]))]).toEqual([['a', 0], ['b', 0]]);
+    expect([...minMaxNormalize(new Map([['a', -1], ['b', 1], ['c', 0]]))]).toEqual([['a', 0], ['b', 1], ['c', 0.5]]);
+  });
+
+  it('keeps the key order of the input', () => {
+    expect([...minMaxNormalize(new Map([['z', 5], ['m', 1], ['a', 3]])).keys()]).toEqual(['z', 'm', 'a']);
   });
 });
