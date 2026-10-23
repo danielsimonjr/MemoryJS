@@ -365,8 +365,8 @@ export class SQLiteStorage implements IGraphStorage {
       setLowercase(entity: Entity): void {
         owner.updateLowercaseCache(entity);
       },
-      removeLowercase(name: string): void {
-        owner.lowercaseCache.delete(name);
+      removeLowercase(entity: Entity): void {
+        owner.lowercaseCache.delete(entity.name);
       },
     };
   }

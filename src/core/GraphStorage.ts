@@ -362,8 +362,8 @@ export class GraphStorage implements IGraphStorage {
       setLowercase(entity: Entity): void {
         owner.lowercaseCache.set(entity);
       },
-      removeLowercase(name: string): void {
-        owner.lowercaseCache.remove(name);
+      removeLowercase(entity: Entity): void {
+        owner.lowercaseCache.remove(entity.name);
       },
     };
   }

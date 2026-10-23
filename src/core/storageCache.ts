@@ -30,8 +30,11 @@ export interface StorageCacheState {
   readonly observationIndex?: ObservationIndex;
   /** Recomputes the lowercase view of an entity. */
   setLowercase(entity: Entity): void;
-  /** Removes the lowercase view of an entity by name. */
-  removeLowercase(name: string): void;
+  /**
+   * Removes the lowercase view of an entity. The storage reads the name of
+   * the entity itself, after it reads its own lowercase field.
+   */
+  removeLowercase(entity: Entity): void;
 }
 
 /**
@@ -138,7 +141,7 @@ export function removeEntitiesFromIndexes(
   for (const e of deletedEntities) {
     state.nameIndex.remove(e.name);
     state.typeIndex.remove(e.name, e.entityType);
-    state.removeLowercase(e.name);
+    state.removeLowercase(e);
     state.observationIndex?.remove(e.name);
   }
   for (const r of deletedRelations) {
