@@ -539,3 +539,55 @@ describe('QueryPlanCache', () => {
     });
   });
 });
+
+describe('QueryPlanCache evictTo and setters (R09 pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const analysis = (query: string): QueryAnalysis => ({ query }) as unknown as QueryAnalysis;
+  const plan = {} as unknown as QueryPlan;
+  const entries = (cache: QueryPlanCache): object[] =>
+    [...(cache as unknown as { cache: Map<string, object> }).cache.values()];
+
+  it('counts expired and over-target evictions exactly', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(1_000_000);
+    const cache = new QueryPlanCache({ enableStats: true, ttlMs: 1000, maxSize: 100 });
+    for (let i = 0; i < 3; i++) cache.setAnalysis(`old${i}`, analysis(`old${i}`));
+    vi.setSystemTime(1_002_000);
+    for (let i = 0; i < 4; i++) cache.setAnalysis(`new${i}`, analysis(`new${i}`));
+
+    cache.evictTo(2);
+
+    expect(cache.size).toBe(2);
+    expect(cache.getStats().evictions).toBe(5);
+  });
+
+  it('keeps two entries for a fractional target of 2.5', () => {
+    const cache = new QueryPlanCache();
+    for (let i = 0; i < 5; i++) cache.setAnalysis(`q${i}`, analysis(`q${i}`));
+    cache.evictTo(2.5);
+    expect(cache.size).toBe(2);
+  });
+
+  it('keeps every entry for a NaN target', () => {
+    const cache = new QueryPlanCache();
+    for (let i = 0; i < 5; i++) cache.setAnalysis(`q${i}`, analysis(`q${i}`));
+    cache.evictTo(Number.NaN);
+    expect(cache.size).toBe(5);
+  });
+
+  it('setAnalysis on a new key writes no plan key', () => {
+    const cache = new QueryPlanCache();
+    cache.setAnalysis('find alice', analysis('find alice'));
+    expect('plan' in entries(cache)[0]).toBe(false);
+  });
+
+  it('setAnalysis keeps a plan that setPlan stored', () => {
+    const cache = new QueryPlanCache();
+    cache.setPlan('find bob', analysis('find bob'), plan);
+    cache.setAnalysis('find bob', analysis('find bob'));
+    expect((entries(cache)[0] as { plan?: unknown }).plan).toBe(plan);
+  });
+});

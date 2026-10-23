@@ -458,3 +458,49 @@ describe('GraphRankPrior', () => {
     });
   });
 });
+
+describe('GraphRankPrior invalidation debounce (R09 pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const makePrior = (invalidationDebounceMs?: number): GraphRankPrior =>
+    new GraphRankPrior(new GraphTraversal(makeFakeStorage([], [])), {
+      events: new GraphEventEmitter(),
+      invalidationDebounceMs,
+    });
+
+  it('invalidates at once when the debounce is 0', () => {
+    const prior = makePrior(0);
+    const invalidate = vi
+      .spyOn(prior as unknown as { invalidate: () => void }, 'invalidate')
+      .mockImplementation(() => undefined);
+    (prior as unknown as { scheduleInvalidate: () => void }).scheduleInvalidate();
+    expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces three triggers into one invalidation inside a 50 ms window', () => {
+    vi.useFakeTimers();
+    const prior = makePrior(50);
+    const invalidate = vi
+      .spyOn(prior as unknown as { invalidate: () => void }, 'invalidate')
+      .mockImplementation(() => undefined);
+    const schedule = (prior as unknown as { scheduleInvalidate: () => void }).scheduleInvalidate.bind(prior);
+    schedule();
+    schedule();
+    schedule();
+    expect(invalidate).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+
+  it('invalidates at once when the stored debounce is negative', () => {
+    const prior = makePrior(50);
+    (prior as unknown as { invalidationDebounceMs: number }).invalidationDebounceMs = -1;
+    const invalidate = vi
+      .spyOn(prior as unknown as { invalidate: () => void }, 'invalidate')
+      .mockImplementation(() => undefined);
+    (prior as unknown as { scheduleInvalidate: () => void }).scheduleInvalidate();
+    expect(invalidate).toHaveBeenCalledTimes(1);
+  });
+});

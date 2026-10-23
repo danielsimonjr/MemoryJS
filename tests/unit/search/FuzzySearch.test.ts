@@ -1188,3 +1188,81 @@ describe('FuzzySearch - Sprint 14 Extended Tests', () => {
     });
   });
 });
+
+describe('FuzzySearch TTL cleanup (R09 pins)', () => {
+  const NOW = 10_000_000;
+  const TTL_MS = 5 * 60 * 1000;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const entry = (timestamp: number): object => ({ entityNames: [], entityCount: 0, timestamp });
+
+  it('FuzzySearch drops entries older than the TTL and keeps fresh ones', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new FuzzySearch({} as never);
+    const cache = (search as unknown as { fuzzyResultCache: Map<string, unknown> }).fuzzyResultCache;
+    cache.set('stale', entry(NOW - TTL_MS - 1));
+    cache.set('fresh', entry(NOW));
+
+    (search as unknown as { cleanupCache: () => void }).cleanupCache();
+
+    expect([...cache.keys()]).toEqual(['fresh']);
+  });
+
+  it('FuzzySearch keeps the newest 100 entries when over the size limit', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new FuzzySearch({} as never);
+    const cache = (search as unknown as { fuzzyResultCache: Map<string, unknown> }).fuzzyResultCache;
+    for (let i = 0; i <= 100; i++) {
+      cache.set(`k${i}`, entry(NOW - (101 - i)));
+    }
+
+    (search as unknown as { cleanupCache: () => void }).cleanupCache();
+
+    expect(cache.size).toBe(100);
+    expect(cache.has('k0')).toBe(false);
+    expect(cache.has('k1')).toBe(true);
+  });
+});
+
+describe('FuzzySearch evictTo (R09 pins)', () => {
+  const entry = (timestamp: number): object => ({ entityNames: [], entityCount: 0, timestamp });
+
+  const seed = (): { search: FuzzySearch; cache: Map<string, unknown> } => {
+    const search = new FuzzySearch({} as never);
+    const cache = (search as unknown as { fuzzyResultCache: Map<string, unknown> }).fuzzyResultCache;
+    for (let i = 1; i <= 5; i++) {
+      cache.set(`e${i}`, entry(i));
+    }
+    return { search, cache };
+  };
+
+  it('keeps the newest entries for an integer target', () => {
+    const { search, cache } = seed();
+    search.evictTo(2);
+    expect([...cache.keys()]).toEqual(['e4', 'e5']);
+  });
+
+  it('floors a fractional target to the integer below it', () => {
+    const { search, cache } = seed();
+    search.evictTo(2.5);
+    expect(cache.size).toBe(2);
+    expect([...cache.keys()]).toEqual(['e4', 'e5']);
+  });
+
+  it('removes nothing when the target is NaN', () => {
+    const { search, cache } = seed();
+    search.evictTo(Number.NaN);
+    expect(cache.size).toBe(5);
+  });
+
+  it('clears the cache when the target is negative', () => {
+    const { search, cache } = seed();
+    search.evictTo(-1);
+    expect(cache.size).toBe(0);
+  });
+});

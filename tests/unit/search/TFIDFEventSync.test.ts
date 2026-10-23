@@ -500,3 +500,93 @@ describe('TFIDFEventSync', () => {
     });
   });
 });
+
+describe('TFIDFEventSync debounce timers (R09 pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  type SyncInternals = {
+    flushNow: () => void;
+    runRebuild: () => Promise<void>;
+    scheduleFlush: () => void;
+    handleGraphSaved: () => void;
+    coalesceMs: number;
+    rebuildDebounceMs: number;
+  };
+
+  const makeSync = (coalesceMs: number, rebuildDebounceMs: number): TFIDFEventSync => {
+    const indexManager = { isInitialized: () => true } as unknown as TFIDFIndexManager;
+    return new TFIDFEventSync(indexManager, new GraphEventEmitter(), {} as never, {
+      coalesceMs,
+      rebuildDebounceMs,
+    });
+  };
+
+  it('flushes at once when coalesceMs is 0', () => {
+    const sync = makeSync(0, 100);
+    const flush = vi.spyOn(sync as unknown as SyncInternals, 'flushNow').mockImplementation(() => undefined);
+    (sync as unknown as SyncInternals).scheduleFlush();
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces three flush requests into one flush with a 50 ms window', () => {
+    vi.useFakeTimers();
+    const sync = makeSync(50, 100);
+    const flush = vi.spyOn(sync as unknown as SyncInternals, 'flushNow').mockImplementation(() => undefined);
+    const internals = sync as unknown as SyncInternals;
+    internals.scheduleFlush();
+    internals.scheduleFlush();
+    internals.scheduleFlush();
+    expect(flush).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts a timer for a negative coalesce delay instead of flushing at once', () => {
+    vi.useFakeTimers();
+    const sync = makeSync(50, 100);
+    const internals = sync as unknown as SyncInternals;
+    internals.coalesceMs = -1;
+    const flush = vi.spyOn(internals, 'flushNow').mockImplementation(() => undefined);
+    internals.scheduleFlush();
+    expect(flush).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(flush).toHaveBeenCalledTimes(1);
+  });
+
+  it('rebuilds at once when rebuildDebounceMs is 0', () => {
+    const sync = makeSync(0, 0);
+    const rebuild = vi
+      .spyOn(sync as unknown as SyncInternals, 'runRebuild')
+      .mockImplementation(() => Promise.resolve());
+    (sync as unknown as SyncInternals).handleGraphSaved();
+    expect(rebuild).toHaveBeenCalledTimes(1);
+  });
+
+  it('coalesces graph saves into one rebuild with a 50 ms window', () => {
+    vi.useFakeTimers();
+    const sync = makeSync(0, 50);
+    const rebuild = vi
+      .spyOn(sync as unknown as SyncInternals, 'runRebuild')
+      .mockImplementation(() => Promise.resolve());
+    const internals = sync as unknown as SyncInternals;
+    internals.handleGraphSaved();
+    internals.handleGraphSaved();
+    expect(rebuild).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(rebuild).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts a timer for a negative rebuild delay instead of rebuilding at once', () => {
+    vi.useFakeTimers();
+    const sync = makeSync(0, 50);
+    const internals = sync as unknown as SyncInternals;
+    internals.rebuildDebounceMs = -1;
+    const rebuild = vi.spyOn(internals, 'runRebuild').mockImplementation(() => Promise.resolve());
+    internals.handleGraphSaved();
+    expect(rebuild).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(1);
+    expect(rebuild).toHaveBeenCalledTimes(1);
+  });
+});

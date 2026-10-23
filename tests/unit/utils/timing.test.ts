@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { createTimeout, sleep, withTimeout } from '../../../src/utils/timing.js';
+import { CoalescingTimer, createTimeout, sleep, withTimeout } from '../../../src/utils/timing.js';
 import { microtaskTicks } from '../../test-utils/microtask-ticks.js';
 
 describe('timing', () => {
@@ -92,5 +92,66 @@ describe('sleep', () => {
 
     expect(done).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe('CoalescingTimer', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('runs at once and opens no window when runNow is true', () => {
+    const timer = new CoalescingTimer();
+    const run = vi.fn();
+    timer.schedule(50, run, true);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(timer.cancel()).toBe(false);
+  });
+
+  it('runs once when the window closes and coalesces repeat requests', () => {
+    vi.useFakeTimers();
+    const timer = new CoalescingTimer();
+    const run = vi.fn();
+    timer.schedule(50, run, false);
+    timer.schedule(50, run, false);
+    timer.schedule(50, run, false);
+    expect(run).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(50);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('unreferences the window timer', () => {
+    const unref = vi.fn();
+    vi.spyOn(globalThis, 'setTimeout').mockReturnValue({ unref } as unknown as NodeJS.Timeout);
+    const timer = new CoalescingTimer();
+    timer.schedule(50, () => undefined, false);
+    expect(unref).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a new request from inside the callback', () => {
+    vi.useFakeTimers();
+    const timer = new CoalescingTimer();
+    const calls: string[] = [];
+    const run = (): void => {
+      calls.push('run');
+      if (calls.length === 1) timer.schedule(50, run, false);
+    };
+    timer.schedule(50, run, false);
+    vi.advanceTimersByTime(50);
+    expect(calls).toHaveLength(1);
+    vi.advanceTimersByTime(50);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('cancel clears an open window so the callback does not run', () => {
+    vi.useFakeTimers();
+    const timer = new CoalescingTimer();
+    const run = vi.fn();
+    timer.schedule(50, run, false);
+    expect(timer.cancel()).toBe(true);
+    vi.advanceTimersByTime(50);
+    expect(run).not.toHaveBeenCalled();
+    expect(timer.cancel()).toBe(false);
   });
 });

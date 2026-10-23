@@ -741,3 +741,39 @@ describe('SearchCache - Sprint 15 Extended Tests', () => {
     });
   });
 });
+
+describe('SearchCache evictTo targets (R09 pins)', () => {
+  const fill = (): SearchCache<number> => {
+    const cache = new SearchCache<number>();
+    for (let i = 0; i < 5; i++) cache.set({ q: i }, i);
+    return cache;
+  };
+
+  it('keeps the two most recently inserted entries for a target of 2', () => {
+    const cache = fill();
+    cache.evictTo(2);
+    expect(cache.currentEntries()).toBe(2);
+    expect(cache.has({ q: 3 })).toBe(true);
+    expect(cache.has({ q: 4 })).toBe(true);
+    expect(cache.has({ q: 2 })).toBe(false);
+  });
+
+  it('floors a fractional target of 2.5 to 2', () => {
+    const cache = fill();
+    cache.evictTo(2.5);
+    expect(cache.currentEntries()).toBe(2);
+    expect(cache.has({ q: 4 })).toBe(true);
+  });
+
+  it('keeps every entry for a NaN target', () => {
+    const cache = fill();
+    cache.evictTo(Number.NaN);
+    expect(cache.currentEntries()).toBe(5);
+  });
+
+  it('empties the cache for a negative target', () => {
+    const cache = fill();
+    cache.evictTo(-1);
+    expect(cache.currentEntries()).toBe(0);
+  });
+});

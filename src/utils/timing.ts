@@ -52,3 +52,47 @@ export function withTimeout<T>(work: Promise<T>, ms: number, message: string): P
   void race.then(timeout.clear, timeout.clear);
   return race;
 }
+
+/**
+ * Runs a callback once for a burst of schedule requests.
+ *
+ * The first request opens a window of delayMs. Requests inside the window do nothing.
+ * The timer is unreferenced, so it does not keep the process alive.
+ */
+export class CoalescingTimer {
+  private timer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Runs the callback at once when runNow is true. Otherwise opens a window of delayMs.
+   * The stored handle clears before the callback runs, so the callback can schedule again.
+   *
+   * @param delayMs - Window in milliseconds.
+   * @param run - Callback to run when the window closes.
+   * @param runNow - When true, run at once and open no window.
+   */
+  schedule(delayMs: number, run: () => void, runNow: boolean): void {
+    if (runNow) {
+      run();
+      return;
+    }
+    if (this.timer !== null) return;
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      run();
+    }, delayMs);
+    // Do not keep the event loop alive for a coalescing timer.
+    this.timer.unref?.();
+  }
+
+  /**
+   * Clears the open window, if any.
+   *
+   * @returns True when a window was open and is now cleared.
+   */
+  cancel(): boolean {
+    if (this.timer === null) return false;
+    clearTimeout(this.timer);
+    this.timer = null;
+    return true;
+  }
+}

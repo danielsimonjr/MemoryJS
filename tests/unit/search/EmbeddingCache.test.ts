@@ -365,3 +365,56 @@ describe('EmbeddingCache', () => {
     });
   });
 });
+
+describe('EmbeddingCache evictTo targets (R09 pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const fill = (cache: EmbeddingCache, times: number[]): void => {
+    times.forEach((time, i) => {
+      vi.setSystemTime(time);
+      cache.set(`e${i}`, `t${i}`, [i]);
+    });
+  };
+
+  it('keeps the two newest entries for a target of 2', () => {
+    vi.useFakeTimers();
+    const cache = new EmbeddingCache();
+    fill(cache, [1000, 1001, 1002, 1003, 1004]);
+    cache.evictTo(2);
+    expect(cache.keys()).toEqual(['e3', 'e4']);
+  });
+
+  it('removes three entries for a fractional target of 2.5', () => {
+    vi.useFakeTimers();
+    const cache = new EmbeddingCache();
+    fill(cache, [1000, 1001, 1002, 1003, 1004]);
+    cache.evictTo(2.5);
+    expect(cache.keys()).toEqual(['e3', 'e4']);
+  });
+
+  it('keeps every entry for a NaN target', () => {
+    vi.useFakeTimers();
+    const cache = new EmbeddingCache();
+    fill(cache, [1000, 1001, 1002, 1003, 1004]);
+    cache.evictTo(Number.NaN);
+    expect(cache.size()).toBe(5);
+  });
+
+  it('empties the cache for a negative target', () => {
+    vi.useFakeTimers();
+    const cache = new EmbeddingCache();
+    fill(cache, [1000, 1001, 1002, 1003, 1004]);
+    cache.evictTo(-1);
+    expect(cache.size()).toBe(0);
+  });
+
+  it('evicts tied access times in insertion order', () => {
+    vi.useFakeTimers();
+    const cache = new EmbeddingCache();
+    fill(cache, [1000, 1000, 1000, 1000, 1000]);
+    cache.evictTo(2);
+    expect(cache.keys()).toEqual(['e3', 'e4']);
+  });
+});

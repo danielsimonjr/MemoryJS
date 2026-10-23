@@ -566,3 +566,43 @@ describe('BooleanSearch', () => {
     });
   });
 });
+
+describe('BooleanSearch TTL cleanup (R09 pins)', () => {
+  const NOW = 10_000_000;
+  const TTL_MS = 5 * 60 * 1000;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const entry = (timestamp: number): object => ({ entityNames: [], entityCount: 0, timestamp });
+
+  it('BooleanSearch drops entries older than the TTL and keeps fresh ones', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new BooleanSearch({} as never);
+    const cache = (search as unknown as { resultCache: Map<string, unknown> }).resultCache;
+    cache.set('stale', { ...entry(NOW - TTL_MS - 1), ast: {} });
+    cache.set('fresh', { ...entry(NOW), ast: {} });
+
+    (search as unknown as { cleanupResultCache: () => void }).cleanupResultCache();
+
+    expect([...cache.keys()]).toEqual(['fresh']);
+  });
+
+  it('BooleanSearch keeps the newest 100 entries when over the size limit', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const search = new BooleanSearch({} as never);
+    const cache = (search as unknown as { resultCache: Map<string, unknown> }).resultCache;
+    for (let i = 0; i <= 100; i++) {
+      cache.set(`k${i}`, { ...entry(NOW - (101 - i)), ast: {} });
+    }
+
+    (search as unknown as { cleanupResultCache: () => void }).cleanupResultCache();
+
+    expect(cache.size).toBe(100);
+    expect(cache.has('k0')).toBe(false);
+    expect(cache.has('k1')).toBe(true);
+  });
+});

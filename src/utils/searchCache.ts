@@ -348,12 +348,7 @@ export class SearchCache<T = SearchResult[] | KnowledgeGraph> {
    * Map insertion order is already maintained as LRU order by {@link get}.
    */
   evictTo(targetEntries: number): void {
-    const target = Math.max(0, Math.floor(targetEntries));
-    while (this.cache.size > target) {
-      const lruKey = this.cache.keys().next().value;
-      if (lruKey === undefined) break;
-      this.cache.delete(lruKey);
-    }
+    evictInsertionOrder(this.cache, targetEntries);
   }
 
   /**
@@ -429,4 +424,72 @@ export function cleanupAllCaches(): void {
   searchCaches.ranked.cleanupExpired();
   searchCaches.boolean.cleanupExpired();
   searchCaches.fuzzy.cleanupExpired();
+}
+
+/**
+ * Removes the oldest entries until the map holds at most targetEntries.
+ * Entries are ordered by timeOf, ascending. Equal times keep insertion order.
+ * The target is not rounded. A map at or below the target is left unchanged.
+ *
+ * @param map - Map to trim in place.
+ * @param targetEntries - Largest number of entries to keep.
+ * @param timeOf - Returns the timestamp of an entry.
+ * @param onEvict - Optional callback run after each deletion.
+ */
+export function evictOldest<K, E>(
+  map: Map<K, E>,
+  targetEntries: number,
+  timeOf: (entry: E) => number,
+  onEvict?: () => void
+): void {
+  if (map.size <= targetEntries) return;
+
+  const entries = [...map.entries()];
+  entries.sort((a, b) => timeOf(a[1]) - timeOf(b[1]));
+  const toRemove = map.size - Math.max(0, targetEntries);
+  for (let i = 0; i < toRemove; i++) {
+    map.delete(entries[i]![0]);
+    onEvict?.();
+  }
+}
+
+/**
+ * Removes the oldest entries from the front of the map until it holds at most targetEntries.
+ * Map insertion order is the age order. The target is rounded down.
+ *
+ * @param map - Map to trim in place.
+ * @param targetEntries - Largest number of entries to keep.
+ */
+export function evictInsertionOrder<K, E>(map: Map<K, E>, targetEntries: number): void {
+  const target = Math.max(0, Math.floor(targetEntries));
+  while (map.size > target) {
+    const oldestKey = map.keys().next().value;
+    if (oldestKey === undefined) break;
+    map.delete(oldestKey);
+  }
+}
+
+/**
+ * Removes entries that are older than ttlMs, then trims the map with evictOldest.
+ * An entry expires when the current time minus timeOf(entry) is greater than ttlMs.
+ *
+ * @param map - Map to clean in place.
+ * @param ttlMs - Largest allowed age in milliseconds.
+ * @param maxEntries - Largest number of entries to keep after the expiry pass.
+ * @param timeOf - Returns the timestamp of an entry.
+ */
+export function cleanupExpiredEntries<K, E>(
+  map: Map<K, E>,
+  ttlMs: number,
+  maxEntries: number,
+  timeOf: (entry: E) => number
+): void {
+  const now = Date.now();
+  const entries = Array.from(map.entries());
+  for (const [key, entry] of entries) {
+    if (now - timeOf(entry) > ttlMs) {
+      map.delete(key);
+    }
+  }
+  evictOldest(map, maxEntries, timeOf);
 }
