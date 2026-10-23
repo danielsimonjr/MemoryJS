@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 import { tmpdir } from 'os';
 import { FileSegmentStorage } from '../../../../src/core/segments/FileSegmentStorage.js';
 import {
@@ -493,5 +493,384 @@ describe('FileSegmentStorage', () => {
       expect(loadSpy).toHaveBeenCalledTimes(store.segmentCount);
       loadSpy.mockRestore();
     });
+  });
+});
+
+describe('FileSegmentStorage segment file modes', () => {
+  let testDir: string;
+  let previousUmask: number;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-modes-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+    // A fixed umask makes the default mode of a new file the same on every machine.
+    previousUmask = process.umask(0o022);
+  });
+
+  afterEach(async () => {
+    process.umask(previousUmask);
+    vi.restoreAllMocks();
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  function twelveEntityGraph(): KnowledgeGraph {
+    return {
+      entities: Array.from({ length: 12 }, (_, i) => ent(`item-${i}`, 'thing', [`note ${i}`])),
+      relations: [],
+    };
+  }
+
+  async function segmentFileModes(): Promise<Map<string, number>> {
+    const dir = join(testDir, 'segments');
+    const modes = new Map<string, number>();
+    for (const name of await fs.readdir(dir)) {
+      if (!name.endsWith('.jsonl')) continue;
+      modes.set(name, (await fs.stat(join(dir, name))).mode & 0o777);
+    }
+    return modes;
+  }
+
+  it('saveAll writes every segment file with mode 0o600', async () => {
+    if (process.platform === 'win32') return; // POSIX modes don't apply
+    await makeStore(testDir).saveAll(twelveEntityGraph());
+
+    const modes = await segmentFileModes();
+    expect(modes.size).toBeGreaterThan(0);
+    for (const [name, mode] of modes) {
+      expect(mode, name).toBe(0o600);
+    }
+  });
+
+  it('saveAll writes the recovery manifest with mode 0o600 when a segment rename fails', async () => {
+    if (process.platform === 'win32') return; // POSIX modes don't apply
+    const realRename = fs.rename.bind(fs);
+    vi.spyOn(fs, 'rename').mockImplementation(((from: string, to: string) =>
+      String(to).endsWith('.jsonl')
+        ? Promise.reject(new Error('synthetic-segment-rename'))
+        : realRename(from, to)) as typeof fs.rename);
+
+    await expect(makeStore(testDir).saveAll(twelveEntityGraph())).rejects.toThrow(
+      /Segment commit incomplete/,
+    );
+    vi.restoreAllMocks();
+
+    const manifest = join(testDir, 'segments', '_manifest.json');
+    expect((await fs.stat(manifest)).mode & 0o777).toBe(0o600);
+  });
+
+  it('saveAll keeps a tighter existing segment mode and does not widen it', async () => {
+    if (process.platform === 'win32') return; // POSIX modes don't apply
+    const store = makeStore(testDir);
+    await store.saveAll(twelveEntityGraph());
+    const [name] = [...(await segmentFileModes()).keys()];
+    const target = join(testDir, 'segments', name);
+    await fs.chmod(target, 0o640);
+
+    await store.saveAll(twelveEntityGraph());
+
+    expect((await fs.stat(target)).mode & 0o777).toBe(0o640 & 0o600);
+  });
+});
+
+describe('FileSegmentStorage saveSegment ownership and temp files', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-owner-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
+    try {
+      await promise;
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('expected the promise to reject');
+  }
+
+  it('names the class and the entity when an entity routes to another segment', async () => {
+    const message = await rejectionMessage(
+      makeStore(testDir).saveSegment({ id: 0, entities: [ent('alpha')], relations: [] }),
+    );
+    expect(message).toBe("FileSegmentStorage.saveSegment: entity 'alpha' routes to segment 3, not 0");
+  });
+
+  it('names the class and the relation when a relation routes to another segment', async () => {
+    const relation: Relation = { from: 'alpha', to: 'beta', relationType: 'knows' };
+    const message = await rejectionMessage(
+      makeStore(testDir).saveSegment({ id: 0, entities: [], relations: [relation] }),
+    );
+    expect(message).toBe(
+      "FileSegmentStorage.saveSegment: relation from='alpha' routes to segment 3, not 0",
+    );
+  });
+
+  it('writes each temp file with the plain write flag, so a stale temp file is replaced', async () => {
+    // Leave a stale file at every temp path that `open` receives.
+    const realOpen = fs.open.bind(fs);
+    const flags: string[] = [];
+    vi.spyOn(fs, 'open').mockImplementation(async (...args: Parameters<typeof fs.open>) => {
+      const [path, flag] = args;
+      if (String(path).includes('.tmp.')) {
+        flags.push(String(flag));
+        await fs.writeFile(path, 'stale');
+      }
+      return realOpen(...args);
+    });
+    const entities = Array.from({ length: 12 }, (_, i) => ent(`item-${i}`));
+
+    await makeStore(testDir).saveAll({ entities, relations: [] });
+    vi.restoreAllMocks();
+
+    expect(flags.length).toBeGreaterThan(1);
+    expect(new Set(flags)).toEqual(new Set(['w']));
+    expect((await makeStore(testDir).loadAll()).entities).toHaveLength(12);
+  });
+});
+
+describe('FileSegmentStorage temp file open mode on every platform', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-open-mode-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  interface OpenCall {
+    path: string;
+    flag: string;
+    mode: unknown;
+  }
+
+  function twelveEntityGraph(): KnowledgeGraph {
+    return {
+      entities: Array.from({ length: 12 }, (_, i) => ent(`item-${i}`, 'thing', [`note ${i}`])),
+      relations: [],
+    };
+  }
+
+  /**
+   * Record the arguments of every `open` of a temp file and let the call through.
+   * A mode without the owner write bit is replaced by 0o600 for the real call, so
+   * that the test never leaves a read-only file behind. The record keeps the mode
+   * that the code under test asked for.
+   */
+  function recordTmpOpens(): OpenCall[] {
+    const calls: OpenCall[] = [];
+    const realOpen = fs.open.bind(fs);
+    vi.spyOn(fs, 'open').mockImplementation((async (...args: Parameters<typeof fs.open>) => {
+      const [path, flag, mode] = args;
+      if (!String(path).includes('.tmp.')) return realOpen(...args);
+      calls.push({ path: String(path), flag: String(flag), mode });
+      const writable = typeof mode === 'number' && (mode & 0o200) === 0 ? 0o600 : mode;
+      return realOpen(path, flag, writable);
+    }) as typeof fs.open);
+    return calls;
+  }
+
+  /** Make `fs.stat` report `mode` for every path that is not a temp file. A missing path still rejects. */
+  function reportExistingMode(mode: number): void {
+    const realStat = fs.stat.bind(fs);
+    vi.spyOn(fs, 'stat').mockImplementation((async (...args: Parameters<typeof fs.stat>) => {
+      const stat = await realStat(...args);
+      if (String(args[0]).includes('.tmp.')) return stat;
+      return Object.create(stat, { mode: { value: 0o100000 | mode } });
+    }) as typeof fs.stat);
+  }
+
+  it('passes mode 0o600 to open for every staged segment file and for the manifest', async () => {
+    const calls = recordTmpOpens();
+
+    await makeStore(testDir).saveAll(twelveEntityGraph());
+    vi.restoreAllMocks();
+
+    const segmentCalls = calls.filter(c => c.path.includes('.jsonl.tmp.'));
+    const manifestCalls = calls.filter(c => c.path.includes('_manifest.json.tmp.'));
+    expect(segmentCalls.length).toBeGreaterThan(1);
+    expect(manifestCalls).toHaveLength(1);
+    expect(calls).toHaveLength(segmentCalls.length + manifestCalls.length);
+    for (const call of calls) {
+      expect(call.mode, call.path).toBe(0o600);
+      expect(call.flag, call.path).toBe('w');
+    }
+  });
+
+  it('narrows the mode of a segment file that is wider than owner read and write', async () => {
+    const store = makeStore(testDir);
+    await store.saveAll(twelveEntityGraph());
+    const calls = recordTmpOpens();
+    reportExistingMode(0o640);
+
+    await store.saveAll(twelveEntityGraph());
+    vi.restoreAllMocks();
+
+    expect(calls.length).toBeGreaterThan(1);
+    for (const call of calls) {
+      expect(call.mode, call.path).toBe(0o600);
+    }
+  });
+
+  it('keeps the tighter mode of an existing segment file, and gives a new manifest 0o600', async () => {
+    const store = makeStore(testDir);
+    await store.saveAll(twelveEntityGraph());
+    const calls = recordTmpOpens();
+    reportExistingMode(0o440);
+
+    await store.saveAll(twelveEntityGraph());
+    vi.restoreAllMocks();
+
+    const segmentCalls = calls.filter(c => c.path.includes('.jsonl.tmp.'));
+    const manifestCalls = calls.filter(c => c.path.includes('_manifest.json.tmp.'));
+    expect(segmentCalls.length).toBeGreaterThan(1);
+    for (const call of segmentCalls) {
+      expect(call.mode, call.path).toBe(0o400);
+    }
+    // The manifest does not exist between saves, so it is a new file.
+    expect(manifestCalls.map(c => c.mode)).toEqual([0o600]);
+  });
+});
+
+describe('FileSegmentStorage saveSegment router access', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-router-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  /** Names that route to `id` under a four-segment router, found by search. */
+  function namesRoutedTo(id: number, count: number): string[] {
+    const router = new FnvSegmentRouter(4);
+    const names: string[] = [];
+    for (let i = 0; names.length < count; i++) {
+      if (router.route(`probe-${i}`) === id) names.push(`probe-${i}`);
+    }
+    return names;
+  }
+
+  async function rejection(promise: Promise<unknown>): Promise<unknown> {
+    try {
+      await promise;
+    } catch (error) {
+      return error;
+    }
+    throw new Error('expected the promise to reject');
+  }
+
+  it('reads the router once for each entity and each relation that it checks', async () => {
+    const store = makeStore(testDir);
+    const router = store.router;
+    let reads = 0;
+    Object.defineProperty(store, 'router', {
+      get() {
+        reads++;
+        return router;
+      },
+    });
+    const [first, second] = namesRoutedTo(3, 2);
+    const [foreign] = namesRoutedTo(0, 1);
+
+    // Two entities pass, then the relation fails: three checks, three reads.
+    await rejection(
+      store.saveSegment({
+        id: 3,
+        entities: [ent(first!), ent(second!)],
+        relations: [{ from: foreign!, to: first!, relationType: 'knows' }],
+      }),
+    );
+
+    expect(reads).toBe(3);
+  });
+
+  it('names the router access in the error when the router has no route method', async () => {
+    const store = new FileSegmentStorage(testDir, { segmentCount: 4 } as unknown as FnvSegmentRouter);
+
+    const error = await rejection(
+      store.saveSegment({ id: 0, entities: [ent('alpha')], relations: [] }),
+    );
+
+    expect(error).toBeInstanceOf(TypeError);
+    expect((error as Error).message).toBe('this.router.route is not a function');
+  });
+});
+
+describe('FileSegmentStorage saveAll file steps', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-steps-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  it('writes, syncs and closes every temp file, then renames the manifest, then the segments', async () => {
+    const events: string[] = [];
+    const realOpen = fs.open.bind(fs);
+    const realRename = fs.rename.bind(fs);
+    vi.spyOn(fs, 'open').mockImplementation((async (...args: Parameters<typeof fs.open>) => {
+      const handle = await realOpen(...args);
+      if (!String(args[0]).includes('.tmp.')) return handle;
+      events.push(`open ${basename(String(args[0])).replace(/\.tmp\..*$/, '.tmp')}`);
+      for (const step of ['write', 'writeFile', 'sync', 'close'] as const) {
+        const real = handle[step].bind(handle) as (...a: unknown[]) => Promise<unknown>;
+        (handle as unknown as Record<string, unknown>)[step] = async (...a: unknown[]) => {
+          events.push(step === 'sync' || step === 'close' ? step : 'data');
+          return real(...a);
+        };
+      }
+      return handle;
+    }) as typeof fs.open);
+    vi.spyOn(fs, 'rename').mockImplementation((async (from: string, to: string) => {
+      events.push(`rename ${basename(String(to))}`);
+      return realRename(from, to);
+    }) as typeof fs.rename);
+    const entities = Array.from({ length: 12 }, (_, i) => ent(`item-${i}`, 'thing', [`note ${i}`]));
+
+    await makeStore(testDir).saveAll({ entities, relations: [] });
+    vi.restoreAllMocks();
+
+    expect(events).toEqual([
+      'open 0.jsonl.tmp', 'data', 'sync', 'close',
+      'open 1.jsonl.tmp', 'data', 'sync', 'close',
+      'open 2.jsonl.tmp', 'data', 'sync', 'close',
+      'open 3.jsonl.tmp', 'data', 'sync', 'close',
+      'open _manifest.json.tmp', 'data', 'sync', 'close',
+      'rename _manifest.json',
+      'rename 0.jsonl', 'rename 1.jsonl', 'rename 2.jsonl', 'rename 3.jsonl',
+    ]);
   });
 });

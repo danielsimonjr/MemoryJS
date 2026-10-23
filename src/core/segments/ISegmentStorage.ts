@@ -202,22 +202,7 @@ export class InMemorySegmentStorage implements ISegmentStorage {
     // Validate ownership — every entity must route back to this segment id.
     // Catches caller bugs early; without it a misrouted write silently
     // breaks every later `loadAll()` consistency invariant.
-    for (const e of segment.entities) {
-      const expected = this.router.route(e.name);
-      if (expected !== segment.id) {
-        throw new Error(
-          `InMemorySegmentStorage.saveSegment: entity '${e.name}' routes to segment ${expected}, not ${segment.id}`,
-        );
-      }
-    }
-    for (const r of segment.relations) {
-      const expected = this.router.route(r.from);
-      if (expected !== segment.id) {
-        throw new Error(
-          `InMemorySegmentStorage.saveSegment: relation from='${r.from}' routes to segment ${expected}, not ${segment.id}`,
-        );
-      }
-    }
+    assertSegmentOwnership.call(this, segment, 'InMemorySegmentStorage.saveSegment');
     this.segments.set(segment.id, {
       id: segment.id,
       entities: [...segment.entities],
@@ -250,6 +235,43 @@ export class InMemorySegmentStorage implements ISegmentStorage {
     if (!Number.isInteger(id) || id < 0 || id >= this.segmentCount) {
       throw new Error(
         `Segment id must be an integer in [0, ${this.segmentCount}), got ${id}`,
+      );
+    }
+  }
+}
+
+/**
+ * Verifies that all entities and relations in a segment route to the correct segment.
+ * Checks entities first, then relations.
+ * Throws an error on the first routing mismatch.
+ * Use this function before writing a segment.
+ * Call it as `assertSegmentOwnership.call(this, segment, className)` from a storage class.
+ * The `this` value is the storage whose router decides the owner of each name.
+ * The function reads `this.router` for each entity and each relation, as the
+ * storage methods did before they shared this code.
+ * The className argument appears only in the error message.
+ *
+ * @param segment - The segment object to check.
+ * @param className - The name for the error message.
+ */
+export function assertSegmentOwnership(
+  this: { readonly router: SegmentRouter },
+  segment: Segment,
+  className: string,
+): void {
+  for (const e of segment.entities) {
+    const expected = this.router.route(e.name);
+    if (expected !== segment.id) {
+      throw new Error(
+        `${className}: entity '${e.name}' routes to segment ${expected}, not ${segment.id}`,
+      );
+    }
+  }
+  for (const r of segment.relations) {
+    const expected = this.router.route(r.from);
+    if (expected !== segment.id) {
+      throw new Error(
+        `${className}: relation from='${r.from}' routes to segment ${expected}, not ${segment.id}`,
       );
     }
   }

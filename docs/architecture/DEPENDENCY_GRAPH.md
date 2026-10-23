@@ -3264,7 +3264,6 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | Module | Import |
 |--------|--------|
 | `fs` | `promises` |
-| `crypto` | `randomBytes` |
 | `path` | `basename, dirname, isAbsolute, join, relative, resolve, sep` |
 
 **Internal Dependencies:**
@@ -3273,8 +3272,8 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../types/types.js` | `Entity, KnowledgeGraph, Relation` | Import (type-only) |
 | `../../utils/logger.js` | `logger` | Import |
 | `../../utils/entityUtils.js` | `sanitizeObject` | Import |
-| `../../utils/durableWriteFile.js` | `durableWriteFile, renameOver, syncParentDirectory` | Import |
-| `./ISegmentStorage.js` | `ISegmentStorage, Segment, SegmentId, SegmentRouter, mergeSegmentsIntoGraph, splitGraphIntoSegments` | Import |
+| `../../utils/durableWriteFile.js` | `durableWriteFile, renameOver, syncParentDirectory, writeSyncedTmp` | Import |
+| `./ISegmentStorage.js` | `ISegmentStorage, Segment, SegmentId, SegmentRouter, assertSegmentOwnership, mergeSegmentsIntoGraph, splitGraphIntoSegments` | Import |
 
 **Exports:**
 - Classes: `FileSegmentStorage`, `SegmentCommitIncompleteError`
@@ -3294,7 +3293,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 - Classes: `FnvSegmentRouter`, `InMemorySegmentStorage`
 - Interfaces: `SegmentRouter`, `Segment`, `ISegmentStorage`
 - Types: `SegmentId`
-- Functions: `splitGraphIntoSegments`, `mergeSegmentsIntoGraph`
+- Functions: `splitGraphIntoSegments`, `mergeSegmentsIntoGraph`, `assertSegmentOwnership`
 - Re-exports: `fnv1aHash`
 
 ---
@@ -4982,7 +4981,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `DurableReplaceError`
-- Functions: `durableWriteFile`, `renameOver`, `syncParentDirectory`, `durableAppendFile`, `restrictSensitiveFilePermissions`
+- Functions: `writeSyncedTmp`, `durableWriteFile`, `renameOver`, `syncParentDirectory`, `durableAppendFile`, `restrictSensitiveFilePermissions`
 
 ---
 
@@ -5688,12 +5687,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 299 |
 | Total Modules | 12 |
-| Total Lines of Code | 104233 |
-| Total Exports | 2049 |
+| Total Lines of Code | 104242 |
+| Total Exports | 2051 |
 | Total Re-exports | 1340 |
 | Total Classes | 235 |
 | Total Interfaces | 624 |
-| Total Functions | 336 |
+| Total Functions | 338 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 480 |

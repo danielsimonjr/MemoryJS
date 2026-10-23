@@ -67,6 +67,37 @@ export class DurableReplaceError extends Error {
 }
 
 /**
+ * Write `content` to a temp file next to `target` and sync it.
+ * The temp name is `target`, then `.tmp.`, the process id and six random bytes in hex.
+ * `openFlag` sets the open mode. `'wx'` fails when the name exists. `'w'` replaces it.
+ * The open call passes a mode: the existing mode of `target`, limited to owner
+ * read and write, or `0o600` for a new `target`. The file system applies the
+ * mode only when the open call creates the temp file.
+ * The function does not rename the temp file. The caller renames it.
+ *
+ * @param target - Path of the final file.
+ * @param content - Text (UTF-8) or bytes to write.
+ * @param openFlag - `'wx'` for an exclusive create, `'w'` to replace a stale temp file.
+ * @returns Path of the synced temp file.
+ */
+export async function writeSyncedTmp(
+  target: string,
+  content: string | Buffer,
+  openFlag: 'wx' | 'w',
+): Promise<string> {
+  const tmpPath = `${target}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
+  const targetMode = await restrictedModeForReplacement(target);
+  const fd = await fs.open(tmpPath, openFlag, targetMode);
+  try {
+    await writeAll(fd, content);
+    await fd.sync();
+  } finally {
+    await fd.close();
+  }
+  return tmpPath;
+}
+
+/**
  * Atomically write `content` to `target`. See module JSDoc for the
  * full contract.
  */
@@ -78,15 +109,7 @@ export async function durableWriteFile(
   // every caller from having to check + mkdir themselves (the
   // FileSegmentStorage case needs this for the `segments/` subdir).
   await fs.mkdir(dirname(target), { recursive: true, mode: 0o700 });
-  const tmpPath = `${target}.tmp.${process.pid}.${randomBytes(6).toString('hex')}`;
-  const targetMode = await restrictedModeForReplacement(target);
-  const fd = await fs.open(tmpPath, 'wx', targetMode);
-  try {
-    await writeAll(fd, content);
-    await fd.sync();
-  } finally {
-    await fd.close();
-  }
+  const tmpPath = await writeSyncedTmp(target, content, 'wx');
   await renameOver(tmpPath, target);
   await syncParentDirectory(target);
 }

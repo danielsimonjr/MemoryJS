@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   durableWriteFile,
@@ -194,5 +194,115 @@ describe('durableWriteFile', () => {
     await restrictSensitiveFilePermissions(target);
     const stat = await fs.stat(target);
     expect(stat.mode & 0o777).toBe(0o400);
+  });
+});
+
+describe('durableWriteFile temp file flag', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = join(tmpdir(), `durable-write-flag-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(dir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  it('opens the temp file with the exclusive flag, so a stale temp path fails', async () => {
+    // Leave a stale file at the temp path that `open` receives.
+    const realOpen = fs.open.bind(fs);
+    const flags: string[] = [];
+    vi.spyOn(fs, 'open').mockImplementation(async (...args: Parameters<typeof fs.open>) => {
+      const [path, flag] = args;
+      if (String(path).includes('.tmp.')) {
+        flags.push(String(flag));
+        await fs.writeFile(path, 'stale');
+      }
+      return realOpen(...args);
+    });
+
+    await expect(durableWriteFile(join(dir, 'exclusive.txt'), 'fresh')).rejects.toThrow(/EEXIST/);
+    expect(flags).toEqual(['wx']);
+  });
+});
+
+describe('durableWriteFile temp file steps', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = join(tmpdir(), `durable-write-steps-${Date.now()}-${Math.random()}`);
+    await fs.mkdir(dir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  /** Record the steps on each temp file handle, and the renames, in call order. */
+  function recordSteps(): string[] {
+    const events: string[] = [];
+    const realOpen = fs.open.bind(fs);
+    const realRename = fs.rename.bind(fs);
+    vi.spyOn(fs, 'open').mockImplementation((async (...args: Parameters<typeof fs.open>) => {
+      const handle = await realOpen(...args);
+      const name = basename(String(args[0])).replace(/\.tmp\..*$/, '.tmp');
+      if (!String(args[0]).includes('.tmp.')) return handle;
+      events.push(`open ${name}`);
+      for (const step of ['write', 'writeFile', 'sync', 'close'] as const) {
+        const real = handle[step].bind(handle) as (...a: unknown[]) => Promise<unknown>;
+        (handle as unknown as Record<string, unknown>)[step] = async (...a: unknown[]) => {
+          events.push(step === 'writeFile' ? 'data' : step === 'write' ? 'data' : step);
+          return real(...a);
+        };
+      }
+      return handle;
+    }) as typeof fs.open);
+    vi.spyOn(fs, 'rename').mockImplementation((async (from: string, to: string) => {
+      events.push(`rename ${basename(String(to))}`);
+      return realRename(from, to);
+    }) as typeof fs.rename);
+    return events;
+  }
+
+  it('writes, syncs and closes the temp file before it renames it over the target', async () => {
+    const events = recordSteps();
+
+    await durableWriteFile(join(dir, 'steps.txt'), 'content');
+    vi.restoreAllMocks();
+
+    expect(events).toEqual(['open steps.txt.tmp', 'data', 'sync', 'close', 'rename steps.txt']);
+    expect(await fs.readFile(join(dir, 'steps.txt'), 'utf8')).toBe('content');
+  });
+
+  it('rejects with the sync error, closes the handle and keeps the old target', async () => {
+    const target = join(dir, 'sync-fails.txt');
+    await fs.writeFile(target, 'old');
+    const events: string[] = [];
+    const realOpen = fs.open.bind(fs);
+    const renameSpy = vi.spyOn(fs, 'rename');
+    vi.spyOn(fs, 'open').mockImplementation((async (...args: Parameters<typeof fs.open>) => {
+      const handle = await realOpen(...args);
+      if (!String(args[0]).includes('.tmp.')) return handle;
+      const realClose = handle.close.bind(handle);
+      handle.sync = async () => {
+        events.push('sync');
+        throw new Error('sync failed');
+      };
+      handle.close = async () => {
+        events.push('close');
+        return realClose();
+      };
+      return handle;
+    }) as typeof fs.open);
+
+    await expect(durableWriteFile(target, 'new')).rejects.toThrow('sync failed');
+
+    expect(events).toEqual(['sync', 'close']);
+    expect(renameSpy).not.toHaveBeenCalled();
+    vi.restoreAllMocks();
+    expect(await fs.readFile(target, 'utf8')).toBe('old');
   });
 });

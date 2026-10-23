@@ -10,7 +10,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 
 **Excluded by design (not source):** `node_modules/`, `dist/`, `*.d.ts` ambient declarations, and dot-directories.
 
-**Total files**: 703
+**Total files**: 704
 
 ## Disposition counts
 
@@ -20,12 +20,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `build-entry` | 4 | A detected build/exports/`bin`/worker/tsup root (index, cli/index, levenshteinWorker, …). |
 | `test-only` | 0 | A `src/` file not reachable from src roots but imported by a test. |
 | `orphan` | 0 | A `src/` file reachable from nothing — a delete/wire candidate (fails the gate under --strict-orphans). |
-| `test` | 388 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
+| `test` | 389 | A test source file (under a `tests/` dir, or a `*.test.ts`/`*.spec.ts`). |
 | `tool` | 10 | A file under `tools/` — repo meta-tooling. |
 | `config` | 2 | A build/test config source (`*.config.ts`: vitest/tsup). |
 | `bench` | 4 | A `benchmarks/` source file (run directly via tsx, not imported). |
 | `example` | 0 | An `examples/` or `docs/` reference/illustration source. |
-| **Total** | **703** | |
+| **Total** | **704** | |
 
 ## Per-area counts
 
@@ -34,7 +34,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `benchmarks` | 4 |
 | `config` | 2 |
 | `src` | 299 |
-| `tests` | 388 |
+| `tests` | 389 |
 | `tools` | 10 |
 
 ## All files
@@ -209,12 +209,12 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/core/PostgreSQLStorage.ts` | src | reachable | 620 |
 | `src/core/RefIndex.ts` | src | reachable | 372 |
 | `src/core/RelationManager.ts` | src | reachable | 491 |
-| `src/core/segments/FileSegmentStorage.ts` | src | reachable | 685 |
-| `src/core/segments/ISegmentStorage.ts` | src | reachable | 257 |
+| `src/core/segments/FileSegmentStorage.ts` | src | reachable | 661 |
+| `src/core/segments/ISegmentStorage.ts` | src | reachable | 279 |
 | `src/core/sqlite-register.ts` | src | reachable | 31 |
-| `src/core/SQLiteStorage.ts` | src | reachable | 2525 |
+| `src/core/SQLiteStorage.ts` | src | reachable | 2519 |
 | `src/core/StorageFactory.ts` | src | reachable | 158 |
-| `src/core/TransactionManager.ts` | src | reachable | 766 |
+| `src/core/TransactionManager.ts` | src | reachable | 760 |
 | `src/core/TransitionLedger.ts` | src | reachable | 450 |
 | `src/features/AnalyticsManager.ts` | src | reachable | 247 |
 | `src/features/ArchiveManager.ts` | src | reachable | 426 |
@@ -314,7 +314,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `src/utils/compressionUtil.ts` | src | reachable | 422 |
 | `src/utils/constants.ts` | src | reachable | 339 |
 | `src/utils/Diagnostics.ts` | src | reachable | 85 |
-| `src/utils/durableWriteFile.ts` | src | reachable | 247 |
+| `src/utils/durableWriteFile.ts` | src | reachable | 270 |
 | `src/utils/entityUtils.ts` | src | reachable | 889 |
 | `src/utils/EntityValidator.ts` | src | reachable | 275 |
 | `src/utils/errors.ts` | src | reachable | 474 |
@@ -362,6 +362,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/integration/procedural-graph-recovery.test.ts` | tests | test | 232 |
 | `tests/integration/search/project-scope-isolation.test.ts` | tests | test | 87 |
 | `tests/integration/smart-search.test.ts` | tests | test | 287 |
+| `tests/integration/storage-dedup-safety.test.ts` | tests | test | 394 |
 | `tests/integration/storage/graph-storage-new-fields.test.ts` | tests | test | 73 |
 | `tests/integration/storage/sqlite-storage-new-fields.test.ts` | tests | test | 65 |
 | `tests/integration/streaming-export.test.ts` | tests | test | 227 |
@@ -527,7 +528,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/cli/spell.test.ts` | tests | test | 37 |
 | `tests/unit/cli/tag.test.ts` | tests | test | 49 |
 | `tests/unit/cli/toolAffordance.test.ts` | tests | test | 59 |
-| `tests/unit/core/BatchTransaction.test.ts` | tests | test | 431 |
+| `tests/unit/core/BatchTransaction.test.ts` | tests | test | 695 |
 | `tests/unit/core/columns/columns-review-fixes.test.ts` | tests | test | 338 |
 | `tests/unit/core/columns/IColumnStore.test.ts` | tests | test | 132 |
 | `tests/unit/core/columns/JsonlColumnStore.test.ts` | tests | test | 390 |
@@ -574,20 +575,20 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/core/RelationManager-metadata.test.ts` | tests | test | 127 |
 | `tests/unit/core/RelationManager.test.ts` | tests | test | 339 |
 | `tests/unit/core/rename-entity.test.ts` | tests | test | 364 |
-| `tests/unit/core/segments/FileSegmentStorage.test.ts` | tests | test | 498 |
+| `tests/unit/core/segments/FileSegmentStorage.test.ts` | tests | test | 877 |
 | `tests/unit/core/segments/GraphStorage-segments.test.ts` | tests | test | 222 |
-| `tests/unit/core/segments/ISegmentStorage.test.ts` | tests | test | 298 |
+| `tests/unit/core/segments/ISegmentStorage.test.ts` | tests | test | 385 |
 | `tests/unit/core/segments/segments-review-fixes.test.ts` | tests | test | 442 |
 | `tests/unit/core/sqlite-content-hash-migration.test.ts` | tests | test | 57 |
 | `tests/unit/core/sqlite-driver-resolver.test.ts` | tests | test | 72 |
 | `tests/unit/core/sqlite-embeddings-content-hash.test.ts` | tests | test | 138 |
 | `tests/unit/core/sqlite-events.test.ts` | tests | test | 470 |
 | `tests/unit/core/sqlite-lazy-load.test.ts` | tests | test | 82 |
-| `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1383 |
+| `tests/unit/core/SQLiteStorage.test.ts` | tests | test | 1690 |
 | `tests/unit/core/StorageFactory.test.ts` | tests | test | 220 |
 | `tests/unit/core/temporal-versioning.test.ts` | tests | test | 267 |
 | `tests/unit/core/TransactionBatching.test.ts` | tests | test | 440 |
-| `tests/unit/core/TransactionManager.test.ts` | tests | test | 525 |
+| `tests/unit/core/TransactionManager.test.ts` | tests | test | 769 |
 | `tests/unit/core/TransitionLedger.test.ts` | tests | test | 513 |
 | `tests/unit/core/write-path-delta.test.ts` | tests | test | 743 |
 | `tests/unit/features/AnalyticsManager.test.ts` | tests | test | 400 |
@@ -708,7 +709,7 @@ Every tracked `.ts` file in the repo — `src/`, `tests/`, `tools/`, `benchmarks
 | `tests/unit/utils/compression/CompressedMap.test.ts` | tests | test | 464 |
 | `tests/unit/utils/compression/ICompressionAdapter.test.ts` | tests | test | 140 |
 | `tests/unit/utils/compressionUtil.test.ts` | tests | test | 551 |
-| `tests/unit/utils/durableWriteFile.test.ts` | tests | test | 199 |
+| `tests/unit/utils/durableWriteFile.test.ts` | tests | test | 309 |
 | `tests/unit/utils/entityUtils.test.ts` | tests | test | 1097 |
 | `tests/unit/utils/EntityValidator.test.ts` | tests | test | 492 |
 | `tests/unit/utils/errors.test.ts` | tests | test | 377 |

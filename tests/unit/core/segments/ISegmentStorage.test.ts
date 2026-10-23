@@ -295,3 +295,90 @@ describe('InMemorySegmentStorage', () => {
     expect(back.relations).toHaveLength(50);
   });
 });
+
+describe('InMemorySegmentStorage saveSegment ownership', () => {
+  async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
+    try {
+      await promise;
+    } catch (error) {
+      return (error as Error).message;
+    }
+    throw new Error('expected the promise to reject');
+  }
+
+  it('names the class and the entity when an entity routes to another segment', async () => {
+    const store = new InMemorySegmentStorage(new FnvSegmentRouter(4));
+    const message = await rejectionMessage(
+      store.saveSegment({ id: 0, entities: [ent('alpha')], relations: [] }),
+    );
+    expect(message).toBe("InMemorySegmentStorage.saveSegment: entity 'alpha' routes to segment 3, not 0");
+  });
+
+  it('names the class and the relation when a relation routes to another segment', async () => {
+    const store = new InMemorySegmentStorage(new FnvSegmentRouter(4));
+    const relation: Relation = { from: 'alpha', to: 'beta', relationType: 'knows' };
+    const message = await rejectionMessage(
+      store.saveSegment({ id: 0, entities: [], relations: [relation] }),
+    );
+    expect(message).toBe(
+      "InMemorySegmentStorage.saveSegment: relation from='alpha' routes to segment 3, not 0",
+    );
+  });
+});
+
+describe('InMemorySegmentStorage saveSegment router access', () => {
+  /** Names that route to `id` under a four-segment router, found by search. */
+  function namesRoutedTo(id: number, count: number): string[] {
+    const router = new FnvSegmentRouter(4);
+    const names: string[] = [];
+    for (let i = 0; names.length < count; i++) {
+      if (router.route(`probe-${i}`) === id) names.push(`probe-${i}`);
+    }
+    return names;
+  }
+
+  async function rejection(promise: Promise<unknown>): Promise<unknown> {
+    try {
+      await promise;
+    } catch (error) {
+      return error;
+    }
+    throw new Error('expected the promise to reject');
+  }
+
+  it('reads the router once for each entity and each relation that it checks', async () => {
+    const store = new InMemorySegmentStorage(new FnvSegmentRouter(4));
+    const router = store.router;
+    let reads = 0;
+    Object.defineProperty(store, 'router', {
+      get() {
+        reads++;
+        return router;
+      },
+    });
+    const [first, second] = namesRoutedTo(3, 2);
+    const [foreign] = namesRoutedTo(0, 1);
+
+    // Two entities pass, then the relation fails: three checks, three reads.
+    await rejection(
+      store.saveSegment({
+        id: 3,
+        entities: [ent(first!), ent(second!)],
+        relations: [{ from: foreign!, to: first!, relationType: 'knows' }],
+      }),
+    );
+
+    expect(reads).toBe(3);
+  });
+
+  it('names the router access in the error when the router has no route method', async () => {
+    const store = new InMemorySegmentStorage({ segmentCount: 4 } as unknown as FnvSegmentRouter);
+
+    const error = await rejection(
+      store.saveSegment({ id: 0, entities: [ent('alpha')], relations: [] }),
+    );
+
+    expect(error).toBeInstanceOf(TypeError);
+    expect((error as Error).message).toBe('this.router.route is not a function');
+  });
+});

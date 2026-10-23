@@ -31,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `TransactionManager` and `BatchTransaction` share their entity and relation operation code (`applyGraphOperation` in `src/core/TransactionManager.ts`). Behaviour is unchanged.
+- `SQLiteStorage` shares its column migrations (`ensureColumns`), its entity bind values and its relation lookups by direction (`relationsFor`). Behaviour is unchanged.
+- Segment storage shares its ownership check and its temp file write with `durableWriteFile` (`assertSegmentOwnership`, `writeSyncedTmp`). Behaviour is unchanged.
 - The working-memory entity check has one function, `requireWorkingMemoryEntity`, in `src/agent/workingMemoryGuard.ts`. `WorkingMemoryManager.extendTTL`, `markForPromotion`, `promoteMemory` and `confirmMemory` and `ConsolidationPipeline.promoteMemory` call it. The lookup, the three error texts and their order do not change. Behaviour does not change.
 - Four lifecycle pairs share code. `PlanManager.markPlanComplete` and `abandonPlan` call a private `finishPlan`. `WorkThreadManager.complete` and `cancel` call a private `finish`. `FailureManager.markResolved` and `AgentReflectionManager.archive` map the write error with `versionedWriteFailure` in `src/agent/versionedWriteFailure.ts`, which maps `VersionConflictError` to `conflict` and `EntityNotFoundError` to `vanished-mid-update`. The results, the error texts and the number of microtask turns until a call settles do not change.
 - The seven rule builders in `src/utils/validators.ts` (`minLength`, `maxLength`, `pattern`, `range`, `minItems`, `maxItems`, `email`) share one private builder, `typedRule`. The dot-path getter is `getFieldByDotPath` in `src/utils/fieldPath.ts`. `validators.ts` and `EntityValidator` call it. Behaviour does not change.
@@ -55,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `FileSegmentStorage.saveAll` writes each staged segment file and the recovery manifest with the mode of `durableWriteFile`: `0o600`, or the tighter mode of the existing file. Before, these files got the default mode from the umask, usually `0o644`. `saveSegment` already wrote `0o600`.
 - `SearchFilterChain` excludes an entity whose `createdAt` or `lastModified` cannot be parsed, when a created or modified bound is set. Before, such an entity passed every date bound.
 - `HierarchyManager.getDescendants` and `getSubtree` return when stored `parentId` fields form a cycle. Before, the walk never ended and the process ran out of memory. Each entity is listed once, and the root is never listed as its own descendant.
 - `QueryCostEstimator.recommendMethod(query, entityCount, preferredMethods)` marks the best method of `preferredMethods` as recommended. Before, it marked the best method of the default list, so the flag could be `false` for the method that the call returned.
