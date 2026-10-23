@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - With `SQLiteStorage`, `ctx.semanticSearch` (and so `ctx.hybridSearchManager`) now keeps vectors in the `embeddings` table and reuses them across restarts. JSONL storage is unchanged.
 - **Breaking:** `ContextPackage` has two new required fields, `sourceTokens` and `compressionRatio`. Code that builds a `ContextPackage` object by hand must set both fields. `sourceTokens` is `totalTokens` plus the tokens of every excluded entity. `compressionRatio` is `sourceTokens / totalTokens`, or `1` when nothing is excluded.
 - The `key=value` observation codec of session checkpoints, work threads and procedure steps lives in one module, `src/agent/keyValueLine.ts`. The stored line format does not change.
+- Agent managers share duplicated private helpers: visibility filtering, conflict text similarity, episode timelines, causal neighbours and chains, tool-call completion, and the token-budget loop of context retrieval. Behaviour does not change.
 
 ### Fixed
 

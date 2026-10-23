@@ -655,19 +655,7 @@ export class ContextWindowManager {
     }
 
     // Score and select within budget
-    const scored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
-    const selected: AgentEntity[] = [];
-    let usedTokens = 0;
-
-    for (const s of scored) {
-      const tokens = this.estimateTokens(s.entity);
-      if (usedTokens + tokens <= budget) {
-        selected.push(s.entity);
-        usedTokens += tokens;
-      }
-    }
-
-    return { entities: selected, tokens: usedTokens };
+    return this.selectWithinBudget(candidates, budget, context);
   }
 
   /**
@@ -709,19 +697,7 @@ export class ContextWindowManager {
       : sorted;
 
     // Score and select within budget
-    const scored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
-    const selected: AgentEntity[] = [];
-    let usedTokens = 0;
-
-    for (const s of scored) {
-      const tokens = this.estimateTokens(s.entity);
-      if (usedTokens + tokens <= budget) {
-        selected.push(s.entity);
-        usedTokens += tokens;
-      }
-    }
-
-    return { entities: selected, tokens: usedTokens };
+    return this.selectWithinBudget(candidates, budget, context);
   }
 
   /**
@@ -742,7 +718,22 @@ export class ContextWindowManager {
       .filter((e) => (e as AgentEntity).memoryType === 'semantic') as AgentEntity[];
 
     // Score by salience (which includes context relevance)
-    const scored = await this.salienceEngine.rankEntitiesBySalience(semantic, context);
+    return this.selectWithinBudget(semantic, budget, context);
+  }
+
+  /**
+   * Rank candidates by salience and keep them in that order while they fit
+   * the token budget. A candidate that does not fit is skipped. Selection
+   * goes on with the next candidate.
+   *
+   * @internal
+   */
+  private async selectWithinBudget(
+    candidates: AgentEntity[],
+    budget: number,
+    context: SalienceContext
+  ): Promise<{ entities: AgentEntity[]; tokens: number }> {
+    const scored = await this.salienceEngine.rankEntitiesBySalience(candidates, context);
     const selected: AgentEntity[] = [];
     let usedTokens = 0;
 

@@ -155,6 +155,32 @@ describe('ToolCallObserver', () => {
     expect(recB.outcomes[0]!.outcome).toBe('success');
   });
 
+  it('records the exact outcome for each finish method and ignores an unknown call id', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    try {
+      const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+      const completed = observer.observeStart('tool_ok');
+      const failed = observer.observeStart('tool_bad');
+      const partial = observer.observeStart('tool_part');
+
+      await observer.observeComplete(completed, { result: 'done' });
+      await observer.observeError(failed, new Error('boom'));
+      await observer.observePartial(partial, 'half');
+      await observer.observeComplete('unknown');
+      await observer.observeError('unknown', 'x');
+      await observer.observePartial('unknown', 'y');
+
+      expect(recordOutcome.mock.calls).toStrictEqual([
+        ['tool_ok', { outcome: 'success', durationMs: 0 }],
+        ['tool_bad', { outcome: 'failure', errorMessage: 'boom', durationMs: 0 }],
+        ['tool_part', { outcome: 'partial', errorMessage: 'half', durationMs: 0 }],
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('fires events for start / complete / error / partial', async () => {
     const events: Array<{ event: string; payload: unknown }> = [];
     observer.events.on('toolCall:start', (p) => events.push({ event: 'start', payload: p }));

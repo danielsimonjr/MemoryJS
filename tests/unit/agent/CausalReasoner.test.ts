@@ -273,3 +273,31 @@ describe('3B.6 CausalReasoner', () => {
     });
   });
 });
+
+describe('CausalReasoner findCauses and findEffects (pins)', () => {
+  it('findCauses returns the chains into the effect, best score first', async () => {
+    const traversal = makeMockTraversal([
+      { from: 'a', to: 'b', relationType: 'causes', causalStrength: 0.8 },
+      { from: 'b', to: 'c', relationType: 'causes', causalStrength: 0.5 },
+      { from: 'x', to: 'c', relationType: 'causes', causalStrength: 0.9 },
+    ]);
+    const chains = await new CausalReasoner(traversal).findCauses('c', ['a', 'x']);
+
+    expect(chains.map((c) => c.path)).toStrictEqual([['x', 'c'], ['a', 'b', 'c']]);
+    expect(chains.map((c) => c.length)).toStrictEqual([1, 2]);
+    expect(chains[0].score).toBeCloseTo(0.9);
+    expect(chains[1].score).toBeCloseTo(0.4);
+  });
+
+  it('findEffects returns the chains out of the cause, best score first', async () => {
+    const traversal = makeMockTraversal([
+      { from: 'a', to: 'b', relationType: 'causes', causalStrength: 0.8 },
+      { from: 'b', to: 'c', relationType: 'causes', causalStrength: 0.5 },
+    ]);
+    const chains = await new CausalReasoner(traversal).findEffects('a', ['c', 'b']);
+
+    expect(chains.map((c) => c.path)).toStrictEqual([['a', 'b'], ['a', 'b', 'c']]);
+    expect(chains[0].score).toBeCloseTo(0.8);
+    expect(chains[1].score).toBeCloseTo(0.4);
+  });
+});

@@ -330,22 +330,7 @@ export class MultiAgentMemoryManager extends EventEmitter {
    */
   async getVisibleMemories(agentId: string): Promise<AgentEntity[]> {
     const graph = await this.storage.loadGraph();
-    const memories: AgentEntity[] = [];
-    const requestingMeta = this.agents.get(agentId);
-
-    for (const entity of graph.entities) {
-      if (!isAgentEntity(entity)) continue;
-      const agentEntity = entity as AgentEntity;
-
-      if (!this.config.allowCrossAgent && agentEntity.agentId !== agentId) continue;
-
-      const ownerMeta = agentEntity.agentId ? this.agents.get(agentEntity.agentId) : undefined;
-      if (this.visibilityResolver.canAccess(agentEntity, agentId, requestingMeta, ownerMeta)) {
-        memories.push(agentEntity);
-      }
-    }
-
-    return memories;
+    return this.filterByVisibility([...graph.entities], agentId);
   }
 
   /**

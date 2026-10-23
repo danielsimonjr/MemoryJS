@@ -149,22 +149,10 @@ export class ConflictResolver extends EventEmitter {
    */
   private calculateSimilarity(m1: AgentEntity, m2: AgentEntity): number {
     // Combine name and observations into text
-    const text1 = this.memoryToText(m1).toLowerCase();
-    const text2 = this.memoryToText(m2).toLowerCase();
-
-    // Simple Jaccard-like similarity
-    const words1 = new Set(text1.split(/\s+/).filter((w) => w.length > 2));
-    const words2 = new Set(text2.split(/\s+/).filter((w) => w.length > 2));
-
-    if (words1.size === 0 || words2.size === 0) return 0;
-
-    let intersection = 0;
-    for (const word of words1) {
-      if (words2.has(word)) intersection++;
-    }
-
-    const union = words1.size + words2.size - intersection;
-    return union > 0 ? intersection / union : 0;
+    return this.textSimilarity(
+      this.memoryToText(m1).toLowerCase(),
+      this.memoryToText(m2).toLowerCase()
+    );
   }
 
   /**

@@ -161,7 +161,12 @@ export class EpisodicMemoryManager {
 
     // Link to previous event if specified and auto-link enabled
     if (options?.previousEventId && this.config.autoLinkTemporal) {
-      await this.linkEvents(options.previousEventId, name);
+      await this.appendRelationPair(
+        options.previousEventId,
+        name,
+        EpisodicRelations.PRECEDES,
+        EpisodicRelations.FOLLOWS
+      );
     }
 
     return entity;
@@ -196,30 +201,25 @@ export class EpisodicMemoryManager {
   // ==================== Temporal Linking ====================
 
   /**
-   * Link two events in temporal sequence.
+   * Append a forward relation and its reverse relation with one timestamp.
+   * The forward relation runs from `from` to `to`. The reverse relation
+   * runs from `to` to `from`.
+   *
    * @internal
    */
-  private async linkEvents(beforeId: string, afterId: string): Promise<void> {
+  private async appendRelationPair(
+    from: string,
+    to: string,
+    forwardType: string,
+    reverseType: string
+  ): Promise<void> {
     const now = new Date().toISOString();
 
-    // Create precedes relation
-    const precedesRelation: Relation = {
-      from: beforeId,
-      to: afterId,
-      relationType: EpisodicRelations.PRECEDES,
-      createdAt: now,
-    };
+    const forwardRelation: Relation = { from, to, relationType: forwardType, createdAt: now };
+    const reverseRelation: Relation = { from: to, to: from, relationType: reverseType, createdAt: now };
 
-    // Create follows relation (reverse)
-    const followsRelation: Relation = {
-      from: afterId,
-      to: beforeId,
-      relationType: EpisodicRelations.FOLLOWS,
-      createdAt: now,
-    };
-
-    await this.storage.appendRelation(precedesRelation);
-    await this.storage.appendRelation(followsRelation);
+    await this.storage.appendRelation(forwardRelation);
+    await this.storage.appendRelation(reverseRelation);
   }
 
   /**
@@ -237,7 +237,12 @@ export class EpisodicMemoryManager {
 
     // Link each pair
     for (let i = 0; i < entityNames.length - 1; i++) {
-      await this.linkEvents(entityNames[i], entityNames[i + 1]);
+      await this.appendRelationPair(
+        entityNames[i],
+        entityNames[i + 1],
+        EpisodicRelations.PRECEDES,
+        EpisodicRelations.FOLLOWS
+      );
     }
   }
 
@@ -254,16 +259,28 @@ export class EpisodicMemoryManager {
     sessionId: string,
     options?: TimelineOptions
   ): Promise<AgentEntity[]> {
+    return this.collectEpisodes(sessionId, options);
+  }
+
+  /**
+   * Collect episodic memories with time filters, sorted by `createdAt` and
+   * paginated. Pass `undefined` as `sessionId` to skip the session filter.
+   *
+   * @internal
+   */
+  private async collectEpisodes(
+    sessionId: string | undefined,
+    options?: TimelineOptions
+  ): Promise<AgentEntity[]> {
     const graph = await this.storage.loadGraph();
     let episodes: AgentEntity[] = [];
 
-    // Find episodic memories for session
     for (const entity of graph.entities) {
       if (!isAgentEntity(entity)) continue;
       const agentEntity = entity as AgentEntity;
 
       if (agentEntity.memoryType !== 'episodic') continue;
-      if (agentEntity.sessionId !== sessionId) continue;
+      if (sessionId !== undefined && agentEntity.sessionId !== sessionId) continue;
       // Exclude session entities themselves
       if (agentEntity.entityType === 'session') continue;
 
@@ -381,26 +398,12 @@ export class EpisodicMemoryManager {
     if (!cause) throw new Error(`Cause entity not found: ${causeEntity}`);
     if (!effect) throw new Error(`Effect entity not found: ${effectEntity}`);
 
-    const now = new Date().toISOString();
-
-    // Create causes relation
-    const causesRelation: Relation = {
-      from: causeEntity,
-      to: effectEntity,
-      relationType: EpisodicRelations.CAUSES,
-      createdAt: now,
-    };
-
-    // Create caused_by relation (reverse)
-    const causedByRelation: Relation = {
-      from: effectEntity,
-      to: causeEntity,
-      relationType: EpisodicRelations.CAUSED_BY,
-      createdAt: now,
-    };
-
-    await this.storage.appendRelation(causesRelation);
-    await this.storage.appendRelation(causedByRelation);
+    await this.appendRelationPair(
+      causeEntity,
+      effectEntity,
+      EpisodicRelations.CAUSES,
+      EpisodicRelations.CAUSED_BY
+    );
   }
 
   /**
@@ -451,19 +454,7 @@ export class EpisodicMemoryManager {
    * @returns Events that directly caused this event
    */
   async getDirectCauses(entityName: string): Promise<AgentEntity[]> {
-    const relations = this.storage.getRelationsTo(entityName);
-    const causes: AgentEntity[] = [];
-
-    for (const rel of relations) {
-      if (rel.relationType === EpisodicRelations.CAUSES) {
-        const entity = this.storage.getEntityByName(rel.from);
-        if (entity && isAgentEntity(entity)) {
-          causes.push(entity as AgentEntity);
-        }
-      }
-    }
-
-    return causes;
+    return this.directCausalNeighbours(entityName, 'causes');
   }
 
   /**
@@ -473,19 +464,31 @@ export class EpisodicMemoryManager {
    * @returns Events that were directly caused by this event
    */
   async getDirectEffects(entityName: string): Promise<AgentEntity[]> {
-    const relations = this.storage.getRelationsFrom(entityName);
-    const effects: AgentEntity[] = [];
+    return this.directCausalNeighbours(entityName, 'effects');
+  }
+
+  /**
+   * Entities one CAUSES relation away from `entityName`. `'causes'` follows
+   * incoming relations to their source. `'effects'` follows outgoing
+   * relations to their target.
+   *
+   * @internal
+   */
+  private directCausalNeighbours(entityName: string, direction: 'causes' | 'effects'): AgentEntity[] {
+    const relations = direction === 'causes'
+      ? this.storage.getRelationsTo(entityName)
+      : this.storage.getRelationsFrom(entityName);
+    const neighbours: AgentEntity[] = [];
 
     for (const rel of relations) {
-      if (rel.relationType === EpisodicRelations.CAUSES) {
-        const entity = this.storage.getEntityByName(rel.to);
-        if (entity && isAgentEntity(entity)) {
-          effects.push(entity as AgentEntity);
-        }
+      if (rel.relationType !== EpisodicRelations.CAUSES) continue;
+      const entity = this.storage.getEntityByName(direction === 'causes' ? rel.from : rel.to);
+      if (entity && isAgentEntity(entity)) {
+        neighbours.push(entity as AgentEntity);
       }
     }
 
-    return effects;
+    return neighbours;
   }
 
   // ==================== Utility Methods ====================
@@ -497,43 +500,7 @@ export class EpisodicMemoryManager {
    * @returns All episodic memories
    */
   async getAllEpisodes(options?: TimelineOptions): Promise<AgentEntity[]> {
-    const graph = await this.storage.loadGraph();
-    let episodes: AgentEntity[] = [];
-
-    for (const entity of graph.entities) {
-      if (!isAgentEntity(entity)) continue;
-      const agentEntity = entity as AgentEntity;
-
-      if (agentEntity.memoryType !== 'episodic') continue;
-      if (agentEntity.entityType === 'session') continue;
-
-      // Apply time filters
-      if (options?.startTime && agentEntity.createdAt) {
-        if (new Date(agentEntity.createdAt) < new Date(options.startTime)) {
-          continue;
-        }
-      }
-      if (options?.endTime && agentEntity.createdAt) {
-        if (new Date(agentEntity.createdAt) > new Date(options.endTime)) {
-          continue;
-        }
-      }
-
-      episodes.push(agentEntity);
-    }
-
-    // Sort by createdAt
-    const order = options?.order ?? 'asc';
-    episodes.sort((a, b) => {
-      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return order === 'asc' ? timeA - timeB : timeB - timeA;
-    });
-
-    // Apply pagination
-    const offset = options?.offset ?? 0;
-    const limit = options?.limit ?? episodes.length;
-    return episodes.slice(offset, offset + limit);
+    return this.collectEpisodes(undefined, options);
   }
 
   /**
