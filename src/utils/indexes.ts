@@ -97,6 +97,21 @@ export class TypeIndex {
   }
 }
 
+/**
+ * Creates a new object with lowercase name, type, observations, and tags.
+ *
+ * @param entity - The source entity that provides the values to lowercase.
+ * @returns A new object with lowercased name, type, observations, and tags. A missing tags field gives an empty array.
+ */
+export function computeLowercase(entity: Entity): LowercaseData {
+  return {
+    name: entity.name.toLowerCase(),
+    entityType: entity.entityType.toLowerCase(),
+    observations: entity.observations.map(o => o.toLowerCase()),
+    tags: entity.tags?.map(t => t.toLowerCase()) ?? [],
+  };
+}
+
 /** Pre-computes lowercase versions of all searchable fields for O(1) lookup. */
 export class LowercaseCache {
   private cache: Map<string, LowercaseData> = new Map();
@@ -104,7 +119,7 @@ export class LowercaseCache {
   build(entities: Entity[]): void {
     this.cache.clear();
     for (const entity of entities) {
-      this.cache.set(entity.name, this.computeLowercase(entity));
+      this.cache.set(entity.name, computeLowercase(entity));
     }
   }
 
@@ -113,7 +128,7 @@ export class LowercaseCache {
   }
 
   set(entity: Entity): void {
-    this.cache.set(entity.name, this.computeLowercase(entity));
+    this.cache.set(entity.name, computeLowercase(entity));
   }
 
   remove(entityName: string): void {
@@ -130,15 +145,6 @@ export class LowercaseCache {
 
   get size(): number {
     return this.cache.size;
-  }
-
-  private computeLowercase(entity: Entity): LowercaseData {
-    return {
-      name: entity.name.toLowerCase(),
-      entityType: entity.entityType.toLowerCase(),
-      observations: entity.observations.map(o => o.toLowerCase()),
-      tags: entity.tags?.map(t => t.toLowerCase()) ?? [],
-    };
   }
 }
 

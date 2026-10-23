@@ -114,8 +114,7 @@ export class GovernanceTransaction {
 
   /** Apply snapshot redaction when configured; identity otherwise. */
   private redactSnapshot(snapshot: object | undefined): object | undefined {
-    if (!snapshot || !this.snapshotRedactor) return snapshot;
-    return redactObjectStrings(snapshot, this.snapshotRedactor);
+    return redactAuditSnapshot(snapshot, this.snapshotRedactor);
   }
 
   /**
@@ -283,16 +282,7 @@ export class GovernanceTransaction {
     after: object,
     options?: GovernanceOperationOptions
   ): Promise<AuditEntry> {
-    const entry = await this.auditLog.append({
-      operation: 'merge',
-      entityName,
-      agentId: options?.agentId ?? this.defaultAgentId,
-      before: this.redactSnapshot(before),
-      after: this.redactSnapshot(after),
-      status: 'committed',
-    });
-    this.auditEntries.push(entry);
-    return entry;
+    return this.recordCommitted('merge', entityName, before, after, options);
   }
 
   /**
@@ -307,12 +297,33 @@ export class GovernanceTransaction {
     before: object,
     options?: GovernanceOperationOptions
   ): Promise<AuditEntry> {
+    return this.recordCommitted('archive', entityName, before, undefined, options);
+  }
+
+  /**
+   * Appends one committed audit entry to the audit log and to this transaction.
+   * Redacts the before and after snapshots first.
+   *
+   * @param operation - The audit operation to record.
+   * @param entityName - The name of the audited entity.
+   * @param before - The before snapshot. This value may be undefined.
+   * @param after - The after snapshot. This value may be undefined.
+   * @param options - Optional governance options. The agent id is the option value or the transaction default.
+   * @returns The new audit entry with status committed.
+   */
+  private async recordCommitted(
+    operation: AuditOperation,
+    entityName: string,
+    before: object | undefined,
+    after: object | undefined,
+    options?: GovernanceOperationOptions
+  ): Promise<AuditEntry> {
     const entry = await this.auditLog.append({
-      operation: 'archive',
+      operation,
       entityName,
       agentId: options?.agentId ?? this.defaultAgentId,
       before: this.redactSnapshot(before),
-      after: undefined,
+      after: this.redactSnapshot(after),
       status: 'committed',
     });
     this.auditEntries.push(entry);
@@ -425,16 +436,12 @@ export class GovernanceManager {
     after?: object;
     status?: 'committed' | 'rolled_back';
   }): Promise<AuditEntry> {
-    const redact = (snapshot: object | undefined): object | undefined =>
-      snapshot && this.snapshotRedactor
-        ? redactObjectStrings(snapshot, this.snapshotRedactor)
-        : snapshot;
     return this.auditLog.append({
       operation: entry.operation,
       entityName: entry.entityName,
       agentId: entry.agentId,
-      before: redact(entry.before),
-      after: redact(entry.after),
+      before: redactAuditSnapshot(entry.before, this.snapshotRedactor),
+      after: redactAuditSnapshot(entry.after, this.snapshotRedactor),
       status: entry.status ?? 'committed',
     });
   }
@@ -627,6 +634,19 @@ function redactObjectStrings<T>(value: T, redactor: PiiRedactor): T {
     }
   }
   return value;
+}
+
+/**
+ * Redacts PII in an audit snapshot when a redactor is set.
+ * Without a redactor, or without a snapshot, it returns the input unchanged.
+ *
+ * @param snapshot - The snapshot to redact. This value may be undefined.
+ * @param redactor - The redactor to apply. This value may be undefined.
+ * @returns The input snapshot when the snapshot or the redactor is undefined. Otherwise a redacted copy. The live graph is never changed.
+ */
+function redactAuditSnapshot(snapshot: object | undefined, redactor: PiiRedactor | undefined): object | undefined {
+  if (!snapshot || !redactor) return snapshot;
+  return redactObjectStrings(snapshot, redactor);
 }
 
 /**

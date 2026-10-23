@@ -25,6 +25,7 @@
  */
 
 import type { Entity, Relation, KnowledgeGraph } from '../../types/types.js';
+import { fnv1aHash } from '../../utils/entityUtils.js';
 
 /** A segment id is a non-negative integer in `[0, segmentCount)`. */
 export type SegmentId = number;
@@ -92,19 +93,9 @@ export interface ISegmentStorage {
 // ==================== FNV-1a router ====================
 
 /**
- * FNV-1a 32-bit hash. Same algorithm used in `BloomFilter` and a
- * dozen other modules — short, fast, has well-understood
- * distribution properties for short strings (entity names).
+ * FNV-1a 32-bit; the same function as `fnv1aHash`. `BloomFilter.doubleHash` uses a two-seed variant.
  */
-export function fnv1a32(input: string): number {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < input.length; i++) {
-    hash ^= input.charCodeAt(i);
-    // 32-bit multiply by 0x01000193 with overflow.
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0; // coerce to unsigned
-}
+export { fnv1aHash as fnv1a32 } from '../../utils/entityUtils.js';
 
 /** Default router — FNV-1a modulo `segmentCount`. */
 export class FnvSegmentRouter implements SegmentRouter {
@@ -117,7 +108,7 @@ export class FnvSegmentRouter implements SegmentRouter {
   }
 
   route(name: string): SegmentId {
-    return fnv1a32(name) % this.segmentCount;
+    return fnv1aHash(name) % this.segmentCount;
   }
 }
 

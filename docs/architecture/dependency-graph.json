@@ -5,7 +5,7 @@
     "lastUpdated": "2026-10-23",
     "totalFiles": 294,
     "totalModules": 12,
-    "totalExports": 2038
+    "totalExports": 2043
   },
   "entryPoints": [
     {
@@ -1226,6 +1226,12 @@
             "file": "../utils/textSimilarity.js",
             "imports": [
               "tokenizeStripped"
+            ]
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "hash31"
             ]
           },
           {
@@ -7829,6 +7835,12 @@
             ]
           },
           {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "hash31"
+            ]
+          },
+          {
             "file": "./ExclusionManager.js",
             "imports": [
               "ExclusionManager"
@@ -9459,7 +9471,7 @@
           {
             "file": "../utils/entityUtils.js",
             "imports": [
-              "escapeCsvFormula"
+              "escapeCsvCell"
             ]
           }
         ],
@@ -11126,6 +11138,12 @@
             ]
           },
           {
+            "file": "../utils/indexes.js",
+            "imports": [
+              "computeLowercase"
+            ]
+          },
+          {
             "file": "../utils/logger.js",
             "imports": [
               "logger"
@@ -11339,6 +11357,19 @@
               "KnowledgeGraph"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../../utils/entityUtils.js",
+            "imports": [
+              "fnv1aHash"
+            ]
+          },
+          {
+            "file": "../../utils/entityUtils.js",
+            "imports": [
+              "fnv1aHash"
+            ],
+            "reExport": true
           }
         ],
         "exports": [
@@ -11346,7 +11377,11 @@
           "splitGraphIntoSegments",
           "mergeSegmentsIntoGraph",
           "FnvSegmentRouter",
-          "InMemorySegmentStorage"
+          "InMemorySegmentStorage",
+          "fnv1aHash"
+        ],
+        "reExported": [
+          "fnv1aHash"
         ],
         "classes": [
           "FnvSegmentRouter",
@@ -11358,7 +11393,6 @@
           "ISegmentStorage"
         ],
         "functions": [
-          "fnv1a32",
           "splitGraphIntoSegments",
           "mergeSegmentsIntoGraph"
         ]
@@ -11476,7 +11510,8 @@
             "imports": [
               "NameIndex",
               "RelationIndex",
-              "TypeIndex"
+              "TypeIndex",
+              "computeLowercase"
             ]
           },
           {
@@ -11855,6 +11890,12 @@
               "RelationManager"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "escapeRegExp"
+            ]
           }
         ],
         "exports": [
@@ -12589,8 +12630,14 @@
               "createProgress",
               "validateFilePath",
               "sanitizeObject",
-              "escapeCsvFormula",
               "formatZodErrors"
+            ]
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "escapeCsvCell",
+              "escapeRegExp"
             ]
           },
           {
@@ -12838,8 +12885,13 @@
               "checkCancellation",
               "createProgressReporter",
               "createProgress",
-              "escapeCsvFormula",
               "validateFilePath"
+            ]
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "escapeCsvCell"
             ]
           },
           {
@@ -13289,6 +13341,12 @@
               "EMBEDDING_DEFAULTS",
               "OPENAI_API_CONFIG",
               "getEmbeddingConfig"
+            ]
+          },
+          {
+            "file": "../utils/entityUtils.js",
+            "imports": [
+              "hash31"
             ]
           }
         ],
@@ -17623,6 +17681,7 @@
         "exports": [
           "defaultMemoryPath",
           "fnv1aHash",
+          "hash31",
           "findEntityByName",
           "findEntitiesByNames",
           "entityExists",
@@ -17650,6 +17709,8 @@
           "entityPassesFilters",
           "sanitizeObject",
           "escapeCsvFormula",
+          "escapeCsvCell",
+          "escapeRegExp",
           "validateFilePath",
           "ensureMemoryFilePath"
         ],
@@ -17658,6 +17719,7 @@
         ],
         "functions": [
           "fnv1aHash",
+          "hash31",
           "findEntityByName",
           "findEntityByName",
           "findEntityByName",
@@ -17688,6 +17750,8 @@
           "entityPassesFilters",
           "sanitizeObject",
           "escapeCsvFormula",
+          "escapeCsvCell",
+          "escapeRegExp",
           "validateFilePath",
           "ensureMemoryFilePath"
         ],
@@ -18863,6 +18927,7 @@
           }
         ],
         "exports": [
+          "computeLowercase",
           "NameIndex",
           "TypeIndex",
           "LowercaseCache",
@@ -18875,6 +18940,9 @@
           "LowercaseCache",
           "RelationIndex",
           "ObservationIndex"
+        ],
+        "functions": [
+          "computeLowercase"
         ]
       },
       "src/utils/IndexHealthMonitor.ts": {
@@ -20002,15 +20070,15 @@
   "statistics": {
     "totalTypeScriptFiles": 294,
     "totalModules": 12,
-    "totalLinesOfCode": 104254,
-    "totalExports": 2038,
+    "totalLinesOfCode": 104235,
+    "totalExports": 2043,
     "totalClasses": 234,
     "totalInterfaces": 622,
-    "totalFunctions": 328,
+    "totalFunctions": 331,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,
-    "totalReExports": 1339,
+    "totalReExports": 1340,
     "totalTypeOnlyImports": 479,
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,

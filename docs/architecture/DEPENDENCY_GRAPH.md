@@ -437,6 +437,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `AgentEntity, ConsolidateOptions, ConsolidationResult, SummarizationResult, PatternResult, MemoryType, MemoryMergeStrategy, MergeResult, DuplicatePair, ConsolidationTrigger, ConsolidationRule` | Import (type-only) |
 | `../types/agent-memory.js` | `isAgentEntity, isFailureMemory, isProspectiveMemory, isReflectionMemory` | Import |
 | `../utils/textSimilarity.js` | `tokenizeStripped` | Import |
+| `../utils/entityUtils.js` | `hash31` | Import |
 | `./WorkingMemoryManager.js` | `WorkingMemoryManager` | Import (type-only) |
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
 | `./SummarizationService.js` | `SummarizationService` | Import |
@@ -2065,6 +2066,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/agent-memory.js` | `isAgentEntity` | Import |
 | `./EntropyFilter.js` | `passesEntropyFilter, EntropyFilterConfig` | Import |
 | `../utils/errors.js` | `LowEntropyContentError, MemoryWriteBlockedError` | Import |
+| `../utils/entityUtils.js` | `hash31` | Import |
 | `./ExclusionManager.js` | `ExclusionManager` | Import (type-only) |
 
 **Exports:**
@@ -2735,7 +2737,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/types.js` | `Entity, Relation, PathResult, CentralityResult, ConnectedComponentsResult, ValidationReport` | Import (type-only) |
-| `../utils/entityUtils.js` | `escapeCsvFormula` | Import |
+| `../utils/entityUtils.js` | `escapeCsvCell` | Import |
 
 **Exports:**
 - Types: `OutputFormat`
@@ -3179,6 +3181,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../utils/graphCopy.js` | `borrowGraphView, deepCopyPlain` | Import |
+| `../utils/indexes.js` | `computeLowercase` | Import |
 | `../utils/logger.js` | `logger` | Import |
 | `../types/index.js` | `Entity, Relation, IGraphStorage, KnowledgeGraph, ReadonlyKnowledgeGraph, LowercaseData` | Import (type-only) |
 
@@ -3256,12 +3259,15 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../../types/types.js` | `Entity, Relation, KnowledgeGraph` | Import (type-only) |
+| `../../utils/entityUtils.js` | `fnv1aHash` | Import |
+| `../../utils/entityUtils.js` | `fnv1aHash` | Re-export |
 
 **Exports:**
 - Classes: `FnvSegmentRouter`, `InMemorySegmentStorage`
 - Interfaces: `SegmentRouter`, `Segment`, `ISegmentStorage`
 - Types: `SegmentId`
-- Functions: `fnv1a32`, `splitGraphIntoSegments`, `mergeSegmentsIntoGraph`
+- Functions: `splitGraphIntoSegments`, `mergeSegmentsIntoGraph`
+- Re-exports: `fnv1aHash`
 
 ---
 
@@ -3301,7 +3307,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | `./nodeSqliteAdapter.js` | `createNodeSqliteDatabaseCtor, isNodeSqliteAvailable` | Import |
 | `../types/index.js` | `KnowledgeGraph, Entity, Relation, ReadonlyKnowledgeGraph, IGraphStorage, LowercaseData` | Import (type-only) |
 | `../utils/searchCache.js` | `clearAllSearchCaches, bumpEntityGeneration, bumpRelationGeneration` | Import |
-| `../utils/indexes.js` | `NameIndex, RelationIndex, TypeIndex` | Import |
+| `../utils/indexes.js` | `NameIndex, RelationIndex, TypeIndex, computeLowercase` | Import |
 | `../utils/index.js` | `sanitizeObject, validateFilePath, AsyncMutex` | Import |
 | `../utils/errors.js` | `EntityNotFoundError, DuplicateEntityError` | Import |
 | `../utils/logger.js` | `logger` | Import |
@@ -3433,6 +3439,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/index.js` | `Entity, Relation, IGraphStorage` | Import (type-only) |
 | `../core/RelationManager.js` | `RelationManager` | Import (type-only) |
+| `../utils/entityUtils.js` | `escapeRegExp` | Import |
 
 **Exports:**
 - Classes: `AutoLinker`
@@ -3592,7 +3599,8 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | `../core/EntityManager.js` | `EntityManager, fireGovernanceAudits, preflightGovernedGraphMutation, GovernanceHooks` | Import |
 | `../core/RelationManager.js` | `RelationManager` | Import |
 | `../utils/errors.js` | `FileOperationError` | Import |
-| `../utils/index.js` | `compress, COMPRESSION_CONFIG, STREAMING_CONFIG, checkCancellation, createProgressReporter, createProgress, validateFilePath, sanitizeObject, escapeCsvFormula, formatZodErrors` | Import |
+| `../utils/index.js` | `compress, COMPRESSION_CONFIG, STREAMING_CONFIG, checkCancellation, createProgressReporter, createProgress, validateFilePath, sanitizeObject, formatZodErrors` | Import |
+| `../utils/entityUtils.js` | `escapeCsvCell, escapeRegExp` | Import |
 | `./StreamingExporter.js` | `StreamingExporter, StreamResult` | Import |
 | `./BackupManager.js` | `BackupManager` | Import |
 | `../utils/schemas.js` | `EntitySchema, RelationSchema` | Import |
@@ -3676,7 +3684,8 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/types.js` | `Entity, ReadonlyKnowledgeGraph, LongRunningOperationOptions` | Import (type-only) |
-| `../utils/index.js` | `checkCancellation, createProgressReporter, createProgress, escapeCsvFormula, validateFilePath` | Import |
+| `../utils/index.js` | `checkCancellation, createProgressReporter, createProgress, validateFilePath` | Import |
+| `../utils/entityUtils.js` | `escapeCsvCell` | Import |
 | `../security/PiiRedactor.js` | `PiiRedactor` | Import |
 | `../utils/durableWriteFile.js` | `restrictSensitiveFilePermissions` | Import |
 
@@ -3844,6 +3853,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/index.js` | `EmbeddingService, EmbeddingConfig, EmbeddingMode` | Import (type-only) |
 | `../utils/constants.js` | `EMBEDDING_DEFAULTS, OPENAI_API_CONFIG, getEmbeddingConfig` | Import |
+| `../utils/entityUtils.js` | `hash31` | Import |
 
 **Exports:**
 - Classes: `OpenAIEmbeddingService`, `LlamaCppEmbeddingService`, `LocalEmbeddingService`, `MockEmbeddingService`
@@ -4958,7 +4968,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Interfaces: `CommonSearchFilters`
-- Functions: `fnv1aHash`, `findEntityByName`, `findEntityByName`, `findEntityByName`, `findEntityByName`, `findEntitiesByNames`, `entityExists`, `getEntityIndex`, `removeEntityByName`, `getEntityNameSet`, `groupEntitiesByType`, `touchEntity`, `normalizeTag`, `normalizeTags`, `hasMatchingTag`, `hasAllTags`, `filterByTags`, `addUniqueTags`, `removeTags`, `isWithinDateRange`, `parseDateRange`, `isValidISODate`, `getCurrentTimestamp`, `isWithinImportanceRange`, `filterByImportance`, `filterByCreatedDate`, `filterByModifiedDate`, `filterByEntityType`, `entityPassesFilters`, `sanitizeObject`, `escapeCsvFormula`, `validateFilePath`, `ensureMemoryFilePath`
+- Functions: `fnv1aHash`, `hash31`, `findEntityByName`, `findEntityByName`, `findEntityByName`, `findEntityByName`, `findEntitiesByNames`, `entityExists`, `getEntityIndex`, `removeEntityByName`, `getEntityNameSet`, `groupEntitiesByType`, `touchEntity`, `normalizeTag`, `normalizeTags`, `hasMatchingTag`, `hasAllTags`, `filterByTags`, `addUniqueTags`, `removeTags`, `isWithinDateRange`, `parseDateRange`, `isValidISODate`, `getCurrentTimestamp`, `isWithinImportanceRange`, `filterByImportance`, `filterByCreatedDate`, `filterByModifiedDate`, `filterByEntityType`, `entityPassesFilters`, `sanitizeObject`, `escapeCsvFormula`, `escapeCsvCell`, `escapeRegExp`, `validateFilePath`, `ensureMemoryFilePath`
 - Constants: `defaultMemoryPath`
 
 ---
@@ -5079,6 +5089,7 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `NameIndex`, `TypeIndex`, `LowercaseCache`, `RelationIndex`, `ObservationIndex`
+- Functions: `computeLowercase`
 
 ---
 
@@ -5350,16 +5361,17 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/cli/commands/helpers` | 3 files | 23 files |
 | `src/cli/formatters` | 2 files | 24 files |
 | `src/cli/commands/index` | 24 files | 1 file |
-| `src/agent/ConsolidationPipeline` | 13 files | 7 files |
+| `src/agent/ConsolidationPipeline` | 14 files | 7 files |
 | `src/agent/ContextWindowManager` | 14 files | 5 files |
 | `src/search/SearchManager` | 16 files | 3 files |
 | `src/utils/constants` | 0 files | 19 files |
+| `src/utils/entityUtils` | 3 files | 16 files |
 | `src/agent/AgentMemoryConfig` | 15 files | 3 files |
 | `src/agent/procedural/graph/index` | 16 files | 2 files |
+| `src/features/IOManager` | 14 files | 4 files |
 | `src/types/proceduralGraph` | 0 files | 18 files |
 | `src/agent/DecayEngine` | 7 files | 10 files |
 | `src/features/index` | 16 files | 1 file |
-| `src/features/IOManager` | 13 files | 4 files |
 | `src/core/ObservationManager` | 10 files | 6 files |
 | `src/core/RelationManager` | 6 files | 10 files |
 | `src/search/RankedSearch` | 9 files | 7 files |
@@ -5367,14 +5379,13 @@ Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/core/index` | 13 files | 1 file |
 | `src/search/HybridSearchManager` | 9 files | 5 files |
 | `src/agent/MemoryEngine` | 9 files | 4 files |
+| `src/agent/WorkingMemoryManager` | 6 files | 7 files |
 | `src/core/SQLiteStorage` | 10 files | 3 files |
 | `src/utils/textSimilarity` | 0 files | 13 files |
 | `src/agent/procedural/graph/ProceduralGraphEvolution` | 10 files | 2 files |
-| `src/agent/WorkingMemoryManager` | 5 files | 7 files |
 | `src/core/GraphEventEmitter` | 2 files | 10 files |
 | `src/search/FuzzySearch` | 10 files | 2 files |
 | `src/search/SemanticSearch` | 5 files | 7 files |
-| `src/utils/entityUtils` | 3 files | 9 files |
 
 ---
 
@@ -5620,12 +5631,12 @@ graph TD
 |----------|-------|
 | Total TypeScript Files | 294 |
 | Total Modules | 12 |
-| Total Lines of Code | 104254 |
-| Total Exports | 2038 |
-| Total Re-exports | 1339 |
+| Total Lines of Code | 104235 |
+| Total Exports | 2043 |
+| Total Re-exports | 1340 |
 | Total Classes | 234 |
 | Total Interfaces | 622 |
-| Total Functions | 328 |
+| Total Functions | 331 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 479 |

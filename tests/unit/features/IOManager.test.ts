@@ -1712,4 +1712,65 @@ from,to,relationType,createdAt,lastModified`;
       });
     });
   });
+
+  describe('XML, HTML and CSV escapes (R19 pins)', () => {
+    const stamp = '2026-01-01T00:00:00.000Z';
+
+    // Golden name cells recorded from the unchanged escapeCSV; the IOManager CSV path must match.
+    it.each([
+      ['', ''],
+      ['plain', 'plain'],
+      ['a,b', '"a,b"'],
+      ['say "hi"', '"say ""hi"""'],
+      ['line\nbreak', '"line\nbreak"'],
+      ['=SUM(A1)', "'=SUM(A1)"],
+      ['+1', "'+1"],
+      ['-1', "'-1"],
+      ['@x', "'@x"],
+      ['a\rb', 'a\rb'],
+      ['a\r\nb', '"a\r\nb"'],
+    ])('CSV export writes the name cell for %j as %j', (name, cell) => {
+      const csv = manager.exportGraph(
+        { entities: [{ name, entityType: 't', observations: [], createdAt: stamp, lastModified: stamp }], relations: [] },
+        'csv'
+      );
+      expect(csv).toContain(`${cell},t,`);
+    });
+
+    it('GraphML and GEXF escape the node id and label', () => {
+      const graph = {
+        entities: [{ name: 'a<b>&"c\'', entityType: 'x', observations: [], createdAt: stamp, lastModified: stamp }],
+        relations: [],
+      };
+
+      expect(manager.exportGraph(graph, 'graphml')).toContain('<node id="a&lt;b&gt;&amp;&quot;c&apos;">');
+      expect(manager.exportGraph(graph, 'gexf')).toContain(
+        '<node id="a&lt;b&gt;&amp;&quot;c&apos;" label="a&lt;b&gt;&amp;&quot;c&apos;">'
+      );
+    });
+
+    it('the HTML view escapes the title, including a single quote', async () => {
+      const html = await manager.visualizeGraph({ title: 'a<b>&"c\'' });
+
+      expect(html).toContain('<title>a&lt;b&gt;&amp;&quot;c&#39;</title>');
+    });
+
+    it('GraphML import reads the entityType from data key d0', async () => {
+      const graphmlData = `<?xml version="1.0" encoding="UTF-8"?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns">
+  <graph id="G" edgedefault="directed">
+    <node id="Alice">
+      <data key="d0">person</data>
+      <data key="d1"></data>
+    </node>
+  </graph>
+</graphml>`;
+
+      const result = await manager.importGraph('graphml', graphmlData);
+
+      expect(result.entitiesAdded).toBe(1);
+      const graph = await storage.loadGraph();
+      expect(graph.entities.find(e => e.name === 'Alice')?.entityType).toBe('person');
+    });
+  });
 });
