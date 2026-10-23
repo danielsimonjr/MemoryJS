@@ -483,24 +483,32 @@ export class DecayEngine {
    * @returns Array of decayed AgentEntity records
    */
   async getDecayedMemories(threshold: number): Promise<AgentEntity[]> {
+    return this.collectByEffectiveImportance((importance) => importance < threshold);
+  }
+
+  /**
+   * Load the AgentEntity records whose effective importance passes `keep`.
+   * Refreshes the connectivity snapshot first.
+   *
+   * @internal
+   */
+  private async collectByEffectiveImportance(
+    keep: (effectiveImportance: number) => boolean
+  ): Promise<AgentEntity[]> {
     const graph = await this.storage.loadGraph();
     this.maybeRefreshConnectivity(graph);
-    const decayed: AgentEntity[] = [];
+    const selected: AgentEntity[] = [];
 
     for (const entity of graph.entities) {
       // Check if this is an AgentEntity
       if (!isAgentEntity(entity)) continue;
 
-      // Calculate effective importance
-      const effectiveImportance = this.calculateEffectiveImportance(entity);
-
-      // Add to results if below threshold
-      if (effectiveImportance < threshold) {
-        decayed.push(entity);
+      if (keep(this.calculateEffectiveImportance(entity))) {
+        selected.push(entity);
       }
     }
 
-    return decayed;
+    return selected;
   }
 
   /**
@@ -514,23 +522,11 @@ export class DecayEngine {
    * @returns Array of at-risk AgentEntity records
    */
   async getMemoriesAtRisk(threshold: number = 1.0): Promise<AgentEntity[]> {
-    const graph = await this.storage.loadGraph();
-    this.maybeRefreshConnectivity(graph);
-    const atRisk: AgentEntity[] = [];
     const minImportance = this.config.minImportance;
-
-    for (const entity of graph.entities) {
-      if (!isAgentEntity(entity)) continue;
-
-      const effectiveImportance = this.calculateEffectiveImportance(entity);
-
-      // At risk if between min floor and threshold
-      if (effectiveImportance >= minImportance && effectiveImportance < threshold) {
-        atRisk.push(entity);
-      }
-    }
-
-    return atRisk;
+    // At risk if between min floor and threshold
+    return this.collectByEffectiveImportance(
+      (importance) => importance >= minImportance && importance < threshold
+    );
   }
 
   // ==================== Memory Reinforcement ====================

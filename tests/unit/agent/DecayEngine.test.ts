@@ -1161,3 +1161,26 @@ describe('DecayEngine.calculatePrdEffectiveImportance', () => {
     expect(prd).toBeGreaterThan(0);
   });
 });
+
+describe('DecayEngine.getDecayedMemories and getMemoriesAtRisk (pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('select memories on each side of the thresholds', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const now = '2026-01-01T00:00:00.000Z';
+    vi.setSystemTime(new Date(now));
+    const storage = createMockStorage([
+      createAgentEntity('below-floor', { importance: 0.05, lastAccessedAt: now, createdAt: now }),
+      createAgentEntity('at-risk-low', { importance: 2.5, lastAccessedAt: now, createdAt: now }),
+      createAgentEntity('at-risk-high', { importance: 2.99, lastAccessedAt: now, createdAt: now }),
+      createAgentEntity('on-threshold', { importance: 3, lastAccessedAt: now, createdAt: now }),
+      createAgentEntity('high', { importance: 7, lastAccessedAt: now, createdAt: now }),
+    ]);
+    const decay = new DecayEngine(storage, new AccessTracker(storage));
+
+    expect((await decay.getDecayedMemories(3)).map((e) => e.name)).toStrictEqual(['below-floor', 'at-risk-low', 'at-risk-high']);
+    expect((await decay.getMemoriesAtRisk(3)).map((e) => e.name)).toStrictEqual(['below-floor', 'at-risk-low', 'at-risk-high']);
+  });
+});

@@ -643,3 +643,20 @@ describe('AccessTracker Average Access Interval', () => {
     expect(stats.averageAccessInterval).toBe(1500);
   });
 });
+
+describe('AccessTracker top-N ordering (pins)', () => {
+  it('keeps insertion order for entities with the same access frequency', async () => {
+    const storage = createMockStorage({
+      entity_a: createAgentEntity('entity_a'),
+      entity_b: createAgentEntity('entity_b'),
+      entity_c: createAgentEntity('entity_c'),
+    });
+    const tracker = new AccessTracker(storage);
+    await tracker.recordAccess('entity_b');
+    await tracker.recordAccess('entity_a');
+    await tracker.recordAccess('entity_c');
+
+    const names = (await tracker.getFrequentlyAccessed(3)).map((e) => e.name);
+    expect(names).toStrictEqual(['entity_b', 'entity_a', 'entity_c']);
+  });
+});

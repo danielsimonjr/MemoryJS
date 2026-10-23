@@ -174,17 +174,10 @@ export class DecayScheduler {
    */
   private async runDecayCycle(): Promise<void> {
     try {
-      // Run decay analysis
-      const decayResult = await this.decayEngine.applyDecay();
-      this.config.onDecayComplete?.(decayResult);
-
-      // Run forget if enabled and configured
-      if (this.config.autoForget && this.config.forgetOptions) {
-        const forgetResult = await this.decayEngine.forgetWeakMemories(
-          this.config.forgetOptions
-        );
-        this.config.onForgetComplete?.(forgetResult);
-      }
+      await this.executeCycle({
+        onDecay: this.config.onDecayComplete,
+        onForget: this.config.onForgetComplete,
+      });
     } catch (error) {
       if (this.config.onError) {
         this.config.onError(error instanceof Error ? error : new Error(String(error)));
@@ -204,6 +197,8 @@ export class DecayScheduler {
    * - User-initiated cleanup
    * - One-time decay operations
    *
+   * Does not call `onDecayComplete`, `onForgetComplete` or `onError`; errors reject the promise.
+   *
    * @returns Results of the decay cycle
    *
    * @example
@@ -216,11 +211,27 @@ export class DecayScheduler {
    * ```
    */
   async runNow(): Promise<DecayCycleResult> {
+    return this.executeCycle({});
+  }
+
+  /**
+   * Apply decay, then forget when enabled. `hooks.onDecay` runs right after
+   * decay and before forgetting. `hooks.onForget` runs right after forgetting.
+   * Hook return values are not awaited. Errors reject the returned promise.
+   *
+   * @internal
+   */
+  private async executeCycle(hooks: {
+    onDecay?: (result: DecayResult) => void;
+    onForget?: (result: ForgetResult) => void;
+  }): Promise<DecayCycleResult> {
     const decay = await this.decayEngine.applyDecay();
+    hooks.onDecay?.(decay);
 
     let forget: ForgetResult | undefined;
     if (this.config.autoForget && this.config.forgetOptions) {
       forget = await this.decayEngine.forgetWeakMemories(this.config.forgetOptions);
+      hooks.onForget?.(forget);
     }
 
     return { decay, forget };

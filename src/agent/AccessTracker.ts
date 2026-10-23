@@ -249,7 +249,7 @@ export class AccessTracker {
       : 0;
 
     // Calculate frequency scores
-    const scored: Array<{ name: string; frequency: number }> = [];
+    const scored: Array<{ name: string; score: number }> = [];
 
     for (const [name, record] of this.accessRecords) {
       let frequency: number;
@@ -264,24 +264,12 @@ export class AccessTracker {
       }
 
       if (frequency > 0) {
-        scored.push({ name, frequency });
+        scored.push({ name, score: frequency });
       }
     }
 
-    // Sort by frequency (descending) and take top N
-    scored.sort((a, b) => b.frequency - a.frequency);
-    const topNames = scored.slice(0, limit).map((s) => s.name);
-
-    // Fetch entities from storage
-    const entities: AgentEntity[] = [];
-    for (const name of topNames) {
-      const entity = this.storage.getEntityByName(name);
-      if (entity) {
-        entities.push(entity as AgentEntity);
-      }
-    }
-
-    return entities;
+    // Top N by frequency, highest first
+    return this.topEntitiesByScore(scored, limit);
   }
 
   /**
@@ -299,18 +287,28 @@ export class AccessTracker {
     const windowStart = withinHours ? now - withinHours * 60 * 60 * 1000 : 0;
 
     // Collect entities with their last access time
-    const scored: Array<{ name: string; lastAccess: number }> = [];
+    const scored: Array<{ name: string; score: number }> = [];
 
     for (const [name, record] of this.accessRecords) {
       const lastAccess = new Date(record.lastAccessedAt).getTime();
 
       if (lastAccess >= windowStart) {
-        scored.push({ name, lastAccess });
+        scored.push({ name, score: lastAccess });
       }
     }
 
-    // Sort by last access (most recent first) and take top N
-    scored.sort((a, b) => b.lastAccess - a.lastAccess);
+    // Top N by last access, most recent first
+    return this.topEntitiesByScore(scored, limit);
+  }
+
+  /**
+   * Sort `scored` by score, highest first, and fetch the top `limit` entities
+   * from storage. Names that storage does not hold are skipped.
+   *
+   * @internal
+   */
+  private topEntitiesByScore(scored: Array<{ name: string; score: number }>, limit: number): AgentEntity[] {
+    scored.sort((a, b) => b.score - a.score);
     const topNames = scored.slice(0, limit).map((s) => s.name);
 
     // Fetch entities from storage

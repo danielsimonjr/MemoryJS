@@ -379,3 +379,104 @@ describe('DecayScheduler.getInterval', () => {
     expect(scheduler.getInterval()).toBe(5000);
   });
 });
+
+describe('DecayScheduler hook order and runNow (pins)', () => {
+  const decayResult = {} as DecayResult;
+  const forgetResult = {} as ForgetResult;
+  const forgetOptions = {} as NonNullable<DecaySchedulerConfig['forgetOptions']>;
+
+  function fakeEngine(order: string[] = []): DecayEngine {
+    return {
+      applyDecay: vi.fn(async () => {
+        order.push('applyDecay');
+        return decayResult;
+      }),
+      forgetWeakMemories: vi.fn(async () => {
+        order.push('forgetWeakMemories');
+        return forgetResult;
+      }),
+    } as unknown as DecayEngine;
+  }
+
+  it('runs the decay hook before forgetting and does not wait for its promise', async () => {
+    const order: string[] = [];
+    let releaseDecayHook: () => void = () => {};
+    const scheduler = new DecayScheduler(fakeEngine(order), {
+      autoForget: true,
+      forgetOptions,
+      onDecayComplete: () => {
+        order.push('onDecayComplete');
+        return new Promise<void>((resolve) => {
+          releaseDecayHook = resolve;
+        });
+      },
+      onForgetComplete: () => {
+        order.push('onForgetComplete');
+      },
+    });
+
+    scheduler.start();
+    await vi.waitFor(() => expect(order).toContain('onForgetComplete'));
+    scheduler.stop();
+    releaseDecayHook();
+
+    expect(order).toStrictEqual([
+      'applyDecay',
+      'onDecayComplete',
+      'forgetWeakMemories',
+      'onForgetComplete',
+    ]);
+  });
+
+  it('runNow calls neither hook nor onError and returns both results', async () => {
+    const onDecayComplete = vi.fn();
+    const onForgetComplete = vi.fn();
+    const onError = vi.fn();
+    const scheduler = new DecayScheduler(fakeEngine(), {
+      autoForget: true,
+      forgetOptions,
+      onDecayComplete,
+      onForgetComplete,
+      onError,
+    });
+
+    const result = await scheduler.runNow();
+
+    expect(onDecayComplete).not.toHaveBeenCalled();
+    expect(onForgetComplete).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+    expect(result).toStrictEqual({ decay: decayResult, forget: forgetResult });
+  });
+
+  it('runNow rejects when decay fails, and onError is not called', async () => {
+    const onError = vi.fn();
+    const engine = {
+      applyDecay: vi.fn(async () => {
+        throw new Error('boom');
+      }),
+      forgetWeakMemories: vi.fn(),
+    } as unknown as DecayEngine;
+    const scheduler = new DecayScheduler(engine, { onError });
+
+    await expect(scheduler.runNow()).rejects.toThrow('boom');
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it('a scheduled cycle that fails sends the error to onError and does not reject', async () => {
+    const onError = vi.fn();
+    const engine = {
+      applyDecay: vi.fn(async () => {
+        throw new Error('boom');
+      }),
+      forgetWeakMemories: vi.fn(),
+    } as unknown as DecayEngine;
+    const scheduler = new DecayScheduler(engine, { onError });
+
+    scheduler.start();
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    scheduler.stop();
+
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(Error);
+    expect(onError.mock.calls[0][0].message).toBe('boom');
+  });
+});
