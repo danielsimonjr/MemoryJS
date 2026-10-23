@@ -547,29 +547,37 @@ export class SQLiteStorage implements IGraphStorage {
   }
 
   /**
+   * Add each column that `table` lacks, in the order given. Reads the
+   * table's columns once, before the first `ALTER`.
+   */
+  private ensureColumns(
+    table: 'relations' | 'entities' | 'embeddings',
+    columns: ReadonlyArray<readonly [name: string, ddl: string]>,
+  ): void {
+    const existing = new Set(
+      (this.db!.pragma(`table_info(${table})`) as Array<{ name: string }>).map(c => c.name),
+    );
+    for (const [name, ddl] of columns) {
+      if (!existing.has(name)) {
+        this.db!.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${ddl}`);
+      }
+    }
+  }
+
+  /**
    * Phase 1 Sprint 5: Migrate relations table to add metadata columns.
    * Checks if columns exist and adds them if not for backward compatibility.
    */
   private migrateRelationsTable(): void {
     if (!this.db) return;
 
-    // Get current column names
-    const columns = this.db.pragma('table_info(relations)') as Array<{ name: string }>;
-    const columnNames = new Set(columns.map(c => c.name));
-
     // Add missing columns for metadata support
-    if (!columnNames.has('weight')) {
-      this.db.exec('ALTER TABLE relations ADD COLUMN weight REAL');
-    }
-    if (!columnNames.has('confidence')) {
-      this.db.exec('ALTER TABLE relations ADD COLUMN confidence REAL');
-    }
-    if (!columnNames.has('properties')) {
-      this.db.exec('ALTER TABLE relations ADD COLUMN properties TEXT');
-    }
-    if (!columnNames.has('metadata')) {
-      this.db.exec('ALTER TABLE relations ADD COLUMN metadata TEXT');
-    }
+    this.ensureColumns('relations', [
+      ['weight', 'REAL'],
+      ['confidence', 'REAL'],
+      ['properties', 'TEXT'],
+      ['metadata', 'TEXT'],
+    ]);
   }
 
   /**
@@ -579,43 +587,23 @@ export class SQLiteStorage implements IGraphStorage {
   private migrateEntitiesTable(): void {
     if (!this.db) return;
 
-    // Get current column names
-    const columns = this.db.pragma('table_info(entities)') as Array<{ name: string }>;
-    const columnNames = new Set(columns.map(c => c.name));
-
     // Add missing columns for v1.8.0 fields
-    if (!columnNames.has('projectId')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN projectId TEXT');
-    }
-    if (!columnNames.has('version')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN version INTEGER DEFAULT 1');
-    }
-    if (!columnNames.has('parentEntityName')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN parentEntityName TEXT');
-    }
-    if (!columnNames.has('rootEntityName')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN rootEntityName TEXT');
-    }
-    if (!columnNames.has('isLatest')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN isLatest INTEGER DEFAULT 1');
-    }
-    if (!columnNames.has('supersededBy')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN supersededBy TEXT');
-    }
-    if (!columnNames.has('contentHash')) {
-      this.db.exec('ALTER TABLE entities ADD COLUMN contentHash TEXT');
-    }
-    if (!columnNames.has('agentMetadata')) {
+    this.ensureColumns('entities', [
+      ['projectId', 'TEXT'],
+      ['version', 'INTEGER DEFAULT 1'],
+      ['parentEntityName', 'TEXT'],
+      ['rootEntityName', 'TEXT'],
+      ['isLatest', 'INTEGER DEFAULT 1'],
+      ['supersededBy', 'TEXT'],
+      ['contentHash', 'TEXT'],
       // Single JSON-blob column for AgentEntity / SessionEntity /
       // ArtifactEntity extension fields. Subsumes the field-list drift
       // problem: future schema additions just extend the JSON shape.
-      this.db.exec('ALTER TABLE entities ADD COLUMN agentMetadata TEXT');
-    }
-    if (!columnNames.has('id')) {
+      ['agentMetadata', 'TEXT'],
       // Stable opaque entity identifier (survives renames). New DBs get
       // the column via CREATE TABLE; this ALTER covers pre-existing DBs.
-      this.db.exec('ALTER TABLE entities ADD COLUMN id TEXT');
-    }
+      ['id', 'TEXT'],
+    ]);
 
     // Backfill: assign a stable id to any row that lacks one (pre-id DBs,
     // or rows written by code paths that bypass EntityManager). Idempotent
@@ -650,10 +638,7 @@ export class SQLiteStorage implements IGraphStorage {
     const columns = this.db.pragma('table_info(embeddings)') as Array<{ name: string }>;
     if (columns.length === 0) return;
 
-    const columnNames = new Set(columns.map(c => c.name));
-    if (!columnNames.has('contentHash')) {
-      this.db.exec('ALTER TABLE embeddings ADD COLUMN contentHash TEXT');
-    }
+    this.ensureColumns('embeddings', [['contentHash', 'TEXT']]);
   }
 
   /**
@@ -1000,19 +985,26 @@ export class SQLiteStorage implements IGraphStorage {
       `;
 
   /**
-   * Run the entity INSERT OR REPLACE row write (no cache side effects).
+   * Bind values for the entity fields that the INSERT and the UPDATE write
+   * before their timestamps: id, type, observations, tags, importance, parent.
    */
-  private runEntityUpsert(entity: Entity): void {
-    this.prepareCached(this.db!, SQLiteStorage.UPSERT_ENTITY_SQL).run(
-      entity.name,
+  private entityLeadingBinds(entity: Entity): Array<string | number | null> {
+    return [
       entity.id ?? null,
       entity.entityType,
       JSON.stringify(entity.observations),
       entity.tags ? JSON.stringify(entity.tags) : null,
       entity.importance ?? null,
       entity.parentId ?? null,
-      entity.createdAt || new Date().toISOString(),
-      entity.lastModified || new Date().toISOString(),
+    ];
+  }
+
+  /**
+   * Bind values for the entity fields that the INSERT and the UPDATE write
+   * after their timestamps: project, version chain, and the metadata blob.
+   */
+  private entityTrailingBinds(entity: Entity): Array<string | number | null> {
+    return [
       entity.projectId ?? null,
       entity.version ?? 1,
       entity.parentEntityName ?? null,
@@ -1021,6 +1013,19 @@ export class SQLiteStorage implements IGraphStorage {
       entity.supersededBy ?? null,
       entity.contentHash ?? null,
       this.serializeExtensionFields(entity),
+    ];
+  }
+
+  /**
+   * Run the entity INSERT OR REPLACE row write (no cache side effects).
+   */
+  private runEntityUpsert(entity: Entity): void {
+    this.prepareCached(this.db!, SQLiteStorage.UPSERT_ENTITY_SQL).run(
+      entity.name,
+      ...this.entityLeadingBinds(entity),
+      entity.createdAt || new Date().toISOString(),
+      entity.lastModified || new Date().toISOString(),
+      ...this.entityTrailingBinds(entity),
     );
   }
 
@@ -1322,21 +1327,9 @@ export class SQLiteStorage implements IGraphStorage {
    */
   private runEntityUpdateRow(entity: Entity, entityName: string): void {
     this.prepareCached(this.db!, SQLiteStorage.UPDATE_ENTITY_SQL).run(
-      entity.id ?? null,
-      entity.entityType,
-      JSON.stringify(entity.observations),
-      entity.tags ? JSON.stringify(entity.tags) : null,
-      entity.importance ?? null,
-      entity.parentId ?? null,
+      ...this.entityLeadingBinds(entity),
       entity.lastModified,
-      entity.projectId ?? null,
-      entity.version ?? 1,
-      entity.parentEntityName ?? null,
-      entity.rootEntityName ?? null,
-      entity.isLatest === false ? 0 : 1,
-      entity.supersededBy ?? null,
-      entity.contentHash ?? null,
-      this.serializeExtensionFields(entity),
+      ...this.entityTrailingBinds(entity),
       entityName,
     );
   }
@@ -2217,15 +2210,7 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of relations where entity is the source
    */
   getRelationsFrom(entityName: string): Relation[] {
-    if (this.cache) {
-      return this.relationIndex.getRelationsFrom(entityName);
-    }
-
-    // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
-    if (!this.db || !this.initialized) return [];
-    const stmt = this.prepareCached(this.db, 'SELECT * FROM relations WHERE fromEntity = ?');
-    const rows = stmt.all(entityName) as RelationRow[];
-    return rows.map(row => this.rowToRelation(row));
+    return this.relationsFor(entityName, 'from');
   }
 
   /**
@@ -2237,15 +2222,7 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of relations where entity is the target
    */
   getRelationsTo(entityName: string): Relation[] {
-    if (this.cache) {
-      return this.relationIndex.getRelationsTo(entityName);
-    }
-
-    // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
-    if (!this.db || !this.initialized) return [];
-    const stmt = this.prepareCached(this.db, 'SELECT * FROM relations WHERE toEntity = ?');
-    const rows = stmt.all(entityName) as RelationRow[];
-    return rows.map(row => this.rowToRelation(row));
+    return this.relationsFor(entityName, 'to');
   }
 
   /**
@@ -2257,16 +2234,32 @@ export class SQLiteStorage implements IGraphStorage {
    * @returns Array of all relations involving the entity
    */
   getRelationsFor(entityName: string): Relation[] {
+    return this.relationsFor(entityName, 'either');
+  }
+
+  /** Select statements for relation lookups by direction, one constant per direction. */
+  private static readonly RELATION_SELECT_SQL = {
+    from: 'SELECT * FROM relations WHERE fromEntity = ?',
+    to: 'SELECT * FROM relations WHERE toEntity = ?',
+    either: 'SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?',
+  } as const;
+
+  /**
+   * Relations that touch `entityName` in one direction. Reads the relation
+   * index when the cache is loaded, otherwise runs one indexed query.
+   */
+  private relationsFor(entityName: string, which: 'from' | 'to' | 'either'): Relation[] {
     if (this.cache) {
+      if (which === 'from') return this.relationIndex.getRelationsFrom(entityName);
+      if (which === 'to') return this.relationIndex.getRelationsTo(entityName);
       return this.relationIndex.getRelationsFor(entityName);
     }
 
+    // Fall back to database query (Phase 1 Sprint 5: SELECT * for metadata)
     if (!this.db || !this.initialized) return [];
-    const stmt = this.prepareCached(
-      this.db,
-      'SELECT * FROM relations WHERE fromEntity = ? OR toEntity = ?',
-    );
-    const rows = stmt.all(entityName, entityName) as RelationRow[];
+    const stmt = this.prepareCached(this.db, SQLiteStorage.RELATION_SELECT_SQL[which]);
+    const binds = which === 'either' ? [entityName, entityName] : [entityName];
+    const rows = stmt.all(...binds) as RelationRow[];
     return rows.map(row => this.rowToRelation(row));
   }
 
