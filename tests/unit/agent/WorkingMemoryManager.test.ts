@@ -941,6 +941,16 @@ describe('WorkingMemoryManager entity guard (pinned before the extraction)', () 
       );
       await expect(call(wmm, 'bad')).rejects.toThrow(/^Entity is not working memory: bad$/);
     });
+
+    it(`${site} looks the entity up by the name it was given, spaces included`, async () => {
+      const storage = createMockStorage([createAgentEntity(' wm 1 ', 'session_1')]);
+      const wmm = new WorkingMemoryManager(storage);
+      vi.mocked(storage.getEntityByName).mockClear();
+      await call(wmm, ' wm 1 ');
+      expect(storage.getEntityByName).toHaveBeenCalledTimes(1);
+      expect(storage.getEntityByName).toHaveBeenCalledWith(' wm 1 ');
+      await expect(call(wmm, 'wm 1')).rejects.toThrow(/^Entity not found: wm 1$/);
+    });
   }
 
   describe('stored line on disk', () => {
