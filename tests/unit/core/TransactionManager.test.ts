@@ -653,4 +653,48 @@ describe('TransactionManager operation pins', () => {
       ),
     ).toEqual({ code: 'RELATION_NOT_FOUND', message: 'Relation "b" -> "a" (knows) not found' });
   });
+
+  it('reads operation.type once and operation.data once for every operation type', () => {
+    const data: Array<[OperationType, unknown]> = [
+      [OperationType.CREATE_ENTITY, { name: 'c', entityType: 'node', observations: [] }],
+      [OperationType.UPDATE_ENTITY, { name: 'a', updates: { entityType: 'topic' } }],
+      [OperationType.DELETE_ENTITY, { name: 'b' }],
+      [OperationType.CREATE_RELATION, { from: 'b', to: 'a', relationType: 'new' }],
+      [OperationType.DELETE_RELATION, { from: 'a', to: 'b', relationType: 'knows' }],
+    ];
+    const reads: Array<{ type: string; typeReads: number; dataReads: number }> = [];
+    for (const [type, payload] of data) {
+      let typeReads = 0;
+      let dataReads = 0;
+      const operation = {
+        get type() {
+          typeReads++;
+          return type;
+        },
+        get data() {
+          dataReads++;
+          return payload;
+        },
+      } as unknown as TransactionOperation;
+      applyOp(baseGraph(), operation);
+      reads.push({ type, typeReads, dataReads });
+    }
+    expect(reads).toEqual(data.map(([type]) => ({ type, typeReads: 1, dataReads: 1 })));
+  });
+
+  it('names the operation data in the error when the data of an operation is missing', () => {
+    const messages = [
+      OperationType.UPDATE_ENTITY,
+      OperationType.DELETE_ENTITY,
+      OperationType.DELETE_RELATION,
+    ].map(type => {
+      const operation = { type, data: undefined } as unknown as TransactionOperation;
+      return errorOf(() => applyOp(baseGraph(), operation)).message;
+    });
+    expect(messages).toEqual([
+      "Cannot destructure property 'name' of 'operation.data' as it is undefined.",
+      "Cannot destructure property 'name' of 'operation.data' as it is undefined.",
+      "Cannot destructure property 'from' of 'operation.data' as it is undefined.",
+    ]);
+  });
 });
