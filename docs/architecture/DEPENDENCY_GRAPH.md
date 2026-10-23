@@ -4,7 +4,7 @@
 
 # @danielsimonjr/memoryjs - Dependency Graph
 
-**Version**: 4.3.0 | **Last Updated**: 2026-10-22
+**Version**: 4.3.0 | **Last Updated**: 2026-10-23
 
 This document provides a comprehensive dependency graph of all files, components, imports, functions, and variables in the codebase.
 
@@ -39,7 +39,7 @@ This document provides a comprehensive dependency graph of all files, components
 The codebase is organized into the following modules:
 
 - **adapters**: 7 files
-- **agent**: 105 files
+- **agent**: 106 files
 - **cli**: 31 files
 - **core**: 25 files
 - **features**: 18 files
@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 35 files
+- **utils**: 36 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **294** of 294 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -186,6 +186,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 |------|---------|------|
 | `../types/types.js` | `IGraphStorage` | Import (type-only) |
 | `../types/agent-memory.js` | `AgentEntity, AccessContext, AccessPattern` | Import (type-only) |
+| `../utils/halfLife.js` | `halfLifeFactor` | Import |
 | `../types/agent-memory.js` | `AccessContext` | Re-export (type-only) |
 
 **Exports:**
@@ -529,6 +530,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 | `./AccessTracker.js` | `AccessTracker` | Import |
 | `../features/FreshnessManager.js` | `FreshnessManager` | Import |
 | `../utils/textSimilarity.js` | `tokenizeToSet` | Import |
+| `../utils/halfLife.js` | `halfLifeFactor` | Import |
 | `./connectivity.js` | `computeDegreeMap, normalizedDegree, DegreeMap` | Import |
 | `../types/agent-memory.js` | `DecayResult, ForgetOptions, ForgetResult` | Re-export (type-only) |
 
@@ -602,6 +604,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/types.js` | `Entity` | Import (type-only) |
 | `../types/types.js` | `HybridSearchResult` | Import (type-only) |
 | `../features/FreshnessManager.js` | `FreshnessManager` | Import |
+| `../utils/halfLife.js` | `halfLifeFactor` | Import |
 
 **Exports:**
 - Classes: `NoOpDistillationPolicy`, `DefaultDistillationPolicy`, `CompositeDistillationPolicy`
@@ -913,6 +916,13 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Classes: `InMemoryBackend`
+
+---
+
+### `src/agent/keyValueLine.ts` - Encodes and decodes one observation line of the form
+
+**Exports:**
+- Functions: `encodeKeyValueBody`, `encodeKeyValueBody`, `encodeKeyValueBody`, `decodeKeyValueBody`
 
 ---
 
@@ -1515,6 +1525,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 | `../../core/EntityManager.js` | `EntityManager` | Import (type-only) |
 | `../../core/RelationManager.js` | `RelationManager` | Import (type-only) |
 | `../../types/procedure.js` | `Procedure, ProcedureStep` | Import (type-only) |
+| `../keyValueLine.js` | `decodeKeyValueBody, encodeKeyValueBody` | Import |
 
 **Exports:**
 - Classes: `ProcedureStore`
@@ -1900,6 +1911,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 | `../core/RelationManager.js` | `RelationManager` | Import (type-only) |
 | `./WorkingMemoryManager.js` | `WorkingMemoryManager` | Import (type-only) |
 | `./DecayEngine.js` | `DecayEngine` | Import (type-only) |
+| `./keyValueLine.js` | `decodeKeyValueBody, encodeKeyValueBody` | Import |
 
 **Exports:**
 - Classes: `SessionCheckpointManager`
@@ -2007,7 +2019,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 **Internal Dependencies:**
 | File | Imports | Type |
 |------|---------|------|
-| `./ToolAffordanceManager.js` | `ToolAffordanceManager` | Import (type-only) |
+| `./ToolAffordanceManager.js` | `RecordOutcomeInput, ToolAffordanceManager` | Import (type-only) |
 
 **Exports:**
 - Classes: `ToolCallObserver`
@@ -2072,6 +2084,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/types.js` | `IGraphStorage, Entity, Relation` | Import (type-only) |
+| `./keyValueLine.js` | `decodeKeyValueBody, encodeKeyValueBody` | Import |
 
 **Exports:**
 - Classes: `WorkThreadManager`
@@ -3509,6 +3522,7 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/types.js` | `Entity, IGraphStorage` | Import (type-only) |
+| `../utils/halfLife.js` | `halfLifeFactor` | Import |
 
 **Exports:**
 - Classes: `FreshnessManager`
@@ -5004,6 +5018,13 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 
 ---
 
+### `src/utils/halfLife.ts` - Half-Life Utilities
+
+**Exports:**
+- Functions: `halfLifeFactor`
+
+---
+
 ### `src/utils/IIndexHealth.ts` - Index Health interface.
 
 **Exports:**
@@ -5336,9 +5357,9 @@ Reachable from a root: **292** of 292 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/agent/AgentMemoryConfig` | 15 files | 3 files |
 | `src/agent/procedural/graph/index` | 16 files | 2 files |
 | `src/types/proceduralGraph` | 0 files | 18 files |
+| `src/agent/DecayEngine` | 7 files | 10 files |
 | `src/features/index` | 16 files | 1 file |
 | `src/features/IOManager` | 13 files | 4 files |
-| `src/agent/DecayEngine` | 6 files | 10 files |
 | `src/core/ObservationManager` | 10 files | 6 files |
 | `src/core/RelationManager` | 6 files | 10 files |
 | `src/search/RankedSearch` | 9 files | 7 files |
@@ -5406,7 +5427,7 @@ graph TD
         N14[CognitiveLoadAnalyzer]
         N15[CollaborationAuditEnforcer]
         N16[CollaborativeSynthesis]
-        N17[...95 more]
+        N17[...96 more]
     end
 
     subgraph Cli
@@ -5506,7 +5527,7 @@ graph TD
         N87[constants]
         N88[Diagnostics]
         N89[durableWriteFile]
-        N90[...25 more]
+        N90[...26 more]
     end
 
     subgraph Workers
@@ -5597,24 +5618,24 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 292 |
+| Total TypeScript Files | 294 |
 | Total Modules | 12 |
-| Total Lines of Code | 104288 |
-| Total Exports | 2035 |
+| Total Lines of Code | 104254 |
+| Total Exports | 2038 |
 | Total Re-exports | 1339 |
 | Total Classes | 234 |
 | Total Interfaces | 622 |
-| Total Functions | 323 |
+| Total Functions | 328 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 479 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 292 |
+| Reachable Files | 294 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
 
-*Last Updated*: 2026-10-22
+*Last Updated*: 2026-10-23
 *Version*: 4.3.0

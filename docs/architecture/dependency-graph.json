@@ -2,10 +2,10 @@
   "metadata": {
     "name": "@danielsimonjr/memoryjs",
     "version": "4.3.0",
-    "lastUpdated": "2026-10-22",
-    "totalFiles": 292,
+    "lastUpdated": "2026-10-23",
+    "totalFiles": 294,
     "totalModules": 12,
-    "totalExports": 2035
+    "totalExports": 2038
   },
   "entryPoints": [
     {
@@ -393,6 +393,12 @@
               "AccessPattern"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/halfLife.js",
+            "imports": [
+              "halfLifeFactor"
+            ]
           },
           {
             "file": "../types/agent-memory.js",
@@ -1598,6 +1604,12 @@
             ]
           },
           {
+            "file": "../utils/halfLife.js",
+            "imports": [
+              "halfLifeFactor"
+            ]
+          },
+          {
             "file": "./connectivity.js",
             "imports": [
               "computeDegreeMap",
@@ -1817,6 +1829,12 @@
             "file": "../features/FreshnessManager.js",
             "imports": [
               "FreshnessManager"
+            ]
+          },
+          {
+            "file": "../utils/halfLife.js",
+            "imports": [
+              "halfLifeFactor"
             ]
           }
         ],
@@ -4074,6 +4092,22 @@
           "InMemoryBackend"
         ]
       },
+      "src/agent/keyValueLine.ts": {
+        "description": "Encodes and decodes one observation line of the form",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "encodeKeyValueBody",
+          "decodeKeyValueBody"
+        ],
+        "functions": [
+          "encodeKeyValueBody",
+          "encodeKeyValueBody",
+          "encodeKeyValueBody",
+          "decodeKeyValueBody"
+        ]
+      },
       "src/agent/MemoryBackend.ts": {
         "description": "Memory Backend Interface (`IMemoryBackend`)",
         "externalDependencies": [],
@@ -6159,6 +6193,13 @@
               "ProcedureStep"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../keyValueLine.js",
+            "imports": [
+              "decodeKeyValueBody",
+              "encodeKeyValueBody"
+            ]
           }
         ],
         "exports": [
@@ -7360,6 +7401,13 @@
               "DecayEngine"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./keyValueLine.js",
+            "imports": [
+              "decodeKeyValueBody",
+              "encodeKeyValueBody"
+            ]
           }
         ],
         "exports": [
@@ -7665,6 +7713,7 @@
           {
             "file": "./ToolAffordanceManager.js",
             "imports": [
+              "RecordOutcomeInput",
               "ToolAffordanceManager"
             ],
             "typeOnly": true
@@ -7822,6 +7871,13 @@
               "Relation"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "./keyValueLine.js",
+            "imports": [
+              "decodeKeyValueBody",
+              "encodeKeyValueBody"
+            ]
           }
         ],
         "exports": [
@@ -12082,6 +12138,12 @@
               "IGraphStorage"
             ],
             "typeOnly": true
+          },
+          {
+            "file": "../utils/halfLife.js",
+            "imports": [
+              "halfLifeFactor"
+            ]
           }
         ],
         "exports": [
@@ -17788,6 +17850,18 @@
           "borrowGraphView"
         ]
       },
+      "src/utils/halfLife.ts": {
+        "description": "Half-Life Utilities",
+        "externalDependencies": [],
+        "nodeDependencies": [],
+        "internalDependencies": [],
+        "exports": [
+          "halfLifeFactor"
+        ],
+        "functions": [
+          "halfLifeFactor"
+        ]
+      },
       "src/utils/IIndexHealth.ts": {
         "description": "Index Health interface.",
         "externalDependencies": [],
@@ -19606,6 +19680,7 @@
           "src/agent/ImportanceScorer.ts",
           "src/agent/index.ts",
           "src/agent/InMemoryBackend.ts",
+          "src/agent/keyValueLine.ts",
           "src/agent/MemoryBackend.ts",
           "src/agent/MemoryEngine.ts",
           "src/agent/MemoryFormatter.ts",
@@ -19882,6 +19957,7 @@
           "src/utils/errorSuggestions.ts",
           "src/utils/formatters.ts",
           "src/utils/graphCopy.ts",
+          "src/utils/halfLife.ts",
           "src/utils/IIndexHealth.ts",
           "src/utils/index.ts",
           "src/utils/indexes.ts",
@@ -19918,19 +19994,19 @@
       "src/sqlite.ts",
       "src/workers/levenshteinWorker.ts"
     ],
-    "reachableCount": 292,
+    "reachableCount": 294,
     "dormantCount": 0,
     "orphaned": [],
     "testOnly": []
   },
   "statistics": {
-    "totalTypeScriptFiles": 292,
+    "totalTypeScriptFiles": 294,
     "totalModules": 12,
-    "totalLinesOfCode": 104288,
-    "totalExports": 2035,
+    "totalLinesOfCode": 104254,
+    "totalExports": 2038,
     "totalClasses": 234,
     "totalInterfaces": 622,
-    "totalFunctions": 323,
+    "totalFunctions": 328,
     "totalTypeGuards": 31,
     "totalEnums": 4,
     "totalConstants": 123,
@@ -19939,7 +20015,7 @@
     "runtimeCircularDeps": 0,
     "typeOnlyCircularDeps": 8,
     "entryRoots": 4,
-    "reachableFiles": 292,
+    "reachableFiles": 294,
     "dormantFiles": 0,
     "orphanedFiles": 0,
     "testOnlyFiles": 0,

@@ -242,6 +242,29 @@ describe('DefaultDistillationPolicy', () => {
       expect(score).toBeLessThan(0.05);
     });
 
+    it('scores an entity modified in the future as 1', () => {
+      const entity = makeEntity({
+        lastModified: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      });
+      expect(policy.scoreRecency(entity)).toBe(1);
+    });
+
+    it('scores an entity modified 24 hours ago as 0.5', () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-01-02T00:00:00.000Z'));
+      try {
+        const entity = makeEntity({ lastModified: '2026-01-01T00:00:00.000Z' });
+        expect(policy.scoreRecency(entity)).toBe(0.5);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('keeps NaN for an unparseable timestamp', () => {
+      const entity = makeEntity({ lastModified: 'not a date' });
+      expect(policy.scoreRecency(entity)).toBeNaN();
+    });
+
     it('returns 0 when no timestamp is set', () => {
       const entity = makeEntity({ lastModified: undefined, createdAt: undefined });
       const score = policy.scoreRecency(entity);

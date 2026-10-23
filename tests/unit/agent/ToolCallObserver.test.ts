@@ -155,6 +155,158 @@ describe('ToolCallObserver', () => {
     expect(recB.outcomes[0]!.outcome).toBe('success');
   });
 
+  it('records the exact outcome for each finish method and ignores an unknown call id', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    try {
+      const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+      const completed = observer.observeStart('tool_ok');
+      const failed = observer.observeStart('tool_bad');
+      const partial = observer.observeStart('tool_part');
+
+      await observer.observeComplete(completed, { result: 'done' });
+      await observer.observeError(failed, new Error('boom'));
+      await observer.observePartial(partial, 'half');
+      await observer.observeComplete('unknown');
+      await observer.observeError('unknown', 'x');
+      await observer.observePartial('unknown', 'y');
+
+      expect(recordOutcome.mock.calls).toStrictEqual([
+        ['tool_ok', { outcome: 'success', durationMs: 0 }],
+        ['tool_bad', { outcome: 'failure', errorMessage: 'boom', durationMs: 0 }],
+        ['tool_part', { outcome: 'partial', errorMessage: 'half', durationMs: 0 }],
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('emits the exact payload of each completion event after the outcome is recorded', async () => {
+    const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+    const emitted: Array<{ event: string; payload: unknown; recorded: number }> = [];
+    for (const event of ['toolCall:complete', 'toolCall:error', 'toolCall:partial']) {
+      observer.events.on(event, (payload) => {
+        emitted.push({ event, payload, recorded: recordOutcome.mock.calls.length });
+      });
+    }
+
+    const completed = observer.observeStart('tool_ok');
+    const completedNoMeta = observer.observeStart('tool_ok_no_meta');
+    const failed = observer.observeStart('tool_bad');
+    const failedText = observer.observeStart('tool_bad_text');
+    const partial = observer.observeStart('tool_part');
+    vi.advanceTimersByTime(250);
+
+    await observer.observeComplete(completed, { result: 'done' });
+    await observer.observeComplete(completedNoMeta);
+    await observer.observeError(failed, new Error('boom'));
+    await observer.observeError(failedText, 'plain text');
+    await observer.observePartial(partial, 'half');
+
+    expect(emitted).toStrictEqual([
+      {
+        event: 'toolCall:complete',
+        payload: { callId: completed, toolName: 'tool_ok', durationMs: 250, result: 'done' },
+        recorded: 1,
+      },
+      {
+        event: 'toolCall:complete',
+        payload: { callId: completedNoMeta, toolName: 'tool_ok_no_meta', durationMs: 250, result: undefined },
+        recorded: 2,
+      },
+      {
+        event: 'toolCall:error',
+        payload: { callId: failed, toolName: 'tool_bad', durationMs: 250, errorMessage: 'boom' },
+        recorded: 3,
+      },
+      {
+        event: 'toolCall:error',
+        payload: { callId: failedText, toolName: 'tool_bad_text', durationMs: 250, errorMessage: 'plain text' },
+        recorded: 4,
+      },
+      {
+        event: 'toolCall:partial',
+        payload: { callId: partial, toolName: 'tool_part', durationMs: 250, reason: 'half' },
+        recorded: 5,
+      },
+    ]);
+  });
+
+  it('does not touch the error value for an unknown call id', async () => {
+    const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+    const hostile = {
+      toString(): string {
+        throw new Error('toString must not run');
+      },
+    };
+
+    await expect(observer.observeError('unknown', hostile as unknown as Error)).resolves.toBeUndefined();
+    expect(recordOutcome).not.toHaveBeenCalled();
+  });
+
+  it('closes the call before it reads an error value that throws', async () => {
+    const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+    const emitted: unknown[] = [];
+    observer.events.on('toolCall:error', (payload) => emitted.push(payload));
+    const hostile = {
+      toString(): string {
+        throw new Error('toString failed');
+      },
+    };
+    const callId = observer.observeStart('tool_bad');
+
+    await expect(observer.observeError(callId, hostile as unknown as Error)).rejects.toThrow('toString failed');
+
+    expect(observer.inFlightCount()).toBe(0);
+    expect(recordOutcome).not.toHaveBeenCalled();
+    expect(emitted).toStrictEqual([]);
+  });
+
+  it('reads the error text before recording and the result after recording', async () => {
+    const order: string[] = [];
+    vi.spyOn(manager, 'recordOutcome').mockImplementation(async () => {
+      order.push('record');
+      return undefined as never;
+    });
+    const completed = observer.observeStart('tool_ok');
+    const failed = observer.observeStart('tool_bad');
+    const meta = {
+      get result(): string {
+        order.push('read result');
+        return 'r';
+      },
+    };
+    const text = {
+      toString(): string {
+        order.push('read text');
+        return 'x';
+      },
+    };
+
+    await observer.observeComplete(completed, meta);
+    await observer.observeError(failed, text as unknown as Error);
+
+    expect(order).toStrictEqual(['record', 'read result', 'read text', 'record']);
+  });
+
+  it('measures the call duration before it reads the error text', async () => {
+    const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+    const slow = {
+      toString(): string {
+        vi.advanceTimersByTime(100);
+        return 'slow';
+      },
+    };
+    const callId = observer.observeStart('tool_slow');
+    vi.advanceTimersByTime(50);
+
+    await observer.observeError(callId, slow as unknown as Error);
+
+    expect(recordOutcome.mock.calls).toStrictEqual([
+      ['tool_slow', { outcome: 'failure', errorMessage: 'slow', durationMs: 50 }],
+    ]);
+  });
+
   it('fires events for start / complete / error / partial', async () => {
     const events: Array<{ event: string; payload: unknown }> = [];
     observer.events.on('toolCall:start', (p) => events.push({ event: 'start', payload: p }));

@@ -448,6 +448,84 @@ describe('ContextWindowManager', () => {
     });
   });
 
+  describe('budget selection (pins)', () => {
+    it('selects the same entities and tokens in each retrieval method when the budget fits two of three', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+      try {
+        const stamp = '2026-01-01T00:00:00.000Z';
+        const sameSize = (name: string, memoryType: 'working' | 'episodic' | 'semantic') =>
+          createTestEntity({
+            name,
+            memoryType,
+            sessionId: 'session_1',
+            observations: ['same size text'],
+            createdAt: stamp,
+            lastModified: stamp,
+            lastAccessedAt: stamp,
+          });
+        storage = createMockStorage([
+          sameSize('w1', 'working'), sameSize('w2', 'working'), sameSize('w3', 'working'),
+          sameSize('e1', 'episodic'), sameSize('e2', 'episodic'), sameSize('e3', 'episodic'),
+          sameSize('s1', 'semantic'), sameSize('s2', 'semantic'), sameSize('s3', 'semantic'),
+        ]);
+        accessTracker = new AccessTracker(storage);
+        decayEngine = new DecayEngine(storage, accessTracker);
+        salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+        contextManager = new ContextWindowManager(storage, salienceEngine);
+
+        const oneEntity = sameSize('w1', 'working');
+        const budget = 2 * contextManager.estimateTokens(oneEntity);
+
+        const working = await contextManager.retrieveWorkingMemory('session_1', budget);
+        const episodic = await contextManager.retrieveEpisodicRecent(budget);
+        const semantic = await contextManager.retrieveSemanticRelevant(budget);
+
+        expect({
+          working: working.entities.map((e) => e.name),
+          episodic: episodic.entities.map((e) => e.name),
+          semantic: semantic.entities.map((e) => e.name),
+        }).toStrictEqual({
+          working: ['w1', 'w2'],
+          episodic: ['e1', 'e2'],
+          semantic: ['s1', 's2'],
+        });
+        expect(working.tokens).toBe(budget);
+        expect(episodic.tokens).toBe(budget);
+        expect(semantic.tokens).toBe(budget);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('skips a candidate that does not fit and goes on with the next one', async () => {
+      const small = (name: string) =>
+        createTestEntity({ name, memoryType: 'semantic', observations: ['same size text'] });
+      const first = small('s1');
+      const second = small('s2');
+      const big = createTestEntity({
+        name: 'big',
+        memoryType: 'semantic',
+        observations: ['many words in this long text '.repeat(40)],
+      });
+      storage = createMockStorage([first, big, second]);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+      const ranked = [first, big, second].map((entity) => ({ entity, salienceScore: 1, components: {} }));
+      vi.spyOn(salienceEngine, 'rankEntitiesBySalience').mockResolvedValue(
+        ranked as unknown as Awaited<ReturnType<SalienceEngine['rankEntitiesBySalience']>>
+      );
+      const budget = contextManager.estimateTokens(first) + contextManager.estimateTokens(second);
+
+      const result = await contextManager.retrieveSemanticRelevant(budget);
+
+      expect(result.entities.map((e) => e.name)).toStrictEqual(['s1', 's2']);
+      expect(result.tokens).toBe(budget);
+    });
+  });
+
   describe('retrieveWorkingMemory', () => {
     it('should retrieve only working memory entities', async () => {
       const entities = [

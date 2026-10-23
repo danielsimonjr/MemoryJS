@@ -35,9 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Verification tables in four architecture documents (`ARCHITECTURE.md`, `COMPONENTS.md`, `DATAFLOW.md`, `OVERVIEW.md`) carry the values of the current whole-repository parse again: `entryRoots` 12, `reachableFiles` 292 and `dormantFiles` 0. `repo-tools check . --docs=docs/architecture` exits 0 again. Only the values change.
 - With `SQLiteStorage`, `ctx.semanticSearch` (and so `ctx.hybridSearchManager`) now keeps vectors in the `embeddings` table and reuses them across restarts. JSONL storage is unchanged.
 - **Breaking:** `ContextPackage` has two new required fields, `sourceTokens` and `compressionRatio`. Code that builds a `ContextPackage` object by hand must set both fields. `sourceTokens` is `totalTokens` plus the tokens of every excluded entity. `compressionRatio` is `sourceTokens / totalTokens`, or `1` when nothing is excluded.
+- The `key=value` observation codec of session checkpoints, work threads and procedure steps lives in one module, `src/agent/keyValueLine.ts`. The stored line format does not change.
+- Agent managers share duplicated private helpers: visibility filtering, conflict text similarity, episode timelines, causal neighbours and chains, tool-call completion, and the token-budget loop of context retrieval. Behaviour does not change.
+- The decay scheduler's scheduled and manual cycles share one routine. `runNow()` now documents that it calls no `onDecayComplete`, `onForgetComplete` or `onError` hook. Hook order is unchanged: `onDecayComplete` runs before forgetting.
+- Six sites that compute an exponential half-life factor call one helper, `halfLifeFactor(ageHours, halfLifeHours)` in `src/utils/halfLife.ts`: two in `AccessTracker`, two in `DecayEngine`, one in `DistillationPolicy` and one in `FreshnessManager`. Behaviour does not change.
 
 ### Fixed
 
+- `DefaultDistillationPolicy.scoreRecency` scores an entity modified in the future as 1, not above 1. The score stays in [0, 1]. An unparseable timestamp still gives NaN.
 - `repo-tools docs check src` passes again: the `searchNodesRanked` implementation signature now has its own doc comment.
 - `SemanticSearch` now initializes its vector store before the first read, so a persisted `SQLiteVectorStore` is searchable without a full re-index. `indexAll` re-embeds an entity when its content hash differs from the stored hash. The hash is `entity.contentHash`, or a SHA-256 of the embedding text when the entity has none.
 

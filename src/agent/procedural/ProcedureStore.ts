@@ -32,6 +32,7 @@ import type { Entity, Relation } from '../../types/index.js';
 import type { EntityManager } from '../../core/EntityManager.js';
 import type { RelationManager } from '../../core/RelationManager.js';
 import type { Procedure, ProcedureStep } from '../../types/procedure.js';
+import { decodeKeyValueBody, encodeKeyValueBody } from '../keyValueLine.js';
 
 /** Legacy sentinel prefixes for the JSON-blob observation lines. */
 const STEPS_PREFIX = '[procedure-steps]:';
@@ -325,7 +326,7 @@ function encodeStepObservations(step: ProcedureStep): string[] {
     observations.push(`${TIMEOUT_PREFIX}${step.timeout}`);
   }
   for (const [key, value] of Object.entries(step.parameters ?? {})) {
-    observations.push(`${PARAM_PREFIX}${JSON.stringify(key)}=${JSON.stringify(value)}`);
+    observations.push(`${PARAM_PREFIX}${encodeKeyValueBody(key, value, 'literal')}`);
   }
   return observations;
 }
@@ -343,34 +344,11 @@ function decodeStepObservations(observations: string[]): ProcedureStep {
       const n = Number(obs.slice(TIMEOUT_PREFIX.length));
       if (Number.isFinite(n)) step.timeout = n;
     } else if (obs.startsWith(PARAM_PREFIX)) {
-      const kv = decodeParamLine(obs.slice(PARAM_PREFIX.length));
-      if (kv) step.parameters[kv[0]] = kv[1];
+      const kv = decodeKeyValueBody(obs.slice(PARAM_PREFIX.length));
+      if (kv && typeof kv[1] === 'string') step.parameters[kv[0]] = kv[1];
     }
   }
   return step;
-}
-
-/**
- * Split `<JSON-string>=<JSON-string>` at the `=` separating the two JSON
- * strings (never inside them — `"` inside a JSON string is escaped, so a
- * simple escape-aware scan finds the key's closing quote). Returns null
- * on malformed input.
- */
-function decodeParamLine(body: string): [string, string] | null {
-  if (!body.startsWith('"')) return null;
-  let i = 1;
-  while (i < body.length && body[i] !== '"') {
-    i += body[i] === '\\' ? 2 : 1;
-  }
-  if (i >= body.length || body[i + 1] !== '=') return null;
-  try {
-    const key: unknown = JSON.parse(body.slice(0, i + 1));
-    const value: unknown = JSON.parse(body.slice(i + 2));
-    if (typeof key !== 'string' || typeof value !== 'string') return null;
-    return [key, value];
-  } catch {
-    return null;
-  }
 }
 
 /** Step entities + relations for a procedure's full step forest. */

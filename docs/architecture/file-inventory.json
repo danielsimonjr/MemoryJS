@@ -1,12 +1,12 @@
 {
-  "generated": "2026-10-22",
-  "totalFiles": 690,
+  "generated": "2026-10-23",
+  "totalFiles": 694,
   "byDisposition": {
-    "reachable": 288,
+    "reachable": 290,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 382,
+    "test": 384,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -14,8 +14,8 @@
   },
   "byArea": {
     "benchmarks": 4,
-    "src": 292,
-    "tests": 382,
+    "src": 294,
+    "tests": 384,
     "tools": 10,
     "config": 2
   },
@@ -102,7 +102,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 435
+      "loc": 431
     },
     {
       "file": "src/agent/AgentMemoryConfig.ts",
@@ -137,7 +137,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 246
+      "loc": 254
     },
     {
       "file": "src/agent/causal/index.ts",
@@ -172,7 +172,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 484
+      "loc": 472
     },
     {
       "file": "src/agent/connectivity.ts",
@@ -207,21 +207,21 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1942
+      "loc": 1933
     },
     {
       "file": "src/agent/DecayEngine.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 763
+      "loc": 757
     },
     {
       "file": "src/agent/DecayScheduler.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 229
+      "loc": 242
     },
     {
       "file": "src/agent/DecisionManager.ts",
@@ -242,7 +242,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 339
+      "loc": 340
     },
     {
       "file": "src/agent/DreamEngine.ts",
@@ -263,7 +263,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 566
+      "loc": 535
     },
     {
       "file": "src/agent/events/EventManager.ts",
@@ -336,6 +336,13 @@
       "loc": 125
     },
     {
+      "file": "src/agent/keyValueLine.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 63
+    },
+    {
       "file": "src/agent/MemoryBackend.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -368,7 +375,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 1164
+      "loc": 1149
     },
     {
       "file": "src/agent/ObservationDedupManager.ts",
@@ -571,7 +578,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 472
+      "loc": 450
     },
     {
       "file": "src/agent/procedural/StepSequencer.ts",
@@ -739,7 +746,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 714
+      "loc": 692
     },
     {
       "file": "src/agent/SessionManager.ts",
@@ -809,7 +816,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 831
+      "loc": 809
     },
     {
       "file": "src/agent/world/index.ts",
@@ -1953,6 +1960,13 @@
       "loc": 93
     },
     {
+      "file": "src/utils/halfLife.ts",
+      "package": "@danielsimonjr/memoryjs",
+      "area": "src",
+      "disposition": "reachable",
+      "loc": 24
+    },
+    {
       "file": "src/utils/IIndexHealth.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
@@ -2475,7 +2489,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 646
+      "loc": 689
     },
     {
       "file": "tests/unit/agent/ActiveRetrieval.test.ts",
@@ -2517,7 +2531,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 276
+      "loc": 339
     },
     {
       "file": "tests/unit/agent/CognitiveLoadAnalyzer.test.ts",
@@ -2545,7 +2559,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 419
+      "loc": 453
     },
     {
       "file": "tests/unit/agent/ConnectivitySignals.test.ts",
@@ -2594,21 +2608,21 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1639
+      "loc": 1717
     },
     {
       "file": "tests/unit/agent/DecayEngine.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1164
+      "loc": 1227
     },
     {
       "file": "tests/unit/agent/DecayScheduler.test.ts",
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 382
+      "loc": 567
     },
     {
       "file": "tests/unit/agent/DecisionManager.test.ts",
@@ -2636,7 +2650,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 811
+      "loc": 834
     },
     {
       "file": "tests/unit/agent/DreamEngine.test.ts",
@@ -2657,7 +2671,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 625
+      "loc": 727
     },
     {
       "file": "tests/unit/agent/EventManager.test.ts",
@@ -2730,6 +2744,13 @@
       "loc": 99
     },
     {
+      "file": "tests/unit/agent/keyValueLine.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 60
+    },
+    {
       "file": "tests/unit/agent/memoryBackend-wiring.test.ts",
       "package": "(root)",
       "area": "tests",
@@ -2769,7 +2790,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1030
+      "loc": 1045
     },
     {
       "file": "tests/unit/agent/ObservationDedupManager.test.ts",
@@ -2972,7 +2993,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 446
+      "loc": 488
     },
     {
       "file": "tests/unit/agent/profile-manager-basics.test.ts",
@@ -3126,7 +3147,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 187
+      "loc": 339
     },
     {
       "file": "tests/unit/agent/TrajectoryCompressor.test.ts",
@@ -3154,7 +3175,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 989
+      "loc": 1011
     },
     {
       "file": "tests/unit/agent/WorldModel.test.ts",
@@ -3868,7 +3889,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 507
+      "loc": 528
     },
     {
       "file": "tests/unit/features/GovernanceManager.test.ts",
@@ -4660,6 +4681,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 470
+    },
+    {
+      "file": "tests/unit/utils/halfLife.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 27
     },
     {
       "file": "tests/unit/utils/indexes.test.ts",

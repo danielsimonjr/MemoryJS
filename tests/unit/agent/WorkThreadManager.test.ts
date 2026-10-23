@@ -792,6 +792,28 @@ describe('WorkThreadManager (decomposed graph shape)', () => {
       expect(freshManager.get(created.id)?.metadata).toEqual(metadata);
     });
 
+    it('skips metadata values JSON cannot encode and stores the other keys as literal lines', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+      try {
+        const created = await manager.create('Undefined metadata', {
+          metadata: { m: undefined, n: { x: 1 } },
+        });
+        expect(storage.getEntityByName(created.id)?.observations).toStrictEqual([
+          '[title]: Undefined metadata',
+          '[status]: open',
+          '[created-at]: 2026-01-01T00:00:00.000Z',
+          '[updated-at]: 2026-01-01T00:00:00.000Z',
+          '[meta]: "n"={"x":1}',
+        ]);
+
+        const freshManager = await reload();
+        expect(freshManager.get(created.id)?.metadata).toStrictEqual({ n: { x: 1 } });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('roundtrips parentId and blockedBy from relations', async () => {
       const parent = await manager.create('Parent');
       const blocker = await manager.create('Blocker');
