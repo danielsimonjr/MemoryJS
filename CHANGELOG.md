@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Segment storage shares its ownership check and its temp file write with `durableWriteFile` (`assertSegmentOwnership`, `writeSyncedTmp`). Behaviour is unchanged.
 - The working-memory entity check has one function, `requireWorkingMemoryEntity`, in `src/agent/workingMemoryGuard.ts`. `WorkingMemoryManager.extendTTL`, `markForPromotion`, `promoteMemory` and `confirmMemory` and `ConsolidationPipeline.promoteMemory` call it. The lookup, the three error texts and their order do not change. Behaviour does not change.
 - Four lifecycle pairs share code. `PlanManager.markPlanComplete` and `abandonPlan` call a private `finishPlan`. `WorkThreadManager.complete` and `cancel` call a private `finish`. `FailureManager.markResolved` and `AgentReflectionManager.archive` map the write error with `versionedWriteFailure` in `src/agent/versionedWriteFailure.ts`, which maps `VersionConflictError` to `conflict` and `EntityNotFoundError` to `vanished-mid-update`. The results, the error texts and the number of microtask turns until a call settles do not change.
 - The seven rule builders in `src/utils/validators.ts` (`minLength`, `maxLength`, `pattern`, `range`, `minItems`, `maxItems`, `email`) share one private builder, `typedRule`. The dot-path getter is `getFieldByDotPath` in `src/utils/fieldPath.ts`. `validators.ts` and `EntityValidator` call it. Behaviour does not change.

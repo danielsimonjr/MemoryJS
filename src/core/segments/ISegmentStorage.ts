@@ -202,22 +202,7 @@ export class InMemorySegmentStorage implements ISegmentStorage {
     // Validate ownership — every entity must route back to this segment id.
     // Catches caller bugs early; without it a misrouted write silently
     // breaks every later `loadAll()` consistency invariant.
-    for (const e of segment.entities) {
-      const expected = this.router.route(e.name);
-      if (expected !== segment.id) {
-        throw new Error(
-          `InMemorySegmentStorage.saveSegment: entity '${e.name}' routes to segment ${expected}, not ${segment.id}`,
-        );
-      }
-    }
-    for (const r of segment.relations) {
-      const expected = this.router.route(r.from);
-      if (expected !== segment.id) {
-        throw new Error(
-          `InMemorySegmentStorage.saveSegment: relation from='${r.from}' routes to segment ${expected}, not ${segment.id}`,
-        );
-      }
-    }
+    assertSegmentOwnership(segment, this.router, 'InMemorySegmentStorage.saveSegment');
     this.segments.set(segment.id, {
       id: segment.id,
       entities: [...segment.entities],
@@ -250,6 +235,36 @@ export class InMemorySegmentStorage implements ISegmentStorage {
     if (!Number.isInteger(id) || id < 0 || id >= this.segmentCount) {
       throw new Error(
         `Segment id must be an integer in [0, ${this.segmentCount}), got ${id}`,
+      );
+    }
+  }
+}
+
+/**
+ * Verifies that all entities and relations in a segment route to the correct segment.
+ * Checks entities first, then relations.
+ * Throws an error on the first routing mismatch.
+ * Use this function before writing a segment.
+ * The className argument appears only in the error message.
+ *
+ * @param segment - The segment object to check.
+ * @param router - The router that maps names to segment ids.
+ * @param className - The name for the error message.
+ */
+export function assertSegmentOwnership(segment: Segment, router: SegmentRouter, className: string): void {
+  for (const e of segment.entities) {
+    const expected = router.route(e.name);
+    if (expected !== segment.id) {
+      throw new Error(
+        `${className}: entity '${e.name}' routes to segment ${expected}, not ${segment.id}`,
+      );
+    }
+  }
+  for (const r of segment.relations) {
+    const expected = router.route(r.from);
+    if (expected !== segment.id) {
+      throw new Error(
+        `${className}: relation from='${r.from}' routes to segment ${expected}, not ${segment.id}`,
       );
     }
   }
