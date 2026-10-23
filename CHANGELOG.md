@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `entityUtils.filterByTags` matches each entity with `hasMatchingTag`. Results do not change.
 - `SearchFilterChain.entityPassesFilters` takes its importance, entity type and date checks from `entityUtils.entityPassesFilters`. A date bound that cannot be parsed is still ignored, as before. Results do not change.
 - `QueryCostEstimator` names its default method list once, in `DEFAULT_SEARCH_METHODS`. The list and the results do not change.
 - The FNV-1a hash has one body, `fnv1aHash` in `src/utils/entityUtils.ts`. `fnv1a32`, which routes segments, re-exports it. The signed string hash has one body, `hash31`, used by the pattern, content and mock embedding hashes. Behaviour does not change. The `fnv1a32` comment no longer says that `BloomFilter` uses the same function. `BloomFilter.doubleHash` uses a two-seed variant.

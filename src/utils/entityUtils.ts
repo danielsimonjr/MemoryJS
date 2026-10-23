@@ -307,11 +307,7 @@ export function filterByTags<T extends { tags?: string[] }>(
 
   const normalizedSearch = normalizeTags(searchTags);
 
-  return entities.filter(entity => {
-    if (!entity.tags || entity.tags.length === 0) return false;
-    const normalizedEntity = normalizeTags(entity.tags);
-    return normalizedSearch.some(tag => normalizedEntity.includes(tag));
-  });
+  return entities.filter(entity => hasMatchingTag(entity.tags, normalizedSearch));
 }
 
 /**
