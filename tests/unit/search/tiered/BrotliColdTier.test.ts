@@ -483,3 +483,116 @@ describe('BrotliColdTier — file format, order and malformed-line pins', () => 
     expect(warnText).toContain(`BrotliColdTier: skipping line with non-string key in ${shard}`);
   });
 });
+
+describe('BrotliColdTier — lock, read errors, text encoding and quality (pins)', () => {
+  let dir: string;
+  let shard: string;
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(join(tmpdir(), 'cold-tier-pins2-'));
+    shard = join(dir, 'pins.br');
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  async function shardText(): Promise<string> {
+    return brotliDecompressSync(await fs.readFile(shard)).toString('utf-8');
+  }
+
+  it('keeps has(), size() and reload() behind a write that fails', async () => {
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    await tier.put('old', 1);
+    let release!: () => void;
+    let entered!: () => void;
+    const blocked = new Promise<void>(resolve => { release = resolve; });
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    vi.spyOn(fs, 'rename').mockImplementationOnce(async () => {
+      entered();
+      await blocked;
+      throw new Error('injected write failure');
+    });
+
+    const order: string[] = [];
+    const failed = tier.put('new', 2).catch(() => { order.push('put'); });
+    await started;
+    const hasNew = tier.has('new').then(found => { order.push('has'); return found; });
+    const size = tier.size().then(count => { order.push('size'); return count; });
+    const reloaded = tier.reload().then(() => { order.push('reload'); });
+    release();
+    await Promise.all([failed, hasNew, size, reloaded]);
+
+    expect(await hasNew).toBe(false);
+    expect(await size).toBe(1);
+    expect(order).toEqual(['put', 'has', 'size', 'reload']);
+  });
+
+  it('writes no file for clear() on an empty tier', async () => {
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    await tier.clear();
+    await expect(fs.access(shard)).rejects.toThrow();
+  });
+
+  it('rejects a read when the shard path is a directory', async () => {
+    const tier = new BrotliColdTier<number>({ filePath: dir });
+    await expect(tier.size()).rejects.toThrow();
+  });
+
+  it('stores non-ASCII text as UTF-8 and reads it back', async () => {
+    const value = { text: 'ünï€𝄞' };
+    const tier = new BrotliColdTier<typeof value>({ filePath: shard });
+    await tier.put('ü€', value);
+
+    expect(await shardText()).toBe(`${JSON.stringify({ k: 'ü€', v: value })}\n`);
+    const second = new BrotliColdTier<typeof value>({ filePath: shard });
+    expect(await second.get('ü€')).toEqual(value);
+  });
+
+  it('writes no value field for an undefined value and reads the key back', async () => {
+    const tier = new BrotliColdTier<number | undefined>({ filePath: shard });
+    await tier.put('a', undefined);
+    expect(await shardText()).toBe('{"k":"a"}\n');
+
+    const second = new BrotliColdTier<number | undefined>({ filePath: shard });
+    expect(await second.has('a')).toBe(true);
+    expect(await second.get('a')).toBeUndefined();
+  });
+
+  it('keeps an empty-string key across a reload', async () => {
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    await tier.put('', 7);
+    expect(await shardText()).toBe('{"k":"","v":7}\n');
+
+    const second = new BrotliColdTier<number>({ filePath: shard });
+    expect(await second.get('')).toBe(7);
+  });
+
+  it('loads CRLF line ends and whitespace-only lines without a warning', async () => {
+    const payload = await compress('{"k":"a","v":1}\r\n   \r\n\r\n{"k":"b","v":2}\r\n', { quality: 6 });
+    await fs.writeFile(shard, payload.compressed);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    expect(await tier.size()).toBe(2);
+    expect(await tier.get('a')).toBe(1);
+    expect(await tier.get('b')).toBe(2);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('compresses the shard at the quality of the constructor option', async () => {
+    const value = Array.from({ length: 300 }, (_, i) => `word${(i * 7919) % 1000}`).join(' ');
+    const text = `${JSON.stringify({ k: 'a', v: value })}\n`;
+    const written: Buffer[] = [];
+    for (const quality of [0, 11]) {
+      const file = join(dir, `q${quality}.br`);
+      const tier = new BrotliColdTier<string>({ filePath: file, quality });
+      await tier.put('a', value);
+      const bytes = await fs.readFile(file);
+      expect(bytes.equals((await compress(text, { quality })).compressed)).toBe(true);
+      written.push(bytes);
+    }
+    expect(written[0].equals(written[1])).toBe(false);
+  });
+});

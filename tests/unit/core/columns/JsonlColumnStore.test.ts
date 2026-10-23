@@ -339,5 +339,51 @@ describe('JsonlColumnStore', () => {
       await pending;
       expect(await store.get('b')).toBe(2);
     });
+
+    it('writes no value field for an undefined value and reads the key back', async () => {
+      const store = new JsonlColumnStore<number | undefined>(sidecar);
+      await store.put('a', undefined);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"name":"a"}\n');
+
+      const second = new JsonlColumnStore<number | undefined>(sidecar);
+      expect(await second.has('a')).toBe(true);
+      expect(await second.get('a')).toBeUndefined();
+    });
+
+    it('warns once per line that is the value null or has no string name', async () => {
+      await fs.writeFile(sidecar, 'null\n5\n"str"\n[]\ntrue\n{"name":"a","value":1}\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const store = new JsonlColumnStore<number>(sidecar);
+      expect(await store.size()).toBe(1);
+      const warnings = warnSpy.mock.calls.map((call) => call.join(' '));
+      expect(warnings).toEqual([
+        `[WARN] JsonlColumnStore: skipping malformed line in ${sidecar}`,
+        `[WARN] JsonlColumnStore: skipping line with non-string name in ${sidecar}`,
+        `[WARN] JsonlColumnStore: skipping line with non-string name in ${sidecar}`,
+        `[WARN] JsonlColumnStore: skipping line with non-string name in ${sidecar}`,
+        `[WARN] JsonlColumnStore: skipping line with non-string name in ${sidecar}`,
+      ]);
+    });
+
+    it('keeps an empty-string name across a reload', async () => {
+      const store = new JsonlColumnStore<number>(sidecar);
+      await store.put('', 7);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"name":"","value":7}\n');
+
+      const second = new JsonlColumnStore<number>(sidecar);
+      expect(await second.get('')).toBe(7);
+    });
+
+    it('loads CRLF line ends and whitespace-only lines without a warning', async () => {
+      await fs.writeFile(sidecar, '{"name":"a","value":1}\r\n   \r\n\r\n{"name":"b","value":2}\r\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const store = new JsonlColumnStore<number>(sidecar);
+      expect(await store.size()).toBe(2);
+      expect(await store.get('a')).toBe(1);
+      expect(await store.get('b')).toBe(2);
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
   });
 });
