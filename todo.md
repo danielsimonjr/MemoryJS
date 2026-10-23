@@ -213,3 +213,6 @@ Update this file when:
 - [ ] Follow-up from step 1: the baseline search figures show the result cache (warm median about 0.005 ms). Steps 4-6 must measure uncached search separately before they set a search budget.
 - [ ] Step 7 (still open): remove IGNORE_UNHANDLED_REJECTIONS from test:ci. Step 1 did not touch it.
 - [ ] Flaky, found during step 1: `tests/unit/agent/procedural/graph/hardening.test.ts` "the leak heuristic scans a 400 KB trajectory block ... scales linearly" failed once in a full-suite run (ratio 69.5, limit 60). The same file passed 5 of 5 isolated runs, and the next full run passed. Variance source: the 1,000-row baseline scan takes only a few milliseconds, so load on that small denominator inflates the ratio. Fix the measurement (larger baseline, or median of several samples). Do not widen the limit.
+- [x] Duplicate-function audit of `src/` at 6a20b5c. The report is docs/analysis/DUPLICATE_FUNCTION_AUDIT.md.
+- [ ] Decide the 13 behaviour differences and defects in section 5 of that report (D1 to D13). Fix D12 and D13 first. Each has a probe in the report evidence.
+- [ ] Refactor the P1 families of that report, one commit per family. Add a golden-value or round-trip test before each commit.
