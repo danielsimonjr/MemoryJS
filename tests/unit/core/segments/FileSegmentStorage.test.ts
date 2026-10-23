@@ -749,3 +749,74 @@ describe('FileSegmentStorage temp file open mode on every platform', () => {
     expect(manifestCalls.map(c => c.mode)).toEqual([0o600]);
   });
 });
+
+describe('FileSegmentStorage saveSegment router access', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-router-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  /** Names that route to `id` under a four-segment router, found by search. */
+  function namesRoutedTo(id: number, count: number): string[] {
+    const router = new FnvSegmentRouter(4);
+    const names: string[] = [];
+    for (let i = 0; names.length < count; i++) {
+      if (router.route(`probe-${i}`) === id) names.push(`probe-${i}`);
+    }
+    return names;
+  }
+
+  async function rejection(promise: Promise<unknown>): Promise<unknown> {
+    try {
+      await promise;
+    } catch (error) {
+      return error;
+    }
+    throw new Error('expected the promise to reject');
+  }
+
+  it('reads the router once for each entity and each relation that it checks', async () => {
+    const store = makeStore(testDir);
+    const router = store.router;
+    let reads = 0;
+    Object.defineProperty(store, 'router', {
+      get() {
+        reads++;
+        return router;
+      },
+    });
+    const [first, second] = namesRoutedTo(3, 2);
+    const [foreign] = namesRoutedTo(0, 1);
+
+    // Two entities pass, then the relation fails: three checks, three reads.
+    await rejection(
+      store.saveSegment({
+        id: 3,
+        entities: [ent(first!), ent(second!)],
+        relations: [{ from: foreign!, to: first!, relationType: 'knows' }],
+      }),
+    );
+
+    expect(reads).toBe(3);
+  });
+
+  it('names the router access in the error when the router has no route method', async () => {
+    const store = new FileSegmentStorage(testDir, { segmentCount: 4 } as unknown as FnvSegmentRouter);
+
+    const error = await rejection(
+      store.saveSegment({ id: 0, entities: [ent('alpha')], relations: [] }),
+    );
+
+    expect(error).toBeInstanceOf(TypeError);
+    expect((error as Error).message).toBe('this.router.route is not a function');
+  });
+});
