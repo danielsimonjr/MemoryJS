@@ -174,9 +174,11 @@ export class DecayScheduler {
    */
   private async runDecayCycle(): Promise<void> {
     try {
+      // The hooks are read from the config when each step ends, and are
+      // called as methods of the config.
       await this.executeCycle({
-        onDecay: this.config.onDecayComplete,
-        onForget: this.config.onForgetComplete,
+        onDecay: (result) => this.config.onDecayComplete?.(result),
+        onForget: (result) => this.config.onForgetComplete?.(result),
       });
     } catch (error) {
       if (this.config.onError) {

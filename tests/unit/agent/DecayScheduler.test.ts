@@ -485,6 +485,67 @@ describe('DecayScheduler hook order and runNow (pins)', () => {
     expect(engine.forgetWeakMemories).toHaveBeenCalledTimes(forgetCalls);
   });
 
+  it('calls each hook with the scheduler config as this', async () => {
+    const thisValues: unknown[] = [];
+    const scheduler = new DecayScheduler(fakeEngine(), {
+      autoForget: true,
+      forgetOptions,
+      onDecayComplete: function (this: unknown) {
+        thisValues.push(this);
+      },
+      onForgetComplete: function (this: unknown) {
+        thisValues.push(this);
+      },
+    });
+    const config = (scheduler as unknown as { config: unknown }).config;
+
+    scheduler.start();
+    await vi.waitFor(() => expect(thisValues).toHaveLength(2));
+    scheduler.stop();
+
+    expect(thisValues[0]).toBe(config);
+    expect(thisValues[1]).toBe(config);
+  });
+
+  it('runs the hook that is installed when its step ends', async () => {
+    const calls: string[] = [];
+    let scheduler: DecayScheduler | undefined;
+    const install = (key: 'onDecayComplete' | 'onForgetComplete', name: string) => {
+      (scheduler as unknown as { config: DecaySchedulerConfig }).config[key] = () => {
+        calls.push(name);
+      };
+    };
+    const engine = {
+      applyDecay: vi.fn(async () => {
+        install('onDecayComplete', 'decay hook installed during decay');
+        return decayResult;
+      }),
+      forgetWeakMemories: vi.fn(async () => {
+        install('onForgetComplete', 'forget hook installed during forgetting');
+        return forgetResult;
+      }),
+    } as unknown as DecayEngine;
+    scheduler = new DecayScheduler(engine, {
+      autoForget: true,
+      forgetOptions,
+      onDecayComplete: () => {
+        calls.push('original decay hook');
+      },
+      onForgetComplete: () => {
+        calls.push('original forget hook');
+      },
+    });
+
+    scheduler.start();
+    await vi.waitFor(() => expect(calls).toHaveLength(2));
+    scheduler.stop();
+
+    expect(calls).toStrictEqual([
+      'decay hook installed during decay',
+      'forget hook installed during forgetting',
+    ]);
+  });
+
   it('a scheduled cycle that fails sends the error to onError and does not reject', async () => {
     const onError = vi.fn();
     const engine = {
