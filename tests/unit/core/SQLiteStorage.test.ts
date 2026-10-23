@@ -1425,6 +1425,16 @@ describe('SQLiteStorage statement pins', () => {
     }
   }
 
+  /** One stored entity row, read through a separate connection so the columns show as stored. */
+  function rawEntityRow(name: string): Record<string, unknown> {
+    const db = new Database(dbFile, { readonly: true });
+    try {
+      return db.prepare('SELECT * FROM entities WHERE name = ?').get(name) as Record<string, unknown>;
+    } finally {
+      db.close();
+    }
+  }
+
   it('adds the missing columns in a fixed order and keeps the existing rows', async () => {
     createOldestSchema();
     const first = open();
@@ -1573,6 +1583,54 @@ describe('SQLiteStorage statement pins', () => {
       ttl: 60,
       confidence: 0.5,
     });
+  });
+
+  it('stores SQL NULL and the defaults for an entity without optional fields', async () => {
+    const writer = open();
+    await writer.saveGraph({ entities: [], relations: [] });
+    await writer.appendEntity({ name: 'bare', entityType: 'note', observations: [] });
+    const nullColumns = {
+      tags: null, importance: null, parentId: null, projectId: null,
+      parentEntityName: null, rootEntityName: null, supersededBy: null, contentHash: null,
+    };
+    const defaults = { version: 1, isLatest: 1, observations: '[]', entityType: 'note' };
+
+    expect(rawEntityRow('bare')).toMatchObject({ ...nullColumns, ...defaults });
+
+    await writer.updateEntity('bare', { entityType: 'memo' });
+    expect(rawEntityRow('bare')).toMatchObject({ ...nullColumns, ...defaults, entityType: 'memo' });
+  });
+
+  it('updates the row named by the argument when the updates carry another name', async () => {
+    const writer = open();
+    await writer.saveGraph({ entities: [], relations: [] });
+    await writer.appendEntity({ name: 'orig', entityType: 'note', observations: [] });
+
+    await writer.updateEntity('orig', { name: 'renamed', entityType: 'memo' });
+
+    expect(rawEntityRow('orig')).toMatchObject({ name: 'orig', entityType: 'memo' });
+    expect(rawEntityRow('renamed')).toBeUndefined();
+  });
+
+  it('writes the lastModified value that the cached entity keeps', async () => {
+    const writer = open();
+    await writer.saveGraph({ entities: [], relations: [] });
+    await writer.appendEntity({ name: 'stamped', entityType: 'note', observations: [] });
+    // Every clock read returns a new time, so a second read would store another value.
+    const realToISOString = Date.prototype.toISOString;
+    let tick = 0;
+    vi.spyOn(Date.prototype, 'toISOString').mockImplementation(function () {
+      return realToISOString.call(new Date(Date.UTC(2031, 0, 1) + tick++ * 1000));
+    });
+    try {
+      await writer.updateEntity('stamped', { importance: 3 });
+    } finally {
+      vi.restoreAllMocks();
+    }
+
+    const cached = (await writer.loadGraph()).entities.find(e => e.name === 'stamped');
+    expect(cached?.lastModified).toMatch(/^2031-01-01T/);
+    expect(rawEntityRow('stamped').lastModified).toBe(cached?.lastModified);
   });
 
   it('returns the same relations with the cache loaded and with the cache cleared', async () => {
