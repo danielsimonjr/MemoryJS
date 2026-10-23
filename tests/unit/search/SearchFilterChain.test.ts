@@ -409,4 +409,63 @@ describe('SearchFilterChain', () => {
       expect(result.map(e => e.name)).toEqual(['Alice']);
     });
   });
+
+  describe('date bounds that cannot be parsed', () => {
+    const boundEntities: Entity[] = [
+      { name: 'A', entityType: 'misc', observations: [], createdAt: '2020-06-01T00:00:00Z', lastModified: '2020-06-01T00:00:00Z' },
+      { name: 'B', entityType: 'misc', observations: [], createdAt: '2022-06-01T00:00:00Z', lastModified: '2022-06-01T00:00:00Z' },
+      { name: 'C', entityType: 'misc', observations: [] },
+    ];
+
+    it.each([
+      [{ createdAfter: 'garbage' }, ['A', 'B']],
+      [{ createdAfter: 'garbage', createdBefore: '2021-01-01' }, ['A']],
+      [{ createdAfter: '' }, ['A', 'B', 'C']],
+      [{ modifiedAfter: 'garbage' }, ['A', 'B']],
+      [{ modifiedAfter: 'garbage', modifiedBefore: '2021-01-01' }, ['A']],
+      [{ modifiedAfter: '' }, ['A', 'B', 'C']],
+    ] as Array<[SearchFilters, string[]]>)(
+      'skips an unparseable bound, keeps the valid one, and fails an entity with no date (%j)',
+      (filters, expected) => {
+        const result = SearchFilterChain.applyFilters(boundEntities, filters);
+        expect(result.map(e => e.name)).toEqual(expected);
+      }
+    );
+  });
+
+  describe('filter results over a mixed table', () => {
+    // Golden values were recorded before the delegation to entityUtils.
+    const table: Entity[] = [
+      { name: 'E01', entityType: 'person', observations: [], tags: ['Backend'], importance: 8, createdAt: '2020-03-01T00:00:00Z', lastModified: '2024-01-10T00:00:00Z', projectId: 'p1', lifecycleStatus: 'published' },
+      { name: 'E02', entityType: 'project', observations: [], tags: ['frontend'], importance: 3, createdAt: '2021-06-15T00:00:00Z', lastModified: '2022-02-01T00:00:00Z', projectId: 'p2', isLatest: false },
+      { name: 'E03', entityType: 'person', observations: [], importance: 5, createdAt: '2022-12-31T23:59:59Z', lastModified: '2023-05-05T00:00:00Z', lifecycleStatus: 'draft' },
+      { name: 'E04', entityType: 'misc', observations: [], tags: [], importance: 10, createdAt: '2023-01-01T00:00:00Z', lastModified: '2025-01-01T00:00:00Z', projectId: 'p1', lifecycleStatus: 'archived' },
+      { name: 'E05', entityType: 'person', observations: [], tags: ['BACKEND', 'api'], createdAt: '2019-07-04T12:00:00Z', lastModified: '2021-07-04T12:00:00Z' },
+      { name: 'E06', entityType: 'misc', observations: [] },
+      { name: 'E07', entityType: 'project', observations: [], tags: ['infra'], importance: 0, createdAt: '2024-02-29T00:00:00Z', lastModified: '2024-02-29T00:00:00Z', projectId: 'p1', lifecycleStatus: 'draft', isLatest: false },
+      { name: 'E08', entityType: 'person', observations: [], tags: ['api'], importance: 7, createdAt: '2021-01-01T00:00:00Z', lastModified: '2021-12-31T23:59:59Z', lifecycleStatus: 'published' },
+      { name: 'E09', entityType: 'misc', observations: [], tags: ['backend'], importance: 6, createdAt: 'not-a-date', lastModified: '2022-06-01T00:00:00Z' },
+      { name: 'E10', entityType: 'person', observations: [], tags: ['frontend', 'Backend'], importance: 4, createdAt: '2022-03-03T00:00:00Z', projectId: 'p2' },
+      { name: 'E11', entityType: 'project', observations: [], tags: ['infra'], importance: 9, createdAt: '2025-05-05T00:00:00Z', lastModified: '2025-06-06T00:00:00Z', lifecycleStatus: 'published', projectId: 'p2' },
+      { name: 'E12', entityType: 'misc', observations: [], tags: [], importance: 2, lastModified: '2023-08-08T00:00:00Z', isLatest: true },
+    ];
+
+    it.each([
+      [{ tags: ['Backend'] }, ['E01', 'E05', 'E09', 'E10']],
+      [{ minImportance: 3, maxImportance: 7 }, ['E08', 'E09', 'E10']],
+      [{ entityType: 'person' }, ['E01', 'E05', 'E08', 'E10']],
+      [{ createdAfter: '2021-01-01T00:00:00Z', createdBefore: '2023-01-01T00:00:00Z' }, ['E08', 'E10']],
+      [{ modifiedAfter: '2022-01-01T00:00:00Z' }, ['E01', 'E09', 'E11', 'E12']],
+      [{ projectId: 'p1', includeSuperseded: true }, ['E01']],
+      [{ lifecycleStatus: ['draft', 'published', 'archived'] }, ['E01', 'E03', 'E04', 'E05', 'E06', 'E08', 'E09', 'E10', 'E11', 'E12']],
+      [{ createdAfter: 'garbage', modifiedBefore: '2024-06-01T00:00:00Z', minImportance: 1 }, ['E01', 'E08']],
+    ] as Array<[SearchFilters, string[]]>)('returns the recorded names for %j', (filters, expected) => {
+      expect(SearchFilterChain.applyFilters(table, filters).map(e => e.name)).toEqual(expected);
+    });
+
+    it('ignores the tag filter when the caller passes no normalized tags', () => {
+      const untagged: Entity = { name: 'T', entityType: 'misc', observations: [], tags: ['y'] };
+      expect(SearchFilterChain.entityPassesFilters(untagged, { tags: ['x'] })).toBe(true);
+    });
+  });
 });
