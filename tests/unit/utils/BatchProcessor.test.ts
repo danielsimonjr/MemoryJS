@@ -4,7 +4,7 @@
  * Phase 12 Sprint 2: Tests for generic batch processing utility.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   BatchProcessor,
   processBatch,
@@ -561,5 +561,32 @@ describe('Convenience Functions', () => {
 
       expect(results).toEqual(['a', 'c']);
     });
+  });
+});
+
+describe('BatchProcessor item timeout timer', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('clears the item timeout timer when the item settles', async () => {
+    vi.useFakeTimers();
+    const processor = new BatchProcessor({ itemTimeoutMs: 1000 });
+
+    const batch = await processor.process([1], async x => x);
+
+    expect(batch.allSucceeded).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+describe('BatchProcessor item timeout with a plain-value processor', () => {
+  it('still succeeds when the processor returns a plain value', async () => {
+    const processor = new BatchProcessor({ itemTimeoutMs: 1000 });
+
+    const batch = await processor.process([1], ((x: number) => x) as unknown as (item: number) => Promise<number>);
+
+    expect(batch.allSucceeded).toBe(true);
+    expect(batch.results[0]?.result).toBe(1);
   });
 });
