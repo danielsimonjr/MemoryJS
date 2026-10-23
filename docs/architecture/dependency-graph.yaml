@@ -2,9 +2,9 @@ metadata:
   name: "@danielsimonjr/memoryjs"
   version: 4.3.0
   lastUpdated: "2026-10-23"
-  totalFiles: 299
+  totalFiles: 300
   totalModules: 12
-  totalExports: 2051
+  totalExports: 2058
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -3978,6 +3978,9 @@ modules:
           imports:
             - PGSessionOptions
           typeOnly: true
+        - file: ../../../utils/BatchProcessor.js
+          imports:
+            - chunkArray
       exports:
         - ProceduralGraphEvolution
       classes:
@@ -8948,6 +8951,9 @@ modules:
         - file: ../utils/errors.js
           imports:
             - ValidationError
+        - file: ../utils/searchCache.js
+          imports:
+            - cleanupExpiredEntries
         - file: ./SearchFilterChain.js
           imports:
             - SearchFilterChain
@@ -8996,7 +9002,10 @@ modules:
         - module: crypto
           imports:
             - createHash
-      internalDependencies: []
+      internalDependencies:
+        - file: ../utils/searchCache.js
+          imports:
+            - evictOldest
       exports:
         - DEFAULT_EMBEDDING_CACHE_OPTIONS
         - EmbeddingCache
@@ -9026,6 +9035,9 @@ modules:
         - file: ../utils/entityUtils.js
           imports:
             - hash31
+        - file: ../utils/timing.js
+          imports:
+            - sleep
       exports:
         - QUERY_PREFIX
         - DOCUMENT_PREFIX
@@ -9115,6 +9127,10 @@ modules:
         - file: ../utils/logger.js
           imports:
             - logger
+        - file: ../utils/searchCache.js
+          imports:
+            - cleanupExpiredEntries
+            - evictOldest
         - file: ../utils/constants.js
           imports:
             - FUZZY_SEARCH_LIMITS
@@ -9150,6 +9166,9 @@ modules:
         - file: ../core/GraphTraversal.js
           imports:
             - GraphTraversal
+        - file: ../utils/timing.js
+          imports:
+            - CoalescingTimer
         - file: ../core/GraphStorage.js
           imports:
             - GraphStorage
@@ -9273,6 +9292,9 @@ modules:
           imports:
             - EmbeddingProgressCallback
           typeOnly: true
+        - file: ../utils/timing.js
+          imports:
+            - sleep
       exports:
         - DEFAULT_INDEXER_OPTIONS
         - IncrementalIndexer
@@ -9983,6 +10005,9 @@ modules:
         - file: ../utils/constants.js
           imports:
             - SEMANTIC_SEARCH_LIMITS
+        - file: ../utils/timing.js
+          imports:
+            - createTimeout
       exports:
         - ParallelSearchExecutor
       classes:
@@ -10130,6 +10155,9 @@ modules:
             - QueryAnalysis
             - QueryPlan
           typeOnly: true
+        - file: ../utils/searchCache.js
+          imports:
+            - evictOldest
       exports:
         - QueryPlanCache
       classes:
@@ -10200,6 +10228,9 @@ modules:
         - file: ../utils/constants.js
           imports:
             - SEARCH_LIMITS
+        - file: ../utils/searchCache.js
+          imports:
+            - evictInsertionOrder
         - file: ./TFIDFIndexManager.js
           imports:
             - TFIDFIndexManager
@@ -10530,6 +10561,9 @@ modules:
           imports:
             - IGraphStorage
           typeOnly: true
+        - file: ../utils/timing.js
+          imports:
+            - CoalescingTimer
         - file: ../types/types.js
           imports:
             - EntityCreatedEvent
@@ -12061,7 +12095,11 @@ modules:
       description: Batch Processor
       externalDependencies: []
       nodeDependencies: []
-      internalDependencies: []
+      internalDependencies:
+        - file: ./timing.js
+          imports:
+            - sleep
+            - withTimeout
       exports:
         - processBatch
         - processWithRetry
@@ -13778,6 +13816,9 @@ modules:
         - clearAllSearchCaches
         - getAllCacheStats
         - cleanupAllCaches
+        - evictOldest
+        - evictInsertionOrder
+        - cleanupExpiredEntries
         - SearchCache
       classes:
         - SearchCache
@@ -13791,6 +13832,9 @@ modules:
         - clearAllSearchCaches
         - getAllCacheStats
         - cleanupAllCaches
+        - evictOldest
+        - evictInsertionOrder
+        - cleanupExpiredEntries
       constants:
         - searchCaches
     src/utils/taskScheduler.ts:
@@ -13804,6 +13848,9 @@ modules:
         - file: ./logger.js
           imports:
             - logger
+        - file: ./timing.js
+          imports:
+            - sleep
         - file: ../types/task-scheduler.js
           imports:
             - TaskPriority
@@ -13856,6 +13903,22 @@ modules:
         - cosineSimilarity
         - calculateTextSimilarity
         - jaccard
+    src/utils/timing.ts:
+      description: Timing Helpers
+      externalDependencies: []
+      nodeDependencies: []
+      internalDependencies: []
+      exports:
+        - sleep
+        - createTimeout
+        - withTimeout
+        - CoalescingTimer
+      classes:
+        - CoalescingTimer
+      functions:
+        - sleep
+        - createTimeout
+        - withTimeout
     src/utils/validators.ts:
       description: Built-in Validators
       externalDependencies: []
@@ -14358,6 +14421,7 @@ dependencyGraph:
         - src/utils/searchCache.ts
         - src/utils/taskScheduler.ts
         - src/utils/textSimilarity.ts
+        - src/utils/timing.ts
         - src/utils/validators.ts
         - src/utils/WorkerPoolManager.ts
         - src/utils/WorkerTaskManager.ts
@@ -14370,18 +14434,18 @@ reachability:
     - src/index.ts
     - src/sqlite.ts
     - src/workers/levenshteinWorker.ts
-  reachableCount: 299
+  reachableCount: 300
   dormantCount: 0
   orphaned: []
   testOnly: []
 statistics:
-  totalTypeScriptFiles: 299
+  totalTypeScriptFiles: 300
   totalModules: 12
-  totalLinesOfCode: 104242
-  totalExports: 2051
-  totalClasses: 235
+  totalLinesOfCode: 104283
+  totalExports: 2058
+  totalClasses: 236
   totalInterfaces: 624
-  totalFunctions: 338
+  totalFunctions: 344
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
@@ -14390,7 +14454,7 @@ statistics:
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
   entryRoots: 4
-  reachableFiles: 299
+  reachableFiles: 300
   dormantFiles: 0
   orphanedFiles: 0
   testOnlyFiles: 0

@@ -48,7 +48,7 @@ The codebase is organized into the following modules:
 - **security**: 5 files
 - **root**: 1 file
 - **types**: 12 files
-- **utils**: 38 files
+- **utils**: 39 files
 - **workers**: 1 file
 
 ---
@@ -63,7 +63,7 @@ Seeded build/entry roots (package `exports`, `bin` targets, tsup entries, script
 - `src/sqlite.ts`
 - `src/workers/levenshteinWorker.ts`
 
-Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
+Reachable from a root: **300** of 300 files. Dormant: **0** (0 orphaned, 0 test-only) — see `unused-analysis.md` for the file lists.
 
 ---
 
@@ -1303,6 +1303,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `./ProceduralGraphSerializer.js` | `PGSerializerStyle` | Import (type-only) |
 | `./ProceduralGraphRefiner.js` | `proposeEdits, serializeRejections` | Import |
 | `./ProceduralGraphSession.js` | `PGSessionOptions` | Import (type-only) |
+| `../../../utils/BatchProcessor.js` | `chunkArray` | Import |
 
 **Exports:**
 - Classes: `ProceduralGraphEvolution`
@@ -3835,6 +3836,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/CachePressureCoordinator.js` | `CachePressureCoordinator` | Import (type-only) |
 | `../utils/constants.js` | `SEARCH_LIMITS, QUERY_LIMITS` | Import |
 | `../utils/errors.js` | `ValidationError` | Import |
+| `../utils/searchCache.js` | `cleanupExpiredEntries` | Import |
 | `./SearchFilterChain.js` | `SearchFilterChain, SearchFilters` | Import |
 | `./inducedSubgraph.js` | `collectInducedRelations` | Import |
 
@@ -3866,6 +3868,11 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 |--------|--------|
 | `crypto` | `createHash` |
 
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `../utils/searchCache.js` | `evictOldest` | Import |
+
 **Exports:**
 - Classes: `EmbeddingCache`
 - Interfaces: `EmbeddingCacheStats`, `EmbeddingCacheOptions`
@@ -3881,6 +3888,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/index.js` | `EmbeddingService, EmbeddingConfig, EmbeddingMode` | Import (type-only) |
 | `../utils/constants.js` | `EMBEDDING_DEFAULTS, OPENAI_API_CONFIG, getEmbeddingConfig` | Import |
 | `../utils/entityUtils.js` | `hash31` | Import |
+| `../utils/timing.js` | `sleep` | Import |
 
 **Exports:**
 - Classes: `OpenAIEmbeddingService`, `LlamaCppEmbeddingService`, `LocalEmbeddingService`, `MockEmbeddingService`
@@ -3928,6 +3936,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/CachePressureCoordinator.js` | `CachePressureCoordinator` | Import (type-only) |
 | `../utils/index.js` | `levenshteinDistance` | Import |
 | `../utils/logger.js` | `logger` | Import |
+| `../utils/searchCache.js` | `cleanupExpiredEntries, evictOldest` | Import |
 | `../utils/constants.js` | `FUZZY_SEARCH_LIMITS, SEARCH_LIMITS` | Import |
 | `./SearchFilterChain.js` | `SearchFilterChain, SearchFilters` | Import |
 | `./NGramIndex.js` | `NGramIndex` | Import |
@@ -3947,6 +3956,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../core/GraphTraversal.js` | `GraphTraversal` | Import |
+| `../utils/timing.js` | `CoalescingTimer` | Import |
 | `../core/GraphStorage.js` | `GraphStorage` | Import (type-only) |
 | `../core/GraphEventEmitter.js` | `GraphEventEmitter` | Import (type-only) |
 | `../types/types.js` | `EntityUpdatedEvent` | Import (type-only) |
@@ -4004,6 +4014,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `../types/index.js` | `EmbeddingService, EmbeddingMode` | Import (type-only) |
 | `../types/index.js` | `IVectorStore` | Import (type-only) |
 | `./EmbeddingService.js` | `EmbeddingProgressCallback` | Import (type-only) |
+| `../utils/timing.js` | `sleep` | Import |
 
 **Exports:**
 - Classes: `IncrementalIndexer`
@@ -4150,6 +4161,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `./RankedSearch.js` | `RankedSearch` | Import (type-only) |
 | `./SymbolicSearch.js` | `SymbolicSearch` | Import |
 | `../utils/constants.js` | `SEMANTIC_SEARCH_LIMITS` | Import |
+| `../utils/timing.js` | `createTimeout` | Import |
 
 **Exports:**
 - Classes: `ParallelSearchExecutor`
@@ -4256,6 +4268,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `../types/index.js` | `QueryAnalysis, QueryPlan` | Import (type-only) |
+| `../utils/searchCache.js` | `evictOldest` | Import |
 
 **Exports:**
 - Classes: `QueryPlanCache`
@@ -4298,6 +4311,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `../utils/CachePressureCoordinator.js` | `CachePressureCoordinator` | Import (type-only) |
 | `../utils/index.js` | `calculateTFFromTokens, calculateIDFFromTokenSets, tokenize` | Import |
 | `../utils/constants.js` | `SEARCH_LIMITS` | Import |
+| `../utils/searchCache.js` | `evictInsertionOrder` | Import |
 | `./TFIDFIndexManager.js` | `TFIDFIndexManager` | Import |
 | `./SearchFilterChain.js` | `SearchFilterChain, SearchFilters` | Import |
 | `../utils/IIndexHealth.js` | `IndexHealthSnapshot` | Import (type-only) |
@@ -4489,6 +4503,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `../core/GraphEventEmitter.js` | `GraphEventEmitter` | Import (type-only) |
 | `./TFIDFIndexManager.js` | `TFIDFIndexManager` | Import (type-only) |
 | `../types/index.js` | `IGraphStorage` | Import (type-only) |
+| `../utils/timing.js` | `CoalescingTimer` | Import |
 | `../types/types.js` | `EntityCreatedEvent, EntityUpdatedEvent, EntityDeletedEvent` | Import (type-only) |
 
 **Exports:**
@@ -4865,6 +4880,11 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 ---
 
 ### `src/utils/BatchProcessor.ts` - Batch Processor
+
+**Internal Dependencies:**
+| File | Imports | Type |
+|------|---------|------|
+| `./timing.js` | `sleep, withTimeout` | Import |
 
 **Exports:**
 - Classes: `BatchProcessor`
@@ -5285,7 +5305,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 - Classes: `SearchCache`
 - Interfaces: `CacheStats`
 - Types: `GraphGenerationDependency`
-- Functions: `getCacheOwnerId`, `bumpEntityGeneration`, `bumpRelationGeneration`, `getGraphGenerations`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`
+- Functions: `getCacheOwnerId`, `bumpEntityGeneration`, `bumpRelationGeneration`, `getGraphGenerations`, `clearAllSearchCaches`, `getAllCacheStats`, `cleanupAllCaches`, `evictOldest`, `evictInsertionOrder`, `cleanupExpiredEntries`
 - Constants: `searchCaches`
 
 ---
@@ -5301,6 +5321,7 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | File | Imports | Type |
 |------|---------|------|
 | `./logger.js` | `logger` | Import |
+| `./timing.js` | `sleep` | Import |
 | `../types/task-scheduler.js` | `TaskPriority` | Import |
 | `../types/task-scheduler.js` | `ProgressCallback` | Import (type-only) |
 
@@ -5316,6 +5337,14 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 
 **Exports:**
 - Functions: `tokenizeStripped`, `tokenizeToSet`, `tokenizeAlphanumeric`, `buildTFVector`, `cosineSimilarity`, `calculateTextSimilarity`, `jaccard`
+
+---
+
+### `src/utils/timing.ts` - Timing Helpers
+
+**Exports:**
+- Classes: `CoalescingTimer`
+- Functions: `sleep`, `createTimeout`, `withTimeout`
 
 ---
 
@@ -5428,20 +5457,20 @@ Reachable from a root: **299** of 299 files. Dormant: **0** (0 orphaned, 0 test-
 | `src/types/proceduralGraph` | 0 files | 18 files |
 | `src/agent/DecayEngine` | 7 files | 10 files |
 | `src/features/index` | 16 files | 1 file |
+| `src/search/RankedSearch` | 10 files | 7 files |
 | `src/core/ObservationManager` | 10 files | 6 files |
 | `src/core/RelationManager` | 6 files | 10 files |
-| `src/search/RankedSearch` | 9 files | 7 files |
 | `src/agent/SalienceEngine` | 7 files | 7 files |
 | `src/agent/WorkingMemoryManager` | 7 files | 7 files |
 | `src/core/index` | 13 files | 1 file |
 | `src/search/HybridSearchManager` | 9 files | 5 files |
 | `src/agent/MemoryEngine` | 9 files | 4 files |
+| `src/agent/procedural/graph/ProceduralGraphEvolution` | 11 files | 2 files |
 | `src/core/SQLiteStorage` | 10 files | 3 files |
+| `src/search/FuzzySearch` | 11 files | 2 files |
+| `src/utils/searchCache` | 2 files | 11 files |
 | `src/utils/textSimilarity` | 0 files | 13 files |
-| `src/agent/procedural/graph/ProceduralGraphEvolution` | 10 files | 2 files |
 | `src/core/GraphEventEmitter` | 2 files | 10 files |
-| `src/search/FuzzySearch` | 10 files | 2 files |
-| `src/search/SemanticSearch` | 5 files | 7 files |
 
 ---
 
@@ -5594,7 +5623,7 @@ graph TD
         N87[constants]
         N88[Diagnostics]
         N89[durableWriteFile]
-        N90[...28 more]
+        N90[...29 more]
     end
 
     subgraph Workers
@@ -5685,21 +5714,21 @@ graph TD
 
 | Category | Count |
 |----------|-------|
-| Total TypeScript Files | 299 |
+| Total TypeScript Files | 300 |
 | Total Modules | 12 |
-| Total Lines of Code | 104242 |
-| Total Exports | 2051 |
+| Total Lines of Code | 104283 |
+| Total Exports | 2058 |
 | Total Re-exports | 1340 |
-| Total Classes | 235 |
+| Total Classes | 236 |
 | Total Interfaces | 624 |
-| Total Functions | 338 |
+| Total Functions | 344 |
 | Total Type Guards | 31 |
 | Total Enums | 4 |
 | Type-only Imports | 480 |
 | Runtime Circular Deps | 0 |
 | Type-only Circular Deps | 8 |
 | Entry/Build Roots | 4 |
-| Reachable Files | 299 |
+| Reachable Files | 300 |
 | Dormant Files (orphaned / test-only) | 0 (0 / 0) |
 
 ---
