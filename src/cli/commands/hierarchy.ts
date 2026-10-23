@@ -5,8 +5,8 @@
  */
 
 import { Command } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatEntities, formatSuccess, formatError } from '../formatters.js';
+import { runAction } from './helpers.js';
+import { formatEntities, formatSuccess } from '../formatters.js';
 
 /**
  * Register the `hierarchy` command group: `set-parent`, `children`, `ancestors`, `descendants` and `roots`.
@@ -21,90 +21,45 @@ export function registerHierarchyCommands(program: Command): void {
   hierarchy
     .command('set-parent <entity> <parent>')
     .description('Set parent of an entity (use "none" to remove)')
-    .action(async (entity: string, parent: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        const parentVal = parent.toLowerCase() === 'none' ? null : parent;
-        await ctx.hierarchyManager.setEntityParent(entity, parentVal);
-        if (parentVal) {
-          logger.info(formatSuccess(`Set parent of ${entity} to ${parentVal}`));
-        } else {
-          logger.info(formatSuccess(`Removed parent from ${entity}`));
-        }
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
+    .action(runAction(program, async (ctx, _options, logger, entity: string, parent: string) => {
+      const parentVal = parent.toLowerCase() === 'none' ? null : parent;
+      await ctx.hierarchyManager.setEntityParent(entity, parentVal);
+      if (parentVal) {
+        logger.info(formatSuccess(`Set parent of ${entity} to ${parentVal}`));
+      } else {
+        logger.info(formatSuccess(`Removed parent from ${entity}`));
       }
-    });
+    }));
 
   hierarchy
     .command('children <entity>')
     .description('List children of an entity')
-    .action(async (entity: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        const children = await ctx.hierarchyManager.getChildren(entity);
-        logger.log(formatEntities(children, options.format));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, options, logger, entity: string) => {
+      const children = await ctx.hierarchyManager.getChildren(entity);
+      logger.log(formatEntities(children, options.format));
+    }));
 
   hierarchy
     .command('ancestors <entity>')
     .description('List ancestors of an entity (parent to root)')
-    .action(async (entity: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        const ancestors = await ctx.hierarchyManager.getAncestors(entity);
-        logger.log(formatEntities(ancestors, options.format));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, options, logger, entity: string) => {
+      const ancestors = await ctx.hierarchyManager.getAncestors(entity);
+      logger.log(formatEntities(ancestors, options.format));
+    }));
 
   hierarchy
     .command('descendants <entity>')
     .description('List all descendants of an entity')
-    .action(async (entity: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        const descendants = await ctx.hierarchyManager.getDescendants(entity);
-        logger.log(formatEntities(descendants, options.format));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, options, logger, entity: string) => {
+      const descendants = await ctx.hierarchyManager.getDescendants(entity);
+      logger.log(formatEntities(descendants, options.format));
+    }));
 
   hierarchy
     .command('roots')
     .description('List root entities (no parent)')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        const roots = await ctx.hierarchyManager.getRootEntities();
-        logger.log(formatEntities(roots, options.format));
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, options, logger) => {
+      const roots = await ctx.hierarchyManager.getRootEntities();
+      logger.log(formatEntities(roots, options.format));
+    }));
 }
