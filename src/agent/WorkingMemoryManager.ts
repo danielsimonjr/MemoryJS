@@ -17,6 +17,7 @@ import { passesEntropyFilter, type EntropyFilterConfig } from './EntropyFilter.j
 import { LowEntropyContentError, MemoryWriteBlockedError } from '../utils/errors.js';
 import { hash31 } from '../utils/entityUtils.js';
 import type { ExclusionManager } from './ExclusionManager.js';
+import { requireWorkingMemoryEntity } from './workingMemoryGuard.js';
 
 /**
  * Configuration for WorkingMemoryManager.
@@ -509,19 +510,7 @@ export class WorkingMemoryManager {
     }
 
     for (const name of entityNames) {
-      const entity = this.storage.getEntityByName(name);
-      if (!entity) {
-        throw new Error(`Entity not found: ${name}`);
-      }
-
-      if (!isAgentEntity(entity)) {
-        throw new Error(`Entity is not an AgentEntity: ${name}`);
-      }
-
-      const agentEntity = entity;
-      if (agentEntity.memoryType !== 'working') {
-        throw new Error(`Entity is not working memory: ${name}`);
-      }
+      const agentEntity = requireWorkingMemoryEntity(this.storage, name);
 
       // Calculate new expiration
       let currentExpires: Date;
@@ -572,19 +561,7 @@ export class WorkingMemoryManager {
     entityName: string,
     options?: PromotionMarkOptions
   ): Promise<void> {
-    const entity = this.storage.getEntityByName(entityName);
-    if (!entity) {
-      throw new Error(`Entity not found: ${entityName}`);
-    }
-
-    if (!isAgentEntity(entity)) {
-      throw new Error(`Entity is not an AgentEntity: ${entityName}`);
-    }
-
-    const agentEntity = entity;
-    if (agentEntity.memoryType !== 'working') {
-      throw new Error(`Entity is not working memory: ${entityName}`);
-    }
+    const agentEntity = requireWorkingMemoryEntity(this.storage, entityName);
 
     const updates: Record<string, unknown> = {
       markedForPromotion: true,
@@ -703,19 +680,7 @@ export class WorkingMemoryManager {
     entityName: string,
     targetType: 'episodic' | 'semantic' = 'episodic'
   ): Promise<PromotionResult> {
-    const entity = this.storage.getEntityByName(entityName);
-    if (!entity) {
-      throw new Error(`Entity not found: ${entityName}`);
-    }
-
-    if (!isAgentEntity(entity)) {
-      throw new Error(`Entity is not an AgentEntity: ${entityName}`);
-    }
-
-    const agentEntity = entity;
-    if (agentEntity.memoryType !== 'working') {
-      throw new Error(`Entity is not working memory: ${entityName}`);
-    }
+    const agentEntity = requireWorkingMemoryEntity(this.storage, entityName);
 
     const now = new Date().toISOString();
 
@@ -787,19 +752,7 @@ export class WorkingMemoryManager {
     entityName: string,
     confidenceBoost?: number
   ): Promise<ConfirmationResult> {
-    const entity = this.storage.getEntityByName(entityName);
-    if (!entity) {
-      throw new Error(`Entity not found: ${entityName}`);
-    }
-
-    if (!isAgentEntity(entity)) {
-      throw new Error(`Entity is not an AgentEntity: ${entityName}`);
-    }
-
-    const agentEntity = entity;
-    if (agentEntity.memoryType !== 'working') {
-      throw new Error(`Entity is not working memory: ${entityName}`);
-    }
+    const agentEntity = requireWorkingMemoryEntity(this.storage, entityName);
 
     // Increment confirmation
     const newConfirmations = (agentEntity.confirmationCount ?? 0) + 1;
