@@ -197,7 +197,8 @@ export class DefaultDistillationPolicy implements IDistillationPolicy {
     const ageHours = ageMs / (1000 * 60 * 60);
     const halfLifeHours = 24;
     const decayConstant = Math.LN2 / halfLifeHours;
-    return Math.exp(-decayConstant * ageHours);
+    // A future timestamp counts as age 0. The score stays in [0, 1].
+    return Math.max(0, Math.min(1, Math.exp(-decayConstant * Math.max(0, ageHours))));
   }
 
   /**

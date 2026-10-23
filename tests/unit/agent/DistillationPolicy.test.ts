@@ -242,6 +242,23 @@ describe('DefaultDistillationPolicy', () => {
       expect(score).toBeLessThan(0.05);
     });
 
+    it('scores an entity modified in the future as 1', () => {
+      const entity = makeEntity({
+        lastModified: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      });
+      expect(policy.scoreRecency(entity)).toBe(1);
+    });
+
+    it('scores an entity modified 24 hours ago as 0.5', () => {
+      const entity = makeOldEntity(24);
+      expect(policy.scoreRecency(entity)).toBeCloseTo(0.5, 6);
+    });
+
+    it('keeps NaN for an unparseable timestamp', () => {
+      const entity = makeEntity({ lastModified: 'not a date' });
+      expect(policy.scoreRecency(entity)).toBeNaN();
+    });
+
     it('returns 0 when no timestamp is set', () => {
       const entity = makeEntity({ lastModified: undefined, createdAt: undefined });
       const score = policy.scoreRecency(entity);
