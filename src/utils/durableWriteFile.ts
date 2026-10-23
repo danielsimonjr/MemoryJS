@@ -70,8 +70,9 @@ export class DurableReplaceError extends Error {
  * Write `content` to a temp file next to `target` and sync it.
  * The temp name is `target`, then `.tmp.`, the process id and six random bytes in hex.
  * `openFlag` sets the open mode. `'wx'` fails when the name exists. `'w'` replaces it.
- * The mode is the existing mode of `target`, limited to owner read and write.
- * For a new `target`, the mode is `0o600`.
+ * The open call passes a mode: the existing mode of `target`, limited to owner
+ * read and write, or `0o600` for a new `target`. The file system applies the
+ * mode only when the open call creates the temp file.
  * The function does not rename the temp file. The caller renames it.
  *
  * @param target - Path of the final file.

@@ -1001,7 +1001,8 @@ export class SQLiteStorage implements IGraphStorage {
 
   /**
    * Bind values for the entity fields that the INSERT and the UPDATE write
-   * after their timestamps: project, version chain, and the metadata blob.
+   * after their timestamps: project, version chain, content hash, and the
+   * metadata blob.
    */
   private entityTrailingBinds(entity: Entity): Array<string | number | null> {
     return [
