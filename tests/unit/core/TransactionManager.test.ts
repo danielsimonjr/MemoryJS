@@ -616,6 +616,42 @@ describe('TransactionManager operation pins', () => {
     expect(graph.entities).toHaveLength(2);
   });
 
+  it('CREATE_RELATION accepts a different type or target and rejects an exact copy', () => {
+    const graph = baseGraph();
+    applyOp(graph, {
+      type: OperationType.CREATE_RELATION,
+      data: { from: 'a', to: 'b', relationType: 'likes' },
+    });
+    applyOp(graph, {
+      type: OperationType.CREATE_RELATION,
+      data: { from: 'a', to: 'a', relationType: 'knows' },
+    });
+    expect(graph.relations.map(r => `${r.from}>${r.to}:${r.relationType}`)).toEqual([
+      'a>b:knows',
+      'a>b:likes',
+      'a>a:knows',
+    ]);
+
+    const failure = errorOf(() =>
+      applyOp(graph, {
+        type: OperationType.CREATE_RELATION,
+        data: { from: 'a', to: 'a', relationType: 'knows' },
+      }),
+    );
+    expect(failure.code).toBe('DUPLICATE_RELATION');
+    expect(graph.relations).toHaveLength(3);
+  });
+
+  it('UPDATE_ENTITY drops the keys that would change the prototype', () => {
+    const graph = baseGraph();
+    const updates = JSON.parse('{"__proto__":{"polluted":"yes"},"constructor":{"x":1},"entityType":"topic"}');
+    applyOp(graph, { type: OperationType.UPDATE_ENTITY, data: { name: 'a', updates } });
+    const entity = graph.entities[0]!;
+    expect(Object.getPrototypeOf(entity)).toBe(Object.prototype);
+    expect(entity).toEqual({ name: 'a', entityType: 'topic', observations: ['x'], lastModified: TS });
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
   it('reports the error code and message of each failing operation', () => {
     expect(
       errorOf(() =>

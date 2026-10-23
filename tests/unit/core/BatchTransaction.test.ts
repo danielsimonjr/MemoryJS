@@ -528,6 +528,33 @@ describe('BatchTransaction operation pins', () => {
     expect(result).toEqual({ ...emptyResult(), entitiesUpdated: 1 });
   });
 
+  it('createRelation accepts a different type or target and rejects an exact copy', () => {
+    const graph = baseGraph();
+    const result = emptyResult();
+    applyOp(graph, { type: 'createRelation', data: { from: 'a', to: 'b', relationType: 'likes' } }, result);
+    applyOp(graph, { type: 'createRelation', data: { from: 'a', to: 'a', relationType: 'knows' } }, result);
+    expect(graph.relations.map(r => `${r.from}>${r.to}:${r.relationType}`)).toEqual([
+      'a>b:knows',
+      'a>b:likes',
+      'a>a:knows',
+    ]);
+    expect(result).toEqual({ ...emptyResult(), relationsCreated: 2 });
+
+    const copy: BatchOperation = { type: 'createRelation', data: { from: 'a', to: 'a', relationType: 'knows' } };
+    expect(errorOf(() => applyOp(graph, copy, result)).code).toBe('DUPLICATE_RELATION');
+    expect(graph.relations).toHaveLength(3);
+  });
+
+  it('updateEntity drops the keys that would change the prototype', () => {
+    const graph = baseGraph();
+    const updates = JSON.parse('{"__proto__":{"polluted":"yes"},"constructor":{"x":1},"entityType":"topic"}');
+    applyOp(graph, { type: 'updateEntity', data: { name: 'a', updates } }, emptyResult());
+    const entity = graph.entities[0]!;
+    expect(Object.getPrototypeOf(entity)).toBe(Object.prototype);
+    expect(entity).toEqual({ name: 'a', entityType: 'topic', observations: ['x'], lastModified: TS });
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
   it('reports the error code and message of each failing operation and counts nothing', () => {
     const failures: Array<[BatchOperation, { code: string; message: string }]> = [
       [
