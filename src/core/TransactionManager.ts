@@ -697,12 +697,26 @@ export class BatchTransaction {
     result: BatchResult
   ): void {
     switch (operation.type) {
+      // Each case builds the operation again, so that operation.type is read once
+      // (by this switch) and operation.data once, as before the shared function.
       case 'createEntity':
+        result[applyGraphOperation(graph, { type: 'createEntity', data: operation.data }, timestamp)]++;
+        break;
+
       case 'updateEntity':
+        result[applyGraphOperation(graph, { type: 'updateEntity', data: operation.data }, timestamp)]++;
+        break;
+
       case 'deleteEntity':
+        result[applyGraphOperation(graph, { type: 'deleteEntity', data: operation.data }, timestamp)]++;
+        break;
+
       case 'createRelation':
+        result[applyGraphOperation(graph, { type: 'createRelation', data: operation.data }, timestamp)]++;
+        break;
+
       case 'deleteRelation':
-        result[applyGraphOperation(graph, operation, timestamp)]++;
+        result[applyGraphOperation(graph, { type: 'deleteRelation', data: operation.data }, timestamp)]++;
         break;
 
       case 'addObservations': {
