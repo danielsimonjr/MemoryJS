@@ -13,6 +13,7 @@ import { GraphStorage } from '../../../src/core/GraphStorage.js';
 import { EntityNotFoundError, InsufficientEntitiesError } from '../../../src/utils/errors.js';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import type { Entity } from '../../../src/types/types.js';
 import { tmpdir } from 'os';
 
 describe('CompressionManager', () => {
@@ -430,6 +431,24 @@ describe('CompressionManager', () => {
 
       const duplicates = await compressionManager.findDuplicates(0.8);
       expect(duplicates.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('calculateEntitySimilarity', () => {
+    it('measures the name length after lowercasing, as the prepared path does', () => {
+      // U+0130 lowercases to two code units, so the lowercased name is longer than the original.
+      const e1 = { name: 'İx', entityType: 'person', observations: [] } as unknown as Entity;
+      const e2 = { name: 'ix', entityType: 'person', observations: [] } as unknown as Entity;
+      const internals = compressionManager as unknown as {
+        prepareEntity(entity: Entity): unknown;
+        calculatePreparedSimilarity(p1: unknown, p2: unknown): number;
+      };
+      const prepared = internals.calculatePreparedSimilarity(
+        internals.prepareEntity(e1),
+        internals.prepareEntity(e2),
+      );
+
+      expect(compressionManager.calculateEntitySimilarity(e1, e2)).toBe(prepared);
     });
   });
 });
