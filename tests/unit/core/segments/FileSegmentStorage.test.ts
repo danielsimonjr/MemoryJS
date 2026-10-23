@@ -639,3 +639,113 @@ describe('FileSegmentStorage saveSegment ownership and temp files', () => {
     expect((await makeStore(testDir).loadAll()).entities).toHaveLength(12);
   });
 });
+
+describe('FileSegmentStorage temp file open mode on every platform', () => {
+  let testDir: string;
+
+  beforeEach(async () => {
+    testDir = join(
+      tmpdir(),
+      `file-segment-open-mode-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    );
+    await fs.mkdir(testDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(testDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 25 });
+  });
+
+  interface OpenCall {
+    path: string;
+    flag: string;
+    mode: unknown;
+  }
+
+  function twelveEntityGraph(): KnowledgeGraph {
+    return {
+      entities: Array.from({ length: 12 }, (_, i) => ent(`item-${i}`, 'thing', [`note ${i}`])),
+      relations: [],
+    };
+  }
+
+  /**
+   * Record the arguments of every `open` of a temp file and let the call through.
+   * A mode without the owner write bit is replaced by 0o600 for the real call, so
+   * that the test never leaves a read-only file behind. The record keeps the mode
+   * that the code under test asked for.
+   */
+  function recordTmpOpens(): OpenCall[] {
+    const calls: OpenCall[] = [];
+    const realOpen = fs.open.bind(fs);
+    vi.spyOn(fs, 'open').mockImplementation((async (...args: Parameters<typeof fs.open>) => {
+      const [path, flag, mode] = args;
+      if (!String(path).includes('.tmp.')) return realOpen(...args);
+      calls.push({ path: String(path), flag: String(flag), mode });
+      const writable = typeof mode === 'number' && (mode & 0o200) === 0 ? 0o600 : mode;
+      return realOpen(path, flag, writable);
+    }) as typeof fs.open);
+    return calls;
+  }
+
+  /** Make `fs.stat` report `mode` for every path that is not a temp file. A missing path still rejects. */
+  function reportExistingMode(mode: number): void {
+    const realStat = fs.stat.bind(fs);
+    vi.spyOn(fs, 'stat').mockImplementation((async (...args: Parameters<typeof fs.stat>) => {
+      const stat = await realStat(...args);
+      if (String(args[0]).includes('.tmp.')) return stat;
+      return Object.create(stat, { mode: { value: 0o100000 | mode } });
+    }) as typeof fs.stat);
+  }
+
+  it('passes mode 0o600 to open for every staged segment file and for the manifest', async () => {
+    const calls = recordTmpOpens();
+
+    await makeStore(testDir).saveAll(twelveEntityGraph());
+    vi.restoreAllMocks();
+
+    const segmentCalls = calls.filter(c => c.path.includes('.jsonl.tmp.'));
+    const manifestCalls = calls.filter(c => c.path.includes('_manifest.json.tmp.'));
+    expect(segmentCalls.length).toBeGreaterThan(1);
+    expect(manifestCalls).toHaveLength(1);
+    expect(calls).toHaveLength(segmentCalls.length + manifestCalls.length);
+    for (const call of calls) {
+      expect(call.mode, call.path).toBe(0o600);
+      expect(call.flag, call.path).toBe('w');
+    }
+  });
+
+  it('narrows the mode of a segment file that is wider than owner read and write', async () => {
+    const store = makeStore(testDir);
+    await store.saveAll(twelveEntityGraph());
+    const calls = recordTmpOpens();
+    reportExistingMode(0o640);
+
+    await store.saveAll(twelveEntityGraph());
+    vi.restoreAllMocks();
+
+    expect(calls.length).toBeGreaterThan(1);
+    for (const call of calls) {
+      expect(call.mode, call.path).toBe(0o600);
+    }
+  });
+
+  it('keeps the tighter mode of an existing segment file, and gives a new manifest 0o600', async () => {
+    const store = makeStore(testDir);
+    await store.saveAll(twelveEntityGraph());
+    const calls = recordTmpOpens();
+    reportExistingMode(0o440);
+
+    await store.saveAll(twelveEntityGraph());
+    vi.restoreAllMocks();
+
+    const segmentCalls = calls.filter(c => c.path.includes('.jsonl.tmp.'));
+    const manifestCalls = calls.filter(c => c.path.includes('_manifest.json.tmp.'));
+    expect(segmentCalls.length).toBeGreaterThan(1);
+    for (const call of segmentCalls) {
+      expect(call.mode, call.path).toBe(0o400);
+    }
+    // The manifest does not exist between saves, so it is a new file.
+    expect(manifestCalls.map(c => c.mode)).toEqual([0o600]);
+  });
+});
