@@ -30,6 +30,7 @@
  */
 
 import { borrowGraphView, deepCopyPlain } from '../utils/graphCopy.js';
+import { computeLowercase } from '../utils/indexes.js';
 import { logger } from '../utils/logger.js';
 import type {
   Entity,
@@ -513,12 +514,7 @@ export class PostgreSQLStorage implements IGraphStorage {
   getLowercased(entityName: string): LowercaseData | undefined {
     const e = this.nameIndex.get(entityName);
     if (!e) return undefined;
-    return {
-      name: e.name.toLowerCase(),
-      entityType: e.entityType.toLowerCase(),
-      observations: e.observations.map((o) => o.toLowerCase()),
-      tags: e.tags?.map((t) => t.toLowerCase()) ?? [],
-    };
+    return computeLowercase(e);
   }
 
   getRelationsFrom(entityName: string): Relation[] {

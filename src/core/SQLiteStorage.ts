@@ -116,7 +116,7 @@ import {
   bumpEntityGeneration,
   bumpRelationGeneration,
 } from '../utils/searchCache.js';
-import { NameIndex, RelationIndex, TypeIndex } from '../utils/indexes.js';
+import { NameIndex, RelationIndex, TypeIndex, computeLowercase } from '../utils/indexes.js';
 import { sanitizeObject, validateFilePath, AsyncMutex } from '../utils/index.js';
 import { EntityNotFoundError, DuplicateEntityError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
@@ -838,12 +838,7 @@ export class SQLiteStorage implements IGraphStorage {
    * Update lowercase cache for an entity.
    */
   private updateLowercaseCache(entity: Entity): void {
-    this.lowercaseCache.set(entity.name, {
-      name: entity.name.toLowerCase(),
-      entityType: entity.entityType.toLowerCase(),
-      observations: entity.observations.map(o => o.toLowerCase()),
-      tags: entity.tags?.map(t => t.toLowerCase()) || [],
-    });
+    this.lowercaseCache.set(entity.name, computeLowercase(entity));
   }
 
   // ==================== IGraphStorage Implementation ====================
