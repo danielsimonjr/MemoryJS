@@ -642,6 +642,23 @@ describe('TransactionManager operation pins', () => {
     expect(graph.relations).toHaveLength(3);
   });
 
+  it('DELETE_RELATION matches the relation type and removes only the first match', () => {
+    const graph = baseGraph();
+    graph.relations = [
+      { from: 'a', to: 'b', relationType: 'likes' },
+      { from: 'a', to: 'b', relationType: 'knows' },
+      { from: 'a', to: 'b', relationType: 'knows', createdAt: 'second copy' },
+    ];
+    applyOp(graph, {
+      type: OperationType.DELETE_RELATION,
+      data: { from: 'a', to: 'b', relationType: 'knows' },
+    });
+    expect(graph.relations).toEqual([
+      { from: 'a', to: 'b', relationType: 'likes' },
+      { from: 'a', to: 'b', relationType: 'knows', createdAt: 'second copy' },
+    ]);
+  });
+
   it('UPDATE_ENTITY drops the keys that would change the prototype', () => {
     const graph = baseGraph();
     const updates = JSON.parse('{"__proto__":{"polluted":"yes"},"constructor":{"x":1},"entityType":"topic"}');

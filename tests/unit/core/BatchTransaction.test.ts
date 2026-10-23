@@ -545,6 +545,22 @@ describe('BatchTransaction operation pins', () => {
     expect(graph.relations).toHaveLength(3);
   });
 
+  it('deleteRelation matches the relation type and removes only the first match', () => {
+    const graph = baseGraph();
+    graph.relations = [
+      { from: 'a', to: 'b', relationType: 'likes' },
+      { from: 'a', to: 'b', relationType: 'knows' },
+      { from: 'a', to: 'b', relationType: 'knows', createdAt: 'second copy' },
+    ];
+    const result = emptyResult();
+    applyOp(graph, { type: 'deleteRelation', data: { from: 'a', to: 'b', relationType: 'knows' } }, result);
+    expect(graph.relations).toEqual([
+      { from: 'a', to: 'b', relationType: 'likes' },
+      { from: 'a', to: 'b', relationType: 'knows', createdAt: 'second copy' },
+    ]);
+    expect(result).toEqual({ ...emptyResult(), relationsDeleted: 1 });
+  });
+
   it('updateEntity drops the keys that would change the prototype', () => {
     const graph = baseGraph();
     const updates = JSON.parse('{"__proto__":{"polluted":"yes"},"constructor":{"x":1},"entityType":"topic"}');
