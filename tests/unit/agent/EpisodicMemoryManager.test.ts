@@ -642,6 +642,17 @@ describe('EpisodicMemoryManager shared helpers (pins)', () => {
     ];
   }
 
+  it('getTimeline with an undefined session id keeps only the episodes that have no session id', async () => {
+    const m = new EpisodicMemoryManager(createMockStorage(timelineEntities()));
+    const names = async (o?: TimelineOptions) =>
+      (await m.getTimeline(undefined as unknown as string, o)).map((e) => e.name);
+
+    expect(await names()).toStrictEqual(['n1']);
+    expect(await names({ order: 'desc' })).toStrictEqual(['n1']);
+    expect(await names({ startTime: t5 })).toStrictEqual(['n1']);
+    expect(await names({ startTime: '2026-01-01T00:00:06.000Z' })).toStrictEqual([]);
+  });
+
   it('getAllEpisodes returns every episode across sessions and skips session entities', async () => {
     const m = new EpisodicMemoryManager(createMockStorage(timelineEntities()));
     const names = async (o?: TimelineOptions) => (await m.getAllEpisodes(o)).map((e) => e.name);

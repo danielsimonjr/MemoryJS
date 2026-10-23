@@ -259,17 +259,19 @@ export class EpisodicMemoryManager {
     sessionId: string,
     options?: TimelineOptions
   ): Promise<AgentEntity[]> {
-    return this.collectEpisodes(sessionId, options);
+    return this.collectEpisodes({ sessionId }, options);
   }
 
   /**
    * Collect episodic memories with time filters, sorted by `createdAt` and
-   * paginated. Pass `undefined` as `sessionId` to skip the session filter.
+   * paginated. With a `sessionScope`, keep only the episodes whose
+   * `sessionId` equals `sessionScope.sessionId` exactly. Pass `null` to
+   * skip the session filter.
    *
    * @internal
    */
   private async collectEpisodes(
-    sessionId: string | undefined,
+    sessionScope: { sessionId: string } | null,
     options?: TimelineOptions
   ): Promise<AgentEntity[]> {
     const graph = await this.storage.loadGraph();
@@ -280,7 +282,7 @@ export class EpisodicMemoryManager {
       const agentEntity = entity as AgentEntity;
 
       if (agentEntity.memoryType !== 'episodic') continue;
-      if (sessionId !== undefined && agentEntity.sessionId !== sessionId) continue;
+      if (sessionScope !== null && agentEntity.sessionId !== sessionScope.sessionId) continue;
       // Exclude session entities themselves
       if (agentEntity.entityType === 'session') continue;
 
@@ -500,7 +502,7 @@ export class EpisodicMemoryManager {
    * @returns All episodic memories
    */
   async getAllEpisodes(options?: TimelineOptions): Promise<AgentEntity[]> {
-    return this.collectEpisodes(undefined, options);
+    return this.collectEpisodes(null, options);
   }
 
   /**
