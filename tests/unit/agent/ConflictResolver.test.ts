@@ -450,3 +450,16 @@ describe('ConflictResolver.calculateSimilarity (pins)', () => {
     expect(similarity(a, b)).toBe(0.6);
   });
 });
+
+describe('ConflictResolver textSimilarity (pinned)', () => {
+  const resolver = new ConflictResolver() as unknown as { textSimilarity(t1: string, t2: string): number };
+
+  it('returns literal values for each text shape', () => {
+    expect(resolver.textSimilarity('alpha beta gamma', 'beta gamma delta epsilon')).toBe(0.4);
+    expect(resolver.textSimilarity('', '')).toBe(0);
+    expect(resolver.textSimilarity('alpha beta', '')).toBe(0);
+    expect(resolver.textSimilarity('a b c', 'alpha beta')).toBe(0);
+    expect(resolver.textSimilarity('alpha beta', 'alpha beta')).toBe(1);
+    expect(resolver.textSimilarity('alpha beta', 'gamma delta')).toBe(0);
+  });
+});

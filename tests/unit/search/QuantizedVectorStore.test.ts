@@ -271,3 +271,47 @@ describe('QuantizedVectorStore', () => {
     });
   });
 });
+
+describe('QuantizedVectorStore cosineSimilarity (private, pinned)', () => {
+  // cosineSimilarity reads no instance field, so the prototype is enough.
+  const store = Object.create(QuantizedVectorStore.prototype) as unknown as {
+    cosineSimilarity(a: Float32Array, b: Float32Array): number;
+  };
+
+  /** Wraps a typed array so that every string property read is pushed to `trace`, in order. */
+  function traced(values: Float32Array, trace: string[]): Float32Array {
+    return new Proxy(values, {
+      get(target, key) {
+        if (typeof key === 'string') trace.push(key);
+        return (target as unknown as Record<string, unknown>)[key] as number;
+      },
+    });
+  }
+
+  it('returns the literal value for a plain pair', () => {
+    expect(store.cosineSimilarity(new Float32Array([1, 2, 3]), new Float32Array([4, 5, 6]))).toBe(0.9746318461970762);
+  });
+
+  it('returns 0 for a zero vector and for a length mismatch', () => {
+    expect(store.cosineSimilarity(new Float32Array([0, 0]), new Float32Array([1, 2]))).toBe(0);
+    expect(store.cosineSimilarity(new Float32Array([1, 2]), new Float32Array([1, 2, 3]))).toBe(0);
+  });
+
+  it('does not clamp a raw result above 1', () => {
+    const v = new Float32Array([1.649516224861145, 1.1218215227127075, 1.482603669166565]);
+    expect(store.cosineSimilarity(v, v)).toBe(1.0000000000000002);
+  });
+
+  it('reads the length and each element in the recorded order', () => {
+    const trace: string[] = [];
+    const a = traced(new Float32Array([1, 2, 3]), trace);
+    const b = traced(new Float32Array([4, 5, 6]), trace);
+    expect(store.cosineSimilarity(a, b)).toBe(0.9746318461970762);
+    expect(trace).toEqual([
+      'length', 'length', 'length',
+      '0', '0', '0', '0', '0', '0', 'length',
+      '1', '1', '1', '1', '1', '1', 'length',
+      '2', '2', '2', '2', '2', '2', 'length',
+    ]);
+  });
+});

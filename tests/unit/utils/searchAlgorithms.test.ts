@@ -723,3 +723,43 @@ describe('bounded Levenshtein oracle', () => {
     }
   });
 });
+
+describe('calculateIDF (pinned)', () => {
+  const docs = ['alpha beta gamma', 'beta delta', 'alpha alpha epsilon', 'gamma zeta eta', 'beta beta theta'];
+
+  it('returns literal values and the same values as calculateIDFFromTokenSets', () => {
+    const sets = docs.map((d) => new Set(tokenize(d)));
+    // Math.log is not bit-identical across JavaScript engines, so these values use the log expression the code evaluates.
+    expect(calculateIDF('alpha', docs)).toBe(Math.log(5 / 2));
+    expect(calculateIDF('beta', docs)).toBe(Math.log(5 / 3));
+    expect(calculateIDF('absent', docs)).toBe(0);
+    expect(calculateIDF('theta', docs)).toBe(Math.log(5));
+    for (const term of ['alpha', 'beta', 'absent', 'theta']) {
+      expect(calculateIDF(term, docs)).toBe(calculateIDFFromTokenSets(term, sets));
+    }
+  });
+
+  it('returns 0 for no documents and skips a hole in the array', () => {
+    expect(calculateIDF('alpha', [])).toBe(0);
+    const sparse = ['alpha beta', 'x', 'gamma'];
+    delete (sparse as unknown[])[1];
+    expect(calculateIDF('beta', sparse)).toBe(Math.log(3));
+  });
+
+  it('throws a TypeError on a bad term and on a bad document', () => {
+    expect(() => calculateIDF(undefined as unknown as string, ['alpha'])).toThrow(/toLowerCase/);
+    expect(() => calculateIDF('alpha', [5 as unknown as string])).toThrow(/toLowerCase/);
+  });
+
+  it('reads documents.length three times and calls filter first', () => {
+    const trace: string[] = [];
+    const documents = new Proxy(['alpha beta', 'gamma'], {
+      get(target, key) {
+        if (typeof key === 'string') trace.push(key);
+        return (target as unknown as Record<string, unknown>)[key];
+      },
+    });
+    calculateIDF('beta', documents as unknown as string[]);
+    expect(trace).toEqual(['length', 'filter', 'length', 'constructor', '0', '1', 'length']);
+  });
+});

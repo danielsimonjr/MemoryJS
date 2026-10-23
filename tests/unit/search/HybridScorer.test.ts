@@ -325,3 +325,14 @@ describe('HybridScorer', () => {
     });
   });
 });
+
+describe('HybridScorer.minMaxNormalize (pinned)', () => {
+  it('returns literal maps for each score shape', () => {
+    const scorer = new HybridScorer();
+    expect([...scorer.minMaxNormalize(new Map())]).toEqual([]);
+    expect([...scorer.minMaxNormalize(new Map([['a', 2], ['b', 2]]))]).toEqual([['a', 1], ['b', 1]]);
+    expect([...scorer.minMaxNormalize(new Map([['a', 0], ['b', 0]]))]).toEqual([['a', 0], ['b', 0]]);
+    expect([...scorer.minMaxNormalize(new Map([['a', 1], ['b', 3], ['c', 2]]))]).toEqual([['a', 0], ['b', 1], ['c', 0.5]]);
+    expect([...scorer.minMaxNormalize(new Map([['a', -1], ['b', 1], ['c', 0]]))]).toEqual([['a', 0], ['b', 1], ['c', 0.5]]);
+  });
+});

@@ -562,3 +562,18 @@ describe('GraphRankPrior invalidation timer details (review pins)', () => {
     expect(invalidate).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('GraphRankPrior.minMaxNormalize (private, pinned)', () => {
+  // minMaxNormalize reads no instance field, so the prototype is enough.
+  const prior = Object.create(GraphRankPrior.prototype) as unknown as {
+    minMaxNormalize(scores: Map<string, number>): Map<string, number>;
+  };
+
+  it('returns the same literal maps as HybridScorer', () => {
+    expect([...prior.minMaxNormalize(new Map())]).toEqual([]);
+    expect([...prior.minMaxNormalize(new Map([['a', 2], ['b', 2]]))]).toEqual([['a', 1], ['b', 1]]);
+    expect([...prior.minMaxNormalize(new Map([['a', 0], ['b', 0]]))]).toEqual([['a', 0], ['b', 0]]);
+    expect([...prior.minMaxNormalize(new Map([['a', 1], ['b', 3], ['c', 2]]))]).toEqual([['a', 0], ['b', 1], ['c', 0.5]]);
+    expect([...prior.minMaxNormalize(new Map([['a', -1], ['b', 1], ['c', 0]]))]).toEqual([['a', 0], ['b', 1], ['c', 0.5]]);
+  });
+});

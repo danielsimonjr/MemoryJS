@@ -831,3 +831,19 @@ describe('DistillationPipeline', () => {
     });
   });
 });
+
+describe('DefaultDistillationPolicy name overlap (pinned)', () => {
+  // isNearDuplicate reads no instance field of its own, so the prototype is enough.
+  const policy = Object.create(DefaultDistillationPolicy.prototype) as unknown as {
+    isNearDuplicate(entity: Entity, seenNames: Set<string>): boolean;
+  };
+  const named = (name: string) => ({ id: 'x', name, entityType: 'concept', observations: [] }) as unknown as Entity;
+
+  it('returns literal decisions for each name shape', () => {
+    expect(policy.isNearDuplicate(named('alpha beta gamma'), new Set(['beta gamma delta']))).toBe(false);
+    expect(policy.isNearDuplicate(named('alpha beta'), new Set(['alpha beta']))).toBe(true);
+    expect(policy.isNearDuplicate(named('one two three four five'), new Set(['one two three four']))).toBe(false);
+    expect(policy.isNearDuplicate(named(''), new Set(['']))).toBe(false);
+    expect(policy.isNearDuplicate(named('alpha beta'), new Set(['']))).toBe(false);
+  });
+});

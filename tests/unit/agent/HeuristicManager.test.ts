@@ -174,3 +174,20 @@ describe('HeuristicManager (storage-backed)', () => {
     expect(await mgr.size()).toBe(0);
   });
 });
+
+describe('HeuristicManager.match scores (pinned)', () => {
+  it('returns literal scores and skips empty sides', async () => {
+    const manager = Object.create(HeuristicManager.prototype) as unknown as {
+      loadAllHeuristics: () => Promise<unknown[]>;
+      match(input: string, options?: { minScore?: number }): Promise<Array<{ score: number }>>;
+    };
+    manager.loadAllHeuristics = async () => [
+      { id: 'h1', condition: 'alpha beta gamma', confidence: 1, action: 'x' },
+      { id: 'h2', condition: 'alpha beta gamma', confidence: 0.5, action: 'x' },
+      { id: 'h3', condition: 'a', confidence: 1, action: 'x' },
+    ];
+    const matches = await manager.match('beta gamma delta epsilon', { minScore: 0 });
+    expect(matches.map((m) => m.score)).toEqual([0.4, 0.2]);
+    expect(await manager.match('a', { minScore: 0 })).toEqual([]);
+  });
+});

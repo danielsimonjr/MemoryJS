@@ -452,3 +452,26 @@ describe('CompressionManager', () => {
     });
   });
 });
+
+describe('CompressionManager similarity values (pinned)', () => {
+  const cm = new CompressionManager({} as never) as unknown as {
+    calculateEntitySimilarity(e1: Entity, e2: Entity): number;
+    prepareEntity(entity: Entity): unknown;
+    calculatePreparedSimilarity(p1: unknown, p2: unknown): number;
+  };
+  const make = (name: string, observations: unknown[], tags?: string[]) =>
+    ({ name, entityType: 'Person', observations, tags }) as unknown as Entity;
+
+  it.each([
+    ['with tags', make('Alice', ['a', 'b', 'c'], ['x', 'y']), make('Alyce', ['B', 'c', 'd', 'e'], ['Y', 'z']), 0.6733333333333332],
+    ['without tags', make('Alice', ['a']), make('Alice', ['a', 'b']), 0.8333333333333334],
+    ['without observations', make('Bob', []), make('Bob', []), 0.6666666666666666],
+  ])('returns the literal value %s on both paths', (_label, e1, e2, expected) => {
+    expect(cm.calculateEntitySimilarity(e1, e2)).toBe(expected);
+    expect(cm.calculatePreparedSimilarity(cm.prepareEntity(e1), cm.prepareEntity(e2))).toBe(expected);
+  });
+
+  it('throws the same TypeError for a non-string observation', () => {
+    expect(() => cm.calculateEntitySimilarity(make('A', [1]), make('A', ['x']))).toThrow(/o\.toLowerCase is not a function/);
+  });
+});

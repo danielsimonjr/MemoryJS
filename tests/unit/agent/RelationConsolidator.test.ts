@@ -297,6 +297,35 @@ describe('RelationConsolidator (R3)', () => {
     expect((await aboveBoundary.analyze()).semanticDuplicates).toHaveLength(0);
   });
 
+  it('compares vectors over the shorter length, and a zero vector never matches', async () => {
+    await seedSemanticPair();
+    const shortVectors = {
+      async embed(text: string): Promise<number[]> {
+        if (text.includes('works_at')) return [1, 0, 0];
+        if (text.includes('employed_by')) return [1, 0];
+        return [0, 1];
+      },
+    };
+    const merged = await new RelationConsolidator(relationManager, entityManager, {
+      embedding: shortVectors,
+      thresholds: { semantic: 0.95 },
+    }).analyze();
+    expect(merged.semanticDuplicates).toHaveLength(1);
+
+    const zeroVectors = {
+      async embed(text: string): Promise<number[]> {
+        if (text.includes('works_at')) return [4, 3];
+        if (text.includes('employed_by')) return [0, 0];
+        return [0, 1];
+      },
+    };
+    const none = await new RelationConsolidator(relationManager, entityManager, {
+      embedding: zeroVectors,
+      thresholds: { semantic: 0.95 },
+    }).analyze();
+    expect(none.semanticDuplicates).toHaveLength(0);
+  });
+
   it('skips tier 2 silently when no embedding provider is configured', async () => {
     await seedSemanticPair();
     const consolidator = new RelationConsolidator(relationManager, entityManager);
