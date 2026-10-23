@@ -361,4 +361,68 @@ describe('DiskWarmTier', () => {
       expect(await reloaded.get('alice')).toEqual({ docIds: [1, 2, 3], tf: 0.42 });
     });
   });
+
+  describe('file format and order (pins)', () => {
+    it('writes one {"k","v"} line per entry, in insertion order', async () => {
+      const tier = new DiskWarmTier<unknown>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', { x: 2 });
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('{"k":"a","v":1}\n{"k":"b","v":{"x":2}}\n');
+    });
+
+    it('writes an empty file after clear()', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.clear();
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe('');
+    });
+
+    it('moves a re-written key to the end of the file', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', 2);
+      await tier.put('c', 3);
+      await tier.put('a', 9);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe(
+        '{"k":"b","v":2}\n{"k":"c","v":3}\n{"k":"a","v":9}\n',
+      );
+    });
+
+    it('returns every key after reload()', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', 2);
+      await tier.put('c', 3);
+      await tier.reload();
+      expect([await tier.get('a'), await tier.get('b'), await tier.get('c')]).toEqual([1, 2, 3]);
+    });
+
+    it('restores the file and the entry order after a failed delete', async () => {
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      await tier.put('a', 1);
+      await tier.put('b', 2);
+      await tier.put('c', 3);
+      const before = await fs.readFile(sidecar, 'utf-8');
+      injectFlushFailure(sidecar);
+      await expect(tier.delete('b')).rejects.toThrow(/synthetic/);
+      vi.restoreAllMocks();
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe(before);
+      expect(await tier.get('b')).toBe(2);
+      await tier.put('d', 4);
+      expect(await fs.readFile(sidecar, 'utf-8')).toBe(`${before}{"k":"d","v":4}\n`);
+    });
+
+    it('loads the good line, skips a bad line and a numeric key, and warns with the exact texts', async () => {
+      await fs.writeFile(sidecar, '{"k":"a","v":1}\n{not json\n{"k":5,"v":2}\n', 'utf-8');
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const tier = new DiskWarmTier<number>({ filePath: sidecar });
+      expect(await tier.get('a')).toBe(1);
+      expect(await tier.size()).toBe(1);
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      const warnText = warnSpy.mock.calls.flat().join('\n');
+      expect(warnText).toContain(`DiskWarmTier(warm): skipping malformed line in ${sidecar}`);
+      expect(warnText).toContain(`DiskWarmTier(warm): skipping line with non-string key in ${sidecar}`);
+    });
+  });
 });

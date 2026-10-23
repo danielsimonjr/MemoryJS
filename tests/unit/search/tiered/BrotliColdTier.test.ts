@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { brotliDecompressSync } from 'zlib';
 import { BrotliColdTier } from '../../../../src/search/tiered/BrotliColdTier.js';
 import { compress } from '../../../../src/utils/compressionUtil.js';
 import { injectFlushFailure as sharedInjectFlushFailure } from '../../../test-utils/inject-flush-failure.js';
@@ -390,5 +391,95 @@ describe('BrotliColdTier — generic V', () => {
 
     const second = new BrotliColdTier<Posting[]>({ filePath: path });
     expect(await second.get('term')).toEqual([{ docId: 'a', freq: 5 }]);
+  });
+});
+
+describe('BrotliColdTier — file format, order and malformed-line pins', () => {
+  let dir: string;
+  let shard: string;
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(join(tmpdir(), 'cold-tier-pins-'));
+    shard = join(dir, 'pins.br');
+  });
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  async function shardText(): Promise<string> {
+    return brotliDecompressSync(await fs.readFile(shard)).toString('utf-8');
+  }
+
+  it('writes one {"k","v"} line per entry, in insertion order', async () => {
+    const tier = new BrotliColdTier<unknown>({ filePath: shard });
+    await tier.put('a', 1);
+    await tier.put('b', { x: 2 });
+    expect(await shardText()).toBe('{"k":"a","v":1}\n{"k":"b","v":{"x":2}}\n');
+  });
+
+  it('writes a zero-byte shard after clear()', async () => {
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    await tier.put('a', 1);
+    await tier.clear();
+    expect((await fs.stat(shard)).size).toBe(0);
+    expect(await tier.compressedBytes()).toBe(0);
+  });
+
+  it('keeps the place of a re-written key in the file', async () => {
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    await tier.put('a', 1);
+    await tier.put('b', 2);
+    await tier.put('c', 3);
+    await tier.put('a', 9);
+    expect(await shardText()).toBe('{"k":"a","v":9}\n{"k":"b","v":2}\n{"k":"c","v":3}\n');
+  });
+
+  it('returns every key after reload()', async () => {
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    await tier.put('a', 1);
+    await tier.put('b', 2);
+    await tier.put('c', 3);
+    await tier.reload();
+    expect([await tier.get('a'), await tier.get('b'), await tier.get('c')]).toEqual([1, 2, 3]);
+  });
+
+  it('restores the shard and the entry order after a failed delete', async () => {
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    await tier.put('a', 1);
+    await tier.put('b', 2);
+    await tier.put('c', 3);
+    const before = await shardText();
+    sharedInjectFlushFailure(shard);
+    await expect(tier.delete('b')).rejects.toThrow(/synthetic/);
+    vi.restoreAllMocks();
+    expect(await shardText()).toBe(before);
+    expect(await tier.get('b')).toBe(2);
+    await tier.put('d', 4);
+    expect(await shardText()).toBe(`${before}{"k":"d","v":4}\n`);
+  });
+
+  it('treats a zero-byte shard as empty without a warning', async () => {
+    await fs.writeFile(shard, Buffer.alloc(0));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    expect(await tier.size()).toBe(0);
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('loads the good line, skips a bad line and a numeric key, and warns with the exact texts', async () => {
+    const payload = await compress('{"k":"a","v":1}\n{not json\n{"k":5,"v":2}\n', { quality: 6 });
+    await fs.writeFile(shard, payload.compressed);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const tier = new BrotliColdTier<number>({ filePath: shard });
+    expect(await tier.get('a')).toBe(1);
+    expect(await tier.size()).toBe(1);
+    expect(warnSpy).toHaveBeenCalledTimes(2);
+    const warnText = warnSpy.mock.calls.flat().join('\n');
+    expect(warnText).toContain(`BrotliColdTier: skipping malformed line in ${shard}`);
+    expect(warnText).toContain(`BrotliColdTier: skipping line with non-string key in ${shard}`);
   });
 });

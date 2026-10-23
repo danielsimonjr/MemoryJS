@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `DiskWarmTier` and `BrotliColdTier` extend `MapFileTier`, which holds their lock, lazy load and shared operations. `JsonlColumnStore`, `DiskWarmTier` and `BrotliColdTier` read and write JSONL through `src/utils/jsonlMapFile.ts`. File formats, warning texts and results do not change.
 - `entityUtils.filterByTags` matches each entity with `hasMatchingTag`. Results do not change.
 - `SearchFilterChain.entityPassesFilters` takes its importance, entity type and date checks from `entityUtils.entityPassesFilters`. A date bound that cannot be parsed is still ignored, as before. Results do not change.
 - `QueryCostEstimator` names its default method list once, in `DEFAULT_SEARCH_METHODS`. The list and the results do not change.
