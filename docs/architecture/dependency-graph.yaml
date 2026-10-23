@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-23"
   totalFiles: 294
   totalModules: 12
-  totalExports: 2038
+  totalExports: 2043
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -798,6 +798,9 @@ modules:
         - file: ../utils/textSimilarity.js
           imports:
             - tokenizeStripped
+        - file: ../utils/entityUtils.js
+          imports:
+            - hash31
         - file: ./WorkingMemoryManager.js
           imports:
             - WorkingMemoryManager
@@ -5535,6 +5538,9 @@ modules:
           imports:
             - LowEntropyContentError
             - MemoryWriteBlockedError
+        - file: ../utils/entityUtils.js
+          imports:
+            - hash31
         - file: ./ExclusionManager.js
           imports:
             - ExclusionManager
@@ -6516,7 +6522,7 @@ modules:
           typeOnly: true
         - file: ../utils/entityUtils.js
           imports:
-            - escapeCsvFormula
+            - escapeCsvCell
       exports:
         - formatEntities
         - formatRelations
@@ -7526,6 +7532,9 @@ modules:
           imports:
             - borrowGraphView
             - deepCopyPlain
+        - file: ../utils/indexes.js
+          imports:
+            - computeLowercase
         - file: ../utils/logger.js
           imports:
             - logger
@@ -7661,12 +7670,22 @@ modules:
             - Relation
             - KnowledgeGraph
           typeOnly: true
+        - file: ../../utils/entityUtils.js
+          imports:
+            - fnv1aHash
+        - file: ../../utils/entityUtils.js
+          imports:
+            - fnv1aHash
+          reExport: true
       exports:
         - fnv1a32
         - splitGraphIntoSegments
         - mergeSegmentsIntoGraph
         - FnvSegmentRouter
         - InMemorySegmentStorage
+        - fnv1aHash
+      reExported:
+        - fnv1aHash
       classes:
         - FnvSegmentRouter
         - InMemorySegmentStorage
@@ -7675,7 +7694,6 @@ modules:
         - Segment
         - ISegmentStorage
       functions:
-        - fnv1a32
         - splitGraphIntoSegments
         - mergeSegmentsIntoGraph
     src/core/sqlite-register.ts:
@@ -7747,6 +7765,7 @@ modules:
             - NameIndex
             - RelationIndex
             - TypeIndex
+            - computeLowercase
         - file: ../utils/index.js
           imports:
             - sanitizeObject
@@ -7991,6 +8010,9 @@ modules:
           imports:
             - RelationManager
           typeOnly: true
+        - file: ../utils/entityUtils.js
+          imports:
+            - escapeRegExp
       exports:
         - AutoLinker
       classes:
@@ -8512,8 +8534,11 @@ modules:
             - createProgress
             - validateFilePath
             - sanitizeObject
-            - escapeCsvFormula
             - formatZodErrors
+        - file: ../utils/entityUtils.js
+          imports:
+            - escapeCsvCell
+            - escapeRegExp
         - file: ./StreamingExporter.js
           imports:
             - StreamingExporter
@@ -8675,8 +8700,10 @@ modules:
             - checkCancellation
             - createProgressReporter
             - createProgress
-            - escapeCsvFormula
             - validateFilePath
+        - file: ../utils/entityUtils.js
+          imports:
+            - escapeCsvCell
         - file: ../security/PiiRedactor.js
           imports:
             - PiiRedactor
@@ -8957,6 +8984,9 @@ modules:
             - EMBEDDING_DEFAULTS
             - OPENAI_API_CONFIG
             - getEmbeddingConfig
+        - file: ../utils/entityUtils.js
+          imports:
+            - hash31
       exports:
         - QUERY_PREFIX
         - DOCUMENT_PREFIX
@@ -12243,6 +12273,7 @@ modules:
       exports:
         - defaultMemoryPath
         - fnv1aHash
+        - hash31
         - findEntityByName
         - findEntitiesByNames
         - entityExists
@@ -12270,12 +12301,15 @@ modules:
         - entityPassesFilters
         - sanitizeObject
         - escapeCsvFormula
+        - escapeCsvCell
+        - escapeRegExp
         - validateFilePath
         - ensureMemoryFilePath
       interfaces:
         - CommonSearchFilters
       functions:
         - fnv1aHash
+        - hash31
         - findEntityByName
         - findEntityByName
         - findEntityByName
@@ -12306,6 +12340,8 @@ modules:
         - entityPassesFilters
         - sanitizeObject
         - escapeCsvFormula
+        - escapeCsvCell
+        - escapeRegExp
         - validateFilePath
         - ensureMemoryFilePath
       constants:
@@ -13353,6 +13389,7 @@ modules:
             - Relation
           typeOnly: true
       exports:
+        - computeLowercase
         - NameIndex
         - TypeIndex
         - LowercaseCache
@@ -13364,6 +13401,8 @@ modules:
         - LowercaseCache
         - RelationIndex
         - ObservationIndex
+      functions:
+        - computeLowercase
     src/utils/IndexHealthMonitor.ts:
       description: Index Health Monitor
       externalDependencies: []
@@ -14249,15 +14288,15 @@ reachability:
 statistics:
   totalTypeScriptFiles: 294
   totalModules: 12
-  totalLinesOfCode: 104254
-  totalExports: 2038
+  totalLinesOfCode: 104235
+  totalExports: 2043
   totalClasses: 234
   totalInterfaces: 622
-  totalFunctions: 328
+  totalFunctions: 331
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
-  totalReExports: 1339
+  totalReExports: 1340
   totalTypeOnlyImports: 479
   runtimeCircularDeps: 0
   typeOnlyCircularDeps: 8
