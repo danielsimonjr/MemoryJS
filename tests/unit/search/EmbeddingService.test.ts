@@ -995,3 +995,52 @@ describe('MockEmbeddingService hash (R16 pins)', () => {
     ]);
   });
 });
+
+describe('OpenAIEmbeddingService retry delays (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  const okResponse = {
+    ok: true,
+    status: 200,
+    json: async () => ({ data: [{ index: 0, embedding: [1, 2] }] }),
+    text: async () => '',
+  };
+
+  it('waits 1000, 2000 and 4000 ms between rate-limited attempts', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const times: number[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation((async () => {
+      times.push(Date.now());
+      return times.length < 4
+        ? { ok: false, status: 429, text: async () => 'slow down', json: async () => ({}) }
+        : okResponse;
+    }) as unknown as typeof fetch);
+
+    const pending = new OpenAIEmbeddingService('sk-test').embed('hello');
+    await vi.advanceTimersByTimeAsync(7000);
+
+    expect(await pending).toEqual([1, 2]);
+    expect(times).toEqual([0, 1000, 3000, 7000]);
+  });
+
+  it('waits 1000, 2000 and 4000 ms between attempts that fail with a network error', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+    const times: number[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation((async () => {
+      times.push(Date.now());
+      if (times.length < 4) throw new Error('fetch failed');
+      return okResponse;
+    }) as unknown as typeof fetch);
+
+    const pending = new OpenAIEmbeddingService('sk-test').embed('hello');
+    await vi.advanceTimersByTimeAsync(7000);
+
+    expect(await pending).toEqual([1, 2]);
+    expect(times).toEqual([0, 1000, 3000, 7000]);
+  });
+});

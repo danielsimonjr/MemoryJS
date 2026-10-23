@@ -155,3 +155,37 @@ describe('CoalescingTimer', () => {
     expect(timer.cancel()).toBe(false);
   });
 });
+
+describe('CoalescingTimer with an open window (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('runs at once when runNow is true, and keeps the open window', () => {
+    vi.useFakeTimers();
+    const timer = new CoalescingTimer();
+    const calls: string[] = [];
+
+    timer.schedule(50, () => calls.push('window'), false);
+    timer.schedule(50, () => calls.push('now'), true);
+
+    expect(calls).toEqual(['now']);
+    expect(vi.getTimerCount()).toBe(1);
+    vi.advanceTimersByTime(50);
+    expect(calls).toEqual(['now', 'window']);
+  });
+
+  it('hands the raw delay to setTimeout, also when it is negative or NaN', () => {
+    vi.useFakeTimers();
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+
+    for (const delay of [-1, Number.NaN, 0.5]) {
+      const timer = new CoalescingTimer();
+      timer.schedule(delay, () => undefined, false);
+      timer.cancel();
+    }
+
+    expect(setTimeoutSpy.mock.calls.map(call => call[1])).toEqual([-1, Number.NaN, 0.5]);
+    setTimeoutSpy.mockRestore();
+  });
+});

@@ -4,7 +4,7 @@
  * Phase 12 Sprint 2: Tests for parallel search layer execution.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   ParallelSearchExecutor,
   type LayerTiming,
@@ -510,5 +510,41 @@ describe('ParallelSearchExecutor', () => {
       const lexicalTiming = result.timings.find(t => t.layer === 'lexical');
       expect(lexicalTiming?.error).toBe('aborted');
     });
+  });
+});
+
+describe('ParallelSearchExecutor timers (review pins)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const emptyGraph = { entities: [], relations: [] } as unknown as ReadonlyKnowledgeGraph;
+
+  it('leaves no timer behind after both layers finish in time', async () => {
+    vi.useFakeTimers();
+    const semantic = { search: vi.fn().mockResolvedValue([]) };
+    const ranked = { searchNodesRanked: vi.fn().mockResolvedValue([]) };
+    const executor = new ParallelSearchExecutor(semantic as never, ranked as never);
+
+    await executor.execute(emptyGraph, 'q', { timeoutMs: 1000 });
+
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('a layer whose work ends exactly at the timeout loses to the timeout', async () => {
+    vi.useFakeTimers();
+    const semantic = { search: vi.fn(() => new Promise(resolve => setTimeout(() => resolve([]), 50))) };
+    const ranked = { searchNodesRanked: vi.fn(() => new Promise(resolve => setTimeout(() => resolve([]), 50))) };
+    const executor = new ParallelSearchExecutor(semantic as never, ranked as never);
+
+    const pending = executor.execute(emptyGraph, 'q', { timeoutMs: 50 });
+    await vi.advanceTimersByTimeAsync(50);
+    const result = await pending;
+
+    expect(result.timings.map(t => [t.layer, t.success, t.error])).toEqual([
+      ['semantic', false, 'Semantic search timeout'],
+      ['lexical', false, 'Lexical search timeout'],
+      ['symbolic', true, undefined],
+    ]);
   });
 });
