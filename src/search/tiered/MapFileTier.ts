@@ -6,7 +6,8 @@
  * that both tiers share. A subclass supplies the file access and its own
  * `put`.
  *
- * Each line of the file holds one `{ "k": key, "v": value }` object.
+ * Each line of the file text holds one `{ "k": key, "v": value }` object. A
+ * subclass can store that text in another form, for example compressed.
  *
  * @module search/tiered/MapFileTier
  */

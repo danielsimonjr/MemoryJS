@@ -32,9 +32,10 @@ export interface JsonlMapParseOptions extends JsonlMapFormat {
 /**
  * Parses JSONL map text into a map.
  *
- * Blank lines are skipped. A line that is not valid JSON is skipped with a
- * warning. A line whose key field is not a string is skipped with a warning.
- * A later line with the same key replaces the earlier value.
+ * Blank lines are skipped. A line that is not valid JSON, or that is the JSON
+ * value `null`, is skipped with a malformed-line warning. A line that is valid
+ * JSON but has no string in its key field is skipped with a non-string-key
+ * warning. A later line with the same key replaces the earlier value.
  *
  * @param raw - JSONL text to parse
  * @param options - Field names and warning texts
