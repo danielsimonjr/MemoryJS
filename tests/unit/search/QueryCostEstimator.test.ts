@@ -607,4 +607,61 @@ describe('QueryCostEstimator', () => {
       expect(() => estimator.recommendMethod('test', 500, [])).toThrow(TypeError);
     });
   });
+
+  describe('recommendation flags for a winner other than basic, and for a tie', () => {
+    // Golden values were recorded from the code before D12 and the constant refactor.
+    // The query '"w0"' with 500 entities scores 'basic' and 'ranked' at 90 each.
+    const flagsOf = (query: string, entityCount: number): Array<[string, boolean]> =>
+      estimator.estimateAllMethods(query, entityCount).map(e => [e.method, e.isRecommended]);
+
+    it('marks the fuzzy method in estimateAllMethods for a wildcard query', () => {
+      expect(flagsOf('test*', 500)).toEqual([
+        ['basic', false],
+        ['ranked', false],
+        ['boolean', false],
+        ['fuzzy', true],
+        ['semantic', false],
+      ]);
+    });
+
+    it('marks the ranked method in estimateAllMethods for a multi-word query', () => {
+      expect(flagsOf('machine learning algorithms', 500)).toEqual([
+        ['basic', false],
+        ['ranked', true],
+        ['boolean', false],
+        ['fuzzy', false],
+        ['semantic', false],
+      ]);
+    });
+
+    it('keeps the first method of the default list when two methods tie', () => {
+      expect(flagsOf('"w0"', 500)).toEqual([
+        ['basic', true],
+        ['ranked', false],
+        ['boolean', false],
+        ['fuzzy', false],
+        ['semantic', false],
+      ]);
+      expect(estimator.recommendMethod('"w0"', 500)).toEqual({
+        method: 'basic',
+        reason: 'Basic search selected for simple query pattern',
+        estimate: {
+          method: 'basic',
+          estimatedTimeMs: 5.5,
+          complexity: 'medium',
+          entityCount: 500,
+          recommendation: 'Fast substring matching, best for simple queries',
+          isRecommended: true,
+        },
+      });
+    });
+
+    it('keeps the first method of the caller list when two methods tie', () => {
+      const result = estimator.recommendMethod('"w0"', 500, ['ranked', 'basic']);
+
+      expect(result.method).toBe('ranked');
+      expect(result.estimate.isRecommended).toBe(true);
+      expect(estimator.recommendMethod('"w0"', 500, ['basic', 'ranked']).method).toBe('basic');
+    });
+  });
 });

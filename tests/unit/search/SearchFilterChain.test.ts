@@ -468,4 +468,56 @@ describe('SearchFilterChain', () => {
       expect(SearchFilterChain.entityPassesFilters(untagged, { tags: ['x'] })).toBe(true);
     });
   });
+
+  describe('every date bound is checked for a parse error on its own', () => {
+    const boundEntities: Entity[] = [
+      { name: 'A', entityType: 'misc', observations: [], createdAt: '2020-06-01T00:00:00Z', lastModified: '2020-06-01T00:00:00Z' },
+      { name: 'B', entityType: 'misc', observations: [], createdAt: '2022-06-01T00:00:00Z', lastModified: '2022-06-01T00:00:00Z' },
+      { name: 'C', entityType: 'misc', observations: [] },
+      // D was created late and modified early; E is the other way round.
+      { name: 'D', entityType: 'misc', observations: [], createdAt: '2022-06-01T00:00:00Z', lastModified: '2020-06-01T00:00:00Z' },
+      { name: 'E', entityType: 'misc', observations: [], createdAt: '2020-06-01T00:00:00Z', lastModified: '2022-06-01T00:00:00Z' },
+    ];
+    const badDates: Entity = {
+      name: 'BadDates',
+      entityType: 'misc',
+      observations: [],
+      createdAt: 'not-a-date',
+      lastModified: 'not-a-date',
+    };
+
+    // The expected names were recorded from the chain before the delegation to entityUtils.
+    it.each([
+      [{ createdBefore: 'garbage' }, ['A', 'B', 'D', 'E']],
+      [{ createdBefore: 'garbage', createdAfter: '2021-01-01' }, ['B', 'D']],
+      [{ createdBefore: 'garbage', modifiedBefore: '2021-01-01' }, ['A', 'D']],
+      [{ createdAfter: 'garbage', createdBefore: 'garbage' }, ['A', 'B', 'D', 'E']],
+      [{ createdAfter: ' ' }, ['A', 'B', 'D', 'E']],
+      [{ modifiedBefore: 'garbage' }, ['A', 'B', 'D', 'E']],
+      [{ modifiedBefore: 'garbage', modifiedAfter: '2021-01-01' }, ['B', 'E']],
+      [{ modifiedBefore: 'garbage', createdBefore: '2021-01-01' }, ['A', 'E']],
+      [{ modifiedAfter: 'garbage', modifiedBefore: 'garbage' }, ['A', 'B', 'D', 'E']],
+      [{ modifiedBefore: ' ' }, ['A', 'B', 'D', 'E']],
+      [{ createdAfter: 'garbage', modifiedAfter: '2021-01-01' }, ['B', 'E']],
+      [{ modifiedAfter: 'garbage', createdAfter: '2021-01-01' }, ['B', 'D']],
+      [{ createdAfter: 'garbage', modifiedBefore: '2021-01-01' }, ['A', 'D']],
+      [{ modifiedAfter: 'garbage', createdBefore: '2021-01-01' }, ['A', 'E']],
+    ] as Array<[SearchFilters, string[]]>)('skips only the unparseable bound (%j)', (filters, expected) => {
+      const result = SearchFilterChain.applyFilters(boundEntities, filters);
+      expect(result.map(e => e.name)).toEqual(expected);
+    });
+
+    it.each([
+      [{ createdBefore: 'garbage' }],
+      [{ createdAfter: 'garbage', createdBefore: 'garbage' }],
+      [{ modifiedAfter: 'garbage' }],
+      [{ modifiedBefore: 'garbage' }],
+      [{ modifiedAfter: 'garbage', modifiedBefore: 'garbage' }],
+    ] as Array<[SearchFilters]>)(
+      'excludes an entity with unparseable dates when the bounds are unparseable too (%j)',
+      (filters) => {
+        expect(SearchFilterChain.applyFilters([badDates], filters)).toEqual([]);
+      }
+    );
+  });
 });
