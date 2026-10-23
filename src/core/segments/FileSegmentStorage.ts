@@ -399,7 +399,7 @@ export class FileSegmentStorage implements ISegmentStorage {
   }
 
   private assertOwnership(segment: Segment): void {
-    assertSegmentOwnership(segment, this.router, 'FileSegmentStorage.saveSegment');
+    assertSegmentOwnership.call(this, segment, 'FileSegmentStorage.saveSegment');
   }
 }
 

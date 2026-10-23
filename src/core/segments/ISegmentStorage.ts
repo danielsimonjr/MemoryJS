@@ -202,7 +202,7 @@ export class InMemorySegmentStorage implements ISegmentStorage {
     // Validate ownership — every entity must route back to this segment id.
     // Catches caller bugs early; without it a misrouted write silently
     // breaks every later `loadAll()` consistency invariant.
-    assertSegmentOwnership(segment, this.router, 'InMemorySegmentStorage.saveSegment');
+    assertSegmentOwnership.call(this, segment, 'InMemorySegmentStorage.saveSegment');
     this.segments.set(segment.id, {
       id: segment.id,
       entities: [...segment.entities],
@@ -245,15 +245,22 @@ export class InMemorySegmentStorage implements ISegmentStorage {
  * Checks entities first, then relations.
  * Throws an error on the first routing mismatch.
  * Use this function before writing a segment.
+ * Call it as `assertSegmentOwnership.call(this, segment, className)` from a storage class.
+ * The function reads `this.router` for each entity and each relation, as the
+ * storage methods did before they shared this code.
  * The className argument appears only in the error message.
  *
+ * @param this - The storage whose router decides the owner of each name.
  * @param segment - The segment object to check.
- * @param router - The router that maps names to segment ids.
  * @param className - The name for the error message.
  */
-export function assertSegmentOwnership(segment: Segment, router: SegmentRouter, className: string): void {
+export function assertSegmentOwnership(
+  this: { readonly router: SegmentRouter },
+  segment: Segment,
+  className: string,
+): void {
   for (const e of segment.entities) {
-    const expected = router.route(e.name);
+    const expected = this.router.route(e.name);
     if (expected !== segment.id) {
       throw new Error(
         `${className}: entity '${e.name}' routes to segment ${expected}, not ${segment.id}`,
@@ -261,7 +268,7 @@ export function assertSegmentOwnership(segment: Segment, router: SegmentRouter, 
     }
   }
   for (const r of segment.relations) {
-    const expected = router.route(r.from);
+    const expected = this.router.route(r.from);
     if (expected !== segment.id) {
       throw new Error(
         `${className}: relation from='${r.from}' routes to segment ${expected}, not ${segment.id}`,
