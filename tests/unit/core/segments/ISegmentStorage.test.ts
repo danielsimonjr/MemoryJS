@@ -50,6 +50,23 @@ describe('FNV-1a values and segment routing (R16 pins)', () => {
     }
   });
 
+  it('FnvSegmentRouter routes mixed-case and non-ASCII names for counts that are not powers of two', () => {
+    // With a power-of-two count only the low bits of the hash count, and upper and lower case
+    // differ in bit 5 only, so 16 segments cannot show a case change. Counts 7 and 100 can.
+    const names = [
+      'Alice', 'alice', 'ALICE', 'Bob', 'bob', 'Entity_42', 'entity_42', 'naïve', 'NAÏVE',
+      'project-apollo', 'Project-Apollo', 'TechCorp', 'techcorp', '',
+    ];
+    const golden: Array<[number, number[]]> = [
+      [7, [5, 6, 3, 1, 3, 5, 1, 5, 5, 0, 5, 4, 1, 2]],
+      [100, [43, 79, 35, 0, 44, 61, 29, 8, 56, 90, 82, 65, 49, 61]],
+    ];
+    for (const [count, segments] of golden) {
+      const router = new FnvSegmentRouter(count);
+      expect(names.map((name) => router.route(name))).toEqual(segments);
+    }
+  });
+
   it('FnvSegmentRouter(16) routes ten fixed names to their recorded segments', () => {
     const router = new FnvSegmentRouter(16);
     const golden: Array<[string, number]> = [

@@ -894,6 +894,23 @@ describe('embedBatch and embedBatchWithProgress (R22 pins)', () => {
     expect(results).toEqual([[1], [2], [3]]);
   });
 
+  it('Local embedBatch and embedBatchWithProgress pass the mode to every embed call', async () => {
+    const service = new LocalEmbeddingService();
+    vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
+    const embed = vi.spyOn(service, 'embed').mockResolvedValue([0]);
+
+    await service.embedBatch(['a', 'b'], 'query');
+    await service.embedBatchWithProgress(['c'], 'query');
+    await service.embedBatch(['d']);
+
+    expect(embed.mock.calls).toEqual([
+      ['a', 'query'],
+      ['b', 'query'],
+      ['c', 'query'],
+      ['d', 'document'],
+    ]);
+  });
+
   it('Local embedBatchWithProgress reports 33, 67 and 100 percent for three texts', async () => {
     const service = new LocalEmbeddingService();
     vi.spyOn(service, 'initialize').mockResolvedValue(undefined);
@@ -927,6 +944,18 @@ describe('embedBatch and embedBatchWithProgress (R22 pins)', () => {
       { current: 2, total: 3, percentage: 67 },
       { current: 3, total: 3, percentage: 100 },
     ]);
+  });
+
+  it('Mock embedBatchWithProgress embeds each text in the requested mode', async () => {
+    const service = new MockEmbeddingService();
+    const texts = ['alpha', 'beta'];
+
+    const documentVectors = await service.embedBatchWithProgress(texts, 'document');
+    const queryVectors = await service.embedBatchWithProgress(texts, 'query');
+
+    expect(documentVectors).toEqual(await Promise.all(texts.map((text) => service.embed(text, 'document'))));
+    expect(queryVectors).toEqual(await Promise.all(texts.map((text) => service.embed(text, 'query'))));
+    expect(documentVectors).not.toEqual(queryVectors);
   });
 
   it('Mock embedBatch returns the vectors of embedBatchWithProgress and [] for no input', async () => {
