@@ -636,4 +636,101 @@ describe('GovernanceManager', () => {
       expect(restored!.tags).toEqual(['t1', 't2']);
     });
   });
+
+  // ==================== R24: audit recorders (pins) ====================
+
+  describe('audit recorders (R24 pins)', () => {
+    const alice = (observations: string[]) => ({ name: 'Alice', entityType: 'person', observations });
+
+    it('recordMerge and recordArchive append committed entries with the exact shape', async () => {
+      const entries = await governance.withTransaction(async (tx) => {
+        await tx.recordMerge('Alice', alice(['before fact']), alice(['after fact']));
+        await tx.recordArchive('Alice', alice(['archived fact']));
+        return tx.getAuditEntries();
+      });
+
+      expect(entries).toStrictEqual([
+        {
+          id: expect.any(String),
+          timestamp: expect.any(String),
+          operation: 'merge',
+          entityName: 'Alice',
+          agentId: undefined,
+          before: alice(['before fact']),
+          after: alice(['after fact']),
+          status: 'committed',
+          seq: 0,
+          prevHash: expect.any(String),
+        },
+        {
+          id: expect.any(String),
+          timestamp: expect.any(String),
+          operation: 'archive',
+          entityName: 'Alice',
+          agentId: undefined,
+          before: alice(['archived fact']),
+          after: undefined,
+          status: 'committed',
+          seq: 1,
+          prevHash: expect.any(String),
+        },
+      ]);
+    });
+
+    it('recordMerge and recordArchive redact before and after when redactAuditSnapshots is on', async () => {
+      const redacting = new GovernanceManager(storage, auditLog, { redactAuditSnapshots: true });
+
+      const entries = await redacting.withTransaction(async (tx) => {
+        await tx.recordMerge('Alice', alice(['mail alice@example.com']), alice(['mail bob@example.com']));
+        await tx.recordArchive('Alice', alice(['mail alice@example.com']));
+        return tx.getAuditEntries();
+      });
+
+      expect(entries).toStrictEqual([
+        expect.objectContaining({
+          operation: 'merge',
+          before: alice(['mail <EMAIL>']),
+          after: alice(['mail <EMAIL>']),
+        }),
+        expect.objectContaining({
+          operation: 'archive',
+          before: alice(['mail <EMAIL>']),
+          after: undefined,
+        }),
+      ]);
+    });
+
+    it('appendAudit redacts before and after and passes an undefined before through', async () => {
+      const redacting = new GovernanceManager(storage, auditLog, { redactAuditSnapshots: true });
+
+      const withBefore = await redacting.appendAudit({
+        operation: 'update',
+        entityName: 'Alice',
+        before: alice(['mail alice@example.com']),
+        after: alice(['mail bob@example.com']),
+      });
+      const withoutBefore = await redacting.appendAudit({
+        operation: 'create',
+        entityName: 'Alice',
+        before: undefined,
+        after: alice(['mail bob@example.com']),
+      });
+
+      expect(withBefore.before).toStrictEqual(alice(['mail <EMAIL>']));
+      expect(withBefore.after).toStrictEqual(alice(['mail <EMAIL>']));
+      expect(withoutBefore.before).toBeUndefined();
+      expect(withoutBefore).toHaveProperty('before', undefined);
+      expect(withoutBefore.after).toStrictEqual(alice(['mail <EMAIL>']));
+    });
+
+    it('getAuditEntries grows by one entry for each recorder call', async () => {
+      await governance.withTransaction(async (tx) => {
+        expect(tx.getAuditEntries()).toHaveLength(0);
+        await tx.recordMerge('Alice', alice([]), alice([]));
+        expect(tx.getAuditEntries()).toHaveLength(1);
+        await tx.recordArchive('Alice', alice([]));
+        expect(tx.getAuditEntries()).toHaveLength(2);
+      });
+    });
+  });
 });
