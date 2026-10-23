@@ -80,6 +80,9 @@ const DEFAULT_TOKEN_ESTIMATION: Required<TokenEstimationOptions> = {
   includeEntityCount: true,
 };
 
+/** Search methods considered when the caller gives no method list. */
+const DEFAULT_SEARCH_METHODS: readonly SearchMethod[] = ['basic', 'ranked', 'boolean', 'fuzzy', 'semantic'];
+
 /** Estimates search query costs and recommends optimal methods. */
 export class QueryCostEstimator {
   private options: Required<QueryCostEstimatorOptions>;
@@ -206,7 +209,7 @@ export class QueryCostEstimator {
     entityCount: number,
     preferredMethods?: SearchMethod[]
   ): SearchMethod {
-    const methods = preferredMethods ?? (['basic', 'ranked', 'boolean', 'fuzzy', 'semantic'] as SearchMethod[]);
+    const methods = preferredMethods ?? DEFAULT_SEARCH_METHODS;
 
     // Score each method and find the best
     let bestMethod = methods[0];
@@ -225,7 +228,7 @@ export class QueryCostEstimator {
 
   /** Get estimates for all available search methods. */
   estimateAllMethods(query: string, entityCount: number): QueryCostEstimate[] {
-    const methods: SearchMethod[] = ['basic', 'ranked', 'boolean', 'fuzzy', 'semantic'];
+    const methods = DEFAULT_SEARCH_METHODS;
     const recommendedMethod = this.getRecommendedMethodOnly(query, entityCount);
     return methods.map(method =>
       this.estimateMethodInternal(method, query, entityCount, method === recommendedMethod)
@@ -238,7 +241,7 @@ export class QueryCostEstimator {
     entityCount: number,
     preferredMethods?: SearchMethod[]
   ): { method: SearchMethod; reason: string; estimate: QueryCostEstimate } {
-    const methods = preferredMethods ?? (['basic', 'ranked', 'boolean', 'fuzzy', 'semantic'] as SearchMethod[]);
+    const methods = preferredMethods ?? DEFAULT_SEARCH_METHODS;
 
     // Computed once and reused per method — calling `estimateMethod` in the
     // loop would recompute this each time, making the whole pass O(N²).
