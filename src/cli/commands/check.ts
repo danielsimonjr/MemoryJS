@@ -20,8 +20,8 @@
 
 import { Command } from 'commander';
 import { ManagerContext } from '../../core/ManagerContext.js';
-import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatError } from '../formatters.js';
+import { runAction } from './helpers.js';
+
 
 interface OrphanRelation {
   from: string;
@@ -144,34 +144,26 @@ export function registerCheckCommand(program: Command): void {
     .command('check')
     .description('Detect orphan relations + missing parents + hierarchy cycles. Dry-run by default.')
     .option('--apply', 'Actually delete orphan relations + clear missing parentIds (cycles always left for human review)')
-    .action(async (opts: { apply?: boolean }) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const { orphans, missing, cycles } = await detectIssues(ctx);
-        const ok = orphans.length === 0 && missing.length === 0 && cycles.length === 0;
-        const report: CheckReport = {
-          ok,
-          applied: Boolean(opts.apply),
-          orphanRelations: orphans,
-          missingParents: missing,
-          hierarchyCycles: cycles,
-        };
+    .action(runAction(program, async (ctx, _options, _logger, opts: { apply?: boolean }) => {
+      const { orphans, missing, cycles } = await detectIssues(ctx);
+      const ok = orphans.length === 0 && missing.length === 0 && cycles.length === 0;
+      const report: CheckReport = {
+        ok,
+        applied: Boolean(opts.apply),
+        orphanRelations: orphans,
+        missingParents: missing,
+        hierarchyCycles: cycles,
+      };
 
-        if (opts.apply && (orphans.length > 0 || missing.length > 0)) {
-          report.actions = await applyFixes(ctx, orphans, missing);
-        }
-
-        console.log(JSON.stringify(report, null, 2));
-        // Exit non-zero only when issues are present AND --apply was NOT used.
-        // After successful --apply, downstream pipelines should treat the run as a fix completed.
-        if (!ok && !opts.apply) process.exit(1);
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
-        process.exit(1);
+      if (opts.apply && (orphans.length > 0 || missing.length > 0)) {
+        report.actions = await applyFixes(ctx, orphans, missing);
       }
-    });
+
+      console.log(JSON.stringify(report, null, 2));
+      // Exit non-zero only when issues are present AND --apply was NOT used.
+      // After successful --apply, downstream pipelines should treat the run as a fix completed.
+      if (!ok && !opts.apply) process.exit(1);
+    }));
 }
 
 // Re-export internals for the REPL bridge + tests.

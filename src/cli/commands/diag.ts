@@ -25,8 +25,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { ManagerContext } from '../../core/ManagerContext.js';
 import type { Entity } from '../../types/types.js';
-import { getOptions, createContext, createLogger } from './helpers.js';
-import { formatError } from '../formatters.js';
+import { runAction } from './helpers.js';
+
 
 /**
  * Catalog of all memoryjs env vars (current value + documented default).
@@ -235,18 +235,10 @@ export function registerDiagCommand(program: Command): void {
   program
     .command('diag')
     .description('One-shot diagnostic snapshot: memoryjs version, runtime, storage, env')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const snapshot = await buildSnapshot(ctx, options.storage);
-        console.log(JSON.stringify(snapshot, null, 2));
-      } catch (e) {
-        logger.error(formatError((e as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, options, _logger) => {
+      const snapshot = await buildSnapshot(ctx, options.storage);
+      console.log(JSON.stringify(snapshot, null, 2));
+    }));
 
   program
     .command('env')
@@ -273,27 +265,19 @@ export function registerDiagCommand(program: Command): void {
   program
     .command('health')
     .description('Run fast integrity checks (graph loads, distinct names, no orphan relations, no hierarchy cycles)')
-    .action(async () => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-      try {
-        const checks = await runHealthChecks(ctx);
-        const failed = checks.filter((c) => !c.ok).length;
-        const totalMs = checks.reduce((acc, c) => acc + c.durationMs, 0);
-        console.log(JSON.stringify({
-          ok: failed === 0,
-          failed,
-          totalChecks: checks.length,
-          totalMs: Number(totalMs.toFixed(2)),
-          checks,
-        }, null, 2));
-        if (failed > 0) process.exit(1);
-      } catch (e) {
-        logger.error(formatError((e as Error).message));
-        process.exit(1);
-      }
-    });
+    .action(runAction(program, async (ctx, _options, _logger) => {
+      const checks = await runHealthChecks(ctx);
+      const failed = checks.filter((c) => !c.ok).length;
+      const totalMs = checks.reduce((acc, c) => acc + c.durationMs, 0);
+      console.log(JSON.stringify({
+        ok: failed === 0,
+        failed,
+        totalChecks: checks.length,
+        totalMs: Number(totalMs.toFixed(2)),
+        checks,
+      }, null, 2));
+      if (failed > 0) process.exit(1);
+    }));
 
   program
     .command('version')

@@ -10,7 +10,7 @@
  */
 
 import { Command } from 'commander';
-import { getOptions, createContext, createLogger } from './helpers.js';
+import { runAction, getOptions, createContext, createLogger } from './helpers.js';
 import { formatSuccess, formatError } from '../formatters.js';
 
 /**
@@ -99,23 +99,14 @@ export function registerExclusionCommands(program: Command): void {
   exclude
     .command('remove <id>')
     .description('Remove an exclusion rule (does NOT restore deleted memories)')
-    .action(async (id: string) => {
-      const options = getOptions(program);
-      const logger = createLogger(options);
-      const ctx = createContext(options);
-
-      try {
-        await ctx.storage.ensureLoaded();
-        const removed = await ctx.exclusionManager.remove(id);
-        if (removed) {
-          logger.info(formatSuccess(`Removed rule ${id}`));
-        } else {
-          logger.error(formatError(`No exclusion rule with id '${id}'`));
-          process.exit(1);
-        }
-      } catch (error) {
-        logger.error(formatError((error as Error).message));
+    .action(runAction(program, async (ctx, _options, logger, id: string) => {
+      await ctx.storage.ensureLoaded();
+      const removed = await ctx.exclusionManager.remove(id);
+      if (removed) {
+        logger.info(formatSuccess(`Removed rule ${id}`));
+      } else {
+        logger.error(formatError(`No exclusion rule with id '${id}'`));
         process.exit(1);
       }
-    });
+    }));
 }
