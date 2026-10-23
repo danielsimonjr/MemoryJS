@@ -170,6 +170,16 @@ const R01_TICKS: Record<string, number[]> = {
   'SQLite': [5, 5, 5, 5, 5, 5],
 };
 
+/**
+ * Order of the reads of an entity `name` and of the storage field `lowercaseCache` during
+ * `deleteEntities(['ent-01'])`, one list per variant, recorded before the R02 refactor.
+ */
+const DELETE_READ_ORDER: Record<string, string[]> = {
+  'JSONL': ['name', 'name', 'name', 'name', 'name', 'lowercaseCache', 'name', 'name', 'name'],
+  'JSONL with 4 segments': ['name', 'name', 'name', 'name', 'name', 'lowercaseCache', 'name', 'name', 'name'],
+  'SQLite': ['name', 'name', 'name', 'name', 'lowercaseCache', 'name', 'name'],
+};
+
 describe.each(VARIANTS)('storage safety net - $label', (variant) => {
   /** True when the variant stores the graph in segment files. */
   const segmented = variant.env.MEMORY_STORAGE_SEGMENT_COUNT !== undefined;
@@ -573,6 +583,61 @@ describe.each(VARIANTS)('storage safety net - $label', (variant) => {
       };
       expect(await holders('"relationType":"routed"')).toEqual([0]);
       expect(await holders('"relationType":"routed-batch"')).toEqual([1]);
+    });
+  });
+
+  describe('R02 and R01 evaluation order and error texts', () => {
+    it('reads the lowercase cache field before the entity name when it removes a deleted entity', async () => {
+      await seed();
+      const store = openStore();
+      await store.ensureLoaded();
+      const reads: string[] = [];
+      const live = store.getEntityByName('ent-01') as Entity;
+      Object.defineProperty(live, 'name', {
+        get() {
+          reads.push('name');
+          return 'ent-01';
+        },
+        configurable: true,
+        enumerable: true,
+      });
+      let lowercase = (store as unknown as { lowercaseCache: unknown }).lowercaseCache;
+      Object.defineProperty(store, 'lowercaseCache', {
+        get() {
+          reads.push('lowercaseCache');
+          return lowercase;
+        },
+        set(value: unknown) {
+          lowercase = value;
+        },
+        configurable: true,
+      });
+
+      await store.deleteEntities(['ent-01']);
+
+      // The sequence is recorded from the code before the R02 refactor.
+      expect(reads).toEqual(DELETE_READ_ORDER[variant.label]);
+    });
+
+    // A list that is not an array fails inside the append path. The error text names
+    // the parameter of the public method, as V8 prints the source text of the failing expression.
+    const entityListText = variant.sqlite ? 'entities is not iterable' : 'entities.map is not a function';
+    const relationListText = variant.sqlite ? 'relations is not iterable' : 'relations.map is not a function';
+
+    it.each([5, { length: 1 }])('appendEntities(%j) rejects with the text of the public parameter', async (bad) => {
+      await seed();
+      await expect(openStore().appendEntities(bad as unknown as Entity[])).rejects.toMatchObject({
+        name: 'TypeError',
+        message: entityListText,
+      });
+    });
+
+    it.each([5, { length: 1 }])('appendRelations(%j) rejects with the text of the public parameter', async (bad) => {
+      await seed();
+      await expect(openStore().appendRelations(bad as unknown as Relation[])).rejects.toMatchObject({
+        name: 'TypeError',
+        message: relationListText,
+      });
     });
   });
 });
