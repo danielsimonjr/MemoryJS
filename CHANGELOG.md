@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- The cosine loop of `textSimilarity` and `RelationConsolidator` moves to `cosineParts` in `src/utils/textSimilarity.ts`. Each site keeps its own mismatch rule, zero rule and clamp. `QuantizedVectorStore` keeps its own loop: when it shared `cosineParts`, its `Float32Array` input made the cosine slower at every site in a measurement. Behaviour is unchanged.
+- The cosine loop of `textSimilarity` and `RelationConsolidator` moves to `cosineParts` in `src/utils/textSimilarity.ts`. Each site keeps its own mismatch rule, zero rule and clamp. `QuantizedVectorStore` keeps its own loop. Its input is a `Float32Array`. When it shared `cosineParts`, a measurement showed a slower cosine at every site. Behaviour is unchanged.
 - `ProximitySearch.findProximity` and `ProximitySearch.getPositions` share one position scan, `scanTerm`. `findProximity` still stops at the first term that no word contains, so it never reads the later terms. Behaviour is unchanged.
 - The alias loader of `TagManager` and the saved-search loader of `SavedSearchManager` share one JSONL line parser, `parseJsonlRecords` in `src/utils/jsonlMapFile.ts`. Each loader keeps its own read and cache code. Behaviour is unchanged.
 - `SemanticSearch.search` and `findSimilar` share the conversion of vector hits into results in one module function, `toSemanticResults` in `src/search/SemanticSearch.ts`. Each method keeps its own vector store fetch count. Behaviour is unchanged.
