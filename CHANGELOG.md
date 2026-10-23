@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- `zod` moves from 4.4.3 to 4.6.7 in `bun.lock`, and its range in `package.json` rises from `^4.4.3` to `^4.6.6`. The advisory GHSA-mrhx-c7xc-m3w5 (HIGH) covers `zod` before 4.6.6: it can exhaust memory while it validates oversized constrained collections. `zod` is a runtime dependency, so the range now excludes every affected version. `bun audit --audit-level=high` reports no vulnerabilities, and the `Audit dependencies` step of the `ci (ubuntu-latest, 22)` job passes again.
 - `vite` moves from 8.0.16 to 8.1.6 in `bun.lock` (with `rolldown` 1.1.5 and four small helper packages), through `bun audit fix`. The advisory GHSA-587h-7wmj-h5pm (HIGH, `launch-editor` before 8.1.6, reached through `vitest > @vitest/mocker > vite`) made `bun audit --audit-level=high` fail in CI on every branch. Dev tooling only: no change to `package.json` or to the published package. Typecheck passes and 8,239 tests pass.
 
 ## [4.3.0] - 2026-10-18
