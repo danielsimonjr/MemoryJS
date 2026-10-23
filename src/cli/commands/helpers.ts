@@ -32,15 +32,16 @@ export function createContext(options: GlobalOptions): ManagerContext {
 /**
  * Create a command action that runs a handler body in a shared error frame.
  *
- * The returned action reads the options, creates the logger and creates the context.
- * These steps run before the try block. An error in them is not caught.
- * The body receives the context, the options, the logger and the command arguments.
- * If the body throws, the action logs the error message with formatError.
- * Then the action exits the process with code 1.
+ * The action reads the options, creates the logger and creates the context before the try block.
+ * An error in one of these steps rejects the action.
+ * The action does not log that error and does not exit.
+ * The body receives the context, the options, the logger and then the command arguments.
+ * If the body throws, the action logs the error message through formatError.
+ * Then the action calls process.exit with code 1.
  *
  * @param program - The Commander program that holds the global options.
- * @param body - The async command logic. It receives the context, options, logger and arguments.
- * @returns The action listener. It accepts the same arguments as the body.
+ * @param body - The async command logic.
+ * @returns The action listener. The listener takes the command arguments, without the context, options and logger.
  */
 export function runAction<A extends unknown[]>(
   program: Command,

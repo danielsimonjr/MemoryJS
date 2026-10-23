@@ -92,6 +92,7 @@ export async function cleanupCliHarness(h: CliHarness): Promise<void> {
 
 /**
  * Returns the `console.error` lines of a run, with color codes removed.
+ * The helper reads only the first argument of each call.
  *
  * @param errorSpy - The `console.error` spy of a harness, or any spy with the same calls.
  * @returns One string per `console.error` call, in call order.
