@@ -391,5 +391,32 @@ describe('HierarchyManager', () => {
       const subtree = await manager.getSubtree('A');
       expect(subtree.entities.map(e => e.name)).toEqual(['A', 'B']);
     });
+
+    it('should keep listing the siblings that follow the root in a cycle', async () => {
+      // A is a child of P and P is a child of A. S is a second child of P and
+      // comes after A in storage order, so the walk meets A before S.
+      const manager = managerOver([
+        { name: 'A', entityType: 'folder', observations: [], parentId: 'P' },
+        { name: 'P', entityType: 'folder', observations: [], parentId: 'A' },
+        { name: 'S', entityType: 'folder', observations: [], parentId: 'P' },
+      ]);
+
+      const descendants = await manager.getDescendants('A');
+      expect(descendants.map(d => d.name)).toEqual(['P', 'S']);
+    });
+
+    it('should list a name once when stored data repeats it', async () => {
+      // Storage keys entities by name, so setEntityParent cannot produce this.
+      // The walk lists the first entity of the name and then its children once.
+      const manager = managerOver([
+        { name: 'R', entityType: 'folder', observations: [] },
+        { name: 'X', entityType: 'folder', observations: [], parentId: 'R' },
+        { name: 'X', entityType: 'folder', observations: [], parentId: 'R' },
+        { name: 'Y', entityType: 'folder', observations: [], parentId: 'X' },
+      ]);
+
+      const descendants = await manager.getDescendants('R');
+      expect(descendants.map(d => d.name)).toEqual(['X', 'Y']);
+    });
   });
 });
