@@ -462,6 +462,29 @@ describe('DecayScheduler hook order and runNow (pins)', () => {
     expect(onError).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['onDecayComplete', 0],
+    ['onForgetComplete', 1],
+  ] as const)('a throwing %s hook sends the error to onError', async (hook, forgetCalls) => {
+    const onError = vi.fn();
+    const engine = fakeEngine();
+    const scheduler = new DecayScheduler(engine, {
+      autoForget: true,
+      forgetOptions,
+      onError,
+      [hook]: () => {
+        throw new Error('hook failed');
+      },
+    });
+
+    scheduler.start();
+    await vi.waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
+    scheduler.stop();
+
+    expect(onError.mock.calls[0][0].message).toBe('hook failed');
+    expect(engine.forgetWeakMemories).toHaveBeenCalledTimes(forgetCalls);
+  });
+
   it('a scheduled cycle that fails sends the error to onError and does not reject', async () => {
     const onError = vi.fn();
     const engine = {

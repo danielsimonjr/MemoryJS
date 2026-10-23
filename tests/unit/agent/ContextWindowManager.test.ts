@@ -497,6 +497,33 @@ describe('ContextWindowManager', () => {
         vi.useRealTimers();
       }
     });
+
+    it('skips a candidate that does not fit and goes on with the next one', async () => {
+      const small = (name: string) =>
+        createTestEntity({ name, memoryType: 'semantic', observations: ['same size text'] });
+      const first = small('s1');
+      const second = small('s2');
+      const big = createTestEntity({
+        name: 'big',
+        memoryType: 'semantic',
+        observations: ['many words in this long text '.repeat(40)],
+      });
+      storage = createMockStorage([first, big, second]);
+      accessTracker = new AccessTracker(storage);
+      decayEngine = new DecayEngine(storage, accessTracker);
+      salienceEngine = new SalienceEngine(storage, accessTracker, decayEngine);
+      contextManager = new ContextWindowManager(storage, salienceEngine);
+      const ranked = [first, big, second].map((entity) => ({ entity, salienceScore: 1, components: {} }));
+      vi.spyOn(salienceEngine, 'rankEntitiesBySalience').mockResolvedValue(
+        ranked as unknown as Awaited<ReturnType<SalienceEngine['rankEntitiesBySalience']>>
+      );
+      const budget = contextManager.estimateTokens(first) + contextManager.estimateTokens(second);
+
+      const result = await contextManager.retrieveSemanticRelevant(budget);
+
+      expect(result.entities.map((e) => e.name)).toStrictEqual(['s1', 's2']);
+      expect(result.tokens).toBe(budget);
+    });
   });
 
   describe('retrieveWorkingMemory', () => {

@@ -181,6 +181,57 @@ describe('ToolCallObserver', () => {
     }
   });
 
+  it('emits the exact payload of each completion event after the outcome is recorded', async () => {
+    const recordOutcome = vi.spyOn(manager, 'recordOutcome');
+    const emitted: Array<{ event: string; payload: unknown; recorded: number }> = [];
+    for (const event of ['toolCall:complete', 'toolCall:error', 'toolCall:partial']) {
+      observer.events.on(event, (payload) => {
+        emitted.push({ event, payload, recorded: recordOutcome.mock.calls.length });
+      });
+    }
+
+    const completed = observer.observeStart('tool_ok');
+    const completedNoMeta = observer.observeStart('tool_ok_no_meta');
+    const failed = observer.observeStart('tool_bad');
+    const failedText = observer.observeStart('tool_bad_text');
+    const partial = observer.observeStart('tool_part');
+    vi.advanceTimersByTime(250);
+
+    await observer.observeComplete(completed, { result: 'done' });
+    await observer.observeComplete(completedNoMeta);
+    await observer.observeError(failed, new Error('boom'));
+    await observer.observeError(failedText, 'plain text');
+    await observer.observePartial(partial, 'half');
+
+    expect(emitted).toStrictEqual([
+      {
+        event: 'toolCall:complete',
+        payload: { callId: completed, toolName: 'tool_ok', durationMs: 250, result: 'done' },
+        recorded: 1,
+      },
+      {
+        event: 'toolCall:complete',
+        payload: { callId: completedNoMeta, toolName: 'tool_ok_no_meta', durationMs: 250, result: undefined },
+        recorded: 2,
+      },
+      {
+        event: 'toolCall:error',
+        payload: { callId: failed, toolName: 'tool_bad', durationMs: 250, errorMessage: 'boom' },
+        recorded: 3,
+      },
+      {
+        event: 'toolCall:error',
+        payload: { callId: failedText, toolName: 'tool_bad_text', durationMs: 250, errorMessage: 'plain text' },
+        recorded: 4,
+      },
+      {
+        event: 'toolCall:partial',
+        payload: { callId: partial, toolName: 'tool_part', durationMs: 250, reason: 'half' },
+        recorded: 5,
+      },
+    ]);
+  });
+
   it('fires events for start / complete / error / partial', async () => {
     const events: Array<{ event: string; payload: unknown }> = [];
     observer.events.on('toolCall:start', (p) => events.push({ event: 'start', payload: p }));

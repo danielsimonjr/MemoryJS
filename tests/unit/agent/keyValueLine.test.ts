@@ -1,8 +1,8 @@
 /**
  * Unit tests for the shared key=value observation codec.
  *
- * Golden values come from the decoder and encoder bodies as they stood
- * before the codec moved into `keyValueLine.ts` (run once under Node).
+ * Every expected value is a literal. No expected value comes from the
+ * code under test.
  */
 
 import { describe, it, expect } from 'vitest';

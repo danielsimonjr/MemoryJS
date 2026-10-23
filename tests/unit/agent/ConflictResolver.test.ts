@@ -439,6 +439,11 @@ describe('ConflictResolver.calculateSimilarity (pins)', () => {
     expect(similarity(a, memory('omega', 'event', ['zebra quartz']))).toBe(0);
   });
 
+  it('compares words without regard to letter case', () => {
+    const a = memory('Alpha', 'Fact', ['Shared WORDS Here']);
+    expect(similarity(a, memory('alpha', 'fact', ['shared words here']))).toBe(1);
+  });
+
   it('ignores words of two letters or fewer', () => {
     const a = memory('ab', 'fact', ['red blue green']);
     const b = memory('ab', 'fact', ['red blue cyan']);

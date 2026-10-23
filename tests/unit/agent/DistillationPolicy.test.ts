@@ -250,8 +250,14 @@ describe('DefaultDistillationPolicy', () => {
     });
 
     it('scores an entity modified 24 hours ago as 0.5', () => {
-      const entity = makeOldEntity(24);
-      expect(policy.scoreRecency(entity)).toBeCloseTo(0.5, 6);
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-01-02T00:00:00.000Z'));
+      try {
+        const entity = makeEntity({ lastModified: '2026-01-01T00:00:00.000Z' });
+        expect(policy.scoreRecency(entity)).toBe(0.5);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('keeps NaN for an unparseable timestamp', () => {
