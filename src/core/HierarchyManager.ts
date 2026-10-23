@@ -214,6 +214,8 @@ export class HierarchyManager {
     }
 
     const descendants: Entity[] = [];
+    // The root is seeded, so a parent cycle back to the root is never listed.
+    const visited = new Set<string>([entityName]);
     const toProcess = [entityName];
 
     while (toProcess.length > 0) {
@@ -221,6 +223,8 @@ export class HierarchyManager {
       const children = childrenByParent.get(current) ?? [];
 
       for (const child of children) {
+        if (visited.has(child.name)) continue;
+        visited.add(child.name);
         descendants.push(child);
         toProcess.push(child.name);
       }
