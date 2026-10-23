@@ -679,4 +679,114 @@ describe('validators', () => {
       expect(result.valid).toBe(false);
     });
   });
+
+  describe('field path getter (pinned before the extraction)', () => {
+    const withExtra = (extra: Record<string, unknown>): Entity => ({ ...createEntity(), ...extra }) as Entity;
+
+    it('reads a top-level field', () => {
+      expect(required('name').validate(createEntity()).valid).toBe(true);
+    });
+
+    it('reads a three-level path', () => {
+      expect(required('a.b.c').validate(withExtra({ a: { b: { c: 'x' } } })).valid).toBe(true);
+    });
+
+    it('reads an array index inside the range', () => {
+      expect(required('tags.0').validate(withExtra({ tags: ['t0', 't1'] })).valid).toBe(true);
+    });
+
+    it('returns undefined for an array index outside the range', () => {
+      expect(required('tags.10').validate(withExtra({ tags: ['t0', 't1'] })).valid).toBe(false);
+    });
+
+    it('reads a segment that is not all digits as an object key', () => {
+      expect(required('a.0b').validate(withExtra({ a: { '0b': 'x' } })).valid).toBe(true);
+    });
+
+    it('returns undefined when the path passes through a primitive', () => {
+      expect(required('name.length').validate(createEntity({ name: 'test' })).valid).toBe(false);
+    });
+
+    it('returns undefined for an empty path', () => {
+      expect(required('').validate(createEntity()).valid).toBe(false);
+    });
+  });
+
+  describe('rule builders (pinned before the extraction)', () => {
+    const withField = (value: unknown): Entity => ({ ...createEntity(), f: value }) as Entity;
+
+    it('names each of the seven builders', () => {
+      expect(minLength('f', 1).name).toBe('minLength');
+      expect(maxLength('f', 1).name).toBe('maxLength');
+      expect(pattern('f', /x/).name).toBe('pattern');
+      expect(range('f', 0, 1).name).toBe('range');
+      expect(minItems('f', 1).name).toBe('minItems');
+      expect(maxItems('f', 1).name).toBe('maxItems');
+      expect(email('f').name).toBe('email');
+    });
+
+    it('builds the default messages', () => {
+      expect(minLength('f', 3).message).toBe('f must be at least 3 characters');
+      expect(maxLength('f', 3).message).toBe('f must be at most 3 characters');
+      expect(pattern('f', /^x$/).message).toBe('f must match /^x$/');
+      expect(pattern('f', /^x$/, 'a single x').message).toBe('f must match a single x');
+      expect(pattern('f', /^x$/, '').message).toBe('f must match /^x$/');
+      expect(range('f', 1, 5).message).toBe('f must be between 1 and 5');
+      expect(minItems('f', 2).message).toBe('f must have at least 2 items');
+      expect(maxItems('f', 2).message).toBe('f must have at most 2 items');
+      expect(email('f').message).toBe('f must be a valid email address');
+    });
+
+    it('uses a given message instead of the default', () => {
+      expect(minLength('f', 3, 'too short').message).toBe('too short');
+      expect(email('f', 'bad mail').message).toBe('bad mail');
+    });
+
+    it('returns valid for a value of the wrong type', () => {
+      expect(minLength('f', 3).validate(withField(5)).valid).toBe(true);
+      expect(maxLength('f', 3).validate(withField(5)).valid).toBe(true);
+      expect(pattern('f', /^x$/).validate(withField(5)).valid).toBe(true);
+      expect(range('f', 1, 5).validate(withField('7')).valid).toBe(true);
+      expect(minItems('f', 2).validate(withField('abc')).valid).toBe(true);
+      expect(maxItems('f', 2).validate(withField({ length: 9 })).valid).toBe(true);
+      expect(email('f').validate(withField(5)).valid).toBe(true);
+    });
+
+    it('returns valid when the field is missing', () => {
+      const entity = createEntity();
+      expect(minLength('f', 3).validate(entity).valid).toBe(true);
+      expect(maxLength('f', 3).validate(entity).valid).toBe(true);
+      expect(pattern('f', /^x$/).validate(entity).valid).toBe(true);
+      expect(range('f', 1, 5).validate(entity).valid).toBe(true);
+      expect(minItems('f', 2).validate(entity).valid).toBe(true);
+      expect(maxItems('f', 2).validate(entity).valid).toBe(true);
+      expect(email('f').validate(entity).valid).toBe(true);
+    });
+
+    it('checks the boundary values', () => {
+      expect(minLength('f', 3).validate(withField('abc')).valid).toBe(true);
+      expect(minLength('f', 3).validate(withField('ab')).valid).toBe(false);
+      expect(maxLength('f', 3).validate(withField('abc')).valid).toBe(true);
+      expect(maxLength('f', 3).validate(withField('abcd')).valid).toBe(false);
+      expect(pattern('f', /^[A-Z]+$/).validate(withField('ABC')).valid).toBe(true);
+      expect(pattern('f', /^[A-Z]+$/).validate(withField('abc')).valid).toBe(false);
+      expect(range('f', 1, 5).validate(withField(1)).valid).toBe(true);
+      expect(range('f', 1, 5).validate(withField(5)).valid).toBe(true);
+      expect(range('f', 1, 5).validate(withField(0)).valid).toBe(false);
+      expect(range('f', 1, 5).validate(withField(6)).valid).toBe(false);
+      expect(minItems('f', 2).validate(withField(['a', 'b'])).valid).toBe(true);
+      expect(minItems('f', 2).validate(withField(['a'])).valid).toBe(false);
+      expect(maxItems('f', 2).validate(withField(['a', 'b'])).valid).toBe(true);
+      expect(maxItems('f', 2).validate(withField(['a', 'b', 'c'])).valid).toBe(false);
+      expect(email('f').validate(withField('a@b.co')).valid).toBe(true);
+      expect(email('f').validate(withField('nope')).valid).toBe(false);
+    });
+
+    it('keeps the lastIndex state of a global pattern between calls', () => {
+      const rule = pattern('f', /a/g);
+      expect(rule.validate(withField('a')).valid).toBe(true);
+      expect(rule.validate(withField('a')).valid).toBe(false);
+      expect(rule.validate(withField('a')).valid).toBe(true);
+    });
+  });
 });

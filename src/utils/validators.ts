@@ -9,25 +9,32 @@
 
 import type { Entity } from '../types/types.js';
 import type { EntityValidationRule, EntityRuleResult } from './EntityValidator.js';
+import { getFieldByDotPath } from './fieldPath.js';
 
-// Helper to get nested field value
-function getField(entity: Entity, field: string): unknown {
-  const parts = field.split('.');
-  let value: unknown = entity;
+const isString = (value: unknown): value is string => typeof value === 'string';
+const isNumber = (value: unknown): value is number => typeof value === 'number';
 
-  for (const part of parts) {
-    if (value && typeof value === 'object') {
-      if (/^\d+$/.test(part)) {
-        value = (value as unknown[])[parseInt(part, 10)];
-      } else {
-        value = (value as Record<string, unknown>)[part];
-      }
-    } else {
-      return undefined;
-    }
-  }
-
-  return value;
+/**
+ * Builds a rule for one field and one value type.
+ * A value of another type passes. A value of the type runs `test`.
+ */
+function typedRule<V>(
+  name: string,
+  field: string,
+  message: string,
+  isType: (value: unknown) => value is V,
+  test: (value: V) => boolean
+): EntityValidationRule {
+  return {
+    name,
+    field,
+    message,
+    validate: (entity: Entity): EntityRuleResult => {
+      const value = getFieldByDotPath(entity, field);
+      if (!isType(value)) return { valid: true };
+      return { valid: test(value) };
+    },
+  };
 }
 
 /**
@@ -39,7 +46,7 @@ export function required(field: string, message?: string): EntityValidationRule 
     field,
     message: message ?? `${field} is required`,
     validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       const valid = value !== undefined && value !== null && value !== '';
       return { valid };
     },
@@ -50,32 +57,26 @@ export function required(field: string, message?: string): EntityValidationRule 
  * Require a string field to have minimum length.
  */
 export function minLength(field: string, min: number, message?: string): EntityValidationRule {
-  return {
-    name: 'minLength',
+  return typedRule(
+    'minLength',
     field,
-    message: message ?? `${field} must be at least ${min} characters`,
-    validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
-      if (typeof value !== 'string') return { valid: true }; // Skip if not string
-      return { valid: value.length >= min };
-    },
-  };
+    message ?? `${field} must be at least ${min} characters`,
+    isString,
+    (value) => value.length >= min
+  );
 }
 
 /**
  * Require a string field to have maximum length.
  */
 export function maxLength(field: string, max: number, message?: string): EntityValidationRule {
-  return {
-    name: 'maxLength',
+  return typedRule(
+    'maxLength',
     field,
-    message: message ?? `${field} must be at most ${max} characters`,
-    validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
-      if (typeof value !== 'string') return { valid: true };
-      return { valid: value.length <= max };
-    },
-  };
+    message ?? `${field} must be at most ${max} characters`,
+    isString,
+    (value) => value.length <= max
+  );
 }
 
 /**
@@ -87,32 +88,26 @@ export function pattern(
   description?: string,
   message?: string
 ): EntityValidationRule {
-  return {
-    name: 'pattern',
+  return typedRule(
+    'pattern',
     field,
-    message: message ?? `${field} must match ${description || regex.toString()}`,
-    validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
-      if (typeof value !== 'string') return { valid: true };
-      return { valid: regex.test(value) };
-    },
-  };
+    message ?? `${field} must match ${description || regex.toString()}`,
+    isString,
+    (value) => regex.test(value)
+  );
 }
 
 /**
  * Require a numeric field to be within range.
  */
 export function range(field: string, min: number, max: number, message?: string): EntityValidationRule {
-  return {
-    name: 'range',
+  return typedRule(
+    'range',
     field,
-    message: message ?? `${field} must be between ${min} and ${max}`,
-    validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
-      if (typeof value !== 'number') return { valid: true };
-      return { valid: value >= min && value <= max };
-    },
-  };
+    message ?? `${field} must be between ${min} and ${max}`,
+    isNumber,
+    (value) => value >= min && value <= max
+  );
 }
 
 /**
@@ -124,7 +119,7 @@ export function min(field: string, minValue: number, message?: string): EntityVa
     field,
     message: message ?? `${field} must be at least ${minValue}`,
     validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       if (typeof value !== 'number') return { valid: true };
       return { valid: value >= minValue };
     },
@@ -140,7 +135,7 @@ export function max(field: string, maxValue: number, message?: string): EntityVa
     field,
     message: message ?? `${field} must be at most ${maxValue}`,
     validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       if (typeof value !== 'number') return { valid: true };
       return { valid: value <= maxValue };
     },
@@ -156,7 +151,7 @@ export function oneOf<T>(field: string, values: T[], message?: string): EntityVa
     field,
     message: message ?? `${field} must be one of: ${values.join(', ')}`,
     validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       return { valid: values.includes(value as T) };
     },
   };
@@ -166,32 +161,26 @@ export function oneOf<T>(field: string, values: T[], message?: string): EntityVa
  * Require array field to have minimum items.
  */
 export function minItems(field: string, minCount: number, message?: string): EntityValidationRule {
-  return {
-    name: 'minItems',
+  return typedRule(
+    'minItems',
     field,
-    message: message ?? `${field} must have at least ${minCount} items`,
-    validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
-      if (!Array.isArray(value)) return { valid: true };
-      return { valid: value.length >= minCount };
-    },
-  };
+    message ?? `${field} must have at least ${minCount} items`,
+    Array.isArray,
+    (value) => value.length >= minCount
+  );
 }
 
 /**
  * Require array field to have maximum items.
  */
 export function maxItems(field: string, maxCount: number, message?: string): EntityValidationRule {
-  return {
-    name: 'maxItems',
+  return typedRule(
+    'maxItems',
     field,
-    message: message ?? `${field} must have at most ${maxCount} items`,
-    validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
-      if (!Array.isArray(value)) return { valid: true };
-      return { valid: value.length <= maxCount };
-    },
-  };
+    message ?? `${field} must have at most ${maxCount} items`,
+    Array.isArray,
+    (value) => value.length <= maxCount
+  );
 }
 
 /**
@@ -199,16 +188,13 @@ export function maxItems(field: string, maxCount: number, message?: string): Ent
  */
 export function email(field: string, message?: string): EntityValidationRule {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return {
-    name: 'email',
+  return typedRule(
+    'email',
     field,
-    message: message ?? `${field} must be a valid email address`,
-    validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
-      if (typeof value !== 'string') return { valid: true };
-      return { valid: emailRegex.test(value) };
-    },
-  };
+    message ?? `${field} must be a valid email address`,
+    isString,
+    (value) => emailRegex.test(value)
+  );
 }
 
 /**
@@ -220,7 +206,7 @@ export function url(field: string, message?: string): EntityValidationRule {
     field,
     message: message ?? `${field} must be a valid URL`,
     validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       if (typeof value !== 'string') return { valid: true };
       try {
         new URL(value);
@@ -241,7 +227,7 @@ export function isoDate(field: string, message?: string): EntityValidationRule {
     field,
     message: message ?? `${field} must be a valid ISO 8601 date`,
     validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       if (typeof value !== 'string') return { valid: true };
       const date = new Date(value);
       return { valid: !isNaN(date.getTime()) };
@@ -262,7 +248,7 @@ export function typeOf(
     field,
     message: message ?? `${field} must be of type ${expectedType}`,
     validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       if (value === undefined || value === null) return { valid: true };
 
       if (expectedType === 'array') {
@@ -287,7 +273,7 @@ export function custom(
     field,
     message,
     validate: async (entity: Entity): Promise<EntityRuleResult> => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       const valid = await validator(value, entity);
       return { valid };
     },
@@ -307,7 +293,7 @@ export function customSync(
     field,
     message,
     validate: (entity: Entity): EntityRuleResult => {
-      const value = getField(entity, field);
+      const value = getFieldByDotPath(entity, field);
       const valid = validator(value, entity);
       return { valid };
     },
