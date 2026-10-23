@@ -1,12 +1,12 @@
 {
   "generated": "2026-10-23",
-  "totalFiles": 703,
+  "totalFiles": 704,
   "byDisposition": {
     "reachable": 295,
     "build-entry": 4,
     "test-only": 0,
     "orphan": 0,
-    "test": 388,
+    "test": 389,
     "tool": 10,
     "config": 2,
     "bench": 4,
@@ -15,7 +15,7 @@
   "byArea": {
     "benchmarks": 4,
     "src": 299,
-    "tests": 388,
+    "tests": 389,
     "tools": 10,
     "config": 2
   },
@@ -1201,14 +1201,14 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 685
+      "loc": 661
     },
     {
       "file": "src/core/segments/ISegmentStorage.ts",
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 257
+      "loc": 279
     },
     {
       "file": "src/core/sqlite-register.ts",
@@ -1222,7 +1222,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 2525
+      "loc": 2519
     },
     {
       "file": "src/core/StorageFactory.ts",
@@ -1236,7 +1236,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 766
+      "loc": 760
     },
     {
       "file": "src/core/TransitionLedger.ts",
@@ -1936,7 +1936,7 @@
       "package": "@danielsimonjr/memoryjs",
       "area": "src",
       "disposition": "reachable",
-      "loc": 247
+      "loc": 270
     },
     {
       "file": "src/utils/entityUtils.ts",
@@ -2266,6 +2266,13 @@
       "area": "tests",
       "disposition": "test",
       "loc": 287
+    },
+    {
+      "file": "tests/integration/storage-dedup-safety.test.ts",
+      "package": "(root)",
+      "area": "tests",
+      "disposition": "test",
+      "loc": 394
     },
     {
       "file": "tests/integration/storage/graph-storage-new-fields.test.ts",
@@ -3427,7 +3434,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 431
+      "loc": 695
     },
     {
       "file": "tests/unit/core/columns/columns-review-fixes.test.ts",
@@ -3756,7 +3763,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 498
+      "loc": 877
     },
     {
       "file": "tests/unit/core/segments/GraphStorage-segments.test.ts",
@@ -3770,7 +3777,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 298
+      "loc": 385
     },
     {
       "file": "tests/unit/core/segments/segments-review-fixes.test.ts",
@@ -3819,7 +3826,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 1383
+      "loc": 1690
     },
     {
       "file": "tests/unit/core/StorageFactory.test.ts",
@@ -3847,7 +3854,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 525
+      "loc": 769
     },
     {
       "file": "tests/unit/core/TransitionLedger.test.ts",
@@ -4694,7 +4701,7 @@
       "package": "(root)",
       "area": "tests",
       "disposition": "test",
-      "loc": 199
+      "loc": 309
     },
     {
       "file": "tests/unit/utils/entityUtils.test.ts",

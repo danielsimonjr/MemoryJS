@@ -4,7 +4,7 @@ metadata:
   lastUpdated: "2026-10-23"
   totalFiles: 299
   totalModules: 12
-  totalExports: 2049
+  totalExports: 2051
 entryPoints:
   - file: src/cli/index.ts
     type: bin
@@ -7653,9 +7653,6 @@ modules:
         - module: fs
           imports:
             - promises
-        - module: crypto
-          imports:
-            - randomBytes
         - module: path
           imports:
             - basename
@@ -7683,12 +7680,14 @@ modules:
             - durableWriteFile
             - renameOver
             - syncParentDirectory
+            - writeSyncedTmp
         - file: ./ISegmentStorage.js
           imports:
             - ISegmentStorage
             - Segment
             - SegmentId
             - SegmentRouter
+            - assertSegmentOwnership
             - mergeSegmentsIntoGraph
             - splitGraphIntoSegments
       exports:
@@ -7719,6 +7718,7 @@ modules:
         - fnv1a32
         - splitGraphIntoSegments
         - mergeSegmentsIntoGraph
+        - assertSegmentOwnership
         - FnvSegmentRouter
         - InMemorySegmentStorage
         - fnv1aHash
@@ -7734,6 +7734,7 @@ modules:
       functions:
         - splitGraphIntoSegments
         - mergeSegmentsIntoGraph
+        - assertSegmentOwnership
     src/core/sqlite-register.ts:
       description: SQLiteStorage registration shim (S9).
       externalDependencies: []
@@ -12282,6 +12283,7 @@ modules:
             - join
       internalDependencies: []
       exports:
+        - writeSyncedTmp
         - durableWriteFile
         - renameOver
         - syncParentDirectory
@@ -12291,6 +12293,7 @@ modules:
       classes:
         - DurableReplaceError
       functions:
+        - writeSyncedTmp
         - durableWriteFile
         - renameOver
         - syncParentDirectory
@@ -14374,11 +14377,11 @@ reachability:
 statistics:
   totalTypeScriptFiles: 299
   totalModules: 12
-  totalLinesOfCode: 104233
-  totalExports: 2049
+  totalLinesOfCode: 104242
+  totalExports: 2051
   totalClasses: 235
   totalInterfaces: 624
-  totalFunctions: 336
+  totalFunctions: 338
   totalTypeGuards: 31
   totalEnums: 4
   totalConstants: 123
