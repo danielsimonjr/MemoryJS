@@ -1059,12 +1059,18 @@ export function isProceduralMemory(entity: unknown): entity is AgentEntity & { m
 /** Kinds of record field that a record guard checks. */
 type RecordFieldKind = 'string' | 'number' | 'object' | 'array';
 
-/** Checks one value against each record field kind. */
-const RECORD_FIELD_KIND_CHECK: Readonly<Record<RecordFieldKind, (value: unknown) => boolean>> = {
-  string: (value) => typeof value === 'string',
-  number: (value) => typeof value === 'number',
-  object: (value) => typeof value === 'object' && value !== null,
-  array: (value) => Array.isArray(value),
+/**
+ * Checks one field of a record against each record field kind.
+ * Each check reads the field itself, so an `object` kind reads it twice:
+ * once for the type test and once for the null test.
+ */
+const RECORD_FIELD_KIND_CHECK: Readonly<
+  Record<RecordFieldKind, (record: Record<string, unknown>, field: string) => boolean>
+> = {
+  string: (record, field) => typeof record[field] === 'string',
+  number: (record, field) => typeof record[field] === 'number',
+  object: (record, field) => typeof record[field] === 'object' && record[field] !== null,
+  array: (record, field) => Array.isArray(record[field]),
 };
 
 /**
@@ -1083,7 +1089,7 @@ function recordGuard(
     if (!isAgentEntity(entity) || entity.memoryType !== memoryType) return false;
     const record: unknown = (entity as unknown as Record<string, unknown>)[recordKey];
     if (typeof record !== 'object' || record === null) return false;
-    return checks.every(([field, kind]) => RECORD_FIELD_KIND_CHECK[kind]((record as Record<string, unknown>)[field]));
+    return checks.every(([field, kind]) => RECORD_FIELD_KIND_CHECK[kind](record as Record<string, unknown>, field));
   };
 }
 

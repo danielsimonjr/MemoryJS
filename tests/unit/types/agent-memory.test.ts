@@ -734,3 +734,151 @@ for (const c of RECORD_GUARD_CASES) {
     });
   });
 }
+
+// ==================== Record Guards: field kind probes ====================
+
+/** Values that each field kind accepts. */
+const KIND_ACCEPTS: Readonly<Record<FieldKind, readonly unknown[]>> = {
+  string: ['', 'text'],
+  number: [0, -1, 1.5, NaN, Infinity],
+  object: [{}, { a: 1 }, [], [1]],
+  array: [[], [1]],
+};
+
+/** Values that each field kind rejects. */
+const KIND_REJECTS: Readonly<Record<FieldKind, readonly unknown[]>> = {
+  string: [0, 1, NaN, null, undefined, {}, [], true],
+  number: ['', '5', 'one', null, undefined, {}, [], true],
+  object: [null, undefined, '', 'text', 0, 1, true, () => 1],
+  array: [{}, { length: 0 }, '', 'abc', 0, null, undefined, true],
+};
+
+for (const c of RECORD_GUARD_CASES) {
+  describe(`${c.name} (field kinds)`, () => {
+    for (const [field, kind] of Object.entries(c.fields)) {
+      it(`accepts these values in ${field} (${kind})`, () => {
+        for (const value of KIND_ACCEPTS[kind]) {
+          expect(c.guard(buildEntity(c, buildRecord(c, { [field]: value })))).toBe(true);
+        }
+      });
+
+      it(`rejects these values in ${field} (${kind})`, () => {
+        for (const value of KIND_REJECTS[kind]) {
+          expect(c.guard(buildEntity(c, buildRecord(c, { [field]: value })))).toBe(false);
+        }
+      });
+    }
+
+    it('rejects a record property that is not an object', () => {
+      for (const value of ['', 'text', 0, 1, true, () => 1]) {
+        expect(c.guard(buildEntity(c, value))).toBe(false);
+      }
+    });
+
+    it('accepts an array as the record property only when it carries the fields', () => {
+      expect(c.guard(buildEntity(c, []))).toBe(false);
+      expect(c.guard(buildEntity(c, Object.assign([], buildRecord(c))))).toBe(true);
+    });
+
+    it('rejects an entity of another record type with a valid record of this type', () => {
+      for (const other of RECORD_GUARD_CASES) {
+        if (other.memoryType === c.memoryType) continue;
+        expect(c.guard(buildEntity(c, buildRecord(c), other.memoryType))).toBe(false);
+        expect(c.guard(buildEntity(other, buildRecord(other)))).toBe(false);
+      }
+    });
+
+    it('returns a strict boolean', () => {
+      expect(c.guard(buildEntity(c, buildRecord(c)))).toBe(true);
+      expect(c.guard(buildEntity(c, null))).toBe(false);
+      expect(c.guard(undefined)).toBe(false);
+    });
+  });
+}
+
+// ==================== Record Guards: property reads ====================
+
+/**
+ * Builds an entity whose record and record fields are accessors. Each read is logged.
+ * A guard reads the record property once, read each field in declaration
+ * order, and read an object field twice (the type test, then the null test).
+ */
+function buildWatchedEntity(
+  c: RecordGuardCase,
+  changes: Record<string, unknown> = {},
+): { entity: Record<string, unknown>; reads: string[] } {
+  const reads: string[] = [];
+  const values = buildRecord(c, changes);
+  const record: Record<string, unknown> = {};
+  for (const field of Object.keys(c.fields)) {
+    Object.defineProperty(record, field, {
+      enumerable: true,
+      get: () => {
+        reads.push(field);
+        return values[field];
+      },
+    });
+  }
+  const entity = buildEntity(c, null);
+  Object.defineProperty(entity, c.recordKey, {
+    enumerable: true,
+    get: () => {
+      reads.push(c.recordKey);
+      return record;
+    },
+  });
+  return { entity, reads };
+}
+
+/** Whether a value has the field kind. This is the rule of the field kinds. */
+function passesKind(kind: FieldKind, value: unknown): boolean {
+  switch (kind) {
+    case 'string':
+      return typeof value === 'string';
+    case 'number':
+      return typeof value === 'number';
+    case 'object':
+      return typeof value === 'object' && value !== null;
+    case 'array':
+      return Array.isArray(value);
+  }
+}
+
+/** Reads that a guard makes until it stops at the first rejected field. */
+function expectedReads(c: RecordGuardCase, changes: Record<string, unknown> = {}): string[] {
+  const expected = [c.recordKey];
+  for (const [field, kind] of Object.entries(c.fields)) {
+    const value = field in changes ? changes[field] : VALID_FIELD_VALUE[kind]();
+    expected.push(field);
+    if (kind === 'object' && typeof value === 'object') expected.push(field);
+    if (!passesKind(kind, value)) break;
+  }
+  return expected;
+}
+
+for (const c of RECORD_GUARD_CASES) {
+  describe(`${c.name} (property reads)`, () => {
+    it('reads the record once and each field in order, an object field twice', () => {
+      const { entity, reads } = buildWatchedEntity(c);
+      expect(c.guard(entity)).toBe(true);
+      expect(reads).toStrictEqual(expectedReads(c));
+    });
+
+    for (const [field, kind] of Object.entries(c.fields)) {
+      it(`stops reading at ${field} when it has the wrong kind`, () => {
+        const wrong = WRONG_FIELD_VALUE[kind]();
+        const { entity, reads } = buildWatchedEntity(c, { [field]: wrong });
+        expect(c.guard(entity)).toBe(false);
+        expect(reads).toStrictEqual(expectedReads(c, { [field]: wrong }));
+      });
+
+      if (kind === 'object') {
+        it(`reads ${field} once when it holds a primitive`, () => {
+          const { entity, reads } = buildWatchedEntity(c, { [field]: 'text' });
+          expect(c.guard(entity)).toBe(false);
+          expect(reads.filter((name) => name === field)).toStrictEqual([field]);
+        });
+      }
+    }
+  });
+}
